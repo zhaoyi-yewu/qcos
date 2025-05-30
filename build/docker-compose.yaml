@@ -1,0 +1,40 @@
+# ----------------------------------------------------------------------
+# Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
+version: '3'
+services:
+  qcos:
+    container_name: qcos
+    image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
+    privileged: true
+    network_mode: "host"
+    restart: always
+    stdin_open: True
+    tty: True
+    environment:
+      - DEBUG=${DEBUG}
+      - QCOS_CONTAINER_NAME=qcos
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    volumes:
+      - /etc/hosts:/etc/hosts
+      - /etc/timezone:/etc/timezone
+      - /etc/localtime:/etc/localtime
+      - /etc/qcos:/etc/qcos
+      - /var/log/qcos:/var/log/qcos
+      - /var/run/qcos:/var/run/qcos
+    entrypoint: /entrypoint.sh
