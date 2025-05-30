@@ -1,3 +1,4 @@
+#!/bin/sh
 # ----------------------------------------------------------------------
 # Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
@@ -12,29 +13,21 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-version: '3'
-services:
-  qcos:
-    container_name: qcos
-    image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
-    privileged: true
-    network_mode: "host"
-    restart: always
-    stdin_open: True
-    tty: True
-    environment:
-      - DEBUG=${DEBUG}
-      - QCOS_CONTAINER_NAME=${QCOS_CONTAINER_NAME}
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "10"
-    volumes:
-      - /etc/hosts:/etc/hosts
-      - /etc/timezone:/etc/timezone
-      - /etc/localtime:/etc/localtime
-      - /etc/qcos:/etc/qcos
-      - /var/log/qcos:/var/log/qcos
-      - /var/run/qcos:/var/run/qcos
-    entrypoint: /entrypoint.sh
+set -e
+
+cwd=$(dirname "${BASH_SOURCE[0]}")
+abs_cwd=$(realpath ${cwd})
+top_dir=$(realpath ${cwd}/..)
+
+env_file=${cwd}/.env
+if ! [ -f "${env_file}" ]; then
+    echo "Error: can't find config file: '${env_file}'"
+    exit 1
+fi
+source ${env_file}
+
+# local variables
+if [ "${DEV}" = "True" ]; then
+  export QCOS_IMAGE_VERSION="${QCOS_IMAGE_VERSION}-dev"
+  export QCOS_CONTAINER_NAME="${QCOS_CONTAINER_NAME}-dev"
+fi

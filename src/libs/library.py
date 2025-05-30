@@ -26,6 +26,15 @@ class Library(object):
     Library class
     """
     @staticmethod
+    def create_pid_file(file_path):
+        try:
+            pid = os.getpid()
+            with open(file_path, "w") as f:
+                f.write(str(pid))
+        except Exception as e:
+            print(f"Unable to create pid file: {file_path}")
+
+    @staticmethod
     def mkdir(dir):
         if not os.path.exists(dir):
             os.mkdir(dir)
@@ -45,17 +54,6 @@ class Library(object):
         if os.path.isfile(file):
             try:
                 os.remove(file)
-            except:
+            except Exception as e:
                 pass
         return True
-
-    @classmethod
-    def parse_config_file(cls, config_file):
-        if not os.path.isfile(config_file):
-            raise Exception("Can't find config file: %s" % config_file)
-
-        config_parser = configparser.ConfigParser()
-        try:
-            config_parser.read(config_file)
-        except Exception as e:
-            raise Exception("Error reading config file: %s\nTrace:\n%s" % (config_file, e))

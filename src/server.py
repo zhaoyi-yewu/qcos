@@ -25,10 +25,7 @@ import sys
 import uvicorn
 
 from config.config import Config
-from api.server import app
-from config.config import Config
-from libs.constant import Constant
-from logger import init_logger
+from log.logger import init_logger
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +33,7 @@ PROGRAM_NAME = Config.PROGRAM_NAME
 PROGRAM_AUTHOR = Config.PROGRAM_AUTHOR
 PROGRAM_VERSION = f"{PROGRAM_NAME} - v{Config.VERSION} ({PROGRAM_AUTHOR})\n"
 LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-LOG_FORMAT = '%(asctime)s %(process)d %(levelname)s [%(name)s] %(message)s'
+LOG_FORMAT = "%(asctime)s %(process)d %(levelname)s [%(name)s] %(message)s"
 
 
 def _signal_handling():
@@ -48,12 +45,13 @@ def _signal_handling():
                 # asyncio.ensure_future(Controller.instance().reload())
             else:
                 logger.info(f"Server has got signal {signame}, exiting...")
-                # send SIGTERM to the server PID so uvicorn can shutdown the process
+                # send SIGTERM to the server PID so uvicorn can shutdown
                 os.kill(os.getpid(), signal.SIGTERM)
         except asyncio.CancelledError:
             pass
 
-    signals = ["SIGHUP", "SIGQUIT"]  # SIGINT and SIGTERM are already registered by uvicorn
+    # SIGINT and SIGTERM are already registered by uvicorn
+    signals = ["SIGHUP", "SIGQUIT"]
     if platform.system() != "Linux":
         signals = []
     for signal_name in signals:
@@ -63,7 +61,9 @@ def _signal_handling():
 
 
 class Server(object):
-
+    """
+    API Server Init
+    """
     def __init__(self):
         self._stream_handlers = None
 
@@ -75,11 +75,13 @@ class Server(object):
         """
 
         parser = argparse.ArgumentParser(description="QCOS api server")
-        parser.add_argument("-v", "--version", help="Show the version", action="version",
+        parser.add_argument("-v", "--version",
+                            help="Show the version", action="version",
                             version=PROGRAM_VERSION)
-        parser.add_argument("-c", "--config-file", dest="config_file", help="Config file path")
-        parser.add_argument("-d", "--daemon", dest="daemon", action="store_true",
-                            help="Start as a daemon")
+        parser.add_argument("-c", "--config-file",
+                            dest="config_file", help="Config file path")
+        parser.add_argument("-d", "--daemon", dest="daemon",
+                            action="store_true", help="Start as a daemon")
 
         args = parser.parse_args(argv)
         # read and parse config file
@@ -105,10 +107,6 @@ class Server(object):
             quiet=False,
         )
 
-        # validate config
-        if Config.SCHEDULING_POLICY not in Constant.VALID_SCHEDULING_POLICY:
-            raise Exception(f"Invalid scheduling_policy: {Config.SCHEDULING_POLICY}, valid values: {','.join(Constant.VALID_SCHEDULING_POLICY)}")
-
     @staticmethod
     def _pid_lock(path):
         """
@@ -121,7 +119,8 @@ class Server(object):
                 with open(path) as f:
                     try:
                         pid = int(f.read())
-                        os.kill(pid, 0)  # kill returns an error if the process is not running
+                        # kill returns an error if the process is not running
+                        os.kill(pid, 0)
                     except (OSError, SystemError, ValueError):
                         pid = None
             except OSError as e:
@@ -129,7 +128,8 @@ class Server(object):
                 sys.exit(1)
 
             if pid:
-                logger.critical("VBMS api server is already running pid: %d", pid)
+                logger.critical(
+                    "VBMS api server is already running pid: %d", pid)
                 sys.exit(1)
 
         try:
@@ -142,11 +142,13 @@ class Server(object):
     def run(self):
         self._parse_arguments(sys.argv[1:])
         logger.info(PROGRAM_VERSION)
-        logger.info(Config.print())
+        logger.info(Config.show_info())
 
+        app = None
         _signal_handling()
         try:
-            logger.info(f"Starting server, listening on {Config.API_SERVER_LISTEN_ADDR}")
+            logger.info(f"Starting server, listening on \
+                {Config.API_SERVER_LISTEN_ADDR}")
             # only show uvicorn access logs in debug mode
             access_log = False
             if logger.getEffectiveLevel() == logging.DEBUG:

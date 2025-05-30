@@ -14,8 +14,8 @@
 
 version: '3'
 services:
-  qcos:
-    container_name: qcos
+  qcos-dev:
+    container_name: qcos-dev
     image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
     privileged: true
     network_mode: "host"
@@ -37,4 +37,5 @@ services:
       - /etc/qcos:/etc/qcos
       - /var/log/qcos:/var/log/qcos
       - /var/run/qcos:/var/run/qcos
+      - ${QCOS_LOCAL_SRC_DIR}/src:/root/qcos
     entrypoint: /entrypoint.sh

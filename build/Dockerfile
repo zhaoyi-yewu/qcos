@@ -18,6 +18,7 @@ FROM ${CONTAINER_BASE_IMAGE}
 ARG BUILD_CONTEXT=/tmp/build-context
 ARG CONTAINER_NAME
 ARG QCOS_IMAGE_VERSION
+ARG DEV
 
 LABEL stage=builder
 LABEL build=${CONTAINER_NAME}
@@ -31,7 +32,7 @@ RUN \
 # copy qcos dir
     build_date=`date` && \
     mkdir -p /root/qcos && \
-    cp -rf ${BUILD_CONTEXT}/src/* /root/qcos/ && \
+    if [ "${DEV}" = "False" ]; then cp -rf ${BUILD_CONTEXT}/src/* /root/qcos/; fi && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos.py /usr/bin/qcos && \
     cp -rf ${BUILD_CONTEXT}/requirements.txt /root/ && \
 # config system
@@ -43,8 +44,8 @@ RUN \
     cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/ && \
     if [ -f ${BUILD_CONTEXT}/pip.conf ]; then cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
     mkdir -p /etc/qcos/ && \
-    mkdir -p /var/log/qcos/ && \
     mkdir -p /var/run/qcos/ && \
+    mkdir -p /var/log/qcos/ && \
 # install basic rpms
     yum install -y hostname python3 python3-pip openssh openssh-clients sshpass \
       iputils iproute telnet net-tools openssl util-linux vim && \

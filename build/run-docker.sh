@@ -13,10 +13,16 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-cwd=$(dirname "${BASH_SOURCE[0]}")
-source ${cwd}/.env
+source ./setup-env.sh
 
-docker-compose -f docker-compose.yaml down
-docker-compose -f docker-compose.yaml up -d
+export QCOS_LOCAL_SRC_DIR="${top_dir}"
 
-echo "Run QCOS bash: docker exec -it qcos bash"
+if [ "${DEV}" = "False" ]; then
+  docker-compose -f docker-compose.yaml down
+  docker-compose -f docker-compose.yaml up -d
+  echo "Run QCOS bash: docker exec -it qcos bash"
+else
+  docker-compose -f docker-compose-dev.yaml down
+  docker-compose -f docker-compose-dev.yaml up -d
+  echo "Run QCOS bash: docker exec -it qcos-dev bash"
+fi

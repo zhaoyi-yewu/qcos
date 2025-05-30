@@ -36,7 +36,8 @@ def daemonize():
             # Exit first parent
             sys.exit(0)
     except OSError as e:
-        print("First fork failed: %d (%s)\n" % (e.errno, e.strerror), file=sys.stderr)
+        print("First fork failed: %d (%s)\n" % (e.errno, e.strerror),
+              file=sys.stderr)
         sys.exit(1)
 
     # Decouple from parent environment
@@ -50,21 +51,22 @@ def daemonize():
             # Exit from second parent
             sys.exit(0)
     except OSError as e:
-        print("Second fork failed: %d (%s)\n" % (e.errno, e.strerror), file=sys.stderr)
+        print("Second fork failed: %d (%s)\n" % (e.errno, e.strerror),
+              file=sys.stderr)
         sys.exit(1)
 
 
 if __name__ == "__main__":
     if "--daemon" in sys.argv:
         daemonize()
-    pid_dir = "/var/run/qcos"
-    pid_file = f"{pid_dir}/qcos-api.pid"
-    Library.mkdir(pid_dir)
-    Library.create_pid_file(pid_file)
+    PID_DIR = "/var/run/qcos"
+    PID_FILE = f"{PID_DIR}/qcos-api.pid"
+    Library.mkdir(PID_DIR)
+    Library.create_pid_file(PID_FILE)
     try:
         Server().run()
     except Exception as e:
         print(e)
         exit(1)
     finally:
-        Library.rm_file(pid_file)
+        Library.rm_file(PID_FILE)

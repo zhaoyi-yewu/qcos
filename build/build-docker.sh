@@ -16,6 +16,7 @@
 set -e
 
 source ./setup-build-context.sh
+
 OUTPUT_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-amd64-${QCOS_IMAGE_VERSION}.tar.xz
 
 # build docker image
@@ -23,6 +24,7 @@ DOCKER_BUILDKIT=0 docker build -f Dockerfile --no-cache --rm --network host \
   --build-arg CONTAINER_BASE_IMAGE=${CONTAINER_BASE_IMAGE} \
   --build-arg CONTAINER_NAME=${QCOS_CONTAINER_NAME} \
   --build-arg QCOS_IMAGE_VERSION=${QCOS_IMAGE_VERSION} \
+  --build-arg DEV=${DEV} \
   -t ${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION} .
 
 # export docker image

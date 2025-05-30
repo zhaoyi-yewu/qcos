@@ -15,16 +15,7 @@
 
 set -e
 
-cwd=$(dirname "${BASH_SOURCE[0]}")
-abs_cwd=$(realpath ${cwd})
-top_dir=$(realpath ${cwd}/..)
-
-env_file=${cwd}/.env
-if ! [ -f ${env_file} ]; then
-    echo "Error: can't find config file: '${env_file}'"
-    exit 1
-fi
-source ${env_file}
+source ./setup-env.sh
 
 # local variables
 BUILD_CONTEXT=${abs_cwd}/.build-context
@@ -81,7 +72,7 @@ gpgkey=${YUM_MIRROR}/openeuler/openEuler-24.03-LTS/OS/\$basearch/RPM-GPG-KEY-ope
 EOM
 
 if [ "${LOCAL_CICD}" = "True" ]; then
-  cat > $BUILD_CONTEXT/pip.conf << EOM
+  cat > ${BUILD_CONTEXT}/pip.conf << EOM
 [global]
 index-url=${PIP_MIRROR}
 trusted-host=$(echo "${PIP_MIRROR#*://}" | awk -F[/:] '{print $1}')
@@ -90,9 +81,13 @@ fi
 
 # copy dirs/files to build-context
 files=("src" "etc" "requirements.txt" "build/entrypoint.sh" "bin/qcos.py")
-for file in "${files[@]}"; do
-  src=${top_dir}/${file}
-  dst=${BUILD_CONTEXT}/${file}
-  mkdir -p $(dirname ${dst})
+for file_path in "${files[@]}"; do
+  src=${top_dir}/${file_path}
+  dst=${BUILD_CONTEXT}/
+  if [[ ${file_path} == *"/"* ]]; then
+    # if $file is files
+    dst=${BUILD_CONTEXT}/${file_path}
+    mkdir -p $(dirname ${dst})
+  fi
   rsync -r --delete ${src} ${dst}
 done
