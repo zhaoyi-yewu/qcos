@@ -1,0 +1,50 @@
+# ide/virtual env/logs
+.idea
+.venv
+*.patch
+.build-context/
+
+# python byte codes/caches
+*.py[cod]
+__pycache__
+.pytest_cache
+
+#py.test
+.cache
+
+# Packages
+*.egg
+*.egg-info
+dist
+eggs
+parts
+var
+sdist
+develop-eggs
+.installed.cfg
+lib
+lib64
+
+# Installer logs
+pip-log.txt
+
+# Unit test / coverage reports
+.coverage
+.coverage*
+.tox
+.cache
+nosetests.xml
+symbols
+htmlcov
+
+# config files
+.env
+
+# rpmbuild
+.rpmbuild/
+
+# build temp files
+build/.build-context/
+build/.env
+build/images/
+
