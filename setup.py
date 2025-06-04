@@ -21,7 +21,7 @@ setup(
     version='0.0.1',
     url="http://cmsoft.10086.cn/",
     author="Zhao Yi",
-    author_email="zhaoyi@cmss.chinamobile.com",
+    author_email="zhaoyi_yewu@cmss.chinamobile.com",
     packages=find_packages(),
     entry_points={
         'console_scripts': [

@@ -18,7 +18,7 @@ export PS1="(${QCOS_CONTAINER_NAME})[$(pwd)]$ "
 # Create QCOS config file
 mkdir -p /etc/qcos/
 
-# check if file /etc/qcos/qcos.conf exists anc create it if not
+# check if file /etc/qcos/qcos.conf exists and create it if not
 qcos_config_file_path=/etc/qcos/qcos.conf
 
 if [ -f "${qcos_config_file_path}" ]; then

@@ -24,7 +24,7 @@ LABEL stage=builder
 LABEL build=${CONTAINER_NAME}
 ENV TZ=Asia/Shanghai
 
-MAINTAINER Zhao Yi <zhaoyi@cmss.chinamobile.com>
+MAINTAINER Zhao Yi <zhaoyi_yewu@cmss.chinamobile.com>
 
 ADD ./.build-context/ ${BUILD_CONTEXT}
 
