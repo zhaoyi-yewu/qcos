@@ -14,14 +14,12 @@ enable=
     E7302, # lang/c3/c3_1/long_parameter_list_no_first_line 多行参数表禁止在第一行写参数
     E7303, # lang/c3/c3_1/lf                          行结尾检查
     E7304, # lang/c3/c3_6/todo_comment                todo注释格式检查
-    E7305, # lang/c3/c3_7/strict_oct【py2 only】      使用py3兼容的八进制格式
     # W7301 is removed （顶层定义空行间隔检查，因框架限制难以实现，可以考虑与其他lint工具一起使用进行检查）
     W7302, # lang/c3/c3_1/white_spaces                括号内侧不应当有空格
     W7303, #                                          数组访问不应当有空格
     W7304, #                                          逗号、分号、冒号前不要加空格
     W7305, # lang/c3/c3_1/trailing_comma              结尾分号相关规范
     E7306, # lang/c3/c3_5/explict_inherit_object      显式指定继承自object
-    E7307, # lang/c3/c3_7/except_py3_style【py2 only】使用py3兼容的try-except语法
     W7701, # safety/c3/c3_1/system_cmds               避免使用一些系统命令（建议对特定命令做封装，然后禁用特定函数文件的lint检查）
     E7701, # safety/c3/c3_1/forbid_eval               禁止使用eval
     W0311, # 要求4个缩进
@@ -55,4 +53,3 @@ load-plugins=
     cmss_checkers.lang.c3.c3_6.todo_comment,
     cmss_checkers.safety.c3.c3_1.system_cmds,
     cmss_checkers.safety.c3.c3_1.forbid_eval,
-
