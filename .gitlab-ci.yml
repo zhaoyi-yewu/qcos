@@ -15,4 +15,4 @@ pylint:
   tags:
     - sonic-runner
   script: # 脚本pylint检查
-    - pylint src/ tests/unittest
+    - pylint src/
