@@ -13,3 +13,28 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+import fastapi_jsonrpc as jsonrpc
+import logging
+
+from api.posiq.routes_jsonrpc.routes import job_api_v1, device_api_v1
+from uvicorn.main import Server as UvicornServer
+
+logger = logging.getLogger(__name__)
+
+app = jsonrpc.API()
+app.bind_entrypoint(job_api_v1)
+app.bind_entrypoint(device_api_v1)
+
+# Monkey Patch uvicorn signal handler to detect the app is shutting down
+app.state.exiting = False
+app.state.timing = False
+unicorn_exit_handler = UvicornServer.handle_exit
+
+
+def handle_exit(*args, **kwargs):
+    app.state.exiting = True
+    unicorn_exit_handler(*args, **kwargs)
+
+
+UvicornServer.handle_exit = handle_exit

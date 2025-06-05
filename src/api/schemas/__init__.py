@@ -13,3 +13,10 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+from .job import (SubmitJobRequest, SubmitJobResponse,
+                  GetJobStatusRequest, GetJobStatusResponse,
+                  GetJobResultsRequest, GetJobResultsResponse,
+                  GetJobsRequest,
+                  CancelJobsRequest,
+                  DeleteJobsRequest, DeleteJobsResponse)

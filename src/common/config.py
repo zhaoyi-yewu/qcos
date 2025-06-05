@@ -35,7 +35,8 @@ class Config(object):
     WORKERS = 4
 
     # [API_SERVER]
-    API_SERVER_LISTEN_ADDR = "127.0.0.1"
+    API_SERVER_LISTEN_IP = "127.0.0.1"
+    API_SERVER_PORT = 18400
     API_LOG_FILE = "/var/log/qcos/qcos-api.log"
 
     # [SSL]
@@ -65,17 +66,18 @@ class Config(object):
                     if _value is None:
                         raise Exception(
                             f"Invalid key type: {key}, None is not allowed")
-                    value_converted_by_type = _type(value)
+                    converted_value = _type(value)
                     if _type is bool:
-                        value_converted_by_type = bool(value)
-                    setattr(cls, key_upper, value_converted_by_type)
+                        converted_value = True if value.lower() == "true" \
+                            else False
+                    setattr(cls, key_upper, converted_value)
                 else:
                     raise Exception("Can't find config key: %s" % key)
 
     @classmethod
     def show_info(cls):
         """
-        Show the class variables.
+        Show class variables.
         """
         outputs = ["[Configs]"]
         for k, v in vars(cls).items():

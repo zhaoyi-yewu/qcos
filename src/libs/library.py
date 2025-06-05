@@ -14,9 +14,11 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import configparser
 import logging
 import os
+
+from datetime import datetime
+
 
 logger = logging.getLogger(__name__)
 
@@ -57,3 +59,8 @@ class Library(object):
             except Exception as e:
                 pass
         return True
+
+    @staticmethod
+    def get_current_datetime():
+        now = datetime.now()
+        return now.strftime("%Y-%m-%dT%H:%M:%S.%fZ")

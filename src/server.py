@@ -24,14 +24,15 @@ import signal
 import sys
 import uvicorn
 
-from config.config import Config
+from api.fastapi_server import app
+from common.config import Config
 from log.logger import init_logger
 
 logger = logging.getLogger(__name__)
 
 PROGRAM_NAME = Config.PROGRAM_NAME
 PROGRAM_AUTHOR = Config.PROGRAM_AUTHOR
-PROGRAM_VERSION = f"{PROGRAM_NAME} - v{Config.VERSION} ({PROGRAM_AUTHOR})\n"
+PROGRAM_VERSION = f"{PROGRAM_NAME} - v{Config.VERSION} ({PROGRAM_AUTHOR})"
 LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_FORMAT = "%(asctime)s %(process)d %(levelname)s [%(name)s] %(message)s"
 
@@ -73,7 +74,6 @@ class Server(object):
 
         :params args: Array of command line arguments
         """
-
         parser = argparse.ArgumentParser(description="QCOS api server")
         parser.add_argument("-v", "--version",
                             help="Show the version", action="version",
@@ -144,11 +144,10 @@ class Server(object):
         logger.info(PROGRAM_VERSION)
         logger.info(Config.show_info())
 
-        app = None
         _signal_handling()
         try:
-            logger.info(f"Starting server, listening on \
-                {Config.API_SERVER_LISTEN_ADDR}")
+            logger.info(f"Starting server, listening on "
+                        f"{Config.API_SERVER_LISTEN_IP}")
             # only show uvicorn access logs in debug mode
             access_log = False
             if logger.getEffectiveLevel() == logging.DEBUG:

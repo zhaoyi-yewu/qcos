@@ -15,9 +15,10 @@
 # ----------------------------------------------------------------------
 
 import os
+import traceback
 import sys
 
-from config.config import Config
+from common.config import Config
 from libs.library import Library
 from server import Server
 
@@ -66,7 +67,7 @@ if __name__ == "__main__":
     try:
         Server().run()
     except Exception as e:
-        print(e)
+        print(f"{e}\n{traceback.format_exc()}")
         exit(1)
     finally:
         Library.rm_file(PID_FILE)

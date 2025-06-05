@@ -13,3 +13,12 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+import fastapi_jsonrpc as jsonrpc
+
+from common.config import Config
+
+
+BASE_ENDPOINT = f"/{Config.API_VERSION}"
+job_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/job")
+device_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/device")

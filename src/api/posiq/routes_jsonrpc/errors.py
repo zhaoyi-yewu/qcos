@@ -13,3 +13,34 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+import fastapi_jsonrpc as jsonrpc
+from pydantic import BaseModel
+
+
+class UnknownError(jsonrpc.BaseError):
+    """
+    Unknown Error
+    """
+    CODE = -1
+    MESSAGE = "Unknown error"
+
+    class DataModel(BaseModel):
+        """
+        Data Model
+        """
+        details: None
+
+
+class JobSubmitError(jsonrpc.BaseError):
+    """
+    Job Submit Error
+    """
+    CODE = -100
+    MESSAGE = "Job submit error"
+
+    class DataModel(BaseModel):
+        """
+        Data Model
+        """
+        details: None

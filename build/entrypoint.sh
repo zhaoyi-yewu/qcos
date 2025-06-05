@@ -27,7 +27,12 @@ else
   echo "QCOS config file: ${qcos_config_file_path} not exists. auto generate ...."
   cat << EOM > ${qcos_config_file_path}
 [DEFAULT]
-debug=${DEBUG:-False}
+debug = ${DEBUG:-False}
+
+[API_SERVER]
+api_server_listen_ip = ${API_SERVER_LISTEN_IP:-0.0.0.0}
+api_server_port = ${API_SERVER_PORT:-18400}
+api_log_file = ${API_LOG_FILE:-/var/log/qcos/qcos-api.log}
 EOM
 fi
 
