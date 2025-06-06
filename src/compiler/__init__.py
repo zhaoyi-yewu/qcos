@@ -13,3 +13,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+from .parser import get_abs_tree, get_ir, compile
+from .decompose import *
+from .visitor import Visitor
