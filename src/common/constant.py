@@ -19,33 +19,95 @@ class Constant(object):
     """
     Constants
     """
-    # Code Types
-    code_type_qasm2 = "QASM2"
-    code_type_qasm3 = "QASM3"
-    code_type_qubo = "QUBO"
-    code_types = [code_type_qasm2, code_type_qasm3, code_type_qubo]
+    # Code types
+    CODE_TYPE_QASM2 = "qasm2"
+    CODE_TYPE_QASM3 = "qasm3"
+    CODE_TYPE_QUBO = "qubo"
+    CODE_TYPES = [CODE_TYPE_QASM2, CODE_TYPE_QASM3, CODE_TYPE_QUBO]
 
     # Plugins
-    plugin_qc = "PluginQC"
-    plugin_types = [plugin_qc]
+    PLUGIN_QC = "plugin-qc"
+    PLUGIN_TYPES = [PLUGIN_QC]
 
     # Drivers
-    qc_driver_dummy = "QcDummyDriver"
-    qc_driver_types = [qc_driver_dummy]
+    QC_DRIVER_DUMMY = "qc-dummy-driver"
+    QC_DRIVER_TYPES = [QC_DRIVER_DUMMY]
 
-    # Job Types
-    job_type_estimation = "estimation"
-    job_type_sampling = "sampling"
-    job_types = [job_type_estimation, job_type_sampling]
+    # Transpiler
+    TRANSPILER_CMSS = "cmss"
+    TRANSPILER_TYPES = [TRANSPILER_CMSS]
 
-    # Job Status
-    job_status_unknown = "UNKNOWN"
-    job_status_queued = "QUEUED"
-    job_status_running = "RUNNING"
-    job_status_failed = "FAILED"
-    job_status_completed = "COMPLETED"
-    job_status_cancelling = "CANCELLING"
-    job_status_cancelled = "CANCELLED"
-    job_statuses = [job_status_unknown, job_status_queued, job_status_running,
-                    job_status_failed, job_status_completed,
-                    job_status_cancelling, job_status_cancelled]
+    # Job types
+    JOB_TYPE_ESTIMATION = "estimation"
+    JOB_TYPE_SAMPLING = "sampling"
+    JOB_TYPES = [JOB_TYPE_ESTIMATION, JOB_TYPE_SAMPLING]
+
+    # Job scheduling policy
+    JOB_SCHEDULING_POLICY_PRIORITY = "priority"
+    JOB_SCHEDULING_POLICY_HIGH_RESPONSE_RATIO = "high_response_ratio"
+    JOB_SCHEDULING_POLICY_SHORTEST_JOB_FIRST = "shortest_job_first"
+    JOB_SCHEDULING_POLICY_TIME_PRECEDENCE = "time_precedence"
+    JOB_SCHEDULING_POLICY_PERIODIC = "periodic"
+    JOB_SCHEDULING_POLICY_DEPENDENT = "dependent"
+    JOB_SCHEDULING_POLICY_BATCH = "batch"
+    JOB_SCHEDULING_POLICY_REALTIME = "realtime"
+    DEFAULT_JOB_SCHEDULING_POLICY = JOB_SCHEDULING_POLICY_TIME_PRECEDENCE
+    JOB_SCHEDULING_POLICIES = [JOB_SCHEDULING_POLICY_PRIORITY,
+                               JOB_SCHEDULING_POLICY_HIGH_RESPONSE_RATIO,
+                               JOB_SCHEDULING_POLICY_SHORTEST_JOB_FIRST,
+                               JOB_SCHEDULING_POLICY_TIME_PRECEDENCE,
+                               JOB_SCHEDULING_POLICY_PERIODIC,
+                               JOB_SCHEDULING_POLICY_DEPENDENT,
+                               JOB_SCHEDULING_POLICY_BATCH,
+                               JOB_SCHEDULING_POLICY_REALTIME]
+
+    # Maximum jobs allowed in the system
+    MAX_JOBS = 1000
+
+    # Job priority
+    DEFAULT_JOB_PRIORITY = 5
+    MIN_JOB_PRIORITY = 1
+    MAX_JOB_PRIORITY = 10
+
+    # Job status
+    JOB_STATUS_UNKNOWN = "UNKNOWN"
+    JOB_STATUS_QUEUED = "QUEUED"
+    JOB_STATUS_RUNNING = "RUNNING"
+    JOB_STATUS_FAILED = "FAILED"
+    JOB_STATUS_COMPLETED = "COMPLETED"
+    JOB_STATUS_CANCELLING = "CANCELLING"
+    JOB_STATUS_CANCELLED = "CANCELLED"
+    JOB_STATUSES = [JOB_STATUS_UNKNOWN, JOB_STATUS_QUEUED, JOB_STATUS_RUNNING,
+                    JOB_STATUS_FAILED, JOB_STATUS_COMPLETED,
+                    JOB_STATUS_CANCELLING, JOB_STATUS_CANCELLED]
+
+    # Shots
+    DEFAULT_SHOTS = 10
+    MIN_SHOTS = 1
+    MAX_SHOTS = 1000
+
+    # Qubits
+    DEFAULT_QUBITS = 1
+    MIN_QUBITS = 1
+    MAX_QUBITS = 1024
+
+    # Optimization level
+    DEFAULT_OPTIMIZATION_LEVEL = 1
+    MIN_OPTIMIZATION_LEVEL = 1
+    MAX_OPTIMIZATION_LEVEL = 3
+
+
+class HttpCode(object):
+    """
+    HTTP status codes
+    """
+    SUCCESS_OK = 200
+    SUCCESS_CREATED = 201
+    SUCCESS_ACCEPTED = 202
+    SUCCESS_NO_CONTENT = 204
+    BAD_REQUEST_ERROR = 400
+    FORBIDDEN_ERROR = 403
+    NOT_FOUND_ERROR = 404
+    TIMEOUT_ERROR = 408
+    CONFLICT_ERROR = 409
+    INTERNAL_SERVER_ERROR = 500

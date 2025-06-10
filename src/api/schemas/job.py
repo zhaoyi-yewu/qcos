@@ -25,12 +25,26 @@ class SubmitJobRequest(BaseModel):
     Submit Job Request
     Pydantic Model for Submit Job Request
     """
-    code_type: str = Constant.code_type_qasm3  # Code types: QASM2, QASM3, QUBO
-    code_content: list[str] = []  # Source code list
-    backend: str = Constant.qc_driver_dummy  # QC driver name
-    job_type: str = Constant.job_type_estimation   # Job type
-    shots: int = None  # Shots
-    qubits: Optional[int] = None  # Qubits
+    # Code types: qasm2, qasm3, qubo
+    code_type: str = Constant.CODE_TYPE_QASM3
+    # Source code list
+    source_code: list[str] = []
+    # QC driver name
+    backend: str = Constant.QC_DRIVER_DUMMY
+    # Transpiler
+    transpiler: str = Constant.TRANSPILER_CMSS
+    # Optimization level
+    optimization_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL
+    # Job type
+    job_type: str = Constant.JOB_TYPE_ESTIMATION
+    # Job scheduling policy
+    job_scheduling_policy: str = Constant.DEFAULT_JOB_SCHEDULING_POLICY
+    # Job priority
+    job_priority: int = Constant.DEFAULT_JOB_PRIORITY
+    # Shots
+    shots: int = Constant.DEFAULT_SHOTS
+    # Qubits
+    qubits: Optional[int] = Constant.DEFAULT_QUBITS
 
 
 class SubmitJobResponse(BaseModel):
@@ -38,11 +52,22 @@ class SubmitJobResponse(BaseModel):
     Submit Job Response
     Pydantic Model for Submit Job Response
     """
-    job_id: int = None  # Job ID
-    status: str = Constant.job_status_unknown  # Job status
-    backend: str = Constant.qc_driver_dummy  # QC driver name
-    shots: int = None  # Shots
-    qubits: Optional[int] = None  # Qubits
+    # Job ID
+    job_id: int = None
+    # Job status
+    job_status: str = None
+    # Job scheduling policy
+    job_scheduling_policy: str = None
+    # Job priority
+    job_priority: int = None
+    # QC driver name
+    backend: str = None
+    # Transpiler
+    transpiler: str = None
+    # Shots
+    shots: int = None
+    # Qubits
+    qubits: Optional[int] = None
 
 
 class GetJobStatusRequest(BaseModel):
@@ -50,6 +75,7 @@ class GetJobStatusRequest(BaseModel):
     Get Job Status Request
     Pydantic Model for Get Job Status Request
     """
+    # Job ID
     job_id: int = None
 
 
@@ -59,12 +85,22 @@ class GetJobStatusResponse(BaseModel):
     Pydantic Model for Get Job Status Response
     """
     job_id: int = None  # Job ID
-    status: str = Constant.job_status_unknown  # Job status
-    backend: str = Constant.qc_driver_dummy  # QC driver name
-    job_type: str = Constant.job_type_estimation  # Job type
-    shots: int = None  # Shots
-    qubits: Optional[int] = None  # Qubits
-    creationDate: str = None  # Creation Date
+    # Job status
+    job_status: str = None
+    # QC driver name
+    backend: str = None
+    # Transpiler
+    transpiler: str = None
+    # Job scheduling policy
+    job_scheduling_policy: str = None
+    # Job priority
+    job_priority: int = None
+    # Shots
+    shots: int = None
+    # Qubits
+    qubits: Optional[int] = None
+    # Creation Date
+    creation_date: str = None
 
 
 class GetJobResultsRequest(BaseModel):
@@ -80,8 +116,12 @@ class GetJobResultsResponse(BaseModel):
     Get Job Results Response
     Pydantic Model for Get Job Results Response
     """
-    job_id: int = None  # Job ID
-    results: dict = None  # results
+    # Job ID
+    job_id: int = None
+    # Job status
+    job_status: str = None
+    # results
+    results: dict = None
 
 
 class GetJobsRequest(BaseModel):
@@ -97,7 +137,8 @@ class CancelJobsRequest(BaseModel):
     Cancel Jobs Request
     Pydantic Model for Cancel Jobs Request
     """
-    job_id: int = None  # Job ID
+    # Job IDs
+    job_ids: list[int] = None
 
 
 class DeleteJobsRequest(BaseModel):
@@ -105,7 +146,8 @@ class DeleteJobsRequest(BaseModel):
     Delete Jobs Request
     Pydantic Model for Delete Jobs Request
     """
-    job_id: int = None  # Job ID
+    # Job IDs
+    job_ids: list[int] = None
 
 
 class DeleteJobsResponse(BaseModel):
@@ -113,5 +155,7 @@ class DeleteJobsResponse(BaseModel):
     Delete Jobs Response
     Pydantic Model for Delete Jobs Response
     """
-    job_id: int = None  # Job ID
-    status: str = Constant.job_status_unknown  # Job status
+    # Job ID
+    job_id: int = None
+    # Job status
+    job_status: str = None

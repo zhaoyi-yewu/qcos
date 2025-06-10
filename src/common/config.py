@@ -47,14 +47,14 @@ class Config(object):
     @classmethod
     def parse_config_file(cls, config_file):
         if not os.path.isfile(config_file):
-            raise Exception("Can't find config file: %s" % config_file)
+            raise Exception(f"Can't find config file: {config_file}")
 
         config_parser = configparser.ConfigParser()
         try:
             config_parser.read(config_file)
         except Exception as e:
             raise Exception(
-                "Error reading config file: %s\nTrace:\n%s" % (config_file, e))
+                f"Error reading config file: {config_file}\nTrace:\n{e}")
 
         for section, options in config_parser.items():
             for option in options.items():
@@ -72,7 +72,7 @@ class Config(object):
                             else False
                     setattr(cls, key_upper, converted_value)
                 else:
-                    raise Exception("Can't find config key: %s" % key)
+                    raise Exception(f"Can't find config key: {key}")
 
     @classmethod
     def show_info(cls):

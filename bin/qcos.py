@@ -17,11 +17,8 @@
 import os
 import sys
 
-base_path = os.path.split(os.path.realpath(__file__))[0]
-python_lib_path = os.path.abspath(base_path + "/..")
-sys.path.insert(0, python_lib_path)
 
-from qcos_client.shell import main
+from client.shell import main
 
 
 if __name__ == "__main__":

@@ -35,8 +35,11 @@ def submit_job(
     logger.info(f"Call submit_job: {body}")
     response_info = {
         "job_id": 1,
-        "status": Constant.job_status_unknown,
-        "backend": Constant.qc_driver_dummy,
+        "job_status": Constant.JOB_STATUS_UNKNOWN,
+        "job_scheduling_policy": Constant.DEFAULT_JOB_SCHEDULING_POLICY,
+        "job_priority": 100,
+        "backend": Constant.QC_DRIVER_DUMMY,
+        "transpiler": Constant.TRANSPILER_CMSS,
         "shots": 1,
         "qubits": 1024
     }
@@ -50,12 +53,14 @@ def get_job_status(
     logger.info(f"Call get_job_status: {body}")
     response_info = {
         "job_id": 1,
-        "status": Constant.job_status_unknown,
-        "backend": Constant.qc_driver_dummy,
-        "job_type": Constant.job_type_estimation,
+        "job_status": Constant.JOB_STATUS_UNKNOWN,
+        "job_scheduling_policy": Constant.DEFAULT_JOB_SCHEDULING_POLICY,
+        "job_priority": 100,
+        "backend": Constant.QC_DRIVER_DUMMY,
+        "transpiler": Constant.TRANSPILER_CMSS,
         "shots": 1,
         "qubits": 1,
-        "creationDate": Library.get_current_datetime()
+        "creation_date": Library.get_current_datetime()
     }
     return response_info
 
@@ -67,6 +72,7 @@ def get_job_results(
     logger.info(f"Call get_job_results: {body}")
     response_info = {
         "job_id": 1,
+        "job_status": Constant.JOB_STATUS_UNKNOWN,
         "results": {"123": 123}
     }
     return response_info
@@ -79,12 +85,13 @@ def get_jobs(
     logger.info(f"Call get_jobs: {body}")
     response_info = [{
         "job_id": 1,
-        "status": Constant.job_status_unknown,
-        "backend": Constant.qc_driver_dummy,
-        "job_type": Constant.job_type_estimation,
+        "job_status": Constant.JOB_STATUS_UNKNOWN,
+        "job_scheduling_policy": Constant.DEFAULT_JOB_SCHEDULING_POLICY,
+        "job_priority": 100,
+        "backend": Constant.QC_DRIVER_DUMMY,
         "shots": 1,
         "qubits": 1,
-        "creationDate": Library.get_current_datetime()
+        "creation_date": Library.get_current_datetime()
     }]
     return response_info
 
@@ -96,12 +103,13 @@ def cancel_job(
     logger.info(f"Call cancel_job: {body}")
     response_info = [{
         "job_id": 1,
-        "status": Constant.job_status_unknown,
-        "backend": Constant.qc_driver_dummy,
-        "job_type": Constant.job_type_estimation,
+        "job_status": Constant.JOB_STATUS_UNKNOWN,
+        "job_scheduling_policy": Constant.DEFAULT_JOB_SCHEDULING_POLICY,
+        "job_priority": 100,
+        "backend": Constant.QC_DRIVER_DUMMY,
         "shots": 1,
         "qubits": 1,
-        "creationDate": Library.get_current_datetime()
+        "creation_date": Library.get_current_datetime()
     }]
     return response_info
 
@@ -109,10 +117,10 @@ def cancel_job(
 @job_api_v1.method(errors=[jsonrpc_errors.UnknownError])
 def delete_job(
         body: schemas.DeleteJobsRequest
-) -> schemas.DeleteJobsResponse:
+) -> List[schemas.DeleteJobsResponse]:
     logger.info(f"Call delete_job: {body}")
     response_info = [{
         "job_id": 1,
-        "status": Constant.job_status_unknown
+        "job_status": Constant.JOB_STATUS_UNKNOWN
     }]
     return response_info

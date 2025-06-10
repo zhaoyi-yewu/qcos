@@ -28,6 +28,7 @@ source ${env_file}
 
 # local variables
 if [ "${DEV}" = "True" ]; then
-  export QCOS_IMAGE_VERSION="${QCOS_IMAGE_VERSION}-dev"
+  export QCOS_IMAGE_NAME="${QCOS_IMAGE_NAME}-dev"
+  export QCOS_IMAGE_VERSION="${QCOS_IMAGE_VERSION}"
   export QCOS_CONTAINER_NAME="${QCOS_CONTAINER_NAME}-dev"
 fi
