@@ -13,3 +13,13 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+import os
+import sys
+
+
+from qcos.client.shell import main
+
+
+if __name__ == "__main__":
+    sys.exit(main())

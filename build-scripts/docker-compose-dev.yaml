@@ -25,7 +25,7 @@ services:
     environment:
       - DEBUG=${DEBUG}
       - QCOS_CONTAINER_NAME=${QCOS_CONTAINER_NAME}
-      - PYTHONPATH=/root/qcos
+      - PYTHONPATH=/root/
     logging:
       driver: "json-file"
       options:
@@ -38,6 +38,6 @@ services:
       - /etc/qcos:/etc/qcos
       - /var/log/qcos:/var/log/qcos
       - /var/run/qcos:/var/run/qcos
-      - ${QCOS_LOCAL_SRC_DIR}/src:/root/qcos
+      - ${QCOS_LOCAL_SRC_DIR}/qcos:/root/qcos
       - ${QCOS_LOCAL_SRC_DIR}/bin/qcos.py:/usr/bin/qcos
     entrypoint: /entrypoint.sh

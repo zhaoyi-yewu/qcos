@@ -8,7 +8,7 @@ docker load -i ./bc-oe-amd64-21.10.tar.xz
 ```
 #### 1.1.2 编辑.env配置文件
 ```shell
-cd build
+cd build-scripts
 cp ./env.template .env
 vim .env
 ```
@@ -21,7 +21,7 @@ vim .env
 ## 2. 安装和运行
 ### 2.1 安装和部署
 ```shell
-cd build
+cd build-scripts
 ./run-docker.sh
 ```
 

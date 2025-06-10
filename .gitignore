@@ -37,14 +37,8 @@ nosetests.xml
 symbols
 htmlcov
 
-# config files
-.env
-
-# rpmbuild
-.rpmbuild/
-
 # build temp files
-build/.build-context/
-build/.env
-build/images/
-
+build-scripts/.build-context/
+build-scripts/.env
+build-scripts/images/
+build-scripts/output/

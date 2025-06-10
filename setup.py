@@ -14,18 +14,18 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
     name='qcos',
-    version='0.0.1',
+    version='1.0.0',
     url="http://cmsoft.10086.cn/",
     author="Zhao Yi",
     author_email="zhaoyi_yewu@cmss.chinamobile.com",
-    packages=find_packages(),
+    packages=['qcos', 'qcos/common', 'qcos/libs', 'qcos/client'],
     entry_points={
         'console_scripts': [
-           'qcos = src.qcos_client.shell:main'
+           'qcos-cli = qcos.client.shell:main'
         ]
     }
 )

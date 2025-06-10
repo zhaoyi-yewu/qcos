@@ -32,11 +32,11 @@ RUN \
 # copy qcos dir
     build_date=`date` && \
     mkdir -p /root/qcos && \
-    if [ "${DEV}" = "False" ]; then cp -rf ${BUILD_CONTEXT}/src/* /root/qcos/; fi && \
-    cp -rf ${BUILD_CONTEXT}/bin/qcos.py /usr/bin/qcos && \
+    if [ "${DEV}" = "False" ]; then cp -rf ${BUILD_CONTEXT}/qcos/* /root/qcos/; fi && \
+    cp -rf ${BUILD_CONTEXT}/bin/qcos-cli.py /usr/bin/qcos-cli && \
     cp -rf ${BUILD_CONTEXT}/requirements.txt /root/ && \
 # config system
-    /bin/cp ${BUILD_CONTEXT}/build/entrypoint.sh / && \
+    /bin/cp ${BUILD_CONTEXT}/build-scripts/entrypoint.sh / && \
     chmod +x /entrypoint.sh && \
 # copy yum repos and create dirs
     rm -rf /etc/yum.repos.d/*.repo && \

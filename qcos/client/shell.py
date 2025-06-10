@@ -26,9 +26,9 @@ from cliff.lister import Lister
 from cliff.show import ShowOne
 
 from .client import Client
-from common.config import Config
-from common.constant import Constant, HttpCode
-from libs.library import Library
+from qcos.common.config import Config
+from qcos.common.constant import Constant, HttpCode
+from qcos.libs.library import Library
 
 VERSION = Config.VERSION
 DESCRIPTION = "QCOS command line interface"
@@ -39,19 +39,19 @@ QCOS命令行:
 
 [作业命令]
 * 提交作业
-qcos submit-job --shots 10 --qubits 2 '["QASM3:", "QASM2:"]'
+qcos-cli submit-job --shots 10 --qubits 2 '["QASM3:", "QASM2:"]'
 
 * 获取作业状态
-qcos get-job-status 1
+qcos-cli get-job-status 1
 
 * 获取作业结果
-qcos get-job-results 1
+qcos-cli get-job-results 1
 
 * 获取所有作业列表
 qcos get-jobs
 
 * 删除作业
-qcos delete-job 1
+qcos-cli delete-job 1
 """
 
 

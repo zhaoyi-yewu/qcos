@@ -20,7 +20,7 @@ import requests
 import time
 
 from jsonrpcclient import Error, Ok, parse, request
-from common.config import Config
+from qcos.common.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -83,13 +83,13 @@ class Client(object):
 
     @staticmethod
     def submit_job(
-            code_content, code_type, job_type, job_scheduling_policy,
+            source_code, code_type, job_type, job_scheduling_policy,
             job_priority, shots, qubits, backend,
             transpiler, optimization_level):
         """Submit new job"""
         method_name = "submit_job"
         data = {
-            "code_content": code_content,
+            "source_code": source_code,
             "code_type": code_type,
             "job_type": job_type,
             "job_scheduling_policy": job_scheduling_policy,
