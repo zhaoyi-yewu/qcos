@@ -1,7 +1,9 @@
 import numpy as np
-from ..config import GlobalSetting
+from src.common.config import Config
 from enum import Enum
 
+
+DECOMPOSE_RULE = Config.DECOMPOSE_RULE
 
 class GateType(Enum):
     """
@@ -71,8 +73,10 @@ class Gate:
         return:
             gates(list): 分解后的门列表
         """
-        decompose_rule = GlobalSetting.get_decomposition_rule()
-        custom_gate = decompose_rule.get(self.name, None)
+        if DECOMPOSE_RULE is None:
+            return self.default_decompose()
+
+        custom_gate = DECOMPOSE_RULE.get(self.name, None)
         if custom_gate is None:
             return self.default_decompose()
         try:

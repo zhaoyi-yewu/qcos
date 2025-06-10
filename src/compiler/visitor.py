@@ -4,10 +4,10 @@ from .decompose import create_gate
 import numpy as np
 from .linked_list import *
 import re
-from qcos.log.qcos_log import QCOSLogger
+import logging
 
-# 创建日志记录器实例
-qcos_logger = QCOSLogger()
+
+logger = logging.getLogger(__name__)
 
 
 class Visitor:
@@ -544,7 +544,7 @@ class Visitor:
             self.add_array_to_symbol_table(scalar_type, decl_name, length, elements, s.pos)
         else:
             # 当前不会执行的分支，预防后续开发带来的未察觉到的影响
-            qcos_logger.logger.warn(
+            logger.warning(
                 f'in line {s.pos} undefined scene: {s.children[0].type} in classicalDeclarationStatement')
             raise SyntaxError(f'in line {s.pos} undefined scene: {s.children[0].type}')
 
@@ -743,7 +743,7 @@ class Visitor:
             else:
                 value = self.find_val_in_symbol_table(exp_node.leaf, pos, is_recursion)
                 if value is None:
-                    qcos_logger.logger.error(f'in line {pos}, rVal not defined')
+                    logger.error(f'in line {pos}, rVal not defined')
                     raise NameError(f'in line {pos}, variable {exp_node.leaf} is only declared but not defined')
                 return value
 
@@ -782,7 +782,7 @@ class Visitor:
         while curr_symbol_table != self.symbol_table.get_head():
             if var_name in curr_symbol_table.data:
                 if value is None:
-                    qcos_logger.logger.error(f'in line {pos}, rVal not defined')
+                    logger.error(f'in line {pos}, rVal not defined')
                     raise NameError(f'var {var_name} is not defined')
                 else:
                     val_type = curr_symbol_table.data[var_name]['type']

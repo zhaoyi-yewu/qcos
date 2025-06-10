@@ -2,16 +2,14 @@ from ply import (
     lex,
     yacc
 )
+
 from . import tokrules
 from .tokrules import tokens
 import time
 from .qtypes import *
 from .visitor import Visitor
 from .decompose import transpiler, optimizer
-from .gate_to_seq import gate_to_seq
-from qcos.log.qcos_log import QCOSLogger
 
-qcos_logger = QCOSLogger()
 
 gate_params = []
 
@@ -548,5 +546,4 @@ def compile(data):
     transpiled_gates = transpiler(optimized_ir)
     # 针对分解后的ir进行优化，主要是针对分解后可能存在的连续两个相同的旋转门
     optimized_gates = optimizer(transpiled_gates)
-    pulse_seqs, measure_qubits = gate_to_seq(optimized_gates)
-    return q_num, pulse_seqs, measure_qubits
+    return optimized_gates

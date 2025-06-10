@@ -44,6 +44,9 @@ class Config(object):
     CERT_FILE = None
     KEY_FILE = None
 
+    # [DECOMPOSE_RULE]
+    DECOMPOSE_RULE = None
+
     @classmethod
     def parse_config_file(cls, config_file):
         if not os.path.isfile(config_file):
