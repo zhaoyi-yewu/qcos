@@ -281,5 +281,3 @@ def mapping(qasm_str, qpu_file, disable_qubits = [], initial_layout=None, object
         gate.targets = [mapping_virtual_to_final[q] for q in gate.targets]
         mapped_ir.append(gate)
     return mapped_ir, initial_layout, swap_mapping, mapping_virtual_to_final
-
-

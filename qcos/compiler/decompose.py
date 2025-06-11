@@ -1,5 +1,5 @@
 import numpy as np
-from src.common.config import Config
+from qcos.common.config import Config
 from enum import Enum
 
 

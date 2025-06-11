@@ -1,8 +1,7 @@
 import networkx as nx
 from collections import defaultdict
-from ..compiler import *
+from qcos.compiler import *
 from copy import deepcopy
-from qcos.config.qcos_config_manager import qcos_configer
 
 
 def get_qpu_config(qpu_config):
@@ -73,7 +72,7 @@ def get_dg(qasm, pos_num):
 
 class NASingleRoute():
 
-    def __init__(self, qasm, qpu_config=qcos_configer.get_topo_file(), **kwargs):
+    def __init__(self, qasm, qpu_config=None, **kwargs):
 
         self.qpu_config = get_qpu_config(qpu_config)
         self.storage_area = self.qpu_config['storage_area']
@@ -135,7 +134,7 @@ class NARoute():
         qasm: openqasm2.0
     """
 
-    def __init__(self, qasm, qpu_config=qcos_configer.get_topo_file(), **kwargs):
+    def __init__(self, qasm, qpu_config=None, **kwargs):
 
         self.qpu_config = get_qpu_config(qpu_config)
         self.storage_area = self.qpu_config['storage_area']
