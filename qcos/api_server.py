@@ -19,7 +19,7 @@ import traceback
 import sys
 
 from common.config import Config
-from libs.library import Library
+from common.library import Library
 from server import Server
 
 __all__ = []

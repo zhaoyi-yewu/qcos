@@ -19,7 +19,16 @@ vim .env
 ```
 
 ## 2. 安装和运行
-### 2.1 安装和部署
+### 2.1 修改配置文件
+### 2.1.1 创建和修改全局配置文件
+参照/etc/qcos/qcos.conf, 创建和修改全局配置文件/etc/qcos/qcos.conf
+<b>注意:</b> 如果不创建该文件, 容器模式下会自动创建
+
+### 2.1.2 创建和修改驱动配置文件
+参照/etc/qcos/conf.d/dummy.conf, 创建和修改驱动配置文件/etc/qcos/conf.d/dummy.conf
+<b>注意:</b> 驱动配置文件必须位于/etc/qcos/conf.d下, 文件名可以自己命名, 文件中每个驱动的配置必须对应的section中, 比如dummy驱动的配置需要放在[DriverDummy]下, DriverDummy为dummy驱动的类名
+
+### 2.2 安装和部署
 ```shell
 cd build-scripts
 ./run-docker.sh
@@ -54,4 +63,22 @@ links ./coverage_html/index.html
 
 ## 4. 命令行
 ```shell
+[作业命令]
+* 提交作业
+qcos-cli submit-job --shots 10 --qubits 2 '["QASM3:", "QASM2:"]'
+
+* 获取作业状态
+qcos-cli get-job-status 1
+
+* 获取作业结果
+qcos-cli get-job-results 1
+
+* 获取所有作业列表
+qcos-cli get-jobs
+
+* 取消作业
+qcos-cli cancel-job 1
+
+* 删除作业
+qcos-cli delete-job 1
 ```

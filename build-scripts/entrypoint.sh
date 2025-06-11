@@ -16,11 +16,12 @@
 export PS1="(${QCOS_CONTAINER_NAME})[$(pwd)]$ "
 
 # Create QCOS config file
+qcos_config_file_path=/etc/qcos/qcos.conf
+qcos_extra_config_file_dir=/etc/qcos/conf.d
 mkdir -p /etc/qcos/
+mkdir -p ${qcos_extra_config_file_dir}
 
 # check if file /etc/qcos/qcos.conf exists and create it if not
-qcos_config_file_path=/etc/qcos/qcos.conf
-
 if [ -f "${qcos_config_file_path}" ]; then
   echo "QCOS config file: ${qcos_config_file_path} exists, ignore it"
 else
@@ -37,5 +38,5 @@ EOM
 fi
 
 # run QCOS
-python3 /root/qcos/api_server.py --config-file ${qcos_config_file_path}
+python3 /root/qcos/api_server.py --config-file ${qcos_config_file_path} --config-dir ${qcos_extra_config_file_dir}
 sleep infinity

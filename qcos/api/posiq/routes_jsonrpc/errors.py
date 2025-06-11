@@ -18,6 +18,18 @@ import fastapi_jsonrpc as jsonrpc
 from pydantic import BaseModel
 
 
+@staticmethod
+def handle_invalid_params(results):
+    """
+    Handle invalid params
+
+    :param results: results from jsonrpc
+    """
+    success, err_msg = results
+    if success is False:
+        raise InvalidParams(data={"details": "\n".join(err_msg)})
+
+
 class UnknownError(jsonrpc.BaseError):
     """
     Unknown Error
@@ -29,7 +41,21 @@ class UnknownError(jsonrpc.BaseError):
         """
         Data Model
         """
-        details: None
+        details: str
+
+
+class InvalidParams(jsonrpc.BaseError):
+    """
+    Invalid Params Error
+    """
+    CODE = -2
+    MESSAGE = "Invalid params"
+
+    class DataModel(BaseModel):
+        """
+        Data Model
+        """
+        details: str
 
 
 class JobSubmitError(jsonrpc.BaseError):
@@ -43,4 +69,4 @@ class JobSubmitError(jsonrpc.BaseError):
         """
         Data Model
         """
-        details: None
+        details: str

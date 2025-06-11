@@ -26,6 +26,8 @@ import uvicorn
 
 from api.fastapi_server import app
 from common.config import Config
+from drivers.driver_manager import DriverManager
+from common.library import Library
 from log.logger import init_logger
 
 logger = logging.getLogger(__name__)
@@ -38,8 +40,13 @@ LOG_FORMAT = "%(asctime)s %(process)d %(levelname)s [%(name)s] %(message)s"
 
 
 def _signal_handling():
+    """
+    Signal handling
+    """
     def signal_handler(signame, *args):
-
+        """
+        Signal handler
+        """
         try:
             if signame == "SIGHUP":
                 logger.info(f"Server has got signal {signame}, reloading...")
@@ -63,7 +70,7 @@ def _signal_handling():
 
 class Server(object):
     """
-    API Server Init
+    Server
     """
     def __init__(self):
         self._stream_handlers = None
@@ -72,7 +79,7 @@ class Server(object):
         """
         Parse command line arguments and override local configuration
 
-        :params args: Array of command line arguments
+        :param argv: command line arguments
         """
         parser = argparse.ArgumentParser(description="QCOS api server")
         parser.add_argument("-v", "--version",
@@ -80,6 +87,8 @@ class Server(object):
                             version=PROGRAM_VERSION)
         parser.add_argument("-c", "--config-file",
                             dest="config_file", help="Config file path")
+        parser.add_argument("--config-dir",
+                            dest="config_dir", help="Config dir path")
         parser.add_argument("-d", "--daemon", dest="daemon",
                             action="store_true", help="Start as a daemon")
 
@@ -87,6 +96,12 @@ class Server(object):
         # read and parse config file
         if args.config_file:
             Config.parse_config_file(args.config_file)
+
+        # read and parse config files under config dir
+        if args.config_dir:
+            config_files = Library.find_files(args.config_dir, recursive=True)
+            for config_file in config_files:
+                Config.parse_config_file(config_file, extra_config=True)
 
         # read command line arguments and override configs
         if args.daemon:
@@ -112,6 +127,8 @@ class Server(object):
         """
         Write the file in a file on the system.
         Check if the process is not already running.
+
+        :param path: pid lock file path
         """
         if os.path.exists(path):
             pid = None
@@ -140,6 +157,9 @@ class Server(object):
             sys.exit(1)
 
     def run(self):
+        """
+        Run the server
+        """
         self._parse_arguments(sys.argv[1:])
         logger.info(PROGRAM_VERSION)
         logger.info(Config.show_info())
@@ -191,6 +211,13 @@ class Server(object):
             # init uvicorn server
             server = uvicorn.Server(config)
             loop = asyncio.get_event_loop()
+
+            # init plugin and drivers
+            driver_manager = DriverManager()
+            driver_manager.load_drivers()
+            driver_manager.init_drivers()
+
+            # run forever
             loop.run_until_complete(server.serve())
-        except:
-            raise Exception(f"Critical error while running the server")
+        except Exception as e:
+            raise Exception(f"Critical error while running the server: {e}")

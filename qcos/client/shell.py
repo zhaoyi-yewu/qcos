@@ -28,36 +28,39 @@ from cliff.show import ShowOne
 from .client import Client
 from qcos.common.config import Config
 from qcos.common.constant import Constant, HttpCode
-from qcos.libs.library import Library
+from qcos.common.library import Library
 
 VERSION = Config.VERSION
 DESCRIPTION = "QCOS command line interface"
 
 
 """
-QCOS命令行:
+QCOS commands:
 
-[作业命令]
-* 提交作业
+[Job commands]
+* Submit Job
 qcos-cli submit-job --shots 10 --qubits 2 '["QASM3:", "QASM2:"]'
 
-* 获取作业状态
+* Get job status
 qcos-cli get-job-status 1
 
-* 获取作业结果
+* Get job results
 qcos-cli get-job-results 1
 
-* 获取所有作业列表
-qcos get-jobs
+* Get all job list
+qcos-cli get-jobs
 
-* 删除作业
+* Cancel job
+qcos-cli cancel-job 1
+
+* Delete job
 qcos-cli delete-job 1
 """
 
 
 class QcosShell(App):
     """
-    QCOS shell命令行
+    QCOS shell
     """
     def __init__(self, description, version, command_manager):
         super(QcosShell, self).__init__(
@@ -69,7 +72,8 @@ class QcosShell(App):
 
     def build_option_parser(
             self, description, version, argparse_kwargs=None):
-        """Return an argparse option parser for this application.
+        """
+        Return an argparse option parser for this application.
 
         Subclasses may override this method to extend
         the parser with more global options.
@@ -131,7 +135,8 @@ class QcosShell(App):
 
 
 class HelpAction(argparse.Action):
-    """Print help message including sub-commands
+    """
+    Print help message including sub-commands
 
     Provide a custom action so the -h and --help options
     to the main app will print a list of the commands.
@@ -164,12 +169,27 @@ class CommandHelper(object):
 
     @staticmethod
     def handle_invalid_arguments(results):
+        """
+        Handle invalid arguments
+
+        :param results: results
+        """
         success, err_msg = results
         if success is False:
             raise Exception("\n".join(err_msg))
 
     @staticmethod
     def check_results(resource, name, status_code, reason, jsonrpc_response):
+        """
+        Check results
+        raise exception if failed
+
+        :param resource: resource
+        :param name: name
+        :param status_code: status code
+        :param reason: reason
+        :param jsonrpc_response: json-rpc response
+        """
         if status_code in [HttpCode.SUCCESS_OK]:
             err_msg_list = []
             try:
@@ -182,8 +202,11 @@ class CommandHelper(object):
                 message = parsed.message
                 err_msgs = parsed.data.get("errors", [])
                 for err_msg in err_msgs:
-                    err_msg_list.append(f"{message}({code}): {err_msg['msg']} "
+                    err_msg_list.append(f"{message}({code})\n{err_msg['msg']} "
                                         f", loc: {','.join(err_msg['loc'])}")
+                err_details = parsed.data.get("details", None)
+                if err_details:
+                    err_msg_list.append(f"{message}({code})\n{err_details}")
             except Exception as e:
                 err_msg_list.append(e)
             raise Exception(f"Failed to {name}.\n"
@@ -194,6 +217,14 @@ class CommandHelper(object):
 
     @staticmethod
     def get_table_list_data(list_values, header_list, ignore_header_list=None):
+        """
+        Get list of data for showing table in cli
+
+        :param list_values: list of values
+        :param header_list: headers for table
+        :param ignore_header_list: headers to ignore
+        :return: list of table data
+        """
         keys = {}
         _headers = []
         headers = []
@@ -237,6 +268,12 @@ class CommandHelper(object):
 
     @staticmethod
     def get_table_data(values):
+        """
+        Get data for showing table in cli
+
+        :param values: values
+        :return: table data
+        """
         keys = []
         headers = []
         _values = []
@@ -251,9 +288,17 @@ class CommandHelper(object):
 
 
 class SubmitJob(Command):
-    """Submit job"""
+    """
+    Submit job
+    """
 
     def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
         parser = super().get_parser(prog_name)
         parser.add_argument("source_code", help="Source code")
         parser.add_argument("--code-type", dest="code_type",
@@ -275,7 +320,7 @@ class SubmitJob(Command):
         parser.add_argument("--qubits", dest="qubits", type=int,
                             default=Constant.DEFAULT_QUBITS, help="Qubits")
         parser.add_argument("--backend", dest="backend",
-                            default=f"{Constant.QC_DRIVER_DUMMY}",
+                            default=f"{Constant.DRIVER_DUMMY}",
                             help="Set backend driver name")
         parser.add_argument("--transpiler", dest="transpiler",
                             default=f"{Constant.TRANSPILER_CMSS}",
@@ -287,6 +332,11 @@ class SubmitJob(Command):
         return parser
 
     def take_action(self, args):
+        """
+        Take action for command line arguments
+
+        :param args: command line arguments
+        """
         resource = "Job"
         source_code = args.source_code
         code_type = args.code_type
@@ -346,10 +396,6 @@ class SubmitJob(Command):
             qubits, "qubits",
             Constant.MIN_QUBITS, Constant.MAX_QUBITS))
 
-        # Validate argument: backend
-        CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
-            backend, "backend", Constant.QC_DRIVER_TYPES))
-
         # Validate argument: transpiler
         CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
             transpiler, "transpiler", Constant.TRANSPILER_TYPES))
@@ -371,14 +417,28 @@ class SubmitJob(Command):
 
 
 class GetJobStatus(ShowOne):
-    """Get job status"""
+    """
+    Get job status
+    """
 
     def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
         parser = super().get_parser(prog_name)
         parser.add_argument("job_id", type=int, help="Job ID")
         return parser
 
     def take_action(self, args):
+        """
+        Take action for command line arguments
+
+        :param args: command line arguments
+        :return: results of command
+        """
         resource = "Job"
         job_id = args.job_id
 
@@ -391,14 +451,28 @@ class GetJobStatus(ShowOne):
 
 
 class GetJobResults(ShowOne):
-    """Get job results"""
+    """
+    Get job results
+    """
 
     def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
         parser = super().get_parser(prog_name)
         parser.add_argument("job_id", type=int, help="Job ID")
         return parser
 
     def take_action(self, args):
+        """
+        Take action for command line arguments
+
+        :param args: command line arguments
+        :return: results of command
+        """
         resource = "Job"
         job_id = args.job_id
 
@@ -411,13 +485,26 @@ class GetJobResults(ShowOne):
 
 
 class GetJobs(Lister):
-    """Get jobs"""
+    """
+    Get jobs
+    """
 
     def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
         parser = super().get_parser(prog_name)
         return parser
 
     def take_action(self, args):
+        """
+        Take action for command line arguments
+
+        :param args: command line arguments
+        """
         resource = "Job"
         header_list = ["job_id", "job_status", "backend", "job_type",
                        "shots", "qubits"]
@@ -432,14 +519,27 @@ class GetJobs(Lister):
 
 
 class CancelJobs(Command):
-    """Cancel job"""
+    """
+    Cancel job
+    """
 
     def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
         parser = super().get_parser(prog_name)
         parser.add_argument("job_ids", help="Job IDs")
         return parser
 
     def take_action(self, args):
+        """
+        Take action for command line arguments
+
+        :param args: command line arguments
+        """
         resource = "Job"
         job_ids = args.job_ids
 
@@ -468,15 +568,29 @@ class CancelJobs(Command):
         else:
             print(f"No job: {job_ids} is found")
 
+
 class DeleteJobs(Command):
-    """Delete job"""
+    """
+    Delete job
+    """
 
     def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
         parser = super().get_parser(prog_name)
         parser.add_argument("job_ids", help="Job IDs")
         return parser
 
     def take_action(self, args):
+        """
+        Take action for command line arguments
+
+        :param args: command line arguments
+        """
         resource = "Job"
         job_ids = args.job_ids
 
@@ -517,6 +631,9 @@ command_manager.add_command("delete-job", DeleteJobs)
 
 
 def set_debug_option(args):
+    """
+    Set debug option
+    """
     parser = argparse.ArgumentParser(description="", add_help=False)
     parser.add_argument(
         "--debug",
@@ -531,6 +648,11 @@ def set_debug_option(args):
 
 # Application needs to be run with command line to parse.
 def main(argv=sys.argv[1:]):
+    """
+    Main function
+
+    :param argv: arguments
+    """
     app = QcosShell(
         description=DESCRIPTION,
         version=VERSION,

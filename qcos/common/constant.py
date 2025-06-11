@@ -25,13 +25,9 @@ class Constant(object):
     CODE_TYPE_QUBO = "qubo"
     CODE_TYPES = [CODE_TYPE_QASM2, CODE_TYPE_QASM3, CODE_TYPE_QUBO]
 
-    # Plugins
-    PLUGIN_QC = "plugin-qc"
-    PLUGIN_TYPES = [PLUGIN_QC]
-
     # Drivers
-    QC_DRIVER_DUMMY = "qc-dummy-driver"
-    QC_DRIVER_TYPES = [QC_DRIVER_DUMMY]
+    DRIVER_DUMMY = "DriverDummy"
+    DRIVERS = set([DRIVER_DUMMY])  # autofilled during driver registration
 
     # Transpiler
     TRANSPILER_CMSS = "cmss"
@@ -98,8 +94,8 @@ class Constant(object):
     MAX_QUBITS = 1024
 
     # Optimization level
-    DEFAULT_OPTIMIZATION_LEVEL = 1
-    MIN_OPTIMIZATION_LEVEL = 1
+    DEFAULT_OPTIMIZATION_LEVEL = 0
+    MIN_OPTIMIZATION_LEVEL = 0
     MAX_OPTIMIZATION_LEVEL = 3
 
 

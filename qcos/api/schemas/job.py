@@ -30,7 +30,7 @@ class SubmitJobRequest(BaseModel):
     # Source code list
     source_code: list[str] = []
     # QC driver name
-    backend: str = Constant.QC_DRIVER_DUMMY
+    backend: str = Constant.DRIVER_DUMMY
     # Transpiler
     transpiler: str = Constant.TRANSPILER_CMSS
     # Optimization level

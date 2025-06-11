@@ -26,9 +26,11 @@ logger = logging.getLogger(__name__)
 
 
 class Client(object):
-    """QCOS client api"""
+    """
+    QCOS client api
+    """
 
-    api_listen_ip = "100.78.171.22" #Config.API_SERVER_LISTEN_IP
+    api_listen_ip = Config.API_SERVER_LISTEN_IP
     api_port = Config.API_SERVER_PORT
     api_version = "v1"
     endpoint_url = f"http://{api_listen_ip}:{api_port}/{api_version}"
@@ -41,6 +43,20 @@ class Client(object):
             url, data=None, params=None, func_name=None,
             headers=default_headers, auth=None, verify_ssl=False,
             retry=1, timeout=2, success_http_code=[200]):
+        """
+        Call http api
+
+        :param url: api url
+        :param data: data for http body
+        :param params: params for http url
+        :param func_name: function name
+        :param headers: http headers
+        :param auth: http auth
+        :param verify_ssl: if verify ssl certificate
+        :param retry: times to retry if failed
+        :param timeout: timeout in seconds
+        :param success_http_code: success http status
+        """
         if Client.verbose:
             print(f"Request [{func_name}]: {url}, HEADER: {headers}, "
                   f"PARAMS: {params}, DATA: {data}")
@@ -60,12 +76,28 @@ class Client(object):
 
     @staticmethod
     def print_api_response(status_code, reason, text, result=None):
+        """
+        Print API response
+
+        :param status_code: status code
+        :param reason: reason
+        :param text: text
+        :param result: result text
+        """
         if Client.verbose:
             print(f"Response: status_code: {status_code}, reason: {reason}, "
-                  f"text: {text}")
+                  f"text: {text}, result: {result}")
 
     @staticmethod
     def call_json_rpc(url, method_name, data=None, params=None):
+        """
+        Call json-rpc
+
+        :param url: json-rpc url
+        :param method_name: json-rpc method
+        :param data: json-rpc data
+        :param params: json-rpc params
+        """
         jsonrpc_data = request(method_name, params={"body": data})
         jsonrpc_data_json = json.dumps(jsonrpc_data)
         status_code, reason, text, result = Client.call_http_api(
@@ -76,6 +108,11 @@ class Client(object):
 
     @staticmethod
     def parse_jsonrpc_response(jsonrpc_response):
+        """
+        Parse json-rpc response
+
+        :param jsonrpc_response: json-rpc response
+        """
         parsed = parse(jsonrpc_response)
         if isinstance(parsed, Ok):
             return True, parsed
@@ -86,7 +123,21 @@ class Client(object):
             source_code, code_type, job_type, job_scheduling_policy,
             job_priority, shots, qubits, backend,
             transpiler, optimization_level):
-        """Submit new job"""
+        """
+        Submit new job
+
+        :param source_code: source code
+        :param code_type: code type
+        :param job_type: job type
+        :param job_scheduling_policy: job scheduling policy
+        :param job_priority: job priority
+        :param shots: shots
+        :param qubits: qubits
+        :param backend: backend
+        :param transpiler: transpiler
+        :param optimization_level: optimization level
+        :return: submit_job result
+        """
         method_name = "submit_job"
         data = {
             "source_code": source_code,
@@ -106,7 +157,12 @@ class Client(object):
 
     @staticmethod
     def get_job_status(job_id):
-        """Get job status"""
+        """
+        Get job status
+
+        :param job_id: job ID
+        :return: job status
+        """
         method_name = "get_job_status"
         data = {
             "job_id": job_id
@@ -117,7 +173,12 @@ class Client(object):
 
     @staticmethod
     def get_job_results(job_id):
-        """Get job results"""
+        """
+        Get job results
+
+        :param job_id: job ID
+        :return: job results
+        """
         method_name = "get_job_results"
         data = {
             "job_id": job_id
@@ -128,7 +189,11 @@ class Client(object):
 
     @staticmethod
     def get_jobs():
-        """Get job status"""
+        """
+        Get job status
+
+        :return: jobs
+        """
         method_name = "get_jobs"
         data = {}
         status_code, reason, text, result = Client.call_json_rpc(
@@ -136,11 +201,16 @@ class Client(object):
         return status_code, reason, text, result
 
     @staticmethod
-    def cancel_job(job_id):
-        """Cancel job"""
+    def cancel_job(job_ids):
+        """
+        Cancel job
+
+        :param job_ids: job IDs
+        :return: jobs
+        """
         method_name = "cancel_job"
         data = {
-            "job_id": job_id
+            "job_ids": job_ids
         }
         status_code, reason, text, result = Client.call_json_rpc(
             Client.job_url, method_name, data)
@@ -148,7 +218,12 @@ class Client(object):
 
     @staticmethod
     def delete_job(job_ids):
-        """Delete job"""
+        """
+        Delete job
+
+        :param job_ids: job IDs
+        :return: jobs
+        """
         method_name = "delete_job"
         data = {
             "job_ids": job_ids

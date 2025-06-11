@@ -47,8 +47,16 @@ class Config(object):
     # [DECOMPOSE_RULE]
     DECOMPOSE_RULE = None
 
+    EXTRA_CONFIGS = {}
+
     @classmethod
-    def parse_config_file(cls, config_file):
+    def parse_config_file(cls, config_file, extra_config=False):
+        """
+        Parse config file
+
+        :param config_file: Config file path
+        :param extra_config: Extra configs for drivers
+        """
         if not os.path.isfile(config_file):
             raise Exception(f"Can't find config file: {config_file}")
 
@@ -59,23 +67,31 @@ class Config(object):
             raise Exception(
                 f"Error reading config file: {config_file}\nTrace:\n{e}")
 
-        for section, options in config_parser.items():
-            for option in options.items():
-                key, value = option
-                key_upper = key.upper()
-                if hasattr(cls, key_upper):
-                    _value = getattr(cls, key_upper)
-                    _type = type(_value)
-                    if _value is None:
-                        raise Exception(
-                            f"Invalid key type: {key}, None is not allowed")
-                    converted_value = _type(value)
-                    if _type is bool:
-                        converted_value = True if value.lower() == "true" \
-                            else False
-                    setattr(cls, key_upper, converted_value)
-                else:
-                    raise Exception(f"Can't find config key: {key}")
+        if extra_config:
+            for section, options in config_parser.items():
+                for option in options.items():
+                    key, value = option
+                    if section not in cls.EXTRA_CONFIGS:
+                        cls.EXTRA_CONFIGS[section] = {}
+                    cls.EXTRA_CONFIGS[section][key] = value
+        else:
+            for section, options in config_parser.items():
+                for option in options.items():
+                    key, value = option
+                    key_upper = key.upper()
+                    if hasattr(cls, key_upper):
+                        _value = getattr(cls, key_upper)
+                        _type = type(_value)
+                        if _value is None:
+                            raise Exception(
+                                f"Invalid key type: {key}, None is not allowed")
+                        converted_value = _type(value)
+                        if _type is bool:
+                            converted_value = True if value.lower() == "true" \
+                                else False
+                        setattr(cls, key_upper, converted_value)
+                    else:
+                        raise Exception(f"Can't find config key: {key}")
 
     @classmethod
     def show_info(cls):

@@ -108,7 +108,6 @@ class CompressedRotatingFileHandler(RotatingFileHandler):
     """
     Custom rotating file handler with compression support.
     """
-
     def doRollover(self):
         if self.stream:
             self.stream.close()
@@ -133,6 +132,17 @@ class CompressedRotatingFileHandler(RotatingFileHandler):
 def init_logger(
         level, logfile=None, max_bytes=10000000, backup_count=10,
         console=True, compression=True, quiet=False):
+    """
+    Init logger
+
+    :param level: logging level
+    :param logfile: logging file
+    :param max_bytes: max bytes to write to file
+    :param backup_count: backup count
+    :param console: show in console
+    :param compression: compress logging file
+    :param quiet: don't print
+    """
     file_stream_handler = None
     console_stream_handler = None
     handlers = []

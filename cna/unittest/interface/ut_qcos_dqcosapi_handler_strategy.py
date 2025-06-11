@@ -219,16 +219,16 @@ class TestQCOSRequestStrategy(unittest.TestCase):
         }
         mock_post.return_value.status_code = 200
         mock_post.return_value.json.return_value = json_data
-        mock_post.return_value.json.results = [('task1',
-                                                1,
-                                                1,
+        mock_post.return_value.json._results = [('task1',
+                                                 1,
+                                                 1,
                                                 'test_task_name',
                                                 '2025-2-14 23:59:59',
                                                 'test',
-                                                1,
-                                                1,
-                                                10,
-                                                {'type': 'ISING',
+                                                 1,
+                                                 1,
+                                                 10,
+                                                 {'type': 'ISING',
                                                  'matrix': [[-1,
                                                              1,
                                                              1],
@@ -250,7 +250,7 @@ class TestQCOSRequestStrategy(unittest.TestCase):
         result = strategy.execute(url, data)
 
         # 验证方法被成功调用
-        self.assertEqual(result, mock_post.return_value.json.results)
+        self.assertEqual(result, mock_post.return_value.json._results)
         mock_post.assert_called_once_with(
             f'{url}/workload',
             data=json.dumps(data),
