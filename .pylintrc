@@ -1,0 +1,110 @@
+[MASTER]
+#忽略目录
+ignore=.git,tests
+#匹配的文件名不会被 Pylint 检查
+ignore-patterns=^\.#,^test_.*,^setup\.py$
+#启用docparams插件检查函数文档字符串（docstring）中的参数描述是否与函数签名匹配
+load-plugins=pylint.extensions.docparams
+#限制 Pylint 类型推断的结果数量
+limit-inference-results=100
+jobs=0
+persistent=yes
+suggestion-mode=yes
+unsafe-load-any-extension=no
+
+[MESSAGES CONTROL]
+disable=
+    import-error,
+    locally-disabled,
+    access-member-before-definition,
+    no-member,
+    no-method-argument,
+    not-an-iterable,
+    abstract-method,
+    arguments-differ,
+    attribute-defined-outside-init,
+    bad-builtin,
+    bad-indentation,
+    broad-except,
+    dangerous-default-value,
+    deprecated-lambda,
+    expression-not-assigned,
+    fixme,
+    global-statement,
+    literal-comparison,
+    no-init,
+    non-parent-init-called,
+    not-callable,
+    protected-access,
+    redefined-builtin,
+    redefined-outer-name,
+    signature-differs,
+    star-args,
+    super-init-not-called,
+    super-on-old-class,
+    unpacking-non-sequence,
+    unused-argument,
+    unused-import,
+    unused-variable,
+    useless-super-delegation,
+    nonstandard-exception,
+    bad-continuation,
+    consider-iterating-dictionary,
+    consider-using-enumerate,
+    invalid-name,
+    len-as-condition,
+    misplaced-comparison-constant,
+    missing-docstring,
+    singleton-comparison,
+    superfluous-parens,
+    ungrouped-imports,
+    wrong-import-order,
+    abstract-class-little-used,
+    abstract-class-not-used,
+    consider-merging-isinstance,
+    consider-using-ternary,
+    duplicate-code,
+    interface-not-implemented,
+    no-else-return,
+    no-self-use,
+    redefined-argument-from-local,
+    simplifiable-if-statement,
+    too-few-public-methods,
+    too-many-ancestors,
+    too-many-arguments,
+    too-many-branches,
+    too-many-instance-attributes,
+    too-many-lines,
+    too-many-locals,
+    too-many-nested-blocks,
+    too-many-public-methods,
+    too-many-return-statements,
+    too-many-statements
+
+enable=
+    use-symbolic-message-instead,
+    useless-suppression,
+    similarities
+
+[REPORTS]
+output-format=text
+reports=no
+
+[FORMAT]
+max-line-length=79
+
+[BASIC]
+variable-rgx=[a-z_][a-z0-9_]{0,30}$
+argument-rgx=[a-z_][a-z0-9_]{1,30}$
+method-rgx=([a-z_][a-z0-9_]{2,}|setUp|tearDown)$
+module-rgx=(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+)|(qcos-[a-z0-9_-]+))$
+no-docstring-rgx=((__.*__)|([tT]est.*)|setUp|tearDown)$
+
+[VARIABLES]
+additional-builtins=_
+
+[TYPECHECK]
+ignored-modules=six.moves,_MovedItems
+
+[IMPORTS]
+deprecated-modules=json
