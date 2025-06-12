@@ -50,98 +50,86 @@ class TaskFlowManager(ABC):
         self._client = get_client()
         self.loop = asyncio.get_event_loop()
 
-        self.loop.run_until_complete(self._create_pools())
-        self.loop.run_until_complete(self._create_queues())
+        self.loop.run_until_complete(self.create_pools())
+        self.loop.run_until_complete(self.create_queues())
         for pool_name in Constant.JOB_SCHEDULING_POLICIES:
-            self.loop.run_until_complete(self._start_workers(pool_name))
+            self.loop.run_until_complete(self.start_workers(pool_name))
 
-    async def _create_pools(self):
+    async def create_pools(self):
         """
         Create all work pools, each policy has own work pools.
         """
 
-        create_workpools = [self._create_pool(pool_name) for pool_name in
+        create_workpools = [self.create_pool(pool_name) for pool_name in
                             Constant.JOB_SCHEDULING_POLICIES]
         return await asyncio.gather(*create_workpools)
 
-    async def _create_pool(self, pool_name):
+    async def create_pool(self, pool_name):
         """
         Create work pool by prefect client.
 
         :param pool_name: work pool name, using policy name
         """
 
-        try:
-            pools = await self._client.read_work_pools()
-            if not any(pool.name == pool_name for pool in pools):
-                work_pool = await self._client.create_work_pool(
-                    work_pool=WorkPoolCreate(
-                        name=pool_name,
-                        type=Constant.DEFAULT_JOB_POOL_TYPE,
-                        concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY))
-        except Exception as e:
-            print(f"Create work pool fail: {e}\n")
-            exit(1)
+        pools = await self._client.read_work_pools()
+        if not any(pool.name == pool_name for pool in pools):
+            work_pool = await self._client.create_work_pool(
+                work_pool=WorkPoolCreate(
+                    name=pool_name,
+                    type=Constant.DEFAULT_JOB_POOL_TYPE,
+                    concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY))
 
-    async def _create_queues(self):
+    async def create_queues(self):
         """
         Create all work queues under work pool,
         each priority has own work queue.
         """
 
-        try:
-            queues = await self._client.read_work_queues()
-            for pool_name in Constant.JOB_SCHEDULING_POLICIES:
-                for priority in range(1, Constant.MAX_JOB_PRIORITY + 1):
-                    queue_name = f"{pool_name}_{priority}"
-                    if not any(queue.name == queue_name for queue in queues):
-                        work_queue = await self._client.create_work_queue(
-                            name=queue_name,
-                            work_pool_name=pool_name,
-                            priority=priority,
-                            concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY)
-        except Exception as e:
-            print(f"Create work queue fail: {e}\n")
-            exit(1)
+        queues = await self._client.read_work_queues()
+        for pool_name in Constant.JOB_SCHEDULING_POLICIES:
+            for priority in range(1, Constant.MAX_JOB_PRIORITY + 1):
+                queue_name = f"{pool_name}_{priority}"
+                if not any(queue.name == queue_name for queue in queues):
+                    work_queue = await self._client.create_work_queue(
+                        name=queue_name,
+                        work_pool_name=pool_name,
+                        priority=priority,
+                        concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY)
 
-    async def _start_workers(self, pool_name):
+    async def start_workers(self, pool_name):
         """
         Start all workers for work pool
         """
 
-        try:
-            # start worker
-            for priority in range(1, Constant.MAX_JOB_WORKER + 1):
-                queue_name = f"{pool_name}_{priority}"
-                worker_thread = threading.Thread(target=self._start_work,
-                                                 args=(queue_name,
-                                                       pool_name),
-                                                 daemon=True)
-                worker_thread.start()
+        # start worker
+        for priority in range(1, Constant.MAX_JOB_WORKER + 1):
+            queue_name = f"{pool_name}_{priority}"
+            worker_thread = threading.Thread(target=self.start_work,
+                                             args=(queue_name,
+                                                   pool_name),
+                                             daemon=True)
+            worker_thread.start()
 
-            # wait for all workers are online
-            all_worker_status = False
-            time = 0
-            while (not all_worker_status and
-                   time <= Constant.DEFAULT_JOB_TIMEOUT):
-                workers = await self._client.read_workers_for_work_pool(
-                    pool_name)
-                work_status = [worker.status == WorkerStatus.ONLINE for
-                               worker in workers]
-                if all(work_status) and len(
-                        work_status) == Constant.MAX_JOB_WORKER:
-                    all_worker_status = True
-                sleep(Constant.DEFAULT_JOB_INTERVAL)
-                time += Constant.DEFAULT_JOB_INTERVAL
+        # wait for all workers are online
+        all_worker_status = False
+        time = 0
+        while (not all_worker_status and
+               time <= Constant.DEFAULT_JOB_TIMEOUT):
+            workers = await self._client.read_workers_for_work_pool(
+                pool_name)
+            work_status = [worker.status == WorkerStatus.ONLINE for
+                           worker in workers]
+            if all(work_status) and len(
+                    work_status) == Constant.MAX_JOB_WORKER:
+                all_worker_status = True
+            sleep(Constant.DEFAULT_JOB_INTERVAL)
+            time += Constant.DEFAULT_JOB_INTERVAL
 
-            # timeout
-            if not all_worker_status and time > Constant.DEFAULT_JOB_TIMEOUT:
-                raise TimeoutError(f"Workers start timeout")
-        except Exception as e:
-            print(f"Start worker fail: {e}\n")
-            exit(1)
+        # timeout
+        if not all_worker_status and time > Constant.DEFAULT_JOB_TIMEOUT:
+            raise TimeoutError(f"Workers start timeout")
 
-    def _start_work(self, queue_name, pool_name):
+    def start_work(self, queue_name, pool_name):
         """
         Start worker by prefect client.
 
@@ -195,10 +183,11 @@ class TaskFlowManager(ABC):
         """
 
         flow_run_id = self.loop.run_until_complete(
-            self._run_task_flow(deployment_id, args))
+            self.run_task_flow_by_client(deployment_id, args))
         return flow_run_id
 
-    async def _run_task_flow(self, deployment_id, args: dict[str, Any]):
+    async def run_task_flow_by_client(self, deployment_id,
+                                      args: dict[str, Any]):
         """
         Run flow by prefect client.
 
@@ -223,10 +212,10 @@ class TaskFlowManager(ABC):
         """
 
         result, state = self.loop.run_until_complete(
-            self._get_task_flow_result(flow_run_id))
+            self.get_task_flow_result_by_client(flow_run_id))
         return result, state
 
-    async def _get_task_flow_result(self, flow_run_id):
+    async def get_task_flow_result_by_client(self, flow_run_id):
         """
         Get flow run state and result by prefect client.
 
