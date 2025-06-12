@@ -14,6 +14,22 @@
 
 version: '3'
 services:
+  prefect-server:
+    image: ${REGISTRY}${PREFECT_IMAGE_NAME}:${PREFECT_IMAGE_VERSION}
+    restart: always
+    command: prefect server start
+    network_mode: "host"
+    environment:
+      PREFECT_SERVER_API_HOST: ${PREFECT_SERVER_API_HOST}
+      PREFECT_SERVER_DATABASE_CONNECTION_URL: "sqlite+aiosqlite:////var/qcos/db/prefect.db"
+      PREFECT_API_URL: "http://${PREFECT_SERVER_API_HOST}:4200/api"
+      PREFECT_RESULTS_PERSIST_BY_DEFAULT: true
+      PREFECT_LOCAL_STORAGE_PATH: /var/qcos/storage
+    volumes:
+      - /var/qcos/storage:/var/qcos/storage
+      - /var/qcos/db:/var/qcos/db
+      - code-data:/root/qcos
+
   qcos:
     container_name: qcos
     image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
@@ -21,6 +37,8 @@ services:
     network_mode: "host"
     restart: always
     stdin_open: True
+    depends_on:
+      - prefect-server
     tty: True
     environment:
       - DEBUG=${DEBUG}
@@ -37,4 +55,7 @@ services:
       - /etc/qcos:/etc/qcos
       - /var/log/qcos:/var/log/qcos
       - /var/run/qcos:/var/run/qcos
+      - code-data:/root/qcos
     entrypoint: /entrypoint.sh
+volumes:
+  code-data: {}

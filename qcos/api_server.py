@@ -22,7 +22,6 @@ from common.config import Config
 from libs.library import Library
 from server import Server
 
-
 __all__ = []
 __version__ = Config.VERSION
 

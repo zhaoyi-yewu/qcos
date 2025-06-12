@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
+import asyncio
+import threading
+from abc import ABC
+from time import sleep
+from pathlib import Path
+from typing import Any
+
+from prefect import get_client
+from prefect.client.schemas.actions import WorkPoolCreate
+from prefect.client.schemas.objects import WorkerStatus
+from prefect.workers import ProcessWorker
+
+from common.constant import Constant
+
+
+class TaskFlowManager(ABC):
+    """
+    task manager based on prefect framework
+    """
+
+    def __init__(self):
+        """
+        Init TaskFlowManager
+        """
+
+        self._client = None
+        self.loop = None
+
+    def start(self):
+        """
+        Create work pools, queues and start workers
+        """
+
+        self._client = get_client()
+        self.loop = asyncio.get_event_loop()
+
+        self.loop.run_until_complete(self._create_pools())
+        self.loop.run_until_complete(self._create_queues())
+        for pool_name in Constant.JOB_SCHEDULING_POLICIES:
+            self.loop.run_until_complete(self._start_workers(pool_name))
+
+    async def _create_pools(self):
+        """
+        Create all work pools, each policy has own work pools.
+        """
+
+        create_workpools = [self._create_pool(pool_name) for pool_name in
+                            Constant.JOB_SCHEDULING_POLICIES]
+        return await asyncio.gather(*create_workpools)
+
+    async def _create_pool(self, pool_name):
+        """
+        Create work pool by prefect client.
+
+        :param pool_name: work pool name, using policy name
+        """
+
+        try:
+            pools = await self._client.read_work_pools()
+            if not any(pool.name == pool_name for pool in pools):
+                work_pool = await self._client.create_work_pool(
+                    work_pool=WorkPoolCreate(
+                        name=pool_name,
+                        type=Constant.DEFAULT_JOB_POOL_TYPE,
+                        concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY))
+        except Exception as e:
+            print(f"Create work pool fail: {e}\n")
+            exit(1)
+
+    async def _create_queues(self):
+        """
+        Create all work queues under work pool,
+        each priority has own work queue.
+        """
+
+        try:
+            queues = await self._client.read_work_queues()
+            for pool_name in Constant.JOB_SCHEDULING_POLICIES:
+                for priority in range(1, Constant.MAX_JOB_PRIORITY + 1):
+                    queue_name = f"{pool_name}_{priority}"
+                    if not any(queue.name == queue_name for queue in queues):
+                        work_queue = await self._client.create_work_queue(
+                            name=queue_name,
+                            work_pool_name=pool_name,
+                            priority=priority,
+                            concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY)
+        except Exception as e:
+            print(f"Create work queue fail: {e}\n")
+            exit(1)
+
+    async def _start_workers(self, pool_name):
+        """
+        Start all workers for work pool
+        """
+
+        try:
+            # start worker
+            for priority in range(1, Constant.MAX_JOB_PRIORITY + 1):
+                queue_name = f"{pool_name}_{priority}"
+                worker_thread = threading.Thread(target=self._start_work,
+                                                 args=(queue_name,
+                                                       pool_name),
+                                                 daemon=True)
+                worker_thread.start()
+
+            # wait for all workers are online
+            all_worker_status = False
+            time = 0
+            while (not all_worker_status and
+                   time <= Constant.DEFAULT_JOB_TIMEOUT):
+                workers = await self._client.read_workers_for_work_pool(
+                    pool_name)
+                work_status = [worker.status == WorkerStatus.ONLINE for
+                               worker in workers]
+                if all(work_status) and len(
+                        work_status) == Constant.MAX_JOB_PRIORITY:
+                    all_worker_status = True
+                sleep(Constant.DEFAULT_JOB_INTERVAL)
+                time += Constant.DEFAULT_JOB_INTERVAL
+
+            # timeout
+            if not all_worker_status and time > Constant.DEFAULT_JOB_TIMEOUT:
+                raise TimeoutError(f"Workers start timeout")
+        except Exception as e:
+            print(f"Start worker fail: {e}\n")
+            exit(1)
+
+    def _start_work(self, queue_name, pool_name):
+        """
+        Start worker by prefect client.
+
+        :param queue_name: work queue name
+        :param pool_name: work pool name
+        """
+
+        worker = ProcessWorker(
+            work_queues=[queue_name],
+            work_pool_name=pool_name,
+            name=queue_name,
+            limit=Constant.DEFAULT_POOL_CONCURRENCY,
+        )
+        asyncio.run(worker.start())
+
+    def deploy_task_flow(self, deploy_name: str, flow_name: str, task_type: str,
+                         priority: int, deploy_flow, path: str):
+        """
+        Deploy flow by prefect client.
+
+        :param deploy_name: deploy name
+        :param flow_name: flow name
+        :param task_type: task type
+        :param priority: priority
+        :param deploy_flow: deploy flow function
+        :param path: .py path where the flow function relative to current path .
+        :return deploy_id: deploy uuid
+        """
+
+        # TODO exception
+        queue_name = f"{task_type}_{priority}"
+        # registry deploy
+        deploy_id = deploy_flow.from_source(
+            source=Path(__file__).parent,
+            entrypoint=path + ":" + flow_name,
+        ).deploy(
+            name=deploy_name,
+            work_pool_name=task_type,
+            work_queue_name=queue_name,
+        )
+        return deploy_id
+
+    def run_task_flow(self, deployment_id, args: dict[str, Any]):
+        """
+        Run flow.
+
+        :param deployment_id: deploy uuid
+        :param args: flow function args in dict
+        :return flow_run_id: flow run uuid
+        """
+
+        flow_run_id = self.loop.run_until_complete(
+            self._run_task_flow(deployment_id, args))
+        return flow_run_id
+
+    async def _run_task_flow(self, deployment_id, args: dict[str, Any]):
+        """
+        Run flow by prefect client.
+
+        :param deployment_id: deploy uuid
+        :param args: flow function args in dict
+        :return flow_run_id: flow run uuid
+        """
+
+        # TODO exception
+        flow_run = await self._client.create_flow_run_from_deployment(
+            deployment_id=deployment_id,
+            parameters=args)
+        return flow_run.id
+
+    def get_task_flow_result(self, flow_run_id):
+        """
+        Get flow run state and result.
+
+        :param flow_run_id: flow run uuid
+        :return result: flow result
+        :return state: flow state
+        """
+
+        result, state = self.loop.run_until_complete(
+            self._get_task_flow_result(flow_run_id))
+        return result, state
+
+    async def _get_task_flow_result(self, flow_run_id):
+        """
+        Get flow run state and result by prefect client.
+
+        :param flow_run_id: flow run uuid
+        :return result: flow result
+        :return state: flow state
+        """
+
+        # TODO exception
+        flow_run = await self._client.read_flow_run(flow_run_id)
+        state = flow_run.state
+        if state.is_final():
+            result = await state.result()
+            return result, state.name
+        else:
+            return None, state.name

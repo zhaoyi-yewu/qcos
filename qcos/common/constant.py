@@ -69,6 +69,12 @@ class Constant(object):
     MIN_JOB_PRIORITY = 1
     MAX_JOB_PRIORITY = 10
 
+    # job engine property
+    DEFAULT_JOB_POOL_TYPE = "process"
+    DEFAULT_POOL_CONCURRENCY = 100
+    DEFAULT_JOB_TIMEOUT = 60
+    DEFAULT_JOB_INTERVAL = 5
+
     # Job status
     JOB_STATUS_UNKNOWN = "UNKNOWN"
     JOB_STATUS_QUEUED = "QUEUED"
