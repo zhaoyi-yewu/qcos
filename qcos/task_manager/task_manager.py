@@ -157,8 +157,10 @@ class TaskFlowManager(ABC):
         )
         asyncio.run(worker.start())
 
-    def deploy_task_flow(self, deploy_name: str, flow_name: str, task_type: str,
-                         priority: int, deploy_flow, path: str):
+    def deploy_task_flow(
+            self, deploy_name: str, flow_name: str,
+            task_type: str, priority: int,
+            deploy_flow, path: str):
         """
         Deploy flow by prefect client.
 
@@ -171,7 +173,7 @@ class TaskFlowManager(ABC):
         :return deploy_id: deploy uuid
         """
 
-        # TODO exception
+        # TODO(jidalong) deal exception
         queue_name = f"{task_type}_{priority}"
         # registry deploy
         deploy_id = deploy_flow.from_source(
@@ -206,7 +208,7 @@ class TaskFlowManager(ABC):
         :return flow_run_id: flow run uuid
         """
 
-        # TODO exception
+        # TODO(jidalong) deal exception
         flow_run = await self._client.create_flow_run_from_deployment(
             deployment_id=deployment_id,
             parameters=args)
@@ -234,7 +236,7 @@ class TaskFlowManager(ABC):
         :return state: flow state
         """
 
-        # TODO exception
+        # TODO(jidalong) deal exception
         flow_run = await self._client.read_flow_run(flow_run_id)
         state = flow_run.state
         if state.is_final():

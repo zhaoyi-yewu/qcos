@@ -30,7 +30,7 @@ if __name__ == "__main__":
             Constant.DEFAULT_JOB_SCHEDULING_POLICY,
             Constant.DEFAULT_JOB_PRIORITY,
             examples.deploy_flow,
-            "../examples/work_flow/examples.py", )
+            "../examples/work_flow/examples.py")
         # 3.run deploy from flow
         r_id1 = task_manager.run_task_flow(d_id, {"user": "test"})
         # 4.get results from flow run
