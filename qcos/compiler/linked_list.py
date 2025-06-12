@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024 China Mobile(SuZhou) Software Technology Co.,Ltd. All rights reserved.
+# Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
-# The programs cannot be copied and/or distributed without the express
-# permission of China Mobile(SuZhou) Software Technology Co.,Ltd.
-# Create by Zhonghe Ma at 2024-11
-# ------------------------
-
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
 
 from .qtypes import Node as TreeNode
 
 
-class LinkedNode:
+class LinkedNode(object):
     """
     作用域节点类
     """
@@ -27,7 +32,7 @@ class LinkedNode:
         self.previous = None
 
 
-class LinkedList:
+class LinkedList(object):
     """
     作用域链表类
     """
@@ -65,10 +70,11 @@ class LinkedList:
         tail (LinkedNode): 作用域节点
         scope (TreeNode): 抽象语法树节点
         """
-        if scope is None or (scope.type != 'blockBody' and scope.type != 'top'):
+        if scope is None or (scope.type != "blockBody" and scope.type != "top"):
             raise TypeError("invalid scope tp add symbol table")
 
-        if tail.data is None or not isinstance(tail.data, dict) or len(tail.data) != 0:
+        if (tail.data is None or not isinstance(tail.data, dict)
+                or len(tail.data) != 0):
             raise TypeError("invalid data type when init symbol table")
 
         temp = self.tail

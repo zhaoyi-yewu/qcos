@@ -1,3 +1,20 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+# pylint: disable=C0103
+
 from ply import (
     lex,
     yacc
@@ -5,8 +22,7 @@ from ply import (
 
 from . import tokrules
 from .tokrules import tokens
-import time
-from .qtypes import *
+from .qtypes import Node
 from .visitor import Visitor
 from .decompose import transpiler, optimizer
 
@@ -15,7 +31,7 @@ gate_params = []
 
 # 根据具体的底层文法推断并记录openqasm版本，
 # 然后对比推断的版本和源码中写的版本是否一致
-# 目前只有[]和[3.0]两种可能。
+# 目前只有[2.0]和[3.0]两种可能。
 openqasm_version = []
 
 
@@ -44,7 +60,8 @@ def p_arrayType(arrayType):
     """
     scalarType = arrayType[3]
     exp = arrayType[5]
-    arrayType[0] = Node("arrayType", [scalarType, exp], None, arrayType.lineno(1))
+    arrayType[0] = Node(
+        "arrayType", [scalarType, exp], None, arrayType.lineno(1))
 
 
 def p_arrayLiteral(arrayLiteral):
@@ -55,11 +72,19 @@ def p_arrayLiteral(arrayLiteral):
     """
     if len(arrayLiteral) == 4:
         # 空数组情况
-        arrayLiteral[0] = Node("arrayLiteral", [], None, arrayLiteral.lineno(1))
+        arrayLiteral[0] = Node(
+            "arrayLiteral",
+            [],
+            None,
+            arrayLiteral.lineno(1))
     else:
         expOrArrayLiteral = arrayLiteral[2]
         commaExpOrArrayLiteralList = arrayLiteral[3]
-        arrayLiteral[0] = Node("arrayLiteral", [expOrArrayLiteral] + commaExpOrArrayLiteralList, None, arrayLiteral.lineno(2))
+        arrayLiteral[0] = Node(
+            "arrayLiteral",
+            [expOrArrayLiteral] + commaExpOrArrayLiteralList,
+            None,
+            arrayLiteral.lineno(2))
 
 
 def p_expOrArrayLiteral(expOrArrayLiteral):
@@ -71,6 +96,7 @@ def p_expOrArrayLiteral(expOrArrayLiteral):
 
 
 def p_commaExpOrArrayLiteralList(commaExpOrArrayLiteralList):
+    # pylint: disable=C0301
     """
     commaExpOrArrayLiteralList : empty
                                | ',' expOrArrayLiteral
@@ -84,7 +110,8 @@ def p_commaExpOrArrayLiteralList(commaExpOrArrayLiteralList):
         commaExpOrArrayLiteralList[0] = [expOrArrayLiteral]
     else:
         expOrArrayLiteral = commaExpOrArrayLiteralList[3]
-        commaExpOrArrayLiteralList[0] = commaExpOrArrayLiteralList[1] + [expOrArrayLiteral]
+        commaExpOrArrayLiteralList[0] =(
+                commaExpOrArrayLiteralList[1] + [expOrArrayLiteral])
 
 
 def p_assignmentStatement(assignmentStatement):
@@ -94,7 +121,11 @@ def p_assignmentStatement(assignmentStatement):
     indexedIdentifier = assignmentStatement[1]
     equal = assignmentStatement[2]
     exp = assignmentStatement[3]
-    assignmentStatement[0] = Node("assignmentStatement", [indexedIdentifier, equal, exp], None, indexedIdentifier.pos)
+    assignmentStatement[0] = Node(
+        "assignmentStatement",
+        [indexedIdentifier, equal, exp],
+        None,
+        indexedIdentifier.pos)
 
 
 def p_indexedIdentifier(indexedIdentifier):
@@ -104,9 +135,14 @@ def p_indexedIdentifier(indexedIdentifier):
     """
     if len(indexedIdentifier) == 2:
         ID = indexedIdentifier[1]
-        indexedIdentifier[0] = Node("indexedIdentifier", [], ID, indexedIdentifier.lineno(1))
+        indexedIdentifier[0] = Node(
+            "indexedIdentifier", [], ID, indexedIdentifier.lineno(1))
     else:
-        indexedIdentifier[0] = Node("indexedIdentifier", indexedIdentifier[1].children + [indexedIdentifier[2]], indexedIdentifier[1].leaf, indexedIdentifier[1].pos)
+        indexedIdentifier[0] = Node(
+            "indexedIdentifier",
+            indexedIdentifier[1].children + [indexedIdentifier[2]],
+            indexedIdentifier[1].leaf,
+            indexedIdentifier[1].pos)
 
 
 def p_indexOperator(indexOperator):
@@ -153,25 +189,38 @@ def p_statement(statement):
     if len(statement) == 2:
         statement[0] = statement[1]
     else:
-        statement[0] = Node('barrier', statement[2], None, statement.lineno(1))
+        statement[0] = Node("barrier", statement[2], None, statement.lineno(1))
 
 
-def p_forStatement(forStatement):
+def p_forStatement(forStmt):
+    # pylint: disable=C0301
     """
     forStatement : FOR scalarType ID IN NUMBER '{' blockBody '}'
                  | FOR scalarType ID IN '[' rangeExpression ']' '{' blockBody '}'
                  | FOR scalarType ID IN ID '{' blockBody '}'
     """
-    ID = forStatement[3]
-    scalarType = forStatement[2]
-    if len(forStatement) == 9:
-        loopCondition = forStatement[5]
+    ID = forStmt[3]
+    scalarType = forStmt[2]
+    if len(forStmt) == 9:
+        loopCondition = forStmt[5]
         if isinstance(loopCondition, str):
-            forStatement[0] = Node('forStatement', [scalarType, ID, forStatement[4], forStatement[5], forStatement[7]], "inID", forStatement.lineno(1))
+            forStmt[0] = Node(
+                "forStatement",
+                [scalarType, ID, forStmt[4], forStmt[5], forStmt[7]],
+                "inID",
+                forStmt.lineno(1))
         else:
-            forStatement[0] = Node('forStatement', [scalarType, ID, forStatement[4], forStatement[5], forStatement[7]], "inNumber", forStatement.lineno(1))
-    elif len(forStatement) == 11:
-        forStatement[0] = Node('forStatement', [scalarType, forStatement[3], forStatement[4], forStatement[6], forStatement[9]], "inRangeExpression", forStatement.lineno(1))
+            forStmt[0] = Node(
+                "forStatement",
+                [scalarType, ID, forStmt[4], forStmt[5], forStmt[7]],
+                "inNumber",
+                forStmt.lineno(1))
+    elif len(forStmt) == 11:
+        forStmt[0] = Node(
+            "forStatement",
+            [scalarType, forStmt[3], forStmt[4], forStmt[6], forStmt[9]],
+            "inRangeExpression",
+            forStmt.lineno(1))
 
 
 def p_rangeExpression(p):
@@ -207,9 +256,17 @@ def p_classicalDeclarationStatement(p):
     ID = p[2]
     if len(p) == 6:
         expANDarrayLiteral = p[4]
-        p[0] = Node("classicalDeclarationStatement", [scalarType, ID, expANDarrayLiteral], None, p.lineno(2))
+        p[0] = Node(
+            "classicalDeclarationStatement",
+            [scalarType, ID, expANDarrayLiteral],
+            None,
+            p.lineno(2))
     else:
-        p[0] = Node("classicalDeclarationStatement", [scalarType, ID], None, p.lineno(2))
+        p[0] = Node(
+            "classicalDeclarationStatement",
+            [scalarType, ID],
+            None,
+            p.lineno(2))
 
 
 def p_scalarType(scalarType):
@@ -222,12 +279,12 @@ def p_scalarType(scalarType):
     if len(openqasm_version) == 0:
         openqasm_version.append(3.0)
 
-    if scalarType[1] == 'int':
-        scalarType[0] = Node('scalarType', None, 'int', scalarType.lineno(1))
-    elif scalarType[1] == 'float':
-        scalarType[0] = Node('scalarType', None, 'float', scalarType.lineno(1))
-    elif scalarType[1] == 'bool':
-        scalarType[0] = Node('scalarType', None, 'bool', scalarType.lineno(1))
+    if scalarType[1] == "int":
+        scalarType[0] = Node("scalarType", None, "int", scalarType.lineno(1))
+    elif scalarType[1] == "float":
+        scalarType[0] = Node("scalarType", None, "float", scalarType.lineno(1))
+    elif scalarType[1] == "bool":
+        scalarType[0] = Node("scalarType", None, "bool", scalarType.lineno(1))
 
 
 def p_designator(designator):
@@ -251,20 +308,22 @@ def p_blockBody(blockBody):
                   | blockBody statement """
     if len(blockBody) == 2:
         emptyOrStatement = blockBody[1]
-        blockBody[0] = Node("blockBody", [emptyOrStatement], None, blockBody.lineno(1))
+        blockBody[0] = Node(
+            "blockBody", [emptyOrStatement], None, blockBody.lineno(1))
     elif len(blockBody) == 3:
         statement = blockBody[2]
         blockBody[1].children.append(statement)
         blockBody[0] = blockBody[1]
     else:
-        raise SyntaxError(f'in line {blockBody.lineno(1)}, appears undefined tree')
+        raise SyntaxError(f"in line {blockBody.lineno(1)}, "
+                          f"appears undefined tree")
 
 
 def p_empty(empty):
     """
     empty :
     """
-    empty[0] = Node('empty', None, None, empty.lineno(0))
+    empty[0] = Node("empty", None, None, empty.lineno(0))
 
 
 def p_decl(decl):
@@ -308,13 +367,15 @@ def p_gatedecl(gatedecl):
         goplist = gatedecl[5]
         ID = gatedecl[2]
         idlist = gatedecl[3]
-        gatedecl[0] = Node('defgate', goplist, [ID, idlist, []], gatedecl.lineno(2))
+        gatedecl[0] = Node(
+            "defgate", goplist, [ID, idlist, []], gatedecl.lineno(2))
     else:
         ID = gatedecl[2]
         goplist = gatedecl[8]
         idlist0 = gatedecl[6]
         idlist1 = gatedecl[4]
-        gatedecl[0] = Node('defgate', goplist, [ID, idlist0, idlist1], gatedecl.lineno(2))
+        gatedecl[0] = Node(
+            "defgate", goplist, [ID, idlist0, idlist1], gatedecl.lineno(2))
 
 
 def p_idlist(idlist):
@@ -345,10 +406,11 @@ def p_goplist(goplist):
         goplist[0] = goplist[1] + [BARRIER]
     elif len(goplist) == 4:
         idlist = goplist[2]
-        goplist[0] = [Node('barrier', idlist, None, goplist.lineno(1))]
+        goplist[0] = [Node("barrier", idlist, None, goplist.lineno(1))]
     else:
         idlist = goplist[2]
-        goplist[0] = goplist[1] + [Node('barrier', idlist, None, goplist.lineno(2))]
+        goplist[0] = goplist[1] + [Node(
+            "barrier", idlist, None, goplist.lineno(2))]
 
 
 def p_qop(qop):
@@ -362,7 +424,7 @@ def p_qop(qop):
     else:
         qubit = qop[2]
         bit = qop[4]
-        qop[0] = Node('measure', qubit, bit, qop.lineno(1))
+        qop[0] = Node("measure", qubit, bit, qop.lineno(1))
 
 
 def p_argument(argument):
@@ -437,38 +499,45 @@ def p_exp(exp):
         | unaryop '(' exp ')'
     """
     if len(exp) == 2:
-        if exp[1] == 'pi':
-            exp[0] = Node("exp", [], 'np.pi', exp.lineno(1))
+        if exp[1] == "pi":
+            exp[0] = Node("exp", [], "np.pi", exp.lineno(1))
         else:
             exp[0] = Node("exp", [], str(exp[1]), exp.lineno(1))
     elif len(exp) == 3:
-        exp[0] = Node("exp", [exp[2]], '-', exp.lineno(1))
+        exp[0] = Node("exp", [exp[2]], "-", exp.lineno(1))
     elif len(exp) == 4:
-        if exp[1] == '(':
+        if exp[1] == "(":
             exp[0] = exp[2]
         else:
             # 加减乘除
             operator = exp[2]
             lval = exp[1]
             rval = exp[3]
-            exp[0] = Node("exp", [lval, rval], f'{operator}', exp.lineno(1))
+            exp[0] = Node("exp", [lval, rval], f"{operator}", exp.lineno(1))
     else:
         mathFormula = exp[1]
         formulaInput = exp[3]
-        if mathFormula == 'sin':
-            exp[0] = Node("exp", [formulaInput], 'np.sin({})', exp.lineno(1))
-        elif mathFormula == 'cos':
-            exp[0] = Node("exp", [formulaInput], 'np.cos({})', exp.lineno(1))
-        elif mathFormula == 'tan':
-            exp[0] = Node("exp", [formulaInput], 'np.tan({})', exp.lineno(1))
-        elif mathFormula == 'exp':
-            exp[0] = Node("exp", [formulaInput], 'np.exp({})', exp.lineno(1))
-        elif mathFormula == 'ln':
-            exp[0] = Node("exp", [formulaInput], 'np.log({})', exp.lineno(1))
-        elif mathFormula == 'sqrt':
-            exp[0] = Node("exp", [formulaInput], 'np.sqrt({})', exp.lineno(1))
+        if mathFormula == "sin":
+            exp[0] = Node(
+                "exp", [formulaInput], "np.sin({})", exp.lineno(1))
+        elif mathFormula == "cos":
+            exp[0] = Node(
+                "exp", [formulaInput], "np.cos({})", exp.lineno(1))
+        elif mathFormula == "tan":
+            exp[0] = Node(
+                "exp", [formulaInput], "np.tan({})", exp.lineno(1))
+        elif mathFormula == "exp":
+            exp[0] = Node(
+                "exp", [formulaInput], "np.exp({})", exp.lineno(1))
+        elif mathFormula == "ln":
+            exp[0] = Node(
+                "exp", [formulaInput], "np.log({})", exp.lineno(1))
+        elif mathFormula == "sqrt":
+            exp[0] = Node(
+                "exp", [formulaInput], "np.sqrt({})", exp.lineno(1))
         else:
-            raise SyntaxError(f"in line {exp.lineno}, {mathFormula} is not a legal operator")
+            raise SyntaxError(f"in line {exp.lineno}, "
+                              f"{mathFormula} is not a legal operator")
 
 
 def p_unaryop(unaryop):
@@ -491,12 +560,15 @@ def p_ifStatement(ifStatement):
     ID = ifStatement[3]
     EQ = ifStatement[5]
     NUMBER = ifStatement[7]
-    ifStatement[0] = Node("ifStatement", [ID, EQ], NUMBER, ifStatement.lineno(1))
+    ifStatement[0] = Node(
+        "ifStatement", [ID, EQ], NUMBER, ifStatement.lineno(1))
 
 
 def p_error(error):
     if isinstance(error, lex.LexToken):
-        raise SyntaxError(f"in line {error.lineno}, can not parser the sentence at token: '{error.value}'")
+        raise SyntaxError(f"in line {error.lineno}, "
+                          f"can not parser the sentence at token: "
+                          f"'{error.value}'")
     else:
         raise SyntaxError("lack ';' or '}' at the end of code")
 

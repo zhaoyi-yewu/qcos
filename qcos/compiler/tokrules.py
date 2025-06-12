@@ -1,3 +1,20 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+# pylint: disable=C0103,W1405
+
 t_EQ = r'\=\='
 t_ignore = ' \t\r'
 t_ARROW = r'->'
@@ -5,7 +22,8 @@ t_ARROW = r'->'
 
 # 解析错误的时候直接抛出异常
 def t_error(lex_error):
-    raise SyntaxError(f"in line {lex_error.lineno}, lex error at token : {lex_error.value[0]}")
+    raise SyntaxError(f"in line {lex_error.lineno}, "
+                      f"lex error at token : {lex_error.value[0]}")
 
 
 # 记录行号，方便出错定位
@@ -80,6 +98,8 @@ reserved = {
 }
 
 # 输入中支持的符号头token，当然也支持t_PLUS = r'\+'的方式将加号定义为token
-literals = ['+', '-', '*', '/', '%', '<', '>', '=', ',', '(', ')', '[', ']', '{', '}', ';', ':', '"']
+literals = ['+', '-', '*', '/', '%', '<', '>', '=', ',', '(', ')',
+            '[', ']', '{', '}', ';', ':', '"']
 
-tokens = ['EQ', 'REAL', 'NUMBER', 'BooleanLiteral', 'ID', 'ARROW', 'STDFILE'] + list(reserved.values())
+tokens = (['EQ', 'REAL', 'NUMBER', 'BooleanLiteral', 'ID', 'ARROW', 'STDFILE']
+          + list(reserved.values()))

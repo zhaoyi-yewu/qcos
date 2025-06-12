@@ -1,8 +1,24 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
 from typing import Any
 from .qtypes import Node, RegType
 from .decompose import create_gate
 import numpy as np
-from .linked_list import *
+from .linked_list import LinkedList, LinkedNode
 import re
 import logging
 
@@ -10,7 +26,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class Visitor:
+class Visitor(object):
     """
     抽象语法树遍历类
     """
@@ -35,31 +51,31 @@ class Visitor:
         self.c_map = {}
         self.c_cnt = 0
         self.gate = {
-            'h': (1, 0),
-            'x': (1, 0),
-            'y': (1, 0),
-            'z': (1, 0),
-            's': (1, 0),
-            'sdg': (1, 0),
-            't': (1, 0),
-            'tdg': (1, 0),
-            'rx': (1, 1),
-            'ry': (1, 1),
-            'rz': (1, 1),
-            'cx': (2, 0),
-            'cy': (2, 0),
-            'cz': (2, 0),
-            'ch': (2, 0),
-            'crx': (2, 1),
-            'cry': (2, 1),
-            'crz': (2, 1),
-            'ccx': (3, 0),
-            'u1': (1, 1),
-            'u2': (1, 2),
-            'u3': (1, 3),
+            "h": (1, 0),
+            "x": (1, 0),
+            "y": (1, 0),
+            "z": (1, 0),
+            "s": (1, 0),
+            "sdg": (1, 0),
+            "t": (1, 0),
+            "tdg": (1, 0),
+            "rx": (1, 1),
+            "ry": (1, 1),
+            "rz": (1, 1),
+            "cx": (2, 0),
+            "cy": (2, 0),
+            "cz": (2, 0),
+            "ch": (2, 0),
+            "crx": (2, 1),
+            "cry": (2, 1),
+            "crz": (2, 1),
+            "ccx": (3, 0),
+            "u1": (1, 1),
+            "u2": (1, 2),
+            "u3": (1, 3),
         }
         self.defined_gate = {}
-        self.now_gate = ''
+        self.now_gate = ""
         self.in_gate = False
         self.measure_qubits = []
         self.gate_res = []
@@ -76,14 +92,14 @@ class Visitor:
         pos (int): 所在位置
         """
         reg_dict = self.q_var
-        if reg_type == 'creg' or reg_type == 'bit':
+        if reg_type == "creg" or reg_type == "bit":
             reg_dict = self.c_var
         if reg_id in reg_dict:
-            raise SyntaxError(f'in line {pos}, {reg_type} redefined')
+            raise SyntaxError(f"in line {pos}, {reg_type} redefined")
 
         reg_dict[reg_id] = reg_size
 
-        if reg_type == 'qreg' or reg_type == 'qubit':
+        if reg_type == "qreg" or reg_type == "qubit":
             self.q_map[reg_id] = self.q_cnt
             self.q_cnt += reg_size
         else:
@@ -92,7 +108,8 @@ class Visitor:
 
     def check_reg(self, reg, reg_type: RegType, pos):
         """
-        检查量子寄存器变量或者经典寄存器变量是否越界，若没有越界则返回其对应的物理比特下标，否则报错
+        检查量子寄存器变量或者经典寄存器变量是否越界，若没有越界则返回其对应的物理比特下标
+        否则报错。
         参数:
         reg (list): 寄存器变量
         reg_type (RegType): 寄存器变量类型
@@ -109,15 +126,16 @@ class Visitor:
             reg_map = self.c_map
 
         if reg_id not in reg_dict:
-            raise NameError(f'in line {pos}, qreg {reg_id} is not defined')
+            raise NameError(f"in line {pos}, qreg {reg_id} is not defined")
 
         if len(reg) == 2:
             idx = reg[1]
             if idx >= reg_dict[reg_id]:
-                raise IndexError(f'in line {pos}, creg {reg_id} out of bound')
-            return [reg_map[reg_id] + idx]
+                raise IndexError(f"in line {pos}, creg {reg_id} out of bound")
+            return list([reg_map[reg_id] + idx])
         else:
-            return list(range(reg_map[reg_id], reg_map[reg_id] + reg_dict[reg_id]))
+            return list(
+                range(reg_map[reg_id], reg_map[reg_id] + reg_dict[reg_id]))
 
     def check_in_gate_qubit(self, qubit, pos):
         """
@@ -127,9 +145,9 @@ class Visitor:
         pos (int): 所在位置
         """
         if len(qubit) != 1:
-            raise NameError(f'in line {pos}, qubit is not defined')
-        if qubit[0] not in self.defined_gate[self.now_gate]['gate_q']:
-            raise NameError(f'in line {pos}, qubit {qubit[0]} is not defined')
+            raise NameError(f"in line {pos}, qubit is not defined")
+        if qubit[0] not in self.defined_gate[self.now_gate]["gate_q"]:
+            raise NameError(f"in line {pos}, qubit {qubit[0]} is not defined")
 
     def check_qlist(self, qids, pos):
         """
@@ -139,7 +157,7 @@ class Visitor:
         pos (int): 所在位置
         """
         if len(set(qids)) != len(qids):
-            raise RuntimeError(f'in line {pos}, qubit reused')
+            raise RuntimeError(f"in line {pos}, qubit reused")
 
     def visit_program(self, s: Node):
         """
@@ -149,7 +167,7 @@ class Visitor:
         返回值:
         Tuple (int, list): 量子比特总数、解析得到的量子门列表
         """
-        if s.type != 'top':
+        if s.type != "top":
             raise RuntimeError("OpenQASM version not specified")
         self.gate_res = []
         self.symbol_table.add_tail(LinkedNode({}), s)
@@ -167,12 +185,12 @@ class Visitor:
         参数:
         s (Node): 抽象语法树节点
         """
-        if s.type == 'defvar':
+        if s.type == "defvar":
             reg_type = s.leaf
             reg_id, reg_size = s.children
             self.check_var_name(reg_id, s.pos)
             self.add_reg(reg_id, reg_size, reg_type, s.pos)
-        elif s.type == 'defvar3':
+        elif s.type == "defvar3":
             bit_type = s.leaf
             if len(s.children) == 1:
                 bit_id = s.children[0]
@@ -182,22 +200,22 @@ class Visitor:
                 bit_num, bit_id = s.children
                 self.check_var_name(bit_id, s.pos)
                 self.add_reg(bit_id, bit_num, bit_type, s.pos)
-        elif s.type == 'defgate':
+        elif s.type == "defgate":
             gate_id = s.leaf[0]
             if gate_id in self.gate:
-                raise SyntaxError(f'in line {s.pos}, {gate_id} redefined')
+                raise SyntaxError(f"in line {s.pos}, {gate_id} redefined")
             self.gate[gate_id] = (len(s.leaf[1]), len(s.leaf[2]))
             self.defined_gate[gate_id] = {
-                'gate_q': s.leaf[1],
-                'gate_param': s.leaf[2],
-                'base_gate': []
+                "gate_q": s.leaf[1],
+                "gate_param": s.leaf[2],
+                "base_gate": []
             }
             self.in_gate = True
             self.now_gate = gate_id
             for gop in s.children:
                 self.visit_qop(gop)
             self.in_gate = False
-        elif s.type == 'barrier':
+        elif s.type == "barrier":
             self.visit_barrier(s)
         elif s.type == "forStatement":
             self.visit_for_statement(s)
@@ -210,11 +228,12 @@ class Visitor:
 
     def visit_barrier(self, s: Node):
         """
-        检查量子比特已定义且无重复，若在自定义门中则添加相关元组以便后续解析，否则直接添加同步操作的中间表示到结果列表中
+        检查量子比特已定义且无重复，若在自定义门中则添加相关元组以便后续解析
+        否则直接添加同步操作的中间表示到结果列表中。
         参数:
         s (Node): barrier节点
         """
-        self.check_node_type(s, 'barrier')
+        self.check_node_type(s, "barrier")
 
         qids = []
         for qubit in s.children:
@@ -227,41 +246,46 @@ class Visitor:
 
         self.check_qlist(qids, s.pos)
         if self.in_gate:
-            self.defined_gate[self.now_gate]['base_gate'].append(('sync', [], qids))
+            self.defined_gate[self.now_gate]["base_gate"].append(
+                ("sync", [], qids))
         else:
-            self.gate_res.append(create_gate('sync', qids))
+            self.gate_res.append(create_gate("sync", qids))
 
     def visit_qop(self, s: Node):
         """
         量子操作分为三种
             同步: 递归遍历
-            测量: 测量操作首先判断量子变量和经典变量是否可用，且比特没有重复测量，在结果中添加测量的中间表示
+            测量: 测量操作首先判断量子变量和经典变量是否可用，且比特没有重复测量
+            在结果中添加测量的中间表示。
             门操作: 递归遍历
         参数:
         s (Node): qop节点
         """
-        if s.type == 'measure':
+        if s.type == "measure":
             qids, cids = s.children, s.leaf
             qlist = self.check_reg(qids, RegType.QREG, s.pos)
             clist = self.check_reg(cids, RegType.CREG, s.pos)
             if len(qlist) != len(clist):
-                raise RuntimeError(f"in line {s.pos}, the length of qregs and cregs is different")
+                raise RuntimeError(f"in line {s.pos},"
+                                   f"the len of qregs and cregs is different")
             for qubit in qlist:
                 if qubit in self.measure_qubits:
-                    raise RuntimeError(f"in line {s.pos}, multiple measurements")
+                    raise RuntimeError(f"in line {s.pos},"
+                                       f"multiple measurements")
                 self.measure_qubits.append(qubit)
-                self.gate_res.append(create_gate('measure', [qubit]))
-        elif s.type == 'barrier':
+                self.gate_res.append(create_gate("measure", [qubit]))
+        elif s.type == "barrier":
             self.visit_barrier(s)
-        elif s.type == 'ifStatement':
+        elif s.type == "ifStatement":
             reg = s.children[0]
             val = s.children[1]
             # 判断id是否为定义的creg
             if reg not in self.c_var:
                 raise NameError(f"in line {s.pos}, creg {reg} is not defined")
             bit_length = self.c_var[reg]
-            if val > int('1' * bit_length, 2):
-                raise RuntimeError(f"in line {s.pos}, value {val} if always larger than creg {reg}")
+            if val > int("1" * bit_length, 2):
+                raise RuntimeError(f"in line {s.pos}, value {val} "
+                                   f"if always larger than creg {reg}")
             pass
         else:
             # self.visitUop(s)
@@ -269,13 +293,14 @@ class Visitor:
 
     def visit_uop(self, s: Node):
         """
-        首先检查门是否在可用门字典中
-        然后检查参数数量是否与门需要的一致，以及量子比特是否已定义且无重复
-        最后若调用时在自定义门中则添加相关元组以便后续解析，否则通过eval_gate添加量子门操作对应的中间表示到结果列表中。
+        首先检查门是否在可用门字典中,
+        然后检查参数数量是否与门需要的一致，以及量子比特是否已定义且无重复,
+        最后若调用时在自定义门中则添加相关元组以便后续解析,
+        否则通过eval_gate添加量子门操作对应的中间表示到结果列表中。
         参数:
         s (Node): uop节点
         """
-        self.check_node_type(s, 'uop')
+        self.check_node_type(s, "uop")
 
         uid = s.children[0]
         if not self.allow_undefined:
@@ -285,10 +310,12 @@ class Visitor:
         if uid in self.gate:
             qnum, pnum = self.gate[uid]
             if pnum != len(s.children[1]):
-                raise RuntimeError(f"in line {s.pos}, parameter error, need {pnum} but {len(s.children[1])}")
+                raise RuntimeError(f"in line {s.pos}, parameter error, "
+                                   f"need {pnum} but {len(s.children[1])}")
 
             if qnum != len(s.leaf):
-                raise RuntimeError(f"in line {s.pos}, qubit error, need {qnum} but {len(s.leaf)}")
+                raise RuntimeError(f"in line {s.pos}, qubit error, "
+                                   f"need {qnum} but {len(s.leaf)}")
 
         qids = []
         if self.in_gate:
@@ -304,15 +331,17 @@ class Visitor:
         self.check_qlist(qids, s.pos)
 
         if self.in_gate:
-            self.defined_gate[self.now_gate]['base_gate'].append((uid, s.children[1], qids))
+            self.defined_gate[self.now_gate]["base_gate"].append(
+                (uid, s.children[1], qids))
         else:
             self.eval_gate(uid, s.children[1], qids, s.pos)
 
     def eval_gate(self, uid, args, qids, pos, func_dict=None):
         """
         解析自定义门中的子语句
-        如果是全局的量子操作，则直接添加对应的中间表示
-        否则生成参数对应字典，该字典的键值对为自定义门的参数以及调用时实际使用值，用该字典以及eval函数来实现内联操作，将自定义门中的子语句转换为中间表示。
+        如果是全局的量子操作，则直接添加对应的中间表示,
+        否则生成参数对应字典，该字典的键值对为自定义门的参数以及调用时实际使用值，
+        用该字典以及eval函数来实现内联操作，将自定义门中的子语句转换为中间表示。
         参数:
         uid (str): 量子门类型
         args (str): 量子门参数
@@ -330,19 +359,25 @@ class Visitor:
 
         real_qids = []
         for qid in qids:
-            real_qids.append(eval(qid, func_dict))
+            if func_dict is not None and qid in func_dict:
+                real_qids.append(func_dict[qid])
+            else:
+                real_qids.append(qid)
 
         if uid not in self.defined_gate:
             args = real_args
             if len(real_args) == 1:
                 args = real_args[0]
-            self.gate_res.append(create_gate(uid, real_qids, args, self.allow_undefined))
+            self.gate_res.append(
+                create_gate(uid, real_qids, args, self.allow_undefined))
         else:
-            for _uid, _args, _qids in self.defined_gate[uid]['base_gate']:
+            for _uid, _args, _qids in self.defined_gate[uid]["base_gate"]:
                 _dic = {}
-                for param, val in zip(self.defined_gate[uid]['gate_param'], real_args):
+                for param, val in zip(
+                        self.defined_gate[uid]["gate_param"], real_args):
                     _dic[param] = val
-                for qreg, val in zip(self.defined_gate[uid]['gate_q'], real_qids):
+                for qreg, val in zip(
+                        self.defined_gate[uid]["gate_q"], real_qids):
                     _dic[qreg] = val
                 self.eval_gate(_uid, _args, _qids, pos, _dic)
 
@@ -352,22 +387,23 @@ class Visitor:
         参数:
         s (Node): forStatement节点
         """
-        self.check_node_type(s, 'forStatement')
+        self.check_node_type(s, "forStatement")
 
-        if s.leaf == 'inNumber':
+        if s.leaf == "inNumber":
             loop_count = s.children[3]
 
             # 检查loop_count是否为整数
             if not isinstance(loop_count, int):
-                raise TypeError(f'in line {s.pos}, loop count should be int')
+                raise TypeError(f"in line {s.pos}, loop count should be int")
 
             iterator_var_type = s.children[0].leaf
             iterator_var_name = s.children[1]
             block_body = s.children[4]
             for i in range(loop_count):
-                self.visit_for_block_body(block_body, iterator_var_type, iterator_var_name, i)
+                self.visit_for_block_body(
+                    block_body, iterator_var_type, iterator_var_name, i)
 
-        elif s.leaf == 'inID':
+        elif s.leaf == "inID":
             id_name = s.children[3]
             id_dict = self.find_in_symbol_table(id_name, True)
             value = self.find_val_in_var_dict(id_dict, id_name, s.pos)
@@ -377,26 +413,30 @@ class Visitor:
             iterator_var_name = s.children[1]
 
             # 检测类型是否为int
-            if iterator_var_type != id_type != 'int':
-                raise TypeError(f'in line {s.pos}, var {iterator_var_name} and var {id_name} should both be int type')
+            if iterator_var_type != id_type != "int":
+                raise TypeError(f"in line {s.pos}, var {iterator_var_name} "
+                                f"and var {id_name} should both be int type")
 
             block_body = s.children[4]
             if isinstance(value, list):
                 # in 后是数组变量的情况
                 for i in value:
-                    self.visit_for_block_body(block_body, iterator_var_type, iterator_var_name, i)
+                    self.visit_for_block_body(
+                        block_body, iterator_var_type, iterator_var_name, i)
             else:
                 # in 后是普通变量的情况
                 for i in range(value):
-                    self.visit_for_block_body(block_body, iterator_var_type, iterator_var_name, i)
+                    self.visit_for_block_body(
+                        block_body, iterator_var_type, iterator_var_name, i)
 
-        elif s.leaf == 'inRangeExpression':
+        elif s.leaf == "inRangeExpression":
             range_exp = s.children[3]
             iterator_var_name = s.children[1]
             iterator_var_type = s.children[0].leaf
             start, step, end = self.visit_range_expression(range_exp)
             while start < end:
-                self.visit_for_block_body(s.children[4], iterator_var_type, iterator_var_name, start)
+                self.visit_for_block_body(
+                    s.children[4], iterator_var_type, iterator_var_name, start)
                 start = start + step
 
     def visit_range_expression(self, s: Node):
@@ -407,25 +447,28 @@ class Visitor:
         返回:
         Tuple (int, int, int): 循环起点、步长、循环终点
         """
-        self.check_node_type(s, 'rangeExpression')
+        self.check_node_type(s, "rangeExpression")
 
         start = 0
         step = 1
         end = 0
         if len(s.children) == 2:
-            if s.children[0].type == 'exp':
+            if s.children[0].type == "exp":
                 start = self.visit_exp(s.children[0], True, s.pos)
-            if s.children[1].type == 'exp':
+            if s.children[1].type == "exp":
                 end = self.visit_exp(s.children[1], True, s.pos)
         if len(s.children) == 3:
-            if s.children[0].type == 'exp':
+            if s.children[0].type == "exp":
                 start = self.visit_exp(s.children[0], True, s.pos)
-            if s.children[1].type == 'exp':
+            if s.children[1].type == "exp":
                 step = self.visit_exp(s.children[1], True, s.pos)
             end = self.visit_exp(s.children[2], True, s.pos)
         return start, step, end
 
-    def visit_for_block_body(self, s: Node, iterator_type, iterator_name, cur_loop_count):
+    def visit_for_block_body(
+            self, s: Node, iterator_type, iterator_name,
+            cur_loop_count
+    ):
         """
         处理for循环体中的每条语句
         参数:
@@ -434,14 +477,15 @@ class Visitor:
         iterator_name (str): for循环体索引名
         cur_loop_count (int): 当前索引值
         """
-        self.check_node_type(s, 'blockBody')
+        self.check_node_type(s, "blockBody")
 
         self.symbol_table.add_tail(LinkedNode({}), s)
         curr_symbol_table = self.symbol_table.get_tail()
-        curr_symbol_table.data[iterator_name] = {'type': iterator_type, 'val': cur_loop_count}
+        curr_symbol_table.data[iterator_name] = {"type": iterator_type,
+                                                 "val": cur_loop_count}
         if isinstance(s.children, list):
             for child in s.children:
-                if child.type == 'empty':
+                if child.type == "empty":
                     continue
                 else:
                     self.visit_state(child)
@@ -454,7 +498,7 @@ class Visitor:
         参数:
         s (Node): uop节点
         """
-        self.check_node_type(s, 'uop')
+        self.check_node_type(s, "uop")
 
         uid = s.children[0]
         if not self.allow_undefined:
@@ -464,10 +508,12 @@ class Visitor:
         if uid in self.gate:
             qnum, pnum = self.gate[uid]
             if pnum != len(s.children[1]):
-                raise RuntimeError(f"in line {s.pos}, parameter error, need {pnum} but {len(s.children[1])}")
+                raise RuntimeError(f"in line {s.pos}, parameter error, "
+                                   f"need {pnum} but {len(s.children[1])}")
 
             if qnum != len(s.leaf):
-                raise RuntimeError(f"in line {s.pos}, qubit error, need {qnum} but {len(s.leaf)}")
+                raise RuntimeError(f"in line {s.pos}, qubit error, "
+                                   f"need {qnum} but {len(s.leaf)}")
 
         qids = []
         if self.in_gate:
@@ -486,7 +532,8 @@ class Visitor:
         self.check_qlist(qids, s.pos)
 
         if self.in_gate:
-            self.defined_gate[self.now_gate]['base_gate'].append((uid, s.children[1], qids))
+            self.defined_gate[self.now_gate]["base_gate"].append(
+                (uid, s.children[1], qids))
         else:
             self.eval_gate(uid, s.children[1], qids, s.pos)
 
@@ -518,35 +565,40 @@ class Visitor:
         参数:
         s (Node): classicalDeclarationStatement节点
         """
-        self.check_node_type(s, 'classicalDeclarationStatement')
+        self.check_node_type(s, "classicalDeclarationStatement")
         decl_name = s.children[1]
         self.check_var_name(decl_name, s.pos)
-        if s.children[0].type == 'scalarType':
+        if s.children[0].type == "scalarType":
             if len(s.children) == 2:
                 decl_val = None
             else:
                 decl_val = s.children[2]
-            if isinstance(decl_val, Node) and decl_val.type == 'exp':
+            if isinstance(decl_val, Node) and decl_val.type == "exp":
                 decl_val = self.visit_exp(decl_val, True, s.pos)
             decl_type = s.children[0].leaf
             self.add_to_symbol_table(decl_type, decl_name, decl_val, s.pos)
 
-        elif s.children[0].type == 'arrayType':
+        elif s.children[0].type == "arrayType":
             scalar_type, length = self.visit_array_type(s.children[0])
             array_literal = s.children[2]
 
             if len(array_literal.children) != length:
-                raise SyntaxError("length in arrayType: {} should be equal "
-                                  "to the length in arrayLiteral: {}".format(length, len(array_literal.children)))
+                raise SyntaxError(
+                    "length in arrayType: {} should be equal "
+                    "to the length in arrayLiteral: {}"
+                    .format(length, len(array_literal.children)))
 
             # 处理等号右边
             elements = self.visit_array_literal(array_literal)
-            self.add_array_to_symbol_table(scalar_type, decl_name, length, elements, s.pos)
+            self.add_array_to_symbol_table(
+                scalar_type, decl_name, length, elements, s.pos)
         else:
             # 当前不会执行的分支，预防后续开发带来的未察觉到的影响
             logger.warning(
-                f'in line {s.pos} undefined scene: {s.children[0].type} in classicalDeclarationStatement')
-            raise SyntaxError(f'in line {s.pos} undefined scene: {s.children[0].type}')
+                f"in line {s.pos} undefined scene: {s.children[0].type} "
+                f"in classicalDeclarationStatement")
+            raise SyntaxError(f"in line {s.pos} undefined scene: "
+                              f"{s.children[0].type}")
 
     def visit_array_literal(self, s: Node) -> list:
         """
@@ -558,7 +610,7 @@ class Visitor:
         返回:
         List: 数组类型
         """
-        self.check_node_type(s, 'arrayLiteral')
+        self.check_node_type(s, "arrayLiteral")
 
         arr = []
         for child in s.children:
@@ -574,7 +626,7 @@ class Visitor:
         返回:
         Tuple (str, int): 数组类型、长度
         """
-        self.check_node_type(s, 'arrayType')
+        self.check_node_type(s, "arrayType")
 
         scalar_type = s.children[0].leaf
         length = self.visit_exp(s.children[1], True, s.pos)
@@ -589,7 +641,7 @@ class Visitor:
         参数:
         s (Node): assignmentStatement节点
         """
-        self.check_node_type(s, 'assignmentStatement')
+        self.check_node_type(s, "assignmentStatement")
 
         indexed_identifier = s.children[0]
         val_name = indexed_identifier.leaf
@@ -598,7 +650,8 @@ class Visitor:
         symbol_table = self.find_symbol_table(val_name)
 
         if symbol_table is None:
-            raise NameError("in line {}, variable a is not declared".format(s.pos))
+            raise NameError(
+                "in line {}, variable a is not declared".format(s.pos))
 
         # 如果indexed_identifier的children为空，说明不是数组变量赋值
         if not indexed_identifier.children:
@@ -609,8 +662,8 @@ class Visitor:
 
             # 检查变量类型是否是数组
             var_dict = symbol_table.data[val_name]
-            if 'category' not in var_dict or var_dict['category'] != 'array':
-                raise TypeError(f'in line {s.pos}, var {val_name} is not array')
+            if "category" not in var_dict or var_dict["category"] != "array":
+                raise TypeError(f"in line {s.pos}, var {val_name} is not array")
 
             # 一维数组变量赋值情况
             index_node = indexed_identifier.children[0]
@@ -619,11 +672,13 @@ class Visitor:
 
             # 检查索引是否为整数
             if not isinstance(idx, int):
-                raise TypeError(f'in line {s.pos}, array index {idx} is not int')
+                raise TypeError(
+                    f"in line {s.pos}, array index {idx} is not int")
 
             # 检查数组索引是否越界
-            if var_dict['length'] <= idx or idx < 0:
-                raise IndexError(f'in line {s.pos}, array index {idx} is out of bound')
+            if var_dict["length"] <= idx or idx < 0:
+                raise IndexError(
+                    f"in line {s.pos}, array index {idx} is out of bound")
 
             # 获取等号右边的值
             rvalue = self.visit_exp(s.children[2], True, s.pos)
@@ -652,7 +707,8 @@ class Visitor:
     def add_to_symbol_table(self, var_type, var_name, value, pos):
         """
         把变量名和变量值作为键值对放到符号表中
-        对于普通变量a，在字典中的存储格式是：{a:{'val':1,'type':'int','category':'default'}}
+        对于普通变量a，在字典中的存储格式是：
+        {a:{"val":1,"type":"int","category":"default"}}
         参数:
         var_type (str): 变量类型
         var_name (str): 变量名
@@ -661,26 +717,31 @@ class Visitor:
         """
         curr_symbol_table = self.symbol_table.get_tail().data
         if var_name in curr_symbol_table:
-            raise SyntaxError(f'in line {pos}, variable {var_name} has been defined')
+            raise SyntaxError(
+                f"in line {pos}, variable {var_name} has been defined")
 
         if value is None:
-            curr_symbol_table[var_name] = {'val': None, 'type': var_type, 'category': 'default'}
+            curr_symbol_table[var_name] = {"val": None, "type": var_type,
+                                           "category": "default"}
         else:
-            if var_type == 'int':
+            if var_type == "int":
                 val = int(value)
-            elif var_type == 'float':
+            elif var_type == "float":
                 val = float(value)
-            elif var_type == 'bool':
-                if value == 'True':
+            elif var_type == "bool":
+                if value == "True":
                     val = 1
                 else:
                     val = 0
             else:
                 # 其他未定义类型，不会执行的分支。
                 raise TypeError("undefined type in line {}".format(pos))
-            curr_symbol_table[var_name] = {'val': val, 'type': var_type, 'category': 'default'}
+            curr_symbol_table[var_name] = {"val": val, "type": var_type,
+                                           "category": "default"}
 
-    def add_array_to_symbol_table(self, var_type, var_name, length, elements, pos):
+    def add_array_to_symbol_table(
+            self, var_type, var_name, length, elements, pos
+    ):
         """
         把数组变量和它的元素放入符号表中，
         对于int数组变量arr，存储结构为：
@@ -697,21 +758,23 @@ class Visitor:
 
         # 检查变量名是否重复
         if var_name in curr_symbol_table:
-            raise SyntaxError(f'in line {pos}, variable {var_name} has been defined')
+            raise SyntaxError(
+                f"in line {pos}, variable {var_name} has been defined")
 
         # 检查elements中的每个元素类型是否正确。
-        if var_type == 'int' or var_type == 'bool':
+        if var_type == "int" or var_type == "bool":
             for idx, element in enumerate(elements):
                 if not isinstance(element, int):
-                    raise TypeError(f'{var_name}[{idx}] is not {var_type}')
-        elif var_type == 'float':
+                    raise TypeError(f"{var_name}[{idx}] is not {var_type}")
+        elif var_type == "float":
             for idx, element in enumerate(elements):
                 if not isinstance(element, float):
-                    raise TypeError(f'{var_name}[{idx}] is not {var_type}')
+                    raise TypeError(f"{var_name}[{idx}] is not {var_type}")
         else:
-            raise TypeError(f'type: {var_type} is invalid')
+            raise TypeError(f"type: {var_type} is invalid")
 
-        var_dict = {'type': var_type, 'length': length, 'val': elements, 'category': 'array'}
+        var_dict = {"type": var_type, "length": length, "val": elements,
+                    "category": "array"}
         curr_symbol_table[var_name] = var_dict
 
     def visit_exp(self, exp_node, is_recursion, pos):
@@ -726,49 +789,56 @@ class Visitor:
         返回:
         Any: 表达式计算结果
         """
-        self.check_node_type(exp_node, 'exp')
+        self.check_node_type(exp_node, "exp")
 
         if len(exp_node.children) == 0:
             if exp_node.leaf.isdigit():
                 return int(exp_node.leaf)
             elif self.is_float_regex(exp_node.leaf):
                 return float(exp_node.leaf)
-            elif exp_node.leaf == 'np.pi':
-                # return eval('np.pi')
+            elif exp_node.leaf == "np.pi":
+                # return eval("np.pi")
                 return 3.141592653589793
-            elif exp_node.leaf == 'True':
+            elif exp_node.leaf == "True":
                 return 1
-            elif exp_node.leaf == 'False':
+            elif exp_node.leaf == "False":
                 return 0
             else:
-                value = self.find_val_in_symbol_table(exp_node.leaf, pos, is_recursion)
+                value = self.find_val_in_symbol_table(
+                    exp_node.leaf, pos, is_recursion)
                 if value is None:
-                    logger.error(f'in line {pos}, rVal not defined')
-                    raise NameError(f'in line {pos}, variable {exp_node.leaf} is only declared but not defined')
+                    logger.error(f"in line {pos}, rVal not defined")
+                    raise NameError(
+                        f"in line {pos}, variable {exp_node.leaf} "
+                        f"is only declared but not defined")
                 return value
 
         if len(exp_node.children) == 2:
             l_val = self.visit_exp(exp_node.children[0], is_recursion, pos)
             r_val = self.visit_exp(exp_node.children[1], is_recursion, pos)
-            if exp_node.leaf == '-':
+            if exp_node.leaf == "-":
                 return l_val - r_val
-            elif exp_node.leaf == '+':
+            elif exp_node.leaf == "+":
                 return l_val + r_val
-            elif exp_node.leaf == '*':
+            elif exp_node.leaf == "*":
                 return l_val * r_val
-            elif exp_node.leaf == '/':
+            elif exp_node.leaf == "/":
                 if not r_val:
-                    raise ZeroDivisionError(f"in line {pos}, divide by zero error")
+                    raise ZeroDivisionError(
+                        f"in line {pos}, divide by zero error")
                 return l_val / r_val
 
         if len(exp_node.children) == 1:
-            if exp_node.leaf == '-':
+            if exp_node.leaf == "-":
                 val = self.visit_exp(exp_node.children[0], is_recursion, pos)
                 return -val
 
         raise RuntimeError(f"in line {pos}, unexpected scene in visit exp")
 
-    def modify_in_symbol_table(self, var_name: str, value: Any, pos: int, is_recursion: bool = True):
+    def modify_in_symbol_table(
+            self, var_name: str, value: Any, pos: int,
+            is_recursion: bool = True
+    ):
         """
         在符号表中修改变量的值
         参数:
@@ -782,23 +852,26 @@ class Visitor:
         while curr_symbol_table != self.symbol_table.get_head():
             if var_name in curr_symbol_table.data:
                 if value is None:
-                    logger.error(f'in line {pos}, rVal not defined')
-                    raise NameError(f'var {var_name} is not defined')
+                    logger.error(f"in line {pos}, rVal not defined")
+                    raise NameError(f"var {var_name} is not defined")
                 else:
-                    val_type = curr_symbol_table.data[var_name]['type']
-                    if val_type == 'bool':
-                        # 因为bool变量在符号表中的存储格式为 b:{'val':1, 'val_type':bool, 'category':default}
+                    val_type = curr_symbol_table.data[var_name]["type"]
+                    if val_type == "bool":
+                        # 因为bool变量在符号表中的存储格式为
+                        # b:{"val":1, "val_type":bool, "category":default}
                         # 我们保存0，1来表示true，false.所以value的值可能为0和1
                         if value == 1 or value == 0:
-                            curr_symbol_table.data[var_name]['val'] = value
+                            curr_symbol_table.data[var_name]["val"] = value
                         else:
-                            raise ValueError("invalid bool value in line {}".format(pos))
-                    elif val_type == 'int':
-                        curr_symbol_table.data[var_name]['val'] = int(value)
-                    elif val_type == 'float':
-                        curr_symbol_table.data[var_name]['val'] = float(value)
+                            raise ValueError(
+                                "invalid bool value in line {}".format(pos))
+                    elif val_type == "int":
+                        curr_symbol_table.data[var_name]["val"] = int(value)
+                    elif val_type == "float":
+                        curr_symbol_table.data[var_name]["val"] = float(value)
                     else:
-                        raise TypeError(f'unsupported type {val_type}, in line {pos}')
+                        raise TypeError(
+                            f"unsupported type {val_type}, in line {pos}")
                 # 在当前符号表中找到变量，跳出循环
                 is_var = True
                 break
@@ -806,9 +879,12 @@ class Visitor:
                 break
             curr_symbol_table = curr_symbol_table.previous
         if not is_var:
-            raise NameError(f'in line {pos}, variable {var_name} is not declared')
+            raise NameError(
+                f"in line {pos}, variable {var_name} is not declared")
 
-    def find_val_in_symbol_table(self, var_name: str, pos: int, is_recursion: bool = True):
+    def find_val_in_symbol_table(
+            self, var_name: str, pos: int, is_recursion: bool = True
+    ):
         """
         在符号表中找到变量的值
         参数:
@@ -820,9 +896,10 @@ class Visitor:
         """
         var_dict = self.find_in_symbol_table(var_name, is_recursion)
         if var_dict is None:
-            raise NameError(f"in line {pos}, variable {var_name} is not declared")
+            raise NameError(
+                f"in line {pos}, variable {var_name} is not declared")
         else:
-            return var_dict['val']
+            return var_dict["val"]
 
     def find_type_in_var_dict(self, var_dict: dict, var_name: str, pos: int):
         """
@@ -835,15 +912,18 @@ class Visitor:
         Any: 变量的类型
         """
         if var_dict is None:
-            raise NameError(f"in line {pos}, variable {var_name} is not be declared")
+            raise NameError(
+                f"in line {pos}, variable {var_name} is not be declared")
 
-        if 'type' not in var_dict:
-            raise AttributeError(f'in line {pos}, variable {var_name} has no type')
+        if "type" not in var_dict:
+            raise AttributeError(
+                f"in line {pos}, variable {var_name} has no type")
 
-        if var_dict['type'] is None:
-            raise ValueError(f'in line {pos}, variable {var_name} type should not be None')
+        if var_dict["type"] is None:
+            raise ValueError(
+                f"in line {pos}, variable {var_name} type should not be None")
 
-        return var_dict['type']
+        return var_dict["type"]
 
     def find_val_in_var_dict(self, var_dict: dict, var_name: str, pos: int):
         """
@@ -856,15 +936,18 @@ class Visitor:
         Any: 变量的值
         """
         if var_dict is None:
-            raise NameError(f"in line {pos}, variable {var_name} is not be declared")
+            raise NameError(
+                f"in line {pos}, variable {var_name} is not be declared")
 
-        if 'val' not in var_dict:
-            raise TypeError(f"in line {pos}, variable {var_name} has no val property")
+        if "val" not in var_dict:
+            raise TypeError(
+                f"in line {pos}, variable {var_name} has no val property")
 
-        if var_dict['val'] is None:
-            raise NameError(f"in line {pos}, variable {var_name} is not defined")
+        if var_dict["val"] is None:
+            raise NameError(
+                f"in line {pos}, variable {var_name} is not defined")
 
-        return var_dict['val']
+        return var_dict["val"]
 
     def find_in_symbol_table(self, var_name: str, is_recursion):
         """
@@ -893,7 +976,7 @@ class Visitor:
         返回:
         bool: 是否为浮点数
         """
-        pattern = r'^[+-]?(\d+(\.\d*)?|\.\d+)?$'
+        pattern = r"^[+-]?(\d+(\.\d*)?|\.\d+)?$"
         return bool(re.match(pattern, s))
 
     def is_id(self, s):
@@ -904,7 +987,7 @@ class Visitor:
         返回:
         bool: 是否为变量名
         """
-        pattern = r'[a-zA-Z_][a-zA-Z_0-9]*'
+        pattern = r"[a-zA-Z_][a-zA-Z_0-9]*"
         return bool(re.match(pattern, s))
 
     def get_call_param_value(self, arg, func_dict, pos):
@@ -932,37 +1015,49 @@ class Visitor:
                 else:
                     value = None
             if value is None:
-                raise NameError(f"in line {pos}, variable {value} is only declared but not defined")
+                raise NameError(f"in line {pos}, variable {value} "
+                                f"is only declared but not defined")
             return value
         else:
             # 当入参是表达式的情况
-            if arg.leaf == '+':
-                l_val = self.get_call_param_value(arg.children[0], func_dict, pos)
-                r_val = self.get_call_param_value(arg.children[1], func_dict, pos)
+            if arg.leaf == "+":
+                l_val = self.get_call_param_value(
+                    arg.children[0], func_dict, pos)
+                r_val = self.get_call_param_value(
+                    arg.children[1], func_dict, pos)
                 value = l_val + r_val
-            elif arg.leaf == '-':
+            elif arg.leaf == "-":
                 if len(arg.children) == 1:
                     l_val = 0
-                    r_val = self.get_call_param_value(arg.children[0], func_dict, pos)
+                    r_val = self.get_call_param_value(
+                        arg.children[0], func_dict, pos)
                     value = l_val - r_val
                 else:
-                    l_val = self.get_call_param_value(arg.children[0], func_dict, pos)
-                    r_val = self.get_call_param_value(arg.children[1], func_dict, pos)
+                    l_val = self.get_call_param_value(
+                        arg.children[0], func_dict, pos)
+                    r_val = (self.get_call_param_value
+                             (arg.children[1], func_dict, pos))
                     value = l_val - r_val
-            elif arg.leaf == '*':
-                l_val = self.get_call_param_value(arg.children[0], func_dict, pos)
-                r_val = self.get_call_param_value(arg.children[1], func_dict, pos)
+            elif arg.leaf == "*":
+                l_val = self.get_call_param_value(
+                    arg.children[0], func_dict, pos)
+                r_val = self.get_call_param_value(
+                    arg.children[1], func_dict, pos)
                 value = l_val * r_val
-            elif arg.leaf == '/':
-                r_val = self.get_call_param_value(arg.children[1], func_dict, pos)
+            elif arg.leaf == "/":
+                r_val = self.get_call_param_value(
+                    arg.children[1], func_dict, pos)
                 if not r_val:
-                    raise ZeroDivisionError(f"in line {pos}, divide by zero error")
-                l_val = self.get_call_param_value(arg.children[0], func_dict, pos)
+                    raise ZeroDivisionError(
+                        f"in line {pos}, divide by zero error")
+                l_val = self.get_call_param_value(
+                    arg.children[0], func_dict, pos)
                 value = l_val / r_val
-            elif arg.leaf.startswith('np.'):
+            elif arg.leaf.startswith("np."):
                 # 场景 np.sin , np.cos, np.tan
                 # np.exp, np.log, np.sqrt
                 n = self.get_call_param_value(arg.children[0], func_dict, pos)
+                # pylint: disable-next=E7701
                 value = eval(arg.leaf.format(n), func_dict)
             else:
                 value = None
@@ -976,7 +1071,8 @@ class Visitor:
         expect_type (str): 期望的节点类型
         """
         if node.type != expect_type:
-            raise TypeError(f'in line {node.pos}, node type expect {expect_type}')
+            raise TypeError(
+                f"in line {node.pos}, node type expect {expect_type}")
 
     def check_var_name(self, var_name: str, pos):
         """
@@ -988,8 +1084,8 @@ class Visitor:
         # 变量名是否出现在经典变量符号表中
         classical_dict = self.find_in_symbol_table(var_name, True)
         if classical_dict is not None:
-            raise NameError(f'in line {pos}, var {var_name} is existed')
+            raise NameError(f"in line {pos}, var {var_name} is existed")
 
         # 变量名是否已经存在于经典比特和量子比特中
         if var_name in self.q_var or var_name in self.c_var:
-            raise NameError(f'in line {pos}, var {var_name} is existed')
+            raise NameError(f"in line {pos}, var {var_name} is existed")
