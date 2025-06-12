@@ -159,14 +159,14 @@ class TaskFlowManager(ABC):
 
     def deploy_task_flow(
             self, deploy_name: str, flow_name: str,
-            task_type: str, priority: int,
+            policy_type: str, priority: int,
             deploy_flow, path: str):
         """
         Deploy flow by prefect client.
 
         :param deploy_name: deploy name
         :param flow_name: flow name
-        :param task_type: task type
+        :param policy_type: policy type
         :param priority: priority
         :param deploy_flow: deploy flow function
         :param path: .py path where the flow function relative to current path .
@@ -174,14 +174,14 @@ class TaskFlowManager(ABC):
         """
 
         # TODO(jidalong) deal exception
-        queue_name = f"{task_type}_{priority}"
+        queue_name = f"{policy_type}_{priority}"
         # registry deploy
         deploy_id = deploy_flow.from_source(
             source=Path(__file__).parent,
             entrypoint=path + ":" + flow_name,
         ).deploy(
             name=deploy_name,
-            work_pool_name=task_type,
+            work_pool_name=policy_type,
             work_queue_name=queue_name,
         )
         return deploy_id
