@@ -111,7 +111,7 @@ class TaskFlowManager(ABC):
 
         try:
             # start worker
-            for priority in range(1, Constant.MAX_JOB_PRIORITY + 1):
+            for priority in range(1, Constant.MAX_JOB_WORKER + 1):
                 queue_name = f"{pool_name}_{priority}"
                 worker_thread = threading.Thread(target=self._start_work,
                                                  args=(queue_name,
@@ -129,7 +129,7 @@ class TaskFlowManager(ABC):
                 work_status = [worker.status == WorkerStatus.ONLINE for
                                worker in workers]
                 if all(work_status) and len(
-                        work_status) == Constant.MAX_JOB_PRIORITY:
+                        work_status) == Constant.MAX_JOB_WORKER:
                     all_worker_status = True
                 sleep(Constant.DEFAULT_JOB_INTERVAL)
                 time += Constant.DEFAULT_JOB_INTERVAL
@@ -150,7 +150,6 @@ class TaskFlowManager(ABC):
         """
 
         worker = ProcessWorker(
-            work_queues=[queue_name],
             work_pool_name=pool_name,
             name=queue_name,
             limit=Constant.DEFAULT_POOL_CONCURRENCY,
@@ -158,14 +157,13 @@ class TaskFlowManager(ABC):
         asyncio.run(worker.start())
 
     def deploy_task_flow(
-            self, deploy_name: str, flow_name: str,
+            self, deploy_name: str,
             policy_type: str, priority: int,
             deploy_flow, path: str):
         """
         Deploy flow by prefect client.
 
         :param deploy_name: deploy name
-        :param flow_name: flow name
         :param policy_type: policy type
         :param priority: priority
         :param deploy_flow: deploy flow function
@@ -176,6 +174,7 @@ class TaskFlowManager(ABC):
         # TODO(jidalong) deal exception
         queue_name = f"{policy_type}_{priority}"
         # registry deploy
+        flow_name = deploy_flow.__name__
         deploy_id = deploy_flow.from_source(
             source=Path(__file__).parent,
             entrypoint=path + ":" + flow_name,

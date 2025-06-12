@@ -15,5 +15,6 @@
 # ----------------------------------------------------------------------
 
 from .task_manager import TaskFlowManager
+from .task_scheduler import TaskScheduler
 
-task_manager = TaskFlowManager()
+scheduler = TaskScheduler()

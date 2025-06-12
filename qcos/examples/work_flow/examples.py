@@ -48,4 +48,5 @@ def deploy_flow(user: str):
     # t3 must wait until t1 completed
     t3 = task3.submit(t1.result())
     result = [t1.result(), t2.result(), t3.result()]
+    time.sleep(10)
     return result

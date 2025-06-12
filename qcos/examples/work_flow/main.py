@@ -18,29 +18,29 @@ from time import sleep
 
 import examples
 from common.constant import Constant
-from task_manager import task_manager
+from task_manager import scheduler
 
 if __name__ == "__main__":
     try:
-        # 1.create work pool,queue and start workers
-        task_manager.start()
-        # 2.deploy work flow
-        d_id = task_manager.deploy_task_flow(
-            "test", "deploy_flow",
-            Constant.DEFAULT_JOB_SCHEDULING_POLICY,
-            Constant.DEFAULT_JOB_PRIORITY,
-            examples.deploy_flow,
-            "../examples/work_flow/examples.py")
-        # 3.run deploy from flow
-        r_id1 = task_manager.run_task_flow(d_id, {"user": "test"})
-        # 4.get results from flow run
+        # 0.init create work pool,queue and start workers
+        # auto run in scheduler
+
+        # 1.deploy and run work flow
+        id, err = scheduler.add(
+            Constant.JOB_SCHEDULING_POLICY_PRIORITY,
+            {"flow_args": {"user": "test22"},
+             "job_priority": 6,
+             "deploy_name": "test123",
+             "deploy_flow_func": examples.deploy_flow,
+             "deploy_flow_path":
+                 "../examples/work_flow/examples.py"})
+        # 2.get results from flow run
         while True:
-            result, state = task_manager.get_task_flow_result(r_id1)
+            result, state = scheduler.get_result_by_id(id)
             if not result:
                 print(f"[Flow] state: {state}")
             else:
                 print(f"[Flow] state: {state}, result: {result}")
-                break
             sleep(2)
     except Exception as e:
         print(f"{e}\n")
