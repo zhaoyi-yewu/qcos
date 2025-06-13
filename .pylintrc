@@ -1,11 +1,7 @@
 [MASTER]
-#忽略目录
 ignore=.git,tests
-#匹配的文件名不会被 Pylint 检查
 ignore-patterns=^\.#,^test_.*,^setup\.py$
-#启用docparams插件检查函数文档字符串（docstring）中的参数描述是否与函数签名匹配
 load-plugins=pylint.extensions.docparams
-#限制 Pylint 类型推断的结果数量
 limit-inference-results=100
 jobs=0
 persistent=yes
