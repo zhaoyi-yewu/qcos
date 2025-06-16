@@ -31,10 +31,11 @@ ADD ./.build-context/ ${BUILD_CONTEXT}
 RUN \
 # copy qcos dir
     build_date=`date` && \
-    mkdir -p /root/qcos && \
-    if [ "${DEV}" = "False" ]; then cp -rf ${BUILD_CONTEXT}/qcos/* /root/qcos/; fi && \
+    mkdir -p /root/qcos-project && \
+    if [ "${DEV}" = "False" ]; then cp -rf ${BUILD_CONTEXT}/qcos/* /root/qcos-project/; fi && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-cli.py /usr/bin/qcos-cli && \
     cp -rf ${BUILD_CONTEXT}/requirements.txt /root/ && \
+    cp -rf ${BUILD_CONTEXT}/test-requirements.txt /root/ && \
 # config system
     /bin/cp ${BUILD_CONTEXT}/build-scripts/entrypoint.sh / && \
     chmod +x /entrypoint.sh && \
@@ -48,9 +49,9 @@ RUN \
     mkdir -p /var/log/qcos/ && \
 # install basic rpms
     yum install -y hostname python3 python3-pip openssh openssh-clients sshpass \
-      iputils iproute telnet net-tools openssl util-linux vim && \
+      iputils iproute telnet net-tools openssl util-linux vim findutils && \
 # install python3 deps
-    pip3 install --no-cache-dir --upgrade -r /root/requirements.txt && \
+    pip3 install --no-cache-dir --upgrade -r /root/requirements.txt -r /root/test-requirements.txt && \
 # generate ssh keys
     rm -rf /root/.ssh/id_rsa && \
     ssh-keygen -t rsa -f /root/.ssh/id_rsa -q -N "" && \

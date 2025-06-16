@@ -20,13 +20,13 @@ import inspect
 import logging
 import os
 import pkgutil
-
 from datetime import datetime
+from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
 
-class Library(object):
+class Library:
     """
     Library
     """
@@ -39,7 +39,7 @@ class Library(object):
         """
         try:
             pid = os.getpid()
-            with open(file_path, "w") as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 f.write(str(pid))
         except Exception as e:
             print(f"Unable to create pid file: {file_path}\n{e}")
@@ -185,8 +185,28 @@ class Library(object):
         :return: True or False
         """
         if value not in value_list:
+            return (False, [
+                f"Invalid argument: {argument_name}={value}. "
+                f"reason: valid values: {', '.join(value_list)}"])
+        return True, None
+
+    @staticmethod
+    def validate_values_uuid(value, argument_name):
+        """
+        Validate values for uuid
+
+        :param value: value
+        :param argument_name: argument name
+        :return: True or False
+        """
+        try:
+            uuid_obj = UUID(value, version=4)
+            if str(uuid_obj) != value:
+                return (False, [f"Invalid argument: {argument_name}={value}. "
+                                f"reason: UUID version error"])
+        except ValueError:
             return (False, [f"Invalid argument: {argument_name}={value}. "
-                            f"valid values: {', '.join(value_list)}"])
+                            f"reason: UUID value error"])
         return True, None
 
     @staticmethod
@@ -205,11 +225,11 @@ class Library(object):
         if min_value:
             if value < min_value:
                 err_msgs.append(f"Invalid argument: {argument_name}={value}. "
-                                f"value should >= {min_value}")
+                                f"reason: value should >= {min_value}")
         if max_value:
             if value > max_value:
                 err_msgs.append(f"Invalid argument: {argument_name}={value}. "
-                                f"value should <= {max_value}")
+                                f"reason: value should <= {max_value}")
         if err_msgs:
             return False, err_msgs
         return True, None
@@ -226,9 +246,10 @@ class Library(object):
         """
         if not isinstance(value, list):
             return (False, [f"Invalid argument: {argument_name}={value}. "
-                            f"type: list is required"])
+                            f"reason: type: list is required"])
         for _value in value:
             if not isinstance(_value, value_type):
                 return (False, [f"Invalid argument: {argument_name}={value}. "
-                                f"valid list element value type: {value_type}"])
+                                f"reason: valid list element value type: "
+                                f"{value_type}"])
         return True, None

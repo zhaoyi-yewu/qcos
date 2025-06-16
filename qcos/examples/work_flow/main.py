@@ -17,8 +17,8 @@
 from time import sleep
 
 import examples
-from common.constant import Constant
-from task_manager import scheduler
+from qcos.common.constant import Constant
+from qcos.task_manager import scheduler
 
 if __name__ == "__main__":
     try:

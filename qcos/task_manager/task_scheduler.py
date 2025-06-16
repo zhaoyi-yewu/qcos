@@ -16,8 +16,8 @@
 
 from abc import ABC
 
-from common.constant import Constant
-from task_manager import TaskFlowManager
+from qcos.common.constant import Constant
+from .task_manager import TaskFlowManager
 
 
 class TaskScheduler(ABC):

@@ -16,7 +16,7 @@
 
 import fastapi_jsonrpc as jsonrpc
 
-from common.config import Config
+from qcos.common.config import Config
 
 
 BASE_ENDPOINT = f"/{Config.API_VERSION}"

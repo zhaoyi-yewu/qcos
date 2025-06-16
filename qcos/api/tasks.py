@@ -16,8 +16,8 @@
 
 import asyncio
 import logging
-
 from typing import Callable
+
 from fastapi import FastAPI
 
 logger = logging.getLogger(__name__)

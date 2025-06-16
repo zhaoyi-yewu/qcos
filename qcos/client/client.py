@@ -19,13 +19,16 @@ import logging
 import requests
 import time
 
-from jsonrpcclient import Error, Ok, parse, request
+from jsonrpcclient import Ok, parse, request
+
+from qcos.common import errors
 from qcos.common.config import Config
+from qcos.common.library import Library
 
 logger = logging.getLogger(__name__)
 
 
-class Client(object):
+class Client:
     """
     QCOS client api
     """
@@ -119,6 +122,17 @@ class Client(object):
         return False, parsed
 
     @staticmethod
+    def handle_invalid_arguments(results):
+        """
+        Handle invalid arguments
+
+        :param results: results
+        """
+        success, err_msg = results
+        if success is False:
+            raise errors.Exception("\n".join(err_msg))
+
+    @staticmethod
     def submit_job(
             source_code, code_type, job_type, job_scheduling_policy,
             job_priority, shots, qubits, backend,
@@ -139,6 +153,8 @@ class Client(object):
         :return: submit_job result
         """
         method_name = "submit_job"
+
+        # construct data and call json rpc
         data = {
             "source_code": source_code,
             "code_type": code_type,
@@ -164,6 +180,12 @@ class Client(object):
         :return: job status
         """
         method_name = "get_job_status"
+
+        # Validate argument: job_id
+        Client.handle_invalid_arguments(Library.validate_values_uuid(
+            job_id, "job_id"))
+
+        # construct data and call json rpc
         data = {
             "job_id": job_id
         }
@@ -180,6 +202,12 @@ class Client(object):
         :return: job results
         """
         method_name = "get_job_results"
+
+        # Validate argument: job_id
+        Client.handle_invalid_arguments(Library.validate_values_uuid(
+            job_id, "job_id"))
+
+        # construct data and call json rpc
         data = {
             "job_id": job_id
         }
@@ -195,6 +223,8 @@ class Client(object):
         :return: jobs
         """
         method_name = "get_jobs"
+
+        # construct data and call json rpc
         data = {}
         status_code, reason, text, result = Client.call_json_rpc(
             Client.job_url, method_name, data)
@@ -209,6 +239,13 @@ class Client(object):
         :return: jobs
         """
         method_name = "cancel_job"
+
+        # Validate argument: job_id
+        for job_id in job_ids:
+            Client.handle_invalid_arguments(
+                Library.validate_values_uuid(job_id, "job_id"))
+
+        # construct data and call json rpc
         data = {
             "job_ids": job_ids
         }
@@ -225,6 +262,13 @@ class Client(object):
         :return: jobs
         """
         method_name = "delete_job"
+
+        # Validate argument: job_id
+        for job_id in job_ids:
+            Client.handle_invalid_arguments(
+                Library.validate_values_uuid(job_id, "job_id"))
+
+        # construct data and call json rpc
         data = {
             "job_ids": job_ids
         }

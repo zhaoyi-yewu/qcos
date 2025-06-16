@@ -15,13 +15,13 @@
 # ----------------------------------------------------------------------
 
 import logging
-
-from api import schemas
-from api.posiq.routes_jsonrpc import errors as jsonrpc_errors
-from api.posiq.routes_jsonrpc.routes import job_api_v1
-from common.constant import Constant
-from common.library import Library
 from typing import List
+
+from qcos.api import schemas
+from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
+from qcos.api.posiq.routes_jsonrpc.routes import job_api_v1
+from qcos.common.constant import Constant
+from qcos.common.library import Library
 
 
 logger = logging.getLogger(__name__)
@@ -99,7 +99,7 @@ def submit_job(
         Constant.MIN_OPTIMIZATION_LEVEL, Constant.MAX_OPTIMIZATION_LEVEL))
 
     response_info = {
-        "job_id": 1,
+        "job_id": "00000000-0000-4000-8000-000000000001",
         "job_status": Constant.JOB_STATUS_UNKNOWN,
         "job_scheduling_policy": Constant.DEFAULT_JOB_SCHEDULING_POLICY,
         "job_priority": 100,
@@ -127,8 +127,9 @@ def get_job_status(
 
     job_id = body.job_id
 
+    # construct response
     response_info = {
-        "job_id": 1,
+        "job_id": job_id,
         "job_status": Constant.JOB_STATUS_UNKNOWN,
         "job_scheduling_policy": Constant.DEFAULT_JOB_SCHEDULING_POLICY,
         "job_priority": 100,
@@ -157,6 +158,7 @@ def get_job_results(
 
     job_id = body.job_id
 
+    # construct response
     response_info = {
         "job_id": job_id,
         "job_status": Constant.JOB_STATUS_UNKNOWN,
@@ -179,8 +181,9 @@ def get_jobs(
     """
     logger.info(f"Call get_jobs: {body}")
 
+    # construct response
     response_info = [{
-        "job_id": 1,
+        "job_id": "00000000-0000-4000-8000-000000000001",
         "job_status": Constant.JOB_STATUS_UNKNOWN,
         "job_scheduling_policy": Constant.DEFAULT_JOB_SCHEDULING_POLICY,
         "job_priority": 100,
@@ -208,12 +211,9 @@ def cancel_job(
 
     job_ids = body.job_ids
 
-    # validate: source_code
-    jsonrpc_errors.handle_invalid_params(Library.validate_values_list(
-        job_ids, "job_ids", int))
-
+    # construct response
     response_info = [{
-        "job_id": 1,
+        "job_id": "00000000-0000-4000-8000-000000000001",
         "job_status": Constant.JOB_STATUS_UNKNOWN,
         "job_scheduling_policy": Constant.DEFAULT_JOB_SCHEDULING_POLICY,
         "job_priority": 100,
@@ -241,12 +241,9 @@ def delete_job(
 
     job_ids = body.job_ids
 
-    # validate: source_code
-    jsonrpc_errors.handle_invalid_params(Library.validate_values_list(
-        job_ids, "job_ids", int))
-
+    # construct response
     response_info = [{
-        "job_id": 1,
+        "job_id": "00000000-0000-4000-8000-000000000001",
         "job_status": Constant.JOB_STATUS_UNKNOWN
     }]
     return response_info

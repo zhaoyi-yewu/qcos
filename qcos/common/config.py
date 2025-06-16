@@ -17,8 +17,10 @@
 import configparser
 import os
 
+from qcos.common import errors
 
-class Config(object):
+
+class Config:
     """
     Config class
     """
@@ -58,14 +60,15 @@ class Config(object):
         :param extra_config: Extra configs for drivers
         """
         if not os.path.isfile(config_file):
-            raise Exception(f"Can't find config file: {config_file}")
+            raise errors.GenericException(
+                f"Can't find config file: {config_file}")
 
         config_parser = configparser.ConfigParser()
         try:
             config_parser.read(config_file)
-        except Exception as e:
-            raise Exception(
-                f"Error reading config file: {config_file}\nTrace:\n{e}")
+        except errors.Exception as e:
+            raise errors.GenericException(
+                f"Error reading config file: {config_file}")
 
         if extra_config:
             for section, options in config_parser.items():
@@ -83,15 +86,16 @@ class Config(object):
                         _value = getattr(cls, key_upper)
                         _type = type(_value)
                         if _value is None:
-                            raise Exception(
-                                f"Invalid key type: {key}, None is not allowed")
+                            raise errors.Exception(
+                                f"Invalid key type: {key}, "
+                                f"None is not allowed")
                         converted_value = _type(value)
                         if _type is bool:
-                            converted_value = True if value.lower() == "true" \
-                                else False
+                            converted_value = value.lower() == "true"
                         setattr(cls, key_upper, converted_value)
                     else:
-                        raise Exception(f"Can't find config key: {key}")
+                        raise errors.Exception(
+                            f"Can't find config key: {key}")
 
     @classmethod
     def show_info(cls):
@@ -102,5 +106,5 @@ class Config(object):
         for k, v in vars(cls).items():
             if not k.startswith("__") and not isinstance(v, classmethod):
                 if v:
-                    outputs.append("%-20s: %-30s" % (k, v))
+                    outputs.append(f"{k:<20}: {v}")
         return "\n".join(outputs) + "\n"

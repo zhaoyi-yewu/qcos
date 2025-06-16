@@ -17,15 +17,15 @@
 import logging
 import os
 
-from common.constant import Constant
-from common.library import Library
-from drivers.driver_base import DriverBase
+from qcos.common.constant import Constant
+from qcos.common.library import Library
+from qcos.drivers.driver_base import DriverBase
 
 
 logger = logging.getLogger(__name__)
 
 
-class DriverManager(object):
+class DriverManager:
     """
     Driver manager
     """
@@ -71,7 +71,7 @@ class DriverManager(object):
         :param driver_name: driver name
         :return: True or False
         """
-        return True if driver_name in self.drivers else False
+        return driver_name in self.drivers
 
     def get_driver(self, driver_name):
         """

@@ -24,11 +24,12 @@ import signal
 import sys
 import uvicorn
 
-from api.fastapi_server import app
-from common.config import Config
-from drivers.driver_manager import DriverManager
-from common.library import Library
-from log.logger import init_logger
+from qcos.api.fastapi_server import app
+from qcos.common import errors
+from qcos.common.config import Config
+from qcos.common.library import Library
+from qcos.drivers.driver_manager import DriverManager
+from qcos.log.logger import init_logger
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ def _signal_handling():
         loop.add_signal_handler(getattr(signal, signal_name), callback)
 
 
-class Server(object):
+class Server:
     """
     Server
     """
@@ -118,8 +119,9 @@ class Server(object):
             logfile=log_file,
             max_bytes=10000000,
             backup_count=10,
+            console=True,
             compression=True,
-            quiet=False,
+            quiet=False
         )
 
     @staticmethod
@@ -133,7 +135,7 @@ class Server(object):
         if os.path.exists(path):
             pid = None
             try:
-                with open(path) as f:
+                with open(path, encoding="utf-8") as f:
                     try:
                         pid = int(f.read())
                         # kill returns an error if the process is not running
@@ -150,7 +152,7 @@ class Server(object):
                 sys.exit(1)
 
         try:
-            with open(path, "w+") as f:
+            with open(path, "w+", encoding="utf-8") as f:
                 f.write(str(os.getpid()))
         except OSError as e:
             logger.critical("Can't write pid file %s: %s", path, str(e))
@@ -220,4 +222,5 @@ class Server(object):
             # run forever
             loop.run_until_complete(server.serve())
         except Exception as e:
-            raise Exception(f"Critical error while running the server: {e}")
+            raise errors.GenericException(
+                f"Critical error while running the server: {e}") from e

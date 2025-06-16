@@ -16,14 +16,14 @@
 
 import logging
 
-from common.config import Config
-from common.constant import Constant
+from qcos.common.config import Config
+from qcos.common.constant import Constant
 
 
 logger = logging.getLogger(__name__)
 
 
-class DriverBase(object):
+class DriverBase:
     """
     Quantum Computer base driver
     """
@@ -59,18 +59,28 @@ class DriverBase(object):
     ]
 
     def __init__(self):
+        # 版本号
         self.version = "unknown"
+        # 驱动状态, 不允许直接修改, 需要调用set_status修改
         self._status = self.DRIVER_STATUS_OFFLINE
+        # 是否要调用transpiler
         self.enable_transpiler = True
+        # transpiler类型
         self.transpiler = Constant.TRANSPILER_CMSS
+        # 量子比特布局方式
         self.layout_method = DriverBase.LAYOUT_METHOD_CMSS_NONE
+        # 是否允许量子电路聚合
         self.allow_circuit_merge = False
+        # 量子比特数量
         self.num_qubits = 0
+        # 基础门列表
         self.basis_gates = []
+        # 量子比特耦合图
         self.coupling_map = []
+        # 额外的配置, 一般从配置文件得来
         self.extra_configs = {}
-        # results indexed by job_id
-        self._results = {}  # {JOB_ID: {"results": RESULTS} }
+        # 调用量子计算机/测控系统run的返回结果, 格式: {JOB_ID: {"results": RESULTS}}
+        self._results = {}
 
     def load_driver_configs(self):
         """
@@ -108,7 +118,7 @@ class DriverBase(object):
         logger.info(f"basis_gates: {self.basis_gates}")
         logger.info(f"coupling_map: {self.coupling_map}")
         logger.info(f"extra_configs: {self.extra_configs}")
-        logger.info(f"")
+        logger.info("\n")
 
     def set_status(self, status):
         """

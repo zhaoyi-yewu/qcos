@@ -15,7 +15,7 @@
 # ----------------------------------------------------------------------
 
 
-class Constant(object):
+class Constant:
     """
     Constants
     """
@@ -100,7 +100,7 @@ class Constant(object):
     MAX_OPTIMIZATION_LEVEL = 3
 
 
-class HttpCode(object):
+class HttpCode:
     """
     HTTP status codes
     """

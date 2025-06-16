@@ -14,11 +14,12 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import fastapi_jsonrpc as jsonrpc
 import logging
 
-from api.posiq.routes_jsonrpc.routes import job_api_v1, device_api_v1
+import fastapi_jsonrpc as jsonrpc
 from uvicorn.main import Server as UvicornServer
+
+from qcos.api.posiq.routes_jsonrpc.routes import job_api_v1, device_api_v1
 
 logger = logging.getLogger(__name__)
 

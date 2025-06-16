@@ -26,9 +26,11 @@ from cliff.lister import Lister
 from cliff.show import ShowOne
 
 from .client import Client
+from qcos.common import errors
 from qcos.common.config import Config
 from qcos.common.constant import Constant, HttpCode
 from qcos.common.library import Library
+
 
 VERSION = Config.VERSION
 DESCRIPTION = "QCOS command line interface"
@@ -42,19 +44,19 @@ QCOS commands:
 qcos-cli submit-job --shots 10 --qubits 2 '["QASM3:", "QASM2:"]'
 
 * Get job status
-qcos-cli get-job-status 1
+qcos-cli get-job-status 00000000-0000-4000-8000-000000000001
 
 * Get job results
-qcos-cli get-job-results 1
+qcos-cli get-job-results 00000000-0000-4000-8000-000000000001
 
 * Get all job list
 qcos-cli get-jobs
 
 * Cancel job
-qcos-cli cancel-job 1
+qcos-cli cancel-job 00000000-0000-4000-8000-000000000001
 
 * Delete job
-qcos-cli delete-job 1
+qcos-cli delete-job 00000000-0000-4000-8000-000000000001
 """
 
 
@@ -63,7 +65,7 @@ class QcosShell(App):
     QCOS shell
     """
     def __init__(self, description, version, command_manager):
-        super(QcosShell, self).__init__(
+        super().__init__(
             description=description,
             version=version,
             command_manager=command_manager,
@@ -162,7 +164,7 @@ class HelpAction(argparse.Action):
         sys.exit(0)
 
 
-class CommandHelper(object):
+class CommandHelper:
     """
     Command helper
     """
@@ -176,7 +178,7 @@ class CommandHelper(object):
         """
         success, err_msg = results
         if success is False:
-            raise Exception("\n".join(err_msg))
+            raise errors.InvalidArguments("\n".join(err_msg))
 
     @staticmethod
     def check_results(resource, name, status_code, reason, jsonrpc_response):
@@ -209,11 +211,12 @@ class CommandHelper(object):
                     err_msg_list.append(f"{message}({code})\n{err_details}")
             except Exception as e:
                 err_msg_list.append(e)
-            raise Exception(f"Failed to {name}.\n"
-                            f"ErrorMsg: {','.join(err_msg_list)}")
-        else:
-            raise Exception(f"Failed to process {resource}: '{name}'.\n"
-                            f"status_code: {status_code}")
+                raise errors.GenericException(
+                    f"Failed to {name}.\n"
+                    f"ErrorMsg: {','.join(err_msg_list)}") from e
+        raise errors.GenericException(
+            f"Failed to process {resource}: '{name}'.\n"
+            f"status_code: {status_code}")
 
     @staticmethod
     def get_table_list_data(list_values, header_list, ignore_header_list=None):
@@ -354,19 +357,19 @@ class SubmitJob(Command):
         try:
             source_code_list = json.loads(source_code)
         except json.decoder.JSONDecodeError as error:
-            raise Exception(f"Invalid code_content, {error}")
+            raise errors.InvalidArguments(f"Invalid code_content, {error}")
         if isinstance(source_code_list, list):
             for content in source_code_list:
                 if not isinstance(content, str):
-                    raise Exception(f"Invalid source_code, "
-                                    f"required schema: list[str]")
+                    raise errors.InvalidArguments(
+                        "Invalid source_code, required schema: list[str]")
         elif isinstance(source_code_list, str):
             source_code_list = [source_code_list]
         else:
-            raise Exception(f"Invalid source_code, "
-                            f"required schema: list[str]")
+            raise errors.InvalidArgumentsException(
+                "Invalid source_code, required schema: list[str]")
         if not source_code_list:
-            raise Exception(f"Empty source_code is not allowed")
+            raise errors.InvalidArguments("Empty source_code is not allowed")
 
         # Validate argument: code_type
         CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
@@ -429,7 +432,7 @@ class GetJobStatus(ShowOne):
         :return: parser
         """
         parser = super().get_parser(prog_name)
-        parser.add_argument("job_id", type=int, help="Job ID")
+        parser.add_argument("job_id", type=str, help="Job ID")
         return parser
 
     def take_action(self, args):
@@ -441,6 +444,10 @@ class GetJobStatus(ShowOne):
         """
         resource = "Job"
         job_id = args.job_id
+
+        # Validate argument: job_id
+        CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(
+            job_id, "job_id"))
 
         # call api
         status_code, reason, text, result = Client.get_job_status(job_id)
@@ -463,7 +470,7 @@ class GetJobResults(ShowOne):
         :return: parser
         """
         parser = super().get_parser(prog_name)
-        parser.add_argument("job_id", type=int, help="Job ID")
+        parser.add_argument("job_id", type=str, help="Job ID")
         return parser
 
     def take_action(self, args):
@@ -475,6 +482,10 @@ class GetJobResults(ShowOne):
         """
         resource = "Job"
         job_id = args.job_id
+
+        # Validate argument: job_id
+        CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(
+            job_id, "job_id"))
 
         # call api
         status_code, reason, text, result = Client.get_job_results(job_id)
@@ -548,10 +559,15 @@ class CancelJobs(Command):
         job_id_str_list = job_ids.split(",")
         for job_id in job_id_str_list:
             try:
-                job_id = int(job_id.strip())
+                job_id = job_id.strip()
+                # Validate argument: job_id
+                CommandHelper.handle_invalid_arguments(
+                    Library.validate_values_uuid(
+                        job_id, "job_id"))
                 job_id_list.append(job_id)
-            except ValueError:
-                raise Exception(f"Invalid job_id: {job_id}")
+            except ValueError as e:
+                raise errors.InvalidArguments(f"Invalid job_id: {job_id}.") \
+                    from e
 
         # call api
         status_code, reason, text, result = Client.cancel_job(job_id_list)
@@ -599,10 +615,15 @@ class DeleteJobs(Command):
         job_id_str_list = job_ids.split(",")
         for job_id in job_id_str_list:
             try:
-                job_id = int(job_id.strip())
+                job_id = job_id.strip()
+                # Validate argument: job_id
+                CommandHelper.handle_invalid_arguments(
+                    Library.validate_values_uuid(
+                        job_id, "job_id"))
                 job_id_list.append(job_id)
-            except ValueError:
-                raise Exception(f"Invalid job_id: {job_id}")
+            except ValueError as e:
+                raise errors.InvalidArguments(f"Invalid job_id: {job_id}") \
+                    from e
 
         # call api
         status_code, reason, text, result = Client.delete_job(job_id_list)

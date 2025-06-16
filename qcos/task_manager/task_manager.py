@@ -26,7 +26,7 @@ from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.objects import WorkerStatus
 from prefect.workers import ProcessWorker
 
-from common.constant import Constant
+from qcos.common.constant import Constant
 
 
 class TaskFlowManager(ABC):

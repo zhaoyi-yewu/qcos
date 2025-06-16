@@ -13,3 +13,15 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+
+class InvalidArguments(Exception):
+    """
+    Invalid arguments
+    """
+
+
+class GenericException(Exception):
+    """
+    Generic exception
+    """

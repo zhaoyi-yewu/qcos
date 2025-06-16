@@ -38,5 +38,5 @@ EOM
 fi
 
 # run QCOS
-python3 /root/qcos/api_server.py --config-file ${qcos_config_file_path} --config-dir ${qcos_extra_config_file_dir}
+python3 /root/qcos-project/qcos/api_server.py --config-file ${qcos_config_file_path} --config-dir ${qcos_extra_config_file_dir}
 sleep infinity

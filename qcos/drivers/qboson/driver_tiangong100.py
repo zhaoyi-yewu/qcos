@@ -16,8 +16,7 @@
 
 import logging
 
-from common.constant import Constant
-from drivers.driver_base import DriverBase
+from qcos.drivers.driver_base import DriverBase
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ class DriverTiangong100(DriverBase):
     """
 
     def __init__(self):
-        super(DriverTiangong100, self).__init__()
+        super().__init__()
         self.version = "0.0.1"
         self.enable_transpiler = False
         self.allow_circuit_merge = False
@@ -41,13 +40,11 @@ class DriverTiangong100(DriverBase):
         """
         Init driver
         """
-        pass
 
     def close_driver(self):
         """
         Close driver
         """
-        pass
 
     def run(self, job_id, data, data_type, shots=1):
         """

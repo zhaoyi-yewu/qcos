@@ -15,6 +15,7 @@
 version: '3'
 services:
   prefect-server:
+    container_name: prefect-server
     image: ${REGISTRY}${PREFECT_IMAGE_NAME}:${PREFECT_IMAGE_VERSION}
     restart: always
     command: prefect server start
@@ -23,13 +24,12 @@ services:
       PREFECT_SERVER_API_HOST: ${PREFECT_SERVER_API_HOST}
       PREFECT_SERVER_DATABASE_CONNECTION_URL: "sqlite+aiosqlite:////var/qcos/db/prefect.db"
       PREFECT_API_URL: "http://${PREFECT_SERVER_API_HOST}:4200/api"
-      PREFECT_RESULTS_PERSIST_BY_DEFAULT: true
       PREFECT_LOCAL_STORAGE_PATH: /var/qcos/storage
+      PYTHONPATH: /root/qcos-project
     volumes:
       - /var/qcos/storage:/var/qcos/storage
       - /var/qcos/db:/var/qcos/db
-      - code-data:/root/qcos
-
+      - ${QCOS_LOCAL_SRC_DIR}:/root/qcos-project
   qcos-dev:
     container_name: qcos-dev
     image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
@@ -41,9 +41,9 @@ services:
     depends_on:
       - prefect-server
     environment:
-      - DEBUG=${DEBUG}
-      - QCOS_CONTAINER_NAME=${QCOS_CONTAINER_NAME}
-      - PYTHONPATH=/root/
+      DEBUG: ${DEBUG}
+      QCOS_CONTAINER_NAME: ${QCOS_CONTAINER_NAME}
+      PYTHONPATH: /root/qcos-project
     logging:
       driver: "json-file"
       options:
@@ -56,9 +56,6 @@ services:
       - /etc/qcos:/etc/qcos
       - /var/log/qcos:/var/log/qcos
       - /var/run/qcos:/var/run/qcos
-      - ${QCOS_LOCAL_SRC_DIR}/qcos:/root/qcos
-      - ${QCOS_LOCAL_SRC_DIR}/bin/qcos.py:/usr/bin/qcos
-      - code-data:/root/qcos
+      - ${QCOS_LOCAL_SRC_DIR}:/root/qcos-project
+      - ${QCOS_LOCAL_SRC_DIR}/bin/qcos-cli.py:/usr/bin/qcos-cli
     entrypoint: /entrypoint.sh
-volumes:
-  code-data: {}

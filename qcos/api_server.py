@@ -15,12 +15,12 @@
 # ----------------------------------------------------------------------
 
 import os
-import traceback
 import sys
+import traceback
 
-from common.config import Config
-from common.library import Library
-from server import Server
+from qcos.common.config import Config
+from qcos.common.library import Library
+from qcos.server import Server
 
 __all__ = []
 __version__ = Config.VERSION
@@ -36,7 +36,7 @@ def daemonize():
             # Exit first parent
             sys.exit(0)
     except OSError as e:
-        print("First fork failed: %d (%s)\n" % (e.errno, e.strerror),
+        print(f"First fork failed: {e.errno} ({e.strerror})\n",
               file=sys.stderr)
         sys.exit(1)
 
@@ -51,7 +51,7 @@ def daemonize():
             # Exit from second parent
             sys.exit(0)
     except OSError as e:
-        print("Second fork failed: %d (%s)\n" % (e.errno, e.strerror),
+        print(f"Second fork failed: {e.errno} ({e.strerror})\n",
               file=sys.stderr)
         sys.exit(1)
 
@@ -67,6 +67,6 @@ if __name__ == "__main__":
         Server().run()
     except Exception as e:
         print(f"{e}\n{traceback.format_exc()}")
-        exit(1)
+        sys.exit(1)
     finally:
         Library.rm_file(PID_FILE)

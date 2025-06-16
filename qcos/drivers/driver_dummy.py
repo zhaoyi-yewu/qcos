@@ -16,9 +16,8 @@
 
 import logging
 
-from common.constant import Constant
-from drivers.driver_base import DriverBase
-
+from qcos.common.constant import Constant
+from qcos.drivers.driver_base import DriverBase
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +28,8 @@ class DriverDummy(DriverBase):
     """
 
     def __init__(self):
-        super(DriverDummy, self).__init__()
+        super().__init__()
         self.version = "0.0.1"
-        self.status = self.DRIVER_STATUS_ONLINE
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
         self.layout_method = DriverBase.LAYOUT_METHOD_CMSS_NEUTRAL_ATOM
@@ -45,13 +43,11 @@ class DriverDummy(DriverBase):
         """
         Init driver
         """
-        pass
 
     def close_driver(self):
         """
         Close driver
         """
-        pass
 
     def run(self, job_id, data, data_type, shots=1):
         """

@@ -14,10 +14,12 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from pydantic import BaseModel
 from typing import Optional
+from uuid import UUID
 
-from common.constant import Constant
+from pydantic import BaseModel
+
+from qcos.common.constant import Constant
 
 
 class SubmitJobRequest(BaseModel):
@@ -53,7 +55,7 @@ class SubmitJobResponse(BaseModel):
     Pydantic Model for Submit Job Response
     """
     # Job ID
-    job_id: int = None
+    job_id: UUID = None
     # Job status
     job_status: str = None
     # Job scheduling policy
@@ -76,7 +78,7 @@ class GetJobStatusRequest(BaseModel):
     Pydantic Model for Get Job Status Request
     """
     # Job ID
-    job_id: int = None
+    job_id: UUID = None
 
 
 class GetJobStatusResponse(BaseModel):
@@ -84,7 +86,7 @@ class GetJobStatusResponse(BaseModel):
     Get Job Status Response
     Pydantic Model for Get Job Status Response
     """
-    job_id: int = None  # Job ID
+    job_id: UUID = None  # Job ID
     # Job status
     job_status: str = None
     # QC driver name
@@ -108,7 +110,7 @@ class GetJobResultsRequest(BaseModel):
     Get Job Results Request
     Pydantic Model for Get Job Results Request
     """
-    job_id: int = None  # Job ID
+    job_id: UUID = None  # Job ID
 
 
 class GetJobResultsResponse(BaseModel):
@@ -117,7 +119,7 @@ class GetJobResultsResponse(BaseModel):
     Pydantic Model for Get Job Results Response
     """
     # Job ID
-    job_id: int = None
+    job_id: UUID = None
     # Job status
     job_status: str = None
     # results
@@ -129,7 +131,6 @@ class GetJobsRequest(BaseModel):
     Get Jobs Request
     Pydantic Model for Get Jobs Request
     """
-    pass
 
 
 class CancelJobsRequest(BaseModel):
@@ -138,7 +139,7 @@ class CancelJobsRequest(BaseModel):
     Pydantic Model for Cancel Jobs Request
     """
     # Job IDs
-    job_ids: list[int] = None
+    job_ids: list[UUID] = None
 
 
 class DeleteJobsRequest(BaseModel):
@@ -147,7 +148,7 @@ class DeleteJobsRequest(BaseModel):
     Pydantic Model for Delete Jobs Request
     """
     # Job IDs
-    job_ids: list[int] = None
+    job_ids: list[UUID] = None
 
 
 class DeleteJobsResponse(BaseModel):
@@ -156,6 +157,6 @@ class DeleteJobsResponse(BaseModel):
     Pydantic Model for Delete Jobs Response
     """
     # Job ID
-    job_id: int = None
+    job_id: UUID = None
     # Job status
     job_status: str = None
