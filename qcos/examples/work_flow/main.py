@@ -13,15 +13,27 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-
+import asyncio
 from time import sleep
+
+from prefect import get_client
+from prefect.variables import VariableCreate
 
 import examples
 from qcos.common.constant import Constant
 from qcos.task_manager import scheduler
 
+
+async def create_variable():
+    client = get_client()
+    await client.create_variable(
+        VariableCreate(name="my_variable_create_by_client",
+                       value={"name": "z", "age": 2}))
+
+
 if __name__ == "__main__":
     try:
+        asyncio.run(create_variable())
         # 0.init create work pool,queue and start workers
         # auto run in scheduler
 

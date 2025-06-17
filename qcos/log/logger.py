@@ -59,7 +59,7 @@ class ColouredFormatter(logging.Formatter):
         # do not show uvicorn filename and line number in logs
         if record.name.startswith("uvicorn"):
             message = message.replace(
-                f"{record.name}:{record.lineno}","uvicorn")
+                f"{record.name}:{record.lineno}", "uvicorn")
 
         message = f"{colour}{message}{self.RESET}"
 
@@ -70,6 +70,7 @@ class ColouredStreamHandler(logging.StreamHandler):
     """
     Coloured Stream Handler for logger module
     """
+
     def format(self, record, colour=False):
 
         if not isinstance(self.formatter, ColouredFormatter):
@@ -92,11 +93,12 @@ class ColouredStreamHandler(logging.StreamHandler):
             self.handleError(record)
 
 
-class LogFilter:
+class LogFilter(object):
     """
     This filter some noise from the logs
     """
-    def filter(self, record):
+
+    def filter(record):
         if isinstance(record.msg, str) and \
                 "/settings" in record.msg and "200" in record.msg:
             return 0
@@ -107,13 +109,14 @@ class CompressedRotatingFileHandler(RotatingFileHandler):
     """
     Custom rotating file handler with compression support.
     """
+
     def doRollover(self):
         if self.stream:
             self.stream.close()
         if self.backupCount > 0:
             for i in range(self.backupCount - 1, 0, -1):
-                sfn = f"{self.baseFilename}.{i}.gz"
-                dfn = f"{self.baseFilename}.{i+1}.gz"
+                sfn = "%s.%d.gz" % (self.baseFilename, i)
+                dfn = "%s.%d.gz" % (self.baseFilename, i + 1)
                 if os.path.exists(sfn):
                     if os.path.exists(dfn):
                         os.remove(dfn)
@@ -122,7 +125,7 @@ class CompressedRotatingFileHandler(RotatingFileHandler):
             if os.path.exists(dfn):
                 os.remove(dfn)
             with open(self.baseFilename, "rb") \
-                    as f_in, gzip.open(dfn,"wb") as f_out:
+                    as f_in, gzip.open(dfn, "wb") as f_out:
                 shutil.copyfileobj(f_in, f_out)
         self.mode = "w"
         self.stream = self._open()
@@ -131,17 +134,6 @@ class CompressedRotatingFileHandler(RotatingFileHandler):
 def init_logger(
         level, logfile=None, max_bytes=10000000, backup_count=10,
         console=True, compression=True, quiet=False):
-    """
-    Init logger
-
-    :param level: logging level
-    :param logfile: logging file
-    :param max_bytes: max bytes to write to file
-    :param backup_count: backup count
-    :param console: show in console
-    :param compression: compress logging file
-    :param quiet: don't print
-    """
     file_stream_handler = None
     console_stream_handler = None
     handlers = []

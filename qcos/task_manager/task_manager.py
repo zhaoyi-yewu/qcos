@@ -27,6 +27,7 @@ from prefect.client.schemas.objects import WorkerStatus
 from prefect.workers import ProcessWorker
 
 from qcos.common.constant import Constant
+from qcos.examples.work_flow import examples
 
 
 class TaskFlowManager(ABC):
@@ -41,6 +42,7 @@ class TaskFlowManager(ABC):
 
         self._client = None
         self.loop = None
+        self._flow_loop = None
 
     def start(self):
         """
@@ -49,6 +51,7 @@ class TaskFlowManager(ABC):
 
         self._client = get_client()
         self.loop = asyncio.get_event_loop()
+        self._flow_loop = asyncio.new_event_loop()
 
         self.loop.run_until_complete(self.create_pools())
         self.loop.run_until_complete(self.create_queues())
@@ -182,8 +185,9 @@ class TaskFlowManager(ABC):
         :return flow_run_id: flow run uuid
         """
 
-        flow_run_id = self.loop.run_until_complete(
-            self.run_task_flow_by_client(deployment_id, args))
+        flow_run_id = self._flow_loop.run_until_complete(
+            self.run_task_flow_by_client(deployment_id, args))  # 强制等待
+
         return flow_run_id
 
     async def run_task_flow_by_client(self, deployment_id,
@@ -211,7 +215,7 @@ class TaskFlowManager(ABC):
         :return state: flow state
         """
 
-        result, state = self.loop.run_until_complete(
+        result, state = self._flow_loop.run_until_complete(
             self.get_task_flow_result_by_client(flow_run_id))
         return result, state
 
@@ -232,3 +236,16 @@ class TaskFlowManager(ABC):
             return result, state.name
         else:
             return None, state.name
+
+    def get_flow_info_by_backend(self, backend):
+        flow_info = {
+            "deploy_name": None,
+            "deploy_flow_func": None,
+            "deploy_flow_path": None
+        }
+        if backend == Constant.DRIVER_DUMMY:
+            # TODO(jidalong) update later
+            flow_info["deploy_name"] = Constant.DRIVER_DUMMY
+            flow_info["deploy_flow_func"] = examples.deploy_flow
+            flow_info["deploy_flow_path"] = "../examples/work_flow/examples.py"
+        return flow_info

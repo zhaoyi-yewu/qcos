@@ -14,4 +14,4 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from examples.work_flow.examples import deploy_flow
+from qcos.examples.work_flow.examples import deploy_flow

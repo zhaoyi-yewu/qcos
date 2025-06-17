@@ -13,7 +13,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-
+import asyncio
 import logging
 from typing import List
 
@@ -22,7 +22,7 @@ from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from qcos.api.posiq.routes_jsonrpc.routes import job_api_v1
 from qcos.common.constant import Constant
 from qcos.common.library import Library
-
+from qcos.task_manager import scheduler
 
 logger = logging.getLogger(__name__)
 
@@ -98,15 +98,21 @@ def submit_job(
         optimization_level, "optimization_level",
         Constant.MIN_OPTIMIZATION_LEVEL, Constant.MAX_OPTIMIZATION_LEVEL))
 
+    # submit job
+    res, err = scheduler.add(body.job_scheduling_policy, body)
+
+    # deal sumit response
+    if err:
+        jsonrpc_errors.handle_submit_error(err)
     response_info = {
-        "job_id": "00000000-0000-4000-8000-000000000001",
+        "job_id": res["job_id"],
         "job_status": Constant.JOB_STATUS_UNKNOWN,
-        "job_scheduling_policy": Constant.DEFAULT_JOB_SCHEDULING_POLICY,
-        "job_priority": 100,
-        "backend": Constant.DRIVER_DUMMY,
-        "transpiler": Constant.TRANSPILER_CMSS,
-        "shots": 1,
-        "qubits": 1024
+        "job_scheduling_policy": body.job_scheduling_policy,
+        "job_priority": body.job_priority,
+        "backend": body.backend,
+        "transpiler": body.transpiler,
+        "shots": body.shots,
+        "qubits": body.qubits,
     }
     return response_info
 
@@ -126,11 +132,16 @@ def get_job_status(
     logger.info(f"Call get_job_status: {body}")
 
     job_id = body.job_id
-
+    # query job
+    res, err = scheduler.get_result_by_id(job_id)
+    # deal query response
+    if err:
+        jsonrpc_errors.handle_get_status_error(err)
     # construct response
     response_info = {
         "job_id": job_id,
-        "job_status": Constant.JOB_STATUS_UNKNOWN,
+        "job_status": res["state"],
+        # TODO(jidalong) task manager not store submit info
         "job_scheduling_policy": Constant.DEFAULT_JOB_SCHEDULING_POLICY,
         "job_priority": 100,
         "backend": Constant.DRIVER_DUMMY,
@@ -157,12 +168,16 @@ def get_job_results(
     logger.info(f"Call get_job_results: {body}")
 
     job_id = body.job_id
-
+    # query job
+    res, err = scheduler.get_result_by_id(job_id)
+    # deal query response
+    if err:
+        jsonrpc_errors.JobGetResultError(err)
     # construct response
     response_info = {
         "job_id": job_id,
-        "job_status": Constant.JOB_STATUS_UNKNOWN,
-        "results": {"123": 123}
+        "job_status": res["state"],
+        "results": res["result"],
     }
     return response_info
 

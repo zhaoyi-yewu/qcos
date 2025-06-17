@@ -17,34 +17,45 @@
 import time
 
 from prefect import flow, task
+from prefect.variables import Variable
 
 
 @task(persist_result=False)
-def task1(user: str):
-    print("[Task1] by " + user + ": " +
+def task1(job_info):
+    print("[Task1]: " +
           time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     time.sleep(5)
     return "t1_r"
 
 
 @task(persist_result=False)
-def task2(user: str):
-    print("[Task2] by " + user + ": " +
+def task2(job_info):
+    print("[Task2]: " +
           time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     return "t2_r"
 
 
 @task(persist_result=False)
-def task3(user: str):
-    print("[Task3] by " + user + ": " +
+def task3(job_info):
+    print("[Task3]: " +
           time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     return "t3_r"
 
 
 @flow(name="deploy_flow", persist_result=True)
-def deploy_flow(user: str):
-    t1 = task1.submit(user)
-    t2 = task2.submit(user)
+def deploy_flow(job_info):
+    # # init set
+    # Variable.set("global_value", 10, overwrite=True)
+    # # read
+    # print("global value:" + str(Variable.get("global_value")))
+    # # update
+    # Variable.set("global_value", 20, overwrite=True)
+    # print("global value after update:" + str(Variable.get("global_value")))
+    # print("support json" + str(Variable.get("myjson", "{}")))
+    print("test accept job info from client: ")
+    print(job_info)
+    t1 = task1.submit(job_info)
+    t2 = task2.submit(job_info)
     # t3 must wait until t1 completed
     t3 = task3.submit(t1.result())
     result = [t1.result(), t2.result(), t3.result()]

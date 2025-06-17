@@ -13,11 +13,14 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-
+import asyncio
+import logging
 from abc import ABC
 
 from qcos.common.constant import Constant
 from .task_manager import TaskFlowManager
+
+logger = logging.getLogger(__name__)
 
 
 class TaskScheduler(ABC):
@@ -47,12 +50,17 @@ class TaskScheduler(ABC):
         """
 
         try:
+            flow_info = self._task_manager.get_flow_info_by_backend(
+                job_info.backend)
             policy_handler = self._policy_factory.get_policy_handler_by_name(
                 policy_type)
-            job_id = policy_handler.exec_task(job_info)
-            return job_id, None
+            job_json_info = job_info.model_dump()
+            job_id = policy_handler.exec_task(flow_info, job_json_info)
+            res = {"job_id": job_id}
+            return res, None
         except Exception as e:
-            return None, e
+            logger.error(f"Prefect execute flow error: {str(e)}")
+            return None, "execute work flow failed"
 
     def get_result_by_id(self, id):
         """
@@ -62,9 +70,19 @@ class TaskScheduler(ABC):
         :return result: result
         :return state: state
         """
-
-        result, state = self._task_manager.get_task_flow_result(id)
-        return result, state
+        try:
+            result, state = self._task_manager.get_task_flow_result(id)
+            if state.upper() == "CRASHED":
+                state = Constant.JOB_STATUS_FAILED
+            elif state.upper() == "SCHEDULED":
+                state = Constant.JOB_STATUS_QUEUED
+            elif state.upper() == "PENDING" or state.upper() == "LATE":
+                state = Constant.JOB_STATUS_UNKNOWN
+            reponse = {"result": {"result": result}, "state": state.upper()}
+            return reponse, None
+        except Exception as e:
+            logger.error(f"Prefect execute flow error: {str(e)}")
+            return None, "execute work flow failed"
 
 
 class BaseSchedulerPolicy(ABC):
@@ -85,24 +103,25 @@ class PriorityPolicy(BaseSchedulerPolicy):
         super().__init__(task_manager)
         self._type = Constant.JOB_SCHEDULING_POLICY_PRIORITY
 
-    def exec_task(self, job_info):
+    def exec_task(self, flow_info, job_info):
         """
         PriorityPolicy execute task
 
+        :param flow_info: flow info
         :param job_info: job info
         :return job_id: job uuid
         """
 
         priority = self.calculate_priority(job_info)
         job_deploy_id = self._task_manager.deploy_task_flow(
-            job_info["deploy_name"] + "_" + self._type,
+            flow_info["deploy_name"] + "_" + self._type,
             self._type,
             priority,
-            job_info["deploy_flow_func"],
-            job_info["deploy_flow_path"])
+            flow_info["deploy_flow_func"],
+            flow_info["deploy_flow_path"])
         job_run_id = self._task_manager.run_task_flow(
             job_deploy_id,
-            job_info["flow_args"])
+            {"job_info": job_info})
         return job_run_id
 
     def calculate_priority(self, job_info):
@@ -112,7 +131,7 @@ class PriorityPolicy(BaseSchedulerPolicy):
         :param job_info: job info
         :return job_priority: job priority
         """
-
+        a = job_info["job_priority"]
         return job_info["job_priority"]
 
 
@@ -153,24 +172,25 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
         super().__init__(task_manager)
         self._type = Constant.JOB_SCHEDULING_POLICY_TIME_PRECEDENCE
 
-    def exec_task(self, job_info):
+    def exec_task(self, flow_info, job_info):
         """
         TimePrecedencePolicy execute task
 
+        :param flow_info: flow info
         :param job_info: job info
         :return job_id: job uuid
         """
 
         priority = self.calculate_priority()
         job_deploy_id = self._task_manager.deploy_task_flow(
-            job_info["deploy_name"] + "_" + self._type,
+            flow_info["deploy_name"] + "_" + self._type,
             self._type,
             priority,
-            job_info["deploy_flow_func"],
-            job_info["deploy_flow_path"])
+            flow_info["deploy_flow_func"],
+            flow_info["deploy_flow_path"])
         job_run_id = self._task_manager.run_task_flow(
             job_deploy_id,
-            job_info["flow_args"])
+            {"job_info": job_info})
         return job_run_id
 
     def calculate_priority(self):

@@ -30,6 +30,39 @@ def handle_invalid_params(results):
         raise InvalidParams(data={"details": "\n".join(err_msg)})
 
 
+@staticmethod
+def handle_submit_error(err_msg):
+    """
+    Handle submit error
+
+    :param err_msg: error msg from task manager
+    """
+
+    raise JobSubmitError(data={"details": err_msg})
+
+
+@staticmethod
+def handle_get_status_error(err_msg):
+    """
+    Handle get status error
+
+    :param err_msg: error msg from task manager
+    """
+
+    raise JobGetStatusError(data={"details": err_msg})
+
+
+@staticmethod
+def handle_get_result_error(err_msg):
+    """
+    Handle get result error
+
+    :param err_msg: error msg from task manager
+    """
+
+    raise JobGetResultError(data={"details": err_msg})
+
+
 class UnknownError(jsonrpc.BaseError):
     """
     Unknown Error
@@ -64,6 +97,34 @@ class JobSubmitError(jsonrpc.BaseError):
     """
     CODE = -100
     MESSAGE = "Job submit error"
+
+    class DataModel(BaseModel):
+        """
+        Data Model
+        """
+        details: str
+
+
+class JobGetStatusError(jsonrpc.BaseError):
+    """
+    Job Get Status Error
+    """
+    CODE = -101
+    MESSAGE = "Job get status error"
+
+    class DataModel(BaseModel):
+        """
+        Data Model
+        """
+        details: str
+
+
+class JobGetResultError(jsonrpc.BaseError):
+    """
+    Job Get Result Error
+    """
+    CODE = -102
+    MESSAGE = "Job get result error"
 
     class DataModel(BaseModel):
         """
