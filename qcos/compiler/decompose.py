@@ -8,7 +8,8 @@
 # of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
@@ -35,7 +36,7 @@ class GateType(Enum):
     MOVE_GATE = -2
 
 
-class Gate(object):
+class Gate:
     """
     中间表示类
     """
@@ -55,6 +56,7 @@ class Gate(object):
         """
         self.name = name
         self.targets = targets
+        # pylint: disable=use-list-literal
         self.arg_value = arg_value if arg_value is not None else list()
         if not isinstance(self.arg_value, list):
             self.arg_value = [self.arg_value]
@@ -111,17 +113,18 @@ class Gate(object):
             params = dict(zip(params_list, need_args))
             params["pi"] = np.pi
             decomposed_gates = custom_gate.get("gates", [])
-            if len(decomposed_gates) == 0: return list([self])
+            if len(decomposed_gates) == 0:
+                return list([self])
             gates = []
             for name, qids, arg_value in decomposed_gates:
                 qubits = [self.targets[qid] for qid in qids]
-                # pylint: disable-next=E7701
+                # pylint: disable=eval-used
                 args = [eval(arg, params) for arg in arg_value]
                 gates.append(create_gate(name, qubits, args))
             return gates
 
         except Exception as e:
-            raise RuntimeError(str(e))
+            raise RuntimeError(str(e)) from e
 
     def default_decompose(self):
         """
@@ -660,9 +663,12 @@ def pass_hermitian(ir: list):
     """
     passed = False
     while True:
-        if len(ir) < 2: break
-        if ir[-1].name != ir[-2].name: break
-        if ir[-1].targets != ir[-2].targets: break
+        if len(ir) < 2:
+            break
+        if ir[-1].name != ir[-2].name:
+            break
+        if ir[-1].targets != ir[-2].targets:
+            break
         if ir[-1].hermitian:
             ir.pop(-1)
             ir.pop(-1)
@@ -680,9 +686,12 @@ def pass_merge_theta(ir: list):
     """
     passed = False
     while True:
-        if len(ir) < 2: break
-        if ir[-1].name != ir[-2].name: break
-        if ir[-1].targets != ir[-2].targets: break
+        if len(ir) < 2:
+            break
+        if ir[-1].name != ir[-2].name:
+            break
+        if ir[-1].targets != ir[-2].targets:
+            break
         if ir[-1].name in ["rx", "ry", "rz", "crx", "cry", "crz", "u1"]:
             ir[-2].arg_value[0] += ir[-1].arg_value[0]
             ir[-2].arg_value[0] %= (4 * np.pi)
@@ -703,8 +712,11 @@ def pass_u_udg(ir: list):
     """
     passed = False
     while True:
-        if len(ir) < 2: break
-        if ir[-1].targets != ir[-2].targets: break
+        if len(ir) < 2:
+            break
+        if ir[-1].targets != ir[-2].targets:
+            break
+        # pylint: disable=too-many-boolean-expressions
         if (ir[-1].name == "s" and ir[-2].name == "sdg") or (
                 ir[-1].name == "sdg" and ir[-2].name == "s") or (
                 ir[-1].name == "t" and ir[-2].name == "tdg") or (
@@ -725,17 +737,24 @@ def pass_three_gate_model(ir: list):
     """
     passed = False
     while True:
-        if len(ir) < 3: break
+        if len(ir) < 3:
+            break
         if (ir[-1].targets != ir[-2].targets) or (
-                ir[-1].targets != ir[-3].targets): break
+                ir[-1].targets != ir[-3].targets):
+            break
         if ir[-1].name == "h" and ir[-3].name == "h":
-            if ir[-2].name == "x" or ir[-2].name == "z":
+            if ir[-2].name in ("x", "z"):
                 ir.pop(-1)
                 ori_gate = ir.pop(-1)
                 ir.pop(-1)
                 new_name = "z" if ori_gate.name == "x" else "x"
                 ir.append(
-                    create_gate(new_name, ori_gate.targets, ori_gate.arg_value))
+                    create_gate(
+                        new_name,
+                        ori_gate.targets,
+                        ori_gate.arg_value
+                    )
+                )
                 passed = True
                 continue
         if ir[-1].name == "x" and ir[-3].name == "x":
@@ -744,8 +763,12 @@ def pass_three_gate_model(ir: list):
                 ori_gate = ir.pop(-1)
                 ir.pop(-1)
                 ir.append(
-                    # pylint: disable-next=C0301
-                    create_gate(ori_gate.name, ori_gate.targets, -1.0 * ori_gate.arg_value[0]))
+                    create_gate(
+                        ori_gate.name,
+                        ori_gate.targets,
+                        -1.0 * ori_gate.arg_value[0]
+                    )
+                )
                 passed = True
                 continue
         break
@@ -765,7 +788,6 @@ def do_pass(ir: list):
         passed |= pass_merge_theta(ir)
         passed |= pass_u_udg(ir)
         passed |= pass_three_gate_model(ir)
-    return
 
 
 def optimizer(ir: list):

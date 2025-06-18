@@ -8,7 +8,8 @@
 # of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
@@ -66,11 +67,23 @@ class Client:
         r = None
         for i in range(1, retry + 1):
             if headers:
-                r = requests.post(url, headers=headers, params=params,
-                                  data=data, auth=auth, verify=verify_ssl)
+                r = requests.post(
+                    url,
+                    headers=headers,
+                    params=params,
+                    data=data,
+                    auth=auth,
+                    verify=verify_ssl,
+                    timeout=2
+                )
             else:
-                r = requests.post(url, params=params, data=data, auth=auth,
-                                  verify=verify_ssl)
+                r = requests.post(
+                    url,
+                    params=params,
+                    data=data,
+                    auth=auth,
+                    verify=verify_ssl,
+                    timeout=2)
             if r.status_code in success_http_code:
                 break
             if retry > 1:

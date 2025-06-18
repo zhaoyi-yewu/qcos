@@ -8,7 +8,8 @@
 # of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
@@ -26,7 +27,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class Visitor(object):
+class Visitor:
     """
     抽象语法树遍历类
     """
@@ -92,14 +93,14 @@ class Visitor(object):
         pos (int): 所在位置
         """
         reg_dict = self.q_var
-        if reg_type == "creg" or reg_type == "bit":
+        if reg_type in ("creg", "bit"):
             reg_dict = self.c_var
         if reg_id in reg_dict:
             raise SyntaxError(f"in line {pos}, {reg_type} redefined")
 
         reg_dict[reg_id] = reg_size
 
-        if reg_type == "qreg" or reg_type == "qubit":
+        if reg_type in ("qreg", "qubit"):
             self.q_map[reg_id] = self.q_cnt
             self.q_cnt += reg_size
         else:
@@ -286,7 +287,6 @@ class Visitor(object):
             if val > int("1" * bit_length, 2):
                 raise RuntimeError(f"in line {s.pos}, value {val} "
                                    f"if always larger than creg {reg}")
-            pass
         else:
             # self.visitUop(s)
             self.visit_uop_v3(s)
@@ -487,8 +487,7 @@ class Visitor(object):
             for child in s.children:
                 if child.type == "empty":
                     continue
-                else:
-                    self.visit_state(child)
+                self.visit_state(child)
         self.symbol_table.remove_tail()
 
     def visit_uop_v3(self, s: Node):
@@ -584,9 +583,10 @@ class Visitor(object):
 
             if len(array_literal.children) != length:
                 raise SyntaxError(
-                    "length in arrayType: {} should be equal "
-                    "to the length in arrayLiteral: {}"
-                    .format(length, len(array_literal.children)))
+                    f"length in arrayType: {length}"
+                    f"should be equal to the length in arrayLiteral: "
+                    f"{len(array_literal.children)}"
+                   )
 
             # 处理等号右边
             elements = self.visit_array_literal(array_literal)
@@ -651,7 +651,8 @@ class Visitor(object):
 
         if symbol_table is None:
             raise NameError(
-                "in line {}, variable a is not declared".format(s.pos))
+                f"in line {s.pos}, variable a is not declared"
+            )
 
         # 如果indexed_identifier的children为空，说明不是数组变量赋值
         if not indexed_identifier.children:
@@ -663,7 +664,9 @@ class Visitor(object):
             # 检查变量类型是否是数组
             var_dict = symbol_table.data[val_name]
             if "category" not in var_dict or var_dict["category"] != "array":
-                raise TypeError(f"in line {s.pos}, var {val_name} is not array")
+                raise TypeError(
+                    f"in line {s.pos}, var {val_name} is not array"
+                )
 
             # 一维数组变量赋值情况
             index_node = indexed_identifier.children[0]
@@ -735,7 +738,7 @@ class Visitor(object):
                     val = 0
             else:
                 # 其他未定义类型，不会执行的分支。
-                raise TypeError("undefined type in line {}".format(pos))
+                raise TypeError(f"undefined type in line {pos}")
             curr_symbol_table[var_name] = {"val": val, "type": var_type,
                                            "category": "default"}
 
@@ -762,7 +765,7 @@ class Visitor(object):
                 f"in line {pos}, variable {var_name} has been defined")
 
         # 检查elements中的每个元素类型是否正确。
-        if var_type == "int" or var_type == "bool":
+        if var_type in ('int', 'bool'):
             for idx, element in enumerate(elements):
                 if not isinstance(element, int):
                     raise TypeError(f"{var_name}[{idx}] is not {var_type}")
@@ -854,24 +857,23 @@ class Visitor(object):
                 if value is None:
                     logger.error(f"in line {pos}, rVal not defined")
                     raise NameError(f"var {var_name} is not defined")
-                else:
-                    val_type = curr_symbol_table.data[var_name]["type"]
-                    if val_type == "bool":
-                        # 因为bool变量在符号表中的存储格式为
-                        # b:{"val":1, "val_type":bool, "category":default}
-                        # 我们保存0，1来表示true，false.所以value的值可能为0和1
-                        if value == 1 or value == 0:
-                            curr_symbol_table.data[var_name]["val"] = value
-                        else:
-                            raise ValueError(
-                                "invalid bool value in line {}".format(pos))
-                    elif val_type == "int":
-                        curr_symbol_table.data[var_name]["val"] = int(value)
-                    elif val_type == "float":
-                        curr_symbol_table.data[var_name]["val"] = float(value)
+                val_type = curr_symbol_table.data[var_name]["type"]
+                if val_type == "bool":
+                    # 因为bool变量在符号表中的存储格式为
+                    # b:{"val":1, "val_type":bool, "category":default}
+                    # 我们保存0，1来表示true，false.所以value的值可能为0和1
+                    if value in (1, 0):
+                        curr_symbol_table.data[var_name]["val"] = value
                     else:
-                        raise TypeError(
-                            f"unsupported type {val_type}, in line {pos}")
+                        raise ValueError(
+                            f"invalid bool value in line {pos}")
+                elif val_type == "int":
+                    curr_symbol_table.data[var_name]["val"] = int(value)
+                elif val_type == "float":
+                    curr_symbol_table.data[var_name]["val"] = float(value)
+                else:
+                    raise TypeError(
+                        f"unsupported type {val_type}, in line {pos}")
                 # 在当前符号表中找到变量，跳出循环
                 is_var = True
                 break
@@ -898,8 +900,7 @@ class Visitor(object):
         if var_dict is None:
             raise NameError(
                 f"in line {pos}, variable {var_name} is not declared")
-        else:
-            return var_dict["val"]
+        return var_dict["val"]
 
     def find_type_in_var_dict(self, var_dict: dict, var_name: str, pos: int):
         """
@@ -1057,7 +1058,7 @@ class Visitor(object):
                 # 场景 np.sin , np.cos, np.tan
                 # np.exp, np.log, np.sqrt
                 n = self.get_call_param_value(arg.children[0], func_dict, pos)
-                # pylint: disable-next=E7701
+                # pylint: disable=eval-used
                 value = eval(arg.leaf.format(n), func_dict)
             else:
                 value = None

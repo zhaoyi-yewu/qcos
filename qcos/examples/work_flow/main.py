@@ -8,7 +8,8 @@
 # of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
@@ -16,9 +17,7 @@
 import asyncio
 from time import sleep
 
-from prefect import get_client
-from prefect.variables import VariableCreate
-
+import sys
 import examples
 from qcos.common.constant import Constant
 from qcos.task_manager import scheduler
@@ -56,4 +55,4 @@ if __name__ == "__main__":
             sleep(2)
     except Exception as e:
         print(f"{e}\n")
-        exit(1)
+        sys.exit(1)

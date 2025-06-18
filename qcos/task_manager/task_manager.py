@@ -8,7 +8,8 @@
 # of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
@@ -130,7 +131,7 @@ class TaskFlowManager(ABC):
 
         # timeout
         if not all_worker_status and time > Constant.DEFAULT_JOB_TIMEOUT:
-            raise TimeoutError(f"Workers start timeout")
+            raise TimeoutError("Workers start timeout")
 
     def start_work(self, queue_name, pool_name):
         """
@@ -158,7 +159,7 @@ class TaskFlowManager(ABC):
         :param policy_type: policy type
         :param priority: priority
         :param deploy_flow: deploy flow function
-        :param path: .py path where the flow function relative to current path .
+        :param path: .py path where the flow function relative to current path
         :return deploy_id: deploy uuid
         """
 

@@ -8,7 +8,8 @@
 # of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
@@ -17,7 +18,7 @@
 from .qtypes import Node as TreeNode
 
 
-class LinkedNode(object):
+class LinkedNode:
     """
     作用域节点类
     """
@@ -32,7 +33,7 @@ class LinkedNode(object):
         self.previous = None
 
 
-class LinkedList(object):
+class LinkedList:
     """
     作用域链表类
     """
@@ -70,7 +71,8 @@ class LinkedList(object):
         tail (LinkedNode): 作用域节点
         scope (TreeNode): 抽象语法树节点
         """
-        if scope is None or (scope.type != "blockBody" and scope.type != "top"):
+        if (scope is None or
+                (scope.type not in ("blockBody", "top"))):
             raise TypeError("invalid scope tp add symbol table")
 
         if (tail.data is None or not isinstance(tail.data, dict)

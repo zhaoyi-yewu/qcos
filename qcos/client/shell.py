@@ -8,7 +8,8 @@
 # of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
@@ -304,16 +305,20 @@ class SubmitJob(Command):
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("source_code", help="Source code")
-        parser.add_argument("--code-type", dest="code_type",
-                            default=Constant.CODE_TYPE_QASM3,
-                            help=f"Code Types: {','.join(Constant.CODE_TYPES)}")
+        parser.add_argument(
+            "--code-type", dest="code_type",
+            default=Constant.CODE_TYPE_QASM3,
+            help=f"Code Types: {','.join(Constant.CODE_TYPES)}"
+        )
         parser.add_argument("--job-type", dest="job_type",
                             default=f"{Constant.JOB_TYPE_ESTIMATION}",
                             help=f"Job type: {','.join(Constant.JOB_TYPES)}")
-        parser.add_argument("--job-scheduling-policy",
-                            dest="job_scheduling_policy",
-                            default=f"{Constant.DEFAULT_JOB_SCHEDULING_POLICY}",
-                            help="Set job scheduling policy")
+        parser.add_argument(
+            "--job-scheduling-policy",
+            dest="job_scheduling_policy",
+            default=f"{Constant.DEFAULT_JOB_SCHEDULING_POLICY}",
+            help="Set job scheduling policy"
+        )
         parser.add_argument("--job-priority",
                             dest="job_priority", type=int,
                             default=f"{Constant.DEFAULT_JOB_PRIORITY}",

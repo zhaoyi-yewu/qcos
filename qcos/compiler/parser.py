@@ -8,12 +8,12 @@
 # of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-# pylint: disable=C0103
 
 from ply import (
     lex,
@@ -96,11 +96,11 @@ def p_expOrArrayLiteral(expOrArrayLiteral):
 
 
 def p_commaExpOrArrayLiteralList(commaExpOrArrayLiteralList):
-    # pylint: disable=C0301
     """
     commaExpOrArrayLiteralList : empty
                                | ',' expOrArrayLiteral
-                               | commaExpOrArrayLiteralList ',' expOrArrayLiteral
+                               | commaExpOrArrayLiteralList
+                               ',' expOrArrayLiteral
     """
     if len(commaExpOrArrayLiteralList) == 2:
         # 当commaExpOrArrayLiteralList[1]是empty
@@ -193,11 +193,11 @@ def p_statement(statement):
 
 
 def p_forStatement(forStmt):
-    # pylint: disable=C0301
     """
-    forStatement : FOR scalarType ID IN NUMBER '{' blockBody '}'
-                 | FOR scalarType ID IN '[' rangeExpression ']' '{' blockBody '}'
-                 | FOR scalarType ID IN ID '{' blockBody '}'
+    forStatement :
+        FOR scalarType ID IN NUMBER '{' blockBody '}'
+        | FOR scalarType ID IN '[' rangeExpression ']' '{' blockBody '}'
+        | FOR scalarType ID IN ID '{' blockBody '}'
     """
     ID = forStmt[3]
     scalarType = forStmt[2]
@@ -569,8 +569,7 @@ def p_error(error):
         raise SyntaxError(f"in line {error.lineno}, "
                           f"can not parser the sentence at token: "
                           f"'{error.value}'")
-    else:
-        raise SyntaxError("lack ';' or '}' at the end of code")
+    raise SyntaxError("lack ';' or '}' at the end of code")
 
 
 def get_abs_tree(data):
