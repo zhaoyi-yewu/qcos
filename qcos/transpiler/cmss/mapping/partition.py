@@ -1,6 +1,5 @@
 import json
 import networkx as nx
-from ..config import GlobalSetting
 
 
 class Node:

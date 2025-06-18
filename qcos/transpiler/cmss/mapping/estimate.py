@@ -1,4 +1,4 @@
-from qcos.compiler import *
+from qcos.transpiler.cmss.compiler import *
 from collections import defaultdict
 
 class NAEstimate():

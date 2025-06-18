@@ -15,7 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from .qtypes import Node as TreeNode
+from qcos.transpiler.cmss.compiler.qtypes import Node as TreeNode
 
 
 class LinkedNode:

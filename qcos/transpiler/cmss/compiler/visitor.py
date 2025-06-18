@@ -16,11 +16,11 @@
 # ----------------------------------------------------------------------
 
 from typing import Any
-from .qtypes import Node, RegType
-from .decompose import create_gate
-import numpy as np
-from .linked_list import LinkedList, LinkedNode
 import re
+import numpy as np
+from qcos.transpiler.cmss.compiler.qtypes import Node, RegType
+from qcos.transpiler.cmss.compiler.decompose import create_gate
+from qcos.transpiler.cmss.compiler.linked_list import LinkedList, LinkedNode
 import logging
 
 

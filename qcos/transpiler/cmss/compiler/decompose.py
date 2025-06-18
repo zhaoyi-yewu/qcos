@@ -640,7 +640,7 @@ def create_gate(name, targets=None, arg_value=None, allow_undefined=False):
         raise RuntimeError(f"{name} is not support")
 
 
-def transpiler(ir: list):
+def decomposer(ir: list):
     """
     将中间表示中的门分解到硬件脉冲直接支持的门上
 

@@ -19,10 +19,10 @@ import logging
 from abc import ABC
 
 from qcos.common.constant import Constant
-from .task_manager import TaskFlowManager
+from qcos.task_manager import TaskFlowManager
+
 
 logger = logging.getLogger(__name__)
-
 
 class TaskScheduler(ABC):
     """

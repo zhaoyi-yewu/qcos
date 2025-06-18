@@ -20,11 +20,11 @@ from ply import (
     yacc
 )
 
-from . import tokrules
-from .tokrules import tokens
-from .qtypes import Node
-from .visitor import Visitor
-from .decompose import transpiler, optimizer
+from qcos.transpiler.cmss.compiler import tokrules
+from qcos.transpiler.cmss.compiler.tokrules import tokens
+from qcos.transpiler.cmss.compiler.qtypes import Node
+from qcos.transpiler.cmss.compiler.visitor import Visitor
+from qcos.transpiler.cmss.compiler.decompose import decomposer, optimizer
 
 
 gate_params = []
@@ -614,7 +614,7 @@ def compile(data):
     q_num, ir = vist.visit_program(ast_node)
     # 针对初始的ir进行一次优化，可以消去一些连续执行的酉门，如两个H门
     optimized_ir = optimizer(ir)
-    transpiled_gates = transpiler(optimized_ir)
+    transpiled_gates = decomposer(optimized_ir)
     # 针对分解后的ir进行优化，主要是针对分解后可能存在的连续两个相同的旋转门
     optimized_gates = optimizer(transpiled_gates)
     return optimized_gates
