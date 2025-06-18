@@ -24,6 +24,7 @@ from jsonrpcclient import Ok, parse, request
 
 from qcos.common import errors
 from qcos.common.config import Config
+from qcos.common.constant import Constant
 from qcos.common.library import Library
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,8 @@ class Client:
 
     @staticmethod
     def call_http_api(
-            url, data=None, params=None, func_name=None,
+            url, *,
+            data=None, params=None, func_name=None,
             headers=default_headers, auth=None, verify_ssl=False,
             retry=1, timeout=2, success_http_code=[200]):
         """
@@ -147,16 +149,23 @@ class Client:
 
     @staticmethod
     def submit_job(
-            source_code, code_type, job_type, job_scheduling_policy,
-            job_priority, shots, qubits, backend,
-            transpiler, optimization_level):
+            source_code, *,
+            code_type=Constant.CODE_TYPE_QASM3,
+            job_type=Constant.JOB_TYPE_ESTIMATION,
+            job_sched_policy=Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
+            job_priority=Constant.DEFAULT_JOB_PRIORITY,
+            shots=Constant.DEFAULT_SHOTS,
+            qubits=Constant.DEFAULT_QUBITS,
+            backend=Constant.DRIVER_DUMMY,
+            transpiler=Constant.TRANSPILER_CMSS,
+            optimization_level=Constant.DEFAULT_OPTIMIZATION_LEVEL):
         """
         Submit new job
 
         :param source_code: source code
         :param code_type: code type
         :param job_type: job type
-        :param job_scheduling_policy: job scheduling policy
+        :param job_sched_policy: job scheduling policy
         :param job_priority: job priority
         :param shots: shots
         :param qubits: qubits
@@ -172,7 +181,7 @@ class Client:
             "source_code": source_code,
             "code_type": code_type,
             "job_type": job_type,
-            "job_scheduling_policy": job_scheduling_policy,
+            "job_sched_policy": job_sched_policy,
             "job_priority": job_priority,
             "shots": shots,
             "qubits": qubits,

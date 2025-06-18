@@ -56,7 +56,7 @@ class TaskFlowManager(ABC):
 
         self.loop.run_until_complete(self.create_pools())
         self.loop.run_until_complete(self.create_queues())
-        for pool_name in Constant.JOB_SCHEDULING_POLICIES:
+        for pool_name in Constant.JOB_SCHED_POLICIES:
             self.loop.run_until_complete(self.start_workers(pool_name))
 
     async def create_pools(self):
@@ -65,7 +65,7 @@ class TaskFlowManager(ABC):
         """
 
         create_workpools = [self.create_pool(pool_name) for pool_name in
-                            Constant.JOB_SCHEDULING_POLICIES]
+                            Constant.JOB_SCHED_POLICIES]
         return await asyncio.gather(*create_workpools)
 
     async def create_pool(self, pool_name):
@@ -90,7 +90,7 @@ class TaskFlowManager(ABC):
         """
 
         queues = await self._client.read_work_queues()
-        for pool_name in Constant.JOB_SCHEDULING_POLICIES:
+        for pool_name in Constant.JOB_SCHED_POLICIES:
             for priority in range(1, Constant.MAX_JOB_PRIORITY + 1):
                 queue_name = f"{pool_name}_{priority}"
                 if not any(queue.name == queue_name for queue in queues):

@@ -24,7 +24,7 @@ def handle_invalid_params(results):
     """
     Handle invalid params
 
-    :param results: results from jsonrpc
+    :param results: results for jsonrpc
     """
     success, err_msg = results
     if success is False:

@@ -43,6 +43,10 @@ services:
     environment:
       DEBUG: ${DEBUG}
       QCOS_CONTAINER_NAME: ${QCOS_CONTAINER_NAME}
+      PREFECT_SERVER_API_HOST: ${PREFECT_SERVER_API_HOST}
+      PREFECT_SERVER_DATABASE_CONNECTION_URL: "sqlite+aiosqlite:////var/qcos/db/prefect.db"
+      PREFECT_API_URL: "http://${PREFECT_SERVER_API_HOST}:4200/api"
+      PREFECT_LOCAL_STORAGE_PATH: /var/qcos/storage
       PYTHONPATH: /root/qcos-project
     logging:
       driver: "json-file"

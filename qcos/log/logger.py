@@ -73,14 +73,12 @@ class ColouredStreamHandler(logging.StreamHandler):
     """
 
     def format(self, record, colour=False):
-
         if not isinstance(self.formatter, ColouredFormatter):
             self.formatter = ColouredFormatter()
 
         return self.formatter.format(record, colour)
 
     def emit(self, record):
-
         stream = self.stream
         try:
             msg = self.format(record, stream.isatty())
@@ -94,12 +92,12 @@ class ColouredStreamHandler(logging.StreamHandler):
             self.handleError(record)
 
 
-class LogFilter(object):
+class LogFilter(logging.Filter):
     """
     This filter some noise from the logs
     """
 
-    def filter(record):
+    def filter(self, record):
         if isinstance(record.msg, str) and \
                 "/settings" in record.msg and "200" in record.msg:
             return 0
@@ -116,8 +114,8 @@ class CompressedRotatingFileHandler(RotatingFileHandler):
             self.stream.close()
         if self.backupCount > 0:
             for i in range(self.backupCount - 1, 0, -1):
-                sfn = "%s.%d.gz" % (self.baseFilename, i)
-                dfn = "%s.%d.gz" % (self.baseFilename, i + 1)
+                sfn = f"{self.baseFilename}.{i}.gz"
+                dfn = f"{self.baseFilename}.{i+1}.gz"
                 if os.path.exists(sfn):
                     if os.path.exists(dfn):
                         os.remove(dfn)
@@ -133,7 +131,8 @@ class CompressedRotatingFileHandler(RotatingFileHandler):
 
 
 def init_logger(
-        level, logfile=None, max_bytes=10000000, backup_count=10,
+        level, *,
+        logfile=None, max_bytes=10000000, backup_count=10,
         console=True, compression=True, quiet=False):
     file_stream_handler = None
     console_stream_handler = None

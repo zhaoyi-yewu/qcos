@@ -62,6 +62,8 @@ class DriverBase:
     def __init__(self):
         # 版本号
         self.version = "unknown"
+        # 驱动开关
+        self.enable = True
         # 驱动状态, 不允许直接修改, 需要调用set_status修改
         self._status = self.DRIVER_STATUS_OFFLINE
         # 是否要调用transpiler
@@ -110,6 +112,7 @@ class DriverBase:
         """
         logger.info(f"[{self.__class__.__name__}]")
         logger.info(f"version: {self.version}")
+        logger.info(f"enable: {self.enable}")
         logger.info(f"status: {self._status}")
         logger.info(f"enable_transpiler: {self.enable_transpiler}")
         logger.info(f"default_transpiler: {self.transpiler}")
@@ -144,10 +147,10 @@ class DriverBase:
         """
         Run job
 
-        :params job_id: job ID
-        :params data: data
-        :params data_type: data type
-        :params shots: shots
+        :param job_id: job ID
+        :param data: data
+        :param data_type: data type
+        :param shots: shots
         """
         raise NotImplementedError(f"Driver: {self.__class__.__name__} "
                                   f"must implement method: run")
@@ -156,8 +159,8 @@ class DriverBase:
         """
         Set job results
 
-        :params job_id: job ID
-        :params results: results
+        :param job_id: job ID
+        :param results: results
         """
         self._results[job_id] = results
 

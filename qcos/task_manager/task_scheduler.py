@@ -104,7 +104,7 @@ class PriorityPolicy(BaseSchedulerPolicy):
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
-        self._type = Constant.JOB_SCHEDULING_POLICY_PRIORITY
+        self._type = Constant.JOB_SCHED_POLICY_PRIORITY
 
     def exec_task(self, flow_info, job_info):
         """
@@ -145,7 +145,7 @@ class HighResponseRatioPolicy(BaseSchedulerPolicy):
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
-        self._type = Constant.JOB_SCHEDULING_POLICY_HIGH_RESPONSE_RATIO
+        self._type = Constant.JOB_SCHED_POLICY_HIGH_RESPONSE_RATIO
 
     # TODO(jidalong) HighResponseRatioPolicy
     def exec_task(self):
@@ -159,7 +159,7 @@ class ShortestJobFirstPolicy(BaseSchedulerPolicy):
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
-        self._type = Constant.JOB_SCHEDULING_POLICY_HIGH_RESPONSE_RATIO
+        self._type = Constant.JOB_SCHED_POLICY_HIGH_RESPONSE_RATIO
 
     # TODO(jidalong) ShortestJobFirstPolicy
     def exec_task(self):
@@ -173,7 +173,7 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
-        self._type = Constant.JOB_SCHEDULING_POLICY_TIME_PRECEDENCE
+        self._type = Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE
 
     def exec_task(self, flow_info, job_info):
         """
@@ -213,7 +213,7 @@ class PeriodicPolicy(BaseSchedulerPolicy):
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
-        self._type = Constant.JOB_SCHEDULING_POLICY_PERIODIC
+        self._type = Constant.JOB_SCHED_POLICY_PERIODIC
 
     # TODO(jidalong) PeriodicPolicy
     def exec_task(self):
@@ -227,7 +227,7 @@ class DependentPolicy(BaseSchedulerPolicy):
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
-        self._type = Constant.JOB_SCHEDULING_POLICY_DEPENDENT
+        self._type = Constant.JOB_SCHED_POLICY_DEPENDENT
 
     # TODO(jidalong) DependentPolicy
     def exec_task(self):
@@ -241,7 +241,7 @@ class BatchPolicy(BaseSchedulerPolicy):
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
-        self._type = Constant.JOB_SCHEDULING_POLICY_BATCH
+        self._type = Constant.JOB_SCHED_POLICY_BATCH
 
     # TODO(jidalong) BatchPolicy
     def exec_task(self):
@@ -255,7 +255,7 @@ class RealtimePolicy(BaseSchedulerPolicy):
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
-        self._type = Constant.JOB_SCHEDULING_POLICY_REALTIME
+        self._type = Constant.JOB_SCHED_POLICY_REALTIME
 
     # TODO(jidalong) RealtimePolicy
     def exec_task(self):
@@ -269,21 +269,21 @@ class SchedulerPolicyHandlerFactory(ABC):
 
     def __init__(self, task_manager):
         self._policy_mapping = {
-            Constant.JOB_SCHEDULING_POLICY_PRIORITY:
+            Constant.JOB_SCHED_POLICY_PRIORITY:
                 PriorityPolicy(task_manager),
-            Constant.JOB_SCHEDULING_POLICY_HIGH_RESPONSE_RATIO:
+            Constant.JOB_SCHED_POLICY_HIGH_RESPONSE_RATIO:
                 HighResponseRatioPolicy(task_manager),
-            Constant.JOB_SCHEDULING_POLICY_SHORTEST_JOB_FIRST:
+            Constant.JOB_SCHED_POLICY_SHORTEST_JOB_FIRST:
                 ShortestJobFirstPolicy(task_manager),
-            Constant.JOB_SCHEDULING_POLICY_TIME_PRECEDENCE:
+            Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE:
                 TimePrecedencePolicy(task_manager),
-            Constant.JOB_SCHEDULING_POLICY_PERIODIC:
+            Constant.JOB_SCHED_POLICY_PERIODIC:
                 PeriodicPolicy(task_manager),
-            Constant.JOB_SCHEDULING_POLICY_DEPENDENT:
+            Constant.JOB_SCHED_POLICY_DEPENDENT:
                 DependentPolicy(task_manager),
-            Constant.JOB_SCHEDULING_POLICY_BATCH:
+            Constant.JOB_SCHED_POLICY_BATCH:
                 BatchPolicy(task_manager),
-            Constant.JOB_SCHEDULING_POLICY_REALTIME:
+            Constant.JOB_SCHED_POLICY_REALTIME:
                 RealtimePolicy(task_manager),
         }
 

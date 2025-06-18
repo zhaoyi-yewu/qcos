@@ -14,7 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
 import asyncio
+import sys
 from time import sleep
 
 import sys
@@ -38,7 +40,7 @@ if __name__ == "__main__":
 
         # 1.deploy and run work flow
         id, err = scheduler.add(
-            Constant.JOB_SCHEDULING_POLICY_PRIORITY,
+            Constant.JOB_SCHED_POLICY_PRIORITY,
             {"flow_args": {"user": "test22"},
              "job_priority": 6,
              "deploy_name": "test123",

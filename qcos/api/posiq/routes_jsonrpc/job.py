@@ -46,7 +46,7 @@ def submit_job(
     source_code = body.source_code
     code_type = body.code_type
     job_type = body.job_type
-    job_scheduling_policy = body.job_scheduling_policy
+    job_sched_policy = body.job_sched_policy
     job_priority = body.job_priority
     shots = body.shots
     qubits = body.qubits
@@ -66,10 +66,10 @@ def submit_job(
     jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
         job_type, "job_type", Constant.JOB_TYPES))
 
-    # validate: job_scheduling_policy
+    # validate: job_sched_policy
     jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
-        job_scheduling_policy, "job_scheduling_policy",
-        Constant.JOB_SCHEDULING_POLICIES))
+        job_sched_policy, "job_sched_policy",
+        Constant.JOB_SCHED_POLICIES))
 
     # validate: job_priority
     jsonrpc_errors.handle_invalid_params(Library.validate_values_range(
@@ -100,7 +100,7 @@ def submit_job(
         Constant.MIN_OPTIMIZATION_LEVEL, Constant.MAX_OPTIMIZATION_LEVEL))
 
     # submit job
-    res, err = scheduler.add(body.job_scheduling_policy, body)
+    res, err = scheduler.add(body.job_sched_policy, body)
 
     # deal sumit response
     if err:
@@ -108,12 +108,12 @@ def submit_job(
     response_info = {
         "job_id": res["job_id"],
         "job_status": Constant.JOB_STATUS_UNKNOWN,
-        "job_scheduling_policy": body.job_scheduling_policy,
+        "job_sched_policy": body.job_sched_policy,
         "job_priority": body.job_priority,
         "backend": body.backend,
         "transpiler": body.transpiler,
         "shots": body.shots,
-        "qubits": body.qubits,
+        "qubits": body.qubits
     }
     return response_info
 
@@ -143,7 +143,7 @@ def get_job_status(
         "job_id": job_id,
         "job_status": res["state"],
         # TODO(jidalong) task manager not store submit info
-        "job_scheduling_policy": Constant.DEFAULT_JOB_SCHEDULING_POLICY,
+        "job_sched_policy": Constant.DEFAULT_JOB_SCHED_POLICY,
         "job_priority": 100,
         "backend": Constant.DRIVER_DUMMY,
         "transpiler": Constant.TRANSPILER_CMSS,
@@ -201,7 +201,7 @@ def get_jobs(
     response_info = [{
         "job_id": "00000000-0000-4000-8000-000000000001",
         "job_status": Constant.JOB_STATUS_UNKNOWN,
-        "job_scheduling_policy": Constant.DEFAULT_JOB_SCHEDULING_POLICY,
+        "job_sched_policy": Constant.DEFAULT_JOB_SCHED_POLICY,
         "job_priority": 100,
         "backend": Constant.DRIVER_DUMMY,
         "shots": 1,
@@ -231,7 +231,7 @@ def cancel_job(
     response_info = [{
         "job_id": "00000000-0000-4000-8000-000000000001",
         "job_status": Constant.JOB_STATUS_UNKNOWN,
-        "job_scheduling_policy": Constant.DEFAULT_JOB_SCHEDULING_POLICY,
+        "job_sched_policy": Constant.DEFAULT_JOB_SCHED_POLICY,
         "job_priority": 100,
         "backend": Constant.DRIVER_DUMMY,
         "shots": 1,

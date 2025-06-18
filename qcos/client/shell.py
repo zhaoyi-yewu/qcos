@@ -203,13 +203,16 @@ class CommandHelper:
                     return parsed.result
                 code = parsed.code
                 message = parsed.message
-                err_msgs = parsed.data.get("errors", [])
-                for err_msg in err_msgs:
-                    err_msg_list.append(f"{message}({code})\n{err_msg['msg']} "
-                                        f", loc: {','.join(err_msg['loc'])}")
-                err_details = parsed.data.get("details", None)
-                if err_details:
-                    err_msg_list.append(f"{message}({code})\n{err_details}")
+                if parsed.data:
+                    err_msgs = parsed.data.get("errors", [])
+                    for err_msg in err_msgs:
+                        err_msg_list.append(
+                            f"{message}({code})\n{err_msg['msg']} "
+                            f", loc: {','.join(err_msg['loc'])}")
+                    err_details = parsed.data.get("details", None)
+                    if err_details:
+                        err_msg_list.append(
+                            f"{message}({code})\n{err_details}")
             except Exception as e:
                 err_msg_list.append(e)
                 raise errors.GenericException(
@@ -313,12 +316,10 @@ class SubmitJob(Command):
         parser.add_argument("--job-type", dest="job_type",
                             default=f"{Constant.JOB_TYPE_ESTIMATION}",
                             help=f"Job type: {','.join(Constant.JOB_TYPES)}")
-        parser.add_argument(
-            "--job-scheduling-policy",
-            dest="job_scheduling_policy",
-            default=f"{Constant.DEFAULT_JOB_SCHEDULING_POLICY}",
-            help="Set job scheduling policy"
-        )
+        parser.add_argument("--job-scheduling-policy",
+                            dest="job_sched_policy",
+                            default=f"{Constant.DEFAULT_JOB_SCHED_POLICY}",
+                            help="Set job scheduling policy")
         parser.add_argument("--job-priority",
                             dest="job_priority", type=int,
                             default=f"{Constant.DEFAULT_JOB_PRIORITY}",
@@ -349,7 +350,7 @@ class SubmitJob(Command):
         source_code = args.source_code
         code_type = args.code_type
         job_type = args.job_type
-        job_scheduling_policy = args.job_scheduling_policy
+        job_sched_policy = args.job_sched_policy
         job_priority = args.job_priority
         shots = args.shots
         qubits = args.qubits
@@ -384,10 +385,10 @@ class SubmitJob(Command):
         CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
             job_type, "job_type", Constant.JOB_TYPES))
 
-        # Validate argument: job_scheduling_policy
+        # Validate argument: job_sched_policy
         CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
-            job_scheduling_policy, "job_scheduling_policy",
-            Constant.JOB_SCHEDULING_POLICIES))
+            job_sched_policy, "job_sched_policy",
+            Constant.JOB_SCHED_POLICIES))
 
         # Validate argument: job_priority
         CommandHelper.handle_invalid_arguments(Library.validate_values_range(
@@ -416,7 +417,7 @@ class SubmitJob(Command):
         # call api
         status_code, reason, text, result = Client.submit_job(
             source_code_list, code_type=code_type, job_type=job_type,
-            job_scheduling_policy=job_scheduling_policy,
+            job_sched_policy=job_sched_policy,
             job_priority=job_priority,
             shots=shots, qubits=qubits, backend=backend, transpiler=transpiler,
             optimization_level=optimization_level)

@@ -51,10 +51,10 @@ class DriverTiangong100(DriverBase):
         """
         Run job
 
-        :params job_id: job ID
-        :params data: data
-        :params data_type: data type
-        :params shots: shots
+        :param job_id: job ID
+        :param data: data
+        :param data_type: data type
+        :param shots: shots
         """
         logger.info(f"job_id: {job_id}, data_type: {data_type}, data: {data},"
                     f" shots: {shots}")

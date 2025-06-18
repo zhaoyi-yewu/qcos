@@ -40,23 +40,23 @@ class Constant:
     JOB_TYPES = [JOB_TYPE_ESTIMATION, JOB_TYPE_SAMPLING]
 
     # Job scheduling policy
-    JOB_SCHEDULING_POLICY_PRIORITY = "priority"
-    JOB_SCHEDULING_POLICY_HIGH_RESPONSE_RATIO = "high_response_ratio"
-    JOB_SCHEDULING_POLICY_SHORTEST_JOB_FIRST = "shortest_job_first"
-    JOB_SCHEDULING_POLICY_TIME_PRECEDENCE = "time_precedence"
-    JOB_SCHEDULING_POLICY_PERIODIC = "periodic"
-    JOB_SCHEDULING_POLICY_DEPENDENT = "dependent"
-    JOB_SCHEDULING_POLICY_BATCH = "batch"
-    JOB_SCHEDULING_POLICY_REALTIME = "realtime"
-    DEFAULT_JOB_SCHEDULING_POLICY = JOB_SCHEDULING_POLICY_TIME_PRECEDENCE
-    JOB_SCHEDULING_POLICIES = [JOB_SCHEDULING_POLICY_PRIORITY,
-                               JOB_SCHEDULING_POLICY_HIGH_RESPONSE_RATIO,
-                               JOB_SCHEDULING_POLICY_SHORTEST_JOB_FIRST,
-                               JOB_SCHEDULING_POLICY_TIME_PRECEDENCE,
-                               JOB_SCHEDULING_POLICY_PERIODIC,
-                               JOB_SCHEDULING_POLICY_DEPENDENT,
-                               JOB_SCHEDULING_POLICY_BATCH,
-                               JOB_SCHEDULING_POLICY_REALTIME]
+    JOB_SCHED_POLICY_PRIORITY = "priority"
+    JOB_SCHED_POLICY_HIGH_RESPONSE_RATIO = "high_response_ratio"
+    JOB_SCHED_POLICY_SHORTEST_JOB_FIRST = "shortest_job_first"
+    JOB_SCHED_POLICY_TIME_PRECEDENCE = "time_precedence"
+    JOB_SCHED_POLICY_PERIODIC = "periodic"
+    JOB_SCHED_POLICY_DEPENDENT = "dependent"
+    JOB_SCHED_POLICY_BATCH = "batch"
+    JOB_SCHED_POLICY_REALTIME = "realtime"
+    DEFAULT_JOB_SCHED_POLICY = JOB_SCHED_POLICY_TIME_PRECEDENCE
+    JOB_SCHED_POLICIES = [JOB_SCHED_POLICY_PRIORITY,
+                          JOB_SCHED_POLICY_HIGH_RESPONSE_RATIO,
+                          JOB_SCHED_POLICY_SHORTEST_JOB_FIRST,
+                          JOB_SCHED_POLICY_TIME_PRECEDENCE,
+                          JOB_SCHED_POLICY_PERIODIC,
+                          JOB_SCHED_POLICY_DEPENDENT,
+                          JOB_SCHED_POLICY_BATCH,
+                          JOB_SCHED_POLICY_REALTIME]
 
     # Maximum jobs allowed in the system
     MAX_JOBS = 1000

@@ -41,7 +41,7 @@ class SubmitJobRequest(BaseModel):
     # Job type
     job_type: str = Constant.JOB_TYPE_ESTIMATION
     # Job scheduling policy
-    job_scheduling_policy: str = Constant.DEFAULT_JOB_SCHEDULING_POLICY
+    job_sched_policy: str = Constant.DEFAULT_JOB_SCHED_POLICY
     # Job priority
     job_priority: int = Constant.DEFAULT_JOB_PRIORITY
     # Shots
@@ -60,7 +60,7 @@ class SubmitJobResponse(BaseModel):
     # Job status
     job_status: str = None
     # Job scheduling policy
-    job_scheduling_policy: str = None
+    job_sched_policy: str = None
     # Job priority
     job_priority: int = None
     # QC driver name
@@ -95,7 +95,7 @@ class GetJobStatusResponse(BaseModel):
     # Transpiler
     transpiler: str = None
     # Job scheduling policy
-    job_scheduling_policy: str = None
+    job_sched_policy: str = None
     # Job priority
     job_priority: int = None
     # Shots
