@@ -28,6 +28,8 @@ from qcos.task_manager import scheduler
 __all__ = []
 __version__ = Config.VERSION
 
+from qcos.task_manager import scheduler
+
 
 
 def daemonize():

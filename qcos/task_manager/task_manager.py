@@ -102,7 +102,7 @@ class TaskFlowManager(ABC):
                         priority=priority,
                         concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY)
 
-    async def start_workers(self):
+    async def start_workers(self, pool_name):
         """
         Start all workers for work pool
         """
