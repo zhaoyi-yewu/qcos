@@ -22,7 +22,7 @@ from time import sleep
 from pathlib import Path
 from typing import Any
 import logging
-from exceptiongroup import catch
+
 from prefect import get_client
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.objects import WorkerStatus
