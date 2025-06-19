@@ -26,6 +26,7 @@ from prefect import get_client
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.objects import WorkerStatus
 from prefect.workers import ProcessWorker
+from rich.console import Console
 
 from qcos.common.constant import Constant
 from qcos.examples.work_flow import examples
