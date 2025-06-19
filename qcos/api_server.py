@@ -14,7 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-
+import asyncio
 import os
 import sys
 import traceback
@@ -25,6 +25,8 @@ from qcos.server import Server
 
 __all__ = []
 __version__ = Config.VERSION
+
+from qcos.task_manager import scheduler
 
 
 def daemonize():
@@ -65,7 +67,9 @@ if __name__ == "__main__":
     Library.mkdir(PID_DIR)
     Library.create_pid_file(PID_FILE)
     try:
-        Server().run()
+        loop = asyncio.get_event_loop()
+        scheduler.start_taskmanager(loop)
+        Server().run(loop)
     except Exception as e:
         print(f"{e}\n{traceback.format_exc()}")
         sys.exit(1)

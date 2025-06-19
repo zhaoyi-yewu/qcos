@@ -39,7 +39,14 @@ class TaskScheduler(ABC):
             self._task_manager
         )
 
-        self._task_manager.start()
+    def start_taskmanager(self, loop):
+        """
+        Start TaskManager
+
+        :param loop: loop
+        """
+
+        self._task_manager.start(loop)
 
     def add(self, policy_type, job_info):
         """

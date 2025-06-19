@@ -45,6 +45,7 @@ def _signal_handling():
     """
     Signal handling
     """
+
     def signal_handler(signame, *args):
         """
         Signal handler
@@ -74,6 +75,7 @@ class Server:
     """
     Server
     """
+
     def __init__(self):
         self._stream_handlers = None
 
@@ -159,7 +161,7 @@ class Server:
             logger.critical("Can't write pid file %s: %s", path, str(e))
             sys.exit(1)
 
-    def run(self):
+    def run(self, loop):
         """
         Run the server
         """
@@ -213,7 +215,6 @@ class Server:
 
             # init uvicorn server
             server = uvicorn.Server(config)
-            loop = asyncio.get_event_loop()
 
             # init plugin and drivers
             driver_manager = DriverManager()

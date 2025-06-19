@@ -26,6 +26,7 @@ from prefect import get_client
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.objects import WorkerStatus
 from prefect.workers import ProcessWorker
+from rich.console import Console
 
 from qcos.common.constant import Constant
 from qcos.examples.work_flow import examples
@@ -44,20 +45,21 @@ class TaskFlowManager(ABC):
         self._client = None
         self.loop = None
         self._flow_loop = None
+        self._console = None
 
-    def start(self):
+    def start(self, loop):
         """
         Create work pools, queues and start workers
         """
 
         self._client = get_client()
-        self.loop = asyncio.get_event_loop()
+        self._console = Console(quiet=True)
+        self.loop = loop
         self._flow_loop = asyncio.new_event_loop()
 
         self.loop.run_until_complete(self.create_pools())
         self.loop.run_until_complete(self.create_queues())
-        for pool_name in Constant.JOB_SCHED_POLICIES:
-            self.loop.run_until_complete(self.start_workers(pool_name))
+        self.loop.run_until_complete(self.start_workers())
 
     async def create_pools(self):
         """
@@ -100,53 +102,34 @@ class TaskFlowManager(ABC):
                         priority=priority,
                         concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY)
 
-    async def start_workers(self, pool_name):
+    async def start_workers(self):
         """
         Start all workers for work pool
         """
 
         # start worker
-        for priority in range(1, Constant.MAX_JOB_WORKER + 1):
-            queue_name = f"{pool_name}_{priority}"
+        for policy in range(len(Constant.JOB_SCHEDULING_POLICIES)):
+            pool_name = str(policy)
             worker_thread = threading.Thread(target=self.start_work,
-                                             args=(queue_name,
-                                                   pool_name),
+                                             args=(pool_name),
                                              daemon=True)
             worker_thread.start()
 
-        # wait for all workers are online
-        all_worker_status = False
-        time = 0
-        while (not all_worker_status and
-               time <= Constant.DEFAULT_JOB_TIMEOUT):
-            workers = await self._client.read_workers_for_work_pool(
-                pool_name)
-            work_status = [worker.status == WorkerStatus.ONLINE for
-                           worker in workers]
-            if all(work_status) and len(
-                    work_status) == Constant.MAX_JOB_WORKER:
-                all_worker_status = True
-            sleep(Constant.DEFAULT_JOB_INTERVAL)
-            time += Constant.DEFAULT_JOB_INTERVAL
-
-        # timeout
-        if not all_worker_status and time > Constant.DEFAULT_JOB_TIMEOUT:
-            raise TimeoutError("Workers start timeout")
-
-    def start_work(self, queue_name, pool_name):
+    def start_work(self, pool_name):
         """
         Start worker by prefect client.
 
-        :param queue_name: work queue name
         :param pool_name: work pool name
         """
-
+        pool_name = Constant.JOB_SCHEDULING_POLICIES[int(pool_name)]
         worker = ProcessWorker(
             work_pool_name=pool_name,
-            name=queue_name,
+            name=pool_name,
             limit=Constant.DEFAULT_POOL_CONCURRENCY,
+            work_queues=[f'{pool_name}_{str(i)}' for i in
+                         range(1, Constant.MAX_JOB_PRIORITY + 1)]
         )
-        asyncio.run(worker.start())
+        asyncio.run(worker.start(printer=self._console.print))
 
     def deploy_task_flow(
             self, deploy_name: str,
@@ -174,6 +157,8 @@ class TaskFlowManager(ABC):
             name=deploy_name,
             work_pool_name=policy_type,
             work_queue_name=queue_name,
+            print_next_steps=False,
+            ignore_warnings=True
         )
         return deploy_id
 
