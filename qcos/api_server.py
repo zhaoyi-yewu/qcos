@@ -23,11 +23,11 @@ import traceback
 from qcos.common.config import Config
 from qcos.common.library import Library
 from qcos.server import Server
+from qcos.task_manager import scheduler
 
 __all__ = []
 __version__ = Config.VERSION
 
-from qcos.task_manager import scheduler
 
 
 def daemonize():
@@ -68,7 +68,6 @@ if __name__ == "__main__":
     Library.mkdir(PID_DIR)
     Library.create_pid_file(PID_FILE)
     try:
-        time.sleep(5)
         loop = asyncio.get_event_loop()
         scheduler.start_taskmanager(loop)
         Server().run(loop)
