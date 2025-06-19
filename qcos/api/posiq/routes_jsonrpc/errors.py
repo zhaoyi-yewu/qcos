@@ -174,7 +174,7 @@ class JobCancelError(jsonrpc.BaseError):
     """
     Job Cancel Error
     """
-    CODE = -103
+    CODE = -104
     MESSAGE = "Job cancel error"
 
     class DataModel(BaseModel):
