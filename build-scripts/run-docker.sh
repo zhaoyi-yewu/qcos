@@ -17,6 +17,10 @@ source ./setup-env.sh
 
 export QCOS_LOCAL_SRC_DIR="${top_dir}"
 
+# copy config files
+mkdir -p /etc/qcos/prefect
+cp -rf prefect/* /etc/qcos/prefect
+
 if [ "${DEV}" = "False" ]; then
   docker-compose -f docker-compose.yaml down
   docker-compose -f docker-compose.yaml up -d

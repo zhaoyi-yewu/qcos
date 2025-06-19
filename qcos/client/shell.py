@@ -193,8 +193,8 @@ class CommandHelper:
         :param reason: reason
         :param jsonrpc_response: json-rpc response
         """
+        err_msg_list = []
         if status_code in [HttpCode.SUCCESS_OK]:
-            err_msg_list = []
             try:
                 jsonrpc_response_dict = json.loads(jsonrpc_response)
                 success, parsed = Client.parse_jsonrpc_response(
@@ -208,19 +208,18 @@ class CommandHelper:
                     for err_msg in err_msgs:
                         err_msg_list.append(
                             f"{message}({code})\n{err_msg['msg']} "
-                            f", loc: {','.join(err_msg['loc'])}")
+                            f", loc: {', '.join(err_msg['loc'])}")
                     err_details = parsed.data.get("details", None)
                     if err_details:
                         err_msg_list.append(
-                            f"{message}({code})\n{err_details}")
+                            f"ErrorMsg: {message} ({code}). "
+                            f"Details: {err_details}")
             except Exception as e:
                 err_msg_list.append(e)
-                raise errors.GenericException(
-                    f"Failed to {name}.\n"
-                    f"ErrorMsg: {','.join(err_msg_list)}") from e
         raise errors.GenericException(
-            f"Failed to process {resource}: '{name}'.\n"
-            f"status_code: {status_code}")
+            f"Failed to process {resource}: '{name}'. "
+            f"[status_code: {status_code}]\n"
+            f"{','.join(err_msg_list)}.\n")
 
     @staticmethod
     def get_table_list_data(list_values, header_list, ignore_header_list=None):
@@ -308,11 +307,9 @@ class SubmitJob(Command):
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("source_code", help="Source code")
-        parser.add_argument(
-            "--code-type", dest="code_type",
-            default=Constant.CODE_TYPE_QASM3,
-            help=f"Code Types: {','.join(Constant.CODE_TYPES)}"
-        )
+        parser.add_argument("--code-type", dest="code_type",
+                            default=Constant.CODE_TYPE_QASM2,
+                            help=f"Code Types: {','.join(Constant.CODE_TYPES)}")
         parser.add_argument("--job-type", dest="job_type",
                             default=f"{Constant.JOB_TYPE_ESTIMATION}",
                             help=f"Job type: {','.join(Constant.JOB_TYPES)}")

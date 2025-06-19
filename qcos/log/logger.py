@@ -96,7 +96,6 @@ class LogFilter(logging.Filter):
     """
     This filter some noise from the logs
     """
-
     def filter(self, record):
         if isinstance(record.msg, str) and \
                 "/settings" in record.msg and "200" in record.msg:
@@ -164,8 +163,8 @@ def init_logger(
         console_stream_handler.addFilter(logging.Filter(name="user_facing"))
         logging.getLogger("user_facing").propagate = False
     if level > logging.DEBUG:
-        file_stream_handler.addFilter(LogFilter)
-        console_stream_handler.addFilter(LogFilter)
+        file_stream_handler.addFilter(LogFilter())
+        console_stream_handler.addFilter(LogFilter())
     if file_stream_handler:
         handlers.append(file_stream_handler)
     if console_stream_handler:

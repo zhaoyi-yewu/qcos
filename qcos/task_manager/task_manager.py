@@ -162,7 +162,7 @@ class TaskFlowManager(ABC):
         :param policy_type: policy type
         :param priority: priority
         :param deploy_flow: deploy flow function
-        :param path: .py path where the flow function relative to current path
+        :param path: .py path where the flow function relative to current path .
         :return deploy_id: deploy uuid
         """
 
@@ -217,31 +217,34 @@ class TaskFlowManager(ABC):
         Get flow run state and result.
 
         :param flow_run_id: flow run uuid
-        :return result: flow result
         :return state: flow state
+        :return parameters: flow parameters
+        :return result: flow result
         """
 
-        result, state = self._flow_loop.run_until_complete(
+        state, parameters, result = self._flow_loop.run_until_complete(
             self.get_task_flow_result_by_client(flow_run_id))
-        return result, state
+        return state, parameters, result
 
     async def get_task_flow_result_by_client(self, flow_run_id):
         """
         Get flow run state and result by prefect client.
 
         :param flow_run_id: flow run uuid
-        :return result: flow result
         :return state: flow state
+        :return parameters: flow parameters
+        :return result: flow result
         """
 
         # TODO(jidalong) deal exception
         flow_run = await self._client.read_flow_run(flow_run_id)
         state = flow_run.state
+        parameters = flow_run.parameters.get("job_info", None)
         if state.is_final():
             result = await state.result()
-            return result, state.name
+            return state.name, parameters, result
         else:
-            return None, state.name
+            return state.name, parameters, None
 
     def get_flow_info_by_backend(self, backend):
         flow_info = {
@@ -255,3 +258,4 @@ class TaskFlowManager(ABC):
             flow_info["deploy_flow_func"] = examples.deploy_flow
             flow_info["deploy_flow_path"] = "../examples/work_flow/examples.py"
         return flow_info
+

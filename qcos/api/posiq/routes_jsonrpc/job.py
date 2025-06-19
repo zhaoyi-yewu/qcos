@@ -102,9 +102,10 @@ def submit_job(
     # submit job
     res, err = scheduler.add(body.job_sched_policy, body)
 
-    # deal sumit response
+    # handle submit response
     if err:
         jsonrpc_errors.handle_submit_error(err)
+
     response_info = {
         "job_id": res["job_id"],
         "job_status": Constant.JOB_STATUS_UNKNOWN,
@@ -133,29 +134,29 @@ def get_job_status(
     logger.info(f"Call get_job_status: {body}")
 
     job_id = body.job_id
-    # query job
-    res, err = scheduler.get_result_by_id(job_id)
-    # deal query response
+
+    # query job status
+    response, err = scheduler.get_result_by_id(job_id)
+
+    # handle job status errors
     if err:
         jsonrpc_errors.handle_get_status_error(err)
+
     # construct response
     response_info = {
         "job_id": job_id,
-        "job_status": res["state"],
-        # TODO(jidalong) task manager not store submit info
-        "job_sched_policy": Constant.DEFAULT_JOB_SCHED_POLICY,
-        "job_priority": 100,
-        "backend": Constant.DRIVER_DUMMY,
-        "transpiler": Constant.TRANSPILER_CMSS,
-        "shots": 1,
-        "qubits": 1,
+        "job_status": response["state"],
         "creation_date": Library.get_current_datetime()
     }
+    parameters = response.get("parameters", {})
+    if parameters:
+        response_info.update(parameters)
     return response_info
 
 
 @job_api_v1.method(errors=[jsonrpc_errors.UnknownError,
-                           jsonrpc_errors.InvalidParams])
+                           jsonrpc_errors.InvalidParams,
+                           jsonrpc_errors.JobGetResultsError])
 def get_job_results(
         body: schemas.GetJobResultsRequest
 ) -> schemas.GetJobResultsResponse:
@@ -169,16 +170,19 @@ def get_job_results(
     logger.info(f"Call get_job_results: {body}")
 
     job_id = body.job_id
-    # query job
-    res, err = scheduler.get_result_by_id(job_id)
-    # deal query response
+
+    # query job results
+    response, err = scheduler.get_result_by_id(job_id)
+
+    # handle job results errors
     if err:
-        jsonrpc_errors.JobGetResultError(err)
+        jsonrpc_errors.handle_get_results_error(err)
+
     # construct response
     response_info = {
         "job_id": job_id,
-        "job_status": res["state"],
-        "results": res["result"],
+        "job_status": response["state"],
+        "results": response["result"],
     }
     return response_info
 
@@ -196,6 +200,14 @@ def get_jobs(
     :return: job list
     """
     logger.info(f"Call get_jobs: {body}")
+
+    # query jobs' results
+    # TODO(zhaoyi): to be implemented
+    #response, err = scheduler.get_result_by_id(job_id)
+
+    # handle job results errors
+    # if err:
+    #     jsonrpc_errors.handle_get_results_error(err)
 
     # construct response
     response_info = [{

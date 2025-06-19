@@ -29,7 +29,7 @@ class SubmitJobRequest(BaseModel):
     Pydantic Model for Submit Job Request
     """
     # Code types: qasm2, qasm3, qubo
-    code_type: str = Constant.CODE_TYPE_QASM3
+    code_type: str = Constant.CODE_TYPE_QASM2
     # Source code list
     source_code: list[str] = []
     # QC driver name

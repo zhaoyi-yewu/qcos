@@ -41,11 +41,13 @@ class DriverTiangong100(DriverBase):
         """
         Init driver
         """
+        self.set_status(self.DRIVER_STATUS_ONLINE)
 
     def close_driver(self):
         """
         Close driver
         """
+        self.set_status(self.DRIVER_STATUS_OFFLINE)
 
     def run(self, job_id, data, data_type, shots=1):
         """
@@ -58,3 +60,8 @@ class DriverTiangong100(DriverBase):
         """
         logger.info(f"job_id: {job_id}, data_type: {data_type}, data: {data},"
                     f" shots: {shots}")
+        self.set_status(self.DRIVER_STATUS_BUSY)
+        # TODO(zhaoyi): to be implemented
+        results = {'00': 47, '01': 0, '10': 0, '11': 53}
+        self.set_results(job_id, results=results)
+        self.set_status(self.DRIVER_STATUS_ONLINE)

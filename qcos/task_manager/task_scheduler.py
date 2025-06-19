@@ -81,15 +81,20 @@ class TaskScheduler(ABC):
         :return state: state
         """
         try:
-            result, state = self._task_manager.get_task_flow_result(id)
+            state, parameters, result = \
+                self._task_manager.get_task_flow_result(id)
             if state.upper() == "CRASHED":
                 state = Constant.JOB_STATUS_FAILED
             elif state.upper() == "SCHEDULED":
                 state = Constant.JOB_STATUS_QUEUED
             elif state.upper() == "PENDING" or state.upper() == "LATE":
                 state = Constant.JOB_STATUS_UNKNOWN
-            reponse = {"result": {"result": result}, "state": state.upper()}
-            return reponse, None
+            response = {
+                "state": state.upper(),
+                "parameters": parameters,
+                "result": {"result": result},
+            }
+            return response, None
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
             return None, "execute work flow failed"
@@ -306,3 +311,4 @@ class SchedulerPolicyHandlerFactory(ABC):
         if policy_handler:
             return policy_handler
         raise ValueError(f"{name} is not a valid policy type")
+

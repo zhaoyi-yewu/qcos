@@ -26,8 +26,12 @@ services:
       PREFECT_API_URL: "http://${PREFECT_SERVER_API_HOST}:4200/api"
       PREFECT_LOCAL_STORAGE_PATH: /var/qcos/storage
     volumes:
+      - /etc/hosts:/etc/hosts
+      - /etc/localtime:/etc/localtime
+      - /var/log/qcos:/var/log/qcos
       - /var/qcos/storage:/var/qcos/storage
       - /var/qcos/db:/var/qcos/db
+      - /etc/qcos/prefect:/root/.prefect
       - code-data:/root/qcos
   qcos:
     container_name: qcos
@@ -43,7 +47,7 @@ services:
       DEBUG: ${DEBUG}
       QCOS_CONTAINER_NAME: ${QCOS_CONTAINER_NAME}
       PREFECT_SERVER_API_HOST: ${PREFECT_SERVER_API_HOST}
-      PREFECT_SERVER_DATABASE_CONNECTION_URL: "sqlite+aiosqlite:////var/qcos/db/prefect.db"
+      PREFECT_SERVER_DATABASE_CONNECTION_URL: "sqlite+aiosqlite:///var/qcos/db/prefect.db"
       PREFECT_API_URL: "http://${PREFECT_SERVER_API_HOST}:4200/api"
       PREFECT_LOCAL_STORAGE_PATH: /var/qcos/storage
     logging:
@@ -53,11 +57,11 @@ services:
         max-file: "10"
     volumes:
       - /etc/hosts:/etc/hosts
-      - /etc/timezone:/etc/timezone
       - /etc/localtime:/etc/localtime
       - /etc/qcos:/etc/qcos
       - /var/log/qcos:/var/log/qcos
       - /var/run/qcos:/var/run/qcos
+      - /var/qcos/storage:/var/qcos/storage
       - code-data:/root/qcos
     entrypoint: /entrypoint.sh
 volumes:

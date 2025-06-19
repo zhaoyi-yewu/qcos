@@ -54,14 +54,14 @@ def handle_get_status_error(err_msg):
 
 
 @staticmethod
-def handle_get_result_error(err_msg):
+def handle_get_results_error(err_msg):
     """
-    Handle get result error
+    Handle get results error
 
     :param err_msg: error msg from task manager
     """
 
-    raise JobGetResultError(data={"details": err_msg})
+    raise JobGetResultsError(data={"details": err_msg})
 
 
 class UnknownError(jsonrpc.BaseError):
@@ -120,12 +120,12 @@ class JobGetStatusError(jsonrpc.BaseError):
         details: str
 
 
-class JobGetResultError(jsonrpc.BaseError):
+class JobGetResultsError(jsonrpc.BaseError):
     """
     Job Get Result Error
     """
     CODE = -102
-    MESSAGE = "Job get result error"
+    MESSAGE = "Job get results error"
 
     class DataModel(BaseModel):
         """

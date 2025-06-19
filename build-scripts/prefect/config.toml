@@ -1,0 +1,7 @@
+[database]
+connection_timeout = 30
+
+[logging.handlers.default]
+class = "logging.FileHandler"
+filename = "/var/log/qcos/prefect.log"
+level = "INFO"
