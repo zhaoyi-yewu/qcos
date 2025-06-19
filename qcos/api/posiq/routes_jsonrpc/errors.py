@@ -64,6 +64,28 @@ def handle_get_results_error(err_msg):
     raise JobGetResultsError(data={"details": err_msg})
 
 
+@staticmethod
+def handle_list_error(err_msg):
+    """
+    Handle get results error
+
+    :param err_msg: error msg from task manager
+    """
+
+    raise JobListError(data={"details": err_msg})
+
+
+@staticmethod
+def handle_cancel_error(err_msg):
+    """
+    Handle cancel job error
+
+    :param err_msg: error msg from task manager
+    """
+
+    raise JobListError(data={"details": err_msg})
+
+
 class UnknownError(jsonrpc.BaseError):
     """
     Unknown Error
@@ -126,6 +148,34 @@ class JobGetResultsError(jsonrpc.BaseError):
     """
     CODE = -102
     MESSAGE = "Job get results error"
+
+    class DataModel(BaseModel):
+        """
+        Data Model
+        """
+        details: str
+
+
+class JobListError(jsonrpc.BaseError):
+    """
+    Job List Error
+    """
+    CODE = -103
+    MESSAGE = "Job list error"
+
+    class DataModel(BaseModel):
+        """
+        Data Model
+        """
+        details: str
+
+
+class JobCancelError(jsonrpc.BaseError):
+    """
+    Job Cancel Error
+    """
+    CODE = -103
+    MESSAGE = "Job cancel error"
 
     class DataModel(BaseModel):
         """

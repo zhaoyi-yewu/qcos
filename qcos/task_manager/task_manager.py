@@ -21,14 +21,18 @@ from abc import ABC
 from time import sleep
 from pathlib import Path
 from typing import Any
-
+import logging
+from exceptiongroup import catch
 from prefect import get_client
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.objects import WorkerStatus
 from prefect.workers import ProcessWorker
+from rich.console import Console
 
 from qcos.common.constant import Constant
 from qcos.examples.work_flow import examples
+
+logger = logging.getLogger(__name__)
 
 
 class TaskFlowManager(ABC):
@@ -46,6 +50,16 @@ class TaskFlowManager(ABC):
         self._flow_loop = None
         self._console = None
         self.worker_status = False
+
+    def transform_to_qcos_state(self, state):
+        if state.upper() == "CRASHED":
+            return Constant.JOB_STATUS_FAILED
+        elif state.upper() == "SCHEDULED":
+            return Constant.JOB_STATUS_QUEUED
+        elif state.upper() == "PENDING" or state.upper() == "LATE":
+            return Constant.JOB_STATUS_UNKNOWN
+        else:
+            return state.upper()
 
     def start(self, loop):
         """
@@ -101,7 +115,7 @@ class TaskFlowManager(ABC):
                         priority=priority,
                         concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY)
 
-    async def start_workers(self, pool_name):
+    async def start_workers(self):
         """
         Start all workers for work pool
         """
@@ -240,21 +254,89 @@ class TaskFlowManager(ABC):
         state = flow_run.state
         parameters = flow_run.parameters.get("job_info", None)
         if state.is_final():
+            if state.name.upper() != "COMPLETED":
+                return state.name, parameters, None
             result = await state.result()
             return state.name, parameters, result
         else:
             return state.name, parameters, None
 
-    def get_flow_info_by_backend(self, backend):
-        flow_info = {
-            "deploy_name": None,
-            "deploy_flow_func": None,
-            "deploy_flow_path": None
-        }
-        if backend == Constant.DRIVER_DUMMY:
-            # TODO(jidalong) update later
-            flow_info["deploy_name"] = Constant.DRIVER_DUMMY
-            flow_info["deploy_flow_func"] = examples.deploy_flow
-            flow_info["deploy_flow_path"] = "../examples/work_flow/examples.py"
-        return flow_info
+    def get_task_flow_list(self):
+        """
+        Get flow run list.
 
+        :return result: flow run list
+        """
+
+        results = self._flow_loop.run_until_complete(
+            self.get_task_flow_list_by_client())
+        return results
+
+    async def get_task_flow_list_by_client(self):
+        """
+        Get flow run list by prefect client.
+
+        :return result: flow run list
+        """
+
+        # TODO(jidalong) deal exception
+        result = []
+        flow_runs = await self._client.read_flow_runs()
+        for flow_run in flow_runs:
+            state = self.transform_to_qcos_state(flow_run.state.name)
+            parameters = flow_run.parameters.get("job_info", None)
+            id = flow_run.id
+            result.append({"id": id, "state": state, "parameters": parameters})
+        return result
+
+    def delete_task_flow_run(self, flow_run_ids):
+        """
+        Delete flow run.
+
+        :param flow_run_ids: flow run uuid list
+        :return success_list: success list
+        """
+
+        success_list = self._flow_loop.run_until_complete(
+            self.delete_task_flow_run_by_client(flow_run_ids))
+        return success_list
+
+    async def delete_task_flow_run_by_client(self, flow_run_ids):
+        """
+        Delete flow run by client.
+
+        :param flow_run_ids: flow run uuid list
+        :return success_list: success_list
+        """
+
+        success_list = []
+        try:
+            for id in flow_run_ids:
+                try:
+                    flow_run = await self._client.read_flow_run(id)
+                except Exception as e:
+                    logger.error(f"Prefect execute flow error: {str(e)}")
+                    continue
+                state = flow_run.state
+                if state.name.upper != "RUNNING":
+                    await self._client.delete_flow_run(id)
+                    success_list.append(
+                        {"id": id, "state": Constant.JOB_STATUS_DELETED})
+        except Exception as e:
+            logger.error(f"Prefect execute flow error: {str(e)}")
+        finally:
+            return success_list
+
+
+def get_flow_info_by_backend(self, backend):
+    flow_info = {
+        "deploy_name": None,
+        "deploy_flow_func": None,
+        "deploy_flow_path": None
+    }
+    if backend == Constant.DRIVER_DUMMY:
+        # TODO(jidalong) update later
+        flow_info["deploy_name"] = Constant.DRIVER_DUMMY
+        flow_info["deploy_flow_func"] = examples.deploy_flow
+        flow_info["deploy_flow_path"] = "../examples/work_flow/examples.py"
+    return flow_info

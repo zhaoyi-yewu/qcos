@@ -202,24 +202,15 @@ def get_jobs(
     logger.info(f"Call get_jobs: {body}")
 
     # query jobs' results
-    # TODO(zhaoyi): to be implemented
-    #response, err = scheduler.get_result_by_id(job_id)
-
-    # handle job results errors
-    # if err:
-    #     jsonrpc_errors.handle_get_results_error(err)
-
-    # construct response
-    response_info = [{
-        "job_id": "00000000-0000-4000-8000-000000000001",
-        "job_status": Constant.JOB_STATUS_UNKNOWN,
-        "job_sched_policy": Constant.DEFAULT_JOB_SCHED_POLICY,
-        "job_priority": 100,
-        "backend": Constant.DRIVER_DUMMY,
-        "shots": 1,
-        "qubits": 1,
-        "creation_date": Library.get_current_datetime()
-    }]
+    response, err = scheduler.get_jobs()
+    if err:
+        jsonrpc_errors.handle_get_results_error(err)
+    response_info = [
+        {"job_id": job_info.get("id"), "job_status": job_info.get("state"),
+         "backend": job_info.get("parameters").get("backend"),
+         "shots": job_info.get("parameters").get("shots"),
+         "qubits": job_info.get("parameters").get("qubits")}
+        for job_info in response]
     return response_info
 
 
@@ -238,7 +229,7 @@ def cancel_job(
     logger.info(f"Call cancel_job: {body}")
 
     job_ids = body.job_ids
-
+    jsonrpc_errors.handle_cancel_error("cancel operation not support")
     # construct response
     response_info = [{
         "job_id": "00000000-0000-4000-8000-000000000001",
@@ -268,10 +259,10 @@ def delete_job(
     logger.info(f"Call delete_job: {body}")
 
     job_ids = body.job_ids
-
+    success_list = scheduler.remove_jobs(job_ids)
     # construct response
     response_info = [{
-        "job_id": "00000000-0000-4000-8000-000000000001",
-        "job_status": Constant.JOB_STATUS_UNKNOWN
-    }]
+        "job_id": job.get("id"),
+        "job_status": job.get("state")
+    } for job in success_list]
     return response_info

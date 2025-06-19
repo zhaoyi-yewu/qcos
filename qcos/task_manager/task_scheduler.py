@@ -21,8 +21,8 @@ from abc import ABC
 from qcos.common.constant import Constant
 from qcos.task_manager import TaskFlowManager
 
-
 logger = logging.getLogger(__name__)
+
 
 class TaskScheduler(ABC):
     """
@@ -83,12 +83,7 @@ class TaskScheduler(ABC):
         try:
             state, parameters, result = \
                 self._task_manager.get_task_flow_result(id)
-            if state.upper() == "CRASHED":
-                state = Constant.JOB_STATUS_FAILED
-            elif state.upper() == "SCHEDULED":
-                state = Constant.JOB_STATUS_QUEUED
-            elif state.upper() == "PENDING" or state.upper() == "LATE":
-                state = Constant.JOB_STATUS_UNKNOWN
+            state = self._task_manager.transform_to_qcos_state(state)
             response = {
                 "state": state.upper(),
                 "parameters": parameters,
@@ -98,6 +93,33 @@ class TaskScheduler(ABC):
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
             return None, "execute work flow failed"
+
+    def get_jobs(self):
+        """
+        Get job list
+
+        :return flow_list: flow list
+        :return error: error
+        """
+
+        try:
+            flow_list = self._task_manager.get_task_flow_list()
+            return flow_list, None
+        except Exception as e:
+            logger.error(f"Prefect execute flow error: {str(e)}")
+            return None, "execute work flow failed"
+
+    def remove_jobs(self, ids):
+        """
+        Remove job
+
+        :param id: job id
+        :return flow_list: flow list
+        :return error: error
+        """
+
+        flow_list = self._task_manager.delete_task_flow_run(ids)
+        return flow_list
 
 
 class BaseSchedulerPolicy(ABC):
@@ -311,4 +333,3 @@ class SchedulerPolicyHandlerFactory(ABC):
         if policy_handler:
             return policy_handler
         raise ValueError(f"{name} is not a valid policy type")
-
