@@ -17,6 +17,7 @@
 import asyncio
 import os
 import sys
+import time
 import traceback
 
 from qcos.common.config import Config
@@ -67,6 +68,7 @@ if __name__ == "__main__":
     Library.mkdir(PID_DIR)
     Library.create_pid_file(PID_FILE)
     try:
+        time.sleep(5)
         loop = asyncio.get_event_loop()
         scheduler.start_taskmanager(loop)
         Server().run(loop)

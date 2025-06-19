@@ -70,7 +70,7 @@ class TaskScheduler(ABC):
             return res, None
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
-            return None, "execute work flow failed"
+            return None, "Execute work flow failed"
 
     def get_result_by_id(self, id):
         """

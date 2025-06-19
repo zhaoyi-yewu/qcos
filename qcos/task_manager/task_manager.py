@@ -46,12 +46,12 @@ class TaskFlowManager(ABC):
         self.loop = None
         self._flow_loop = None
         self._console = None
+        self.worker_status = False
 
     def start(self, loop):
         """
         Create work pools, queues and start workers
         """
-
         self._client = get_client()
         self._console = Console(quiet=True)
         self.loop = loop
@@ -108,12 +108,33 @@ class TaskFlowManager(ABC):
         """
 
         # start worker
-        for policy in range(len(Constant.JOB_SCHEDULING_POLICIES)):
+        for policy in range(len(Constant.JOB_SCHED_POLICIES)):
             pool_name = str(policy)
             worker_thread = threading.Thread(target=self.start_work,
                                              args=(pool_name),
                                              daemon=True)
             worker_thread.start()
+
+        # wait for all workers are online
+        all_worker_status = {workpool: False for workpool in
+                             Constant.JOB_SCHED_POLICIES}
+        time = 0
+        for policy in Constant.JOB_SCHED_POLICIES:
+            workers = await self._client.read_workers_for_work_pool(
+                policy)
+            work_status = [worker.status == WorkerStatus.ONLINE for
+                           worker in workers]
+            if all(work_status) and len(
+                    work_status) == Constant.MAX_JOB_WORKER:
+                all_worker_status[policy] = True
+            if all_worker_status.values():
+                self.worker_status = True
+                break
+            sleep(Constant.DEFAULT_JOB_INTERVAL)
+            time += Constant.DEFAULT_JOB_INTERVAL
+            # timeout
+            if time > Constant.DEFAULT_JOB_TIMEOUT:
+                raise TimeoutError("Workers start timeout")
 
     def start_work(self, pool_name):
         """
@@ -121,10 +142,9 @@ class TaskFlowManager(ABC):
 
         :param pool_name: work pool name
         """
-        pool_name = Constant.JOB_SCHEDULING_POLICIES[int(pool_name)]
+        pool_name = Constant.JOB_SCHED_POLICIES[int(pool_name)]
         worker = ProcessWorker(
             work_pool_name=pool_name,
-            name=pool_name,
             limit=Constant.DEFAULT_POOL_CONCURRENCY,
             work_queues=[f'{pool_name}_{str(i)}' for i in
                          range(1, Constant.MAX_JOB_PRIORITY + 1)]

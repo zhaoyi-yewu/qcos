@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-
 class Constant:
     """
     Constants
@@ -70,7 +69,7 @@ class Constant:
     # job engine property
     DEFAULT_JOB_POOL_TYPE = "process"
     DEFAULT_POOL_CONCURRENCY = 1
-    DEFAULT_JOB_TIMEOUT = 60
+    DEFAULT_JOB_TIMEOUT = 300
     DEFAULT_JOB_INTERVAL = 5
 
     # Job status
