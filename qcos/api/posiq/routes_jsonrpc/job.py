@@ -206,7 +206,8 @@ def get_jobs(
     if err:
         jsonrpc_errors.handle_get_results_error(err)
     response_info = [
-        {"job_id": job_info.get("id"), "job_status": job_info.get("state"),
+        {"job_id": job_info.get("id"),
+         "job_status": job_info.get("state"),
          "backend": job_info.get("parameters").get("backend"),
          "shots": job_info.get("parameters").get("shots"),
          "qubits": job_info.get("parameters").get("qubits")}
