@@ -328,15 +328,15 @@ class TaskFlowManager(ABC):
             return success_list
 
 
-def get_flow_info_by_backend(self, backend):
-    flow_info = {
-        "deploy_name": None,
-        "deploy_flow_func": None,
-        "deploy_flow_path": None
-    }
-    if backend == Constant.DRIVER_DUMMY:
-        # TODO(jidalong) update later
-        flow_info["deploy_name"] = Constant.DRIVER_DUMMY
-        flow_info["deploy_flow_func"] = examples.deploy_flow
-        flow_info["deploy_flow_path"] = "../examples/work_flow/examples.py"
-    return flow_info
+    def get_flow_info_by_backend(self, backend):
+        flow_info = {
+            "deploy_name": None,
+            "deploy_flow_func": None,
+            "deploy_flow_path": None
+        }
+        if backend == Constant.DRIVER_DUMMY:
+            # TODO(jidalong) update later
+            flow_info["deploy_name"] = Constant.DRIVER_DUMMY
+            flow_info["deploy_flow_func"] = examples.deploy_flow
+            flow_info["deploy_flow_path"] = "../examples/work_flow/examples.py"
+        return flow_info
