@@ -30,7 +30,7 @@ from prefect.workers import ProcessWorker
 from rich.console import Console
 
 from qcos.common.constant import Constant
-from qcos.examples.work_flow import examples
+from qcos.transpiler import transpiler
 
 logger = logging.getLogger(__name__)
 
@@ -327,7 +327,6 @@ class TaskFlowManager(ABC):
         finally:
             return success_list
 
-
     def get_flow_info_by_backend(self, backend):
         flow_info = {
             "deploy_name": None,
@@ -337,6 +336,6 @@ class TaskFlowManager(ABC):
         if backend == Constant.DRIVER_DUMMY:
             # TODO(jidalong) update later
             flow_info["deploy_name"] = Constant.DRIVER_DUMMY
-            flow_info["deploy_flow_func"] = examples.deploy_flow
-            flow_info["deploy_flow_path"] = "../examples/work_flow/examples.py"
+            flow_info["deploy_flow_func"] = transpiler.transpiler_flow
+            flow_info["deploy_flow_path"] = "../transpiler/transpiler.py"
         return flow_info
