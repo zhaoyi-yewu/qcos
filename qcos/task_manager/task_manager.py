@@ -318,7 +318,7 @@ class TaskFlowManager(ABC):
                     logger.error(f"Prefect execute flow error: {str(e)}")
                     continue
                 state = flow_run.state
-                if state.name.upper != "RUNNING":
+                if state.name.upper() != "RUNNING":
                     await self._client.delete_flow_run(id)
                     success_list.append(
                         {"id": id, "state": Constant.JOB_STATUS_DELETED})
