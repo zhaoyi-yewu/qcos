@@ -96,11 +96,11 @@ def p_expOrArrayLiteral(expOrArrayLiteral):
 
 
 def p_commaExpOrArrayLiteralList(commaExpOrArrayLiteralList):
+    # pylint: disable=line-too-long
     """
     commaExpOrArrayLiteralList : empty
                                | ',' expOrArrayLiteral
-                               | commaExpOrArrayLiteralList
-                               ',' expOrArrayLiteral
+                               | commaExpOrArrayLiteralList',' expOrArrayLiteral
     """
     if len(commaExpOrArrayLiteralList) == 2:
         # 当commaExpOrArrayLiteralList[1]是empty
@@ -193,11 +193,11 @@ def p_statement(statement):
 
 
 def p_forStatement(forStmt):
+    # pylint: disable=line-too-long
     """
-    forStatement :
-        FOR scalarType ID IN NUMBER '{' blockBody '}'
-        | FOR scalarType ID IN '[' rangeExpression ']' '{' blockBody '}'
-        | FOR scalarType ID IN ID '{' blockBody '}'
+    forStatement :FOR scalarType ID IN NUMBER '{' blockBody '}'
+                 | FOR scalarType ID IN '[' rangeExpression ']' '{' blockBody '}'
+                 | FOR scalarType ID IN ID '{' blockBody '}'
     """
     ID = forStmt[3]
     scalarType = forStmt[2]
