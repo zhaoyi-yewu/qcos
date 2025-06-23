@@ -31,6 +31,7 @@ from qcos.common.config import Config
 from qcos.common.library import Library
 from qcos.drivers.driver_manager import DriverManager
 from qcos.log.logger import init_logger
+from qcos.task_manager import scheduler
 
 logger = logging.getLogger(__name__)
 
@@ -220,6 +221,9 @@ class Server:
             driver_manager = DriverManager()
             driver_manager.load_drivers()
             driver_manager.init_drivers()
+
+            # set scheduler driver
+            scheduler.set_driver(driver_manager)
 
             # run forever
             loop.run_until_complete(server.serve())

@@ -8,8 +8,8 @@
 # of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
-#     WITHOUT WARRANTIES OF ANY KIND,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT
+# WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
@@ -36,17 +36,21 @@ class TaskScheduler(ABC):
 
         self._task_manager = TaskFlowManager()
         self._policy_factory = SchedulerPolicyHandlerFactory(
-            self._task_manager
-        )
+            self._task_manager)
 
-    def start_taskmanager(self, loop):
+    def start_taskmanager(self):
         """
         Start TaskManager
-
-        :param loop: loop
         """
 
-        self._task_manager.start(loop)
+        self._task_manager.start()
+
+    def set_driver(self, driver):
+        """
+        Set driver
+        """
+
+        self._task_manager.set_driver(driver)
 
     def add(self, policy_type, job_info):
         """
@@ -113,7 +117,7 @@ class TaskScheduler(ABC):
         """
         Remove job
 
-        :param id: job id
+        :param ids: job id list
         :return flow_list: flow list
         :return error: error
         """
@@ -332,4 +336,5 @@ class SchedulerPolicyHandlerFactory(ABC):
         policy_handler = self._policy_mapping.get(name)
         if policy_handler:
             return policy_handler
-        raise ValueError(f"{name} is not a valid policy type")
+        else:
+            raise ValueError(f"{name} is not a valid policy type")

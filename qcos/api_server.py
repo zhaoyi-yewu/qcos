@@ -29,7 +29,6 @@ __all__ = []
 __version__ = Config.VERSION
 
 
-
 def daemonize():
     """
     Do the UNIX double-fork magic for properly detaching process
@@ -69,7 +68,7 @@ if __name__ == "__main__":
     Library.create_pid_file(PID_FILE)
     try:
         loop = asyncio.get_event_loop()
-        scheduler.start_taskmanager(loop)
+        scheduler.start_taskmanager()
         Server().run(loop)
     except Exception as e:
         print(f"{e}\n{traceback.format_exc()}")

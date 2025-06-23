@@ -8,8 +8,8 @@
 # of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
-#     WITHOUT WARRANTIES OF ANY KIND,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES
+# OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
@@ -47,9 +47,9 @@ class TaskFlowManager(ABC):
 
         self._client = None
         self.loop = None
-        self._flow_loop = None
         self._console = None
         self.worker_status = False
+        self.driver = None
 
     def transform_to_qcos_state(self, state):
         if state.upper() == "CRASHED":
@@ -61,18 +61,25 @@ class TaskFlowManager(ABC):
         else:
             return state.upper()
 
-    def start(self, loop):
+    def start(self):
         """
         Create work pools, queues and start workers
         """
+
         self._client = get_client()
         self._console = Console(quiet=True)
-        self.loop = loop
-        self._flow_loop = asyncio.new_event_loop()
+        self.loop = asyncio.new_event_loop()
 
         self.loop.run_until_complete(self.create_pools())
         self.loop.run_until_complete(self.create_queues())
         self.loop.run_until_complete(self.start_workers())
+
+    def set_driver(self, driver):
+        """
+        Set driver
+        """
+
+        self.driver = driver
 
     async def create_pools(self):
         """
@@ -175,7 +182,7 @@ class TaskFlowManager(ABC):
         :param policy_type: policy type
         :param priority: priority
         :param deploy_flow: deploy flow function
-        :param path: .py path where the flow function relative to current path .
+        :param path: .py path where the flow function relative to current path
         :return deploy_id: deploy uuid
         """
 
@@ -204,7 +211,7 @@ class TaskFlowManager(ABC):
         :return flow_run_id: flow run uuid
         """
 
-        flow_run_id = self._flow_loop.run_until_complete(
+        flow_run_id = self.loop.run_until_complete(
             self.run_task_flow_by_client(deployment_id, args))  # 强制等待
 
         return flow_run_id
@@ -235,7 +242,7 @@ class TaskFlowManager(ABC):
         :return result: flow result
         """
 
-        state, parameters, result = self._flow_loop.run_until_complete(
+        state, parameters, result = self.loop.run_until_complete(
             self.get_task_flow_result_by_client(flow_run_id))
         return state, parameters, result
 
@@ -268,7 +275,7 @@ class TaskFlowManager(ABC):
         :return result: flow run list
         """
 
-        results = self._flow_loop.run_until_complete(
+        results = self.loop.run_until_complete(
             self.get_task_flow_list_by_client())
         return results
 
@@ -297,7 +304,7 @@ class TaskFlowManager(ABC):
         :return success_list: success list
         """
 
-        success_list = self._flow_loop.run_until_complete(
+        success_list = self.loop.run_until_complete(
             self.delete_task_flow_run_by_client(flow_run_ids))
         return success_list
 
@@ -324,8 +331,8 @@ class TaskFlowManager(ABC):
                         {"id": id, "state": Constant.JOB_STATUS_DELETED})
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
-        finally:
-            return success_list
+
+        return success_list
 
     def get_flow_info_by_backend(self, backend):
         flow_info = {
