@@ -65,20 +65,20 @@ links ./coverage_html/index.html
 ```shell
 [作业命令]
 * 提交作业
-qcos-cli submit-job --shots 10 --qubits 2 '["QASM3:", "QASM2:"]'
+qcos-cli submit-job --shots 10 --qubits 2 '["OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"]'
 
 * 获取作业状态
-qcos-cli get-job-status 1
+qcos-cli get-job-status 00000000-0000-4000-8000-000000000001
 
 * 获取作业结果
-qcos-cli get-job-results 1
+qcos-cli get-job-results 00000000-0000-4000-8000-000000000001
 
 * 获取所有作业列表
 qcos-cli get-jobs
 
 * 取消作业
-qcos-cli cancel-job 1
+qcos-cli cancel-jobs 00000000-0000-4000-8000-000000000001
 
 * 删除作业
-qcos-cli delete-job 1
+qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
 ```

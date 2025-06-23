@@ -38,11 +38,12 @@ DESCRIPTION = "QCOS command line interface"
 
 
 """
+# pylint: disable=line-too-long
 QCOS commands:
 
 [Job commands]
 * Submit Job
-qcos-cli submit-job --shots 10 --qubits 2 '["QASM3:", "QASM2:"]'
+qcos-cli submit-job --shots 10 --qubits 2 '["OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"]'
 
 * Get job status
 qcos-cli get-job-status 00000000-0000-4000-8000-000000000001
@@ -54,10 +55,10 @@ qcos-cli get-job-results 00000000-0000-4000-8000-000000000001
 qcos-cli get-jobs
 
 * Cancel job
-qcos-cli cancel-job 00000000-0000-4000-8000-000000000001
+qcos-cli cancel-jobs 00000000-0000-4000-8000-000000000001
 
 * Delete job
-qcos-cli delete-job 00000000-0000-4000-8000-000000000001
+qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
 """
 
 
@@ -72,6 +73,12 @@ class QcosShell(App):
             command_manager=command_manager,
             deferred_help=True
         )
+        self.client = None
+
+    def initialize_app(self, argv):
+        super().initialize_app(argv)
+        self.client = Client(api_listen_ip=self.options.api_host,
+                             api_port=self.options.api_port)
 
     def build_option_parser(
             self, description, version, argparse_kwargs=None):
@@ -118,6 +125,19 @@ class QcosShell(App):
             action="store",
             default=None,
             help="Specify a file to log output. Disabled by default.",
+        )
+        parser.add_argument(
+            "--api-host",
+            dest="api_host",
+            default="127.0.0.1",
+            help=f"Specify api server address. "
+                 f"Default: {Config.API_SERVER_LISTEN_IP}",
+        )
+        parser.add_argument(
+            "--api-port",
+            dest="api_port", type=int,
+            default=Config.API_SERVER_PORT,
+            help=f"Specify api server port. Default: {Config.API_SERVER_PORT}",
         )
         if self.deferred_help:
             parser.add_argument(
@@ -309,7 +329,8 @@ class SubmitJob(Command):
         parser.add_argument("source_code", help="Source code")
         parser.add_argument("--code-type", dest="code_type",
                             default=Constant.CODE_TYPE_QASM2,
-                            help=f"Code Types: {','.join(Constant.CODE_TYPES)}")
+                            help=f"Code Types: "
+                                 f"{','.join(Constant.CODE_TYPES)}")
         parser.add_argument("--job-type", dest="job_type",
                             default=f"{Constant.JOB_TYPE_ESTIMATION}",
                             help=f"Job type: {','.join(Constant.JOB_TYPES)}")
@@ -321,6 +342,10 @@ class SubmitJob(Command):
                             dest="job_priority", type=int,
                             default=f"{Constant.DEFAULT_JOB_PRIORITY}",
                             help="Set job priority")
+        parser.add_argument("--description",
+                            dest="description",
+                            default=None,
+                            help="Set job description")
         parser.add_argument("--shots", dest="shots", type=int,
                             default=Constant.DEFAULT_SHOTS, help="Shots")
         parser.add_argument("--qubits", dest="qubits", type=int,
@@ -349,6 +374,7 @@ class SubmitJob(Command):
         job_type = args.job_type
         job_sched_policy = args.job_sched_policy
         job_priority = args.job_priority
+        description = args.description
         shots = args.shots
         qubits = args.qubits
         backend = args.backend
@@ -392,6 +418,12 @@ class SubmitJob(Command):
             job_priority, "job_priority",
             Constant.MIN_JOB_PRIORITY, Constant.MAX_JOB_PRIORITY))
 
+        # Validate argument: job_priority
+        CommandHelper.handle_invalid_arguments(Library.validate_values_length(
+            description, "description",
+            Constant.MIN_DESCRIPTION_LENGTH, Constant.MAX_DESCRIPTION_LENGTH,
+            allow_empty=True))
+
         # Validate argument: shots
         CommandHelper.handle_invalid_arguments(Library.validate_values_range(
             shots, "shots",
@@ -412,14 +444,17 @@ class SubmitJob(Command):
             Constant.MIN_OPTIMIZATION_LEVEL, Constant.MAX_OPTIMIZATION_LEVEL))
 
         # call api
-        status_code, reason, text, result = Client.submit_job(
-            source_code_list, code_type=code_type, job_type=job_type,
+        status_code, reason, text, result = self.app.client.submit_job(
+            source_code_list, code_type=code_type,
+            job_type=job_type,
             job_sched_policy=job_sched_policy,
             job_priority=job_priority,
+            description=description,
             shots=shots, qubits=qubits, backend=backend, transpiler=transpiler,
             optimization_level=optimization_level)
-        CommandHelper.check_results(
+        results = CommandHelper.check_results(
             resource, "submit_job", status_code, reason, text)
+        print(f"Job ID: {results.get('job_id', None)}")
 
 
 class GetJobStatus(ShowOne):
@@ -453,7 +488,8 @@ class GetJobStatus(ShowOne):
             job_id, "job_id"))
 
         # call api
-        status_code, reason, text, result = Client.get_job_status(job_id)
+        status_code, reason, text, result = \
+            self.app.client.get_job_status(job_id)
         json_results = CommandHelper.check_results(
             resource, "get_job_status", status_code, reason, text)
         table_values = CommandHelper.get_table_data(json_results)
@@ -491,7 +527,8 @@ class GetJobResults(ShowOne):
             job_id, "job_id"))
 
         # call api
-        status_code, reason, text, result = Client.get_job_results(job_id)
+        status_code, reason, text, result = \
+            self.app.client.get_job_results(job_id)
         json_results = CommandHelper.check_results(
             resource, "get_job_results", status_code, reason, text)
         table_values = CommandHelper.get_table_data(json_results)
@@ -521,14 +558,16 @@ class GetJobs(Lister):
         """
         resource = "Job"
         header_list = ["job_id", "job_status", "backend", "job_type",
-                       "shots", "qubits"]
+                       "shots", "qubits", "creation_date"]
 
         # call api
-        status_code, reason, text, result = Client.get_jobs()
+        status_code, reason, text, result = self.app.client.get_jobs()
         json_results = CommandHelper.check_results(
             resource, "get_jobs", status_code, reason, text)
         table_values = CommandHelper.get_table_list_data(
             json_results, header_list)
+        if not json_results:
+            print("No jobs found")
         return table_values
 
 
@@ -573,7 +612,8 @@ class CancelJobs(Command):
                     from e
 
         # call api
-        status_code, reason, text, result = Client.cancel_job(job_id_list)
+        status_code, reason, text, result = \
+            self.app.client.cancel_jobs(job_id_list)
         json_results = CommandHelper.check_results(
             resource, "cancel_job", status_code, reason, text)
 
@@ -629,7 +669,8 @@ class DeleteJobs(Command):
                     from e
 
         # call api
-        status_code, reason, text, result = Client.delete_job(job_id_list)
+        status_code, reason, text, result = \
+            self.app.client.delete_jobs(job_id_list)
         json_results = CommandHelper.check_results(
             resource, "delete_job", status_code, reason, text)
 
@@ -650,8 +691,8 @@ command_manager.add_command("submit-job", SubmitJob)
 command_manager.add_command("get-job-status", GetJobStatus)
 command_manager.add_command("get-job-results", GetJobResults)
 command_manager.add_command("get-jobs", GetJobs)
-command_manager.add_command("cancel-job", CancelJobs)
-command_manager.add_command("delete-job", DeleteJobs)
+command_manager.add_command("cancel-jobs", CancelJobs)
+command_manager.add_command("delete-jobs", DeleteJobs)
 
 
 def set_debug_option(args):

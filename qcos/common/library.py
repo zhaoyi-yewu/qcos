@@ -170,10 +170,9 @@ class Library:
         """
         Get current datetime
 
-        :return: datetime in string format: %Y-%m-%dT%H:%M:%S.%fZ
+        :return: datetime
         """
-        now = datetime.now()
-        return now.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        return datetime.now()
 
     @staticmethod
     def validate_values_enum(value, argument_name, value_list):
@@ -231,6 +230,37 @@ class Library:
             if value > max_value:
                 err_msgs.append(f"Invalid argument: {argument_name}={value}. "
                                 f"reason: value should <= {max_value}")
+        if err_msgs:
+            return False, err_msgs
+        return True, None
+
+    @staticmethod
+    def validate_values_length(
+            value, argument_name, min_value=None, max_value=None,
+            allow_empty=False):
+        """
+        Validate values for int range
+
+        :param value: value
+        :param argument_name: argument name
+        :param min_value: minimum value
+        :param max_value: maximum value
+        :param allow_empty: allow empty value
+        :return: True or False
+        """
+        err_msgs = []
+        if not value and allow_empty:
+            return True, err_msgs
+        if min_value:
+            if len(value) < min_value:
+                err_msgs.append(
+                    f"Invalid argument: {argument_name}={value}. "
+                    f"reason: length of value should >= {min_value}")
+        if max_value:
+            if len(value) > max_value:
+                err_msgs.append(
+                    f"Invalid argument: {argument_name}={value}. "
+                    f"reason: length of value should <= {max_value}")
         if err_msgs:
             return False, err_msgs
         return True, None

@@ -48,6 +48,7 @@ def submit_job(
     job_type = body.job_type
     job_sched_policy = body.job_sched_policy
     job_priority = body.job_priority
+    description = body.description
     shots = body.shots
     qubits = body.qubits
     backend = body.backend
@@ -76,6 +77,12 @@ def submit_job(
         job_priority, "job_priority",
         Constant.MIN_JOB_PRIORITY, Constant.MAX_JOB_PRIORITY))
 
+    # validate: description
+    jsonrpc_errors.handle_invalid_params(Library.validate_values_length(
+        description, "description",
+        Constant.MIN_DESCRIPTION_LENGTH, Constant.MAX_DESCRIPTION_LENGTH,
+        allow_empty=True))
+
     # validate: shots
     jsonrpc_errors.handle_invalid_params(Library.validate_values_range(
         shots, "shots",
@@ -99,6 +106,10 @@ def submit_job(
         optimization_level, "optimization_level",
         Constant.MIN_OPTIMIZATION_LEVEL, Constant.MAX_OPTIMIZATION_LEVEL))
 
+    # generate creation_date
+    creation_date = Library.get_current_datetime()
+    body.creation_date = creation_date
+
     # submit job
     res, err = scheduler.add(body.job_sched_policy, body)
 
@@ -111,10 +122,12 @@ def submit_job(
         "job_status": Constant.JOB_STATUS_UNKNOWN,
         "job_sched_policy": body.job_sched_policy,
         "job_priority": body.job_priority,
+        "description": body.description,
         "backend": body.backend,
         "transpiler": body.transpiler,
         "shots": body.shots,
-        "qubits": body.qubits
+        "qubits": body.qubits,
+        "creation_date": creation_date
     }
     return response_info
 
@@ -145,8 +158,7 @@ def get_job_status(
     # construct response
     response_info = {
         "job_id": job_id,
-        "job_status": response["state"],
-        "creation_date": Library.get_current_datetime()
+        "job_status": response["state"]
     }
     parameters = response.get("parameters", {})
     if parameters:
@@ -210,14 +222,16 @@ def get_jobs(
          "job_status": job_info.get("state"),
          "backend": job_info.get("parameters").get("backend"),
          "shots": job_info.get("parameters").get("shots"),
-         "qubits": job_info.get("parameters").get("qubits")}
+         "qubits": job_info.get("parameters").get("qubits"),
+         "description": job_info.get("parameters").get("description"),
+         "creation_date": job_info.get("parameters").get("creation_date")}
         for job_info in response]
     return response_info
 
 
 @job_api_v1.method(errors=[jsonrpc_errors.UnknownError,
                            jsonrpc_errors.InvalidParams])
-def cancel_job(
+def cancel_jobs(
         body: schemas.CancelJobsRequest
 ) -> List[schemas.GetJobStatusResponse]:
     """
@@ -227,7 +241,7 @@ def cancel_job(
     :type body: schemas.CancelJobsRequest
     :return: cancelled jobs info
     """
-    logger.info(f"Call cancel_job: {body}")
+    logger.info(f"Call cancel_jobs: {body}")
 
     job_ids = body.job_ids
     jsonrpc_errors.handle_cancel_error("cancel operation not support")
@@ -239,15 +253,14 @@ def cancel_job(
         "job_priority": 100,
         "backend": Constant.DRIVER_DUMMY,
         "shots": 1,
-        "qubits": 1,
-        "creation_date": Library.get_current_datetime()
+        "qubits": 1
     }]
     return response_info
 
 
 @job_api_v1.method(errors=[jsonrpc_errors.UnknownError,
                            jsonrpc_errors.InvalidParams])
-def delete_job(
+def delete_jobs(
         body: schemas.DeleteJobsRequest
 ) -> List[schemas.DeleteJobsResponse]:
     """
@@ -257,7 +270,7 @@ def delete_job(
     :type body: schemas.DeleteJobsRequest
     :return: deleted jobs info
     """
-    logger.info(f"Call delete_job: {body}")
+    logger.info(f"Call delete_jobs: {body}")
 
     job_ids = body.job_ids
     success_list = scheduler.remove_jobs(job_ids)

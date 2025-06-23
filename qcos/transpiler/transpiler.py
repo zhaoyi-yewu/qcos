@@ -24,9 +24,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 @task(persist_result=False)
 def transpiler(job_info):
-    raw_qasm = job_info['source_code'][0].replace('QASM2:', '', 1).strip()
+    raw_qasm = job_info['source_code'][0]
     logger.info(raw_qasm)
     na_map = NASingleRoute(raw_qasm)
     mapping_res = na_map.execute_with_order()

@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
@@ -32,6 +33,8 @@ class SubmitJobRequest(BaseModel):
     code_type: str = Constant.CODE_TYPE_QASM2
     # Source code list
     source_code: list[str] = []
+    # description
+    description: Optional[str] = None
     # QC driver name
     backend: str = Constant.DRIVER_DUMMY
     # Transpiler
@@ -48,6 +51,8 @@ class SubmitJobRequest(BaseModel):
     shots: int = Constant.DEFAULT_SHOTS
     # Qubits
     qubits: Optional[int] = Constant.DEFAULT_QUBITS
+    # Creation date
+    creation_date: Optional[datetime] = None
 
 
 class SubmitJobResponse(BaseModel):
@@ -63,6 +68,8 @@ class SubmitJobResponse(BaseModel):
     job_sched_policy: str = None
     # Job priority
     job_priority: int = None
+    # description
+    description: Optional[str] = None
     # QC driver name
     backend: str = None
     # Transpiler
@@ -71,7 +78,8 @@ class SubmitJobResponse(BaseModel):
     shots: int = None
     # Qubits
     qubits: Optional[int] = None
-
+    # Creation date
+    creation_date: Optional[datetime] = None
 
 class GetJobStatusRequest(BaseModel):
     """
@@ -98,12 +106,14 @@ class GetJobStatusResponse(BaseModel):
     job_sched_policy: str = None
     # Job priority
     job_priority: int = None
+    # Description
+    description: Optional[str] = None
     # Shots
     shots: int = None
     # Qubits
     qubits: Optional[int] = None
     # Creation Date
-    creation_date: str = None
+    creation_date: datetime = None
 
 
 class GetJobResultsRequest(BaseModel):

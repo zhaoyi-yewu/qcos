@@ -34,14 +34,15 @@ class Client:
     """
     QCOS client api
     """
-
-    api_listen_ip = Config.API_SERVER_LISTEN_IP
-    api_port = Config.API_SERVER_PORT
-    api_version = "v1"
-    endpoint_url = f"http://{api_listen_ip}:{api_port}/{api_version}"
-    job_url = f"{endpoint_url}/job"
     default_headers = {"Content-Type": "application/json"}
     verbose = False
+
+    def __init__(self,
+                 api_listen_ip=Config.API_SERVER_LISTEN_IP,
+                 api_port=Config.API_SERVER_PORT):
+        api_version = "v1"
+        endpoint_url = f"http://{api_listen_ip}:{api_port}/{api_version}"
+        self.job_url = f"{endpoint_url}/job"
 
     @staticmethod
     def call_http_api(
@@ -147,13 +148,14 @@ class Client:
         if success is False:
             raise errors.Exception("\n".join(err_msg))
 
-    @staticmethod
     def submit_job(
+            self,
             source_code, *,
             code_type=Constant.CODE_TYPE_QASM2,
             job_type=Constant.JOB_TYPE_ESTIMATION,
             job_sched_policy=Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
             job_priority=Constant.DEFAULT_JOB_PRIORITY,
+            description=None,
             shots=Constant.DEFAULT_SHOTS,
             qubits=Constant.DEFAULT_QUBITS,
             backend=Constant.DRIVER_DUMMY,
@@ -167,6 +169,7 @@ class Client:
         :param job_type: job type
         :param job_sched_policy: job scheduling policy
         :param job_priority: job priority
+        :param description: job description
         :param shots: shots
         :param qubits: qubits
         :param backend: backend
@@ -183,6 +186,7 @@ class Client:
             "job_type": job_type,
             "job_sched_policy": job_sched_policy,
             "job_priority": job_priority,
+            "description": description,
             "shots": shots,
             "qubits": qubits,
             "backend": backend,
@@ -190,11 +194,10 @@ class Client:
             "optimization_level": optimization_level
         }
         status_code, reason, text, result = Client.call_json_rpc(
-            Client.job_url, method_name, data)
+            self.job_url, method_name, data)
         return status_code, reason, text, result
 
-    @staticmethod
-    def get_job_status(job_id):
+    def get_job_status(self, job_id):
         """
         Get job status
 
@@ -212,11 +215,10 @@ class Client:
             "job_id": job_id
         }
         status_code, reason, text, result = Client.call_json_rpc(
-            Client.job_url, method_name, data)
+            self.job_url, method_name, data)
         return status_code, reason, text, result
 
-    @staticmethod
-    def get_job_results(job_id):
+    def get_job_results(self, job_id):
         """
         Get job results
 
@@ -234,11 +236,10 @@ class Client:
             "job_id": job_id
         }
         status_code, reason, text, result = Client.call_json_rpc(
-            Client.job_url, method_name, data)
+            self.job_url, method_name, data)
         return status_code, reason, text, result
 
-    @staticmethod
-    def get_jobs():
+    def get_jobs(self):
         """
         Get job status
 
@@ -249,18 +250,17 @@ class Client:
         # construct data and call json rpc
         data = {}
         status_code, reason, text, result = Client.call_json_rpc(
-            Client.job_url, method_name, data)
+            self.job_url, method_name, data)
         return status_code, reason, text, result
 
-    @staticmethod
-    def cancel_job(job_ids):
+    def cancel_jobs(self, job_ids):
         """
-        Cancel job
+        Cancel jobs
 
         :param job_ids: job IDs
         :return: jobs
         """
-        method_name = "cancel_job"
+        method_name = "cancel_jobs"
 
         # Validate argument: job_id
         for job_id in job_ids:
@@ -272,18 +272,17 @@ class Client:
             "job_ids": job_ids
         }
         status_code, reason, text, result = Client.call_json_rpc(
-            Client.job_url, method_name, data)
+            self.job_url, method_name, data)
         return status_code, reason, text, result
 
-    @staticmethod
-    def delete_job(job_ids):
+    def delete_jobs(self, job_ids):
         """
-        Delete job
+        Delete jobs
 
         :param job_ids: job IDs
         :return: jobs
         """
-        method_name = "delete_job"
+        method_name = "delete_jobs"
 
         # Validate argument: job_id
         for job_id in job_ids:
@@ -295,5 +294,5 @@ class Client:
             "job_ids": job_ids
         }
         status_code, reason, text, result = Client.call_json_rpc(
-            Client.job_url, method_name, data)
+            self.job_url, method_name, data)
         return status_code, reason, text, result

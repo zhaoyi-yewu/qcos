@@ -25,6 +25,10 @@ class Constant:
     CODE_TYPE_QUBO = "qubo"
     CODE_TYPES = [CODE_TYPE_QASM2, CODE_TYPE_QASM3, CODE_TYPE_QUBO]
 
+    # Description string length
+    MIN_DESCRIPTION_LENGTH = 1
+    MAX_DESCRIPTION_LENGTH = 255
+
     # Drivers
     DRIVER_DUMMY = "DriverDummy"
     DRIVERS = set([DRIVER_DUMMY])  # autofilled during driver registration
