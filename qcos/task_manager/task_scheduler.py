@@ -102,7 +102,7 @@ class TaskScheduler(ABC):
         """
         Get job list
 
-        :return flow_list: flow list
+        :return flow_list: flow run list
         :return error: error
         """
 
