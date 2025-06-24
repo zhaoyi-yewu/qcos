@@ -60,30 +60,41 @@ class DriverBase:
     ]
 
     def __init__(self):
-        # 版本号
+        # driver name
+        self.driver_name = None
+        # driver version
         self.version = "unknown"
-        # 驱动开关
+        # module name
+        self._module_name = None
+        # class name
+        self._class_name = None
+        # enable this driver or not
         self.enable = True
-        # 驱动状态, 不允许直接修改, 需要调用set_status修改
+        # driver status (TODO(zhaoyi): not used)
         self._status = self.DRIVER_STATUS_OFFLINE
-        # 是否要调用transpiler
+        # enable transpiler or not
         self.enable_transpiler = True
-        # transpiler类型
+        # transpiler type
         self.transpiler = Constant.TRANSPILER_CMSS
-        # 量子比特布局方式
+        # quantum computer technology type
+        self.tech_type = None
+        # layout method (TODO(zhaoyi): not used)
         self.layout_method = DriverBase.LAYOUT_METHOD_CMSS_NONE
-        # 是否允许量子电路聚合
-        self.allow_circuit_merge = False
-        # 量子比特数量
+        # enable circuit merge or not (TODO(zhaoyi): not used)
+        self.enable_circuit_merge = False
+        # number of qubits (TODO(zhaoyi): not used)
         self.num_qubits = 0
-        # 基础门列表
-        self.basis_gates = []
-        # 量子比特耦合图
-        self.coupling_map = []
-        # 额外的配置, 一般从配置文件得来
+        # qpu configs
+        self.qpu_configs = None
+        # extra_configs, usually from driver config files
         self.extra_configs = {}
-        # 调用量子计算机/测控系统run的返回结果, 格式: {JOB_ID: {"results": RESULTS}}
+        # results from run(), which fetch the results from quantum computer
+        # format: {JOB_ID: {"results": RESULTS}}
         self._results = {}
+        # measurement results fetch mode (TODO(zhaoyi): not used)
+        self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
+        # default data type in run() (TODO(zhaoyi): not used)
+        self.default_data_type = DriverBase.DATA_TYPE_GATE_SEQUENCE
 
     def load_driver_configs(self):
         """
@@ -91,6 +102,14 @@ class DriverBase:
         """
         self.extra_configs = Config.EXTRA_CONFIGS.get(
             self.__class__.__name__, {})
+
+    def get_extra_configs(self):
+        """
+        Get extra configs
+
+        :return: dict of extra configs
+        """
+        return self.extra_configs
 
     def init_driver(self):
         """
@@ -106,23 +125,73 @@ class DriverBase:
         raise NotImplementedError(f"Driver: {self.__class__.__name__} "
                                   f"must implement method: close_driver")
 
-    def show_driver_info(self):
+    def get_driver_info(self):
         """
         Show driver info
         """
-        logger.info(f"[{self.__class__.__name__}]")
-        logger.info(f"version: {self.version}")
-        logger.info(f"enable: {self.enable}")
-        logger.info(f"status: {self._status}")
-        logger.info(f"enable_transpiler: {self.enable_transpiler}")
-        logger.info(f"default_transpiler: {self.transpiler}")
-        logger.info(f"layout_method: {self.layout_method}")
-        logger.info(f"allow_circuit_merge: {self.allow_circuit_merge}")
-        logger.info(f"num_qubits: {self.num_qubits}")
-        logger.info(f"basis_gates: {self.basis_gates}")
-        logger.info(f"coupling_map: {self.coupling_map}")
-        logger.info(f"extra_configs: {self.extra_configs}")
-        logger.info("\n")
+        show_list = [
+            f"[{self.__class__.__name__}]",
+            f"driver_name: {self.driver_name}",
+            f"version: {self.version}",
+            f"enable: {self.enable}",
+            f"status: {self._status}",
+            f"enable_transpiler: {self.enable_transpiler}",
+            f"default_transpiler: {self.transpiler}",
+            f"layout_method: {self.layout_method}",
+            f"enable_circuit_merge: {self.enable_circuit_merge}",
+            f"num_qubits: {self.num_qubits}",
+            f"qpu_configs: {self.qpu_configs}",
+            f"extra_configs: {self.extra_configs}"
+        ]
+        return show_list
+
+    def set_name(self, driver_name):
+        """
+        Set driver name
+
+        :param driver_name: driver_name
+        """
+        self.driver_name = driver_name
+
+    def get_name(self):
+        """
+        Get driver name
+
+        :return: driver name
+        """
+        return self.driver_name
+
+    def set_module_name(self, module_name):
+        """
+        Set module name
+
+        :param module_name: module name
+        """
+        self._module_name = module_name
+
+    def get_module_name(self):
+        """
+        Get module name
+
+        :return: module name
+        """
+        return self._module_name
+
+    def set_class_name(self, class_name):
+        """
+        Set class name
+
+        :param class_name: class name
+        """
+        self._class_name = class_name
+
+    def get_class_name(self):
+        """
+        Get class name
+
+        :return: class name
+        """
+        return self._class_name
 
     def set_status(self, status):
         """
@@ -142,6 +211,20 @@ class DriverBase:
         Get driver status
         """
         return self._status
+
+    def get_transpiler(self):
+        """
+        Get transpiler
+        """
+        if self.enable_transpiler:
+            return self.transpiler
+        return None
+
+    def get_qpu_configs(self):
+        """
+        Get qpu configs
+        """
+        return self.qpu_configs
 
     def run(self, job_id, data, data_type=DATA_TYPE_GATE_SEQUENCE, shots=1):
         """
@@ -173,3 +256,11 @@ class DriverBase:
         if job_id:
             return self._results.get(job_id, None)
         return self._results
+
+    def get_default_data_type(self):
+        """
+        Get default data type
+
+        :return: default data type
+        """
+        return self.default_data_type

@@ -36,7 +36,9 @@ class TaskScheduler(ABC):
 
         self._task_manager = TaskFlowManager()
         self._policy_factory = SchedulerPolicyHandlerFactory(
-            self._task_manager)
+            self._task_manager
+        )
+        self.driver_manager = None
 
     def start_taskmanager(self):
         """
@@ -45,12 +47,15 @@ class TaskScheduler(ABC):
 
         self._task_manager.start()
 
-    def set_driver(self, driver):
+    def set_driver_manager(self, driver_manager):
         """
-        Set driver
+        Set driver manager
+
+        :param driver_manager: driver manager
         """
 
-        self._task_manager.set_driver(driver)
+        self.driver_manager = driver_manager
+        self._task_manager.set_driver_manager(driver_manager)
 
     def add(self, policy_type, job_info):
         """
@@ -63,12 +68,29 @@ class TaskScheduler(ABC):
         :return e: exception
         """
 
+        backend = job_info.backend
+        driver = self.driver_manager.get_driver(backend)
+        if not driver:
+            err_msg = f"Can't find backend driver: {backend}"
+            logger.error(err_msg)
+            return None, f"Execute work flow failed: {err_msg}"
+        driver_module_name = driver.get_module_name()
+        driver_class_name = driver.get_class_name()
+        extra_configs = driver.get_extra_configs()
+        transpiler_name = driver.get_transpiler()
+
         try:
             flow_info = self._task_manager.get_flow_info_by_backend(
-                job_info.backend)
+                backend, transpiler_name)
             policy_handler = self._policy_factory.get_policy_handler_by_name(
                 policy_type)
-            job_json_info = job_info.model_dump()
+            job_json_info = {}
+            job_json_info["data"] = job_info.model_dump()
+            job_json_info["driver"] = {
+                "module_name": driver_module_name,
+                "class_name": driver_class_name,
+                "extra_configs": extra_configs
+            }
             job_id = policy_handler.exec_task(flow_info, job_json_info)
             res = {"job_id": job_id}
             return res, None
@@ -81,17 +103,18 @@ class TaskScheduler(ABC):
         Get result by job id
 
         :param id: job id
-        :return result: result
+        :return results: result
+        :return parameters: parameters
         :return state: state
         """
         try:
-            state, parameters, result = \
+            state, parameters, results = \
                 self._task_manager.get_task_flow_result(id)
             state = self._task_manager.transform_to_qcos_state(state)
             response = {
                 "state": state.upper(),
                 "parameters": parameters,
-                "result": {"result": result},
+                "results": {"results": results},
             }
             return response, None
         except Exception as e:

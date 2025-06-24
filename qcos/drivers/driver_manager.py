@@ -39,7 +39,7 @@ class DriverManager:
         Scan and load drivers
         """
         logger.info("Loading drivers ...")
-        base_module_name = "drivers"
+        base_module_name = "qcos.drivers"
         base_dir = os.path.dirname(__file__)
         module_dirs = Library.find_dirs(base_dir=base_dir, recursive=True)
         for pkg_dir in module_dirs:
@@ -50,7 +50,13 @@ class DriverManager:
             for class_name, _class, in classes.items():
                 logger.info(f"Loading driver: {class_name}")
                 class_instance = _class()
+                if not class_instance.enable:
+                    logger.warning(f"driver: {class_name} is disabled")
+                    continue
                 self.drivers[class_name] = class_instance
+                class_instance.set_name(class_name)
+                class_instance.set_module_name(_class.__module__)
+                class_instance.set_class_name(_class.__qualname__)
                 Constant.DRIVERS.add(class_name)
 
     def init_drivers(self):
@@ -63,7 +69,7 @@ class DriverManager:
             # Init driver
             driver.init_driver()
             # Show driver info
-            driver.show_driver_info()
+            logger.info(driver.get_driver_info())
 
     def has_driver(self, driver_name):
         """

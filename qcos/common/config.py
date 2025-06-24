@@ -19,6 +19,7 @@ import configparser
 import os
 
 from qcos.common import errors
+from qcos.common.library import Library
 
 
 class Config:
@@ -53,47 +54,30 @@ class Config:
     EXTRA_CONFIGS = {}
 
     @classmethod
-    def parse_config_file(cls, config_file, extra_config=False):
+    def parse_toml_file(cls, config_file, extra_config=False):
         """
-        Parse config file
+        Parse a TOML file
 
-        :param config_file: Config file path
-        :param extra_config: Extra configs for drivers
+        :param config_file: config file
+        :param extra_config: is extra config
         """
-        if not os.path.isfile(config_file):
-            raise errors.GenericException(
-                f"Can't find config file: {config_file}")
-
-        config_parser = configparser.ConfigParser()
-        try:
-            config_parser.read(config_file)
-        except errors.Exception as e:
-            raise errors.GenericException(
-                f"Error reading config file: {config_file}")
-
+        success, err_msg, config_values = Library.read_toml_file(config_file)
+        if not success:
+            raise errors.GenericException(err_msg)
         if extra_config:
-            for section, options in config_parser.items():
+            for section, options in config_values.items():
                 for option in options.items():
                     key, value = option
                     if section not in cls.EXTRA_CONFIGS:
                         cls.EXTRA_CONFIGS[section] = {}
                     cls.EXTRA_CONFIGS[section][key] = value
         else:
-            for section, options in config_parser.items():
+            for section, options in config_values.items():
                 for option in options.items():
                     key, value = option
                     key_upper = key.upper()
                     if hasattr(cls, key_upper):
-                        _value = getattr(cls, key_upper)
-                        _type = type(_value)
-                        if _value is None:
-                            raise errors.Exception(
-                                f"Invalid key type: {key}, "
-                                f"None is not allowed")
-                        converted_value = _type(value)
-                        if _type is bool:
-                            converted_value = value.lower() == "true"
-                        setattr(cls, key_upper, converted_value)
+                        setattr(cls, key_upper, value)
                     else:
                         raise errors.Exception(
                             f"Can't find config key: {key}")

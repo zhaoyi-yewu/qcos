@@ -37,6 +37,11 @@ class Constant:
     TRANSPILER_CMSS = "cmss"
     TRANSPILER_TYPES = [TRANSPILER_CMSS]
 
+    # Quantum computer tech type
+    TECH_TYPE_NEUTRAL_ATOM = "neutral_atom"
+    TECH_TYPE_ION_TRAP = "ion_trap"
+    TECH_TYPE_SUPERCONDUCTING = "superconducting"
+
     # Job types
     JOB_TYPE_ESTIMATION = "estimation"
     JOB_TYPE_SAMPLING = "sampling"
@@ -60,6 +65,12 @@ class Constant:
                           JOB_SCHED_POLICY_DEPENDENT,
                           JOB_SCHED_POLICY_BATCH,
                           JOB_SCHED_POLICY_REALTIME]
+
+    # Results fetch mode
+    RESULTS_FETCH_MODE_SYNC = "sync"
+    RESULTS_FETCH_MODE_ASYNC = "async"
+    RESULTS_FETCH_ASYNC_RETRIES = 3
+    RESULTS_FETCH_ASYNC_TIMEOUT = 30
 
     # Maximum jobs allowed in the system
     MAX_JOBS = 1000

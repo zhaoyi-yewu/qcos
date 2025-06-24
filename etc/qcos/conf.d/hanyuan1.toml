@@ -1,0 +1,37 @@
+[DriverHanyuan1]
+qubits = 6
+storage_area = [ "S27", "S28", "S29", "S35", "S36", "S37",]
+operate_area = [ "P27", "SP28", "SP29", "P35", "P36", "SP37",]
+
+[DriverHanyuan1.coupler_map]
+G0 = [ "P27", "P35",]
+G1 = [ "P28", "P36",]
+G2 = [ "P29", "P37",]
+G3 = [ "P27", "P28",]
+G4 = [ "P35", "P36",]
+G5 = [ "P28", "P29",]
+G6 = [ "P36", "P37",]
+
+[DriverHanyuan1.readout_error]
+S27 = 1.0
+S28 = 2.0
+S35 = 3.0
+S36 = 4.0
+S29 = 5.0
+S37 = 6.0
+
+[DriverHanyuan1.coupler_error]
+G0 = 3.0
+G1 = 3.0
+G2 = 3.0
+G3 = 3.0
+G4 = 3.0
+G5 = 3.0
+
+[DriverHanyuan1.closest]
+P27 = "S27"
+P28 = "S28"
+P35 = "S35"
+P36 = "S36"
+P29 = "S29"
+P37 = "S37"

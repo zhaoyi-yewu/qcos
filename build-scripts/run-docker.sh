@@ -21,7 +21,7 @@ export QCOS_LOCAL_SRC_DIR="${top_dir}"
 mkdir -p /etc/qcos/prefect
 cp -rf prefect/* /etc/qcos/prefect
 
-if [ "${DEV}" = "False" ]; then
+if [ "${DEV,,}" = "false" ]; then
   docker-compose -f docker-compose.yaml down
   docker-compose -f docker-compose.yaml up -d
   echo "Run QCOS bash: docker exec -it qcos bash"

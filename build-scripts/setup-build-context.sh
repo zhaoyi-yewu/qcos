@@ -71,7 +71,7 @@ gpgcheck=1
 gpgkey=${YUM_MIRROR}/openeuler/openEuler-24.03-LTS/OS/\$basearch/RPM-GPG-KEY-openEuler
 EOM
 
-if [ "${LOCAL_CICD}" = "True" ]; then
+if [ "${LOCAL_CICD,,}" = "true" ]; then
   cat > ${BUILD_CONTEXT}/pip.conf << EOM
 [global]
 index-url=${PIP_MIRROR}

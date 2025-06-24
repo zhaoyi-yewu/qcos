@@ -1,9 +1,9 @@
 # for development purpose
 # QCOS configures
 [DEFAULT]
-debug=False
+debug = false
 
 [API_SERVER]
-API_SERVER_LISTEN_IP = 0.0.0.0
+API_SERVER_LISTEN_IP = "0.0.0.0"
 API_SERVER_PORT = 18400
-API_LOG_FILE = /var/log/qcos/qcos-api.log
+API_LOG_FILE = "/var/log/qcos/qcos-api.log"

@@ -23,9 +23,11 @@ from qcos.drivers.driver_base import DriverBase
 
 logger = logging.getLogger(__name__)
 
+
 # pylint: disable=duplicate-code
 class DriverHanyuan1(DriverBase):
     """
+    中科酷原-汉原1 中性原子驱动
     Cascoldatom Hanyuan1 driver
     CA-NAQC-20Q-A1
     """
@@ -35,8 +37,9 @@ class DriverHanyuan1(DriverBase):
         self.version = "0.0.1"
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
+        self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
         self.layout_method = DriverBase.LAYOUT_METHOD_CMSS_NONE
-        self.allow_circuit_merge = True
+        self.enable_circuit_merge = True
         self.num_qubits = 20
         self.basis_gates = []  # TODO(zhaoyi): fill basis_gates
         self.coupling_map = []  # TODO(zhaoyi): fill coupling_map

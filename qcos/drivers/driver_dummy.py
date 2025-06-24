@@ -33,8 +33,10 @@ class DriverDummy(DriverBase):
         self.version = "0.0.1"
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
+        self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
         self.layout_method = DriverBase.LAYOUT_METHOD_CMSS_NEUTRAL_ATOM
-        self.allow_circuit_merge = True
+        self.enable_circuit_merge = True
+        self.default_results_type = self.DATA_TYPE_GATE_SEQUENCE
         self.num_qubits = 20
         self.basis_gates = []
         self.coupling_map = []

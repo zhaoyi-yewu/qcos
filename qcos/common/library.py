@@ -21,6 +21,8 @@ import inspect
 import logging
 import os
 import pkgutil
+import re
+import toml
 from datetime import datetime
 from uuid import UUID
 
@@ -164,6 +166,58 @@ class Library:
                     if issubclass(obj, base_class) and obj != base_class:
                         classes[obj.__name__] = obj
         return classes
+
+    @staticmethod
+    def str_match(str, regex, ignore_case=False):
+        """
+        Match string with regex
+
+        :param str: string
+        :param regex: regex pattern
+        :param ignore_case: ignore case
+        :return: bool
+        """
+        if ignore_case:
+            reg = re.compile(regex, re.IGNORECASE)
+        else:
+            reg = re.compile(regex)
+        if reg.findall(str):
+            return True
+        return False
+
+    @staticmethod
+    def read_toml_file(file_path: str):
+        """
+        Read toml file
+
+        :param file_path: toml file path
+        :return: success, err_msg, toml dict
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                return True, None, toml.load(file)
+        except FileNotFoundError:
+            return False, f"file: {file_path} does not exist", None
+        except toml.TomlDecodeError as e:
+            return False, f"failed to parse file: {file_path}. {e}", None
+        except Exception as e:
+            return False, f"unknown exception: {e}", None
+
+    @staticmethod
+    def write_to_toml(data: dict, file_path: str):
+        """
+        Write dict to toml file
+
+        :param data: data
+        :param file_path: file_path
+        :return: success, err_msg
+        """
+        try:
+            with open(file_path, 'w', encoding='utf-8') as file:
+                toml.dump(data, file)
+            return True, None
+        except Exception as e:
+            return False, f"failed to write toml file: {file_path}. {e}"
 
     @staticmethod
     def get_current_datetime():

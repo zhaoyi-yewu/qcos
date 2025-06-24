@@ -16,7 +16,7 @@
 export PS1="(${QCOS_CONTAINER_NAME})[$(pwd)]$ "
 
 # Create QCOS config file
-qcos_config_file_path=/etc/qcos/qcos.conf
+qcos_config_file_path=/etc/qcos/qcos.toml
 qcos_extra_config_file_dir=/etc/qcos/conf.d
 mkdir -p /etc/qcos/
 mkdir -p ${qcos_extra_config_file_dir}
@@ -26,14 +26,15 @@ if [ -f "${qcos_config_file_path}" ]; then
   echo "QCOS config file: ${qcos_config_file_path} exists, ignore it"
 else
   echo "QCOS config file: ${qcos_config_file_path} not exists. auto generate ...."
+  _DEBUG=${DEBUG:-false}
   cat << EOM > ${qcos_config_file_path}
 [DEFAULT]
-debug = ${DEBUG:-False}
+debug = ${_DEBUG,,}
 
 [API_SERVER]
-api_server_listen_ip = ${API_SERVER_LISTEN_IP:-0.0.0.0}
+api_server_listen_ip = "${API_SERVER_LISTEN_IP:-0.0.0.0}"
 api_server_port = ${API_SERVER_PORT:-18400}
-api_log_file = ${API_LOG_FILE:-/var/log/qcos/qcos-api.log}
+api_log_file = "${API_LOG_FILE:-/var/log/qcos/qcos-api.log}"
 EOM
 fi
 

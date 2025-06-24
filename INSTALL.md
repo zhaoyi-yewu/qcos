@@ -78,7 +78,9 @@ qcos-cli get-jobs
 
 * 取消作业
 qcos-cli cancel-jobs 00000000-0000-4000-8000-000000000001
+qcos-cli cancel-jobs all
 
 * 删除作业
 qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
+qcos-cli delete-jobs all
 ```

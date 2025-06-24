@@ -162,7 +162,7 @@ def get_job_status(
     }
     parameters = response.get("parameters", {})
     if parameters:
-        response_info.update(parameters)
+        response_info.update(parameters.get("data", {}))
     return response_info
 
 
@@ -194,7 +194,7 @@ def get_job_results(
     response_info = {
         "job_id": job_id,
         "job_status": response["state"],
-        "results": response["result"],
+        "results": response["results"],
     }
     return response_info
 
@@ -217,16 +217,22 @@ def get_jobs(
     response, err = scheduler.get_jobs()
     if err:
         jsonrpc_errors.handle_get_results_error(err)
-    response_info = [
-        {"job_id": job_info.get("id"),
-         "job_status": job_info.get("state"),
-         "backend": job_info.get("parameters").get("backend"),
-         "shots": job_info.get("parameters").get("shots"),
-         "qubits": job_info.get("parameters").get("qubits"),
-         "description": job_info.get("parameters").get("description"),
-         "creation_date": job_info.get("parameters").get("creation_date")}
-        for job_info in response]
-    return response_info
+
+    # construct response
+    response_list = []
+    for job_info in response:
+        data = job_info["parameters"]["data"]
+        response_info = {
+            "job_id": job_info.get("id"),
+            "job_status": job_info.get("state"),
+            "backend": data.get("backend", None),
+            "shots": data.get("shots", None),
+            "qubits": data.get("qubits", None),
+            "description": data.get("description", None),
+            "creation_date": data.get("creation_date")
+        }
+        response_list.append(response_info)
+    return response_list
 
 
 @job_api_v1.method(errors=[jsonrpc_errors.UnknownError,
@@ -244,18 +250,24 @@ def cancel_jobs(
     logger.info(f"Call cancel_jobs: {body}")
 
     job_ids = body.job_ids
+
+    # get unique job_ids
+    job_ids = list(dict.fromkeys(job_ids))
+
+    # cancel jobs
     jsonrpc_errors.handle_cancel_error("cancel operation not support")
+
     # construct response
-    response_info = [{
-        "job_id": "00000000-0000-4000-8000-000000000001",
-        "job_status": Constant.JOB_STATUS_UNKNOWN,
+    response_list = [{
+        "job_id": str(job_id),
+        "job_status": Constant.JOB_STATUS_CANCELLED,
         "job_sched_policy": Constant.DEFAULT_JOB_SCHED_POLICY,
         "job_priority": 100,
         "backend": Constant.DRIVER_DUMMY,
         "shots": 1,
         "qubits": 1
-    }]
-    return response_info
+    } for job_id in job_ids]
+    return response_list
 
 
 @job_api_v1.method(errors=[jsonrpc_errors.UnknownError,
@@ -273,7 +285,13 @@ def delete_jobs(
     logger.info(f"Call delete_jobs: {body}")
 
     job_ids = body.job_ids
+
+    # get unique job_ids
+    job_ids = list(dict.fromkeys(job_ids))
+
+    # delete jobs
     success_list = scheduler.remove_jobs(job_ids)
+
     # construct response
     response_info = [{
         "job_id": job.get("id"),

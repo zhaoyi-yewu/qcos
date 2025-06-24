@@ -20,5 +20,5 @@ from .init_mapping.subgraph_isomorphism_mapping import subgraph_isomorphism_mapp
 from .init_mapping.sa_mapping import InitialMapSimulatedAnnealingWeighted
 from .partition import *
 from .cir_dg import DG
-from .na_mapping import NARoute, get_qpu_config, NASingleRoute
+from .na_mapping import NARoute, get_qpu_configs, NASingleRoute
 from .estimate import NAEstimate, SCEstimate

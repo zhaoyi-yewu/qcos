@@ -57,7 +57,7 @@ def _signal_handling():
                 # asyncio.ensure_future(Controller.instance().reload())
             else:
                 logger.info(f"Server has got signal {signame}, exiting...")
-                # send SIGTERM to the server PID so uvicorn can shutdown
+                # send SIGTERM to the server PID so uvicorn can be shutdown
                 os.kill(os.getpid(), signal.SIGTERM)
         except asyncio.CancelledError:
             pass
@@ -100,13 +100,13 @@ class Server:
         args = parser.parse_args(argv)
         # read and parse config file
         if args.config_file:
-            Config.parse_config_file(args.config_file)
+            Config.parse_toml_file(args.config_file)
 
         # read and parse config files under config dir
         if args.config_dir:
             config_files = Library.find_files(args.config_dir, recursive=True)
             for config_file in config_files:
-                Config.parse_config_file(config_file, extra_config=True)
+                Config.parse_toml_file(config_file, extra_config=True)
 
         # read command line arguments and override configs
         if args.daemon:
@@ -222,8 +222,8 @@ class Server:
             driver_manager.load_drivers()
             driver_manager.init_drivers()
 
-            # set scheduler driver
-            scheduler.set_driver(driver_manager)
+            # set driver manager
+            scheduler.set_driver_manager(driver_manager)
 
             # run forever
             loop.run_until_complete(server.serve())

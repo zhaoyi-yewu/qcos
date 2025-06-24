@@ -26,11 +26,12 @@ import logging
 from prefect import get_client
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.objects import WorkerStatus
+from prefect.exceptions import ObjectNotFound
 from prefect.workers import ProcessWorker
 from rich.console import Console
 
 from qcos.common.constant import Constant
-from qcos.transpiler import transpiler
+from qcos.engine.job_engine import job_flow
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class TaskFlowManager(ABC):
         self.loop = None
         self._console = None
         self.worker_status = False
-        self.driver = None
+        self.driver_manager = None
 
     def transform_to_qcos_state(self, state):
         if state.upper() == "CRASHED":
@@ -57,7 +58,7 @@ class TaskFlowManager(ABC):
         elif state.upper() == "SCHEDULED":
             return Constant.JOB_STATUS_QUEUED
         elif state.upper() == "PENDING" or state.upper() == "LATE":
-            return Constant.JOB_STATUS_UNKNOWN
+            return Constant.JOB_STATUS_QUEUED
         else:
             return state.upper()
 
@@ -74,12 +75,14 @@ class TaskFlowManager(ABC):
         self.loop.run_until_complete(self.create_queues())
         self.loop.run_until_complete(self.start_workers())
 
-    def set_driver(self, driver):
+    def set_driver_manager(self, driver_manager):
         """
-        Set driver
+        Set driver manager
+
+        :param driver_manager: driver manager
         """
 
-        self.driver = driver
+        self.driver_manager = driver_manager
 
     async def create_pools(self):
         """
@@ -321,6 +324,10 @@ class TaskFlowManager(ABC):
             for id in flow_run_ids:
                 try:
                     flow_run = await self._client.read_flow_run(id)
+                except ObjectNotFound:
+                    logger.error(f"Prefect execute flow error: "
+                                 f"can't find flow_run_id: {id}")
+                    continue
                 except Exception as e:
                     logger.error(f"Prefect execute flow error: {str(e)}")
                     continue
@@ -334,15 +341,15 @@ class TaskFlowManager(ABC):
 
         return success_list
 
-    def get_flow_info_by_backend(self, backend):
+    def get_flow_info_by_backend(self, backend, transpiler_name):
         flow_info = {
             "deploy_name": None,
             "deploy_flow_func": None,
             "deploy_flow_path": None
         }
-        if backend == Constant.DRIVER_DUMMY:
+        if transpiler_name:
             # TODO(jidalong) update later
-            flow_info["deploy_name"] = Constant.DRIVER_DUMMY
-            flow_info["deploy_flow_func"] = transpiler.transpiler_flow
-            flow_info["deploy_flow_path"] = "../transpiler/transpiler.py"
+            flow_info["deploy_name"] = backend
+            flow_info["deploy_flow_func"] = job_flow
+            flow_info["deploy_flow_path"] = "../engine/job_engine.py"
         return flow_info

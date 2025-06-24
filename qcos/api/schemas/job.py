@@ -99,21 +99,21 @@ class GetJobStatusResponse(BaseModel):
     # Job status
     job_status: str = None
     # QC driver name
-    backend: str = None
+    backend: Optional[str] = None
     # Transpiler
-    transpiler: str = None
+    transpiler: Optional[str] = None
     # Job scheduling policy
-    job_sched_policy: str = None
+    job_sched_policy: Optional[str] = None
     # Job priority
-    job_priority: int = None
+    job_priority: Optional[int] = None
     # Description
     description: Optional[str] = None
     # Shots
-    shots: int = None
+    shots: Optional[int] = None
     # Qubits
     qubits: Optional[int] = None
     # Creation Date
-    creation_date: datetime = None
+    creation_date: Optional[datetime] = None
 
 
 class GetJobResultsRequest(BaseModel):

@@ -32,7 +32,7 @@ RUN \
 # copy qcos dir
     build_date=`date` && \
     mkdir -p /root/qcos-project && \
-    if [ "${DEV}" = "False" ]; then cp -rf ${BUILD_CONTEXT}/qcos/* /root/qcos-project/; fi && \
+    if [ "${DEV,,}" = "false" ]; then cp -rf ${BUILD_CONTEXT}/qcos/* /root/qcos-project/; fi && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-cli.py /usr/bin/qcos-cli && \
     cp -rf ${BUILD_CONTEXT}/requirements.txt /root/ && \
     cp -rf ${BUILD_CONTEXT}/test-requirements.txt /root/ && \
@@ -50,7 +50,7 @@ RUN \
 # install basic rpms
     yum install -y hostname python3 python3-pip openssh openssh-clients sshpass \
       iputils iproute telnet net-tools openssl util-linux vim findutils && \
-# install python3 deps
+# install python3 deps \
     pip3 install --no-cache-dir --upgrade -r /root/requirements.txt -r /root/test-requirements.txt && \
 # generate ssh keys
     rm -rf /root/.ssh/id_rsa && \

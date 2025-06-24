@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 class DriverTiangong100(DriverBase):
     """
+    玻色量子-天工1000 光量子伊辛机驱动
     Qboson Tiangong1000 driver
     CQ-D-100
     """
@@ -33,7 +34,7 @@ class DriverTiangong100(DriverBase):
         super().__init__()
         self.version = "0.0.1"
         self.enable_transpiler = False
-        self.allow_circuit_merge = False
+        self.enable_circuit_merge = False
         self.num_qubits = 100
         self.extra_configs = {}  # TODO(zhaoyi): 填入extra_configs值
 

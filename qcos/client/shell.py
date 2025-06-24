@@ -56,9 +56,11 @@ qcos-cli get-jobs
 
 * Cancel job
 qcos-cli cancel-jobs 00000000-0000-4000-8000-000000000001
+qcos-cli cancel-jobs all
 
 * Delete job
 qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
+qcos-cli delete-jobs all
 """
 
 
@@ -227,13 +229,15 @@ class CommandHelper:
                     err_msgs = parsed.data.get("errors", [])
                     for err_msg in err_msgs:
                         err_msg_list.append(
-                            f"{message}({code})\n{err_msg['msg']} "
+                            f"{message} ({code})\n{err_msg['msg']} "
                             f", loc: {', '.join(err_msg['loc'])}")
                     err_details = parsed.data.get("details", None)
                     if err_details:
                         err_msg_list.append(
                             f"ErrorMsg: {message} ({code}). "
                             f"Details: {err_details}")
+                else:
+                    err_msg_list.append(f"{message} ({code})")
             except Exception as e:
                 err_msg_list.append(e)
         raise errors.GenericException(
@@ -596,20 +600,30 @@ class CancelJobs(Command):
         resource = "Job"
         job_ids = args.job_ids
 
-        # parse job ids
         job_id_list = []
-        job_id_str_list = job_ids.split(",")
-        for job_id in job_id_str_list:
-            try:
-                job_id = job_id.strip()
-                # Validate argument: job_id
-                CommandHelper.handle_invalid_arguments(
-                    Library.validate_values_uuid(
-                        job_id, "job_id"))
-                job_id_list.append(job_id)
-            except ValueError as e:
-                raise errors.InvalidArguments(f"Invalid job_id: {job_id}.") \
-                    from e
+        if job_ids.lower() == "all":
+            # get all job ids
+            status_code, reason, text, result = self.app.client.get_jobs()
+            json_results = CommandHelper.check_results(
+                resource, "get_jobs", status_code, reason, text)
+            if json_results:
+                for job_info in json_results:
+                    job_id = job_info["job_id"]
+                    job_id_list.append(job_id)
+        else:
+            # parse job ids
+            job_id_str_list = job_ids.split(",")
+            for job_id in job_id_str_list:
+                try:
+                    job_id = job_id.strip()
+                    # Validate argument: job_id
+                    CommandHelper.handle_invalid_arguments(
+                        Library.validate_values_uuid(
+                            job_id, "job_id"))
+                    job_id_list.append(job_id)
+                except ValueError as e:
+                    raise errors.InvalidArguments(
+                        f"Invalid job_id: {job_id}.") from e
 
         # call api
         status_code, reason, text, result = \
@@ -653,20 +667,30 @@ class DeleteJobs(Command):
         resource = "Job"
         job_ids = args.job_ids
 
-        # parse job ids
         job_id_list = []
-        job_id_str_list = job_ids.split(",")
-        for job_id in job_id_str_list:
-            try:
-                job_id = job_id.strip()
-                # Validate argument: job_id
-                CommandHelper.handle_invalid_arguments(
-                    Library.validate_values_uuid(
-                        job_id, "job_id"))
-                job_id_list.append(job_id)
-            except ValueError as e:
-                raise errors.InvalidArguments(f"Invalid job_id: {job_id}") \
-                    from e
+        if job_ids.lower() == "all":
+            # get all job ids
+            status_code, reason, text, result = self.app.client.get_jobs()
+            json_results = CommandHelper.check_results(
+                resource, "get_jobs", status_code, reason, text)
+            if json_results:
+                for job_info in json_results:
+                    job_id = job_info["job_id"]
+                    job_id_list.append(job_id)
+        else:
+            # parse job ids
+            job_id_str_list = job_ids.split(",")
+            for job_id in job_id_str_list:
+                try:
+                    job_id = job_id.strip()
+                    # Validate argument: job_id
+                    CommandHelper.handle_invalid_arguments(
+                        Library.validate_values_uuid(
+                            job_id, "job_id"))
+                    job_id_list.append(job_id)
+                except ValueError as e:
+                    raise errors.InvalidArguments(
+                        f"Invalid job_id: {job_id}") from e
 
         # call api
         status_code, reason, text, result = \

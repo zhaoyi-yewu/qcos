@@ -19,6 +19,9 @@ import asyncio
 import sys
 from time import sleep
 
+from prefect import get_client
+from prefect.variables import VariableCreate
+
 import sys
 import examples
 from qcos.common.constant import Constant
@@ -49,11 +52,11 @@ if __name__ == "__main__":
                  "../examples/work_flow/examples.py"})
         # 2.get results from flow run
         while True:
-            result, state = scheduler.get_result_by_id(id)
-            if not result:
+            results, state = scheduler.get_result_by_id(id)
+            if not results:
                 print(f"[Flow] state: {state}")
             else:
-                print(f"[Flow] state: {state}, result: {result}")
+                print(f"[Flow] state: {state}, results: {results}")
             sleep(2)
     except Exception as e:
         print(f"{e}\n")
