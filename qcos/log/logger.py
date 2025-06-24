@@ -118,7 +118,7 @@ class CompressedRotatingFileHandler(RotatingFileHandler):
         if self.backupCount > 0:
             for i in range(self.backupCount - 1, 0, -1):
                 sfn = f"{self.baseFilename}.{i}.gz"
-                dfn = f"{self.baseFilename}.{i + 1}.gz"
+                dfn = f"{self.baseFilename}.{i+1}.gz"
                 if os.path.exists(sfn):
                     if os.path.exists(dfn):
                         os.remove(dfn)

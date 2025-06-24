@@ -70,4 +70,4 @@ services:
       - code-data:/root/qcos
     entrypoint: /entrypoint.sh
 volumes:
-  code-data: { }
+  code-data: {}
