@@ -96,9 +96,13 @@ class LogFilter(logging.Filter):
     """
     This filter some noise from the logs
     """
+
     def filter(self, record):
         if isinstance(record.msg, str) and \
                 "/settings" in record.msg and "200" in record.msg:
+            return 0
+        if isinstance(record.msg, str) and \
+                "HTTP Request: %s %s " in record.msg:
             return 0
         return 1
 
@@ -114,7 +118,7 @@ class CompressedRotatingFileHandler(RotatingFileHandler):
         if self.backupCount > 0:
             for i in range(self.backupCount - 1, 0, -1):
                 sfn = f"{self.baseFilename}.{i}.gz"
-                dfn = f"{self.baseFilename}.{i+1}.gz"
+                dfn = f"{self.baseFilename}.{i + 1}.gz"
                 if os.path.exists(sfn):
                     if os.path.exists(dfn):
                         os.remove(dfn)
