@@ -103,6 +103,14 @@ class DriverBase:
         self.extra_configs = Config.EXTRA_CONFIGS.get(
             self.__class__.__name__, {})
 
+    def validate_driver_configs(self):
+        """
+        Validate driver configs
+        """
+        raise NotImplementedError(
+            f"Driver: {self.__class__.__name__} "
+            f"must implement method: validate_driver_configs")
+
     def get_extra_configs(self):
         """
         Get extra configs

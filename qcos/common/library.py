@@ -338,3 +338,18 @@ class Library:
                                 f"reason: valid list element value type: "
                                 f"{value_type}"])
         return True, None
+
+    @staticmethod
+    def find_missing_keys_in_dict(_dict, required_keys):
+        """
+        Find missing keys in a dictionary
+
+        :param _dict: dictionary to be checked
+        :param required_keys: required keys
+        :return: list of missing keys
+        """
+        missing_keys = []
+        for key in required_keys:
+            if key not in _dict:
+                missing_keys.append(key)
+        return missing_keys

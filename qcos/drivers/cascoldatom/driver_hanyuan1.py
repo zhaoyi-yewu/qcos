@@ -18,6 +18,7 @@
 import logging
 
 from qcos.common.constant import Constant
+from qcos.common.library import Library
 from qcos.drivers.driver_base import DriverBase
 
 
@@ -50,6 +51,36 @@ class DriverHanyuan1(DriverBase):
         Init driver
         """
         self.set_status(self.DRIVER_STATUS_ONLINE)
+
+    def validate_driver_configs(self):
+        """
+        Validate driver configurations
+
+        :return bool: True if successful, False otherwise
+        :return err_msg: error message
+        """
+        success = False
+        err_msg = ""
+        mandatory_keys = [
+            "qubits",
+            "storage_area",
+            "operate_area",
+            "coupler_map",
+            "readout_error",
+            "coupler_error",
+            "closest"
+        ]
+        missing_keys = Library.find_missing_keys_in_dict(
+            self.extra_configs, mandatory_keys)
+        if missing_keys:
+            err_msg = (f"Missing mandatory keys: {', '.join(missing_keys)}. "
+                       f"Driver will be disabled")
+        else:
+            # copy configs to self.qpu_configs
+            self.qpu_configs = {key: self.extra_configs[key] for key in
+                                mandatory_keys if key in self.extra_configs}
+            success = True
+        return success, err_msg
 
     def close_driver(self):
         """

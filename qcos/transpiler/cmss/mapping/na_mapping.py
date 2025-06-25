@@ -4,65 +4,6 @@ from qcos.transpiler.cmss.compiler import *
 from copy import deepcopy
 
 
-def get_qpu_configs(qpu_configs):
-    """硬件参数解析，获取一个配置字典
-
-    Args:
-        qpu_configs (_type_): 硬件配置
-    """
-    if qpu_configs:
-        validate_keys = [
-            "qubits",
-            "storage_area",
-            "operate_area",
-            "coupler_map",
-            "readout_error",
-            "coupler_error",
-            "closest"
-        ]
-        for validate_key in validate_keys:
-            if validate_key not in qpu_configs:
-                break
-            return qpu_configs
-
-    # use default qpu_configs
-    default_qpu_configs = {
-        "qubits": 6,
-        "storage_area": ["S27", "S28", "S29", "S35", "S36", "S37"],
-        "operate_area": ["P27", "SP28", "SP29", "P35", "P36", "SP37"],
-        "coupler_map": {
-            "G0": ["P27", "P35"], "G1": ["P28", "P36"],
-            "G2": ["P29", "P37"], "G3": ["P27", "P28"],
-            "G4": ["P35", "P36"], "G5": ["P28", "P29"], "G6": ["P36", "P37"]
-        },
-        "readout_error": {
-            "S27": 1.0,
-            "S28": 2.0,
-            "S35": 3.0,
-            "S36": 4.0,
-            "S29": 5.0,
-            "S37": 6.0
-        },
-        "coupler_error": {
-            "G0": 3.0,
-            "G1": 3.0,
-            "G2": 3.0,
-            "G3": 3.0,
-            "G4": 3.0,
-            "G5": 3.0
-        },
-        "closest": {
-            "P27": "S27",
-            "P28": "S28",
-            "P35": "S35",
-            "P36": "S36",
-            "P29": "S29",
-            "P37": "S37"
-        }
-    }
-    return default_qpu_configs
-
-
 def get_dg(qasm, pos_num):
     """量子任务拓扑分析
 
@@ -117,9 +58,9 @@ def get_dg(qasm, pos_num):
 
 class NASingleRoute():
 
-    def __init__(self, qasm, qpu_configs={}, **kwargs):
+    def __init__(self, qasm, qpu_configs, **kwargs):
 
-        self.qpu_config = get_qpu_configs(qpu_configs)
+        self.qpu_config = qpu_configs
         self.storage_area = self.qpu_config['storage_area']
         self.operate_area = self.qpu_config['operate_area']
         self.ag = nx.Graph()

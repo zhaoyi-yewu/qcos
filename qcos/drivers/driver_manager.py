@@ -66,8 +66,15 @@ class DriverManager:
         for driver_name, driver in self.drivers.items():
             # Load driver configs
             driver.load_driver_configs()
-            # Init driver
-            driver.init_driver()
+            # Validate driver configs
+            success, err_msg = driver.validate_driver_configs()
+            if success:
+                # Init driver
+                driver.init_driver()
+            else:
+                logger.error(err_msg)
+                driver.enable = False
+                driver.set_status(driver.DRIVER_STATUS_OFFLINE)
             # Show driver info
             logger.info(driver.get_driver_info())
 

@@ -19,6 +19,7 @@ import importlib
 import logging
 
 from prefect import flow, task, runtime
+
 from qcos.common.constant import Constant
 from qcos.transpiler.cmss.compiler import optimizer, decomposer
 from qcos.transpiler.cmss.mapping.na_mapping import NASingleRoute
@@ -39,6 +40,12 @@ def init_driver(driver_info):
     driver_class = getattr(driver_module, driver_info["class_name"])
     driver = driver_class()
     driver.extra_configs = driver_info.get("extra_configs", {})
+    # validate and copy extra_configs to qpu_configs
+    success, err_msg = driver.validate_driver_configs()
+    # error handling
+    if not success:
+        logger.error(err_msg)
+        raise ValueError(err_msg)
     return driver
 
 
@@ -52,18 +59,17 @@ def cmss_transpiler(job_info, driver):
     :return basis gate list
     """
     # load qpu configs
-    qpu_configs = {}
-    _qpu_configs = driver.get_qpu_configs()
-    if _qpu_configs:
-        qpu_configs.update(_qpu_configs)
-    if _qpu_configs:
-        qpu_configs.update(_qpu_configs)
-    qpu_configs.update(driver.get_extra_configs())
+    qpu_configs = driver.get_qpu_configs()
+    if not qpu_configs:
+        err_msg = "Missing qpu_configs"
+        logger.error(err_msg)
+        raise ValueError(err_msg)
 
     # compile and mapping
     raw_qasm = job_info['source_code'][0]
     logger.debug(f"raw_qasm: {raw_qasm}")
-    na_map = NASingleRoute(raw_qasm, qpu_configs=qpu_configs)
+
+    na_map = NASingleRoute(raw_qasm, qpu_configs)
     mapping_res = na_map.execute_with_order()
     logger.debug(f"initial mapping: {na_map.mapping}")
     logger.debug(f"after mapping: {mapping_res}")

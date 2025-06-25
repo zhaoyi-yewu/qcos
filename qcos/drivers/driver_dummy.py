@@ -48,6 +48,15 @@ class DriverDummy(DriverBase):
         """
         self.set_status(self.DRIVER_STATUS_ONLINE)
 
+    def validate_driver_configs(self):
+        """
+        Validate driver configurations
+
+        :return bool: True if successful, False otherwise
+        :return err_msg: error message
+        """
+        return True, ""
+
     def close_driver(self):
         """
         Close driver
