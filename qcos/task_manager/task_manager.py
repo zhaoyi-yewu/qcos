@@ -246,9 +246,9 @@ class TaskFlowManager(ABC):
         :return err_msg: flow error message
         """
 
-        state, parameters, result, err_mas = self.loop.run_until_complete(
+        state, parameters, result, err_msg = self.loop.run_until_complete(
             self.get_task_flow_result_by_client(flow_run_id))
-        return state, parameters, result, err_mas
+        return state, parameters, result, err_msg
 
     async def get_task_flow_result_by_client(self, flow_run_id):
         """

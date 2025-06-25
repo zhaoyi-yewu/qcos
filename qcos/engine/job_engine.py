@@ -47,9 +47,9 @@ def init_driver(driver_info):
         if not success:
             logger.error(err_msg)
             raise ValueError(err_msg)
-        return {"driver":driver,"error":None}
+        return {"driver": driver, "error": None}
     except Exception as e:
-        return {"driver":None,"error":ValueError(str(e))}
+        return {"driver": None, "error": ValueError(str(e))}
 
 
 
@@ -85,9 +85,9 @@ def cmss_transpiler(job_info, driver):
         # optimize circuit
         basis_gate_list = optimizer(parsed_circuit)
         logger.debug(f"final basis_gate_list: {basis_gate_list}")
-        return {"basis_gate_list":basis_gate_list,"error":None}
+        return {"basis_gate_list": basis_gate_list, "error": None}
     except Exception as e:
-        return {"basis_gate_list":None,"error":ValueError(str(e))}
+        return {"basis_gate_list": None, "error": ValueError(str(e))}
 
 
 @task(persist_result=False)
@@ -110,9 +110,9 @@ def run_driver(job_info, driver, transpile_results):
             # sync mode: get results immediately
             results = driver.get_results(job_id)
         # async mode: get results in the next query call
-        return {"results":results,"error":None}
+        return {"results": results,"error": None}
     except Exception as e:
-        return {"results":None,"error":ValueError(str(e))}
+        return {"results": None,"error": ValueError(str(e))}
 
 
 @flow(name="job_engine", persist_result=True)
