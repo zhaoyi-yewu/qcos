@@ -160,6 +160,8 @@ def get_job_status(
         "job_id": job_id,
         "job_status": response["state"]
     }
+    if response.get("error_message"):
+        response_info["error_message"] = response["error_message"]
     parameters = response.get("parameters", {})
     if parameters:
         response_info.update(parameters.get("data", {}))
@@ -196,6 +198,8 @@ def get_job_results(
         "job_status": response["state"],
         "results": response["results"],
     }
+    if response.get("error_message"):
+        response_info["error_message"] = response["error_message"]
     return response_info
 
 

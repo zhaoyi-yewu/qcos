@@ -106,15 +106,17 @@ class TaskScheduler(ABC):
         :return results: result
         :return parameters: parameters
         :return state: state
+        :return error_message: flow error message
         """
         try:
-            state, parameters, results = \
+            state, parameters, results, error_message = \
                 self._task_manager.get_task_flow_result(id)
             state = self._task_manager.transform_to_qcos_state(state)
             response = {
                 "state": state.upper(),
                 "parameters": parameters,
                 "results": {"results": results},
+                "error_message": error_message,
             }
             return response, None
         except Exception as e:

@@ -114,6 +114,8 @@ class GetJobStatusResponse(BaseModel):
     qubits: Optional[int] = None
     # Creation Date
     creation_date: Optional[datetime] = None
+    #error message
+    error_message: Optional[str] = None
 
 
 class GetJobResultsRequest(BaseModel):
@@ -135,6 +137,8 @@ class GetJobResultsResponse(BaseModel):
     job_status: str = None
     # results
     results: dict = None
+    #error message
+    error_message: Optional[str] = None
 
 
 class GetJobsRequest(BaseModel):

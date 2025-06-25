@@ -243,11 +243,12 @@ class TaskFlowManager(ABC):
         :return state: flow state
         :return parameters: flow parameters
         :return result: flow result
+        :return err_msg: flow error message
         """
 
-        state, parameters, result = self.loop.run_until_complete(
+        state, parameters, result, err_mas = self.loop.run_until_complete(
             self.get_task_flow_result_by_client(flow_run_id))
-        return state, parameters, result
+        return state, parameters, result, err_mas
 
     async def get_task_flow_result_by_client(self, flow_run_id):
         """
@@ -257,6 +258,7 @@ class TaskFlowManager(ABC):
         :return state: flow state
         :return parameters: flow parameters
         :return result: flow result
+        :return err_msg: flow error message
         """
 
         # TODO(jidalong) deal exception
@@ -264,10 +266,12 @@ class TaskFlowManager(ABC):
         state = flow_run.state
         parameters = flow_run.parameters.get("job_info", None)
         if state.is_final():
-            if state.name.upper() != "COMPLETED":
-                return state.name, parameters, None
+            if state.name.upper() == "FAILED":
+                return state.name, parameters, None, state.message
+            elif state.name.upper() != "COMPLETED":
+                return state.name, parameters, None, None
             result = await state.result()
-            return state.name, parameters, result
+            return state.name, parameters, result, None
         else:
             return state.name, parameters, None
 
