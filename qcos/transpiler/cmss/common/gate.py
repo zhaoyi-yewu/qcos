@@ -15,18 +15,18 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import numpy as np
-from qcos.common.config import Config
 from enum import Enum
 
+import numpy as np
+
+from qcos.common.config import Config
 
 DECOMPOSE_RULE = Config.DECOMPOSE_RULE
 
 
 class GateType(Enum):
     """
-    门类型
-    1：单比特门，2：两比特门，3：三比特门，0：测量，-1：同步，-2：移动
+    门类型.
     """
     SINGLE_QUBIT_GATE = 1
     DOUBLE_QUBIT_GATE = 2
@@ -47,12 +47,11 @@ class Gate:
             hermitian=True
     ) -> None:
         """
-        Args:
-            name (_type_): 门名称
-            targets (_type_, optional): 目标量子比特. Defaults to None.
-            arg_value (_type_, optional): 参数（旋转门所需）. Defaults to None.
-            gate_type: 门类型
-            hermitian: 是否是厄米
+        :param name (_type_): 门名称
+        :param targets (_type_, optional): 目标量子比特. Defaults to None.
+        :param arg_value (_type_, optional): 参数（旋转门所需）. Defaults to None.
+        :param gate_type: 门类型
+        :param hermitian: 是否是厄米
         """
         self.name = name
         self.targets = targets
@@ -95,8 +94,7 @@ class Gate:
                 ]
             }
         }
-        return:
-            gates(list): 分解后的门列表
+        return: gates(list): 分解后的门列表
         """
         if DECOMPOSE_RULE is None:
             return self.default_decompose()
@@ -108,8 +106,8 @@ class Gate:
             params_list = custom_gate.get("params", [])
             need_args = self.arg_value
             if len(params_list) != len(need_args):
-                raise ValueError(f"{self.name} gate need {len(need_args)}"
-                                 f"params but give {len(params_list)}")
+                raise ValueError(f"Gate: {self.name} requires arg: {need_args}"
+                                 f", found {params_list}")
             params = dict(zip(params_list, need_args))
             params["pi"] = np.pi
             decomposed_gates = custom_gate.get("gates", [])
@@ -576,15 +574,13 @@ class MOV(Gate):
 
 def create_gate(name, targets=None, arg_value=None, allow_undefined=False):
     """
-    创建Gate对象
+    创建Gate对象.
 
-    Args:
-        name (_type_): 门名称
-        targets (_type_, optional): 作用比特列表. Defaults to None.
-        arg_value (_type_, optional): 参数列表. Defaults to None.
-        allow_undefined (bool, optional): 是否允许自定义的门
-    return:
-        Gate: 门名称对应的量子比特门实例
+    :param name: 门名称
+    :param targets: 作用比特列表，可选，Defaults to None.
+    :param arg_value: 参数列表，可选，Defaults to None.
+    :param allow_undefined: 是否允许自定义的门，可选
+    :return Gate: 门名称对应的量子比特门实例
     """
     if name == "h":
         return H(targets, arg_value)
@@ -638,179 +634,3 @@ def create_gate(name, targets=None, arg_value=None, allow_undefined=False):
         if allow_undefined:
             return Gate(name, targets=targets, arg_value=arg_value)
         raise RuntimeError(f"{name} is not support")
-
-
-def decomposer(ir: list):
-    """
-    将中间表示中的门分解到硬件脉冲直接支持的门上
-
-    Args:
-        ir (list): 中间表示
-    return:
-        gates(list): 硬件支持的门
-    """
-    gates = []
-    for gate in ir:
-        gates += gate.decompose()
-    return gates
-
-
-def pass_hermitian(ir: list):
-    """如果末尾的两个门相同，且都为hermitian，则消去
-
-    Args:
-        ir (list): 中间表示
-    """
-    passed = False
-    while True:
-        if len(ir) < 2:
-            break
-        if ir[-1].name != ir[-2].name:
-            break
-        if ir[-1].targets != ir[-2].targets:
-            break
-        if ir[-1].hermitian:
-            ir.pop(-1)
-            ir.pop(-1)
-            passed = True
-            continue
-        break
-    return passed
-
-
-def pass_merge_theta(ir: list):
-    """如果末尾的两个门是作用在同一比特上的同一类旋转门，则角度可以合并
-
-    Args:
-        ir (list): 中间表示
-    """
-    passed = False
-    while True:
-        if len(ir) < 2:
-            break
-        if ir[-1].name != ir[-2].name:
-            break
-        if ir[-1].targets != ir[-2].targets:
-            break
-        if ir[-1].name in ["rx", "ry", "rz", "crx", "cry", "crz", "u1"]:
-            ir[-2].arg_value[0] += ir[-1].arg_value[0]
-            ir[-2].arg_value[0] %= (4 * np.pi)
-            ir.pop(-1)
-            if abs(ir[-1].arg_value[0]) < 1e-5:
-                ir.pop(-1)
-            passed = True
-            continue
-        break
-    return passed
-
-
-def pass_u_udg(ir: list):
-    """如果末尾的两个门是作用在同一比特上的s和sdg或者t和tdg，则可以消去
-
-    Args:
-        ir (list): 中间表示
-    """
-    passed = False
-    while True:
-        if len(ir) < 2:
-            break
-        if ir[-1].targets != ir[-2].targets:
-            break
-        # pylint: disable=too-many-boolean-expressions
-        if (ir[-1].name == "s" and ir[-2].name == "sdg") or (
-                ir[-1].name == "sdg" and ir[-2].name == "s") or (
-                ir[-1].name == "t" and ir[-2].name == "tdg") or (
-                ir[-1].name == "tdg" and ir[-2].name == "t"):
-            ir.pop(-1)
-            ir.pop(-1)
-            passed = True
-            continue
-        break
-    return passed
-
-
-def pass_three_gate_model(ir: list):
-    """HZH -> X, HXH -> Z, XRy(θ)X -> Ry(-θ)
-
-    Args:
-        ir (list): 中间表示
-    """
-    passed = False
-    while True:
-        if len(ir) < 3:
-            break
-        if (ir[-1].targets != ir[-2].targets) or (
-                ir[-1].targets != ir[-3].targets):
-            break
-        if ir[-1].name == "h" and ir[-3].name == "h":
-            if ir[-2].name in ("x", "z"):
-                ir.pop(-1)
-                ori_gate = ir.pop(-1)
-                ir.pop(-1)
-                new_name = "z" if ori_gate.name == "x" else "x"
-                ir.append(
-                    create_gate(
-                        new_name,
-                        ori_gate.targets,
-                        ori_gate.arg_value
-                    )
-                )
-                passed = True
-                continue
-        if ir[-1].name == "x" and ir[-3].name == "x":
-            if ir[-2].name == "ry":
-                ir.pop(-1)
-                ori_gate = ir.pop(-1)
-                ir.pop(-1)
-                ir.append(
-                    create_gate(
-                        ori_gate.name,
-                        ori_gate.targets,
-                        -1.0 * ori_gate.arg_value[0]
-                    )
-                )
-                passed = True
-                continue
-        break
-    return passed
-
-
-def do_pass(ir: list):
-    """一次执行pass，直到ir不发生变化
-
-    Args:
-        ir (list): 中间表示
-    """
-    passed = True
-    while passed:
-        passed = False
-        passed |= pass_hermitian(ir)
-        passed |= pass_merge_theta(ir)
-        passed |= pass_u_udg(ir)
-        passed |= pass_three_gate_model(ir)
-
-
-def optimizer(ir: list):
-    """基础门优化
-    优化策略主要包含如下几个：
-        1. 连续的两个作用在相同比特上的厄米共轭门可以消除
-        2. 连续两个相同的选择门，可以合并旋转角
-        3. 旋转角->0的门等同于I，可以忽略
-        4. HZH -> X, HXH -> Z
-        5. XRy(θ)X -> -Ry(θ)
-    Args:
-        ir (list): 中间表示
-
-    return:
-        optimize_gates(list): 优化后的门
-    """
-    optimize_gates = []
-    for gate in ir:
-        if isinstance(gate, MOV):
-            optimize_gates.append(gate)
-            continue
-
-        optimize_gates.append(gate)
-        do_pass(optimize_gates)
-
-    return optimize_gates

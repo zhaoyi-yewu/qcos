@@ -9,7 +9,9 @@ This module is last modified on 1/11/2021
 import networkx as nx
 from networkx.algorithms import approximation as approx
 from networkx import DiGraph
-from qcos.transpiler.cmss.compiler import Gate, get_abs_tree, get_ir, create_gate
+from qcos.transpiler.cmss.common.gate import Gate, create_gate
+from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
+
 '''
 gate is a tuple (gate_name, (qubits), (parameters))
 supported gate_name:

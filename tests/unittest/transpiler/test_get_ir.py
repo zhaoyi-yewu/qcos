@@ -14,8 +14,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from qcos.transpiler.cmss.compiler import get_abs_tree, get_ir
-from qcos.transpiler.cmss.compiler import Gate
+from qcos.transpiler.cmss.common.gate import Gate
+from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 
 
 def validate_ir(actual: Gate, name: str, targets: list, q_type: int,

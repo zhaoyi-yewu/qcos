@@ -21,8 +21,9 @@ import logging
 from prefect import flow, task, runtime
 
 from qcos.common.constant import Constant
-from qcos.transpiler.cmss.compiler import optimizer, decomposer
+from qcos.transpiler.cmss.compiler.decomposer import decompose
 from qcos.transpiler.cmss.mapping.na_mapping import NASingleRoute
+from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 
 
 logger = logging.getLogger(__name__)
@@ -80,10 +81,10 @@ def cmss_transpiler(job_info, driver):
         logger.debug(f"after mapping: {mapping_res}")
 
         # decompose gates
-        parsed_circuit = decomposer(mapping_res)
+        parsed_circuit = decompose(mapping_res)
 
         # optimize circuit
-        basis_gate_list = optimizer(parsed_circuit)
+        basis_gate_list = optimize_gate(parsed_circuit)
         logger.debug(f"final basis_gate_list: {basis_gate_list}")
         return {"basis_gate_list": basis_gate_list, "error": None}
     except Exception as e:

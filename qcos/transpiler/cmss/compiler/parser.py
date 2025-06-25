@@ -24,7 +24,6 @@ from qcos.transpiler.cmss.compiler import tokrules
 from qcos.transpiler.cmss.compiler.tokrules import tokens
 from qcos.transpiler.cmss.compiler.qtypes import Node
 from qcos.transpiler.cmss.compiler.visitor import Visitor
-from qcos.transpiler.cmss.compiler.decompose import decomposer, optimizer
 
 
 gate_params = []
@@ -575,10 +574,9 @@ def p_error(error):
 def get_abs_tree(data):
     """
     解析OpenQASM，得到抽象语法树
-    参数:
-    data (_type_): OpenQASM
-    返回:
-    Node: 解析后的抽象语法树头节点
+
+    :param data: OpenQASM 语句
+    :return Node: 解析后的抽象语法树头节点
     """
     lexer = lex.lex(module=tokrules)
     lexer.input(data)
@@ -589,32 +587,9 @@ def get_abs_tree(data):
 def get_ir(abs_tree):
     """
     解析抽象语法树，得到中间表示，其为Gate列表
-    参数:
-    abs_tree (_type_): 抽象语法树
-    返回:
-    Tuple (int, list): 量子比特总数、解析得到的量子门列表
+
+    :param abs_tree: 抽象语法树
+    :return Tuple (int, list): 量子比特总数、解析得到的量子门列表
     """
     vist = Visitor()
     return vist.visit_program(abs_tree)
-
-
-def compile(data):
-    """
-    解析OpenQasm2.0，得到对应的脉冲序列
-    参数:
-    data (_type_): OpenQASM
-    返回:
-    Tuple (int, list, list): 量子比特总数、解析得到的量子门列表
-    """
-    lexer = lex.lex(module=tokrules)
-    lexer.input(data)
-    parser = yacc.yacc(debug=False, write_tables=False)
-    ast_node = parser.parse(data)
-    vist = Visitor()
-    q_num, ir = vist.visit_program(ast_node)
-    # 针对初始的ir进行一次优化，可以消去一些连续执行的酉门，如两个H门
-    optimized_ir = optimizer(ir)
-    transpiled_gates = decomposer(optimized_ir)
-    # 针对分解后的ir进行优化，主要是针对分解后可能存在的连续两个相同的旋转门
-    optimized_gates = optimizer(transpiled_gates)
-    return optimized_gates

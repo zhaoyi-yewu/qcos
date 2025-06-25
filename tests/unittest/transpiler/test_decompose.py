@@ -15,9 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from qcos.transpiler.cmss.compiler import get_abs_tree, get_ir, decomposer
-from qcos.transpiler.cmss.compiler import optimizer
-from qcos.transpiler.cmss.compiler import Gate
+from qcos.transpiler.cmss.common.gate import Gate
+from qcos.transpiler.cmss.compiler.decomposer import decompose
+from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
+from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 
 
 def validate_ir(actual: Gate, name: str, targets: list, q_type: int,
@@ -86,7 +87,7 @@ class TestDecompose:
         assert ir is not None
         assert q_num == 6
         assert len(ir) == 21
-        decomposed_gates = decomposer(ir)
+        decomposed_gates = decompose(ir)
         assert len(decomposed_gates) == 85
         validate_ir(decomposed_gates[0], "rx", ["2"], 1, False)
         validate_ir(decomposed_gates[1], "ry", ["2"], 1, False)
@@ -105,9 +106,9 @@ class TestDecompose:
         assert ir is not None
         assert q_num == 6
         assert len(ir) == 21
-        decomposed_gates = decomposer(ir)
+        decomposed_gates = decompose(ir)
         assert len(decomposed_gates) == 85
-        opt_gates = optimizer(decomposed_gates)
+        opt_gates = optimize_gate(decomposed_gates)
         assert len(opt_gates) == 77
         validate_ir(opt_gates[0], "rx", ["2"], 1, False)
         validate_ir(opt_gates[1], "ry", ["2"], 1, False)
@@ -126,11 +127,11 @@ class TestDecompose:
         assert ir is not None
         assert q_num == 1
         assert len(ir) == 5
-        opt_gates = optimizer(ir)
+        opt_gates = optimize_gate(ir)
         assert len(opt_gates) == 3
-        decomposed_gates = decomposer(opt_gates)
+        decomposed_gates = decompose(opt_gates)
         assert len(decomposed_gates) == 3
-        opt_gates = optimizer(decomposed_gates)
+        opt_gates = optimize_gate(decomposed_gates)
         assert len(opt_gates) == 2
         validate_ir(opt_gates[0], "rx", ["0"], 1, False)
         validate_ir(opt_gates[1], "measure", [0], 0, False)

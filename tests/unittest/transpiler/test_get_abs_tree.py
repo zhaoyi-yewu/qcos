@@ -14,7 +14,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from qcos.transpiler.cmss.compiler import get_abs_tree
+from qcos.transpiler.cmss.compiler.parser import get_abs_tree
 from qcos.transpiler.cmss.compiler.qtypes import Node
 
 
@@ -132,7 +132,7 @@ class TestGetAbsTree:
                 assert child.pos == 33
                 assert len(child.children) == 1
                 break
-        barrier_found = False
+        assert barrier_found is True
 
     def test_measure_statement(self):
         tree = get_abs_tree(self.data)
@@ -144,4 +144,4 @@ class TestGetAbsTree:
                 assert child.leaf == ["c", 1]
                 assert len(child.children) == 2
                 break
-        measure_found = False
+        assert measure_found is True

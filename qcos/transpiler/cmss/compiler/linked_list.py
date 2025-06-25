@@ -25,8 +25,8 @@ class LinkedNode:
     def __init__(self, data):
         """
         初始化作用域节点，设置作用域内的变量信息
-        参数:
-        data (Dict): 作用域内的变量信息
+
+        :param data (Dict): 作用域内的变量信息
         """
         self.data = data
         self.next = None
@@ -51,25 +51,25 @@ class LinkedList:
     def get_tail(self) -> LinkedNode:
         """
         获取最内部的符号表节点，一般用于获取当前作用域的符号表。
-        返回:
-        LinkedNode: 链表的尾节点
+
+        :return LinkedNode: 链表的尾节点
         """
         return self.tail
 
     def get_head(self) -> LinkedNode:
         """
         头节点，只作为头部，不存放符号表数据
-        返回:
-        LinkedNode: 链表的头节点
+
+        :return LinkedNode: 链表的头节点
         """
         return self.head
 
     def add_tail(self, tail: LinkedNode, scope: TreeNode):
         """
         新增一个最内部的符号表节点，用在visitor新的作用域之前。
-        参数:
-        tail (LinkedNode): 作用域节点
-        scope (TreeNode): 抽象语法树节点
+
+        :param tail (LinkedNode): 作用域节点
+        :param scope (TreeNode): 抽象语法树节点
         """
         if (scope is None or
                 (scope.type not in ("blockBody", "top"))):
@@ -88,8 +88,8 @@ class LinkedList:
     def remove_tail(self) -> bool:
         """
         删除最内部的符号表，一般用于删除当前作用域的符号表。
-        返回:
-        bool: 节点是否删除成功
+
+        :return bool: 节点是否删除成功
         """
         if self.head == self.tail:
             return False

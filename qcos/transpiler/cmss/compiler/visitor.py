@@ -16,12 +16,13 @@
 # ----------------------------------------------------------------------
 
 from typing import Any
-import re
 import numpy as np
-from qcos.transpiler.cmss.compiler.qtypes import Node, RegType
-from qcos.transpiler.cmss.compiler.decompose import create_gate
-from qcos.transpiler.cmss.compiler.linked_list import LinkedList, LinkedNode
+import re
+
 import logging
+from qcos.transpiler.cmss.compiler.qtypes import Node, RegType
+from qcos.transpiler.cmss.common.gate import create_gate
+from qcos.transpiler.cmss.compiler.linked_list import LinkedList, LinkedNode
 
 
 logger = logging.getLogger(__name__)
@@ -35,15 +36,16 @@ class Visitor:
     def __init__(self, allow_undefined=False) -> None:
         """
         初始化抽象语法树遍历类，设置其中的参数信息:
-        q_var: 量子变量字典，记录每个变量对应的数组长度
-        q_map: 量子变量字典，记录每个变量对应物理比特的起始下标
-        q_cnt: 量子比特总数
-        c_var: 经典变量字典，记录每个变量对应的数组长度
-        c_map: 经典变量字典，记录每个变量对应物理比特的起始下标
-        c_cnt: 经典变量总数
-        gate：所有可用门字典，记录门作用比特数和所需参数个数
-        defined_gate：用户自定义门字典
-        symbol_table: 符号表，openqasm3.0专用
+
+        :ivar q_var 量子变量字典，记录每个变量对应的数组长度
+        :ivar q_map: 量子变量字典，记录每个变量对应物理比特的起始下标
+        :ivar q_cnt: 量子比特总数
+        :ivar c_var: 经典变量字典，记录每个变量对应的数组长度
+        :ivar c_map: 经典变量字典，记录每个变量对应物理比特的起始下标
+        :ivar c_cnt: 经典变量总数
+        :ivar gate：所有可用门字典，记录门作用比特数和所需参数个数
+        :ivar defined_gate：用户自定义门字典
+        :ivar symbol_table: 符号表，openqasm3.0专用
         """
         self.q_var = {}
         self.q_map = {}
@@ -86,11 +88,11 @@ class Visitor:
     def add_reg(self, reg_id, reg_size, reg_type, pos):
         """
         添加变量到相关字典中
-        参数:
-        reg_id (str): 变量名
-        reg_size (int): 变量的长度
-        reg_type (str): 变量类型
-        pos (int): 所在位置
+
+        :param reg_id: 变量名
+        :param reg_size: 变量的长度
+        :param reg_type: 变量类型
+        :param pos: 所在位置
         """
         reg_dict = self.q_var
         if reg_type in ("creg", "bit"):
@@ -111,12 +113,11 @@ class Visitor:
         """
         检查量子寄存器变量或者经典寄存器变量是否越界，若没有越界则返回其对应的物理比特下标
         否则报错。
-        参数:
-        reg (list): 寄存器变量
-        reg_type (RegType): 寄存器变量类型
-        pos (int): 所在位置
-        返回:
-        List: 寄存器变量对应下标
+
+        :param reg: 寄存器变量
+        :param reg_type: 寄存器变量类型
+        :param pos: 所在位置
+        :return List: 寄存器变量对应下标
         """
         reg_id = reg[0]
         if reg_type == RegType.QREG:
@@ -141,9 +142,9 @@ class Visitor:
     def check_in_gate_qubit(self, qubit, pos):
         """
         检查门作用的量子比特是否已经定义
-        参数:
-        qubit (list): 门作用的量子比特
-        pos (int): 所在位置
+
+        :param qubit: 门作用的量子比特
+        :param pos: 所在位置
         """
         if len(qubit) != 1:
             raise NameError(f"in line {pos}, qubit is not defined")
@@ -153,9 +154,9 @@ class Visitor:
     def check_qlist(self, qids, pos):
         """
         检查量子比特是否重复使用在同一操作中
-        参数:
-        qids (list): 量子比特
-        pos (int): 所在位置
+
+        :param qids: 量子比特
+        :param pos: 所在位置
         """
         if len(set(qids)) != len(qids):
             raise RuntimeError(f"in line {pos}, qubit reused")
@@ -163,10 +164,9 @@ class Visitor:
     def visit_program(self, s: Node):
         """
         遍历抽象语法树的入口函数，通过dfs方法遍历根节点的所有子节点来完成遍历
-        参数:
-        s (Node): mainprogram节点
-        返回值:
-        Tuple (int, list): 量子比特总数、解析得到的量子门列表
+
+        :param s: mainprogram节点
+        :return Tuple (int, list): 量子比特总数、解析得到的量子门列表
         """
         if s.type != "top":
             raise RuntimeError("OpenQASM version not specified")
@@ -183,8 +183,8 @@ class Visitor:
             变量定义: 更新相关成员变量，将其添加至相关字典中
             门定义: 更新相关成员变量，将其添加至相关字典中
             量子操作: 递归遍历
-        参数:
-        s (Node): 抽象语法树节点
+
+        :param s: 抽象语法树节点
         """
         if s.type == "defvar":
             reg_type = s.leaf
@@ -231,8 +231,8 @@ class Visitor:
         """
         检查量子比特已定义且无重复，若在自定义门中则添加相关元组以便后续解析
         否则直接添加同步操作的中间表示到结果列表中。
-        参数:
-        s (Node): barrier节点
+
+        :param s: barrier节点
         """
         self.check_node_type(s, "barrier")
 
@@ -259,8 +259,8 @@ class Visitor:
             测量: 测量操作首先判断量子变量和经典变量是否可用，且比特没有重复测量
             在结果中添加测量的中间表示。
             门操作: 递归遍历
-        参数:
-        s (Node): qop节点
+
+        :param s: qop节点
         """
         if s.type == "measure":
             qids, cids = s.children, s.leaf
@@ -297,8 +297,8 @@ class Visitor:
         然后检查参数数量是否与门需要的一致，以及量子比特是否已定义且无重复,
         最后若调用时在自定义门中则添加相关元组以便后续解析,
         否则通过eval_gate添加量子门操作对应的中间表示到结果列表中。
-        参数:
-        s (Node): uop节点
+
+        :param s: uop节点
         """
         self.check_node_type(s, "uop")
 
@@ -342,12 +342,12 @@ class Visitor:
         如果是全局的量子操作，则直接添加对应的中间表示,
         否则生成参数对应字典，该字典的键值对为自定义门的参数以及调用时实际使用值，
         用该字典以及eval函数来实现内联操作，将自定义门中的子语句转换为中间表示。
-        参数:
-        uid (str): 量子门类型
-        args (str): 量子门参数
-        qids (str): 量子门作用的量子比特
-        pos (int): 所在位置
-        func_dict (str): 函数字典
+
+        :param uid: 量子门类型
+        :param args: 量子门参数
+        :param qids: 量子门作用的量子比特
+        :param pos: 所在位置
+        :param func_dict: 函数字典
         """
         real_args = []
 
@@ -384,8 +384,8 @@ class Visitor:
     def visit_for_statement(self, s: Node):
         """
         for 循环条件处理，创建for作用域符号表
-        参数:
-        s (Node): forStatement节点
+
+        :param s: forStatement节点
         """
         self.check_node_type(s, "forStatement")
 
@@ -442,10 +442,9 @@ class Visitor:
     def visit_range_expression(self, s: Node):
         """
         处理RangeExpression节点, 用在for语句中
-        参数:
-        s (Node): RangeExpression节点
-        返回:
-        Tuple (int, int, int): 循环起点、步长、循环终点
+
+        :param s: RangeExpression节点
+        :return: Tuple (int, int, int): 循环起点、步长、循环终点
         """
         self.check_node_type(s, "rangeExpression")
 
@@ -466,16 +465,14 @@ class Visitor:
         return start, step, end
 
     def visit_for_block_body(
-            self, s: Node, iterator_type, iterator_name,
-            cur_loop_count
-    ):
+            self, s: Node, iterator_type, iterator_name, cur_loop_count):
         """
         处理for循环体中的每条语句
-        参数:
-        s (Node): blockBody节点
-        iterator_type (str): for循环体索引类型
-        iterator_name (str): for循环体索引名
-        cur_loop_count (int): 当前索引值
+
+        :param s: blockBody节点
+        :param iterator_type: for循环体索引类型
+        :param iterator_name: for循环体索引名
+        :param cur_loop_count: 当前索引值
         """
         self.check_node_type(s, "blockBody")
 
@@ -494,8 +491,8 @@ class Visitor:
         """
         为支持openqasm 3.0特性而写，
         基于visitUop方法，新增对exp节点的处理
-        参数:
-        s (Node): uop节点
+
+        :param s: uop节点
         """
         self.check_node_type(s, "uop")
 
@@ -541,10 +538,9 @@ class Visitor:
         如果in_var[1]是整数返回值，
         如果in_var[1]是表达式节点，遍历处理表达式节点，
         如果in_var[1]是字符串，从符号表中取值
-        参数:
-        in_var (Any): 变量
-        返回:
-        Any: 变量对应的值
+
+        :param in_var: 变量
+        :return Any: 变量对应的值
         """
         idx = in_var[1]
         if isinstance(idx, int):
@@ -561,8 +557,8 @@ class Visitor:
         遍历经典变量声明语句，把变量的值放到符号表中。
         对于scalarType类型变量，语法树支持声明和定义分开，但是变量使用时必须定义
         对于arrayType类型变量，声明时必须定义
-        参数:
-        s (Node): classicalDeclarationStatement节点
+
+        :param s (Node): classicalDeclarationStatement节点
         """
         self.check_node_type(s, "classicalDeclarationStatement")
         decl_name = s.children[1]
@@ -605,10 +601,9 @@ class Visitor:
         处理数组字面值。
         如果元素是bool，int，float等基本类型，保存值。
         其他类型目前不考虑。
-        参数:
-        s (Node): arrayLiteral节点
-        返回:
-        List: 数组类型
+
+        :param s: arrayLiteral节点
+        :return List: 数组类型
         """
         self.check_node_type(s, "arrayLiteral")
 
@@ -621,10 +616,9 @@ class Visitor:
     def visit_array_type(self, s: Node):
         """
         获取数组的类型与长度
-        参数:
-        s (Node): arrayType节点
-        返回:
-        Tuple (str, int): 数组类型、长度
+
+        :param s: arrayType节点
+        :return Tuple (str, int): 数组类型、长度
         """
         self.check_node_type(s, "arrayType")
 
@@ -638,8 +632,8 @@ class Visitor:
     def visit_assignment_statement(self, s: Node):
         """
         处理赋值语句
-        参数:
-        s (Node): assignmentStatement节点
+
+        :param s: assignmentStatement节点
         """
         self.check_node_type(s, "assignmentStatement")
 
@@ -694,10 +688,9 @@ class Visitor:
     def find_symbol_table(self, var_name: str):
         """
         获取变量名所在的符号表
-        参数:
-        var_name (str): 变量名
-        返回:
-        LinkedNode: 变量所在作用域
+
+        :param var_name: 变量名
+        :return LinkedNode: 变量所在作用域
         """
         symbol_table = self.symbol_table.get_tail()
         while symbol_table != self.symbol_table.get_head():
@@ -712,11 +705,11 @@ class Visitor:
         把变量名和变量值作为键值对放到符号表中
         对于普通变量a，在字典中的存储格式是：
         {a:{"val":1,"type":"int","category":"default"}}
-        参数:
-        var_type (str): 变量类型
-        var_name (str): 变量名
-        value (Any): 变量值
-        pos (int): 所在位置
+
+        :param var_type: 变量类型
+        :param var_name: 变量名
+        :param value: 变量值
+        :param pos: 所在位置
         """
         curr_symbol_table = self.symbol_table.get_tail().data
         if var_name in curr_symbol_table:
@@ -750,12 +743,12 @@ class Visitor:
         对于int数组变量arr，存储结构为：
         {"arr":{"type":"int","category":"array","length":1,"val":[1,2,3]}}
         目前数组在声明时必须定义。
-        参数:
-        var_type (str): 数组类型
-        var_name (str): 数组名
-        length (size): 数组长度
-        elements (list): 数组元素
-        pos (int): 所在位置
+
+        :param var_type: 数组类型
+        :param var_name: 数组名
+        :param length: 数组长度
+        :param elements: 数组元素
+        :param pos: 所在位置
         """
         curr_symbol_table = self.symbol_table.get_tail().data
 
@@ -785,12 +778,11 @@ class Visitor:
         遍历处理表达式节点，用于获取表达式具体的值，
         具体情况参考parser.py p_exp方法中exp节点的定义
         is_recursion 表示是否查询外层作用域的符号表
-        参数:
-        exp_node (Node): 表达式节点
-        is_recursion (bool): 是否在当前作用域外查找
-        pos (int): 所在位置
-        返回:
-        Any: 表达式计算结果
+
+        :param exp_node : 表达式节点
+        :param is_recursion: 是否在当前作用域外查找
+        :param pos: 所在位置
+        :return Any: 表达式计算结果
         """
         self.check_node_type(exp_node, "exp")
 
@@ -844,11 +836,10 @@ class Visitor:
     ):
         """
         在符号表中修改变量的值
-        参数:
-        var_name (str): 变量名
-        value (Any): 变量值
-        pos (int): 所在位置
-        is_recursion (bool): 是否在当前作用域外查找
+        :param var_name: 变量名
+        :param value: 变量值
+        :param  pos: 所在位置
+        :param is_recursion: 是否在当前作用域外查找
         """
         is_var = False
         curr_symbol_table = self.symbol_table.get_tail()
@@ -889,12 +880,10 @@ class Visitor:
     ):
         """
         在符号表中找到变量的值
-        参数:
-        var_name (str): 变量名
-        pos (int): 所在位置
-        is_recursion (bool): 是否在当前作用域外查找
-        返回:
-        Any: 变量的值
+        :param var_name: 变量名
+        :param pos: 所在位置
+        :param is_recursion: 是否在当前作用域外查找
+        :return Any: 变量的值
         """
         var_dict = self.find_in_symbol_table(var_name, is_recursion)
         if var_dict is None:
@@ -905,12 +894,10 @@ class Visitor:
     def find_type_in_var_dict(self, var_dict: dict, var_name: str, pos: int):
         """
         在变量字典中找到变量类型type,如果type为None，报错
-        参数:
-        var_dict (dict): 变量字典
-        var_name (str): 变量名
-        pos (int): 所在位置
-        返回:
-        Any: 变量的类型
+        :param var_dict: 变量字典
+        :param var_name: 变量名
+        :param pos: 所在位置
+        :return Any: 变量的类型
         """
         if var_dict is None:
             raise NameError(
@@ -929,12 +916,10 @@ class Visitor:
     def find_val_in_var_dict(self, var_dict: dict, var_name: str, pos: int):
         """
         在变量字典中找到变量值val, 如果val为None，报错
-        参数:
-        var_dict (dict): 变量字典
-        var_name (str): 变量名
-        pos (int): 所在位置
-        返回:
-        Any: 变量的值
+        :param var_dict: 变量字典
+        :param var_name: 变量名
+        :param pos: 所在位置
+        :return Any: 变量的值
         """
         if var_dict is None:
             raise NameError(
@@ -953,11 +938,9 @@ class Visitor:
     def find_in_symbol_table(self, var_name: str, is_recursion):
         """
         在符号表中找到变量
-        参数:
-        var_name (str): 变量名
-        is_recursion (bool): 是否在当前作用域外查找
-        返回:
-        Any: 变量的值
+        :param var_name: 变量名
+        :param is_recursion: 是否在当前作用域外查找
+        :return Any: 变量的值
         """
         curr_symbol_table = self.symbol_table.get_tail()
         while curr_symbol_table != self.symbol_table.get_head():
@@ -972,10 +955,9 @@ class Visitor:
     def is_float_regex(self, s):
         """
         判断字符串是否是浮点数
-        参数:
-        s (str): 字符串
-        返回:
-        bool: 是否为浮点数
+
+        :param s: 字符串
+        :return bool: 是否为浮点数
         """
         pattern = r"^[+-]?(\d+(\.\d*)?|\.\d+)?$"
         return bool(re.match(pattern, s))
@@ -983,10 +965,9 @@ class Visitor:
     def is_id(self, s):
         """
         判断字符串是否是变量名
-        参数:
-        s (str): 字符串
-        返回:
-        bool: 是否为变量名
+
+        :param s: 字符串
+        :return bool: 是否为变量名
         """
         pattern = r"[a-zA-Z_][a-zA-Z_0-9]*"
         return bool(re.match(pattern, s))
@@ -994,12 +975,11 @@ class Visitor:
     def get_call_param_value(self, arg, func_dict, pos):
         """
         获取自定义门入参的值
-        参数:
-        arg (Node): 自定义门入参
-        func_dict (dict): 函数字典
-        pos (int): 所在位置
-        返回:
-        Any: 自定义门入参的值
+
+        :param arg: 自定义门入参
+        :param func_dict: 函数字典
+        :param pos : 所在位置
+        :return Any: 自定义门入参的值
         """
         if len(arg.children) == 0:
             # 先从函数字典中查，再从符号表中查
@@ -1067,9 +1047,9 @@ class Visitor:
     def check_node_type(self, node: Node, expect_type: str):
         """
         检测节点类型是否复合预期, 用于visit语法树节点方法中，防止对节点进行了错误的遍历
-        参数:
-        node (Node): 抽象语法树节点
-        expect_type (str): 期望的节点类型
+
+        :param node: 抽象语法树节点
+        :param expect_type: 期望的节点类型
         """
         if node.type != expect_type:
             raise TypeError(
@@ -1078,9 +1058,9 @@ class Visitor:
     def check_var_name(self, var_name: str, pos):
         """
         检测变量命名是否重复
-        参数:
-        var_name (str): 变量名
-        pos (int): 所在位置
+
+        :param var_name: 变量名
+        :param pos: 所在位置
         """
         # 变量名是否出现在经典变量符号表中
         classical_dict = self.find_in_symbol_table(var_name, True)

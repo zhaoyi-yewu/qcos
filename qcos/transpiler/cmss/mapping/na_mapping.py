@@ -1,6 +1,7 @@
 import networkx as nx
 from collections import defaultdict
-from qcos.transpiler.cmss.compiler import *
+from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
+from qcos.transpiler.cmss.common.gate import MOV
 from copy import deepcopy
 
 
