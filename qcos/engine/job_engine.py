@@ -110,9 +110,9 @@ def run_driver(job_info, driver, transpile_results):
             # sync mode: get results immediately
             results = driver.get_results(job_id)
         # async mode: get results in the next query call
-        return {"results": results,"error": None}
+        return {"results": results, "error": None}
     except Exception as e:
-        return {"results": None,"error": ValueError(str(e))}
+        return {"results": None, "error": ValueError(str(e))}
 
 
 @flow(name="job_engine", persist_result=True)
