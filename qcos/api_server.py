@@ -24,7 +24,7 @@ from qcos.common.config import Config
 from qcos.common.library import Library
 from qcos.server import Server
 from qcos.task_manager import scheduler
-from prefect import task,flow
+
 __all__ = []
 __version__ = Config.VERSION
 
