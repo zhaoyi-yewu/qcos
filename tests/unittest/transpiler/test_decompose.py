@@ -15,7 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from qcos.transpiler.cmss.common.gate import Gate
+import numpy as np
+
+from qcos.transpiler.cmss.common.gate import Gate, GateType, create_gate
+from qcos.transpiler.cmss.common.gate import U1, U2, U3
 from qcos.transpiler.cmss.compiler.decomposer import decompose
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
@@ -27,6 +30,12 @@ def validate_ir(actual: Gate, name: str, targets: list, q_type: int,
     assert actual.name == name
     assert actual.targets == targets
     assert actual.type == q_type
+
+
+def validate_gate(actual: Gate, name: str, targets: list, arg: list):
+    assert actual.name == name
+    assert actual.targets == targets
+    assert actual.arg_value == arg
 
 
 class TestDecompose:
@@ -91,7 +100,7 @@ class TestDecompose:
         assert len(decomposed_gates) == 85
         validate_ir(decomposed_gates[0], "rx", ["2"], 1, False)
         validate_ir(decomposed_gates[1], "ry", ["2"], 1, False)
-        validate_ir(decomposed_gates[4], "rz", ["2"],1, False)
+        validate_ir(decomposed_gates[4], "rz", ["2"], 1, False)
         validate_ir(decomposed_gates[7], "ry", ["2"], 1, False)
         validate_ir(decomposed_gates[21], "cx", ["2", "3"], 2, True)
         validate_ir(decomposed_gates[24], "rx", ["3"], 1, False)
@@ -112,7 +121,7 @@ class TestDecompose:
         assert len(opt_gates) == 77
         validate_ir(opt_gates[0], "rx", ["2"], 1, False)
         validate_ir(opt_gates[1], "ry", ["2"], 1, False)
-        validate_ir(opt_gates[4], "rz", ["2"],1, False)
+        validate_ir(opt_gates[4], "rz", ["2"], 1, False)
         validate_ir(opt_gates[7], "rx", ["2"], 1, False)
         validate_ir(opt_gates[22], "cx", ["2", "3"], 2, True)
         validate_ir(opt_gates[24], "rx", ["3"], 1, False)
@@ -135,3 +144,39 @@ class TestDecompose:
         assert len(opt_gates) == 2
         validate_ir(opt_gates[0], "rx", ["0"], 1, False)
         validate_ir(opt_gates[1], "measure", [0], 0, False)
+
+    def test_create_u1(self):
+        u1 = create_gate("u1", [0], [1])
+        assert u1.type == GateType.SINGLE_QUBIT_GATE.value
+        assert u1.name == "u1"
+        assert u1.hermitian is False
+
+        decom_gate = u1.default_decompose()
+        assert len(decom_gate) == 1
+        validate_gate(decom_gate[0], "rz", [0], [1])
+
+    def test_create_u2(self):
+        u2 = create_gate("u2", [0], [1, 2])
+        assert u2.type == GateType.SINGLE_QUBIT_GATE.value
+        assert u2.name == "u2"
+        assert u2.hermitian is False
+
+        decom_gate = u2.default_decompose()
+        assert len(decom_gate) == 3
+        validate_gate(decom_gate[0], "rz", [0], [2 - np.pi / 2])
+        validate_gate(decom_gate[1], "rx", [0], [np.pi / 2])
+        validate_gate(decom_gate[2], "rz", [0], [1 + np.pi / 2])
+
+    def test_create_u3(self):
+        u3 = create_gate("u3", [0], [1, 2, 3])
+        assert u3.type == GateType.SINGLE_QUBIT_GATE.value
+        assert u3.name == "u3"
+        assert u3.hermitian is False
+
+        decom_gate = u3.default_decompose()
+        assert len(decom_gate) == 5
+        validate_gate(decom_gate[0], "rz", [0], [3])
+        validate_gate(decom_gate[1], "rx", [0], [np.pi / 2])
+        validate_gate(decom_gate[2], "rz", [0], [1 + np.pi])
+        validate_gate(decom_gate[3], "rx", [0], [np.pi / 2])
+        validate_gate(decom_gate[4], "rz", [0], [2 + 3 * np.pi])
