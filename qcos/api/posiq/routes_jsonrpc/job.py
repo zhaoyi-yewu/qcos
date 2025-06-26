@@ -50,10 +50,10 @@ def submit_job(
     job_priority = body.job_priority
     description = body.description
     shots = body.shots
-    qubits = body.qubits
     backend = body.backend
     transpiler = body.transpiler
     optimization_level = body.optimization_level
+    dry_run = body.dry_run
 
     # validate: source_code
     jsonrpc_errors.handle_invalid_params(Library.validate_values_list(
@@ -88,11 +88,6 @@ def submit_job(
         shots, "shots",
         Constant.MIN_SHOTS, Constant.MAX_SHOTS))
 
-    # validate: qubits
-    jsonrpc_errors.handle_invalid_params(Library.validate_values_range(
-        qubits, "qubits",
-        Constant.MIN_QUBITS, Constant.MAX_QUBITS))
-
     # validate: backend
     jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
         backend, "backend", Constant.DRIVERS))
@@ -126,7 +121,7 @@ def submit_job(
         "backend": body.backend,
         "transpiler": body.transpiler,
         "shots": body.shots,
-        "qubits": body.qubits,
+        "dry_run": body.dry_run,
         "creation_date": creation_date
     }
     return response_info
@@ -231,8 +226,8 @@ def get_jobs(
             "job_status": job_info.get("state"),
             "backend": data.get("backend", None),
             "shots": data.get("shots", None),
-            "qubits": data.get("qubits", None),
             "description": data.get("description", None),
+            "dry_run": data.get("dry_run", None),
             "creation_date": data.get("creation_date")
         }
         response_list.append(response_info)
@@ -269,7 +264,6 @@ def cancel_jobs(
         "job_priority": 100,
         "backend": Constant.DRIVER_DUMMY,
         "shots": 1,
-        "qubits": 1
     } for job_id in job_ids]
     return response_list
 

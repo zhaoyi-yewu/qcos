@@ -50,8 +50,8 @@ RUN \
 # install basic rpms
     yum install -y hostname python3 python3-pip openssh openssh-clients sshpass \
       iputils iproute telnet net-tools openssl util-linux vim findutils && \
-# install python3 deps \
-    pip3 install --no-cache-dir --upgrade -r /root/requirements.txt -r /root/test-requirements.txt && \
+# install python3 deps
+    pip3 install --no-cache-dir --upgrade pylint==3.3.7 -r /root/requirements.txt -r /root/test-requirements.txt && \
 # generate ssh keys
     rm -rf /root/.ssh/id_rsa && \
     ssh-keygen -t rsa -f /root/.ssh/id_rsa -q -N "" && \

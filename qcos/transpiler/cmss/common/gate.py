@@ -21,8 +21,6 @@ import numpy as np
 
 from qcos.common.config import Config
 
-DECOMPOSE_RULE = Config.DECOMPOSE_RULE
-
 
 class GateType(Enum):
     """
@@ -96,10 +94,10 @@ class Gate:
         }
         return: gates(list): 分解后的门列表
         """
-        if DECOMPOSE_RULE is None:
+        if Config.DECOMPOSE_RULE is None:
             return self.default_decompose()
 
-        custom_gate = DECOMPOSE_RULE.get(self.name, None)
+        custom_gate = Config.DECOMPOSE_RULE.get(self.name, None)
         if custom_gate is None:
             return self.default_decompose()
         try:

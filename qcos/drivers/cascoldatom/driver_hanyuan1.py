@@ -15,7 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 import logging
+from schema import Optional, Or
 
 from qcos.common.constant import Constant
 from qcos.common.library import Library
@@ -41,7 +43,7 @@ class DriverHanyuan1(DriverBase):
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
         self.layout_method = DriverBase.LAYOUT_METHOD_CMSS_NONE
         self.enable_circuit_merge = True
-        self.num_qubits = 20
+        self.max_qubits = 10
         self.basis_gates = []  # TODO(zhaoyi): fill basis_gates
         self.coupling_map = []  # TODO(zhaoyi): fill coupling_map
         self.extra_configs = {}  # TODO(zhaoyi): fill extra_configs
@@ -59,27 +61,38 @@ class DriverHanyuan1(DriverBase):
         :return bool: True if successful, False otherwise
         :return err_msg: error message
         """
-        success = False
-        err_msg = ""
-        mandatory_keys = [
-            "qubits",
-            "storage_area",
-            "operate_area",
-            "coupler_map",
-            "readout_error",
-            "coupler_error",
-            "closest"
-        ]
-        missing_keys = Library.find_missing_keys_in_dict(
-            self.extra_configs, mandatory_keys)
-        if missing_keys:
-            err_msg = (f"Missing mandatory keys: {', '.join(missing_keys)}. "
-                       f"Driver will be disabled")
+        # TODO(zhaoyi): load transpiler plugin, and implemented in transpiler
+        success = True
+        # check and load driver configs
+        driver_config_schema = {
+            "qpu_configs": {
+                "qubits": int,
+                "storage_area": [str],
+                "operate_area": [str],
+                "coupler_map": {str: [str]},
+                "readout_error": {str: Or(float, int)},
+                Optional("coupler_error"): {str: Or(float, int)},
+                Optional("closest"): {str: str}
+            },
+            Optional("decomposition_rule"): {
+                str: {
+                    "gates": [list],
+                    Optional("params"): [str]
+                }
+            }
+        }
+        err_msg = Library.validate_schema(
+            self.extra_configs, driver_config_schema)
+        if err_msg:
+            err_msg = f"driver config file error: {err_msg}"
+            success = False
         else:
             # copy configs to self.qpu_configs
-            self.qpu_configs = {key: self.extra_configs[key] for key in
-                                mandatory_keys if key in self.extra_configs}
-            success = True
+            self.qpu_configs = copy.deepcopy(
+                self.extra_configs.get("qpu_configs", {}))
+            # copy configs to self.decomposition_rule
+            self.decomposition_rule = copy.deepcopy(
+                self.extra_configs.get("decomposition_rule", {}))
         return success, err_msg
 
     def close_driver(self):
@@ -97,10 +110,10 @@ class DriverHanyuan1(DriverBase):
         :param data_type: data type
         :param shots: shots
         """
-        logger.info(f"job_id: {job_id}, data_type: {data_type}, data: {data},"
-                    f" shots: {shots}")
+        logger.info(f"job_id: {job_id}, shots: {shots}, "
+                    f"data_type: {data_type}, data: {data}")
         self.set_status(self.DRIVER_STATUS_BUSY)
         # TODO(zhaoyi): to be implemented
-        results = {'00': 47, '01': 0, '10': 0, '11': 53}
+        results = {}
         self.set_results(job_id, results=results)
         self.set_status(self.DRIVER_STATUS_ONLINE)

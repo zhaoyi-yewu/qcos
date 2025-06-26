@@ -15,7 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-def decompose(ir: list):
+def decompose_gates(ir: list):
     """
     将中间表示中的门分解到硬件脉冲直接支持的门上.
 

@@ -49,8 +49,8 @@ class SubmitJobRequest(BaseModel):
     job_priority: int = Constant.DEFAULT_JOB_PRIORITY
     # Shots
     shots: int = Constant.DEFAULT_SHOTS
-    # Qubits
-    qubits: Optional[int] = Constant.DEFAULT_QUBITS
+    # Dry-run
+    dry_run: Optional[bool] = False
     # Creation date
     creation_date: Optional[datetime] = None
 
@@ -76,8 +76,8 @@ class SubmitJobResponse(BaseModel):
     transpiler: str = None
     # Shots
     shots: int = None
-    # Qubits
-    qubits: Optional[int] = None
+    # Dry-run
+    dry_run: Optional[bool] = False
     # Creation date
     creation_date: Optional[datetime] = None
 
@@ -110,8 +110,8 @@ class GetJobStatusResponse(BaseModel):
     description: Optional[str] = None
     # Shots
     shots: Optional[int] = None
-    # Qubits
-    qubits: Optional[int] = None
+    # Dry-run
+    dry_run: Optional[bool] = False
     # Creation Date
     creation_date: Optional[datetime] = None
     #error message

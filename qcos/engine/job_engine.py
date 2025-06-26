@@ -20,8 +20,9 @@ import logging
 
 from prefect import flow, task, runtime
 
+from qcos.common.config import Config
 from qcos.common.constant import Constant
-from qcos.transpiler.cmss.compiler.decomposer import decompose
+from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from qcos.transpiler.cmss.mapping.na_mapping import NASingleRoute
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
@@ -65,6 +66,9 @@ def cmss_transpiler(job_info, driver):
     # load qpu configs
     try:
         qpu_configs = driver.get_qpu_configs()
+        decomposition_rule = driver.get_decomposition_rule()
+        # TODO (zhaoyi): move to transpiler class
+        Config.DECOMPOSE_RULE = decomposition_rule
         if not qpu_configs:
             err_msg = "Missing qpu_configs"
             logger.error(err_msg)
@@ -82,7 +86,7 @@ def cmss_transpiler(job_info, driver):
         logger.debug(f"after mapping: {mapping_res}")
 
         # decompose gates
-        parsed_circuit = decompose(mapping_res)
+        parsed_circuit = decompose_gates(mapping_res)
 
         # optimize circuit
         basis_gate_list = optimize_gate(parsed_circuit)
@@ -105,9 +109,15 @@ def run_driver(job_info, driver, transpile_results):
     try:
         job_id = job_info["job_id"]
         shots = job_info.get("shots", Constant.DEFAULT_SHOTS)
+        dry_run = job_info["data"].get("dry_run", False)
         results = None
         data_type = driver.get_default_data_type()
-        driver.run(job_id, transpile_results, data_type=data_type, shots=shots)
+        if dry_run:
+            driver.dry_run(job_id, transpile_results, data_type=data_type,
+                           shots=shots)
+        else:
+            driver.run(job_id, transpile_results, data_type=data_type,
+                       shots=shots)
         if driver.results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
             # sync mode: get results immediately
             results = driver.get_results(job_id)
@@ -144,8 +154,6 @@ def job_flow(job_info):
                 job_info["data"], driver)
             if transpile_task_result.result()["error"]:
                 raise transpile_task_result.result()["error"]
-            transpile_results = transpile_task_result.result()[
-                "basis_gate_list"]
 
     # call run() in driver
     run_driver_task_result = run_driver.submit(job_info, driver,

@@ -59,6 +59,9 @@ class DriverBase:
         DATA_TYPE_QUBO
     ]
 
+    # Default dry-run results
+    DEFAULT_DRY_RUN_RESULTS = {'00': 0}
+
     def __init__(self):
         # driver name
         self.driver_name = None
@@ -82,10 +85,12 @@ class DriverBase:
         self.layout_method = DriverBase.LAYOUT_METHOD_CMSS_NONE
         # enable circuit merge or not (TODO(zhaoyi): not used)
         self.enable_circuit_merge = False
-        # number of qubits (TODO(zhaoyi): not used)
-        self.num_qubits = 0
+        # max number of qubits (TODO(zhaoyi): not used)
+        self.max_qubits = 0
         # qpu configs
         self.qpu_configs = None
+        # decomposition rule
+        self.decomposition_rule = None
         # extra_configs, usually from driver config files
         self.extra_configs = {}
         # results from run(), which fetch the results from quantum computer
@@ -144,14 +149,15 @@ class DriverBase:
             f"enable: {self.enable}",
             f"status: {self._status}",
             f"enable_transpiler: {self.enable_transpiler}",
-            f"default_transpiler: {self.transpiler}",
+            f"transpiler: {self.transpiler}",
             f"layout_method: {self.layout_method}",
             f"enable_circuit_merge: {self.enable_circuit_merge}",
-            f"num_qubits: {self.num_qubits}",
+            f"max_qubits: {self.max_qubits}",
             f"qpu_configs: {self.qpu_configs}",
+            f"decomposition_rule: {self.decomposition_rule}",
             f"extra_configs: {self.extra_configs}"
         ]
-        return show_list
+        return "\n".join(show_list)
 
     def set_name(self, driver_name):
         """
@@ -234,6 +240,12 @@ class DriverBase:
         """
         return self.qpu_configs
 
+    def get_decomposition_rule(self):
+        """
+        Get decomposition rule
+        """
+        return self.decomposition_rule
+
     def run(self, job_id, data, data_type=DATA_TYPE_GATE_SEQUENCE, shots=1):
         """
         Run job
@@ -245,6 +257,20 @@ class DriverBase:
         """
         raise NotImplementedError(f"Driver: {self.__class__.__name__} "
                                   f"must implement method: run")
+
+    def dry_run(self, job_id, data, data_type=DATA_TYPE_GATE_SEQUENCE,
+                shots=1):
+        """
+        Dry-run job
+
+        :param job_id: job ID
+        :param data: data
+        :param data_type: data type
+        :param shots: shots
+        """
+        logger.info(f"Dry-run: job_id: {job_id}, shots: {shots}, "
+                    f"data_type: {data_type}, data: {data}")
+        self.set_results(job_id, results=DriverBase.DEFAULT_DRY_RUN_RESULTS)
 
     def set_results(self, job_id, results):
         """

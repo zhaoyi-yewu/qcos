@@ -22,8 +22,9 @@ import logging
 import os
 import pkgutil
 import re
-import toml
+import tomlkit
 from datetime import datetime
+from schema import Schema, SchemaError
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
@@ -194,14 +195,12 @@ class Library:
         :return: success, err_msg, toml dict
         """
         try:
-            with open(file_path, 'r', encoding='utf-8') as file:
-                return True, None, toml.load(file)
+            with open(file_path, 'rb') as _file:
+                return True, None, tomlkit.load(_file)
         except FileNotFoundError:
             return False, f"file: {file_path} does not exist", None
-        except toml.TomlDecodeError as e:
-            return False, f"failed to parse file: {file_path}. {e}", None
         except Exception as e:
-            return False, f"unknown exception: {e}", None
+            return False, f"toml parser exception: {e}", None
 
     @staticmethod
     def write_to_toml(data: dict, file_path: str):
@@ -214,7 +213,7 @@ class Library:
         """
         try:
             with open(file_path, 'w', encoding='utf-8') as file:
-                toml.dump(data, file)
+                tomlkit.dump(data, file)
             return True, None
         except Exception as e:
             return False, f"failed to write toml file: {file_path}. {e}"
@@ -340,15 +339,18 @@ class Library:
         return True, None
 
     @staticmethod
-    def find_missing_keys_in_dict(_dict, required_keys):
+    def validate_schema(value, schema_obj):
         """
-        Find missing keys in a dictionary
+        Validate schema values
 
-        :param required_keys: required keys
-        :return: list of missing keys
+        :param value: value to be validated
+        :param schema_obj: schema obj
+        :return: None if success or error message
         """
-        missing_keys = []
-        for key in required_keys:
-            if key not in _dict:
-                missing_keys.append(key)
-        return missing_keys
+        err_msg = None
+        try:
+            _schema = Schema(schema_obj)
+            _schema.validate(value)
+        except Exception as e:
+            err_msg = str(e)
+        return err_msg

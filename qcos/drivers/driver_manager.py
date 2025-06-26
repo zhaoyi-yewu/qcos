@@ -72,10 +72,12 @@ class DriverManager:
                 # Init driver
                 driver.init_driver()
             else:
-                logger.error(err_msg)
+                logger.error(f"Driver: {driver_name} is disabled. "
+                             f"Error message: {err_msg}")
                 driver.enable = False
                 driver.set_status(driver.DRIVER_STATUS_OFFLINE)
             # Show driver info
+            logger.info("\n")
             logger.info(driver.get_driver_info())
 
     def has_driver(self, driver_name):

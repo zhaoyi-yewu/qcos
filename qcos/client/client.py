@@ -157,10 +157,10 @@ class Client:
             job_priority=Constant.DEFAULT_JOB_PRIORITY,
             description=None,
             shots=Constant.DEFAULT_SHOTS,
-            qubits=Constant.DEFAULT_QUBITS,
             backend=Constant.DRIVER_DUMMY,
             transpiler=Constant.TRANSPILER_CMSS,
-            optimization_level=Constant.DEFAULT_OPTIMIZATION_LEVEL):
+            optimization_level=Constant.DEFAULT_OPTIMIZATION_LEVEL,
+            dry_run=False):
         """
         Submit new job
 
@@ -171,10 +171,10 @@ class Client:
         :param job_priority: job priority
         :param description: job description
         :param shots: shots
-        :param qubits: qubits
         :param backend: backend
         :param transpiler: transpiler
         :param optimization_level: optimization level
+        :param dry_run: dry run
         :return: submit_job result
         """
         method_name = "submit_job"
@@ -188,10 +188,10 @@ class Client:
             "job_priority": job_priority,
             "description": description,
             "shots": shots,
-            "qubits": qubits,
             "backend": backend,
             "transpiler": transpiler,
-            "optimization_level": optimization_level
+            "optimization_level": optimization_level,
+            "dry_run": dry_run
         }
         status_code, reason, text, result = Client.call_json_rpc(
             self.job_url, method_name, data)

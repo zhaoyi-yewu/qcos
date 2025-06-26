@@ -15,9 +15,12 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 import logging
+from schema import Optional, Or
 
 from qcos.common.constant import Constant
+from qcos.common.library import Library
 from qcos.drivers.driver_base import DriverBase
 
 logger = logging.getLogger(__name__)
@@ -35,9 +38,9 @@ class DriverDummy(DriverBase):
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
         self.layout_method = DriverBase.LAYOUT_METHOD_CMSS_NEUTRAL_ATOM
-        self.enable_circuit_merge = True
+        self.enable_circuit_merge = False
         self.default_results_type = self.DATA_TYPE_GATE_SEQUENCE
-        self.num_qubits = 20
+        self.max_qubits = 10
         self.basis_gates = []
         # pylint: disable=duplicate-code
         self.coupling_map = []
@@ -57,8 +60,39 @@ class DriverDummy(DriverBase):
         :return bool: True if successful, False otherwise
         :return err_msg: error message
         """
-        # pylint: disable=duplicate-code
-        return True, ""
+        # TODO(zhaoyi): load transpiler plugin, and implemented in transpiler
+        success = True
+        # check and load driver configs
+        driver_config_schema = {
+            "qpu_configs": {
+                "qubits": int,
+                "storage_area": [str],
+                "operate_area": [str],
+                "coupler_map": {str: [str]},
+                "readout_error": {str: Or(float, int)},
+                Optional("coupler_error"): {str: Or(float, int)},
+                Optional("closest"): {str: str}
+            },
+            "decomposition_rule": {
+                str: {
+                    "gates": [list],
+                    Optional("params"): [str]
+                }
+            }
+        }
+        err_msg = Library.validate_schema(
+            self.extra_configs, driver_config_schema)
+        if err_msg:
+            err_msg = f"driver config file error: {err_msg}"
+            success = False
+        else:
+            # copy configs to self.qpu_configs
+            self.qpu_configs = copy.deepcopy(
+                self.extra_configs.get("qpu_configs", {}))
+            # copy configs to self.decomposition_rule
+            self.decomposition_rule = copy.deepcopy(
+                self.extra_configs.get("decomposition_rule", {}))
+        return success, err_msg
 
     def close_driver(self):
         """
@@ -75,10 +109,10 @@ class DriverDummy(DriverBase):
         :param data_type: data type
         :param shots: shots
         """
-        # pylint: disable=duplicate-code
-        logger.info(f"job_id: {job_id}, data_type: {data_type}, data: {data},"
-                    f" shots: {shots}")
+        logger.info(f"job_id: {job_id}, shots: {shots}, "
+                    f"data_type: {data_type}, data: {data}")
         self.set_status(self.DRIVER_STATUS_BUSY)
-        results = {'00': 47, '01': 0, '10': 0, '11': 53}
+        # dummy driver results
+        results = {'00': 00, '01': 1, '10': 10, '11': 11}
         self.set_results(job_id, results=results)
         self.set_status(self.DRIVER_STATUS_ONLINE)

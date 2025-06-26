@@ -43,7 +43,12 @@ QCOS commands:
 
 [Job commands]
 * Submit Job
-qcos-cli submit-job --shots 10 --qubits 2 '["OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"]'
+1. 测试驱动
+qcos-cli submit-job --shots 10 --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
+qcos-cli submit-job --shots 10 --dry-run --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+3. 中科酷原-汉原1 中性原子驱动, 真实运行
+qcos-cli submit-job --shots 10 --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
 
 * Get job status
 qcos-cli get-job-status 00000000-0000-4000-8000-000000000001
@@ -330,7 +335,8 @@ class SubmitJob(Command):
         :return: parser
         """
         parser = super().get_parser(prog_name)
-        parser.add_argument("source_code", help="Source code")
+        parser.add_argument("-D", "--dry-run", dest="dry_run",
+                            action="store_true", help="Dry run")
         parser.add_argument("--code-type", dest="code_type",
                             default=Constant.CODE_TYPE_QASM2,
                             help=f"Code Types: "
@@ -352,8 +358,6 @@ class SubmitJob(Command):
                             help="Set job description")
         parser.add_argument("--shots", dest="shots", type=int,
                             default=Constant.DEFAULT_SHOTS, help="Shots")
-        parser.add_argument("--qubits", dest="qubits", type=int,
-                            default=Constant.DEFAULT_QUBITS, help="Qubits")
         parser.add_argument("--backend", dest="backend",
                             default=f"{Constant.DRIVER_DUMMY}",
                             help="Set backend driver name")
@@ -364,6 +368,7 @@ class SubmitJob(Command):
                             dest="optimization_level", type=int,
                             default=Constant.DEFAULT_OPTIMIZATION_LEVEL,
                             help="Set optimization level")
+        parser.add_argument("source_code", help="Source code")
         return parser
 
     def take_action(self, args):
@@ -373,6 +378,7 @@ class SubmitJob(Command):
         :param args: command line arguments
         """
         resource = "Job"
+        dry_run = args.dry_run
         source_code = args.source_code
         code_type = args.code_type
         job_type = args.job_type
@@ -380,24 +386,23 @@ class SubmitJob(Command):
         job_priority = args.job_priority
         description = args.description
         shots = args.shots
-        qubits = args.qubits
         backend = args.backend
         transpiler = args.transpiler
         optimization_level = args.optimization_level
 
         # validate and convert source_code
-        source_code_list = None
+        source_code_obj = None
         try:
-            source_code_list = json.loads(source_code)
+            source_code_obj = json.loads(source_code)
         except json.decoder.JSONDecodeError as error:
-            raise errors.InvalidArguments(f"Invalid code_content, {error}")
-        if isinstance(source_code_list, list):
-            for content in source_code_list:
+            source_code_obj = source_code
+        if isinstance(source_code_obj, list):
+            for content in source_code_obj:
                 if not isinstance(content, str):
                     raise errors.InvalidArguments(
                         "Invalid source_code, required schema: list[str]")
-        elif isinstance(source_code_list, str):
-            source_code_list = [source_code_list]
+        elif isinstance(source_code_obj, str):
+            source_code_list = [source_code_obj]
         else:
             raise errors.InvalidArgumentsException(
                 "Invalid source_code, required schema: list[str]")
@@ -433,11 +438,6 @@ class SubmitJob(Command):
             shots, "shots",
             Constant.MIN_SHOTS, Constant.MAX_SHOTS))
 
-        # Validate argument: qubits
-        CommandHelper.handle_invalid_arguments(Library.validate_values_range(
-            qubits, "qubits",
-            Constant.MIN_QUBITS, Constant.MAX_QUBITS))
-
         # Validate argument: transpiler
         CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
             transpiler, "transpiler", Constant.TRANSPILER_TYPES))
@@ -449,13 +449,17 @@ class SubmitJob(Command):
 
         # call api
         status_code, reason, text, result = self.app.client.submit_job(
-            source_code_list, code_type=code_type,
+            source_code_list,
+            code_type=code_type,
             job_type=job_type,
             job_sched_policy=job_sched_policy,
             job_priority=job_priority,
             description=description,
-            shots=shots, qubits=qubits, backend=backend, transpiler=transpiler,
-            optimization_level=optimization_level)
+            shots=shots,
+            backend=backend,
+            transpiler=transpiler,
+            optimization_level=optimization_level,
+            dry_run=dry_run)
         results = CommandHelper.check_results(
             resource, "submit_job", status_code, reason, text)
         print(f"Job ID: {results.get('job_id', None)}")
@@ -562,7 +566,7 @@ class GetJobs(Lister):
         """
         resource = "Job"
         header_list = ["job_id", "job_status", "backend", "job_type",
-                       "shots", "qubits", "creation_date"]
+                       "shots", "creation_date"]
 
         # call api
         status_code, reason, text, result = self.app.client.get_jobs()

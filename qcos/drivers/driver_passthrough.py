@@ -53,6 +53,7 @@ class DriverPassthrough(DriverBase):
         """
         Close driver
         """
+        # pylint: disable=duplicate-code
         self.set_status(self.DRIVER_STATUS_OFFLINE)
 
     def run(self, job_id, data, data_type, shots=1):
@@ -65,12 +66,10 @@ class DriverPassthrough(DriverBase):
         :param shots: shots
         """
         # pylint: disable=duplicate-code
-        logger.info(f"job_id: {job_id}, data_type: {data_type}, data: {data},"
-                    f" shots: {shots}")
-        logger.info(f"job_id: {job_id}, data_type: {data_type}, data: {data},"
-                    f" shots: {shots}")
+        logger.info(f"job_id: {job_id}, shots: {shots}, "
+                    f"data_type: {data_type}, data: {data}")
         self.set_status(self.DRIVER_STATUS_BUSY)
         # TODO(zhaoyi): to be implemented
-        results = {'00': 47, '01': 0, '10': 0, '11': 53}
+        results = {}
         self.set_results(job_id, results=results)
         self.set_status(self.DRIVER_STATUS_ONLINE)

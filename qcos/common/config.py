@@ -15,9 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import configparser
-import os
-
 from qcos.common import errors
 from qcos.common.library import Library
 
@@ -48,7 +45,7 @@ class Config:
     CERT_FILE = None
     KEY_FILE = None
 
-    # [DECOMPOSE_RULE]
+    # TODO (zhaoyi): move to transpiler class
     DECOMPOSE_RULE = None
 
     EXTRA_CONFIGS = {}
@@ -62,6 +59,7 @@ class Config:
         :param extra_config: is extra config
         """
         success, err_msg, config_values = Library.read_toml_file(config_file)
+        config_values = config_values.unwrap()
         if not success:
             raise errors.GenericException(err_msg)
         if extra_config:

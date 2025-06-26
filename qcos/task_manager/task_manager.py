@@ -273,7 +273,7 @@ class TaskFlowManager(ABC):
             result = await state.result()
             return state.name, parameters, result, None
         else:
-            return state.name, parameters, None
+            return state.name, parameters, None, None
 
     def get_task_flow_list(self):
         """
@@ -345,15 +345,10 @@ class TaskFlowManager(ABC):
 
         return success_list
 
-    def get_flow_info_by_backend(self, backend, transpiler_name):
+    def get_flow_info_by_backend(self, backend):
         flow_info = {
-            "deploy_name": None,
-            "deploy_flow_func": None,
-            "deploy_flow_path": None
+            "deploy_name": backend,
+            "deploy_flow_func": job_flow,
+            "deploy_flow_path": "../engine/job_engine.py"
         }
-        if transpiler_name:
-            # TODO(jidalong) update later
-            flow_info["deploy_name"] = backend
-            flow_info["deploy_flow_func"] = job_flow
-            flow_info["deploy_flow_path"] = "../engine/job_engine.py"
         return flow_info

@@ -179,29 +179,17 @@ class Server:
             if logger.getEffectiveLevel() == logging.DEBUG:
                 access_log = True
 
-            if Config.USE_SSL:
-                config = uvicorn.Config(
-                    app,
-                    host=Config.API_SERVER_LISTEN_IP,
-                    port=Config.API_SERVER_PORT,
-                    workers=Config.WORKERS,
-                    reload=False,
-                    access_log=access_log,
-                    lifespan="on",
-                    ssl_keyfile=Config.KEY_FILE,
-                    ssl_certfile=Config.CERT_FILE
-                )
-            else:
-                config = uvicorn.Config(
-                    app,
-                    host=Config.API_SERVER_LISTEN_IP,
-                    port=Config.API_SERVER_PORT,
-                    workers=Config.WORKERS,
-                    reload=False,
-                    access_log=access_log,
-                    lifespan="on",
-                    timeout_keep_alive=120
-                )
+            config = uvicorn.Config(
+                app,
+                host=Config.API_SERVER_LISTEN_IP,
+                port=Config.API_SERVER_PORT,
+                workers=Config.WORKERS,
+                reload=False,
+                access_log=access_log,
+                lifespan="on",
+                ssl_keyfile=Config.KEY_FILE if Config.USE_SSL else None,
+                ssl_certfile=Config.CERT_FILE if Config.USE_SSL else None
+            )
 
             # overwrite uvicorn loggers with our own logger
             for uvicorn_logger_name in ("uvicorn", "uvicorn.error"):

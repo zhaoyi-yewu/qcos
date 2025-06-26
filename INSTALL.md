@@ -65,7 +65,12 @@ links ./coverage_html/index.html
 ```shell
 [作业命令]
 * 提交作业
-qcos-cli submit-job --shots 10 --qubits 2 '["OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"]'
+1. 测试驱动
+qcos-cli submit-job --shots 10 --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
+qcos-cli submit-job --shots 10 --dry-run --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+3. 中科酷原-汉原1 中性原子驱动, 真实运行
+qcos-cli submit-job --shots 10 --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
 
 * 获取作业状态
 qcos-cli get-job-status 00000000-0000-4000-8000-000000000001

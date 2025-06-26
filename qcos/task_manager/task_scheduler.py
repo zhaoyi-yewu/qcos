@@ -14,7 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-import asyncio
+
 import logging
 from abc import ABC
 
@@ -77,11 +77,10 @@ class TaskScheduler(ABC):
         driver_module_name = driver.get_module_name()
         driver_class_name = driver.get_class_name()
         extra_configs = driver.get_extra_configs()
-        transpiler_name = driver.get_transpiler()
 
         try:
             flow_info = self._task_manager.get_flow_info_by_backend(
-                backend, transpiler_name)
+                backend)
             policy_handler = self._policy_factory.get_policy_handler_by_name(
                 policy_type)
             job_json_info = {}
