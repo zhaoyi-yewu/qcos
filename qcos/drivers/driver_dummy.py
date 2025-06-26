@@ -39,6 +39,7 @@ class DriverDummy(DriverBase):
         self.default_results_type = self.DATA_TYPE_GATE_SEQUENCE
         self.num_qubits = 20
         self.basis_gates = []
+        # pylint: disable=duplicate-code
         self.coupling_map = []
         self.extra_configs = {}
 
@@ -46,6 +47,7 @@ class DriverDummy(DriverBase):
         """
         Init driver
         """
+        # pylint: disable=duplicate-code
         self.set_status(self.DRIVER_STATUS_ONLINE)
 
     def validate_driver_configs(self):
@@ -55,6 +57,7 @@ class DriverDummy(DriverBase):
         :return bool: True if successful, False otherwise
         :return err_msg: error message
         """
+        # pylint: disable=duplicate-code
         return True, ""
 
     def close_driver(self):
@@ -72,6 +75,7 @@ class DriverDummy(DriverBase):
         :param data_type: data type
         :param shots: shots
         """
+        # pylint: disable=duplicate-code
         logger.info(f"job_id: {job_id}, data_type: {data_type}, data: {data},"
                     f" shots: {shots}")
         self.set_status(self.DRIVER_STATUS_BUSY)

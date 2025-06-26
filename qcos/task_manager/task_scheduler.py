@@ -19,7 +19,7 @@ import logging
 from abc import ABC
 
 from qcos.common.constant import Constant
-from qcos.task_manager import TaskFlowManager
+from .task_manager import TaskFlowManager
 
 logger = logging.getLogger(__name__)
 

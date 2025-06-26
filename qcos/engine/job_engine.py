@@ -24,7 +24,7 @@ from qcos.common.constant import Constant
 from qcos.transpiler.cmss.compiler.decomposer import decompose
 from qcos.transpiler.cmss.mapping.na_mapping import NASingleRoute
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
-
+from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,6 @@ def init_driver(driver_info):
         return {"driver": None, "error": ValueError(str(e))}
 
 
-
 @task(persist_result=False)
 def cmss_transpiler(job_info, driver):
     """
@@ -74,8 +73,10 @@ def cmss_transpiler(job_info, driver):
         # compile and mapping
         raw_qasm = job_info['source_code'][0]
         logger.debug(f"raw_qasm: {raw_qasm}")
+        abs_tree = get_abs_tree(raw_qasm)
+        qnum, gates = get_ir(abs_tree)
 
-        na_map = NASingleRoute(raw_qasm, qpu_configs)
+        na_map = NASingleRoute(qnum, gates, qpu_configs)
         mapping_res = na_map.execute_with_order()
         logger.debug(f"initial mapping: {na_map.mapping}")
         logger.debug(f"after mapping: {mapping_res}")
@@ -143,13 +144,15 @@ def job_flow(job_info):
                 job_info["data"], driver)
             if transpile_task_result.result()["error"]:
                 raise transpile_task_result.result()["error"]
-            transpile_results = transpile_task_result.result()["basis_gate_list"]
+            transpile_results = transpile_task_result.result()[
+                "basis_gate_list"]
 
     # call run() in driver
-    run_driver_task_result = run_driver.submit(job_info, driver, transpile_results)
+    run_driver_task_result = run_driver.submit(job_info, driver,
+                                               transpile_results)
     if run_driver_task_result.result()["error"]:
         raise run_driver_task_result.result()["error"]
-    job_results=run_driver_task_result.result()["results"]
+    job_results = run_driver_task_result.result()["results"]
 
     # construct results
     results = [job_results]

@@ -344,7 +344,6 @@ class Library:
         """
         Find missing keys in a dictionary
 
-        :param _dict: dictionary to be checked
         :param required_keys: required keys
         :return: list of missing keys
         """

@@ -540,6 +540,7 @@ class Visitor:
         如果in_var[1]是字符串，从符号表中取值
 
         :param in_var: 变量
+        :param pos: 所在位置
         :return Any: 变量对应的值
         """
         idx = in_var[1]

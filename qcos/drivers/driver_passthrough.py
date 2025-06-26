@@ -37,6 +37,7 @@ class DriverPassthrough(DriverBase):
         """
         Init driver
         """
+        # pylint: disable=duplicate-code
         self.set_status(self.DRIVER_STATUS_ONLINE)
 
     def validate_driver_configs(self):
@@ -63,6 +64,7 @@ class DriverPassthrough(DriverBase):
         :param data_type: data type
         :param shots: shots
         """
+        # pylint: disable=duplicate-code
         logger.info(f"job_id: {job_id}, data_type: {data_type}, data: {data},"
                     f" shots: {shots}")
         logger.info(f"job_id: {job_id}, data_type: {data_type}, data: {data},"
