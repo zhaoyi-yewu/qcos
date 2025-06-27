@@ -17,9 +17,10 @@
 
 import numpy as np
 
+from qcos.common.config import Config
 from qcos.transpiler.cmss.common.gate import Gate, GateType, create_gate
 from qcos.transpiler.cmss.common.gate import U1, U2, U3
-from qcos.transpiler.cmss.compiler.decomposer import decompose
+from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 
@@ -96,7 +97,7 @@ class TestDecompose:
         assert ir is not None
         assert q_num == 6
         assert len(ir) == 21
-        decomposed_gates = decompose(ir)
+        decomposed_gates = decompose_gates(ir)
         assert len(decomposed_gates) == 85
         validate_ir(decomposed_gates[0], "rx", ["2"], 1, False)
         validate_ir(decomposed_gates[1], "ry", ["2"], 1, False)
@@ -115,7 +116,7 @@ class TestDecompose:
         assert ir is not None
         assert q_num == 6
         assert len(ir) == 21
-        decomposed_gates = decompose(ir)
+        decomposed_gates = decompose_gates(ir)
         assert len(decomposed_gates) == 85
         opt_gates = optimize_gate(decomposed_gates)
         assert len(opt_gates) == 77
@@ -138,7 +139,7 @@ class TestDecompose:
         assert len(ir) == 5
         opt_gates = optimize_gate(ir)
         assert len(opt_gates) == 3
-        decomposed_gates = decompose(opt_gates)
+        decomposed_gates = decompose_gates(opt_gates)
         assert len(decomposed_gates) == 3
         opt_gates = optimize_gate(decomposed_gates)
         assert len(opt_gates) == 2
@@ -180,3 +181,31 @@ class TestDecompose:
         validate_gate(decom_gate[2], "rz", [0], [1 + np.pi])
         validate_gate(decom_gate[3], "rx", [0], [np.pi / 2])
         validate_gate(decom_gate[4], "rz", [0], [2 + 3 * np.pi])
+
+    def test_u3_decompose(self):
+        config = {
+            "u3": {
+                "params": ["a", "b", "c"],
+                "gates": [
+                    ("rz", [0], ["c"]),
+                    ("rx", [0], ["pi/2"]),
+                    ("rz", [0], ["b+pi"]),
+                    ("rx", [0], ["pi/2"]),
+                    ("rz", [0], ["a+pi"]),
+                ]
+            }
+        }
+
+        Config.DECOMPOSE_RULE = config
+        u3 = create_gate("u3", [0], [1, 2, 3])
+        assert u3.type == GateType.SINGLE_QUBIT_GATE.value
+        assert u3.name == "u3"
+        assert u3.hermitian is False
+
+        decom_gate = u3.decompose()
+        assert len(decom_gate) == 5
+        validate_gate(decom_gate[0], "rz", [0], [3])
+        validate_gate(decom_gate[1], "rx", [0], [np.pi / 2])
+        validate_gate(decom_gate[2], "rz", [0], [2 + np.pi])
+        validate_gate(decom_gate[3], "rx", [0], [np.pi / 2])
+        validate_gate(decom_gate[4], "rz", [0], [1 + np.pi])
