@@ -23,6 +23,10 @@ class TranspilerBase(ABC):
     All Transpiler classes are inherited from this class.
     """
 
+    def __init__(self):
+        # num qubits
+        self.num_qubits = -1
+
     @abstractmethod
     def transpile(self, qasm: str):
         pass

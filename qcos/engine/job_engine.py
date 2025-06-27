@@ -17,6 +17,7 @@
 
 import importlib
 import logging
+import time
 
 from prefect import flow, task, runtime
 
@@ -66,16 +67,20 @@ def cmss_transpiler(job_info, driver):
     :return basis gate list
     """
     # load qpu configs
+    num_qubits = -1
     try:
         factory = TranspilerFactory()
         transpiler = factory.get_transpiler_by_type(Constant.TRANSPILER_CMSS)
         raw_qasm = job_info['source_code'][0]
         logger.debug(f"raw_qasm: {raw_qasm}")
         basis_gate_list = transpiler.transpile(raw_qasm)
+        num_qubits = transpiler.num_qubits
         logger.debug(f"final basis_gate_list: {basis_gate_list}")
-        return {"basis_gate_list": basis_gate_list, "error": None}
+        return {"basis_gate_list": basis_gate_list, "num_qubits": num_qubits,
+                "error": None}
     except Exception as e:
-        return {"basis_gate_list": None, "error": ValueError(str(e))}
+        return {"basis_gate_list": None, "num_qubits": num_qubits,
+                "error": ValueError(str(e))}
 
 
 @task(persist_result=False)
@@ -118,8 +123,14 @@ def job_flow(job_info):
     :return results
     """
     transpile_results = None
+    num_qubits = -1
+    transpiler_benchmark_start = 0
+    transpiler_benchmark_end = 0
+    job_results = {"metadata": {}, "benchmark": {}, "results": None}
     job_id = runtime.flow_run.id
     job_info["job_id"] = job_id
+    benchmark_types = job_info["data"].get("benchmark", [])
+    benchmark_types = [] if benchmark_types is None else benchmark_types
     logger.info(f"Processing work flow: job_engine. "
                 f"job_id: {job_id}, job_info: {job_info}")
 
@@ -132,17 +143,29 @@ def job_flow(job_info):
     if driver.enable_transpiler:
         # choose transpiler
         if driver.transpiler == Constant.TRANSPILER_CMSS:
+            if Constant.BENCHMARK_TYPE_TRANSPILER in benchmark_types:
+                transpiler_benchmark_start = time.time()
             transpile_task_result = cmss_transpiler.submit(
                 job_info["data"], driver)
-            if transpile_task_result.result()["error"]:
-                raise transpile_task_result.result()["error"]
+            if Constant.BENCHMARK_TYPE_TRANSPILER in benchmark_types:
+                transpiler_benchmark_end = time.time()
+            task_result = transpile_task_result.result()
+            num_qubits = task_result.get("num_qubits", -1)
+            if task_result["error"]:
+                raise task_result["error"]
 
     # call run() in driver
     run_driver_task_result = run_driver.submit(job_info, driver,
                                                transpile_results)
     if run_driver_task_result.result()["error"]:
         raise run_driver_task_result.result()["error"]
-    job_results = run_driver_task_result.result()["results"]
+    job_results["num_qubits"] = num_qubits
+    job_results["results"] = run_driver_task_result.result()["results"]
+    if transpiler_benchmark_start and transpiler_benchmark_end:
+        job_results["benchmark"] = {
+            "benchmark_transpiler":
+                transpiler_benchmark_end - transpiler_benchmark_start,
+        }
 
     # construct results
     results = [job_results]

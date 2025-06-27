@@ -53,6 +53,7 @@ def submit_job(
     backend = body.backend
     transpiler = body.transpiler
     optimization_level = body.optimization_level
+    benchmark = body.benchmark
     dry_run = body.dry_run
 
     # validate: source_code
@@ -81,7 +82,7 @@ def submit_job(
     jsonrpc_errors.handle_invalid_params(Library.validate_values_length(
         description, "description",
         Constant.MIN_DESCRIPTION_LENGTH, Constant.MAX_DESCRIPTION_LENGTH,
-        allow_empty=True))
+        allow_none=True))
 
     # validate: shots
     jsonrpc_errors.handle_invalid_params(Library.validate_values_range(
@@ -101,6 +102,14 @@ def submit_job(
         optimization_level, "optimization_level",
         Constant.MIN_OPTIMIZATION_LEVEL, Constant.MAX_OPTIMIZATION_LEVEL))
 
+    # validate: benchmark
+    if benchmark:
+        for _benchmark in benchmark:
+            jsonrpc_errors.handle_invalid_params(
+                Library.validate_values_enum(_benchmark, "benchmark",
+                                             Constant.BENCHMARK_TYPES,
+                                             allow_none=True))
+
     # generate creation_date
     creation_date = Library.get_current_datetime()
     body.creation_date = creation_date
@@ -115,13 +124,14 @@ def submit_job(
     response_info = {
         "job_id": res["job_id"],
         "job_status": Constant.JOB_STATUS_UNKNOWN,
-        "job_sched_policy": body.job_sched_policy,
-        "job_priority": body.job_priority,
-        "description": body.description,
-        "backend": body.backend,
-        "transpiler": body.transpiler,
-        "shots": body.shots,
-        "dry_run": body.dry_run,
+        "job_sched_policy": job_sched_policy,
+        "job_priority": job_priority,
+        "description": description,
+        "backend": backend,
+        "transpiler": transpiler,
+        "shots": shots,
+        "benchmark": benchmark,
+        "dry_run": dry_run,
         "creation_date": creation_date
     }
     return response_info

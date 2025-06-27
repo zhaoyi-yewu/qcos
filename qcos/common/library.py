@@ -228,15 +228,19 @@ class Library:
         return datetime.now()
 
     @staticmethod
-    def validate_values_enum(value, argument_name, value_list):
+    def validate_values_enum(value, argument_name, value_list,
+                             allow_none=False):
         """
         Validate values for enum
 
         :param value: value
         :param argument_name: argument name
         :param value_list: valid value list
+        :param allow_none: allow None value
         :return: True or False
         """
+        if not value and allow_none:
+            return True, None
         if value not in value_list:
             return (False, [
                 f"Invalid argument: {argument_name}={value}. "
@@ -290,7 +294,7 @@ class Library:
     @staticmethod
     def validate_values_length(
             value, argument_name, min_value=None, max_value=None,
-            allow_empty=False):
+            allow_none=False):
         """
         Validate values for int range
 
@@ -298,11 +302,11 @@ class Library:
         :param argument_name: argument name
         :param min_value: minimum value
         :param max_value: maximum value
-        :param allow_empty: allow empty value
+        :param allow_none: allow None value
         :return: True or False
         """
         err_msgs = []
-        if not value and allow_empty:
+        if not value and allow_none:
             return True, err_msgs
         if min_value:
             if len(value) < min_value:

@@ -72,6 +72,11 @@ class Constant:
     RESULTS_FETCH_ASYNC_RETRIES = 3
     RESULTS_FETCH_ASYNC_TIMEOUT = 30
 
+    # Benchmark types
+    BENCHMARK_TYPE_TRANSPILER = "transpiler"
+    BENCHMARK_TYPE_SCHEDULER = "scheduler"
+    BENCHMARK_TYPES = [BENCHMARK_TYPE_TRANSPILER, BENCHMARK_TYPE_SCHEDULER]
+
     # Maximum jobs allowed in the system
     MAX_JOBS = 1000
 

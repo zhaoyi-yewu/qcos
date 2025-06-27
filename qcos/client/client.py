@@ -160,6 +160,7 @@ class Client:
             backend=Constant.DRIVER_DUMMY,
             transpiler=Constant.TRANSPILER_CMSS,
             optimization_level=Constant.DEFAULT_OPTIMIZATION_LEVEL,
+            benchmark=None,
             dry_run=False):
         """
         Submit new job
@@ -174,6 +175,7 @@ class Client:
         :param backend: backend
         :param transpiler: transpiler
         :param optimization_level: optimization level
+        :param benchmark: benchmark types
         :param dry_run: dry run
         :return: submit_job result
         """
@@ -191,6 +193,7 @@ class Client:
             "backend": backend,
             "transpiler": transpiler,
             "optimization_level": optimization_level,
+            "benchmark": benchmark,
             "dry_run": dry_run
         }
         status_code, reason, text, result = Client.call_json_rpc(

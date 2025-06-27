@@ -51,6 +51,7 @@ class TranspilerCmss(TranspilerBase):
             # compile and mapping
             logger.debug(f"raw_qasm: {qasm}")
             num_qubits, gates = compile(qasm)
+            self.num_qubits = num_qubits
             gates = optimize_gate(gates)
             na_map = NASingleRoute(num_qubits, gates, qpu_cfg)
             mapping_res = na_map.execute_with_order()

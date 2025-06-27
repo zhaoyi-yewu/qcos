@@ -59,7 +59,8 @@ class NASingleRoute(ABC):
             if k in self.storage_area:
                 err_dict[k] = v
         sq = sorted(err_dict.items(), key=lambda e: e[1])[:self.qnum]
-        self.mapping = dict([(a, b[0]) for a, b in zip(range(self.qnum), sq)])
+        self.mapping = dict([(a, b[0])
+                             for a, b in zip(range(self.qnum), sq)])
         self.qids = [int(q[0][1:]) for q in sq]
 
     def execute_with_order(self):
@@ -73,7 +74,8 @@ class NASingleRoute(ABC):
         measure = []
         for gate in self.gates:
             assert len(gate.targets) == 1
-            gate.targets = [int(self.mapping[int(q)][1:]) for q in gate.targets]
+            gate.targets = [int(self.mapping[int(q)][1:])
+                            for q in gate.targets]
             if gate.name == 'measure':
                 measure.append(gate)
                 continue

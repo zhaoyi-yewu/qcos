@@ -47,6 +47,8 @@ class SubmitJobRequest(BaseModel):
     job_sched_policy: str = Constant.DEFAULT_JOB_SCHED_POLICY
     # Job priority
     job_priority: int = Constant.DEFAULT_JOB_PRIORITY
+    # benchmark
+    benchmark: Optional[list] = []
     # Shots
     shots: int = Constant.DEFAULT_SHOTS
     # Dry-run
@@ -76,10 +78,13 @@ class SubmitJobResponse(BaseModel):
     transpiler: str = None
     # Shots
     shots: int = None
+    # benchmark
+    benchmark: Optional[list] = []
     # Dry-run
     dry_run: Optional[bool] = False
     # Creation date
     creation_date: Optional[datetime] = None
+
 
 class GetJobStatusRequest(BaseModel):
     """
@@ -114,7 +119,7 @@ class GetJobStatusResponse(BaseModel):
     dry_run: Optional[bool] = False
     # Creation Date
     creation_date: Optional[datetime] = None
-    #error message
+    # error message
     error_message: Optional[str] = None
 
 
@@ -136,8 +141,8 @@ class GetJobResultsResponse(BaseModel):
     # Job status
     job_status: str = None
     # results
-    results: dict = None
-    #error message
+    results: Optional[list] = None
+    # error message
     error_message: Optional[str] = None
 
 

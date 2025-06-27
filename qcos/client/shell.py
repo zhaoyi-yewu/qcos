@@ -313,6 +313,8 @@ class CommandHelper:
         headers = []
         _values = []
         for k, v in values.items():
+            if not v:
+                continue
             headers.append(k.upper())
             keys.append(k)
         for key in keys:
@@ -335,17 +337,18 @@ class SubmitJob(Command):
         :return: parser
         """
         parser = super().get_parser(prog_name)
-        parser.add_argument("-D", "--dry-run", dest="dry_run",
-                            action="store_true", help="Dry run")
         parser.add_argument("--code-type", dest="code_type",
+                            choices=Constant.CODE_TYPES,
                             default=Constant.CODE_TYPE_QASM2,
                             help=f"Code Types: "
                                  f"{','.join(Constant.CODE_TYPES)}")
         parser.add_argument("--job-type", dest="job_type",
                             default=f"{Constant.JOB_TYPE_ESTIMATION}",
+                            choices=Constant.JOB_TYPES,
                             help=f"Job type: {','.join(Constant.JOB_TYPES)}")
         parser.add_argument("--job-scheduling-policy",
                             dest="job_sched_policy",
+                            choices=Constant.JOB_SCHED_POLICIES,
                             default=f"{Constant.DEFAULT_JOB_SCHED_POLICY}",
                             help="Set job scheduling policy")
         parser.add_argument("--job-priority",
@@ -368,6 +371,16 @@ class SubmitJob(Command):
                             dest="optimization_level", type=int,
                             default=Constant.DEFAULT_OPTIMIZATION_LEVEL,
                             help="Set optimization level")
+        parser.add_argument("--benchmark",
+                            nargs="*",
+                            type=str,
+                            choices=Constant.BENCHMARK_TYPES,
+                            dest="benchmark",
+                            help=f"Benchmark types: "
+                                 f"{','.join(Constant.BENCHMARK_TYPES)}")
+        parser.add_argument("-D", "--dry-run", dest="dry_run",
+                            action="store_true", help="Dry run")
+
         parser.add_argument("source_code", help="Source code")
         return parser
 
@@ -389,6 +402,7 @@ class SubmitJob(Command):
         backend = args.backend
         transpiler = args.transpiler
         optimization_level = args.optimization_level
+        benchmark = args.benchmark
 
         # validate and convert source_code
         source_code_obj = None
@@ -408,6 +422,22 @@ class SubmitJob(Command):
                 "Invalid source_code, required schema: list[str]")
         if not source_code_list:
             raise errors.InvalidArguments("Empty source_code is not allowed")
+
+        source_code_obj = None
+        try:
+            source_code_obj = json.loads(source_code)
+        except json.decoder.JSONDecodeError as error:
+            source_code_obj = source_code
+        if isinstance(source_code_obj, list):
+            for content in source_code_obj:
+                if not isinstance(content, str):
+                    raise errors.InvalidArguments(
+                        "Invalid source_code, required schema: list[str]")
+        elif isinstance(source_code_obj, str):
+            source_code_list = [source_code_obj]
+        else:
+            raise errors.InvalidArgumentsException(
+                "Invalid source_code, required schema: list[str]")
 
         # Validate argument: code_type
         CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
@@ -431,7 +461,7 @@ class SubmitJob(Command):
         CommandHelper.handle_invalid_arguments(Library.validate_values_length(
             description, "description",
             Constant.MIN_DESCRIPTION_LENGTH, Constant.MAX_DESCRIPTION_LENGTH,
-            allow_empty=True))
+            allow_none=True))
 
         # Validate argument: shots
         CommandHelper.handle_invalid_arguments(Library.validate_values_range(
@@ -459,6 +489,7 @@ class SubmitJob(Command):
             backend=backend,
             transpiler=transpiler,
             optimization_level=optimization_level,
+            benchmark=benchmark,
             dry_run=dry_run)
         results = CommandHelper.check_results(
             resource, "submit_job", status_code, reason, text)
@@ -529,6 +560,7 @@ class GetJobResults(ShowOne):
         """
         resource = "Job"
         job_id = args.job_id
+        json_result = {}
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(
@@ -539,7 +571,14 @@ class GetJobResults(ShowOne):
             self.app.client.get_job_results(job_id)
         json_results = CommandHelper.check_results(
             resource, "get_job_results", status_code, reason, text)
-        table_values = CommandHelper.get_table_data(json_results)
+
+        json_result["job_id"] = json_results["job_id"]
+        json_result["job_status"] = json_results["job_status"]
+        _results = json_results.get("results", None)
+        if _results:
+            _result = _results[0]
+            json_result.update(_result)
+        table_values = CommandHelper.get_table_data(json_result)
         return table_values
 
 

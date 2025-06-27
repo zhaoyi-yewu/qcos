@@ -114,7 +114,7 @@ class TaskScheduler(ABC):
             response = {
                 "state": state.upper(),
                 "parameters": parameters,
-                "results": {"results": results},
+                "results": results,
                 "error_message": error_message,
             }
             return response, None
