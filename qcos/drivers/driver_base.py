@@ -85,7 +85,7 @@ class DriverBase:
         self.layout_method = DriverBase.LAYOUT_METHOD_CMSS_NONE
         # enable circuit merge or not (TODO(zhaoyi): not used)
         self.enable_circuit_merge = False
-        # max number of qubits (TODO(zhaoyi): not used)
+        # max number of qubits
         self.max_qubits = 0
         # qpu configs
         self.qpu_configs = None
@@ -298,3 +298,19 @@ class DriverBase:
         :return: default data type
         """
         return self.default_data_type
+
+    def set_max_qubits(self, max_qubits):
+        """
+        Set max qubits
+
+        :param max_qubits: max qubits
+        """
+        self.max_qubits = max_qubits
+
+    def get_max_qubits(self):
+        """
+        Get max qubits
+
+        :return: max qubits
+        """
+        return self.max_qubits

@@ -19,7 +19,7 @@ from enum import Enum
 
 import numpy as np
 
-from qcos.common.config import Config
+from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 
 
 class GateType(Enum):
@@ -94,10 +94,11 @@ class Gate:
         }
         return: gates(list): 分解后的门列表
         """
-        if Config.DECOMPOSE_RULE is None:
+        decompose_rule = trans_cfg_inst.get_decompose_rule()
+        if decompose_rule is None:
             return self.default_decompose()
 
-        custom_gate = Config.DECOMPOSE_RULE.get(self.name, None)
+        custom_gate = decompose_rule.get(self.name, None)
         if custom_gate is None:
             return self.default_decompose()
         try:
@@ -143,9 +144,8 @@ class H(Gate):
         super().__init__("h", targets, arg_value)
 
     def default_decompose(self):
-        gates = []
-        gates.append(RY(targets=self.targets, arg_value=np.pi / 2))
-        gates.append(RX(targets=self.targets, arg_value=np.pi))
+        gates = [RY(targets=self.targets, arg_value=np.pi / 2),
+                 RX(targets=self.targets, arg_value=np.pi)]
         return gates
 
 
@@ -182,9 +182,8 @@ class Z(Gate):
         super().__init__("z", targets, arg_value)
 
     def default_decompose(self):
-        gates = []
-        gates.append(RY(targets=self.targets, arg_value=np.pi))
-        gates.append(RX(targets=self.targets, arg_value=np.pi))
+        gates = [RY(targets=self.targets, arg_value=np.pi),
+                 RX(targets=self.targets, arg_value=np.pi)]
         return gates
 
 
@@ -198,10 +197,9 @@ class S(Gate):
         super().__init__("s", targets, arg_value, hermitian=False)
 
     def default_decompose(self):
-        gates = []
-        gates.append(RX(targets=self.targets, arg_value=3 * np.pi / 2))
-        gates.append(RY(targets=self.targets, arg_value=np.pi / 2))
-        gates.append(RX(targets=self.targets, arg_value=np.pi / 2))
+        gates = [RX(targets=self.targets, arg_value=3 * np.pi / 2),
+                 RY(targets=self.targets, arg_value=np.pi / 2),
+                 RX(targets=self.targets, arg_value=np.pi / 2)]
         return gates
 
 
@@ -216,10 +214,9 @@ class SDG(Gate):
         super().__init__("sdg", targets, arg_value, hermitian=False)
 
     def default_decompose(self):
-        gates = []
-        gates.append(RX(targets=self.targets, arg_value=3 * np.pi / 2))
-        gates.append(RY(targets=self.targets, arg_value=3 * np.pi / 2))
-        gates.append(RX(targets=self.targets, arg_value=np.pi / 2))
+        gates = [RX(targets=self.targets, arg_value=3 * np.pi / 2),
+                 RY(targets=self.targets, arg_value=3 * np.pi / 2),
+                 RX(targets=self.targets, arg_value=np.pi / 2)]
         return gates
 
 
@@ -412,13 +409,10 @@ class CRY(Gate):
                          hermitian=False)
 
     def default_decompose(self):
-        gates = []
-        gates.append(CX(self.targets))
-        gates.append(RY(targets=[self.targets[1]],
-                        arg_value=-self.arg_value[0] / 2))
-        gates.append(CX(self.targets))
-        gates.append(RY(targets=[self.targets[1]],
-                        arg_value=self.arg_value[0] / 2))
+        gates = [CX(self.targets), RY(targets=[self.targets[1]],
+                                      arg_value=-self.arg_value[0] / 2),
+                 CX(self.targets), RY(targets=[self.targets[1]],
+                                      arg_value=self.arg_value[0] / 2)]
         return gates
 
 
@@ -435,13 +429,10 @@ class CRZ(Gate):
                          hermitian=False)
 
     def default_decompose(self):
-        gates = []
-        gates.append(CX(self.targets))
-        gates.append(RZ(targets=[self.targets[1]],
-                        arg_value=-self.arg_value[0] / 2))
-        gates.append(CX(self.targets))
-        gates.append(RZ(targets=[self.targets[1]],
-                        arg_value=self.arg_value[0] / 2))
+        gates = [CX(self.targets), RZ(targets=[self.targets[1]],
+                                      arg_value=-self.arg_value[0] / 2),
+                 CX(self.targets), RZ(targets=[self.targets[1]],
+                                      arg_value=self.arg_value[0] / 2)]
         return gates
 
 
@@ -497,10 +488,9 @@ class U2(Gate):
         super().__init__("u2", targets, arg_value, hermitian=False)
 
     def default_decompose(self):
-        gates = []
-        gates.append(RZ(self.targets, self.arg_value[0] + np.pi / 2))
-        gates.append(RX(self.targets, np.pi / 2))
-        gates.append(RZ(self.targets, self.arg_value[1] - np.pi / 2))
+        gates = [RZ(self.targets, self.arg_value[0] + np.pi / 2),
+                 RX(self.targets, np.pi / 2),
+                 RZ(self.targets, self.arg_value[1] - np.pi / 2)]
         return gates[::-1]
 
 
@@ -513,12 +503,11 @@ class U3(Gate):
         super().__init__("u3", targets, arg_value, hermitian=False)
 
     def default_decompose(self):
-        gates = []
-        gates.append(RZ(self.targets, self.arg_value[1] + np.pi * 3))
-        gates.append(RX(self.targets, np.pi / 2))
-        gates.append(RZ(self.targets, self.arg_value[0] + np.pi))
-        gates.append(RX(self.targets, np.pi / 2))
-        gates.append(RZ(self.targets, self.arg_value[2]))
+        gates = [RZ(self.targets, self.arg_value[1] + np.pi * 3),
+                 RX(self.targets, np.pi / 2),
+                 RZ(self.targets, self.arg_value[0] + np.pi),
+                 RX(self.targets, np.pi / 2),
+                 RZ(self.targets, self.arg_value[2])]
         return gates[::-1]
 
 

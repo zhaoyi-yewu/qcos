@@ -14,17 +14,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from qcos.transpiler.cmss.common.gate import Gate
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
-
-
-def validate_ir(actual: Gate, name: str, targets: list, q_type: int,
-                q_hermitian: bool):
-    assert actual.hermitian == q_hermitian
-    assert actual.name == name
-    assert actual.targets == targets
-    assert actual.type == q_type
-
+from tests.unittest.transpiler.comm import validate_ir
 
 class TestGetIr:
     @classmethod

@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
+from qcos.common.constant import Constant
+from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
+from qcos.transpiler.transpiler_factory import TranspilerFactory
+from tests.unittest.transpiler.comm import validate_ir
+
+
+class TestTranspilerCmss:
+    @classmethod
+    def setup_class(cls):
+        cls.simple_data = '''
+          OPENQASM 2.0;
+          include "qelib1.inc";
+          qreg q[1];
+          creg c[1];
+          h q[0];
+          h q[0];
+          x q[0];
+          rx(1) q[0];
+          measure q->c;
+        '''
+
+    def test_transpiler_cmss(self):
+        qpu_config = {
+            "qubits": 6,
+            "storage_area": ["S27", "S28", "S29", "S35", "S36", "S37"],
+            "operate_area": ["P27", "SP28", "SP29", "P35", "P36", "SP37"],
+            "coupler_map": {
+                "G0": ["P27", "P35"], "G1": ["P28", "P36"],
+                "G2": ["P29", "P37"], "G3": ["P27", "P28"],
+                "G4": ["P35", "P36"], "G5": ["P28", "P29"], "G6": ["P36", "P37"]
+            },
+            "readout_error": {
+                "S27": 1.0,
+                "S28": 2.0,
+                "S35": 3.0,
+                "S36": 4.0,
+                "S29": 5.0,
+                "S37": 6.0
+            },
+            "coupler_error": {
+                "G0": 3.0,
+                "G1": 3.0,
+                "G2": 3.0,
+                "G3": 3.0,
+                "G4": 3.0,
+                "G5": 3.0
+            },
+            "closest": {
+                "P27": "S27",
+                "P28": "S28",
+                "P35": "S35",
+                "P36": "S36",
+                "P29": "S29",
+                "P37": "S37"
+            }
+        }
+        trans_cfg_inst.set_qpu_cfg(qpu_config)
+        factory = TranspilerFactory()
+        transpiler = factory.get_transpiler_by_type(Constant.TRANSPILER_CMSS)
+        basis_gate_list = transpiler.transpile(self.simple_data)
+        assert len(basis_gate_list["basis_gate_list"]) == 2
+        validate_ir(basis_gate_list["basis_gate_list"][0], 'rx', [27], 1, False)
+        validate_ir(basis_gate_list["basis_gate_list"][1], "measure", [27], 0, False)

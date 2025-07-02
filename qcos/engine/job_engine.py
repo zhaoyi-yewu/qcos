@@ -22,10 +22,8 @@ from prefect import flow, task, runtime
 
 from qcos.common.config import Config
 from qcos.common.constant import Constant
-from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
-from qcos.transpiler.cmss.mapping.na_mapping import NASingleRoute
-from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
-from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
+from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
+from qcos.transpiler.transpiler_factory import TranspilerFactory
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +43,10 @@ def init_driver(driver_info):
         driver.extra_configs = driver_info.get("extra_configs", {})
         # validate and copy extra_configs to qpu_configs
         success, err_msg = driver.validate_driver_configs()
+        # copy cfgs to trans cfg inst
+        trans_cfg_inst.set_qpu_cfg(driver.get_qpu_config())
+        trans_cfg_inst.set_max_qubits(driver.get_max_qubits())
+        trans_cfg_inst.set_decompose_rule(driver.get_decomposition_rule())
         # error handling
         if not success:
             logger.error(err_msg)
@@ -65,31 +67,11 @@ def cmss_transpiler(job_info, driver):
     """
     # load qpu configs
     try:
-        qpu_configs = driver.get_qpu_configs()
-        decomposition_rule = driver.get_decomposition_rule()
-        # TODO (zhaoyi): move to transpiler class
-        Config.DECOMPOSE_RULE = decomposition_rule
-        if not qpu_configs:
-            err_msg = "Missing qpu_configs"
-            logger.error(err_msg)
-            raise ValueError(err_msg)
-
-        # compile and mapping
+        factory = TranspilerFactory()
+        transpiler = factory.get_transpiler_by_type(Constant.TRANSPILER_CMSS)
         raw_qasm = job_info['source_code'][0]
         logger.debug(f"raw_qasm: {raw_qasm}")
-        abs_tree = get_abs_tree(raw_qasm)
-        qnum, gates = get_ir(abs_tree)
-
-        na_map = NASingleRoute(qnum, gates, qpu_configs)
-        mapping_res = na_map.execute_with_order()
-        logger.debug(f"initial mapping: {na_map.mapping}")
-        logger.debug(f"after mapping: {mapping_res}")
-
-        # decompose gates
-        parsed_circuit = decompose_gates(mapping_res)
-
-        # optimize circuit
-        basis_gate_list = optimize_gate(parsed_circuit)
+        basis_gate_list = transpiler.transpile(raw_qasm)
         logger.debug(f"final basis_gate_list: {basis_gate_list}")
         return {"basis_gate_list": basis_gate_list, "error": None}
     except Exception as e:

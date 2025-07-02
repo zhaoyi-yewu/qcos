@@ -593,3 +593,14 @@ def get_ir(abs_tree):
     """
     vist = Visitor()
     return vist.visit_program(abs_tree)
+
+
+def compile(data):
+    """
+    解析OpenQASM，得到抽象语法树
+
+    :param data: OpenQASM 语句
+    :return Tuple (int, list): 量子比特总数、解析得到的量子门列表
+    """
+    abs_tree = get_abs_tree(data)
+    return get_ir(abs_tree)

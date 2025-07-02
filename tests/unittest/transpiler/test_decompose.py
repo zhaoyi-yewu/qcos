@@ -17,20 +17,12 @@
 
 import numpy as np
 
-from qcos.common.config import Config
 from qcos.transpiler.cmss.common.gate import Gate, GateType, create_gate
-from qcos.transpiler.cmss.common.gate import U1, U2, U3
 from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
-
-
-def validate_ir(actual: Gate, name: str, targets: list, q_type: int,
-                q_hermitian: bool):
-    assert actual.hermitian == q_hermitian
-    assert actual.name == name
-    assert actual.targets == targets
-    assert actual.type == q_type
+from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
+from tests.unittest.transpiler.comm import validate_ir
 
 
 def validate_gate(actual: Gate, name: str, targets: list, arg: list):
@@ -196,7 +188,7 @@ class TestDecompose:
             }
         }
 
-        Config.DECOMPOSE_RULE = config
+        trans_cfg_inst.set_decompose_rule(config)
         u3 = create_gate("u3", [0], [1, 2, 3])
         assert u3.type == GateType.SINGLE_QUBIT_GATE.value
         assert u3.name == "u3"
