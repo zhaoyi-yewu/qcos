@@ -44,9 +44,6 @@ class DriverHanyuan1(DriverBase):
         self.layout_method = DriverBase.LAYOUT_METHOD_CMSS_NONE
         self.enable_circuit_merge = True
         self.max_qubits = 10
-        self.basis_gates = []  # TODO(zhaoyi): fill basis_gates
-        self.coupling_map = []  # TODO(zhaoyi): fill coupling_map
-        self.extra_configs = {}  # TODO(zhaoyi): fill extra_configs
 
     def init_driver(self):
         """
@@ -65,6 +62,8 @@ class DriverHanyuan1(DriverBase):
         success = True
         # check and load driver configs
         driver_config_schema = {
+            "ip_address": str,
+            "port": int,
             "qpu_configs": {
                 "qubits": int,
                 "storage_area": [str],
@@ -114,6 +113,10 @@ class DriverHanyuan1(DriverBase):
                     f"data_type: {data_type}, data: {data}")
         self.set_status(self.DRIVER_STATUS_BUSY)
         # TODO(zhaoyi): to be implemented
-        results = {}
+        extra_configs = self.get_extra_configs()
+        ip_address = extra_configs.get("ip_address", "127.0.0.1")
+        port = extra_configs.get("port", 18401)
+        logger.info(f"ip_address: {ip_address}, port: {port}")
+        results = {"test": 1}
         self.set_results(job_id, results=results)
         self.set_status(self.DRIVER_STATUS_ONLINE)

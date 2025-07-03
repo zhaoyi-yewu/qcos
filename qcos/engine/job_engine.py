@@ -21,7 +21,6 @@ import time
 
 from prefect import flow, task, runtime
 
-from qcos.common.config import Config
 from qcos.common.constant import Constant
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from qcos.transpiler.transpiler_factory import TranspilerFactory
@@ -45,7 +44,7 @@ def init_driver(driver_info):
         # validate and copy extra_configs to qpu_configs
         success, err_msg = driver.validate_driver_configs()
         # copy cfgs to trans cfg inst
-        trans_cfg_inst.set_qpu_cfg(driver.get_qpu_config())
+        trans_cfg_inst.set_qpu_cfg(driver.get_qpu_configs())
         trans_cfg_inst.set_max_qubits(driver.get_max_qubits())
         trans_cfg_inst.set_decompose_rule(driver.get_decomposition_rule())
         # error handling
@@ -58,12 +57,11 @@ def init_driver(driver_info):
 
 
 @task(persist_result=False)
-def cmss_transpiler(job_info, driver):
+def cmss_transpiler(job_info):
     """
     CMSS transpiler
 
     :param job_info: job info
-    :param driver: driver
     :return basis gate list
     """
     # load qpu configs
@@ -84,13 +82,13 @@ def cmss_transpiler(job_info, driver):
 
 
 @task(persist_result=False)
-def run_driver(job_info, driver, transpile_results):
+def run_driver(job_info, driver, data):
     """
     Run the driver
 
     :param job_info: job info
     :param driver: driver
-    :param transpile_results: transpile results
+    :param data: data
     :return results
     """
     try:
@@ -100,10 +98,10 @@ def run_driver(job_info, driver, transpile_results):
         results = None
         data_type = driver.get_default_data_type()
         if dry_run:
-            driver.dry_run(job_id, transpile_results, data_type=data_type,
+            driver.dry_run(job_id, data, data_type=data_type,
                            shots=shots)
         else:
-            driver.run(job_id, transpile_results, data_type=data_type,
+            driver.run(job_id, data, data_type=data_type,
                        shots=shots)
         if driver.results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
             # sync mode: get results immediately
@@ -129,7 +127,8 @@ def job_flow(job_info):
     job_results = {"metadata": {}, "benchmark": {}, "results": None}
     job_id = runtime.flow_run.id
     job_info["job_id"] = job_id
-    benchmark_types = job_info["data"].get("benchmark", [])
+    data = job_info["data"]
+    benchmark_types = data.get("benchmark", [])
     benchmark_types = [] if benchmark_types is None else benchmark_types
     logger.info(f"Processing work flow: job_engine. "
                 f"job_id: {job_id}, job_info: {job_info}")
@@ -145,22 +144,34 @@ def job_flow(job_info):
         if driver.transpiler == Constant.TRANSPILER_CMSS:
             if Constant.BENCHMARK_TYPE_TRANSPILER in benchmark_types:
                 transpiler_benchmark_start = time.time()
-            transpile_task_result = cmss_transpiler.submit(
-                job_info["data"], driver)
+            transpile_task_results = cmss_transpiler.submit(
+                data, wait_for=[init_driver])
             if Constant.BENCHMARK_TYPE_TRANSPILER in benchmark_types:
                 transpiler_benchmark_end = time.time()
-            task_result = transpile_task_result.result()
-            num_qubits = task_result.get("num_qubits", -1)
-            if task_result["error"]:
-                raise task_result["error"]
+            _transpile_task_results = transpile_task_results.result()
+            num_qubits = _transpile_task_results.get("num_qubits", -1)
+            job_results["num_qubits"] = num_qubits
+            err_msg = _transpile_task_results.get("error", None)
+            if err_msg:
+                raise err_msg
+            transpile_results = _transpile_task_results["basis_gate_list"]
 
     # call run() in driver
-    run_driver_task_result = run_driver.submit(job_info, driver,
-                                               transpile_results)
-    if run_driver_task_result.result()["error"]:
-        raise run_driver_task_result.result()["error"]
-    job_results["num_qubits"] = num_qubits
+    run_driver_task_result = None
+    if driver.enable_transpiler:
+        run_driver_task_result = run_driver.submit(
+            job_info, driver, transpile_results,
+            wait_for=[cmss_transpiler])
+    else:
+        run_driver_task_result = run_driver.submit(
+            job_info, driver, data,
+            wait_for=[init_driver])
+    error = run_driver_task_result.result()["error"]
+    if error:
+        raise error
     job_results["results"] = run_driver_task_result.result()["results"]
+
+    # calculate benchmark for transpiler
     if transpiler_benchmark_start and transpiler_benchmark_end:
         job_results["benchmark"] = {
             "benchmark_transpiler":

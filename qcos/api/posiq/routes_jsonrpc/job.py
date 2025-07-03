@@ -18,6 +18,7 @@ import asyncio
 import logging
 from typing import List
 
+from drivers import driver_manager
 from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from qcos.api.posiq.routes_jsonrpc.routes import job_api_v1
@@ -58,7 +59,7 @@ def submit_job(
 
     # validate: source_code
     jsonrpc_errors.handle_invalid_params(Library.validate_values_list(
-        source_code, "source_code", str))
+        source_code, "source_code", str, allow_none=False))
 
     # validate: code_type
     jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
@@ -93,9 +94,16 @@ def submit_job(
     jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
         backend, "backend", Constant.DRIVERS))
 
+    # if transpiler is not specified, set the default transpiler from driver
+    if not transpiler:
+        driver_manger = scheduler.get_driver_manager()
+        driver = driver_manger.get_driver(backend)
+        transpiler = driver.get_transpiler()
+
     # validate: transpiler
     jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
-        transpiler, "transpiler", Constant.TRANSPILER_TYPES))
+        transpiler, "transpiler", Constant.TRANSPILER_TYPES,
+        allow_none=True))
 
     # validate: optimization_level
     jsonrpc_errors.handle_invalid_params(Library.validate_values_range(

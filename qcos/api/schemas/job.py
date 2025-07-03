@@ -38,7 +38,7 @@ class SubmitJobRequest(BaseModel):
     # QC driver name
     backend: str = Constant.DRIVER_DUMMY
     # Transpiler
-    transpiler: str = Constant.TRANSPILER_CMSS
+    transpiler: Optional[str] = Constant.TRANSPILER_CMSS
     # Optimization level
     optimization_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL
     # Job type
@@ -75,7 +75,7 @@ class SubmitJobResponse(BaseModel):
     # QC driver name
     backend: str = None
     # Transpiler
-    transpiler: str = None
+    transpiler: Optional[str] = None
     # Shots
     shots: int = None
     # benchmark

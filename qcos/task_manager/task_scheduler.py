@@ -57,6 +57,14 @@ class TaskScheduler(ABC):
         self.driver_manager = driver_manager
         self._task_manager.set_driver_manager(driver_manager)
 
+    def get_driver_manager(self):
+        """
+        Get driver manager
+
+        :return: driver manager
+        """
+        return self.driver_manager
+
     def add(self, policy_type, job_info):
         """
         Add job to scheduler, scheduler will get policy handler by policy_type,

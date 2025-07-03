@@ -24,7 +24,7 @@ from jsonrpcclient import Ok, parse, request
 
 from qcos.common import errors
 from qcos.common.config import Config
-from qcos.common.constant import Constant
+from qcos.common.constant import Constant, HttpMethod
 from qcos.common.library import Library
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,6 @@ class Client:
     """
     QCOS client api
     """
-    default_headers = {"Content-Type": "application/json"}
     verbose = False
 
     def __init__(self,
@@ -43,55 +42,6 @@ class Client:
         api_version = "v1"
         endpoint_url = f"http://{api_listen_ip}:{api_port}/{api_version}"
         self.job_url = f"{endpoint_url}/job"
-
-    @staticmethod
-    def call_http_api(
-            url, *,
-            data=None, params=None, func_name=None,
-            headers=default_headers, auth=None, verify_ssl=False,
-            retry=1, timeout=2, success_http_code=[200]):
-        """
-        Call http api
-
-        :param url: api url
-        :param data: data for http body
-        :param params: params for http url
-        :param func_name: function name
-        :param headers: http headers
-        :param auth: http auth
-        :param verify_ssl: if verify ssl certificate
-        :param retry: times to retry if failed
-        :param timeout: timeout in seconds
-        :param success_http_code: success http status
-        """
-        if Client.verbose:
-            print(f"Request [{func_name}]: {url}, HEADER: {headers}, "
-                  f"PARAMS: {params}, DATA: {data}")
-        r = None
-        for i in range(1, retry + 1):
-            if headers:
-                r = requests.post(
-                    url,
-                    headers=headers,
-                    params=params,
-                    data=data,
-                    auth=auth,
-                    verify=verify_ssl,
-                    timeout=2
-                )
-            else:
-                r = requests.post(
-                    url,
-                    params=params,
-                    data=data,
-                    auth=auth,
-                    verify=verify_ssl,
-                    timeout=2)
-            if r.status_code in success_http_code:
-                break
-            if retry > 1:
-                time.sleep(timeout)
-        return r.status_code, r.reason, r.text, r
 
     @staticmethod
     def print_api_response(status_code, reason, text, result=None):
@@ -118,10 +68,9 @@ class Client:
         :param params: json-rpc params
         """
         jsonrpc_data = request(method_name, params={"body": data})
-        jsonrpc_data_json = json.dumps(jsonrpc_data)
-        status_code, reason, text, result = Client.call_http_api(
-            url, data=jsonrpc_data_json, params=params,
-            func_name=method_name)
+        status_code, reason, text, result = Library.call_http_api(
+            url, method=HttpMethod.POST, json=jsonrpc_data,
+            params=params, func_name=method_name, debug=Client.verbose)
         Client.print_api_response(status_code, reason, text, result)
         return status_code, reason, text, result
 

@@ -107,7 +107,7 @@ class Constant:
                     JOB_STATUS_DELETED]
 
     # Shots
-    DEFAULT_SHOTS = 10
+    DEFAULT_SHOTS = 1
     MIN_SHOTS = 1
     MAX_SHOTS = 1000
 
@@ -120,6 +120,17 @@ class Constant:
     DEFAULT_OPTIMIZATION_LEVEL = 0
     MIN_OPTIMIZATION_LEVEL = 0
     MAX_OPTIMIZATION_LEVEL = 3
+
+
+class HttpMethod:
+    """
+    HTTP methods
+    """
+    GET = "get"
+    POST = "post"
+    PUT = "put"
+    PATCH = "patch"
+    DELETE = "delete"
 
 
 class HttpCode:

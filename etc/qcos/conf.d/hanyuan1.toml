@@ -1,4 +1,6 @@
 [DriverHanyuan1]
+ip_address = "127.0.0.1"
+port = 18401
 
 [DriverHanyuan1.qpu_configs]
 qubits = 6

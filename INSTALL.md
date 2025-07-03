@@ -2,18 +2,20 @@
 
 ## 1. 编译
 ### 1.1 前提条件
-#### 1.1.1 手动载入基础容器镜像BCLinux 21.10U4
+* 保证操作系统已安装了docker、docker-compose组件
 ```shell
-docker load -i ./bc-oe-amd64-21.10.tar.xz
+BCLinux/CentOS/OpenEuler环境下示例:
+yum install -y docker docker-compose
 ```
-#### 1.1.2 编辑.env配置文件
+
+### 1.2 编辑.env配置文件
 ```shell
 cd build-scripts
 cp ./env.template .env
 vim .env
 ```
 
-### 1.2 编译qcos容器镜像
+### 1.3 编译qcos容器镜像
 ```shell
 ./build-docker.sh
 ```
@@ -65,12 +67,14 @@ links ./coverage_html/index.html
 ```shell
 [作业命令]
 * 提交作业
-1. 测试驱动
-qcos-cli submit-job --shots 10 --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+1. 测试用dummy驱动
+qcos-cli submit-job --code-type qasm2 --shots 10 --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
-qcos-cli submit-job --shots 10 --dry-run --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm2 --shots 10 --dry-run --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
 3. 中科酷原-汉原1 中性原子驱动, 真实运行
-qcos-cli submit-job --shots 10 --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm2 --shots 10 --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+4. 玻色量子-光量子伊辛机, 真实运行
+qcos-cli submit-job --code-type qubo --backend DriverTiangong100 '"[[-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,8],[0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0],[0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0],[0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0],[0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0],[0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0],[0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0],[0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0],[0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0],[0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8],[0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12]]"'
 
 * 获取作业状态
 qcos-cli get-job-status 00000000-0000-4000-8000-000000000001

@@ -87,6 +87,10 @@ class DriverBase:
         self.enable_circuit_merge = False
         # max number of qubits
         self.max_qubits = 0
+        # supported basis gates (TODO(zhaoyi): TO BE IMPLEMENTED)
+        supported_basis_gates = None
+        # supported transpiler list (TODO(zhaoyi): TO BE IMPLEMENTED)
+        supported_transpiler_list = None
         # qpu configs
         self.qpu_configs = None
         # decomposition rule

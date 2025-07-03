@@ -64,6 +64,8 @@ class DriverDummy(DriverBase):
         success = True
         # check and load driver configs
         driver_config_schema = {
+            Optional("ip_address"): str,
+            Optional("port"): int,
             "qpu_configs": {
                 "qubits": int,
                 "storage_area": [str],
@@ -80,18 +82,19 @@ class DriverDummy(DriverBase):
                 }
             }
         }
+        extra_configs = self.get_extra_configs()
         err_msg = Library.validate_schema(
-            self.extra_configs, driver_config_schema)
+            extra_configs, driver_config_schema)
         if err_msg:
             err_msg = f"driver config file error: {err_msg}"
             success = False
         else:
             # copy configs to self.qpu_configs
             self.qpu_configs = copy.deepcopy(
-                self.extra_configs.get("qpu_configs", {}))
+                extra_configs.get("qpu_configs", {}))
             # copy configs to self.decomposition_rule
             self.decomposition_rule = copy.deepcopy(
-                self.extra_configs.get("decomposition_rule", {}))
+                extra_configs.get("decomposition_rule", {}))
         return success, err_msg
 
     def close_driver(self):

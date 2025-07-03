@@ -22,10 +22,17 @@ import logging
 import os
 import pkgutil
 import re
+import requests
+import time
 import tomlkit
+import zipfile
 from datetime import datetime
-from schema import Schema, SchemaError
+from schema import Schema
+from urllib.parse import urlparse
 from uuid import UUID
+
+from .constant import HttpMethod
+
 
 logger = logging.getLogger(__name__)
 
@@ -323,13 +330,15 @@ class Library:
         return True, None
 
     @staticmethod
-    def validate_values_list(value, argument_name, value_type):
+    def validate_values_list(value, argument_name, value_type,
+                             allow_none=False):
         """
         Validate values for list
 
         :param value: value
         :param argument_name: argument name
         :param value_type: data type of value
+        :param allow_none: allow None value
         :return: True or False
         """
         if not isinstance(value, list):
@@ -340,6 +349,10 @@ class Library:
                 return (False, [f"Invalid argument: {argument_name}={value}. "
                                 f"reason: valid list element value type: "
                                 f"{value_type}"])
+            if not allow_none and not _value:
+                return (False, [
+                    f"Invalid argument: {argument_name}={value}. "
+                    f"reason: None or empty element in list is not allowed"])
         return True, None
 
     @staticmethod
@@ -358,3 +371,131 @@ class Library:
         except Exception as e:
             err_msg = str(e)
         return err_msg
+
+    @staticmethod
+    def call_http_api(
+            url, method, *,
+            data=None, json=None, files=None, params=None, func_name=None,
+            headers=None, auth=None, verify_ssl=False,
+            retry=1, timeout=10, success_http_code=[200],
+            debug=False):
+        """
+        Call http api
+
+        :param url: api url
+        :param method: http method
+        :param data: data for http body
+        :param json: json data for http body
+        :param files: files for http body
+        :param params: params for http url
+        :param func_name: function name
+        :param headers: http headers
+        :param auth: http auth
+        :param verify_ssl: if verify ssl certificate
+        :param retry: times to retry if failed
+        :param timeout: timeout in seconds
+        :param success_http_code: success http status
+        :param debug: enable or disable debug
+        """
+        request_func = None
+        r = None
+        if debug:
+            logger.info(
+                f"Request [{func_name}]: {url}, "
+                f"METHOD: {method}, HEADER: {headers}, PARAMS: {params}, "
+                f"DATA: {data}, JSON: {json}")
+        if method == HttpMethod.POST:
+            request_func = requests.post
+        elif method == HttpMethod.PUT:
+            request_func = requests.put
+        elif method == HttpMethod.PATCH:
+            request_func = requests.patch
+        elif method == HttpMethod.DELETE:
+            request_func = requests.delete
+        else:
+            request_func = requests.get
+
+        for i in range(1, retry + 1):
+            r = request_func(
+                url,
+                headers=headers,
+                params=params,
+                data=data,
+                files=files,
+                json=json,
+                auth=auth,
+                verify=verify_ssl,
+                timeout=timeout
+            )
+            if r.status_code in success_http_code:
+                break
+        return r.status_code, r.reason, r.text, r
+
+    @staticmethod
+    def is_valid_url(url, schemes):
+        """
+        Check if url is valid
+
+        :param url: url to check
+        :param schemes: url schemes
+        :return: True if valid, False otherwise
+        """
+        try:
+            result = urlparse(url)
+            return all([
+                result.scheme in schemes,
+                result.netloc
+            ])
+        except ValueError:
+            return False
+        return True
+
+    @staticmethod
+    def get_zip_content(zip_filepath):
+        success = True
+        err_msgs = []
+        results = {}
+        try:
+            with zipfile.ZipFile(zip_filepath, 'r') as zf:
+                file_names = zf.namelist()
+                for file_name in file_names:
+                    with zf.open(file_name) as file:
+                        result = file.read().decode('utf-8')
+                        results[file_name] = result
+        except FileNotFoundError:
+            err_msgs.append("Zip file: {zip_filepath} is not found")
+            success = False
+        except Exception as e:
+            err_msgs.append(f"Unknown error: {e}")
+            success = False
+        return success, err_msgs, results
+
+    @staticmethod
+    def loop_with_timeout(condition_check, timeout, interval,
+                          *args, **kw_args):
+        """
+        Wait loop with timeout
+
+        :param condition_check: function to check condition
+        :param timeout: timeout in seconds
+        :param interval: interval in seconds
+        :param args: arguments to function condition_check
+        :param kw_args: keyword arguments to function condition_check
+        :return: True if condition met, False otherwise
+        """
+        err_msg = None
+        start_time = time.time()
+        while True:
+            # check condition
+            result = condition_check(*args, **kw_args)
+            if result:
+                return True, err_msg, result
+
+            # check timeout
+            elapsed = time.time() - start_time
+            if elapsed >= timeout:
+                err_msg = "Timed out"
+                return False, err_msg, None
+
+            # sleep
+            time.sleep(interval)

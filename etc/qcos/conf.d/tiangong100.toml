@@ -1,0 +1,6 @@
+[DriverTiangong100]
+base_url = "http://127.0.0.1:8088"
+username = "test"
+password = ""
+project_id = 1
+device_id = 1
