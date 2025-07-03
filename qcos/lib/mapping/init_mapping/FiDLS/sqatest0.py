@@ -89,7 +89,7 @@ for file_name in files:
     nl = len(Q) # number of qubits in C            
 
     if len(Q) > len(V): continue
-    print('Cir.%s: %s has %s qubits and %s gates' %(count, file_name[0:-9], len(Q), l))
+    print('Cir.%s: %s qubits and %s gates' %(count, len(Q), l))
     # Diam  = nx.diameter(G)
 
     g = graph_of_circuit(C)

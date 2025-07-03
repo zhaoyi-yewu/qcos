@@ -117,7 +117,7 @@ for file_name in files:
     L = list(range(l))
     Q = qubit_in_circuit(L,C)
     if len(Q) > len(V): continue
-    print('Cir.%s: %s has %s qubits and %s gates' %(count, file_name[0:-9], len(Q), l))
+    print('Cir.%s: %s qubits and %s gates' %(count, len(Q), l))
 
     #\__/#\#/\#\__/#\#/\__/--\__/#\__/#\#/~\
       ### select an initial mapping ### 
@@ -187,8 +187,7 @@ for file_name in files:
     
     content = count, file_name[0:-9], len(Q), l, len(C_out), len(C_out)-l,\
         round(cost_time,2), round(len(C_out)/l, 4)
-    
-    print(content)
+
     save_result(name, content)
 content = 'The average ratio is %s:%s = %s' %(sum_out, sum_in, round(sum_out/sum_in,4))
 print(content)

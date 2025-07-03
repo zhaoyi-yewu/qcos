@@ -513,7 +513,7 @@ if __name__=='__main__':
         if l != 11: continue #9, 5, 10
     
         nl = len(qubit_in_circuit(L,C))
-        print('Circuit %s : %s contains %s gates and %s qubits' %(count, file_name, l,nl))
+        print('Circuit %s : %s gates and %s qubits' %(count, l,nl))
         g_of_c = graph_of_circuit(C)
         # for i in L: 
         #     print(i, C[i])
