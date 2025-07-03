@@ -1,4 +1,4 @@
-# <center>量子操作系统QCOS</center>
+# <center>量子操作系统WuYueOs安装部署及使用说明</center>
 
 ## 1. 编译
 ### 1.1 前提条件
