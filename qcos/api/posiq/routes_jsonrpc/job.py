@@ -14,14 +14,14 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-import asyncio
+
 import logging
 from typing import List
 
-from drivers import driver_manager
 from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from qcos.api.posiq.routes_jsonrpc.routes import job_api_v1
+from qcos.common import args_schema
 from qcos.common.constant import Constant
 from qcos.common.library import Library
 from qcos.task_manager import scheduler
@@ -54,7 +54,8 @@ def submit_job(
     backend = body.backend
     transpiler = body.transpiler
     optimization_level = body.optimization_level
-    benchmark = body.benchmark
+    profiling = body.profiling
+    callbacks = body.callbacks
     dry_run = body.dry_run
 
     # validate: source_code
@@ -62,6 +63,7 @@ def submit_job(
         source_code, "source_code", str, allow_none=False))
 
     # validate: code_type
+    code_type = code_type.lower()
     jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
         code_type, "code_type", Constant.CODE_TYPES))
 
@@ -94,10 +96,20 @@ def submit_job(
     jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
         backend, "backend", Constant.DRIVERS))
 
+    # get driver from backend
+    driver_manger = scheduler.get_driver_manager()
+    driver = driver_manger.get_driver(backend)
+    enable_transpiler = driver.enable_transpiler
+    driver_status = driver.get_status()
+    enable_driver = driver.enable
+
+    # validate supported_code_types
+    jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
+        code_type, "code_type", driver.supported_code_types,
+        allow_none=False))
+
     # if transpiler is not specified, set the default transpiler from driver
     if not transpiler:
-        driver_manger = scheduler.get_driver_manager()
-        driver = driver_manger.get_driver(backend)
         transpiler = driver.get_transpiler()
 
     # validate: transpiler
@@ -105,18 +117,41 @@ def submit_job(
         transpiler, "transpiler", Constant.TRANSPILER_TYPES,
         allow_none=True))
 
+    # validate supported_transpiler_list
+    if enable_transpiler:
+        jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
+            transpiler, "transpiler",
+            driver.supported_transpiler_list,
+            allow_none=False))
+
     # validate: optimization_level
     jsonrpc_errors.handle_invalid_params(Library.validate_values_range(
         optimization_level, "optimization_level",
         Constant.MIN_OPTIMIZATION_LEVEL, Constant.MAX_OPTIMIZATION_LEVEL))
 
-    # validate: benchmark
-    if benchmark:
-        for _benchmark in benchmark:
+    # validate: profiling
+    if profiling:
+        for _profiling in profiling:
             jsonrpc_errors.handle_invalid_params(
-                Library.validate_values_enum(_benchmark, "benchmark",
-                                             Constant.BENCHMARK_TYPES,
+                Library.validate_values_enum(_profiling, "profiling",
+                                             Constant.PROFILING_TYPES,
                                              allow_none=True))
+
+    # validate: callbacks
+    if callbacks:
+        jsonrpc_errors.handle_invalid_params(
+            Library.validate_schema(callbacks, args_schema.CALLBACKS_SCHEMA))
+
+    # check driver_status
+    if not enable_driver:
+        jsonrpc_errors.handle_job_error(
+            "Can't submit job. reason: driver is disabled")
+    elif driver_status == driver.DRIVER_STATUS_OFFLINE:
+        jsonrpc_errors.handle_job_error(
+            "Can't submit job. reason: driver status is offline")
+    elif driver_status == driver.DRIVER_STATUS_UNKNOWN:
+        jsonrpc_errors.handle_job_error(
+            "Can't submit job. reason: driver status is unknown")
 
     # generate creation_date
     creation_date = Library.get_current_datetime()
@@ -138,7 +173,8 @@ def submit_job(
         "backend": backend,
         "transpiler": transpiler,
         "shots": shots,
-        "benchmark": benchmark,
+        "profiling": profiling,
+        "callbacks": callbacks,
         "dry_run": dry_run,
         "creation_date": creation_date
     }
@@ -167,17 +203,22 @@ def get_job_status(
     # handle job status errors
     if err:
         jsonrpc_errors.handle_get_status_error(err)
+    if response.get("error_message"):
+        jsonrpc_errors.handle_get_status_error(response["error_message"])
+
+    # get job_status
+    job_status = response.get("job_status")
 
     # construct response
     response_info = {
         "job_id": job_id,
-        "job_status": response["state"]
+        "job_status": job_status
     }
-    if response.get("error_message"):
-        response_info["error_message"] = response["error_message"]
-    parameters = response.get("parameters", {})
+    parameters = response.get("parameters", None)
     if parameters:
-        response_info.update(parameters.get("data", {}))
+        job_info = parameters.get("job_info", None)
+        if job_info:
+            response_info.update(job_info.get("data", {}))
     return response_info
 
 
@@ -204,15 +245,27 @@ def get_job_results(
     # handle job results errors
     if err:
         jsonrpc_errors.handle_get_results_error(err)
+    if response.get("error_message"):
+        jsonrpc_errors.handle_get_status_error(response["error_message"])
+
+    # existing results reported by driver
+    results = response["results"]
+    job_status = response.get("job_status")
+    parameters = response.get("parameters", None)
+    if parameters:
+        updated_job_info = parameters.get("updated_job_info", None)
+        if updated_job_info:
+            # update results if new results exists in updated_job_info
+            updated_results = updated_job_info.get("results", None)
+            if updated_results:
+                results = updated_results
 
     # construct response
     response_info = {
         "job_id": job_id,
-        "job_status": response["state"],
-        "results": response["results"],
+        "job_status": job_status,
+        "results": results,
     }
-    if response.get("error_message"):
-        response_info["error_message"] = response["error_message"]
     return response_info
 
 
@@ -231,23 +284,30 @@ def get_jobs(
     logger.info(f"Call get_jobs: {body}")
 
     # query jobs' results
-    response, err = scheduler.get_jobs()
+    responses, err = scheduler.get_jobs()
     if err:
         jsonrpc_errors.handle_get_results_error(err)
 
     # construct response
     response_list = []
-    for job_info in response:
-        data = job_info["parameters"]["data"]
+    for response in responses:
+        job_status = response.get("job_status")
         response_info = {
-            "job_id": job_info.get("id"),
-            "job_status": job_info.get("state"),
-            "backend": data.get("backend", None),
-            "shots": data.get("shots", None),
-            "description": data.get("description", None),
-            "dry_run": data.get("dry_run", None),
-            "creation_date": data.get("creation_date")
+            "job_id": response.get("id"),
+            "job_status": job_status
         }
+        data = None
+        parameters = response.get("parameters", None)
+        if parameters:
+            job_info = parameters.get("job_info", None)
+            if job_info:
+                data = job_info.get("data", None)
+        if data:
+            response_info["backend"] = data.get("backend", None)
+            response_info["shots"] = data.get("shots", None)
+            response_info["description"] = data.get("description", None)
+            response_info["dry_run"] = data.get("dry_run", None)
+            response_info["creation_date"] = data.get("creation_date", None)
         response_list.append(response_info)
     return response_list
 
@@ -313,4 +373,80 @@ def delete_jobs(
         "job_id": job.get("id"),
         "job_status": job.get("state")
     } for job in success_list]
+    return response_info
+
+
+@job_api_v1.method(errors=[jsonrpc_errors.UnknownError,
+                           jsonrpc_errors.InvalidParams])
+def set_job_results(
+        body: schemas.SetJobResultsRequest
+) -> schemas.SetJobResultsResponse:
+    """
+    Set job results for existing job
+
+    :param body: job_id: job ID
+    :type body: schemas.SetJobResultsRequest
+    """
+    logger.info(f"Call set_job_results: {body}")
+    job_id = body.job_id
+    new_results = body.results
+
+    # check if job exists
+    success = scheduler.has_job(job_id)
+    if not success:
+        jsonrpc_errors.handle_job_error(f"Job {job_id} is not found")
+
+    # set job results
+    response, err = scheduler.get_result_by_id(job_id)
+    # handle job status errors
+    if err:
+        jsonrpc_errors.handle_get_status_error(err)
+    if response.get("error_message"):
+        jsonrpc_errors.handle_get_status_error(response["error_message"])
+
+    # copy existing results and updated using new_results
+    existing_result = [{'metadata': {}, 'profiling': {}, 'results': {},
+                       'status': Constant.JOB_STATUS_COMPLETED}]
+    existing_results = response.get("results", None)
+    if not existing_results:
+        existing_results = existing_result
+
+    for result in existing_results:
+        result["results"] = new_results
+        result["metadata"]["status"] = Constant.JOB_STATUS_COMPLETED
+
+    updated_parameters = {
+        "updated_job_info": {
+            "results": existing_results
+        }
+    }
+
+    # updated parameters
+    parameters = response.get("parameters", None)
+    if parameters:
+        parameters.update(updated_parameters)
+
+    # update job using updated_parameters
+    success = scheduler.update_job(job_id, parameters=parameters)
+    if not success:
+        jsonrpc_errors.handle_job_error(
+            f"Failed to update job results: {job_id}")
+
+    # run callbacks
+    callbacks = Library.get_nested_dict_value(
+        parameters, "job_info", "data", "callbacks", default=None)
+    success, err_msg = scheduler.run_callbacks(
+        job_id, existing_results, callbacks)
+    if not success:
+        jsonrpc_errors.handle_job_error(
+            f"Failed to run callbacks in job: {job_id}. error_msg: {err_msg}")
+
+    # construct response
+    backend = Library.get_nested_dict_value(
+        parameters, "job_info", "data", "backend", default=None)
+    response_info = {
+        "job_id": job_id,
+        "backend": backend,
+        "job_status": Constant.JOB_STATUS_COMPLETED
+    }
     return response_info

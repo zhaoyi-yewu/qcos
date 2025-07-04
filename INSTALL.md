@@ -23,12 +23,12 @@ vim .env
 ## 2. 安装和运行
 ### 2.1 修改配置文件
 ### 2.1.1 创建和修改全局配置文件
-参照/etc/qcos/qcos.conf, 创建和修改全局配置文件/etc/qcos/qcos.conf
+参照代码库中etc/qcos/qcos.toml, 创建和修改全局配置文件/etc/qcos/qcos.toml
 <b>注意:</b> 如果不创建该文件, 容器模式下会自动创建
 
 ### 2.1.2 创建和修改驱动配置文件
-参照/etc/qcos/conf.d/dummy.conf, 创建和修改驱动配置文件/etc/qcos/conf.d/dummy.conf
-<b>注意:</b> 驱动配置文件必须位于/etc/qcos/conf.d下, 文件名可以自己命名, 文件中每个驱动的配置必须对应的section中, 比如dummy驱动的配置需要放在[DriverDummy]下, DriverDummy为dummy驱动的类名
+参照代码库中etc/qcos/conf.d/dummy.toml等, 创建和修改驱动配置文件/etc/qcos/conf.d/dummy.toml等
+<b>注意:</b> 驱动配置文件必须位于/etc/qcos/conf.d下, 文件名可以自己命名, 文件中section必须对应相关驱动的类名, 比如dummy驱动的配置需要放在section: [DriverDummy]下, DriverDummy为dummy驱动的类名
 
 ### 2.2 安装和部署
 ```shell
@@ -68,11 +68,16 @@ links ./coverage_html/index.html
 [作业命令]
 * 提交作业
 1. 测试用dummy驱动
-qcos-cli submit-job --code-type qasm2 --shots 10 --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+1.1 使用profiling
+qcos-cli submit-job --code-type qasm --shots 10 --profiling transpiler scheduler --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+1.2 使用callbacks进行回调
+qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
-qcos-cli submit-job --code-type qasm2 --shots 10 --dry-run --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\ncreg c[1];\nx q[0];\nmeasure q -> c;\n"'
 3. 中科酷原-汉原1 中性原子驱动, 真实运行
-qcos-cli submit-job --code-type qasm2 --shots 10 --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\ncreg c[1];\nx q[0];\nmeasure q -> c;\n"'
 4. 玻色量子-光量子伊辛机, 真实运行
 qcos-cli submit-job --code-type qubo --backend DriverTiangong100 '"[[-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,8],[0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0],[0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0],[0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0],[0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0],[0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0],[0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0],[0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0],[0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0],[0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8],[0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12]]"'
 
@@ -87,9 +92,9 @@ qcos-cli get-jobs
 
 * 取消作业
 qcos-cli cancel-jobs 00000000-0000-4000-8000-000000000001
-qcos-cli cancel-jobs all
+qcos-cli cancel-jobs -y all
 
 * 删除作业
 qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
-qcos-cli delete-jobs all
+qcos-cli delete-jobs -y all
 ```

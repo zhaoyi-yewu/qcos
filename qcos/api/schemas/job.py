@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -29,8 +29,8 @@ class SubmitJobRequest(BaseModel):
     Submit Job Request
     Pydantic Model for Submit Job Request
     """
-    # Code types: qasm2, qasm3, qubo
-    code_type: str = Constant.CODE_TYPE_QASM2
+    # Code types: qasm, qasm2, qasm3, qubo
+    code_type: str = Constant.CODE_TYPE_QASM
     # Source code list
     source_code: list[str] = []
     # description
@@ -47,10 +47,12 @@ class SubmitJobRequest(BaseModel):
     job_sched_policy: str = Constant.DEFAULT_JOB_SCHED_POLICY
     # Job priority
     job_priority: int = Constant.DEFAULT_JOB_PRIORITY
-    # benchmark
-    benchmark: Optional[list] = []
+    # Profiling
+    profiling: Optional[list] = []
     # Shots
     shots: int = Constant.DEFAULT_SHOTS
+    # Callbacks
+    callbacks: Optional[list] = None
     # Dry-run
     dry_run: Optional[bool] = False
     # Creation date
@@ -70,7 +72,7 @@ class SubmitJobResponse(BaseModel):
     job_sched_policy: str = None
     # Job priority
     job_priority: int = None
-    # description
+    # Description
     description: Optional[str] = None
     # QC driver name
     backend: str = None
@@ -78,10 +80,12 @@ class SubmitJobResponse(BaseModel):
     transpiler: Optional[str] = None
     # Shots
     shots: int = None
-    # benchmark
-    benchmark: Optional[list] = []
+    # Profiling
+    profiling: Optional[list] = []
     # Dry-run
     dry_run: Optional[bool] = False
+    # Callbacks
+    callbacks: Optional[list] = None
     # Creation date
     creation_date: Optional[datetime] = None
 
@@ -100,7 +104,8 @@ class GetJobStatusResponse(BaseModel):
     Get Job Status Response
     Pydantic Model for Get Job Status Response
     """
-    job_id: UUID = None  # Job ID
+    # Job ID
+    job_id: UUID = None
     # Job status
     job_status: str = None
     # QC driver name
@@ -119,8 +124,6 @@ class GetJobStatusResponse(BaseModel):
     dry_run: Optional[bool] = False
     # Creation Date
     creation_date: Optional[datetime] = None
-    # error message
-    error_message: Optional[str] = None
 
 
 class GetJobResultsRequest(BaseModel):
@@ -128,7 +131,8 @@ class GetJobResultsRequest(BaseModel):
     Get Job Results Request
     Pydantic Model for Get Job Results Request
     """
-    job_id: UUID = None  # Job ID
+    # Job ID
+    job_id: UUID = None
 
 
 class GetJobResultsResponse(BaseModel):
@@ -140,10 +144,8 @@ class GetJobResultsResponse(BaseModel):
     job_id: UUID = None
     # Job status
     job_status: str = None
-    # results
-    results: Optional[list] = None
-    # error message
-    error_message: Optional[str] = None
+    # Results
+    results: Optional[Union[str, int, list, dict]] = None
 
 
 class GetJobsRequest(BaseModel):
@@ -178,5 +180,29 @@ class DeleteJobsResponse(BaseModel):
     """
     # Job ID
     job_id: UUID = None
+    # Job status
+    job_status: str = None
+
+
+class SetJobResultsRequest(BaseModel):
+    """
+    Set Job Results Request
+    Pydantic Model for Set Job Results Request
+    """
+    # Job ID
+    job_id: UUID = None
+    # Results
+    results: Union[str, int, list, dict] = None
+
+
+class SetJobResultsResponse(BaseModel):
+    """
+    Set Job Results Response
+    Pydantic Model for Set Job Results Response
+    """
+    # Job ID
+    job_id: UUID = None
+    # QC driver name
+    backend: Optional[str] = None
     # Job status
     job_status: str = None

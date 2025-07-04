@@ -42,6 +42,7 @@ class Client:
         api_version = "v1"
         endpoint_url = f"http://{api_listen_ip}:{api_port}/{api_version}"
         self.job_url = f"{endpoint_url}/job"
+        self.system_url = f"{endpoint_url}/system"
 
     @staticmethod
     def print_api_response(status_code, reason, text, result=None):
@@ -67,10 +68,21 @@ class Client:
         :param data: json-rpc data
         :param params: json-rpc params
         """
+        status_code = None
+        reason = None
+        text = None
+        result = None
         jsonrpc_data = request(method_name, params={"body": data})
-        status_code, reason, text, result = Library.call_http_api(
-            url, method=HttpMethod.POST, json=jsonrpc_data,
-            params=params, func_name=method_name, debug=Client.verbose)
+        try:
+            status_code, reason, text, result = Library.call_http_api(
+                url, method=HttpMethod.POST, json=jsonrpc_data,
+                params=params, func_name=method_name, debug=Client.verbose)
+        except requests.exceptions.ConnectionError as ce:
+            status_code = -1
+            reason = f"Connection error: {str(ce)}"
+        except Exception as e:
+            status_code = -1
+            reason = str(e)
         Client.print_api_response(status_code, reason, text, result)
         return status_code, reason, text, result
 
@@ -97,10 +109,29 @@ class Client:
         if success is False:
             raise errors.Exception("\n".join(err_msg))
 
+    # [System]
+    def ping(self, message):
+        """
+        Ping-pong to verify the availability of the system
+
+        :param message: Ping message
+        :return: Pong message
+        """
+        method_name = "ping"
+
+        # construct data and call json rpc
+        data = {
+            "message": message
+        }
+        status_code, reason, text, result = Client.call_json_rpc(
+            self.system_url, method_name, data)
+        return status_code, reason, text, result
+
+    # [Job]
     def submit_job(
             self,
             source_code, *,
-            code_type=Constant.CODE_TYPE_QASM2,
+            code_type=Constant.CODE_TYPE_QASM,
             job_type=Constant.JOB_TYPE_ESTIMATION,
             job_sched_policy=Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
             job_priority=Constant.DEFAULT_JOB_PRIORITY,
@@ -109,7 +140,8 @@ class Client:
             backend=Constant.DRIVER_DUMMY,
             transpiler=Constant.TRANSPILER_CMSS,
             optimization_level=Constant.DEFAULT_OPTIMIZATION_LEVEL,
-            benchmark=None,
+            profiling=None,
+            callbacks=None,
             dry_run=False):
         """
         Submit new job
@@ -124,7 +156,8 @@ class Client:
         :param backend: backend
         :param transpiler: transpiler
         :param optimization_level: optimization level
-        :param benchmark: benchmark types
+        :param profiling: profiling types
+        :param callbacks: callbacks
         :param dry_run: dry run
         :return: submit_job result
         """
@@ -142,7 +175,8 @@ class Client:
             "backend": backend,
             "transpiler": transpiler,
             "optimization_level": optimization_level,
-            "benchmark": benchmark,
+            "profiling": profiling,
+            "callbacks": callbacks,
             "dry_run": dry_run
         }
         status_code, reason, text, result = Client.call_json_rpc(
@@ -244,6 +278,29 @@ class Client:
         # construct data and call json rpc
         data = {
             "job_ids": job_ids
+        }
+        status_code, reason, text, result = Client.call_json_rpc(
+            self.job_url, method_name, data)
+        return status_code, reason, text, result
+
+    def set_job_results(self, job_id, results):
+        """
+        Set job results
+
+        :param job_id: job ID
+        :param results: job results
+        :return: jobs
+        """
+        method_name = "set_job_results"
+
+        # Validate argument: job_id
+        Client.handle_invalid_arguments(
+            Library.validate_values_uuid(job_id, "job_id"))
+
+        # construct data and call json rpc
+        data = {
+            "job_id": job_id,
+            "results": results
         }
         status_code, reason, text, result = Client.call_json_rpc(
             self.job_url, method_name, data)

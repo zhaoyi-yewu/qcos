@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
 # Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
@@ -7,26 +8,29 @@
 # of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-source ./setup-env.sh
+from pydantic import BaseModel
 
-export QCOS_LOCAL_SRC_DIR="${top_dir}"
 
-# copy config files
-mkdir -p /etc/qcos/prefect
-mkdir -p /var/qcos/db
+class PingRequest(BaseModel):
+    """
+    Ping Request
+    Pydantic Model for Ping Request
+    """
+    # message
+    message: str = None
 
-if [ "${DEV,,}" = "false" ]; then
-  docker-compose -f docker-compose.yaml down
-  docker-compose -f docker-compose.yaml up -d
-  echo "Run QCOS bash: docker exec -it qcos bash"
-else
-  docker-compose -f docker-compose-dev.yaml down
-  docker-compose -f docker-compose-dev.yaml up -d
-  echo "Run QCOS bash: docker exec -it qcos-dev bash"
-fi
+
+class PongResponse(BaseModel):
+    """
+    Pong Response
+    Pydantic Model for Pong Response
+    """
+    # message
+    message: str = None

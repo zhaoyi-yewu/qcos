@@ -20,10 +20,12 @@ class Constant:
     Constants
     """
     # Code types
+    CODE_TYPE_QASM = "qasm"
     CODE_TYPE_QASM2 = "qasm2"
     CODE_TYPE_QASM3 = "qasm3"
     CODE_TYPE_QUBO = "qubo"
-    CODE_TYPES = [CODE_TYPE_QASM2, CODE_TYPE_QASM3, CODE_TYPE_QUBO]
+    CODE_TYPES = [CODE_TYPE_QASM, CODE_TYPE_QASM2, CODE_TYPE_QASM3,
+                  CODE_TYPE_QUBO]
 
     # Description string length
     MIN_DESCRIPTION_LENGTH = 1
@@ -41,6 +43,7 @@ class Constant:
     TECH_TYPE_NEUTRAL_ATOM = "neutral_atom"
     TECH_TYPE_ION_TRAP = "ion_trap"
     TECH_TYPE_SUPERCONDUCTING = "superconducting"
+    TECH_TYPE_PHOTON = "photon"
 
     # Job types
     JOB_TYPE_ESTIMATION = "estimation"
@@ -72,10 +75,14 @@ class Constant:
     RESULTS_FETCH_ASYNC_RETRIES = 3
     RESULTS_FETCH_ASYNC_TIMEOUT = 30
 
-    # Benchmark types
-    BENCHMARK_TYPE_TRANSPILER = "transpiler"
-    BENCHMARK_TYPE_SCHEDULER = "scheduler"
-    BENCHMARK_TYPES = [BENCHMARK_TYPE_TRANSPILER, BENCHMARK_TYPE_SCHEDULER]
+    # Profiling types
+    PROFILING_TYPE_TRANSPILER = "transpiler"
+    PROFILING_TYPE_SCHEDULER = "scheduler"
+    PROFILING_TYPES = [PROFILING_TYPE_TRANSPILER, PROFILING_TYPE_SCHEDULER]
+
+    # Callback types
+    CALLBACK_TYPE_RESULTS = "results"
+    CALLBACK_TYPES = [CALLBACK_TYPE_RESULTS]
 
     # Maximum jobs allowed in the system
     MAX_JOBS = 1000
@@ -106,6 +113,14 @@ class Constant:
                     JOB_STATUS_CANCELLING, JOB_STATUS_CANCELLED,
                     JOB_STATUS_DELETED]
 
+    # Prefect flow state
+    PREFECT_STATE_SCHEDULED = "SCHEDULED"
+    PREFECT_STATE_PENDING = "PENDING"
+    PREFECT_STATE_LATE = "LATE"
+    PREFECT_STATE_FAILED = "FAILED"
+    PREFECT_STATE_COMPLETED = "COMPLETED"
+    PREFECT_STATE_CRASHED = "CRASHED"
+
     # Shots
     DEFAULT_SHOTS = 1
     MIN_SHOTS = 1
@@ -120,6 +135,11 @@ class Constant:
     DEFAULT_OPTIMIZATION_LEVEL = 0
     MIN_OPTIMIZATION_LEVEL = 0
     MAX_OPTIMIZATION_LEVEL = 3
+
+
+class HttpHeaders:
+    # headers
+    DEFAULT_JSON_HEADERS = {"Content-Type": "application/json"}
 
 
 class HttpMethod:

@@ -17,11 +17,11 @@
 
 import asyncio
 import threading
+import logging
 from abc import ABC
 from time import sleep
 from pathlib import Path
 from typing import Any
-import logging
 
 from prefect import get_client
 from prefect.client.schemas.actions import WorkPoolCreate
@@ -30,7 +30,8 @@ from prefect.exceptions import ObjectNotFound
 from prefect.workers import ProcessWorker
 from rich.console import Console
 
-from qcos.common.constant import Constant
+from qcos.common.constant import Constant, HttpCode, HttpHeaders, HttpMethod
+from qcos.common.library import Library
 from qcos.engine.job_engine import job_flow
 
 logger = logging.getLogger(__name__)
@@ -53,14 +54,15 @@ class TaskFlowManager(ABC):
         self.driver_manager = None
 
     def transform_to_qcos_state(self, state):
-        if state.upper() == "CRASHED":
+        _state = state.upper()
+        if _state == Constant.PREFECT_STATE_CRASHED:
             return Constant.JOB_STATUS_FAILED
-        elif state.upper() == "SCHEDULED":
-            return Constant.JOB_STATUS_QUEUED
-        elif state.upper() == "PENDING" or state.upper() == "LATE":
+        elif _state in [Constant.PREFECT_STATE_SCHEDULED,
+                        Constant.PREFECT_STATE_PENDING,
+                        Constant.PREFECT_STATE_LATE]:
             return Constant.JOB_STATUS_QUEUED
         else:
-            return state.upper()
+            return _state
 
     def start(self):
         """
@@ -71,6 +73,8 @@ class TaskFlowManager(ABC):
         self._console = Console(quiet=True)
         self.loop = asyncio.new_event_loop()
 
+        # todo (zhaoyi): TO BE IMPLEMENTED
+        # self.loop.run_until_complete(self.check_connection())
         self.loop.run_until_complete(self.create_pools())
         self.loop.run_until_complete(self.create_queues())
         self.loop.run_until_complete(self.start_workers())
@@ -83,6 +87,21 @@ class TaskFlowManager(ABC):
         """
 
         self.driver_manager = driver_manager
+
+    async def check_connection(self):
+        """
+        Check connection to prefect server
+        """
+        async def is_connected():
+            hello = await self._client.hello()
+            if hello and hello.status_code == HttpCode.SUCCESS_OK:
+                return True
+            return False
+
+        success, err_msg, results = Library.loop_with_timeout(
+            is_connected, 60, 5)
+        if not success or not results:
+            raise TimeoutError("Connection to prefect server timeout")
 
     async def create_pools(self):
         """
@@ -215,7 +234,7 @@ class TaskFlowManager(ABC):
         """
 
         flow_run_id = self.loop.run_until_complete(
-            self.run_task_flow_by_client(deployment_id, args))  # 强制等待
+            self.run_task_flow_by_client(deployment_id, args))
 
         return flow_run_id
 
@@ -250,6 +269,53 @@ class TaskFlowManager(ABC):
             self.get_task_flow_result_by_client(flow_run_id))
         return state, parameters, result, err_msg
 
+    def has_flow(self, flow_run_id):
+        """
+        Check if flow exists
+
+        :param flow_run_id: flow uuid
+        :return if flow exists
+        """
+        async def _has_flow(_flow_run_id):
+            success = True
+            try:
+                await self._client.read_flow_run(flow_run_id=_flow_run_id)
+            except Exception:
+                success = False
+            return success
+
+        return self.loop.run_until_complete(
+            _has_flow(flow_run_id))
+
+    def update_flow(self, flow_run_id, name=None, parameters=None,
+                    variables=None):
+        """
+        Update flow
+
+        :param flow_run_id: flow uuid
+        :param name: flow name
+        :param parameters: flow parameters
+        :param variables: flow variables
+        :return if flow exists
+        """
+        async def _update_flow(_flow_run_id,
+                               _name=None,
+                               _parameters=None,
+                               _variables=None):
+            success = True
+            try:
+                await self._client.update_flow_run(
+                    _flow_run_id,
+                    name=_name,
+                    parameters=_parameters,
+                    job_variables=_variables)
+            except Exception:
+                success = False
+            return success
+
+        return self.loop.run_until_complete(
+            _update_flow(flow_run_id, name, parameters, variables))
+
     async def get_task_flow_result_by_client(self, flow_run_id):
         """
         Get flow run state and result by prefect client.
@@ -264,11 +330,11 @@ class TaskFlowManager(ABC):
         # TODO(jidalong) deal exception
         flow_run = await self._client.read_flow_run(flow_run_id)
         state = flow_run.state
-        parameters = flow_run.parameters.get("job_info", None)
+        parameters = flow_run.parameters
         if state.is_final():
-            if state.name.upper() == "FAILED":
+            if state.name.upper() == Constant.PREFECT_STATE_FAILED:
                 return state.name, parameters, None, state.message
-            elif state.name.upper() != "COMPLETED":
+            elif state.name.upper() != Constant.PREFECT_STATE_COMPLETED:
                 return state.name, parameters, None, None
             result = await state.result()
             return state.name, parameters, result, None
@@ -294,14 +360,19 @@ class TaskFlowManager(ABC):
         """
 
         # TODO(jidalong) deal exception
-        result = []
+        results = []
         flow_runs = await self._client.read_flow_runs()
         for flow_run in flow_runs:
-            state = self.transform_to_qcos_state(flow_run.state.name)
-            parameters = flow_run.parameters.get("job_info", None)
             id = flow_run.id
-            result.append({"id": id, "state": state, "parameters": parameters})
-        return result
+            flow_state = flow_run.state.name.upper()
+            state = self.transform_to_qcos_state(flow_state)
+            parameters = flow_run.parameters
+            result = None
+            if flow_state == Constant.PREFECT_STATE_COMPLETED:
+                result = await flow_run.state.result()
+            results.append({"id": id, "state": state, "parameters": parameters,
+                           "result": result})
+        return results
 
     def delete_task_flow_run(self, flow_run_ids):
         """
@@ -352,3 +423,13 @@ class TaskFlowManager(ABC):
             "deploy_flow_path": "../engine/job_engine.py"
         }
         return flow_info
+
+    def run_callbacks(self, job_id, data, callbacks):
+        """
+        Run callbacks for job
+        :param job_id: job id
+        :param data: data to send
+        :param callbacks: callbacks
+        """
+        return self.loop.run_until_complete(
+            Library.async_run_callbacks(job_id, data, callbacks))

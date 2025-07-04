@@ -20,13 +20,15 @@ import logging
 import fastapi_jsonrpc as jsonrpc
 from uvicorn.main import Server as UvicornServer
 
-from qcos.api.posiq.routes_jsonrpc.routes import job_api_v1, device_api_v1
+from qcos.api.posiq.routes_jsonrpc.routes import (
+    device_api_v1, job_api_v1, system_api_v1)
 
 logger = logging.getLogger(__name__)
 
 app = jsonrpc.API()
-app.bind_entrypoint(job_api_v1)
 app.bind_entrypoint(device_api_v1)
+app.bind_entrypoint(job_api_v1)
+app.bind_entrypoint(system_api_v1)
 
 # Monkey Patch uvicorn signal handler to detect the app is shutting down
 app.state.exiting = False

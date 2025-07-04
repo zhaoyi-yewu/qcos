@@ -17,10 +17,14 @@
 
 import logging
 
+from prefect.logging import get_logger
+
+from qcos.common.constant import Constant
 from qcos.drivers.driver_base import DriverBase
 
 
 logger = logging.getLogger(__name__)
+job_logger = get_logger()
 
 
 class DriverPassthrough(DriverBase):
@@ -32,6 +36,9 @@ class DriverPassthrough(DriverBase):
         super().__init__()
         self.version = "0.0.1"
         self.enable_transpiler = False
+        self.supported_code_types = [
+            Constant.CODE_TYPE_QUBO
+        ]
 
     def init_driver(self):
         """
@@ -56,20 +63,22 @@ class DriverPassthrough(DriverBase):
         # pylint: disable=duplicate-code
         self.set_status(self.DRIVER_STATUS_OFFLINE)
 
-    def run(self, job_id, data, data_type, shots=1):
+    def run(self, job_id, num_qubits, data, data_type, shots=1):
         """
         Run job
 
         :param job_id: job ID
+        :param num_qubits: number of qubits
         :param data: data
         :param data_type: data type
         :param shots: shots
         """
         # pylint: disable=duplicate-code
-        logger.info(f"job_id: {job_id}, shots: {shots}, "
-                    f"data_type: {data_type}, data: {data}")
+        job_logger.info(f"job_id: {job_id}, shots: {shots}, "
+                        f"num_qubits: {num_qubits}, "
+                        f"data_type: {data_type}, data: {data}")
         self.set_status(self.DRIVER_STATUS_BUSY)
         # TODO(zhaoyi): to be implemented
-        results = {}
+        results = [{}]
         self.set_results(job_id, results=results)
         self.set_status(self.DRIVER_STATUS_ONLINE)

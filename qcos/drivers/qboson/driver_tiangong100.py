@@ -22,10 +22,9 @@ import os
 import tempfile
 from datetime import datetime, timedelta
 
-from qcos.common.constant import HttpMethod
+from qcos.common.constant import Constant, HttpMethod
 from qcos.common.library import Library
 from qcos.drivers.driver_base import DriverBase
-
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +50,18 @@ class DriverTiangong100(DriverBase):
     login_path = "kdev/terminal/login"
     upload_path = "kdev/terminal/upload_file"
     batch_task_path = "/kdev/terminal/batch-task"
+    machine_path = "kdev/terminal/machine"
     machine_task_path = "kdev/terminal/machine-task"
     task_results_path = "kdev/terminal/task"
+
+    # device status
+    # 0: shutdown, 1: available, 2: debugging 3: malfunctioning,
+    # 4: self-testing
+    device_status_shutdown = 0
+    device_status_available = 1
+    device_status_debugging = 2
+    device_status_malfunctioning = 3
+    device_status_self_testing = 4
 
     # task status
     # -1: unknown, 0: queue, 1: computing, 5. completed, 6. failed
@@ -67,6 +76,9 @@ class DriverTiangong100(DriverBase):
         self.version = "0.0.1"
         self.enable_transpiler = False
         self.max_qubits = 100
+        self.supported_code_types = [
+            Constant.CODE_TYPE_QUBO
+        ]
         self.token = None
 
     def init_driver(self):
@@ -82,6 +94,8 @@ class DriverTiangong100(DriverBase):
         :return if success, error message
         """
         success = True
+        err_msg = None
+
         # check and load driver configs
         driver_config_schema = {
             "base_url": str,
@@ -90,10 +104,11 @@ class DriverTiangong100(DriverBase):
             "project_id": int,
             "device_id": int
         }
-        err_msg = Library.validate_schema(
+        _success, err_msgs = Library.validate_schema(
             self.extra_configs, driver_config_schema)
-        if err_msg:
-            err_msg = f"driver config file error: {err_msg}"
+        if not _success:
+            _err_msg = "\n".join(err_msgs)
+            err_msg = f"driver config file error: {_err_msg}"
             success = False
         return success, err_msg
 
@@ -104,17 +119,19 @@ class DriverTiangong100(DriverBase):
         # pylint: disable=duplicate-code
         self.set_status(self.DRIVER_STATUS_OFFLINE)
 
-    def run(self, job_id, data, data_type, shots=1):
+    def run(self, job_id, num_qubits, data, data_type, shots=1):
         """
         Run job
 
         :param job_id: job ID
+        :param num_qubits: number of qubits
         :param data: data
         :param data_type: data type
         :param shots: shots
         """
         # pylint: disable=duplicate-code
         logger.info(f"job_id: {job_id}, shots: {shots}, "
+                    f"num_qubits: {num_qubits}, "
                     f"data_type: {data_type}, data: {data}")
         self.set_status(self.DRIVER_STATUS_BUSY)
         extra_configs = self.get_extra_configs()
@@ -140,6 +157,11 @@ class DriverTiangong100(DriverBase):
         if not success:
             raise ValueError(f"Authorize failed [{job_id}]: {err_msg}")
         self.auth_headers["Authorization"] = f"JWT {self.token}"
+
+        # Check device status
+        success, err_msg = self.check_device_status(device_id)
+        if not success:
+            raise ValueError(err_msg)
 
         # Upload file
         success, err_msg, file_info = self.upload_file(job_id, qubo_matrix)
@@ -224,6 +246,41 @@ class DriverTiangong100(DriverBase):
             success = False
             err_msgs.append(reason)
         return success, "\n".join(err_msgs), token
+
+    def check_device_status(self, device_id):
+        """
+        Check device status
+
+        :param device_id: device id
+        :return if success, error message
+        """
+        success = True
+        err_msgs = []
+        url = f"{self.base_url}/{self.machine_path}/"
+        params = {
+            "machine_id": device_id
+        }
+        status_code, reason, text, r = \
+            Library.call_http_api(url, HttpMethod.GET, params=params,
+                                  headers=self.auth_headers,
+                                  func_name="check_device_status")
+        if status_code == 200:
+            response = json.loads(text)
+            err_code = response["code"]
+            err_msg = response["msg"]
+            if err_code == "0":
+                data = response.get("data", None)
+                if data["status"] != self.device_status_available:
+                    success = False
+                    err_msgs.append(
+                        f"Unexpected device status: {data['status_desc']}")
+            else:
+                success = False
+                err_msgs.append(err_msg)
+        else:
+            success = False
+            err_msgs.append(reason)
+        return success, "\n".join(err_msgs)
 
     def upload_file(self, job_id, data):
         """

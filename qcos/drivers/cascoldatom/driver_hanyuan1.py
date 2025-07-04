@@ -127,63 +127,61 @@ class DriverHanyuan1(DriverBase):
         self.set_status(self.DRIVER_STATUS_BUSY)
 
         extra_configs = self.get_extra_configs()
-        ip_address = extra_configs.get("ip_address", "100.78.62.2")
+        ip_address = extra_configs.get("ip_address", "127.0.0.1")
         port = extra_configs.get("port", 18402)
 
-        # 1. init_task(class instantiation, connect)
+        # 1、init_task(类实例化,connect)
         success = self.init_task(ip_address, port)
         if not success:
-            logger.error("Failed to connect to quantum machine")
-            results = {"error": "Failed to connect to quantum machine"}
+            logger.error("连接真机失败")
+            results = {"error": "连接真机失败"}
             self.set_results(job_id, results=results)
             self.set_status(self.DRIVER_STATUS_ONLINE)
             return
 
-        # 2. submit_task
+        # 2、submit_task
         success = self.submit_task(job_id, num_qubits, data, data_type, shots)
         if not success:
-            logger.error("Failed to submit task to quantum machine")
-            results = {"error": "Failed to submit task to quantum machine"}
-            self.set_results(job_id, results=results)
+            logger.error("任务提交真机失败")
+            results = {"error": "任务提交真机失败"}
             self.close_task()
             self.set_status(self.DRIVER_STATUS_ONLINE)
             return
 
-        # 3. Wait for task result
+        # 3、等待task返回结果
         success, err_msg, _ = Library.loop_with_timeout(
             self.check_task_result, 3600, 5, job_id)
         if not success:
-            logger.error(f"Failed to wait for task completion [{job_id}]: {err_msg}")
-            results = {"error": f"Failed to wait for task completion: {err_msg}"}
+            logger.error(f"等待任务完成失败 [{job_id}]: {err_msg}")
+            results = {"error": f"等待任务完成失败: {err_msg}"}
             self.set_results(job_id, results=results)
             self.close_task()
             self.set_status(self.DRIVER_STATUS_ONLINE)
             return
 
-        # 4. Get execution result from response
         if self._final_response is None:
-            logger.error("No final task result received")
-            results = {"error": "No final task result received"}
+            logger.error("未获取到最终任务结果")
+            results = {"error": "未获取到最终任务结果"}
             self.set_results(job_id, results=results)
             self.close_task()
             self.set_status(self.DRIVER_STATUS_ONLINE)
             return
 
-        # Get results and ensure they meet API schema requirements
+        # 获取结果并确保符合API schema要求
         raw_results = self._final_response.get("result")
         if raw_results is None:
-            logger.warning("Server returned empty result, using default result")
+            logger.warning("服务器返回的结果为空，使用默认结果")
             results = {"status": "do failed", "data": []}
         else:
-            # Ensure result is valid type (str, int, list, dict)
+            # 确保结果是有效的类型（str, int, list, dict）
             if isinstance(raw_results, (str, int, list, dict)):
                 results = raw_results
             else:
-                logger.warning(f"Result type does not meet requirements: {type(raw_results)}, converting to string")
+                logger.warning(f"结果类型不符合要求: {type(raw_results)}，转换为字符串")
                 results = str(raw_results)
 
-        # Log final result for debugging
-        logger.info(f"Final result: {results}")
+        # 记录最终结果用于调试
+        logger.info(f"最终结果: {results}")
 
         self.set_results(job_id, results=results)
         self.close_task()
@@ -191,22 +189,22 @@ class DriverHanyuan1(DriverBase):
 
     def init_task(self, ip_address: str, port: int) -> bool:
         """
-        Initialize task: connect to server, start heartbeat detection thread
+        初始化任务：连接服务器，启动心跳检测线程
 
-        :param ip_address: server IP address
-        :param port: server port
-        :return: whether connection is successful
+        :param ip_address: 服务器IP地址
+        :param port: 服务器端口
+        :return: 连接是否成功
         """
         try:
             self.client = HanyuanConnection(ip_address, port)
             return self.client.connect()
         except Exception as e:
-            logger.error(f"Failed to initialize task: {e}")
+            logger.error(f"初始化任务失败: {e}")
             return False
 
     def close_task(self):
         """
-        Close task: disconnect from server
+        关闭任务：断开服务器连接
         """
         if self.client:
             self.client.disconnect()
@@ -215,37 +213,37 @@ class DriverHanyuan1(DriverBase):
     def submit_task(self, job_id: str, qubit_num: int, data, data_type: str,
                     shots: int) -> bool:
         """
-        Submit task for execution
+        提交任务执行
 
-        :param job_id: task ID
-        :param qubit_num: number of qubits
-        :param data: data
-        :param data_type: data type
-        :param shots: number of executions
-        :return: whether submission is successful
+        :param job_id: 任务ID
+        :param qubit_num: 量子比特数量
+        :param data: 数据
+        :param data_type: 数据类型
+        :param shots: 执行次数
+        :return: 提交是否成功
         """
         try:
-            logger.info(f"Submit task: job_id={job_id}, data_type={data_type}, "
+            logger.info(f"提交任务: job_id={job_id}, data_type={data_type}, "
                         f"shots={shots}")
 
             processed_data = []
-            # Check data format, if it's a dictionary containing basis_gate_list
+            # 检查data的格式，如果是包含basis_gate_list的字典
             if isinstance(data, dict) and 'basis_gate_list' in data:
                 gate_list = data['basis_gate_list']
-                logger.info(f"Extract gate list from data['basis_gate_list']: {gate_list}")
+                logger.info(f"从data['basis_gate_list']中提取gate列表: {gate_list}")
             else:
-                # If data itself is a gate list
+                # 如果data本身就是gate列表
                 gate_list = data
-                logger.info(f"Data itself is gate list: {gate_list}")
+                logger.info(f"data本身就是gate列表: {gate_list}")
 
             for i, gate in enumerate(gate_list):
-                logger.info(f"Processing {i+1}th gate: {gate}")
+                logger.info(f"处理第{i+1}个gate: {gate}")
                 gate_dict = {
-                    "name": gate.name.upper(),  # Convert to uppercase for consistency
+                    "name": gate.name.upper(),  # 转换为大写以保持一致性
                     "targets": gate.targets,
                     "arg_value": gate.arg_value
                 }
-                logger.info(f"Converted gate_dict: {gate_dict}")
+                logger.info(f"转换后的gate_dict: {gate_dict}")
                 processed_data.append(gate_dict)
 
             logger.info(f'processed_data: {processed_data}')
@@ -258,81 +256,81 @@ class DriverHanyuan1(DriverBase):
                 "timestamp": time.time()
             }
 
-            # Send task
+            # 发送任务
             success = self.client.send_message(message)
             if success:
-                logger.info(f"Task {job_id} submitted successfully")
+                logger.info(f"任务 {job_id} 提交成功")
                 return True
             else:
-                logger.error(f"Task {job_id} submission failed")
+                logger.error(f"任务 {job_id} 提交失败")
                 return False
         except Exception as e:
-            logger.error(f"Error occurred while submitting task: {e}")
+            logger.error(f"提交任务时出错: {e}")
             return False
 
     def check_task_result(self, job_id: str) -> bool:
         """
-        Check task return result
+        检查任务返回结果
 
-        :param job_id: task ID
-        :return: whether task is completed
+        :param job_id: 任务ID
+        :return: 任务是否完成
         """
         try:
             if not self.client or not self.client.is_connection_alive():
-                logger.error("Connection disconnected")
+                logger.error("连接已断开")
                 return False
 
-            # Receive response
+            # 接收响应
             response = self.client.receive_message()
             if response is None:
-                # No response received, task may still be executing
-                logger.info(f"Task {job_id} still executing...")
+                # 没有收到响应，任务可能仍在执行
+                logger.info(f"任务 {job_id} 仍在执行中...")
                 return False
 
-            # Check response format
+            # 检查响应格式
             if not isinstance(response, dict):
-                logger.warning(f"Received non-dictionary format response: {type(response)}")
+                logger.warning(f"收到非字典格式的响应: {type(response)}")
                 return False
 
-            # Check if result is included
+            # 检查是否包含结果
             if "result" in response:
-                logger.info(f"Task {job_id} completed")
-                # Save final result for subsequent use
+                logger.info(f"任务 {job_id} 已完成")
+                # 保存最终结果供后续使用
                 self._final_response = response
-                logger.info(f"Task {job_id} completed, result: {response}")
+                logger.info(f"任务 {job_id} 已完成，结果: {response}")
                 return True
             elif "error" in response:
-                logger.error(f"Task {job_id} execution error: {response['error']}")
-                # Save response even if error occurs to avoid infinite waiting
+                logger.error(f"任务 {job_id} 执行出错: {response['error']}")
+                # 即使出错也保存响应，避免无限等待
                 self._final_response = response
                 return True
             elif "status" in response:
                 status = response.get("status")
                 if status in ["completed", "finished", "done"]:
-                    logger.info(f"Task {job_id} completed, status: {status}")
+                    logger.info(f"任务 {job_id} 已完成，状态: {status}")
                     self._final_response = response
                     return True
                 elif status in ["failed", "error"]:
-                    logger.error(f"Task {job_id} execution failed, status: {status}")
+                    logger.error(f"任务 {job_id} 执行失败，状态: {status}")
                     self._final_response = response
                     return True
                 elif status == "not_found":
-                    # Task not found, continue waiting
-                    logger.info(f"Task {job_id} not found, continue waiting...")
+                    # 任务未找到，继续等待
+                    logger.info(f"任务 {job_id} 未找到，继续等待...")
                     return False
 
-            # Task still executing
-            logger.info(f"Task {job_id} still executing...")
+            # 任务仍在执行中
+            logger.info(f"任务 {job_id} 仍在执行中...")
             return False
 
         except Exception as e:
-            logger.error(f"Error occurred while checking task result: {e}")
+            logger.error(f"检查任务结果时出错: {e}")
             return False
 
 
 class HanyuanConnection:
     """
-    Cascoldatom Hanyuan1 neutral atom driver connection to real machine
+    中科酷原-汉原1 中性原子驱动连接真机
     Cascoldatom Hanyuan1 connection
     """
 
@@ -345,39 +343,35 @@ class HanyuanConnection:
         self.heartbeat_running = False
 
     def connect(self) -> bool:
-        """
-        Establish server connection
-        """
+        """建立TCP连接"""
         try:
             logger.info(
-                f"Connecting to server {self.server_host}:{self.server_port}")
+                f"正在连接到服务器 {self.server_host}:{self.server_port}")
 
-            # Create TCP connection
+            # 创建TCP连接
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.settimeout(10)  # Set connection timeout
+            self.socket.settimeout(10)  # 设置连接超时
             self.socket.connect((self.server_host, self.server_port))
-            self.socket.settimeout(None)  # Reset to blocking mode
+            self.socket.settimeout(None)  # 重置为阻塞模式
             self.is_connected = True
 
-            # Start heartbeat thread
+            # 启动心跳线程
             self.heartbeat_running = True
             self.heartbeat_thread = threading.Thread(
                 target=self._heartbeat_loop, daemon=True)
             self.heartbeat_thread.start()
 
             logger.info(
-                f"Connected to server {self.server_host}:{self.server_port}")
+                f"已连接到服务器 {self.server_host}:{self.server_port}")
             return True
         except Exception as e:
-            logger.error(f"Failed to connect to server: {e}")
+            logger.error(f"连接服务器失败: {e}")
             self.is_connected = False
             return False
 
     def disconnect(self) -> None:
-        """
-        Disconnect server connection
-        """
-        # Stop heartbeat thread
+        """断开TCP连接"""
+        # 停止心跳线程
         self.heartbeat_running = False
         if self.heartbeat_thread:
             self.heartbeat_thread.join(timeout=2)
@@ -386,56 +380,53 @@ class HanyuanConnection:
             try:
                 self.socket.close()
             except Exception as e:
-                logger.error(f"Error occurred while disconnecting: {e}")
+                logger.error(f"断开连接时出错: {e}")
             finally:
                 self.is_connected = False
-                logger.info("Disconnected from server")
+                logger.info("已断开服务器连接")
 
     def send_message(self, message: dict) -> bool:
-        """
-        Send message to server
-        """
+        """发送消息到服务器"""
         if not self.is_connected or not self.socket:
-            logger.error("Not connected to server")
+            logger.error("未连接到服务器")
             return False
 
         try:
             data = json.dumps(message, ensure_ascii=False).encode('utf-8')
             self.socket.send(data + b'\n')
             logger.info(
-                f"Send message to {self.server_host}:{self.server_port}: {message}")
+                f"发送消息给 {self.server_host}:{self.server_port}: {message}")
             return True
         except Exception as e:
             logger.error(
-                f"Failed to send message to {self.server_host}:{self.server_port}: {e}")
+                f"发送消息给 {self.server_host}:{self.server_port} 失败: {e}")
             return False
 
     def receive_message(self) -> dict:
-        """
-        Receive server message
-        """
+        """接收服务器消息"""
         if not self.is_connected or not self.socket:
-            logger.error("Not connected to server")
+            logger.error("未连接到服务器")
             return None
 
         try:
+            # self.socket.settimeout(5)  # 设置接收超时
             data = self.socket.recv(4096)
             if not data:
-                logger.warning("Server closed connection")
+                logger.warning("服务器关闭了连接")
                 self.is_connected = False
                 return None
 
-            # Decode data
+            # 解码数据
             decoded_data = data.decode('utf-8')
 
-            # Try to parse JSON, handle possible multiple JSON objects
+            # 尝试解析JSON，处理可能的多个JSON对象
             try:
                 message = json.loads(decoded_data)
             except json.JSONDecodeError as e:
-                # If parsing fails, try to find the first complete JSON object
-                logger.info(f"JSON parsing failed, trying to fix: {e}")
+                # 如果解析失败，尝试找到第一个完整的JSON对象
+                logger.info(f"JSON解析失败，尝试修复: {e}")
 
-                # Find the first complete JSON object
+                # 查找第一个完整的JSON对象
                 brace_count = 0
                 start_pos = -1
                 message = None
@@ -448,47 +439,45 @@ class HanyuanConnection:
                     elif char == '}':
                         brace_count -= 1
                         if brace_count == 0 and start_pos != -1:
-                            # Found complete JSON object
+                            # 找到完整的JSON对象
                             json_str = decoded_data[start_pos:i + 1]
                             try:
                                 message = json.loads(json_str)
-                                logger.debug(f"Successfully parsed JSON object: {json_str}")
+                                logger.debug(f"成功解析JSON对象: {json_str}")
                                 break
                             except json.JSONDecodeError as parse_error:
-                                logger.error(f"Failed to parse JSON object: {parse_error}")
-                                # Continue searching for next JSON object
+                                logger.error(f"解析JSON对象失败: {parse_error}")
+                                # 继续查找下一个JSON对象
                                 start_pos = -1
                                 continue
 
                 if message is None:
-                    # No complete JSON object found
-                    logger.warning("Unable to parse any valid JSON object")
+                    # 没有找到完整的JSON对象
+                    logger.warning("无法解析任何有效的JSON对象")
                     self.is_connected = False
                     return None
 
             logger.info(
-                f"Received message from {self.server_host}:{self.server_port}"
-                f": {message}")
+                f"收到来自 {self.server_host}:{self.server_port}"
+                f"的消息: {message}")
 
-            # Handle heartbeat response
+            # 处理心跳响应
             if message.get("type") == "heartbeat_ack":
-                return None  # Heartbeat response not returned to upper layer
+                return None  # 心跳响应不返回给上层
 
             return message
         except Exception as e:
             logger.error(
-                f"Failed to receive message from {self.server_host}:{self.server_port}: {e}")
-            # Receiving message failure may indicate connection disconnect
+                f"接收来自 {self.server_host}:{self.server_port} 的消息失败: {e}")
+            # 接收消息失败可能表示连接断开
             self.is_connected = False
             return None
 
     def _heartbeat_loop(self):
-        """
-        Heartbeat loop
-        """
+        """心跳循环"""
         while self.heartbeat_running and self.is_connected:
             try:
-                # Send heartbeat message
+                # 发送心跳消息
                 heartbeat_msg = {
                     "type": "heartbeat",
                     "timestamp": time.time()
@@ -496,22 +485,20 @@ class HanyuanConnection:
 
                 success = self.send_message(heartbeat_msg)
                 if not success:
-                    logger.warning("Heartbeat send failed")
+                    logger.warning("心跳发送失败")
                     self.is_connected = False
                     break
 
-                # Wait for heartbeat interval
+                # 等待心跳间隔
                 time.sleep(30)
 
             except Exception as e:
-                logger.error(f"Heartbeat loop error: {e}")
+                logger.error(f"心跳循环出错: {e}")
                 self.is_connected = False
                 break
 
     def is_connection_alive(self) -> bool:
-        """
-        Check if connection is still alive
-        """
+        """检查连接是否仍然活跃"""
         if not self.is_connected or not self.socket:
             return False
 

@@ -18,6 +18,8 @@
 import logging
 from abc import ABC
 
+from prefect import exceptions as prefect_exceptions
+
 from qcos.common.constant import Constant
 from .task_manager import TaskFlowManager
 
@@ -105,11 +107,11 @@ class TaskScheduler(ABC):
             logger.error(f"Prefect execute flow error: {str(e)}")
             return None, "Execute work flow failed"
 
-    def get_result_by_id(self, id):
+    def get_result_by_id(self, job_id):
         """
         Get result by job id
 
-        :param id: job id
+        :param job_id: job id
         :return results: result
         :return parameters: parameters
         :return state: state
@@ -117,18 +119,32 @@ class TaskScheduler(ABC):
         """
         try:
             state, parameters, results, error_message = \
-                self._task_manager.get_task_flow_result(id)
+                self._task_manager.get_task_flow_result(job_id)
             state = self._task_manager.transform_to_qcos_state(state)
+            job_status = self.get_job_status(state, results, parameters)
             response = {
-                "state": state.upper(),
+                "job_status": job_status,
                 "parameters": parameters,
                 "results": results,
                 "error_message": error_message,
             }
             return response, None
+        except prefect_exceptions.ObjectNotFound:
+            err_msg = f"Can't find job id: {job_id}"
+            logger.warning(err_msg)
+            return None, err_msg
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
             return None, "execute work flow failed"
+
+    def has_job(self, job_id):
+        """
+        Check if flow exists
+
+        :param job_id: job id
+        :return if flow exists
+        """
+        return self._task_manager.has_flow(job_id)
 
     def get_jobs(self):
         """
@@ -140,6 +156,9 @@ class TaskScheduler(ABC):
 
         try:
             flow_list = self._task_manager.get_task_flow_list()
+            for flow in flow_list:
+                flow["job_status"] = self.get_job_status(
+                    flow["state"], flow["result"], flow["parameters"])
             return flow_list, None
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
@@ -155,7 +174,74 @@ class TaskScheduler(ABC):
         """
 
         flow_list = self._task_manager.delete_task_flow_run(ids)
+        for flow in flow_list:
+            flow["job_status"] = self.get_job_status(
+                flow["state"], None, None)
         return flow_list
+
+    def update_job(self, job_id, name=None, parameters=None, variables=None):
+        """
+        Update job
+
+        :param job_id: job id
+        :param name: job name
+        :param parameters: job parameters
+        :param variables: job variables
+        :return if flow exists
+        """
+        return self._task_manager.update_flow(
+            job_id, name, parameters, variables)
+
+    def run_callbacks(self, job_id, data, callbacks):
+        """
+        Run callbacks for job
+
+        :param job_id: job id
+        :param data: data to send
+        :param callbacks: callbacks
+        """
+        return self._task_manager.run_callbacks(job_id, data, callbacks)
+
+    @staticmethod
+    def get_job_status(job_status, flow_results, flow_parameters):
+        """
+        Get job status by combining flow state and user defined task status
+
+        :param job_status: job status
+        :param flow_results: flow results
+        :param flow_parameters: parameters
+        :return job_status
+        """
+        job_status = job_status.upper()
+        final_job_status = job_status
+        flow_results_status = None
+        flow_parameters_status = None
+
+        # get job_status from flow_results
+        if flow_results:
+            for flow_result in flow_results:
+                metadata = flow_result.get("metadata", None)
+                if metadata:
+                    _flow_results_status = metadata.get("status", None)
+                    flow_results_status = _flow_results_status
+
+        # get job_status from user-defined parameters
+        if flow_parameters:
+            updated_job_info = flow_parameters.get("updated_job_info", None)
+            if updated_job_info:
+                results = updated_job_info.get("results", None)
+                if results:
+                    for result in results:
+                        metadata = result.get("metadata", {})
+                        _job_status = metadata.get("status", None)
+                        flow_parameters_status = _job_status
+
+        # determine final job_status
+        if flow_parameters_status:
+            final_job_status = flow_parameters_status
+        elif flow_results_status:
+            final_job_status = flow_results_status
+        return final_job_status
 
 
 class BaseSchedulerPolicy(ABC):

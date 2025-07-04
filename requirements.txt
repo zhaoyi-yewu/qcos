@@ -1,6 +1,7 @@
+aiohttp==3.12.13
 annotated-types==0.7.0
 anyio==4.9.0
-argcomplete==3.1.2
+argcomplete==3.6.2
 click==8.1.8
 cliff==4.10.0
 fastapi==0.115.12
@@ -22,3 +23,4 @@ tomlkit==0.13.3
 typing-inspection==0.4.1
 typing_extensions==4.13.2
 uvicorn==0.34.2
+wheel==0.45.1

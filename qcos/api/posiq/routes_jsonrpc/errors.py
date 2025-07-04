@@ -83,7 +83,18 @@ def handle_cancel_error(err_msg):
     :param err_msg: error msg from task manager
     """
 
-    raise JobListError(data={"details": err_msg})
+    raise JobCancelError(data={"details": err_msg})
+
+
+@staticmethod
+def handle_job_error(err_msg):
+    """
+    Handle job error
+
+    :param err_msg: error msg
+    """
+
+    raise JobError(data={"details": err_msg})
 
 
 class UnknownError(jsonrpc.BaseError):
@@ -106,6 +117,20 @@ class InvalidParams(jsonrpc.BaseError):
     """
     CODE = -2
     MESSAGE = "Invalid params"
+
+    class DataModel(BaseModel):
+        """
+        Data Model
+        """
+        details: str
+
+
+class JobError(jsonrpc.BaseError):
+    """
+    Job Error
+    """
+    CODE = -10
+    MESSAGE = "Job error"
 
     class DataModel(BaseModel):
         """

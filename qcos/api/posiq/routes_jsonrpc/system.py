@@ -15,12 +15,30 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import fastapi_jsonrpc as jsonrpc
+import logging
 
-from qcos.common.config import Config
+from qcos.api import schemas
+from qcos.api.posiq.routes_jsonrpc.routes import system_api_v1
+
+logger = logging.getLogger(__name__)
 
 
-BASE_ENDPOINT = f"/{Config.API_VERSION}"
-system_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/system")
-job_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/job")
-device_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/device")
+@system_api_v1.method()
+def ping(
+        body: schemas.PingRequest
+) -> schemas.PongResponse:
+    """
+    Ping-pong to verify the availability of the system
+
+    :param body: message
+    :type body: schemas.PingRequest
+    :return: pong response
+    """
+    logger.info(f"Call ping: {body}")
+
+    message = body.message
+
+    response_info = {
+        "message": message,
+    }
+    return response_info

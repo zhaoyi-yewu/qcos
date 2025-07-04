@@ -20,4 +20,6 @@ from .job import (SubmitJobRequest, SubmitJobResponse,
                   GetJobResultsRequest, GetJobResultsResponse,
                   GetJobsRequest,
                   CancelJobsRequest,
-                  DeleteJobsRequest, DeleteJobsResponse)
+                  DeleteJobsRequest, DeleteJobsResponse,
+                  SetJobResultsRequest, SetJobResultsResponse)
+from .system import (PingRequest, PongResponse)

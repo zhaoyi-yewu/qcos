@@ -17,6 +17,8 @@
 
 import copy
 import logging
+
+from prefect.logging import get_logger
 from schema import Optional, Or
 
 from qcos.common.constant import Constant
@@ -24,6 +26,7 @@ from qcos.common.library import Library
 from qcos.drivers.driver_base import DriverBase
 
 logger = logging.getLogger(__name__)
+job_logger = get_logger()
 
 
 class DriverDummy(DriverBase):
@@ -38,10 +41,12 @@ class DriverDummy(DriverBase):
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
         self.layout_method = DriverBase.LAYOUT_METHOD_CMSS_NEUTRAL_ATOM
+        self.supported_transpiler_list = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_merge = False
         self.default_results_type = self.DATA_TYPE_GATE_SEQUENCE
+        self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
         self.max_qubits = 10
-        self.basis_gates = []
+        self.supported_basis_gates = []
         # pylint: disable=duplicate-code
         self.coupling_map = []
         self.extra_configs = {}
@@ -62,6 +67,8 @@ class DriverDummy(DriverBase):
         """
         # TODO(zhaoyi): load transpiler plugin, and implemented in transpiler
         success = True
+        err_msg = None
+
         # check and load driver configs
         driver_config_schema = {
             Optional("ip_address"): str,
@@ -83,10 +90,11 @@ class DriverDummy(DriverBase):
             }
         }
         extra_configs = self.get_extra_configs()
-        err_msg = Library.validate_schema(
+        _success, err_msgs = Library.validate_schema(
             extra_configs, driver_config_schema)
-        if err_msg:
-            err_msg = f"driver config file error: {err_msg}"
+        if not _success:
+            _err_msg = "\n".join(err_msgs)
+            err_msg = f"driver config file error: {_err_msg}"
             success = False
         else:
             # copy configs to self.qpu_configs
@@ -103,19 +111,22 @@ class DriverDummy(DriverBase):
         """
         self.set_status(self.DRIVER_STATUS_OFFLINE)
 
-    def run(self, job_id, data, data_type, shots=1):
+    def run(self, job_id, num_qubits, data, data_type, shots=1):
         """
         Run job
 
         :param job_id: job ID
+        :param num_qubits: number of qubits
         :param data: data
         :param data_type: data type
         :param shots: shots
         """
-        logger.info(f"job_id: {job_id}, shots: {shots}, "
-                    f"data_type: {data_type}, data: {data}")
+        # pylint: disable=duplicate-code
+        job_logger.info(f"job_id: {job_id}, shots: {shots}, "
+                        f"num_qubits: {num_qubits}, "
+                        f"data_type: {data_type}, data: {data}")
         self.set_status(self.DRIVER_STATUS_BUSY)
         # dummy driver results
-        results = {'00': 00, '01': 1, '10': 10, '11': 11}
+        results = [{'00': 00, '01': 1, '10': 10, '11': 11}]
         self.set_results(job_id, results=results)
         self.set_status(self.DRIVER_STATUS_ONLINE)

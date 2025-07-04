@@ -20,8 +20,10 @@ import logging
 import time
 
 from prefect import flow, task, runtime
+from prefect.logging import get_run_logger
 
 from qcos.common.constant import Constant
+from qcos.common.library import Library
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from qcos.transpiler.transpiler_factory import TranspilerFactory
 
@@ -36,6 +38,7 @@ def init_driver(driver_info):
     :param driver_info: driver info
     :return: driver
     """
+    prefect_logger = get_run_logger()
     try:
         driver_module = importlib.import_module(driver_info["module_name"])
         driver_class = getattr(driver_module, driver_info["class_name"])
@@ -45,7 +48,7 @@ def init_driver(driver_info):
         success, err_msg = driver.validate_driver_configs()
         # error handling
         if not success:
-            logger.error(err_msg)
+            prefect_logger.error(err_msg)
             raise ValueError(err_msg)
         # copy cfgs to trans cfg inst
         trans_cfg_inst.set_qpu_cfg(driver.get_qpu_configs())
@@ -66,15 +69,16 @@ def cmss_transpiler(job_info):
     :return basis gate list
     """
     # load qpu configs
+    prefect_logger = get_run_logger()
     num_qubits = -1
     try:
         factory = TranspilerFactory()
         transpiler = factory.get_transpiler_by_type(Constant.TRANSPILER_CMSS)
         raw_qasm = job_info['source_code'][0]
-        logger.debug(f"raw_qasm: {raw_qasm}")
+        prefect_logger.info(f"raw_qasm: {raw_qasm}")
         basis_gate_list = transpiler.transpile(raw_qasm)
         num_qubits = transpiler.num_qubits
-        logger.debug(f"final basis_gate_list: {basis_gate_list}")
+        prefect_logger.info(f"final basis_gate_list: {basis_gate_list}")
         return {"basis_gate_list": basis_gate_list, "num_qubits": num_qubits,
                 "error": None}
     except Exception as e:
@@ -83,37 +87,92 @@ def cmss_transpiler(job_info):
 
 
 @task(persist_result=False)
-def run_driver(job_info, driver, data):
+def run_driver(job_info, driver, num_qubits, data):
     """
     Run the driver
 
     :param job_info: job info
     :param driver: driver
+    :param num_qubits: number of qubits
     :param data: data
     :return results
     """
+    prefect_logger = get_run_logger()
     try:
         job_id = job_info["job_id"]
-        shots = job_info.get("shots", Constant.DEFAULT_SHOTS)
+        shots = job_info["data"].get("shots", Constant.DEFAULT_SHOTS)
         dry_run = job_info["data"].get("dry_run", False)
         results = None
+        job_status = None
         data_type = driver.get_default_data_type()
         if dry_run:
-            driver.dry_run(job_id, data, data_type=data_type,
+            prefect_logger.info(
+                f"dry_run: job_id: {job_id}, num_qubits: {num_qubits}, "
+                f"data: {data}, data_type: {data_type}, shots: {shots}")
+            driver.dry_run(job_id, num_qubits, data, data_type=data_type,
                            shots=shots)
         else:
-            driver.run(job_id, data, data_type=data_type,
+            prefect_logger.info(
+                f"run: job_id: {job_id}, num_qubits: {num_qubits}, "
+                f"data: {data}, data_type: {data_type}, shots: {shots}")
+            driver.run(job_id, num_qubits, data, data_type=data_type,
                        shots=shots)
         if driver.results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
             # sync mode: get results immediately
             results = driver.get_results(job_id)
-        # async mode: get results in the next query call
-        return {"results": results, "error": None}
+            job_status = Constant.JOB_STATUS_COMPLETED
+        # async mode: get results in the async set-job-results call
+        elif driver.results_fetch_mode == Constant.RESULTS_FETCH_MODE_ASYNC:
+            results = None
+            job_status = Constant.JOB_STATUS_RUNNING
+        return {
+            "results": results,
+            "metadata": {
+                "results_fetch_mode": driver.results_fetch_mode,
+                "status": job_status
+            },
+            "error": None,
+        }
     except Exception as e:
-        return {"results": None, "error": ValueError(str(e))}
+        return {"results": None, "metadata": {}, "error": ValueError(str(e))}
 
 
-@flow(name="job_engine", persist_result=True)
+def job_callback(flow, flow_run, state):
+    """
+    Job callback
+
+    :param flow: flow
+    :param flow_run: flow run
+    :param state: flow state
+    """
+    job_id = flow_run.id
+    parameters = flow_run.parameters
+    results = flow_run.state.result()
+    is_job_callback = False
+    results_fetch_mode_sync = False
+    callbacks = Library.get_nested_dict_value(
+        parameters, "job_info", "data", "callbacks", default=None)
+    if callbacks:
+        is_job_callback = True
+    for result in results:
+        results_fetch_mode = Library.get_nested_dict_value(
+            result, "metadata", "results_fetch_mode", default=None)
+        if results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
+            results_fetch_mode_sync = True
+            break
+    if is_job_callback and results_fetch_mode_sync:
+        # if job_info contains callback list and driver is in sync mode
+        # do callback
+        success, err_msg = Library.run_callbacks(job_id, results, callbacks)
+        if not success:
+            logger.error(err_msg)
+
+
+@flow(name="job_engine", persist_result=True,
+      on_completion=[job_callback],
+      on_failure=[job_callback],
+      on_crashed=[job_callback],
+      on_cancellation=[job_callback])
 def job_flow(job_info):
     """
     Job flow
@@ -121,18 +180,19 @@ def job_flow(job_info):
     :param job_info: job info
     :return results
     """
+    prefect_logger = get_run_logger()
     transpile_results = None
     num_qubits = -1
-    transpiler_benchmark_start = 0
-    transpiler_benchmark_end = 0
-    job_results = {"metadata": {}, "benchmark": {}, "results": None}
+    transpiler_profiling_start = 0
+    transpiler_profiling_end = 0
+    job_results = {"metadata": {}, "profiling": {}, "results": None}
     job_id = runtime.flow_run.id
     job_info["job_id"] = job_id
     data = job_info["data"]
-    benchmark_types = data.get("benchmark", [])
-    benchmark_types = [] if benchmark_types is None else benchmark_types
-    logger.info(f"Processing work flow: job_engine. "
-                f"job_id: {job_id}, job_info: {job_info}")
+    profiling_types = data.get("profiling", [])
+    profiling_types = [] if profiling_types is None else profiling_types
+    prefect_logger.info(f"Processing work flow: job_engine. "
+                        f"job_id: {job_id}, job_info: {job_info}")
 
     # init driver
     future_driver = init_driver.submit(job_info["driver"])
@@ -143,12 +203,12 @@ def job_flow(job_info):
     if driver.enable_transpiler:
         # choose transpiler
         if driver.transpiler == Constant.TRANSPILER_CMSS:
-            if Constant.BENCHMARK_TYPE_TRANSPILER in benchmark_types:
-                transpiler_benchmark_start = time.time()
+            if Constant.PROFILING_TYPE_TRANSPILER in profiling_types:
+                transpiler_profiling_start = time.time()
             transpile_task_results = cmss_transpiler.submit(
                 data, wait_for=[init_driver])
-            if Constant.BENCHMARK_TYPE_TRANSPILER in benchmark_types:
-                transpiler_benchmark_end = time.time()
+            if Constant.PROFILING_TYPE_TRANSPILER in profiling_types:
+                transpiler_profiling_end = time.time()
             _transpile_task_results = transpile_task_results.result()
             num_qubits = _transpile_task_results.get("num_qubits", -1)
             job_results["num_qubits"] = num_qubits
@@ -161,22 +221,24 @@ def job_flow(job_info):
     run_driver_task_result = None
     if driver.enable_transpiler:
         run_driver_task_result = run_driver.submit(
-            job_info, driver, transpile_results,
+            job_info, driver, num_qubits, transpile_results,
             wait_for=[cmss_transpiler])
     else:
         run_driver_task_result = run_driver.submit(
-            job_info, driver, data,
+            job_info, driver, num_qubits, data,
             wait_for=[init_driver])
-    error = run_driver_task_result.result()["error"]
+    task_result = run_driver_task_result.result()
+    error = task_result["error"]
     if error:
         raise error
-    job_results["results"] = run_driver_task_result.result()["results"]
+    job_results["results"] = task_result["results"]
+    job_results["metadata"] = task_result["metadata"]
 
-    # calculate benchmark for transpiler
-    if transpiler_benchmark_start and transpiler_benchmark_end:
-        job_results["benchmark"] = {
-            "benchmark_transpiler":
-                transpiler_benchmark_end - transpiler_benchmark_start,
+    # calculate profiling for transpiler
+    if transpiler_profiling_start and transpiler_profiling_end:
+        job_results["profiling"] = {
+            "profiling_transpiler":
+                transpiler_profiling_end - transpiler_profiling_start,
         }
 
     # construct results

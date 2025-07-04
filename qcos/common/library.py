@@ -15,9 +15,13 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import aiohttp
+import asyncio
+import copy
 import fnmatch
 import importlib
 import inspect
+import json
 import logging
 import os
 import pkgutil
@@ -26,12 +30,14 @@ import requests
 import time
 import tomlkit
 import zipfile
+from aiohttp import ClientTimeout, ClientError
 from datetime import datetime
+from http import HTTPStatus
 from schema import Schema
 from urllib.parse import urlparse
 from uuid import UUID
 
-from .constant import HttpMethod
+from .constant import HttpHeaders, HttpMethod
 
 
 logger = logging.getLogger(__name__)
@@ -226,6 +232,22 @@ class Library:
             return False, f"failed to write toml file: {file_path}. {e}"
 
     @staticmethod
+    def write_to_file(data, file_path, mode="w"):
+        """
+        Write to file
+
+        :param data: data
+        :param file_path: file path
+        :param mode: file open mode
+        """
+        try:
+            with open(file_path, mode, encoding='utf-8') as file:
+                file.write(data)
+            return True, None
+        except Exception as e:
+            return False, f"failed to write file: {file_path}. {e}"
+
+    @staticmethod
     def get_current_datetime():
         """
         Get current datetime
@@ -364,20 +386,22 @@ class Library:
         :param schema_obj: schema obj
         :return: None if success or error message
         """
+        success = True
         err_msg = None
         try:
             _schema = Schema(schema_obj)
             _schema.validate(value)
         except Exception as e:
-            err_msg = str(e)
-        return err_msg
+            success = False
+            err_msg = [str(e)]
+        return success, err_msg
 
     @staticmethod
     def call_http_api(
             url, method, *,
             data=None, json=None, files=None, params=None, func_name=None,
             headers=None, auth=None, verify_ssl=False,
-            retry=1, timeout=10, success_http_code=[200],
+            retries=1, timeout=10, success_http_code=[200, 201],
             debug=False):
         """
         Call http api
@@ -392,7 +416,7 @@ class Library:
         :param headers: http headers
         :param auth: http auth
         :param verify_ssl: if verify ssl certificate
-        :param retry: times to retry if failed
+        :param retries: times to retry if failed
         :param timeout: timeout in seconds
         :param success_http_code: success http status
         :param debug: enable or disable debug
@@ -415,7 +439,7 @@ class Library:
         else:
             request_func = requests.get
 
-        for i in range(1, retry + 1):
+        for i in range(1, retries + 1):
             r = request_func(
                 url,
                 headers=headers,
@@ -430,6 +454,85 @@ class Library:
             if r.status_code in success_http_code:
                 break
         return r.status_code, r.reason, r.text, r
+
+    @staticmethod
+    async def async_call_http_api(
+            url, method, *,
+            data=None, json=None, params=None, func_name=None,
+            headers=None, auth=None,
+            retries=1, timeout=10, success_http_code=[200, 201],
+            debug=False):
+        """
+        Async call http api
+
+        :param url: api url
+        :param method: http method
+        :param data: data for http body
+        :param json: json data for http body
+        :param params: params for http url
+        :param func_name: function name
+        :param headers: http headers
+        :param auth: http auth
+        :param retries: times to retry if failed
+        :param timeout: timeout in seconds
+        :param success_http_code: success http status
+        :param debug: enable or disable debug
+        """
+        retry_count = 0
+        request_func = None
+        response = None
+        err_msg = None
+        if debug:
+            logger.info(
+                f"Async request [{func_name}]: {url}, "
+                f"METHOD: {method}, HEADER: {headers}, PARAMS: {params}, "
+                f"DATA: {data}, JSON: {json}")
+
+        while retry_count < retries:
+            try:
+                # set timeout
+                client_timeout = ClientTimeout(total=timeout)
+                async with aiohttp.ClientSession(
+                        timeout=client_timeout) as session:
+                    if method == HttpMethod.POST:
+                        request_func = session.post
+                    elif method == HttpMethod.PUT:
+                        request_func = session.put
+                    elif method == HttpMethod.PATCH:
+                        request_func = session.patch
+                    elif method == HttpMethod.DELETE:
+                        request_func = session.delete
+                    else:
+                        request_func = requests.get
+
+                    async with request_func(
+                            url,
+                            params=params,
+                            data=data,
+                            json=json,
+                            headers=headers,
+                            auth=auth) as response:
+                        status_code = response.status
+                        description = HTTPStatus(status_code).phrase
+                        if status_code in success_http_code:
+                            data = await response.text()
+                            return True, None, data, response
+                        else:
+                            retry_count += 1
+                            if retry_count < retries:
+                                await asyncio.sleep(1)
+                            else:
+                                # max retries reached
+                                err_msg = (f"Error status_code: {status_code},"
+                                           f" description: {description}")
+            except (ClientError, asyncio.TimeoutError) as e:
+                retry_count += 1
+                if retry_count < retries:
+                    await asyncio.sleep(1)
+                else:
+                    # max retries reached
+                    err_msg = f"Connection Timeout: {e}"
+        return False, err_msg, None, response
 
     @staticmethod
     def is_valid_url(url, schemes):
@@ -499,3 +602,96 @@ class Library:
 
             # sleep
             time.sleep(interval)
+
+    @staticmethod
+    def get_nested_dict_value(dictionary, *keys, default=None):
+        """
+        Get nested dict value
+
+        :param dictionary: dictionary to get value from
+        :param keys: keys to get
+        :param default: default value
+        :return: value from dictionary
+        """
+        try:
+            current = dictionary
+            for key in keys:
+                current = current[key]
+            return current
+        except (KeyError, TypeError):
+            pass
+        return default
+
+    @staticmethod
+    def run_callbacks(job_id, results, callbacks):
+        """
+        Run callbacks for job
+
+        :param job_id: job id
+        :param results: results to send
+        :param callbacks: callbacks
+        """
+        success = True
+        err_msg = None
+        for callback in callbacks:
+            url = callback.get("url", None)
+            method = callback.get("method", HttpMethod.POST)
+            headers = copy.deepcopy(HttpHeaders.DEFAULT_JSON_HEADERS)
+            user_defined_headers = callback.get("headers", {})
+            headers.update(user_defined_headers)
+            retries = callback.get("retries", 3)
+            timeout = callback.get("timeout", 10)
+            data = {
+                "job_id": str(job_id),
+                "results": results
+            }
+            if url:
+                _success, err_msg, text, result = \
+                    Library.call_http_api(
+                        url, method,
+                        data=json.dumps(data),
+                        func_name="run_callbacks",
+                        headers=headers,
+                        retries=retries, timeout=timeout)
+                if not _success:
+                    success = False
+            else:
+                success = False
+        return success, err_msg
+
+    @staticmethod
+    async def async_run_callbacks(job_id, results, callbacks):
+        """
+        Async run callbacks for job
+
+        :param job_id: job id
+        :param results: results to send
+        :param callbacks: callbacks
+        """
+        success = True
+        err_msg = None
+        for callback in callbacks:
+            url = callback.get("url", None)
+            method = callback.get("method", HttpMethod.POST)
+            headers = copy.deepcopy(HttpHeaders.DEFAULT_JSON_HEADERS)
+            user_defined_headers = callback.get("headers", {})
+            headers.update(user_defined_headers)
+            retries = callback.get("retries", 3)
+            timeout = callback.get("timeout", 10)
+            data = {
+                "job_id": str(job_id),
+                "results": results
+            }
+            if url:
+                _success, err_msg, text, result = \
+                    await Library.async_call_http_api(
+                        url, method,
+                        data=json.dumps(data),
+                        func_name="run_callbacks",
+                        headers=headers,
+                        retries=retries, timeout=timeout)
+                if not _success:
+                    success = False
+            else:
+                success = False
+        return success, err_msg

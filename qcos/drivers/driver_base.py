@@ -43,8 +43,8 @@ class DriverBase:
 
     # Layout methods
     LAYOUT_METHOD_CMSS_NONE = None
-    LAYOUT_METHOD_CMSS_NEUTRAL_ATOM = "cmss-neutral-atom"
-    LAYOUT_METHOD_CMSS_ION_TRAP = "cmss-ion-trap"
+    LAYOUT_METHOD_CMSS_NEUTRAL_ATOM = "cmss_neutral_atom"
+    LAYOUT_METHOD_CMSS_ION_TRAP = "cmss_ion_trap"
     LAYOUT_METHODS = [
         LAYOUT_METHOD_CMSS_NONE,
         LAYOUT_METHOD_CMSS_NEUTRAL_ATOM,
@@ -52,7 +52,7 @@ class DriverBase:
     ]
 
     # Data types
-    DATA_TYPE_GATE_SEQUENCE = "gate-sequence"
+    DATA_TYPE_GATE_SEQUENCE = "gate_sequence"
     DATA_TYPE_QUBO = "qubo"
     DATA_TYPES = [
         DATA_TYPE_GATE_SEQUENCE,
@@ -87,22 +87,24 @@ class DriverBase:
         self.enable_circuit_merge = False
         # max number of qubits
         self.max_qubits = 0
+        # supported code_types
+        self.supported_code_types = Constant.CODE_TYPES
         # supported basis gates (TODO(zhaoyi): TO BE IMPLEMENTED)
-        supported_basis_gates = None
+        self.supported_basis_gates = None
         # supported transpiler list (TODO(zhaoyi): TO BE IMPLEMENTED)
-        supported_transpiler_list = None
+        self.supported_transpiler_list = []
         # qpu configs
         self.qpu_configs = None
         # decomposition rule
         self.decomposition_rule = None
         # extra_configs, usually from driver config files
         self.extra_configs = {}
-        # results from run(), which fetch the results from quantum computer
+        # results from run(), which fetches the results from quantum computer
         # format: {JOB_ID: {"results": RESULTS}}
         self._results = {}
-        # measurement results fetch mode (TODO(zhaoyi): not used)
+        # measurement results fetch mode
         self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
-        # default data type in run() (TODO(zhaoyi): not used)
+        # default data type in run()
         self.default_data_type = DriverBase.DATA_TYPE_GATE_SEQUENCE
 
     def load_driver_configs(self):
@@ -156,6 +158,7 @@ class DriverBase:
             f"transpiler: {self.transpiler}",
             f"layout_method: {self.layout_method}",
             f"enable_circuit_merge: {self.enable_circuit_merge}",
+            f"results_fetch_mode: {self.results_fetch_mode}",
             f"max_qubits: {self.max_qubits}",
             f"qpu_configs: {self.qpu_configs}",
             f"decomposition_rule: {self.decomposition_rule}",
@@ -250,11 +253,13 @@ class DriverBase:
         """
         return self.decomposition_rule
 
-    def run(self, job_id, data, data_type=DATA_TYPE_GATE_SEQUENCE, shots=1):
+    def run(self, job_id, num_qubits, data,
+            data_type=DATA_TYPE_GATE_SEQUENCE, shots=1):
         """
         Run job
 
         :param job_id: job ID
+        :param num_qubits: number of qubits
         :param data: data
         :param data_type: data type
         :param shots: shots
@@ -262,19 +267,20 @@ class DriverBase:
         raise NotImplementedError(f"Driver: {self.__class__.__name__} "
                                   f"must implement method: run")
 
-    def dry_run(self, job_id, data, data_type=DATA_TYPE_GATE_SEQUENCE,
-                shots=1):
+    def dry_run(self, job_id, num_qubits, data,
+                data_type=DATA_TYPE_GATE_SEQUENCE, shots=1):
         """
         Dry-run job
 
         :param job_id: job ID
+        :param num_qubits: number of qubits
         :param data: data
         :param data_type: data type
         :param shots: shots
         """
         logger.info(f"Dry-run: job_id: {job_id}, shots: {shots}, "
                     f"data_type: {data_type}, data: {data}")
-        self.set_results(job_id, results=DriverBase.DEFAULT_DRY_RUN_RESULTS)
+        self.set_results(job_id, results=[DriverBase.DEFAULT_DRY_RUN_RESULTS])
 
     def set_results(self, job_id, results):
         """

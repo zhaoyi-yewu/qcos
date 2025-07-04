@@ -27,7 +27,7 @@ from cliff.lister import Lister
 from cliff.show import ShowOne
 
 from .client import Client
-from qcos.common import errors
+from qcos.common import args_schema, errors
 from qcos.common.config import Config
 from qcos.common.constant import Constant, HttpCode
 from qcos.common.library import Library
@@ -44,11 +44,16 @@ QCOS commands:
 [Job commands]
 * Submit Job
 1. 测试用dummy驱动
-qcos-cli submit-job --code-type qasm2 --shots 10 --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+1.1 使用profiling
+qcos-cli submit-job --code-type qasm --shots 10 --profiling transpiler scheduler --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+1.2 使用callbacks进行回调
+qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
-qcos-cli submit-job --code-type qasm2 --shots 10 --dry-run --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\ncreg c[1];\nx q[0];\nmeasure q -> c;\n"'
 3. 中科酷原-汉原1 中性原子驱动, 真实运行
-qcos-cli submit-job --code-type qasm2 --shots 10 --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\ncreg c[1];\nx q[0];\nmeasure q -> c;\n"'
 4. 玻色量子-光量子伊辛机, 真实运行
 qcos-cli submit-job --code-type qubo --backend DriverTiangong100 '"[[-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,8],[0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0],[0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0],[0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0],[0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0],[0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0],[0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0],[0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0],[0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0],[0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8],[0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12]]"'
 
@@ -63,11 +68,18 @@ qcos-cli get-jobs
 
 * Cancel job
 qcos-cli cancel-jobs 00000000-0000-4000-8000-000000000001
-qcos-cli cancel-jobs all
+qcos-cli cancel-jobs -y all
 
 * Delete job
 qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
-qcos-cli delete-jobs all
+qcos-cli delete-jobs -y all
+
+* Set job results (for callbacks or test purpose)
+qcos-cli set-job-results --results '{"01":0}' 00000000-0000-4000-8000-000000000001
+
+[System commands]
+* Ping command
+qcos-cli ping 123
 """
 
 
@@ -247,10 +259,14 @@ class CommandHelper:
                     err_msg_list.append(f"{message} ({code})")
             except Exception as e:
                 err_msg_list.append(e)
+        else:
+            err_msg_list.append(reason)
+        err_msgs = ""
+        if err_msg_list:
+            err_msgs = f"{','.join(err_msg_list)}.\n"
         raise errors.GenericException(
             f"Failed to process {resource}: '{name}'. "
-            f"[status_code: {status_code}]\n"
-            f"{','.join(err_msg_list)}.\n")
+            f"[status_code: {status_code}]\n{err_msgs}")
 
     @staticmethod
     def get_table_list_data(list_values, header_list, ignore_header_list=None):
@@ -326,6 +342,39 @@ class CommandHelper:
         return results
 
 
+class Ping(Command):
+    """
+    Ping-pong to verify the availability of the system
+    """
+
+    def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument("message", type=str,
+                            default="",
+                            help="Message to send")
+        return parser
+
+    def take_action(self, args):
+        """
+        Take action for command line arguments
+
+        :param args: command line arguments
+        """
+        resource = "System"
+        message = args.message
+
+        status_code, reason, text, result = self.app.client.ping(message)
+        json_results = CommandHelper.check_results(
+            resource, "ping", status_code, reason, text)
+        print(f"Pong: {json_results['message']}")
+
+
 class SubmitJob(Command):
     """
     Submit job
@@ -341,7 +390,7 @@ class SubmitJob(Command):
         parser = super().get_parser(prog_name)
         parser.add_argument("--code-type", dest="code_type",
                             choices=Constant.CODE_TYPES,
-                            default=Constant.CODE_TYPE_QASM2,
+                            default=Constant.CODE_TYPE_QASM,
                             help=f"Code Types: "
                                  f"{','.join(Constant.CODE_TYPES)}")
         parser.add_argument("--job-type", dest="job_type",
@@ -373,17 +422,19 @@ class SubmitJob(Command):
                             dest="optimization_level", type=int,
                             default=Constant.DEFAULT_OPTIMIZATION_LEVEL,
                             help="Set optimization level")
-        parser.add_argument("--benchmark",
+        parser.add_argument("--profiling",
                             nargs="*",
                             type=str,
-                            choices=Constant.BENCHMARK_TYPES,
-                            dest="benchmark",
-                            help=f"Benchmark types: "
-                                 f"{','.join(Constant.BENCHMARK_TYPES)}")
+                            choices=Constant.PROFILING_TYPES,
+                            dest="profiling",
+                            help=f"Profiling types: "
+                                 f"{','.join(Constant.PROFILING_TYPES)}")
+        parser.add_argument("--callbacks", dest="callbacks",
+                            type=str, help="Callbacks list")
         parser.add_argument("-D", "--dry-run", dest="dry_run",
                             action="store_true", help="Dry run")
-
-        parser.add_argument("source_code", help="Source code")
+        parser.add_argument("source_code", type=str,
+                            help="Source code")
         return parser
 
     def take_action(self, args):
@@ -404,42 +455,32 @@ class SubmitJob(Command):
         backend = args.backend
         transpiler = args.transpiler
         optimization_level = args.optimization_level
-        benchmark = args.benchmark
+        profiling = args.profiling
+        callbacks = args.callbacks
 
-        # validate and convert source_code
+        # convert source_code
         source_code_obj = None
+        source_code_list = None
         try:
             source_code_obj = json.loads(source_code)
-        except json.decoder.JSONDecodeError as error:
-            source_code_obj = source_code
+        except json.decoder.JSONDecodeError as exc:
+            raise errors.InvalidArguments("Invalid argument: source_code") \
+                from exc
+
         if isinstance(source_code_obj, list):
-            for content in source_code_obj:
-                if not isinstance(content, str):
-                    raise errors.InvalidArguments(
-                        "Invalid source_code, required schema: list[str]")
+            source_code_list = source_code_obj
         elif isinstance(source_code_obj, str):
             source_code_list = [source_code_obj]
-        else:
-            raise errors.InvalidArgumentsException(
-                "Invalid source_code, required schema: list[str]")
+
+        CommandHelper.handle_invalid_arguments(Library.validate_schema(
+            source_code_list, args_schema.SOURCE_CODE_SCHEMA))
         if not source_code_list:
-            raise errors.InvalidArguments("Empty source_code is not allowed")
+            raise errors.InvalidArguments(
+                "Empty argument:source_code is not allowed")
 
-        source_code_obj = None
-        try:
-            source_code_obj = json.loads(source_code)
-        except json.decoder.JSONDecodeError as error:
-            source_code_obj = source_code
-        if isinstance(source_code_obj, list):
-            for content in source_code_obj:
-                if not isinstance(content, str):
-                    raise errors.InvalidArguments(
-                        "Invalid source_code, required schema: list[str]")
-        elif isinstance(source_code_obj, str):
-            source_code_list = [source_code_obj]
-        else:
-            raise errors.InvalidArgumentsException(
-                "Invalid source_code, required schema: list[str]")
+        # Validate content of source_code
+        CommandHelper.handle_invalid_arguments(Library.validate_values_list(
+            source_code_list, "source_code", str, allow_none=False))
 
         # Validate argument: code_type
         CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
@@ -480,6 +521,17 @@ class SubmitJob(Command):
             optimization_level, "optimization_level",
             Constant.MIN_OPTIMIZATION_LEVEL, Constant.MAX_OPTIMIZATION_LEVEL))
 
+        # Validate argument: callbacks
+        callbacks_json = None
+        if callbacks:
+            try:
+                callbacks_json = json.loads(callbacks)
+            except json.decoder.JSONDecodeError as e:
+                raise errors.InvalidArguments(
+                    f"Invalid argument: callback. reason: {e}")
+            CommandHelper.handle_invalid_arguments(Library.validate_schema(
+                callbacks_json, args_schema.CALLBACKS_SCHEMA))
+
         # call api
         status_code, reason, text, result = self.app.client.submit_job(
             source_code_list,
@@ -492,7 +544,8 @@ class SubmitJob(Command):
             backend=backend,
             transpiler=transpiler,
             optimization_level=optimization_level,
-            benchmark=benchmark,
+            profiling=profiling,
+            callbacks=callbacks_json,
             dry_run=dry_run)
         results = CommandHelper.check_results(
             resource, "submit_job", status_code, reason, text)
@@ -580,7 +633,9 @@ class GetJobResults(ShowOne):
         _results = json_results.get("results", None)
         if _results:
             _result = _results[0]
-            json_result.update(_result)
+            for k, v in _result.items():
+                if k != "metadata":
+                    json_result[k] = v
         table_values = CommandHelper.get_table_data(json_result)
         return table_values
 
@@ -635,6 +690,11 @@ class CancelJobs(Command):
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("job_ids", help="Job IDs")
+        parser.add_argument("-y", "--yes",
+                            default=False,
+                            dest="assume_yes",
+                            action="store_true",
+                            help="Answer yes for all question")
         return parser
 
     def take_action(self, args):
@@ -645,6 +705,7 @@ class CancelJobs(Command):
         """
         resource = "Job"
         job_ids = args.job_ids
+        assume_yes = args.assume_yes
 
         job_id_list = []
         if job_ids.lower() == "all":
@@ -656,6 +717,13 @@ class CancelJobs(Command):
                 for job_info in json_results:
                     job_id = job_info["job_id"]
                     job_id_list.append(job_id)
+            if not assume_yes:
+                confirm = input(
+                    "Are you sure to delete all jobs ? (y/n) ")
+                _confirm = confirm.lower().strip()
+                if _confirm not in ("y", "yes"):
+                    print("User cancelled operation, abort!")
+                    sys.exit(0)
         else:
             # parse job ids
             job_id_str_list = job_ids.split(",")
@@ -685,7 +753,7 @@ class CancelJobs(Command):
             print(f"The following {len(jobs)} "
                   f"jobs will be cancelled: {', '.join(map(str, jobs))}")
         else:
-            print(f"No job: {job_ids} is found")
+            print(f"Jobs: {job_ids} are not found")
 
 
 class DeleteJobs(Command):
@@ -702,6 +770,11 @@ class DeleteJobs(Command):
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("job_ids", help="Job IDs")
+        parser.add_argument("-y", "--yes",
+                            default=False,
+                            dest="assume_yes",
+                            action="store_true",
+                            help="Answer yes for all question")
         return parser
 
     def take_action(self, args):
@@ -712,6 +785,7 @@ class DeleteJobs(Command):
         """
         resource = "Job"
         job_ids = args.job_ids
+        assume_yes = args.assume_yes
 
         job_id_list = []
         if job_ids.lower() == "all":
@@ -723,6 +797,13 @@ class DeleteJobs(Command):
                 for job_info in json_results:
                     job_id = job_info["job_id"]
                     job_id_list.append(job_id)
+            if not assume_yes:
+                confirm = input(
+                    "Are you sure to delete all jobs ? (y/n) ")
+                _confirm = confirm.lower().strip()
+                if _confirm not in ("y", "yes"):
+                    print("User cancelled operation, abort!")
+                    sys.exit(0)
         else:
             # parse job ids
             job_id_str_list = job_ids.split(",")
@@ -752,17 +833,69 @@ class DeleteJobs(Command):
             print(f"The following {len(jobs)} "
                   f"jobs will be deleted: {', '.join(map(str, jobs))}")
         else:
-            print(f"No job: {job_ids} is found")
+            print(f"Jobs: {job_ids} are not found")
+
+
+class SetJobResults(Command):
+    """
+    Set job results
+    """
+
+    def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument("--results",
+                            dest="results", type=str,
+                            help="Job Results")
+        parser.add_argument("job_id", type=str, help="Job ID")
+        return parser
+
+    def take_action(self, args):
+        """
+        Take action for command line arguments
+
+        :param args: command line arguments
+        """
+        resource = "Job"
+        job_id = args.job_id
+        results = args.results
+
+        # Validate argument: job_id
+        CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(
+            job_id, "job_id"))
+
+        # convert results
+        results_obj = None
+        try:
+            results_obj = json.loads(results)
+        except json.decoder.JSONDecodeError as exc:
+            raise errors.InvalidArguments("Invalid argument: results") \
+                from exc
+
+        # call api
+        status_code, reason, text, result = \
+            self.app.client.set_job_results(job_id, results_obj)
+        CommandHelper.check_results(
+            resource, "set_job_results", status_code, reason, text)
 
 
 # Register commands
 command_manager = CommandManager("qcos")
+# system command
+command_manager.add_command("ping", Ping)
+# job command
 command_manager.add_command("submit-job", SubmitJob)
 command_manager.add_command("get-job-status", GetJobStatus)
 command_manager.add_command("get-job-results", GetJobResults)
 command_manager.add_command("get-jobs", GetJobs)
 command_manager.add_command("cancel-jobs", CancelJobs)
 command_manager.add_command("delete-jobs", DeleteJobs)
+command_manager.add_command("set-job-results", SetJobResults)
 
 
 def set_debug_option(args):
