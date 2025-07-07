@@ -75,6 +75,6 @@ class TestTranspilerCmss:
         factory = TranspilerFactory()
         transpiler = factory.get_transpiler_by_type(Constant.TRANSPILER_CMSS)
         basis_gate_list = transpiler.transpile(self.simple_data)
-        assert len(basis_gate_list["basis_gate_list"]) == 2
-        validate_ir(basis_gate_list["basis_gate_list"][0], 'rx', [27], 1, False)
-        validate_ir(basis_gate_list["basis_gate_list"][1], "measure", [27], 0, False)
+        assert len(basis_gate_list) == 2
+        validate_ir(basis_gate_list[0], 'rx', [27], 1, False)
+        validate_ir(basis_gate_list[1], "measure", [27], 0, False)

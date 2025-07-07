@@ -41,29 +41,26 @@ class TranspilerCmss(TranspilerBase):
         :param qasm: openqasm codes
         :return basis gate list
         """
-        try:
-            qpu_cfg = trans_cfg_inst.get_qpu_cfg()
-            if not qpu_cfg:
-                err_msg = "Missing qpu configs"
-                logger.error(err_msg)
-                raise ValueError(err_msg)
+        qpu_cfg = trans_cfg_inst.get_qpu_cfg()
+        if not qpu_cfg:
+            err_msg = "Missing qpu configs"
+            logger.error(err_msg)
+            raise ValueError(err_msg)
 
-            # compile and mapping
-            logger.debug(f"raw_qasm: {qasm}")
-            num_qubits, gates = compile(qasm)
-            self.num_qubits = num_qubits
-            gates = optimize_gate(gates)
-            na_map = NASingleRoute(num_qubits, gates, qpu_cfg)
-            mapping_res = na_map.execute_with_order()
-            logger.debug(f"initial mapping: {na_map.mapping}")
-            logger.debug(f"after mapping: {mapping_res}")
+        # compile and mapping
+        logger.debug(f"raw_qasm: {qasm}")
+        num_qubits, gates = compile(qasm)
+        self.num_qubits = num_qubits
+        gates = optimize_gate(gates)
+        na_map = NASingleRoute(num_qubits, gates, qpu_cfg)
+        mapping_res = na_map.execute_with_order()
+        logger.debug(f"initial mapping: {na_map.mapping}")
+        logger.debug(f"after mapping: {mapping_res}")
 
-            # decompose gates
-            parsed_circuit = decompose_gates(mapping_res)
+        # decompose gates
+        parsed_circuit = decompose_gates(gates)
 
-            # optimize circuit
-            basis_gate_list = optimize_gate(parsed_circuit)
-            logger.debug(f"final basis_gate_list: {basis_gate_list}")
-            return {"basis_gate_list": basis_gate_list, "error": None}
-        except Exception as e:
-            return {"basis_gate_list": None, "error": ValueError(str(e))}
+        # optimize circuit
+        basis_gate_list = optimize_gate(parsed_circuit)
+        logger.debug(f"final basis_gate_list: {basis_gate_list}")
+        return basis_gate_list

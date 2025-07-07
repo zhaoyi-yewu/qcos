@@ -15,12 +15,20 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from qcos.transpiler.cmss.common.gate import Gate
+
+class DecomposeException(Exception):
+    """
+    Exception for Decompose
+    """
 
 
-def validate_ir(actual: Gate, name: str, targets: list, q_type: int,
-                q_hermitian: bool):
-    assert actual.hermitian == q_hermitian
-    assert actual.name == name
-    assert actual.targets == targets
-    assert actual.gate_type == q_type
+class OptException(Exception):
+    """
+    Exception for Optimization
+    """
+
+
+class MappingException(Exception):
+    """
+    Exception for Mapping
+    """

@@ -19,6 +19,7 @@ from enum import Enum
 
 import numpy as np
 
+from qcos.transpiler.common.errors import DecomposeException
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 
 
@@ -57,8 +58,17 @@ class Gate:
         self.arg_value = arg_value if arg_value is not None else list()
         if not isinstance(self.arg_value, list):
             self.arg_value = [self.arg_value]
-        self.type = gate_type
+        self.gate_type = gate_type
         self.hermitian = hermitian
+        self.validate_params()
+
+    def validate_params(self):
+        """
+        validate gate's params.
+        Gate type already indicated the number of qubits that gate needed.
+        """
+        if len(self.targets) != int(self.gate_type):
+            raise DecomposeException("invalid targets num")
 
     def decompose(self):
         """
@@ -105,8 +115,8 @@ class Gate:
             params_list = custom_gate.get("params", [])
             need_args = self.arg_value
             if len(params_list) != len(need_args):
-                raise ValueError(f"Gate: {self.name} requires arg: {need_args}"
-                                 f", found {params_list}")
+                raise DecomposeException(f"Gate: {self.name} requires arg: "
+                                         f"{need_args}, found {params_list}")
             params = dict(zip(params_list, need_args))
             params["pi"] = np.pi
             decomposed_gates = custom_gate.get("gates", [])
@@ -121,13 +131,13 @@ class Gate:
             return gates
 
         except Exception as e:
-            raise RuntimeError(str(e)) from e
+            raise DecomposeException(str(e)) from e
 
     def default_decompose(self):
         """
         默认的分解方法
         """
-        raise RuntimeError("please specify the decomposition gates")
+        raise DecomposeException("please specify the decomposition gates")
 
     def __repr__(self):
         return (f"{type(self).__name__}(targets={self.targets},"
@@ -526,6 +536,10 @@ class SYNC(Gate):
     def default_decompose(self):
         return list([self])
 
+    def validate_params(self):
+        if len(self.targets) == 0:
+            raise DecomposeException("invalid targets num")
+
 
 class MEASURE(Gate):
     """
@@ -542,6 +556,10 @@ class MEASURE(Gate):
     def default_decompose(self):
         return list([self])
 
+    def validate_params(self):
+        if len(self.targets) == 0:
+            raise DecomposeException("invalid targets num")
+
 
 class MOV(Gate):
     """
@@ -557,6 +575,9 @@ class MOV(Gate):
 
     def default_decompose(self):
         return list([self])
+
+    def validate_params(self):
+        pass
 
 
 def create_gate(name, targets=None, arg_value=None, allow_undefined=False):
@@ -620,4 +641,4 @@ def create_gate(name, targets=None, arg_value=None, allow_undefined=False):
     else:
         if allow_undefined:
             return Gate(name, targets=targets, arg_value=arg_value)
-        raise RuntimeError(f"{name} is not support")
+        raise DecomposeException(f"{name} is not support")

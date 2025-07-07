@@ -140,7 +140,7 @@ class TestDecompose:
 
     def test_create_u1(self):
         u1 = create_gate("u1", [0], [1])
-        assert u1.type == GateType.SINGLE_QUBIT_GATE.value
+        assert u1.gate_type == GateType.SINGLE_QUBIT_GATE.value
         assert u1.name == "u1"
         assert u1.hermitian is False
 
@@ -150,7 +150,7 @@ class TestDecompose:
 
     def test_create_u2(self):
         u2 = create_gate("u2", [0], [1, 2])
-        assert u2.type == GateType.SINGLE_QUBIT_GATE.value
+        assert u2.gate_type == GateType.SINGLE_QUBIT_GATE.value
         assert u2.name == "u2"
         assert u2.hermitian is False
 
@@ -162,7 +162,7 @@ class TestDecompose:
 
     def test_create_u3(self):
         u3 = create_gate("u3", [0], [1, 2, 3])
-        assert u3.type == GateType.SINGLE_QUBIT_GATE.value
+        assert u3.gate_type == GateType.SINGLE_QUBIT_GATE.value
         assert u3.name == "u3"
         assert u3.hermitian is False
 
@@ -190,7 +190,7 @@ class TestDecompose:
 
         trans_cfg_inst.set_decompose_rule(config)
         u3 = create_gate("u3", [0], [1, 2, 3])
-        assert u3.type == GateType.SINGLE_QUBIT_GATE.value
+        assert u3.gate_type == GateType.SINGLE_QUBIT_GATE.value
         assert u3.name == "u3"
         assert u3.hermitian is False
 
@@ -201,3 +201,9 @@ class TestDecompose:
         validate_gate(decom_gate[2], "rz", [0], [2 + np.pi])
         validate_gate(decom_gate[3], "rx", [0], [np.pi / 2])
         validate_gate(decom_gate[4], "rz", [0], [1 + np.pi])
+
+    def test_create_rx_exception(self):
+        try:
+            rx = create_gate("rx", [0, 1], [1, 2, 3])
+        except Exception as e:
+            print(f"Exception: {e}")
