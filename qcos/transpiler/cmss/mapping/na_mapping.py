@@ -29,8 +29,8 @@ class NASingleRoute(ABC):
         初始化，配置qpu_config、gates、qnum，量子比特映射
 
         :param qnum: 比特数
-		:param gates: 门列表
-		:param qpu_config: 拓扑
+        :param gates: 门列表
+        :param qpu_configs: 拓扑
         """
 
         self.qpu_config = qpu_configs
