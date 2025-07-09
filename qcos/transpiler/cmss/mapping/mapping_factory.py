@@ -16,30 +16,31 @@
 # ----------------------------------------------------------------------
 
 from qcos.common.constant import Constant
-from qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
-from qcos.transpiler.common.errors import TranspilerException
+from qcos.transpiler.cmss.mapping import NASingleRoute
+from qcos.transpiler.common.errors import MappingException
 
 
-class TranspilerFactory:
+class MappingFactory:
     """
     Get Transpiler via Type
     """
 
-    def __init__(self):
-        self._transpiler_mapping = {
-            Constant.TRANSPILER_CMSS: TranspilerCmss()
+    def __init__(self, qbit_num, gates, qpu_configs):
+        self._mapping = {
+            Constant.TECH_TYPE_NEUTRAL_ATOM: NASingleRoute(qbit_num, gates,
+                                                           qpu_configs)
         }
 
-    def get_transpiler_by_type(self, trans_type: str):
+    def get_mapper_by_type(self, tech_type: str):
         """
-        Get transpiler by type
+        Get mapper by type
 
-        :param trans_type: transpiler type
-        :return transpiler: transpiler
+        :param tech_type: tech type
+        :return mapper: mapper
         """
 
-        transpiler = self._transpiler_mapping.get(trans_type)
-        if transpiler:
-            return transpiler
+        mapper = self._mapping.get(tech_type)
+        if mapper:
+            return mapper
         else:
-            raise TranspilerException(f"{type} is not a valid type")
+            raise MappingException(f"{type} is not a valid type")

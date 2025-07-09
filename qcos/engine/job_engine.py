@@ -43,14 +43,15 @@ def init_driver(driver_info):
         driver.extra_configs = driver_info.get("extra_configs", {})
         # validate and copy extra_configs to qpu_configs
         success, err_msg = driver.validate_driver_configs()
-        # copy cfgs to trans cfg inst
-        trans_cfg_inst.set_qpu_cfg(driver.get_qpu_configs())
-        trans_cfg_inst.set_max_qubits(driver.get_max_qubits())
-        trans_cfg_inst.set_decompose_rule(driver.get_decomposition_rule())
         # error handling
         if not success:
             logger.error(err_msg)
             raise ValueError(err_msg)
+        # copy cfgs to trans cfg inst
+        trans_cfg_inst.set_qpu_cfg(driver.get_qpu_configs())
+        trans_cfg_inst.set_max_qubits(driver.get_max_qubits())
+        trans_cfg_inst.set_decompose_rule(driver.get_decomposition_rule())
+        trans_cfg_inst.set_tech_type(driver.tech_type)
         return {"driver": driver, "error": None}
     except Exception as e:
         return {"driver": None, "error": ValueError(str(e))}

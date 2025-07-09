@@ -32,3 +32,9 @@ class MappingException(Exception):
     """
     Exception for Mapping
     """
+
+
+class TranspilerException(Exception):
+    """
+    Exception for Mapping
+    """

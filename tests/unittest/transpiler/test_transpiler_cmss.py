@@ -72,6 +72,7 @@ class TestTranspilerCmss:
             }
         }
         trans_cfg_inst.set_qpu_cfg(qpu_config)
+        trans_cfg_inst.set_tech_type(Constant.TECH_TYPE_NEUTRAL_ATOM)
         factory = TranspilerFactory()
         transpiler = factory.get_transpiler_by_type(Constant.TRANSPILER_CMSS)
         basis_gate_list = transpiler.transpile(self.simple_data)

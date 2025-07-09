@@ -18,17 +18,19 @@
 from abc import ABC
 import networkx as nx
 
+from qcos.transpiler.common.errors import MappingException
+
 
 class NASingleRoute(ABC):
     """
     NASingleRoute
     """
 
-    def __init__(self, qnum, gates, qpu_configs):
+    def __init__(self, qbit_num, gates, qpu_configs):
         """
-        初始化，配置qpu_config、gates、qnum，量子比特映射
+        初始化，配置qpu_config、gates、qbit_num，量子比特映射
 
-        :param qnum: 比特数
+        :param qbit_num: 比特数
         :param gates: 门列表
         :param qpu_configs: 拓扑
         """
@@ -48,19 +50,18 @@ class NASingleRoute(ABC):
                                     method='dijkstra'))
 
         self.gates = gates
-        self.qnum = qnum
-        if len(self.storage_area) < self.qnum:
-            raise ValueError(
-                f"not enough qubits, need {self.qnum}, "
+        self.qbit_num = qbit_num
+        if len(self.storage_area) < self.qbit_num:
+            raise MappingException(
+                f"not enough qubits, need {self.qbit_num}, "
                 f"but only{len(self.storage_area)}")
 
         err_dict = {}
         for k, v in self.qpu_config['readout_error'].items():
             if k in self.storage_area:
                 err_dict[k] = v
-        sq = sorted(err_dict.items(), key=lambda e: e[1])[:self.qnum]
-        self.mapping = dict([(a, b[0])
-                             for a, b in zip(range(self.qnum), sq)])
+        sq = sorted(err_dict.items(), key=lambda e: e[1])[:self.qbit_num]
+        self.mapping = {a: b[0] for a, b in zip(range(self.qbit_num), sq)}
         self.qids = [int(q[0][1:]) for q in sq]
 
     def execute_with_order(self):
@@ -84,7 +85,7 @@ class NASingleRoute(ABC):
             gates_on_qubit[gate.targets[0]].append(gate)
 
         gates = []
-        for q in gates_on_qubit:
-            gates += gates_on_qubit[q]
+        for value in gates_on_qubit.values():
+            gates += value
         gates += measure
         return gates

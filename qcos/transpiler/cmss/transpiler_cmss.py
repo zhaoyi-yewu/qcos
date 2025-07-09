@@ -18,9 +18,11 @@
 import logging
 
 
+from qcos.common.constant import Constant
 from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from qcos.transpiler.cmss.compiler.parser import compile
 from qcos.transpiler.cmss.mapping import NASingleRoute
+from qcos.transpiler.cmss.mapping.mapping_factory import MappingFactory
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from qcos.transpiler.transpiler_base import TranspilerBase
@@ -52,9 +54,9 @@ class TranspilerCmss(TranspilerBase):
         num_qubits, gates = compile(qasm)
         self.num_qubits = num_qubits
         gates = optimize_gate(gates)
-        na_map = NASingleRoute(num_qubits, gates, qpu_cfg)
-        mapping_res = na_map.execute_with_order()
-        logger.debug(f"initial mapping: {na_map.mapping}")
+        factory = MappingFactory(num_qubits, gates, qpu_cfg)
+        mapper = factory.get_mapper_by_type(trans_cfg_inst.get_tech_type())
+        mapping_res = mapper.execute_with_order()
         logger.debug(f"after mapping: {mapping_res}")
 
         # decompose gates
