@@ -48,6 +48,7 @@ class TaskFlowManager(ABC):
         """
 
         self._client = None
+        self._sync_client = None
         self.loop = None
         self._console = None
         self.worker_status = False
@@ -70,11 +71,11 @@ class TaskFlowManager(ABC):
         """
 
         self._client = get_client()
+        self._sync_client = get_client(sync_client=True)
         self._console = Console(quiet=True)
         self.loop = asyncio.new_event_loop()
 
-        # todo (zhaoyi): TO BE IMPLEMENTED
-        # self.loop.run_until_complete(self.check_connection())
+        self.check_connection()
         self.loop.run_until_complete(self.create_pools())
         self.loop.run_until_complete(self.create_queues())
         self.loop.run_until_complete(self.start_workers())
@@ -88,15 +89,19 @@ class TaskFlowManager(ABC):
 
         self.driver_manager = driver_manager
 
-    async def check_connection(self):
+    def check_connection(self):
         """
         Check connection to prefect server
         """
-        async def is_connected():
-            hello = await self._client.hello()
-            if hello and hello.status_code == HttpCode.SUCCESS_OK:
-                return True
-            return False
+
+        def is_connected():
+            try:
+                hello = self._sync_client.hello()
+                if hello and hello.status_code == HttpCode.SUCCESS_OK:
+                    return True
+                return False
+            except Exception as e:
+                return False
 
         success, err_msg, results = Library.loop_with_timeout(
             is_connected, 60, 5)
@@ -276,6 +281,7 @@ class TaskFlowManager(ABC):
         :param flow_run_id: flow uuid
         :return if flow exists
         """
+
         async def _has_flow(_flow_run_id):
             success = True
             try:
@@ -298,6 +304,7 @@ class TaskFlowManager(ABC):
         :param variables: flow variables
         :return if flow exists
         """
+
         async def _update_flow(_flow_run_id,
                                _name=None,
                                _parameters=None,
@@ -371,7 +378,7 @@ class TaskFlowManager(ABC):
             if flow_state == Constant.PREFECT_STATE_COMPLETED:
                 result = await flow_run.state.result()
             results.append({"id": id, "state": state, "parameters": parameters,
-                           "result": result})
+                            "result": result})
         return results
 
     def delete_task_flow_run(self, flow_run_ids):
