@@ -290,7 +290,6 @@ class PriorityPolicy(BaseSchedulerPolicy):
         :param job_info: job info
         :return job_priority: job priority
         """
-        a = job_info["job_priority"]
         return job_info["job_priority"]
 
 

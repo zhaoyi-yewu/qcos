@@ -45,9 +45,6 @@ class Config:
     CERT_FILE = None
     KEY_FILE = None
 
-    # TODO (zhaoyi): move to transpiler class
-    DECOMPOSE_RULE = None
-
     EXTRA_CONFIGS = {}
 
     @classmethod

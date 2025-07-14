@@ -678,7 +678,7 @@ class GetJobs(Lister):
 
 class CancelJobs(Command):
     """
-    Cancel job
+    Cancel jobs
     """
 
     def get_parser(self, prog_name):
@@ -758,7 +758,7 @@ class CancelJobs(Command):
 
 class DeleteJobs(Command):
     """
-    Delete job
+    Delete jobs
     """
 
     def get_parser(self, prog_name):

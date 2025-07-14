@@ -14,10 +14,10 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
 import asyncio
 import os
 import sys
-import time
 import traceback
 
 from qcos.common.config import Config
@@ -59,7 +59,10 @@ def daemonize():
         sys.exit(1)
 
 
-if __name__ == "__main__":
+def main():
+    """
+    Main entry
+    """
     if "--daemon" in sys.argv:
         daemonize()
     PID_DIR = "/var/run/qcos"
@@ -75,3 +78,7 @@ if __name__ == "__main__":
         sys.exit(1)
     finally:
         Library.rm_file(PID_FILE)
+
+
+if __name__ == "__main__":
+    main()

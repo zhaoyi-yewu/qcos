@@ -1,6 +1,6 @@
 # <center>量子计算操作系统QCOS安装部署及使用说明</center>
 
-## 1. 编译
+## 1. 编译、安装和运行 (基于容器)
 ### 1.1 前提条件
 * 保证操作系统已安装了docker、docker-compose组件
 ```shell
@@ -20,35 +20,72 @@ vim .env
 ./build-docker.sh
 ```
 
-## 2. 安装和运行
-### 2.1 修改配置文件
-### 2.1.1 创建和修改全局配置文件
+### 1.4 修改配置文件
+#### 1.4.1 创建和修改全局配置文件
 参照代码库中etc/qcos/qcos.toml, 创建和修改全局配置文件/etc/qcos/qcos.toml
 <b>注意:</b> 如果不创建该文件, 容器模式下会自动创建
 
-### 2.1.2 创建和修改驱动配置文件
+#### 1.4.2 创建和修改驱动配置文件
 参照代码库中etc/qcos/conf.d/dummy.toml等, 创建和修改驱动配置文件/etc/qcos/conf.d/dummy.toml等
 <b>注意:</b> 驱动配置文件必须位于/etc/qcos/conf.d下, 文件名可以自己命名, 文件中section必须对应相关驱动的类名, 比如dummy驱动的配置需要放在section: [DriverDummy]下, DriverDummy为dummy驱动的类名
 
-### 2.2 安装和部署
+### 1.5 运行容器
 ```shell
 cd build-scripts
 ./run-docker.sh
 ```
 
+## 2. 编译、安装和运行 (非容器, 编译wheel包)
+### 2.1 前提条件
+* 保证操作系统已安装了python3-pip组件
+```shell
+BCLinux/CentOS/OpenEuler环境下示例:
+yum install -y python3 python3-pip python3-sphinx python3-requests
+pip3 install -r ./requirements.txt -r ./test-requirements.txt
+```
+
+### 2.2 编译
+#### 2.2.1 基于poetry编译wheel包 
+```shell
+BCLinux/CentOS/OpenEuler环境下示例:
+poetry build
+```
+
+### 2.3 安装
+```shell
+pip3 install ./dist/qcos-1.0.0-py3-none-any.whl
+```
+
+### 2.4 修改配置文件
+#### 2.4.1 创建和修改全局配置文件
+参照代码库中etc/qcos/qcos.toml, 创建和修改全局配置文件/etc/qcos/qcos.toml
+<b>注意:</b> 如果不创建该文件, 容器模式下会自动创建
+
+#### 2.4.2 创建和修改驱动配置文件
+参照代码库中etc/qcos/conf.d/dummy.toml等, 创建和修改驱动配置文件/etc/qcos/conf.d/dummy.toml等
+<b>注意:</b> 驱动配置文件必须位于/etc/qcos/conf.d下, 文件名可以自己命名, 文件中section必须对应相关驱动的类名, 比如dummy驱动的配置需要放在section: [DriverDummy]下, DriverDummy为dummy驱动的类名
+
+### 2.5 运行
+```shell
+* 保证prefect服务已启动
+
+* 服务端:
+qcos-api --config-file /etc/qcos/qcos.toml --config-dir /etc/qcos/conf.d/
+```
+
 ## 3. 测试 (单元测试, 覆盖率测试, 代码格式检查)
 ### 3.1 通过容器环境运行测试
-### 3.1.1 单元测试
+#### 3.1.1 单元测试
 ```shell
 ./run-tests.sh -u
 ```
 
-### 3.1.2 覆盖率测试
+#### 3.1.2 覆盖率测试
 ```shell
 ./run-tests.sh -c
 ```
 
-### 3.1.3 覆盖率报告查看
+#### 3.1.3 覆盖率报告查看
 ```shell
 # 命令行查看覆盖率报告
 coverage3 report -m
@@ -58,7 +95,7 @@ coverage3 html --title="QCOS Coverage Report" --include='src/*' -d coverage_html
 links ./coverage_html/index.html
 ```
 
-### 3.1.4 代码格式检查 (flake8)
+#### 3.1.4 代码格式检查 (flake8)
 ```shell
 ./run-tests.sh -p
 ```

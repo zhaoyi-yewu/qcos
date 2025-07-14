@@ -91,9 +91,11 @@ class Server:
                             help="Show the version", action="version",
                             version=PROGRAM_VERSION)
         parser.add_argument("-c", "--config-file",
-                            dest="config_file", help="Config file path")
+                            dest="config_file", default="/etc/qcos/qcos.toml",
+                            help="Config file path")
         parser.add_argument("--config-dir",
-                            dest="config_dir", help="Config dir path")
+                            dest="config_dir", default="/etc/qcos/conf.d/",
+                            help="Config dir path")
         parser.add_argument("-d", "--daemon", dest="daemon",
                             action="store_true", help="Start as a daemon")
 

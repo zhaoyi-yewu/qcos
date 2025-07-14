@@ -15,10 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import json
 import logging
 import requests
-import time
 
 from jsonrpcclient import Ok, parse, request
 

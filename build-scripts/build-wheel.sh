@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+#!/bin/bash
 # ----------------------------------------------------------------------
 # Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
@@ -13,12 +12,21 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# build wheel package
 
-import sys
+set -e
 
+source ./setup-env.sh
 
-from qcos.client.shell import main
+BASE_DIR=$(dirname "$0")
+BASE_DIR=$(readlink -f ${BASE_DIR})
+TOP_DIR=$(readlink -f ${BASE_DIR}/..)
+OUTPUT_DIR=${BASE_DIR}/dist
 
-
-if __name__ == "__main__":
-    sys.exit(main())
+if [ -n "${PIP_MIRROR}" ]; then
+  poetry source add --priority=primary pip_mirror "${PIP_MIRROR}"
+else
+  poetry source remove pip_mirror
+fi
+poetry build -C ${TOP_DIR} -o ${OUTPUT_DIR}
+poetry source remove pip_mirror

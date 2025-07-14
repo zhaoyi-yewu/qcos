@@ -22,6 +22,8 @@ import os
 import tempfile
 from datetime import datetime, timedelta
 
+from prefect.logging import get_run_logger
+
 from qcos.common.constant import Constant, HttpMethod
 from qcos.common.library import Library
 from qcos.drivers.driver_base import DriverBase
@@ -34,6 +36,16 @@ class DriverTiangong100(DriverBase):
     玻色量子-天工1000 光量子伊辛机驱动
     Qboson Tiangong1000 driver
     CQ-D-100
+
+    注意:
+    * token有效期30天
+    * 一般最长任务执行时间是10分钟
+
+    # 用户认证
+    curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST -d '{"username":"username","pwd":"123"}' http://127.0.0.1:8088/kdev/terminal/login/
+    # 获取真机信息
+    curl -i -H "Accept: application/json" -H "Content-Type: application/json" -H "Authorization: JWT ${token}" http://127.0.0.1:8088/kdev/terminal/machine/
+    # pylint: disable=line-too-long
     """
     # http request headers
     default_headers = {
@@ -53,6 +65,13 @@ class DriverTiangong100(DriverBase):
     machine_path = "kdev/terminal/machine"
     machine_task_path = "kdev/terminal/machine-task"
     task_results_path = "kdev/terminal/task"
+
+    # auth code
+    # 20001: token is expired or invalid
+    # 50008: token is used and unavailable
+    auth_code_invalid = "20001"
+    auth_code_used = "50008"
+    invalid_auth_codes = [auth_code_invalid, auth_code_used]
 
     # device status
     # 0: shutdown, 1: available, 2: debugging 3: malfunctioning,
@@ -91,7 +110,7 @@ class DriverTiangong100(DriverBase):
         """
         Validate driver configurations
 
-        :return if success, error message
+        :return success or fail, error message
         """
         success = True
         err_msg = None
@@ -130,6 +149,7 @@ class DriverTiangong100(DriverBase):
         :param shots: shots
         """
         # pylint: disable=duplicate-code
+        prefect_logger = get_run_logger()
         logger.info(f"job_id: {job_id}, shots: {shots}, "
                     f"num_qubits: {num_qubits}, "
                     f"data_type: {data_type}, data: {data}")
@@ -157,12 +177,15 @@ class DriverTiangong100(DriverBase):
         if not success:
             raise ValueError(f"Authorize failed [{job_id}]: {err_msg}")
         self.auth_headers["Authorization"] = f"JWT {self.token}"
+        prefect_logger.info(f"token: {self.token}")
 
         # Check device status
+        prefect_logger.info("check_device_status")
         success, err_msg = self.check_device_status(device_id)
         if not success:
             raise ValueError(err_msg)
 
+        prefect_logger.info("upload file")
         # Upload file
         success, err_msg, file_info = self.upload_file(job_id, qubo_matrix)
         if not success:
@@ -186,11 +209,13 @@ class DriverTiangong100(DriverBase):
         tasks_info = {
             "data": [task_info]
         }
+        prefect_logger.info("submit task")
         success, err_msg = self.submit_tasks(tasks_info)
         if not success:
             raise ValueError(f"Failed to submit task [{job_id}]: {err_msg}")
 
         # Get task id and wait for task_status is completed
+        prefect_logger.info("wait")
         success, err_msg, _ = Library.loop_with_timeout(
             self.check_task_status, 3600, 5, job_id,
             expect_task_status=[self.task_status_completed])
@@ -198,6 +223,7 @@ class DriverTiangong100(DriverBase):
             raise ValueError(f"Failed to wait for task [{job_id}]: {err_msg}")
 
         # Get task id
+        prefect_logger.info("wait done")
         success, err_msg, task_info = self.get_task_id(job_id)
         if not success:
             raise ValueError(f"Failed to get task id [{job_id}]: {err_msg}")
@@ -219,7 +245,7 @@ class DriverTiangong100(DriverBase):
 
         :param username: username
         :param password: password
-        :return if success, error message, token
+        :return success or fail, error message, token
         """
         success = True
         err_msgs = []
@@ -252,8 +278,9 @@ class DriverTiangong100(DriverBase):
         Check device status
 
         :param device_id: device id
-        :return if success, error message
+        :return success or fail, error message
         """
+        prefect_logger = get_run_logger()
         success = True
         err_msgs = []
         url = f"{self.base_url}/{self.machine_path}/"
@@ -270,6 +297,7 @@ class DriverTiangong100(DriverBase):
             err_msg = response["msg"]
             if err_code == "0":
                 data = response.get("data", None)
+                prefect_logger.info(f"device status: {data['status']}")
                 if data["status"] != self.device_status_available:
                     success = False
                     err_msgs.append(
@@ -288,7 +316,7 @@ class DriverTiangong100(DriverBase):
 
         :param job_id: job ID
         :param data: qubo matrix in dict format
-        :return if success, error message, file info
+        :return success or fail, error message, file info
         """
         success = True
         err_msgs = []
@@ -347,7 +375,7 @@ class DriverTiangong100(DriverBase):
         Submit tasks
 
         :param tasks_info: tasks info
-        :return if success, error message
+        :return success or fail, error message
         """
         success = True
         err_msgs = []
@@ -375,8 +403,9 @@ class DriverTiangong100(DriverBase):
         Get task id by task name
 
         :param task_name: task name
-        :return if success, error message, task info
+        :return success or fail, error message, task info
         """
+        prefect_logger = get_run_logger()
         success = True
         err_msgs = []
         task_info = {}
@@ -401,6 +430,7 @@ class DriverTiangong100(DriverBase):
                 for _task_info in response_data:
                     task_info["id"] = _task_info.get("id")
                     task_info["status"] = _task_info.get("status")
+                    prefect_logger.info(task_info["status"])
                 if not task_info:
                     success = False
                     err_msgs.append(f"Can't find task name: {task_name}")
@@ -431,7 +461,7 @@ class DriverTiangong100(DriverBase):
         Get task results
 
         :param task_id: task ID
-        :return if success, error message, task results
+        :return success or fail, error message, task results
         """
         success = True
         err_msgs = []
@@ -462,7 +492,7 @@ class DriverTiangong100(DriverBase):
         Delete task
 
         :param task_id: task ID
-        :return if success, error message
+        :return success or fail, error message
         """
         success = True
         err_msgs = []
