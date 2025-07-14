@@ -8,7 +8,8 @@ import json
 import os
 import sys
 
-top_path = os.path.abspath(os.path.split(os.path.realpath(__file__))[0] + "/..")
+top_path = os.path.abspath(
+    os.path.split(os.path.realpath(__file__))[0] + "/..")
 sys.path.insert(0, top_path)
 from qcos.api.fastapi_server import app
 
