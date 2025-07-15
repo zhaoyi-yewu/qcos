@@ -143,7 +143,7 @@ class Client:
             self,
             source_code, *,
             code_type=Constant.CODE_TYPE_QASM,
-            job_id,
+            job_id=None,
             job_type=Constant.JOB_TYPE_ESTIMATION,
             job_sched_policy=Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
             job_priority=Constant.DEFAULT_JOB_PRIORITY,
