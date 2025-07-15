@@ -48,6 +48,9 @@ pip3 install -r ./requirements.txt -r ./test-requirements.txt
 #### 2.2.1 基于poetry编译wheel包 
 ```shell
 BCLinux/CentOS/OpenEuler环境下示例:
+cd build-scripts
+./build-wheel.sh
+或者
 poetry build
 ```
 
@@ -77,16 +80,19 @@ qcos-api --config-file /etc/qcos/qcos.toml --config-dir /etc/qcos/conf.d/
 ### 3.1 通过容器环境运行测试
 #### 3.1.1 单元测试
 ```shell
+cd ./build-scripts
 ./run-tests.sh -u
 ```
 
 #### 3.1.2 覆盖率测试
 ```shell
+cd ./build-scripts
 ./run-tests.sh -c
 ```
 
 #### 3.1.3 覆盖率报告查看
 ```shell
+cd ./build-scripts
 # 命令行查看覆盖率报告
 coverage3 report -m
 # 生成覆盖率HTML报告
@@ -97,10 +103,18 @@ links ./coverage_html/index.html
 
 #### 3.1.4 代码格式检查 (flake8)
 ```shell
+cd ./build-scripts
 ./run-tests.sh -p
 ```
 
-## 4. 命令行
+## 4. 文档
+### 4.1 编译Sphinx文档和OpenAPI文档
+```shell
+cd build-scripts
+./build-docs.sh
+```
+
+## 5. 命令行示例
 ```shell
 [作业命令]
 * 提交作业

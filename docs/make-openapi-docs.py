@@ -13,7 +13,6 @@ top_path = os.path.abspath(
 sys.path.insert(0, top_path)
 from qcos.api.fastapi_server import app
 
-
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html>
 <head>
@@ -41,6 +40,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 """
 
 if __name__ == "__main__":
-    with open(f"api-docs/qcos-api-docs.html", "w") as fd:
+    file_path = "api-docs/qcos-api-docs.html"
+    with open(file_path, "w") as fd:
         print(HTML_TEMPLATE % json.dumps(app.openapi()), file=fd)
+    print(f"Successfully created qcos api docs: {file_path}")
 
