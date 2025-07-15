@@ -520,8 +520,8 @@ class SubmitJob(Command):
 
         # Validate argument: job_id
         if job_id:
-            CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(
-                job_id, "job_id"))
+            CommandHelper.handle_invalid_arguments(
+                Library.validate_values_uuid(job_id, "job_id"))
 
         # Validate content of source_code
         CommandHelper.handle_invalid_arguments(Library.validate_values_list(
