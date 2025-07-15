@@ -246,7 +246,7 @@ class TaskFlowManager(ABC):
         return flow_run_id
 
     def get_flow_run_id_by_job_id(self, job_id):
-        name = dict(any_=[str(job_id)])
+        name = {"any_": [str(job_id)]}
         flow_run_filter = FlowRunFilter(name=FlowRunFilterName(**name))
 
         flow_runs = self._sync_client.read_flow_runs(
@@ -282,7 +282,7 @@ class TaskFlowManager(ABC):
         """
         Get flow run state and result.
 
-        :param flow_run_id: flow run uuid
+        :param job_id: job uuid
         :return state: flow state
         :return parameters: flow parameters
         :return result: flow result
@@ -314,7 +314,7 @@ class TaskFlowManager(ABC):
         """
         Update flow
 
-        :param flow_run_id: flow uuid
+        :param job_id: job uuid
         :param name: flow name
         :param parameters: flow parameters
         :param variables: flow variables

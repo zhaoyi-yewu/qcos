@@ -160,6 +160,7 @@ class Client:
 
         :param source_code: source code
         :param code_type: code type
+        :param job_id: job uuid
         :param job_type: job type
         :param job_sched_policy: job scheduling policy
         :param job_priority: job priority
