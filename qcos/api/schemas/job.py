@@ -42,7 +42,7 @@ class SubmitJobRequest(BaseModel):
     # Optimization level
     optimization_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL
     # Job ID
-    job_id: UUID = None
+    job_id: Optional[UUID] = None
     # Job type
     job_type: str = Constant.JOB_TYPE_ESTIMATION
     # Job scheduling policy

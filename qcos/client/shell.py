@@ -428,7 +428,7 @@ class SubmitJob(Command):
                             default=Constant.CODE_TYPE_QASM,
                             help=f"Code Types: "
                                  f"{','.join(Constant.CODE_TYPES)}")
-        parser.add_argument("--id", dest="job_id",
+        parser.add_argument("--job-id", dest="job_id",
                             type=uuid.UUID,
                             help="Job uuid")
         parser.add_argument("--job-type", dest="job_type",
