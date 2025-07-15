@@ -47,6 +47,7 @@ def submit_job(
 
     source_code = body.source_code
     code_type = body.code_type
+    job_id = body.job_id
     job_type = body.job_type
     job_sched_policy = body.job_sched_policy
     job_priority = body.job_priority
@@ -67,6 +68,11 @@ def submit_job(
     code_type = code_type.lower()
     jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
         code_type, "code_type", Constant.CODE_TYPES))
+
+    # validate: job_id
+    if job_id:
+        jsonrpc_errors.handle_invalid_params(Library.validate_values_uuid(
+            str(job_id), "job_id"))
 
     # validate: job_type
     jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
@@ -392,7 +398,7 @@ def set_job_results(
 
     # copy existing results and updated using new_results
     existing_result = [{'metadata': {}, 'profiling': {}, 'results': {},
-                       'status': Constant.JOB_STATUS_COMPLETED}]
+                        'status': Constant.JOB_STATUS_COMPLETED}]
     existing_results = response.get("results", None)
     if not existing_results:
         existing_results = existing_result

@@ -14,7 +14,6 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-import uuid
 
 import argcomplete
 import argparse
@@ -48,6 +47,8 @@ qcos-cli submit-job --code-type qasm --shots 10 --backend DriverDummy '"OPENQASM
 qcos-cli submit-job --code-type qasm --shots 10 --profiling transpiler scheduler --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
 1.2 使用callbacks进行回调
 qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+1.3 指定job-id
+qcos-cli submit-job --job-id b9bf209b-309a-432c-a1ae-000000000000 --code-type qasm --shots 10 --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
 qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\ncreg c[1];\nx q[0];\nmeasure q -> c;\n"'
@@ -429,7 +430,7 @@ class SubmitJob(Command):
                             help=f"Code Types: "
                                  f"{','.join(Constant.CODE_TYPES)}")
         parser.add_argument("--job-id", dest="job_id",
-                            type=uuid.UUID,
+                            type=str,
                             help="Job uuid")
         parser.add_argument("--job-type", dest="job_type",
                             default=f"{Constant.JOB_TYPE_ESTIMATION}",
@@ -516,6 +517,11 @@ class SubmitJob(Command):
         if not source_code_list:
             raise errors.InvalidArguments(
                 "Empty argument:source_code is not allowed")
+
+        # Validate argument: job_id
+        if job_id:
+            CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(
+                job_id, "job_id"))
 
         # Validate content of source_code
         CommandHelper.handle_invalid_arguments(Library.validate_values_list(
