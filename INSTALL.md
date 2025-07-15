@@ -149,6 +149,9 @@ qcos-cli cancel-jobs -y all
 qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
 qcos-cli delete-jobs -y all
 
+* 设置作业结果 (回调或者测试用途)
+qcos-cli set-job-results --results '[{"01":0}]' 00000000-0000-4000-8000-000000000001
+
 [系统命令]
 * ping命令
 qcos-cli ping 123

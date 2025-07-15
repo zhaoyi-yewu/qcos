@@ -387,19 +387,20 @@ class TaskFlowManager(ABC):
         """
 
         # TODO(jidalong) deal exception
-        results = []
+        results_list = []
         flow_runs = await self._client.read_flow_runs()
         for flow_run in flow_runs:
             id = flow_run.name
             flow_state = flow_run.state.name.upper()
             state = self.transform_to_qcos_state(flow_state)
             parameters = flow_run.parameters
-            result = None
+            results = None
             if flow_state == Constant.PREFECT_STATE_COMPLETED:
-                result = await flow_run.state.result()
-            results.append({"id": id, "state": state, "parameters": parameters,
-                            "result": result})
-        return results
+                results = await flow_run.state.result()
+            results_list.append(
+                {"id": id, "state": state, "parameters": parameters,
+                 "results": results})
+        return results_list
 
     def delete_task_flow_run(self, job_ids):
         """

@@ -670,6 +670,8 @@ class Library:
         """
         success = True
         err_msg = None
+        if not callbacks:
+            return success, err_msg
         for callback in callbacks:
             url = callback.get("url", None)
             method = callback.get("method", HttpMethod.POST)

@@ -104,6 +104,7 @@ def run_driver(job_info, driver, num_qubits, data):
         dry_run = job_info["data"].get("dry_run", False)
         results = None
         job_status = None
+        end_date = None
         data_type = driver.get_default_data_type()
         if dry_run:
             prefect_logger.info(
@@ -121,6 +122,7 @@ def run_driver(job_info, driver, num_qubits, data):
             # sync mode: get results immediately
             results = driver.get_results(job_id)
             job_status = Constant.JOB_STATUS_COMPLETED
+            end_date = Library.get_current_datetime()
         # async mode: get results in the async set-job-results call
         elif driver.results_fetch_mode == Constant.RESULTS_FETCH_MODE_ASYNC:
             results = None
@@ -129,7 +131,8 @@ def run_driver(job_info, driver, num_qubits, data):
             "results": results,
             "metadata": {
                 "results_fetch_mode": driver.results_fetch_mode,
-                "status": job_status
+                "status": job_status,
+                "end_date": end_date
             },
             "error": None,
         }

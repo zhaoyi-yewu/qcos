@@ -74,7 +74,7 @@ qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
 qcos-cli delete-jobs -y all
 
 * Set job results (for callbacks or test purpose)
-qcos-cli set-job-results --results '{"01":0}' 00000000-0000-4000-8000-000000000001
+qcos-cli set-job-results --results '[{"01":0}]' 00000000-0000-4000-8000-000000000001
 
 [System commands]
 * Ping command
@@ -703,7 +703,7 @@ class GetJobs(Lister):
         """
         resource = "Job"
         header_list = ["job_id", "job_status", "backend", "job_type",
-                       "shots", "creation_date"]
+                       "shots", "creation_date", "end_date"]
 
         # call api
         status_code, reason, text, result = self.app.client.get_jobs()

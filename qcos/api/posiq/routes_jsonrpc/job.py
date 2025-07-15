@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import logging
+from datetime import datetime
 from typing import List
 
 from qcos.api import schemas
@@ -156,6 +157,7 @@ def submit_job(
     # generate creation_date
     creation_date = Library.get_current_datetime()
     body.creation_date = creation_date
+    end_date = None
 
     # submit job
     res, err = scheduler.add(body.job_sched_policy, body)
@@ -176,7 +178,8 @@ def submit_job(
         "profiling": profiling,
         "callbacks": callbacks,
         "dry_run": dry_run,
-        "creation_date": creation_date
+        "creation_date": creation_date,
+        "end_date": end_date
     }
     return response_info
 
@@ -215,10 +218,8 @@ def get_job_status(
         "job_status": job_status
     }
     parameters = response.get("parameters", None)
-    if parameters:
-        job_info = parameters.get("job_info", None)
-        if job_info:
-            response_info.update(job_info.get("data", {}))
+    results = response.get("results", None)
+    response_info = merge_results(response_info, parameters, results=results)
     return response_info
 
 
@@ -249,23 +250,16 @@ def get_job_results(
         jsonrpc_errors.handle_get_status_error(response["error_message"])
 
     # existing results reported by driver
-    results = response["results"]
     job_status = response.get("job_status")
     parameters = response.get("parameters", None)
-    if parameters:
-        updated_job_info = parameters.get("updated_job_info", None)
-        if updated_job_info:
-            # update results if new results exists in updated_job_info
-            updated_results = updated_job_info.get("results", None)
-            if updated_results:
-                results = updated_results
+    results = response.get("results", None)
 
     # construct response
     response_info = {
         "job_id": job_id,
         "job_status": job_status,
-        "results": results,
     }
+    response_info = merge_results(response_info, parameters, results=results)
     return response_info
 
 
@@ -296,18 +290,10 @@ def get_jobs(
             "job_id": response.get("id"),
             "job_status": job_status
         }
-        data = None
         parameters = response.get("parameters", None)
-        if parameters:
-            job_info = parameters.get("job_info", None)
-            if job_info:
-                data = job_info.get("data", None)
-        if data:
-            response_info["backend"] = data.get("backend", None)
-            response_info["shots"] = data.get("shots", None)
-            response_info["description"] = data.get("description", None)
-            response_info["dry_run"] = data.get("dry_run", None)
-            response_info["creation_date"] = data.get("creation_date", None)
+        results = response.get("results", None)
+        response_info = merge_results(
+            response_info, parameters, results=results)
         response_list.append(response_info)
     return response_list
 
@@ -411,12 +397,16 @@ def set_job_results(
     if not existing_results:
         existing_results = existing_result
 
+    # get end_date
+    end_date = Library.get_current_datetime()
+
     for result in existing_results:
         result["results"] = new_results
         result["metadata"]["status"] = Constant.JOB_STATUS_COMPLETED
 
     updated_parameters = {
         "updated_job_info": {
+            "end_date": end_date,
             "results": existing_results
         }
     }
@@ -449,4 +439,46 @@ def set_job_results(
         "backend": backend,
         "job_status": Constant.JOB_STATUS_COMPLETED
     }
+    return response_info
+
+
+def merge_results(response_info, parameters, results=None):
+    """
+    Merge results
+
+    :param response_info: response info
+    :param parameters: parameters from prefect
+    :param results: results from prefect
+    :return: new response info
+    """
+    end_date = None
+    if parameters:
+        job_info = parameters.get("job_info", None)
+        if job_info:
+            response_info.update(job_info.get("data", {}))
+        updated_job_info = parameters.get("updated_job_info", None)
+        if updated_job_info:
+            # get end_date
+            _end_date = updated_job_info.get("end_date", None)
+            if _end_date:
+                if isinstance(_end_date, str):
+                    _end_date = datetime.fromisoformat(_end_date)
+                end_date = _end_date
+            # update results if new results exists in updated_job_info
+            updated_results = updated_job_info.get("results", None)
+            if updated_results:
+                results = updated_results
+        response_info["results"] = results
+        if response_info["results"]:
+            for result in response_info["results"]:
+                _end_date = Library.get_nested_dict_value(
+                    result, "metadata", "end_date", default=None)
+                if isinstance(_end_date, str):
+                    _end_date = datetime.fromisoformat(_end_date)
+                if _end_date and end_date:
+                    end_date = max(end_date, _end_date)
+                elif _end_date:
+                    end_date = _end_date
+    if end_date:
+        response_info["end_date"] = end_date.isoformat()
     return response_info

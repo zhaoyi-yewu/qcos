@@ -162,7 +162,7 @@ class TaskScheduler(ABC):
             flow_list = self._task_manager.get_task_flow_list()
             for flow in flow_list:
                 flow["job_status"] = self.get_job_status(
-                    flow["state"], flow["result"], flow["parameters"])
+                    flow["state"], flow["results"], flow["parameters"])
             return flow_list, None
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")

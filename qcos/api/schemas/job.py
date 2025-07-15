@@ -90,6 +90,8 @@ class SubmitJobResponse(BaseModel):
     callbacks: Optional[list] = None
     # Creation date
     creation_date: Optional[datetime] = None
+    # End date
+    end_date: Optional[datetime] = None
 
 
 class GetJobStatusRequest(BaseModel):
@@ -126,6 +128,8 @@ class GetJobStatusResponse(BaseModel):
     dry_run: Optional[bool] = False
     # Creation Date
     creation_date: Optional[datetime] = None
+    # End date
+    end_date: Optional[datetime] = None
 
 
 class GetJobResultsRequest(BaseModel):
