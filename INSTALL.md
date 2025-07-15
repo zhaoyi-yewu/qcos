@@ -148,4 +148,11 @@ qcos-cli cancel-jobs -y all
 * 删除作业
 qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
 qcos-cli delete-jobs -y all
+
+[系统命令]
+* ping命令
+qcos-cli ping 123
+
+* 服务端版本请求命令
+qcos-cli version
 ```

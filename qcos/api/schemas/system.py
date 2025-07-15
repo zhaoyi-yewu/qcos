@@ -34,3 +34,21 @@ class PongResponse(BaseModel):
     """
     # message
     message: str = None
+
+
+class VersionRequest(BaseModel):
+    """
+    Version Request
+    Pydantic Model for Version Request
+    """
+
+
+class VersionResponse(BaseModel):
+    """
+    Version Response
+    Pydantic Model for Version Response
+    """
+    # version
+    version: str
+    api_version: str
+    platform_version: str

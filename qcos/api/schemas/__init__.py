@@ -22,4 +22,5 @@ from .job import (SubmitJobRequest, SubmitJobResponse,
                   CancelJobsRequest,
                   DeleteJobsRequest, DeleteJobsResponse,
                   SetJobResultsRequest, SetJobResultsResponse)
-from .system import (PingRequest, PongResponse)
+from .system import (PingRequest, PongResponse,
+                     VersionRequest, VersionResponse)

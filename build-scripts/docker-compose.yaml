@@ -44,6 +44,7 @@ services:
     tty: True
     environment:
       DEBUG: ${DEBUG}
+      DEV: ${DEV}
       TZ: Asia/Shanghai
       QCOS_CONTAINER_NAME: ${QCOS_CONTAINER_NAME}
       PREFECT_SERVER_API_HOST: ${PREFECT_SERVER_API_HOST}

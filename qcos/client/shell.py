@@ -80,6 +80,9 @@ qcos-cli set-job-results --results '{"01":0}' 00000000-0000-4000-8000-0000000000
 [System commands]
 * Ping command
 qcos-cli ping 123
+
+* Version command
+qcos-cli version
 """
 
 
@@ -373,6 +376,37 @@ class Ping(Command):
         json_results = CommandHelper.check_results(
             resource, "ping", status_code, reason, text)
         print(f"Pong: {json_results['message']}")
+
+
+class Version(Command):
+    """
+    Get server version
+    """
+
+    def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, args):
+        """
+        Take action for command line arguments
+
+        :param args: command line arguments
+        """
+        resource = "System"
+
+        status_code, reason, text, result = self.app.client.version()
+        json_results = CommandHelper.check_results(
+            resource, "version", status_code, reason, text)
+        print(f"Server version: {json_results['version']}")
+        print(f"API version: {json_results['api_version']}")
+        print(f"Platform version: {json_results['platform_version']}")
 
 
 class SubmitJob(Command):
@@ -888,6 +922,7 @@ class SetJobResults(Command):
 command_manager = CommandManager("qcos")
 # system command
 command_manager.add_command("ping", Ping)
+command_manager.add_command("version", Version)
 # job command
 command_manager.add_command("submit-job", SubmitJob)
 command_manager.add_command("get-job-status", GetJobStatus)

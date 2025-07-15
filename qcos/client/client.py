@@ -125,6 +125,19 @@ class Client:
             self.system_url, method_name, data)
         return status_code, reason, text, result
 
+    def version(self):
+        """
+        Get system version
+
+        :return: Version
+        """
+        method_name = "version"
+
+        # construct data and call json rpc
+        status_code, reason, text, result = Client.call_json_rpc(
+            self.system_url, method_name, None)
+        return status_code, reason, text, result
+
     # [Job]
     def submit_job(
             self,
