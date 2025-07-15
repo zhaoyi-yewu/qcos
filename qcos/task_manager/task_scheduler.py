@@ -77,6 +77,10 @@ class TaskScheduler(ABC):
         :return job_id: job uuid
         :return e: exception
         """
+        if job_info.job_id:
+            exist = self.has_job(job_info.job_id)
+            if exist:
+                return None, f"Job uuid is already existed: {job_info.job_id}"
 
         backend = job_info.backend
         driver = self.driver_manager.get_driver(backend)

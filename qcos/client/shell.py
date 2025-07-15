@@ -14,6 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+import uuid
 
 import argcomplete
 import argparse
@@ -32,10 +33,8 @@ from qcos.common.config import Config
 from qcos.common.constant import Constant, HttpCode
 from qcos.common.library import Library
 
-
 VERSION = Config.VERSION
 DESCRIPTION = "QCOS command line interface"
-
 
 """
 # pylint: disable=line-too-long
@@ -90,6 +89,7 @@ class QcosShell(App):
     """
     QCOS shell
     """
+
     def __init__(self, description, version, command_manager):
         super().__init__(
             description=description,
@@ -191,6 +191,7 @@ class HelpAction(argparse.Action):
     The commands are determined by checking the CommandManager
     instance, passed in as the "default" value for the action.
     """
+
     def __call__(self, parser, namespace, values, option_string=None):
         outputs = []
         max_len = 0
@@ -427,6 +428,9 @@ class SubmitJob(Command):
                             default=Constant.CODE_TYPE_QASM,
                             help=f"Code Types: "
                                  f"{','.join(Constant.CODE_TYPES)}")
+        parser.add_argument("--id", dest="job_id",
+                            type=uuid.UUID,
+                            help="Job uuid")
         parser.add_argument("--job-type", dest="job_type",
                             default=f"{Constant.JOB_TYPE_ESTIMATION}",
                             choices=Constant.JOB_TYPES,
@@ -481,6 +485,7 @@ class SubmitJob(Command):
         dry_run = args.dry_run
         source_code = args.source_code
         code_type = args.code_type
+        job_id = args.job_id
         job_type = args.job_type
         job_sched_policy = args.job_sched_policy
         job_priority = args.job_priority
@@ -570,6 +575,7 @@ class SubmitJob(Command):
         status_code, reason, text, result = self.app.client.submit_job(
             source_code_list,
             code_type=code_type,
+            job_id=job_id,
             job_type=job_type,
             job_sched_policy=job_sched_policy,
             job_priority=job_priority,

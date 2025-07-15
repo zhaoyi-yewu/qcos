@@ -143,6 +143,7 @@ class Client:
             self,
             source_code, *,
             code_type=Constant.CODE_TYPE_QASM,
+            job_id,
             job_type=Constant.JOB_TYPE_ESTIMATION,
             job_sched_policy=Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
             job_priority=Constant.DEFAULT_JOB_PRIORITY,
@@ -190,6 +191,8 @@ class Client:
             "callbacks": callbacks,
             "dry_run": dry_run
         }
+        if job_id:
+            data["job_id"] = str(job_id)
         status_code, reason, text, result = Client.call_json_rpc(
             self.job_url, method_name, data)
         return status_code, reason, text, result

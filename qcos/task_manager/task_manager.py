@@ -18,6 +18,7 @@
 import asyncio
 import threading
 import logging
+import uuid
 from abc import ABC
 from time import sleep
 from pathlib import Path
@@ -26,6 +27,7 @@ from typing import Any
 from prefect import get_client
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.objects import WorkerStatus
+from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterName
 from prefect.exceptions import ObjectNotFound
 from prefect.workers import ProcessWorker
 from rich.console import Console
@@ -243,6 +245,16 @@ class TaskFlowManager(ABC):
 
         return flow_run_id
 
+    def get_flow_run_id_by_job_id(self, job_id):
+        name = dict(any_=[str(job_id)])
+        flow_run_filter = FlowRunFilter(name=FlowRunFilterName(**name))
+
+        flow_runs = self._sync_client.read_flow_runs(
+            flow_run_filter=flow_run_filter)
+        if len(flow_runs) == 0:
+            return None
+        return flow_runs[0].id
+
     async def run_task_flow_by_client(self, deployment_id,
                                       args: dict[str, Any]):
         """
@@ -250,16 +262,23 @@ class TaskFlowManager(ABC):
 
         :param deployment_id: deploy uuid
         :param args: flow function args in dict
-        :return flow_run_id: flow run uuid
+        :return job_id: job uuid
         """
+
+        job_id = args["job_info"]["data"].get("job_id")
+        if job_id is None:
+            job_id = uuid.uuid4()
+            args["job_info"]["data"]["job_id"] = job_id
 
         # TODO(jidalong) deal exception
         flow_run = await self._client.create_flow_run_from_deployment(
+            name=str(job_id),
             deployment_id=deployment_id,
             parameters=args)
-        return flow_run.id
 
-    def get_task_flow_result(self, flow_run_id):
+        return job_id
+
+    def get_task_flow_result(self, job_id):
         """
         Get flow run state and result.
 
@@ -269,31 +288,28 @@ class TaskFlowManager(ABC):
         :return result: flow result
         :return err_msg: flow error message
         """
-
+        flow_run_id = self.get_flow_run_id_by_job_id(job_id)
+        if flow_run_id == None:
+            raise ObjectNotFound(Exception("Job not found"))
         state, parameters, result, err_msg = self.loop.run_until_complete(
             self.get_task_flow_result_by_client(flow_run_id))
         return state, parameters, result, err_msg
 
-    def has_flow(self, flow_run_id):
+    def has_flow(self, job_id):
         """
         Check if flow exists
 
-        :param flow_run_id: flow uuid
-        :return if flow exists
+        :param job_id: job uuid
+        :return if job exists
         """
 
-        async def _has_flow(_flow_run_id):
-            success = True
-            try:
-                await self._client.read_flow_run(flow_run_id=_flow_run_id)
-            except Exception:
-                success = False
-            return success
+        exist = False
+        flow_run_id = self.get_flow_run_id_by_job_id(job_id)
+        if flow_run_id:
+            exist = True
+        return exist
 
-        return self.loop.run_until_complete(
-            _has_flow(flow_run_id))
-
-    def update_flow(self, flow_run_id, name=None, parameters=None,
+    def update_flow(self, job_id, name=None, parameters=None,
                     variables=None):
         """
         Update flow
@@ -319,6 +335,10 @@ class TaskFlowManager(ABC):
             except Exception:
                 success = False
             return success
+
+        flow_run_id = self.get_flow_run_id_by_job_id(job_id)
+        if flow_run_id == None:
+            return False
 
         return self.loop.run_until_complete(
             _update_flow(flow_run_id, name, parameters, variables))
@@ -370,7 +390,7 @@ class TaskFlowManager(ABC):
         results = []
         flow_runs = await self._client.read_flow_runs()
         for flow_run in flow_runs:
-            id = flow_run.id
+            id = flow_run.name
             flow_state = flow_run.state.name.upper()
             state = self.transform_to_qcos_state(flow_state)
             parameters = flow_run.parameters
@@ -381,13 +401,19 @@ class TaskFlowManager(ABC):
                             "result": result})
         return results
 
-    def delete_task_flow_run(self, flow_run_ids):
+    def delete_task_flow_run(self, job_ids):
         """
         Delete flow run.
 
-        :param flow_run_ids: flow run uuid list
+        :param job_ids: job uuid list
         :return success_list: success list
         """
+
+        flow_run_ids = []
+        for job_id in job_ids:
+            flow_run_id = self.get_flow_run_id_by_job_id(job_id)
+            if flow_run_id:
+                flow_run_ids.append(flow_run_id)
 
         success_list = self.loop.run_until_complete(
             self.delete_task_flow_run_by_client(flow_run_ids))
