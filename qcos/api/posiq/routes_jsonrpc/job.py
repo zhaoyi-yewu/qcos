@@ -55,7 +55,7 @@ def submit_job(
     shots = body.shots
     backend = body.backend
     transpiler = body.transpiler
-    optimization_level = body.optimization_level
+    transpiler_info = body.transpiler_info
     profiling = body.profiling
     callbacks = body.callbacks
     dry_run = body.dry_run
@@ -130,11 +130,20 @@ def submit_job(
             transpiler, "transpiler",
             driver.supported_transpiler_list,
             allow_none=False))
+        body.transpiler = transpiler
 
-    # validate: optimization_level
-    jsonrpc_errors.handle_invalid_params(Library.validate_values_range(
-        optimization_level, "optimization_level",
-        Constant.MIN_OPTIMIZATION_LEVEL, Constant.MAX_OPTIMIZATION_LEVEL))
+        # validate: transpiler_info
+        if transpiler and transpiler_info:
+            jsonrpc_errors.handle_invalid_params(Library.validate_schema(
+                transpiler_info,
+                args_schema.TRANSPILER_INFO,
+                allow_none=True))
+    else:
+        # set transpiler/transpiler_info to None if enable_transpiler=False
+        transpiler = None
+        transpiler_info = None
+        body.transpiler = None
+        body.transpiler_info = None
 
     # validate: profiling
     if profiling:
@@ -180,6 +189,7 @@ def submit_job(
         "description": description,
         "backend": backend,
         "transpiler": transpiler,
+        "transpiler_info": transpiler_info,
         "shots": shots,
         "profiling": profiling,
         "callbacks": callbacks,

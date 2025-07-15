@@ -39,8 +39,8 @@ class SubmitJobRequest(BaseModel):
     backend: str = Constant.DRIVER_DUMMY
     # Transpiler
     transpiler: Optional[str] = Constant.TRANSPILER_CMSS
-    # Optimization level
-    optimization_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL
+    # Transpiler info
+    transpiler_info: Optional[dict] = None
     # Job ID
     job_id: Optional[UUID] = None
     # Job type
@@ -80,6 +80,8 @@ class SubmitJobResponse(BaseModel):
     backend: str = None
     # Transpiler
     transpiler: Optional[str] = None
+    # Transpiler info
+    transpiler_info: Optional[dict] = None
     # Shots
     shots: int = None
     # Profiling
@@ -116,6 +118,8 @@ class GetJobStatusResponse(BaseModel):
     backend: Optional[str] = None
     # Transpiler
     transpiler: Optional[str] = None
+    # Transpiler info
+    transpiler_info: Optional[dict] = None
     # Job scheduling policy
     job_sched_policy: Optional[str] = None
     # Job priority

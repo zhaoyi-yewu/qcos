@@ -457,10 +457,10 @@ class SubmitJob(Command):
         parser.add_argument("--transpiler", dest="transpiler",
                             choices=Constant.TRANSPILER_TYPES,
                             help="Set transpiler name")
-        parser.add_argument("--optimization-level",
-                            dest="optimization_level", type=int,
-                            default=Constant.DEFAULT_OPTIMIZATION_LEVEL,
-                            help="Set optimization level")
+        parser.add_argument("--transpiler-info",
+                            dest="transpiler_info", type=str,
+                            default=None,
+                            help="Set transpiler info")
         parser.add_argument("--profiling",
                             nargs="*",
                             type=str,
@@ -494,7 +494,7 @@ class SubmitJob(Command):
         shots = args.shots
         backend = args.backend
         transpiler = args.transpiler
-        optimization_level = args.optimization_level
+        transpiler_info = args.transpiler_info
         profiling = args.profiling
         callbacks = args.callbacks
 
@@ -561,10 +561,16 @@ class SubmitJob(Command):
             transpiler, "transpiler", Constant.TRANSPILER_TYPES,
             allow_none=True))
 
-        # Validate argument: optimization_level
-        CommandHelper.handle_invalid_arguments(Library.validate_values_range(
-            optimization_level, "optimization_level",
-            Constant.MIN_OPTIMIZATION_LEVEL, Constant.MAX_OPTIMIZATION_LEVEL))
+        # Validate argument: transpiler_info
+        if transpiler_info:
+            try:
+                transpiler_info = json.loads(transpiler_info)
+            except json.decoder.JSONDecodeError as exc:
+                raise errors.InvalidArguments(
+                    "Invalid argument: transpiler_info") from exc
+            CommandHelper.handle_invalid_arguments(Library.validate_schema(
+                transpiler_info, args_schema.TRANSPILER_INFO,
+                allow_none=True))
 
         # Validate argument: callbacks
         callbacks_json = None
@@ -589,7 +595,7 @@ class SubmitJob(Command):
             shots=shots,
             backend=backend,
             transpiler=transpiler,
-            optimization_level=optimization_level,
+            transpiler_info=transpiler_info,
             profiling=profiling,
             callbacks=callbacks_json,
             dry_run=dry_run)

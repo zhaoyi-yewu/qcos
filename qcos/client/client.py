@@ -151,7 +151,7 @@ class Client:
             shots=Constant.DEFAULT_SHOTS,
             backend=Constant.DRIVER_DUMMY,
             transpiler=Constant.TRANSPILER_CMSS,
-            optimization_level=Constant.DEFAULT_OPTIMIZATION_LEVEL,
+            transpiler_info=None,
             profiling=None,
             callbacks=None,
             dry_run=False):
@@ -168,7 +168,7 @@ class Client:
         :param shots: shots
         :param backend: backend
         :param transpiler: transpiler
-        :param optimization_level: optimization level
+        :param transpiler_info: transpiler info
         :param profiling: profiling types
         :param callbacks: callbacks
         :param dry_run: dry run
@@ -187,7 +187,7 @@ class Client:
             "shots": shots,
             "backend": backend,
             "transpiler": transpiler,
-            "optimization_level": optimization_level,
+            "transpiler_info": transpiler_info,
             "profiling": profiling,
             "callbacks": callbacks,
             "dry_run": dry_run

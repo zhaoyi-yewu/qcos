@@ -268,7 +268,7 @@ class Library:
         :param allow_none: allow None value
         :return: True or False
         """
-        if not value and allow_none:
+        if value is None and allow_none:
             return True, None
         if value not in value_list:
             return (False, [
@@ -335,7 +335,7 @@ class Library:
         :return: True or False
         """
         err_msgs = []
-        if not value and allow_none:
+        if value is None and allow_none:
             return True, err_msgs
         if min_value:
             if len(value) < min_value:
@@ -378,16 +378,19 @@ class Library:
         return True, None
 
     @staticmethod
-    def validate_schema(value, schema_obj):
+    def validate_schema(value, schema_obj, allow_none=False):
         """
         Validate schema values
 
         :param value: value to be validated
         :param schema_obj: schema obj
+        :param allow_none: allow None value
         :return: None if success or error message
         """
         success = True
         err_msg = None
+        if value is None and allow_none:
+            return True, None
         try:
             _schema = Schema(schema_obj)
             _schema.validate(value)
