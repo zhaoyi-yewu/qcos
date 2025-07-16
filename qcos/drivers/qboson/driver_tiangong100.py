@@ -17,18 +17,23 @@
 
 import csv
 import json
-import logging
 import os
 import tempfile
 from datetime import datetime, timedelta
 
-from prefect.logging import get_run_logger
+from loguru import logger
 
 from qcos.common.constant import Constant, HttpMethod
 from qcos.common.library import Library
 from qcos.drivers.driver_base import DriverBase
 
-logger = logging.getLogger(__name__)
+# 配置 Loguru
+logger.add(
+    "/var/log/qcos/prefect-flow.log",
+    rotation="500 MB",
+    retention="30 days",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name} | {message}"
+)
 
 
 class DriverTiangong100(DriverBase):
@@ -149,7 +154,6 @@ class DriverTiangong100(DriverBase):
         :param shots: shots
         """
         # pylint: disable=duplicate-code
-        prefect_logger = get_run_logger()
         logger.info(f"job_id: {job_id}, shots: {shots}, "
                     f"num_qubits: {num_qubits}, "
                     f"data_type: {data_type}, data: {data}")
@@ -177,15 +181,15 @@ class DriverTiangong100(DriverBase):
         if not success:
             raise ValueError(f"Authorize failed [{job_id}]: {err_msg}")
         self.auth_headers["Authorization"] = f"JWT {self.token}"
-        prefect_logger.info(f"token: {self.token}")
+        logger.info(f"token: {self.token}")
 
         # Check device status
-        prefect_logger.info("check_device_status")
+        logger.info("check_device_status")
         success, err_msg = self.check_device_status(device_id)
         if not success:
             raise ValueError(err_msg)
 
-        prefect_logger.info("upload file")
+        logger.info("upload file")
         # Upload file
         success, err_msg, file_info = self.upload_file(job_id, qubo_matrix)
         if not success:
@@ -209,13 +213,13 @@ class DriverTiangong100(DriverBase):
         tasks_info = {
             "data": [task_info]
         }
-        prefect_logger.info("submit task")
+        logger.info("submit task")
         success, err_msg = self.submit_tasks(tasks_info)
         if not success:
             raise ValueError(f"Failed to submit task [{job_id}]: {err_msg}")
 
         # Get task id and wait for task_status is completed
-        prefect_logger.info("wait")
+        logger.info("wait")
         success, err_msg, _ = Library.loop_with_timeout(
             self.check_task_status, 3600, 5, job_id,
             expect_task_status=[self.task_status_completed])
@@ -223,7 +227,7 @@ class DriverTiangong100(DriverBase):
             raise ValueError(f"Failed to wait for task [{job_id}]: {err_msg}")
 
         # Get task id
-        prefect_logger.info("wait done")
+        logger.info("wait done")
         success, err_msg, task_info = self.get_task_id(job_id)
         if not success:
             raise ValueError(f"Failed to get task id [{job_id}]: {err_msg}")
@@ -280,7 +284,6 @@ class DriverTiangong100(DriverBase):
         :param device_id: device id
         :return success or fail, error message
         """
-        prefect_logger = get_run_logger()
         success = True
         err_msgs = []
         url = f"{self.base_url}/{self.machine_path}/"
@@ -297,7 +300,7 @@ class DriverTiangong100(DriverBase):
             err_msg = response["msg"]
             if err_code == "0":
                 data = response.get("data", None)
-                prefect_logger.info(f"device status: {data['status']}")
+                logger.info(f"device status: {data['status']}")
                 if data["status"] != self.device_status_available:
                     success = False
                     err_msgs.append(
@@ -367,7 +370,7 @@ class DriverTiangong100(DriverBase):
         finally:
             # remove csv file
             if os.path.exists(csv_filepath):
-               os.remove(csv_filepath)
+                os.remove(csv_filepath)
         return success, "\n".join(err_msgs), file_info
 
     def submit_tasks(self, tasks_info):
@@ -405,7 +408,6 @@ class DriverTiangong100(DriverBase):
         :param task_name: task name
         :return success or fail, error message, task info
         """
-        prefect_logger = get_run_logger()
         success = True
         err_msgs = []
         task_info = {}
@@ -430,7 +432,7 @@ class DriverTiangong100(DriverBase):
                 for _task_info in response_data:
                     task_info["id"] = _task_info.get("id")
                     task_info["status"] = _task_info.get("status")
-                    prefect_logger.info(task_info["status"])
+                    logger.info(task_info["status"])
                 if not task_info:
                     success = False
                     err_msgs.append(f"Can't find task name: {task_name}")

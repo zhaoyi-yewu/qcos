@@ -16,17 +16,22 @@
 # ----------------------------------------------------------------------
 
 import copy
-import logging
-
-from prefect.logging import get_logger
 from schema import Optional, Or
+
+from loguru import logger
 
 from qcos.common.constant import Constant
 from qcos.common.library import Library
 from qcos.drivers.driver_base import DriverBase
 
-logger = logging.getLogger(__name__)
-job_logger = get_logger()
+
+# 配置 Loguru
+logger.add(
+    "/var/log/qcos/prefect-flow.log",
+    rotation="500 MB",
+    retention="30 days",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name} | {message}"
+)
 
 
 class DriverDummy(DriverBase):
@@ -122,7 +127,7 @@ class DriverDummy(DriverBase):
         :param shots: shots
         """
         # pylint: disable=duplicate-code
-        job_logger.info(f"job_id: {job_id}, shots: {shots}, "
+        logger.info(f"job_id: {job_id}, shots: {shots}, "
                         f"num_qubits: {num_qubits}, "
                         f"data_type: {data_type}, data: {data}")
         self.set_status(self.DRIVER_STATUS_BUSY)

@@ -17,19 +17,25 @@
 
 import copy
 import json
-import logging
 import socket
 import threading
 import time
 from schema import Optional, Or
 
+from loguru import logger
+
 from qcos.common.constant import Constant
 from qcos.common.library import Library
 from qcos.drivers.driver_base import DriverBase
 
-
-logger = logging.getLogger(__name__)
 # pylint: disable=duplicate-code
+# 配置 Loguru
+logger.add(
+    "/var/log/qcos/prefect-flow.log",
+    rotation="500 MB",
+    retention="30 days",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name} | {message}"
+)
 
 
 class DriverHanyuan1(DriverBase):
@@ -177,7 +183,8 @@ class DriverHanyuan1(DriverBase):
             if isinstance(raw_results, (str, int, list, dict)):
                 results = raw_results
             else:
-                logger.warning(f"结果类型不符合要求: {type(raw_results)}，转换为字符串")
+                logger.warning(
+                    f"结果类型不符合要求: {type(raw_results)}，转换为字符串")
                 results = str(raw_results)
 
         # 记录最终结果用于调试
@@ -230,14 +237,15 @@ class DriverHanyuan1(DriverBase):
             # 检查data的格式，如果是包含basis_gate_list的字典
             if isinstance(data, dict) and 'basis_gate_list' in data:
                 gate_list = data['basis_gate_list']
-                logger.info(f"从data['basis_gate_list']中提取gate列表: {gate_list}")
+                logger.info(
+                    f"从data['basis_gate_list']中提取gate列表: {gate_list}")
             else:
                 # 如果data本身就是gate列表
                 gate_list = data
                 logger.info(f"data本身就是gate列表: {gate_list}")
 
             for i, gate in enumerate(gate_list):
-                logger.info(f"处理第{i+1}个gate: {gate}")
+                logger.info(f"处理第{i + 1}个gate: {gate}")
                 gate_dict = {
                     "name": gate.name.upper(),  # 转换为大写以保持一致性
                     "targets": gate.targets,
