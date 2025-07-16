@@ -26,10 +26,11 @@ from qcos.drivers.driver_base import DriverBase
 
 
 # 配置 Loguru
+# pylint: disable=duplicate-code
 logger.add(
-    "/var/log/qcos/prefect-flow.log",
-    rotation="500 MB",
-    retention="30 days",
+    Constant.PREFECT_JOB_LOG_PATH,
+    rotation=Constant.PREFECT_JOB_LOG_ROTATION,
+    retention=Constant.PREFECT_JOB_LOG_RETENTION,
     format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name} | {message}"
 )
 

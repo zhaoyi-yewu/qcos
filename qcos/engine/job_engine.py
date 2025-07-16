@@ -27,12 +27,14 @@ from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from qcos.transpiler.transpiler_factory import TranspilerFactory
 
 # 配置 Loguru
+# pylint: disable=duplicate-code
 logger.add(
-    "/var/log/qcos/prefect-flow.log",
-    rotation="500 MB",
-    retention="30 days",
+    Constant.PREFECT_JOB_LOG_PATH,
+    rotation=Constant.PREFECT_JOB_LOG_ROTATION,
+    retention=Constant.PREFECT_JOB_LOG_RETENTION,
     format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name} | {message}"
 )
+
 
 @task(persist_result=False)
 def init_driver(driver_info):
@@ -199,7 +201,7 @@ def job_flow(job_info):
     profiling_types = data.get("profiling", [])
     profiling_types = [] if profiling_types is None else profiling_types
     logger.info(f"Processing work flow: job_engine. "
-                        f"job_id: {job_id}, job_info: {job_info}")
+                f"job_id: {job_id}, job_info: {job_info}")
 
     # init driver
     future_driver = init_driver.submit(job_info["driver"])
