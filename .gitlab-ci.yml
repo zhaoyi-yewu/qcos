@@ -1,6 +1,5 @@
 # 阶段
 stages:
-  - build
   - pylint
 
 # 拉取项目，打包
