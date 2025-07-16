@@ -3,7 +3,6 @@ stages:
   - pylint
 
 # 拉取项目，打包
-build:
 pylint:
   stage: pylint # 阶段名称 对应，stages
   tags:
