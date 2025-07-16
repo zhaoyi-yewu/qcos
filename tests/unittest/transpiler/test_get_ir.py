@@ -15,7 +15,9 @@
 # ----------------------------------------------------------------------
 
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
-from tests.unittest.transpiler.comm import validate_ir
+from tests.unittest.transpiler.comm import validate_gate_ir
+from tests.unittest.transpiler.comm import validate_non_gate_ir
+
 
 class TestGetIr:
     @classmethod
@@ -63,24 +65,24 @@ class TestGetIr:
         assert ir is not None
         assert q_num == 6
         assert len(ir) == 21
-        validate_ir(ir[0], "rx", ["2"], 1, False)
-        validate_ir(ir[1], "h", ["2"], 1, True)
-        validate_ir(ir[2], "ry", ["2"],1, False)
-        validate_ir(ir[3], "rz", ["2"], 1, False)
-        validate_ir(ir[4], "x", ["2"], 1, True)
-        validate_ir(ir[5], "y", ["2"], 1, True)
-        validate_ir(ir[6], "z", ["2"], 1, True)
-        validate_ir(ir[7], "s", ["2"], 1, False)
-        validate_ir(ir[8], "sdg", ["2"], 1, False)
-        validate_ir(ir[9], "tdg", ["2"], 1, False)
-        validate_ir(ir[10], "t", ["2"], 1, False)
-        validate_ir(ir[11], "cx", ["2", "3"], 2, True)
-        validate_ir(ir[12], "cy", ["2", "3"], 2, True)
-        validate_ir(ir[13], "cz", ["2", "3"], 2, True)
-        validate_ir(ir[14], "ch", ["2", "3"], 2, True)
-        validate_ir(ir[15], "crx", ["2", "3"], 2, False)
-        validate_ir(ir[16], "cry", ["2", "3"], 2, False)
-        validate_ir(ir[17], "crz", ["2", "3"], 2, False)
-        validate_ir(ir[18], "ccx", ["0", "1", "4"], 3, True)
-        validate_ir(ir[19], "sync", [0, 1, 2, 3, 4, 5], -1, False)
-        validate_ir(ir[20], "measure", [1], 0, False)
+        validate_gate_ir(ir[0], "rx", ["2"], 1, False)
+        validate_gate_ir(ir[1], "h", ["2"], 1, True)
+        validate_gate_ir(ir[2], "ry", ["2"],1, False)
+        validate_gate_ir(ir[3], "rz", ["2"], 1, False)
+        validate_gate_ir(ir[4], "x", ["2"], 1, True)
+        validate_gate_ir(ir[5], "y", ["2"], 1, True)
+        validate_gate_ir(ir[6], "z", ["2"], 1, True)
+        validate_gate_ir(ir[7], "s", ["2"], 1, False)
+        validate_gate_ir(ir[8], "sdg", ["2"], 1, False)
+        validate_gate_ir(ir[9], "tdg", ["2"], 1, False)
+        validate_gate_ir(ir[10], "t", ["2"], 1, False)
+        validate_gate_ir(ir[11], "cx", ["2", "3"], 2, True)
+        validate_gate_ir(ir[12], "cy", ["2", "3"], 2, True)
+        validate_gate_ir(ir[13], "cz", ["2", "3"], 2, True)
+        validate_gate_ir(ir[14], "ch", ["2", "3"], 2, True)
+        validate_gate_ir(ir[15], "crx", ["2", "3"], 2, False)
+        validate_gate_ir(ir[16], "cry", ["2", "3"], 2, False)
+        validate_gate_ir(ir[17], "crz", ["2", "3"], 2, False)
+        validate_gate_ir(ir[18], "ccx", ["0", "1", "4"], 3, True)
+        validate_non_gate_ir(ir[19], "sync", [0, 1, 2, 3, 4, 5], -1)
+        validate_non_gate_ir(ir[20], "measure", [1], 0)

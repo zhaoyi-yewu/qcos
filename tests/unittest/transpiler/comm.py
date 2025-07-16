@@ -15,12 +15,19 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from qcos.transpiler.cmss.common.gate import Gate
+from qcos.transpiler.cmss.common.gate_operation import GateOperation
 
 
-def validate_ir(actual: Gate, name: str, targets: list, q_type: int,
-                q_hermitian: bool):
+def validate_gate_ir(actual: GateOperation, name: str, targets: list,
+                     q_type: int, q_hermitian: bool):
     assert actual.hermitian == q_hermitian
     assert actual.name == name
     assert actual.targets == targets
-    assert actual.gate_type == q_type
+    assert actual.operation_type == q_type
+
+
+def validate_non_gate_ir(actual: GateOperation, name: str, targets: list,
+                         q_type: int):
+    assert actual.name == name
+    assert actual.targets == targets
+    assert actual.operation_type == q_type

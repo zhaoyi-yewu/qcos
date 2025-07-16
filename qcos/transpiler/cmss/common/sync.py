@@ -15,20 +15,17 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from qcos.transpiler.cmss.common.gate_operation import GateOperation
+from qcos.transpiler.cmss.common.base_operation import BaseOperation
+from qcos.transpiler.cmss.common.base_operation import OperationType
 
 
-def decompose_gates(ir: list):
+class SYNC(BaseOperation):
     """
-    将中间表示中的门分解到硬件脉冲直接支持的门上.
-
-    :param ir: 中间表示，类型为list
-    :return gates: 硬件支持的门，类型为list
+    同步操作，用于在量子电路中同步操作，确保某些操作在特定的时间点同时发生
     """
-    gates = []
-    for gate in ir:
-        if isinstance(gate, GateOperation):
-            gates += gate.decompose()
-        else:
-            gates += [gate]
-    return gates
+
+    def __init__(
+            self, targets=None, arg_value=None,
+            operation_type=OperationType.SYNC.value
+    ) -> None:
+        super().__init__("sync", targets, arg_value, operation_type)

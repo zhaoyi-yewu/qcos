@@ -15,20 +15,17 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from qcos.transpiler.cmss.common.gate_operation import GateOperation
+from qcos.transpiler.cmss.common.base_operation import BaseOperation
+from qcos.transpiler.cmss.common.base_operation import OperationType
 
 
-def decompose_gates(ir: list):
+class MEASURE(BaseOperation):
     """
-    将中间表示中的门分解到硬件脉冲直接支持的门上.
-
-    :param ir: 中间表示，类型为list
-    :return gates: 硬件支持的门，类型为list
+    测量操作，用于测量量子比特的状态，将其从量子态转换为经典态
     """
-    gates = []
-    for gate in ir:
-        if isinstance(gate, GateOperation):
-            gates += gate.decompose()
-        else:
-            gates += [gate]
-    return gates
+
+    def __init__(
+            self, targets=None, arg_value=None,
+            operation_type=OperationType.MEASURE.value
+    ) -> None:
+        super().__init__("measure", targets, arg_value, operation_type)

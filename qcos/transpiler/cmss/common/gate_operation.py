@@ -15,59 +15,45 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from enum import Enum
-
 import numpy as np
 
+from qcos.transpiler.cmss.common.base_operation import BaseOperation
+from qcos.transpiler.cmss.common.base_operation import OperationType
 from qcos.transpiler.common.errors import DecomposeException
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
+from qcos.transpiler.cmss.common.measure import MEASURE
+from qcos.transpiler.cmss.common.move import MOV
+from qcos.transpiler.cmss.common.sync import SYNC
+from qcos.transpiler.common.errors import TranspilerException
 
 
-class GateType(Enum):
-    """
-    门类型.
-    """
-    SINGLE_QUBIT_GATE = 1
-    DOUBLE_QUBIT_GATE = 2
-    TRIPLE_QUBIT_GATE = 3
-    MEASURE_GATE = 0
-    SYNC_GATE = -1
-    MOVE_GATE = -2
-
-
-class Gate:
+class GateOperation(BaseOperation):
     """
     中间表示类
     """
 
     def __init__(
             self, name, targets=None, arg_value=None,
-            gate_type=GateType.SINGLE_QUBIT_GATE.value,
+            operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
             hermitian=True
     ) -> None:
         """
-        :param name (_type_): 门名称
+        :param name (_type_): 操作名称
         :param targets (_type_, optional): 目标量子比特. Defaults to None.
         :param arg_value (_type_, optional): 参数（旋转门所需）. Defaults to None.
-        :param gate_type: 门类型
+        :param operation_type: 操作类型
         :param hermitian: 是否是厄米
         """
-        self.name = name
-        self.targets = targets
-        # pylint: disable=use-list-literal
-        self.arg_value = arg_value if arg_value is not None else list()
-        if not isinstance(self.arg_value, list):
-            self.arg_value = [self.arg_value]
-        self.gate_type = gate_type
+        super().__init__(name, targets, arg_value, operation_type)
         self.hermitian = hermitian
         self.validate_params()
 
     def validate_params(self):
         """
         validate gate's params.
-        Gate type already indicated the number of qubits that gate needed.
+        operation type already indicated the number of qubits that gate needed.
         """
-        if len(self.targets) != int(self.gate_type):
+        if len(self.targets) != int(self.operation_type):
             raise DecomposeException("invalid targets num")
 
     def decompose(self):
@@ -145,7 +131,7 @@ class Gate:
 
 
 # 实例化门，需包含一个默认的分解方法
-class H(Gate):
+class H(GateOperation):
     """
     Hadamard门类, 将基态变为叠加态的量子逻辑门
     """
@@ -159,7 +145,7 @@ class H(Gate):
         return gates
 
 
-class X(Gate):
+class X(GateOperation):
     """
     Pauli-X门类, 将量子态绕Bloch球X轴旋转角度π进行翻转
     """
@@ -171,7 +157,7 @@ class X(Gate):
         return list([RX(targets=self.targets, arg_value=np.pi)])
 
 
-class Y(Gate):
+class Y(GateOperation):
     """
     Pauli-Y门类, 将量子态绕Bloch球Y轴旋转角度π进行翻转
     """
@@ -183,7 +169,7 @@ class Y(Gate):
         return list([RY(targets=self.targets, arg_value=np.pi)])
 
 
-class Z(Gate):
+class Z(GateOperation):
     """
     Pauli-Z门类, 将量子态绕Bloch球Z轴旋转角度π进行翻转
     """
@@ -197,7 +183,7 @@ class Z(Gate):
         return gates
 
 
-class S(Gate):
+class S(GateOperation):
     """
     相位门类, 对量子态的|1⟩分量施加一个相位变换，使得|1⟩变为i∣1⟩，而|0⟩分量保持不变
     S门在Bloch球中对应于绕Z轴旋转π/2的操作
@@ -213,7 +199,7 @@ class S(Gate):
         return gates
 
 
-class SDG(Gate):
+class SDG(GateOperation):
     """
     反相位门类, 是S门的共轭转置，对量子态的|1⟩分量施加一个相位变换，使得|1⟩变为-i∣1⟩
     而|0⟩分量保持不变。
@@ -230,7 +216,7 @@ class SDG(Gate):
         return gates
 
 
-class T(Gate):
+class T(GateOperation):
     """
     T门，用于实现较小的相位旋转。T门的作用是对量子态的|1⟩分量施加一个相位变换，
     使得|1⟩变为e^iπ/4∣1⟩，而|0⟩分量保持不变。
@@ -243,7 +229,7 @@ class T(Gate):
         return list([RZ(targets=self.targets, arg_value=np.pi / 4)])
 
 
-class TDG(Gate):
+class TDG(GateOperation):
     """
     TDG门，T门的共轭转置, 作用是对量子态的|1⟩分量施加一个相位变换，
     使得|1⟩变为e^-iπ/4∣1⟩，而|0⟩分量保持不变。
@@ -257,7 +243,7 @@ class TDG(Gate):
         return list([RZ(targets=self.targets, arg_value=-np.pi / 4)])
 
 
-class RX(Gate):
+class RX(GateOperation):
     """
     绕X轴旋转门, 用来改变量子比特在X轴方向上的状态
     RX门在Bloch球中对应于绕X轴旋转一个指定的角度θ
@@ -270,7 +256,7 @@ class RX(Gate):
         return list([self])
 
 
-class RY(Gate):
+class RY(GateOperation):
     """
     绕Y轴旋转门, 用来改变量子比特在Y轴方向上的状态
     RY门在Bloch球中对应于绕Y轴旋转一个指定的角度θ
@@ -283,7 +269,7 @@ class RY(Gate):
         return list([self])
 
 
-class RZ(Gate):
+class RZ(GateOperation):
     """
     绕Z轴旋转门, 用来改变量子比特在Z轴方向上的状态
     RZ门在Bloch球中对应于绕Z轴旋转一个指定的角度θ
@@ -296,7 +282,7 @@ class RZ(Gate):
         return list([self])
 
 
-class CZ(Gate):
+class CZ(GateOperation):
     """
     受控Z门或Controlled-Z门, 在控制量子比特为|1⟩时，对目标量子比特应用一个Z门（Pauli-Z门）
     将目标量子比特的相位翻转。
@@ -305,7 +291,7 @@ class CZ(Gate):
 
     def __init__(
             self, targets=None, arg_value=None,
-            gate_type=GateType.DOUBLE_QUBIT_GATE.value
+            gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value
     ) -> None:
         super().__init__("cz", targets, arg_value, gate_type)
 
@@ -316,7 +302,7 @@ class CZ(Gate):
         return gates
 
 
-class CX(Gate):
+class CX(GateOperation):
     """
     受控非门或Controlled-X门, 当控制位处于|1⟩状态时，将目标位翻转
     （即|0⟩变为|1⟩，|1⟩变为|0⟩）。如果控制位处于|0⟩状态，则目标位保持不变。
@@ -325,7 +311,7 @@ class CX(Gate):
 
     def __init__(
             self, targets=None, arg_value=None,
-            gate_type=GateType.DOUBLE_QUBIT_GATE.value
+            gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value
     ) -> None:
         super().__init__("cx", targets, arg_value, gate_type)
 
@@ -333,7 +319,7 @@ class CX(Gate):
         return list([self])
 
 
-class CY(Gate):
+class CY(GateOperation):
     """
     受控Y门或Controlled-Y门, 在控制量子比特为|1⟩时，
     对目标量子比特应用一个Y门（Pauli-Y门）将目标量子比特绕Y轴旋转π角度。
@@ -342,7 +328,7 @@ class CY(Gate):
 
     def __init__(
             self, targets=None, arg_value=None,
-            gate_type=GateType.DOUBLE_QUBIT_GATE.value
+            gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value
     ) -> None:
         super().__init__("cy", targets, arg_value, gate_type)
 
@@ -354,14 +340,14 @@ class CY(Gate):
         return gates
 
 
-class CH(Gate):
+class CH(GateOperation):
     """
     受控Hadamard门，当控制量子比特为|1⟩时，对目标量子比特应用Hadamard门（H门）
     """
 
     def __init__(
             self, targets=None, arg_value=None,
-            gate_type=GateType.DOUBLE_QUBIT_GATE.value
+            gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value
     ) -> None:
         super().__init__("ch", targets, arg_value, gate_type)
 
@@ -381,14 +367,14 @@ class CH(Gate):
         return gates
 
 
-class CRX(Gate):
+class CRX(GateOperation):
     """
     受控单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿X轴旋转θ角度
     """
 
     def __init__(
             self, targets=None, arg_value=None,
-            gate_type=GateType.DOUBLE_QUBIT_GATE.value
+            gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value
     ) -> None:
         super().__init__("crx", targets, arg_value, gate_type,
                          hermitian=False)
@@ -406,14 +392,14 @@ class CRX(Gate):
         return gates
 
 
-class CRY(Gate):
+class CRY(GateOperation):
     """
     受控的单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿Y轴旋转θ角度
     """
 
     def __init__(
             self, targets=None, arg_value=None,
-            gate_type=GateType.DOUBLE_QUBIT_GATE.value
+            gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value
     ) -> None:
         super().__init__("cry", targets, arg_value, gate_type,
                          hermitian=False)
@@ -426,14 +412,14 @@ class CRY(Gate):
         return gates
 
 
-class CRZ(Gate):
+class CRZ(GateOperation):
     """
     受控的单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿Z轴旋转θ角度
     """
 
     def __init__(
             self, targets=None, arg_value=None,
-            gate_type=GateType.DOUBLE_QUBIT_GATE.value
+            gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value
     ) -> None:
         super().__init__("crz", targets, arg_value, gate_type,
                          hermitian=False)
@@ -446,14 +432,14 @@ class CRZ(Gate):
         return gates
 
 
-class CCX(Gate):
+class CCX(GateOperation):
     """
     Toffoli门，如果两个控制量子比特都处于|1⟩状态，则对目标量子比特应用X门（Pauli-X门）
     """
 
     def __init__(
             self, targets=None, arg_value=None,
-            gate_type=GateType.TRIPLE_QUBIT_GATE.value
+            gate_type=OperationType.TRIPLE_QUBIT_OPERATION.value
     ) -> None:
         super().__init__("ccx", targets, arg_value, gate_type)
 
@@ -477,7 +463,7 @@ class CCX(Gate):
         return gates
 
 
-class U1(Gate):
+class U1(GateOperation):
     """
     U1门，对应于绕Z轴的相位旋转，参数为λ
     """
@@ -489,7 +475,7 @@ class U1(Gate):
         return list([RZ(self.targets, self.arg_value)])
 
 
-class U2(Gate):
+class U2(GateOperation):
     """
     U2门，对应于 π/2 角度的极坐标旋转，参数为ϕ和λ
     """
@@ -504,7 +490,7 @@ class U2(Gate):
         return gates[::-1]
 
 
-class U3(Gate):
+class U3(GateOperation):
     """
     U3门，对应于任意角度的极坐标旋转，参数为θ、ϕ和λ
     """
@@ -519,65 +505,6 @@ class U3(Gate):
                  RX(self.targets, np.pi / 2),
                  RZ(self.targets, self.arg_value[2])]
         return gates[::-1]
-
-
-class SYNC(Gate):
-    """
-    同步门，用于在量子电路中同步操作，确保某些操作在特定的时间点同时发生
-    """
-
-    def __init__(
-            self, targets=None, arg_value=None,
-            gate_type=GateType.SYNC_GATE.value
-    ) -> None:
-        super().__init__("sync", targets, arg_value, gate_type,
-                         hermitian=False)
-
-    def default_decompose(self):
-        return list([self])
-
-    def validate_params(self):
-        if len(self.targets) == 0:
-            raise DecomposeException("invalid targets num")
-
-
-class MEASURE(Gate):
-    """
-    测量门，用于测量量子比特的状态，将其从量子态转换为经典态
-    """
-
-    def __init__(
-            self, targets=None, arg_value=None,
-            gate_type=GateType.MEASURE_GATE.value
-    ) -> None:
-        super().__init__("measure", targets, arg_value, gate_type,
-                         hermitian=False)
-
-    def default_decompose(self):
-        return list([self])
-
-    def validate_params(self):
-        if len(self.targets) == 0:
-            raise DecomposeException("invalid targets num")
-
-
-class MOV(Gate):
-    """
-    移动门, 用于执行量子比特在存储区和操纵区之间的移动操作
-    """
-
-    def __init__(
-            self, targets=None, arg_value=None,
-            gate_type=GateType.MOVE_GATE.value
-    ) -> None:
-        super().__init__("mov", targets, arg_value, gate_type,
-                         hermitian=False)
-
-    def default_decompose(self):
-        return list([self])
-
-    def validate_params(self):
-        pass
 
 
 def create_gate(name, targets=None, arg_value=None, allow_undefined=False):
@@ -640,5 +567,5 @@ def create_gate(name, targets=None, arg_value=None, allow_undefined=False):
         return MEASURE(targets, arg_value)
     else:
         if allow_undefined:
-            return Gate(name, targets=targets, arg_value=arg_value)
+            return GateOperation(name, targets=targets, arg_value=arg_value)
         raise DecomposeException(f"{name} is not support")

@@ -17,7 +17,8 @@
 
 import numpy as np
 
-from qcos.transpiler.cmss.common.gate import MOV, create_gate
+from qcos.transpiler.cmss.common.gate_operation import create_gate
+from qcos.transpiler.cmss.common.move import MOV
 
 
 def pass_hermitian(ir: list):

@@ -21,7 +21,7 @@ import re
 
 import logging
 from qcos.transpiler.cmss.compiler.qtypes import Node, RegType
-from qcos.transpiler.cmss.common.gate import create_gate
+from qcos.transpiler.cmss.common.gate_operation import create_gate
 from qcos.transpiler.cmss.compiler.linked_list import LinkedList, LinkedNode
 
 
