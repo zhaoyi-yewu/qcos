@@ -30,7 +30,7 @@ from qcos.transpiler.transpiler_factory import TranspilerFactory
 logger.add(
     "/var/log/qcos/prefect-flow.log",
     rotation="500 MB",
-    retention="10 days",
+    retention="30 days",
     format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name} | {message}"
 )
 
