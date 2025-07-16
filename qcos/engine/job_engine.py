@@ -16,19 +16,23 @@
 # ----------------------------------------------------------------------
 
 import importlib
-import logging
 import time
 
 from prefect import flow, task, runtime
-from prefect.logging import get_run_logger
+from loguru import logger
 
 from qcos.common.constant import Constant
 from qcos.common.library import Library
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from qcos.transpiler.transpiler_factory import TranspilerFactory
 
-logger = logging.getLogger(__name__)
-
+# 配置 Loguru
+logger.add(
+    "/var/log/qcos/prefect-flow.log",
+    rotation="500 MB",
+    retention="10 days",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name} | {message}"
+)
 
 @task(persist_result=False)
 def init_driver(driver_info):
@@ -38,7 +42,7 @@ def init_driver(driver_info):
     :param driver_info: driver info
     :return: driver
     """
-    prefect_logger = get_run_logger()
+
     try:
         driver_module = importlib.import_module(driver_info["module_name"])
         driver_class = getattr(driver_module, driver_info["class_name"])
@@ -48,7 +52,7 @@ def init_driver(driver_info):
         success, err_msg = driver.validate_driver_configs()
         # error handling
         if not success:
-            prefect_logger.error(err_msg)
+            logger.error(err_msg)
             raise ValueError(err_msg)
         # copy cfgs to trans cfg inst
         trans_cfg_inst.set_qpu_cfg(driver.get_qpu_configs())
@@ -69,16 +73,16 @@ def cmss_transpiler(job_info):
     :return basis gate list
     """
     # load qpu configs
-    prefect_logger = get_run_logger()
+
     num_qubits = -1
     try:
         factory = TranspilerFactory()
         transpiler = factory.get_transpiler_by_type(Constant.TRANSPILER_CMSS)
         raw_qasm = job_info['source_code'][0]
-        prefect_logger.info(f"raw_qasm: {raw_qasm}")
+        logger.info(f"raw_qasm: {raw_qasm}")
         basis_gate_list = transpiler.transpile(raw_qasm)
         num_qubits = transpiler.num_qubits
-        prefect_logger.info(f"final basis_gate_list: {basis_gate_list}")
+        logger.info(f"final basis_gate_list: {basis_gate_list}")
         return {"basis_gate_list": basis_gate_list, "num_qubits": num_qubits,
                 "error": None}
     except Exception as e:
@@ -97,7 +101,7 @@ def run_driver(job_info, driver, num_qubits, data):
     :param data: data
     :return results
     """
-    prefect_logger = get_run_logger()
+
     try:
         job_id = job_info["job_id"]
         shots = job_info["data"].get("shots", Constant.DEFAULT_SHOTS)
@@ -107,13 +111,13 @@ def run_driver(job_info, driver, num_qubits, data):
         end_date = None
         data_type = driver.get_default_data_type()
         if dry_run:
-            prefect_logger.info(
+            logger.info(
                 f"dry_run: job_id: {job_id}, num_qubits: {num_qubits}, "
                 f"data: {data}, data_type: {data_type}, shots: {shots}")
             driver.dry_run(job_id, num_qubits, data, data_type=data_type,
                            shots=shots)
         else:
-            prefect_logger.info(
+            logger.info(
                 f"run: job_id: {job_id}, num_qubits: {num_qubits}, "
                 f"data: {data}, data_type: {data_type}, shots: {shots}")
             driver.run(job_id, num_qubits, data, data_type=data_type,
@@ -183,7 +187,7 @@ def job_flow(job_info):
     :param job_info: job info
     :return results
     """
-    prefect_logger = get_run_logger()
+
     transpile_results = None
     num_qubits = -1
     transpiler_profiling_start = 0
@@ -194,7 +198,7 @@ def job_flow(job_info):
     data = job_info["data"]
     profiling_types = data.get("profiling", [])
     profiling_types = [] if profiling_types is None else profiling_types
-    prefect_logger.info(f"Processing work flow: job_engine. "
+    logger.info(f"Processing work flow: job_engine. "
                         f"job_id: {job_id}, job_info: {job_info}")
 
     # init driver
