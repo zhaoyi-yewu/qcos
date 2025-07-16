@@ -31,7 +31,7 @@ logger.add(
     Constant.PREFECT_JOB_LOG_PATH,
     rotation=Constant.PREFECT_JOB_LOG_ROTATION,
     retention=Constant.PREFECT_JOB_LOG_RETENTION,
-    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name} | {message}"
+    format=Constant.PREFECT_JOB_LOG_FORMAT
 )
 
 
