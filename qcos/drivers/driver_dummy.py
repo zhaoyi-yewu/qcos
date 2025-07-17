@@ -42,19 +42,18 @@ class DriverDummy(DriverBase):
 
     def __init__(self):
         super().__init__()
+        self.name = "dummy"
         self.version = "0.0.1"
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
-        self.layout_method = DriverBase.LAYOUT_METHOD_CMSS_NEUTRAL_ATOM
+        self.supported_basis_gates = [Constant.SQ_GATE_X, Constant.SQ_GATE_Y]
         self.supported_transpiler_list = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_merge = False
         self.default_results_type = self.DATA_TYPE_GATE_SEQUENCE
         self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
         self.max_qubits = 10
-        self.supported_basis_gates = []
         # pylint: disable=duplicate-code
-        self.coupling_map = []
         self.extra_configs = {}
 
     def init_driver(self):
@@ -133,6 +132,6 @@ class DriverDummy(DriverBase):
                         f"data_type: {data_type}, data: {data}")
         self.set_status(self.DRIVER_STATUS_BUSY)
         # dummy driver results
-        results = [{'00': 00, '01': 1, '10': 10, '11': 11}]
-        self.set_results(job_id, results=results)
+        result = self.get_fake_results(num_qubits, shots)
+        self.set_results(job_id, results=[result])
         self.set_status(self.DRIVER_STATUS_ONLINE)

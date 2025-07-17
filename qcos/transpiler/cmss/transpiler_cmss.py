@@ -17,6 +17,7 @@
 
 import logging
 
+from schema import Optional
 
 from qcos.common.constant import Constant
 from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
@@ -36,11 +37,34 @@ class TranspilerCmss(TranspilerBase):
     Transpiler Class for CMSS
     """
 
-    def transpile(self, qasm: str):
+    def __init__(self):
+        super().__init__()
+        self.name = Constant.TRANSPILER_CMSS
+        # supported code types
+        self.supported_code_types = [
+            Constant.CODE_TYPE_QASM,
+            Constant.CODE_TYPE_QASM2
+        ]
+        # transpiler_info
+        self.transpiler_info = {
+            "optimization_level": 1  # default optimization level
+        }
+        # transpiler_info schema used in submit-job from user
+        self.transpiler_info_schema = {
+            Optional("optimization_level"): int
+        }
+        # qpu_config
+        self.qpu_config = None
+
+    def init_transpiler(self):
+        pass
+
+    def transpile(self, qasm: str, expect_basis_gates: list):
         """
         CMSS transpiler function.
 
         :param qasm: openqasm codes
+        :param expect_basis_gates: expect basis gates
         :return basis gate list
         """
         qpu_cfg = trans_cfg_inst.get_qpu_cfg()

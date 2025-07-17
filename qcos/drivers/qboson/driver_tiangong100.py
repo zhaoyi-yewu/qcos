@@ -67,7 +67,7 @@ class DriverTiangong100(DriverBase):
     # url path
     login_path = "kdev/terminal/login"
     upload_path = "kdev/terminal/upload_file"
-    batch_task_path = "/kdev/terminal/batch-task"
+    batch_task_path = "kdev/terminal/batch-task"
     machine_path = "kdev/terminal/machine"
     machine_task_path = "kdev/terminal/machine-task"
     task_results_path = "kdev/terminal/task"
@@ -98,6 +98,7 @@ class DriverTiangong100(DriverBase):
 
     def __init__(self):
         super().__init__()
+        self.name = "tiangong100"
         self.version = "0.0.1"
         self.enable_transpiler = False
         self.max_qubits = 100

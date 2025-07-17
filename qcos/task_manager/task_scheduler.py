@@ -41,6 +41,7 @@ class TaskScheduler(ABC):
             self._task_manager
         )
         self.driver_manager = None
+        self.transpiler_manager = None
 
     def start_taskmanager(self):
         """
@@ -67,6 +68,23 @@ class TaskScheduler(ABC):
         """
         return self.driver_manager
 
+    def set_transpiler_manager(self, transpiler_manager):
+        """
+        Set transpiler manager
+
+        :param transpiler_manager: transpiler manager
+        """
+
+        self.transpiler_manager = transpiler_manager
+
+    def get_transpiler_manager(self):
+        """
+        Get transpiler manager
+
+        :return: transpiler manager
+        """
+        return self.transpiler_manager
+
     def add(self, policy_type, job_info):
         """
         Add job to scheduler, scheduler will get policy handler by policy_type,
@@ -82,6 +100,7 @@ class TaskScheduler(ABC):
             if exist:
                 return None, f"Job uuid is already existed: {job_info.job_id}"
 
+        # get driver info
         backend = job_info.backend
         driver = self.driver_manager.get_driver(backend)
         if not driver:
@@ -92,6 +111,16 @@ class TaskScheduler(ABC):
         driver_class_name = driver.get_class_name()
         extra_configs = driver.get_extra_configs()
 
+        # get transpiler info
+        transpiler_module_name = None
+        transpiler_class_name = None
+        transpiler_name = driver.get_transpiler()
+        transpiler = self.transpiler_manager.get_transpiler(transpiler_name)
+        if transpiler:
+            transpiler_module_name = transpiler.get_module_name()
+            transpiler_class_name = transpiler.get_class_name()
+
+        # execute task
         try:
             flow_info = self._task_manager.get_flow_info_by_backend(
                 backend)
@@ -103,6 +132,10 @@ class TaskScheduler(ABC):
                 "module_name": driver_module_name,
                 "class_name": driver_class_name,
                 "extra_configs": extra_configs
+            }
+            job_json_info["transpiler"] = {
+                "module_name": transpiler_module_name,
+                "class_name": transpiler_class_name
             }
             job_id = policy_handler.exec_task(flow_info, job_json_info)
             res = {"job_id": job_id}

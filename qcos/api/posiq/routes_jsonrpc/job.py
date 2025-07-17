@@ -54,7 +54,7 @@ def submit_job(
     description = body.description
     shots = body.shots
     backend = body.backend
-    transpiler = body.transpiler
+    transpiler_name = body.transpiler
     transpiler_info = body.transpiler_info
     profiling = body.profiling
     callbacks = body.callbacks
@@ -110,40 +110,60 @@ def submit_job(
     driver_status = driver.get_status()
     enable_driver = driver.enable
 
-    # validate supported_code_types
-    jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
-        code_type, "code_type", driver.supported_code_types,
-        allow_none=False))
+    # check driver_status
+    if not enable_driver:
+        jsonrpc_errors.handle_job_error(
+            "Can't submit job. reason: driver is disabled")
+    elif driver_status == driver.DRIVER_STATUS_OFFLINE:
+        jsonrpc_errors.handle_job_error(
+            "Can't submit job. reason: driver status is offline")
+    elif driver_status == driver.DRIVER_STATUS_UNKNOWN:
+        jsonrpc_errors.handle_job_error(
+            "Can't submit job. reason: driver status is unknown")
 
     # if transpiler is not specified, set the default transpiler from driver
-    if not transpiler:
-        transpiler = driver.get_transpiler()
+    if not transpiler_name:
+        transpiler_name = driver.get_transpiler()
 
-    # validate: transpiler
+    # validate: transpiler_name
     jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
-        transpiler, "transpiler", Constant.TRANSPILER_TYPES,
-        allow_none=True))
+        transpiler_name, "transpiler",
+        Constant.TRANSPILER_TYPES, allow_none=True))
 
     # validate supported_transpiler_list
     if enable_transpiler:
         jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
-            transpiler, "transpiler",
+            transpiler_name, "transpiler",
             driver.supported_transpiler_list,
             allow_none=False))
-        body.transpiler = transpiler
+        body.transpiler = transpiler_name
 
         # validate: transpiler_info
-        if transpiler and transpiler_info:
+        if transpiler_name and transpiler_info:
             jsonrpc_errors.handle_invalid_params(Library.validate_schema(
                 transpiler_info,
                 args_schema.TRANSPILER_INFO,
                 allow_none=True))
     else:
         # set transpiler/transpiler_info to None if enable_transpiler=False
-        transpiler = None
+        transpiler_name = None
         transpiler_info = None
         body.transpiler = None
         body.transpiler_info = None
+
+    # get supported_code_types
+    supported_code_types = []
+    if enable_transpiler:
+        transpiler_manager = scheduler.get_transpiler_manager()
+        transpiler = transpiler_manager.get_transpiler(transpiler_name)
+        supported_code_types = transpiler.get_supported_code_types()
+    else:
+        supported_code_types = driver.get_supported_code_types()
+
+    # validate supported_code_types
+    jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
+        code_type, "code_type", supported_code_types,
+        allow_none=False))
 
     # validate: profiling
     if profiling:
@@ -157,17 +177,6 @@ def submit_job(
     if callbacks:
         jsonrpc_errors.handle_invalid_params(
             Library.validate_schema(callbacks, args_schema.CALLBACKS_SCHEMA))
-
-    # check driver_status
-    if not enable_driver:
-        jsonrpc_errors.handle_job_error(
-            "Can't submit job. reason: driver is disabled")
-    elif driver_status == driver.DRIVER_STATUS_OFFLINE:
-        jsonrpc_errors.handle_job_error(
-            "Can't submit job. reason: driver status is offline")
-    elif driver_status == driver.DRIVER_STATUS_UNKNOWN:
-        jsonrpc_errors.handle_job_error(
-            "Can't submit job. reason: driver status is unknown")
 
     # generate creation_date
     creation_date = Library.get_current_datetime()
@@ -188,7 +197,7 @@ def submit_job(
         "job_priority": job_priority,
         "description": description,
         "backend": backend,
-        "transpiler": transpiler,
+        "transpiler": transpiler_name,
         "transpiler_info": transpiler_info,
         "shots": shots,
         "profiling": profiling,

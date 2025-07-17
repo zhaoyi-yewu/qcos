@@ -32,6 +32,7 @@ from qcos.common.library import Library
 from qcos.drivers.driver_manager import DriverManager
 from qcos.log.logger import init_logger
 from qcos.task_manager import scheduler
+from qcos.transpiler.transpiler_manager import TranspilerManager
 
 logger = logging.getLogger(__name__)
 
@@ -213,8 +214,14 @@ class Server:
             driver_manager.load_drivers()
             driver_manager.init_drivers()
 
-            # set driver manager
+            # init transpilers
+            transpiler_manager = TranspilerManager()
+            transpiler_manager.load_transpilers()
+            transpiler_manager.init_transpilers()
+
+            # set driver manager and transpiler in scheduler
             scheduler.set_driver_manager(driver_manager)
+            scheduler.set_transpiler_manager(transpiler_manager)
 
             # run forever
             loop.run_until_complete(server.serve())

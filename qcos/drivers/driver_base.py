@@ -41,16 +41,6 @@ class DriverBase:
         DRIVER_STATUS_UNKNOWN
     ]
 
-    # Layout methods
-    LAYOUT_METHOD_CMSS_NONE = None
-    LAYOUT_METHOD_CMSS_NEUTRAL_ATOM = "cmss_neutral_atom"
-    LAYOUT_METHOD_CMSS_ION_TRAP = "cmss_ion_trap"
-    LAYOUT_METHODS = [
-        LAYOUT_METHOD_CMSS_NONE,
-        LAYOUT_METHOD_CMSS_NEUTRAL_ATOM,
-        LAYOUT_METHOD_CMSS_ION_TRAP
-    ]
-
     # Data types
     DATA_TYPE_GATE_SEQUENCE = "gate_sequence"
     DATA_TYPE_QUBO = "qubo"
@@ -59,12 +49,9 @@ class DriverBase:
         DATA_TYPE_QUBO
     ]
 
-    # Default dry-run results
-    DEFAULT_DRY_RUN_RESULTS = {'00': 0}
-
     def __init__(self):
         # driver name
-        self.driver_name = None
+        self.name = None
         # driver version
         self.version = "unknown"
         # module name
@@ -79,19 +66,17 @@ class DriverBase:
         self.enable_transpiler = True
         # transpiler type
         self.transpiler = Constant.TRANSPILER_CMSS
+        # supported code types (enable_transpiler=False only)
+        self.supported_code_types = None
         # quantum computer technology type
         self.tech_type = None
-        # layout method (TODO(zhaoyi): not used)
-        self.layout_method = DriverBase.LAYOUT_METHOD_CMSS_NONE
         # enable circuit merge or not (TODO(zhaoyi): not used)
         self.enable_circuit_merge = False
         # max number of qubits
         self.max_qubits = 0
-        # supported code_types
-        self.supported_code_types = Constant.CODE_TYPES
-        # supported basis gates (TODO(zhaoyi): TO BE IMPLEMENTED)
+        # supported basis gates
         self.supported_basis_gates = None
-        # supported transpiler list (TODO(zhaoyi): TO BE IMPLEMENTED)
+        # supported transpiler list
         self.supported_transpiler_list = []
         # qpu configs
         self.qpu_configs = None
@@ -113,6 +98,22 @@ class DriverBase:
         """
         self.extra_configs = Config.EXTRA_CONFIGS.get(
             self.__class__.__name__, {})
+
+    def validate_driver(self):
+        """
+        Validate driver
+        """
+        success = True
+        err_msgs = []
+        if self.enable_transpiler and self.supported_code_types:
+            success = False
+            err_msgs.append("supported_code_types should not be specified "
+                            "when driver.enable_transpiler=True")
+        elif not self.enable_transpiler and not self.supported_code_types:
+            success = False
+            err_msgs.append("supported_code_types must be specified "
+                            "when driver.enable_transpiler=False")
+        return success, "\n".join(err_msgs)
 
     def validate_driver_configs(self):
         """
@@ -150,13 +151,12 @@ class DriverBase:
         """
         show_list = [
             f"[{self.__class__.__name__}]",
-            f"driver_name: {self.driver_name}",
+            f"driver_name: {self.name}",
             f"version: {self.version}",
             f"enable: {self.enable}",
             f"status: {self._status}",
             f"enable_transpiler: {self.enable_transpiler}",
             f"transpiler: {self.transpiler}",
-            f"layout_method: {self.layout_method}",
             f"enable_circuit_merge: {self.enable_circuit_merge}",
             f"results_fetch_mode: {self.results_fetch_mode}",
             f"max_qubits: {self.max_qubits}",
@@ -166,13 +166,13 @@ class DriverBase:
         ]
         return "\n".join(show_list)
 
-    def set_name(self, driver_name):
+    def set_name(self, name):
         """
         Set driver name
 
-        :param driver_name: driver_name
+        :param name: driver_name
         """
-        self.driver_name = driver_name
+        self.name = name
 
     def get_name(self):
         """
@@ -180,7 +180,7 @@ class DriverBase:
 
         :return: driver name
         """
-        return self.driver_name
+        return self.name
 
     def set_module_name(self, module_name):
         """
@@ -241,6 +241,20 @@ class DriverBase:
             return self.transpiler
         return None
 
+    def get_supported_code_types(self):
+        """
+        Get supported code types
+        """
+        return self.supported_code_types
+
+    def get_supported_basis_gates(self):
+        """
+        Get supported basis gates
+
+        :return: list of supported basis gates
+        """
+        return self.supported_basis_gates
+
     def get_qpu_configs(self):
         """
         Get qpu configs
@@ -280,7 +294,8 @@ class DriverBase:
         """
         logger.info(f"Dry-run: job_id: {job_id}, shots: {shots}, "
                     f"data_type: {data_type}, data: {data}")
-        self.set_results(job_id, results=[DriverBase.DEFAULT_DRY_RUN_RESULTS])
+        result = self.get_fake_results(num_qubits, shots)
+        self.set_results(job_id, results=[result])
 
     def set_results(self, job_id, results):
         """
@@ -324,3 +339,12 @@ class DriverBase:
         :return: max qubits
         """
         return self.max_qubits
+
+    def get_fake_results(self, num_qubits, shots):
+        """
+        Get fake results
+
+        :param num_qubits: number of qubits
+        :param shots: number of shots
+        """
+        return {"0" * num_qubits: shots}

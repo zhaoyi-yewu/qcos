@@ -691,7 +691,7 @@ class Library:
                 _success, err_msg, text, result = \
                     await Library.async_call_http_api(
                         url, method,
-                        data=json.dumps(data),
+                        data=json.dumps(data, default=str),
                         func_name="run_callbacks",
                         headers=headers,
                         retries=retries, timeout=timeout)

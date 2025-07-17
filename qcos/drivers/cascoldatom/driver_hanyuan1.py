@@ -45,14 +45,16 @@ class DriverHanyuan1(DriverBase):
     """
 
     verbose = False
+    DEFAULT_CONTROL_SYSTEM_PORT = 18402
 
     def __init__(self):
         super().__init__()
+        self.name = "hanyuan1"
         self.version = "0.0.1"
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
-        self.layout_method = DriverBase.LAYOUT_METHOD_CMSS_NONE
+        self.supported_basis_gates = [Constant.SQ_GATE_X, Constant.SQ_GATE_Y]
         self.supported_transpiler_list = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_merge = True
         self.max_qubits = 10
@@ -136,8 +138,8 @@ class DriverHanyuan1(DriverBase):
         self.set_status(self.DRIVER_STATUS_BUSY)
 
         extra_configs = self.get_extra_configs()
-        ip_address = extra_configs.get("ip_address", "100.78.62.2")
-        port = extra_configs.get("port", 18402)
+        ip_address = extra_configs.get("ip_address", "127.0.0.1")
+        port = extra_configs.get("port", self.DEFAULT_CONTROL_SYSTEM_PORT)
 
         # 1、初始化任务连接
         self.init_task(ip_address, port)

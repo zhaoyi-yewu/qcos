@@ -37,6 +37,7 @@ class DriverPassthrough(DriverBase):
 
     def __init__(self):
         super().__init__()
+        self.name = "passthrough"
         self.version = "0.0.1"
         self.enable_transpiler = False
         self.supported_code_types = [
@@ -81,7 +82,6 @@ class DriverPassthrough(DriverBase):
                     f"num_qubits: {num_qubits}, "
                     f"data_type: {data_type}, data: {data}")
         self.set_status(self.DRIVER_STATUS_BUSY)
-        # TODO(zhaoyi): to be implemented
-        results = [{}]
-        self.set_results(job_id, results=results)
+        result = self.get_fake_results(num_qubits, shots)
+        self.set_results(job_id, results=[result])
         self.set_status(self.DRIVER_STATUS_ONLINE)

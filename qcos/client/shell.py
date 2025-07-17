@@ -42,20 +42,20 @@ QCOS commands:
 [Job commands]
 * Submit Job
 1. 测试用dummy驱动
-qcos-cli submit-job --code-type qasm --shots 10 --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --backend dummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
 1.1 使用profiling
-qcos-cli submit-job --code-type qasm --shots 10 --profiling transpiler scheduler --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --profiling transpiler scheduler --backend dummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
 1.2 使用callbacks进行回调
-qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend dummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
 1.3 指定job-id
-qcos-cli submit-job --job-id b9bf209b-309a-432c-a1ae-000000000000 --code-type qasm --shots 10 --backend DriverDummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --job-id b9bf209b-309a-432c-a1ae-000000000000 --code-type qasm --shots 10 --backend dummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
-qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\ncreg c[1];\nx q[0];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\ncreg c[1];\nx q[0];\nmeasure q -> c;\n"'
 3. 中科酷原-汉原1 中性原子驱动, 真实运行
-qcos-cli submit-job --code-type qasm --shots 10 --backend DriverHanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\ncreg c[1];\nx q[0];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\ncreg c[1];\nx q[0];\nmeasure q -> c;\n"'
 4. 玻色量子-光量子伊辛机, 真实运行
-qcos-cli submit-job --code-type qubo --backend DriverTiangong100 '"[[-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,8],[0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0],[0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0],[0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0],[0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0],[0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0],[0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0],[0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0],[0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0],[0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8],[0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12]]"'
+qcos-cli submit-job --code-type qubo --backend tiangong100 '"[[-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,8],[0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0],[0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0],[0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0],[0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0],[0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0],[0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0],[0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0],[0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0],[0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8],[0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12]]"'
 
 * Get job status
 qcos-cli get-job-status 00000000-0000-4000-8000-000000000001
@@ -365,14 +365,14 @@ class Ping(Command):
                             help="Message to send")
         return parser
 
-    def take_action(self, args):
+    def take_action(self, parsed_args):
         """
         Take action for command line arguments
 
-        :param args: command line arguments
+        :param parsed_args: command line arguments
         """
         resource = "System"
-        message = args.message
+        message = parsed_args.message
 
         status_code, reason, text, result = self.app.client.ping(message)
         json_results = CommandHelper.check_results(
@@ -395,11 +395,11 @@ class Version(Command):
         parser = super().get_parser(prog_name)
         return parser
 
-    def take_action(self, args):
+    def take_action(self, parsed_args):
         """
         Take action for command line arguments
 
-        :param args: command line arguments
+        :param parsed_args: command line arguments
         """
         resource = "System"
 
@@ -408,6 +408,8 @@ class Version(Command):
             resource, "version", status_code, reason, text)
         print(f"Server version: {json_results['version']}")
         print(f"API version: {json_results['api_version']}")
+        print(f"Supported API versions: "
+              f"{json_results['supported_api_versions']}")
         print(f"Platform version: {json_results['platform_version']}")
 
 
@@ -476,27 +478,27 @@ class SubmitJob(Command):
                             help="Source code")
         return parser
 
-    def take_action(self, args):
+    def take_action(self, parsed_args):
         """
         Take action for command line arguments
 
-        :param args: command line arguments
+        :param parsed_args: command line arguments
         """
         resource = "Job"
-        dry_run = args.dry_run
-        source_code = args.source_code
-        code_type = args.code_type
-        job_id = args.job_id
-        job_type = args.job_type
-        job_sched_policy = args.job_sched_policy
-        job_priority = args.job_priority
-        description = args.description
-        shots = args.shots
-        backend = args.backend
-        transpiler = args.transpiler
-        transpiler_info = args.transpiler_info
-        profiling = args.profiling
-        callbacks = args.callbacks
+        dry_run = parsed_args.dry_run
+        source_code = parsed_args.source_code
+        code_type = parsed_args.code_type
+        job_id = parsed_args.job_id
+        job_type = parsed_args.job_type
+        job_sched_policy = parsed_args.job_sched_policy
+        job_priority = parsed_args.job_priority
+        description = parsed_args.description
+        shots = parsed_args.shots
+        backend = parsed_args.backend
+        transpiler = parsed_args.transpiler
+        transpiler_info = parsed_args.transpiler_info
+        profiling = parsed_args.profiling
+        callbacks = parsed_args.callbacks
 
         # convert source_code
         source_code_obj = None
@@ -620,15 +622,15 @@ class GetJobStatus(ShowOne):
         parser.add_argument("job_id", type=str, help="Job ID")
         return parser
 
-    def take_action(self, args):
+    def take_action(self, parsed_args):
         """
         Take action for command line arguments
 
-        :param args: command line arguments
+        :param parsed_args: command line arguments
         :return: results of command
         """
         resource = "Job"
-        job_id = args.job_id
+        job_id = parsed_args.job_id
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(
@@ -659,15 +661,15 @@ class GetJobResults(ShowOne):
         parser.add_argument("job_id", type=str, help="Job ID")
         return parser
 
-    def take_action(self, args):
+    def take_action(self, parsed_args):
         """
         Take action for command line arguments
 
-        :param args: command line arguments
+        :param parsed_args: command line arguments
         :return: results of command
         """
         resource = "Job"
-        job_id = args.job_id
+        job_id = parsed_args.job_id
         json_result = {}
 
         # Validate argument: job_id
@@ -707,11 +709,11 @@ class GetJobs(Lister):
         parser = super().get_parser(prog_name)
         return parser
 
-    def take_action(self, args):
+    def take_action(self, parsed_args):
         """
         Take action for command line arguments
 
-        :param args: command line arguments
+        :param parsed_args: command line arguments
         """
         resource = "Job"
         header_list = ["job_id", "job_status", "backend", "job_type",
@@ -749,15 +751,15 @@ class CancelJobs(Command):
                             help="Answer yes for all question")
         return parser
 
-    def take_action(self, args):
+    def take_action(self, parsed_args):
         """
         Take action for command line arguments
 
-        :param args: command line arguments
+        :param parsed_args: command line arguments
         """
         resource = "Job"
-        job_ids = args.job_ids
-        assume_yes = args.assume_yes
+        job_ids = parsed_args.job_ids
+        assume_yes = parsed_args.assume_yes
 
         job_id_list = []
         if job_ids.lower() == "all":
@@ -829,15 +831,15 @@ class DeleteJobs(Command):
                             help="Answer yes for all question")
         return parser
 
-    def take_action(self, args):
+    def take_action(self, parsed_args):
         """
         Take action for command line arguments
 
-        :param args: command line arguments
+        :param parsed_args: command line arguments
         """
         resource = "Job"
-        job_ids = args.job_ids
-        assume_yes = args.assume_yes
+        job_ids = parsed_args.job_ids
+        assume_yes = parsed_args.assume_yes
 
         job_id_list = []
         if job_ids.lower() == "all":
@@ -907,15 +909,15 @@ class SetJobResults(Command):
         parser.add_argument("job_id", type=str, help="Job ID")
         return parser
 
-    def take_action(self, args):
+    def take_action(self, parsed_args):
         """
         Take action for command line arguments
 
-        :param args: command line arguments
+        :param parsed_args: command line arguments
         """
         resource = "Job"
-        job_id = args.job_id
-        results = args.results
+        job_id = parsed_args.job_id
+        results = parsed_args.results
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(

@@ -58,7 +58,13 @@ def version(
 
     response_info = {
         "version": Config.VERSION,
-        "api_version": Config.API_VERSION,
+        "api_version": Config.API_VERSION_V1,
+        "supported_api_versions": [
+            {
+                "version": Config.API_VERSION_V1,
+                "status": "CURRENT"
+            }
+        ],
         "platform_version": Config.PLATFORM_VERSION
     }
     return response_info

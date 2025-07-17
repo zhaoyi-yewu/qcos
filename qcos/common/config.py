@@ -26,7 +26,8 @@ class Config:
     # General configs
     VERSION = "1.0.0"
     DAEMON = False
-    API_VERSION = "v1"
+    API_VERSION_V1 = "v1"
+    API_VERSION = API_VERSION_V1
     PROGRAM_NAME = "WuYue-QCOS"
     PROGRAM_AUTHOR = "CMSS"
     PLATFORM_VERSION = f"五岳量子计算操作系统(qcos) v{VERSION}"

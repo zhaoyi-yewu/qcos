@@ -51,4 +51,5 @@ class VersionResponse(BaseModel):
     # version
     version: str
     api_version: str
+    supported_api_versions: list[dict]
     platform_version: str

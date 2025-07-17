@@ -17,9 +17,11 @@
 
 from qcos.common.constant import Constant
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
-from qcos.transpiler.transpiler_factory import TranspilerFactory
+
+from qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
 from tests.unittest.transpiler.comm import validate_gate_ir
 from tests.unittest.transpiler.comm import validate_non_gate_ir
+
 
 class TestTranspilerCmss:
     @classmethod
@@ -73,9 +75,10 @@ class TestTranspilerCmss:
         }
         trans_cfg_inst.set_qpu_cfg(qpu_config)
         trans_cfg_inst.set_tech_type(Constant.TECH_TYPE_NEUTRAL_ATOM)
-        factory = TranspilerFactory()
-        transpiler = factory.get_transpiler_by_type(Constant.TRANSPILER_CMSS)
-        basis_gate_list = transpiler.transpile(self.simple_data)
+        transpiler = TranspilerCmss()
+        expected_basis_gates = [Constant.SQ_GATE_X, Constant.SQ_GATE_Y]
+        basis_gate_list = transpiler.transpile(self.simple_data,
+                                               expected_basis_gates)
         assert len(basis_gate_list) == 2
         validate_gate_ir(basis_gate_list[0], 'rx', [27], 1, False)
         validate_non_gate_ir(basis_gate_list[1], "measure", [27], 0)

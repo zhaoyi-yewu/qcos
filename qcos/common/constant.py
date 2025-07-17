@@ -31,13 +31,71 @@ class Constant:
     MIN_DESCRIPTION_LENGTH = 1
     MAX_DESCRIPTION_LENGTH = 255
 
+    # Quantum Gates
+    # single-qubit gates
+    SQ_GATE_X = "x"
+    SQ_GATE_Y = "y"
+    SQ_GATE_Z = "z"
+    SQ_GATE_H = "h"
+    SQ_GATE_S = "s"
+    SQ_GATE_T = "t"
+    SQ_GATE_RX = "rx"
+    SQ_GATE_RY = "ry"
+    SQ_GATE_RZ = "rz"
+    SQ_GATE_SDG = "sdg"
+    SQ_GATE_TDG = "tdg"
+    SQ_GATE_U1 = "u1"
+    SQ_GATE_U2 = "u2"
+    SQ_GATE_U3 = "u3"
+    SQ_GATE_LIST = [
+        SQ_GATE_X,
+        SQ_GATE_Y,
+        SQ_GATE_Z,
+        SQ_GATE_H,
+        SQ_GATE_S,
+        SQ_GATE_T,
+        SQ_GATE_RX,
+        SQ_GATE_RY,
+        SQ_GATE_RZ,
+        SQ_GATE_SDG,
+        SQ_GATE_TDG,
+        SQ_GATE_U1,
+        SQ_GATE_U2,
+        SQ_GATE_U3
+    ]
+    # double-qubit gates
+    DQ_GATE_CH = "ch"
+    DQ_GATE_CRX = "crx"
+    DQ_GATE_CRY = "cry"
+    DQ_GATE_CRZ = "crz"
+    DQ_GATE_CX = "cx"
+    DQ_GATE_CY = "cy"
+    DQ_GATE_CZ = "cz"
+    DQ_GATE_LIST = [
+        DQ_GATE_CH,
+        DQ_GATE_CRX,
+        DQ_GATE_CRY,
+        DQ_GATE_CRZ,
+        DQ_GATE_CX,
+        DQ_GATE_CY,
+        DQ_GATE_CZ
+    ]
+    # triple-qubit gates
+    TQ_GATE_CCX = "ccx"
+    TQ_GATE_LIST = [
+        TQ_GATE_CCX
+    ]
+    # all gate list
+    ALL_GATE_LIST = SQ_GATE_LIST + DQ_GATE_LIST + TQ_GATE_LIST
+    ALL_GATES = "all"
+
     # Drivers
-    DRIVER_DUMMY = "DriverDummy"
-    DRIVERS = set([DRIVER_DUMMY])  # autofilled during driver registration
+    DRIVER_DUMMY = "dummy"
+    DRIVERS = set()  # autofilled during driver registration
 
     # Transpiler
     TRANSPILER_CMSS = "cmss"
-    TRANSPILER_TYPES = [TRANSPILER_CMSS]
+    TRANSPILER_TYPES = set()  # autofilled during plugin registration
 
     # Quantum computer tech type
     TECH_TYPE_NEUTRAL_ATOM = "neutral_atom"
@@ -131,7 +189,7 @@ class Constant:
     # Shots
     DEFAULT_SHOTS = 1
     MIN_SHOTS = 1
-    MAX_SHOTS = 1000
+    MAX_SHOTS = 10240
 
     # Qubits
     DEFAULT_QUBITS = 1

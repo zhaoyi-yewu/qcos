@@ -18,13 +18,12 @@
 import importlib
 import time
 
-from prefect import flow, task, runtime
+from prefect import flow, task
 from loguru import logger
 
 from qcos.common.constant import Constant
 from qcos.common.library import Library
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
-from qcos.transpiler.transpiler_factory import TranspilerFactory
 
 # 配置 Loguru
 # pylint: disable=duplicate-code
@@ -67,22 +66,46 @@ def init_driver(driver_info):
 
 
 @task(persist_result=False)
-def cmss_transpiler(job_info):
+def init_transpiler(transpiler_class_info, transpiler_info):
     """
-    CMSS transpiler
+    Init transpiler instance
 
-    :param job_info: job info
+    :param transpiler_class_info: transpiler class info
+    :param transpiler_info: transpiler info
+    :return: transpiler
+    """
+
+    try:
+        transpiler_module = importlib.import_module(
+            transpiler_class_info["module_name"])
+        transpiler_class = getattr(transpiler_module,
+                                   transpiler_class_info["class_name"])
+        transpiler = transpiler_class()
+        if transpiler_info:
+            transpiler.update_transpiler_info(transpiler_info)
+        return {"transpiler": transpiler, "error": None}
+    except Exception as e:
+        return {"transpiler": None, "error": ValueError(str(e))}
+
+
+@task(persist_result=False)
+def transpile(job_data, driver, transpiler):
+    """
+    transpile
+
+    :param job_data: job data
+    :param driver: driver
+    :param transpiler: transpiler
     :return basis gate list
     """
     # load qpu configs
 
     num_qubits = -1
     try:
-        factory = TranspilerFactory()
-        transpiler = factory.get_transpiler_by_type(Constant.TRANSPILER_CMSS)
-        raw_qasm = job_info['source_code'][0]
+        raw_qasm = job_data['source_code'][0]
         logger.info(f"raw_qasm: {raw_qasm}")
-        basis_gate_list = transpiler.transpile(raw_qasm)
+        expect_basis_gates = driver.get_supported_basis_gates()
+        basis_gate_list = transpiler.transpile(raw_qasm, expect_basis_gates)
         num_qubits = transpiler.num_qubits
         logger.info(f"final basis_gate_list: {basis_gate_list}")
         return {"basis_gate_list": basis_gate_list, "num_qubits": num_qubits,
@@ -105,9 +128,10 @@ def run_driver(job_info, driver, num_qubits, data):
     """
 
     try:
-        job_id = job_info["job_id"]
-        shots = job_info["data"].get("shots", Constant.DEFAULT_SHOTS)
-        dry_run = job_info["data"].get("dry_run", False)
+        job_data = job_info["data"]
+        job_id = job_data["job_id"]
+        shots = job_data.get("shots", Constant.DEFAULT_SHOTS)
+        dry_run = job_data.get("dry_run", False)
         results = None
         job_status = None
         end_date = None
@@ -154,7 +178,7 @@ def job_callback(flow, flow_run, state):
     :param flow_run: flow run
     :param state: flow state
     """
-    job_id = flow_run.id
+    job_id = flow_run.name  # use name as job uuid
     parameters = flow_run.parameters
     results = flow_run.state.result()
     is_job_callback = False
@@ -195,10 +219,9 @@ def job_flow(job_info):
     transpiler_profiling_start = 0
     transpiler_profiling_end = 0
     job_results = {"metadata": {}, "profiling": {}, "results": None}
-    job_id = runtime.flow_run.id
-    job_info["job_id"] = job_id
-    data = job_info["data"]
-    profiling_types = data.get("profiling", [])
+    job_data = job_info["data"]
+    job_id = job_data["job_id"]
+    profiling_types = job_data.get("profiling", [])
     profiling_types = [] if profiling_types is None else profiling_types
     logger.info(f"Processing work flow: job_engine. "
                 f"job_id: {job_id}, job_info: {job_info}")
@@ -209,34 +232,52 @@ def job_flow(job_info):
     if driver_task_result["error"]:
         raise driver_task_result["error"]
     driver = driver_task_result["driver"]
+
     if driver.enable_transpiler:
-        # choose transpiler
-        if driver.transpiler == Constant.TRANSPILER_CMSS:
-            if Constant.PROFILING_TYPE_TRANSPILER in profiling_types:
-                transpiler_profiling_start = time.time()
-            transpile_task_results = cmss_transpiler.submit(
-                data, wait_for=[init_driver])
-            if Constant.PROFILING_TYPE_TRANSPILER in profiling_types:
-                transpiler_profiling_end = time.time()
-            _transpile_task_results = transpile_task_results.result()
-            num_qubits = _transpile_task_results.get("num_qubits", -1)
-            job_results["num_qubits"] = num_qubits
-            err_msg = _transpile_task_results.get("error", None)
-            if err_msg:
-                raise err_msg
-            transpile_results = _transpile_task_results["basis_gate_list"]
+        # init transpiler
+        future_transpiler = init_transpiler.submit(
+            job_info["transpiler"],
+            job_data.get("transpiler_info", None))
+        transpiler_task_result = future_transpiler.result()
+        if transpiler_task_result["error"]:
+            raise transpiler_task_result["error"]
+        transpiler = transpiler_task_result["transpiler"]
+
+        # transpile codes
+        if Constant.PROFILING_TYPE_TRANSPILER in profiling_types:
+            transpiler_profiling_start = time.time()
+        transpile_task_results = transpile.submit(
+            job_data, driver, transpiler,
+            wait_for=[init_driver, init_transpiler])
+        if Constant.PROFILING_TYPE_TRANSPILER in profiling_types:
+            transpiler_profiling_end = time.time()
+
+        # get transpile results
+        _transpile_task_results = transpile_task_results.result()
+        num_qubits = _transpile_task_results.get("num_qubits", -1)
+        job_results["num_qubits"] = num_qubits
+
+        # error handling
+        err_msg = _transpile_task_results.get("error", None)
+        if err_msg:
+            raise err_msg
+        transpile_results = _transpile_task_results["basis_gate_list"]
 
     # call run() in driver
     run_driver_task_result = None
     if driver.enable_transpiler:
         run_driver_task_result = run_driver.submit(
             job_info, driver, num_qubits, transpile_results,
-            wait_for=[cmss_transpiler])
+            wait_for=[transpile])
     else:
         run_driver_task_result = run_driver.submit(
-            job_info, driver, num_qubits, data,
+            job_info, driver, num_qubits, job_data,
             wait_for=[init_driver])
+
+    # get results
     task_result = run_driver_task_result.result()
+
+    # error handling
     error = task_result["error"]
     if error:
         raise error
