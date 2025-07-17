@@ -25,16 +25,6 @@ from qcos.common.library import Library
 from qcos.drivers.driver_base import DriverBase
 
 
-# 配置 Loguru
-# pylint: disable=duplicate-code
-logger.add(
-    Constant.PREFECT_JOB_LOG_PATH,
-    rotation=Constant.PREFECT_JOB_LOG_ROTATION,
-    retention=Constant.PREFECT_JOB_LOG_RETENTION,
-    format=Constant.PREFECT_JOB_LOG_FORMAT
-)
-
-
 class DriverDummy(DriverBase):
     """
     测试驱动
@@ -129,8 +119,8 @@ class DriverDummy(DriverBase):
         """
         # pylint: disable=duplicate-code
         logger.info(f"job_id: {job_id}, shots: {shots}, "
-                        f"num_qubits: {num_qubits}, "
-                        f"data_type: {data_type}, data: {data}")
+                    f"num_qubits: {num_qubits}, "
+                    f"data_type: {data_type}, data: {data}")
         self.set_status(self.DRIVER_STATUS_BUSY)
         # dummy driver results
         result = self.get_fake_results(num_qubits, shots)

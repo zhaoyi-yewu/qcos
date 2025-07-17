@@ -20,15 +20,6 @@ from loguru import logger
 from qcos.common.constant import Constant
 from qcos.drivers.driver_base import DriverBase
 
-# 配置 Loguru
-# pylint: disable=duplicate-code
-logger.add(
-    Constant.PREFECT_JOB_LOG_PATH,
-    rotation=Constant.PREFECT_JOB_LOG_ROTATION,
-    retention=Constant.PREFECT_JOB_LOG_RETENTION,
-    format=Constant.PREFECT_JOB_LOG_FORMAT
-)
-
 
 class DriverPassthrough(DriverBase):
     """
