@@ -45,7 +45,7 @@ class DriverHanyuan1(DriverBase):
     """
 
     verbose = False
-    
+
     def __init__(self):
         super().__init__()
         self.version = "0.0.1"
@@ -143,7 +143,8 @@ class DriverHanyuan1(DriverBase):
         self.init_task(ip_address, port)
 
         # 2、提交任务
-        success, reason, text, result = self.submit_task(job_id, num_qubits, data, data_type, shots)
+        success, reason, text, result = (
+            self.submit_task(job_id, num_qubits, data, data_type, shots))
         if not success:
             logger.error(f"任务提交真机失败: {reason}")
             results = {"error": f"任务提交真机失败: {reason}"}
@@ -190,7 +191,6 @@ class DriverHanyuan1(DriverBase):
 
         api_version = "v1"
         self.base_url = f"http://{ip_address}:{port}/api/{api_version}/job"
- 
 
     @staticmethod
     def print_api_response(status_code, reason, text, result=None):
@@ -205,7 +205,7 @@ class DriverHanyuan1(DriverBase):
         if DriverHanyuan1.verbose:
             print(f"Response: status_code: {status_code}, reason: {reason}, "
                   f"text: {text}, result: {result}")
-    
+
     @staticmethod
     def call_json_rpc(url, method_name, data=None, params=None):
         """
@@ -223,11 +223,12 @@ class DriverHanyuan1(DriverBase):
         result = None
         try:
             jsonrpc_data = request(method_name, params={"body": data})
-            
+
             status_code, reason, text, response_obj = Library.call_http_api(
                 url, method=HttpMethod.POST, json=jsonrpc_data,
-                params=params, func_name=method_name, debug=DriverHanyuan1.verbose)
-            
+                params=params, func_name=method_name,
+                debug=DriverHanyuan1.verbose)
+
             # 解析Response对象获取JSON数据
             if response_obj and hasattr(response_obj, 'json'):
                 try:
@@ -237,7 +238,7 @@ class DriverHanyuan1(DriverBase):
                     result = None
             else:
                 result = None
-                
+
         except requests.exceptions.ConnectionError as ce:
             status_code = -1
             reason = f"Connection error: {str(ce)}"
@@ -247,8 +248,8 @@ class DriverHanyuan1(DriverBase):
         DriverHanyuan1.print_api_response(status_code, reason, text, result)
         return status_code, reason, text, result
 
-    def submit_task(self, job_id: str, num_qubits: int, data: list, data_type: str,
-                    shots: int) -> tuple:
+    def submit_task(self, job_id: str, num_qubits: int, data: list,
+                    data_type: str, shots: int) -> tuple:
         """
         提交任务执行
 
@@ -261,7 +262,8 @@ class DriverHanyuan1(DriverBase):
         """
         try:
             # 处理数据格式
-            gate_list = data.get('basis_gate_list', data) if isinstance(data, dict) else data
+            gate_list = data.get('basis_gate_list', data) \
+                if isinstance(data, dict) else data
 
             processed_data = []
             for gate in gate_list:
@@ -285,13 +287,13 @@ class DriverHanyuan1(DriverBase):
             method_name = "submit_task"
             status_code, reason, text, result = self.call_json_rpc(
                 self.base_url, method_name, request_data)
-            
+
             # 检查JSON-RPC响应
             if status_code == 200 and result:
                 if isinstance(result, dict):
                     if "error" in result:
                         logger.error(f"JSON-RPC错误: {result['error']}")
-                        return False, f"JSON-RPC错误", text, result
+                        return False, "JSON-RPC错误", text, result
                     elif "result" in result:
                         return True, reason, text, result
                     else:
@@ -351,7 +353,7 @@ class DriverHanyuan1(DriverBase):
                                 # 任务失败
                                 logger.error(f"任务 {job_id} 执行失败: {task_response.get('message', '未知错误')}")
                                 logger.error(f"任务 {job_id} 执行失败: "
-                                            f"{task_response.get('message', '未知错误')}")
+                                    f"{task_response.get('message', '未知错误')}")
                                 self._final_response = result
                                 return True
                             elif status == "not_found":
