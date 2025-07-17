@@ -391,6 +391,10 @@ class TaskFlowManager(ABC):
         flow_runs = await self._client.read_flow_runs()
         for flow_run in flow_runs:
             id = flow_run.name
+            is_uuid, _ = Library.validate_values_uuid(
+                id, "job_id")
+            if not is_uuid:
+                continue
             flow_state = flow_run.state.name.upper()
             state = self.transform_to_qcos_state(flow_state)
             parameters = flow_run.parameters
