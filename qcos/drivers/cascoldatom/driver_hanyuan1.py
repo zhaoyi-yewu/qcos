@@ -253,7 +253,7 @@ class DriverHanyuan1(DriverBase):
         提交任务执行
 
         :param job_id: 任务ID
-        :param qubit_num: 量子比特数量
+        :param num_qubits: 量子比特数量
         :param data: 数据
         :param data_type: 数据类型
         :param shots: 执行次数
@@ -291,7 +291,7 @@ class DriverHanyuan1(DriverBase):
                 if isinstance(result, dict):
                     if "error" in result:
                         logger.error(f"JSON-RPC错误: {result['error']}")
-                        return False, f"JSON-RPC错误: {result['error']}", text, result
+                        return False, f"JSON-RPC错误", text, result
                     elif "result" in result:
                         return True, reason, text, result
                     else:
@@ -350,6 +350,8 @@ class DriverHanyuan1(DriverBase):
                             elif status == "failed":
                                 # 任务失败
                                 logger.error(f"任务 {job_id} 执行失败: {task_response.get('message', '未知错误')}")
+                                logger.error(f"任务 {job_id} 执行失败: "
+                                            f"{task_response.get('message', '未知错误')}")
                                 self._final_response = result
                                 return True
                             elif status == "not_found":
