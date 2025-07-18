@@ -119,20 +119,21 @@ cd build-scripts
 [作业命令]
 * 提交作业
 1. 测试用dummy驱动
-qcos-cli submit-job --code-type qasm --shots 10 --backend dummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.1 使用profiling
-qcos-cli submit-job --code-type qasm --shots 10 --profiling transpiler scheduler --backend dummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --profiling transpiler scheduler --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.2 使用callbacks进行回调
-qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend dummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.3 指定job-id
-qcos-cli submit-job --job-id b9bf209b-309a-432c-a1ae-000000000000 --code-type qasm --shots 10 --backend dummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --job-id 00000000-0000-4000-8000-000000000001 --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
-qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\ncreg c[1];\nx q[0];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/simple-qasm.qasm
 3. 中科酷原-汉原1 中性原子驱动, 真实运行
-qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\ncreg c[1];\nx q[0];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/qasm/simple-qasm.qasm
 4. 玻色量子-光量子伊辛机, 真实运行
-qcos-cli submit-job --code-type qubo --backend tiangong100 '"[[-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,8],[0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0],[0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0],[0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0],[0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0],[0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0],[0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0],[0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0],[0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0],[0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8],[0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12]]"'
+qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.json
+qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.csv
 
 * 获取作业状态
 qcos-cli get-job-status 00000000-0000-4000-8000-000000000001

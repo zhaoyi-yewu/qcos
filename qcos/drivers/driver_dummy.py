@@ -38,7 +38,8 @@ class DriverDummy(DriverBase):
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
-        self.supported_basis_gates = [Constant.SQ_GATE_X, Constant.SQ_GATE_Y]
+        self.supported_basis_gates = [Constant.SINGLE_QUBIT_GATE_X,
+                                      Constant.SINGLE_QUBIT_GATE_Y]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_merge = False
         self.default_results_type = self.DATA_TYPE_GATE_SEQUENCE

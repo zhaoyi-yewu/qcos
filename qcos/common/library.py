@@ -18,6 +18,7 @@
 import aiohttp
 import asyncio
 import copy
+import csv
 import fnmatch
 import importlib
 import inspect
@@ -222,6 +223,35 @@ class Library:
         if reg.findall(str):
             return True
         return False
+
+    @staticmethod
+    def read_file(file_path, replace_pattern=None, customer_format=None):
+        """
+        Read text file
+
+        :param file_path: file path
+        :param replace_pattern: replace pattern
+        :param customer_format: customer format
+        :return: file content
+        """
+        content = None
+        with open(file_path, "r", encoding="utf-8") as file:
+            content = file.read()
+        if replace_pattern:
+            content = content.format(**replace_pattern)
+        if customer_format:
+            for k, v in customer_format.items():
+                content = content.replace(k, v)
+        return content
+
+    @staticmethod
+    def read_csv_file(file_path):
+        content = []
+        with open(file_path, "r", encoding="utf-8") as csv_file:
+            csv_reader = csv.reader(csv_file)
+            for row in csv_reader:
+                content.append([int(value) for value in row])
+        return json.dumps(content)
 
     @staticmethod
     def read_toml_file(file_path: str):

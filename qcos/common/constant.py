@@ -27,66 +27,73 @@ class Constant:
     CODE_TYPES = [CODE_TYPE_QASM, CODE_TYPE_QASM2, CODE_TYPE_QASM3,
                   CODE_TYPE_QUBO]
 
-    # Description string length
+    # File types
+    FILE_TYPE_QASM = ".qasm"
+    FILE_TYPE_JSON = ".json"
+    FILE_TYPE_CSV = ".csv"
+
+    # Description length
     MIN_DESCRIPTION_LENGTH = 1
     MAX_DESCRIPTION_LENGTH = 255
 
     # Quantum Gates
     # single-qubit gates
-    SQ_GATE_X = "x"
-    SQ_GATE_Y = "y"
-    SQ_GATE_Z = "z"
-    SQ_GATE_H = "h"
-    SQ_GATE_S = "s"
-    SQ_GATE_T = "t"
-    SQ_GATE_RX = "rx"
-    SQ_GATE_RY = "ry"
-    SQ_GATE_RZ = "rz"
-    SQ_GATE_SDG = "sdg"
-    SQ_GATE_TDG = "tdg"
-    SQ_GATE_U1 = "u1"
-    SQ_GATE_U2 = "u2"
-    SQ_GATE_U3 = "u3"
-    SQ_GATE_LIST = [
-        SQ_GATE_X,
-        SQ_GATE_Y,
-        SQ_GATE_Z,
-        SQ_GATE_H,
-        SQ_GATE_S,
-        SQ_GATE_T,
-        SQ_GATE_RX,
-        SQ_GATE_RY,
-        SQ_GATE_RZ,
-        SQ_GATE_SDG,
-        SQ_GATE_TDG,
-        SQ_GATE_U1,
-        SQ_GATE_U2,
-        SQ_GATE_U3
+    SINGLE_QUBIT_GATE_X = "x"
+    SINGLE_QUBIT_GATE_Y = "y"
+    SINGLE_QUBIT_GATE_Z = "z"
+    SINGLE_QUBIT_GATE_H = "h"
+    SINGLE_QUBIT_GATE_S = "s"
+    SINGLE_QUBIT_GATE_T = "t"
+    SINGLE_QUBIT_GATE_RX = "rx"
+    SINGLE_QUBIT_GATE_RY = "ry"
+    SINGLE_QUBIT_GATE_RZ = "rz"
+    SINGLE_QUBIT_GATE_SDG = "sdg"
+    SINGLE_QUBIT_GATE_TDG = "tdg"
+    SINGLE_QUBIT_GATE_U1 = "u1"
+    SINGLE_QUBIT_GATE_U2 = "u2"
+    SINGLE_QUBIT_GATE_U3 = "u3"
+    SINGLE_QUBIT_GATE_LIST = [
+        SINGLE_QUBIT_GATE_X,
+        SINGLE_QUBIT_GATE_Y,
+        SINGLE_QUBIT_GATE_Z,
+        SINGLE_QUBIT_GATE_H,
+        SINGLE_QUBIT_GATE_S,
+        SINGLE_QUBIT_GATE_T,
+        SINGLE_QUBIT_GATE_RX,
+        SINGLE_QUBIT_GATE_RY,
+        SINGLE_QUBIT_GATE_RZ,
+        SINGLE_QUBIT_GATE_SDG,
+        SINGLE_QUBIT_GATE_TDG,
+        SINGLE_QUBIT_GATE_U1,
+        SINGLE_QUBIT_GATE_U2,
+        SINGLE_QUBIT_GATE_U3
     ]
-    # double-qubit gates
-    DQ_GATE_CH = "ch"
-    DQ_GATE_CRX = "crx"
-    DQ_GATE_CRY = "cry"
-    DQ_GATE_CRZ = "crz"
-    DQ_GATE_CX = "cx"
-    DQ_GATE_CY = "cy"
-    DQ_GATE_CZ = "cz"
-    DQ_GATE_LIST = [
-        DQ_GATE_CH,
-        DQ_GATE_CRX,
-        DQ_GATE_CRY,
-        DQ_GATE_CRZ,
-        DQ_GATE_CX,
-        DQ_GATE_CY,
-        DQ_GATE_CZ
+    # two-qubit gates
+    TWO_QUBIT_GATE_CH = "ch"
+    TWO_QUBIT_GATE_CRX = "crx"
+    TWO_QUBIT_GATE_CRY = "cry"
+    TWO_QUBIT_GATE_CRZ = "crz"
+    TWO_QUBIT_GATE_CX = "cx"
+    TWO_QUBIT_GATE_CY = "cy"
+    TWO_QUBIT_GATE_CZ = "cz"
+    TWO_QUBIT_GATE_LIST = [
+        TWO_QUBIT_GATE_CH,
+        TWO_QUBIT_GATE_CRX,
+        TWO_QUBIT_GATE_CRY,
+        TWO_QUBIT_GATE_CRZ,
+        TWO_QUBIT_GATE_CX,
+        TWO_QUBIT_GATE_CY,
+        TWO_QUBIT_GATE_CZ
     ]
-    # triple-qubit gates
-    TQ_GATE_CCX = "ccx"
-    TQ_GATE_LIST = [
-        TQ_GATE_CCX
+    # three-qubit gates
+    THREE_QUBIT_GATE_CCX = "ccx"
+    THREE_QUBIT_GATE_LIST = [
+        THREE_QUBIT_GATE_CCX
     ]
     # all gate list
-    ALL_GATE_LIST = SQ_GATE_LIST + DQ_GATE_LIST + TQ_GATE_LIST
+    ALL_GATE_LIST = (SINGLE_QUBIT_GATE_LIST +
+                     TWO_QUBIT_GATE_LIST +
+                     THREE_QUBIT_GATE_LIST)
     ALL_GATES = "all"
 
     # Drivers

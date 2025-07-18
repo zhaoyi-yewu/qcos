@@ -76,7 +76,8 @@ class TestTranspilerCmss:
         trans_cfg_inst.set_qpu_cfg(qpu_config)
         trans_cfg_inst.set_tech_type(Constant.TECH_TYPE_NEUTRAL_ATOM)
         transpiler = TranspilerCmss()
-        expected_basis_gates = [Constant.SQ_GATE_X, Constant.SQ_GATE_Y]
+        expected_basis_gates = [Constant.SINGLE_QUBIT_GATE_X,
+                                Constant.SINGLE_QUBIT_GATE_Y]
         basis_gate_list = transpiler.transpile(self.simple_data,
                                                expected_basis_gates)
         assert len(basis_gate_list) == 2

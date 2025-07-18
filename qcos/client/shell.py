@@ -18,8 +18,10 @@
 import argcomplete
 import argparse
 import json
+import os
 import sys
 
+from cliff import help
 from cliff.app import App
 from cliff.command import Command
 from cliff.commandmanager import CommandManager
@@ -42,20 +44,21 @@ QCOS commands:
 [Job commands]
 * Submit Job
 1. 测试用dummy驱动
-qcos-cli submit-job --code-type qasm --shots 10 --backend dummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.1 使用profiling
-qcos-cli submit-job --code-type qasm --shots 10 --profiling transpiler scheduler --backend dummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --profiling transpiler scheduler --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.2 使用callbacks进行回调
-qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend dummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.3 指定job-id
-qcos-cli submit-job --job-id b9bf209b-309a-432c-a1ae-000000000000 --code-type qasm --shots 10 --backend dummy '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\nmeasure q -> c;\n"'
+qcos-cli submit-job --job-id 00000000-0000-4000-8000-000000000001 --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
-qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\ncreg c[1];\nx q[0];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/simple-qasm.qasm
 3. 中科酷原-汉原1 中性原子驱动, 真实运行
-qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 '"OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\ncreg c[1];\nx q[0];\nmeasure q -> c;\n"'
+qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/qasm/simple-qasm.qasm
 4. 玻色量子-光量子伊辛机, 真实运行
-qcos-cli submit-job --code-type qubo --backend tiangong100 '"[[-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,8],[0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0],[0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0],[0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0],[0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0,0],[0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0,0],[0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0,0],[0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0,0],[0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8,0],[0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0,8],[0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12,8],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-12]]"'
+qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.json
+qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.csv
 
 * Get job status
 qcos-cli get-job-status 00000000-0000-4000-8000-000000000001
@@ -114,7 +117,7 @@ class QcosShell(App):
             description=description,
             version=version,
             command_manager=command_manager,
-            deferred_help=False
+            deferred_help=True
         )
         self.client = None
 
@@ -122,6 +125,8 @@ class QcosShell(App):
         super().initialize_app(argv)
         self.client = Client(api_listen_ip=self.options.api_host,
                              api_port=self.options.api_port)
+        # override cliff help.HelpAction
+        help.HelpAction = HelpAction
 
     def build_option_parser(
             self, description, version, argparse_kwargs=None):
@@ -182,21 +187,12 @@ class QcosShell(App):
             default=Config.API_SERVER_PORT,
             help=f"Specify api server port. Default: {Config.API_SERVER_PORT}",
         )
-        if self.deferred_help:
-            parser.add_argument(
-                "-h", "--help",
-                dest="deferred_help",
-                action="store_true",
-                help="Show help message and exit.",
-            )
-        else:
-            parser.add_argument(
-                "-h", "--help",
-                action=HelpAction,
-                nargs=0,
-                default=self,  # tricky
-                help="Show help message and exit.",
-            )
+        parser.add_argument(
+            "-h", "--help",
+            dest="deferred_help",
+            action="store_true",
+            help="Show help message and exit.",
+        )
         return parser
 
 
@@ -210,7 +206,6 @@ class HelpAction(argparse.Action):
     The commands are determined by checking the CommandManager
     instance, passed in as the "default" value for the action.
     """
-
     def __call__(self, parser, namespace, values, option_string=None):
         grouped_cmds = {}
         max_len = 0
@@ -233,7 +228,7 @@ class HelpAction(argparse.Action):
                 name = f'\033[36m{name}\033[39m'
                 app.stdout.write(f"  {name.ljust(max_len)}  {one_liner}\n")
             app.stdout.write("\n")
-        sys.exit(0)
+        raise help.HelpExit()
 
 
 class CommandHelper:
@@ -525,6 +520,13 @@ class SubmitJob(Command):
 
     group = QcosShell.CMD_GROUP_JOB
 
+    @staticmethod
+    def validate_filepath(file_path):
+        if not os.path.exists(file_path):
+            raise argparse.ArgumentTypeError(f"Error: file: {file_path} "
+                                             f"does not exist")
+        return file_path
+
     def get_parser(self, prog_name):
         """
         Get parser for this command
@@ -581,8 +583,13 @@ class SubmitJob(Command):
                             type=str, help="Callbacks list")
         parser.add_argument("-D", "--dry-run", dest="dry_run",
                             action="store_true", help="Dry run")
-        parser.add_argument("source_code", type=str,
-                            help="Source code")
+        parser.add_argument("-f", "--source-code-file",
+                            dest="source_code_files",
+                            nargs="+",
+                            type=self.validate_filepath,
+                            required=True,
+                            help="Source code file, files can be specified "
+                                 "multiple times")
         return parser
 
     def take_action(self, parsed_args):
@@ -593,7 +600,6 @@ class SubmitJob(Command):
         """
         resource = self.group
         dry_run = parsed_args.dry_run
-        source_code = parsed_args.source_code
         code_type = parsed_args.code_type
         job_id = parsed_args.job_id
         job_type = parsed_args.job_type
@@ -607,25 +613,25 @@ class SubmitJob(Command):
         profiling = parsed_args.profiling
         callbacks = parsed_args.callbacks
 
-        # convert source_code
-        source_code_obj = None
-        source_code_list = None
-        try:
-            source_code_obj = json.loads(source_code)
-        except json.decoder.JSONDecodeError as exc:
-            raise errors.InvalidArguments("Invalid argument: source_code") \
-                from exc
+        # Validate argument: code_type
+        CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
+            code_type, "code_type", Constant.CODE_TYPES))
 
-        if isinstance(source_code_obj, list):
-            source_code_list = source_code_obj
-        elif isinstance(source_code_obj, str):
-            source_code_list = [source_code_obj]
+        # read source code files
+        source_code_list = []
+        if parsed_args.source_code_files:
+            for source_code_file in parsed_args.source_code_files:
+                success, err_msg, file_content = get_content_by_type(
+                    code_type, source_code_file)
+                if not success:
+                    raise errors.InvalidArguments(err_msg)
+                source_code_list.append(file_content)
 
         CommandHelper.handle_invalid_arguments(Library.validate_schema(
             source_code_list, args_schema.SOURCE_CODE_SCHEMA))
         if not source_code_list:
             raise errors.InvalidArguments(
-                "Empty argument:source_code is not allowed")
+                "Empty argument: source_code_files is not allowed")
 
         # Validate argument: job_id
         if job_id:
@@ -635,10 +641,6 @@ class SubmitJob(Command):
         # Validate content of source_code
         CommandHelper.handle_invalid_arguments(Library.validate_values_list(
             source_code_list, "source_code", str, allow_none=False))
-
-        # Validate argument: code_type
-        CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
-            code_type, "code_type", Constant.CODE_TYPES))
 
         # Validate argument: job_type
         CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
@@ -1089,6 +1091,75 @@ def set_debug_option(args):
     namespace, _args = parser.parse_known_args(args)
     if namespace.debug:
         Client.verbose = True
+
+
+# Source code file information
+SOURCE_CODE_FILE_INFO = {
+    Constant.CODE_TYPE_QASM: [{
+        "file_type": Constant.FILE_TYPE_QASM,
+        "parser": Library.read_file
+    }],
+    Constant.CODE_TYPE_QASM2: [{
+        "file_type": Constant.FILE_TYPE_QASM,
+        "parser": Library.read_file
+    }],
+    Constant.CODE_TYPE_QASM3: [{
+        "file_type": Constant.FILE_TYPE_QASM,
+        "parser": Library.read_file
+    }],
+    Constant.CODE_TYPE_QUBO: [{
+        "file_type": Constant.FILE_TYPE_JSON,
+        "parser": Library.read_file
+    },{
+        "file_type": Constant.FILE_TYPE_CSV,
+        "parser": Library.read_csv_file
+    }],
+}
+
+
+def get_content_by_type(code_type, file_path):
+    """
+    Get file content by file type
+
+    :param code_type: code type
+    :param file_path: file path
+    :return: file content
+    """
+
+    def get_file_types():
+        """
+        Get file types
+
+        :return: file types
+        """
+        file_types = set()
+        for _, code_type_info_list in SOURCE_CODE_FILE_INFO.items():
+            for code_type_info in code_type_info_list:
+                file_types.add(code_type_info["file_type"])
+        return sorted(file_types)
+
+    success = True
+    err_msg = None
+    code_type_info_list = SOURCE_CODE_FILE_INFO.get(code_type, None)
+    if not code_type_info_list:
+        success = False
+        err_msg = f"Unsupported code type: {code_type}. Valid code_types: " \
+                  f"{', '.join(SOURCE_CODE_FILE_INFO.keys())}"
+        return success, err_msg, None
+    file_name, file_ext = os.path.splitext(file_path)
+    parser = None
+    for code_type_info in code_type_info_list:
+        file_type = code_type_info.get("file_type", "")
+        if file_ext.lower() == file_type.lower():
+            parser = code_type_info.get("parser", None)
+            break
+    if not parser:
+        success = False
+        err_msg = f"Unsupported file extension: {file_ext}. " \
+                  f"Valid code_types: {', '.join(get_file_types())}"
+        return success, err_msg, None
+    file_content = parser(file_path)
+    return success, err_msg, file_content
 
 
 # Application needs to be run with command line to parse.
