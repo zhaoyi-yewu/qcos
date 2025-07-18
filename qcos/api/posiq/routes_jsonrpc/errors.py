@@ -97,6 +97,17 @@ def handle_job_error(err_msg):
     raise JobError(data={"details": err_msg})
 
 
+@staticmethod
+def handle_device_error(err_msg):
+    """
+    Handle device error
+
+    :param err_msg: error msg
+    """
+
+    raise DeviceError(data={"details": err_msg})
+
+
 class UnknownError(jsonrpc.BaseError):
     """
     Unknown Error
@@ -131,6 +142,20 @@ class JobError(jsonrpc.BaseError):
     """
     CODE = -10
     MESSAGE = "Job error"
+
+    class DataModel(BaseModel):
+        """
+        Data Model
+        """
+        details: str
+
+
+class DeviceError(jsonrpc.BaseError):
+    """
+    Device Error
+    """
+    CODE = -20
+    MESSAGE = "Device error"
 
     class DataModel(BaseModel):
         """

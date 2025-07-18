@@ -63,8 +63,8 @@ qcos-cli get-job-status 00000000-0000-4000-8000-000000000001
 * Get job results
 qcos-cli get-job-results 00000000-0000-4000-8000-000000000001
 
-* Get all job list
-qcos-cli get-jobs
+* List all jobs
+qcos-cli list-jobs
 
 * Cancel job
 qcos-cli cancel-jobs 00000000-0000-4000-8000-000000000001
@@ -78,11 +78,18 @@ qcos-cli delete-jobs -y all
 qcos-cli set-job-results --results '[{"01":0}]' 00000000-0000-4000-8000-000000000001
 
 [System commands]
-* Ping command
+* Ping server
 qcos-cli ping 123
 
-* Version command
+* Get server version
 qcos-cli version
+
+[Device commands]
+* List devices
+qcos-cli list-devices
+
+* Get device details
+qcos-cli get-device dummy
 """
 
 
@@ -91,12 +98,23 @@ class QcosShell(App):
     QCOS shell
     """
 
+    CMD_GROUP_DEFAULT = "Default"
+    CMD_GROUP_DEVICE = "Device"
+    CMD_GROUP_JOB = "Job"
+    CMD_GROUP_SYSTEM = "System"
+    CMD_GROUPS = [
+        CMD_GROUP_DEFAULT,
+        CMD_GROUP_DEVICE,
+        CMD_GROUP_SYSTEM,
+        CMD_GROUP_JOB
+    ]
+
     def __init__(self, description, version, command_manager):
         super().__init__(
             description=description,
             version=version,
             command_manager=command_manager,
-            deferred_help=True
+            deferred_help=False
         )
         self.client = None
 
@@ -174,7 +192,7 @@ class QcosShell(App):
         else:
             parser.add_argument(
                 "-h", "--help",
-                action=help.HelpAction,
+                action=HelpAction,
                 nargs=0,
                 default=self,  # tricky
                 help="Show help message and exit.",
@@ -194,20 +212,27 @@ class HelpAction(argparse.Action):
     """
 
     def __call__(self, parser, namespace, values, option_string=None):
-        outputs = []
+        grouped_cmds = {}
         max_len = 0
         app = self.default
         parser.print_help(app.stdout)
-        app.stdout.write(f"\nCommands for API v{app.api_version}:\n")
+        app.stdout.write(f"\nCommands for API {Config.API_VERSION}:\n")
         command_manager = app.command_manager
         for name, ep in sorted(command_manager):
             factory = ep.load()
             cmd = factory(self, None)
             one_liner = cmd.get_description().split("\n")[0]
-            outputs.append((name, one_liner))
             max_len = max(len(name), max_len)
-        for (name, one_liner) in outputs:
-            app.stdout.write(f"  {name.ljust(max_len)}  {one_liner}\n")
+            group = getattr(cmd, "group", QcosShell.CMD_GROUP_DEFAULT)
+            if group not in grouped_cmds:
+                grouped_cmds[group] = []
+            grouped_cmds[group].append((name, one_liner.capitalize()))
+        for cmd_group in QcosShell.CMD_GROUPS:
+            app.stdout.write(f"  \033[33m[{cmd_group}]\033[39m\n")
+            for (name, one_liner) in grouped_cmds[cmd_group]:
+                name = f'\033[36m{name}\033[39m'
+                app.stdout.write(f"  {name.ljust(max_len)}  {one_liner}\n")
+            app.stdout.write("\n")
         sys.exit(0)
 
 
@@ -347,10 +372,87 @@ class CommandHelper:
         return results
 
 
+# Device commands
+class GetDevice(ShowOne):
+    """
+    Get device info
+    """
+
+    group = QcosShell.CMD_GROUP_DEVICE
+
+    def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument("driver_name", type=str,
+                            help="Device driver name")
+        return parser
+
+    def take_action(self, parsed_args):
+        """
+        Take action for command line arguments
+
+        :param parsed_args: command line arguments
+        """
+        resource = self.group
+        driver_name = parsed_args.driver_name
+
+        status_code, reason, text, result = self.app.client.get_device(
+            driver_name)
+        json_results = CommandHelper.check_results(
+            resource, "get_device", status_code, reason, text)
+        table_values = CommandHelper.get_table_data(json_results)
+        return table_values
+
+
+class GetDevices(Lister):
+    """
+    Get device list
+    """
+
+    group = QcosShell.CMD_GROUP_DEVICE
+
+    def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        """
+        Take action for command line arguments
+
+        :param parsed_args: command line arguments
+        """
+        resource = self.group
+        header_list = ["name", "driver", "enable", "version", "tech_type",
+                       "max_qubits", "transpiler", "description"]
+
+        status_code, reason, text, result = self.app.client.get_devices()
+        json_results = CommandHelper.check_results(
+            resource, "get_devices", status_code, reason, text)
+        table_values = CommandHelper.get_table_list_data(
+            json_results, header_list)
+        if not json_results:
+            print("No devices found")
+        return table_values
+
+
+# System commands
 class Ping(Command):
     """
     Ping-pong to verify the availability of the system
     """
+
+    group = QcosShell.CMD_GROUP_SYSTEM
 
     def get_parser(self, prog_name):
         """
@@ -371,7 +473,7 @@ class Ping(Command):
 
         :param parsed_args: command line arguments
         """
-        resource = "System"
+        resource = self.group
         message = parsed_args.message
 
         status_code, reason, text, result = self.app.client.ping(message)
@@ -384,6 +486,8 @@ class Version(Command):
     """
     Get server version
     """
+
+    group = QcosShell.CMD_GROUP_SYSTEM
 
     def get_parser(self, prog_name):
         """
@@ -401,7 +505,7 @@ class Version(Command):
 
         :param parsed_args: command line arguments
         """
-        resource = "System"
+        resource = self.group
 
         status_code, reason, text, result = self.app.client.version()
         json_results = CommandHelper.check_results(
@@ -413,10 +517,13 @@ class Version(Command):
         print(f"Platform version: {json_results['platform_version']}")
 
 
+# Job commands
 class SubmitJob(Command):
     """
     Submit job
     """
+
+    group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
         """
@@ -484,7 +591,7 @@ class SubmitJob(Command):
 
         :param parsed_args: command line arguments
         """
-        resource = "Job"
+        resource = self.group
         dry_run = parsed_args.dry_run
         source_code = parsed_args.source_code
         code_type = parsed_args.code_type
@@ -611,6 +718,8 @@ class GetJobStatus(ShowOne):
     Get job status
     """
 
+    group = QcosShell.CMD_GROUP_JOB
+
     def get_parser(self, prog_name):
         """
         Get parser for this command
@@ -629,7 +738,7 @@ class GetJobStatus(ShowOne):
         :param parsed_args: command line arguments
         :return: results of command
         """
-        resource = "Job"
+        resource = self.group
         job_id = parsed_args.job_id
 
         # Validate argument: job_id
@@ -650,6 +759,8 @@ class GetJobResults(ShowOne):
     Get job results
     """
 
+    group = QcosShell.CMD_GROUP_JOB
+
     def get_parser(self, prog_name):
         """
         Get parser for this command
@@ -668,7 +779,7 @@ class GetJobResults(ShowOne):
         :param parsed_args: command line arguments
         :return: results of command
         """
-        resource = "Job"
+        resource = self.group
         job_id = parsed_args.job_id
         json_result = {}
 
@@ -699,6 +810,8 @@ class GetJobs(Lister):
     Get jobs
     """
 
+    group = QcosShell.CMD_GROUP_JOB
+
     def get_parser(self, prog_name):
         """
         Get parser for this command
@@ -715,7 +828,7 @@ class GetJobs(Lister):
 
         :param parsed_args: command line arguments
         """
-        resource = "Job"
+        resource = self.group
         header_list = ["job_id", "job_status", "backend", "job_type",
                        "shots", "creation_date", "end_date"]
 
@@ -734,6 +847,8 @@ class CancelJobs(Command):
     """
     Cancel jobs
     """
+
+    group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
         """
@@ -757,7 +872,7 @@ class CancelJobs(Command):
 
         :param parsed_args: command line arguments
         """
-        resource = "Job"
+        resource = self.group
         job_ids = parsed_args.job_ids
         assume_yes = parsed_args.assume_yes
 
@@ -815,6 +930,8 @@ class DeleteJobs(Command):
     Delete jobs
     """
 
+    group = QcosShell.CMD_GROUP_JOB
+
     def get_parser(self, prog_name):
         """
         Get parser for this command
@@ -837,7 +954,7 @@ class DeleteJobs(Command):
 
         :param parsed_args: command line arguments
         """
-        resource = "Job"
+        resource = self.group
         job_ids = parsed_args.job_ids
         assume_yes = parsed_args.assume_yes
 
@@ -895,6 +1012,8 @@ class SetJobResults(Command):
     Set job results
     """
 
+    group = QcosShell.CMD_GROUP_JOB
+
     def get_parser(self, prog_name):
         """
         Get parser for this command
@@ -915,7 +1034,7 @@ class SetJobResults(Command):
 
         :param parsed_args: command line arguments
         """
-        resource = "Job"
+        resource = self.group
         job_id = parsed_args.job_id
         results = parsed_args.results
 
@@ -940,6 +1059,9 @@ class SetJobResults(Command):
 
 # Register commands
 command_manager = CommandManager("qcos")
+# device command
+command_manager.add_command("get-device", GetDevice)
+command_manager.add_command("list-devices", GetDevices)
 # system command
 command_manager.add_command("ping", Ping)
 command_manager.add_command("version", Version)
@@ -947,7 +1069,7 @@ command_manager.add_command("version", Version)
 command_manager.add_command("submit-job", SubmitJob)
 command_manager.add_command("get-job-status", GetJobStatus)
 command_manager.add_command("get-job-results", GetJobResults)
-command_manager.add_command("get-jobs", GetJobs)
+command_manager.add_command("list-jobs", GetJobs)
 command_manager.add_command("cancel-jobs", CancelJobs)
 command_manager.add_command("delete-jobs", DeleteJobs)
 command_manager.add_command("set-job-results", SetJobResults)

@@ -47,8 +47,8 @@ def ping(
 
 @system_api_v1.method()
 def version(
-    body: schemas.VersionRequest = None
-) -> schemas.VersionResponse:
+    body: schemas.GetVersionRequest = None
+) -> schemas.GetVersionResponse:
     """
     Get server version
 

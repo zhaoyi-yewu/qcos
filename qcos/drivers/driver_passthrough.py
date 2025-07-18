@@ -39,6 +39,7 @@ class DriverPassthrough(DriverBase):
         super().__init__()
         self.name = "passthrough"
         self.version = "0.0.1"
+        self.enable = False
         self.enable_transpiler = False
         self.supported_code_types = [
             Constant.CODE_TYPE_QUBO

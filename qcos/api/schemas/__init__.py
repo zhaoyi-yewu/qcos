@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from .device import (GetDevicesRequest,
+                     GetDeviceRequest, GetDeviceResponse)
 from .job import (SubmitJobRequest, SubmitJobResponse,
                   GetJobStatusRequest, GetJobStatusResponse,
                   GetJobResultsRequest, GetJobResultsResponse,
@@ -23,4 +25,4 @@ from .job import (SubmitJobRequest, SubmitJobResponse,
                   DeleteJobsRequest, DeleteJobsResponse,
                   SetJobResultsRequest, SetJobResultsResponse)
 from .system import (PingRequest, PongResponse,
-                     VersionRequest, VersionResponse)
+                     GetVersionRequest, GetVersionResponse)

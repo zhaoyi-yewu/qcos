@@ -39,6 +39,7 @@ class Client:
                  api_port=Config.API_SERVER_PORT):
         api_version = "v1"
         endpoint_url = f"http://{api_listen_ip}:{api_port}/{api_version}"
+        self.device_url = f"{endpoint_url}/device"
         self.job_url = f"{endpoint_url}/job"
         self.system_url = f"{endpoint_url}/system"
 
@@ -106,6 +107,39 @@ class Client:
         success, err_msg = results
         if success is False:
             raise errors.Exception("\n".join(err_msg))
+
+    # [Device]
+    def get_devices(self):
+        """
+        Get device list
+
+        :return: Device list message
+        """
+        method_name = "get_devices"
+
+        # construct data and call json rpc
+        status_code, reason, text, result = Client.call_json_rpc(
+            self.device_url, method_name, data=None)
+        return status_code, reason, text, result
+
+    def get_device(self, driver_name):
+        """
+        Get device info
+
+        :param driver_name: driver name
+        :return: device info
+        """
+        method_name = "get_device"
+
+        # construct data and call json rpc
+        data = {
+            "name": driver_name
+        }
+
+        # construct data and call json rpc
+        status_code, reason, text, result = Client.call_json_rpc(
+            self.device_url, method_name, data)
+        return status_code, reason, text, result
 
     # [System]
     def ping(self, message):

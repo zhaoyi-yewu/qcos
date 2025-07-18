@@ -48,6 +48,30 @@ class Library:
     Library
     """
     @staticmethod
+    def get_brief_description(description):
+        output_list = []
+        tokens = description.split("\n")
+        for token in tokens:
+            _token = token.strip()
+            if _token:
+                output_list.append(_token)
+        return ". ".join(output_list)
+
+    @staticmethod
+    def update_dict(dictionary, new_kvs):
+        """
+        Update a dictionary
+
+        :param dictionary: dictionary to be updated
+        :param new_kvs: new key/values
+        :return: updated dictionary
+        """
+        for key, value in new_kvs.items():
+            if key in dictionary:
+                dictionary[key] = value
+        return dictionary
+
+    @staticmethod
     def create_pid_file(file_path):
         """
         Crete pid file

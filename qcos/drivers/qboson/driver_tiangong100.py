@@ -42,17 +42,8 @@ class DriverTiangong100(DriverBase):
     玻色量子-天工1000 光量子伊辛机驱动
     Qboson Tiangong1000 driver
     CQ-D-100
-
-    注意:
-    * token有效期30天
-    * 一般最长任务执行时间是10分钟
-
-    # 用户认证
-    curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST -d '{"username":"username","pwd":"123"}' http://127.0.0.1:8088/kdev/terminal/login/
-    # 获取真机信息
-    curl -i -H "Accept: application/json" -H "Content-Type: application/json" -H "Authorization: JWT ${token}" http://127.0.0.1:8088/kdev/terminal/machine/
-    # pylint: disable=line-too-long
     """
+
     # http request headers
     default_headers = {
         "accept": "application/json, text/plain, */*",
@@ -101,6 +92,7 @@ class DriverTiangong100(DriverBase):
         self.name = "tiangong100"
         self.version = "0.0.1"
         self.enable_transpiler = False
+        self.tech_type = Constant.TECH_TYPE_PHOTON
         self.max_qubits = 100
         self.supported_code_types = [
             Constant.CODE_TYPE_QUBO
@@ -110,6 +102,15 @@ class DriverTiangong100(DriverBase):
     def init_driver(self):
         """
         Init driver
+
+        注意:
+        token有效期30天
+        一般最长任务执行时间是10分钟
+        用户认证
+        curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST -d '{"username":"username","pwd":"123"}' http://127.0.0.1:8088/kdev/terminal/login/
+        获取真机信息
+        curl -i -H "Accept: application/json" -H "Content-Type: application/json" -H "Authorization: JWT ${token}" http://127.0.0.1:8088/kdev/terminal/machine/
+        # pylint: disable=line-too-long
         """
         self.set_status(self.DRIVER_STATUS_ONLINE)
 

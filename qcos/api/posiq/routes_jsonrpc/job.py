@@ -130,11 +130,11 @@ def submit_job(
         transpiler_name, "transpiler",
         Constant.TRANSPILER_TYPES, allow_none=True))
 
-    # validate supported_transpiler_list
+    # validate supported_transpilers
     if enable_transpiler:
         jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
             transpiler_name, "transpiler",
-            driver.supported_transpiler_list,
+            driver.supported_transpilers,
             allow_none=False))
         body.transpiler = transpiler_name
 

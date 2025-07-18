@@ -141,7 +141,7 @@ qcos-cli get-job-status 00000000-0000-4000-8000-000000000001
 qcos-cli get-job-results 00000000-0000-4000-8000-000000000001
 
 * 获取所有作业列表
-qcos-cli get-jobs
+qcos-cli list-jobs
 
 * 取消作业
 qcos-cli cancel-jobs 00000000-0000-4000-8000-000000000001
@@ -160,4 +160,11 @@ qcos-cli ping 123
 
 * 服务端版本请求命令
 qcos-cli version
+
+[设备命令]
+* 获取所有设备驱动信息列表
+qcos-cli list-devices
+
+* 获取设备驱动信息详情
+qcos-cli get-device dummy
 ```

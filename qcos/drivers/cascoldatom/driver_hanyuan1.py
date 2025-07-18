@@ -55,7 +55,7 @@ class DriverHanyuan1(DriverBase):
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
         self.supported_basis_gates = [Constant.SQ_GATE_X, Constant.SQ_GATE_Y]
-        self.supported_transpiler_list = [Constant.TRANSPILER_CMSS]
+        self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_merge = True
         self.max_qubits = 10
         self._final_response = None

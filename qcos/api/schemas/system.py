@@ -36,17 +36,17 @@ class PongResponse(BaseModel):
     message: str = None
 
 
-class VersionRequest(BaseModel):
+class GetVersionRequest(BaseModel):
     """
-    Version Request
-    Pydantic Model for Version Request
+    Get Version Request
+    Pydantic Model for Get Version Request
     """
 
 
-class VersionResponse(BaseModel):
+class GetVersionResponse(BaseModel):
     """
-    Version Response
-    Pydantic Model for Version Response
+    Get Version Response
+    Pydantic Model for Get Version Response
     """
     # version
     version: str

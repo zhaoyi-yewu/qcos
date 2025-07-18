@@ -60,7 +60,8 @@ class DriverBase:
         self._class_name = None
         # enable this driver or not
         self.enable = True
-        # driver status (TODO(zhaoyi): not used)
+        # driver status
+        # TODO(zhaoyi): device property
         self._status = self.DRIVER_STATUS_OFFLINE
         # enable transpiler or not
         self.enable_transpiler = True
@@ -70,22 +71,26 @@ class DriverBase:
         self.supported_code_types = None
         # quantum computer technology type
         self.tech_type = None
-        # enable circuit merge or not (TODO(zhaoyi): not used)
+        # enable circuit merge or not
+        # TODO(zhaoyi): not used
         self.enable_circuit_merge = False
         # max number of qubits
         self.max_qubits = 0
         # supported basis gates
         self.supported_basis_gates = None
-        # supported transpiler list
-        self.supported_transpiler_list = []
+        # supported transpilers
+        self.supported_transpilers = []
         # qpu configs
+        # TODO(zhaoyi): device property
         self.qpu_configs = None
         # decomposition rule
         self.decomposition_rule = None
         # extra_configs, usually from driver config files
+        # TODO(zhaoyi): device property
         self.extra_configs = {}
         # results from run(), which fetches the results from quantum computer
         # format: {JOB_ID: {"results": RESULTS}}
+        # TODO(zhaoyi): device property
         self._results = {}
         # measurement results fetch mode
         self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC

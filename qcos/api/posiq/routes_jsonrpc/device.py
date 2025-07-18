@@ -14,3 +14,100 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+import logging
+from typing import List
+
+from qcos.api import schemas
+from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
+from qcos.api.posiq.routes_jsonrpc.routes import device_api_v1
+from qcos.common.library import Library
+from qcos.task_manager import scheduler
+
+logger = logging.getLogger(__name__)
+
+
+def _get_device_info(driver_info, transpiler):
+    """
+    Get device info
+
+    :param driver_info: driver_info
+    :param transpiler: transpiler instance
+    :return: device_info
+    """
+
+    supported_code_types = None
+    if transpiler:
+        supported_code_types = transpiler.get_supported_code_types()
+    else:
+        supported_code_types = driver_info.get_supported_code_types()
+    device_info = {
+        "name": driver_info.name,
+        "version": driver_info.version,
+        "driver": driver_info.get_class_name(),
+        "description": Library.get_brief_description(driver_info.__doc__),
+        "enable": driver_info.enable,
+        "tech_type": driver_info.tech_type,
+        "max_qubits": driver_info.get_max_qubits(),
+        "transpiler": driver_info.get_transpiler(),
+        "enable_transpiler": driver_info.enable_transpiler,
+        "supported_transpilers": driver_info.supported_transpilers,
+        "enable_circuit_merge": driver_info.enable_circuit_merge,
+        "supported_code_types": supported_code_types,
+        "supported_basis_gates": driver_info.get_supported_basis_gates(),
+        "results_fetch_mode": driver_info.results_fetch_mode,
+        # replace password in extra_configs to ********
+        "extra_configs": Library.update_dict(driver_info.extra_configs,
+                                             {"password": "*" * 8})
+    }
+    return device_info
+
+
+@device_api_v1.method()
+def get_devices(
+        body: schemas.GetDevicesRequest = None
+) -> List[schemas.GetDeviceResponse]:
+    """
+    Get device list request
+
+    :param body: message
+    :type body: schemas.GetDevicesRequest
+    :return: Get devices response
+    """
+    logger.info(f"Call get_devices: {body}")
+
+    driver_manger = scheduler.get_driver_manager()
+    drivers = driver_manger.get_drivers()
+    response_info = []
+    for _, driver_info in sorted(drivers.items()):
+        transpiler_manager = scheduler.get_transpiler_manager()
+        transpiler = transpiler_manager.get_transpiler(driver_info.transpiler)
+        device_info = _get_device_info(driver_info, transpiler)
+        response_info.append(device_info)
+    return response_info
+
+
+@device_api_v1.method(errors=[jsonrpc_errors.DeviceError])
+def get_device(
+        body: schemas.GetDeviceRequest
+) -> schemas.GetDeviceResponse:
+    """
+    Get device info request
+
+    :param body: driver_name
+    :type body: schemas.GetDeviceRequest
+    :return: Get device info response
+    """
+    logger.info(f"Call get_device: {body}")
+
+    driver_name = body.name
+
+    driver_manger = scheduler.get_driver_manager()
+    driver_info = driver_manger.get_driver(driver_name)
+    if not driver_info:
+        jsonrpc_errors.handle_device_error(
+            f"Can't find device: {driver_name}")
+    transpiler_manager = scheduler.get_transpiler_manager()
+    transpiler = transpiler_manager.get_transpiler(driver_info.transpiler)
+    response_info = _get_device_info(driver_info, transpiler)
+    return response_info

@@ -37,6 +37,7 @@ logger.add(
 
 class DriverDummy(DriverBase):
     """
+    测试驱动
     Dummy driver for test purpose
     """
 
@@ -48,7 +49,7 @@ class DriverDummy(DriverBase):
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
         self.supported_basis_gates = [Constant.SQ_GATE_X, Constant.SQ_GATE_Y]
-        self.supported_transpiler_list = [Constant.TRANSPILER_CMSS]
+        self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_merge = False
         self.default_results_type = self.DATA_TYPE_GATE_SEQUENCE
         self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
