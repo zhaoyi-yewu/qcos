@@ -45,7 +45,13 @@ class DriverHanyuan1(DriverBase):
     """
 
     verbose = False
+    DEFAULT_CONTROL_SYSTEM_IP = "100.78.62.2"
     DEFAULT_CONTROL_SYSTEM_PORT = 18402
+    # task status
+    task_status_unknown = "unknown"
+    task_status_running = "running"
+    task_status_completed = "completed"
+    task_status_failed = "failed"
 
     def __init__(self):
         super().__init__()
@@ -58,7 +64,6 @@ class DriverHanyuan1(DriverBase):
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_merge = True
         self.max_qubits = 10
-        self._final_response = None
         self.server_host = None
         self.server_port = None
         self.base_url = None
@@ -138,55 +143,45 @@ class DriverHanyuan1(DriverBase):
         self.set_status(self.DRIVER_STATUS_BUSY)
 
         extra_configs = self.get_extra_configs()
-        ip_address = extra_configs.get("ip_address", "127.0.0.1")
+        ip_address = extra_configs.get(
+            "ip_address", self.DEFAULT_CONTROL_SYSTEM_IP)
         port = extra_configs.get("port", self.DEFAULT_CONTROL_SYSTEM_PORT)
 
-        # 1、初始化任务连接
+        # 1、init task connection
         self.init_task(ip_address, port)
 
-        # 2、提交任务
-        success, reason, text, result = (
+        logger.info("submit task")
+        # 2、submit task
+        success, err_msg = (
             self.submit_task(job_id, num_qubits, data, data_type, shots))
         if not success:
-            logger.error(f"任务提交真机失败: {reason}")
-            results = {"error": f"任务提交真机失败: {reason}"}
-            self.set_results(job_id, results=results)
-            self.set_status(self.DRIVER_STATUS_ONLINE)
-            return
+            raise ValueError(f"Failed to submit task [{job_id}]: {err_msg}")
 
-        # 3、等待任务返回结果
+        logger.info("wait task status")
+        # 3、wait task results
         success, err_msg, _ = Library.loop_with_timeout(
-            self.check_task_result, 180, 5, job_id)
+            self.check_task_status, 1800, 5, job_id,
+            expect_task_status=[self.task_status_completed])
         if not success:
-            logger.error(f"等待任务完成失败 [{job_id}]: {err_msg}")
-            results = {"error": f"等待任务完成失败: {err_msg}"}
-            self.set_results(job_id, results=results)
-            self.set_status(self.DRIVER_STATUS_ONLINE)
-            return
+            raise ValueError(f"Failed to wait for task [{job_id}]: {err_msg}")
 
-        if self._final_response is None:
-            logger.error("未获取到最终任务结果")
-            results = {"error": "未获取到最终任务结果"}
-            self.set_results(job_id, results=results)
-            self.set_status(self.DRIVER_STATUS_ONLINE)
-            return
-        else:
-            raw_results = self._final_response.get("result")
-            if raw_results is None:
-                logger.warning("服务器返回的结果为空，使用默认结果")
-                results = {"服务器返回的结果为空"}
-            else:
-                results = raw_results.get("result")
+        logger.info("wait done")
+        # 4、get task results
+        success, err_msg, results = self.get_task_results(job_id)
+        if not success:
+            raise ValueError(f"Failed to get task results [{job_id}]: "
+                             f"{err_msg}")
+
 
         self.set_results(job_id, results=results)
         self.set_status(self.DRIVER_STATUS_ONLINE)
 
     def init_task(self, ip_address: str, port: int):
         """
-        初始化任务：初始化rpc调用url
+        init task
 
-        :param ip_address: 服务器IP地址
-        :param port: 服务器端口
+        :param ip_address: server ip address
+        :param port: server port
         """
         self.server_host = ip_address
         self.server_port = port
@@ -199,10 +194,10 @@ class DriverHanyuan1(DriverBase):
         """
         Print API response
 
-        :param status_code: 状态码
-        :param reason: 原因
-        :param text: 响应内容
-        :param result: 响应结果
+        :param status_code: status code
+        :param reason: reason
+        :param text: text
+        :param result: result
         """
         if DriverHanyuan1.verbose:
             print(f"Response: status_code: {status_code}, reason: {reason}, "
@@ -211,13 +206,13 @@ class DriverHanyuan1(DriverBase):
     @staticmethod
     def call_json_rpc(url, method_name, data=None, params=None):
         """
-        调用JSON-RPC方法
+        call json rpc method
 
-        :param url: JSON-RPC URL
-        :param method_name: 方法名
-        :param data: 数据
-        :param params: 参数
-        :return: 响应结果
+        :param url: json rpc url
+        :param method_name: method name
+        :param data: data
+        :param params: params
+        :return: response result
         """
         status_code = None
         reason = None
@@ -236,7 +231,7 @@ class DriverHanyuan1(DriverBase):
                 try:
                     result = response_obj.json()
                 except Exception as e:
-                    logger.warning(f"解析JSON响应失败: {e}")
+                    logger.warning(f"parse json response failed: {e}")
                     result = None
             else:
                 result = None
@@ -253,17 +248,19 @@ class DriverHanyuan1(DriverBase):
     def submit_task(self, job_id: str, num_qubits: int, data: list,
                     data_type: str, shots: int) -> tuple:
         """
-        提交任务执行
+        submit task
 
-        :param job_id: 任务ID
-        :param num_qubits: 量子比特数量
-        :param data: 数据
-        :param data_type: 数据类型
-        :param shots: 执行次数
+        :param job_id: job id
+        :param num_qubits: number of qubits
+        :param data: data
+        :param data_type: data type
+        :param shots: shots
         :return: (success, reason, text, result)
         """
+        success = True
+        err_msgs = []
         try:
-            # 处理数据格式
+            # process data format
             gate_list = data.get('basis_gate_list', data) \
                 if isinstance(data, dict) else data
 
@@ -276,7 +273,7 @@ class DriverHanyuan1(DriverBase):
                 }
                 processed_data.append(gate_dict)
 
-            # 构造请求数据
+            # construct request data
             request_data = {
                 "job_id": job_id,
                 "data": processed_data,
@@ -292,92 +289,85 @@ class DriverHanyuan1(DriverBase):
 
             # 检查JSON-RPC响应
             if status_code == 200 and result:
-                if isinstance(result, dict):
-                    if "error" in result:
-                        logger.error(f"JSON-RPC错误: {result['error']}")
-                        return False, "JSON-RPC错误", text, result
-                    elif "result" in result:
-                        return True, reason, text, result
-                    else:
-                        logger.warning(f"未知的JSON-RPC响应格式: {result}")
-                        return False, "未知的JSON-RPC响应格式", text, result
+                if "error" in result:
+                    success = False
+                    err_msgs.append(result['error'])
+                elif "result" in result:
+                    success = True
                 else:
-                    logger.warning(f"响应格式不是字典: {type(result)}")
-                    return False, "响应格式错误", text, result
+                    success = False
+                    err_msgs.append("unknown jsonrpc format")
             else:
-                return False, reason, text, result
+                success = False
+                err_msgs.append(reason)
 
         except Exception as e:
-            logger.error(f"提交任务时出错: {e}")
-            return False, str(e), None, None
+            success = False
+            err_msgs.append(str(e))
 
-    def check_task_result(self, job_id: str) -> bool:
+        return success, "\n".join(err_msgs)
+
+    def check_task_status(self, job_id: str, expect_task_status: list) -> bool:
         """
-        检查任务返回结果
+        check task status
 
-        :param job_id: 任务ID
-        :return: 任务是否完成
+        :param job_id: job id
+        :param expect_task_status: expect task status
+        :return: task status
         """
         try:
-            # 构造请求数据
+            # construct request data
             request_data = {
                 "job_id": job_id
             }
 
-            method_name = "query_task_result"
+            method_name = "query_task_status"
             status_code, reason, text, result = self.call_json_rpc(
                 self.base_url, method_name, request_data)
 
-            if status_code is None:
-                logger.error(f"查询任务结果失败: {reason}")
-                return False
-
             if status_code == 200 and result:
-                # 检查JSON-RPC响应是否成功
-                if isinstance(result, dict):
-                    if "error" in result:
-                        logger.error(f"JSON-RPC错误: {result['error']}")
-                        return False
-                    elif "result" in result:
-                        # 检查任务状态
-                        task_response = result["result"]
-                        if isinstance(task_response, dict):
-                            status = task_response.get("status")
-                            if status == "completed":
-                                # 任务完成，保存结果
-                                self._final_response = result
-                                return True
-                            elif status == "running":
-                                # 任务正在执行中，继续等待
-                                logger.info(f"任务 {job_id} 正在执行中，继续等待...")
-                                return False
-                            elif status == "failed":
-                                # 任务失败
-                                logger.error(f"任务 {job_id} 执行失败: {task_response.get('message', '未知错误')}")
-                                logger.error(f"任务 {job_id} 执行失败: "
-                                    f"{task_response.get('message', '未知错误')}")
-                                self._final_response = result
-                                return True
-                            elif status == "not_found":
-                                # 任务未找到
-                                logger.info(f"任务 {job_id} 未找到")
-                                return False
-                            else:
-                                logger.warning(f"未知的任务状态: {status}")
-                                return False
-                        else:
-                            logger.warning(f"响应格式不是字典: {type(task_response)}")
-                            return False
-                    else:
-                        logger.warning(f"未知的JSON-RPC响应格式: {result}")
-                        return False
+                result = result.get("result")
+                if result.get("status", self.task_status_unknown) in \
+                    expect_task_status:
+                    return True
                 else:
-                    logger.warning(f"响应格式不是字典: {type(result)}")
                     return False
             else:
-                logger.error(f"查询任务结果失败: {reason}")
                 return False
-
         except Exception as e:
-            logger.error(f"检查任务结果时出错: {e}")
             return False
+
+    def get_task_results(self, job_id: str):
+        """
+        check task results
+
+        :param job_id: job id
+        :return: task results
+        """
+        success = True
+        err_msgs = []
+        results = None
+
+        # construct request data
+        request_data = {
+            "job_id": job_id
+        }
+
+        method_name = "query_task_result"
+        status_code, reason, text, result = self.call_json_rpc(
+            self.base_url, method_name, request_data)
+
+        if status_code == 200 and result:
+            result = result.get("result")
+            status = result.get("status")
+            if status == "success":
+                success = True
+                results = result.get("result")
+                if results is None:
+                    success = False
+                    err_msgs.append("no task results")
+            else:
+                success = False
+                err_msgs.append("no task results")
+
+        return success, "\n".join(err_msgs), results
