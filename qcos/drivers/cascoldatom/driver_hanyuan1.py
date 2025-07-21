@@ -45,7 +45,7 @@ class DriverHanyuan1(DriverBase):
     """
 
     verbose = False
-    DEFAULT_CONTROL_SYSTEM_IP = "100.78.62.2"
+    DEFAULT_CONTROL_SYSTEM_IP = "127.0.0.1"
     DEFAULT_CONTROL_SYSTEM_PORT = 18402
     # task status
     task_status_unknown = "unknown"
