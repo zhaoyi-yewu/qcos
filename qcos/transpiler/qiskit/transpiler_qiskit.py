@@ -16,14 +16,12 @@
 # ----------------------------------------------------------------------
 
 import logging
-
 from schema import Optional
 
+from qiskit import transpile, QuantumCircuit
+from qiskit_aer import QasmSimulator, AerSimulator
+
 from qcos.common.constant import Constant
-from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
-from qcos.transpiler.cmss.compiler.parser import compile
-from qcos.transpiler.cmss.mapping.mapping_factory import MappingFactory
-from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from qcos.transpiler.transpiler_base import TranspilerBase
 
@@ -31,18 +29,23 @@ from qcos.transpiler.transpiler_base import TranspilerBase
 logger = logging.getLogger(__name__)
 
 
-class TranspilerCmss(TranspilerBase):
+class TranspilerQiskit(TranspilerBase):
     """
-    Transpiler Class for CMSS
+    Transpiler Class for QISKIT
+    """
+
+    """
+    Transpiler Class for Qiskit
     """
 
     def __init__(self):
         super().__init__()
-        self.name = Constant.TRANSPILER_CMSS
+        self.name = Constant.TRANSPILER_QISKIT
         # supported code types
         self.supported_code_types = [
             Constant.CODE_TYPE_QASM,
-            Constant.CODE_TYPE_QASM2
+            Constant.CODE_TYPE_QASM2,
+            Constant.CODE_TYPE_QASM3
         ]
         # transpiler_info
         self.transpiler_info = {
@@ -52,40 +55,29 @@ class TranspilerCmss(TranspilerBase):
         self.transpiler_info_schema = {
             Optional("optimization_level"): int
         }
-        # qpu_config
-        self.qpu_config = None
 
     def init_transpiler(self):
         pass
 
     def transpile(self, qasm: str, expect_basis_gates: list):
         """
-        CMSS transpiler function.
+        Transpile codes
 
-        :param qasm: openqasm codes
+        :param qasm: qasm codes
         :param expect_basis_gates: expect basis gates
-        :return basis gate list
+        :return transpiled quantum circuit
         """
-        qpu_cfg = trans_cfg_inst.get_qpu_cfg()
-        if not qpu_cfg:
-            err_msg = "Missing qpu configs"
-            logger.error(err_msg)
-            raise ValueError(err_msg)
+        circuit = QuantumCircuit.from_qasm_str(qasm)
 
-        # compile and mapping
-        logger.debug(f"raw_qasm: {qasm}")
-        num_qubits, gates = compile(qasm)
-        self.num_qubits = num_qubits
-        gates = optimize_gate(gates)
-        factory = MappingFactory(num_qubits, gates, qpu_cfg)
-        mapper = factory.get_mapper_by_type(trans_cfg_inst.get_tech_type())
-        mapping_res = mapper.execute_with_order()
-        logger.debug(f"after mapping: {mapping_res}")
+        if trans_cfg_inst.get_driver_name() == "qiskit_qasm"
+            simulator = QasmSimulator()
+        else:
+            simulator = AerSimulator()
 
-        # decompose gates
-        parsed_circuit = decompose_gates(gates)
-
-        # optimize circuit
-        basis_gate_list = optimize_gate(parsed_circuit)
-        logger.debug(f"final basis_gate_list: {basis_gate_list}")
-        return basis_gate_list
+        transpiled_circuit = transpile(
+            circuit,
+            simulator,
+            optimization_level=self.transpiler_info["optimization_level"],
+            basis_gates=expect_basis_gates  # 指定基本门集
+        )
+        return transpiled_circuit

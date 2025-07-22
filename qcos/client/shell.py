@@ -566,7 +566,7 @@ class SubmitJob(Command):
                             default=f"{Constant.DRIVER_DUMMY}",
                             help="Set backend driver name")
         parser.add_argument("--transpiler", dest="transpiler",
-                            choices=Constant.TRANSPILER_TYPES,
+                            #choices=Constant.TRANSPILER_TYPES,
                             help="Set transpiler name")
         parser.add_argument("--transpiler-info",
                             dest="transpiler_info", type=str,
@@ -668,9 +668,9 @@ class SubmitJob(Command):
             Constant.MIN_SHOTS, Constant.MAX_SHOTS))
 
         # Validate argument: transpiler
-        CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
-            transpiler, "transpiler", Constant.TRANSPILER_TYPES,
-            allow_none=True))
+        #CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
+        #    transpiler, "transpiler", Constant.TRANSPILER_TYPES,
+        #    allow_none=True))
 
         # Validate argument: transpiler_info
         if transpiler_info:

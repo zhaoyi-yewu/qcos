@@ -102,7 +102,9 @@ class Constant:
 
     # Transpiler
     TRANSPILER_CMSS = "cmss"
-    TRANSPILER_TYPES = set()  # autofilled during plugin registration
+    TRANSPILER_QISKIT = "qiskit"
+    TRANSPILER_CIRQ = "cirq"
+    TRANSPILER_TYPES = set() # autofilled during plugin registration
 
     # Quantum computer tech type
     TECH_TYPE_NEUTRAL_ATOM = "neutral_atom"

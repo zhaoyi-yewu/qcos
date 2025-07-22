@@ -42,7 +42,7 @@ class TestTranspilerCmss:
         qpu_config = {
             "qubits": 6,
             "storage_area": ["S27", "S28", "S29", "S35", "S36", "S37"],
-            "operate_area": ["P27", "SP28", "SP29", "P35", "P36", "SP37"],
+            "operate_area": ["P27", "P28", "P29", "P35", "P36", "P37"],
             "coupler_map": {
                 "G0": ["P27", "P35"], "G1": ["P28", "P36"],
                 "G2": ["P29", "P37"], "G3": ["P27", "P28"],

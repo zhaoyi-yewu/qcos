@@ -49,11 +49,14 @@ class TranspilerManager:
                 base_class=TranspilerBase)
             for class_name, _class, in classes.items():
                 logger.info(f"Loading transpiler: {class_name}")
+                print(f"Loading transpiler: {class_name}")
                 class_instance = _class()
                 if not class_instance.enable:
                     logger.warning(f"transpiler: {class_name} is disabled")
+                    print(f"transpiler: {class_name} is disabled")
                     continue
                 name = class_instance.get_name()
+                print(f"transpiler: {name} is is called")
                 self.transpilers[name] = class_instance
                 Constant.TRANSPILER_TYPES.add(name)
                 class_instance.set_module_name(_class.__module__)

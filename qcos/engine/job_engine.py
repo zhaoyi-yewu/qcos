@@ -60,6 +60,7 @@ def init_driver(driver_info):
         trans_cfg_inst.set_max_qubits(driver.get_max_qubits())
         trans_cfg_inst.set_decompose_rule(driver.get_decomposition_rule())
         trans_cfg_inst.set_tech_type(driver.tech_type)
+        trans_cfg_inst.set_driver_name(driver.get_name())
         return {"driver": driver, "error": None}
     except Exception as e:
         return {"driver": None, "error": ValueError(str(e))}
@@ -105,13 +106,13 @@ def transpile(job_data, driver, transpiler):
         raw_qasm = job_data['source_code'][0]
         logger.info(f"raw_qasm: {raw_qasm}")
         expect_basis_gates = driver.get_supported_basis_gates()
-        basis_gate_list = transpiler.transpile(raw_qasm, expect_basis_gates)
+        transpile_results = transpiler.transpile(raw_qasm, expect_basis_gates)
         num_qubits = transpiler.num_qubits
-        logger.info(f"final basis_gate_list: {basis_gate_list}")
-        return {"basis_gate_list": basis_gate_list, "num_qubits": num_qubits,
-                "error": None}
+        logger.info(f"final transpiled_result: {transpile_results}")
+        return {"transpile_results": transpile_results,
+                "num_qubits": num_qubits, "error": None}
     except Exception as e:
-        return {"basis_gate_list": None, "num_qubits": num_qubits,
+        return {"transpile_results": None, "num_qubits": num_qubits,
                 "error": ValueError(str(e))}
 
 
@@ -261,7 +262,7 @@ def job_flow(job_info):
         err_msg = _transpile_task_results.get("error", None)
         if err_msg:
             raise err_msg
-        transpile_results = _transpile_task_results["basis_gate_list"]
+        transpile_results = _transpile_task_results["transpile_results"]
 
     # call run() in driver
     run_driver_task_result = None

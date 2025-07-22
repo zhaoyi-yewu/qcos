@@ -22,11 +22,12 @@ class TranspilerCfg:
     """
 
     def __init__(self, decomp_rule=None, qpu_cfg=None, max_qubits=0,
-                 tech_type=None) -> None:
+                 tech_type=None, driver_name=None) -> None:
         self.decompose_rule = decomp_rule
         self.qpu_cfg = qpu_cfg
         self.max_qubits = max_qubits
         self.tech_type = tech_type
+        self.driver_name  = driver_name
 
     def get_decompose_rule(self):
         """
@@ -76,5 +77,16 @@ class TranspilerCfg:
         """
         self.tech_type = tech_type
 
+    def get_driver_name(self):
+        """
+        Get driver name
+        """
+        return self.driver_name
+
+    def set_driver_name(self, driver_name):
+        """
+        Set tech type
+        """
+        self.driver_name = driver_name
 
 trans_cfg_inst = TranspilerCfg()
