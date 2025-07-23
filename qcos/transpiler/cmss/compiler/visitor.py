@@ -15,17 +15,15 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from typing import Any
 import numpy as np
 import re
+from typing import Any
 
-import logging
+from loguru import logger
+
 from qcos.transpiler.cmss.compiler.qtypes import Node, RegType
 from qcos.transpiler.cmss.common.gate_operation import create_gate
 from qcos.transpiler.cmss.compiler.linked_list import LinkedList, LinkedNode
-
-
-logger = logging.getLogger(__name__)
 
 
 class Visitor:

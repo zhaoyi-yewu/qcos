@@ -22,7 +22,6 @@ from qcos.common.constant import Constant
 from qcos.common.library import Library
 from qcos.transpiler.transpiler_base import TranspilerBase
 
-
 logger = logging.getLogger(__name__)
 
 

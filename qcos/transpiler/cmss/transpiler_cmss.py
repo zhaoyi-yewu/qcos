@@ -15,9 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import logging
-
 from schema import Optional
+
+from loguru import logger
 
 from qcos.common.constant import Constant
 from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
@@ -26,9 +26,6 @@ from qcos.transpiler.cmss.mapping.mapping_factory import MappingFactory
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from qcos.transpiler.transpiler_base import TranspilerBase
-
-
-logger = logging.getLogger(__name__)
 
 
 class TranspilerCmss(TranspilerBase):
@@ -73,14 +70,13 @@ class TranspilerCmss(TranspilerBase):
             raise ValueError(err_msg)
 
         # compile and mapping
-        logger.debug(f"raw_qasm: {qasm}")
         num_qubits, gates = compile(qasm)
         self.num_qubits = num_qubits
         gates = optimize_gate(gates)
         factory = MappingFactory(num_qubits, gates, qpu_cfg)
         mapper = factory.get_mapper_by_type(trans_cfg_inst.get_tech_type())
         mapping_res = mapper.execute_with_order()
-        logger.debug(f"after mapping: {mapping_res}")
+        logger.info(f"after mapping: {mapping_res}")
 
         # decompose gates
         parsed_circuit = decompose_gates(gates)
