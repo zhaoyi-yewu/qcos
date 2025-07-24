@@ -4,6 +4,7 @@ anyio==4.9.0
 argcomplete==3.6.2
 click==8.1.8
 cliff==4.10.0
+cirq==1.3.0
 fastapi==0.115.12
 fastapi-jsonrpc==3.4.1
 h11==0.16.0

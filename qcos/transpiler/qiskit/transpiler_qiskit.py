@@ -22,6 +22,7 @@ from qiskit import transpile, QuantumCircuit
 from qiskit_aer import QasmSimulator, AerSimulator
 
 from qcos.common.constant import Constant
+from qcos.transpiler.common.errors import TranspilerException
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from qcos.transpiler.transpiler_base import TranspilerBase
 
@@ -31,13 +32,8 @@ logger = logging.getLogger(__name__)
 
 class TranspilerQiskit(TranspilerBase):
     """
-    Transpiler Class for QISKIT
-    """
-
-    """
     Transpiler Class for Qiskit
     """
-
     def __init__(self):
         super().__init__()
         self.name = Constant.TRANSPILER_QISKIT
@@ -69,15 +65,17 @@ class TranspilerQiskit(TranspilerBase):
         """
         circuit = QuantumCircuit.from_qasm_str(qasm)
 
-        if trans_cfg_inst.get_driver_name() == "qiskit_qasm"
+        if trans_cfg_inst.get_driver_name() == "qiskit-qasm-sim":
             simulator = QasmSimulator()
-        else:
+        elif trans_cfg_inst.get_driver_name() == "qiskit-aer-sim":
             simulator = AerSimulator()
-
+        else:
+            raise TranspilerException("invalid driver name")
         transpiled_circuit = transpile(
             circuit,
             simulator,
             optimization_level=self.transpiler_info["optimization_level"],
-            basis_gates=expect_basis_gates  # 指定基本门集
+            basis_gates=expect_basis_gates
         )
+        self.num_qubits = transpiled_circuit.num_qubits
         return transpiled_circuit
