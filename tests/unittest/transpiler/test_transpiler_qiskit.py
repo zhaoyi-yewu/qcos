@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 from qcos.common.constant import Constant
+from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from qcos.transpiler.qiskit.transpiler_qiskit import TranspilerQiskit
 
 
@@ -34,8 +35,11 @@ class TestTranspilerQiskit:
         '''
 
     def test_transpiler_qiskit(self):
-        expected_basis_gates = [Constant.SQ_GATE_RX, Constant.SQ_GATE_RY,
-                                Constant.SQ_GATE_RZ, Constant.DQ_GATE_CX]
+        expected_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
+                                Constant.SINGLE_QUBIT_GATE_RY,
+                                Constant.SINGLE_QUBIT_GATE_RZ,
+                                Constant.TWO_QUBIT_GATE_CX]
+        trans_cfg_inst.set_driver_name("qiskit-qasm-sim")
         transpiler = TranspilerQiskit()
         transpiled_circuit = transpiler.transpile(self.simple_data,
                                                   expected_basis_gates)
