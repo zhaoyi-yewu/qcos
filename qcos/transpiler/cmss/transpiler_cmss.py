@@ -55,11 +55,24 @@ class TranspilerCmss(TranspilerBase):
     def init_transpiler(self):
         pass
 
-    def transpile(self, qasm: str, expect_basis_gates: list):
+    def parse(self, qasm: str):
+        """
+        parse codes
+
+        :param qasm: qasm codes
+        :return parsed gates
+        """
+        # compile and mapping
+        num_qubits, gates = compile(qasm)
+        self.num_qubits = num_qubits
+        gates = optimize_gate(gates)
+        return gates
+
+    def transpile(self, parsed_gates: list, expect_basis_gates: list):
         """
         CMSS transpiler function.
 
-        :param qasm: openqasm codes
+        :param parsed_gates: parsed gates
         :param expect_basis_gates: expect basis gates
         :return basis gate list
         """
@@ -69,17 +82,13 @@ class TranspilerCmss(TranspilerBase):
             logger.error(err_msg)
             raise ValueError(err_msg)
 
-        # compile and mapping
-        num_qubits, gates = compile(qasm)
-        self.num_qubits = num_qubits
-        gates = optimize_gate(gates)
-        factory = MappingFactory(num_qubits, gates, qpu_cfg)
+        factory = MappingFactory(self.num_qubits, parsed_gates, qpu_cfg)
         mapper = factory.get_mapper_by_type(trans_cfg_inst.get_tech_type())
         mapping_res = mapper.execute_with_order()
         logger.info(f"after mapping: {mapping_res}")
 
         # decompose gates
-        parsed_circuit = decompose_gates(gates)
+        parsed_circuit = decompose_gates(parsed_gates)
 
         # optimize circuit
         basis_gate_list = optimize_gate(parsed_circuit)

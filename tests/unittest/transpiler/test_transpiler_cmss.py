@@ -78,7 +78,8 @@ class TestTranspilerCmss:
         transpiler = TranspilerCmss()
         expected_basis_gates = [Constant.SINGLE_QUBIT_GATE_X,
                                 Constant.SINGLE_QUBIT_GATE_Y]
-        basis_gate_list = transpiler.transpile(self.simple_data,
+        parsed_gates = transpiler.parse(self.simple_data)
+        basis_gate_list = transpiler.transpile(parsed_gates,
                                                expected_basis_gates)
         assert len(basis_gate_list) == 2
         validate_gate_ir(basis_gate_list[0], 'rx', [27], 1, False)

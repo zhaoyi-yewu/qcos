@@ -90,11 +90,11 @@ def init_transpiler(transpiler_class_info, transpiler_info):
 
 
 @task(persist_result=False)
-def transpile(job_data, driver, transpiler):
+def transpile(parsed_gates, driver, transpiler):
     """
     transpile
 
-    :param job_data: job data
+    :param parsed_gates: parsed gates
     :param driver: driver
     :param transpiler: transpiler
     :return basis gate list
@@ -103,16 +103,39 @@ def transpile(job_data, driver, transpiler):
 
     num_qubits = -1
     try:
-        raw_qasm = job_data['source_code'][0]
-        logger.info(f"raw_qasm:\n{raw_qasm}")
-        expect_basis_gates = driver.get_supported_basis_gates()
-        transpile_results = transpiler.transpile(raw_qasm, expect_basis_gates)
+        supp_basis_gates = driver.get_supported_basis_gates()
+        transpile_results = transpiler.transpile(
+            parsed_gates, supp_basis_gates)
         num_qubits = transpiler.num_qubits
         logger.info(f"final transpiled_result: {transpile_results}")
         return {"transpile_results": transpile_results,
                 "num_qubits": num_qubits, "error": None}
     except Exception as e:
         return {"transpile_results": None, "num_qubits": num_qubits,
+                "error": ValueError(str(e))}
+
+
+@task(persist_result=False)
+def qasm_parser(job_data, transpiler):
+    """
+    qasm_parser
+
+    :param job_data: job data
+    :param transpiler: transpiler
+    :return parsed gate list
+    """
+
+    num_qubits = -1
+    try:
+        raw_qasm = job_data['source_code'][0]
+        logger.info(f"raw_qasm:\n{raw_qasm}")
+        parsed_gates = transpiler.parse(raw_qasm)
+        num_qubits = transpiler.num_qubits
+        logger.info(f"final parsed gates: {parsed_gates}")
+        return {"parsed_gates": parsed_gates, "num_qubits": num_qubits,
+                "error": None}
+    except Exception as e:
+        return {"parsed_gates": None, "num_qubits": num_qubits,
                 "error": ValueError(str(e))}
 
 
@@ -246,27 +269,30 @@ def job_flow(job_info):
             raise transpiler_task_result["error"]
         transpiler = transpiler_task_result["transpiler"]
 
+        parse_task = qasm_parser.submit(
+            job_data, transpiler,
+            wait_for=[init_driver, init_transpiler])
+        parse_task_result = parse_task.result()
+        num_qubits = parse_task_result.get("num_qubits", -1)
+        job_results["num_qubits"] = num_qubits
+
         # record transpiling start_time
         if (Constant.PROFILING_TYPE_DRIVER_TRANSPILE in profiling_types or
-                Constant.PROFILING_TYPE_DRIVER_ALL in profiling_types):
+                Constant.PROFILING_TYPE_ALL in profiling_types):
             profiling_driver_transpiler_start = time.time()
 
         # transpile codes
         transpile_task_results = transpile.submit(
-            job_data, driver, transpiler,
-            wait_for=[init_driver, init_transpiler])
+            parse_task_result.get("parsed_gates", None), driver, transpiler,
+            wait_for=[init_driver, init_transpiler, qasm_parser])
 
         # record transpiling end_time
         if (Constant.PROFILING_TYPE_DRIVER_TRANSPILE in profiling_types or
-            Constant.PROFILING_TYPE_DRIVER_ALL in profiling_types):
+                Constant.PROFILING_TYPE_ALL in profiling_types):
             profiling_driver_transpiler_end = time.time()
 
-        # get transpile results
-        _transpile_task_results = transpile_task_results.result()
-        num_qubits = _transpile_task_results.get("num_qubits", -1)
-        job_results["num_qubits"] = num_qubits
-
         # error handling
+        _transpile_task_results = transpile_task_results.result()
         err_msg = _transpile_task_results.get("error", None)
         if err_msg:
             raise err_msg
