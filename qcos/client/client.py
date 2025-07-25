@@ -176,6 +176,7 @@ class Client:
     def submit_job(
             self,
             source_code, *,
+            enable_circuit_aggregation=False,
             code_type=Constant.CODE_TYPE_QASM,
             job_id=None,
             job_name=None,
@@ -195,6 +196,7 @@ class Client:
 
         :param source_code: source code
         :param code_type: code type
+        :param enable_circuit_aggregation: enable circuit aggregation
         :param job_id: job uuid
         :param job_name: job name
         :param job_type: job type
@@ -216,6 +218,7 @@ class Client:
         data = {
             "source_code": source_code,
             "code_type": code_type,
+            "enable_circuit_aggregation": enable_circuit_aggregation,
             "job_name": job_name,
             "job_type": job_type,
             "job_sched_policy": job_sched_policy,

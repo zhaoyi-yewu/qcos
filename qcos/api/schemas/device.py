@@ -61,8 +61,8 @@ class GetDeviceResponse(BaseModel):
     transpiler: Optional[str] = None
     # supported transpilers
     supported_transpilers: Optional[list] = None
-    # enable circuit merge
-    enable_circuit_merge: Optional[bool] = None
+    # enable circuit aggregation
+    enable_circuit_aggregation: Optional[bool] = None
     # supported code types
     supported_code_types: Optional[list] = None
     # supported basis gates

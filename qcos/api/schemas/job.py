@@ -31,6 +31,8 @@ class SubmitJobRequest(BaseModel):
     """
     # Code types: qasm, qasm2, qasm3, qubo
     code_type: str = Constant.CODE_TYPE_QASM
+    # Enable circuit aggregation: True, False
+    enable_circuit_aggregation: Optional[bool] = False
     # Source code list
     source_code: list = []
     # description
@@ -96,6 +98,8 @@ class SubmitJobResponse(BaseModel):
     profiling: Optional[list] = []
     # Dry-run
     dry_run: Optional[bool] = False
+    # Enable circuit aggregation: True, False
+    enable_circuit_aggregation: Optional[bool] = False
     # Callbacks
     callbacks: Optional[list] = None
     # Creation date
@@ -140,6 +144,8 @@ class GetJobStatusResponse(BaseModel):
     shots: Optional[int] = None
     # Dry-run
     dry_run: Optional[bool] = False
+    # Enable circuit aggregation: True, False
+    enable_circuit_aggregation: Optional[bool] = False
     # Creation Date
     creation_date: Optional[datetime] = None
     # End date

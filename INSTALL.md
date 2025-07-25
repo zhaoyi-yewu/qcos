@@ -128,6 +128,8 @@ qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback"
 qcos-cli submit-job --job-id 00000000-0000-4000-8000-000000000001 --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.4 指定job名称
 qcos-cli submit-job --job-name test-dummy --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
+1.5 线路聚合
+qcos-cli submit-job --code-type qasm --shots 10 --enable-circuit-aggregation true --backend dummy -f ./samples/qasm/simple-qasm.qasm
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
 qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/simple-qasm.qasm

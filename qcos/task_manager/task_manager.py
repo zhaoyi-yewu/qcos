@@ -26,8 +26,9 @@ from typing import Any
 
 from prefect import get_client
 from prefect.client.schemas.actions import WorkPoolCreate
-from prefect.client.schemas.objects import WorkerStatus
-from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterName
+from prefect.client.schemas.objects import WorkerStatus, StateType
+from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterName, \
+    FlowRunFilterState, FlowRunFilterTags
 from prefect.exceptions import ObjectNotFound
 from prefect.workers import ProcessWorker
 from rich.console import Console
@@ -55,6 +56,8 @@ class TaskFlowManager(ABC):
         self._console = None
         self.worker_status = False
         self.driver_manager = None
+        self.parent_aggregation_jobs = []
+        self.aggregation_jobs = {}
 
     def transform_to_qcos_state(self, state):
         _state = state.upper()
@@ -81,6 +84,7 @@ class TaskFlowManager(ABC):
         self.loop.run_until_complete(self.create_pools())
         self.loop.run_until_complete(self.create_queues())
         self.loop.run_until_complete(self.start_workers())
+        self.loop.run_until_complete(self.process_aggregation_job())
 
     def set_driver_manager(self, driver_manager):
         """
@@ -269,12 +273,15 @@ class TaskFlowManager(ABC):
         if job_id is None:
             job_id = uuid.uuid4()
             args["job_info"]["data"]["job_id"] = job_id
-
+        tags = None
+        if args["job_info"]["data"]["enable_circuit_aggregation"]:
+            tags = ["enable_circuit_aggregation"]
         # TODO(jidalong) deal exception
         flow_run = await self._client.create_flow_run_from_deployment(
             name=str(job_id),
             deployment_id=deployment_id,
-            parameters=args)
+            parameters=args,
+            tags=tags, )
 
         return job_id
 
@@ -465,6 +472,17 @@ class TaskFlowManager(ABC):
 
         return success_list
 
+    def list_flow_runs_by_filter(self, state, tags):
+        s = {"type": {"any_": state}}
+        t = {"all_": tags}
+
+        flow_run_filter = FlowRunFilter(
+            state=FlowRunFilterState(**s),
+            tags=FlowRunFilterTags(**t))
+        flow_runs = self._sync_client.read_flow_runs(
+            flow_run_filter=flow_run_filter)
+        return flow_runs
+
     def get_flow_info_by_backend(self, backend):
         flow_info = {
             "deploy_name": backend,
@@ -482,3 +500,79 @@ class TaskFlowManager(ABC):
         """
         return self.loop.run_until_complete(
             Library.async_run_callbacks(job_id, data, callbacks))
+
+    async def process_aggregation_job(self):
+        """
+        Process aggregation job
+        """
+
+        def _update_aggregation_job(parent_id):
+            try:
+                # update sub jobs results into memory by parent job id
+                state, parameters, results, error_message = (
+                    self.get_task_flow_result(parent_id))
+                if (state.upper() == Constant.PREFECT_STATE_COMPLETED
+                        and results != None):
+                    for job_id, sub_results in results["sub_results"].items():
+                        self.aggregation_jobs[job_id] = sub_results
+            except Exception as e:
+                logger.error(f"Prefect get aggregation job error: {str(e)}")
+
+        def _process_aggregation_job(flow_run):
+            # 1.check current job is parent job or sub job
+            aggregation_parm = {}
+            if self.aggregation_jobs.get(flow_run.name):
+                # 2.get sub job results stored in memory
+                aggregation_parm["is_parent"] = False
+                aggregation_parm["sub_results"] = self.aggregation_jobs.get(
+                    flow_run.name)
+                self.aggregation_jobs.pop(flow_run.name)
+            else:
+                # 3.get sub jobs which can aggregated with parent job
+                sub_jobs = []
+
+                state = [StateType.SCHEDULED]
+                tags = ["enable_circuit_aggregation"]
+                flow_runs = self.list_flow_runs_by_filter(state, tags)
+                for sub_flow_run in flow_runs:
+                    if sub_flow_run.parameters["job_info"]["data"][
+                        "enable_circuit_aggregation"] and \
+                            flow_run.parameters["job_info"]["data"][
+                                "backend"] == \
+                            sub_flow_run.parameters["job_info"]["data"][
+                                "backend"] and \
+                            sub_flow_run.work_pool_name == \
+                            flow_run.work_pool_name:
+                        if len(sub_jobs) >= Constant.MAX_AGGREGATION_JOBS:
+                            break
+                        sub_jobs.append(
+                            {sub_flow_run.name: sub_flow_run.parameters})
+
+                aggregation_parm["is_parent"] = True
+                aggregation_parm["sub_jobs"] = sub_jobs
+                # 4.record parent id in order to update related sub jobs result
+                self.parent_aggregation_jobs.append(flow_run.name)
+
+            # 5.resume flow run and send sub job info(aggregation_parm)
+            self._sync_client.resume_flow_run(flow_run.id,
+                                              run_input=aggregation_parm)
+
+        def _process_aggregation_jobs():
+            while True:
+                # 1.periodic update sub jobs result
+                for parent_id in self.parent_aggregation_jobs:
+                    _update_aggregation_job(parent_id)
+
+                # 2.periodic get paused flow runs
+                # which are aggregation jobs running currently
+                state = [StateType.PAUSED]
+                tags = ["enable_circuit_aggregation"]
+                flow_runs = self.list_flow_runs_by_filter(state, tags)
+
+                for flow_run in flow_runs:
+                    _process_aggregation_job(flow_run)
+                sleep(Constant.DEFAULT_AGGREGATION_JOB_INTERVAL)
+
+        aggregation_thread = threading.Thread(target=_process_aggregation_jobs,
+                                              daemon=True)
+        aggregation_thread.start()

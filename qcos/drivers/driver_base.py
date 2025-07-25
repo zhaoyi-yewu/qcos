@@ -73,7 +73,7 @@ class DriverBase:
         self.tech_type = None
         # enable circuit merge or not
         # TODO(zhaoyi): not used
-        self.enable_circuit_merge = False
+        self.enable_circuit_aggregation = False
         # max number of qubits
         self.max_qubits = 0
         # supported basis gates
@@ -162,7 +162,7 @@ class DriverBase:
             f"status: {self._status}",
             f"enable_transpiler: {self.enable_transpiler}",
             f"transpiler: {self.transpiler}",
-            f"enable_circuit_merge: {self.enable_circuit_merge}",
+            f"enable_circuit_aggregation: {self.enable_circuit_aggregation}",
             f"results_fetch_mode: {self.results_fetch_mode}",
             f"max_qubits: {self.max_qubits}",
             f"qpu_configs: {self.qpu_configs}",

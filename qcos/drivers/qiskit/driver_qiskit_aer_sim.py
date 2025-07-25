@@ -38,7 +38,7 @@ class DriverQiskitAerSim(DriverBase):
                                       Constant.SINGLE_QUBIT_GATE_RZ,
                                       Constant.TWO_QUBIT_GATE_CX]
         self.supported_transpilers = [Constant.TRANSPILER_QISKIT]
-        self.enable_circuit_merge = True
+        self.enable_circuit_aggregation = True
         self.max_qubits = 30
         self._final_response = None
 

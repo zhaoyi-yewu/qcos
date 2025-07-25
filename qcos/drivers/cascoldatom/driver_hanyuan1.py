@@ -54,7 +54,7 @@ class DriverHanyuan1(DriverBase):
         self.supported_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
                                       Constant.SINGLE_QUBIT_GATE_RY]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
-        self.enable_circuit_merge = True
+        self.enable_circuit_aggregation = True
         self.max_qubits = 10
         self.server_host = None
         self.server_port = None

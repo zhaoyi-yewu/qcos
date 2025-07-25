@@ -52,7 +52,7 @@ def _get_device_info(driver_info, transpiler):
         "transpiler": driver_info.get_transpiler(),
         "enable_transpiler": driver_info.enable_transpiler,
         "supported_transpilers": driver_info.supported_transpilers,
-        "enable_circuit_merge": driver_info.enable_circuit_merge,
+        "enable_circuit_aggregation": driver_info.enable_circuit_aggregation,
         "supported_code_types": supported_code_types,
         "supported_basis_gates": driver_info.get_supported_basis_gates(),
         "results_fetch_mode": driver_info.results_fetch_mode,

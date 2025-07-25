@@ -104,7 +104,7 @@ class Constant:
     # Transpiler
     TRANSPILER_CMSS = "cmss"
     TRANSPILER_QISKIT = "qiskit"
-    TRANSPILER_TYPES = set() # autofilled during plugin registration
+    TRANSPILER_TYPES = set()  # autofilled during plugin registration
 
     # Quantum computer tech type
     TECH_TYPE_NEUTRAL_ATOM = "neutral_atom"
@@ -162,12 +162,14 @@ class Constant:
 
     # Maximum jobs allowed in the system
     MAX_JOBS = 1000
+    MAX_AGGREGATION_JOBS = 5
 
     # Job priority
     DEFAULT_JOB_PRIORITY = 5
     MIN_JOB_PRIORITY = 1
     MAX_JOB_PRIORITY = 10
     MAX_JOB_WORKER = 1
+    DEFAULT_AGGREGATION_JOB_INTERVAL = 10
 
     # job engine property
     DEFAULT_JOB_POOL_TYPE = "process"
