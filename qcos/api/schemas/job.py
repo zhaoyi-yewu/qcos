@@ -32,7 +32,7 @@ class SubmitJobRequest(BaseModel):
     # Code types: qasm, qasm2, qasm3, qubo
     code_type: str = Constant.CODE_TYPE_QASM
     # Source code list
-    source_code: list[str] = []
+    source_code: list = []
     # description
     description: Optional[str] = None
     # QC driver name
@@ -43,6 +43,8 @@ class SubmitJobRequest(BaseModel):
     transpiler_info: Optional[dict] = None
     # Job ID
     job_id: Optional[UUID] = None
+    # Job name
+    job_name: Optional[str] = None
     # Job type
     job_type: str = Constant.JOB_TYPE_ESTIMATION
     # Job scheduling policy
@@ -68,12 +70,18 @@ class SubmitJobResponse(BaseModel):
     """
     # Job ID
     job_id: UUID = None
+    # Job name
+    job_name: Optional[str] = None
     # Job status
     job_status: str = None
     # Job scheduling policy
     job_sched_policy: str = None
     # Job priority
     job_priority: int = None
+    # Code type
+    code_type: str = None
+    # Source code list
+    source_code: list = []
     # Description
     description: Optional[str] = None
     # QC driver name
@@ -112,6 +120,8 @@ class GetJobStatusResponse(BaseModel):
     """
     # Job ID
     job_id: UUID = None
+    # Job name
+    job_name: Optional[str] = None
     # Job status
     job_status: str = None
     # QC driver name
@@ -152,10 +162,36 @@ class GetJobResultsResponse(BaseModel):
     """
     # Job ID
     job_id: UUID = None
+    # Job name
+    job_name: Optional[str] = None
     # Job status
     job_status: str = None
+    # Code type
+    code_type: str = None
+    # Source code list
+    source_code: list = []
+    # QC driver name
+    backend: Optional[str] = None
+    # Transpiler
+    transpiler: Optional[str] = None
+    # Transpiler info
+    transpiler_info: Optional[dict] = None
+    # Job scheduling policy
+    job_sched_policy: Optional[str] = None
+    # Job priority
+    job_priority: Optional[int] = None
+    # Description
+    description: Optional[str] = None
+    # Shots
+    shots: Optional[int] = None
+    # Dry-run
+    dry_run: Optional[bool] = False
     # Results
     results: Optional[Union[str, int, list, dict]] = None
+    # Creation Date
+    creation_date: Optional[datetime] = None
+    # End date
+    end_date: Optional[datetime] = None
 
 
 class GetJobsRequest(BaseModel):

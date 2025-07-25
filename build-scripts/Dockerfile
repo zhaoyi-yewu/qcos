@@ -27,6 +27,7 @@ ENV TZ=Asia/Shanghai
 MAINTAINER Zhao Yi <zhaoyi_yewu@cmss.chinamobile.com>
 
 ADD ./.build-context/ ${BUILD_CONTEXT}
+WORKDIR /root
 
 RUN \
 # copy qcos dir

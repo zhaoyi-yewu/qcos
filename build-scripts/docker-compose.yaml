@@ -42,6 +42,7 @@ services:
     depends_on:
       - prefect-server
     tty: True
+    working_dir: /root
     environment:
       DEBUG: ${DEBUG}
       DEV: ${DEV}

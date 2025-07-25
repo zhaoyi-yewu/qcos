@@ -43,6 +43,7 @@ services:
     tty: True
     depends_on:
       - prefect-server
+    working_dir: /root/qcos-project
     environment:
       DEBUG: ${DEBUG}
       DEV: ${DEV}

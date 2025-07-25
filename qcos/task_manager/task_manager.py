@@ -379,17 +379,28 @@ class TaskFlowManager(ABC):
             self.get_task_flow_list_by_client())
         return results
 
-    async def get_task_flow_list_by_client(self):
+    async def get_task_flow_list_by_client(
+            self,
+            sort_fields=['-created'],
+            reverse=False,
+    ):
         """
         Get flow run list by prefect client.
 
+        :param sort_fields: sort fields
+        :param reverse: reverse order
         :return result: flow run list
         """
 
         # TODO(jidalong) deal exception
         results_list = []
         flow_runs = await self._client.read_flow_runs()
-        for flow_run in flow_runs:
+        sorted_flows = sorted(
+            flow_runs,
+            key=lambda sort_obj: Library.get_sorted_keys(
+                sort_obj, sort_fields),
+            reverse=reverse)
+        for flow_run in sorted_flows:
             id = flow_run.name
             is_uuid, _ = Library.validate_values_uuid(
                 id, "job_id")

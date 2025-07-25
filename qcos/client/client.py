@@ -36,7 +36,7 @@ class Client:
 
     def __init__(self,
                  api_listen_ip=Config.API_SERVER_LISTEN_IP,
-                 api_port=Config.API_SERVER_PORT):
+                 api_port=Config.API_SERVER_LISTEN_PORT):
         api_version = "v1"
         endpoint_url = f"http://{api_listen_ip}:{api_port}/{api_version}"
         self.device_url = f"{endpoint_url}/device"
@@ -178,6 +178,7 @@ class Client:
             source_code, *,
             code_type=Constant.CODE_TYPE_QASM,
             job_id=None,
+            job_name=None,
             job_type=Constant.JOB_TYPE_ESTIMATION,
             job_sched_policy=Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
             job_priority=Constant.DEFAULT_JOB_PRIORITY,
@@ -195,6 +196,7 @@ class Client:
         :param source_code: source code
         :param code_type: code type
         :param job_id: job uuid
+        :param job_name: job name
         :param job_type: job type
         :param job_sched_policy: job scheduling policy
         :param job_priority: job priority
@@ -214,6 +216,7 @@ class Client:
         data = {
             "source_code": source_code,
             "code_type": code_type,
+            "job_name": job_name,
             "job_type": job_type,
             "job_sched_policy": job_sched_policy,
             "job_priority": job_priority,
@@ -226,6 +229,7 @@ class Client:
             "callbacks": callbacks,
             "dry_run": dry_run
         }
+
         if job_id:
             data["job_id"] = str(job_id)
         status_code, reason, text, result = Client.call_json_rpc(

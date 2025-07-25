@@ -48,6 +48,7 @@ def submit_job(
     source_code = body.source_code
     code_type = body.code_type
     job_id = body.job_id
+    job_name = body.job_name
     job_type = body.job_type
     job_sched_policy = body.job_sched_policy
     job_priority = body.job_priority
@@ -60,19 +61,37 @@ def submit_job(
     callbacks = body.callbacks
     dry_run = body.dry_run
 
-    # validate: source_code
-    jsonrpc_errors.handle_invalid_params(Library.validate_values_list(
-        source_code, "source_code", str, allow_none=False))
-
     # validate: code_type
     code_type = code_type.lower()
     jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
         code_type, "code_type", Constant.CODE_TYPES))
 
+    # Validate: source_code
+    jsonrpc_errors.handle_invalid_params(Library.validate_schema(
+        source_code, args_schema.SOURCE_CODE_SCHEMA))
+
+    # Validate: source_code by code_type
+    if code_type in [Constant.CODE_TYPE_QUBO]:
+        jsonrpc_errors.handle_invalid_params(Library.validate_schema(
+            source_code, args_schema.SOURCE_CODE_QUBO_SCHEMA
+        ))
+    else:
+        jsonrpc_errors.handle_invalid_params(Library.validate_schema(
+            source_code, args_schema.SOURCE_CODE_TEXT_SCHEMA
+        ))
+
     # validate: job_id
     if job_id:
         jsonrpc_errors.handle_invalid_params(Library.validate_values_uuid(
             str(job_id), "job_id"))
+
+    # validate: job_name
+    if not job_name:
+        job_name = None
+    jsonrpc_errors.handle_invalid_params(Library.validate_schema(
+        job_name,
+        args_schema.NAME_SCHEMA,
+        allow_none=True))
 
     # validate: job_type
     jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
@@ -89,6 +108,8 @@ def submit_job(
         Constant.MIN_JOB_PRIORITY, Constant.MAX_JOB_PRIORITY))
 
     # validate: description
+    if not description:
+        description = None
     jsonrpc_errors.handle_invalid_params(Library.validate_values_length(
         description, "description",
         Constant.MIN_DESCRIPTION_LENGTH, Constant.MAX_DESCRIPTION_LENGTH,
@@ -192,6 +213,7 @@ def submit_job(
 
     response_info = {
         "job_id": res["job_id"],
+        "job_name": job_name,
         "job_status": Constant.JOB_STATUS_UNKNOWN,
         "job_sched_policy": job_sched_policy,
         "job_priority": job_priority,
@@ -272,6 +294,7 @@ def get_job_results(
     if err:
         jsonrpc_errors.handle_get_results_error(err)
     if response.get("error_message"):
+        # TODO(zhaoyi): reorganize results
         jsonrpc_errors.handle_get_status_error(response["error_message"])
 
     # existing results reported by driver
@@ -348,6 +371,7 @@ def cancel_jobs(
     # construct response
     response_list = [{
         "job_id": str(job_id),
+        "job_name": None,
         "job_status": Constant.JOB_STATUS_CANCELLED,
         "job_sched_policy": Constant.DEFAULT_JOB_SCHED_POLICY,
         "job_priority": 100,

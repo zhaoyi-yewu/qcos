@@ -76,8 +76,8 @@ def get_devices(
     """
     logger.info(f"Call get_devices: {body}")
 
-    driver_manger = scheduler.get_driver_manager()
-    drivers = driver_manger.get_drivers()
+    driver_manager = scheduler.get_driver_manager()
+    drivers = driver_manager.get_drivers()
     response_info = []
     for _, driver_info in sorted(drivers.items()):
         transpiler_manager = scheduler.get_transpiler_manager()
@@ -102,8 +102,8 @@ def get_device(
 
     driver_name = body.name
 
-    driver_manger = scheduler.get_driver_manager()
-    driver_info = driver_manger.get_driver(driver_name)
+    driver_manager = scheduler.get_driver_manager()
+    driver_info = driver_manager.get_driver(driver_name)
     if not driver_info:
         jsonrpc_errors.handle_device_error(
             f"Can't find device: {driver_name}")

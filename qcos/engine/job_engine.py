@@ -104,7 +104,7 @@ def transpile(job_data, driver, transpiler):
     num_qubits = -1
     try:
         raw_qasm = job_data['source_code'][0]
-        logger.info(f"raw_qasm: {raw_qasm}")
+        logger.info(f"raw_qasm:\n{raw_qasm}")
         expect_basis_gates = driver.get_supported_basis_gates()
         transpile_results = transpiler.transpile(raw_qasm, expect_basis_gates)
         num_qubits = transpiler.num_qubits
@@ -217,8 +217,10 @@ def job_flow(job_info):
 
     transpile_results = None
     num_qubits = -1
-    transpiler_profiling_start = 0
-    transpiler_profiling_end = 0
+    profiling_driver_transpiler_start = 0
+    profiling_driver_transpiler_end = 0
+    profiling_driver_run_start = 0
+    profiling_driver_run_end = 0
     job_results = {"metadata": {}, "profiling": {}, "results": None}
     job_data = job_info["data"]
     job_id = job_data["job_id"]
@@ -244,14 +246,20 @@ def job_flow(job_info):
             raise transpiler_task_result["error"]
         transpiler = transpiler_task_result["transpiler"]
 
+        # record transpiling start_time
+        if (Constant.PROFILING_TYPE_DRIVER_TRANSPILE in profiling_types or
+                Constant.PROFILING_TYPE_DRIVER_ALL in profiling_types):
+            profiling_driver_transpiler_start = time.time()
+
         # transpile codes
-        if Constant.PROFILING_TYPE_TRANSPILER in profiling_types:
-            transpiler_profiling_start = time.time()
         transpile_task_results = transpile.submit(
             job_data, driver, transpiler,
             wait_for=[init_driver, init_transpiler])
-        if Constant.PROFILING_TYPE_TRANSPILER in profiling_types:
-            transpiler_profiling_end = time.time()
+
+        # record transpiling end_time
+        if (Constant.PROFILING_TYPE_DRIVER_TRANSPILE in profiling_types or
+            Constant.PROFILING_TYPE_DRIVER_ALL in profiling_types):
+            profiling_driver_transpiler_end = time.time()
 
         # get transpile results
         _transpile_task_results = transpile_task_results.result()
@@ -266,6 +274,11 @@ def job_flow(job_info):
 
     # call run() in driver
     run_driver_task_result = None
+    # record driver_run start_time
+    if (Constant.PROFILING_TYPE_DRIVER_RUN in profiling_types or
+            Constant.PROFILING_TYPE_ALL in profiling_types):
+        profiling_driver_run_start = time.time()
+
     if driver.enable_transpiler:
         run_driver_task_result = run_driver.submit(
             job_info, driver, num_qubits, transpile_results,
@@ -274,6 +287,11 @@ def job_flow(job_info):
         run_driver_task_result = run_driver.submit(
             job_info, driver, num_qubits, job_data,
             wait_for=[init_driver])
+
+    # record driver_run end_time
+    if (Constant.PROFILING_TYPE_DRIVER_RUN in profiling_types or
+            Constant.PROFILING_TYPE_ALL in profiling_types):
+        profiling_driver_run_end = time.time()
 
     # get results
     task_result = run_driver_task_result.result()
@@ -285,12 +303,13 @@ def job_flow(job_info):
     job_results["results"] = task_result["results"]
     job_results["metadata"] = task_result["metadata"]
 
-    # calculate profiling for transpiler
-    if transpiler_profiling_start and transpiler_profiling_end:
-        job_results["profiling"] = {
-            "profiling_transpiler":
-                transpiler_profiling_end - transpiler_profiling_start,
-        }
+    # calculate profiling
+    if profiling_driver_transpiler_start and profiling_driver_transpiler_end:
+        job_results["profiling"]["profiling_transpiler"] = \
+            profiling_driver_transpiler_end - profiling_driver_transpiler_start
+    if profiling_driver_run_start and profiling_driver_run_end:
+        job_results["profiling"]["profiling_driver_run"] = \
+            profiling_driver_run_end - profiling_driver_run_start
 
     # construct results
     results = [job_results]

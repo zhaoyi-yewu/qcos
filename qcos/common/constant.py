@@ -24,6 +24,7 @@ class Constant:
     CODE_TYPE_QASM2 = "qasm2"
     CODE_TYPE_QASM3 = "qasm3"
     CODE_TYPE_QUBO = "qubo"
+    CODE_TYPES_FORMAT_TEXT = [CODE_TYPE_QASM, CODE_TYPE_QASM2, CODE_TYPE_QASM3]
     CODE_TYPES = [CODE_TYPE_QASM, CODE_TYPE_QASM2, CODE_TYPE_QASM3,
                   CODE_TYPE_QUBO]
 
@@ -142,9 +143,18 @@ class Constant:
     RESULTS_FETCH_ASYNC_TIMEOUT = 30
 
     # Profiling types
-    PROFILING_TYPE_TRANSPILER = "transpiler"
-    PROFILING_TYPE_SCHEDULER = "scheduler"
-    PROFILING_TYPES = [PROFILING_TYPE_TRANSPILER, PROFILING_TYPE_SCHEDULER]
+    PROFILING_TYPE_ALL = "all"
+    PROFILING_TYPE_JOB = "job"
+    PROFILING_TYPE_SCHEDULE = "schedule"
+    PROFILING_TYPE_DRIVER_PARSE = "driver:parse"
+    PROFILING_TYPE_DRIVER_TRANSPILE = "driver:transpile"
+    PROFILING_TYPE_DRIVER_RUN = "driver:run"
+    PROFILING_TYPES = [PROFILING_TYPE_ALL,
+                       PROFILING_TYPE_JOB,
+                       PROFILING_TYPE_SCHEDULE,
+                       PROFILING_TYPE_DRIVER_PARSE,
+                       PROFILING_TYPE_DRIVER_TRANSPILE,
+                       PROFILING_TYPE_DRIVER_RUN]
 
     # Callback types
     CALLBACK_TYPE_RESULTS = "results"

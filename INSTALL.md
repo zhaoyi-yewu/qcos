@@ -121,11 +121,13 @@ cd build-scripts
 1. 测试用dummy驱动
 qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.1 使用profiling
-qcos-cli submit-job --code-type qasm --shots 10 --profiling transpiler scheduler --backend dummy -f ./samples/qasm/simple-qasm.qasm
+qcos-cli submit-job --code-type qasm --shots 10 --profiling schedule driver:transpile driver:run --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.2 使用callbacks进行回调
 qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.3 指定job-id
 qcos-cli submit-job --job-id 00000000-0000-4000-8000-000000000001 --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
+1.4 指定job名称
+qcos-cli submit-job --job-name test-dummy --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
 qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/simple-qasm.qasm
@@ -150,6 +152,7 @@ qcos-cli cancel-jobs -y all
 
 * 删除作业
 qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
+qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002
 qcos-cli delete-jobs -y all
 
 * 设置作业结果 (回调或者测试用途)

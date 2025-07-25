@@ -30,8 +30,8 @@ from qcos.drivers.driver_base import DriverBase
 
 class DriverTiangong100(DriverBase):
     """
-    玻色量子-天工1000 光量子伊辛机驱动
-    Qboson Tiangong1000 driver
+    玻色量子-天工100 光量子伊辛机驱动
+    Qboson Tiangong100 driver
     CQ-D-100
     """
 
@@ -69,6 +69,13 @@ class DriverTiangong100(DriverBase):
     device_status_debugging = 2
     device_status_malfunctioning = 3
     device_status_self_testing = 4
+    device_status_mapping = {
+        device_status_shutdown: {"desc": "shutdown"},
+        device_status_available: {"desc": "available"},
+        device_status_debugging: {"desc": "debugging"},
+        device_status_malfunctioning: {"desc": "malfunctioning"},
+        device_status_self_testing: {"desc": "self_testing"},
+    }
 
     # task status
     # -1: unknown, 0: queue, 1: computing, 5. completed, 6. failed
@@ -162,7 +169,7 @@ class DriverTiangong100(DriverBase):
         # Load qubo matrix
         qubo_matrix = None
         try:
-            qubo_matrix = json.loads(data["source_code"][0])
+            qubo_matrix = data["source_code"][0]
         except Exception as e:
             raise ValueError(f"Invalid qubo matrix [{job_id}]") from e
 
@@ -294,11 +301,15 @@ class DriverTiangong100(DriverBase):
             err_msg = response["msg"]
             if err_code == "0":
                 data = response.get("data", None)
-                logger.info(f"device status: {data['status']}")
-                if data["status"] != self.device_status_available:
+                data_status = data['status']
+                logger.info(f"device status: {data_status}")
+                if data_status != self.device_status_available:
                     success = False
+                    device_status_desc = \
+                        self.device_status_mapping[data_status]["desc"]
                     err_msgs.append(
-                        f"Unexpected device status: {data['status_desc']}")
+                        f"Unexpected device status: {device_status_desc}, \
+                        controller status: {data['status_desc']}")
             else:
                 success = False
                 err_msgs.append(err_msg)

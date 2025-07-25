@@ -246,12 +246,12 @@ class Library:
 
     @staticmethod
     def read_csv_file(file_path):
-        content = []
+        content_list = []
         with open(file_path, "r", encoding="utf-8") as csv_file:
             csv_reader = csv.reader(csv_file)
             for row in csv_reader:
-                content.append([int(value) for value in row])
-        return json.dumps(content)
+                content_list.append([int(value) for value in row])
+        return json.dumps(content_list)
 
     @staticmethod
     def read_toml_file(file_path: str):
@@ -482,7 +482,7 @@ class Library:
         r = None
         if debug:
             logger.info(
-                f"Request [{func_name}]: {url}, "
+                f"Request [{func_name}]: {url}/{func_name}, "
                 f"METHOD: {method}, HEADER: {headers}, PARAMS: {params}, "
                 f"DATA: {data}, JSON: {json}")
         if method == HttpMethod.POST:
@@ -754,3 +754,46 @@ class Library:
             else:
                 success = False
         return success, err_msg
+
+    @staticmethod
+    def get_sorted_keys(sort_obj, sort_fields):
+        """
+        Get sorted keys from sort_obj
+
+        :param sort_obj: object to be sorted
+        :param sort_fields: field list to be sort
+        :return: sorted keys
+        """
+        key_tuple = []
+        for field in sort_fields:
+            # process descending mark (-)
+            if field.startswith("-"):
+                real_field = field[1:]
+                reverse_flag = -1
+            else:
+                real_field = field
+                reverse_flag = 1
+
+            # get field value
+            if isinstance(sort_obj, dict):
+                value = sort_obj.get(real_field)
+            else:
+                value = getattr(sort_obj, real_field, None)
+
+            # handling data type: int/float by multiplying reverse_flag
+            if isinstance(value, (int, float)):
+                key_tuple.append(value * reverse_flag)
+            elif isinstance(value, datetime):
+                # handling data type: datetime
+                _value = value
+                if reverse_flag != 1:
+                    tzinfo = value.tzinfo
+                    future_datetime = datetime(2999, 12, 31, 23, 59, 59, 0,
+                                               tzinfo)
+                    _value = future_datetime - value
+                key_tuple.append(_value)
+            else:
+                # handling other data types
+                key_tuple.append(
+                    value if reverse_flag == 1 else str(value)[::-1])
+        return tuple(key_tuple)

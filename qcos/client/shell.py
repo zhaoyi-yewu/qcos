@@ -46,11 +46,13 @@ QCOS commands:
 1. 测试用dummy驱动
 qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.1 使用profiling
-qcos-cli submit-job --code-type qasm --shots 10 --profiling transpiler scheduler --backend dummy -f ./samples/qasm/simple-qasm.qasm
+qcos-cli submit-job --code-type qasm --shots 10 --profiling schedule driver:transpile driver:run --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.2 使用callbacks进行回调
 qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.3 指定job-id
 qcos-cli submit-job --job-id 00000000-0000-4000-8000-000000000001 --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
+1.4 指定job名称
+qcos-cli submit-job --job-name test-dummy --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
 qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/simple-qasm.qasm
@@ -75,6 +77,7 @@ qcos-cli cancel-jobs -y all
 
 * Delete job
 qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
+qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002
 qcos-cli delete-jobs -y all
 
 * Set job results (for callbacks or test purpose)
@@ -184,8 +187,9 @@ class QcosShell(App):
         parser.add_argument(
             "--api-port",
             dest="api_port", type=int,
-            default=Config.API_SERVER_PORT,
-            help=f"Specify api server port. Default: {Config.API_SERVER_PORT}",
+            default=Config.API_SERVER_LISTEN_PORT,
+            help="Specify api server port. "
+                 f"Default: {Config.API_SERVER_LISTEN_PORT}",
         )
         parser.add_argument(
             "-h", "--help",
@@ -543,6 +547,10 @@ class SubmitJob(Command):
         parser.add_argument("--job-id", dest="job_id",
                             type=str,
                             help="Job uuid")
+        parser.add_argument("-n", "--job-name", dest="job_name",
+                            type=str,
+                            default=None,
+                            help="Job name")
         parser.add_argument("--job-type", dest="job_type",
                             default=f"{Constant.JOB_TYPE_ESTIMATION}",
                             choices=Constant.JOB_TYPES,
@@ -599,6 +607,7 @@ class SubmitJob(Command):
         :param parsed_args: command line arguments
         """
         resource = self.group
+        job_name = parsed_args.job_name
         dry_run = parsed_args.dry_run
         code_type = parsed_args.code_type
         job_id = parsed_args.job_id
@@ -627,20 +636,23 @@ class SubmitJob(Command):
                     raise errors.InvalidArguments(err_msg)
                 source_code_list.append(file_content)
 
+        # Validate argument: source_code
         CommandHelper.handle_invalid_arguments(Library.validate_schema(
             source_code_list, args_schema.SOURCE_CODE_SCHEMA))
         if not source_code_list:
             raise errors.InvalidArguments(
                 "Empty argument: source_code_files is not allowed")
 
+        # Validate argument: job_name
+        if job_name:
+            CommandHelper.handle_invalid_arguments(Library.validate_schema(
+                job_name, args_schema.NAME_SCHEMA,
+                allow_none=True))
+
         # Validate argument: job_id
         if job_id:
             CommandHelper.handle_invalid_arguments(
                 Library.validate_values_uuid(job_id, "job_id"))
-
-        # Validate content of source_code
-        CommandHelper.handle_invalid_arguments(Library.validate_values_list(
-            source_code_list, "source_code", str, allow_none=False))
 
         # Validate argument: job_type
         CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
@@ -699,6 +711,7 @@ class SubmitJob(Command):
             source_code_list,
             code_type=code_type,
             job_id=job_id,
+            job_name=job_name,
             job_type=job_type,
             job_sched_policy=job_sched_policy,
             job_priority=job_priority,
@@ -783,7 +796,7 @@ class GetJobResults(ShowOne):
         """
         resource = self.group
         job_id = parsed_args.job_id
-        json_result = {}
+        # json_result = {}
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(
@@ -795,15 +808,13 @@ class GetJobResults(ShowOne):
         json_results = CommandHelper.check_results(
             resource, "get_job_results", status_code, reason, text)
 
-        json_result["job_id"] = json_results["job_id"]
-        json_result["job_status"] = json_results["job_status"]
         _results = json_results.get("results", None)
         if _results:
             _result = _results[0]
             for k, v in _result.items():
                 if k != "metadata":
-                    json_result[k] = v
-        table_values = CommandHelper.get_table_data(json_result)
+                    json_results[k] = v
+        table_values = CommandHelper.get_table_data(json_results)
         return table_values
 
 
@@ -831,8 +842,8 @@ class GetJobs(Lister):
         :param parsed_args: command line arguments
         """
         resource = self.group
-        header_list = ["job_id", "job_status", "backend", "job_type",
-                       "shots", "creation_date", "end_date"]
+        header_list = ["job_id", "job_name", "job_status", "backend",
+                       "job_type", "shots", "creation_date", "end_date"]
 
         # call api
         status_code, reason, text, result = self.app.client.get_jobs()
@@ -1097,22 +1108,27 @@ def set_debug_option(args):
 SOURCE_CODE_FILE_INFO = {
     Constant.CODE_TYPE_QASM: [{
         "file_type": Constant.FILE_TYPE_QASM,
-        "parser": Library.read_file
+        "reader": Library.read_file,
+        "parser": None
     }],
     Constant.CODE_TYPE_QASM2: [{
         "file_type": Constant.FILE_TYPE_QASM,
-        "parser": Library.read_file
+        "reader": Library.read_file,
+        "parser": None
     }],
     Constant.CODE_TYPE_QASM3: [{
         "file_type": Constant.FILE_TYPE_QASM,
-        "parser": Library.read_file
+        "reader": Library.read_file,
+        "parser": None
     }],
     Constant.CODE_TYPE_QUBO: [{
         "file_type": Constant.FILE_TYPE_JSON,
-        "parser": Library.read_file
-    },{
+        "reader": Library.read_file,
+        "parser": json.loads
+    }, {
         "file_type": Constant.FILE_TYPE_CSV,
-        "parser": Library.read_csv_file
+        "reader": Library.read_csv_file,
+        "parser": json.loads
     }],
 }
 
@@ -1147,18 +1163,22 @@ def get_content_by_type(code_type, file_path):
                   f"{', '.join(SOURCE_CODE_FILE_INFO.keys())}"
         return success, err_msg, None
     file_name, file_ext = os.path.splitext(file_path)
+    reader = None
     parser = None
     for code_type_info in code_type_info_list:
         file_type = code_type_info.get("file_type", "")
         if file_ext.lower() == file_type.lower():
+            reader = code_type_info.get("reader", None)
             parser = code_type_info.get("parser", None)
             break
-    if not parser:
+    if not reader:
         success = False
         err_msg = f"Unsupported file extension: {file_ext}. " \
                   f"Valid code_types: {', '.join(get_file_types())}"
         return success, err_msg, None
-    file_content = parser(file_path)
+    file_content = reader(file_path)
+    if parser:
+        file_content = parser(file_content)
     return success, err_msg, file_content
 
 

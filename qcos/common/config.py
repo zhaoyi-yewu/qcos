@@ -38,7 +38,7 @@ class Config:
 
     # [API_SERVER]
     API_SERVER_LISTEN_IP = "127.0.0.1"
-    API_SERVER_PORT = 18400
+    API_SERVER_LISTEN_PORT = 18400
     API_LOG_FILE = "/var/log/qcos/qcos-api.log"
 
     # [SSL]

@@ -18,6 +18,7 @@
 import logging
 
 import fastapi_jsonrpc as jsonrpc
+from fastapi.middleware.cors import CORSMiddleware
 from uvicorn.main import Server as UvicornServer
 
 from qcos.api.posiq.routes_jsonrpc.routes import (
@@ -26,6 +27,13 @@ from qcos.api.posiq.routes_jsonrpc.routes import (
 logger = logging.getLogger(__name__)
 
 app = jsonrpc.API()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 app.bind_entrypoint(device_api_v1)
 app.bind_entrypoint(job_api_v1)
 app.bind_entrypoint(system_api_v1)

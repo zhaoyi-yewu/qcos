@@ -34,7 +34,7 @@ debug = ${_DEBUG,,}
 
 [API_SERVER]
 api_server_listen_ip = "${API_SERVER_LISTEN_IP:-0.0.0.0}"
-api_server_port = ${API_SERVER_PORT:-18400}
+api_server_listen_port = ${API_SERVER_LISTEN_PORT:-18400}
 api_log_file = "${API_LOG_FILE:-/var/log/qcos/qcos-api.log}"
 EOM
 fi

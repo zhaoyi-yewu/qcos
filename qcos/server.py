@@ -186,7 +186,7 @@ class Server:
             config = uvicorn.Config(
                 app,
                 host=Config.API_SERVER_LISTEN_IP,
-                port=Config.API_SERVER_PORT,
+                port=Config.API_SERVER_LISTEN_PORT,
                 workers=Config.WORKERS,
                 reload=False,
                 access_log=access_log,

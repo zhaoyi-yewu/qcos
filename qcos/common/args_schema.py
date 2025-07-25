@@ -15,13 +15,23 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from schema import Optional, Or
+from schema import And, Optional, Or, Regex, Use
 
 from .constant import Constant, HttpMethod
 from .library import Library
 
 
-SOURCE_CODE_SCHEMA = [str]
+NAME_SCHEMA = And(
+    Use(str),
+    lambda s: 1 <= len(s) <= 20,
+    Regex(r'^[a-zA-Z0-9_\-]+$'),
+    error="String must contains: letters, numbers, dashes, underscores, "
+          "and string length must between [1-20]."
+)
+SOURCE_CODE_SCHEMA = list
+SOURCE_CODE_TEXT_SCHEMA = [str]
+SOURCE_CODE_QUBO_SCHEMA = [[[int]]]
+
 CALLBACKS_SCHEMA = [
     {
         "name": str,

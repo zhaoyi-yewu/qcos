@@ -81,6 +81,7 @@ class DriverHanyuan1(DriverBase):
         driver_config_schema = {
             "ip_address": str,
             "port": int,
+            "callback_baseurl": str,
             "qpu_configs": {
                 "qubits": int,
                 "storage_area": [str],
