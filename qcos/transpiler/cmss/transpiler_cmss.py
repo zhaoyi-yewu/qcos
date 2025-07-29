@@ -55,25 +55,24 @@ class TranspilerCmss(TranspilerBase):
     def init_transpiler(self):
         pass
 
-    def parse(self, qasm: str):
+    def parse(self, codes: str):
         """
-        parse codes
+        parse source codes
 
-        :param qasm: qasm codes
-        :return parsed gates
+        :param codes: source codes
+        :return parse result
         """
         # compile and mapping
-        num_qubits, gates = compile(qasm)
+        num_qubits, parse_result = compile(codes)
         self.num_qubits = num_qubits
-        gates = optimize_gate(gates)
-        return gates
+        return parse_result
 
-    def transpile(self, parsed_gates: list, expect_basis_gates: list):
+    def transpile(self, parse_result, supp_basis_gates: list):
         """
         CMSS transpiler function.
 
-        :param parsed_gates: parsed gates
-        :param expect_basis_gates: expect basis gates
+        :param parse_result: parse result
+        :param supp_basis_gates: supported basis gates
         :return basis gate list
         """
         qpu_cfg = trans_cfg_inst.get_qpu_cfg()
@@ -81,14 +80,14 @@ class TranspilerCmss(TranspilerBase):
             err_msg = "Missing qpu configs"
             logger.error(err_msg)
             raise ValueError(err_msg)
-
-        factory = MappingFactory(self.num_qubits, parsed_gates, qpu_cfg)
+        opt_result = optimize_gate(parse_result)
+        factory = MappingFactory(self.num_qubits, opt_result, qpu_cfg)
         mapper = factory.get_mapper_by_type(trans_cfg_inst.get_tech_type())
         mapping_res = mapper.execute_with_order()
         logger.info(f"after mapping: {mapping_res}")
 
         # decompose gates
-        parsed_circuit = decompose_gates(parsed_gates)
+        parsed_circuit = decompose_gates(opt_result)
 
         # optimize circuit
         basis_gate_list = optimize_gate(parsed_circuit)

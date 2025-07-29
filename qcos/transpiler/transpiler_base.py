@@ -127,22 +127,22 @@ class TranspilerBase:
         """
         return self.supported_code_types
 
-    def parse(self, qasm: str):
+    def parse(self, codes: str):
         """
-        parse qasm codes
+        parse source codes
 
-        :param qasm: qasm codes
-        :return parsed gates
+        :param codes: source codes
+        :return parse result
         """
         raise NotImplementedError(f"Transpiler: {self.__class__.__name__} "
                                   f"must implement method: parse")
 
-    def transpile(self, parsed_gates: list, expect_basis_gates: list):
+    def transpile(self, parse_result, supp_basis_gates: list):
         """
         Transpile codes
 
-        :param parsed_gates: parsed gates
-        :param expect_basis_gates: expect basis gates
+        :param parse_result: parse result
+        :param supp_basis_gates: supported basis gates
         :return basis gate list
         """
         raise NotImplementedError(f"Transpiler: {self.__class__.__name__} "

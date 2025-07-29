@@ -39,8 +39,9 @@ class TestTranspilerQiskit:
                                 Constant.SINGLE_QUBIT_GATE_RY,
                                 Constant.SINGLE_QUBIT_GATE_RZ,
                                 Constant.TWO_QUBIT_GATE_CX]
-        trans_cfg_inst.set_driver_name("qiskit-qasm-sim")
+        trans_cfg_inst.set_driver_name("qiskit-aer-sim")
         transpiler = TranspilerQiskit()
-        transpiled_circuit = transpiler.transpile(self.simple_data,
+        parse_result = transpiler.parse(self.simple_data)
+        transpiled_circuit = transpiler.transpile(parse_result,
                                                   expected_basis_gates)
         assert len(transpiled_circuit) == 3

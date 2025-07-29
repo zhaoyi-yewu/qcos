@@ -75,7 +75,7 @@ class Config:
                     if hasattr(cls, key_upper):
                         setattr(cls, key_upper, value)
                     else:
-                        raise errors.Exception(
+                        raise errors.GenericException(
                             f"Can't find config key: {key}")
 
     @classmethod

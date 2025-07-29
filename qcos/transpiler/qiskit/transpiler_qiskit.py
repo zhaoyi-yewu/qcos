@@ -55,16 +55,25 @@ class TranspilerQiskit(TranspilerBase):
     def init_transpiler(self):
         pass
 
-    def transpile(self, qasm: str, expect_basis_gates: list):
+    def parse(self, codes: str):
+        """
+        parse source codes
+
+        :param codes: source codes
+        :return parse result
+        """
+        parse_result = QuantumCircuit.from_qasm_str(codes)
+        self.num_qubits = parse_result.num_qubits
+        return parse_result
+
+    def transpile(self, parse_result, supp_basis_gates: list):
         """
         Transpile codes
 
-        :param qasm: qasm codes
-        :param expect_basis_gates: expect basis gates
+        :param parse_result: parse result
+        :param supp_basis_gates: supported basis gates
         :return transpiled quantum circuit
         """
-        circuit = QuantumCircuit.from_qasm_str(qasm)
-
         if trans_cfg_inst.get_driver_name() == "qiskit-qasm-sim":
             simulator = QasmSimulator()
         elif trans_cfg_inst.get_driver_name() == "qiskit-aer-sim":
@@ -72,10 +81,9 @@ class TranspilerQiskit(TranspilerBase):
         else:
             raise TranspilerException("invalid driver name")
         transpiled_circuit = transpile(
-            circuit,
+            parse_result,
             simulator,
             optimization_level=self.transpiler_info["optimization_level"],
-            basis_gates=expect_basis_gates
+            basis_gates=supp_basis_gates
         )
-        self.num_qubits = transpiled_circuit.num_qubits
         return transpiled_circuit

@@ -125,9 +125,9 @@ def transpile(parsed_gates, driver, transpiler):
 
 
 @task(persist_result=False)
-def qasm_parser(job_data, transpiler):
+def parser(job_data, transpiler):
     """
-    qasm_parser
+    parser
 
     :param job_data: job data
     :param transpiler: transpiler
@@ -136,9 +136,9 @@ def qasm_parser(job_data, transpiler):
 
     num_qubits = -1
     try:
-        raw_qasm = job_data['source_code'][0]
-        logger.info(f"raw_qasm:\n{raw_qasm}")
-        parsed_gates = transpiler.parse(raw_qasm)
+        source_codes = job_data['source_code'][0]
+        logger.info(f"source_codes:\n{source_codes}")
+        parsed_gates = transpiler.parse(source_codes)
         num_qubits = transpiler.num_qubits
         logger.info(f"final parsed gates: {parsed_gates}")
         return {"parsed_gates": parsed_gates, "num_qubits": num_qubits,
@@ -278,6 +278,8 @@ def job_flow(job_info):
     num_qubits = -1
     profiling_driver_transpiler_start = 0
     profiling_driver_transpiler_end = 0
+    profiling_driver_parse_start = 0
+    profiling_driver_parse_end = 0
     profiling_driver_run_start = 0
     profiling_driver_run_end = 0
     job_results = {"metadata": {}, "profiling": {}, "results": None}
@@ -305,12 +307,20 @@ def job_flow(job_info):
             raise transpiler_task_result["error"]
         transpiler = transpiler_task_result["transpiler"]
 
-        parse_task = qasm_parser.submit(
+        if (Constant.PROFILING_TYPE_DRIVER_PARSE in profiling_types or
+                Constant.PROFILING_TYPE_ALL in profiling_types):
+            profiling_driver_parse_start = time.time()
+
+        parse_task = parser.submit(
             job_data, transpiler,
             wait_for=[init_driver, init_transpiler])
         parse_task_result = parse_task.result()
         num_qubits = parse_task_result.get("num_qubits", -1)
         job_results["num_qubits"] = num_qubits
+
+        if (Constant.PROFILING_TYPE_DRIVER_PARSE in profiling_types or
+                Constant.PROFILING_TYPE_ALL in profiling_types):
+            profiling_driver_parse_end = time.time()
 
         # record transpiling start_time
         if (Constant.PROFILING_TYPE_DRIVER_TRANSPILE in profiling_types or
@@ -320,7 +330,7 @@ def job_flow(job_info):
         # transpile codes
         transpile_task_results = transpile.submit(
             parse_task_result.get("parsed_gates", None), driver, transpiler,
-            wait_for=[init_driver, init_transpiler, qasm_parser])
+            wait_for=[init_driver, init_transpiler, parser])
 
         # record transpiling end_time
         if (Constant.PROFILING_TYPE_DRIVER_TRANSPILE in profiling_types or
@@ -372,6 +382,9 @@ def job_flow(job_info):
     if profiling_driver_run_start and profiling_driver_run_end:
         job_results["profiling"]["profiling_driver_run"] = \
             profiling_driver_run_end - profiling_driver_run_start
+    if profiling_driver_parse_start and profiling_driver_parse_end:
+        job_results["profiling"]["profiling_driver_parse"] = \
+            profiling_driver_parse_end - profiling_driver_parse_start
 
     # construct results
     results = [job_results]
