@@ -47,6 +47,7 @@ def _get_device_info(driver_info, transpiler):
         "driver": driver_info.get_class_name(),
         "description": Library.get_brief_description(driver_info.__doc__),
         "enable": driver_info.enable,
+        "status": driver_info.get_status(),
         "tech_type": driver_info.tech_type,
         "max_qubits": driver_info.get_max_qubits(),
         "transpiler": driver_info.get_transpiler(),

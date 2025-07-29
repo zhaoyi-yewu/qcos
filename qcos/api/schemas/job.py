@@ -41,14 +41,14 @@ class SubmitJobRequest(BaseModel):
     backend: str = Constant.DRIVER_DUMMY
     # Transpiler
     transpiler: Optional[str] = Constant.TRANSPILER_CMSS
-    # Transpiler info
-    transpiler_info: Optional[dict] = None
+    # Transpiler options
+    transpiler_options: Optional[dict] = None
     # Job ID
     job_id: Optional[UUID] = None
     # Job name
     job_name: Optional[str] = None
     # Job type
-    job_type: str = Constant.JOB_TYPE_ESTIMATION
+    job_type: str = Constant.JOB_TYPE_SAMPLING
     # Job scheduling policy
     job_sched_policy: str = Constant.DEFAULT_JOB_SCHED_POLICY
     # Job priority
@@ -90,8 +90,8 @@ class SubmitJobResponse(BaseModel):
     backend: str = None
     # Transpiler
     transpiler: Optional[str] = None
-    # Transpiler info
-    transpiler_info: Optional[dict] = None
+    # Transpiler options
+    transpiler_options: Optional[dict] = None
     # Shots
     shots: int = None
     # Profiling
@@ -132,8 +132,8 @@ class GetJobStatusResponse(BaseModel):
     backend: Optional[str] = None
     # Transpiler
     transpiler: Optional[str] = None
-    # Transpiler info
-    transpiler_info: Optional[dict] = None
+    # Transpiler options
+    transpiler_options: Optional[dict] = None
     # Job scheduling policy
     job_sched_policy: Optional[str] = None
     # Job priority
@@ -180,8 +180,8 @@ class GetJobResultsResponse(BaseModel):
     backend: Optional[str] = None
     # Transpiler
     transpiler: Optional[str] = None
-    # Transpiler info
-    transpiler_info: Optional[dict] = None
+    # Transpiler options
+    transpiler_options: Optional[dict] = None
     # Job scheduling policy
     job_sched_policy: Optional[str] = None
     # Job priority

@@ -18,3 +18,4 @@
 from . import device
 from . import job
 from . import system
+from . import version

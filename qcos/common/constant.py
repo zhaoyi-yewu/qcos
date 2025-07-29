@@ -104,18 +104,20 @@ class Constant:
     # Transpiler
     TRANSPILER_CMSS = "cmss"
     TRANSPILER_QISKIT = "qiskit"
-    TRANSPILER_TYPES = set()  # autofilled during plugin registration
+    TRANSPILERS = set()  # autofilled during plugin registration
 
     # Quantum computer tech type
+    TECH_TYPE_NONE = "none"
     TECH_TYPE_NEUTRAL_ATOM = "neutral_atom"
     TECH_TYPE_ION_TRAP = "ion_trap"
     TECH_TYPE_SUPERCONDUCTING = "superconducting"
     TECH_TYPE_PHOTON = "photon"
+    TECH_TYPE_GENERIC_SIMULATOR = "generic_simulator"
 
     # Job types
-    JOB_TYPE_ESTIMATION = "estimation"
     JOB_TYPE_SAMPLING = "sampling"
-    JOB_TYPES = [JOB_TYPE_ESTIMATION, JOB_TYPE_SAMPLING]
+    JOB_TYPE_ESTIMATION = "estimation"
+    JOB_TYPES = [JOB_TYPE_SAMPLING, JOB_TYPE_ESTIMATION]
 
     # Job scheduling policy
     JOB_SCHED_POLICY_PRIORITY = "priority"
@@ -224,7 +226,10 @@ class Constant:
 
 class HttpHeaders:
     # headers
-    DEFAULT_JSON_HEADERS = {"Content-Type": "application/json"}
+    DEFAULT_JSON_HEADERS = {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
 
 
 class HttpMethod:

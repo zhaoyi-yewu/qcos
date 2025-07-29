@@ -43,6 +43,6 @@ CALLBACKS_SCHEMA = [
         Optional("timeout"): int
     }
 ]
-TRANSPILER_INFO = {
+TRANSPILER_OPTIONS = {
     Optional("optimization_level"): int
 }

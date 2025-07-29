@@ -23,7 +23,8 @@ from qcos.drivers.driver_base import DriverBase
 
 class DriverPassthrough(DriverBase):
     """
-    Passthrough driver
+    直通测试驱动
+    Passthrough driver for test purpose
     """
 
     def __init__(self):
@@ -32,6 +33,7 @@ class DriverPassthrough(DriverBase):
         self.version = "0.0.1"
         self.enable = False
         self.enable_transpiler = False
+        self.tech_type = Constant.TECH_TYPE_NONE
         self.supported_code_types = [
             Constant.CODE_TYPE_QUBO
         ]

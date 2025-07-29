@@ -52,7 +52,6 @@ class DriverManager:
                 class_instance = _class()
                 if not class_instance.enable:
                     logger.warning(f"driver: {class_name} is disabled")
-                    continue
                 name = class_instance.get_name()
                 self.drivers[name] = class_instance
                 Constant.DRIVERS.add(name)
@@ -68,8 +67,8 @@ class DriverManager:
             driver.load_driver_configs()
             # Validate driver
             success, err_msg = driver.validate_driver()
-            # Validate driver configs
             if success:
+                # Validate driver configs
                 success, err_msg = driver.validate_driver_configs()
             if success:
                 # Init driver

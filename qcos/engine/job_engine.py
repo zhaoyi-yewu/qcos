@@ -76,12 +76,12 @@ def init_driver(driver_info):
 
 
 @task(persist_result=False)
-def init_transpiler(transpiler_class_info, transpiler_info):
+def init_transpiler(transpiler_class_info, transpiler_options):
     """
     Init transpiler instance
 
     :param transpiler_class_info: transpiler class info
-    :param transpiler_info: transpiler info
+    :param transpiler_options: transpiler options
     :return: transpiler
     """
 
@@ -91,8 +91,8 @@ def init_transpiler(transpiler_class_info, transpiler_info):
         transpiler_class = getattr(transpiler_module,
                                    transpiler_class_info["class_name"])
         transpiler = transpiler_class()
-        if transpiler_info:
-            transpiler.update_transpiler_info(transpiler_info)
+        if transpiler_options:
+            transpiler.update_transpiler_options(transpiler_options)
         return {"transpiler": transpiler, "error": None}
     except Exception as e:
         return {"transpiler": None, "error": ValueError(str(e))}
@@ -301,7 +301,7 @@ def job_flow(job_info):
         # init transpiler
         future_transpiler = init_transpiler.submit(
             job_info["transpiler"],
-            job_data.get("transpiler_info", None))
+            job_data.get("transpiler_options", None))
         transpiler_task_result = future_transpiler.result()
         if transpiler_task_result["error"]:
             raise transpiler_task_result["error"]

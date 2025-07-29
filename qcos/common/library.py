@@ -482,9 +482,9 @@ class Library:
         r = None
         if debug:
             logger.info(
-                f"Request [{func_name}]: {url}/{func_name}, "
-                f"METHOD: {method}, HEADER: {headers}, PARAMS: {params}, "
-                f"DATA: {data}, JSON: {json}")
+                f"Request [{func_name}]: {url}, "
+                f"METHOD: {method.upper()}, HEADER: {headers}, "
+                f"PARAMS: {params}, DATA: {data}, JSON: {json}")
         if method == HttpMethod.POST:
             request_func = requests.post
         elif method == HttpMethod.PUT:

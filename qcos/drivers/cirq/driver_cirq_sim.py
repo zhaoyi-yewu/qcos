@@ -35,6 +35,7 @@ class DriverCirqSim(DriverBase):
         self.version = "0.0.1"
         self.enable_transpiler = False
         self.enable_circuit_aggregation = True
+        self.tech_type = Constant.TECH_TYPE_GENERIC_SIMULATOR
         self.max_qubits = 30
         self._final_response = None
         self.supported_code_types = [

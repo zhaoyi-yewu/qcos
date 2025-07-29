@@ -54,7 +54,7 @@ class TranspilerManager:
                     continue
                 name = class_instance.get_name()
                 self.transpilers[name] = class_instance
-                Constant.TRANSPILER_TYPES.add(name)
+                Constant.TRANSPILERS.add(name)
                 class_instance.set_module_name(_class.__module__)
                 class_instance.set_class_name(_class.__qualname__)
 
@@ -65,9 +65,9 @@ class TranspilerManager:
         for _, transpiler in self.transpilers.items():
             # Init transpiler
             transpiler.init_transpiler()
-            # Show transpiler info
+            # Show transpiler options
             logger.info("\n")
-            logger.info(transpiler.get_transpiler_info())
+            logger.info(transpiler.get_transpiler_options())
 
     def has_transpiler(self, transpiler_name):
         """

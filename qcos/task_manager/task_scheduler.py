@@ -107,11 +107,15 @@ class TaskScheduler(ABC):
             err_msg = f"Can't find backend driver: {backend}"
             logger.error(err_msg)
             return None, f"Execute work flow failed: {err_msg}"
+        if not driver.enable:
+            err_msg = f"Backend driver: {backend} is disabled"
+            logger.error(err_msg)
+            return None, f"Execute work flow failed: {err_msg}"
         driver_module_name = driver.get_module_name()
         driver_class_name = driver.get_class_name()
         extra_configs = driver.get_extra_configs()
 
-        # get transpiler info
+        # get transpiler options
         transpiler_module_name = None
         transpiler_class_name = None
         transpiler_name = driver.get_transpiler()

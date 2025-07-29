@@ -43,4 +43,4 @@ class MappingFactory:
         if mapper:
             return mapper
         else:
-            raise MappingException(f"{type} is not a valid type")
+            raise MappingException(f"tech_type: {tech_type} is invalid")

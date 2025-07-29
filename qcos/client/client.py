@@ -22,7 +22,7 @@ from jsonrpcclient import Ok, parse, request
 
 from qcos.common import errors
 from qcos.common.config import Config
-from qcos.common.constant import Constant, HttpMethod
+from qcos.common.constant import Constant, HttpHeaders, HttpMethod
 from qcos.common.library import Library
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,9 @@ class Client:
                  api_listen_ip=Config.API_SERVER_LISTEN_IP,
                  api_port=Config.API_SERVER_LISTEN_PORT):
         api_version = "v1"
-        endpoint_url = f"http://{api_listen_ip}:{api_port}/{api_version}"
+        base_endpoint_url = f"http://{api_listen_ip}:{api_port}"
+        endpoint_url = f"{base_endpoint_url}/{api_version}"
+        self.version_url = f"{base_endpoint_url}/version"
         self.device_url = f"{endpoint_url}/device"
         self.job_url = f"{endpoint_url}/job"
         self.system_url = f"{endpoint_url}/system"
@@ -75,7 +77,9 @@ class Client:
         try:
             status_code, reason, text, result = Library.call_http_api(
                 url, method=HttpMethod.POST, json=jsonrpc_data,
-                params=params, func_name=method_name, debug=Client.verbose)
+                params=params, func_name=method_name,
+                headers=HttpHeaders.DEFAULT_JSON_HEADERS,
+                debug=Client.verbose)
         except requests.exceptions.ConnectionError as ce:
             status_code = -1
             reason = f"Connection error: {str(ce)}"
@@ -107,6 +111,20 @@ class Client:
         success, err_msg = results
         if success is False:
             raise errors.Exception("\n".join(err_msg))
+
+    # [version]
+    def version(self):
+        """
+        Get all api versions and capabilities
+
+        :return: Version
+        """
+        method_name = "version"
+
+        # construct data and call json rpc
+        status_code, reason, text, result = Client.call_json_rpc(
+            self.version_url, method_name, {})
+        return status_code, reason, text, result
 
     # [Device]
     def get_devices(self):
@@ -159,19 +177,6 @@ class Client:
             self.system_url, method_name, data)
         return status_code, reason, text, result
 
-    def version(self):
-        """
-        Get system version
-
-        :return: Version
-        """
-        method_name = "version"
-
-        # construct data and call json rpc
-        status_code, reason, text, result = Client.call_json_rpc(
-            self.system_url, method_name, None)
-        return status_code, reason, text, result
-
     # [Job]
     def submit_job(
             self,
@@ -180,14 +185,14 @@ class Client:
             code_type=Constant.CODE_TYPE_QASM,
             job_id=None,
             job_name=None,
-            job_type=Constant.JOB_TYPE_ESTIMATION,
+            job_type=Constant.JOB_TYPE_SAMPLING,
             job_sched_policy=Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
             job_priority=Constant.DEFAULT_JOB_PRIORITY,
             description=None,
             shots=Constant.DEFAULT_SHOTS,
             backend=Constant.DRIVER_DUMMY,
             transpiler=Constant.TRANSPILER_CMSS,
-            transpiler_info=None,
+            transpiler_options=None,
             profiling=None,
             callbacks=None,
             dry_run=False):
@@ -206,7 +211,7 @@ class Client:
         :param shots: shots
         :param backend: backend
         :param transpiler: transpiler
-        :param transpiler_info: transpiler info
+        :param transpiler_options: transpiler options
         :param profiling: profiling types
         :param callbacks: callbacks
         :param dry_run: dry run
@@ -227,7 +232,7 @@ class Client:
             "shots": shots,
             "backend": backend,
             "transpiler": transpiler,
-            "transpiler_info": transpiler_info,
+            "transpiler_options": transpiler_options,
             "profiling": profiling,
             "callbacks": callbacks,
             "dry_run": dry_run

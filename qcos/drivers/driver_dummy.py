@@ -28,12 +28,13 @@ from qcos.drivers.driver_base import DriverBase
 class DriverDummy(DriverBase):
     """
     测试驱动
-    Dummy driver for test purpose
+    Dummy neutral-atom driver for test purpose
     """
 
     def __init__(self):
         super().__init__()
         self.name = "dummy"
+        self.enable = True
         self.version = "0.0.1"
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS

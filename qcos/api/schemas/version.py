@@ -18,19 +18,21 @@
 from pydantic import BaseModel
 
 
-class PingRequest(BaseModel):
+class GetVersionRequest(BaseModel):
     """
-    Ping Request
-    Pydantic Model for Ping Request
+    Get Version Request
+    Pydantic Model for Get Version Request
     """
-    # message
-    message: str = None
 
 
-class PongResponse(BaseModel):
+class GetVersionResponse(BaseModel):
     """
-    Pong Response
-    Pydantic Model for Pong Response
+    Get Version Response
+    Pydantic Model for Get Version Response
     """
-    # message
-    message: str = None
+    # version
+    version: str
+    api_version: str
+    supported_api_versions: list[dict]
+    platform_version: str
+    capabilities: dict

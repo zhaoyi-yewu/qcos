@@ -110,8 +110,10 @@ class QcosShell(App):
     CMD_GROUP_DEVICE = "Device"
     CMD_GROUP_JOB = "Job"
     CMD_GROUP_SYSTEM = "System"
+    CMD_GROUP_VERSION = "Version"
     CMD_GROUPS = [
         CMD_GROUP_DEFAULT,
+        CMD_GROUP_VERSION,
         CMD_GROUP_DEVICE,
         CMD_GROUP_SYSTEM,
         CMD_GROUP_JOB
@@ -373,6 +375,50 @@ class CommandHelper:
         return results
 
 
+# Version commands
+class Version(Command):
+    """
+    Get server version
+    """
+
+    group = QcosShell.CMD_GROUP_VERSION
+
+    def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        """
+        Take action for command line arguments
+
+        :param parsed_args: command line arguments
+        """
+        resource = self.group
+
+        status_code, reason, text, result = self.app.client.version()
+        json_results = CommandHelper.check_results(
+            resource, "version", status_code, reason, text)
+        caps = json_results['capabilities']
+        print(f"Server version: {json_results['version']}")
+        print(f"API version: {json_results['api_version']}")
+        print(f"Supported API versions: "
+              f"{json_results['supported_api_versions']}")
+        print(f"Platform version: {json_results['platform_version']}")
+        print("Capabilities:")
+        print(f"  job_types: {', '.join(sorted(caps['job_types']))}")
+        print("  job_sched_policy: "
+              f"{', '.join(sorted(caps['job_sched_policy']))}")
+        print(f"  transpilers: {', '.join(sorted(caps['transpilers']))}")
+        print(f"  drivers: {', '.join(sorted(caps['drivers']))}")
+        print(f"  profiling: {', '.join(sorted(caps['profiling']))}")
+
+
 # Device commands
 class GetDevice(ShowOne):
     """
@@ -483,41 +529,6 @@ class Ping(Command):
         print(f"Pong: {json_results['message']}")
 
 
-class Version(Command):
-    """
-    Get server version
-    """
-
-    group = QcosShell.CMD_GROUP_SYSTEM
-
-    def get_parser(self, prog_name):
-        """
-        Get parser for this command
-
-        :param prog_name: program name
-        :return: parser
-        """
-        parser = super().get_parser(prog_name)
-        return parser
-
-    def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
-
-        :param parsed_args: command line arguments
-        """
-        resource = self.group
-
-        status_code, reason, text, result = self.app.client.version()
-        json_results = CommandHelper.check_results(
-            resource, "version", status_code, reason, text)
-        print(f"Server version: {json_results['version']}")
-        print(f"API version: {json_results['api_version']}")
-        print(f"Supported API versions: "
-              f"{json_results['supported_api_versions']}")
-        print(f"Platform version: {json_results['platform_version']}")
-
-
 # Job commands
 class SubmitJob(Command):
     """
@@ -554,7 +565,7 @@ class SubmitJob(Command):
                             default=None,
                             help="Job name")
         parser.add_argument("--job-type", dest="job_type",
-                            default=f"{Constant.JOB_TYPE_ESTIMATION}",
+                            default=f"{Constant.JOB_TYPE_SAMPLING}",
                             choices=Constant.JOB_TYPES,
                             help=f"Job type: {','.join(Constant.JOB_TYPES)}")
         parser.add_argument("--job-scheduling-policy",
@@ -576,12 +587,11 @@ class SubmitJob(Command):
                             default=f"{Constant.DRIVER_DUMMY}",
                             help="Set backend driver name")
         parser.add_argument("--transpiler", dest="transpiler",
-                            #choices=Constant.TRANSPILER_TYPES,
-                            help="Set transpiler name")
-        parser.add_argument("--transpiler-info",
-                            dest="transpiler_info", type=str,
+                            help="Set transpiler name. eg. cmss")
+        parser.add_argument("--transpiler-options",
+                            dest="transpiler_options", type=str,
                             default=None,
-                            help="Set transpiler info")
+                            help="Set transpiler options")
         parser.add_argument("--profiling",
                             nargs="*",
                             type=str,
@@ -620,9 +630,16 @@ class SubmitJob(Command):
         shots = parsed_args.shots
         backend = parsed_args.backend
         transpiler = parsed_args.transpiler
-        transpiler_info = parsed_args.transpiler_info
+        transpiler_options = parsed_args.transpiler_options
         profiling = parsed_args.profiling
         callbacks = parsed_args.callbacks
+
+        # request capabilities
+        status_code, reason, text, result = self.app.client.version()
+        json_results = CommandHelper.check_results(
+            resource, "version", status_code, reason, text)
+        caps = json_results['capabilities']
+        supported_transpilers = caps["transpilers"]
 
         # Validate argument: code_type
         CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
@@ -682,19 +699,19 @@ class SubmitJob(Command):
             Constant.MIN_SHOTS, Constant.MAX_SHOTS))
 
         # Validate argument: transpiler
-        #CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
-        #    transpiler, "transpiler", Constant.TRANSPILER_TYPES,
-        #    allow_none=True))
+        CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
+            transpiler, "transpiler", supported_transpilers,
+            allow_none=True))
 
-        # Validate argument: transpiler_info
-        if transpiler_info:
+        # Validate argument: transpiler_options
+        if transpiler_options:
             try:
-                transpiler_info = json.loads(transpiler_info)
+                transpiler_options = json.loads(transpiler_options)
             except json.decoder.JSONDecodeError as exc:
                 raise errors.InvalidArguments(
-                    "Invalid argument: transpiler_info") from exc
+                    "Invalid argument: transpiler_options") from exc
             CommandHelper.handle_invalid_arguments(Library.validate_schema(
-                transpiler_info, args_schema.TRANSPILER_INFO,
+                transpiler_options, args_schema.TRANSPILER_OPTIONS,
                 allow_none=True))
 
         # Validate argument: callbacks
@@ -721,7 +738,7 @@ class SubmitJob(Command):
             shots=shots,
             backend=backend,
             transpiler=transpiler,
-            transpiler_info=transpiler_info,
+            transpiler_options=transpiler_options,
             profiling=profiling,
             callbacks=callbacks_json,
             dry_run=dry_run)
@@ -798,7 +815,6 @@ class GetJobResults(ShowOne):
         """
         resource = self.group
         job_id = parsed_args.job_id
-        # json_result = {}
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(
@@ -1074,12 +1090,10 @@ class SetJobResults(Command):
 
 # Register commands
 command_manager = CommandManager("qcos")
-# device command
-command_manager.add_command("get-device", GetDevice)
-command_manager.add_command("list-devices", GetDevices)
+# version command
+command_manager.add_command("version", Version)
 # system command
 command_manager.add_command("ping", Ping)
-command_manager.add_command("version", Version)
 # job command
 command_manager.add_command("submit-job", SubmitJob)
 command_manager.add_command("get-job-status", GetJobStatus)
@@ -1088,7 +1102,9 @@ command_manager.add_command("list-jobs", GetJobs)
 command_manager.add_command("cancel-jobs", CancelJobs)
 command_manager.add_command("delete-jobs", DeleteJobs)
 command_manager.add_command("set-job-results", SetJobResults)
-
+# device command
+command_manager.add_command("get-device", GetDevice)
+command_manager.add_command("list-devices", GetDevices)
 
 def set_debug_option(args):
     """

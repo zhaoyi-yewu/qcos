@@ -51,6 +51,8 @@ class GetDeviceResponse(BaseModel):
     description: Optional[str] = None
     # device enable
     enable: bool = None
+    # device status
+    status: str = None
     # device tech_type
     tech_type: Optional[str] = None
     # device max_qubits

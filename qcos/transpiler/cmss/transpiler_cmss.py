@@ -41,12 +41,12 @@ class TranspilerCmss(TranspilerBase):
             Constant.CODE_TYPE_QASM,
             Constant.CODE_TYPE_QASM2
         ]
-        # transpiler_info
-        self.transpiler_info = {
+        # transpiler_options
+        self.transpiler_options = {
             "optimization_level": 1  # default optimization level
         }
-        # transpiler_info schema used in submit-job from user
-        self.transpiler_info_schema = {
+        # transpiler_options schema used in submit-job from user
+        self.transpiler_options_schema = {
             Optional("optimization_level"): int
         }
         # qpu_config

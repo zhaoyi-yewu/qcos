@@ -43,12 +43,12 @@ class TranspilerQiskit(TranspilerBase):
             Constant.CODE_TYPE_QASM2,
             Constant.CODE_TYPE_QASM3
         ]
-        # transpiler_info
-        self.transpiler_info = {
+        # transpiler_options
+        self.transpiler_options = {
             "optimization_level": 1  # default optimization level
         }
-        # transpiler_info schema used in submit-job from user
-        self.transpiler_info_schema = {
+        # transpiler_options schema used in submit-job from user
+        self.transpiler_options_schema = {
             Optional("optimization_level"): int
         }
 
@@ -83,7 +83,7 @@ class TranspilerQiskit(TranspilerBase):
         transpiled_circuit = transpile(
             parse_result,
             simulator,
-            optimization_level=self.transpiler_info["optimization_level"],
+            optimization_level=self.transpiler_options["optimization_level"],
             basis_gates=supp_basis_gates
         )
         return transpiled_circuit

@@ -33,6 +33,7 @@ class DriverQiskitAerSim(DriverBase):
         self.version = "0.0.1"
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_QISKIT
+        self.tech_type = Constant.TECH_TYPE_GENERIC_SIMULATOR
         self.supported_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
                                       Constant.SINGLE_QUBIT_GATE_RX,
                                       Constant.SINGLE_QUBIT_GATE_RZ,

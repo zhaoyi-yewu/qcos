@@ -21,6 +21,7 @@ from qcos.common.config import Config
 
 
 BASE_ENDPOINT = f"/{Config.API_VERSION}"
+base_api = jsonrpc.Entrypoint("")
 system_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/system")
 job_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/job")
 device_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/device")

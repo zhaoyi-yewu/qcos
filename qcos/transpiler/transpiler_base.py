@@ -35,10 +35,10 @@ class TranspilerBase:
         self.num_qubits = -1
         # supported code types
         self.supported_code_types = []
-        # transpiler_info
-        self.transpiler_info = {}
-        # transpiler_info schema
-        self.transpiler_info_schema = None
+        # transpiler_options
+        self.transpiler_options = {}
+        # transpiler_options schema
+        self.transpiler_options_schema = None
         # qpu_config
         self.qpu_config = None
 
@@ -49,23 +49,23 @@ class TranspilerBase:
         raise NotImplementedError(f"Transpiler: {self.__class__.__name__} "
                                   f"must implement method: init_transpiler")
 
-    def update_transpiler_info(self, transpiler_info):
+    def update_transpiler_options(self, transpiler_options):
         """
-        Update transpiler info
+        Update transpiler options
 
-        :param transpiler_info: new transpiler info
+        :param transpiler_options: new transpiler options
         """
-        self.transpiler_info.update(transpiler_info)
+        self.transpiler_options.update(transpiler_options)
 
-    def get_transpiler_info(self):
+    def get_transpiler_options(self):
         """
-        Show transpiler info
+        Show transpiler options
         """
         show_list = [
             f"[{self.__class__.__name__}]",
             f"transpiler_name: {self.name}",
             f"enable: {self.enable}",
-            f"transpiler_info: {self.transpiler_info}",
+            f"transpiler_options: {self.transpiler_options}",
             # f"qpu_configs: {self.qpu_configs}",
             # f"decomposition_rule: {self.decomposition_rule}",
         ]

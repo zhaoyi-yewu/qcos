@@ -56,7 +56,7 @@ def submit_job(
     shots = body.shots
     backend = body.backend
     transpiler_name = body.transpiler
-    transpiler_info = body.transpiler_info
+    transpiler_options = body.transpiler_options
     profiling = body.profiling
     callbacks = body.callbacks
     dry_run = body.dry_run
@@ -147,9 +147,9 @@ def submit_job(
         transpiler_name = driver.get_transpiler()
 
     # validate: transpiler_name
-    #jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
-    #    transpiler_name, "transpiler",
-    #    Constant.TRANSPILER_TYPES, allow_none=True))
+    jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
+        transpiler_name, "transpiler",
+        Constant.TRANSPILERS, allow_none=True))
 
     # validate supported_transpilers
     if enable_transpiler:
@@ -159,18 +159,18 @@ def submit_job(
             allow_none=False))
         body.transpiler = transpiler_name
 
-        # validate: transpiler_info
-        if transpiler_name and transpiler_info:
+        # validate: transpiler_options
+        if transpiler_name and transpiler_options:
             jsonrpc_errors.handle_invalid_params(Library.validate_schema(
-                transpiler_info,
-                args_schema.TRANSPILER_INFO,
+                transpiler_options,
+                args_schema.TRANSPILER_OPTIONS,
                 allow_none=True))
     else:
-        # set transpiler/transpiler_info to None if enable_transpiler=False
+        # set transpiler/transpiler_options to None if enable_transpiler=False
         transpiler_name = None
-        transpiler_info = None
+        transpiler_options = None
         body.transpiler = None
-        body.transpiler_info = None
+        body.transpiler_options = None
 
     # get supported_code_types
     supported_code_types = []
@@ -220,7 +220,7 @@ def submit_job(
         "description": description,
         "backend": backend,
         "transpiler": transpiler_name,
-        "transpiler_info": transpiler_info,
+        "transpiler_options": transpiler_options,
         "shots": shots,
         "profiling": profiling,
         "callbacks": callbacks,

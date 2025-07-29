@@ -19,7 +19,6 @@ import logging
 
 from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc.routes import system_api_v1
-from qcos.common.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -41,30 +40,5 @@ def ping(
 
     response_info = {
         "message": message,
-    }
-    return response_info
-
-
-@system_api_v1.method()
-def version(
-    body: schemas.GetVersionRequest = None
-) -> schemas.GetVersionResponse:
-    """
-    Get server version
-
-    :return: version response
-    """
-    logger.info(f"Call version: {body}")
-
-    response_info = {
-        "version": Config.VERSION,
-        "api_version": Config.API_VERSION_V1,
-        "supported_api_versions": [
-            {
-                "version": Config.API_VERSION_V1,
-                "status": "CURRENT"
-            }
-        ],
-        "platform_version": Config.PLATFORM_VERSION
     }
     return response_info
