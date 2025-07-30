@@ -32,25 +32,25 @@ class TestTranspilerBase:
 
     def test_update_transpiler_info(self):
         obj.update_transpiler_info({1: 1, 2: 2, 3: 3})
-        assert {1: 1, 2: 2, 3: 3} == obj.transpiler_info
+        assert obj.transpiler_info == {1: 1, 2: 2, 3: 3}
 
     def test_get_transpiler_info(self):
-        assert (f"[{obj.__class__.__name__}]"
-                f"\ntranspiler_name: {obj.name}"
-                f"\nenable: {obj.enable}"
-                f"\ntranspiler_info: {obj.transpiler_info}") == obj.get_transpiler_info()
+        assert obj.get_transpiler_info() == (f"[{obj.__class__.__name__}]"
+                                             f"\ntranspiler_name: {obj.name}"
+                                             f"\nenable: {obj.enable}"
+                                             f"\ntranspiler_info: {obj.transpiler_info}")
 
     def test_set_name_and_get_name(self):
         obj.set_name("name")
-        assert "name" == obj.get_name()
+        assert obj.get_name() == "name"
 
     def test_set_module_name_and_get_module_name(self):
         obj.set_module_name("module_name")
-        assert "module_name" == obj.get_module_name()
+        assert obj.get_module_name() == "module_name"
 
     def test_set_class_name_and_get_class_name(self):
         obj.set_class_name("class_name")
-        assert "class_name" == obj.get_class_name()
+        assert obj.get_class_name() == "class_name"
 
     def test_get_supported_code_types(self):
         assert obj.get_supported_code_types() == obj.supported_code_types

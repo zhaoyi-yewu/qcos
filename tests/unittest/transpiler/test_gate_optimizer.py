@@ -17,6 +17,7 @@
 
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from qcos.transpiler.cmss.optimizer.gate_optimizer import pass_merge_theta, optimize_gate
+from tests.unittest.transpiler.comm import validate_gate_ir
 
 
 class TestGateOptimizer:
@@ -67,6 +68,9 @@ class TestGateOptimizer:
         assert len(ir) == 18
         opt_gates = optimize_gate(ir)
         assert len(opt_gates) == 3
+        validate_gate_ir(opt_gates[0], "ry", ["0"], 1, False)
+        validate_gate_ir(opt_gates[1], "z", ["0"], 1, True)
+        validate_gate_ir(opt_gates[2], "ry", ["3"], 1, False)
 
     def test_pass_merge_theta(self):
         tree = get_abs_tree(self.merge_theta_data)
@@ -75,4 +79,8 @@ class TestGateOptimizer:
         assert ir is not None
         assert q_num == 1
         assert len(ir) == 4
-        assert False == pass_merge_theta(ir)
+        validate_gate_ir(ir[0], "h", ["0"], 1, True)
+        validate_gate_ir(ir[1], "h", ["0"], 1, True)
+        validate_gate_ir(ir[2], "x", ["0"], 1, True)
+        validate_gate_ir(ir[3], "x", ["0"], 1, True)
+        assert pass_merge_theta(ir) == False
