@@ -191,6 +191,7 @@ class Client:
             description=None,
             shots=Constant.DEFAULT_SHOTS,
             backend=Constant.DRIVER_DUMMY,
+            driver_options=None,
             transpiler=Constant.TRANSPILER_CMSS,
             transpiler_options=None,
             profiling=None,
@@ -209,8 +210,9 @@ class Client:
         :param job_priority: job priority
         :param description: job description
         :param shots: shots
-        :param backend: backend
-        :param transpiler: transpiler
+        :param backend: backend name
+        :param driver_options: driver options
+        :param transpiler: transpiler name
         :param transpiler_options: transpiler options
         :param profiling: profiling types
         :param callbacks: callbacks
@@ -231,6 +233,7 @@ class Client:
             "description": description,
             "shots": shots,
             "backend": backend,
+            "driver_options": driver_options,
             "transpiler": transpiler,
             "transpiler_options": transpiler_options,
             "profiling": profiling,

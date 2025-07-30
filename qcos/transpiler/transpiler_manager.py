@@ -66,8 +66,7 @@ class TranspilerManager:
             # Init transpiler
             transpiler.init_transpiler()
             # Show transpiler options
-            logger.info("\n")
-            logger.info(transpiler.get_transpiler_options())
+            logger.info(f"\n{transpiler.get_transpiler_info()}")
 
     def has_transpiler(self, transpiler_name):
         """

@@ -586,6 +586,10 @@ class SubmitJob(Command):
         parser.add_argument("--backend", dest="backend",
                             default=f"{Constant.DRIVER_DUMMY}",
                             help="Set backend driver name")
+        parser.add_argument("--driver-options",
+                            dest="driver_options", type=str,
+                            default=None,
+                            help="Set driver options")
         parser.add_argument("--transpiler", dest="transpiler",
                             help="Set transpiler name. eg. cmss")
         parser.add_argument("--transpiler-options",
@@ -629,6 +633,7 @@ class SubmitJob(Command):
         description = parsed_args.description
         shots = parsed_args.shots
         backend = parsed_args.backend
+        driver_options = parsed_args.driver_options
         transpiler = parsed_args.transpiler
         transpiler_options = parsed_args.transpiler_options
         profiling = parsed_args.profiling
@@ -698,6 +703,17 @@ class SubmitJob(Command):
             shots, "shots",
             Constant.MIN_SHOTS, Constant.MAX_SHOTS))
 
+        # Validate argument: driver_options
+        if driver_options:
+            try:
+                driver_options = json.loads(driver_options)
+            except json.decoder.JSONDecodeError as exc:
+                raise errors.InvalidArguments(
+                    "Invalid argument: driver_options") from exc
+            CommandHelper.handle_invalid_arguments(Library.validate_schema(
+                driver_options, args_schema.DRIVER_OPTIONS,
+                allow_none=True))
+
         # Validate argument: transpiler
         CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
             transpiler, "transpiler", supported_transpilers,
@@ -737,6 +753,7 @@ class SubmitJob(Command):
             description=description,
             shots=shots,
             backend=backend,
+            driver_options=driver_options,
             transpiler=transpiler,
             transpiler_options=transpiler_options,
             profiling=profiling,

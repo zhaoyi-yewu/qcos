@@ -55,6 +55,7 @@ def submit_job(
     description = body.description
     shots = body.shots
     backend = body.backend
+    driver_options = body.driver_options
     transpiler_name = body.transpiler
     transpiler_options = body.transpiler_options
     profiling = body.profiling
@@ -142,6 +143,18 @@ def submit_job(
         jsonrpc_errors.handle_job_error(
             "Can't submit job. reason: driver status is unknown")
 
+    # validate: driver_options
+    if driver_options:
+        driver_options_schema = driver.get_driver_options_schema()
+        jsonrpc_errors.handle_invalid_params(Library.validate_schema(
+            driver_options,
+            args_schema.DRIVER_OPTIONS,
+            allow_none=True))
+        jsonrpc_errors.handle_invalid_params(Library.validate_schema(
+            driver_options,
+            driver_options_schema,
+            allow_none=True), name="driver_options")
+
     # if transpiler is not specified, set the default transpiler from driver
     if not transpiler_name:
         transpiler_name = driver.get_transpiler()
@@ -152,12 +165,16 @@ def submit_job(
         Constant.TRANSPILERS, allow_none=True))
 
     # validate supported_transpilers
+    supported_code_types = []
+    transpiler_manager = scheduler.get_transpiler_manager()
     if enable_transpiler:
         jsonrpc_errors.handle_invalid_params(Library.validate_values_enum(
             transpiler_name, "transpiler",
             driver.supported_transpilers,
             allow_none=False))
         body.transpiler = transpiler_name
+        transpiler = transpiler_manager.get_transpiler(transpiler_name)
+        transpiler_options_schema = transpiler.get_transpiler_options_schema()
 
         # validate: transpiler_options
         if transpiler_name and transpiler_options:
@@ -165,20 +182,19 @@ def submit_job(
                 transpiler_options,
                 args_schema.TRANSPILER_OPTIONS,
                 allow_none=True))
+            jsonrpc_errors.handle_invalid_params(Library.validate_schema(
+                transpiler_options,
+                transpiler_options_schema,
+                allow_none=True), name="transpiler_options")
+
+        # get supported_code_types
+        supported_code_types = transpiler.get_supported_code_types()
     else:
         # set transpiler/transpiler_options to None if enable_transpiler=False
         transpiler_name = None
         transpiler_options = None
         body.transpiler = None
         body.transpiler_options = None
-
-    # get supported_code_types
-    supported_code_types = []
-    if enable_transpiler:
-        transpiler_manager = scheduler.get_transpiler_manager()
-        transpiler = transpiler_manager.get_transpiler(transpiler_name)
-        supported_code_types = transpiler.get_supported_code_types()
-    else:
         supported_code_types = driver.get_supported_code_types()
 
     # validate supported_code_types
@@ -219,6 +235,7 @@ def submit_job(
         "job_priority": job_priority,
         "description": description,
         "backend": backend,
+        "driver_options": driver_options,
         "transpiler": transpiler_name,
         "transpiler_options": transpiler_options,
         "shots": shots,

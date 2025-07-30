@@ -1,9 +1,11 @@
 # for development purpose
 # QCOS configures
 [DEFAULT]
-debug = false
+DEBUG = false
+WORKERS = 8
 
 [API_SERVER]
 API_SERVER_LISTEN_IP = "0.0.0.0"
 API_SERVER_LISTEN_PORT = 18400
 API_LOG_FILE = "/var/log/qcos/qcos-api.log"
+PREFECT_LOG_FILE = "/var/log/qcos/qcos-prefect.log"

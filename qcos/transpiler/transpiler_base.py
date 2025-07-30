@@ -49,6 +49,14 @@ class TranspilerBase:
         raise NotImplementedError(f"Transpiler: {self.__class__.__name__} "
                                   f"must implement method: init_transpiler")
 
+    def get_transpiler_options_schema(self):
+        """
+        Get transpiler options schema
+
+        :return: transpiler options schema
+        """
+        return self.transpiler_options_schema
+
     def update_transpiler_options(self, transpiler_options):
         """
         Update transpiler options
@@ -59,7 +67,15 @@ class TranspilerBase:
 
     def get_transpiler_options(self):
         """
-        Show transpiler options
+        Get transpiler options
+
+        :return: transpiler options
+        """
+        return self.transpiler_options
+
+    def get_transpiler_info(self):
+        """
+        Get transpiler info
         """
         show_list = [
             f"[{self.__class__.__name__}]",
@@ -146,4 +162,4 @@ class TranspilerBase:
         :return basis gate list
         """
         raise NotImplementedError(f"Transpiler: {self.__class__.__name__} "
-                                  f"must implement method: transpile")
+                                  "must implement method: transpile")

@@ -79,8 +79,7 @@ class DriverManager:
                 driver.enable = False
                 driver.set_status(driver.DRIVER_STATUS_OFFLINE)
             # Show driver info
-            logger.info("\n")
-            logger.info(driver.get_driver_info())
+            logger.info(f"\n{driver.get_driver_info()}")
 
     def has_driver(self, driver_name):
         """

@@ -445,6 +445,8 @@ class Library:
         err_msg = None
         if value is None and allow_none:
             return True, None
+        if not schema_obj:
+            return False, ["schema is not defined, value is not allowed"]
         try:
             _schema = Schema(schema_obj)
             _schema.validate(value)

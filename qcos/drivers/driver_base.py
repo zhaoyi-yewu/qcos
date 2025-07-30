@@ -96,6 +96,10 @@ class DriverBase:
         self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
         # default data type in run()
         self.default_data_type = DriverBase.DATA_TYPE_GATE_SEQUENCE
+        # driver_options
+        self.driver_options = {}
+        # driver_options schema
+        self.driver_options_schema = None
 
     def load_driver_configs(self):
         """
@@ -149,6 +153,22 @@ class DriverBase:
         """
         raise NotImplementedError(f"Driver: {self.__class__.__name__} "
                                   f"must implement method: close_driver")
+
+    def get_driver_options_schema(self):
+        """
+        Get driver options schema
+
+        :return: driver options schema
+        """
+        return self.driver_options_schema
+
+    def update_driver_options(self, driver_options):
+        """
+        Update driver options
+
+        :param driver_options: new driver options
+        """
+        self.driver_options.update(driver_options)
 
     def get_driver_info(self):
         """

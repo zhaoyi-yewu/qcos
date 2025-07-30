@@ -31,18 +31,20 @@ class SubmitJobRequest(BaseModel):
     """
     # Code types: qasm, qasm2, qasm3, qubo
     code_type: str = Constant.CODE_TYPE_QASM
-    # Enable circuit aggregation: True, False
-    enable_circuit_aggregation: Optional[bool] = False
     # Source code list
     source_code: list = []
     # description
     description: Optional[str] = None
-    # QC driver name
+    # device name
     backend: str = Constant.DRIVER_DUMMY
+    # Driver options
+    driver_options: Optional[dict] = None
     # Transpiler
     transpiler: Optional[str] = Constant.TRANSPILER_CMSS
     # Transpiler options
     transpiler_options: Optional[dict] = None
+    # Enable circuit aggregation: True, False
+    enable_circuit_aggregation: Optional[bool] = False
     # Job ID
     job_id: Optional[UUID] = None
     # Job name
@@ -86,20 +88,22 @@ class SubmitJobResponse(BaseModel):
     source_code: list = []
     # Description
     description: Optional[str] = None
-    # QC driver name
+    # device name
     backend: str = None
+    # Driver options
+    driver_options: Optional[dict] = None
     # Transpiler
     transpiler: Optional[str] = None
     # Transpiler options
     transpiler_options: Optional[dict] = None
+    # Enable circuit aggregation: True, False
+    enable_circuit_aggregation: Optional[bool] = False
     # Shots
     shots: int = None
     # Profiling
     profiling: Optional[list] = []
     # Dry-run
     dry_run: Optional[bool] = False
-    # Enable circuit aggregation: True, False
-    enable_circuit_aggregation: Optional[bool] = False
     # Callbacks
     callbacks: Optional[list] = None
     # Creation date
@@ -128,12 +132,16 @@ class GetJobStatusResponse(BaseModel):
     job_name: Optional[str] = None
     # Job status
     job_status: str = None
-    # QC driver name
+    # device name
     backend: Optional[str] = None
+    # Driver options
+    driver_options: Optional[dict] = None
     # Transpiler
     transpiler: Optional[str] = None
     # Transpiler options
     transpiler_options: Optional[dict] = None
+    # Enable circuit aggregation: True, False
+    enable_circuit_aggregation: Optional[bool] = False
     # Job scheduling policy
     job_sched_policy: Optional[str] = None
     # Job priority
@@ -144,8 +152,6 @@ class GetJobStatusResponse(BaseModel):
     shots: Optional[int] = None
     # Dry-run
     dry_run: Optional[bool] = False
-    # Enable circuit aggregation: True, False
-    enable_circuit_aggregation: Optional[bool] = False
     # Creation Date
     creation_date: Optional[datetime] = None
     # End date
@@ -176,12 +182,16 @@ class GetJobResultsResponse(BaseModel):
     code_type: str = None
     # Source code list
     source_code: list = []
-    # QC driver name
+    # device name
     backend: Optional[str] = None
+    # Driver options
+    driver_options: Optional[dict] = None
     # Transpiler
     transpiler: Optional[str] = None
     # Transpiler options
     transpiler_options: Optional[dict] = None
+    # Enable circuit aggregation: True, False
+    enable_circuit_aggregation: Optional[bool] = False
     # Job scheduling policy
     job_sched_policy: Optional[str] = None
     # Job priority

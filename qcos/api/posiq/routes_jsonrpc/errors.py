@@ -20,15 +20,16 @@ from pydantic import BaseModel
 
 
 @staticmethod
-def handle_invalid_params(results):
+def handle_invalid_params(results, name="param"):
     """
     Handle invalid params
 
     :param results: results for jsonrpc
+    :param name: name of the param
     """
     success, err_msg = results
     if success is False:
-        raise InvalidParams(data={"details": "\n".join(err_msg)})
+        raise InvalidParams(data={"details": f"{name}: {';'.join(err_msg)}"})
 
 
 @staticmethod

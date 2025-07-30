@@ -30,12 +30,14 @@ else
   echo "QCOS config file: ${qcos_config_file_path} not exists. auto generate ...."
   cat << EOM > ${qcos_config_file_path}
 [DEFAULT]
-debug = ${_DEBUG,,}
+DEBUG = ${_DEBUG,,}
+WORKERS = 8
 
 [API_SERVER]
-api_server_listen_ip = "${API_SERVER_LISTEN_IP:-0.0.0.0}"
-api_server_listen_port = ${API_SERVER_LISTEN_PORT:-18400}
-api_log_file = "${API_LOG_FILE:-/var/log/qcos/qcos-api.log}"
+API_SERVER_LISTEN_IP = "${API_SERVER_LISTEN_IP:-0.0.0.0}"
+API_SERVER_LISTEN_PORT = ${API_SERVER_LISTEN_PORT:-18400}
+API_LOG_FILE = "${API_LOG_FILE:-/var/log/qcos/qcos-api.log}"
+PREFECT_LOG_FILE = "${PREFECT_LOG_FILE:-/var/log/qcos/qcos-prefect.log}"
 EOM
 fi
 

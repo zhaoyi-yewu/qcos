@@ -34,12 +34,13 @@ class Config:
 
     # [DEFAULT]
     DEBUG = False
-    WORKERS = 4
+    WORKERS = 8
 
     # [API_SERVER]
     API_SERVER_LISTEN_IP = "127.0.0.1"
     API_SERVER_LISTEN_PORT = 18400
     API_LOG_FILE = "/var/log/qcos/qcos-api.log"
+    PREFECT_LOG_FILE = "/var/log/qcos/qcos-prefect.log"
 
     # [SSL]
     USE_SSL = False

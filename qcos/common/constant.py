@@ -202,7 +202,6 @@ class Constant:
     PREFECT_STATE_CRASHED = "CRASHED"
 
     # Prefect job log
-    PREFECT_JOB_LOG_PATH = "/var/log/qcos/prefect-flow.log"
     PREFECT_JOB_LOG_ROTATION = "500 MB"
     PREFECT_JOB_LOG_RETENTION = "30 days"
     PREFECT_JOB_LOG_FORMAT = ("{time:YYYY-MM-DD HH:mm:ss} | {level} "

@@ -24,6 +24,7 @@ from prefect import flow, task, pause_flow_run
 from prefect.input import RunInput
 from loguru import logger
 
+from qcos.common.config import Config
 from qcos.common.constant import Constant
 from qcos.common.library import Library
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
@@ -31,7 +32,7 @@ from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 # 配置 Loguru
 # pylint: disable=duplicate-code
 logger.add(
-    Constant.PREFECT_JOB_LOG_PATH,
+    Config.PREFECT_LOG_FILE,
     rotation=Constant.PREFECT_JOB_LOG_ROTATION,
     retention=Constant.PREFECT_JOB_LOG_RETENTION,
     format=Constant.PREFECT_JOB_LOG_FORMAT
@@ -45,11 +46,12 @@ class AggregationInput(RunInput):
 
 
 @task(persist_result=False)
-def init_driver(driver_info):
+def init_driver(driver_info, driver_options):
     """
     Init driver from driver_info
 
     :param driver_info: driver info
+    :param driver_options: driver options
     :return: driver
     """
 
@@ -58,6 +60,10 @@ def init_driver(driver_info):
         driver_class = getattr(driver_module, driver_info["class_name"])
         driver = driver_class()
         driver.extra_configs = driver_info.get("extra_configs", {})
+        # update driver options
+        if driver_options:
+            driver.update_driver_options(driver_options)
+
         # validate and copy extra_configs to qpu_configs
         success, err_msg = driver.validate_driver_configs()
         # error handling
@@ -291,7 +297,8 @@ def job_flow(job_info):
                 f"job_id: {job_id}, job_info: {job_info}")
 
     # init driver
-    future_driver = init_driver.submit(job_info["driver"])
+    future_driver = init_driver.submit(job_info["driver"],
+                                       job_data["driver_options"])
     driver_task_result = future_driver.result()
     if driver_task_result["error"]:
         raise driver_task_result["error"]

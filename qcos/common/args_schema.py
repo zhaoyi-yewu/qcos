@@ -43,6 +43,5 @@ CALLBACKS_SCHEMA = [
         Optional("timeout"): int
     }
 ]
-TRANSPILER_OPTIONS = {
-    Optional("optimization_level"): int
-}
+DRIVER_OPTIONS = dict
+TRANSPILER_OPTIONS = dict
