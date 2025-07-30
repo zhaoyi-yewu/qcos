@@ -24,11 +24,10 @@ class Node:
         """
         搜索树节点，也称作社区，每个节点包含一组量子比特
 
-        Args:
-            qubits (_type_): 节点包含的量子比特
-            left (_type_, optional): 左子节点. Defaults to None.
-            right (_type_, optional): 右子节点. Defaults to None.
-            ignore (bool, optional): 是否忽略该节点. Defaults to False.
+        :param qubits: 节点包含的量子比特
+        :param left: 左子节点. Defaults to None.
+        :param right: 右子节点. Defaults to None.
+        :param ignore: 是否忽略该节点. Defaults to False.
         """
         self.qubits = qubits
         self.left = left
@@ -41,30 +40,31 @@ class Node:
 class HierarchyTree:
     """
     基于CDAP构建搜索树
-    Args:
-        qpu_file (_type_): 硬件配置文件，包含硬件拓扑信息
-        w (float, optional): 错误率所占权重，越高表示越看中门和测量的保真度，
-                             为0表示只关心耦合情况. Defaults to 1.0.
+
+    :param qpu_config: 硬件配置，包含硬件拓扑信息
+    :param weight: 错误率所占权重，越高表示越看中门和测量的保真度，为0表示只关心耦合情况.
+                   Defaults to 1.0.
     """
 
-    def __init__(self, qpu_file, w=1.0) -> None:
-
-        with open(qpu_file, 'r') as f:
-            config = json.load(f)
+    def __init__(self, qpu_config, weight=1.0) -> None:
         ag = nx.Graph()
-        for k, e in config['overview']['coupler_map'].items():
-            ag.add_edge(e[0], e[1], weight=1.0 - config['overview']['coupler_error'][k] / 100)
+        for k, e in qpu_config['overview']['coupler_map'].items():
+            ag.add_edge(
+                e[0],
+                e[1],
+                weight=1.0 - qpu_config['overview']['coupler_error'][k] / 100)
 
         for q in ag.nodes():
             ag.nodes[q]['weight'] = 1.0
-            if q in config['overview']['readout_error']:
-                ag.nodes[q]['weight'] = 1.0 - config['overview']['readout_error'][q] / 100
+            if q in qpu_config['overview']['readout_error']:
+                ag.nodes[q]['weight'] = (
+                        1.0 - qpu_config['overview']['readout_error'][q] / 100)
 
-        self.G = ag
-        self.m = len(ag.edges())
-        self.w = w
+        self.graph = ag
+        self.edge_count = len(ag.edges())
+        self.weight = weight
         self.root = None
-        self.all_qubits = config['overview']['qubits']
+        self.all_qubits = qpu_config['overview']['qubits']
 
     def construct(self):
         """
@@ -72,17 +72,17 @@ class HierarchyTree:
         """
         nodes = self.origin_node()
         while len(nodes) != 1:
-            i, j = self.calc_F(nodes)
-            # print(i, j)
-            C = Node(nodes[i].qubits + nodes[j].qubits, left=nodes[i], right=nodes[j])
-            C.left.parent = C
-            C.left.pos = 0
-            C.right.parent = C
-            C.right.pos = 1
-            # print(C.qubits)
-            new_nodes = [C]
+            i, j = self.calc_merge_gain(nodes)
+            node = Node(nodes[i].qubits + nodes[j].qubits,
+                        left=nodes[i], right=nodes[j])
+            node.left.parent = node
+            node.left.pos = 0
+            node.right.parent = node
+            node.right.pos = 1
+            new_nodes = [node]
             for x in range(len(nodes)):
-                if x == i or x == j: continue
+                if x in (i, j):
+                    continue
                 new_nodes.append(nodes[x])
             nodes = new_nodes
         self.root = nodes[0]
@@ -90,27 +90,32 @@ class HierarchyTree:
     def origin_node(self):
         """
         初始叶节点，每个比特/位置为一个叶节点
+
+        :return nodes: 节点
         """
         nodes = []
-        for node in self.G.nodes():
+        for node in self.graph.nodes():
             nodes.append(Node([node]))
         return nodes
 
     def visit(self, node):
-        if node == None: return
-        print(node.qubits)
+        if node is None:
+            return
         self.visit(node.left)
         self.visit(node.right)
 
     def get_all_leaf(self):
         """
         dfs获取所有的叶节点
+
+        :return leafs: 所有的叶节点
         """
         leafs = []
 
         def dfs(node):
-            if node == None: return
-            if node.left == None and node.right == None:
+            if node is None:
+                return
+            if node.left is None and node.right is None:
                 leafs.append(node)
             else:
                 dfs(node.left)
@@ -123,90 +128,95 @@ class HierarchyTree:
         """
         当前节点的平均保真度，主要为节点包含比特的测量保真度和两比特门保真度
 
-        Args:
-            node (_type_): 节点
+        :param node: 节点
+        :return read_f * cx_f: 当前节点的平均保真度
         """
         n = len(node.qubits)
-        read_f = sum([self.G.nodes[q]['weight'] for q in node.qubits]) / n
+        read_f = sum(self.graph.nodes[q]['weight'] for q in node.qubits) / n
         cx_f, en = 0.0, 0
         for i in range(n):
             for j in range(i):
-                if self.G.has_edge(node.qubits[i], node.qubits[j]):
-                    cx_f += self.G.edges[(node.qubits[i], node.qubits[j])]['weight']
+                if self.graph.has_edge(node.qubits[i], node.qubits[j]):
+                    cx_f += self.graph.edges[
+                        (node.qubits[i], node.qubits[j])]['weight']
                     en += 1
         if en > 0:
             cx_f /= en
-        return read_f * cx_f
+        fidelity = read_f * cx_f
+        return fidelity
 
-    def calc_Q(self, nodes):
+    def calc_modularity(self, nodes):
         """
         衡量当前划分的指标
 
-        Args:
-            nodes (_type_): 当前划分下所有的节点
+        :param nodes: 当前划分下所有的节点
+        :return modularity: 模块度
         """
-        q = 0
+        modularity = 0
         for node in nodes:
-            if node.ignore == True: continue
+            if node.ignore is True:
+                continue
             eii, ai = 0, 0
             for i in range(len(node.qubits)):
                 for j in range(i):
-                    if self.G.has_edge(node.qubits[i], node.qubits[j]): eii += 1
-                ai += self.G.degree(node.qubits[i])
-            ai - eii
-            q += eii / self.m - (ai / self.m) ** 2
-        return q
+                    if self.graph.has_edge(node.qubits[i], node.qubits[j]):
+                        eii += 1
+                ai += self.graph.degree(node.qubits[i])
+            modularity += eii / self.edge_count - (ai / self.edge_count) ** 2
+        return modularity
 
-    def calc_EV(self, A, B):
+    def calc_eigenvector(self, node_a, node_b):
         """
         计算两个节点间的平均两比特门保真度，以及平均测量保真度
 
-        Args:
-            A (_type_): 节点A
-            B (_type_): 节点B
+        :param node_a: 节点a
+        :param node_b: 节点b
+        :return eigenvector: 两个节点间的平均两比特门保真度，以及平均测量保真度
         """
         e = 0
         ecnt = 0
         v = 0
         qubits = set()
-        for qa in A.qubits:
-            for qb in B.qubits:
-                if self.G.has_edge(qa, qb):
-                    e += self.G.edges[(qa, qb)]['weight']
+        for qa in node_a.qubits:
+            for qb in node_b.qubits:
+                if self.graph.has_edge(qa, qb):
+                    e += self.graph.edges[(qa, qb)]['weight']
                     ecnt += 1
                     qubits.add(qa)
                     qubits.add(qb)
-        for q in qubits: v += self.G.nodes[q]['weight']
-        if e == 0 or v == 0: return 0
-        return (e / ecnt) * (v / len(qubits)) * self.w
+        for q in qubits:
+            v += self.graph.nodes[q]['weight']
+        if e == 0 or v == 0:
+            return 0
+        eigenvector = (e / ecnt) * (v / len(qubits)) * self.weight
+        return eigenvector
 
-    def calc_F(self, nodes):
+    def calc_merge_gain(self, nodes):
         """
         奖励函数，每次找奖励函数值最大的合并方案
         F = Qmerge - Qori + w * EV
 
-        Args:
-            nodes (_type_): 当前划分下所有节点
+        :param nodes: 当前划分下所有的节点
+        :return comb: 奖励函数值最大的合并方案
         """
-        Q_origin = self.calc_Q(nodes)
+        q_origin = self.calc_modularity(nodes)
         n = len(nodes)
         max_f = -1e8
         comb = (-1, -1)
         for i in range(n):
-            A = nodes[i]
-            A.ignore = True
+            node_a = nodes[i]
+            node_a.ignore = True
             for j in range(i):
-                B = nodes[j]
-                B.ignore = True
-                new_node = Node(A.qubits + B.qubits)
+                node_b = nodes[j]
+                node_b.ignore = True
+                new_node = Node(node_a.qubits + node_b.qubits)
                 nodes.append(new_node)
-                Q_merged = self.calc_Q(nodes)
-                f = Q_merged - Q_origin + self.calc_EV(A, B)
-                # print(i, j, self.calc_EV(A, B))
+                q_merged = self.calc_modularity(nodes)
+                f = q_merged - q_origin + self.calc_eigenvector(node_a, node_b)
                 if f > max_f:
                     max_f = f
                     comb = (i, j)
                 nodes.pop(-1)
-                B.ignore = False
-            A.ignore = False
+                node_b.ignore = False
+            node_a.ignore = False
         return comb
