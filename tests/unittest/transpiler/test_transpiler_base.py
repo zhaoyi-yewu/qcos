@@ -31,8 +31,8 @@ class TestTranspilerBase:
                 f"must implement method: init_transpiler" in str(context.value))
 
     def test_update_transpiler_info(self):
-        obj.update_transpiler_info({1: 1, 2: 2, 3: 3})
-        assert obj.transpiler_info == {1: 1, 2: 2, 3: 3}
+        obj.update_transpiler_info({1: 1, 2: 2, 3: 3, 4: 4})
+        assert obj.transpiler_info == {1: 1, 2: 2, 3: 3,4: 4}
 
     def test_get_transpiler_info(self):
         assert obj.get_transpiler_info() == (f"[{obj.__class__.__name__}]"

@@ -51,8 +51,8 @@ class TestGateOptimizer:
         cls.merge_theta_data = '''
           OPENQASM 2.0;
           include "qelib1.inc";
-          qreg q[1];
-          creg c[1];
+          qreg q[5];
+          creg c[5];
           h q[0];
           h q[0];
           x q[0];
@@ -77,7 +77,7 @@ class TestGateOptimizer:
         assert tree is not None
         q_num, ir = get_ir(tree)
         assert ir is not None
-        assert q_num == 1
+        assert q_num == 5
         assert len(ir) == 4
         validate_gate_ir(ir[0], "h", ["0"], 1, True)
         validate_gate_ir(ir[1], "h", ["0"], 1, True)
