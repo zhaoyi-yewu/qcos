@@ -28,7 +28,8 @@ class TestTranspilerBase:
         with pytest.raises(NotImplementedError) as context:
             obj.init_transpiler()
         assert (f"Transpiler: {obj.__class__.__name__} "
-                f"must implement method: init_transpiler" in str(context.value))
+                f"must implement method: init_transpiler"
+                in str(context.value))
 
     def test_update_transpiler_options(self):
         obj.update_transpiler_options({1: 1, 2: 2, 3: 3, 4: 4})
@@ -55,6 +56,12 @@ class TestTranspilerBase:
 
     def test_get_supported_code_types(self):
         assert obj.get_supported_code_types() == obj.supported_code_types
+
+    def test_parse(self):
+        with pytest.raises(NotImplementedError) as context:
+            obj.parse("")
+        assert (f"Transpiler: {obj.__class__.__name__} "
+                f"must implement method: parse" in str(context.value))
 
     def test_transpile(self):
         with pytest.raises(NotImplementedError) as context:
