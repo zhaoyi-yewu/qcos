@@ -214,6 +214,7 @@ class HelpAction(argparse.Action):
     The commands are determined by checking the CommandManager
     instance, passed in as the "default" value for the action.
     """
+
     def __call__(self, parser, namespace, values, option_string=None):
         grouped_cmds = {}
         max_len = 0
@@ -560,6 +561,11 @@ class SubmitJob(Command):
         parser.add_argument("--job-id", dest="job_id",
                             type=str,
                             help="Job uuid")
+        parser.add_argument("--enable-circuit-aggregation",
+                            dest="enable_circuit_aggregation",
+                            type=bool,
+                            default=True,
+                            help="Enable circuit aggregation")
         parser.add_argument("-n", "--job-name", dest="job_name",
                             type=str,
                             default=None,
@@ -591,9 +597,10 @@ class SubmitJob(Command):
                             default=None,
                             help="Set driver options")
         parser.add_argument("--transpiler", dest="transpiler",
-                            help="Set transpiler name. eg. cmss")
-        parser.add_argument("--transpiler-options",
-                            dest="transpiler_options", type=str,
+                            # choices=Constant.TRANSPILER_TYPES,
+                            help="Set transpiler name")
+        parser.add_argument("--transpiler-info",
+                            dest="transpiler_info", type=str,
                             default=None,
                             help="Set transpiler options")
         parser.add_argument("--profiling",
@@ -627,6 +634,7 @@ class SubmitJob(Command):
         dry_run = parsed_args.dry_run
         code_type = parsed_args.code_type
         job_id = parsed_args.job_id
+        enable_circuit_aggregation = parsed_args.enable_circuit_aggregation
         job_type = parsed_args.job_type
         job_sched_policy = parsed_args.job_sched_policy
         job_priority = parsed_args.job_priority
@@ -715,9 +723,9 @@ class SubmitJob(Command):
                 allow_none=True))
 
         # Validate argument: transpiler
-        CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
-            transpiler, "transpiler", supported_transpilers,
-            allow_none=True))
+        # CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
+        #    transpiler, "transpiler", Constant.TRANSPILER_TYPES,
+        #    allow_none=True))
 
         # Validate argument: transpiler_options
         if transpiler_options:
@@ -746,6 +754,7 @@ class SubmitJob(Command):
             source_code_list,
             code_type=code_type,
             job_id=job_id,
+            enable_circuit_aggregation=enable_circuit_aggregation,
             job_name=job_name,
             job_type=job_type,
             job_sched_policy=job_sched_policy,

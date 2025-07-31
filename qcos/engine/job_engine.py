@@ -17,8 +17,7 @@
 
 import importlib
 import time
-from time import sleep
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Dict
 
 from prefect import flow, task, pause_flow_run
 from prefect.input import RunInput
@@ -41,7 +40,7 @@ logger.add(
 
 class AggregationInput(RunInput):
     is_parent: bool
-    sub_jobs: Optional[List[Any]] = None
+    sub_jobs: Optional[Dict] = None
     sub_results: Optional[List[Any]] = None
 
 

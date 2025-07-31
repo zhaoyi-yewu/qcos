@@ -529,7 +529,7 @@ class TaskFlowManager(ABC):
                 self.aggregation_jobs.pop(flow_run.name)
             else:
                 # 3.get sub jobs which can aggregated with parent job
-                sub_jobs = []
+                sub_jobs = {}
 
                 state = [StateType.SCHEDULED]
                 tags = ["enable_circuit_aggregation"]
@@ -545,8 +545,7 @@ class TaskFlowManager(ABC):
                             flow_run.work_pool_name:
                         if len(sub_jobs) >= Constant.MAX_AGGREGATION_JOBS:
                             break
-                        sub_jobs.append(
-                            {sub_flow_run.name: sub_flow_run.parameters})
+                        sub_jobs[sub_flow_run.name]= sub_flow_run.parameters
 
                 aggregation_parm["is_parent"] = True
                 aggregation_parm["sub_jobs"] = sub_jobs
