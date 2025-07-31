@@ -14,8 +14,3 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-
-from .task_scheduler import TaskScheduler
-from .task_manager import TaskFlowManager
-
-scheduler = TaskScheduler()
