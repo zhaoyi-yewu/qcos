@@ -564,7 +564,7 @@ class SubmitJob(Command):
         parser.add_argument("--enable-circuit-aggregation",
                             dest="enable_circuit_aggregation",
                             type=bool,
-                            default=True,
+                            default=False,
                             help="Enable circuit aggregation")
         parser.add_argument("-n", "--job-name", dest="job_name",
                             type=str,
