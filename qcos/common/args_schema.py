@@ -31,6 +31,12 @@ NAME_SCHEMA = And(
 SOURCE_CODE_SCHEMA = list
 SOURCE_CODE_TEXT_SCHEMA = [str]
 SOURCE_CODE_QUBO_SCHEMA = [[[int]]]
+SOURCE_NEW_ERRORS = [
+    {
+        "code": int,
+        "message": str
+    }
+]
 
 CALLBACKS_SCHEMA = [
     {

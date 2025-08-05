@@ -16,9 +16,16 @@
 # ----------------------------------------------------------------------
 
 import logging
+import typing
 
 import fastapi_jsonrpc as jsonrpc
+from fastapi_jsonrpc import InvalidParams
+from fastapi import Request, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 from uvicorn.main import Server as UvicornServer
 
 from qcos.api.posiq.routes_jsonrpc.routes import (
@@ -27,6 +34,42 @@ from qcos.api.posiq.routes_jsonrpc.routes import (
 logger = logging.getLogger(__name__)
 
 app = jsonrpc.API()
+
+
+def patched_invalid_params_from_validation_error(
+        exc: typing.Union[ValidationError, RequestValidationError]) -> (
+        InvalidParams):
+    """
+    Patched invalid_params_from_validation_error for fastapi_jsonrpc
+
+    :param exc: Exception
+    :return: (jsonrpc.InvalidParams, jsonrpc)
+    """
+
+    errors = []
+    details = []
+    for err in exc.errors():
+        err.pop('url', None)
+        if 'loc' in err:
+            if err['loc'][:1] == ('body',):
+                err['loc'] = err['loc'][1:]
+            else:
+                err['loc'] = (f"<{err['loc'][0]}>",) + err['loc'][1:]
+        errors.append(err)
+        details.append(
+            f"{err.get('msg', '')}. Actual value: "
+            f"{'.'.join(err.get('loc', []))}={err.get('input', '')}, "
+            f"Except type: {err.get('type', '')}")
+    return InvalidParams(data={
+        'details': "; ".join(details),
+        'errors': errors}
+    )
+
+
+jsonrpc.invalid_params_from_validation_error = (
+    patched_invalid_params_from_validation_error)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

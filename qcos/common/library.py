@@ -311,13 +311,13 @@ class Library:
         return datetime.now()
 
     @staticmethod
-    def validate_values_enum(value, argument_name, value_list,
+    def validate_values_enum(value, param_name, value_list,
                              allow_none=False):
         """
         Validate values for enum
 
         :param value: value
-        :param argument_name: argument name
+        :param param_name: param name
         :param value_list: valid value list
         :param allow_none: allow None value
         :return: True or False
@@ -325,38 +325,38 @@ class Library:
         if value is None and allow_none:
             return True, None
         if value not in value_list:
-            return (False, [
-                f"Invalid argument: {argument_name}={value}. "
-                f"reason: valid values: {', '.join(value_list)}"])
+            return (False,
+                    f"Invalid params: {param_name}={value}. "
+                    f"reason: valid values: {', '.join(value_list)}")
         return True, None
 
     @staticmethod
-    def validate_values_uuid(value, argument_name):
+    def validate_values_uuid(value, param_name):
         """
         Validate values for uuid
 
         :param value: value
-        :param argument_name: argument name
+        :param param_name: param name
         :return: True or False
         """
         try:
             uuid_obj = UUID(value, version=4)
             if str(uuid_obj) != value:
-                return (False, [f"Invalid argument: {argument_name}={value}. "
-                                f"reason: UUID version error"])
+                return (False, f"Invalid params: {param_name}={value}. "
+                               f"reason: UUID version error")
         except ValueError:
-            return (False, [f"Invalid argument: {argument_name}={value}. "
-                            f"reason: UUID value error"])
+            return (False, f"Invalid params: {param_name}={value}. "
+                           f"reason: UUID value error")
         return True, None
 
     @staticmethod
     def validate_values_range(
-            value, argument_name, min_value=None, max_value=None):
+            value, param_name, min_value=None, max_value=None):
         """
         Validate values for int range
 
         :param value: value
-        :param argument_name: argument name
+        :param param_name: param name
         :param min_value: minimum value
         :param max_value: maximum value
         :return: True or False
@@ -364,11 +364,11 @@ class Library:
         err_msgs = []
         if min_value:
             if value < min_value:
-                err_msgs.append(f"Invalid argument: {argument_name}={value}. "
+                err_msgs.append(f"Invalid params: {param_name}={value}. "
                                 f"reason: value should >= {min_value}")
         if max_value:
             if value > max_value:
-                err_msgs.append(f"Invalid argument: {argument_name}={value}. "
+                err_msgs.append(f"Invalid params: {param_name}={value}. "
                                 f"reason: value should <= {max_value}")
         if err_msgs:
             return False, err_msgs
@@ -376,13 +376,13 @@ class Library:
 
     @staticmethod
     def validate_values_length(
-            value, argument_name, min_value=None, max_value=None,
+            value, param_name, min_value=None, max_value=None,
             allow_none=False):
         """
         Validate values for int range
 
         :param value: value
-        :param argument_name: argument name
+        :param param_name: param name
         :param min_value: minimum value
         :param max_value: maximum value
         :param allow_none: allow None value
@@ -394,41 +394,42 @@ class Library:
         if min_value:
             if len(value) < min_value:
                 err_msgs.append(
-                    f"Invalid argument: {argument_name}={value}. "
+                    f"Invalid params: {param_name}={value}. "
                     f"reason: length of value should >= {min_value}")
         if max_value:
             if len(value) > max_value:
                 err_msgs.append(
-                    f"Invalid argument: {argument_name}={value}. "
+                    f"Invalid params: {param_name}={value}. "
                     f"reason: length of value should <= {max_value}")
         if err_msgs:
             return False, err_msgs
         return True, None
 
     @staticmethod
-    def validate_values_list(value, argument_name, value_type,
+    def validate_values_list(value, param_name, value_type,
                              allow_none=False):
         """
         Validate values for list
 
         :param value: value
-        :param argument_name: argument name
+        :param param_name: param name
         :param value_type: data type of value
         :param allow_none: allow None value
         :return: True or False
         """
         if not isinstance(value, list):
-            return (False, [f"Invalid argument: {argument_name}={value}. "
-                            f"reason: type: list is required"])
+            return (False, f"Invalid params: {param_name}={value}. "
+                           f"reason: type: list is required")
         for _value in value:
             if not isinstance(_value, value_type):
-                return (False, [f"Invalid argument: {argument_name}={value}. "
-                                f"reason: valid list element value type: "
-                                f"{value_type}"])
+                return (False, f"Invalid params: {param_name}={value}. "
+                               f"reason: valid list element value type: "
+                               f"{value_type}")
             if not allow_none and not _value:
-                return (False, [
-                    f"Invalid argument: {argument_name}={value}. "
-                    f"reason: None or empty element in list is not allowed"])
+                return (
+                    False,
+                    f"Invalid params: {param_name}={value}. "
+                    f"reason: None or empty element in list is not allowed")
         return True, None
 
     @staticmethod
@@ -446,13 +447,13 @@ class Library:
         if value is None and allow_none:
             return True, None
         if not schema_obj:
-            return False, ["schema is not defined, value is not allowed"]
+            return False, "schema is not defined, value is not allowed"
         try:
             _schema = Schema(schema_obj)
             _schema.validate(value)
         except Exception as e:
             success = False
-            err_msg = [str(e)]
+            err_msg = str(e)
         return success, err_msg
 
     @staticmethod
@@ -682,12 +683,11 @@ class Library:
         return default
 
     @staticmethod
-    def run_callbacks(job_id, results, callbacks):
+    def run_callbacks(data, callbacks):
         """
         Run callbacks for job
 
-        :param job_id: job id
-        :param results: results to send
+        :param data: data to send
         :param callbacks: callbacks
         """
         success = True
@@ -700,10 +700,6 @@ class Library:
             headers.update(user_defined_headers)
             retries = callback.get("retries", 3)
             timeout = callback.get("timeout", 10)
-            data = {
-                "job_id": str(job_id),
-                "results": results
-            }
             if url:
                 _success, err_msg, text, result = \
                     Library.call_http_api(
@@ -719,12 +715,11 @@ class Library:
         return success, err_msg
 
     @staticmethod
-    async def async_run_callbacks(job_id, results, callbacks):
+    async def async_run_callbacks(data, callbacks):
         """
         Async run callbacks for job
 
-        :param job_id: job id
-        :param results: results to send
+        :param data: data to send
         :param callbacks: callbacks
         """
         success = True
@@ -739,10 +734,6 @@ class Library:
             headers.update(user_defined_headers)
             retries = callback.get("retries", 3)
             timeout = callback.get("timeout", 10)
-            data = {
-                "job_id": str(job_id),
-                "results": results
-            }
             if url:
                 _success, err_msg, text, result = \
                     await Library.async_call_http_api(

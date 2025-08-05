@@ -126,5 +126,5 @@ class DriverDummy(DriverBase):
         self.set_status(self.DRIVER_STATUS_BUSY)
         # dummy driver results
         result = self.get_fake_results(num_qubits, shots)
-        self.set_results(job_id, results=[result])
+        self.set_results(job_id, results=result)
         self.set_status(self.DRIVER_STATUS_ONLINE)

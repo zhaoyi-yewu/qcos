@@ -19,217 +19,289 @@ import fastapi_jsonrpc as jsonrpc
 from pydantic import BaseModel
 
 
-@staticmethod
-def handle_invalid_params(results, name="param"):
-    """
-    Handle invalid params
+"""
+JSON-RPC/RestfulAPI error-code mappings
+==============================================================================
+|err_code|http_code | Description         | Examples / Scenarios            |
+==============================================================================
+| 0      | 2XX      |Accepted/OK          |success                           |
+| -400   | 400      |Bad Request          |invalid params / request          |
+| -401   | 401      |Unauthorized         |unauthorized login / token        |
+| -403   | 403      |Forbidden            |unauthorized operations           |
+| -404   | 404      |Not Found            |resource not found                |
+| -409   | 409      |Conflict             |create duplicated resource name/id|
+|        |          |                     |resource deps not met             |
+| -500   | 500      |Internal Server Error|bug / exception                   |
+| -501   | 501      |Not Implemented      |not implemented                   |
+| -503   | 503      |Service Unavailable  |service offline                   |
+==============================================================================
+"""
 
+
+class JsonRpcBaseError(jsonrpc.BaseError):
+    """
+    JsonRpc Base Error
+    """
+    CODE = -1
+    MESSAGE = "Base Error"
+
+    class DataModel(BaseModel):
+        """
+        Data Model
+        """
+        details: str
+
+
+class BadRequestError(JsonRpcBaseError):
+    """
+    Bad Request Error
+    """
+    CODE = -400
+    MESSAGE = "Bad Request"
+
+
+class UnauthorizedError(JsonRpcBaseError):
+    """
+    Unauthorized Error
+    """
+    CODE = -401
+    MESSAGE = "Unauthorized"
+
+
+class ForbiddenError(JsonRpcBaseError):
+    """
+    Forbidden Error
+    """
+    CODE = -403
+    MESSAGE = "Forbidden"
+
+
+class NotFoundError(JsonRpcBaseError):
+    """
+    Not Found Error
+    """
+    CODE = -404
+    MESSAGE = "Not Found"
+
+
+class ConflictError(JsonRpcBaseError):
+    """
+    Conflict Error
+    """
+    CODE = -409
+    MESSAGE = "Conflict"
+
+
+class InternalServerError(JsonRpcBaseError):
+    """
+    Internal Server Error
+    """
+    CODE = -500
+    MESSAGE = "Internal Server Error"
+
+
+class NotImplementedError(JsonRpcBaseError):
+    """
+    Not Implemented Error
+    """
+    CODE = -501
+    MESSAGE = "Not Implemented"
+
+
+class ServiceUnavailableError(JsonRpcBaseError):
+    """
+    Service Unavailable Error
+    """
+    CODE = -503
+    MESSAGE = "Service Unavailable"
+
+
+def handle_errors(err_cls, module_name, func_name, results, param_name, code):
+    """
+    Handle errors
+
+    :param err_cls: error class
+    :param module_name: module name
+    :param func_name: function name
     :param results: results for jsonrpc
-    :param name: name of the param
+    :param param_name: name of the param
+    :param code: error code
     """
     success, err_msg = results
     if success is False:
-        raise InvalidParams(data={"details": f"{name}: {';'.join(err_msg)}"})
+        details = None
+        param_str = ""
+        if param_name:
+            param_str = f"{param_name}: "
+        if isinstance(err_msg, list):
+            details = f"{param_str}{';'.join(err_msg)}"
+        else:
+            details = f"{param_str}{err_msg}"
+        error = err_cls(
+            data={"details": details}
+        )
+        if code:
+            error.CODE = code
+        error.MESSAGE = f"[{module_name}] Failed to {func_name}"
+        raise error
 
 
 @staticmethod
-def handle_submit_error(err_msg):
+def handle_error_bad_requests(
+        module_name, func_name, results, param_name=None, code=None):
     """
-    Handle submit error
+    Handle bad_requests error
 
-    :param err_msg: error msg from task manager
+    :param module_name: module name
+    :param func_name: function name
+    :param results: results for jsonrpc
+    :param param_name: name of the param
+    :param code: error code
     """
+    return handle_errors(
+        BadRequestError,
+        module_name,
+        func_name,
+        results,
+        param_name,
+        code)
 
-    raise JobSubmitError(data={"details": err_msg})
 
-
-@staticmethod
-def handle_get_status_error(err_msg):
+def handle_error_unauthorized(
+        module_name, func_name, results, param_name=None, code=None):
     """
-    Handle get status error
+    Handle unauthorized error
 
-    :param err_msg: error msg from task manager
+    :param module_name: module name
+    :param func_name: function name
+    :param results: results for jsonrpc
+    :param param_name: name of the param
+    :param code: error code
     """
+    return handle_errors(
+        UnauthorizedError,
+        module_name,
+        func_name,
+        results,
+        param_name,
+        code)
 
-    raise JobGetStatusError(data={"details": err_msg})
 
-
-@staticmethod
-def handle_get_results_error(err_msg):
+def handle_error_forbidden(
+        module_name, func_name, results, param_name=None, code=None):
     """
-    Handle get results error
+    Handle forbidden error
 
-    :param err_msg: error msg from task manager
+    :param module_name: module name
+    :param func_name: function name
+    :param results: results for jsonrpc
+    :param param_name: name of the param
+    :param code: error code
     """
+    return handle_errors(
+        ForbiddenError,
+        module_name,
+        func_name,
+        results,
+        param_name,
+        code)
 
-    raise JobGetResultsError(data={"details": err_msg})
 
-
-@staticmethod
-def handle_list_error(err_msg):
+def handle_error_not_found(
+        module_name, func_name, results, param_name=None, code=None):
     """
-    Handle get results error
+    Handle forbidden error
 
-    :param err_msg: error msg from task manager
+    :param module_name: module name
+    :param func_name: function name
+    :param results: results for jsonrpc
+    :param param_name: name of the param
+    :param code: error code
     """
+    return handle_errors(
+        NotFoundError,
+        module_name,
+        func_name,
+        results,
+        param_name,
+        code)
 
-    raise JobListError(data={"details": err_msg})
 
-
-@staticmethod
-def handle_cancel_error(err_msg):
+def handle_error_conflict(
+        module_name, func_name, results, param_name=None, code=None):
     """
-    Handle cancel job error
+    Handle conflict error
 
-    :param err_msg: error msg from task manager
+    :param module_name: module name
+    :param func_name: function name
+    :param results: results for jsonrpc
+    :param param_name: name of the param
+    :param code: error code
     """
+    return handle_errors(
+        ConflictError,
+        module_name,
+        func_name,
+        results,
+        param_name,
+        code)
 
-    raise JobCancelError(data={"details": err_msg})
 
-
-@staticmethod
-def handle_job_error(err_msg):
+def handle_error_internal_server(
+        module_name, func_name, results, param_name=None, code=None):
     """
-    Handle job error
+    Handle internal server error
 
-    :param err_msg: error msg
+    :param module_name: module name
+    :param func_name: function name
+    :param results: results for jsonrpc
+    :param param_name: name of the param
+    :param code: error code
     """
+    return handle_errors(
+        InternalServerError,
+        module_name,
+        func_name,
+        results,
+        param_name,
+        code)
 
-    raise JobError(data={"details": err_msg})
 
-
-@staticmethod
-def handle_device_error(err_msg):
+def handle_error_not_implemented(
+        module_name, func_name, results, param_name=None, code=None):
     """
-    Handle device error
+    Handle not implemented error
 
-    :param err_msg: error msg
+    :param module_name: module name
+    :param func_name: function name
+    :param results: results for jsonrpc
+    :param param_name: name of the param
+    :param code: error code
     """
+    return handle_errors(
+        NotImplementedError,
+        module_name,
+        func_name,
+        results,
+        param_name,
+        code)
 
-    raise DeviceError(data={"details": err_msg})
 
-
-class UnknownError(jsonrpc.BaseError):
+def handle_error_service_unavailable(
+        module_name, func_name, results, param_name=None, code=None):
     """
-    Unknown Error
+    Handle service unavailable error
+
+    :param module_name: module name
+    :param func_name: function name
+    :param results: results for jsonrpc
+    :param param_name: name of the param
+    :param code: error code
     """
-    CODE = -1
-    MESSAGE = "Unknown error"
-
-    class DataModel(BaseModel):
-        """
-        Data Model
-        """
-        details: str
-
-
-class InvalidParams(jsonrpc.BaseError):
-    """
-    Invalid Params Error
-    """
-    CODE = -2
-    MESSAGE = "Invalid params"
-
-    class DataModel(BaseModel):
-        """
-        Data Model
-        """
-        details: str
-
-
-class JobError(jsonrpc.BaseError):
-    """
-    Job Error
-    """
-    CODE = -10
-    MESSAGE = "Job error"
-
-    class DataModel(BaseModel):
-        """
-        Data Model
-        """
-        details: str
-
-
-class DeviceError(jsonrpc.BaseError):
-    """
-    Device Error
-    """
-    CODE = -20
-    MESSAGE = "Device error"
-
-    class DataModel(BaseModel):
-        """
-        Data Model
-        """
-        details: str
-
-
-class JobSubmitError(jsonrpc.BaseError):
-    """
-    Job Submit Error
-    """
-    CODE = -100
-    MESSAGE = "Job submit error"
-
-    class DataModel(BaseModel):
-        """
-        Data Model
-        """
-        details: str
-
-
-class JobGetStatusError(jsonrpc.BaseError):
-    """
-    Job Get Status Error
-    """
-    CODE = -101
-    MESSAGE = "Job get status error"
-
-    class DataModel(BaseModel):
-        """
-        Data Model
-        """
-        details: str
-
-
-class JobGetResultsError(jsonrpc.BaseError):
-    """
-    Job Get Result Error
-    """
-    CODE = -102
-    MESSAGE = "Job get results error"
-
-    class DataModel(BaseModel):
-        """
-        Data Model
-        """
-        details: str
-
-
-class JobListError(jsonrpc.BaseError):
-    """
-    Job List Error
-    """
-    CODE = -103
-    MESSAGE = "Job list error"
-
-    class DataModel(BaseModel):
-        """
-        Data Model
-        """
-        details: str
-
-
-class JobCancelError(jsonrpc.BaseError):
-    """
-    Job Cancel Error
-    """
-    CODE = -104
-    MESSAGE = "Job cancel error"
-
-    class DataModel(BaseModel):
-        """
-        Data Model
-        """
-        details: str
+    return handle_errors(
+        ServiceUnavailableError,
+        module_name,
+        func_name,
+        results,
+        param_name,
+        code)

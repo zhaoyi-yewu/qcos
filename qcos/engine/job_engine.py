@@ -25,6 +25,7 @@ from loguru import logger
 
 from qcos.common.config import Config
 from qcos.common.constant import Constant
+from qcos.common import errors
 from qcos.common.library import Library
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 
@@ -68,7 +69,7 @@ def init_driver(driver_info, driver_options):
         # error handling
         if not success:
             logger.error(err_msg)
-            raise ValueError(err_msg)
+            return {"driver": driver, "error": err_msg}
         # copy cfgs to trans cfg inst
         trans_cfg_inst.set_qpu_cfg(driver.get_qpu_configs())
         trans_cfg_inst.set_max_qubits(driver.get_max_qubits())
@@ -104,6 +105,30 @@ def init_transpiler(transpiler_class_info, transpiler_options):
 
 
 @task(persist_result=False)
+def parse(job_data, transpiler):
+    """
+    parse
+
+    :param job_data: job data
+    :param transpiler: transpiler
+    :return parsed gate list
+    """
+
+    num_qubits = -1
+    try:
+        source_codes = job_data['source_code'][0]
+        logger.info(f"source_codes:\n{source_codes}")
+        parsed_gates = transpiler.parse(source_codes)
+        num_qubits = transpiler.num_qubits
+        logger.info(f"final parsed gates: {parsed_gates}")
+        return {"parsed_gates": parsed_gates, "num_qubits": num_qubits,
+                "error": None}
+    except Exception as e:
+        return {"parsed_gates": None, "num_qubits": num_qubits,
+                "error": ValueError(str(e))}
+
+
+@task(persist_result=False)
 def transpile(parsed_gates, driver, transpiler):
     """
     transpile
@@ -130,30 +155,6 @@ def transpile(parsed_gates, driver, transpiler):
 
 
 @task(persist_result=False)
-def parser(job_data, transpiler):
-    """
-    parser
-
-    :param job_data: job data
-    :param transpiler: transpiler
-    :return parsed gate list
-    """
-
-    num_qubits = -1
-    try:
-        source_codes = job_data['source_code'][0]
-        logger.info(f"source_codes:\n{source_codes}")
-        parsed_gates = transpiler.parse(source_codes)
-        num_qubits = transpiler.num_qubits
-        logger.info(f"final parsed gates: {parsed_gates}")
-        return {"parsed_gates": parsed_gates, "num_qubits": num_qubits,
-                "error": None}
-    except Exception as e:
-        return {"parsed_gates": None, "num_qubits": num_qubits,
-                "error": ValueError(str(e))}
-
-
-@task(persist_result=False)
 def run_driver(job_info, driver, num_qubits, data):
     """
     Run the driver
@@ -170,9 +171,6 @@ def run_driver(job_info, driver, num_qubits, data):
         job_id = job_data["job_id"]
         shots = job_data.get("shots", Constant.DEFAULT_SHOTS)
         dry_run = job_data.get("dry_run", False)
-        results = None
-        job_status = None
-        end_date = None
         data_type = driver.get_default_data_type()
         if dry_run:
             logger.info(
@@ -186,29 +184,13 @@ def run_driver(job_info, driver, num_qubits, data):
                 f"data: {data}, data_type: {data_type}, shots: {shots}")
             driver.run(job_id, num_qubits, data, data_type=data_type,
                        shots=shots)
-        if driver.results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
-            # sync mode: get results immediately
-            results = driver.get_results(job_id)
-            job_status = Constant.JOB_STATUS_COMPLETED
-            end_date = Library.get_current_datetime()
-        # async mode: get results in the async set-job-results call
-        elif driver.results_fetch_mode == Constant.RESULTS_FETCH_MODE_ASYNC:
-            results = None
-            job_status = Constant.JOB_STATUS_RUNNING
-        return {
-            "results": results,
-            "metadata": {
-                "results_fetch_mode": driver.results_fetch_mode,
-                "status": job_status,
-                "end_date": end_date
-            },
-            "error": None,
-        }
+
+        return make_run_results(driver, job_id, err_cls=None, err_msg=None)
     except Exception as e:
         return {"results": None, "metadata": {}, "error": ValueError(str(e))}
 
 
-def job_callback(flow, flow_run, state):
+async def job_callback(flow, flow_run, state):
     """
     Job callback
 
@@ -217,26 +199,40 @@ def job_callback(flow, flow_run, state):
     :param state: flow state
     """
     job_id = flow_run.name  # use name as job uuid
+    is_failed = False
     parameters = flow_run.parameters
     results = flow_run.state.result()
-    is_job_callback = False
     results_fetch_mode_sync = False
     callbacks = Library.get_nested_dict_value(
         parameters, "job_info", "data", "callbacks", default=None)
-    if callbacks:
-        is_job_callback = True
+    backend = Library.get_nested_dict_value(
+        parameters, "job_info", "data", "backend", default=None)
+    if not callbacks:
+        return
     for result in results:
         results_fetch_mode = Library.get_nested_dict_value(
             result, "metadata", "results_fetch_mode", default=None)
+        status = Library.get_nested_dict_value(
+            result, "metadata", "status", default=None)
+        if status != Constant.JOB_STATUS_COMPLETED:
+            is_failed = True
         if results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
             results_fetch_mode_sync = True
-            break
-    if is_job_callback and results_fetch_mode_sync:
+    if callbacks and results_fetch_mode_sync:
         # if job_info contains callback list and driver is in sync mode
-        # do callback
-        success, err_msg = Library.run_callbacks(job_id, results, callbacks)
+        # run async callback
+        job_status = Constant.JOB_STATUS_FAILED if is_failed \
+            else Constant.JOB_STATUS_COMPLETED
+        data = {
+            "job_id": job_id,
+            "job_status": job_status,
+            "backend": backend,
+            "results": results
+        }
+        success, err_msg = await Library.async_run_callbacks(
+            data, callbacks)
         if not success:
-            logger.error(err_msg)
+            logger.error(f"Callback Error: {err_msg}")
 
 
 @flow(name="job_engine", persist_result=True,
@@ -275,10 +271,20 @@ def job_flow(job_info):
         logger.info(
             f"Process aggregation parent job, sub job info: "
             f"{aggregation_info.sub_jobs}")
-        # TODO(jidalong) quantum aggreagtion implementation
+        # TODO(jidalong) quantum aggregation implementation
         job_results["sub_results"] = sub_results
         return job_results
 
+    # construct job_results_list
+    # TODO (zhaoyi): implement multi-source-code job
+    job_results_list = []
+    job_results = _job_flows(job_info)
+    job_results_list.append(job_results)
+
+    return job_results_list
+
+
+def _job_flows(job_info):
     transpile_results = None
     num_qubits = -1
     profiling_driver_transpiler_start = 0
@@ -299,28 +305,48 @@ def job_flow(job_info):
     future_driver = init_driver.submit(job_info["driver"],
                                        job_data["driver_options"])
     driver_task_result = future_driver.result()
-    if driver_task_result["error"]:
-        raise driver_task_result["error"]
-    driver = driver_task_result["driver"]
+    # init driver: error handling
+    err_msg = driver_task_result.get("error", None)
+    if err_msg:
+        return make_run_results(None,
+                                job_id,
+                                errors.JobEngineInitDriverError,
+                                err_msg)
 
+    driver = driver_task_result["driver"]
     if driver.enable_transpiler:
         # init transpiler
         future_transpiler = init_transpiler.submit(
             job_info["transpiler"],
             job_data.get("transpiler_options", None))
         transpiler_task_result = future_transpiler.result()
-        if transpiler_task_result["error"]:
-            raise transpiler_task_result["error"]
+        # init transpiler: error handling
+        err_msg = transpiler_task_result.get("error", None)
+        if err_msg:
+            return make_run_results(driver,
+                                    job_id,
+                                    errors.JobEngineInitTranspilerError,
+                                    err_msg)
+
         transpiler = transpiler_task_result["transpiler"]
 
         if (Constant.PROFILING_TYPE_DRIVER_PARSE in profiling_types or
                 Constant.PROFILING_TYPE_ALL in profiling_types):
             profiling_driver_parse_start = time.time()
 
-        parse_task = parser.submit(
+        # parser
+        parse_task = parse.submit(
             job_data, transpiler,
             wait_for=[init_driver, init_transpiler])
         parse_task_result = parse_task.result()
+        # parser: error handling
+        err_msg = parse_task_result.get("error", None)
+        if err_msg:
+            return make_run_results(driver,
+                                    job_id,
+                                    errors.JobEngineParseError,
+                                    err_msg)
+
         num_qubits = parse_task_result.get("num_qubits", -1)
         job_results["num_qubits"] = num_qubits
 
@@ -336,18 +362,22 @@ def job_flow(job_info):
         # transpile codes
         transpile_task_results = transpile.submit(
             parse_task_result.get("parsed_gates", None), driver, transpiler,
-            wait_for=[init_driver, init_transpiler, parser])
+            wait_for=[init_driver, init_transpiler, parse])
 
         # record transpiling end_time
         if (Constant.PROFILING_TYPE_DRIVER_TRANSPILE in profiling_types or
                 Constant.PROFILING_TYPE_ALL in profiling_types):
             profiling_driver_transpiler_end = time.time()
 
-        # error handling
+        # transpile: error handling
         _transpile_task_results = transpile_task_results.result()
         err_msg = _transpile_task_results.get("error", None)
         if err_msg:
-            raise err_msg
+            return make_run_results(driver,
+                                    job_id,
+                                    errors.JobEngineTranspileError,
+                                    err_msg)
+
         transpile_results = _transpile_task_results["transpile_results"]
 
     # call run() in driver
@@ -371,27 +401,84 @@ def job_flow(job_info):
             Constant.PROFILING_TYPE_ALL in profiling_types):
         profiling_driver_run_end = time.time()
 
-    # get results
+    # run: get results
     task_result = run_driver_task_result.result()
 
-    # error handling
-    error = task_result["error"]
-    if error:
-        raise error
+    # run: error handling
+    err_msg = task_result.get("error", None)
+    if err_msg:
+        return make_run_results(driver,
+                                job_id,
+                                errors.JobEngineRunDriverError,
+                                err_msg)
+
+    # prepare job_results
     job_results["results"] = task_result["results"]
     job_results["metadata"] = task_result["metadata"]
 
-    # calculate profiling
+    # calculate and prepare profiling
+    if profiling_driver_parse_start and profiling_driver_parse_end:
+        job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_PARSE] = \
+            profiling_driver_parse_end - profiling_driver_parse_start
     if profiling_driver_transpiler_start and profiling_driver_transpiler_end:
-        job_results["profiling"]["profiling_transpiler"] = \
+        job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_TRANSPILE] = \
             profiling_driver_transpiler_end - profiling_driver_transpiler_start
     if profiling_driver_run_start and profiling_driver_run_end:
-        job_results["profiling"]["profiling_driver_run"] = \
+        job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_RUN] = \
             profiling_driver_run_end - profiling_driver_run_start
-    if profiling_driver_parse_start and profiling_driver_parse_end:
-        job_results["profiling"]["profiling_driver_parse"] = \
-            profiling_driver_parse_end - profiling_driver_parse_start
 
-    # construct results
-    results = [job_results]
-    return results
+    return job_results
+
+
+def make_run_results(driver, job_id, err_cls=None, err_msg=None):
+    """
+    Make run results
+
+    :param driver: driver
+    :param job_id: job id
+    :param err_cls: error class
+    :param err_msg: error message
+    """
+    results = None
+    end_date = None
+    job_status = None
+    driver_results_fetch_mode = None
+
+    if driver:
+        driver_results_fetch_mode = driver.results_fetch_mode
+
+    job_results = {
+        "results": None,
+        "metadata": {
+            "results_fetch_mode": driver_results_fetch_mode,
+            "status": None,
+            "end_date": None
+        },
+        "error": None
+    }
+
+    if err_cls:
+        # error handling
+        err = err_cls(err_msg)
+        job_results["metadata"]["status"] = Constant.JOB_STATUS_FAILED
+        job_results["metadata"]["end_date"] = Library.get_current_datetime()
+        job_results["error"] = {
+            "code": err.get_error_code(),
+            "message": err.get_err_msgs()
+        }
+        return job_results
+
+    if driver_results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
+        # sync mode: get results immediately
+        results = driver.get_results(job_id)
+        job_status = Constant.JOB_STATUS_COMPLETED
+        end_date = Library.get_current_datetime()
+    # async mode: get results in the async set-job-results call
+    elif driver_results_fetch_mode == Constant.RESULTS_FETCH_MODE_ASYNC:
+        job_status = Constant.JOB_STATUS_RUNNING
+
+    job_results["results"] = results
+    job_results["metadata"]["status"] = job_status
+    job_results["metadata"]["end_date"] = end_date
+
+    return job_results

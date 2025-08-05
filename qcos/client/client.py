@@ -347,12 +347,13 @@ class Client:
             self.job_url, method_name, data)
         return status_code, reason, text, result
 
-    def set_job_results(self, job_id, results):
+    def set_job_results(self, job_id, results, errors):
         """
         Set job results
 
         :param job_id: job ID
         :param results: job results
+        :param errors: job errors
         :return: jobs
         """
         method_name = "set_job_results"
@@ -361,10 +362,19 @@ class Client:
         Client.handle_invalid_arguments(
             Library.validate_values_uuid(job_id, "job_id"))
 
+        data_results = None
+        data_errors = None
+
+        if results:
+            data_results = [results]
+        if errors:
+            data_errors = [errors]
+
         # construct data and call json rpc
         data = {
             "job_id": job_id,
-            "results": results
+            "results": data_results,
+            "errors": data_errors
         }
         status_code, reason, text, result = Client.call_json_rpc(
             self.job_url, method_name, data)

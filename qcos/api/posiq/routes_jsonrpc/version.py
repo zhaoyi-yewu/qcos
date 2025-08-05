@@ -23,6 +23,7 @@ from qcos.common.config import Config
 from qcos.common.constant import Constant
 
 logger = logging.getLogger(__name__)
+module_name = "VERSION"
 
 
 @base_api.method()
@@ -34,7 +35,8 @@ def version(
 
     :return: version response
     """
-    logger.info(f"Call version: {body}")
+    module_name = "version"
+    logger.info(f"Call {module_name}: {body}")
 
     capabilities = {
         "job_types": Constant.JOB_TYPES,

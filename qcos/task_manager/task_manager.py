@@ -296,7 +296,7 @@ class TaskFlowManager(ABC):
         :return err_msg: flow error message
         """
         flow_run_id = self.get_flow_run_id_by_job_id(job_id)
-        if flow_run_id == None:
+        if flow_run_id is None:
             raise ObjectNotFound(Exception("Job not found"))
         state, parameters, result, err_msg = self.loop.run_until_complete(
             self.get_task_flow_result_by_client(flow_run_id))
@@ -333,18 +333,20 @@ class TaskFlowManager(ABC):
                                _parameters=None,
                                _variables=None):
             success = True
+            err_msg = None
             try:
                 await self._client.update_flow_run(
                     _flow_run_id,
                     name=_name,
                     parameters=_parameters,
                     job_variables=_variables)
-            except Exception:
+            except Exception as e:
                 success = False
-            return success
+                err_msg = str(e)
+            return success, err_msg
 
         flow_run_id = self.get_flow_run_id_by_job_id(job_id)
-        if flow_run_id == None:
+        if flow_run_id is None:
             return False
 
         return self.loop.run_until_complete(
@@ -491,15 +493,15 @@ class TaskFlowManager(ABC):
         }
         return flow_info
 
-    def run_callbacks(self, job_id, data, callbacks):
+    def run_callbacks(self, data, callbacks):
         """
         Run callbacks for job
-        :param job_id: job id
+
         :param data: data to send
         :param callbacks: callbacks
         """
         return self.loop.run_until_complete(
-            Library.async_run_callbacks(job_id, data, callbacks))
+            Library.async_run_callbacks(data, callbacks))
 
     async def process_aggregation_job(self):
         """

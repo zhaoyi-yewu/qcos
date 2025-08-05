@@ -25,6 +25,7 @@ from qcos.common.library import Library
 from qcos.task_manager import scheduler
 
 logger = logging.getLogger(__name__)
+module_name = "DEVICE"
 
 
 def _get_device_info(driver_info, transpiler):
@@ -57,14 +58,14 @@ def _get_device_info(driver_info, transpiler):
         "supported_code_types": supported_code_types,
         "supported_basis_gates": driver_info.get_supported_basis_gates(),
         "results_fetch_mode": driver_info.results_fetch_mode,
-        # replace password in extra_configs to ********
+        # replace pwd in extra_configs to ********
         "extra_configs": Library.update_dict(driver_info.extra_configs,
                                              {"password": "*" * 8})
     }
     return device_info
 
 
-@device_api_v1.method()
+@device_api_v1.method(errors=[])
 def get_devices(
         body: schemas.GetDevicesRequest = None
 ) -> List[schemas.GetDeviceResponse]:
@@ -75,7 +76,8 @@ def get_devices(
     :type body: schemas.GetDevicesRequest
     :return: Get devices response
     """
-    logger.info(f"Call get_devices: {body}")
+    func_name = "get_devices"
+    logger.info(f"Call {func_name}: {body}")
 
     driver_manager = scheduler.get_driver_manager()
     drivers = driver_manager.get_drivers()
@@ -88,7 +90,7 @@ def get_devices(
     return response_info
 
 
-@device_api_v1.method(errors=[jsonrpc_errors.DeviceError])
+@device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
 def get_device(
         body: schemas.GetDeviceRequest
 ) -> schemas.GetDeviceResponse:
@@ -99,15 +101,19 @@ def get_device(
     :type body: schemas.GetDeviceRequest
     :return: Get device info response
     """
-    logger.info(f"Call get_device: {body}")
+    func_name = "get_device"
+    logger.info(f"Call {func_name}: {body}")
 
     driver_name = body.name
 
     driver_manager = scheduler.get_driver_manager()
     driver_info = driver_manager.get_driver(driver_name)
     if not driver_info:
-        jsonrpc_errors.handle_device_error(
-            f"Can't find device: {driver_name}")
+        jsonrpc_errors.handle_error_not_found(
+            module_name,
+            func_name,
+            (False, f"Device: '{driver_name}' is not found")
+        )
     transpiler_manager = scheduler.get_transpiler_manager()
     transpiler = transpiler_manager.get_transpiler(driver_info.transpiler)
     response_info = _get_device_info(driver_info, transpiler)

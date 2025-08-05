@@ -254,7 +254,9 @@ class SetJobResultsRequest(BaseModel):
     # Job ID
     job_id: UUID = None
     # Results
-    results: Union[str, int, list, dict] = None
+    results: Optional[Union[str, int, list, dict]] = None
+    # Errors
+    errors: Optional[Union[str, int, list, dict]] = None
 
 
 class SetJobResultsResponse(BaseModel):

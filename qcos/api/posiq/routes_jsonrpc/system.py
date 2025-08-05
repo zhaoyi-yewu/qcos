@@ -21,6 +21,7 @@ from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc.routes import system_api_v1
 
 logger = logging.getLogger(__name__)
+module_name = "SYSTEM"
 
 
 @system_api_v1.method()
@@ -34,7 +35,8 @@ def ping(
     :type body: schemas.PingRequest
     :return: pong response
     """
-    logger.info(f"Call ping: {body}")
+    module_name = "ping"
+    logger.info(f"Call {module_name}: {body}")
 
     message = body.message
 

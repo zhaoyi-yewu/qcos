@@ -20,6 +20,7 @@ from abc import ABC
 
 from prefect import exceptions as prefect_exceptions
 
+from qcos.common import errors
 from qcos.common.constant import Constant
 from .task_manager import TaskFlowManager
 
@@ -104,7 +105,7 @@ class TaskScheduler(ABC):
         backend = job_info.backend
         driver = self.driver_manager.get_driver(backend)
         if not driver:
-            err_msg = f"Can't find backend driver: {backend}"
+            err_msg = f"Backend: '{backend}' is not found"
             logger.error(err_msg)
             return None, f"Execute work flow failed: {err_msg}"
         if not driver.enable:
@@ -146,7 +147,7 @@ class TaskScheduler(ABC):
             return res, None
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
-            return None, "Execute work flow failed"
+            raise errors.WorkFlowError(e)
 
     def get_result_by_id(self, job_id):
         """
@@ -171,12 +172,12 @@ class TaskScheduler(ABC):
             }
             return response, None
         except prefect_exceptions.ObjectNotFound:
-            err_msg = f"Can't find job id: {job_id}"
+            err_msg = f"Job: '{job_id}' is not found"
             logger.warning(err_msg)
-            return None, err_msg
+            raise errors.NotFound(err_msg)
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
-            return None, "execute work flow failed"
+            raise errors.WorkFlowError(e)
 
     def has_job(self, job_id):
         """
@@ -203,7 +204,7 @@ class TaskScheduler(ABC):
             return flow_list, None
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
-            return None, "execute work flow failed"
+            raise errors.WorkFlowError(e)
 
     def remove_jobs(self, ids):
         """
@@ -233,15 +234,14 @@ class TaskScheduler(ABC):
         return self._task_manager.update_flow(
             job_id, name, parameters, variables)
 
-    def run_callbacks(self, job_id, data, callbacks):
+    def run_callbacks(self, data, callbacks):
         """
         Run callbacks for job
 
-        :param job_id: job id
         :param data: data to send
         :param callbacks: callbacks
         """
-        return self._task_manager.run_callbacks(job_id, data, callbacks)
+        return self._task_manager.run_callbacks(data, callbacks)
 
     @staticmethod
     def get_job_status(job_status, flow_results, flow_parameters):

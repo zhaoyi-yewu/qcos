@@ -83,7 +83,8 @@ qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001,00000000-0000-4000-800
 qcos-cli delete-jobs -y all
 
 * Set job results (for callbacks or test purpose)
-qcos-cli set-job-results --results '[{"01":0}]' 00000000-0000-4000-8000-000000000001
+qcos-cli set-job-results --results '{"01":100}' 00000000-0000-4000-8000-000000000001
+qcos-cli set-job-results --errors '{"code": -104, "message": "error test"}' 00000000-0000-4000-8000-000000000001
 
 [System commands]
 * Ping server
@@ -675,6 +676,10 @@ class SubmitJob(Command):
             raise errors.InvalidArguments(
                 "Empty argument: source_code_files is not allowed")
 
+        if not source_code_list:
+            raise errors.InvalidArguments(
+                "source_code should not be empty")
+
         # Validate argument: job_name
         if job_name:
             CommandHelper.handle_invalid_arguments(Library.validate_schema(
@@ -1082,6 +1087,9 @@ class SetJobResults(Command):
         parser.add_argument("--results",
                             dest="results", type=str,
                             help="Job Results")
+        parser.add_argument("--errors",
+                            dest="errors", type=str,
+                            help="Job Errors")
         parser.add_argument("job_id", type=str, help="Job ID")
         return parser
 
@@ -1094,22 +1102,31 @@ class SetJobResults(Command):
         resource = self.group
         job_id = parsed_args.job_id
         results = parsed_args.results
+        errors = parsed_args.errors
+        results_obj = None
+        errors_obj = None
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(
             job_id, "job_id"))
 
         # convert results
-        results_obj = None
-        try:
-            results_obj = json.loads(results)
-        except json.decoder.JSONDecodeError as exc:
-            raise errors.InvalidArguments("Invalid argument: results") \
-                from exc
+        if results:
+            try:
+                results_obj = json.loads(results)
+            except json.decoder.JSONDecodeError as exc:
+                raise errors.InvalidArguments("Invalid argument: results") \
+                    from exc
+        if errors:
+            try:
+                errors_obj = json.loads(errors)
+            except json.decoder.JSONDecodeError as exc:
+                raise errors.InvalidArguments("Invalid argument: errors") \
+                    from exc
 
         # call api
         status_code, reason, text, result = \
-            self.app.client.set_job_results(job_id, results_obj)
+            self.app.client.set_job_results(job_id, results_obj, errors_obj)
         CommandHelper.check_results(
             resource, "set_job_results", status_code, reason, text)
 
