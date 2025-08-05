@@ -35,8 +35,8 @@ def ping(
     :type body: schemas.PingRequest
     :return: pong response
     """
-    module_name = "ping"
-    logger.info(f"Call {module_name}: {body}")
+    func_name = "ping"
+    logger.info(f"Call {func_name}: {body}")
 
     message = body.message
 

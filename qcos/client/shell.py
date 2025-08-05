@@ -984,7 +984,10 @@ class CancelJobs(Command):
             print(f"The following {len(jobs)} "
                   f"jobs will be cancelled: {', '.join(map(str, jobs))}")
         else:
-            print(f"Jobs: {job_ids} are not found")
+            if job_ids.lower() == "all":
+                print("No jobs found")
+            else:
+                print(f"Jobs: {job_ids} are not found")
 
 
 class DeleteJobs(Command):
@@ -1066,7 +1069,10 @@ class DeleteJobs(Command):
             print(f"The following {len(jobs)} "
                   f"jobs will be deleted: {', '.join(map(str, jobs))}")
         else:
-            print(f"Jobs: {job_ids} are not found")
+            if job_ids.lower() == "all":
+                print("No jobs found")
+            else:
+                print(f"Jobs: {job_ids} are not found")
 
 
 class SetJobResults(Command):

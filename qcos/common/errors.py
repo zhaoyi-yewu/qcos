@@ -57,7 +57,6 @@ class InvalidArguments(BaseException):
     Invalid arguments
     """
 
-    module_name = None
     error_code = -11
     err_type = "Invalid arguments"
 
@@ -67,7 +66,6 @@ class NotFound(BaseException):
     Not Found
     """
 
-    module_name = None
     error_code = -12
     err_type = "Not Found"
 
@@ -82,24 +80,24 @@ class WorkFlowError(BaseException):
     err_type = "Error"
 
 
-class JobEngineInitDriverError(BaseException):
+class JobEngineDriverInitError(BaseException):
     """
-    Job Engine: Init Driver Error
+    Job Engine: Driver Init Error
     """
 
     module_name = "JobEngine"
     error_code = -100
-    err_type = "Init Driver Error"
+    err_type = "Driver Init Error"
 
 
-class JobEngineInitTranspilerError(BaseException):
+class JobEngineTranspilerInitError(BaseException):
     """
-    Job Engine: Init Transpiler Error
+    Job Engine: Transpiler Init Error
     """
 
     module_name = "JobEngine"
     error_code = -101
-    err_type = "Init Transpiler Error"
+    err_type = "Transpiler Init Error"
 
 
 class JobEngineParseError(BaseException):
@@ -122,11 +120,11 @@ class JobEngineTranspileError(BaseException):
     err_type = "Transpile Error"
 
 
-class JobEngineRunDriverError(BaseException):
+class JobEngineDriverRunError(BaseException):
     """
-    Job Engine: Run Driver Error
+    Job Engine: Driver Run Error
     """
 
     module_name = "JobEngine"
     error_code = -104
-    err_type = "Run Driver Error"
+    err_type = "Driver Run Error"

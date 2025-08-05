@@ -310,7 +310,7 @@ def _job_flows(job_info):
     if err_msg:
         return make_run_results(None,
                                 job_id,
-                                errors.JobEngineInitDriverError,
+                                errors.JobEngineDriverInitError,
                                 err_msg)
 
     driver = driver_task_result["driver"]
@@ -325,7 +325,7 @@ def _job_flows(job_info):
         if err_msg:
             return make_run_results(driver,
                                     job_id,
-                                    errors.JobEngineInitTranspilerError,
+                                    errors.JobEngineTranspilerInitError,
                                     err_msg)
 
         transpiler = transpiler_task_result["transpiler"]
@@ -409,7 +409,7 @@ def _job_flows(job_info):
     if err_msg:
         return make_run_results(driver,
                                 job_id,
-                                errors.JobEngineRunDriverError,
+                                errors.JobEngineDriverRunError,
                                 err_msg)
 
     # prepare job_results

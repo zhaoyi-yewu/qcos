@@ -171,10 +171,10 @@ class TaskScheduler(ABC):
                 "error_message": error_message,
             }
             return response, None
-        except prefect_exceptions.ObjectNotFound:
+        except prefect_exceptions.ObjectNotFound as e:
             err_msg = f"Job: '{job_id}' is not found"
             logger.warning(err_msg)
-            raise errors.NotFound(err_msg)
+            raise errors.NotFound(err_msg) from e
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
             raise errors.WorkFlowError(e)

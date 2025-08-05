@@ -15,14 +15,11 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import fastapi_jsonrpc as jsonrpc
-from pydantic import BaseModel
-
-
 """
 JSON-RPC/RestfulAPI error-code mappings
+
 ==============================================================================
-|err_code|http_code | Description         | Examples / Scenarios            |
+|err_code|http_code | Description         | Examples / Scenarios             |
 ==============================================================================
 | 0      | 2XX      |Accepted/OK          |success                           |
 | -400   | 400      |Bad Request          |invalid params / request          |
@@ -36,6 +33,9 @@ JSON-RPC/RestfulAPI error-code mappings
 | -503   | 503      |Service Unavailable  |service offline                   |
 ==============================================================================
 """
+
+import fastapi_jsonrpc as jsonrpc
+from pydantic import BaseModel
 
 
 class JsonRpcBaseError(jsonrpc.BaseError):
@@ -129,14 +129,14 @@ def handle_errors(err_cls, module_name, func_name, results, param_name, code):
     """
     success, err_msg = results
     if success is False:
-        details = None
         param_str = ""
         if param_name:
             param_str = f"{param_name}: "
+
+        details = f"{param_str}{err_msg}"
         if isinstance(err_msg, list):
             details = f"{param_str}{';'.join(err_msg)}"
-        else:
-            details = f"{param_str}{err_msg}"
+
         error = err_cls(
             data={"details": details}
         )

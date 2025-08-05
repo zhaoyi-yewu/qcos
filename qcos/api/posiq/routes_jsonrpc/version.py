@@ -35,8 +35,8 @@ def version(
 
     :return: version response
     """
-    module_name = "version"
-    logger.info(f"Call {module_name}: {body}")
+    func_name = "version"
+    logger.info(f"Call {func_name}: {body}")
 
     capabilities = {
         "job_types": Constant.JOB_TYPES,
