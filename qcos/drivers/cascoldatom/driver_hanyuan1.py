@@ -23,7 +23,7 @@ from schema import Optional, Or
 import requests
 from jsonrpcclient import request
 
-from qcos.common.constant import Constant, HttpMethod
+from qcos.common.constant import Constant, HttpMethod, HttpCode
 from qcos.common.library import Library
 from qcos.drivers.driver_base import DriverBase
 
@@ -281,7 +281,7 @@ class DriverHanyuan1(DriverBase):
                 self.base_url, method_name, request_data)
 
             # 检查JSON-RPC响应
-            if status_code == 200 and result:
+            if status_code == HttpCode.SUCCESS_OK and result:
                 if "error" in result:
                     success = False
                     err_msgs.append(result['error'])
@@ -318,7 +318,7 @@ class DriverHanyuan1(DriverBase):
             status_code, reason, text, result = self.call_json_rpc(
                 self.base_url, method_name, request_data)
 
-            if status_code == 200 and result:
+            if status_code == HttpCode.SUCCESS_OK and result:
                 result = result.get("result")
                 if result.get("status", self.task_status_unknown) in \
                     expect_task_status:
@@ -350,7 +350,7 @@ class DriverHanyuan1(DriverBase):
         status_code, reason, text, result = self.call_json_rpc(
             self.base_url, method_name, request_data)
 
-        if status_code == 200 and result:
+        if status_code == HttpCode.SUCCESS_OK and result:
             result = result.get("result")
             status = result.get("status")
             if status == "success":
