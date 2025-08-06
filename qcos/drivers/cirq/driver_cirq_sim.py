@@ -71,13 +71,15 @@ class DriverCirqSim(DriverBase):
         :param data_type: data type
         :param shots: shots
         """
-        logger.info(f"job_id: {job_id}, shots: {shots}, "
-                    f"num_qubits: {num_qubits}, "
-                    f"data_type: {data_type}, data: {data}")
-        self.set_status(self.DRIVER_STATUS_BUSY)
+        data_index = data["index"]
+        logger.info(
+            f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
+            f"data_type: {data_type}, data: {data}")
 
+        self.set_status(self.DRIVER_STATUS_BUSY)
         # create circuit form qasm code
-        circuit = circuit_from_qasm(data["source_code"][0])
+        source_code = data["source_code"]
+        circuit = circuit_from_qasm(source_code)
 
         # run simulation
         simulator = cirq.Simulator()
@@ -101,5 +103,5 @@ class DriverCirqSim(DriverBase):
         }
 
         # store results
-        self.set_results(job_id, results=serializable_counts)
+        self.set_results(job_id, data_index, results=serializable_counts)
         self.set_status(self.DRIVER_STATUS_ONLINE)

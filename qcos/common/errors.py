@@ -21,11 +21,6 @@ class BaseException(Exception):
     Base exception
     """
 
-    module_name = "Base"
-    error_code = -1
-    err_type = "Error"
-    message = None
-
     def __init__(self, message):
         super().__init__(message)
         self.message = str(message)

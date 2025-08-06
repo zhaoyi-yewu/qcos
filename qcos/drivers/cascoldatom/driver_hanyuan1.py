@@ -130,43 +130,45 @@ class DriverHanyuan1(DriverBase):
         :param shots: shots
         """
         # pylint: disable=duplicate-code
-        logger.info(f"job_id: {job_id}, shots: {shots}, "
-                    f"num_qubits: {num_qubits}, "
-                    f"data_type: {data_type}, data: {data}")
-        self.set_status(self.DRIVER_STATUS_BUSY)
+        data_index = data["index"]
+        logger.info(
+            f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
+            f"data_type: {data_type}, data: {data}")
 
+        self.set_status(self.DRIVER_STATUS_BUSY)
+        gates_list = data["transpile_results"]
         extra_configs = self.get_extra_configs()
         ip_address = extra_configs.get(
             "ip_address", self.DEFAULT_CONTROL_SYSTEM_IP)
         port = extra_configs.get("port", self.DEFAULT_CONTROL_SYSTEM_PORT)
 
-        # 1、init task connection
+        # 1. init task connection
+        logger.info("init task")
         self.init_task(ip_address, port)
 
+        # 2. submit task
         logger.info("submit task")
-        # 2、submit task
         success, err_msg = (
-            self.submit_task(job_id, num_qubits, data, data_type, shots))
+            self.submit_task(job_id, num_qubits, gates_list, data_type, shots))
         if not success:
             raise ValueError(f"Failed to submit task [{job_id}]: {err_msg}")
 
+        # 3. wait task results
         logger.info("wait task status")
-        # 3、wait task results
         success, err_msg, _ = Library.loop_with_timeout(
             self.check_task_status, 1800, 5, job_id,
             expect_task_status=[self.task_status_completed])
         if not success:
             raise ValueError(f"Failed to wait for task [{job_id}]: {err_msg}")
 
+        # 4. get task results
         logger.info("wait done")
-        # 4、get task results
         success, err_msg, results = self.get_task_results(job_id)
         if not success:
             raise ValueError(f"Failed to get task results [{job_id}]: "
                              f"{err_msg}")
 
-
-        self.set_results(job_id, results=results)
+        self.set_results(job_id, data_index, results=results)
         self.set_status(self.DRIVER_STATUS_ONLINE)
 
     def init_task(self, ip_address: str, port: int):

@@ -31,12 +31,15 @@ NAME_SCHEMA = And(
 SOURCE_CODE_SCHEMA = list
 SOURCE_CODE_TEXT_SCHEMA = [str]
 SOURCE_CODE_QUBO_SCHEMA = [[[int]]]
-SOURCE_NEW_ERRORS = [
-    {
+
+SOURCE_RESULTS_SUCCESS = {  # results
+        "results": dict
+    }
+SOURCE_RESULTS_ERROR = {  # error messages
         "code": int,
         "message": str
     }
-]
+SOURCE_SET_RESULTS = [Or(SOURCE_RESULTS_SUCCESS, SOURCE_RESULTS_ERROR)]
 
 CALLBACKS_SCHEMA = [
     {

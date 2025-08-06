@@ -72,10 +72,12 @@ class DriverPassthrough(DriverBase):
         :param shots: shots
         """
         # pylint: disable=duplicate-code
-        logger.info(f"job_id: {job_id}, shots: {shots}, "
-                    f"num_qubits: {num_qubits}, "
-                    f"data_type: {data_type}, data: {data}")
+        data_index = data["index"]
+        logger.info(
+            f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
+            f"data_type: {data_type}, data: {data}")
+
         self.set_status(self.DRIVER_STATUS_BUSY)
         result = self.get_fake_results(num_qubits, shots)
-        self.set_results(job_id, results=[result])
+        self.set_results(job_id, data_index, results=result)
         self.set_status(self.DRIVER_STATUS_ONLINE)

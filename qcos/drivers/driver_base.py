@@ -19,6 +19,7 @@ import logging
 
 from qcos.common.config import Config
 from qcos.common.constant import Constant
+from qcos.common.library import Library
 
 
 logger = logging.getLogger(__name__)
@@ -317,28 +318,41 @@ class DriverBase:
         :param data_type: data type
         :param shots: shots
         """
-        logger.info(f"Dry-run: job_id: {job_id}, shots: {shots}, "
-                    f"data_type: {data_type}, data: {data}")
-        result = self.get_fake_results(num_qubits, shots)
-        self.set_results(job_id, results=[result])
+        data_index = data["index"]
+        logger.info(
+            f"Dry-run: job_id: {job_id}, shots: {shots}, "
+            f"num_qubits: {num_qubits}, "
+            f"data_type: {data_type}, data: {data}")
 
-    def set_results(self, job_id, results):
+        result = self.get_fake_results(num_qubits, shots)
+        self.set_results(job_id, data_index, results=result)
+
+    def set_results(self, job_id, data_index, results):
         """
         Set job results
 
         :param job_id: job ID
+        :param data_index: code index
         :param results: results
         """
-        self._results[job_id] = results
+        if job_id not in self._results:
+            self._results[job_id] = {}
+        self._results[job_id][data_index] = results
 
-    def get_results(self, job_id=None):
+    def get_results(self, job_id=None, data_index=None):
         """
         Get results
 
         :param job_id: job ID
+        :param data_index: code index
+        :return: results
         """
-        if job_id:
-            return self._results.get(job_id, None)
+        if job_id is not None:
+            if data_index is not None:
+                return Library.get_nested_dict_value(
+                    self._results, job_id, data_index, default=None)
+            return Library.get_nested_dict_value(
+                self._results, job_id, default=None)
         return self._results
 
     def get_default_data_type(self):

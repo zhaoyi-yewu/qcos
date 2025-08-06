@@ -120,15 +120,17 @@ cd build-scripts
 * 提交作业
 1. 测试用dummy驱动
 qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
-1.1 使用profiling
-qcos-cli submit-job --code-type qasm --shots 10 --profiling schedule driver:transpile driver:run --backend dummy -f ./samples/qasm/simple-qasm.qasm
+1.1 使用profiling进行模块性能测量
+qcos-cli submit-job --code-type qasm --shots 10 --profiling schedule driver:parse driver:transpile driver:run --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.2 使用callbacks进行回调
 qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.3 指定job-id
 qcos-cli submit-job --job-id 00000000-0000-4000-8000-000000000001 --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.4 指定job名称
 qcos-cli submit-job --job-name test-dummy --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
-1.5 线路聚合
+1.5 单作业多代码执行 (线路串行模式)
+qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm ./samples/qasm/simple-qasm.qasm
+1.6 多作业并行执行 (线路聚合模式)
 qcos-cli submit-job --code-type qasm --shots 10 --enable-circuit-aggregation true --backend dummy -f ./samples/qasm/simple-qasm.qasm
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
@@ -159,6 +161,8 @@ qcos-cli delete-jobs -y all
 
 * 设置作业结果 (回调或者测试用途)
 qcos-cli set-job-results --results '[{"01":0}]' 00000000-0000-4000-8000-000000000001
+** 设置多作业结果, 针对多源代码的作业
+qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}}' '{"code": -104, "message": "error test"}'
 
 [系统命令]
 * ping命令

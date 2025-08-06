@@ -73,13 +73,15 @@ class DriverQiskitQasmSim(DriverBase):
         :param data_type: data type
         :param shots: shots
         """
-        logger.info(f"job_id: {job_id}, shots: {shots}, "
-                    f"num_qubits: {num_qubits}, "
-                    f"data_type: {data_type}, data: {data}")
+        data_index = data["index"]
+        logger.info(
+            f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
+            f"data_type: {data_type}, data: {data}")
         self.set_status(self.DRIVER_STATUS_BUSY)
 
+        transpile_results = data["transpile_results"]
         simulator = QasmSimulator()
-        result = simulator.run(data, shots=shots).result()
+        result = simulator.run(transpile_results, shots=shots).result()
 
-        self.set_results(job_id, results=result.get_counts())
+        self.set_results(job_id, data_index, results=result.get_counts())
         self.set_status(self.DRIVER_STATUS_ONLINE)

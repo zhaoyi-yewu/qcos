@@ -578,7 +578,7 @@ def cancel_jobs(
     job_ids = list(dict.fromkeys(job_ids))
 
     # cancel jobs
-    # TODO (zhaoyi): not supported yet
+    # TODO(zhaoyi): not supported yet
     jsonrpc_errors.handle_error_not_implemented(
         module_name,
         func_name,
@@ -644,17 +644,14 @@ def set_job_results(
 
     job_id = body.job_id
     new_results = body.results
-    new_errors = body.errors
 
-    # validate new_errors
-    if new_errors:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            Library.validate_schema(
-                new_errors, args_schema.SOURCE_NEW_ERRORS
-            )
+    jsonrpc_errors.handle_error_bad_requests(
+        module_name,
+        func_name,
+        Library.validate_schema(
+            new_results, args_schema.SOURCE_SET_RESULTS
         )
+    )
 
     # check if job exists
     success = scheduler.has_job(job_id)
@@ -665,7 +662,7 @@ def set_job_results(
             (False, f"Job: '{job_id}' is not found")
         )
 
-    # set job results
+    # get existing job results
     response = None
     err = None
     try:
@@ -720,25 +717,23 @@ def set_job_results(
         jsonrpc_errors.handle_error_internal_server(
             module_name,
             func_name,
-            (False, response["error_message"])
-        )
-    if new_errors and len(new_errors) != len(existing_results):
-        jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, response["error_message"])
+            (False, "Length of new results should be the same as "
+                    "the length of the existing results")
         )
 
     # update results/errors
     i = 0
     is_failed = False
     for result in existing_results:
-        if new_errors:
-            result["error"] = new_errors[i]
+        new_result = new_results[i]
+        if "code" in new_result:
+            # failed and set error message
+            result["error"] = new_result
             result["metadata"]["status"] = Constant.JOB_STATUS_FAILED
             is_failed = True
         else:
-            result["results"] = new_results[i]
+            # success and set new results
+            result["results"] = new_result
             result["metadata"]["status"] = Constant.JOB_STATUS_COMPLETED
         result["metadata"]["end_date"] = end_date
         i += 1

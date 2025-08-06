@@ -42,8 +42,6 @@ class JsonRpcBaseError(jsonrpc.BaseError):
     """
     JsonRpc Base Error
     """
-    CODE = -1
-    MESSAGE = "Base Error"
 
     class DataModel(BaseModel):
         """

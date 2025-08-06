@@ -23,7 +23,7 @@ from datetime import datetime, timedelta
 
 from loguru import logger
 
-from qcos.common.constant import Constant, HttpMethod
+from qcos.common.constant import Constant, HttpCode, HttpMethod
 from qcos.common.library import Library
 from qcos.drivers.driver_base import DriverBase
 
@@ -92,6 +92,7 @@ class DriverTiangong100(DriverBase):
         self.enable_transpiler = False
         self.tech_type = Constant.TECH_TYPE_PHOTON
         self.max_qubits = 100
+        self.default_data_type = DriverBase.DATA_TYPE_QUBO
         self.supported_code_types = [
             Constant.CODE_TYPE_QUBO
         ]
@@ -155,9 +156,11 @@ class DriverTiangong100(DriverBase):
         :param shots: shots
         """
         # pylint: disable=duplicate-code
-        logger.info(f"job_id: {job_id}, shots: {shots}, "
-                    f"num_qubits: {num_qubits}, "
-                    f"data_type: {data_type}, data: {data}")
+        data_index = data["index"]
+        logger.info(
+            f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
+            f"data_type: {data_type}, data: {data}")
+
         self.set_status(self.DRIVER_STATUS_BUSY)
         extra_configs = self.get_extra_configs()
         project_id = extra_configs.get("project_id", 1)
@@ -166,44 +169,47 @@ class DriverTiangong100(DriverBase):
         password = extra_configs.get("password", "")
         self.base_url = extra_configs.get("base_url", "")
 
-        # Load qubo matrix
-        qubo_matrix = None
-        try:
-            qubo_matrix = data["source_code"][0]
-        except Exception as e:
-            raise ValueError(f"Invalid qubo matrix [{job_id}]") from e
+        # 1. Load qubo matrix
+        logger.info("1. load qubo matrix")
+        qubo_matrix = data["source_code"]
 
-        # Validate base_url
+        # 2. Validate base_url
+        logger.info("2. validate base_url")
         if not Library.is_valid_url(self.base_url, {"http", "https"}):
             raise ValueError(f"Invalid URL [{job_id}]: {self.base_url}")
 
-        # User authentication and get token
+        # 3. User authentication and get token
+        logger.info("3. user authentication")
         success, err_msg, self.token = self.user_auth(username, password)
         if not success:
             raise ValueError(f"Authorize failed [{job_id}]: {err_msg}")
         self.auth_headers["Authorization"] = f"JWT {self.token}"
-        logger.info(f"token: {self.token}")
+        logger.info(f"user token: {self.token}")
 
-        # Check device status
-        logger.info("check_device_status")
+        # 4. Check device status
+        logger.info("4. check_device_status")
         success, err_msg = self.check_device_status(device_id)
         if not success:
             raise ValueError(err_msg)
 
-        logger.info("upload file")
-        # Upload file
-        success, err_msg, file_info = self.upload_file(job_id, qubo_matrix)
+        # 5. Upload file
+        logger.info("5. upload file")
+        success, err_msg, file_info = self.upload_file(job_id,
+                                                       data_index,
+                                                       qubo_matrix)
         if not success:
             raise ValueError(f"Failed to upload file [{job_id}]: {err_msg}")
 
-        # Submit task
+        # 6. Submit task
+        logger.info("6. submit task")
+        task_name = f"{job_id}_{data_index}"
         estimated_datetime = datetime.now() + timedelta(minutes=1)
         estimated_datetime_str = estimated_datetime.strftime(
             "%Y-%m-%d %H:%M:%S")
         task_info = {
             "priority": 0,
             "machine_id": device_id,
-            "task_name": job_id,
+            "task_name": task_name,
             "user_id": file_info["creator"],
             "file_id": file_info["id"],
             "csv_name": file_info["name"],
@@ -214,34 +220,36 @@ class DriverTiangong100(DriverBase):
         tasks_info = {
             "data": [task_info]
         }
-        logger.info("submit task")
+
         success, err_msg = self.submit_tasks(tasks_info)
         if not success:
-            raise ValueError(f"Failed to submit task [{job_id}]: {err_msg}")
+            raise ValueError(f"Failed to submit task [{task_name}]: {err_msg}")
 
-        # Get task id and wait for task_status is completed
-        logger.info("wait")
+        # 7. Get task id and wait for task_status is completed
+        logger.info("7. wait for task_status=completed")
         success, err_msg, _ = Library.loop_with_timeout(
-            self.check_task_status, 3600, 5, job_id,
+            self.check_task_status, 3600, 5, task_name,
             expect_task_status=[self.task_status_completed])
         if not success:
-            raise ValueError(f"Failed to wait for task [{job_id}]: {err_msg}")
+            raise ValueError(f"Failed to wait for task [{task_name}]: "
+                             f"{err_msg}")
 
-        # Get task id
-        logger.info("wait done")
-        success, err_msg, task_info = self.get_task_id(job_id)
+        # 8. Get task id
+        logger.info("8. wait done")
+        success, err_msg, task_info = self.get_task_id(task_name)
         if not success:
-            raise ValueError(f"Failed to get task id [{job_id}]: {err_msg}")
+            raise ValueError(f"Failed to get task id [{task_name}]: {err_msg}")
 
-        # Get task results
+        # 9. Get task results
+        logger.info("9. get task results")
         success, err_msg, results = self.get_task_results(
             task_id=task_info["id"])
         if not success:
             raise ValueError(f"Failed to get task results [{job_id}]: "
                              f"{err_msg}")
 
-        # Save results and set driver status to ONLINE
-        self.set_results(job_id, results=results)
+        # 10. Save results and set driver status to ONLINE
+        self.set_results(job_id, data_index, results=results)
         self.set_status(self.DRIVER_STATUS_ONLINE)
 
     def user_auth(self, username, password):
@@ -264,7 +272,7 @@ class DriverTiangong100(DriverBase):
             Library.call_http_api(url, HttpMethod.POST, json=data,
                                   headers=self.default_headers,
                                   func_name="user_auth")
-        if status_code == 200:
+        if status_code == HttpCode.SUCCESS_OK:
             response = json.loads(text)
             err_code = response["code"]
             err_msg = response["msg"]
@@ -295,7 +303,7 @@ class DriverTiangong100(DriverBase):
             Library.call_http_api(url, HttpMethod.GET, params=params,
                                   headers=self.auth_headers,
                                   func_name="check_device_status")
-        if status_code == 200:
+        if status_code == HttpCode.SUCCESS_OK:
             response = json.loads(text)
             err_code = response["code"]
             err_msg = response["msg"]
@@ -318,11 +326,12 @@ class DriverTiangong100(DriverBase):
             err_msgs.append(reason)
         return success, "\n".join(err_msgs)
 
-    def upload_file(self, job_id, data):
+    def upload_file(self, job_id, data_index, data):
         """
         Upload qubo matrix file
 
         :param job_id: job ID
+        :param data_index: data index
         :param data: qubo matrix in dict format
         :return success or fail, error message, file info
         """
@@ -334,7 +343,7 @@ class DriverTiangong100(DriverBase):
 
         # upload qubo matrix csv file
         temp_dir = tempfile.gettempdir()
-        csv_filename = f"job_{job_id}.csv"
+        csv_filename = f"job_{job_id}_{data_index}.csv"
         csv_filepath = os.path.join(temp_dir, csv_filename)
         url = f"{self.base_url}/{self.upload_path}/"
         try:
@@ -356,7 +365,7 @@ class DriverTiangong100(DriverBase):
                     Library.call_http_api(url, HttpMethod.POST, files=files,
                                           headers=self.auth_headers,
                                           func_name="upload_file")
-                if status_code == 200:
+                if status_code == HttpCode.SUCCESS_OK:
                     response = json.loads(text)
                     err_code = response["code"]
                     err_msg = response["msg"]
@@ -394,7 +403,7 @@ class DriverTiangong100(DriverBase):
             Library.call_http_api(url, HttpMethod.POST, json=tasks_info,
                                   headers=self.auth_headers,
                                   func_name="submit_tasks")
-        if status_code == 200:
+        if status_code == HttpCode.SUCCESS_OK:
             response = json.loads(text)
             err_code = response["code"]
             err_msg = response["msg"]
@@ -428,7 +437,7 @@ class DriverTiangong100(DriverBase):
             Library.call_http_api(url, HttpMethod.GET, params=params,
                                   headers=self.auth_headers,
                                   func_name="get_task_id")
-        if status_code == 200:
+        if status_code == HttpCode.SUCCESS_OK:
             response = json.loads(text)
             err_code = response["code"]
             err_msg = response["msg"]
@@ -437,7 +446,7 @@ class DriverTiangong100(DriverBase):
                 for _task_info in response_data:
                     task_info["id"] = _task_info.get("id")
                     task_info["status"] = _task_info.get("status")
-                    logger.info(task_info["status"])
+                    logger.info(f"task status: {task_info['status']}")
                 if not task_info:
                     success = False
                     err_msgs.append(f"Can't find task name: {task_name}")
@@ -449,15 +458,15 @@ class DriverTiangong100(DriverBase):
             err_msgs.append(reason)
         return success, "\n".join(err_msgs), task_info
 
-    def check_task_status(self, job_id, expect_task_status):
+    def check_task_status(self, task_name, expect_task_status):
         """
         Check task status meets requirements
 
-        :param job_id: job ID
+        :param task_name: task name
         :param expect_task_status: expect task status list
         :return: True if task status meets requirements, False otherwise
         """
-        success, err_msg, task_info = self.get_task_id(job_id)
+        success, err_msg, task_info = self.get_task_id(task_name)
         if success and task_info.get("status", self.task_status_unknown) in \
                 expect_task_status:
             return True
@@ -480,7 +489,7 @@ class DriverTiangong100(DriverBase):
             Library.call_http_api(url, HttpMethod.GET,
                                   headers=self.auth_headers,
                                   func_name="get_task_results")
-        if status_code == 200:
+        if status_code == HttpCode.SUCCESS_OK:
             response = json.loads(text)
             err_code = response["code"]
             err_msg = response["msg"]
@@ -510,7 +519,7 @@ class DriverTiangong100(DriverBase):
             Library.call_http_api(url, HttpMethod.DELETE,
                                   headers=self.auth_headers,
                                   func_name="delete_task")
-        if status_code == 200:
+        if status_code == HttpCode.SUCCESS_OK:
             response = json.loads(text)
             err_code = response["code"]
             err_msg = response["msg"]

@@ -45,15 +45,17 @@ QCOS commands:
 * Submit Job
 1. 测试用dummy驱动
 qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
-1.1 使用profiling
-qcos-cli submit-job --code-type qasm --shots 10 --profiling schedule driver:transpile driver:run --backend dummy -f ./samples/qasm/simple-qasm.qasm
+1.1 使用profiling进行模块性能测量
+qcos-cli submit-job --code-type qasm --shots 10 --profiling schedule driver:parse driver:transpile driver:run --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.2 使用callbacks进行回调
 qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.3 指定job-id
 qcos-cli submit-job --job-id 00000000-0000-4000-8000-000000000001 --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
 1.4 指定job名称
 qcos-cli submit-job --job-name test-dummy --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm
-1.5 线路聚合
+1.5 单作业多代码执行 (线路串行模式)
+qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/simple-qasm.qasm ./samples/qasm/simple-qasm.qasm
+1.6 多作业并行执行 (线路聚合模式)
 qcos-cli submit-job --code-type qasm --shots 10 --enable-circuit-aggregation true --backend dummy -f ./samples/qasm/simple-qasm.qasm
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
@@ -83,8 +85,9 @@ qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001,00000000-0000-4000-800
 qcos-cli delete-jobs -y all
 
 * Set job results (for callbacks or test purpose)
-qcos-cli set-job-results --results '{"01":100}' 00000000-0000-4000-8000-000000000001
-qcos-cli set-job-results --errors '{"code": -104, "message": "error test"}' 00000000-0000-4000-8000-000000000001
+qcos-cli set-job-results --results '{"results": {"01":100}}' 00000000-0000-4000-8000-000000000001
+** Set multi-results for multi-source-code job
+qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}}' '{"code": -104, "message": "error test"}'
 
 [System commands]
 * Ping server
@@ -859,10 +862,13 @@ class GetJobResults(ShowOne):
 
         _results = json_results.get("results", None)
         if _results:
-            _result = _results[0]
-            for k, v in _result.items():
-                if k != "metadata":
-                    json_results[k] = v
+            index = 0
+            for _result in _results:
+                for k, v in _result.items():
+                    if k != "metadata":
+                        key = f"{k} [{index}]"
+                        json_results[key] = v
+                index += 1
         table_values = CommandHelper.get_table_data(json_results)
         return table_values
 
@@ -1092,10 +1098,9 @@ class SetJobResults(Command):
         parser = super().get_parser(prog_name)
         parser.add_argument("--results",
                             dest="results", type=str,
+                            nargs="+",
+                            required=True,
                             help="Job Results")
-        parser.add_argument("--errors",
-                            dest="errors", type=str,
-                            help="Job Errors")
         parser.add_argument("job_id", type=str, help="Job ID")
         return parser
 
@@ -1108,31 +1113,24 @@ class SetJobResults(Command):
         resource = self.group
         job_id = parsed_args.job_id
         results = parsed_args.results
-        errors = parsed_args.errors
-        results_obj = None
-        errors_obj = None
+        new_results_list = []
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(
             job_id, "job_id"))
 
         # convert results
-        if results:
+        for result in results:
             try:
-                results_obj = json.loads(results)
+                new_results = json.loads(result)
+                new_results_list.append(new_results)
             except json.decoder.JSONDecodeError as exc:
                 raise errors.InvalidArguments("Invalid argument: results") \
-                    from exc
-        if errors:
-            try:
-                errors_obj = json.loads(errors)
-            except json.decoder.JSONDecodeError as exc:
-                raise errors.InvalidArguments("Invalid argument: errors") \
                     from exc
 
         # call api
         status_code, reason, text, result = \
-            self.app.client.set_job_results(job_id, results_obj, errors_obj)
+            self.app.client.set_job_results(job_id, new_results_list)
         CommandHelper.check_results(
             resource, "set_job_results", status_code, reason, text)
 
