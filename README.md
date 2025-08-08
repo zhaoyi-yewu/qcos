@@ -28,3 +28,4 @@ QCOS（Quantum Computing Operating System）是一款开源的通用量子计算
 # 四、许可证
 
 QCOS开源代码遵循[MulanPSL-2.0](LICENSE)开源协议。
+samples/qasm下的代码遵循 Apache-2.0开源协议。
