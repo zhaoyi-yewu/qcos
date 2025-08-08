@@ -127,4 +127,3 @@ class TestTaskFlowManager(unittest.TestCase):
 
     def test_delete_task_flow_run(self):
         self.task_manager.delete_task_flow_run(self.job_ids)
-
