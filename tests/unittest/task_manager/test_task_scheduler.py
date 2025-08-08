@@ -29,38 +29,12 @@ from qcos.task_manager.task_scheduler import (TaskScheduler, PriorityPolicy,
                                               HighResponseRatioPolicy)
 from qcos.task_manager.task_scheduler import TimePrecedencePolicy
 from qcos.transpiler.transpiler_manager import TranspilerManager
-
+from tests.unittest.task_manager.constant_for_test import ConstantForTest
 
 obj = TaskScheduler()
 
 
 class TestTaskScheduler:
-    @classmethod
-    def setup_method(cls):
-        cls.job_info = {
-            "job_id": '00000000-0000-4000-8000-000000000001',
-            "job_name": 'job_name',
-            "job_status": Constant.JOB_STATUS_UNKNOWN,
-            "job_sched_policy": Constant.DEFAULT_JOB_SCHED_POLICY,
-            "job_priority": 1,
-            "description": 'description',
-            "backend": Constant.DRIVER_DUMMY,
-            "transpiler": Constant.TRANSPILER_TYPES,
-            "transpiler_info": {},
-            "shots": 10,
-            "profiling": Constant.PROFILING_TYPES,
-            "callbacks": [],
-            "dry_run": True,
-            "creation_date": Library.get_current_datetime(),
-            "end_date": Library.get_current_datetime()
-        }
-        cls.flow_info = {
-            "deploy_name": Constant.DRIVER_DUMMY,
-            "deploy_flow_func": "",
-            "deploy_flow_path": "../engine/job_engine.py"
-        }
-        cls.job_id = "00000000-0000-4000-8000-000000000001"
-
     def test_start_taskmanager(self):
         obj.start_taskmanager()
 
@@ -85,22 +59,19 @@ class TestTaskScheduler:
             TranspilerManager().__class__)
 
     def test_get_result_by_id(self):
-        obj.get_result_by_id(self.job_id)
+        obj.get_result_by_id(ConstantForTest.job_id)
 
     def test_has_job(self):
-        obj.has_job(self.job_id)
+        obj.has_job(ConstantForTest.job_id)
 
     def test_get_jobs(self):
         obj.get_jobs()
 
     def test_remove_jobs(self):
-        job_ids = ['00000000-0000-4000-8000-000000000001',
-                   '00000000-0000-4000-8000-000000000002',
-                   '00000000-0000-4000-8000-000000000003']
-        obj.remove_jobs(job_ids)
+        obj.remove_jobs(ConstantForTest.job_ids)
 
     def test_update_job(self):
-        obj.update_job(self.job_id)
+        obj.update_job(ConstantForTest.job_id)
 
 
 
@@ -117,31 +88,6 @@ factory = SchedulerPolicyHandlerFactory(task_manager)
 
 
 class TestPriorityPolicy:
-    @classmethod
-    def setup_method(cls):
-        cls.job_info = {
-            "job_id": '00000000-0000-4000-8000-000000000001',
-            "job_name": 'job_name',
-            "job_status": Constant.JOB_STATUS_UNKNOWN,
-            "job_sched_policy": Constant.DEFAULT_JOB_SCHED_POLICY,
-            "job_priority": 10,
-            "description": 'description',
-            "backend": Constant.DRIVER_DUMMY,
-            "transpiler": Constant.TRANSPILER_TYPES,
-            "transpiler_info": {},
-            "shots": 10,
-            "profiling": Constant.PROFILING_TYPES,
-            "callbacks": [],
-            "dry_run": True,
-            "creation_date": Library.get_current_datetime(),
-            "end_date": Library.get_current_datetime()
-        }
-        cls.flow_info = {
-            "deploy_name": Constant.DRIVER_DUMMY,
-            "deploy_flow_func": "",
-            "deploy_flow_path": "../engine/job_engine.py"
-        }
-        cls.job_id = "00000000-0000-4000-8000-000000000001"
 
     @patch.object(TaskFlowManager, "deploy_task_flow")
     @patch.object(TaskFlowManager, "run_task_flow")
@@ -149,7 +95,8 @@ class TestPriorityPolicy:
         mock_deploy_task_flow.return_value = 114
         mock_run_task_flow.return_value = 514
 
-        result = priority_policy.exec_task(self.flow_info, self.job_info)
+        result = priority_policy.exec_task(ConstantForTest.flow_info,
+                                           ConstantForTest.job_info)
         assert result == 514
 
 
@@ -164,30 +111,6 @@ class TestShortestJobFirstPolicy:
 
 
 class TestTimePrecedencePolicy:
-    @classmethod
-    def setup_method(cls):
-        cls.job_info = {
-            "job_id": '00000000-0000-4000-8000-000000000001',
-            "job_name": 'job_name',
-            "job_status": Constant.JOB_STATUS_UNKNOWN,
-            "job_sched_policy": Constant.DEFAULT_JOB_SCHED_POLICY,
-            "job_priority": 10,
-            "description": 'description',
-            "backend": Constant.DRIVER_DUMMY,
-            "transpiler": Constant.TRANSPILER_TYPES,
-            "transpiler_info": {},
-            "shots": 10,
-            "profiling": Constant.PROFILING_TYPES,
-            "callbacks": [],
-            "dry_run": True,
-            "creation_date": Library.get_current_datetime(),
-            "end_date": Library.get_current_datetime()
-        }
-        cls.flow_info = {
-            "deploy_name": Constant.DRIVER_DUMMY,
-            "deploy_flow_func": "",
-            "deploy_flow_path": "../engine/job_engine.py"
-        }
 
     @patch.object(TaskFlowManager, "deploy_task_flow")
     @patch.object(TaskFlowManager, "run_task_flow")
@@ -196,28 +119,29 @@ class TestTimePrecedencePolicy:
         mock_run_task_flow.return_value = 514
 
         result = time_precedence_policy.exec_task(
-            self.flow_info, self.job_info)
+            ConstantForTest.flow_info, ConstantForTest.job_info)
         assert result == 514
 
 
 class TestPeriodicPolicy:
     def test_exec_task(self):
-        periodic_policy.exec_task()
+        assert periodic_policy.exec_task() is None
+
 
 
 class TestDependentPolicy:
     def test_exec_task(self):
-        dependent_policy.exec_task()
+        assert dependent_policy.exec_task() is None
 
 
 class TestBatchPolicy:
     def test_exec_task(self):
-        batch_policy.exec_task()
+        assert batch_policy.exec_task() is None
 
 
 class TestRealtimePolicy:
     def test_exec_task(self):
-        realtime_policy.exec_task()
+        assert realtime_policy.exec_task() is None
 
 
 class TestSchedulerPolicyHandlerFactory:
