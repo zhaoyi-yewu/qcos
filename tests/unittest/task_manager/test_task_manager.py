@@ -15,12 +15,17 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import asyncio
 import unittest
 from unittest import mock
 from unittest.mock import patch
+from uuid import UUID
+
+import pytest
 
 from qcos.common.constant import Constant, HttpCode
-from qcos.task_manager import TaskFlowManager
+from qcos.common.library import Library
+from qcos.task_manager.task_manager import TaskFlowManager
 
 
 class TestTaskFlowManager(unittest.TestCase):
@@ -28,6 +33,31 @@ class TestTaskFlowManager(unittest.TestCase):
     def setUp(self, mock_check_connection):
         self.task_manager = TaskFlowManager()
         self.task_manager.start()
+
+    @classmethod
+    def setup_class(cls):
+        cls.args = {'job_info': {'data': {
+            "enable_circuit_aggregation": True,
+            "job_id": '00000000-0000-4000-8000-000000000001',
+            "job_name": 'job_name',
+            "job_status": Constant.JOB_STATUS_UNKNOWN,
+            "job_sched_policy": Constant.DEFAULT_JOB_SCHED_POLICY,
+            "job_priority": 1,
+            "description": 'description',
+            "backend": Constant.DRIVER_DUMMY,
+            "transpiler": Constant.TRANSPILER_TYPES,
+            "transpiler_info": {},
+            "shots": 10,
+            "profiling": Constant.PROFILING_TYPES,
+            "callbacks": [],
+            "dry_run": True,
+            "creation_date": Library.get_current_datetime(),
+            "end_date": Library.get_current_datetime()}}}
+
+        cls.job_id = '00000000-0000-4000-8000-000000000001'
+        cls.job_ids = ['00000000-0000-4000-8000-000000000001',
+                       '00000000-0000-4000-8000-000000000002',
+                       '00000000-0000-4000-8000-000000000003']
 
     def test_transform_to_qcos_state(self):
         # case 1: JOB_STATUS_FAILED
@@ -62,3 +92,38 @@ class TestTaskFlowManager(unittest.TestCase):
             self.task_manager.check_connection()
         self.assertEqual(str(e.exception),
                          "Connection to prefect server timeout")
+
+    def test_set_driver_manager(self):
+        self.task_manager.set_driver_manager('driver_manager')
+        self.assertEqual(self.task_manager.driver_manager, 'driver_manager')
+
+    def test_deploy_task_flow(self):
+        v = self.task_manager.get_flow_info_by_backend(Constant.DRIVER_DUMMY)
+        self.assertEqual(v['deploy_flow_path'], '../engine/job_engine.py')
+        self.assertEqual(v['deploy_name'], 'dummy')
+        v = self.task_manager.deploy_task_flow(Constant.DRIVER_DUMMY + "_"
+                                               + Constant.JOB_SCHED_POLICY_PRIORITY,
+                                               Constant.JOB_SCHED_POLICY_PRIORITY,
+                                               1, v["deploy_flow_func"],
+                                               '../engine/job_engine.py')
+        self.assertEqual(v, UUID('a0f06528-abf5-4418-8815-78097b14a299'))
+        v = self.task_manager.run_task_flow(v, self.args)
+        self.assertEqual(v, self.job_id)
+
+    def test_get_task_flow_result(self):
+        self.task_manager.get_task_flow_result(self.job_id)
+
+    def test_has_flow(self):
+        v = self.task_manager.has_flow(self.job_id)
+        self.assertEqual(v, True)
+
+    def test_update_flow(self):
+        v = self.task_manager.update_flow(self.job_id)
+        self.assertEqual(v, True)
+
+    def test_get_task_flow_list(self):
+        v = self.task_manager.get_task_flow_list()
+
+    def test_delete_task_flow_run(self):
+        self.task_manager.delete_task_flow_run(self.job_ids)
+
