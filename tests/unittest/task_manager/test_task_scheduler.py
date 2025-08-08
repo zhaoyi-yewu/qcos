@@ -14,7 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-from unittest import mock
+
 from unittest.mock import patch
 
 from qcos.common.constant import Constant

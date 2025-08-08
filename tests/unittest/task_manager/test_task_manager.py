@@ -101,11 +101,12 @@ class TestTaskFlowManager(unittest.TestCase):
         v = self.task_manager.get_flow_info_by_backend(Constant.DRIVER_DUMMY)
         self.assertEqual(v['deploy_flow_path'], '../engine/job_engine.py')
         self.assertEqual(v['deploy_name'], 'dummy')
-        v = self.task_manager.deploy_task_flow(Constant.DRIVER_DUMMY + "_"
-                                               + Constant.JOB_SCHED_POLICY_PRIORITY,
-                                               Constant.JOB_SCHED_POLICY_PRIORITY,
-                                               1, v["deploy_flow_func"],
-                                               '../engine/job_engine.py')
+        v = (self.task_manager.deploy_task_flow
+             (Constant.DRIVER_DUMMY + "_"
+              + Constant.JOB_SCHED_POLICY_PRIORITY,
+              Constant.JOB_SCHED_POLICY_PRIORITY,
+              1, v["deploy_flow_func"],
+              '../engine/job_engine.py'))
         self.assertEqual(v, UUID('a0f06528-abf5-4418-8815-78097b14a299'))
         v = self.task_manager.run_task_flow(v, self.args)
         self.assertEqual(v, self.job_id)
@@ -126,4 +127,3 @@ class TestTaskFlowManager(unittest.TestCase):
 
     def test_delete_task_flow_run(self):
         self.task_manager.delete_task_flow_run(self.job_ids)
-
