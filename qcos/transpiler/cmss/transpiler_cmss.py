@@ -87,7 +87,7 @@ class TranspilerCmss(TranspilerBase):
         logger.info(f"after mapping: {mapping_res}")
 
         # decompose gates
-        parsed_circuit = decompose_gates(opt_result)
+        parsed_circuit = decompose_gates(mapping_res)
 
         # optimize circuit
         basis_gate_list = optimize_gate(parsed_circuit)
