@@ -31,3 +31,15 @@ def validate_non_gate_ir(actual: GateOperation, name: str, targets: list,
     assert actual.name == name
     assert actual.targets == targets
     assert actual.operation_type == q_type
+
+
+def read_qasm_from_file(file_path):
+    try:
+        with open(file_path, "r", encoding="utf-8") as file:
+            qasm_data = file.read()
+            return qasm_data
+    except FileNotFoundError:
+        print(f"{file_path} not found.")
+    except Exception as e:
+        print(f"读取文件时发生错误: {str(e)}")
+    return None
