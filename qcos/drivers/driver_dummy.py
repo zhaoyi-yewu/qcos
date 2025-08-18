@@ -42,7 +42,7 @@ class DriverDummy(DriverBase):
         self.supported_basis_gates = [Constant.SINGLE_QUBIT_GATE_X,
                                       Constant.SINGLE_QUBIT_GATE_Y]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
-        self.enable_circuit_aggregation = False
+        self.enable_circuit_aggregation = True
         self.default_results_type = self.DATA_TYPE_GATE_SEQUENCE
         self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
         self.max_qubits = 10
@@ -127,6 +127,6 @@ class DriverDummy(DriverBase):
 
         self.set_status(self.DRIVER_STATUS_BUSY)
         # dummy driver results
-        result = self.get_fake_results(num_qubits, shots)
+        result = self.get_fake_results(num_qubits, shots, data)
         self.set_results(job_id, data_index, results=result)
         self.set_status(self.DRIVER_STATUS_ONLINE)

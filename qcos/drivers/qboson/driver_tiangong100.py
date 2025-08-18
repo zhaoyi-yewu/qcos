@@ -18,6 +18,7 @@
 import csv
 import json
 import os
+import random
 import tempfile
 from datetime import datetime, timedelta
 
@@ -530,3 +531,24 @@ class DriverTiangong100(DriverBase):
             success = False
             err_msgs.append(reason)
         return success, "\n".join(err_msgs)
+
+    def get_fake_results(self, num_qubits, shots, data):
+        """
+        Get fake results
+
+        :param num_qubits: number of qubits
+        :param shots: number of shots
+        :param data: source data
+        """
+        results = []
+        for i in range(10):  # return 10 best solutions is enough
+            code_length = len(data.get("source_code", [])[0])
+            result = {
+                "result": i + 1,
+                "quboValue": -112,
+                "maxcutValue": 28.0,
+                "solutionVector": [random.randint(0, 1)
+                                   for _ in range(code_length)]
+            }
+            results.append(result)
+        return results

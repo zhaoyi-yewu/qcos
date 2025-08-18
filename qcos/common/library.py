@@ -24,8 +24,10 @@ import importlib
 import inspect
 import json
 import logging
+import math
 import os
 import pkgutil
+import random
 import re
 import requests
 import time
@@ -790,3 +792,47 @@ class Library:
                 key_tuple.append(
                     value if reverse_flag == 1 else str(value)[::-1])
         return tuple(key_tuple)
+
+    @staticmethod
+    def generate_binary_combinations(bit_length, total_count):
+        """
+        Generate binary-bits combinations with given bit_length and assign
+        random percentages
+
+        :param bit_length: length of bits
+        :param total_count: total number of bits
+        :return: binary-bits combinations with random percentage
+        """
+        result = {}
+        if bit_length <= 0:
+            return result
+
+        # 1. generate all binary-bit combinations
+        total_combinations = 2 ** bit_length
+        combinations = [
+            bin(num)[2:].zfill(bit_length)
+            for num in range(total_combinations)
+        ]
+
+        # 2. generate random weights
+        weights = [random.random() for _ in range(total_combinations)]
+
+        # 3. calculate and assign counts to combinations
+        length = len(combinations)
+        first_count = int(random.randint(80, 100) * total_count / 100)
+        current_total_count = 0
+        i = 0
+        for combo, weight in zip(combinations, weights):
+            if i == 0:
+                combo_count = first_count
+            elif i == length - 1:
+                combo_count = total_count - current_total_count
+            else:
+                combo_count = math.ceil(random.randint(0, 1) * (
+                            total_count - first_count) / length)
+            current_total_count += combo_count
+            result[combo] = combo_count
+            i += 1
+
+        # 4. remove value=0 in the result
+        return {k: v for k, v in result.items() if v != 0}

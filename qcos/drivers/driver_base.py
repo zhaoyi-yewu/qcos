@@ -324,7 +324,7 @@ class DriverBase:
             f"num_qubits: {num_qubits}, "
             f"data_type: {data_type}, data: {data}")
 
-        result = self.get_fake_results(num_qubits, shots)
+        result = self.get_fake_results(num_qubits, shots, data)
         self.set_results(job_id, data_index, results=result)
 
     def set_results(self, job_id, data_index, results):
@@ -379,11 +379,12 @@ class DriverBase:
         """
         return self.max_qubits
 
-    def get_fake_results(self, num_qubits, shots):
+    def get_fake_results(self, num_qubits, shots, data):
         """
         Get fake results
 
         :param num_qubits: number of qubits
         :param shots: number of shots
+        :param data: source data
         """
-        return {"0" * num_qubits: shots}
+        return Library.generate_binary_combinations(num_qubits, shots)

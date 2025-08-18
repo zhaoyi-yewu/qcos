@@ -78,6 +78,6 @@ class DriverPassthrough(DriverBase):
             f"data_type: {data_type}, data: {data}")
 
         self.set_status(self.DRIVER_STATUS_BUSY)
-        result = self.get_fake_results(num_qubits, shots)
+        result = self.get_fake_results(num_qubits, shots, data)
         self.set_results(job_id, data_index, results=result)
         self.set_status(self.DRIVER_STATUS_ONLINE)

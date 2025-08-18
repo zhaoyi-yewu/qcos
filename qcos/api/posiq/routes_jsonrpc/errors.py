@@ -37,6 +37,8 @@ JSON-RPC/RestfulAPI error-code mappings
 import fastapi_jsonrpc as jsonrpc
 from pydantic import BaseModel
 
+from common.constant import HttpCode
+
 
 class JsonRpcBaseError(jsonrpc.BaseError):
     """
@@ -54,7 +56,7 @@ class BadRequestError(JsonRpcBaseError):
     """
     Bad Request Error
     """
-    CODE = -400
+    CODE = -HttpCode.BAD_REQUEST_ERROR
     MESSAGE = "Bad Request"
 
 
@@ -62,7 +64,7 @@ class UnauthorizedError(JsonRpcBaseError):
     """
     Unauthorized Error
     """
-    CODE = -401
+    CODE = -HttpCode.UNAUTHORIZED_ERROR
     MESSAGE = "Unauthorized"
 
 
@@ -70,7 +72,7 @@ class ForbiddenError(JsonRpcBaseError):
     """
     Forbidden Error
     """
-    CODE = -403
+    CODE = -HttpCode.FORBIDDEN_ERROR
     MESSAGE = "Forbidden"
 
 
@@ -78,7 +80,7 @@ class NotFoundError(JsonRpcBaseError):
     """
     Not Found Error
     """
-    CODE = -404
+    CODE = -HttpCode.NOT_FOUND_ERROR
     MESSAGE = "Not Found"
 
 
@@ -86,7 +88,7 @@ class ConflictError(JsonRpcBaseError):
     """
     Conflict Error
     """
-    CODE = -409
+    CODE = -HttpCode.CONFLICT_ERROR
     MESSAGE = "Conflict"
 
 
@@ -94,7 +96,7 @@ class InternalServerError(JsonRpcBaseError):
     """
     Internal Server Error
     """
-    CODE = -500
+    CODE = -HttpCode.INTERNAL_SERVER_ERROR
     MESSAGE = "Internal Server Error"
 
 
@@ -102,7 +104,7 @@ class NotImplementedError(JsonRpcBaseError):
     """
     Not Implemented Error
     """
-    CODE = -501
+    CODE = -HttpCode.NOT_IMPLEMENTED_ERROR
     MESSAGE = "Not Implemented"
 
 
@@ -110,7 +112,7 @@ class ServiceUnavailableError(JsonRpcBaseError):
     """
     Service Unavailable Error
     """
-    CODE = -503
+    CODE = -HttpCode.SERVICE_UNAVAILABLE_ERROR
     MESSAGE = "Service Unavailable"
 
 
