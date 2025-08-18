@@ -48,23 +48,23 @@ class HierarchyTree:
 
     def __init__(self, qpu_config, weight=1.0) -> None:
         ag = nx.Graph()
-        for k, e in qpu_config['overview']['coupler_map'].items():
+        for k, e in qpu_config['coupler_map'].items():
             ag.add_edge(
                 e[0],
                 e[1],
-                weight=1.0 - qpu_config['overview']['coupler_error'][k] / 100)
+                weight=1.0 - qpu_config['coupler_error'][k] / 100)
 
         for q in ag.nodes():
             ag.nodes[q]['weight'] = 1.0
-            if q in qpu_config['overview']['readout_error']:
+            if q in qpu_config['readout_error']:
                 ag.nodes[q]['weight'] = (
-                        1.0 - qpu_config['overview']['readout_error'][q] / 100)
+                        1.0 - qpu_config['readout_error'][q] / 100)
 
         self.graph = ag
         self.edge_count = len(ag.edges())
         self.weight = weight
         self.root = None
-        self.all_qubits = qpu_config['overview']['qubits']
+        self.all_qubits = qpu_config['qubits']
 
     def construct(self):
         """
@@ -162,6 +162,7 @@ class HierarchyTree:
                     if self.graph.has_edge(node.qubits[i], node.qubits[j]):
                         eii += 1
                 ai += self.graph.degree(node.qubits[i])
+            ai -= eii
             modularity += eii / self.edge_count - (ai / self.edge_count) ** 2
         return modularity
 
@@ -220,3 +221,48 @@ class HierarchyTree:
                 node_b.ignore = False
             node_a.ignore = False
         return comb
+
+
+def remove(node):
+    ignore_node(node)
+    removed_qubits = set(node.qubits)
+    if node.parent:
+        if node.pos == 0:
+            node.parent.left = None
+        else:
+            node.parent.right = None
+        while node.parent:
+            qubits = set(node.parent.qubits)
+            node.parent.qubits = list(qubits ^ removed_qubits)
+            node = node.parent
+
+
+def ignore_node(node):
+    if node is None:
+        return
+    node.ignore = True
+    ignore_node(node.left)
+    ignore_node(node.right)
+
+
+def get_block(ht, qnum):
+    leafs = ht.get_all_leaf()
+    candidates = set()
+    for leaf in leafs:
+        while leaf is not None:
+            if not leaf.ignore and len(leaf.qubits) >= qnum:
+                candidates.add(leaf)
+                break
+            leaf = leaf.parent
+    if not candidates:
+        return None
+    best_node = None
+    max_f = -10000
+
+    for node in candidates:
+        f = ht.average_fidelity(node)
+        if f > max_f:
+            best_node = node
+            max_f = f
+    remove(best_node)
+    return best_node.qubits.copy()

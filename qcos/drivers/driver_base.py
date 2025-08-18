@@ -72,8 +72,7 @@ class DriverBase:
         self.supported_code_types = None
         # quantum computer technology type
         self.tech_type = None
-        # enable circuit merge or not
-        # TODO(zhaoyi): not used
+        # enable circuit aggregation or not
         self.enable_circuit_aggregation = False
         # max number of qubits
         self.max_qubits = 0

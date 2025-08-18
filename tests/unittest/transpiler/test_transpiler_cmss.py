@@ -18,7 +18,9 @@
 from qcos.common.constant import Constant
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 
+from qcos.engine.job_engine import AggregationInput
 from qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
+from tests.unittest.transpiler.comm import read_qasm_from_file
 from tests.unittest.transpiler.comm import validate_gate_ir
 from tests.unittest.transpiler.comm import validate_non_gate_ir
 
@@ -38,16 +40,14 @@ class TestTranspilerCmss:
           measure q->c;
         '''
 
-    def test_transpiler_cmss(self):
-        qpu_config = {
+        cls.qpu_config = {
             "qubits": 6,
             "storage_area": ["S27", "S28", "S29", "S35", "S36", "S37"],
             "operate_area": ["P27", "P28", "P29", "P35", "P36", "P37"],
             "coupler_map": {
                 "G0": ["P27", "P35"], "G1": ["P28", "P36"],
                 "G2": ["P29", "P37"], "G3": ["P27", "P28"],
-                "G4": ["P35", "P36"], "G5": ["P28", "P29"],
-                "G6": ["P36", "P37"]
+                "G4": ["P35", "P36"], "G5": ["P28", "P29"]
             },
             "readout_error": {
                 "S27": 1.0,
@@ -74,14 +74,60 @@ class TestTranspilerCmss:
                 "P37": "S37"
             }
         }
-        trans_cfg_inst.set_qpu_cfg(qpu_config)
+        trans_cfg_inst.set_qpu_cfg(cls.qpu_config)
         trans_cfg_inst.set_tech_type(Constant.TECH_TYPE_NEUTRAL_ATOM)
+        trans_cfg_inst.set_max_qubits(6)
+
+    def test_transpiler_cmss(self):
         transpiler = TranspilerCmss()
         expected_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
                                 Constant.SINGLE_QUBIT_GATE_RY]
-        parsed_gates = transpiler.parse(self.simple_data)
-        basis_gate_list = transpiler.transpile(parsed_gates,
+        job_data = {'source_code': [self.simple_data], "job_id": 000}
+        parse_result = transpiler.parse(job_data, None)
+        basis_gate_list = transpiler.transpile(parse_result,
                                                expected_basis_gates)
         assert len(basis_gate_list) == 2
         validate_gate_ir(basis_gate_list[0], 'rx', [27], 1, False)
         validate_non_gate_ir(basis_gate_list[1], "measure", [27], 0)
+
+    def test_transpiler_aggregation_succ(self):
+        transpiler = TranspilerCmss()
+        expected_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
+                                Constant.SINGLE_QUBIT_GATE_RY]
+        job_data = {"source_code": [self.simple_data], "job_id": 000}
+        # pylint: disable=line-too-long
+        sub_job_info1 = {"job_info": {"data": {'source_code': [self.simple_data], "job_id": 111}}}
+        sub_job_info2 = {"job_info": {"data": {'source_code': [self.simple_data], "job_id": 222}}}
+        sub_job_info3 = {"job_info": {"data": {'source_code': [self.simple_data], "job_id": 333}}}
+        sub_job_info4 = {"job_info": {"data": {'source_code': [self.simple_data], "job_id": 444}}}
+        # pylint: enable=line-too-long
+        sub_jobs = {111: sub_job_info1, 222: sub_job_info2, 333: sub_job_info3,
+                    444: sub_job_info4}
+        aggregation_info = AggregationInput(is_parent=True)
+        aggregation_info.sub_jobs = sub_jobs
+        parse_result = transpiler.parse(job_data, aggregation_info)
+        basis_gate_list = transpiler.transpile(parse_result,
+                                               expected_basis_gates)
+        assert len(basis_gate_list) == 10
+
+    def test_transpiler_aggregation_partly_succ(self):
+        file_path = "../../../samples/qasm/2.0/simple-qasm.qasm"
+        qasm_data = read_qasm_from_file(file_path)
+        if qasm_data is None:
+            return
+
+        transpiler = TranspilerCmss()
+        expected_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
+                                Constant.SINGLE_QUBIT_GATE_RY]
+        job_data = {"source_code": [qasm_data], "job_id": 000}
+        # pylint: disable=line-too-long
+        sub_job_info1 = {"job_info": {"data": {'source_code': [qasm_data], "job_id": 111}}}
+        sub_job_info2 = {"job_info": {"data": {'source_code': [qasm_data], "job_id": 222}}}
+        # pylint: enable=line-too-long
+        sub_jobs = {111: sub_job_info1, 222: sub_job_info2}
+        aggregation_info = AggregationInput(is_parent=True)
+        aggregation_info.sub_jobs = sub_jobs
+        parse_result = transpiler.parse(job_data, aggregation_info)
+        basis_gate_list = transpiler.transpile(parse_result,
+                                               expected_basis_gates)
+        assert len(basis_gate_list) == 8

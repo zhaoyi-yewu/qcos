@@ -32,7 +32,7 @@ class TranspilerBase:
         # enable this transpiler or not
         self.enable = True
         # num qubits
-        self.num_qubits = -1
+        self.total_qubits = -1
         # supported code types
         self.supported_code_types = []
         # transpiler_options
@@ -143,11 +143,12 @@ class TranspilerBase:
         """
         return self.supported_code_types
 
-    def parse(self, codes: str):
+    def parse(self, job_data, aggregation_info):
         """
         parse source codes
 
-        :param codes: source codes
+        :param job_data: job data
+        :param aggregation_info: aggregation job info
         :return parse result
         """
         raise NotImplementedError(f"Transpiler: {self.__class__.__name__} "

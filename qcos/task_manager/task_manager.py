@@ -514,9 +514,11 @@ class TaskFlowManager(ABC):
                 state, parameters, results, error_message = (
                     self.get_task_flow_result(parent_id))
                 if (state.upper() == Constant.PREFECT_STATE_COMPLETED
-                        and results != None):
-                    for job_id, sub_results in results["sub_results"].items():
-                        self.aggregation_jobs[job_id] = sub_results
+                        and results is not None):
+                    if results[0]["sub_results"] is not None:
+                        for job_id, sub_results in (
+                                results[0]["sub_results"].items()):
+                            self.aggregation_jobs[job_id] = [sub_results]
             except Exception as e:
                 logger.error(f"Prefect get aggregation job error: {str(e)}")
 

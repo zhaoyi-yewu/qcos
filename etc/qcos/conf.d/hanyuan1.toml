@@ -14,7 +14,6 @@ coupler_map.G2 = ["P29", "P37"]
 coupler_map.G3 = ["P27", "P28"]
 coupler_map.G4 = ["P35", "P36"]
 coupler_map.G5 = ["P28", "P29"]
-coupler_map.G6 = ["P36", "P37"]
 
 readout_error.S27 = 1.0
 readout_error.S28 = 2.0

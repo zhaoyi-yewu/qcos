@@ -105,25 +105,25 @@ def init_transpiler(transpiler_class_info, transpiler_options):
 
 
 @task(persist_result=False)
-def parse(source_code, transpiler):
+def parse(job_data, aggregation_info, transpiler):
     """
     parse
 
-    :param source_code: source code
+    :param job_data: job data
+    :param aggregation_info: aggregation job info
     :param transpiler: transpiler
-    :return parsed gate list
+    :return parsed results
     """
 
     num_qubits = None
     try:
-        logger.info(f"source_code:\n{source_code}")
-        parsed_gates = transpiler.parse(source_code)
-        num_qubits = transpiler.num_qubits
-        logger.info(f"final parsed gates: {parsed_gates}")
-        return {"parsed_gates": parsed_gates, "num_qubits": num_qubits,
+        parsed_circuits = transpiler.parse(job_data, aggregation_info)
+        num_qubits = transpiler.total_qubits
+        logger.info(f"final parsed circuits: {parsed_circuits}")
+        return {"parsed_circuits": parsed_circuits, "num_qubits": num_qubits,
                 "error": None}
     except Exception as e:
-        return {"parsed_gates": None, "num_qubits": num_qubits,
+        return {"parsed_circuits": None, "num_qubits": num_qubits,
                 "error": ValueError(str(e))}
 
 
@@ -144,7 +144,7 @@ def transpile(parsed_gates, driver, transpiler):
         supp_basis_gates = driver.get_supported_basis_gates()
         transpile_results = transpiler.transpile(
             parsed_gates, supp_basis_gates)
-        num_qubits = transpiler.num_qubits
+        num_qubits = transpiler.total_qubits
         logger.info(f"final transpiled_result: {transpile_results}")
         return {"transpile_results": transpile_results,
                 "num_qubits": num_qubits, "error": None}
@@ -252,6 +252,7 @@ def job_flow(job_info):
     logger.info(f"Processing work flow: job_engine. "
                 f"job_id: {job_id}, job_info: {job_info}")
 
+    aggregation_info = None
     if job_data["enable_circuit_aggregation"]:
         # TODO(jidalong) handle timeout
         # enable_circuit_aggregation tag flow run will automatically paused
@@ -263,21 +264,10 @@ def job_flow(job_info):
         logger.info(
             f"Process aggregation sub job, aggregation_info: "
             f"{aggregation_info}")
-        job_results = {"metadata": {}, "profiling": {}, "results": None,
-                       "sub_results": None}
 
         # deal sub job
         if not aggregation_info.is_parent:
             return aggregation_info.sub_results
-
-        # deal parent job
-        sub_results = {}
-        logger.info(
-            f"Process aggregation parent job, sub job info: "
-            f"{aggregation_info.sub_jobs}")
-        # TODO(jidalong) quantum aggregation implementation
-        job_results["sub_results"] = sub_results
-        return job_results
 
     # run source codes
     job_results_list = []
@@ -287,16 +277,23 @@ def job_flow(job_info):
     transpiler = None
     for source_code in source_code_list:
         job_results, driver, transpiler = run_code(
-            source_code_index, source_code, job_info, driver, transpiler)
+            aggregation_info,
+            source_code_index,
+            source_code,
+            job_info,
+            driver,
+            transpiler)
         job_results_list.append(job_results)
         source_code_index += 1
     return job_results_list
 
 
-def run_code(source_code_index, source_code, job_info, driver, transpiler):
+def run_code(aggregation_info, source_code_index, source_code, job_info,
+             driver, transpiler):
     """
     Flow: run
 
+    :param aggregation_info: aggregation info
     :param source_code_index: source code index
     :param source_code: source code
     :param job_info: job info
@@ -349,12 +346,14 @@ def run_code(source_code_index, source_code, job_info, driver, transpiler):
         "results": None,
         "num_qubits": None,
         "metadata": None,
-        "profiling": {}
+        "profiling": {},
+        "sub_results": None
     }
     if driver.enable_transpiler:
         # [flow_parse]
         parse_results, profiling_time = flow_parse(
-            source_code,
+            job_data,
+            aggregation_info,
             transpiler,
             profiling_types
         )
@@ -375,7 +374,7 @@ def run_code(source_code_index, source_code, job_info, driver, transpiler):
 
         # [flow_transpile]
         transpile_results, profiling_time = flow_transpile(
-            parse_results["parsed_gates"],
+            parse_results["parsed_circuits"],
             transpiler,
             driver,
             profiling_types
@@ -424,17 +423,25 @@ def run_code(source_code_index, source_code, job_info, driver, transpiler):
         # prepare job_results
         job_results["results"] = run_results["results"]
         job_results["metadata"] = run_results["metadata"]
+        sub_results = {}
+        if aggregation_info is not None:
+            for job_id, value in aggregation_info.sub_jobs.items():
+                # [TODO] xudong get sub results via task results
+                sub_results[job_id] = run_results["results"]
+            job_results["sub_results"] = sub_results
 
     return job_results, driver, transpiler
 
 
-def flow_parse(source_code,
+def flow_parse(job_data,
+               aggregation_info,
                transpiler,
                profiling_types):
     """
     Flow: parse
 
-    :param source_code: source code
+    :param job_data: job data
+    :param aggregation_info: aggregation job info
     :param transpiler: transpiler
     :param profiling_types: profiling types
     :return results, profiling_time
@@ -450,7 +457,7 @@ def flow_parse(source_code,
 
     # parser
     parse_task = parse.submit(
-        source_code, transpiler,
+        job_data, aggregation_info, transpiler,
         wait_for=[init_driver, init_transpiler])
     parse_task_result = parse_task.result()
 
@@ -462,14 +469,14 @@ def flow_parse(source_code,
     return parse_task_result, profiling_time
 
 
-def flow_transpile(parse_results,
+def flow_transpile(parsed_circuits,
                    transpiler,
                    driver,
                    profiling_types):
     """
     Flow: transpile
 
-    :param parse_results: parse results
+    :param parsed_circuits: parse circuits
     :param transpiler: transpiler
     :param driver: driver
     :param profiling_types: profiling types
@@ -485,7 +492,7 @@ def flow_transpile(parse_results,
 
     # transpile codes
     transpile_task = transpile.submit(
-        parse_results, driver, transpiler,
+        parsed_circuits, driver, transpiler,
         wait_for=[init_driver, init_transpiler, parse])
     transpile_task_results = transpile_task.result()
 

@@ -55,15 +55,18 @@ class TranspilerQiskit(TranspilerBase):
     def init_transpiler(self):
         pass
 
-    def parse(self, codes: str):
+    def parse(self, job_data, aggregation_info):
         """
         parse source codes
 
-        :param codes: source codes
+        :param job_data: job data
+        :param aggregation_info: aggregation job info
         :return parse result
         """
-        parse_result = QuantumCircuit.from_qasm_str(codes)
-        self.num_qubits = parse_result.num_qubits
+        source_codes = job_data['source_code'][0]
+        logger.info(f"source_codes:\n{source_codes}")
+        parse_result = QuantumCircuit.from_qasm_str(source_codes)
+        self.total_qubits = parse_result.num_qubits
         return parse_result
 
     def transpile(self, parse_result, supp_basis_gates: list):
@@ -80,10 +83,12 @@ class TranspilerQiskit(TranspilerBase):
             simulator = AerSimulator()
         else:
             raise TranspilerException("invalid driver name")
+
         transpiled_circuit = transpile(
             parse_result,
             simulator,
             optimization_level=self.transpiler_options["optimization_level"],
             basis_gates=supp_basis_gates
         )
+
         return transpiled_circuit

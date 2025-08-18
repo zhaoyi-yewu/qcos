@@ -59,12 +59,12 @@ class TestTranspilerBase:
 
     def test_parse(self):
         with pytest.raises(NotImplementedError) as context:
-            obj.parse("")
+            obj.parse("", None)
         assert (f"Transpiler: {obj.__class__.__name__} "
                 f"must implement method: parse" in str(context.value))
 
     def test_transpile(self):
         with pytest.raises(NotImplementedError) as context:
-            obj.transpile("", [])
+            obj.transpile("", None)
         assert (f"Transpiler: {obj.__class__.__name__} "
                 f"must implement method: transpile" in str(context.value))

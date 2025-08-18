@@ -26,9 +26,19 @@ class NASingleRoute(ABC):
     NASingleRoute
     """
 
-    def __init__(self, qbit_num, gates, qpu_configs):
+    def __init__(self):
+        self.qids = None
+        self.mapping = None
+        self.qbit_num = None
+        self.gates = None
+        self.ag = None
+        self.operate_area = None
+        self.storage_area = None
+        self.qpu_config = None
+
+    def prepare_data(self, qbit_num, gates, qpu_configs):
         """
-        初始化，配置qpu_config、gates、qbit_num，量子比特映射
+        配置qpu_config、gates、qbit_num，量子比特映射
 
         :param qbit_num: 比特数
         :param gates: 门列表
@@ -41,7 +51,8 @@ class NASingleRoute(ABC):
         self.ag = nx.Graph()
         for k, (a, b) in self.qpu_config['coupler_map'].items():
             if (a not in self.operate_area) or (
-                    b not in self.operate_area): continue
+                    b not in self.operate_area):
+                continue
             self.ag.add_edge(a, b)
         self.ag.shortest_length = dict(
             nx.shortest_path_length(self.ag, source=None,
