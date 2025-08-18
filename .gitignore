@@ -37,6 +37,9 @@ nosetests.xml
 symbols
 htmlcov
 
+# Doc temp files
+docs/api-docs/js/
+
 # build temp files
 build-scripts/.build-context/
 build-scripts/.env

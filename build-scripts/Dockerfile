@@ -50,7 +50,7 @@ RUN \
     mkdir -p /var/log/qcos/ && \
 # install basic rpms
     yum install -y hostname openssh openssh-clients sshpass iputils iproute \
-      telnet net-tools openssl util-linux vim findutils \
+      telnet net-tools openssl util-linux vim findutils make \
       python3 python3-pip python3-sphinx python3-requests && \
 # create symbolic link for python3
     ln -sf /usr/bin/python3 /usr/bin/python && \

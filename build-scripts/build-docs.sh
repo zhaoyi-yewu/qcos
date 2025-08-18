@@ -22,9 +22,11 @@ TOP_DIR=$(readlink -f ${BASE_DIR}/..)
 DOCS_DIR=${TOP_DIR}/docs
 
 cd ${DOCS_DIR}
-pwd
 # create sphinx docs
 make clean dirhtml html
+
+# unpack js
+tar xzvf ${DOCS_DIR}/api-docs/js.tar.gz -C ${DOCS_DIR}/api-docs
 
 # create openapi docs
 ./make-openapi-docs.py

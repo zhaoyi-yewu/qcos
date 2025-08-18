@@ -37,7 +37,7 @@ JSON-RPC/RestfulAPI error-code mappings
 import fastapi_jsonrpc as jsonrpc
 from pydantic import BaseModel
 
-from common.constant import HttpCode
+from qcos.common.constant import HttpCode
 
 
 class JsonRpcBaseError(jsonrpc.BaseError):

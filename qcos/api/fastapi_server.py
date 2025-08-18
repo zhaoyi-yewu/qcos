@@ -20,11 +20,8 @@ import typing
 
 import fastapi_jsonrpc as jsonrpc
 from fastapi_jsonrpc import InvalidParams
-from fastapi import Request, status
-from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from uvicorn.main import Server as UvicornServer
 
