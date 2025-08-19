@@ -95,6 +95,7 @@ reserved = {
     'array': 'ARRAY',
     'float': 'FLOAT',
     'bool': 'BOOL',
+    'reset': 'RESET',
 }
 
 # 输入中支持的符号头token，当然也支持t_PLUS = r'\+'的方式将加号定义为token

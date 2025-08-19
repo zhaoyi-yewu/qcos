@@ -184,11 +184,15 @@ def p_statement(statement):
               | forStatement
               | classicalDeclarationStatement
               | assignmentStatement
+              | RESET qlist ';'
     """
     if len(statement) == 2:
         statement[0] = statement[1]
     else:
-        statement[0] = Node("barrier", statement[2], None, statement.lineno(1))
+        # reset or barrier
+        node_type = statement[1]
+        id_list = statement[2]
+        statement[0] = Node(node_type, id_list, None, statement.lineno(1))
 
 
 def p_forStatement(forStmt):
@@ -396,20 +400,25 @@ def p_goplist(goplist):
             | BARRIER idlist ';'
             | goplist uop
             | goplist BARRIER idlist ';'
+            | RESET idlist ';'
+            | goplist RESET idlist ';'
+
     """
     if len(goplist) == 2:
         uop = goplist[1]
         goplist[0] = [uop]
     elif len(goplist) == 3:
-        BARRIER = goplist[2]
-        goplist[0] = goplist[1] + [BARRIER]
+        uop = goplist[2]
+        goplist[0] = goplist[1] + [uop]
     elif len(goplist) == 4:
+        node_type = goplist[1]  # barrier or reset
         idlist = goplist[2]
-        goplist[0] = [Node("barrier", idlist, None, goplist.lineno(1))]
+        goplist[0] = [Node(node_type, idlist, None, goplist.lineno(1))]
     else:
-        idlist = goplist[2]
+        node_type = goplist[2]  # barrier or reset
+        idlist = goplist[3]
         goplist[0] = goplist[1] + [Node(
-            "barrier", idlist, None, goplist.lineno(2))]
+            node_type, idlist, None, goplist.lineno(2))]
 
 
 def p_qop(qop):

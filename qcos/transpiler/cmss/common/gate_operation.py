@@ -22,10 +22,10 @@ from qcos.transpiler.cmss.common.base_operation import BaseOperation
 from qcos.transpiler.cmss.common.base_operation import OperationType
 from qcos.transpiler.common.errors import DecomposeException
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
-from qcos.transpiler.cmss.common.measure import MEASURE
-from qcos.transpiler.cmss.common.move import MOV
-from qcos.transpiler.cmss.common.sync import SYNC
-
+from qcos.transpiler.cmss.common.measure import Measure
+from qcos.transpiler.cmss.common.move import Move
+from qcos.transpiler.cmss.common.sync import Sync
+from qcos.transpiler.cmss.common.reset import Reset
 
 class GateOperation(BaseOperation):
     """
@@ -577,11 +577,13 @@ def create_gate(name, targets=None, arg_value=None, allow_undefined=False):
     elif name == Constant.SINGLE_QUBIT_GATE_U3:
         return U3(targets, arg_value)
     elif name == "sync":
-        return SYNC(targets, arg_value)
+        return Sync(targets, arg_value)
     elif name == "measure":
-        return MEASURE(targets, arg_value)
-    elif name == "mov":
-        return MOV(targets, arg_value)
+        return Measure(targets, arg_value)
+    elif name == "move":
+        return Move(targets, arg_value)
+    elif name == "reset":
+        return Reset(targets, arg_value)
     else:
         if allow_undefined:
             return GateOperation(name, targets=targets, arg_value=arg_value)

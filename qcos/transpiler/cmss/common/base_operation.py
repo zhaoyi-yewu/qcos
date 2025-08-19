@@ -28,6 +28,7 @@ class OperationType(Enum):
     MEASURE = 0
     SYNC = -1
     MOVE = -2
+    RESET = -3
 
 
 class BaseOperation:

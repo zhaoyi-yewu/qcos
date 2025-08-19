@@ -19,13 +19,13 @@ from qcos.transpiler.cmss.common.base_operation import BaseOperation
 from qcos.transpiler.cmss.common.base_operation import OperationType
 
 
-class Move(BaseOperation):
+class Reset(BaseOperation):
     """
-    移动操作, 用于执行量子比特在存储区和操纵区之间的移动操作
+    重置操作，用于将量子比特重置到|0> 态
     """
 
     def __init__(
             self, targets=None, arg_value=None,
-            operation_type=OperationType.MOVE.value
+            operation_type=OperationType.RESET.value
     ) -> None:
-        super().__init__("move", targets, arg_value, operation_type)
+        super().__init__("reset", targets, arg_value, operation_type)

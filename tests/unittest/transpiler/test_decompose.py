@@ -88,10 +88,12 @@ class TestDecompose:
     def test_decompose(self):
         tree = get_abs_tree(self.data)
         assert tree is not None
+
         q_num, ir = get_ir(tree)
         assert ir is not None
         assert q_num == 6
         assert len(ir) == 21
+
         decomposed_gates = decompose_gates(ir)
         assert len(decomposed_gates) == 85
         validate_gate_ir(decomposed_gates[0], "rx", ["2"], 1, False)
@@ -107,12 +109,15 @@ class TestDecompose:
     def test_optimizer(self):
         tree = get_abs_tree(self.data)
         assert tree is not None
+
         q_num, ir = get_ir(tree)
         assert ir is not None
         assert q_num == 6
         assert len(ir) == 21
+
         decomposed_gates = decompose_gates(ir)
         assert len(decomposed_gates) == 85
+
         opt_gates = optimize_gate(decomposed_gates)
         assert len(opt_gates) == 77
         validate_gate_ir(opt_gates[0], "rx", ["2"], 1, False)
@@ -128,18 +133,234 @@ class TestDecompose:
     def test_optimizer_simple(self):
         tree = get_abs_tree(self.simple_data)
         assert tree is not None
+
         q_num, ir = get_ir(tree)
         assert ir is not None
         assert q_num == 1
         assert len(ir) == 5
+
         opt_gates = optimize_gate(ir)
         assert len(opt_gates) == 3
+
         decomposed_gates = decompose_gates(opt_gates)
         assert len(decomposed_gates) == 3
+
         opt_gates = optimize_gate(decomposed_gates)
         assert len(opt_gates) == 2
         validate_gate_ir(opt_gates[0], "rx", ["0"], 1, False)
         validate_non_gate_ir(opt_gates[1], "measure", [0], 0)
+
+    def test_optimizer_simple_with_reset(self):
+        simple_data = '''
+                  OPENQASM 2.0;
+                  include "qelib1.inc";
+                  qreg q[1];
+                  creg c[1];
+                  h q[0];
+                  reset q[0];
+                  h q[0];
+                  x q[0];
+                  rx(1) q[0];
+                  measure q->c;
+                '''
+
+        tree = get_abs_tree(simple_data)
+        assert tree is not None
+
+        q_num, ir = get_ir(tree)
+        assert ir is not None
+        assert q_num == 1
+        assert len(ir) == 6
+        validate_gate_ir(ir[0], "h", ["0"], 1, True)
+        validate_non_gate_ir(ir[1], "reset", [0], -3)
+
+        opt_gates = optimize_gate(ir)
+        assert len(opt_gates) == 6
+        validate_gate_ir(opt_gates[0], "h", ["0"], 1, True)
+        validate_non_gate_ir(opt_gates[1], "reset", [0], -3)
+
+        decomposed_gates = decompose_gates(opt_gates)
+        assert len(decomposed_gates) == 8
+        validate_gate_ir(decomposed_gates[0], "ry", ["0"], 1, False)
+        validate_gate_ir(decomposed_gates[1], "rx", ["0"], 1, False)
+        validate_non_gate_ir(decomposed_gates[2], "reset", [0], -3)
+        opt_gates = optimize_gate(decomposed_gates)
+
+        assert len(opt_gates) == 6
+        validate_gate_ir(opt_gates[0], "ry", ["0"], 1, False)
+        validate_gate_ir(opt_gates[1], "rx", ["0"], 1, False)
+        validate_non_gate_ir(opt_gates[2], "reset", [0], -3)
+        validate_non_gate_ir(opt_gates[5], "measure", [0], 0)
+
+    def test_optimizer_defined_gate_with_reset(self):
+        simple_data = '''
+            OPENQASM 2.0;
+            include "qelib1.inc";
+            qreg q[6];
+            creg c[6];
+            gate test_single(theta) a{
+                rx(theta) a;
+                rx(theta) a;
+                reset a;
+            }
+
+            gate test_two(x) a, b{
+                test_single(x) a;
+                test_single(x) b;
+            }
+
+            test_two(1.3) q[2], q[3];
+            ccx q[0], q[1], q[4];
+            barrier q;
+            measure q[1] -> c[1];
+                '''
+
+        tree = get_abs_tree(simple_data)
+        assert tree is not None
+
+        q_num, ir = get_ir(tree)
+        assert ir is not None
+        assert len(ir) == 9
+        validate_gate_ir(ir[0], "rx", ["2"], 1, False)
+        validate_non_gate_ir(ir[2], "reset", ["2"], -3)
+        validate_gate_ir(ir[3], "rx", ["3"], 1, False)
+        validate_non_gate_ir(ir[5], "reset", ["3"], -3)
+        validate_non_gate_ir(ir[7], "sync", [0, 1, 2, 3, 4, 5], -1)
+
+        opt_gates = optimize_gate(ir)
+        assert opt_gates is not None
+        assert len(opt_gates) == 7
+        validate_gate_ir(opt_gates[0], "rx", ["2"], 1, False)
+        validate_non_gate_ir(opt_gates[1], "reset", ["2"], -3)
+        validate_gate_ir(opt_gates[2], "rx", ["3"], 1, False)
+        validate_non_gate_ir(opt_gates[3], "reset", ["3"], -3)
+        validate_non_gate_ir(opt_gates[5], "sync", [0, 1, 2, 3, 4, 5], -1)
+
+        decomp_gates = decompose_gates(opt_gates)
+        assert decomp_gates is not None
+        assert len(decomp_gates) == 23
+        validate_gate_ir(decomp_gates[0], "rx", ["2"], 1, False)
+        validate_non_gate_ir(decomp_gates[1], "reset", ["2"], -3)
+        validate_gate_ir(decomp_gates[2], "rx", ["3"], 1, False)
+        validate_non_gate_ir(decomp_gates[3], "reset", ["3"], -3)
+        validate_gate_ir(decomp_gates[6], "cx", ["1", "4"], 2, True)
+        validate_non_gate_ir(decomp_gates[21], "sync", [0, 1, 2, 3, 4, 5], -1)
+
+        opt_gates = optimize_gate(decomp_gates)
+        assert opt_gates is not None
+        assert len(opt_gates) == 23
+        validate_gate_ir(opt_gates[0], "rx", ["2"], 1, False)
+        validate_non_gate_ir(opt_gates[1], "reset", ["2"], -3)
+        validate_gate_ir(opt_gates[2], "rx", ["3"], 1, False)
+        validate_non_gate_ir(opt_gates[3], "reset", ["3"], -3)
+        validate_gate_ir(opt_gates[6], "cx", ["1", "4"], 2, True)
+        validate_non_gate_ir(opt_gates[21], "sync", [0, 1, 2, 3, 4, 5], -1)
+
+    def test_optimizer_simple_with_barrier(self):
+        simple_data = '''
+                  OPENQASM 2.0;
+                  include "qelib1.inc";
+                  qreg q[1];
+                  creg c[1];
+                  h q[0];
+                  barrier q[0];
+                  h q[0];
+                  x q[0];
+                  rx(1) q[0];
+                  measure q->c;
+                '''
+
+        tree = get_abs_tree(simple_data)
+        assert tree is not None
+
+        q_num, ir = get_ir(tree)
+        assert ir is not None
+        assert q_num == 1
+        assert len(ir) == 6
+        validate_gate_ir(ir[0], "h", ["0"], 1, True)
+        validate_non_gate_ir(ir[1], "sync", [0], -1)
+
+        opt_gates = optimize_gate(ir)
+        assert len(opt_gates) == 6
+        validate_gate_ir(opt_gates[0], "h", ["0"], 1, True)
+        validate_non_gate_ir(opt_gates[1], "sync", [0], -1)
+
+        decomposed_gates = decompose_gates(opt_gates)
+        assert len(decomposed_gates) == 8
+        validate_gate_ir(decomposed_gates[0], "ry", ["0"], 1, False)
+        validate_gate_ir(decomposed_gates[1], "rx", ["0"], 1, False)
+        validate_non_gate_ir(decomposed_gates[2], "sync", [0], -1)
+
+        opt_gates = optimize_gate(decomposed_gates)
+        assert len(opt_gates) == 6
+        validate_gate_ir(opt_gates[0], "ry", ["0"], 1, False)
+        validate_gate_ir(opt_gates[1], "rx", ["0"], 1, False)
+        validate_non_gate_ir(opt_gates[2], "sync", [0], -1)
+        validate_non_gate_ir(opt_gates[5], "measure", [0], 0)
+
+    def test_optimizer_defined_gate_with_barrier(self):
+        simple_data = '''
+            OPENQASM 2.0;
+            include "qelib1.inc";
+            qreg q[6];
+            creg c[6];
+            gate test_single(theta) a{
+                rx(theta) a;
+                rx(theta) a;
+                barrier a;
+            }
+
+            gate test_two(x) a, b{
+                test_single(x) a;
+                test_single(x) b;
+            }
+
+            test_two(1.3) q[2], q[3];
+            ccx q[0], q[1], q[4];
+            barrier q;
+            measure q[1] -> c[1];
+                '''
+
+        tree = get_abs_tree(simple_data)
+        assert tree is not None
+
+        q_num, ir = get_ir(tree)
+        assert ir is not None
+        assert len(ir) == 9
+        validate_gate_ir(ir[0], "rx", ["2"], 1, False)
+        validate_non_gate_ir(ir[2], "sync", ["2"], -1)
+        validate_gate_ir(ir[3], "rx", ["3"], 1, False)
+        validate_non_gate_ir(ir[5], "sync", ["3"], -1)
+        validate_non_gate_ir(ir[7], "sync", [0, 1, 2, 3, 4, 5], -1)
+
+        opt_gates = optimize_gate(ir)
+        assert opt_gates is not None
+        assert len(opt_gates) == 7
+        validate_gate_ir(opt_gates[0], "rx", ["2"], 1, False)
+        validate_non_gate_ir(opt_gates[1], "sync", ["2"], -1)
+        validate_gate_ir(opt_gates[2], "rx", ["3"], 1, False)
+        validate_non_gate_ir(opt_gates[3], "sync", ["3"], -1)
+        validate_non_gate_ir(opt_gates[5], "sync", [0, 1, 2, 3, 4, 5], -1)
+
+        decomp_gates = decompose_gates(opt_gates)
+        assert decomp_gates is not None
+        assert len(decomp_gates) == 23
+        validate_gate_ir(decomp_gates[0], "rx", ["2"], 1, False)
+        validate_non_gate_ir(decomp_gates[1], "sync", ["2"], -1)
+        validate_gate_ir(decomp_gates[2], "rx", ["3"], 1, False)
+        validate_non_gate_ir(decomp_gates[3], "sync", ["3"], -1)
+        validate_gate_ir(decomp_gates[6], "cx", ["1", "4"], 2, True)
+        validate_non_gate_ir(decomp_gates[21], "sync", [0, 1, 2, 3, 4, 5], -1)
+
+        opt_gates = optimize_gate(decomp_gates)
+        assert opt_gates is not None
+        assert len(opt_gates) == 23
+        validate_gate_ir(opt_gates[0], "rx", ["2"], 1, False)
+        validate_non_gate_ir(opt_gates[1], "sync", ["2"], -1)
+        validate_gate_ir(opt_gates[2], "rx", ["3"], 1, False)
+        validate_non_gate_ir(opt_gates[3], "sync", ["3"], -1)
+        validate_gate_ir(opt_gates[6], "cx", ["1", "4"], 2, True)
+        validate_non_gate_ir(opt_gates[21], "sync", [0, 1, 2, 3, 4, 5], -1)
 
     def test_create_u1(self):
         u1 = create_gate("u1", [0], [1])

@@ -18,7 +18,7 @@
 import numpy as np
 
 from qcos.transpiler.cmss.common.gate_operation import create_gate
-from qcos.transpiler.cmss.common.move import MOV
+from qcos.transpiler.cmss.common.move import Move
 
 
 def pass_hermitian(ir: list):
@@ -171,7 +171,7 @@ def optimize_gate(ir: list):
     """
     optimize_gates = []
     for gate in ir:
-        if isinstance(gate, MOV):
+        if isinstance(gate, Move):
             optimize_gates.append(gate)
             continue
 

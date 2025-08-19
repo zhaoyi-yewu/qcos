@@ -216,6 +216,8 @@ class Visitor:
             self.in_gate = False
         elif s.type == "barrier":
             self.visit_barrier(s)
+        elif s.type == "reset":
+            self.visit_reset(s)
         elif s.type == "forStatement":
             self.visit_for_statement(s)
         elif s.type == "classicalDeclarationStatement":
@@ -250,12 +252,37 @@ class Visitor:
         else:
             self.gate_res.append(create_gate("sync", qids))
 
+    def visit_reset(self, s: Node):
+        """
+        检查量子比特已定义且无重复，若在自定义门中则添加相关元组以便后续解析
+        否则直接添加Reset操作的中间表示到结果列表中。
+
+        :param s: reset 节点
+        """
+        self.check_node_type(s, "reset")
+
+        qids = []
+        for qubit in s.children:
+            if self.in_gate:
+                self.check_in_gate_qubit(qubit, s.pos)
+                qids.append(qubit[0])
+            else:
+                qlist = self.check_reg(qubit, RegType.QREG, s.pos)
+                qids += qlist
+
+        self.check_qlist(qids, s.pos)
+        if self.in_gate:
+            self.defined_gate[self.now_gate]["base_gate"].append(
+                ("reset", [], qids))
+        else:
+            self.gate_res.append(create_gate("reset", qids))
+
     def visit_qop(self, s: Node):
         """
         量子操作分为三种
             同步: 递归遍历
             测量: 测量操作首先判断量子变量和经典变量是否可用，且比特没有重复测量
-            在结果中添加测量的中间表示。
+                  在结果中添加测量的中间表示。
             门操作: 递归遍历
 
         :param s: qop节点
@@ -275,6 +302,8 @@ class Visitor:
                 self.gate_res.append(create_gate("measure", [qubit]))
         elif s.type == "barrier":
             self.visit_barrier(s)
+        elif s.type == "reset":
+            self.visit_reset(s)
         elif s.type == "ifStatement":
             reg = s.children[0]
             val = s.children[1]
