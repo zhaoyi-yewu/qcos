@@ -83,4 +83,4 @@ class TestGateOptimizer:
         assert len(ir) == 4
         validate_gate_ir(ir[0], "h", ["0"], 1, True)
         validate_gate_ir(ir[1], "cx", ["0", "1"], 2, True)
-        assert pass_merge_theta(ir) == False
+        assert pass_merge_theta(ir) is False

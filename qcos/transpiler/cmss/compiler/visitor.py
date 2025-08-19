@@ -508,28 +508,43 @@ class Visitor:
             if qnum != len(s.leaf):
                 raise RuntimeError(f"in line {s.pos}, qubit error, "
                                    f"need {qnum} but {len(s.leaf)}")
-
         qids = []
         if self.in_gate:
             for qubit in s.leaf:
                 self.check_in_gate_qubit(qubit, s.pos)
                 qids.append(qubit[0])
-        else:
-            for qubit in s.leaf:
-                if len(qubit) != 2:
-                    raise RuntimeError(f"in line {s.pos}, need specific qubit")
-                temp = qubit[1]
-                qubit[1] = self.var_to_number(qubit, s.pos)
-                qids.append(str(self.check_reg(qubit, RegType.QREG, s.pos)[0]))
-                qubit[1] = temp
-
-        self.check_qlist(qids, s.pos)
-
-        if self.in_gate:
+            self.check_qlist(qids, s.pos)
             self.defined_gate[self.now_gate]["base_gate"].append(
                 (uid, s.children[1], qids))
         else:
-            self.eval_gate(uid, s.children[1], qids, s.pos)
+            qreg_num = -1
+            for qubit in s.leaf:
+                if len(qubit) == 1:
+                    id_list = self.check_reg(qubit,  RegType.QREG, s.pos)
+                    if qreg_num != -1 and len(id_list) != qreg_num:
+                        raise RuntimeError(
+                            f"in line {s.pos}, qreg length should be the same")
+                    qreg_num = len(id_list)
+                    for item in id_list:
+                        qids.append(str(item))
+                elif len(qubit) == 2:
+                    temp = qubit[1]
+                    qubit[1] = self.var_to_number(qubit, s.pos)
+                    qids.append(str(self.check_reg(qubit, RegType.QREG, s.pos)[0])) # pylint: disable=line-too-long
+                    qubit[1] = temp
+                else:
+                    raise RuntimeError(
+                        f"in line {s.pos}, need to specific qubits")
+
+
+            if qreg_num == -1:
+                self.check_qlist(qids, s.pos)
+                self.eval_gate(uid, s.children[1], qids, s.pos)
+            else:
+                for qubits in qids:
+                    self.check_qlist([qubits], s.pos)
+                    self.eval_gate(uid, s.children[1], [qubits], s.pos)
+
 
     def var_to_number(self, in_var, pos):
         """
