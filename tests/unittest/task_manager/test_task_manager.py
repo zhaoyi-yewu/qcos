@@ -16,9 +16,11 @@
 # ----------------------------------------------------------------------
 
 import unittest
+import uuid
 from unittest import mock
-from unittest.mock import patch
-from uuid import UUID
+from unittest.mock import patch, Mock
+
+import pytest
 
 from qcos.common.constant import Constant, HttpCode
 from tests.unittest.task_manager.constant_for_test import ConstantForTest
@@ -69,33 +71,49 @@ class TestTaskFlowManager(unittest.TestCase):
         self.task_manager.set_driver_manager('driver_manager')
         self.assertEqual(self.task_manager.driver_manager, 'driver_manager')
 
+
     def test_deploy_task_flow(self):
-        v = self.task_manager.get_flow_info_by_backend(Constant.DRIVER_DUMMY)
-        self.assertEqual(v['deploy_flow_path'], '../engine/job_engine.py')
-        self.assertEqual(v['deploy_name'], 'dummy')
-        v = (self.task_manager.deploy_task_flow
+        flow_info = (self.task_manager.
+                     get_flow_info_by_backend(Constant.DRIVER_DUMMY))
+        self.assertEqual(flow_info['deploy_flow_path'],
+                         '../engine/job_engine.py')
+        self.assertEqual(flow_info['deploy_name'], 'dummy')
+        flow_info = (self.task_manager.deploy_task_flow
              (Constant.DRIVER_DUMMY + "_"
               + Constant.JOB_SCHED_POLICY_PRIORITY,
               Constant.JOB_SCHED_POLICY_PRIORITY,
-              1, v["deploy_flow_func"],
+              1, flow_info["deploy_flow_func"],
               '../engine/job_engine.py'))
-        self.assertEqual(v, UUID('a0f06528-abf5-4418-8815-78097b14a299'))
-        v = self.task_manager.run_task_flow(v, ConstantForTest.args)
-        self.assertEqual(v, ConstantForTest.job_id)
+        self.assertIsInstance(flow_info, uuid.UUID)
+        flow_info = (self.task_manager.
+                     run_task_flow(flow_info, ConstantForTest.args))
+        self.assertEqual(flow_info, ConstantForTest.job_id)
 
-    def test_get_task_flow_result(self):
-        self.task_manager.get_task_flow_result(ConstantForTest.job_id)
+    @patch.object(TaskFlowManager, "get_flow_run_id_by_job_id")
+    def test_get_task_flow_result(self, mock_get_flow_run_id_by_job_id):
+        mock_get_flow_run_id_by_job_id.return_value = None
+        with pytest.raises(Exception) as context:
+            self.task_manager.get_task_flow_result(ConstantForTest.job_id)
+        assert str(context.value) == 'None'
 
-    def test_has_flow(self):
-        v = self.task_manager.has_flow(ConstantForTest.job_id)
-        self.assertEqual(v, True)
+    @patch.object(TaskFlowManager, "get_flow_run_id_by_job_id")
+    def test_has_flow(self, mock_get_flow_run_id_by_job_id):
+        mock_get_flow_run_id_by_job_id.return_value = '1234'
+        exist = self.task_manager.has_flow(ConstantForTest.job_id)
+        assert exist is True
 
-    def test_update_flow(self):
-        v = self.task_manager.update_flow(ConstantForTest.job_id)
-        self.assertEqual(v, (True, None))
+    @patch.object(TaskFlowManager, "get_flow_run_id_by_job_id")
+    def test_update_flow(self, mock_get_flow_run_id_by_job_id):
+        mock_get_flow_run_id_by_job_id.return_value = None
+        success = self.task_manager.update_flow(
+            ConstantForTest.job_id)
+        assert success is False
 
     def test_get_task_flow_list(self):
-        v = self.task_manager.get_task_flow_list()
+        results = self.task_manager.get_task_flow_list()
+        assert results is not None
 
     def test_delete_task_flow_run(self):
-        self.task_manager.delete_task_flow_run(ConstantForTest.job_ids)
+        success_list = (self.task_manager.
+                        delete_task_flow_run(ConstantForTest.job_ids))
+        assert success_list is not None

@@ -58,11 +58,25 @@ class TestTaskScheduler:
             obj.get_transpiler_manager(),
             TranspilerManager().__class__)
 
-    def test_get_result_by_id(self):
-        obj.get_result_by_id(ConstantForTest.job_id)
+    @patch.object(TaskScheduler, "get_job_status")
+    @patch.object(TaskFlowManager, "transform_to_qcos_state")
+    @patch.object(TaskFlowManager, "get_task_flow_result")
+    def test_get_result_by_id(self, mock_get_task_flow_result,
+                              mock_transform_to_qcos_state,
+                              mock_get_job_status):
+        mock_get_task_flow_result.return_value = iter(["state",233,
+                                                       "no", "error"])
+        mock_transform_to_qcos_state.return_value = "state"
+        mock_get_job_status.return_value = "job_status"
+        response,err = obj.get_result_by_id(ConstantForTest.job_id)
+        assert response is not None
+        assert err is None
 
-    def test_has_job(self):
-        obj.has_job(ConstantForTest.job_id)
+    @patch.object(TaskFlowManager, "has_flow")
+    def test_has_job(self, mock_has_flow):
+        mock_has_flow.return_value = True
+        assert obj.has_job(ConstantForTest.job_id) is True
+
 
     def test_get_jobs(self):
         obj.get_jobs()
