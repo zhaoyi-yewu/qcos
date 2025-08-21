@@ -72,7 +72,7 @@ class LinkedList:
         :param scope (TreeNode): 抽象语法树节点
         """
         if (scope is None or
-                (scope.type not in ("blockBody", "top"))):
+                (scope.type not in ("block_body", "top"))):
             raise TypeError("invalid scope tp add symbol table")
 
         if (tail.data is None or not isinstance(tail.data, dict)

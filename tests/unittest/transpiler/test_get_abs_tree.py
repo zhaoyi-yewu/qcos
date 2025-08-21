@@ -69,7 +69,7 @@ class TestGetAbsTree:
         tree = get_abs_tree(self.data)
         qreg_found = False
         for child in tree.children:
-            if child.type == "defvar" and child.leaf == "qreg":
+            if child.type == "def_var" and child.leaf == "qreg":
                 qreg_found = True
                 assert child.pos == 4
                 assert child.children == ["q", 6]
@@ -81,7 +81,7 @@ class TestGetAbsTree:
         tree = get_abs_tree(self.data)
         creg_found = False
         for child in tree.children:
-            if child.type == "defvar" and child.leaf == "creg":
+            if child.type == "def_var" and child.leaf == "creg":
                 creg_found = True
                 assert child.pos == 5
                 assert child.children == ["c", 6]
@@ -93,7 +93,7 @@ class TestGetAbsTree:
         tree = get_abs_tree(self.data)
         custom_gate_found = False
         for child in tree.children:
-            if child.type == "defgate" and child.leaf[0] == "test_single":
+            if child.type == "def_gate" and child.leaf[0] == "test_single":
                 custom_gate_found = True
                 assert child.pos == 6
                 assert child.leaf == ["test_single", ["a"], ["theta", "phi"]]
@@ -105,7 +105,7 @@ class TestGetAbsTree:
         tree = get_abs_tree(self.data)
         custom_gate_found = False
         for child in tree.children:
-            if child.type == "defgate" and child.leaf[0] == "test_two":
+            if child.type == "def_gate" and child.leaf[0] == "test_two":
                 custom_gate_found = True
                 assert child.pos == 20
                 assert child.leaf == ["test_two", ["a", "b"], ["x", "y"]]

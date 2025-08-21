@@ -50,7 +50,7 @@ def t_NUMBER(number):
     return number
 
 
-def t_BooleanLiteral(boolean):
+def t_BOOL(boolean):
     r"""true|false"""
     if boolean.value == 'true':
         boolean.value = bool(1)
@@ -102,5 +102,5 @@ reserved = {
 literals = ['+', '-', '*', '/', '%', '<', '>', '=', ',', '(', ')',
             '[', ']', '{', '}', ';', ':', '"']
 
-tokens = (['EQ', 'REAL', 'NUMBER', 'BooleanLiteral', 'ID', 'ARROW', 'STDFILE']
+tokens = (['EQ', 'REAL', 'NUMBER', 'ID', 'ARROW', 'STDFILE']
           + list(reserved.values()))

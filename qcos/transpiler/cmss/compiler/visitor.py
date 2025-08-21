@@ -184,12 +184,12 @@ class Visitor:
 
         :param s: 抽象语法树节点
         """
-        if s.type == "defvar":
+        if s.type == "def_var":
             reg_type = s.leaf
             reg_id, reg_size = s.children
             self.check_var_name(reg_id, s.pos)
             self.add_reg(reg_id, reg_size, reg_type, s.pos)
-        elif s.type == "defvar3":
+        elif s.type == "def_var3":
             bit_type = s.leaf
             if len(s.children) == 1:
                 bit_id = s.children[0]
@@ -199,7 +199,7 @@ class Visitor:
                 bit_num, bit_id = s.children
                 self.check_var_name(bit_id, s.pos)
                 self.add_reg(bit_id, bit_num, bit_type, s.pos)
-        elif s.type == "defgate":
+        elif s.type == "def_gate":
             gate_id = s.leaf[0]
             if gate_id in self.gate:
                 raise SyntaxError(f"in line {s.pos}, {gate_id} redefined")
@@ -218,11 +218,11 @@ class Visitor:
             self.visit_barrier(s)
         elif s.type == "reset":
             self.visit_reset(s)
-        elif s.type == "forStatement":
+        elif s.type == "for_statement":
             self.visit_for_statement(s)
-        elif s.type == "classicalDeclarationStatement":
+        elif s.type == "classical_declare_statement":
             self.visit_classical_declaration_statement(s)
-        elif s.type == "assignmentStatement":
+        elif s.type == "assign_statement":
             self.visit_assignment_statement(s)
         else:
             self.visit_qop(s)
@@ -304,7 +304,7 @@ class Visitor:
             self.visit_barrier(s)
         elif s.type == "reset":
             self.visit_reset(s)
-        elif s.type == "ifStatement":
+        elif s.type == "if_statement":
             reg = s.children[0]
             val = s.children[1]
             # 判断id是否为定义的creg
@@ -412,11 +412,11 @@ class Visitor:
         """
         for 循环条件处理，创建for作用域符号表
 
-        :param s: forStatement节点
+        :param s: for_statement 节点
         """
-        self.check_node_type(s, "forStatement")
+        self.check_node_type(s, "for_statement")
 
-        if s.leaf == "inNumber":
+        if s.leaf == "in_number":
             loop_count = s.children[3]
 
             # 检查loop_count是否为整数
@@ -430,7 +430,7 @@ class Visitor:
                 self.visit_for_block_body(
                     block_body, iterator_var_type, iterator_var_name, i)
 
-        elif s.leaf == "inID":
+        elif s.leaf == "in_id":
             id_name = s.children[3]
             id_dict = self.find_in_symbol_table(id_name, True)
             value = self.find_val_in_var_dict(id_dict, id_name, s.pos)
@@ -456,7 +456,7 @@ class Visitor:
                     self.visit_for_block_body(
                         block_body, iterator_var_type, iterator_var_name, i)
 
-        elif s.leaf == "inRangeExpression":
+        elif s.leaf == "in_range_exp":
             range_exp = s.children[3]
             iterator_var_name = s.children[1]
             iterator_var_type = s.children[0].leaf
@@ -468,12 +468,12 @@ class Visitor:
 
     def visit_range_expression(self, s: Node):
         """
-        处理RangeExpression节点, 用在for语句中
+        处理 range_exp 节点, 用在for语句中
 
-        :param s: RangeExpression节点
+        :param s: range_exp 节点
         :return: Tuple (int, int, int): 循环起点、步长、循环终点
         """
-        self.check_node_type(s, "rangeExpression")
+        self.check_node_type(s, "range_exp")
 
         start = 0
         step = 1
@@ -496,12 +496,12 @@ class Visitor:
         """
         处理for循环体中的每条语句
 
-        :param s: blockBody节点
+        :param s: block_body 节点
         :param iterator_type: for循环体索引类型
         :param iterator_name: for循环体索引名
         :param cur_loop_count: 当前索引值
         """
-        self.check_node_type(s, "blockBody")
+        self.check_node_type(s, "block_body")
 
         self.symbol_table.add_tail(LinkedNode({}), s)
         curr_symbol_table = self.symbol_table.get_tail()
@@ -598,15 +598,15 @@ class Visitor:
     def visit_classical_declaration_statement(self, s):
         """
         遍历经典变量声明语句，把变量的值放到符号表中。
-        对于scalarType类型变量，语法树支持声明和定义分开，但是变量使用时必须定义
+        对于 scalar_type 类型变量，语法树支持声明和定义分开，但是变量使用时必须定义
         对于arrayType类型变量，声明时必须定义
 
-        :param s (Node): classicalDeclarationStatement节点
+        :param s (Node): classical_declare_statement 节点
         """
-        self.check_node_type(s, "classicalDeclarationStatement")
+        self.check_node_type(s, "classical_declare_statement")
         decl_name = s.children[1]
         self.check_var_name(decl_name, s.pos)
-        if s.children[0].type == "scalarType":
+        if s.children[0].type == "scalar_type":
             if len(s.children) == 2:
                 decl_val = None
             else:
@@ -616,14 +616,14 @@ class Visitor:
             decl_type = s.children[0].leaf
             self.add_to_symbol_table(decl_type, decl_name, decl_val, s.pos)
 
-        elif s.children[0].type == "arrayType":
+        elif s.children[0].type == "array_type":
             scalar_type, length = self.visit_array_type(s.children[0])
             array_literal = s.children[2]
 
             if len(array_literal.children) != length:
                 raise SyntaxError(
                     f"length in arrayType: {length}"
-                    f"should be equal to the length in arrayLiteral: "
+                    f"should be equal to the length in array_literal: "
                     f"{len(array_literal.children)}"
                    )
 
@@ -635,7 +635,7 @@ class Visitor:
             # 当前不会执行的分支，预防后续开发带来的未察觉到的影响
             logger.warning(
                 f"in line {s.pos} undefined scene: {s.children[0].type} "
-                f"in classicalDeclarationStatement")
+                f"in classical_declare_statement")
             raise SyntaxError(f"in line {s.pos} undefined scene: "
                               f"{s.children[0].type}")
 
@@ -645,10 +645,10 @@ class Visitor:
         如果元素是bool，int，float等基本类型，保存值。
         其他类型目前不考虑。
 
-        :param s: arrayLiteral节点
+        :param s: array_literal 节点
         :return List: 数组类型
         """
-        self.check_node_type(s, "arrayLiteral")
+        self.check_node_type(s, "array_literal")
 
         arr = []
         for child in s.children:
@@ -660,10 +660,10 @@ class Visitor:
         """
         获取数组的类型与长度
 
-        :param s: arrayType节点
+        :param s: array_type 节点
         :return Tuple (str, int): 数组类型、长度
         """
-        self.check_node_type(s, "arrayType")
+        self.check_node_type(s, "array_type")
 
         scalar_type = s.children[0].leaf
         length = self.visit_exp(s.children[1], True, s.pos)
@@ -676,9 +676,9 @@ class Visitor:
         """
         处理赋值语句
 
-        :param s: assignmentStatement节点
+        :param s: assign_statement 节点
         """
-        self.check_node_type(s, "assignmentStatement")
+        self.check_node_type(s, "assign_statement")
 
         indexed_identifier = s.children[0]
         val_name = indexed_identifier.leaf
