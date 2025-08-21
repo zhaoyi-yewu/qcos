@@ -88,8 +88,9 @@ class DriverTiangong100(DriverBase):
 
     def __init__(self):
         super().__init__()
-        self.name = "tiangong100"
         self.version = "0.0.1"
+        self.name = "tiangong100"
+        self.alias_name = "玻色量子-天工100"
         self.enable_transpiler = False
         self.tech_type = Constant.TECH_TYPE_PHOTON
         self.max_qubits = 100
@@ -98,6 +99,19 @@ class DriverTiangong100(DriverBase):
             Constant.CODE_TYPE_QUBO
         ]
         self.token = None
+        # task stages and percentages
+        self.task_stages = {
+            self.TASK_STAGE_START: 0,
+            self.TASK_STAGE_LOADING: 10,
+            self.TASK_STAGE_VALIDATING: 15,
+            self.TASK_STAGE_USER_AUTHENTICATION: 20,
+            self.TASK_STAGE_CHECK_DEVICE_STATUS: 25,
+            self.TASK_STAGE_UPLOAD_FILE: 30,
+            self.TASK_STAGE_SUBMIT_TASK: 35,
+            self.TASK_STAGE_WAIT_TASK: 40,
+            self.TASK_STAGE_GET_RESULTS: 95,
+            self.TASK_STAGE_COMPLETE: 100
+        }
 
     def init_driver(self):
         """
@@ -162,6 +176,7 @@ class DriverTiangong100(DriverBase):
             f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
             f"data_type: {data_type}, data: {data}")
 
+        self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_status(self.DRIVER_STATUS_BUSY)
         extra_configs = self.get_extra_configs()
         project_id = extra_configs.get("project_id", 1)
@@ -172,15 +187,18 @@ class DriverTiangong100(DriverBase):
 
         # 1. Load qubo matrix
         logger.info("1. load qubo matrix")
+        self.set_progress_by_task(self.TASK_STAGE_LOADING)
         qubo_matrix = data["source_code"]
 
         # 2. Validate base_url
         logger.info("2. validate base_url")
+        self.set_progress_by_task(self.TASK_STAGE_VALIDATING)
         if not Library.is_valid_url(self.base_url, {"http", "https"}):
             raise ValueError(f"Invalid URL [{job_id}]: {self.base_url}")
 
         # 3. User authentication and get token
         logger.info("3. user authentication")
+        self.set_progress_by_task(self.TASK_STAGE_USER_AUTHENTICATION)
         success, err_msg, self.token = self.user_auth(username, password)
         if not success:
             raise ValueError(f"Authorize failed [{job_id}]: {err_msg}")
@@ -189,12 +207,14 @@ class DriverTiangong100(DriverBase):
 
         # 4. Check device status
         logger.info("4. check_device_status")
+        self.set_progress_by_task(self.TASK_STAGE_CHECK_DEVICE_STATUS)
         success, err_msg = self.check_device_status(device_id)
         if not success:
             raise ValueError(err_msg)
 
         # 5. Upload file
         logger.info("5. upload file")
+        self.set_progress_by_task(self.TASK_STAGE_UPLOAD_FILE)
         success, err_msg, file_info = self.upload_file(job_id,
                                                        data_index,
                                                        qubo_matrix)
@@ -203,6 +223,7 @@ class DriverTiangong100(DriverBase):
 
         # 6. Submit task
         logger.info("6. submit task")
+        self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
         task_name = f"{job_id}_{data_index}"
         estimated_datetime = datetime.now() + timedelta(minutes=1)
         estimated_datetime_str = estimated_datetime.strftime(
@@ -228,6 +249,7 @@ class DriverTiangong100(DriverBase):
 
         # 7. Get task id and wait for task_status is completed
         logger.info("7. wait for task_status=completed")
+        self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
         success, err_msg, _ = Library.loop_with_timeout(
             self.check_task_status, 3600, 5, task_name,
             expect_task_status=[self.task_status_completed])
@@ -236,22 +258,22 @@ class DriverTiangong100(DriverBase):
                              f"{err_msg}")
 
         # 8. Get task id
-        logger.info("8. wait done")
+        logger.info("8. get task results")
+        self.set_progress_by_task(self.TASK_STAGE_GET_RESULTS)
         success, err_msg, task_info = self.get_task_id(task_name)
         if not success:
             raise ValueError(f"Failed to get task id [{task_name}]: {err_msg}")
 
-        # 9. Get task results
-        logger.info("9. get task results")
         success, err_msg, results = self.get_task_results(
             task_id=task_info["id"])
         if not success:
             raise ValueError(f"Failed to get task results [{job_id}]: "
                              f"{err_msg}")
 
-        # 10. Save results and set driver status to ONLINE
+        # 9. Save results and set driver status to ONLINE
         self.set_results(job_id, data_index, results=results)
         self.set_status(self.DRIVER_STATUS_ONLINE)
+        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def user_auth(self, username, password):
         """

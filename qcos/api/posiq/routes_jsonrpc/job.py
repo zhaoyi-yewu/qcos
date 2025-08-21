@@ -436,11 +436,13 @@ def get_job_status(
 
     # get job_status
     job_status = response.get("job_status")
+    progress = response.get("artifact").get("progress", -1)
 
     # construct response
     response_info = {
         "job_id": job_id,
-        "job_status": job_status
+        "job_status": job_status,
+        "progress": progress
     }
     parameters = response.get("parameters", None)
     results = response.get("results", None)
@@ -495,7 +497,6 @@ def get_job_results(
 
     # handle job results errors
     if response.get("error_message"):
-        # TODO(zhaoyi): reorganize results
         jsonrpc_errors.handle_error_internal_server(
             module_name,
             func_name,
@@ -506,11 +507,13 @@ def get_job_results(
     job_status = response.get("job_status")
     parameters = response.get("parameters", None)
     results = response.get("results", None)
+    progress = response.get("artifact").get("progress", -1)
 
     # construct response
     response_info = {
         "job_id": job_id,
         "job_status": job_status,
+        "progress": progress
     }
     response_info = merge_results(response_info, parameters, results=results)
     return response_info
@@ -548,7 +551,8 @@ def get_jobs(
         job_status = response.get("job_status")
         response_info = {
             "job_id": response.get("id"),
-            "job_status": job_status
+            "job_status": job_status,
+            "progress": response.get("progress")
         }
         parameters = response.get("parameters", None)
         results = response.get("results", None)

@@ -119,7 +119,7 @@ cd build-scripts
 [作业命令]
 * 提交作业
 1. 测试用dummy驱动
-qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/2.0/qasm/simple-qasm.qasm
+qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
 1.1 使用profiling进行模块性能测量
 qcos-cli submit-job --code-type qasm --shots 10 --profiling schedule driver:parse driver:transpile driver:run --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
 1.2 使用callbacks进行回调
@@ -134,9 +134,9 @@ qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qas
 qcos-cli submit-job --code-type qasm --shots 10 --enable-circuit-aggregation true --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
-qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm.qasm
+qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
 3. 中科酷原-汉原1 中性原子驱动, 真实运行
-qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm.qasm
+qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
 4. 玻色量子-光量子伊辛机, 真实运行
 qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.json
 qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.csv

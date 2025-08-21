@@ -39,6 +39,8 @@ class TranspilerCmss(TranspilerBase):
         super().__init__()
         self.total_qubits = 0
         self.name = Constant.TRANSPILER_CMSS
+        # alias name
+        self.alias_name = "五岳转译器"
         # supported code types
         self.supported_code_types = [
             Constant.CODE_TYPE_QASM,
@@ -56,7 +58,9 @@ class TranspilerCmss(TranspilerBase):
         self.qpu_config = None
 
     def init_transpiler(self):
-        pass
+        """
+        Init transpiler
+        """
 
     def mapping(self, qpu_cfg, opt_result_dict):
         """

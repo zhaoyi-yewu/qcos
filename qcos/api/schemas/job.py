@@ -152,6 +152,8 @@ class GetJobStatusResponse(BaseModel):
     shots: Optional[int] = None
     # Dry-run
     dry_run: Optional[bool] = False
+    # Progress
+    progress: Optional[int] = -1
     # Creation Date
     creation_date: Optional[datetime] = None
     # End date
@@ -202,6 +204,8 @@ class GetJobResultsResponse(BaseModel):
     shots: Optional[int] = None
     # Dry-run
     dry_run: Optional[bool] = False
+    # Progress
+    progress: Optional[int] = -1
     # Results
     results: Optional[Union[str, int, list, dict]] = None
     # Creation Date

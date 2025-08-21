@@ -29,8 +29,9 @@ class DriverQiskitAerSim(DriverBase):
     """
     def __init__(self):
         super().__init__()
-        self.name = "qiskit-aer-sim"
         self.version = "0.0.1"
+        self.name = "qiskit-aer-sim"
+        self.alias_name = "IBM-Qiskit-Aer模拟器"
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_QISKIT
         self.tech_type = Constant.TECH_TYPE_GENERIC_SIMULATOR
@@ -75,6 +76,7 @@ class DriverQiskitAerSim(DriverBase):
             f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
             f"data_type: {data_type}, data: {data}")
 
+        self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_status(self.DRIVER_STATUS_BUSY)
 
         transpile_results = data["transpile_results"]
@@ -83,3 +85,4 @@ class DriverQiskitAerSim(DriverBase):
 
         self.set_results(job_id, data_index, results=result.get_counts())
         self.set_status(self.DRIVER_STATUS_ONLINE)
+        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)

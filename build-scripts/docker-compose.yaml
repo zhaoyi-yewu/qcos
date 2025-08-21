@@ -26,6 +26,7 @@ services:
       PREFECT_SERVER_DATABASE_CONNECTION_URL: "sqlite+aiosqlite:////var/qcos/db/prefect.db"
       PREFECT_API_URL: "http://${PREFECT_SERVER_API_HOST}:4200/api"
       PREFECT_LOCAL_STORAGE_PATH: /var/qcos/storage
+      PREFECT_API_DEFAULT_LIMIT: 100000
     volumes:
       - /etc/hosts:/etc/hosts
       - /var/log/qcos:/var/log/qcos
@@ -54,6 +55,7 @@ services:
       PREFECT_LOCAL_STORAGE_PATH: /var/qcos/storage
       PREFECT_LOGGING_ENABLED: ${PREFECT_LOGGING_ENABLED:-true}
       PREFECT_LOGGING_LEVEL: ${PREFECT_LOGGING_LEVEL:-INFO}
+      PREFECT_LOGGING_ROOT_LEVEL: INFO
       PREFECT_LOGGING_ROOT_HANDLERS: ${PREFECT_LOGGING_ROOT_HANDLERS:-[]}
     logging:
       driver: "json-file"

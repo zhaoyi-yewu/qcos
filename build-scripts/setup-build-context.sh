@@ -25,7 +25,8 @@ rm -rf ${BUILD_CONTEXT}
 mkdir -p ${BUILD_CONTEXT}
 
 # create yum repo file
-cat > ${BUILD_CONTEXT}/openEuler.repo << EOM
+if [ -n "${YUM_MIRROR}" ]; then
+  cat > ${BUILD_CONTEXT}/openEuler.repo << EOM
 #generic-repos is licensed under the Mulan PSL v2.
 #You can use this software according to the terms and conditions of the Mulan PSL v2.
 #You may obtain a copy of Mulan PSL v2 at:
@@ -70,8 +71,9 @@ enabled=1
 gpgcheck=1
 gpgkey=${YUM_MIRROR}/openeuler/openEuler-24.03-LTS/OS/\$basearch/RPM-GPG-KEY-openEuler
 EOM
+fi
 
-if [ "${LOCAL_CICD,,}" = "true" ]; then
+if [ -n "${PIP_MIRROR}" ]; then
   cat > ${BUILD_CONTEXT}/pip.conf << EOM
 [global]
 index-url=${PIP_MIRROR}

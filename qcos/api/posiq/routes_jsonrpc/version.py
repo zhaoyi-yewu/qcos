@@ -21,6 +21,7 @@ from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc.routes import base_api
 from qcos.common.config import Config
 from qcos.common.constant import Constant
+from qcos.task_manager import scheduler
 
 logger = logging.getLogger(__name__)
 module_name = "VERSION"
@@ -38,12 +39,38 @@ def version(
     func_name = "version"
     logger.info(f"Call {func_name}: {body}")
 
+    driver_name_mapping = {}
+    transpiler_name_mappings = {}
+    driver_transpiler_mappings = {}
+    driver_manager = scheduler.get_driver_manager()
+    drivers = driver_manager.get_drivers()
+    transpiler_manager = scheduler.get_transpiler_manager()
+    for driver_name, driver in drivers.items():
+        driver_alias_name = driver.get_alias_name()
+        driver_name_mapping[driver_name] = {
+            "alias_name": driver_alias_name
+        }
+        transpiler_names = driver.get_supported_transpilers()
+        for transpiler_name in transpiler_names:
+            if transpiler_name not in transpiler_name_mappings:
+                transpiler = transpiler_manager.get_transpiler(transpiler_name)
+                transpiler_alias_name = transpiler.get_alias_name()
+                supported_code_types = transpiler.get_supported_code_types()
+                transpiler_name_mappings[transpiler_name] = {
+                    "alias_name": transpiler_alias_name,
+                    "supported_code_types": supported_code_types
+                }
+            if driver_name not in driver_transpiler_mappings:
+                driver_transpiler_mappings[driver_name] = set()
+            driver_transpiler_mappings[driver_name].add(transpiler_name)
+
     capabilities = {
         "job_types": Constant.JOB_TYPES,
         "job_sched_policy": Constant.JOB_SCHED_POLICIES,
-        "transpilers": Constant.TRANSPILERS,
-        "drivers": Constant.DRIVERS,
-        "profiling": Constant.PROFILING_TYPES
+        "drivers": driver_name_mapping,
+        "transpilers": transpiler_name_mappings,
+        "profiling": Constant.PROFILING_TYPES,
+        "driver_transpiler_mappings": driver_transpiler_mappings
     }
 
     response_info = {

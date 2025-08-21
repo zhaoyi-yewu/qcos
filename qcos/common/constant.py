@@ -19,6 +19,9 @@ class Constant:
     """
     Constants
     """
+    # Flow limit
+    FLOW_LIMIT = 100000
+
     # Code types
     CODE_TYPE_QASM = "qasm"
     CODE_TYPE_QASM2 = "qasm2"
@@ -104,6 +107,7 @@ class Constant:
     # Transpiler
     TRANSPILER_CMSS = "cmss"
     TRANSPILER_QISKIT = "qiskit"
+    TRANSPILER_DUMMY = "dummy"
     TRANSPILERS = set()  # autofilled during plugin registration
 
     # Quantum computer tech type

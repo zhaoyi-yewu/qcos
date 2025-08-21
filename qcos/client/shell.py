@@ -59,9 +59,9 @@ qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qas
 qcos-cli submit-job --code-type qasm --shots 10 --enable-circuit-aggregation true --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
-qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm.qasm
+qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
 3. 中科酷原-汉原1 中性原子驱动, 真实运行
-qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm.qasm
+qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
 4. 玻色量子-光量子伊辛机, 真实运行
 qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.json
 qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.csv
@@ -419,9 +419,11 @@ class Version(Command):
         print(f"  job_types: {', '.join(sorted(caps['job_types']))}")
         print("  job_sched_policy: "
               f"{', '.join(sorted(caps['job_sched_policy']))}")
-        print(f"  transpilers: {', '.join(sorted(caps['transpilers']))}")
-        print(f"  drivers: {', '.join(sorted(caps['drivers']))}")
         print(f"  profiling: {', '.join(sorted(caps['profiling']))}")
+        print(f"  drivers: {caps['drivers']}")
+        print(f"  transpilers: {caps['transpilers']}")
+        print("  driver_transpiler_mappings: "
+              f"{caps['driver_transpiler_mappings']}")
 
 
 # Device commands
@@ -897,8 +899,9 @@ class GetJobs(Lister):
         :param parsed_args: command line arguments
         """
         resource = self.group
-        header_list = ["job_id", "job_name", "job_status", "backend",
-                       "job_type", "shots", "creation_date", "end_date"]
+        header_list = ["job_id", "job_name", "job_status", "progress",
+                       "backend", "job_type", "shots",
+                       "creation_date", "end_date"]
 
         # call api
         status_code, reason, text, result = self.app.client.get_jobs()

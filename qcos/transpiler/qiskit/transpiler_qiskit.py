@@ -37,6 +37,8 @@ class TranspilerQiskit(TranspilerBase):
     def __init__(self):
         super().__init__()
         self.name = Constant.TRANSPILER_QISKIT
+        # alias name
+        self.alias_name = "IBM Qiskit"
         # supported code types
         self.supported_code_types = [
             Constant.CODE_TYPE_QASM,
@@ -53,7 +55,9 @@ class TranspilerQiskit(TranspilerBase):
         }
 
     def init_transpiler(self):
-        pass
+        """
+        Init transpiler
+        """
 
     def parse(self, job_data, aggregation_info):
         """

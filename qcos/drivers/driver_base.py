@@ -50,11 +50,26 @@ class DriverBase:
         DATA_TYPE_QUBO
     ]
 
+    # TASK STAGES
+    TASK_STAGE_START = "start"
+    TASK_STAGE_INIT = "init"
+    TASK_STAGE_LOADING = "loading"
+    TASK_STAGE_VALIDATING = "validating"
+    TASK_STAGE_USER_AUTHENTICATION = "user_authentication"
+    TASK_STAGE_CHECK_DEVICE_STATUS = "check_device_status"
+    TASK_STAGE_UPLOAD_FILE = "upload_file"
+    TASK_STAGE_SUBMIT_TASK = "submit_task"
+    TASK_STAGE_WAIT_TASK = "wait_task"
+    TASK_STAGE_GET_RESULTS = "get_results"
+    TASK_STAGE_COMPLETE = "complete"
+
     def __init__(self):
-        # driver name
-        self.name = None
         # driver version
         self.version = "unknown"
+        # driver name
+        self.name = None
+        # driver alias name
+        self.alias_name = None
         # module name
         self._module_name = None
         # class name
@@ -80,6 +95,14 @@ class DriverBase:
         self.supported_basis_gates = None
         # supported transpilers
         self.supported_transpilers = []
+        # task stage to track progress
+        # task stages and percentages
+        self.task_stages = {
+            self.TASK_STAGE_START: 0,
+            self.TASK_STAGE_COMPLETE: 100
+        }
+        # progress
+        self.progress = 0
         # qpu configs
         # TODO(zhaoyi): device property
         self.qpu_configs = None
@@ -207,6 +230,14 @@ class DriverBase:
         """
         return self.name
 
+    def get_alias_name(self):
+        """
+        Get driver alias name
+
+        :return: driver alias name
+        """
+        return self.alias_name
+
     def set_module_name(self, module_name):
         """
         Set module name
@@ -279,6 +310,40 @@ class DriverBase:
         :return: list of supported basis gates
         """
         return self.supported_basis_gates
+
+    def get_supported_transpilers(self):
+        """
+        Get supported transpilers
+
+        :return: list of supported transpilers
+        """
+        return self.supported_transpilers
+
+    def set_progress(self, progress):
+        """
+        Set progress
+
+        :param progress: progress percentage in integer between 0 and 100
+        """
+        self.progress = progress
+
+    def set_progress_by_task(self, task_name):
+        """
+        Set progress by task name
+
+        :param task_name: task name
+        """
+        progress = self.task_stages.get(task_name, None)
+        if progress is not None:
+            self.progress = progress
+
+    def get_progress(self):
+        """
+        Get progress
+
+        :return: progress percentage in integer between 0 and 100
+        """
+        return self.progress
 
     def get_qpu_configs(self):
         """

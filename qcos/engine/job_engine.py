@@ -20,6 +20,8 @@ import time
 from typing import Any, List, Optional, Dict
 
 from prefect import flow, task, pause_flow_run
+from prefect.artifacts import (create_progress_artifact,
+                               update_progress_artifact)
 from prefect.input import RunInput
 from loguru import logger
 
@@ -102,6 +104,25 @@ def init_transpiler(transpiler_class_info, transpiler_options):
         return {"transpiler": transpiler, "error": None}
     except Exception as e:
         return {"transpiler": None, "error": ValueError(str(e))}
+
+
+@task
+def task_monitor(monitor_info):
+    driver = None
+    last_job_progress = 0
+    while monitor_info["running"]:
+        if not driver:
+            driver = monitor_info["driver"]
+        if driver:
+            job_progress = int(monitor_info["progress"] +
+                               int(driver.get_progress() /
+                                   monitor_info["source_code_count"]))
+            if last_job_progress != job_progress:
+                # update flow
+                update_progress(monitor_info['artifact_id'], job_progress)
+            last_job_progress = job_progress
+        time.sleep(1)
+    update_progress(monitor_info['artifact_id'], 100)
 
 
 @task(persist_result=False)
@@ -234,6 +255,13 @@ async def job_callback(flow, flow_run, state):
             logger.error(f"Callback Error: {err_msg}")
 
 
+def update_progress(artifact_id, progress):
+    update_progress_artifact(
+        artifact_id=artifact_id,
+        progress=progress
+    )
+
+
 @flow(name="job_engine", persist_result=True,
       on_completion=[job_callback],
       on_failure=[job_callback],
@@ -269,27 +297,47 @@ def job_flow(job_info):
         if not aggregation_info.is_parent:
             return aggregation_info.sub_results
 
+    # start task-monitor
+    artifact_id = create_progress_artifact(progress=0.0, key=job_id)
+    monitor_info = {
+        "artifact_id": artifact_id,
+        "running": True,
+        "driver": None,
+        "source_code_index": 0,
+        "source_code_count": 0,
+        "progress": -1
+    }
+    flow_task_monitor(monitor_info)
+
     # run source codes
+    driver = None
     job_results_list = []
     source_code_list = job_data["source_code"]
+    source_code_count = len(source_code_list)
+    monitor_info["source_code_count"] = source_code_count
     source_code_index = 0
-    driver = None
     transpiler = None
+    percentage_base = 100
     for source_code in source_code_list:
+        monitor_info["source_code_index"] = source_code_index
+        monitor_info["progress"] = (percentage_base * source_code_index
+                                    / source_code_count)
         job_results, driver, transpiler = run_code(
             aggregation_info,
             source_code_index,
             source_code,
             job_info,
             driver,
-            transpiler)
+            transpiler,
+            monitor_info)
         job_results_list.append(job_results)
         source_code_index += 1
+    monitor_info["running"] = False
     return job_results_list
 
 
 def run_code(aggregation_info, source_code_index, source_code, job_info,
-             driver, transpiler):
+             driver, transpiler, monitor_info):
     """
     Flow: run
 
@@ -299,13 +347,13 @@ def run_code(aggregation_info, source_code_index, source_code, job_info,
     :param job_info: job info
     :param driver: driver
     :param transpiler: transpiler
+    :param monitor_info: monitor info
     :return job results
     """
 
     logger.info(f"Run source_code_index: {source_code_index}\n"
                 f"source_code:\n {source_code}")
 
-    transpiler = None
     transpile_results = None
     num_qubits = None
     job_data = job_info["data"]
@@ -325,6 +373,8 @@ def run_code(aggregation_info, source_code_index, source_code, job_info,
                 errors.JobEngineDriverInitError,
                 err_msg), driver, transpiler
         driver = driver_task_result["driver"]
+        logger.info(f"Init driver: {driver.name} ({driver.alias_name})")
+        monitor_info["driver"] = driver
 
     # init transpiler (init only once in a flow)
     if not transpiler:
@@ -341,6 +391,8 @@ def run_code(aggregation_info, source_code_index, source_code, job_info,
                     errors.JobEngineTranspilerInitError,
                     err_msg), driver, transpiler
             transpiler = transpiler_task_result["transpiler"]
+            logger.info("Init transpiler: "
+                        f"{transpiler.name} ({transpiler.alias_name})")
 
     job_results = {
         "results": None,
@@ -502,6 +554,15 @@ def flow_transpile(parsed_circuits,
         profiling_end = time.time()
     profiling_time = profiling_end - profiling_start
     return transpile_task_results, profiling_time
+
+
+def flow_task_monitor(monitor_info):
+    """
+    Flow: task monitor
+
+    :param monitor_info: monitor info
+    """
+    task_monitor.submit(monitor_info)
 
 
 def flow_run_driver(job_info,

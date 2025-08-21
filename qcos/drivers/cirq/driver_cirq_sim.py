@@ -31,18 +31,21 @@ class DriverCirqSim(DriverBase):
     """
     def __init__(self):
         super().__init__()
-        self.name = "cirq-sim"
         self.version = "0.0.1"
-        self.enable_transpiler = False
-        self.enable_circuit_aggregation = True
+        self.name = "cirq-sim"
+        self.alias_name = "谷歌-Cirq模拟器"
+        self.enable_transpiler = True
+        self.transpiler = Constant.TRANSPILER_DUMMY
         self.tech_type = Constant.TECH_TYPE_GENERIC_SIMULATOR
+        self.supported_transpilers = [Constant.TRANSPILER_DUMMY]
+        self.enable_circuit_aggregation = True
         self.max_qubits = 30
         self._final_response = None
-        self.supported_code_types = [
-            Constant.CODE_TYPE_QASM,
-            Constant.CODE_TYPE_QASM2,
-            Constant.CODE_TYPE_QASM3
-        ]
+        # task stages and percentages
+        self.task_stages = {
+            self.TASK_STAGE_START: 0,
+            self.TASK_STAGE_COMPLETE: 100
+        }
 
     def init_driver(self):
         """
@@ -76,6 +79,7 @@ class DriverCirqSim(DriverBase):
             f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
             f"data_type: {data_type}, data: {data}")
 
+        self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_status(self.DRIVER_STATUS_BUSY)
         # create circuit form qasm code
         source_code = data["source_code"]
@@ -105,3 +109,4 @@ class DriverCirqSim(DriverBase):
         # store results
         self.set_results(job_id, data_index, results=serializable_counts)
         self.set_status(self.DRIVER_STATUS_ONLINE)
+        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)

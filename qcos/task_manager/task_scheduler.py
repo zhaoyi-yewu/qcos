@@ -164,10 +164,12 @@ class TaskScheduler(ABC):
                 self._task_manager.get_task_flow_result(job_id)
             state = self._task_manager.transform_to_qcos_state(state)
             job_status = self.get_job_status(state, results, parameters)
+            artifact = self._task_manager.get_job_artifact(job_id)
             response = {
                 "job_status": job_status,
                 "parameters": parameters,
                 "results": results,
+                "artifact": artifact,
                 "error_message": error_message,
             }
             return response, None

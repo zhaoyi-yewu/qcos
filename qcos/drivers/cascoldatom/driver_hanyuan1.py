@@ -46,8 +46,9 @@ class DriverHanyuan1(DriverBase):
 
     def __init__(self):
         super().__init__()
-        self.name = "hanyuan1"
         self.version = "0.0.1"
+        self.name = "hanyuan1"
+        self.alias_name = "中科酷原-汉原1"
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
@@ -59,6 +60,15 @@ class DriverHanyuan1(DriverBase):
         self.server_host = None
         self.server_port = None
         self.base_url = None
+        # task stages and percentages
+        self.task_stages = {
+            self.TASK_STAGE_START: 0,
+            self.TASK_STAGE_INIT: 10,
+            self.TASK_STAGE_SUBMIT_TASK: 20,
+            self.TASK_STAGE_WAIT_TASK: 30,
+            self.TASK_STAGE_GET_RESULTS: 95,
+            self.TASK_STAGE_COMPLETE: 100
+        }
 
     def init_driver(self):
         """
@@ -135,6 +145,7 @@ class DriverHanyuan1(DriverBase):
             f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
             f"data_type: {data_type}, data: {data}")
 
+        self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_status(self.DRIVER_STATUS_BUSY)
         gates_list = data["transpile_results"]
         extra_configs = self.get_extra_configs()
@@ -144,32 +155,37 @@ class DriverHanyuan1(DriverBase):
 
         # 1. init task connection
         logger.info("init task")
+        self.set_progress_by_task(self.TASK_STAGE_INIT)
         self.init_task(ip_address, port)
 
         # 2. submit task
         logger.info("submit task")
-        success, err_msg = (
-            self.submit_task(job_id, num_qubits, gates_list, data_type, shots))
+        self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
+        success, err_msg = self.submit_task(
+            job_id, num_qubits, gates_list, data_type, shots, data_index)
         if not success:
             raise ValueError(f"Failed to submit task [{job_id}]: {err_msg}")
 
         # 3. wait task results
         logger.info("wait task status")
+        self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
         success, err_msg, _ = Library.loop_with_timeout(
-            self.check_task_status, 1800, 5, job_id,
+            self.check_task_status, 1800, 5, job_id, data_index,
             expect_task_status=[self.task_status_completed])
         if not success:
             raise ValueError(f"Failed to wait for task [{job_id}]: {err_msg}")
 
         # 4. get task results
         logger.info("wait done")
-        success, err_msg, results = self.get_task_results(job_id)
+        self.set_progress_by_task(self.TASK_STAGE_GET_RESULTS)
+        success, err_msg, results = self.get_task_results(job_id, data_index)
         if not success:
             raise ValueError(f"Failed to get task results [{job_id}]: "
                              f"{err_msg}")
 
         self.set_results(job_id, data_index, results=results)
         self.set_status(self.DRIVER_STATUS_ONLINE)
+        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def init_task(self, ip_address: str, port: int):
         """
@@ -241,7 +257,7 @@ class DriverHanyuan1(DriverBase):
         return status_code, reason, text, result
 
     def submit_task(self, job_id: str, num_qubits: int, data: list,
-                    data_type: str, shots: int) -> tuple:
+                    data_type: str, shots: int, data_index: int) -> tuple:
         """
         submit task
 
@@ -250,6 +266,7 @@ class DriverHanyuan1(DriverBase):
         :param data: data
         :param data_type: data type
         :param shots: shots
+        :param data_index: data index
         :return: (success, reason, text, result)
         """
         success = True
@@ -271,6 +288,7 @@ class DriverHanyuan1(DriverBase):
             # construct request data
             request_data = {
                 "job_id": job_id,
+                "data_index": data_index,
                 "data": processed_data,
                 "data_type": data_type,
                 "shots": shots,
@@ -302,18 +320,23 @@ class DriverHanyuan1(DriverBase):
 
         return success, "\n".join(err_msgs)
 
-    def check_task_status(self, job_id: str, expect_task_status: list) -> bool:
+    def check_task_status(self,
+                          job_id: str,
+                          data_index: int,
+                          expect_task_status: list) -> bool:
         """
         check task status
 
         :param job_id: job id
+        :param data_index: data index
         :param expect_task_status: expect task status
         :return: task status
         """
         try:
             # construct request data
             request_data = {
-                "job_id": job_id
+                "job_id": job_id,
+                "data_index": data_index
             }
 
             method_name = "query_task_status"
@@ -332,11 +355,12 @@ class DriverHanyuan1(DriverBase):
         except Exception as e:
             return False
 
-    def get_task_results(self, job_id: str):
+    def get_task_results(self, job_id: str, data_index: int):
         """
         check task results
 
         :param job_id: job id
+        :param data_index: data index
         :return: task results
         """
         success = True
@@ -345,7 +369,8 @@ class DriverHanyuan1(DriverBase):
 
         # construct request data
         request_data = {
-            "job_id": job_id
+            "job_id": job_id,
+            "data_index": data_index
         }
 
         method_name = "query_task_result"
@@ -363,6 +388,7 @@ class DriverHanyuan1(DriverBase):
                     err_msgs.append("no task results")
             else:
                 success = False
-                err_msgs.append("no task results")
+                err_m = result.get("result")
+                err_msgs.append(err_m)
 
         return success, "\n".join(err_msgs), results

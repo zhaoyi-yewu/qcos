@@ -33,9 +33,10 @@ class DriverDummy(DriverBase):
 
     def __init__(self):
         super().__init__()
-        self.name = "dummy"
-        self.enable = True
         self.version = "0.0.1"
+        self.name = "dummy"
+        self.alias_name = "空载测试驱动(dummy)"
+        self.enable = True
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
@@ -125,8 +126,10 @@ class DriverDummy(DriverBase):
             f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
             f"data_type: {data_type}, data: {data}")
 
+        self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_status(self.DRIVER_STATUS_BUSY)
         # dummy driver results
         result = self.get_fake_results(num_qubits, shots, data)
         self.set_results(job_id, data_index, results=result)
         self.set_status(self.DRIVER_STATUS_ONLINE)
+        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)

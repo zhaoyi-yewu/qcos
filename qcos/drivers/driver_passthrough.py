@@ -29,8 +29,9 @@ class DriverPassthrough(DriverBase):
 
     def __init__(self):
         super().__init__()
-        self.name = "passthrough"
         self.version = "0.0.1"
+        self.name = "passthrough"
+        self.alias_name = "测试空载直通驱动"
         self.enable = False
         self.enable_transpiler = False
         self.tech_type = Constant.TECH_TYPE_NONE
@@ -77,7 +78,9 @@ class DriverPassthrough(DriverBase):
             f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
             f"data_type: {data_type}, data: {data}")
 
+        self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_status(self.DRIVER_STATUS_BUSY)
         result = self.get_fake_results(num_qubits, shots, data)
         self.set_results(job_id, data_index, results=result)
         self.set_status(self.DRIVER_STATUS_ONLINE)
+        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)

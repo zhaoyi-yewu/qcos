@@ -27,8 +27,10 @@ from typing import Any
 from prefect import get_client
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.objects import WorkerStatus, StateType
-from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterName, \
-    FlowRunFilterState, FlowRunFilterTags
+from prefect.client.schemas.filters import (
+    ArtifactFilter, ArtifactFilterFlowRunId, ArtifactFilterKey,
+    FlowRunFilter, FlowRunFilterName,
+    FlowRunFilterState, FlowRunFilterTags)
 from prefect.exceptions import ObjectNotFound
 from prefect.workers import ProcessWorker
 from rich.console import Console
@@ -302,6 +304,47 @@ class TaskFlowManager(ABC):
             self.get_task_flow_result_by_client(flow_run_id))
         return state, parameters, result, err_msg
 
+    async def delete_flow_artifacts(self, flow_run_id):
+        """
+        Delete flow artifacts
+
+        :param flow_run_id: flow run id
+        """
+        artifacts = await self._client.read_artifacts(
+            artifact_filter=ArtifactFilter(
+                flow_run_id=ArtifactFilterFlowRunId(any_=[flow_run_id])))
+        for artifact in artifacts:
+            await self._client.delete_artifact(artifact.id)
+
+    def get_job_artifact(self, job_id):
+        """
+        Get job artifact
+
+        :param job_id: job id
+        :return artifact
+        """
+        artifact = self.loop.run_until_complete(
+            self.get_job_artifact_by_client(job_id))
+        return artifact
+
+    async def get_job_artifact_by_client(self, job_id):
+        """
+        Get job artifact by client
+
+        :param job_id: job id
+        :return artifact
+        """
+        artifact = {}
+        artifacts = await self._client.read_artifacts(
+            artifact_filter=ArtifactFilter(
+                key=ArtifactFilterKey(any_=[str(job_id)])))
+        if artifacts:
+            _artifact = artifacts[0]
+            if _artifact.type == "progress":
+                artifact["artifact_id"] = _artifact.id
+                artifact["progress"] = _artifact.data
+        return artifact
+
     def has_flow(self, job_id):
         """
         Check if flow exists
@@ -364,6 +407,7 @@ class TaskFlowManager(ABC):
         """
 
         # TODO(jidalong) deal exception
+        # get flow info
         flow_run = await self._client.read_flow_run(flow_run_id)
         state = flow_run.state
         parameters = flow_run.parameters
@@ -403,6 +447,19 @@ class TaskFlowManager(ABC):
 
         # TODO(jidalong) deal exception
         results_list = []
+
+        # get artifacts info, eg: progress
+        artifacts_map = {}
+        artifacts = await self._client.read_artifacts(
+            limit=Constant.FLOW_LIMIT)
+        for artifact in artifacts:
+            if artifact.key:
+                artifacts_map[artifact.key] = {}
+                if artifact.type == "progress":
+                    artifacts_map[artifact.key]["artifact_id"] = artifact.id
+                    artifacts_map[artifact.key]["progress"] = artifact.data
+
+        # get flows info
         flow_runs = await self._client.read_flow_runs()
         sorted_flows = sorted(
             flow_runs,
@@ -421,8 +478,11 @@ class TaskFlowManager(ABC):
             results = None
             if flow_state == Constant.PREFECT_STATE_COMPLETED:
                 results = await flow_run.state.result()
+            artifact = artifacts_map.get(id, {})
+            progress = artifact.get("progress", -1)
             results_list.append(
                 {"id": id, "state": state, "parameters": parameters,
+                 "progress": progress,
                  "results": results})
         return results_list
 
@@ -438,7 +498,7 @@ class TaskFlowManager(ABC):
         for job_id in job_ids:
             flow_run_id = self.get_flow_run_id_by_job_id(job_id)
             if flow_run_id:
-                flow_run_ids.append(flow_run_id)
+                flow_run_ids.append((flow_run_id, job_id))
 
         success_list = self.loop.run_until_complete(
             self.delete_task_flow_run_by_client(flow_run_ids))
@@ -454,21 +514,25 @@ class TaskFlowManager(ABC):
 
         success_list = []
         try:
-            for id in flow_run_ids:
+            for (flow_run_id, job_id) in flow_run_ids:
                 try:
-                    flow_run = await self._client.read_flow_run(id)
+                    flow_run = await self._client.read_flow_run(flow_run_id)
                 except ObjectNotFound:
                     logger.error(f"Prefect execute flow error: "
-                                 f"can't find flow_run_id: {id}")
+                                 f"can't find flow_run_id: {flow_run_id}")
                     continue
                 except Exception as e:
                     logger.error(f"Prefect execute flow error: {str(e)}")
                     continue
                 state = flow_run.state
                 if state.name.upper() != "RUNNING":
-                    await self._client.delete_flow_run(id)
+                    # delete flow artifact
+                    await self.delete_flow_artifacts(flow_run_id)
+                    # delete flow
+                    await self._client.delete_flow_run(flow_run_id)
                     success_list.append(
-                        {"id": id, "state": Constant.JOB_STATUS_DELETED})
+                        {"id": flow_run_id,
+                         "state": Constant.JOB_STATUS_DELETED})
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
 

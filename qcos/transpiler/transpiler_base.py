@@ -25,6 +25,8 @@ class TranspilerBase:
     def __init__(self):
         # name
         self.name = None
+        # alias name
+        self.alias_name = None
         # module name
         self._module_name = None
         # class name
@@ -102,6 +104,14 @@ class TranspilerBase:
         :return: transpiler name
         """
         return self.name
+
+    def get_alias_name(self):
+        """
+        Get transpiler alias name
+
+        :return: transpiler alias name
+        """
+        return self.alias_name
 
     def set_module_name(self, module_name):
         """

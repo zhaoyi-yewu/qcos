@@ -808,6 +808,8 @@ class Library:
         if bit_length <= 0:
             return result
 
+        result_value_weight_range = (80, 100)
+
         # 1. generate all binary-bit combinations
         total_combinations = 2 ** bit_length
         combinations = [
@@ -820,17 +822,21 @@ class Library:
 
         # 3. calculate and assign counts to combinations
         length = len(combinations)
-        first_count = int(random.randint(80, 100) * total_count / 100)
+        first_value_count = int(random.randint(result_value_weight_range[0],
+                                               result_value_weight_range[1])
+                                * total_count / 100)
         current_total_count = 0
         i = 0
         for combo, weight in zip(combinations, weights):
             if i == 0:
-                combo_count = first_count
+                combo_count = first_value_count
             elif i == length - 1:
                 combo_count = total_count - current_total_count
             else:
                 combo_count = math.ceil(random.randint(0, 1) * (
-                            total_count - first_count) / length)
+                            total_count - first_value_count) / length)
+                if current_total_count >= combo_count:
+                    combo_count = 0
             current_total_count += combo_count
             result[combo] = combo_count
             i += 1
