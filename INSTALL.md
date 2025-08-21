@@ -131,7 +131,9 @@ qcos-cli submit-job --job-name test-dummy --code-type qasm --shots 10 --backend 
 1.5 单作业多代码执行 (线路串行模式)
 qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm ./samples/qasm/2.0/simple-qasm.qasm
 1.6 多作业并行执行 (线路聚合模式)
-qcos-cli submit-job --code-type qasm --shots 10 --enable-circuit-aggregation true --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
+qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation internal --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm ./samples/qasm/2.0/simple-qasm.qasm
+qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation external --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
+
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
 qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm

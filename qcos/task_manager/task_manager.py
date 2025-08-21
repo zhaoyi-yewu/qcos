@@ -276,8 +276,8 @@ class TaskFlowManager(ABC):
             job_id = uuid.uuid4()
             args["job_info"]["data"]["job_id"] = job_id
         tags = None
-        if args["job_info"]["data"]["enable_circuit_aggregation"]:
-            tags = ["enable_circuit_aggregation"]
+        if args["job_info"]["data"]["circuit_aggregation"]:
+            tags = [args["job_info"]["data"]["circuit_aggregation"]]
         # TODO(jidalong) deal exception
         flow_run = await self._client.create_flow_run_from_deployment(
             name=str(job_id),
@@ -600,20 +600,21 @@ class TaskFlowManager(ABC):
                 sub_jobs = {}
 
                 state = [StateType.SCHEDULED]
-                tags = ["enable_circuit_aggregation"]
+                tags = [Constant.AGGREGATION_TYPE_EXTERNAL]
                 flow_runs = self.list_flow_runs_by_filter(state, tags)
                 for sub_flow_run in flow_runs:
-                    if sub_flow_run.parameters["job_info"]["data"][
-                        "enable_circuit_aggregation"] and \
-                            flow_run.parameters["job_info"]["data"][
-                                "backend"] == \
+                    if (sub_flow_run.parameters["job_info"]["data"][
+                        "circuit_aggregation"] ==
+                            Constant.AGGREGATION_TYPE_EXTERNAL
+                            and flow_run.parameters["job_info"]["data"][
+                                "backend"] ==
                             sub_flow_run.parameters["job_info"]["data"][
-                                "backend"] and \
-                            sub_flow_run.work_pool_name == \
-                            flow_run.work_pool_name:
+                                "backend"]
+                            and sub_flow_run.work_pool_name ==
+                            flow_run.work_pool_name):
                         if len(sub_jobs) >= Constant.MAX_AGGREGATION_JOBS:
                             break
-                        sub_jobs[sub_flow_run.name]= sub_flow_run.parameters
+                        sub_jobs[sub_flow_run.name] = sub_flow_run.parameters
 
                 aggregation_parm["is_parent"] = True
                 aggregation_parm["sub_jobs"] = sub_jobs
@@ -633,7 +634,7 @@ class TaskFlowManager(ABC):
                 # 2.periodic get paused flow runs
                 # which are aggregation jobs running currently
                 state = [StateType.PAUSED]
-                tags = ["enable_circuit_aggregation"]
+                tags = [Constant.AGGREGATION_TYPE_EXTERNAL]
                 flow_runs = self.list_flow_runs_by_filter(state, tags)
 
                 for flow_run in flow_runs:

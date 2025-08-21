@@ -56,7 +56,8 @@ qcos-cli submit-job --job-name test-dummy --code-type qasm --shots 10 --backend 
 1.5 单作业多代码执行 (线路串行模式)
 qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm ./samples/qasm/2.0/simple-qasm.qasm
 1.6 多作业并行执行 (线路聚合模式)
-qcos-cli submit-job --code-type qasm --shots 10 --enable-circuit-aggregation true --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
+qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation internal --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm ./samples/qasm/2.0/simple-qasm.qasm
+qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation external --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
 qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
@@ -567,11 +568,11 @@ class SubmitJob(Command):
         parser.add_argument("--job-id", dest="job_id",
                             type=str,
                             help="Job uuid")
-        parser.add_argument("--enable-circuit-aggregation",
-                            dest="enable_circuit_aggregation",
-                            type=bool,
-                            default=False,
-                            help="Enable circuit aggregation")
+        parser.add_argument("--circuit-aggregation",
+                            dest="circuit_aggregation",
+                            choices=Constant.AGGREGATION_TYPES,
+                            help="Circuit aggregation: "
+                                 f"{','.join(Constant.AGGREGATION_TYPES)}")
         parser.add_argument("-n", "--job-name", dest="job_name",
                             type=str,
                             default=None,
@@ -640,7 +641,7 @@ class SubmitJob(Command):
         dry_run = parsed_args.dry_run
         code_type = parsed_args.code_type
         job_id = parsed_args.job_id
-        enable_circuit_aggregation = parsed_args.enable_circuit_aggregation
+        circuit_aggregation = parsed_args.circuit_aggregation
         job_type = parsed_args.job_type
         job_sched_policy = parsed_args.job_sched_policy
         job_priority = parsed_args.job_priority
@@ -764,7 +765,7 @@ class SubmitJob(Command):
             source_code_list,
             code_type=code_type,
             job_id=job_id,
-            enable_circuit_aggregation=enable_circuit_aggregation,
+            circuit_aggregation=circuit_aggregation,
             job_name=job_name,
             job_type=job_type,
             job_sched_policy=job_sched_policy,

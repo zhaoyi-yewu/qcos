@@ -49,6 +49,7 @@ def submit_job(
 
     source_code = body.source_code
     code_type = body.code_type
+    circuit_aggregation = body.circuit_aggregation
     job_id = body.job_id
     job_name = body.job_name
     job_type = body.job_type
@@ -73,6 +74,17 @@ def submit_job(
             code_type, "code_type", Constant.CODE_TYPES
         )
     )
+
+    # validate: circuit_aggregation
+    if circuit_aggregation:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            Library.validate_values_enum(
+                circuit_aggregation, "circuit_aggregation",
+                Constant.AGGREGATION_TYPES
+            )
+        )
 
     # Validate: source_code
     jsonrpc_errors.handle_error_bad_requests(
@@ -104,6 +116,22 @@ def submit_job(
             func_name,
             Library.validate_schema(
                 source_code, args_schema.SOURCE_CODE_TEXT_SCHEMA
+            )
+        )
+
+    # Validate: source_code by circuit_aggregation
+    if (code_type not in [
+        Constant.CODE_TYPE_QUBO] and circuit_aggregation ==
+            Constant.AGGREGATION_TYPE_INTERNAL):
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            Library.validate_values_length(
+                source_code,
+                "source_code",
+                None,
+                Constant.MAX_AGGREGATION_JOBS,
+                allow_none=False
             )
         )
 

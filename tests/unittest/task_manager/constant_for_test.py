@@ -22,7 +22,7 @@ from qcos.common.library import Library
 
 class ConstantForTest:
     args = {'job_info': {'data': {
-        "enable_circuit_aggregation": True,
+        "circuit_aggregation": None,
         "job_id": '00000000-0000-4000-8000-000000000001',
         "job_name": 'job_name',
         "job_status": Constant.JOB_STATUS_UNKNOWN,

@@ -31,6 +31,11 @@ class Constant:
     CODE_TYPES = [CODE_TYPE_QASM, CODE_TYPE_QASM2, CODE_TYPE_QASM3,
                   CODE_TYPE_QUBO]
 
+    # Aggregation types
+    AGGREGATION_TYPE_INTERNAL = "internal"
+    AGGREGATION_TYPE_EXTERNAL = "external"
+    AGGREGATION_TYPES = [AGGREGATION_TYPE_INTERNAL, AGGREGATION_TYPE_EXTERNAL]
+
     # File types
     FILE_TYPE_QASM = ".qasm"
     FILE_TYPE_JSON = ".json"

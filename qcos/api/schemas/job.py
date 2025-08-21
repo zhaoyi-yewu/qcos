@@ -43,8 +43,8 @@ class SubmitJobRequest(BaseModel):
     transpiler: Optional[str] = Constant.TRANSPILER_CMSS
     # Transpiler options
     transpiler_options: Optional[dict] = None
-    # Enable circuit aggregation: True, False
-    enable_circuit_aggregation: Optional[bool] = False
+    # Circuit aggregation: internal multi
+    circuit_aggregation: Optional[str] = None
     # Job ID
     job_id: Optional[UUID] = None
     # Job name
@@ -96,8 +96,8 @@ class SubmitJobResponse(BaseModel):
     transpiler: Optional[str] = None
     # Transpiler options
     transpiler_options: Optional[dict] = None
-    # Enable circuit aggregation: True, False
-    enable_circuit_aggregation: Optional[bool] = False
+    # Circuit aggregation: internal, multi
+    circuit_aggregation: Optional[str] = None
     # Shots
     shots: int = None
     # Profiling
@@ -140,8 +140,8 @@ class GetJobStatusResponse(BaseModel):
     transpiler: Optional[str] = None
     # Transpiler options
     transpiler_options: Optional[dict] = None
-    # Enable circuit aggregation: True, False
-    enable_circuit_aggregation: Optional[bool] = False
+    # Circuit aggregation: internal, multi
+    circuit_aggregation: Optional[str] = None
     # Job scheduling policy
     job_sched_policy: Optional[str] = None
     # Job priority
@@ -192,8 +192,8 @@ class GetJobResultsResponse(BaseModel):
     transpiler: Optional[str] = None
     # Transpiler options
     transpiler_options: Optional[dict] = None
-    # Enable circuit aggregation: True, False
-    enable_circuit_aggregation: Optional[bool] = False
+    # Circuit aggregation: internal, multi
+    circuit_aggregation: Optional[str] = None
     # Job scheduling policy
     job_sched_policy: Optional[str] = None
     # Job priority
