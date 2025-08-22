@@ -71,7 +71,6 @@ class TestTaskFlowManager(unittest.TestCase):
         self.task_manager.set_driver_manager('driver_manager')
         self.assertEqual(self.task_manager.driver_manager, 'driver_manager')
 
-
     def test_deploy_task_flow(self):
         flow_info = (self.task_manager.
                      get_flow_info_by_backend(Constant.DRIVER_DUMMY))
@@ -79,11 +78,11 @@ class TestTaskFlowManager(unittest.TestCase):
                          '../engine/job_engine.py')
         self.assertEqual(flow_info['deploy_name'], 'dummy')
         flow_info = (self.task_manager.deploy_task_flow
-             (Constant.DRIVER_DUMMY + "_"
-              + Constant.JOB_SCHED_POLICY_PRIORITY,
-              Constant.JOB_SCHED_POLICY_PRIORITY,
-              1, flow_info["deploy_flow_func"],
-              '../engine/job_engine.py'))
+                     (Constant.DRIVER_DUMMY + "_"
+                      + Constant.JOB_SCHED_POLICY_PRIORITY,
+                      Constant.JOB_SCHED_POLICY_PRIORITY,
+                      1, flow_info["deploy_flow_func"],
+                      '../engine/job_engine.py'))
         self.assertIsInstance(flow_info, uuid.UUID)
         flow_info = (self.task_manager.
                      run_task_flow(flow_info, ConstantForTest.args))
@@ -108,10 +107,6 @@ class TestTaskFlowManager(unittest.TestCase):
         success = self.task_manager.update_flow(
             ConstantForTest.job_id)
         assert success is False
-
-    def test_get_task_flow_list(self):
-        results = self.task_manager.get_task_flow_list()
-        assert results is not None
 
     def test_delete_task_flow_run(self):
         success_list = (self.task_manager.

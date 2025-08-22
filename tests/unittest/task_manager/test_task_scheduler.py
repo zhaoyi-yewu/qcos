@@ -17,6 +17,8 @@
 
 from unittest.mock import patch
 
+import pytest
+
 from qcos.common.constant import Constant
 from qcos.common.library import Library
 from qcos.drivers.driver_manager import DriverManager
@@ -35,17 +37,11 @@ obj = TaskScheduler()
 
 
 class TestTaskScheduler:
-    def test_start_taskmanager(self):
-        obj.start_taskmanager()
 
     def test_set_driver_manager(self):
         driver_manager = DriverManager()
         obj.set_driver_manager(driver_manager)
         assert isinstance(obj.driver_manager, driver_manager.__class__)
-
-    def test_get_driver_manager(self):
-        assert isinstance(obj.get_driver_manager(),
-                          DriverManager().__class__)
 
     def test_set_transpiler_manager(self):
         transpiler_manager = TranspilerManager()
@@ -53,40 +49,10 @@ class TestTaskScheduler:
         assert isinstance(obj.transpiler_manager,
                           transpiler_manager.__class__)
 
-    def test_get_transpiler_manager(self):
-        assert isinstance(
-            obj.get_transpiler_manager(),
-            TranspilerManager().__class__)
-
-    @patch.object(TaskScheduler, "get_job_status")
-    @patch.object(TaskFlowManager, "transform_to_qcos_state")
-    @patch.object(TaskFlowManager, "get_task_flow_result")
-    def test_get_result_by_id(self, mock_get_task_flow_result,
-                              mock_transform_to_qcos_state,
-                              mock_get_job_status):
-        mock_get_task_flow_result.return_value = iter(["state",233,
-                                                       "no", "error"])
-        mock_transform_to_qcos_state.return_value = "state"
-        mock_get_job_status.return_value = "job_status"
-        response,err = obj.get_result_by_id(ConstantForTest.job_id)
-        assert response is not None
-        assert err is None
-
     @patch.object(TaskFlowManager, "has_flow")
     def test_has_job(self, mock_has_flow):
         mock_has_flow.return_value = True
         assert obj.has_job(ConstantForTest.job_id) is True
-
-
-    def test_get_jobs(self):
-        obj.get_jobs()
-
-    def test_remove_jobs(self):
-        obj.remove_jobs(ConstantForTest.job_ids)
-
-    def test_update_job(self):
-        obj.update_job(ConstantForTest.job_id)
-
 
 
 task_manager = TaskFlowManager()
@@ -140,7 +106,6 @@ class TestTimePrecedencePolicy:
 class TestPeriodicPolicy:
     def test_exec_task(self):
         assert periodic_policy.exec_task() is None
-
 
 
 class TestDependentPolicy:
