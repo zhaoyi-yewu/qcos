@@ -149,7 +149,7 @@ class DriverHanyuan1(DriverBase):
         self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_device_status(Device.DEVICE_STATUS_BUSY)
         gates_list = data["transpile_results"]
-        extra_configs = self.get_extra_configs()
+        extra_configs = self.get_configs()
         ip_address = extra_configs.get(
             "ip_address", self.DEFAULT_CONTROL_SYSTEM_IP)
         port = extra_configs.get("port", self.DEFAULT_CONTROL_SYSTEM_PORT)

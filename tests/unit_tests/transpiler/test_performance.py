@@ -20,8 +20,8 @@ import time
 from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
-from tests.unittest.transpiler.comm import read_qasm_from_file
-from tests.unittest.transpiler.comm import validate_gate_ir
+from tests.unit_tests.transpiler.comm import read_qasm_from_file
+from tests.unit_tests.transpiler.comm import validate_gate_ir
 
 
 class TestPerformance:

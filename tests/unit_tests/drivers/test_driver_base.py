@@ -28,19 +28,16 @@ class TestDriverBase:
     def setup_class(cls):
         cls.driver_options = {"driver_options": "driver_options"}
 
-    def test_load_driver_configs(self):
-        assert obj.load_driver_configs() is None
-
     def test_validate_driver(self):
         obj.enable_transpiler = True
         obj.supported_code_types = True
         success, err_msgs = obj.validate_driver()
-        assert success == False
+        assert success is False
 
         obj.enable_transpiler = False
         obj.supported_code_types = False
         success, err_msgs = obj.validate_driver()
-        assert success == False
+        assert success is False
 
     def test_validate_driver_configs(self):
         configs = {}
@@ -49,10 +46,6 @@ class TestDriverBase:
         assert (f"Driver: {obj.__class__.__name__} "
                 f"must implement method: validate_driver_configs"
                 in str(context.value))
-
-    def test_get_extra_configs(self):
-        extra_config = obj.get_extra_configs()
-        assert extra_config == obj.extra_configs
 
     def test_init_driver(self):
         with pytest.raises(NotImplementedError) as context:
@@ -79,18 +72,15 @@ class TestDriverBase:
         driver_info = obj.get_driver_info()
         assert driver_info == (
             f"[{obj.__class__.__name__}]\n"
-            f"driver_name: {obj.name}\n"
+            f"name: {obj.name}\n"
+            f"alias_name: None\n"
+            f"description: Quantum Computer base driver\n"
             f"version: {obj.version}\n"
-            f"enable: {obj.enable}\n"
-            f"status: {obj._status}\n"
             f"enable_transpiler: {obj.enable_transpiler}\n"
             f"transpiler: {obj.transpiler}\n"
             f"enable_circuit_aggregation: {obj.enable_circuit_aggregation}\n"
             f"results_fetch_mode: {obj.results_fetch_mode}\n"
-            f"max_qubits: {obj.max_qubits}\n"
-            f"qpu_configs: {obj.qpu_configs}\n"
-            f"decomposition_rule: {obj.decomposition_rule}\n"
-            f"extra_configs: {obj.extra_configs}"
+            f"max_qubits: {obj.max_qubits}"
         )
 
     def test_set_name_and_get_name(self):
@@ -105,10 +95,6 @@ class TestDriverBase:
         obj.set_class_name("class_name")
         assert obj.get_class_name() == "class_name"
 
-    def test_set_status(self):
-        assert obj.set_status("status") is None
-        obj.set_status("online")
-        assert obj.get_status() == "online"
 
     def test_get_transpiler(self):
         obj.enable_transpiler = False
@@ -122,12 +108,6 @@ class TestDriverBase:
     def test_get_supported_basis_gates(self):
         assert obj.get_supported_basis_gates() == obj.supported_basis_gates
 
-    def test_get_qpu_configs(self):
-        assert obj.get_qpu_configs() == obj.qpu_configs
-
-    def test_get_decomposition_rule(self):
-        assert obj.get_decomposition_rule() == obj.decomposition_rule
-
     def test_run(self):
         with pytest.raises(NotImplementedError) as context:
             obj.run("1", 5, {})
@@ -137,8 +117,6 @@ class TestDriverBase:
     def test_dry_run(self):
         assert obj.dry_run("1", 5, {"index": "233"}) is None
 
-    def test_get_results(self):
-        assert obj.get_results() == obj._results
 
     def test_get_default_data_type(self):
         assert obj.get_default_data_type() == obj.default_data_type

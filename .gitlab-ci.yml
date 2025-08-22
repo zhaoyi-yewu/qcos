@@ -8,4 +8,4 @@ pylint:
   tags:
     - sonic-runner
   script: # 脚本pylint检查
-    - pylint qcos/ tests/unittest
+    - pylint qcos/ tests/unit_tests

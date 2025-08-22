@@ -16,8 +16,8 @@
 # ----------------------------------------------------------------------
 
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
-from tests.unittest.transpiler.comm import validate_gate_ir
-from tests.unittest.transpiler.comm import validate_non_gate_ir
+from tests.unit_tests.transpiler.comm import validate_gate_ir
+from tests.unit_tests.transpiler.comm import validate_non_gate_ir
 
 
 class TestGetIr:

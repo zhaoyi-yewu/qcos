@@ -93,7 +93,7 @@ class DriverBase:
         self.job_runtime_data = {
             "run_progress": 0,
             "device_status": Device.DEVICE_STATUS_UNKNOWN,
-            "configs": None,
+            "configs": {},
             # results from run(): fetches the results from quantum computer
             # format: {JOB_ID: {"results": RESULTS}}
             "results": {}

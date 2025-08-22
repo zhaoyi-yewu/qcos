@@ -37,11 +37,11 @@ class TestDriverHanyuan1:
         configs = {}
         mock_validate_schema.return_value = iter([True, ''])
         success, err_msg = obj.validate_driver_configs(configs)
-        assert success == True
+        assert success is True
 
         mock_validate_schema.return_value = iter([False, ''])
         success, err_msg = obj.validate_driver_configs(configs)
-        assert success == False
+        assert success is False
 
     @patch.object(DriverHanyuan1, "get_task_results")
     @patch.object(Library, "loop_with_timeout")

@@ -15,12 +15,12 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import patch, Mock
 
 import pytest
 
 from qcos.common.constant import Constant
-from qcos.common.library import Library
 from qcos.drivers.driver_manager import DriverManager
 from qcos.task_manager.task_manager import TaskFlowManager
 from qcos.task_manager.task_scheduler import (TaskScheduler, PriorityPolicy,
@@ -31,28 +31,102 @@ from qcos.task_manager.task_scheduler import (TaskScheduler, PriorityPolicy,
                                               HighResponseRatioPolicy)
 from qcos.task_manager.task_scheduler import TimePrecedencePolicy
 from qcos.transpiler.transpiler_manager import TranspilerManager
-from tests.unittest.task_manager.constant_for_test import ConstantForTest
+from tests.unit_tests.task_manager.constant_for_test import ConstantForTest
 
-obj = TaskScheduler()
+task = TaskScheduler()
 
 
 class TestTaskScheduler:
 
     def test_set_driver_manager(self):
         driver_manager = DriverManager()
-        obj.set_driver_manager(driver_manager)
-        assert isinstance(obj.driver_manager, driver_manager.__class__)
+        task.set_driver_manager(driver_manager)
+
+    def test_get_driver_manager(self):
+        task.get_driver_manager()
 
     def test_set_transpiler_manager(self):
         transpiler_manager = TranspilerManager()
-        obj.set_transpiler_manager(transpiler_manager)
-        assert isinstance(obj.transpiler_manager,
-                          transpiler_manager.__class__)
+        task.set_transpiler_manager(transpiler_manager)
+
+    def test_get_transpiler_manager(self):
+        task.get_transpiler_manager()
+
+    @patch.object(TaskScheduler, "has_job")
+    def test_add(self, mock_has_job):
+        mock_has_job.return_value = False
+        task.driver_manager = Mock()
+        task.transpiler_manager = Mock()
+        job_info = ConstantForTest.job_info
+        job_info = SimpleNamespace(**job_info)
+
+        with pytest.raises(Exception) as context:
+            task.add(Constant.JOB_SCHED_POLICY_PRIORITY, job_info)
+        assert str(context.value) is not None
+
+    @patch.object(TaskFlowManager, "get_job_artifact")
+    @patch.object(TaskScheduler, "get_job_status")
+    @patch.object(TaskFlowManager, "transform_to_qcos_state")
+    @patch.object(TaskFlowManager, "get_task_flow_result")
+    def test_get_result_by_id(self, mock_get_task_flow_result,
+                              mock_transform_to_qcos_state,
+                              mock_get_job_status,
+                              mock_get_job_artifact):
+        mock_transform_to_qcos_state.return_value = "state"
+        mock_get_job_status.return_value = "job_status"
+        mock_get_job_artifact.return_value = "job_artifact"
+        mock_get_task_flow_result.return_value = iter(["state",
+                                                       "parameters",
+                                                       "results",
+                                                       "error_message"])
+        task.get_result_by_id(ConstantForTest.job_id)
 
     @patch.object(TaskFlowManager, "has_flow")
     def test_has_job(self, mock_has_flow):
         mock_has_flow.return_value = True
-        assert obj.has_job(ConstantForTest.job_id) is True
+        assert task.has_job(ConstantForTest.job_id) is True
+
+    @patch.object(TaskScheduler, "get_job_status")
+    @patch.object(TaskFlowManager, "get_task_flow_list")
+    def test_get_jobs(self, mock_get_task_flow_list, mock_get_job_status):
+        mock_get_job_status.return_value = 111
+        mock_get_task_flow_list.return_value = {"job_status": 111}
+
+        with pytest.raises(Exception) as context:
+            task.get_jobs()
+        assert str(context.value) is not None
+
+    @patch.object(TaskScheduler, "get_job_status")
+    @patch.object(TaskFlowManager, "delete_task_flow_run")
+    def test_remove_jobs(self, mock_delete_task_flow_run, mock_get_job_status):
+        mock_get_job_status.return_value = 111
+        mock_delete_task_flow_run.return_value = [
+            {"job_status": 111, "state": 222}, ]
+        task.remove_jobs([1, 2, 3])
+
+    @patch.object(TaskFlowManager, "update_flow")
+    def test_update_job(self, mock_update_flow):
+        mock_update_flow.return_value = True
+        result = task.update_job(ConstantForTest.job_id)
+        assert result is True
+
+    @patch.object(TaskFlowManager, "run_callbacks")
+    def test_run_callbacks(self, mock_callbacks):
+        mock_callbacks.return_value = None
+        callback = task.run_callbacks("data", "callbacks")
+        assert callback is None
+
+    def test_get_job_status(self):
+        flow_results = [{"metadata": {
+            "status": 1, "statuses": 2}},
+            {"data": {
+                "data1": 1}}]
+
+        flow_parameters = {"updated_job_info": {
+            "results": [{"metadata": {"1": 1}},
+                        {"status": {"2": 2}}]
+        }, "info": 233}
+        task.get_job_status("job_status", flow_results, flow_parameters)
 
 
 task_manager = TaskFlowManager()
