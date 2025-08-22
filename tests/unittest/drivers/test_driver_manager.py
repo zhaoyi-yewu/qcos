@@ -15,6 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ---------------------------------------------------------------------
 
+from unittest.mock import patch
+
+from qcos.common.library import Library
 from qcos.drivers.driver_manager import DriverManager
 
 obj = DriverManager()
@@ -22,7 +25,9 @@ obj = DriverManager()
 
 class TestDriverManager:
 
-    def test_load_drivers(self):
+    @patch.object(Library, "import_classes")
+    def test_load_drivers(self, mock_import_classes):
+        mock_import_classes.return_value = {}
         assert obj.load_drivers() is None
 
     def test_init_drivers(self):

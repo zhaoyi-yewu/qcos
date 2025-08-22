@@ -199,9 +199,8 @@ class Library:
         classes = {}
         for (module_loader, name, is_pkg) in pkgutil.iter_modules([pkg_dir]):
             module_path = module_loader.path.replace(base_dir, "")
-            module_path = module_path.replace('\\', '.')
             module_name = (f"{base_module_name}"
-                           f"{module_path}.{name}")
+                           f"{module_path.replace('/', '.')}.{name}")
             module = importlib.import_module(module_name)
             for _, obj in inspect.getmembers(module):
                 if inspect.isclass(obj):

@@ -92,14 +92,14 @@ class TestDriverHanyuan1:
         assert obj.print_api_response("156", "no reason", "edit") is None
 
     def test_check_task_status(self):
-        assert obj.check_task_status("1", []) is False
+        assert obj.check_task_status("1", 1, []) is False
 
     def test_get_task_results(self):
-        success, err_msg, result = obj.get_task_results("1")
+        success, err_msg, result = obj.get_task_results("1", 1)
         assert success == True
 
-    def test_submit_task_results(self):
-        obj.submit_task("1", 5, [], "gate_sequence", 10)
+    def test_submit_task(self):
+        obj.submit_task("1", 5, [], "gate_sequence", 10, 1)
 
     @patch.object(Library, "call_http_api")
     def test_call_json_rpc(self, mock_call_http_api):

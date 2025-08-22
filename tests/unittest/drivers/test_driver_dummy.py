@@ -18,7 +18,7 @@
 from unittest.mock import patch
 
 from qcos.common.library import Library
-from qcos.drivers.driver_dummy import DriverDummy
+from qcos.drivers.dummy.driver_dummy import DriverDummy
 
 obj = DriverDummy()
 
