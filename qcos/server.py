@@ -29,6 +29,7 @@ from qcos.api.fastapi_server import app
 from qcos.common import errors
 from qcos.common.config import Config
 from qcos.common.library import Library
+from qcos.drivers.device_manager import DeviceManager
 from qcos.drivers.driver_manager import DriverManager
 from qcos.log.logger import init_logger
 from qcos.task_manager import scheduler
@@ -111,6 +112,9 @@ class Server:
                                               pattern="*.toml",recursive=True)
             for config_file in config_files:
                 Config.parse_toml_file(config_file, extra_config=True)
+
+        # validate Config
+        Config.validate()
 
         # read command line arguments and override configs
         if args.daemon:
@@ -210,18 +214,25 @@ class Server:
             server = uvicorn.Server(config)
 
             # init plugin and drivers
+            # init and load drivers
             driver_manager = DriverManager()
             driver_manager.load_drivers()
             driver_manager.init_drivers()
 
-            # init transpilers
+            # init and load transpilers
             transpiler_manager = TranspilerManager()
             transpiler_manager.load_transpilers()
             transpiler_manager.init_transpilers()
 
-            # set driver manager and transpiler in scheduler
+            # init and load devices
+            device_manager = DeviceManager(Config, driver_manager)
+            device_manager.load_devices()
+            device_manager.init_devices()
+
+            # set driver manager, transpiler in scheduler and device manager
             scheduler.set_driver_manager(driver_manager)
             scheduler.set_transpiler_manager(transpiler_manager)
+            scheduler.set_device_manager(device_manager)
 
             # run forever
             loop.run_until_complete(server.serve())

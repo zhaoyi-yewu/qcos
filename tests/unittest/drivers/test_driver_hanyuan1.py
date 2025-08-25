@@ -34,12 +34,13 @@ class TestDriverHanyuan1:
 
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs(self, mock_validate_schema):
+        configs = {}
         mock_validate_schema.return_value = iter([True, ''])
-        success, err_msg = obj.validate_driver_configs()
+        success, err_msg = obj.validate_driver_configs(configs)
         assert success == True
 
         mock_validate_schema.return_value = iter([False, ''])
-        success, err_msg = obj.validate_driver_configs()
+        success, err_msg = obj.validate_driver_configs(configs)
         assert success == False
 
     @patch.object(DriverHanyuan1, "get_task_results")

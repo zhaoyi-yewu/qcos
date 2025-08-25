@@ -1,6 +1,9 @@
-[DriverDummy]
+[dummy]
+alias_name = "空载测试设备"
+driver = "DriverDummy"
+description = "空载测试设备(dummy)"
 
-[DriverDummy.qpu_configs]
+[dummy.transpiler.qpu_configs]
 # Samples
 qubits = 6
 storage_area = ["S27", "S28", "S29", "S35", "S36", "S37"]
@@ -34,7 +37,7 @@ closest.P36 = "S36"
 closest.P29 = "S29"
 closest.P37 = "S37"
 
-[DriverDummy.decomposition_rule]
+[dummy.transpiler.decomposition_rule]
 # Samples
 u3.params = ["a", "b", "c"]
 u3.gates = [

@@ -26,7 +26,8 @@ from pydantic import ValidationError
 from uvicorn.main import Server as UvicornServer
 
 from qcos.api.posiq.routes_jsonrpc.routes import (
-    base_api, device_api_v1, job_api_v1, system_api_v1)
+    base_api, driver_api_v1, device_api_v1, transpiler_api_v1,
+    job_api_v1, system_api_v1)
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,9 @@ app.add_middleware(
     allow_headers=["*"]
 )
 app.bind_entrypoint(base_api)
+app.bind_entrypoint(driver_api_v1)
 app.bind_entrypoint(device_api_v1)
+app.bind_entrypoint(transpiler_api_v1)
 app.bind_entrypoint(job_api_v1)
 app.bind_entrypoint(system_api_v1)
 

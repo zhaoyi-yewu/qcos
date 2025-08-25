@@ -20,6 +20,7 @@ import os
 
 from qcos.common.constant import Constant
 from qcos.common.library import Library
+from qcos.drivers.device import Device
 from qcos.drivers.driver_base import DriverBase
 
 
@@ -50,26 +51,20 @@ class DriverManager:
             for class_name, _class, in classes.items():
                 logger.info(f"Loading driver: {class_name}")
                 class_instance = _class()
-                if not class_instance.enable:
-                    logger.warning(f"driver: {class_name} is disabled")
-                name = class_instance.get_name()
+                name = class_name
                 self.drivers[name] = class_instance
                 Constant.DRIVERS.add(name)
                 class_instance.set_module_name(_class.__module__)
                 class_instance.set_class_name(_class.__qualname__)
+                class_instance.set_name(class_name)
 
     def init_drivers(self):
         """
         Init drivers
         """
         for driver_name, driver in self.drivers.items():
-            # Load driver configs
-            driver.load_driver_configs()
             # Validate driver
             success, err_msg = driver.validate_driver()
-            if success:
-                # Validate driver configs
-                success, err_msg = driver.validate_driver_configs()
             if success:
                 # Init driver
                 driver.init_driver()
@@ -77,7 +72,7 @@ class DriverManager:
                 logger.error(f"Driver: {driver_name} is disabled. "
                              f"Error message: {err_msg}")
                 driver.enable = False
-                driver.set_status(driver.DRIVER_STATUS_OFFLINE)
+                driver.set_device_status(Device.DEVICE_STATUS_OFFLINE)
             # Show driver info
             logger.info(f"\n{driver.get_driver_info()}")
 
@@ -100,7 +95,7 @@ class DriverManager:
 
     def get_drivers(self):
         """
-        Get all drivers
+        Get drivers
 
         :return: dict of drivers
         """

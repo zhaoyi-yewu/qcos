@@ -46,10 +46,13 @@ def version(
     drivers = driver_manager.get_drivers()
     transpiler_manager = scheduler.get_transpiler_manager()
     for driver_name, driver in drivers.items():
-        driver_alias_name = driver.get_alias_name()
         driver_name_mapping[driver_name] = {
-            "alias_name": driver_alias_name
+            "enable_transpiler": driver.enable_transpiler,
+            "supported_code_types": driver.get_supported_code_types(),
+            "description": driver.get_description()
         }
+        if driver_name not in driver_transpiler_mappings:
+            driver_transpiler_mappings[driver_name] = set()
         transpiler_names = driver.get_supported_transpilers()
         for transpiler_name in transpiler_names:
             if transpiler_name not in transpiler_name_mappings:
@@ -60,8 +63,6 @@ def version(
                     "alias_name": transpiler_alias_name,
                     "supported_code_types": supported_code_types
                 }
-            if driver_name not in driver_transpiler_mappings:
-                driver_transpiler_mappings[driver_name] = set()
             driver_transpiler_mappings[driver_name].add(transpiler_name)
 
     capabilities = {
@@ -69,7 +70,8 @@ def version(
         "job_sched_policy": Constant.JOB_SCHED_POLICIES,
         "drivers": driver_name_mapping,
         "transpilers": transpiler_name_mappings,
-        "profiling": Constant.PROFILING_TYPES,
+        "tech_types": Constant.TECH_TYPE_INFO,
+        "profiling": Constant.PROFILING_INFO,
         "driver_transpiler_mappings": driver_transpiler_mappings
     }
 

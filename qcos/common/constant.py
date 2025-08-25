@@ -122,6 +122,14 @@ class Constant:
     TECH_TYPE_SUPERCONDUCTING = "superconducting"
     TECH_TYPE_PHOTON = "photon"
     TECH_TYPE_GENERIC_SIMULATOR = "generic_simulator"
+    TECH_TYPE_INFO = {
+        TECH_TYPE_NONE: {"alias_name": "无"},
+        TECH_TYPE_NEUTRAL_ATOM: {"alias_name": "中性原子"},
+        TECH_TYPE_ION_TRAP: {"alias_name": "离子阱"},
+        TECH_TYPE_SUPERCONDUCTING: {"alias_name": "超导"},
+        TECH_TYPE_PHOTON: {"alias_name": "光量子"},
+        TECH_TYPE_GENERIC_SIMULATOR: {"alias_name": "通用量子模拟器"}
+    }
 
     # Job types
     JOB_TYPE_SAMPLING = "sampling"
@@ -166,6 +174,14 @@ class Constant:
                        PROFILING_TYPE_DRIVER_PARSE,
                        PROFILING_TYPE_DRIVER_TRANSPILE,
                        PROFILING_TYPE_DRIVER_RUN]
+    PROFILING_INFO = {
+        PROFILING_TYPE_ALL: {"alias_name": "所有模块耗时"},
+        PROFILING_TYPE_JOB: {"alias_name": "作业耗时"},
+        PROFILING_TYPE_SCHEDULE: {"alias_name": "调度器耗时"},
+        PROFILING_TYPE_DRIVER_PARSE: {"alias_name": "代码解析耗时"},
+        PROFILING_TYPE_DRIVER_TRANSPILE: {"alias_name": "转译器耗时"},
+        PROFILING_TYPE_DRIVER_RUN: {"alias_name": "后端运行耗时"}
+    }
 
     # Callback types
     CALLBACK_TYPE_RESULTS = "results"

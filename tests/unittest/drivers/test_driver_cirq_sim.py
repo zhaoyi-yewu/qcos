@@ -25,7 +25,8 @@ class TestDriverCirqSim:
         assert obj.init_driver() is None
 
     def test_validate_driver_configs(self):
-        success, err_msg = obj.validate_driver_configs()
+        configs = {}
+        success, err_msg = obj.validate_driver_configs(configs)
         assert success is True
 
     def test_close_driver(self):

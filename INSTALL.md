@@ -173,10 +173,17 @@ qcos-cli ping 123
 * 服务端版本请求命令
 qcos-cli version
 
+[驱动命令]
+* 获取所有驱动信息列表
+qcos-cli list-drivers
+
+* 获取驱动信息详情
+qcos-cli get-driver DriverDummy
+
 [设备命令]
-* 获取所有设备驱动信息列表
+* 获取所有设备信息列表
 qcos-cli list-devices
 
-* 获取设备驱动信息详情
+* 获取设备信息详情
 qcos-cli get-device dummy
 ```

@@ -25,6 +25,7 @@ from jsonrpcclient import request
 
 from qcos.common.constant import Constant, HttpMethod, HttpCode
 from qcos.common.library import Library
+from qcos.drivers.device import Device
 from qcos.drivers.driver_base import DriverBase
 
 
@@ -47,8 +48,8 @@ class DriverHanyuan1(DriverBase):
     def __init__(self):
         super().__init__()
         self.version = "0.0.1"
-        self.name = "hanyuan1"
-        self.alias_name = "中科酷原-汉原1"
+        self.alias_name = "中科酷原-汉原1 中性原子驱动"
+        self.description = "中科酷原-汉原1 中性原子驱动"
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
@@ -74,16 +75,15 @@ class DriverHanyuan1(DriverBase):
         """
         Init driver
         """
-        self.set_status(self.DRIVER_STATUS_ONLINE)
+        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
-    def validate_driver_configs(self):
+    def validate_driver_configs(self, configs):
         """
-        Validate driver configurations
+        Validate driver configs
 
         :return bool: True if successful, False otherwise
         :return err_msg: error message
         """
-        # TODO(zhaoyi): load transpiler plugin, and implemented in transpiler
         success = True
         err_msg = None
 
@@ -92,42 +92,43 @@ class DriverHanyuan1(DriverBase):
             "ip_address": str,
             "port": int,
             "callback_baseurl": str,
-            "qpu_configs": {
-                "qubits": int,
-                "storage_area": [str],
-                "operate_area": [str],
-                "coupler_map": {str: [str]},
-                "readout_error": {str: Or(float, int)},
-                Optional("coupler_error"): {str: Or(float, int)},
-                Optional("closest"): {str: str}
-            },
-            Optional("decomposition_rule"): {
-                str: {
-                    "gates": [list],
-                    Optional("params"): [str]
+            "transpiler": {
+                "qpu_configs": {
+                    "qubits": int,
+                    "storage_area": [str],
+                    "operate_area": [str],
+                    "coupler_map": {str: [str]},
+                    "readout_error": {str: Or(float, int)},
+                    Optional("coupler_error"): {str: Or(float, int)},
+                    Optional("closest"): {str: str}
+                },
+                Optional("decomposition_rule"): {
+                    str: {
+                        "gates": [list],
+                        Optional("params"): [str]
+                    }
                 }
             }
         }
         _success, err_msgs = Library.validate_schema(
-            self.extra_configs, driver_config_schema)
+            configs, driver_config_schema)
         if not _success:
-            _err_msg = "\n".join(err_msgs)
-            err_msg = f"driver config file error: {_err_msg}"
+            err_msg = f"driver config file error: {err_msgs}"
             success = False
         else:
             # copy configs to self.qpu_configs
             self.qpu_configs = copy.deepcopy(
-                self.extra_configs.get("qpu_configs", {}))
+                configs.get("qpu_configs", {}))
             # copy configs to self.decomposition_rule
             self.decomposition_rule = copy.deepcopy(
-                self.extra_configs.get("decomposition_rule", {}))
+                configs.get("decomposition_rule", {}))
         return success, err_msg
 
     def close_driver(self):
         """
         Close driver
         """
-        self.set_status(self.DRIVER_STATUS_OFFLINE)
+        self.set_device_status(Device.DEVICE_STATUS_OFFLINE)
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
         """
@@ -146,7 +147,7 @@ class DriverHanyuan1(DriverBase):
             f"data_type: {data_type}, data: {data}")
 
         self.set_progress_by_task(self.TASK_STAGE_START)
-        self.set_status(self.DRIVER_STATUS_BUSY)
+        self.set_device_status(Device.DEVICE_STATUS_BUSY)
         gates_list = data["transpile_results"]
         extra_configs = self.get_extra_configs()
         ip_address = extra_configs.get(
@@ -184,7 +185,7 @@ class DriverHanyuan1(DriverBase):
                              f"{err_msg}")
 
         self.set_results(job_id, data_index, results=results)
-        self.set_status(self.DRIVER_STATUS_ONLINE)
+        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def init_task(self, ip_address: str, port: int):

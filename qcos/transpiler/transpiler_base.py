@@ -33,7 +33,7 @@ class TranspilerBase:
         self._class_name = None
         # enable this transpiler or not
         self.enable = True
-        # num qubits
+        # total num of qubits
         self.total_qubits = -1
         # supported code types
         self.supported_code_types = []

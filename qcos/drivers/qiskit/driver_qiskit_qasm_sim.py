@@ -18,8 +18,8 @@
 from loguru import logger
 from qiskit_aer import QasmSimulator
 
-from qcos.common.constant import Constant, HttpMethod
-from qcos.common.library import Library
+from qcos.common.constant import Constant
+from qcos.drivers.device import Device
 from qcos.drivers.driver_base import DriverBase
 
 
@@ -33,8 +33,8 @@ class DriverQiskitQasmSim(DriverBase):
     def __init__(self):
         super().__init__()
         self.version = "0.0.1"
-        self.name = "qiskit-qasm-sim"
-        self.alias_name = "IBM-Qiskit-QASM模拟器"
+        self.alias_name = "Qiskit Qasm 模拟器驱动"
+        self.description = "Qiskit Qasm 模拟器驱动"
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_QISKIT
         self.tech_type = Constant.TECH_TYPE_GENERIC_SIMULATOR
@@ -51,9 +51,15 @@ class DriverQiskitQasmSim(DriverBase):
         """
         Init driver
         """
-        self.set_status(self.DRIVER_STATUS_ONLINE)
+        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
-    def validate_driver_configs(self):
+    def validate_driver_configs(self, configs):
+        """
+        Validate driver configs
+
+        :return bool: True if successful, False otherwise
+        :return err_msg: error message
+        """
         success = True
         err_msg = None
         return success, err_msg
@@ -62,7 +68,7 @@ class DriverQiskitQasmSim(DriverBase):
         """
         Close driver
         """
-        self.set_status(self.DRIVER_STATUS_OFFLINE)
+        self.set_device_status(Device.DEVICE_STATUS_OFFLINE)
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
         """
@@ -80,12 +86,12 @@ class DriverQiskitQasmSim(DriverBase):
             f"data_type: {data_type}, data: {data}")
 
         self.set_progress_by_task(self.TASK_STAGE_START)
-        self.set_status(self.DRIVER_STATUS_BUSY)
+        self.set_device_status(Device.DEVICE_STATUS_BUSY)
 
         transpile_results = data["transpile_results"]
         simulator = QasmSimulator()
         result = simulator.run(transpile_results, shots=shots).result()
 
         self.set_results(job_id, data_index, results=result.get_counts())
-        self.set_status(self.DRIVER_STATUS_ONLINE)
+        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)

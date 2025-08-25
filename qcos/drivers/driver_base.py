@@ -17,9 +17,9 @@
 
 import logging
 
-from qcos.common.config import Config
 from qcos.common.constant import Constant
 from qcos.common.library import Library
+from qcos.drivers.device import Device
 
 
 logger = logging.getLogger(__name__)
@@ -29,18 +29,6 @@ class DriverBase:
     """
     Quantum Computer base driver
     """
-
-    # Driver status
-    DRIVER_STATUS_ONLINE = "online"
-    DRIVER_STATUS_OFFLINE = "offline"
-    DRIVER_STATUS_BUSY = "busy"
-    DRIVER_STATUS_UNKNOWN = "unknown"
-    DRIVER_STATUSES = [
-        DRIVER_STATUS_ONLINE,
-        DRIVER_STATUS_OFFLINE,
-        DRIVER_STATUS_BUSY,
-        DRIVER_STATUS_UNKNOWN
-    ]
 
     # Data types
     DATA_TYPE_GATE_SEQUENCE = "gate_sequence"
@@ -70,15 +58,12 @@ class DriverBase:
         self.name = None
         # driver alias name
         self.alias_name = None
+        # description
+        self.description = None
         # module name
         self._module_name = None
         # class name
         self._class_name = None
-        # enable this driver or not
-        self.enable = True
-        # driver status
-        # TODO(zhaoyi): device property
-        self._status = self.DRIVER_STATUS_OFFLINE
         # enable transpiler or not
         self.enable_transpiler = True
         # transpiler type
@@ -95,26 +80,25 @@ class DriverBase:
         self.supported_basis_gates = None
         # supported transpilers
         self.supported_transpilers = []
+
         # task stage to track progress
         # task stages and percentages
         self.task_stages = {
             self.TASK_STAGE_START: 0,
+            self.TASK_STAGE_WAIT_TASK: 50,
             self.TASK_STAGE_COMPLETE: 100
         }
-        # progress
-        self.progress = 0
-        # qpu configs
-        # TODO(zhaoyi): device property
-        self.qpu_configs = None
-        # decomposition rule
-        self.decomposition_rule = None
-        # extra_configs, usually from driver config files
-        # TODO(zhaoyi): device property
-        self.extra_configs = {}
-        # results from run(), which fetches the results from quantum computer
-        # format: {JOB_ID: {"results": RESULTS}}
-        # TODO(zhaoyi): device property
-        self._results = {}
+
+        # job runtime data
+        self.job_runtime_data = {
+            "run_progress": 0,
+            "device_status": Device.DEVICE_STATUS_UNKNOWN,
+            "configs": None,
+            # results from run(): fetches the results from quantum computer
+            # format: {JOB_ID: {"results": RESULTS}}
+            "results": {}
+        }
+
         # measurement results fetch mode
         self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
         # default data type in run()
@@ -123,13 +107,6 @@ class DriverBase:
         self.driver_options = {}
         # driver_options schema
         self.driver_options_schema = None
-
-    def load_driver_configs(self):
-        """
-        Load driver configs
-        """
-        self.extra_configs = Config.EXTRA_CONFIGS.get(
-            self.__class__.__name__, {})
 
     def validate_driver(self):
         """
@@ -147,21 +124,16 @@ class DriverBase:
                             "when driver.enable_transpiler=False")
         return success, "\n".join(err_msgs)
 
-    def validate_driver_configs(self):
+    def validate_driver_configs(self, configs):
         """
         Validate driver configs
+
+        :return bool: True if successful, False otherwise
+        :return err_msg: error message
         """
         raise NotImplementedError(
             f"Driver: {self.__class__.__name__} "
             f"must implement method: validate_driver_configs")
-
-    def get_extra_configs(self):
-        """
-        Get extra configs
-
-        :return: dict of extra configs
-        """
-        return self.extra_configs
 
     def init_driver(self):
         """
@@ -199,18 +171,15 @@ class DriverBase:
         """
         show_list = [
             f"[{self.__class__.__name__}]",
-            f"driver_name: {self.name}",
+            f"name: {self.name}",
+            f"alias_name: {self.alias_name}",
+            f"description: {self.get_description()}",
             f"version: {self.version}",
-            f"enable: {self.enable}",
-            f"status: {self._status}",
             f"enable_transpiler: {self.enable_transpiler}",
             f"transpiler: {self.transpiler}",
             f"enable_circuit_aggregation: {self.enable_circuit_aggregation}",
             f"results_fetch_mode: {self.results_fetch_mode}",
-            f"max_qubits: {self.max_qubits}",
-            f"qpu_configs: {self.qpu_configs}",
-            f"decomposition_rule: {self.decomposition_rule}",
-            f"extra_configs: {self.extra_configs}"
+            f"max_qubits: {self.max_qubits}"
         ]
         return "\n".join(show_list)
 
@@ -230,6 +199,14 @@ class DriverBase:
         """
         return self.name
 
+    def set_alias_name(self, alias_name):
+        """
+        Set driver alias name
+
+        :param alias_name: alias_name
+        """
+        self.alias_name = alias_name
+
     def get_alias_name(self):
         """
         Get driver alias name
@@ -237,6 +214,16 @@ class DriverBase:
         :return: driver alias name
         """
         return self.alias_name
+
+    def get_description(self):
+        """
+        Get driver description
+
+        :return: description
+        """
+        if self.description is None:
+            return Library.get_brief_description(self.__doc__)
+        return self.description
 
     def set_module_name(self, module_name):
         """
@@ -269,25 +256,6 @@ class DriverBase:
         :return: class name
         """
         return self._class_name
-
-    def set_status(self, status):
-        """
-        Set driver status
-
-        :param status: driver status
-        """
-        if status not in self.DRIVER_STATUSES:
-            logger.warning(f"Failed to set driver status: '{status}'."
-                           f"valid statuses: {', '.join(self.DRIVER_STATUSES)}"
-                           )
-            return
-        self._status = status
-
-    def get_status(self):
-        """
-        Get driver status
-        """
-        return self._status
 
     def get_transpiler(self):
         """
@@ -325,7 +293,7 @@ class DriverBase:
 
         :param progress: progress percentage in integer between 0 and 100
         """
-        self.progress = progress
+        self.job_runtime_data["run_progress"] = progress
 
     def set_progress_by_task(self, task_name):
         """
@@ -335,7 +303,7 @@ class DriverBase:
         """
         progress = self.task_stages.get(task_name, None)
         if progress is not None:
-            self.progress = progress
+            self.job_runtime_data["run_progress"] = progress
 
     def get_progress(self):
         """
@@ -343,19 +311,31 @@ class DriverBase:
 
         :return: progress percentage in integer between 0 and 100
         """
-        return self.progress
+        return self.job_runtime_data["run_progress"]
 
-    def get_qpu_configs(self):
+    def set_device_status(self, device_status):
         """
-        Get qpu configs
-        """
-        return self.qpu_configs
+        Set device status
 
-    def get_decomposition_rule(self):
+        :param device_status: device status
         """
-        Get decomposition rule
+        self.job_runtime_data["device_status"] = device_status
+
+    def set_configs(self, configs):
         """
-        return self.decomposition_rule
+        Set configs
+
+        :param configs: configs
+        """
+        self.job_runtime_data["configs"] = configs
+
+    def get_configs(self):
+        """
+        Get configs
+
+        :return: configs
+        """
+        return self.job_runtime_data["configs"]
 
     def run(self, job_id, num_qubits, data,
             data_type=DATA_TYPE_GATE_SEQUENCE, shots=1):
@@ -391,6 +371,14 @@ class DriverBase:
         result = self.get_fake_results(num_qubits, shots, data)
         self.set_results(job_id, data_index, results=result)
 
+    def run_cancel(self, job_id):
+        """
+        Cancel running job in driver.
+        Driver should clean up any resources of the job
+
+        :param job_id: job ID
+        """
+
     def set_results(self, job_id, data_index, results):
         """
         Set job results
@@ -399,9 +387,9 @@ class DriverBase:
         :param data_index: code index
         :param results: results
         """
-        if job_id not in self._results:
-            self._results[job_id] = {}
-        self._results[job_id][data_index] = results
+        if job_id not in self.job_runtime_data["results"]:
+            self.job_runtime_data["results"][job_id] = {}
+        self.job_runtime_data["results"][job_id][data_index] = results
 
     def get_results(self, job_id=None, data_index=None):
         """
@@ -414,10 +402,11 @@ class DriverBase:
         if job_id is not None:
             if data_index is not None:
                 return Library.get_nested_dict_value(
-                    self._results, job_id, data_index, default=None)
+                    self.job_runtime_data["results"],
+                    job_id, data_index, default=None)
             return Library.get_nested_dict_value(
-                self._results, job_id, default=None)
-        return self._results
+                self.job_runtime_data["results"], job_id, default=None)
+        return self.job_runtime_data["results"]
 
     def get_default_data_type(self):
         """

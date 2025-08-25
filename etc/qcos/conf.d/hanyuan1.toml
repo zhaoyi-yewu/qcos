@@ -1,9 +1,13 @@
-[DriverHanyuan1]
+[hanyuan1]
+alias_name = "中科酷原-汉原1"
+driver = "DriverHanyuan1"
+description = "中科酷原-汉原1(hanyuan1)"
+
 ip_address = "127.0.0.1"
 port = 18402
 callback_baseurl = "http://127.0.0.1"
 
-[DriverHanyuan1.qpu_configs]
+[hanyuan1.transpiler.qpu_configs]
 qubits = 6
 storage_area = ["S27", "S28", "S29", "S35", "S36", "S37"]
 operate_area = ["P27", "P28", "P29", "P35", "P36", "P37"]

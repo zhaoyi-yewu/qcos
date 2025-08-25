@@ -43,6 +43,7 @@ class TaskScheduler(ABC):
         )
         self.driver_manager = None
         self.transpiler_manager = None
+        self.device_manager = None
 
     def start_taskmanager(self):
         """
@@ -86,6 +87,24 @@ class TaskScheduler(ABC):
         """
         return self.transpiler_manager
 
+    def set_device_manager(self, device_manager):
+        """
+        Set device manager
+
+        :param device_manager: device manager
+        """
+
+        self.device_manager = device_manager
+        self._task_manager.set_device_manager(device_manager)
+
+    def get_device_manager(self):
+        """
+        Get device manager
+
+        :return: device manager
+        """
+        return self.device_manager
+
     def add(self, policy_type, job_info):
         """
         Add job to scheduler, scheduler will get policy handler by policy_type,
@@ -103,18 +122,19 @@ class TaskScheduler(ABC):
 
         # get driver info
         backend = job_info.backend
-        driver = self.driver_manager.get_driver(backend)
-        if not driver:
+        device = self.device_manager.get_device(backend)
+        if not device:
             err_msg = f"Backend: '{backend}' is not found"
             logger.error(err_msg)
             return None, f"Execute work flow failed: {err_msg}"
-        if not driver.enable:
+        if not device.enable:
             err_msg = f"Backend driver: {backend} is disabled"
             logger.error(err_msg)
             return None, f"Execute work flow failed: {err_msg}"
+        driver = device.get_driver()
         driver_module_name = driver.get_module_name()
         driver_class_name = driver.get_class_name()
-        extra_configs = driver.get_extra_configs()
+        extra_configs = device.get_configs()
 
         # get transpiler options
         transpiler_module_name = None
@@ -135,13 +155,16 @@ class TaskScheduler(ABC):
             job_json_info["data"] = job_info.model_dump()
             job_json_info["driver"] = {
                 "module_name": driver_module_name,
-                "class_name": driver_class_name,
-                "extra_configs": extra_configs
+                "class_name": driver_class_name
             }
             job_json_info["transpiler"] = {
                 "module_name": transpiler_module_name,
                 "class_name": transpiler_class_name
             }
+            job_json_info["device"] = {
+                "configs": device.get_configs()
+            }
+
             job_id = policy_handler.exec_task(flow_info, job_json_info)
             res = {"job_id": job_id}
             return res, None
@@ -218,6 +241,21 @@ class TaskScheduler(ABC):
         """
 
         flow_list = self._task_manager.delete_task_flow_run(ids)
+        for flow in flow_list:
+            flow["job_status"] = self.get_job_status(
+                flow["state"], None, None)
+        return flow_list
+
+    def cancel_jobs(self, ids):
+        """
+        Cancel jobs
+
+        :param ids: job id list
+        :return flow_list: flow list
+        :return error: error
+        """
+
+        flow_list = self._task_manager.cancel_task_flow_run(ids)
         for flow in flow_list:
             flow["job_status"] = self.get_job_status(
                 flow["state"], None, None)

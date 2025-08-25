@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------
 
 import logging
-from typing import List
+from typing import Dict
 
 from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
@@ -28,49 +28,36 @@ logger = logging.getLogger(__name__)
 module_name = "DEVICE"
 
 
-def _get_device_info(driver_info, transpiler):
+def _get_device_info(device_info):
     """
     Get device info
 
-    :param driver_info: driver_info
-    :param transpiler: transpiler instance
+    :param device_info: device info
     :return: device_info
     """
 
-    supported_code_types = None
-    if transpiler:
-        supported_code_types = transpiler.get_supported_code_types()
-    else:
-        supported_code_types = driver_info.get_supported_code_types()
-    device_info = {
-        "name": driver_info.name,
-        "version": driver_info.version,
-        "driver": driver_info.get_class_name(),
-        "description": Library.get_brief_description(driver_info.__doc__),
-        "enable": driver_info.enable,
-        "status": driver_info.get_status(),
-        "tech_type": driver_info.tech_type,
-        "max_qubits": driver_info.get_max_qubits(),
-        "transpiler": driver_info.get_transpiler(),
-        "enable_transpiler": driver_info.enable_transpiler,
-        "supported_transpilers": driver_info.supported_transpilers,
-        "enable_circuit_aggregation": driver_info.enable_circuit_aggregation,
-        "supported_code_types": supported_code_types,
-        "supported_basis_gates": driver_info.get_supported_basis_gates(),
-        "results_fetch_mode": driver_info.results_fetch_mode,
-        # replace pwd in extra_configs to ********
-        "extra_configs": Library.update_dict(driver_info.extra_configs,
-                                             {"password": "*" * 8})
+    # replace pwd in extra_configs to ********
+    configs = device_info.configs
+    Library.update_dict(configs,
+                        {"password": "*" * 8})
+    _device_info = {
+        "name": device_info.name,
+        "alias_name": device_info.alias_name,
+        "description": device_info.description,
+        "driver_name": device_info.driver.get_name(),
+        "enable": device_info.enable,
+        "status": device_info.status,
+        "configs": configs,
     }
-    return device_info
+    return _device_info
 
 
 @device_api_v1.method(errors=[])
 def get_devices(
         body: schemas.GetDevicesRequest = None
-) -> List[schemas.GetDeviceResponse]:
+) -> Dict[str, schemas.GetDeviceResponse]:
     """
-    Get device list request
+    Get device dict request
 
     :param body: message
     :type body: schemas.GetDevicesRequest
@@ -79,14 +66,11 @@ def get_devices(
     func_name = "get_devices"
     logger.info(f"Call {func_name}: {body}")
 
-    driver_manager = scheduler.get_driver_manager()
-    drivers = driver_manager.get_drivers()
-    response_info = []
-    for _, driver_info in sorted(drivers.items()):
-        transpiler_manager = scheduler.get_transpiler_manager()
-        transpiler = transpiler_manager.get_transpiler(driver_info.transpiler)
-        device_info = _get_device_info(driver_info, transpiler)
-        response_info.append(device_info)
+    device_manager = scheduler.get_device_manager()
+    devices = device_manager.get_devices()
+    response_info = {}
+    for device_name, device_info in sorted(devices.items()):
+        response_info[device_name] = _get_device_info(device_info)
     return response_info
 
 
@@ -104,17 +88,15 @@ def get_device(
     func_name = "get_device"
     logger.info(f"Call {func_name}: {body}")
 
-    driver_name = body.name
+    device_name = body.name
 
-    driver_manager = scheduler.get_driver_manager()
-    driver_info = driver_manager.get_driver(driver_name)
-    if not driver_info:
+    device_manager = scheduler.get_device_manager()
+    device_info = device_manager.get_device(device_name)
+    if not device_info:
         jsonrpc_errors.handle_error_not_found(
             module_name,
             func_name,
-            (False, f"Device: '{driver_name}' is not found")
+            (False, f"Device: '{device_name}' is not found")
         )
-    transpiler_manager = scheduler.get_transpiler_manager()
-    transpiler = transpiler_manager.get_transpiler(driver_info.transpiler)
-    response_info = _get_device_info(driver_info, transpiler)
+    response_info = _get_device_info(device_info)
     return response_info

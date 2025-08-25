@@ -41,7 +41,9 @@ class Client:
         base_endpoint_url = f"http://{api_listen_ip}:{api_port}"
         endpoint_url = f"{base_endpoint_url}/{api_version}"
         self.version_url = f"{base_endpoint_url}/version"
+        self.driver_url = f"{endpoint_url}/driver"
         self.device_url = f"{endpoint_url}/device"
+        self.transpiler_url = f"{endpoint_url}/transpiler"
         self.job_url = f"{endpoint_url}/job"
         self.system_url = f"{endpoint_url}/system"
 
@@ -126,6 +128,39 @@ class Client:
             self.version_url, method_name, {})
         return status_code, reason, text, result
 
+    # [Driver]
+    def get_drivers(self):
+        """
+        Get driver list
+
+        :return: Driver list message
+        """
+        method_name = "get_drivers"
+
+        # construct data and call json rpc
+        status_code, reason, text, result = Client.call_json_rpc(
+            self.driver_url, method_name, data=None)
+        return status_code, reason, text, result
+
+    def get_driver(self, driver_name):
+        """
+        Get driver info
+
+        :param driver_name: driver name
+        :return: driver info
+        """
+        method_name = "get_driver"
+
+        # construct data and call json rpc
+        data = {
+            "name": driver_name
+        }
+
+        # construct data and call json rpc
+        status_code, reason, text, result = Client.call_json_rpc(
+            self.driver_url, method_name, data)
+        return status_code, reason, text, result
+
     # [Device]
     def get_devices(self):
         """
@@ -140,23 +175,56 @@ class Client:
             self.device_url, method_name, data=None)
         return status_code, reason, text, result
 
-    def get_device(self, driver_name):
+    def get_device(self, device_name):
         """
         Get device info
 
-        :param driver_name: driver name
+        :param device_name: device name
         :return: device info
         """
         method_name = "get_device"
 
         # construct data and call json rpc
         data = {
-            "name": driver_name
+            "name": device_name
         }
 
         # construct data and call json rpc
         status_code, reason, text, result = Client.call_json_rpc(
             self.device_url, method_name, data)
+        return status_code, reason, text, result
+
+    # [Transpiler]
+    def get_transpilers(self):
+        """
+        Get transpiler list
+
+        :return: Transpiler list message
+        """
+        method_name = "get_transpilers"
+
+        # construct data and call json rpc
+        status_code, reason, text, result = Client.call_json_rpc(
+            self.transpiler_url, method_name, data=None)
+        return status_code, reason, text, result
+
+    def get_transpiler(self, transpiler_name):
+        """
+        Get transpiler info
+
+        :param transpiler_name: transpiler name
+        :return: transpiler info
+        """
+        method_name = "get_transpiler"
+
+        # construct data and call json rpc
+        data = {
+            "name": transpiler_name
+        }
+
+        # construct data and call json rpc
+        status_code, reason, text, result = Client.call_json_rpc(
+            self.transpiler_url, method_name, data)
         return status_code, reason, text, result
 
     # [System]

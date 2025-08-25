@@ -24,4 +24,6 @@ BASE_ENDPOINT = f"/{Config.API_VERSION}"
 base_api = jsonrpc.Entrypoint("")
 system_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/system")
 job_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/job")
+driver_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/driver")
 device_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/device")
+transpiler_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/transpiler")

@@ -20,38 +20,36 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class GetDevicesRequest(BaseModel):
+class GetTranspilersRequest(BaseModel):
     """
-    Get Devices Request
-    Pydantic Model for Get Devices Request
+    Get Transpilers Request
+    Pydantic Model for Get Transpilers Request
     """
 
 
-class GetDeviceRequest(BaseModel):
+class GetTranspilerRequest(BaseModel):
     """
-    Get Device Request
-    Pydantic Model for Get Device Request
+    Get Transpiler Request
+    Pydantic Model for Get Transpiler Request
     """
-    # device name
+    # transpiler name
     name: str = None
 
 
-class GetDeviceResponse(BaseModel):
+class GetTranspilerResponse(BaseModel):
     """
-    Get Device Response
-    Pydantic Model for Get Device Response
+    Get Transpiler Response
+    Pydantic Model for Get Transpiler Response
     """
-    # device name
+    # transpiler name
     name: str = None
-    # device alias name
+    # transpiler alias name
     alias_name: str = None
-    # description
-    description: Optional[str] = None
-    # driver name
-    driver_name: str = None
-    # device enable
-    enable: bool = None
-    # device status
-    status: str = None
-    # configs
-    configs: Optional[dict] = None
+    # enable this transpiler or not
+    enable: bool = True
+    # supported code types
+    supported_code_types: list = []
+    # transpiler_options
+    transpiler_options: Optional[dict] = None
+    # transpiler_options schema
+    transpiler_options_schema: Optional[dict] = None

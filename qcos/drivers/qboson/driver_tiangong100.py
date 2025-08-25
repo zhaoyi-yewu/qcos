@@ -26,6 +26,7 @@ from loguru import logger
 
 from qcos.common.constant import Constant, HttpCode, HttpMethod
 from qcos.common.library import Library
+from qcos.drivers.device import Device
 from qcos.drivers.driver_base import DriverBase
 
 
@@ -89,8 +90,8 @@ class DriverTiangong100(DriverBase):
     def __init__(self):
         super().__init__()
         self.version = "0.0.1"
-        self.name = "tiangong100"
-        self.alias_name = "玻色量子-天工100"
+        self.alias_name = "玻色量子-天工100 光量子伊辛机驱动"
+        self.description = "玻色量子-天工100 光量子伊辛机驱动"
         self.enable_transpiler = False
         self.tech_type = Constant.TECH_TYPE_PHOTON
         self.max_qubits = 100
@@ -126,13 +127,14 @@ class DriverTiangong100(DriverBase):
         curl -i -H "Accept: application/json" -H "Content-Type: application/json" -H "Authorization: JWT ${token}" http://127.0.0.1:8088/kdev/terminal/machine/
         # pylint: disable=line-too-long
         """
-        self.set_status(self.DRIVER_STATUS_ONLINE)
+        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
-    def validate_driver_configs(self):
+    def validate_driver_configs(self, configs):
         """
-        Validate driver configurations
+        Validate driver configs
 
-        :return success or fail, error message
+        :return bool: True if successful, False otherwise
+        :return err_msg: error message
         """
         success = True
         err_msg = None
@@ -146,7 +148,7 @@ class DriverTiangong100(DriverBase):
             "device_id": int
         }
         _success, err_msgs = Library.validate_schema(
-            self.extra_configs, driver_config_schema)
+            configs, driver_config_schema)
         if not _success:
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
@@ -158,7 +160,7 @@ class DriverTiangong100(DriverBase):
         Close driver
         """
         # pylint: disable=duplicate-code
-        self.set_status(self.DRIVER_STATUS_OFFLINE)
+        self.set_device_status(Device.DEVICE_STATUS_OFFLINE)
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
         """
@@ -177,8 +179,8 @@ class DriverTiangong100(DriverBase):
             f"data_type: {data_type}, data: {data}")
 
         self.set_progress_by_task(self.TASK_STAGE_START)
-        self.set_status(self.DRIVER_STATUS_BUSY)
-        extra_configs = self.get_extra_configs()
+        self.set_device_status(Device.DEVICE_STATUS_BUSY)
+        extra_configs = self.get_configs()
         project_id = extra_configs.get("project_id", 1)
         device_id = extra_configs.get("device_id", 1)
         username = extra_configs.get("username", "")
@@ -272,7 +274,7 @@ class DriverTiangong100(DriverBase):
 
         # 9. Save results and set driver status to ONLINE
         self.set_results(job_id, data_index, results=results)
-        self.set_status(self.DRIVER_STATUS_ONLINE)
+        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def user_auth(self, username, password):

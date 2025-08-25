@@ -43,8 +43,9 @@ class TestDriverBase:
         assert success == False
 
     def test_validate_driver_configs(self):
+        configs = {}
         with pytest.raises(NotImplementedError) as context:
-            obj.validate_driver_configs()
+            obj.validate_driver_configs(configs)
         assert (f"Driver: {obj.__class__.__name__} "
                 f"must implement method: validate_driver_configs"
                 in str(context.value))

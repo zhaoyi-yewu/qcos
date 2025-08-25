@@ -213,6 +213,10 @@ def submit_job(
         )
     )
 
+    # get device
+    device_manger = scheduler.get_device_manager()
+    devices = device_manger.get_devices()
+
     # validate: backend
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
@@ -220,32 +224,32 @@ def submit_job(
         Library.validate_values_enum(
             backend,
             "backend",
-            Constant.DRIVERS
+            devices
         )
     )
 
     # get driver from backend
-    driver_manger = scheduler.get_driver_manager()
-    driver = driver_manger.get_driver(backend)
+    device = devices.get(backend)
+    driver = device.get_driver()
     enable_transpiler = driver.enable_transpiler
-    driver_status = driver.get_status()
-    enable_driver = driver.enable
+    device_status = device.get_status()
+    enable_device = device.enable
 
-    # check driver_status
-    if not enable_driver:
+    # check device status
+    if not enable_device:
         jsonrpc_errors.handle_error_conflict(
             module_name,
             func_name,
-            (False, "driver is disabled")
+            (False, "device is disabled")
         )
-    elif driver_status in [
-        driver.DRIVER_STATUS_OFFLINE,
-        driver.DRIVER_STATUS_UNKNOWN
+    elif device_status in [
+        device.DEVICE_STATUS_OFFLINE,
+        device.DEVICE_STATUS_UNKNOWN
     ]:
         jsonrpc_errors.handle_error_conflict(
             module_name,
             func_name,
-            (False, f"driver status is {driver_status}")
+            (False, f"device status is {device_status}")
         )
 
     # validate: driver_options
@@ -610,24 +614,14 @@ def cancel_jobs(
     job_ids = list(dict.fromkeys(job_ids))
 
     # cancel jobs
-    # TODO(zhaoyi): not supported yet
-    jsonrpc_errors.handle_error_not_implemented(
-        module_name,
-        func_name,
-        (False, "operation is not supported")
-    )
+    success_list = scheduler.cancel_jobs(job_ids)
 
     # construct response
-    response_list = [{
-        "job_id": str(job_id),
-        "job_name": None,
-        "job_status": Constant.JOB_STATUS_CANCELLED,
-        "job_sched_policy": Constant.DEFAULT_JOB_SCHED_POLICY,
-        "job_priority": 100,
-        "backend": Constant.DRIVER_DUMMY,
-        "shots": 1,
-    } for job_id in job_ids]
-    return response_list
+    response_info = [{
+        "job_id": job.get("id"),
+        "job_status": job.get("state")
+    } for job in success_list]
+    return response_info
 
 
 @job_api_v1.method(errors=[])

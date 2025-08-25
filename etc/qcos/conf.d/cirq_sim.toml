@@ -1,1 +1,4 @@
-[DriverCirqSim]
+[cirq_sim]
+alias_name = "谷歌-Cirq模拟器"
+driver = "DriverCirqSim"
+description = "谷歌-Cirq模拟器(cirq-sim)"

@@ -48,12 +48,13 @@ class AggregationInput(RunInput):
 
 
 @task(persist_result=False)
-def init_driver(driver_info, driver_options):
+def init_driver(driver_info, driver_options, device):
     """
     Init driver from driver_info
 
     :param driver_info: driver info
     :param driver_options: driver options
+    :param device: device info
     :return: driver
     """
 
@@ -61,23 +62,33 @@ def init_driver(driver_info, driver_options):
         driver_module = importlib.import_module(driver_info["module_name"])
         driver_class = getattr(driver_module, driver_info["class_name"])
         driver = driver_class()
-        driver.extra_configs = driver_info.get("extra_configs", {})
+        device_configs = device.get("configs", None)
         # update driver options
         if driver_options:
             driver.update_driver_options(driver_options)
 
-        # validate and copy extra_configs to qpu_configs
-        success, err_msg = driver.validate_driver_configs()
+        # validate device configs
+        success, err_msg = driver.validate_driver_configs(device_configs)
         # error handling
         if not success:
             logger.error(err_msg)
             return {"driver": driver, "error": err_msg}
-        # copy cfgs to trans cfg inst
-        trans_cfg_inst.set_qpu_cfg(driver.get_qpu_configs())
-        trans_cfg_inst.set_max_qubits(driver.get_max_qubits())
-        trans_cfg_inst.set_decompose_rule(driver.get_decomposition_rule())
-        trans_cfg_inst.set_tech_type(driver.tech_type)
-        trans_cfg_inst.set_driver_name(driver.get_name())
+
+        # copy device configs to driver
+        driver.set_configs(device_configs)
+
+        # copy cfgs to transpiler cfg inst
+        if driver.enable_transpiler:
+            transpiler_configs = device_configs.get("transpiler", None)
+            qpu_configs = transpiler_configs.get("qpu_configs", None)
+            decomposition_rule = transpiler_configs.get("decomposition_rule",
+                                                        None)
+            trans_cfg_inst.set_qpu_cfg(qpu_configs)
+            trans_cfg_inst.set_decompose_rule(decomposition_rule)
+            trans_cfg_inst.set_max_qubits(driver.get_max_qubits())
+            trans_cfg_inst.set_tech_type(driver.tech_type)
+            trans_cfg_inst.set_driver_name(driver.get_name())
+
         return {"driver": driver, "error": None}
     except Exception as e:
         return {"driver": None, "error": ValueError(str(e))}
@@ -255,6 +266,18 @@ async def job_callback(flow, flow_run, state):
             logger.error(f"Callback Error: {err_msg}")
 
 
+async def job_cancel(flow, flow_run, state):
+    """
+    Job cancellation
+
+    :param flow: flow
+    :param flow_run: flow run
+    :param state: flow state
+    """
+    job_id = flow_run.name  # use name as job uuid
+    logger.info(f"Cancel job: {job_id}")
+
+
 def update_progress(artifact_id, progress):
     update_progress_artifact(
         artifact_id=artifact_id,
@@ -266,7 +289,7 @@ def update_progress(artifact_id, progress):
       on_completion=[job_callback],
       on_failure=[job_callback],
       on_crashed=[job_callback],
-      on_cancellation=[job_callback])
+      on_cancellation=[job_callback, job_cancel])
 def job_flow(job_info):
     """
     Job flow
@@ -280,6 +303,7 @@ def job_flow(job_info):
     logger.info(f"Processing work flow: job_engine. "
                 f"job_id: {job_id}, job_info: {job_info}")
 
+    # handle aggregation jobs
     aggregation_info = None
     if job_data["circuit_aggregation"] is not None and job_data[
         "circuit_aggregation"] == Constant.AGGREGATION_TYPE_EXTERNAL:
@@ -306,7 +330,7 @@ def job_flow(job_info):
         "driver": None,
         "source_code_index": 0,
         "source_code_count": 0,
-        "progress": -1
+        "progress": -1,
     }
     flow_task_monitor(monitor_info)
 
@@ -364,7 +388,8 @@ def run_code(aggregation_info, source_code_index, source_code, job_info,
     # init driver (init only once in a flow)
     if not driver:
         future_driver = init_driver.submit(job_info["driver"],
-                                           job_data["driver_options"])
+                                           job_data["driver_options"],
+                                           job_info["device"])
         driver_task_result = future_driver.result()
         # init driver: error handling
         err_msg = driver_task_result.get("error", None)
@@ -374,7 +399,7 @@ def run_code(aggregation_info, source_code_index, source_code, job_info,
                 errors.JobEngineDriverInitError,
                 err_msg), driver, transpiler
         driver = driver_task_result["driver"]
-        logger.info(f"Init driver: {driver.name} ({driver.alias_name})")
+        logger.info(f"Init driver: {driver.name}")
         monitor_info["driver"] = driver
 
     # init transpiler (init only once in a flow)
@@ -446,7 +471,7 @@ def run_code(aggregation_info, source_code_index, source_code, job_info,
 
         transpile_results = transpile_results["transpile_results"]
 
-    if driver.enable:
+    if driver:
         # [flow_run_driver]
         data = {
             "index": source_code_index,
@@ -538,6 +563,7 @@ def flow_transpile(parsed_circuits,
 
     profiling_start = 0
     profiling_end = 0
+
     # record transpile start_time
     if (Constant.PROFILING_TYPE_DRIVER_TRANSPILE in profiling_types or
             Constant.PROFILING_TYPE_ALL in profiling_types):
@@ -643,8 +669,8 @@ def format_run_results(driver, job_id, data_index):
         results = driver.get_results(job_id, data_index)
         job_status = Constant.JOB_STATUS_COMPLETED
         end_date = Library.get_current_datetime()
-    # async mode: get results in the async set-job-results call
     elif driver_results_fetch_mode == Constant.RESULTS_FETCH_MODE_ASYNC:
+        # async mode: get results in the async set-job-results call
         job_status = Constant.JOB_STATUS_RUNNING
 
     job_results["results"] = results

@@ -47,7 +47,14 @@ class Config:
     CERT_FILE = None
     KEY_FILE = None
 
+    # [DEVICES]
+    DEVICE_LIST = []
+
+    # extra configs from .toml files
     EXTRA_CONFIGS = {}
+
+    # schema
+
 
     @classmethod
     def parse_toml_file(cls, config_file, extra_config=False):
@@ -78,6 +85,14 @@ class Config:
                     else:
                         raise errors.GenericException(
                             f"Can't find config key: {key}")
+
+    @classmethod
+    def validate(cls):
+        success, err_msg = Library.validate_schema(cls.DEVICE_LIST,
+                                                   [str],
+                                                   allow_none=False)
+        if not success:
+            raise errors.GenericException("Device list must be list of str")
 
     @classmethod
     def show_info(cls):

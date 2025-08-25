@@ -97,6 +97,13 @@ qcos-cli ping 123
 * Get server version
 qcos-cli version
 
+[Driver commands]
+* List drivers
+qcos-cli list-drivers
+
+* Get driver details
+qcos-cli get-driver DriverDummy
+
 [Device commands]
 * List devices
 qcos-cli list-devices
@@ -112,14 +119,18 @@ class QcosShell(App):
     """
 
     CMD_GROUP_DEFAULT = "Default"
+    CMD_GROUP_DRIVER = "Driver"
     CMD_GROUP_DEVICE = "Device"
+    CMD_GROUP_TRANSPILER = "Transpiler"
     CMD_GROUP_JOB = "Job"
     CMD_GROUP_SYSTEM = "System"
     CMD_GROUP_VERSION = "Version"
     CMD_GROUPS = [
         CMD_GROUP_DEFAULT,
         CMD_GROUP_VERSION,
+        CMD_GROUP_DRIVER,
         CMD_GROUP_DEVICE,
+        CMD_GROUP_TRANSPILER,
         CMD_GROUP_SYSTEM,
         CMD_GROUP_JOB
     ]
@@ -259,6 +270,8 @@ class CommandHelper:
         """
         success, err_msg = results
         if success is False:
+            if isinstance(err_msg, str):
+                err_msg = [err_msg]
             raise errors.InvalidArguments("\n".join(err_msg))
 
     @staticmethod
@@ -308,12 +321,14 @@ class CommandHelper:
             f"[status_code: {status_code}]\n{err_msgs}")
 
     @staticmethod
-    def get_table_list_data(list_values, header_list, ignore_header_list=None):
+    def get_table_list_data(list_dict_values, header_list,
+                            is_dict=False, ignore_header_list=None):
         """
         Get list of data for showing table in cli
 
-        :param list_values: list of values
+        :param list_dict_values: list or dict of values
         :param header_list: headers for table
+        :param is_dict: whether is dict or list values
         :param ignore_header_list: headers to ignore
         :return: list of table data
         """
@@ -321,6 +336,13 @@ class CommandHelper:
         _headers = []
         headers = []
         all_values = []
+        list_values = []
+        if is_dict:
+            for value in list_dict_values.values():
+                list_values.append(value)
+        else:
+            list_values = list_dict_values
+
         if header_list:
             header_list = [s.lower() for s in header_list]
         if ignore_header_list:
@@ -347,7 +369,7 @@ class CommandHelper:
                 headers.append(header_name)
 
         # make values
-        for value in list_values:
+        for  value in list_values:
             values = []
             for header in header_list:
                 header_name = header.upper()
@@ -420,20 +442,58 @@ class Version(Command):
         print(f"  job_types: {', '.join(sorted(caps['job_types']))}")
         print("  job_sched_policy: "
               f"{', '.join(sorted(caps['job_sched_policy']))}")
-        print(f"  profiling: {', '.join(sorted(caps['profiling']))}")
+        print(f"  profiling: {caps['profiling']}")
+        print(f"  tech_types: {caps['tech_types']}")
         print(f"  drivers: {caps['drivers']}")
         print(f"  transpilers: {caps['transpilers']}")
         print("  driver_transpiler_mappings: "
               f"{caps['driver_transpiler_mappings']}")
 
 
-# Device commands
-class GetDevice(ShowOne):
+# Driver commands
+class GetDrivers(Lister):
     """
-    Get device info
+    Get driver list
     """
 
-    group = QcosShell.CMD_GROUP_DEVICE
+    group = QcosShell.CMD_GROUP_DRIVER
+
+    def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        """
+        Take action for command line arguments
+
+        :param parsed_args: command line arguments
+        """
+        resource = self.group
+        header_list = ["name", "alias_name", "version", "tech_type",
+                       "max_qubits", "transpiler", "description"]
+
+        status_code, reason, text, result = self.app.client.get_drivers()
+        json_results = CommandHelper.check_results(
+            resource, "get_drivers", status_code, reason, text)
+        table_values = CommandHelper.get_table_list_data(
+            json_results, header_list, is_dict=True)
+        if not json_results:
+            print("No drivers found")
+        return table_values
+
+
+class GetDriver(ShowOne):
+    """
+    Get driver info
+    """
+
+    group = QcosShell.CMD_GROUP_DRIVER
 
     def get_parser(self, prog_name):
         """
@@ -444,7 +504,7 @@ class GetDevice(ShowOne):
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("driver_name", type=str,
-                            help="Device driver name")
+                            help="Driver name")
         return parser
 
     def take_action(self, parsed_args):
@@ -456,14 +516,15 @@ class GetDevice(ShowOne):
         resource = self.group
         driver_name = parsed_args.driver_name
 
-        status_code, reason, text, result = self.app.client.get_device(
+        status_code, reason, text, result = self.app.client.get_driver(
             driver_name)
         json_results = CommandHelper.check_results(
-            resource, "get_device", status_code, reason, text)
+            resource, "get_driver", status_code, reason, text)
         table_values = CommandHelper.get_table_data(json_results)
         return table_values
 
 
+# Device commands
 class GetDevices(Lister):
     """
     Get device list
@@ -488,16 +549,125 @@ class GetDevices(Lister):
         :param parsed_args: command line arguments
         """
         resource = self.group
-        header_list = ["name", "driver", "enable", "version", "tech_type",
-                       "max_qubits", "transpiler", "description"]
+        header_list = ["name", "alias_name", "driver_name", "enable", "status",
+                       "description"]
 
         status_code, reason, text, result = self.app.client.get_devices()
         json_results = CommandHelper.check_results(
             resource, "get_devices", status_code, reason, text)
         table_values = CommandHelper.get_table_list_data(
-            json_results, header_list)
+            json_results, header_list, is_dict=True)
         if not json_results:
             print("No devices found")
+        return table_values
+
+
+class GetDevice(ShowOne):
+    """
+    Get device info
+    """
+
+    group = QcosShell.CMD_GROUP_DEVICE
+
+    def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument("device_name", type=str,
+                            help="Device name")
+        return parser
+
+    def take_action(self, parsed_args):
+        """
+        Take action for command line arguments
+
+        :param parsed_args: command line arguments
+        """
+        resource = self.group
+        device_name = parsed_args.device_name
+
+        status_code, reason, text, result = self.app.client.get_device(
+            device_name)
+        json_results = CommandHelper.check_results(
+            resource, "get_device", status_code, reason, text)
+        table_values = CommandHelper.get_table_data(json_results)
+        return table_values
+
+
+# Transpiler commands
+class GetTranspilers(Lister):
+    """
+    Get transpiler list
+    """
+
+    group = QcosShell.CMD_GROUP_TRANSPILER
+
+    def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        """
+        Take action for command line arguments
+
+        :param parsed_args: command line arguments
+        """
+        resource = self.group
+        header_list = ["name", "alias_name", "enable", "supported_code_types"]
+
+        status_code, reason, text, result = self.app.client.get_transpilers()
+        json_results = CommandHelper.check_results(
+            resource, "get_transpilers", status_code, reason, text)
+        table_values = CommandHelper.get_table_list_data(
+            json_results, header_list, is_dict=True)
+        if not json_results:
+            print("No transpilers found")
+        return table_values
+
+
+class GetTranspiler(ShowOne):
+    """
+    Get transpiler info
+    """
+
+    group = QcosShell.CMD_GROUP_TRANSPILER
+
+    def get_parser(self, prog_name):
+        """
+        Get parser for this command
+
+        :param prog_name: program name
+        :return: parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument("transpiler_name", type=str,
+                            help="Transpiler name")
+        return parser
+
+    def take_action(self, parsed_args):
+        """
+        Take action for command line arguments
+
+        :param parsed_args: command line arguments
+        """
+        resource = self.group
+        transpiler_name = parsed_args.transpiler_name
+
+        status_code, reason, text, result = self.app.client.get_transpiler(
+            transpiler_name)
+        json_results = CommandHelper.check_results(
+            resource, "get_transpiler", status_code, reason, text)
+        table_values = CommandHelper.get_table_data(json_results)
         return table_values
 
 
@@ -734,9 +904,9 @@ class SubmitJob(Command):
                 allow_none=True))
 
         # Validate argument: transpiler
-        # CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
-        #    transpiler, "transpiler", Constant.TRANSPILER_TYPES,
-        #    allow_none=True))
+        CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
+            transpiler, "transpiler", supported_transpilers.keys(),
+            allow_none=True))
 
         # Validate argument: transpiler_options
         if transpiler_options:
@@ -909,7 +1079,7 @@ class GetJobs(Lister):
         json_results = CommandHelper.check_results(
             resource, "get_jobs", status_code, reason, text)
         table_values = CommandHelper.get_table_list_data(
-            json_results, header_list)
+            json_results, header_list, is_dict=False)
         if not json_results:
             print("No jobs found")
         return table_values
@@ -1153,9 +1323,16 @@ command_manager.add_command("list-jobs", GetJobs)
 command_manager.add_command("cancel-jobs", CancelJobs)
 command_manager.add_command("delete-jobs", DeleteJobs)
 command_manager.add_command("set-job-results", SetJobResults)
+# driver command
+command_manager.add_command("get-driver", GetDriver)
+command_manager.add_command("list-drivers", GetDrivers)
 # device command
 command_manager.add_command("get-device", GetDevice)
 command_manager.add_command("list-devices", GetDevices)
+# transpiler command
+command_manager.add_command("get-transpiler", GetTranspiler)
+command_manager.add_command("list-transpilers", GetTranspilers)
+
 
 def set_debug_option(args):
     """

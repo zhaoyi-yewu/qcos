@@ -15,8 +15,12 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from .driver import (GetDriversRequest,
+                     GetDriverRequest, GetDriverResponse)
 from .device import (GetDevicesRequest,
                      GetDeviceRequest, GetDeviceResponse)
+from .transpiler import (GetTranspilersRequest,
+                         GetTranspilerRequest, GetTranspilerResponse)
 from .job import (SubmitJobRequest, SubmitJobResponse,
                   GetJobStatusRequest, GetJobStatusResponse,
                   GetJobResultsRequest, GetJobResultsResponse,

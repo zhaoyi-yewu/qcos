@@ -58,6 +58,7 @@ class TaskFlowManager(ABC):
         self._console = None
         self.worker_status = False
         self.driver_manager = None
+        self.device_manager = None
         self.parent_aggregation_jobs = []
         self.aggregation_jobs = {}
 
@@ -96,6 +97,15 @@ class TaskFlowManager(ABC):
         """
 
         self.driver_manager = driver_manager
+
+    def set_device_manager(self, device_manager):
+        """
+        Set device manager
+
+        :param device_manager: device manager
+        """
+
+        self.device_manager = device_manager
 
     def check_connection(self):
         """
@@ -533,6 +543,56 @@ class TaskFlowManager(ABC):
                     success_list.append(
                         {"id": flow_run_id,
                          "state": Constant.JOB_STATUS_DELETED})
+        except Exception as e:
+            logger.error(f"Prefect execute flow error: {str(e)}")
+
+        return success_list
+
+    def cancel_task_flow_run(self, job_ids):
+        """
+        Cancel flow run.
+
+        :param job_ids: job uuid list
+        :return success_list: success list
+        """
+
+        flow_run_ids = []
+        for job_id in job_ids:
+            flow_run_id = self.get_flow_run_id_by_job_id(job_id)
+            if flow_run_id:
+                flow_run_ids.append((flow_run_id, job_id))
+
+        success_list = self.loop.run_until_complete(
+            self.cancel_task_flow_run_by_client(flow_run_ids))
+        return success_list
+
+    async def cancel_task_flow_run_by_client(self, flow_run_ids):
+        """
+        Cancel flow run by client.
+
+        :param flow_run_ids: flow run uuid list
+        :return success_list: success_list
+        """
+
+        success_list = []
+        try:
+            for (flow_run_id, job_id) in flow_run_ids:
+                try:
+                    flow_run = await self._client.read_flow_run(flow_run_id)
+                except ObjectNotFound:
+                    logger.error(f"Prefect execute flow error: "
+                                 f"can't find flow_run_id: {flow_run_id}")
+                    continue
+                except Exception as e:
+                    logger.error(f"Prefect execute flow error: {str(e)}")
+                    continue
+                state = flow_run.state
+                if state.name.upper() == "RUNNING":
+                    # delete flow
+                    await self._client.delete_flow_run(flow_run_id)
+                    success_list.append(
+                        {"id": flow_run_id,
+                         "state": Constant.JOB_STATUS_CANCELLED})
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
 
