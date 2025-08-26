@@ -15,13 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import logging
+from loguru import logger
 
 from qcos.common.constant import Constant
 from qcos.transpiler.transpiler_base import TranspilerBase
-
-
-logger = logging.getLogger(__name__)
 
 
 class TranspilerDummy(TranspilerBase):
@@ -45,11 +42,11 @@ class TranspilerDummy(TranspilerBase):
         Init transpiler
         """
 
-    def parse(self, codes: str):
+    def parse(self, circuits):
         """
-        parse source codes
+        parse circuits
 
-        :param codes: source codes
+        :param circuits: circuits
         :return parse result
         """
 

@@ -15,7 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import logging
+from loguru import logger
 from schema import Optional
 
 from qiskit import transpile, QuantumCircuit
@@ -25,9 +25,6 @@ from qcos.common.constant import Constant
 from qcos.transpiler.common.errors import TranspilerException
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from qcos.transpiler.transpiler_base import TranspilerBase
-
-
-logger = logging.getLogger(__name__)
 
 
 class TranspilerQiskit(TranspilerBase):
@@ -59,19 +56,21 @@ class TranspilerQiskit(TranspilerBase):
         Init transpiler
         """
 
-    def parse(self, job_data, aggregation_info):
+    def parse(self, circuits):
         """
-        parse source codes
+        parse circuits
 
-        :param job_data: job data
-        :param aggregation_info: aggregation job info
+        :param circuits: circuits
         :return parse result
         """
-        source_codes = job_data['source_code'][0]
-        logger.info(f"source_codes:\n{source_codes}")
-        parse_result = QuantumCircuit.from_qasm_str(source_codes)
-        self.total_qubits = parse_result.num_qubits
-        return parse_result
+        if isinstance(circuits, tuple) and len(circuits) == 2:
+            source_codes = circuits[1]
+            logger.info(f"source_codes:\n{source_codes}")
+            parse_result = QuantumCircuit.from_qasm_str(source_codes)
+            self.total_qubits = parse_result.num_qubits
+            return parse_result
+        else:
+            raise TranspilerException("unsupported input")
 
     def transpile(self, parse_result, supp_basis_gates: list):
         """
@@ -95,4 +94,4 @@ class TranspilerQiskit(TranspilerBase):
             basis_gates=supp_basis_gates
         )
 
-        return transpiled_circuit
+        return transpiled_circuit, None

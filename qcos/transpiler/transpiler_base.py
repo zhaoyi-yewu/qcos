@@ -153,12 +153,11 @@ class TranspilerBase:
         """
         return self.supported_code_types
 
-    def parse(self, job_data, aggregation_info):
+    def parse(self, circuits):
         """
-        parse source codes
+        parse circuits
 
-        :param job_data: job data
-        :param aggregation_info: aggregation job info
+        :param circuits: circuits
         :return parse result
         """
         raise NotImplementedError(f"Transpiler: {self.__class__.__name__} "
