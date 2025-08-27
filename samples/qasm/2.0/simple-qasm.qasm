@@ -7,4 +7,3 @@ x q[0];
 x q[1];
 
 measure q -> c;
-
