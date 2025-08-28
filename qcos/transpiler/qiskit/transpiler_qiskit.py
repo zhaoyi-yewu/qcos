@@ -18,7 +18,7 @@
 from loguru import logger
 from schema import Optional
 
-from qiskit import transpile, QuantumCircuit
+import qiskit
 from qiskit_aer import QasmSimulator, AerSimulator
 
 from qcos.common.constant import Constant
@@ -36,6 +36,8 @@ class TranspilerQiskit(TranspilerBase):
         self.name = Constant.TRANSPILER_QISKIT
         # alias name
         self.alias_name = "IBM Qiskit"
+        # version
+        self.version = qiskit.__version__
         # supported code types
         self.supported_code_types = [
             Constant.CODE_TYPE_QASM,
@@ -66,7 +68,7 @@ class TranspilerQiskit(TranspilerBase):
         if isinstance(circuits, tuple) and len(circuits) == 2:
             source_codes = circuits[1]
             logger.info(f"source_codes:\n{source_codes}")
-            parse_result = QuantumCircuit.from_qasm_str(source_codes)
+            parse_result = qiskit.QuantumCircuit.from_qasm_str(source_codes)
             self.total_qubits = parse_result.num_qubits
             return parse_result
         else:
@@ -80,14 +82,15 @@ class TranspilerQiskit(TranspilerBase):
         :param supp_basis_gates: supported basis gates
         :return transpiled quantum circuit
         """
-        if trans_cfg_inst.get_driver_name() == "qiskit-qasm-sim":
+        driver_name = trans_cfg_inst.get_driver_name()
+        if driver_name == "DriverQiskitQasmSim":
             simulator = QasmSimulator()
-        elif trans_cfg_inst.get_driver_name() == "qiskit-aer-sim":
+        elif driver_name == "DriverQiskitAerSim":
             simulator = AerSimulator()
         else:
-            raise TranspilerException("invalid driver name")
+            raise TranspilerException(f"invalid driver name: {driver_name}")
 
-        transpiled_circuit = transpile(
+        transpiled_circuit = qiskit.transpile(
             parse_result,
             simulator,
             optimization_level=self.transpiler_options["optimization_level"],

@@ -86,7 +86,7 @@ qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001,00000000-0000-4000-800
 qcos-cli delete-jobs -y all
 
 * Set job results (for callbacks or test purpose)
-qcos-cli set-job-results --results '{"results": {"01":100}}' 00000000-0000-4000-8000-000000000001
+qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}}'
 ** Set multi-results for multi-source-code job
 qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}}' '{"code": -104, "message": "error test"}'
 
@@ -623,7 +623,8 @@ class GetTranspilers(Lister):
         :param parsed_args: command line arguments
         """
         resource = self.group
-        header_list = ["name", "alias_name", "enable", "supported_code_types"]
+        header_list = ["name", "alias_name", "version",
+                       "enable", "supported_code_types"]
 
         status_code, reason, text, result = self.app.client.get_transpilers()
         json_results = CommandHelper.check_results(
@@ -1167,7 +1168,7 @@ class CancelJobs(Command):
             if job_ids.lower() == "all":
                 print("No jobs found")
             else:
-                print(f"Jobs: {job_ids} are not found")
+                print(f"Jobs: {job_ids} are not found or non-cancelable")
 
 
 class DeleteJobs(Command):
@@ -1252,7 +1253,7 @@ class DeleteJobs(Command):
             if job_ids.lower() == "all":
                 print("No jobs found")
             else:
-                print(f"Jobs: {job_ids} are not found")
+                print(f"Jobs: {job_ids} are not found or non-deletable")
 
 
 class SetJobResults(Command):

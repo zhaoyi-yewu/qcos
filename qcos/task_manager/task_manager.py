@@ -32,6 +32,7 @@ from prefect.client.schemas.filters import (
     FlowRunFilter, FlowRunFilterName,
     FlowRunFilterState, FlowRunFilterTags)
 from prefect.exceptions import ObjectNotFound
+from prefect.states import State
 from prefect.workers import ProcessWorker
 from rich.console import Console
 
@@ -535,11 +536,11 @@ class TaskFlowManager(ABC):
                     logger.error(f"Prefect execute flow error: {str(e)}")
                     continue
                 state = flow_run.state
-                if state.name.upper() != "RUNNING":
-                    # delete flow artifact
-                    await self.delete_flow_artifacts(flow_run_id)
+                if state.name.upper() != Constant.PREFECT_STATE_RUNNING:
                     # delete flow
                     await self._client.delete_flow_run(flow_run_id)
+                    # delete flow artifact
+                    await self.delete_flow_artifacts(flow_run_id)
                     success_list.append(
                         {"id": flow_run_id,
                          "state": Constant.JOB_STATUS_DELETED})
@@ -586,10 +587,17 @@ class TaskFlowManager(ABC):
                 except Exception as e:
                     logger.error(f"Prefect execute flow error: {str(e)}")
                     continue
-                state = flow_run.state
-                if state.name.upper() == "RUNNING":
-                    # delete flow
-                    await self._client.delete_flow_run(flow_run_id)
+                flow_state_name = flow_run.state.name.upper()
+                if flow_state_name in Constant.PREFECT_CANCEL_REQUIRED_STATES:
+                    # cancel flow
+                    cancelling_state = State(type=StateType.CANCELLING)
+                    await self._client.set_flow_run_state(
+                        flow_run_id,
+                        state=cancelling_state,
+                        force=True
+                    )
+                    # delete flow artifact
+                    await self.delete_flow_artifacts(flow_run_id)
                     success_list.append(
                         {"id": flow_run_id,
                          "state": Constant.JOB_STATUS_CANCELLED})

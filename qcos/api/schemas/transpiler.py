@@ -45,6 +45,8 @@ class GetTranspilerResponse(BaseModel):
     name: str = None
     # transpiler alias name
     alias_name: str = None
+    # version
+    version: str = None
     # enable this transpiler or not
     enable: bool = True
     # supported code types

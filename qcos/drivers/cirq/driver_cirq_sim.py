@@ -117,3 +117,12 @@ class DriverCirqSim(DriverBase):
         self.set_results(job_id, data_index, results=serializable_counts)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
+
+    def cancel(self, job_id):
+        """
+        Cancel running job in driver.
+        Driver should clean up any resources of the job
+
+        :param job_id: job ID
+        """
+        logger.info(f"Cancel job: job_id: {job_id}")

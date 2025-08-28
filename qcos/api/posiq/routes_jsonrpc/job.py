@@ -707,6 +707,17 @@ def set_job_results(
             (False, str(e))
         )
 
+    job_status = response["job_status"]
+    if job_status not in [Constant.JOB_STATUS_RUNNING,
+                          Constant.JOB_STATUS_COMPLETED]:
+        err_msg = f"Job: '{job_id}' is not in RUNNING or COMPLETED state. "\
+                  f"Can't {func_name}"
+        jsonrpc_errors.handle_error_internal_server(
+            module_name,
+            func_name,
+            (False, err_msg)
+        )
+
     # handle job status errors
     if response.get("error_message"):
         jsonrpc_errors.handle_error_internal_server(

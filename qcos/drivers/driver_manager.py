@@ -56,7 +56,6 @@ class DriverManager:
                 Constant.DRIVERS.add(name)
                 class_instance.set_module_name(_class.__module__)
                 class_instance.set_class_name(_class.__qualname__)
-                class_instance.set_name(class_name)
 
     def init_drivers(self):
         """

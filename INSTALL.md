@@ -23,11 +23,12 @@ vim .env
 ### 1.4 修改配置文件
 #### 1.4.1 创建和修改全局配置文件
 参照代码库中etc/qcos/qcos.toml, 创建和修改全局配置文件/etc/qcos/qcos.toml
+修改或添加DEVICE_LIST中的设备列表
 <b>注意:</b> 如果不创建该文件, 容器模式下会自动创建
 
-#### 1.4.2 创建和修改驱动配置文件
-参照代码库中etc/qcos/conf.d/dummy.toml等, 创建和修改驱动配置文件/etc/qcos/conf.d/dummy.toml等
-<b>注意:</b> 驱动配置文件必须位于/etc/qcos/conf.d下, 文件名可以自己命名, 文件中section必须对应相关驱动的类名, 比如dummy驱动的配置需要放在section: [DriverDummy]下, DriverDummy为dummy驱动的类名
+#### 1.4.2 创建和修改设备配置文件
+参照代码库中etc/qcos/conf.d/dummy.toml等, 创建和修改设备配置文件/etc/qcos/conf.d/dummy.toml等
+<b>注意:</b> 设备配置文件必须位于/etc/qcos/conf.d下, 文件名需要和qcos.toml中DEVICE_LIST列出的设备名一致。 文件中section必须对应相关设备名, 比如dummy设备的配置需要放在section: [dummy]下
 
 ### 1.5 运行容器
 ```shell
@@ -62,11 +63,12 @@ pip3 install ./dist/qcos-1.0.0-py3-none-any.whl
 ### 2.4 修改配置文件
 #### 2.4.1 创建和修改全局配置文件
 参照代码库中etc/qcos/qcos.toml, 创建和修改全局配置文件/etc/qcos/qcos.toml
+修改或添加DEVICE_LIST中的设备列表
 <b>注意:</b> 如果不创建该文件, 容器模式下会自动创建
 
-#### 2.4.2 创建和修改驱动配置文件
-参照代码库中etc/qcos/conf.d/dummy.toml等, 创建和修改驱动配置文件/etc/qcos/conf.d/dummy.toml等
-<b>注意:</b> 驱动配置文件必须位于/etc/qcos/conf.d下, 文件名可以自己命名, 文件中section必须对应相关驱动的类名, 比如dummy驱动的配置需要放在section: [DriverDummy]下, DriverDummy为dummy驱动的类名
+#### 1.4.2 创建和修改设备配置文件
+参照代码库中etc/qcos/conf.d/dummy.toml等, 创建和修改设备配置文件/etc/qcos/conf.d/dummy.toml等
+<b>注意:</b> 设备配置文件必须位于/etc/qcos/conf.d下, 文件名需要和qcos.toml中DEVICE_LIST列出的设备名一致。 文件中section必须对应相关设备名, 比如dummy设备的配置需要放在section: [dummy]下
 
 ### 2.5 运行
 ```shell
@@ -162,7 +164,7 @@ qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001,00000000-0000-4000-800
 qcos-cli delete-jobs -y all
 
 * 设置作业结果 (回调或者测试用途)
-qcos-cli set-job-results --results '[{"01":0}]' 00000000-0000-4000-8000-000000000001
+qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '[{"01":0}]'
 ** 设置多作业结果, 针对多源代码的作业
 qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}}' '{"code": -104, "message": "error test"}'
 

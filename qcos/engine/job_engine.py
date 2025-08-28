@@ -17,6 +17,8 @@
 
 from datetime import datetime
 import importlib
+import signal
+import sys
 import time
 from typing import Any, List, Optional, Dict
 
@@ -89,15 +91,15 @@ def init_driver(driver_info, driver_options, device):
         # copy cfgs to transpiler cfg inst
         if driver.enable_transpiler:
             transpiler_configs = device_configs.get("transpiler", None)
-            qpu_configs = transpiler_configs.get("qpu_configs", None)
-            decomposition_rule = transpiler_configs.get("decomposition_rule",
-                                                        None)
-            trans_cfg_inst.set_qpu_cfg(qpu_configs)
-            trans_cfg_inst.set_decompose_rule(decomposition_rule)
             trans_cfg_inst.set_max_qubits(driver.get_max_qubits())
             trans_cfg_inst.set_tech_type(driver.tech_type)
             trans_cfg_inst.set_driver_name(driver.get_name())
-
+            if transpiler_configs:
+                qpu_configs = transpiler_configs.get("qpu_configs", None)
+                decomposition_rule = transpiler_configs.get(
+                    "decomposition_rule", None)
+                trans_cfg_inst.set_qpu_cfg(qpu_configs)
+                trans_cfg_inst.set_decompose_rule(decomposition_rule)
         return {"driver": driver, "error": None}
     except Exception as e:
         return {"driver": None, "error": ValueError(str(e))}
@@ -194,9 +196,9 @@ def transpile(parsed_gates, driver, transpiler):
 
 
 @task(persist_result=False)
-def run_driver(job_info, driver, num_qubits, data):
+def driver_run(job_info, driver, num_qubits, data):
     """
-    Run the driver
+    Driver: run job
 
     :param job_info: job info
     :param driver: driver
@@ -229,6 +231,23 @@ def run_driver(job_info, driver, num_qubits, data):
         return {"results": None, "metadata": {}, "error": ValueError(str(e))}
 
 
+def driver_cancel(job_id, driver):
+    """
+    Driver: cancel job
+
+    :param job_id: job id
+    :param driver: driver
+    """
+    try:
+        logger.info(f"Cancel job: job_id: {job_id}")
+        if driver:
+            driver.cancel(job_id)
+        else:
+            logger.error(f"Cancel job: job_id: {job_id}. driver is not found")
+    except Exception as e:
+        logger.error(f"Cancel job: job_id: {job_id} failed. {str(e)}")
+
+
 async def job_callback(flow, flow_run, state):
     """
     Job callback
@@ -238,7 +257,9 @@ async def job_callback(flow, flow_run, state):
     :param state: flow state
     """
     job_id = flow_run.name  # use name as job uuid
+    job_status = Constant.JOB_STATUS_COMPLETED
     is_failed = False
+    flow_state_name = state.name.upper()
     parameters = flow_run.parameters
     results = flow_run.state.result()
     results_fetch_mode_sync = False
@@ -248,20 +269,28 @@ async def job_callback(flow, flow_run, state):
         parameters, "job_info", "data", "backend", default=None)
     if not callbacks:
         return
-    for result in results:
-        results_fetch_mode = Library.get_nested_dict_value(
-            result, "metadata", "results_fetch_mode", default=None)
-        status = Library.get_nested_dict_value(
-            result, "metadata", "status", default=None)
-        if status != Constant.JOB_STATUS_COMPLETED:
-            is_failed = True
-        if results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
-            results_fetch_mode_sync = True
+
+    if flow_state_name == Constant.PREFECT_STATE_CANCELLING:
+        job_status = Constant.JOB_STATUS_CANCELLED
+        results = None
+        results_fetch_mode_sync = True
+
+    if results:
+        for result in results:
+            results_fetch_mode = Library.get_nested_dict_value(
+                result, "metadata", "results_fetch_mode", default=None)
+            status = Library.get_nested_dict_value(
+                result, "metadata", "status", default=None)
+            if status != Constant.JOB_STATUS_COMPLETED:
+                is_failed = True
+            if results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
+                results_fetch_mode_sync = True
     if callbacks and results_fetch_mode_sync:
         # if job_info contains callback list and driver is in sync mode
         # run async callback
-        job_status = Constant.JOB_STATUS_FAILED if is_failed \
-            else Constant.JOB_STATUS_COMPLETED
+        if is_failed:
+            job_status = Constant.JOB_STATUS_FAILED
+
         data = {
             "job_id": job_id,
             "job_status": job_status,
@@ -274,19 +303,35 @@ async def job_callback(flow, flow_run, state):
             logger.error(f"Callback Error: {err_msg}")
 
 
-async def job_cancel(flow, flow_run, state):
+def register_signals(job_id, monitor):
     """
-    Job cancellation
+    Register signal handlers
 
-    :param flow: flow
-    :param flow_run: flow run
-    :param state: flow state
+    :params job_id: job id
+    :params monitor: monitor
     """
-    job_id = flow_run.name  # use name as job uuid
-    logger.info(f"Cancel job: {job_id}")
+    def handle_sigterm(signum, frame):
+        """
+        Handles SIGTERM(cancel) signal sent from Prefect.
+        Prefect will then kill job_engine process by graceful period (30 secs)
+
+        :param signum: signum
+        :param frame: frame
+        """
+        logger.info(f"Received sigterm, cancelling job: {job_id} ...")
+        driver = monitor["driver"]
+        driver_cancel(job_id, driver)
+        sys.exit(0)
+    signal.signal(signal.SIGTERM, handle_sigterm)
 
 
 def update_progress(artifact_id, progress):
+    """
+    Update progress
+
+    :params artifact_id: artifact id
+    :params progress: progress
+    """
     update_progress_artifact(
         artifact_id=artifact_id,
         progress=progress
@@ -470,7 +515,7 @@ def get_external_aggregated_results(job_results, mapping_dict):
       on_completion=[job_callback],
       on_failure=[job_callback],
       on_crashed=[job_callback],
-      on_cancellation=[job_callback, job_cancel])
+      on_cancellation=[job_callback])
 def job_flow(job_info):
     """
     Job flow
@@ -478,11 +523,21 @@ def job_flow(job_info):
     :param job_info: job info
     :return results
     """
-
     job_data = job_info["data"]
     job_id = job_data["job_id"]
+    monitor_info = {
+        "artifact_id": None,
+        "running": True,
+        "driver": None,
+        "source_code_index": 0,
+        "source_code_count": 0,
+        "progress": -1
+    }
     logger.info(f"Processing work flow: job_engine. "
                 f"job_id: {job_id}, job_info: {job_info}")
+
+    # register signals for job cancelling
+    register_signals(job_id, monitor_info)
 
     # handle aggregation jobs
     aggregation_info = None
@@ -506,14 +561,7 @@ def job_flow(job_info):
 
     # start task-monitor
     artifact_id = create_progress_artifact(progress=0.0, key=job_id)
-    monitor_info = {
-        "artifact_id": artifact_id,
-        "running": True,
-        "driver": None,
-        "source_code_index": 0,
-        "source_code_count": 0,
-        "progress": -1,
-    }
+    monitor_info["artifact_id"] = artifact_id
     flow_task_monitor(monitor_info)
 
     # run source codes
@@ -819,7 +867,7 @@ def flow_run_driver(job_info,
     if driver.enable_transpiler:
         wait_for = [transpile]
 
-    run_task = run_driver.submit(
+    run_task = driver_run.submit(
         job_info, driver, num_qubits, data,
         wait_for=wait_for)
 

@@ -41,6 +41,8 @@ class TranspilerCmss(TranspilerBase):
         self.name = Constant.TRANSPILER_CMSS
         # alias name
         self.alias_name = "五岳转译器"
+        # version
+        self.version = "0.1"
         # supported code types
         self.supported_code_types = [
             Constant.CODE_TYPE_QASM,

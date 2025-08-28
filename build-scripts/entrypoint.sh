@@ -38,6 +38,9 @@ API_SERVER_LISTEN_IP = "${API_SERVER_LISTEN_IP:-0.0.0.0}"
 API_SERVER_LISTEN_PORT = ${API_SERVER_LISTEN_PORT:-18400}
 API_LOG_FILE = "${API_LOG_FILE:-/var/log/qcos/qcos-api.log}"
 PREFECT_LOG_FILE = "${PREFECT_LOG_FILE:-/var/log/qcos/qcos-prefect.log}"
+
+[DEVICES]
+DEVICE_LIST = ["dummy", "hanyuan1", "tiangong100", "cirq_sim", "qiskit_aer_sim", "qiskit_qasm_sim"]
 EOM
 fi
 

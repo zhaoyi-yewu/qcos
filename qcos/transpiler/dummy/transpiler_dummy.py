@@ -30,6 +30,8 @@ class TranspilerDummy(TranspilerBase):
         self.name = Constant.TRANSPILER_DUMMY
         # alias name
         self.alias_name = "空载转译器(dummy)"
+        # version
+        self.version = "0.1"
         # supported code types
         self.supported_code_types = [
             Constant.CODE_TYPE_QASM,

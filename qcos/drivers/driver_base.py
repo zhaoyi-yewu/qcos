@@ -55,7 +55,7 @@ class DriverBase:
         # driver version
         self.version = "unknown"
         # driver name
-        self.name = None
+        self.name = self.__class__.__name__
         # driver alias name
         self.alias_name = None
         # description
@@ -371,13 +371,15 @@ class DriverBase:
         result = self.get_fake_results(num_qubits, shots, data)
         self.set_results(job_id, data_index, results=result)
 
-    def run_cancel(self, job_id):
+    def cancel(self, job_id):
         """
         Cancel running job in driver.
         Driver should clean up any resources of the job
 
         :param job_id: job ID
         """
+        raise NotImplementedError(f"Driver: {self.__class__.__name__} "
+                                  f"must implement method: cancel")
 
     def set_results(self, job_id, data_index, results):
         """

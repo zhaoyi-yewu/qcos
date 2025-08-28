@@ -27,6 +27,8 @@ class TranspilerBase:
         self.name = None
         # alias name
         self.alias_name = None
+        # version
+        self.version = None
         # module name
         self._module_name = None
         # class name
@@ -112,6 +114,14 @@ class TranspilerBase:
         :return: transpiler alias name
         """
         return self.alias_name
+
+    def get_version(self):
+        """
+        Get version
+
+        :return: version
+        """
+        return self.version
 
     def set_module_name(self, module_name):
         """

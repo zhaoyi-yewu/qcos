@@ -38,6 +38,7 @@ def _get_transpiler_info(transpiler_info):
     _transpiler_info = {
         "name": transpiler_info.name,
         "alias_name": transpiler_info.alias_name,
+        "version": transpiler_info.get_version(),
         "enable": transpiler_info.enable,
         "supported_code_types": transpiler_info.supported_code_types
     }

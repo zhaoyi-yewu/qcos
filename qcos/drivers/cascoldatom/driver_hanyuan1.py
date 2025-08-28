@@ -188,6 +188,15 @@ class DriverHanyuan1(DriverBase):
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
+    def cancel(self, job_id):
+        """
+        Cancel running job in driver.
+        Driver should clean up any resources of the job
+
+        :param job_id: job ID
+        """
+        logger.info(f"Cancel job: job_id: {job_id}")
+
     def init_task(self, ip_address: str, port: int):
         """
         init task

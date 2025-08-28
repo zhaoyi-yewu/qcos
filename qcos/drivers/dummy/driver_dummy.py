@@ -136,10 +136,23 @@ class DriverDummy(DriverBase):
         sleep = self.driver_options.get("sleep", None)
         if sleep:
             self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
-            time.sleep(sleep)
+            sleep_count = 1
+            while sleep_count <= sleep:
+                logger.info(f"sleep: {sleep_count} / {sleep}")
+                time.sleep(1)
+                sleep_count += 1
 
         # dummy driver results
         result = self.get_fake_results(num_qubits, shots, data)
         self.set_results(job_id, data_index, results=result)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
+
+    def cancel(self, job_id):
+        """
+        Cancel running job in driver.
+        Driver should clean up any resources of the job
+
+        :param job_id: job ID
+        """
+        logger.info(f"Cancel job: job_id: {job_id}")
