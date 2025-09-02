@@ -30,3 +30,4 @@ else
 fi
 poetry build -C ${TOP_DIR} -o ${OUTPUT_DIR}
 poetry source remove pip_mirror
+echo "Dist package dir: ${OUTPUT_DIR}"

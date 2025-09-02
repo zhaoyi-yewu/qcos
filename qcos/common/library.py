@@ -30,9 +30,11 @@ import pkgutil
 import random
 import re
 import requests
+import signal
 import time
 import tomlkit
 import zipfile
+
 from aiohttp import ClientTimeout, ClientError
 from datetime import datetime
 from http import HTTPStatus
@@ -73,6 +75,42 @@ class Library:
             if key in dictionary:
                 dictionary[key] = value
         return dictionary
+
+    @staticmethod
+    def kill_pid(pid_file):
+        """
+        Kill existing process from pid file
+
+        :param pid_file: pid file path
+        """
+        pid = None
+        if not os.path.exists(pid_file):
+            return
+        try:
+            # Read and validate PID file content
+            with open(pid_file, 'r', encoding="utf-8") as f:
+                pid_str = f.read().strip()
+                if not pid_str.isdigit():
+                    raise ValueError(f"Invalid pid format: {pid_str}")
+                pid = int(pid_str)
+            # Attempt to terminate the process by sending SIGTERM signal
+            os.kill(pid, signal.SIGTERM)
+            # Wait for process to exit
+            time.sleep(1)
+        except ValueError as e:
+            print(f"Failed to process PID file: {e}")
+        except ProcessLookupError:
+            print(f"Process: {pid} does not exist")
+        except PermissionError:
+            print(f"Insufficient permissions to terminate process: {pid}")
+        except Exception as e:
+            print(f"Error occurred while terminating process: {e}")
+        finally:
+            # Delete pid file
+            try:
+                os.remove(pid_file)
+            except OSError as e:
+                print(f"Failed to delete PID file: {e}")
 
     @staticmethod
     def create_pid_file(file_path):

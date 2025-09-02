@@ -164,9 +164,9 @@ qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001,00000000-0000-4000-800
 qcos-cli delete-jobs -y all
 
 * 设置作业结果 (回调或者测试用途)
-qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '[{"01":0}]'
+qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}'
 ** 设置多作业结果, 针对多源代码的作业
-qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}}' '{"code": -104, "message": "error test"}'
+qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}' '{"code": -104, "message": "error test"}'
 
 [系统命令]
 * ping命令

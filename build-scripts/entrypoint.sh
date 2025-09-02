@@ -40,12 +40,12 @@ API_LOG_FILE = "${API_LOG_FILE:-/var/log/qcos/qcos-api.log}"
 PREFECT_LOG_FILE = "${PREFECT_LOG_FILE:-/var/log/qcos/qcos-prefect.log}"
 
 [DEVICES]
-DEVICE_LIST = ["dummy", "hanyuan1", "tiangong100", "cirq_sim", "qiskit_aer_sim", "qiskit_qasm_sim"]
+DEVICE_LIST = ["dummy", "hanyuan1", "tiangong100", "qiskit_aer_sim", "qiskit_qasm_sim"]
 EOM
 fi
 
 # run QCOS
-python3 /root/qcos-project/qcos/api_server.py --config-file ${qcos_config_file_path} --config-dir ${qcos_extra_config_file_dir}
+/usr/bin/qcos-api --config-file ${qcos_config_file_path} --config-dir ${qcos_extra_config_file_dir}
 if [ "${DEV,,}" = "true" ]; then
   sleep infinity
 fi

@@ -770,7 +770,7 @@ def set_job_results(
             is_failed = True
         else:
             # success and set new results
-            result["results"] = new_result
+            result.update(new_result)
             result["metadata"]["status"] = Constant.JOB_STATUS_COMPLETED
         result["metadata"]["end_date"] = end_date
         i += 1

@@ -86,9 +86,9 @@ qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001,00000000-0000-4000-800
 qcos-cli delete-jobs -y all
 
 * Set job results (for callbacks or test purpose)
-qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}}'
+qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}'
 ** Set multi-results for multi-source-code job
-qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}}' '{"code": -104, "message": "error test"}'
+qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}' '{"code": -104, "message": "error test"}'
 
 [System commands]
 * Ping server

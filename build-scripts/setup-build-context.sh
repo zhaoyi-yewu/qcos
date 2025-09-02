@@ -82,7 +82,7 @@ EOM
 fi
 
 # copy dirs/files to build-context
-files=("qcos" "etc" "requirements.txt" "test-requirements.txt" "build-scripts/entrypoint.sh" "bin/qcos-cli.py")
+files=("qcos" "etc" "requirements.txt" "test-requirements.txt" "build-scripts/entrypoint.sh" "bin/qcos-api.py" "bin/qcos-cli.py")
 for file_path in "${files[@]}"; do
   src=${top_dir}/${file_path}
   dst=${BUILD_CONTEXT}/

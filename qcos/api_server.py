@@ -63,12 +63,17 @@ def main():
     """
     Main entry
     """
-    if "--daemon" in sys.argv:
-        daemonize()
     PID_DIR = "/var/run/qcos"
     PID_FILE = f"{PID_DIR}/qcos-api.pid"
+
+    # kill existing qcos-api process
+    Library.kill_pid(PID_FILE)
     Library.mkdir(PID_DIR)
     Library.create_pid_file(PID_FILE)
+
+    # daemonize process
+    if "--daemon" in sys.argv:
+        daemonize()
     try:
         loop = asyncio.get_event_loop()
         scheduler.start_taskmanager()
@@ -76,8 +81,6 @@ def main():
     except Exception as e:
         print(f"{e}\n{traceback.format_exc()}")
         sys.exit(1)
-    finally:
-        Library.rm_file(PID_FILE)
 
 
 if __name__ == "__main__":

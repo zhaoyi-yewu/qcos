@@ -33,7 +33,8 @@ SOURCE_CODE_TEXT_SCHEMA = [str]
 SOURCE_CODE_QUBO_SCHEMA = [[[int]]]
 
 SOURCE_RESULTS_SUCCESS = {  # results
-        "results": dict
+        "results": dict,
+        Optional("num_qubits"): int
     }
 SOURCE_RESULTS_ERROR = {  # error messages
         "code": int,
