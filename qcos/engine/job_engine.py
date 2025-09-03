@@ -682,6 +682,7 @@ def run_code(source_code_index, circuits, job_info,
         "sub_results": None
     }
 
+    source_code = None
     if driver.enable_transpiler:
         # [flow_parse]
         parse_results, profiling_time = flow_parse(
@@ -726,12 +727,14 @@ def run_code(source_code_index, circuits, job_info,
         if transpile_results is None or num_qubits is None:
             raise ValueError("unexpected transpile_results or num_qubits")
         job_results["num_qubits"] = num_qubits
+    else:
+        source_code = circuits[1]
 
     if driver:
         # [flow_run_driver]
         data = {
             "index": source_code_index,
-            "source_code": circuits,
+            "source_code": source_code,
             "transpile_results": transpile_results
         }
         run_results, profiling_time = flow_run_driver(
