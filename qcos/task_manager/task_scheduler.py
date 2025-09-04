@@ -134,7 +134,6 @@ class TaskScheduler(ABC):
         driver = device.get_driver()
         driver_module_name = driver.get_module_name()
         driver_class_name = driver.get_class_name()
-        extra_configs = device.get_configs()
 
         # get transpiler options
         transpiler_module_name = None
@@ -371,7 +370,7 @@ class PriorityPolicy(BaseSchedulerPolicy):
         :param job_info: job info
         :return job_priority: job priority
         """
-        return job_info["job_priority"]
+        return job_info["data"]["job_priority"]
 
 
 class HighResponseRatioPolicy(BaseSchedulerPolicy):
@@ -420,7 +419,7 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
         :return job_id: job uuid
         """
 
-        priority = self.calculate_priority()
+        priority = self.calculate_priority(job_info)
         job_deploy_id = self._task_manager.deploy_task_flow(
             flow_info["deploy_name"] + "_" + self._type,
             self._type,
@@ -432,14 +431,14 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
             {"job_info": job_info})
         return job_run_id
 
-    def calculate_priority(self):
+    def calculate_priority(self, job_info):
         """
         calculate priority
 
-        :return job_priority: default job priority
+        :param job_info: job info
+        :return job_priority: job priority
         """
-
-        return Constant.DEFAULT_JOB_PRIORITY
+        return job_info["data"]["job_priority"]
 
 
 class PeriodicPolicy(BaseSchedulerPolicy):
