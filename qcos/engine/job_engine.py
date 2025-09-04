@@ -540,6 +540,11 @@ def job_flow(job_info):
     # register signals for job cancelling
     register_signals(job_id, monitor_info)
 
+    # start task-monitor
+    artifact_id = create_progress_artifact(progress=0.0, key=job_id)
+    monitor_info["artifact_id"] = artifact_id
+    flow_task_monitor(monitor_info)
+
     # handle aggregation jobs
     aggregation_info = None
     src_code_info = create_src_code_info(job_data)
@@ -557,13 +562,11 @@ def job_flow(job_info):
 
         # deal sub job
         if not aggregation_info.is_parent:
+            monitor_info["source_code_count"] = 1
+            monitor_info["progress"] = 100
+            monitor_info["running"] = False
             return aggregation_info.sub_results
         src_code_info = update_src_code_info(src_code_info, aggregation_info)
-
-    # start task-monitor
-    artifact_id = create_progress_artifact(progress=0.0, key=job_id)
-    monitor_info["artifact_id"] = artifact_id
-    flow_task_monitor(monitor_info)
 
     # run source codes
     driver = None
