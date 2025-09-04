@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 import logging
 from typing import Dict
 
@@ -37,7 +38,7 @@ def _get_device_info(device_info):
     """
 
     # replace pwd in extra_configs to ********
-    configs = device_info.configs
+    configs = copy.deepcopy(device_info.configs)
     Library.update_dict(configs,
                         {"password": "*" * 8})
     _device_info = {

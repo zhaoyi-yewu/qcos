@@ -300,7 +300,7 @@ class DriverTiangong100(DriverBase):
         url = f"{self.base_url}/{self.login_path}/"
         data = {
             "username": username,
-            "pwd": password
+            "pwd": Library.md5_encrypt(password)
         }
         status_code, reason, text, r = \
             Library.call_http_api(url, HttpMethod.POST, json=data,

@@ -20,6 +20,7 @@ import asyncio
 import copy
 import csv
 import fnmatch
+import hashlib
 import importlib
 import inspect
 import json
@@ -880,3 +881,20 @@ class Library:
 
         # 4. remove value=0 in the result
         return {k: v for k, v in result.items() if v != 0}
+
+    @staticmethod
+    def md5_encrypt(text):
+        """
+        Encrypt text using md5
+
+        :param text: Text to be encrypted
+        :return: Encrypted text
+        """
+        # create md5 hash object
+        md5_hash = hashlib.md5()
+        md5_hash.update(text.encode('utf-8'))
+
+        # get hex hash
+        encrypted_text = md5_hash.hexdigest()
+
+        return encrypted_text
