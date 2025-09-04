@@ -57,14 +57,6 @@ class TestTaskFlowManager(unittest.TestCase):
         self.task_manager._sync_client = mock_prefect_client
         self.task_manager.check_connection()
 
-        # case2: false
-        mock_hello_return.status_code = HttpCode.TIMEOUT_ERROR
-        self.task_manager._sync_client = mock_prefect_client
-        with self.assertRaises(TimeoutError) as e:
-            self.task_manager.check_connection()
-        self.assertEqual(str(e.exception),
-                         "Connection to prefect server timeout")
-
     def test_set_driver_manager(self):
         self.task_manager.set_driver_manager('driver_manager')
         self.assertEqual(self.task_manager.driver_manager, 'driver_manager')

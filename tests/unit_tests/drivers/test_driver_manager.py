@@ -18,7 +18,9 @@
 from unittest.mock import patch
 
 from qcos.common.library import Library
+from qcos.drivers.driver_base import DriverBase
 from qcos.drivers.driver_manager import DriverManager
+from qcos.drivers.dummy.driver_dummy import DriverDummy
 
 obj = DriverManager()
 
@@ -27,11 +29,16 @@ class TestDriverManager:
 
     @patch.object(Library, "import_classes")
     def test_load_drivers(self, mock_import_classes):
-        mock_import_classes.return_value = {}
+        mock_import_classes.return_value = {"class": DriverDummy}
         assert obj.load_drivers() is None
 
-    def test_init_drivers(self):
-        assert obj.init_drivers() is None
+    @patch.object(DriverBase, "validate_driver")
+    def test_init_drivers(self, mock_validate_driver):
+        mock_validate_driver.return_value = iter([True, "err_msg"])
+        obj.init_drivers()
+
+        mock_validate_driver.return_value = iter([False, "err_msg"])
+        obj.init_drivers()
 
     def test_has_driver(self):
         assert obj.has_driver("driver_name") is False

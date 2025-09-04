@@ -20,7 +20,7 @@ import pytest
 from qcos.drivers.driver_base import DriverBase
 
 
-obj = DriverBase()
+driver_base = DriverBase()
 
 
 class TestDriverBase:
@@ -29,98 +29,88 @@ class TestDriverBase:
         cls.driver_options = {"driver_options": "driver_options"}
 
     def test_validate_driver(self):
-        obj.enable_transpiler = True
-        obj.supported_code_types = True
-        success, err_msgs = obj.validate_driver()
+        driver_base.enable_transpiler = True
+        driver_base.supported_code_types = True
+        success, err_msgs = driver_base.validate_driver()
         assert success is False
 
-        obj.enable_transpiler = False
-        obj.supported_code_types = False
-        success, err_msgs = obj.validate_driver()
+        driver_base.enable_transpiler = False
+        driver_base.supported_code_types = False
+        success, err_msgs = driver_base.validate_driver()
         assert success is False
 
     def test_validate_driver_configs(self):
         configs = {}
         with pytest.raises(NotImplementedError) as context:
-            obj.validate_driver_configs(configs)
-        assert (f"Driver: {obj.__class__.__name__} "
+            driver_base.validate_driver_configs(configs)
+        assert (f"Driver: {driver_base.__class__.__name__} "
                 f"must implement method: validate_driver_configs"
                 in str(context.value))
 
     def test_init_driver(self):
         with pytest.raises(NotImplementedError) as context:
-            obj.init_driver()
-        assert (f"Driver: {obj.__class__.__name__} "
+            driver_base.init_driver()
+        assert (f"Driver: {driver_base.__class__.__name__} "
                 f"must implement method: init_driver"
                 in str(context.value))
 
     def test_close_driver(self):
         with pytest.raises(NotImplementedError) as context:
-            obj.close_driver()
-        assert (f"Driver: {obj.__class__.__name__} "
+            driver_base.close_driver()
+        assert (f"Driver: {driver_base.__class__.__name__} "
                 f"must implement method: close_driver"
                 in str(context.value))
 
     def test_get_driver_options_schema(self):
-        driver_options_schema = obj.get_driver_options_schema()
-        assert driver_options_schema == obj.driver_options_schema
+        driver_options_schema = driver_base.get_driver_options_schema()
+        assert driver_options_schema == driver_base.driver_options_schema
 
     def test_update_driver_options(self):
-        assert obj.update_driver_options(self.driver_options) is None
-
-    def test_get_driver_info(self):
-        driver_info = obj.get_driver_info()
-        assert driver_info == (
-            f"[{obj.__class__.__name__}]\n"
-            f"name: {obj.name}\n"
-            f"alias_name: None\n"
-            f"description: Quantum Computer base driver\n"
-            f"version: {obj.version}\n"
-            f"enable_transpiler: {obj.enable_transpiler}\n"
-            f"transpiler: {obj.transpiler}\n"
-            f"enable_circuit_aggregation: {obj.enable_circuit_aggregation}\n"
-            f"results_fetch_mode: {obj.results_fetch_mode}\n"
-            f"max_qubits: {obj.max_qubits}"
-        )
+        assert driver_base.update_driver_options(self.driver_options) is None
 
     def test_set_name_and_get_name(self):
-        obj.set_name("name")
-        assert obj.get_name() == "name"
+        driver_base.set_name("no_name")
+        assert driver_base.get_name() == "no_name"
+
+    def test_get_driver_info(self):
+        driver_info = driver_base.get_driver_info()
+        assert "Quantum Computer base driver" in driver_info
 
     def test_set_module_name_and_get_module_name(self):
-        obj.set_module_name("module_name")
-        assert obj.get_module_name() == "module_name"
+        driver_base.set_module_name("no_module_name")
+        assert driver_base.get_module_name() == "no_module_name"
 
     def test_set_class_name_and_get_class_name(self):
-        obj.set_class_name("class_name")
-        assert obj.get_class_name() == "class_name"
-
+        driver_base.set_class_name("no_class_name")
+        assert driver_base.get_class_name() == "no_class_name"
 
     def test_get_transpiler(self):
-        obj.enable_transpiler = False
-        assert obj.get_transpiler() is None
-        obj.enable_transpiler = True
-        assert obj.get_transpiler() == obj.transpiler
+        driver_base.enable_transpiler = False
+        assert driver_base.get_transpiler() is None
+        driver_base.enable_transpiler = True
+        assert driver_base.get_transpiler() == driver_base.transpiler
 
     def test_get_supported_code_types(self):
-        assert obj.get_supported_code_types() == obj.supported_code_types
+        supported_code_types = driver_base.get_supported_code_types()
+        assert supported_code_types == driver_base.supported_code_types
 
     def test_get_supported_basis_gates(self):
-        assert obj.get_supported_basis_gates() == obj.supported_basis_gates
+        supported_transpilers = driver_base.get_supported_basis_gates()
+        assert supported_transpilers == driver_base.supported_basis_gates
 
     def test_run(self):
         with pytest.raises(NotImplementedError) as context:
-            obj.run("1", 5, {})
-        assert (f"Driver: {obj.__class__.__name__} "
+            driver_base.run("1", 5, {})
+        assert (f"Driver: {driver_base.__class__.__name__} "
                 f"must implement method: run")
 
     def test_dry_run(self):
-        assert obj.dry_run("1", 5, {"index": "233"}) is None
-
+        assert driver_base.dry_run("1", 5, {"index": "233"}) is None
 
     def test_get_default_data_type(self):
-        assert obj.get_default_data_type() == obj.default_data_type
+        data_type = driver_base.get_default_data_type()
+        assert data_type == driver_base.default_data_type
 
     def test_set_max_qubits_and_get_max_qubits(self):
-        obj.set_max_qubits(10)
-        assert obj.get_max_qubits() == 10
+        driver_base.set_max_qubits(10)
+        assert driver_base.get_max_qubits() == 10

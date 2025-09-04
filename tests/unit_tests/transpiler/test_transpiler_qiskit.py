@@ -39,7 +39,7 @@ class TestTranspilerQiskit:
                                 Constant.SINGLE_QUBIT_GATE_RY,
                                 Constant.SINGLE_QUBIT_GATE_RZ,
                                 Constant.TWO_QUBIT_GATE_CX]
-        trans_cfg_inst.set_driver_name("qiskit-aer-sim")
+        trans_cfg_inst.set_driver_name("DriverQiskitAerSim")
         transpiler = TranspilerQiskit()
         src_code_info = ("000", self.simple_data)
         parse_result = transpiler.parse(src_code_info)
@@ -52,7 +52,7 @@ class TestTranspilerQiskit:
                                 Constant.SINGLE_QUBIT_GATE_RY,
                                 Constant.SINGLE_QUBIT_GATE_RZ,
                                 Constant.TWO_QUBIT_GATE_CX]
-        trans_cfg_inst.set_driver_name("qiskit-aer-sim")
+        trans_cfg_inst.set_driver_name("DriverQiskitAerSim")
         transpiler = TranspilerQiskit()
         src_code_info = {"000": self.simple_data}
         try:

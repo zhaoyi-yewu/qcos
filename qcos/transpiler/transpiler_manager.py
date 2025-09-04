@@ -75,7 +75,7 @@ class TranspilerManager:
         :param transpiler_name: transpiler name
         :return: True or False
         """
-        return transpiler_name in self.transpiler
+        return transpiler_name in self.transpilers
 
     def get_transpiler(self, transpiler_name):
         """
