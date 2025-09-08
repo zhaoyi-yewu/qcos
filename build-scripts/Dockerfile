@@ -36,6 +36,7 @@ RUN \
     if [ "${DEV,,}" = "false" ]; then cp -rf ${BUILD_CONTEXT}/qcos/* /root/qcos-project/; fi && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-cli.py /usr/bin/qcos-cli && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-api.py /usr/bin/qcos-api && \
+    cp -rf ${BUILD_CONTEXT}/bin/qcos-transpiler.py /usr/bin/qcos-transpiler && \
     cp -rf ${BUILD_CONTEXT}/requirements.txt /root/ && \
     cp -rf ${BUILD_CONTEXT}/test-requirements.txt /root/ && \
 # config system

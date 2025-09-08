@@ -17,7 +17,7 @@
 
 import sys
 
-from qcos.api_server import main
+from qcos.transpiler.cmss.transpiler_cmd_line import main
 
 
 if __name__ == "__main__":
