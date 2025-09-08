@@ -58,17 +58,17 @@ class TranspilerQiskit(TranspilerBase):
         Init transpiler
         """
 
-    def parse(self, circuits):
+    def parse(self, src_code_dict):
         """
-        parse circuits
+        parse src_code_dict
 
-        :param circuits: circuits
+        :param src_code_dict: src_code_dict
         :return parse result
         """
-        if isinstance(circuits, tuple) and len(circuits) == 2:
-            source_codes = circuits[1]
-            logger.info(f"source_codes:\n{source_codes}")
-            parse_result = qiskit.QuantumCircuit.from_qasm_str(source_codes)
+        if isinstance(src_code_dict, dict) and len(src_code_dict) == 1:
+            source_code = next(iter(src_code_dict.values()))
+            logger.info(f"source_code:\n{source_code}")
+            parse_result = qiskit.QuantumCircuit.from_qasm_str(source_code)
             self.total_qubits = parse_result.num_qubits
             return parse_result
         else:

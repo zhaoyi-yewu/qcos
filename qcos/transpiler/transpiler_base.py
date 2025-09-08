@@ -163,11 +163,11 @@ class TranspilerBase:
         """
         return self.supported_code_types
 
-    def parse(self, circuits):
+    def parse(self, src_code_dict):
         """
-        parse circuits
+        parse src code dict
 
-        :param circuits: circuits
+        :param src_code_dict: src code dict
         :return parse result
         """
         raise NotImplementedError(f"Transpiler: {self.__class__.__name__} "

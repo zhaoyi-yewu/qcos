@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 from datetime import datetime
 import importlib
 import signal
@@ -52,11 +53,8 @@ class AggregationInput(RunInput):
 
 
 class SourceCodeInfo:
-    aggregation_type: Optional[str] = None
-    aggregated_code_list: Optional[List[Dict]] = None
-    aggregated_result_list: Optional[List[Dict]] = None
-    seperated_code_map: Optional[Dict] = None
-    seperated_result_map: Optional[Dict] = None
+    aggregation_type: str
+    src_code_list: List[Dict]
 
 
 @task(persist_result=False)
@@ -149,22 +147,22 @@ def task_monitor(monitor_info):
 
 
 @task(persist_result=False)
-def parse(circuits, transpiler):
+def parse(src_code_dict, transpiler):
     """
     parse
 
-    :param circuits: circuits
+    :param src_code_dict: src_code_dict
     :param transpiler: transpiler
     :return parsed results
     """
 
     try:
-        parsed_circuits = transpiler.parse(circuits)
-        logger.info(f"final parsed circuits: {parsed_circuits}")
-        return {"parsed_circuits": parsed_circuits,
+        parsed_src_code = transpiler.parse(src_code_dict)
+        logger.info(f"final parsed src code: {parsed_src_code}")
+        return {"parsed_src_code": parsed_src_code,
                 "error": None}
     except Exception as e:
-        return {"parsed_circuits": None,
+        return {"parsed_src_code": None,
                 "error": ValueError(str(e))}
 
 
@@ -349,33 +347,32 @@ def create_src_code_info(job_data):
     src_code_info = SourceCodeInfo()
     source_code_list = job_data["source_code"]
     job_id = job_data["job_id"]
-    source_code_index = 0
+    src_code_index = 0
     if job_data["circuit_aggregation"] is None:
-        src_code_info.aggregation_type = None
-        seperated_code_map = {}
+        src_code_info.aggregation_type = Constant.AGGREGATION_TYPE_NONE
+        src_code_info.src_code_list = []
         for source_code in source_code_list:
-            seperated_code_map[job_id + "-" + str(source_code_index)] = (
+            src_code_map = {}
+            src_code_map[job_id + "-" + str(src_code_index)] = (
                 source_code)
-            source_code_index += 1
-        src_code_info.seperated_code_map = seperated_code_map
-    # pylint: disable=line-too-long
-    elif (job_data["circuit_aggregation"] == Constant.AGGREGATION_TYPE_INTERNAL
-          or
-          job_data["circuit_aggregation"] == Constant.AGGREGATION_TYPE_EXTERNAL):
-    # pylint: enable=line-too-long
+            src_code_index += 1
+            src_code_info.src_code_list.append(src_code_map)
+    else:
         src_code_info.aggregation_type = job_data["circuit_aggregation"]
-        aggregated_code_map = {}
-        src_code_info.aggregated_code_list = []
+        src_code_info.src_code_list = []
+        src_code_map = {}
         for source_code in source_code_list:
-            if len(aggregated_code_map) >= Constant.MAX_AGGREGATION_JOBS:
-                src_code_info.aggregated_code_list.append(
-                    aggregated_code_map)
-                aggregated_code_map.clear()
+            if len(src_code_map) >= Constant.MAX_AGGREGATION_JOBS:
+                src_code_info.src_code_list.append(
+                    src_code_map)
+                src_code_map.clear()
                 continue
-            aggregated_code_map[job_id + "-" + str(source_code_index)] = (
+            src_code_map[job_id + "-" + str(src_code_index)] = (
                 source_code)
-            source_code_index += 1
-        src_code_info.aggregated_code_list.append(aggregated_code_map)
+            src_code_index += 1
+
+        if len(src_code_map) != 0:
+            src_code_info.src_code_list.append(src_code_map)
     return src_code_info
 
 
@@ -387,22 +384,24 @@ def update_src_code_info(src_code_info, aggregation_info):
     :param aggregation_info: aggregation info
     :return src_code_info
     """
-    if (src_code_info.aggregated_code_list is None or
-            len(src_code_info.aggregated_code_list) == 0):
+
+    length = len(src_code_info.src_code_list)
+    if length == 0:
         raise ValueError("unexpected input")
 
-    length = len(src_code_info.aggregated_code_list)
-    aggregated_code_map = src_code_info.aggregated_code_list[length - 1]
-    src_code_info.aggregated_code_list.pop()
+    src_code_map = src_code_info.src_code_list[length - 1]
+    src_code_info.src_code_list.pop()
     for key, value in aggregation_info.sub_jobs.items():
-        if len(aggregated_code_map) >= Constant.MAX_AGGREGATION_JOBS:
-            src_code_info.aggregated_code_list.append(
-                aggregated_code_map)
-            aggregated_code_map.clear()
+        if len(src_code_map) >= Constant.MAX_AGGREGATION_JOBS:
+            src_code_info.src_code_list.append(
+                src_code_map)
+            src_code_map.clear()
             continue
         src_code = value["job_info"]["data"]["source_code"][0]
-        aggregated_code_map[key + "-0"] = src_code
-    src_code_info.aggregated_code_list.append(aggregated_code_map)
+        src_code_map[key + "-0"] = src_code
+
+    if len(src_code_map) != 0:
+        src_code_info.src_code_list.append(src_code_map)
     return src_code_info
 
 
@@ -414,12 +413,8 @@ def get_src_code_cnt(src_code_info: SourceCodeInfo):
     :return src_code_cnt
     """
     src_code_cnt = 0
-    if src_code_info.aggregated_code_list is not None:
-        for circuit_map in src_code_info.aggregated_code_list:
-            src_code_cnt += len(circuit_map)
-
-    if src_code_info.seperated_code_map is not None:
-        src_code_cnt += len(src_code_info.seperated_code_map)
+    for code_dict in src_code_info.src_code_list:
+        src_code_cnt += len(code_dict)
 
     return src_code_cnt
 
@@ -462,10 +457,12 @@ def get_internal_aggregated_results(job_results, mapping_dict):
     for item in measure_results:
         if item is None:
             continue
-        single_result = job_results
+        single_result = copy.deepcopy(job_results)
         single_result["results"] = item
         single_result["num_qubits"] = len(next(iter(item.keys())))
+
         aggregated_results.append(single_result)
+
     return aggregated_results
 
 
@@ -548,8 +545,7 @@ def job_flow(job_info):
     # handle aggregation jobs
     aggregation_info = None
     src_code_info = create_src_code_info(job_data)
-    if job_data["circuit_aggregation"] is not None and job_data[
-        "circuit_aggregation"] == Constant.AGGREGATION_TYPE_EXTERNAL:
+    if src_code_info.aggregation_type == Constant.AGGREGATION_TYPE_EXTERNAL:
         # TODO(jidalong) handle timeout
         # circuit_aggregation(multi) tag flow run will automatically paused
         # here waiting for aggregation_info generated by task manager
@@ -577,55 +573,42 @@ def job_flow(job_info):
     source_code_count = get_src_code_cnt(src_code_info)
     monitor_info["source_code_count"] = source_code_count
 
-    # TODO(xudong) move aggregation failed items to seperated_code_map
-    if src_code_info.aggregated_code_list is not None:
-        for src_code_map in src_code_info.aggregated_code_list:
-            monitor_info["source_code_index"] = source_code_index
-            monitor_info["progress"] = (percentage_base * source_code_index
-                                        / source_code_count)
-            job_results, driver, transpiler, mapping_dict = run_code(
-                source_code_index,
-                src_code_map,
-                job_info,
-                driver,
-                transpiler,
-                monitor_info)
-            source_code_index += len(src_code_map)
-            # pylint: disable=line-too-long
-            if src_code_info.aggregation_type == Constant.AGGREGATION_TYPE_EXTERNAL:
-                aggregated_res = get_external_aggregated_results(job_results, mapping_dict)
-                job_results_list.append(aggregated_res)
-            else:
-                aggregated_res = get_internal_aggregated_results(job_results, mapping_dict)
-                job_results_list.extend(aggregated_res)
-            # pylint: enable=line-too-long
+    # TODO(xudong) need to handle aggregation failed items
+    for src_code_dict in src_code_info.src_code_list:
+        monitor_info["source_code_index"] = source_code_index
+        monitor_info["progress"] = (percentage_base * source_code_index
+                                    / source_code_count)
+        job_results, driver, transpiler, mapping_dict = run_code(
+            source_code_index,
+            src_code_dict,
+            job_info,
+            driver,
+            transpiler,
+            monitor_info)
+        source_code_index += len(src_code_dict)
 
-    if src_code_info.seperated_code_map is not None:
-        for key, value in src_code_info.seperated_code_map.items():
-            monitor_info["source_code_index"] = source_code_index
-            monitor_info["progress"] = (percentage_base * source_code_index
-                                        / source_code_count)
-            job_results, driver, transpiler, mapping_dict = run_code(
-                source_code_index,
-                (key, value),
-                job_info,
-                driver,
-                transpiler,
-                monitor_info)
+        # pylint: disable=line-too-long
+        if src_code_info.aggregation_type == Constant.AGGREGATION_TYPE_NONE:
             job_results_list.append(job_results)
-            source_code_index += 1
+        elif src_code_info.aggregation_type == Constant.AGGREGATION_TYPE_EXTERNAL:
+            aggregated_res = get_external_aggregated_results(job_results, mapping_dict)
+            job_results_list.append(aggregated_res)
+        else:
+            aggregated_res = get_internal_aggregated_results(job_results, mapping_dict)
+            job_results_list.extend(aggregated_res)
+        # pylint: enable=line-too-long
 
     monitor_info["running"] = False
     return job_results_list
 
 
-def run_code(source_code_index, circuits, job_info,
+def run_code(source_code_index, src_code_dict, job_info,
              driver, transpiler, monitor_info):
     """
     Flow: run
 
     :param source_code_index: source code index
-    :param circuits: circuits
+    :param src_code_dict: src code dictionary
     :param job_info: job info
     :param driver: driver
     :param transpiler: transpiler
@@ -689,7 +672,7 @@ def run_code(source_code_index, circuits, job_info,
     if driver.enable_transpiler:
         # [flow_parse]
         parse_results, profiling_time = flow_parse(
-            circuits,
+            src_code_dict,
             transpiler,
             profiling_types
         )
@@ -707,7 +690,7 @@ def run_code(source_code_index, circuits, job_info,
 
         # [flow_transpile]
         transpile_task_results, profiling_time = flow_transpile(
-            parse_results["parsed_circuits"],
+            parse_results["parsed_src_code"],
             transpiler,
             driver,
             profiling_types
@@ -731,7 +714,7 @@ def run_code(source_code_index, circuits, job_info,
             raise ValueError("unexpected transpile_results or num_qubits")
         job_results["num_qubits"] = num_qubits
     else:
-        source_code = circuits[1]
+        source_code = next(iter(src_code_dict.values()))
 
     if driver:
         # [flow_run_driver]
@@ -767,13 +750,13 @@ def run_code(source_code_index, circuits, job_info,
     return job_results, driver, transpiler, mapping_dict
 
 
-def flow_parse(circuits,
+def flow_parse(src_code_dict,
                transpiler,
                profiling_types):
     """
     Flow: parse
 
-    :param circuits: circuits
+    :param src_code_dict: src_code_dict
     :param transpiler: transpiler
     :param profiling_types: profiling types
     :return results, profiling_time
@@ -788,7 +771,7 @@ def flow_parse(circuits,
         profiling_start = time.time()
 
     # parser
-    parse_task = parse.submit(circuits, transpiler,
+    parse_task = parse.submit(src_code_dict, transpiler,
         wait_for=[init_driver, init_transpiler])
     parse_task_result = parse_task.result()
 
@@ -800,14 +783,14 @@ def flow_parse(circuits,
     return parse_task_result, profiling_time
 
 
-def flow_transpile(parsed_circuits,
+def flow_transpile(parsed_src_code,
                    transpiler,
                    driver,
                    profiling_types):
     """
     Flow: transpile
 
-    :param parsed_circuits: parse circuits
+    :param parsed_src_code: parsed_src_code
     :param transpiler: transpiler
     :param driver: driver
     :param profiling_types: profiling types
@@ -824,7 +807,7 @@ def flow_transpile(parsed_circuits,
 
     # transpile codes
     transpile_task = transpile.submit(
-        parsed_circuits, driver, transpiler,
+        parsed_src_code, driver, transpiler,
         wait_for=[init_driver, init_transpiler, parse])
     transpile_task_results = transpile_task.result()
 

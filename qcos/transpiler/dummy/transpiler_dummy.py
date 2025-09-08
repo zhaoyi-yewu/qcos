@@ -44,11 +44,11 @@ class TranspilerDummy(TranspilerBase):
         Init transpiler
         """
 
-    def parse(self, circuits):
+    def parse(self, src_code_dict):
         """
-        parse circuits
+        parse src_code_dict
 
-        :param circuits: circuits
+        :param src_code_dict: src_code_dict
         :return parse result
         """
 

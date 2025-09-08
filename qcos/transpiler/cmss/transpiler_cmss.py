@@ -99,26 +99,19 @@ class TranspilerCmss(TranspilerBase):
                 mapping_res += mapper.execute_with_order()
             return mapping_res, mapping_dict
 
-    def parse(self, circuits):
+    def parse(self, src_code_dict):
         """
-        parse circuits
+        parse src_code_dict
 
-        :param circuits: circuits
+        :param src_code_dict: src_code_dict
         :return parse result
         """
         # compile
         parse_result_dict = {}
-        if isinstance(circuits, tuple) and len(circuits) == 2:
-            source_codes = circuits[1]
-            logger.info(f"source_codes:\n{source_codes}")
-            num_qubits, parse_result = compile(source_codes)
-            if num_qubits > trans_cfg_inst.max_qubits:
-                raise TranspilerException("reach max qubits limitation")
-            self.total_qubits = num_qubits
-            parse_result_dict = {circuits[0]: (num_qubits, parse_result)}
-            return parse_result_dict
-        elif isinstance(circuits, dict):
-            for key, value in circuits.items():
+        self.total_qubits = 0
+        if isinstance(src_code_dict, dict):
+            for key, value in src_code_dict.items():
+                logger.info(f"source_code:\n{value}")
                 num_qubits, parse_result = compile(value)
                 if self.total_qubits + num_qubits > trans_cfg_inst.max_qubits:
                     # TODO (xudong): need to remove the remained task item.

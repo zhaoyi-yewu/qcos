@@ -41,7 +41,7 @@ class TestTranspilerQiskit:
                                 Constant.TWO_QUBIT_GATE_CX]
         trans_cfg_inst.set_driver_name("DriverQiskitAerSim")
         transpiler = TranspilerQiskit()
-        src_code_info = ("000", self.simple_data)
+        src_code_info = {"000": self.simple_data}
         parse_result = transpiler.parse(src_code_info)
         transpiled_circuit, _ = transpiler.transpile(parse_result,
                                                      expected_basis_gates)

@@ -82,7 +82,7 @@ class TestTranspilerCmss:
         transpiler = TranspilerCmss()
         expected_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
                                 Constant.SINGLE_QUBIT_GATE_RY]
-        src_code_info = ("000", self.simple_data)
+        src_code_info = {"000": self.simple_data}
         parse_result = transpiler.parse(src_code_info)
         basis_gate_list, _ = transpiler.transpile(parse_result,
                                                   expected_basis_gates)
