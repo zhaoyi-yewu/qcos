@@ -53,7 +53,6 @@ def submit_job(
     job_id = body.job_id
     job_name = body.job_name
     job_type = body.job_type
-    job_sched_policy = body.job_sched_policy
     job_priority = body.job_priority
     description = body.description
     shots = body.shots
@@ -160,17 +159,6 @@ def submit_job(
         func_name,
         Library.validate_values_enum(
             job_type, "job_type", Constant.JOB_TYPES
-        )
-    )
-
-    # validate: job_sched_policy
-    jsonrpc_errors.handle_error_bad_requests(
-        module_name,
-        func_name,
-        Library.validate_values_enum(
-            job_sched_policy,
-            "job_sched_policy",
-            Constant.JOB_SCHED_POLICIES
         )
     )
 
@@ -385,7 +373,8 @@ def submit_job(
     res = None
     err = None
     try:
-        res, err = scheduler.add(body.job_sched_policy, body)
+        res, err = scheduler.add(Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
+                                 body)
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
             module_name,
@@ -405,7 +394,6 @@ def submit_job(
         "job_id": res["job_id"],
         "job_name": job_name,
         "job_status": Constant.JOB_STATUS_UNKNOWN,
-        "job_sched_policy": job_sched_policy,
         "job_priority": job_priority,
         "description": description,
         "backend": backend,
@@ -498,15 +486,6 @@ def get_job_results(
     logger.info(f"Call {func_name}: {body}")
 
     job_id = body.job_id
-
-    # check if job exists
-    success = scheduler.has_job(job_id)
-    if not success:
-        jsonrpc_errors.handle_error_not_found(
-            module_name,
-            func_name,
-            (False, f"Job: '{job_id}' is not found")
-        )
 
     # query job results
     response = None
@@ -644,7 +623,7 @@ def delete_jobs(
     job_ids = list(dict.fromkeys(job_ids))
 
     # delete jobs
-    success_list = scheduler.remove_jobs(job_ids)
+    success_list = scheduler.delete_jobs(job_ids)
 
     # construct response
     response_info = [{
@@ -678,15 +657,6 @@ def set_job_results(
             new_results, args_schema.SOURCE_SET_RESULTS
         )
     )
-
-    # check if job exists
-    success = scheduler.has_job(job_id)
-    if not success:
-        jsonrpc_errors.handle_error_not_found(
-            module_name,
-            func_name,
-            (False, f"Job: '{job_id}' is not found")
-        )
 
     # get existing job results
     response = None

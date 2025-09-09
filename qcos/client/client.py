@@ -254,7 +254,6 @@ class Client:
             job_id=None,
             job_name=None,
             job_type=Constant.JOB_TYPE_SAMPLING,
-            job_sched_policy=Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
             job_priority=Constant.DEFAULT_JOB_PRIORITY,
             description=None,
             shots=Constant.DEFAULT_SHOTS,
@@ -274,7 +273,6 @@ class Client:
         :param job_id: job uuid
         :param job_name: job name
         :param job_type: job type
-        :param job_sched_policy: job scheduling policy
         :param job_priority: job priority
         :param description: job description
         :param shots: shots
@@ -296,7 +294,6 @@ class Client:
             "circuit_aggregation": circuit_aggregation,
             "job_name": job_name,
             "job_type": job_type,
-            "job_sched_policy": job_sched_policy,
             "job_priority": job_priority,
             "description": description,
             "shots": shots,

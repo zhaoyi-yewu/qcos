@@ -132,28 +132,28 @@ class TestTaskFlowManager(unittest.TestCase):
         assert str(context.value) == 'None'
 
     def test_delete_flow_artifacts(self):
-        mock_client = AsyncMock()
-        self.task_manager._client = mock_client
-        mock_client.read_artifacts.return_value = []
+        mock_client = Mock()
+        self.task_manager._sync_client = mock_client
+        mock_client.read_artifacts.return_value = [
+            ConstantForTest.artifact_obj
+        ]
         mock_client.delete_artifact.return_value = None
-        job_id = asyncio.run(self.task_manager.delete_flow_artifacts
-                             (ConstantForTest.job_id))
-        assert job_id is None
+        self.task_manager.delete_flow_artifacts(ConstantForTest.job_id)
+        assert mock_client.delete_artifact.call_count == 1
 
     def test_get_job_artifact(self):
         mock_client = Mock()
-        mock_run = Mock()
-        self.task_manager.loop = mock_client
-        mock_client.get_job_artifact_by_client.return_value = mock_run
+        self.task_manager.get_job_artifact_by_client = mock_client
+        mock_client.get_job_artifact_by_client.return_value = []
         artifact = self.task_manager.get_job_artifact(ConstantForTest.job_id)
         assert artifact is not None
 
     def test_get_job_artifact_by_client(self):
-        mock_client = AsyncMock()
-        self.task_manager._client = mock_client
+        mock_client = Mock()
+        self.task_manager._sync_client = mock_client
         mock_client.read_artifacts.return_value = []
-        job_id = asyncio.run(self.task_manager.get_job_artifact_by_client
-                             (ConstantForTest.job_id))
+        job_id = self.task_manager.get_job_artifact_by_client(
+            ConstantForTest.job_id)
         assert job_id is not None
 
     @patch.object(TaskFlowManager, "get_flow_run_id_by_job_id")
@@ -177,31 +177,27 @@ class TestTaskFlowManager(unittest.TestCase):
         self.task_manager.update_flow(ConstantForTest.job_id)
 
     def test_get_task_flow_result_by_client(self):
-        mock_client = AsyncMock()
-        mock_run = AsyncMock()
-        self.task_manager._client = mock_client
+        mock_client = Mock()
+        mock_run = Mock()
+        self.task_manager._sync_client = mock_client
         mock_run.read_flow_run.return_value = {}
-        results = asyncio.run(
-            self.task_manager.get_task_flow_result_by_client(
-                ConstantForTest.job_id))
+        results = self.task_manager.get_task_flow_result_by_client(
+            ConstantForTest.job_id)
         assert results is not None
 
     def test_get_task_flow_list(self):
         mock_client = Mock()
-        mock_run = Mock()
-        self.task_manager.loop = mock_client
-        mock_client.get_task_flow_list_by_client.return_value = mock_run
+        self.task_manager.get_task_flow_list_by_client = mock_client
+        mock_client.get_task_flow_list_by_client.return_value = []
         results = self.task_manager.get_task_flow_list()
         assert results is not None
 
     def test_get_task_flow_list_by_client(self):
-        mock_client = AsyncMock()
-        self.task_manager._client = mock_client
+        mock_client = Mock()
+        self.task_manager._sync_client = mock_client
         mock_client.read_artifacts.return_value = []
         mock_client.read_flow_runs.return_value = []
-        results = asyncio.run(
-            self.task_manager.get_task_flow_list_by_client(
-                ConstantForTest.job_id))
+        results = self.task_manager.get_task_flow_list_by_client()
         assert results is not None
 
     @patch.object(TaskFlowManager, "get_flow_run_id_by_job_id")
@@ -214,11 +210,10 @@ class TestTaskFlowManager(unittest.TestCase):
         self.task_manager.delete_task_flow_run(ConstantForTest.job_ids)
 
     def test_delete_task_flow_run_by_client(self):
-        mock_client = AsyncMock()
-        self.task_manager._client = mock_client
-        results = asyncio.run(
-            self.task_manager.delete_task_flow_run_by_client(
-                ConstantForTest.job_ids))
+        mock_client = Mock()
+        self.task_manager._sync_client = mock_client
+        results = self.task_manager.delete_task_flow_run_by_client(
+            ConstantForTest.flow_run_ids)
         assert results is not None
 
     def test_run_callbacks(self):

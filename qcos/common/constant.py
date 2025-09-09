@@ -146,14 +146,7 @@ class Constant:
     JOB_SCHED_POLICY_BATCH = "batch"
     JOB_SCHED_POLICY_REALTIME = "realtime"
     DEFAULT_JOB_SCHED_POLICY = JOB_SCHED_POLICY_TIME_PRECEDENCE
-    JOB_SCHED_POLICIES = [JOB_SCHED_POLICY_PRIORITY,
-                          JOB_SCHED_POLICY_HIGH_RESPONSE_RATIO,
-                          JOB_SCHED_POLICY_SHORTEST_JOB_FIRST,
-                          JOB_SCHED_POLICY_TIME_PRECEDENCE,
-                          JOB_SCHED_POLICY_PERIODIC,
-                          JOB_SCHED_POLICY_DEPENDENT,
-                          JOB_SCHED_POLICY_BATCH,
-                          JOB_SCHED_POLICY_REALTIME]
+    JOB_SCHED_POLICIES = [JOB_SCHED_POLICY_TIME_PRECEDENCE]
 
     # Results fetch mode
     RESULTS_FETCH_MODE_SYNC = "sync"

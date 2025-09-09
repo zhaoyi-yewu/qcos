@@ -16,6 +16,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from prefect.client.schemas.objects import Artifact
+
 from qcos.common.constant import Constant
 from qcos.common.library import Library
 
@@ -65,3 +67,6 @@ class ConstantForTest:
     job_ids = ['00000000-0000-4000-8000-000000000001',
                '00000000-0000-4000-8000-000000000002',
                '00000000-0000-4000-8000-000000000003']
+    job_flow_run_id = "10000000-0000-4000-8000-000000000001"
+    flow_run_ids = [(job_flow_run_id, job_id)]
+    artifact_obj = Artifact(key="20000000-0000-4000-8000-000000000001")

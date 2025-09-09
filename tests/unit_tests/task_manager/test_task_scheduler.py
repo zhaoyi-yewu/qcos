@@ -61,7 +61,7 @@ class TestTaskScheduler:
         job_info = SimpleNamespace(**job_info)
 
         with pytest.raises(Exception) as context:
-            task.add(Constant.JOB_SCHED_POLICY_PRIORITY, job_info)
+            task.add(Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE, job_info)
         assert str(context.value) is not None
 
     @patch.object(TaskFlowManager, "get_job_artifact")
@@ -102,7 +102,7 @@ class TestTaskScheduler:
         mock_get_job_status.return_value = 111
         mock_delete_task_flow_run.return_value = [
             {"job_status": 111, "state": 222}, ]
-        task.remove_jobs([1, 2, 3])
+        task.delete_jobs([1, 2, 3])
 
     @patch.object(TaskFlowManager, "update_flow")
     def test_update_job(self, mock_update_flow):
@@ -150,7 +150,7 @@ class TestPriorityPolicy:
         mock_run_task_flow.return_value = 514
 
         result = priority_policy.exec_task(ConstantForTest.flow_info,
-                                           ConstantForTest.job_info)
+                                           ConstantForTest.args["job_info"])
         assert result == 514
 
 
@@ -173,7 +173,7 @@ class TestTimePrecedencePolicy:
         mock_run_task_flow.return_value = 514
 
         result = time_precedence_policy.exec_task(
-            ConstantForTest.flow_info, ConstantForTest.job_info)
+            ConstantForTest.flow_info, ConstantForTest.args["job_info"])
         assert result == 514
 
 
@@ -199,4 +199,5 @@ class TestRealtimePolicy:
 
 class TestSchedulerPolicyHandlerFactory:
     def test_get_policy_handler_by_name(self):
-        factory.get_policy_handler_by_name(Constant.JOB_SCHED_POLICY_PRIORITY)
+        factory.get_policy_handler_by_name(
+            Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE)

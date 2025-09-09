@@ -311,21 +311,21 @@ class TaskFlowManager(ABC):
         flow_run_id = self.get_flow_run_id_by_job_id(job_id)
         if flow_run_id is None:
             raise ObjectNotFound(Exception("Job not found"))
-        state, parameters, result, err_msg = self.loop.run_until_complete(
-            self.get_task_flow_result_by_client(flow_run_id))
+        state, parameters, result, err_msg = \
+            self.get_task_flow_result_by_client(flow_run_id)
         return state, parameters, result, err_msg
 
-    async def delete_flow_artifacts(self, flow_run_id):
+    def delete_flow_artifacts(self, flow_run_id):
         """
         Delete flow artifacts
 
         :param flow_run_id: flow run id
         """
-        artifacts = await self._client.read_artifacts(
+        artifacts = self._sync_client.read_artifacts(
             artifact_filter=ArtifactFilter(
                 flow_run_id=ArtifactFilterFlowRunId(any_=[flow_run_id])))
         for artifact in artifacts:
-            await self._client.delete_artifact(artifact.id)
+            self._sync_client.delete_artifact(artifact.id)
 
     def get_job_artifact(self, job_id):
         """
@@ -334,11 +334,10 @@ class TaskFlowManager(ABC):
         :param job_id: job id
         :return artifact
         """
-        artifact = self.loop.run_until_complete(
-            self.get_job_artifact_by_client(job_id))
+        artifact = self.get_job_artifact_by_client(job_id)
         return artifact
 
-    async def get_job_artifact_by_client(self, job_id):
+    def get_job_artifact_by_client(self, job_id):
         """
         Get job artifact by client
 
@@ -346,7 +345,7 @@ class TaskFlowManager(ABC):
         :return artifact
         """
         artifact = {}
-        artifacts = await self._client.read_artifacts(
+        artifacts = self._sync_client.read_artifacts(
             artifact_filter=ArtifactFilter(
                 key=ArtifactFilterKey(any_=[str(job_id)])))
         if artifacts:
@@ -406,7 +405,7 @@ class TaskFlowManager(ABC):
         return self.loop.run_until_complete(
             _update_flow(flow_run_id, name, parameters, variables))
 
-    async def get_task_flow_result_by_client(self, flow_run_id):
+    def get_task_flow_result_by_client(self, flow_run_id):
         """
         Get flow run state and result by prefect client.
 
@@ -419,7 +418,7 @@ class TaskFlowManager(ABC):
 
         # TODO(jidalong) deal exception
         # get flow info
-        flow_run = await self._client.read_flow_run(flow_run_id)
+        flow_run = self._sync_client.read_flow_run(flow_run_id)
         state = flow_run.state
         parameters = flow_run.parameters
         if state.is_final():
@@ -427,7 +426,7 @@ class TaskFlowManager(ABC):
                 return state.name, parameters, None, state.message
             elif state.name.upper() != Constant.PREFECT_STATE_COMPLETED:
                 return state.name, parameters, None, None
-            result = await state.result()
+            result = state.result()
             return state.name, parameters, result, None
         else:
             return state.name, parameters, None, None
@@ -439,11 +438,10 @@ class TaskFlowManager(ABC):
         :return result: flow run list
         """
 
-        results = self.loop.run_until_complete(
-            self.get_task_flow_list_by_client())
+        results = self.get_task_flow_list_by_client()
         return results
 
-    async def get_task_flow_list_by_client(
+    def get_task_flow_list_by_client(
             self,
             sort_fields=['-created'],
             reverse=False,
@@ -461,7 +459,7 @@ class TaskFlowManager(ABC):
 
         # get artifacts info, eg: progress
         artifacts_map = {}
-        artifacts = await self._client.read_artifacts(
+        artifacts = self._sync_client.read_artifacts(
             limit=Constant.FLOW_LIMIT)
         for artifact in artifacts:
             if artifact.key:
@@ -471,7 +469,7 @@ class TaskFlowManager(ABC):
                     artifacts_map[artifact.key]["progress"] = artifact.data
 
         # get flows info
-        flow_runs = await self._client.read_flow_runs()
+        flow_runs = self._sync_client.read_flow_runs()
         sorted_flows = sorted(
             flow_runs,
             key=lambda sort_obj: Library.get_sorted_keys(
@@ -488,7 +486,7 @@ class TaskFlowManager(ABC):
             parameters = flow_run.parameters
             results = None
             if flow_state == Constant.PREFECT_STATE_COMPLETED:
-                results = await flow_run.state.result()
+                results = flow_run.state.result()
             artifact = artifacts_map.get(id, {})
             progress = artifact.get("progress", -1)
             results_list.append(
@@ -511,11 +509,10 @@ class TaskFlowManager(ABC):
             if flow_run_id:
                 flow_run_ids.append((flow_run_id, job_id))
 
-        success_list = self.loop.run_until_complete(
-            self.delete_task_flow_run_by_client(flow_run_ids))
+        success_list = self.delete_task_flow_run_by_client(flow_run_ids)
         return success_list
 
-    async def delete_task_flow_run_by_client(self, flow_run_ids):
+    def delete_task_flow_run_by_client(self, flow_run_ids):
         """
         Delete flow run by client.
 
@@ -524,29 +521,29 @@ class TaskFlowManager(ABC):
         """
 
         success_list = []
-        try:
-            for (flow_run_id, job_id) in flow_run_ids:
+        for (flow_run_id, job_id) in flow_run_ids:
+            try:
+                flow_run = self._sync_client.read_flow_run(flow_run_id)
+            except ObjectNotFound:
+                logger.error(f"Prefect execute flow error: "
+                             f"can't find flow_run_id: {flow_run_id}")
+                continue
+            except Exception as e:
+                logger.error(f"Prefect execute flow error: {str(e)}")
+                continue
+            state = flow_run.state
+            if state.name.upper() != Constant.PREFECT_STATE_RUNNING:
                 try:
-                    flow_run = await self._client.read_flow_run(flow_run_id)
-                except ObjectNotFound:
-                    logger.error(f"Prefect execute flow error: "
-                                 f"can't find flow_run_id: {flow_run_id}")
-                    continue
-                except Exception as e:
-                    logger.error(f"Prefect execute flow error: {str(e)}")
-                    continue
-                state = flow_run.state
-                if state.name.upper() != Constant.PREFECT_STATE_RUNNING:
                     # delete flow
-                    await self._client.delete_flow_run(flow_run_id)
-                    # delete flow artifact
-                    await self.delete_flow_artifacts(flow_run_id)
+                    self._sync_client.delete_flow_run(flow_run_id)
                     success_list.append(
-                        {"id": flow_run_id,
+                        {"id": job_id,
                          "state": Constant.JOB_STATUS_DELETED})
-        except Exception as e:
-            logger.error(f"Prefect execute flow error: {str(e)}")
-
+                    # delete flow artifact
+                    self.delete_flow_artifacts(flow_run_id)
+                except Exception as e:
+                    logger.error(
+                        f"Prefect delete_flow_run error: {str(e)}")
         return success_list
 
     def cancel_task_flow_run(self, job_ids):
@@ -563,11 +560,10 @@ class TaskFlowManager(ABC):
             if flow_run_id:
                 flow_run_ids.append((flow_run_id, job_id))
 
-        success_list = self.loop.run_until_complete(
-            self.cancel_task_flow_run_by_client(flow_run_ids))
+        success_list = self.cancel_task_flow_run_by_client(flow_run_ids)
         return success_list
 
-    async def cancel_task_flow_run_by_client(self, flow_run_ids):
+    def cancel_task_flow_run_by_client(self, flow_run_ids):
         """
         Cancel flow run by client.
 
@@ -579,7 +575,7 @@ class TaskFlowManager(ABC):
         try:
             for (flow_run_id, job_id) in flow_run_ids:
                 try:
-                    flow_run = await self._client.read_flow_run(flow_run_id)
+                    flow_run = self._sync_client.read_flow_run(flow_run_id)
                 except ObjectNotFound:
                     logger.error(f"Prefect execute flow error: "
                                  f"can't find flow_run_id: {flow_run_id}")
@@ -590,17 +586,21 @@ class TaskFlowManager(ABC):
                 flow_state_name = flow_run.state.name.upper()
                 if flow_state_name in Constant.PREFECT_CANCEL_REQUIRED_STATES:
                     # cancel flow
-                    cancelling_state = State(type=StateType.CANCELLING)
-                    await self._client.set_flow_run_state(
-                        flow_run_id,
-                        state=cancelling_state,
-                        force=True
-                    )
-                    # delete flow artifact
-                    await self.delete_flow_artifacts(flow_run_id)
-                    success_list.append(
-                        {"id": flow_run_id,
-                         "state": Constant.JOB_STATUS_CANCELLED})
+                    try:
+                        cancelling_state = State(type=StateType.CANCELLING)
+                        self._sync_client.set_flow_run_state(
+                            flow_run_id,
+                            state=cancelling_state,
+                            force=True
+                        )
+                        success_list.append(
+                            {"id": job_id,
+                             "state": Constant.JOB_STATUS_CANCELLED})
+                        # delete flow artifact
+                        self.delete_flow_artifacts(flow_run_id)
+                    except Exception as e:
+                        logger.error(
+                            f"Prefect delete_flow_run error: {str(e)}")
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
 

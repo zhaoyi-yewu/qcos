@@ -51,8 +51,6 @@ class SubmitJobRequest(BaseModel):
     job_name: Optional[str] = None
     # Job type
     job_type: str = Constant.JOB_TYPE_SAMPLING
-    # Job scheduling policy
-    job_sched_policy: str = Constant.DEFAULT_JOB_SCHED_POLICY
     # Job priority
     job_priority: int = Constant.DEFAULT_JOB_PRIORITY
     # Profiling
@@ -78,8 +76,6 @@ class SubmitJobResponse(BaseModel):
     job_name: Optional[str] = None
     # Job status
     job_status: str = None
-    # Job scheduling policy
-    job_sched_policy: str = None
     # Job priority
     job_priority: int = None
     # Code type
@@ -142,8 +138,6 @@ class GetJobStatusResponse(BaseModel):
     transpiler_options: Optional[dict] = None
     # Circuit aggregation: internal, multi
     circuit_aggregation: Optional[str] = None
-    # Job scheduling policy
-    job_sched_policy: Optional[str] = None
     # Job priority
     job_priority: Optional[int] = None
     # Description
@@ -194,8 +188,6 @@ class GetJobResultsResponse(BaseModel):
     transpiler_options: Optional[dict] = None
     # Circuit aggregation: internal, multi
     circuit_aggregation: Optional[str] = None
-    # Job scheduling policy
-    job_sched_policy: Optional[str] = None
     # Job priority
     job_priority: Optional[int] = None
     # Description

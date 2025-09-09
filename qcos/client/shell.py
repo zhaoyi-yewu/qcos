@@ -440,8 +440,6 @@ class Version(Command):
         print(f"Platform version: {json_results['platform_version']}")
         print("Capabilities:")
         print(f"  job_types: {', '.join(sorted(caps['job_types']))}")
-        print("  job_sched_policy: "
-              f"{', '.join(sorted(caps['job_sched_policy']))}")
         print(f"  profiling: {caps['profiling']}")
         print(f"  tech_types: {caps['tech_types']}")
         print(f"  drivers: {caps['drivers']}")
@@ -752,11 +750,6 @@ class SubmitJob(Command):
                             default=f"{Constant.JOB_TYPE_SAMPLING}",
                             choices=Constant.JOB_TYPES,
                             help=f"Job type: {','.join(Constant.JOB_TYPES)}")
-        parser.add_argument("--job-scheduling-policy",
-                            dest="job_sched_policy",
-                            choices=Constant.JOB_SCHED_POLICIES,
-                            default=f"{Constant.DEFAULT_JOB_SCHED_POLICY}",
-                            help="Set job scheduling policy")
         parser.add_argument("--job-priority",
                             dest="job_priority", type=int,
                             default=f"{Constant.DEFAULT_JOB_PRIORITY}",
@@ -814,7 +807,6 @@ class SubmitJob(Command):
         job_id = parsed_args.job_id
         circuit_aggregation = parsed_args.circuit_aggregation
         job_type = parsed_args.job_type
-        job_sched_policy = parsed_args.job_sched_policy
         job_priority = parsed_args.job_priority
         description = parsed_args.description
         shots = parsed_args.shots
@@ -871,11 +863,6 @@ class SubmitJob(Command):
         # Validate argument: job_type
         CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
             job_type, "job_type", Constant.JOB_TYPES))
-
-        # Validate argument: job_sched_policy
-        CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
-            job_sched_policy, "job_sched_policy",
-            Constant.JOB_SCHED_POLICIES))
 
         # Validate argument: job_priority
         CommandHelper.handle_invalid_arguments(Library.validate_values_range(
@@ -939,7 +926,6 @@ class SubmitJob(Command):
             circuit_aggregation=circuit_aggregation,
             job_name=job_name,
             job_type=job_type,
-            job_sched_policy=job_sched_policy,
             job_priority=job_priority,
             description=description,
             shots=shots,

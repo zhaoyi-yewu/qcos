@@ -230,9 +230,9 @@ class TaskScheduler(ABC):
             logger.error(f"Prefect execute flow error: {str(e)}")
             raise errors.WorkFlowError(e)
 
-    def remove_jobs(self, ids):
+    def delete_jobs(self, ids):
         """
-        Remove job
+        Delete jobs
 
         :param ids: job id list
         :return flow_list: flow list
