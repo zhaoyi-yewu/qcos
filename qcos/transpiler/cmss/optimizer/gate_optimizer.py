@@ -17,6 +17,7 @@
 
 import numpy as np
 
+from qcos.common.constant import Constant
 from qcos.transpiler.cmss.common.gate_operation import create_gate
 from qcos.transpiler.cmss.common.move import Move
 
@@ -156,7 +157,8 @@ def do_pass(ir: list):
         passed |= pass_three_gate_model(ir)
 
 
-def optimize_gate(ir: list):
+def optimize_gate(ir: list,
+                  opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL):
     """
     基础门优化
     优化策略主要包含如下几个：
@@ -169,6 +171,8 @@ def optimize_gate(ir: list):
     param: ir (list): 中间表示
     return: optimize_gates(list): 优化后的门
     """
+    if opt_level < Constant.DEFAULT_OPTIMIZATION_LEVEL:
+        return ir
     optimize_gates = []
     for gate in ir:
         if isinstance(gate, Move):

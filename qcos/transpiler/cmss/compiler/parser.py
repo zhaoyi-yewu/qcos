@@ -571,7 +571,7 @@ def p_if_statement(if_statement):
     eq = if_statement[5]
     number = if_statement[7]
     if_statement[0] = Node(
-"if_statement", [id, eq], number, if_statement.lineno(1))
+        "if_statement", [id, eq], number, if_statement.lineno(1))
 
 
 def p_error(error):

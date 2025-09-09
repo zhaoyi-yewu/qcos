@@ -46,7 +46,8 @@ class TranspilerQiskit(TranspilerBase):
         ]
         # transpiler_options
         self.transpiler_options = {
-            "optimization_level": 1  # default optimization level
+            # default optimization level
+            "optimization_level": Constant.DEFAULT_OPTIMIZATION_LEVEL
         }
         # transpiler_options schema used in submit-job from user
         self.transpiler_options_schema = {

@@ -50,7 +50,8 @@ class TranspilerCmss(TranspilerBase):
         ]
         # transpiler_options
         self.transpiler_options = {
-            "optimization_level": 1  # default optimization level
+            # default optimization level
+            "optimization_level": Constant.DEFAULT_OPTIMIZATION_LEVEL
         }
         # transpiler_options schema used in submit-job from user
         self.transpiler_options_schema = {
@@ -58,6 +59,7 @@ class TranspilerCmss(TranspilerBase):
         }
         # qpu_config
         self.qpu_config = None
+
 
     def init_transpiler(self):
         """
@@ -137,8 +139,11 @@ class TranspilerCmss(TranspilerBase):
             raise ValueError(err_msg)
 
         opt_result_dict = {}
+        opt_level = self.transpiler_options.get(
+            "optimization_level",
+            Constant.DEFAULT_OPTIMIZATION_LEVEL)
         for key, value in parse_result.items():
-            opt_result = optimize_gate(value[1])
+            opt_result = optimize_gate(value[1], opt_level)
             opt_result_dict[key] = (value[0], opt_result)
 
         mapping_res, mapping_dict = self.mapping(qpu_cfg, opt_result_dict)
@@ -147,6 +152,6 @@ class TranspilerCmss(TranspilerBase):
         parsed_circuit = decompose_gates(mapping_res)
 
         # optimize circuit
-        basis_gate_list = optimize_gate(parsed_circuit)
+        basis_gate_list = optimize_gate(parsed_circuit, opt_level)
         logger.debug(f"final basis_gate_list: {basis_gate_list}")
         return basis_gate_list, mapping_dict
