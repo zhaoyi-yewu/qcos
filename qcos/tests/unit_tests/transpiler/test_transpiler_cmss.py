@@ -18,11 +18,10 @@
 from qcos.common.constant import Constant
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 
-from qcos.engine.job_engine import AggregationInput
 from qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
-from tests.unit_tests.transpiler.comm import read_qasm_from_file
-from tests.unit_tests.transpiler.comm import validate_gate_ir
-from tests.unit_tests.transpiler.comm import validate_non_gate_ir
+from qcos.tests.unit_tests.transpiler.comm import read_qasm_from_file
+from qcos.tests.unit_tests.transpiler.comm import validate_gate_ir
+from qcos.tests.unit_tests.transpiler.comm import validate_non_gate_ir
 
 
 class TestTranspilerCmss:

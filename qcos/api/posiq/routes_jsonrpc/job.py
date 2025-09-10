@@ -393,6 +393,7 @@ def submit_job(
     response_info = {
         "job_id": res["job_id"],
         "job_name": job_name,
+        "job_type": job_type,
         "job_status": Constant.JOB_STATUS_UNKNOWN,
         "job_priority": job_priority,
         "description": description,

@@ -45,12 +45,14 @@ RUN \
     if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then rm -rf /etc/yum.repos.d/*.repo; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi && \
     if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
     mkdir -p /etc/qcos/ && \
+    mkdir -p /etc/qcos-template/ && \
     mkdir -p /var/run/qcos/ && \
     mkdir -p /var/log/qcos/ && \
 # install basic rpms
     yum install -y hostname openssh openssh-clients sshpass iputils iproute \
-      telnet net-tools openssl util-linux vim findutils make \
-      python3 python3-pip python3-sphinx python3-requests && \
+      telnet net-tools openssl util-linux vim findutils  \
+      make gcc rust cargo \
+      python3 python3-pip python3-sphinx python3-requests python3-devel && \
 # create symbolic link for python3
     ln -sf /usr/bin/python3 /usr/bin/python && \
 # install python3 deps
@@ -59,6 +61,8 @@ RUN \
     rm -rf /root/.ssh/id_rsa && \
     ssh-keygen -t rsa -f /root/.ssh/id_rsa -q -N "" && \
     ssh-keygen -A && \
+# copy config files \
+    cp ${BUILD_CONTEXT}/etc/qcos/qcos*.toml /etc/qcos-template/ && \
 # cleanup build-context
     echo -e "QCOS build info\nversion: ${QCOS_IMAGE_VERSION}\nBuild time: ${build_date}\n" > /root/build-info.txt && \
     yum clean all && \

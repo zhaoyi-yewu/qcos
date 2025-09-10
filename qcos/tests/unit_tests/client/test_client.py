@@ -18,7 +18,8 @@
 from unittest.mock import patch
 
 from qcos.client.client import Client
-from tests.unit_tests.task_manager.constant_for_test import ConstantForTest
+from qcos.tests.unit_tests.task_manager.constant_for_test import (
+    ConstantForTest)
 
 client = Client()
 

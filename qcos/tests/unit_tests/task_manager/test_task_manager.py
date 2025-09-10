@@ -16,14 +16,15 @@
 # ----------------------------------------------------------------------
 
 import asyncio
+import pytest
 import unittest
 from unittest import mock
 from unittest.mock import patch, Mock, AsyncMock
-import pytest
 
 from qcos.common.constant import Constant, HttpCode
-from tests.unit_tests.task_manager.constant_for_test import ConstantForTest
 from qcos.task_manager.task_manager import TaskFlowManager
+from qcos.tests.unit_tests.task_manager.constant_for_test import (
+    ConstantForTest)
 
 
 class TestTaskFlowManager(unittest.TestCase):

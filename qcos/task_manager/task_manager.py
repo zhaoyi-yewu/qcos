@@ -284,7 +284,7 @@ class TaskFlowManager(ABC):
 
         job_id = args["job_info"]["data"].get("job_id")
         if job_id is None:
-            job_id = uuid.uuid4()
+            job_id = Library.create_uuid()
             args["job_info"]["data"]["job_id"] = job_id
         tags = None
         if args["job_info"]["data"]["circuit_aggregation"]:

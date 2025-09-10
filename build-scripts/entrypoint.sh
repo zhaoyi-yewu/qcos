@@ -18,6 +18,8 @@ export PS1="(${QCOS_CONTAINER_NAME})[$(pwd)]$ "
 # Create QCOS config file
 qcos_config_file_path=/etc/qcos/qcos.toml
 qcos_extra_config_file_dir=/etc/qcos/conf.d
+qcos_st_config_file_path=/etc/qcos/qcos-st.toml
+qcos_template_st_config_file_path=/etc/qcos-template/qcos-st.toml
 
 mkdir -p /etc/qcos/
 mkdir -p ${qcos_extra_config_file_dir}
@@ -42,6 +44,14 @@ PREFECT_LOG_FILE = "${PREFECT_LOG_FILE:-/var/log/qcos/qcos-prefect.log}"
 [DEVICES]
 DEVICE_LIST = ["dummy", "hanyuan1", "tiangong100", "qiskit_aer_sim", "qiskit_qasm_sim"]
 EOM
+fi
+
+# check if file /etc/qcos/qcos-st.conf exists and create it if not
+if [ -f "${qcos_st_config_file_path}" ]; then
+  echo "QCOS ST config file: ${qcos_st_config_file_path} exists, use it"
+else
+  echo "QCOS ST config file: ${qcos_st_config_file_path} not exists. auto generate ...."
+  cp -f ${qcos_template_st_config_file_path} ${qcos_st_config_file_path}
 fi
 
 # run QCOS

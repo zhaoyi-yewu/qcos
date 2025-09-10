@@ -15,10 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
 from types import SimpleNamespace
 from unittest.mock import patch, Mock
-
-import pytest
 
 from qcos.common.constant import Constant
 from qcos.drivers.driver_manager import DriverManager
@@ -31,7 +30,8 @@ from qcos.task_manager.task_scheduler import (TaskScheduler, PriorityPolicy,
                                               HighResponseRatioPolicy)
 from qcos.task_manager.task_scheduler import TimePrecedencePolicy
 from qcos.transpiler.transpiler_manager import TranspilerManager
-from tests.unit_tests.task_manager.constant_for_test import ConstantForTest
+from qcos.tests.unit_tests.task_manager.constant_for_test import (
+    ConstantForTest)
 
 task = TaskScheduler()
 

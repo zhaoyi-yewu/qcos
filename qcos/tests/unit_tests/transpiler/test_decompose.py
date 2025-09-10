@@ -24,8 +24,8 @@ from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
-from tests.unit_tests.transpiler.comm import validate_gate_ir
-from tests.unit_tests.transpiler.comm import validate_non_gate_ir
+from qcos.tests.unit_tests.transpiler.comm import validate_gate_ir
+from qcos.tests.unit_tests.transpiler.comm import validate_non_gate_ir
 
 
 def validate_gate(actual: GateOperation, name: str, targets: list, arg: list):

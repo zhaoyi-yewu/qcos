@@ -53,8 +53,6 @@ class Config:
     # extra configs from .toml files
     EXTRA_CONFIGS = {}
 
-    # schema
-
 
     @classmethod
     def parse_toml_file(cls, config_file, extra_config=False):

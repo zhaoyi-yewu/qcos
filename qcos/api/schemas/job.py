@@ -74,6 +74,8 @@ class SubmitJobResponse(BaseModel):
     job_id: UUID = None
     # Job name
     job_name: Optional[str] = None
+    # Job type
+    job_type: str = None
     # Job status
     job_status: str = None
     # Job priority

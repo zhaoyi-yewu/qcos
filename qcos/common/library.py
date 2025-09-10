@@ -34,6 +34,7 @@ import requests
 import signal
 import time
 import tomlkit
+import uuid
 import zipfile
 
 from aiohttp import ClientTimeout, ClientError
@@ -41,7 +42,6 @@ from datetime import datetime
 from http import HTTPStatus
 from schema import Schema
 from urllib.parse import urlparse
-from uuid import UUID
 
 from .constant import HttpHeaders, HttpMethod
 
@@ -352,6 +352,19 @@ class Library:
         return datetime.now()
 
     @staticmethod
+    def create_uuid(prefix=[]):
+        random_bytes = bytearray(random.getrandbits(8) for _ in range(16))
+        random_bytes[6] = (random_bytes[6] & 0x0F) | 0x40
+        random_bytes[8] = (random_bytes[8] & 0x3F) | 0x80
+        if prefix:
+            i = 0
+            for _prefix in prefix:
+                random_bytes[i] = _prefix
+                i += 1
+        new_uuid = uuid.UUID(bytes=bytes(random_bytes))
+        return new_uuid
+
+    @staticmethod
     def validate_values_enum(value, param_name, value_list,
                              allow_none=False):
         """
@@ -381,7 +394,7 @@ class Library:
         :return: True or False
         """
         try:
-            uuid_obj = UUID(value, version=4)
+            uuid_obj = uuid.UUID(value, version=4)
             if str(uuid_obj) != value:
                 return (False, f"Invalid params: {param_name}={value}. "
                                f"reason: UUID version error")
