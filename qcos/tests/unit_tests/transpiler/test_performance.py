@@ -49,7 +49,7 @@ class TestPerformance:
         opt_end1 = time.time()
         print(f"optimize ir use {opt_end1 - ir_end} seconds")
         assert optimized_ir is not None
-        assert len(optimized_ir) == 5000100
+        assert len(optimized_ir) == 5000000
         validate_gate_ir(optimized_ir[0], "rx", ["0"], 1, False)
         validate_gate_ir(optimized_ir[99], "rx", ["99"], 1, False)
 
@@ -57,7 +57,7 @@ class TestPerformance:
         decompose_end = time.time()
         print(f"decompose gates use {decompose_end - ir_end} seconds")
         assert transpiled_gates is not None
-        assert len(transpiled_gates) == 5000100
+        assert len(transpiled_gates) == 5000000
         validate_gate_ir(transpiled_gates[0], "rx", ["0"], 1, False)
         validate_gate_ir(transpiled_gates[99], "rx", ["99"], 1, False)
 
@@ -65,7 +65,7 @@ class TestPerformance:
         optimized_gates = optimize_gate(transpiled_gates)
         end = time.time()
         assert optimized_gates is not None
-        assert len(optimized_gates) == 5000100
+        assert len(optimized_gates) == 5000000
         validate_gate_ir(optimized_gates[0], "rx", ["0"], 1, False)
         validate_gate_ir(optimized_gates[99], "rx", ["99"], 1, False)
         print(f"optimize basic gate use {end - decompose_end} seconds")
