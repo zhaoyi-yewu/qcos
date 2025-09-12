@@ -230,3 +230,11 @@ class TestTaskFlowManager(unittest.TestCase):
         self.task_manager._client = mock_client
         results = asyncio.run(self.task_manager.process_aggregation_job())
         assert results is None
+
+    @patch.object(TaskFlowManager, "cancel_task_flow_run_by_client")
+    @patch.object(TaskFlowManager, "get_flow_run_id_by_job_id")
+    def test_cancel_task_flow_run(self, mock_get_flow_run_id_by_job_id,
+                                  mock_cancel_task_flow_run_by_client):
+        mock_get_flow_run_id_by_job_id.return_value = "1234"
+        mock_cancel_task_flow_run_by_client.return_value = None
+        self.task_manager.cancel_task_flow_run(ConstantForTest.job_ids)

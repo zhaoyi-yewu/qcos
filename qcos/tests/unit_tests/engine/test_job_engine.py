@@ -21,7 +21,9 @@ from unittest.mock import Mock, patch, MagicMock
 from qcos.common.constant import Constant
 from qcos.drivers.driver_base import DriverBase
 from qcos.drivers.dummy.driver_dummy import DriverDummy
-from qcos.engine.job_engine import init_driver, init_transpiler
+from qcos.engine.job_engine import (init_driver, init_transpiler,
+                                    driver_cancel, register_signals,
+                                    update_progress)
 from qcos.engine.job_engine import (
     create_src_code_info,
     update_src_code_info,
@@ -30,6 +32,7 @@ from qcos.engine.job_engine import (
     get_external_aggregated_results
 )
 from qcos.engine.job_engine import SourceCodeInfo
+
 
 class TestJobEngine:
     @classmethod
@@ -89,7 +92,6 @@ class TestJobEngine:
         transpiler = init_transpiler.fn
         transpiler(transpiler_info, None)
 
-
     def test_create_src_code_info_with_none_aggregation(self):
         result = create_src_code_info(self.job_data)
         assert result.aggregation_type == Constant.AGGREGATION_TYPE_NONE
@@ -130,3 +132,14 @@ class TestJobEngine:
             self.job_results, self.mapping_dict)
 
         assert len(result["sub_results"]) == 1
+
+    def test_driver_cancel(self):
+        driver_cancel("111", DriverDummy)
+
+    def test_register_signals(self):
+        register_signals("111", {"driver": DriverDummy})
+
+    @patch('qcos.engine.job_engine.update_progress_artifact')
+    def test_update_progress(self, mock_update_progress_artifact):
+        mock_update_progress_artifact.return_value = None
+        update_progress("id", "progress")

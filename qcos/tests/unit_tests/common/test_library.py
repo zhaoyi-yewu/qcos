@@ -18,6 +18,7 @@
 import asyncio
 import os
 from datetime import datetime
+from unittest.mock import patch
 
 from qcos.common.library import Library
 
@@ -146,7 +147,8 @@ class TestLibrary:
     def test_run_callbacks(self):
         data = ["Tzeentch", "Nurgle", "Khorne", "Slaanesh"]
         callbacks = [{"T": "Tzeentch", "N": "Nurgle",
-                      "K": "Khorne", "S": "Slaanesh"},
+                      "K": "Khorne", "S": "Slaanesh",
+                      "url": "https://baidu.com"},
                      {"E": "Emperor"},]
         library.run_callbacks(data, callbacks)
 
@@ -154,7 +156,7 @@ class TestLibrary:
         data = ["Tzeentch", "Nurgle", "Khorne", "Slaanesh"]
         callbacks = [{"T": "Tzeentch", "N": "Nurgle",
                       "K": "Khorne", "S": "Slaanesh"},
-                     {"E": "Emperor"},]
+                     {"E": "Emperor", "url": "https://baidu.com"},]
         asyncio.run(library.async_run_callbacks(data, callbacks))
 
     def test_get_sorted_keys(self):

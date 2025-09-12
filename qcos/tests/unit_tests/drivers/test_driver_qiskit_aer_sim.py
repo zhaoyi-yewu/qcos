@@ -15,6 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ---------------------------------------------------------------------
 
+from unittest.mock import Mock, patch
+
+from qiskit_aer.backends.aerbackend import AerBackend
+
 from qcos.drivers.qiskit.driver_qiskit_aer_sim import DriverQiskitAerSim
 
 obj = DriverQiskitAerSim()
@@ -32,3 +36,11 @@ class TestDriverQiskitAerSim:
 
     def test_close_driver(self):
         assert obj.close_driver() is None
+
+    @patch.object(AerBackend, "run")
+    def test_run(self, mock_run):
+        mock_result_value = "模拟结果"
+        mock_result_obj = Mock()
+        mock_result_obj.mock_run.return_value = mock_result_value
+        obj.run("111", 6, {"index": "index",
+                           "transpile_results": "res"}, "datatype")

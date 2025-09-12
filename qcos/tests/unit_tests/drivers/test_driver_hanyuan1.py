@@ -18,7 +18,9 @@
 from unittest.mock import patch
 
 import pytest
+import requests
 
+from qcos.common.constant import HttpMethod, HttpCode
 from qcos.common.library import Library
 from qcos.drivers.cascoldatom.driver_hanyuan1 import DriverHanyuan1
 
@@ -31,6 +33,9 @@ class TestDriverHanyuan1:
 
     def test_close_driver(self):
         assert obj.close_driver() is None
+
+    def test_cancel(self):
+        obj.cancel("111")
 
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs(self, mock_validate_schema):
@@ -95,14 +100,37 @@ class TestDriverHanyuan1:
     def test_check_task_status(self):
         assert obj.check_task_status("1", 1, []) is False
 
-    def test_get_task_results(self):
-        success, err_msg, result = obj.get_task_results("1", 1)
-        assert success == True
+    @patch.object(DriverHanyuan1, "call_json_rpc")
+    def test_get_task_results(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = iter([HttpCode.SUCCESS_OK, "no",
+                                                "error", {"result": {
+                                                    "status": "success",
+                                                    "result": None}}])
 
-    def test_submit_task(self):
+        success, err_msg, result = obj.get_task_results("1", 1)
+        assert success == False
+
+    @patch.object(DriverHanyuan1, "call_json_rpc")
+    def test_submit_task(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = iter([HttpCode.SUCCESS_OK,
+                                                "no", "error", "error"])
+        data = [{"name": "H", "target": "q1", "arg_value": "pi"}]
+        obj.submit_task("1", 5, data, "gate_sequence", 10, 1)
         obj.submit_task("1", 5, [], "gate_sequence", 10, 1)
 
     @patch.object(Library, "call_http_api")
     def test_call_json_rpc(self, mock_call_http_api):
-        mock_call_http_api.return_value = iter([True, ''])
+        request_func = requests.post
+        r = request_func(
+            "https://www.baidu.com",
+            headers=None,
+            params=None,
+            data=None,
+            files=None,
+            json=None,
+            auth=None,
+            verify=None,
+            timeout=None
+        )
+        mock_call_http_api.return_value = iter(["200", "no", True, r])
         obj.call_json_rpc(obj.base_url, '', {"job_id": "1"})
