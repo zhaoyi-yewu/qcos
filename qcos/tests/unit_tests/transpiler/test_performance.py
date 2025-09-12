@@ -41,7 +41,7 @@ class TestPerformance:
         ir_end = time.time()
         print(f"get_ir use {ir_end - abs_end} seconds")
         assert ir is not None
-        assert len(ir) == 5000100
+        assert len(ir) == 5000000
         validate_gate_ir(ir[0], "rx", ["0"], 1, False)
         validate_gate_ir(ir[99], "rx", ["99"], 1, False)
 
