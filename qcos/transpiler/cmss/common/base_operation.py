@@ -19,9 +19,7 @@ from enum import Enum
 
 
 class OperationType(Enum):
-    """
-    操作类型.
-    """
+    """操作类型"""
     SINGLE_QUBIT_OPERATION = 1
     DOUBLE_QUBIT_OPERATION = 2
     TRIPLE_QUBIT_OPERATION = 3
@@ -32,19 +30,19 @@ class OperationType(Enum):
 
 
 class BaseOperation:
-    """
-    中间表示类基类
-    """
+    """中间表示类基类"""
 
     def __init__(
             self, name, targets=None, arg_value=None,
             operation_type=OperationType.SINGLE_QUBIT_OPERATION.value
     ) -> None:
-        """
-        :param name (_type_): 操作名称
-        :param targets (_type_, optional): 目标量子比特. Defaults to None.
-        :param arg_value (_type_, optional): 参数（旋转门所需）. Defaults to None.
-        :param operation_type: 操作类型
+        """Init BaseOperation
+
+        Args:
+            name: 操作名称
+            targets: 目标量子比特. Defaults to None.
+            arg_value: 参数（旋转门所需）. Defaults to None.
+            operation_type: 操作类型
         """
         self.name = name
         self.targets = targets

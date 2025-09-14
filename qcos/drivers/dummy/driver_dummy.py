@@ -28,11 +28,10 @@ from qcos.drivers.driver_base import DriverBase
 
 
 class DriverDummy(DriverBase):
-    """
-    空载测试驱动
+    """空载测试驱动
+
     Dummy neutral-atom driver for test purpose
     """
-
     def __init__(self):
         super().__init__()
         self.version = "0.0.1"
@@ -55,18 +54,18 @@ class DriverDummy(DriverBase):
         }
 
     def init_driver(self):
-        """
-        Init driver
-        """
+        """Init driver"""
         # pylint: disable=duplicate-code
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def validate_driver_configs(self, configs):
-        """
-        Validate driver configs
+        """Validate driver configs
 
-        :return bool: True if successful, False otherwise
-        :return err_msg: error message
+        Args:
+            configs: configs dictionary
+
+        Returns:
+            success, err_msgs
         """
         success = True
         err_msg = None
@@ -108,20 +107,18 @@ class DriverDummy(DriverBase):
         return success, err_msg
 
     def close_driver(self):
-        """
-        Close driver
-        """
+        """Close driver"""
         self.set_device_status(Device.DEVICE_STATUS_OFFLINE)
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
-        """
-        Run job
+        """Run job
 
-        :param job_id: job ID
-        :param num_qubits: number of qubits
-        :param data: data
-        :param data_type: data type
-        :param shots: shots
+        Args:
+            job_id: job ID
+            num_qubits: number of qubits
+            data: data
+            data_type: data type
+            shots: shots (Default value = 1)
         """
         # pylint: disable=duplicate-code
         data_index = data["index"]
@@ -149,10 +146,11 @@ class DriverDummy(DriverBase):
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def cancel(self, job_id):
-        """
-        Cancel running job in driver.
+        """Cancel running job in driver.
+
         Driver should clean up any resources of the job
 
-        :param job_id: job ID
+        Args:
+            job_id: job ID
         """
         logger.info(f"Cancel job: job_id: {job_id}")

@@ -23,10 +23,13 @@ from qcos.transpiler.cmss.common.move import Move
 
 
 def pass_hermitian(ir: list):
-    """
-    如果末尾的两个门相同，且都为hermitian，则消去
+    """如果末尾的两个门相同，且都为hermitian，则消去
 
-    param: ir (list): 中间表示
+    Args:
+        ir (list): 中间表示
+
+    Returns:
+        passed
     """
     passed = False
     while True:
@@ -46,10 +49,13 @@ def pass_hermitian(ir: list):
 
 
 def pass_merge_theta(ir: list):
-    """
-    如果末尾的两个门是作用在同一比特上的同一类旋转门，则角度可以合并
+    """如果末尾的两个门是作用在同一比特上的同一类旋转门，则角度可以合并
 
-    param: ir (list): 中间表示
+    Args:
+        ir (list): 中间表示
+
+    Returns:
+        passed
     """
     passed = False
     while True:
@@ -72,10 +78,13 @@ def pass_merge_theta(ir: list):
 
 
 def pass_u_udg(ir: list):
-    """
-    如果末尾的两个门是作用在同一比特上的s和sdg或者t和tdg，则可以消去
+    """如果末尾的两个门是作用在同一比特上的s和sdg或者t和tdg，则可以消去
 
-    param: ir (list): 中间表示
+    Args:
+      ir (list): 中间表示
+
+    Returns:
+        passes
     """
     passed = False
     while True:
@@ -97,10 +106,13 @@ def pass_u_udg(ir: list):
 
 
 def pass_three_gate_model(ir: list):
-    """
-    HZH -> X, HXH -> Z, XRy(θ)X -> Ry(-θ)
+    """HZH -> X, HXH -> Z, XRy(θ)X -> Ry(-θ)
 
-    param: ir (list): 中间表示
+    Args:
+        ir (list): 中间表示
+
+    Returns:
+        passes
     """
     passed = False
     while True:
@@ -143,10 +155,10 @@ def pass_three_gate_model(ir: list):
 
 
 def do_pass(ir: list):
-    """
-    一次执行pass，直到ir不发生变化
+    """一次执行pass，直到ir不发生变化
 
-    param: ir (list): 中间表示
+    Args:
+         ir (list): 中间表示
     """
     passed = True
     while passed:
@@ -159,8 +171,8 @@ def do_pass(ir: list):
 
 def optimize_gate(ir: list,
                   opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL):
-    """
-    基础门优化
+    """基础门优化
+
     优化策略主要包含如下几个：
         1. 连续的两个作用在相同比特上的厄米共轭门可以消除
         2. 连续两个相同的选择门，可以合并旋转角
@@ -168,8 +180,12 @@ def optimize_gate(ir: list,
         4. HZH -> X, HXH -> Z
         5. XRy(θ)X -> -Ry(θ)
 
-    param: ir (list): 中间表示
-    return: optimize_gates(list): 优化后的门
+    Args:
+        ir (list): ir
+        opt_level (int): optimization level
+
+    Returns:
+        optimized gates
     """
     if opt_level < Constant.DEFAULT_OPTIMIZATION_LEVEL:
         return ir

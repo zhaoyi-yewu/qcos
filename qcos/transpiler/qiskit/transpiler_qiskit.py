@@ -28,9 +28,7 @@ from qcos.transpiler.transpiler_base import TranspilerBase
 
 
 class TranspilerQiskit(TranspilerBase):
-    """
-    Transpiler Class for Qiskit
-    """
+    """Transpiler Class for Qiskit"""
     def __init__(self):
         super().__init__()
         self.name = Constant.TRANSPILER_QISKIT
@@ -55,16 +53,16 @@ class TranspilerQiskit(TranspilerBase):
         }
 
     def init_transpiler(self):
-        """
-        Init transpiler
-        """
+        """Init transpiler"""
 
     def parse(self, src_code_dict):
-        """
-        parse src_code_dict
+        """Parse src_code_dict
 
-        :param src_code_dict: src_code_dict
-        :return parse result
+        Args:
+            src_code_dict: src_code_dict
+
+        Returns:
+            parse result
         """
         if isinstance(src_code_dict, dict) and len(src_code_dict) == 1:
             source_code = next(iter(src_code_dict.values()))
@@ -76,12 +74,14 @@ class TranspilerQiskit(TranspilerBase):
             raise TranspilerException("unsupported input")
 
     def transpile(self, parse_result, supp_basis_gates: list):
-        """
-        Transpile codes
+        """Transpile codes
 
-        :param parse_result: parse result
-        :param supp_basis_gates: supported basis gates
-        :return transpiled quantum circuit
+        Args:
+            parse_result: parse result
+            supp_basis_gates: supported basis gates
+
+        Returns:
+            transpiled quantum circuit
         """
         driver_name = trans_cfg_inst.get_driver_name()
         if driver_name == "DriverQiskitQasmSim":

@@ -59,13 +59,15 @@ class SourceCodeInfo:
 
 @task(persist_result=False)
 def init_driver(driver_info, driver_options, device):
-    """
-    Init driver from driver_info
+    """Init driver from driver_info
 
-    :param driver_info: driver info
-    :param driver_options: driver options
-    :param device: device info
-    :return: driver
+    Args:
+        driver_info: driver info
+        driver_options: driver options
+        device: device info
+
+    Returns:
+        driver
     """
 
     try:
@@ -106,12 +108,14 @@ def init_driver(driver_info, driver_options, device):
 
 @task(persist_result=False)
 def init_transpiler(transpiler_class_info, transpiler_options):
-    """
-    Init transpiler instance
+    """Init transpiler instance
 
-    :param transpiler_class_info: transpiler class info
-    :param transpiler_options: transpiler options
-    :return: transpiler
+    Args:
+        transpiler_class_info: transpiler class info
+        transpiler_options: transpiler options
+
+    Returns:
+        transpiler
     """
 
     try:
@@ -148,14 +152,15 @@ def task_monitor(monitor_info):
 
 @task(persist_result=False)
 def parse(src_code_dict, transpiler):
-    """
-    parse
+    """Parse task
 
-    :param src_code_dict: src_code_dict
-    :param transpiler: transpiler
-    :return parsed results
-    """
+    Args:
+        src_code_dict: src_code_dict
+        transpiler: transpiler
 
+    Returns:
+        parsed results
+    """
     try:
         parsed_src_code = transpiler.parse(src_code_dict)
         logger.info(f"final parsed src code: {parsed_src_code}")
@@ -168,13 +173,15 @@ def parse(src_code_dict, transpiler):
 
 @task(persist_result=False)
 def transpile(parsed_gates, driver, transpiler):
-    """
-    transpile
+    """Transpile task
 
-    :param parsed_gates: parsed gates
-    :param driver: driver
-    :param transpiler: transpiler
-    :return basis gate list
+    Args:
+        parsed_gates: parsed gates
+        driver: driver
+        transpiler: transpiler
+
+    Returns:
+        basis gate list
     """
     num_qubits = -1
     try:
@@ -196,16 +203,17 @@ def transpile(parsed_gates, driver, transpiler):
 
 @task(persist_result=False)
 def driver_run(job_info, driver, num_qubits, data):
-    """
-    Driver: run job
+    """Driver: run job
 
-    :param job_info: job info
-    :param driver: driver
-    :param num_qubits: number of qubits
-    :param data: data
-    :return results
-    """
+    Args:
+        job_info: job info
+        driver: driver
+        num_qubits: number of qubits
+        data: data
 
+    Returns:
+        results
+    """
     try:
         job_data = job_info["data"]
         job_id = job_data["job_id"]
@@ -231,11 +239,11 @@ def driver_run(job_info, driver, num_qubits, data):
 
 
 def driver_cancel(job_id, driver):
-    """
-    Driver: cancel job
+    """Driver: cancel job
 
-    :param job_id: job id
-    :param driver: driver
+    Args:
+        job_id: job id
+        driver: driver
     """
     try:
         logger.info(f"Cancel job: job_id: {job_id}")
@@ -248,12 +256,12 @@ def driver_cancel(job_id, driver):
 
 
 async def job_callback(flow, flow_run, state):
-    """
-    Job callback
+    """Job callback
 
-    :param flow: flow
-    :param flow_run: flow run
-    :param state: flow state
+    Args:
+        flow: flow
+        flow_run: flow run
+        state: flow state
     """
     job_id = flow_run.name  # use name as job uuid
     job_status = Constant.JOB_STATUS_COMPLETED
@@ -303,19 +311,20 @@ async def job_callback(flow, flow_run, state):
 
 
 def register_signals(job_id, monitor):
-    """
-    Register signal handlers
+    """Register signal handlers
 
-    :params job_id: job id
-    :params monitor: monitor
+    Args:
+        job_id: job id
+        monitor: monitor
     """
     def handle_sigterm(signum, frame):
-        """
-        Handles SIGTERM(cancel) signal sent from Prefect.
+        """Handles SIGTERM(cancel) signal sent from Prefect.
+
         Prefect will then kill job_engine process by graceful period (30 secs)
 
-        :param signum: signum
-        :param frame: frame
+        Args:
+            signum: signum
+            frame: frame
         """
         logger.info(f"Received sigterm, cancelling job: {job_id} ...")
         driver = monitor["driver"]
@@ -325,11 +334,11 @@ def register_signals(job_id, monitor):
 
 
 def update_progress(artifact_id, progress):
-    """
-    Update progress
+    """Update progress
 
-    :params artifact_id: artifact id
-    :params progress: progress
+    Args:
+        artifact_id: artifact id
+        progress: progress
     """
     update_progress_artifact(
         artifact_id=artifact_id,
@@ -338,11 +347,13 @@ def update_progress(artifact_id, progress):
 
 
 def create_src_code_info(job_data):
-    """
-    create src code info
+    """Create src code info
 
-    :param job_data: job data
-    :return src_code_info
+    Args:
+        job_data: job data
+
+    Returns:
+        src_code_info
     """
     src_code_info = SourceCodeInfo()
     source_code_list = job_data["source_code"]
@@ -377,14 +388,15 @@ def create_src_code_info(job_data):
 
 
 def update_src_code_info(src_code_info, aggregation_info):
-    """
-    update src code info
+    """Update src code info
 
-    :param src_code_info: src_code_info
-    :param aggregation_info: aggregation info
-    :return src_code_info
-    """
+    Args:
+        src_code_info: src_code_info
+        aggregation_info: aggregation info
 
+    Returns:
+        src_code_info
+    """
     length = len(src_code_info.src_code_list)
     if length == 0:
         raise ValueError("unexpected input")
@@ -406,11 +418,13 @@ def update_src_code_info(src_code_info, aggregation_info):
 
 
 def get_src_code_cnt(src_code_info: SourceCodeInfo):
-    """
-    get total src code count
+    """Get total src code count
 
-    :param src_code_info: src_code_info
-    :return src_code_cnt
+    Args:
+        src_code_info: src_code_info
+
+    Returns:
+        src_code_cnt
     """
     src_code_cnt = 0
     for code_dict in src_code_info.src_code_list:
@@ -420,12 +434,14 @@ def get_src_code_cnt(src_code_info: SourceCodeInfo):
 
 
 def split_dict(orig_dict, split_len):
-    """
-    split dict
+    """Split dict
 
-    :param orig_dict: orig_dict
-    :param split_len: split_len
-    :return measure_results
+    Args:
+        orig_dict: orig_dict
+        split_len: split_len
+
+    Returns:
+        measure_results
     """
     measure_results = [{} for _ in split_len]
     for key, value in orig_dict.items():
@@ -439,12 +455,14 @@ def split_dict(orig_dict, split_len):
 
 
 def get_internal_aggregated_results(job_results, mapping_dict):
-    """
-    get internal aggregated results
+    """Get internal aggregated results
 
-    :param job_results: job results
-    :param mapping_dict: mapping dict
-    :return aggregated_results
+    Args:
+        job_results: job results
+        mapping_dict: mapping dict
+
+    Returns:
+        aggregated_results
     """
     if mapping_dict is None:
         raise ValueError("mapping_dict is none")
@@ -467,12 +485,14 @@ def get_internal_aggregated_results(job_results, mapping_dict):
 
 
 def get_external_aggregated_results(job_results, mapping_dict):
-    """
-    get external aggregated results
+    """Get external aggregated results
 
-    :param job_results: job results
-    :param mapping_dict: mapping dict
-    :return new job results
+    Args:
+        job_results: job results
+        mapping_dict: mapping dict
+
+    Returns:
+        new job results
     """
     if mapping_dict is None:
         raise ValueError("mapping_dict is none")
@@ -515,11 +535,13 @@ def get_external_aggregated_results(job_results, mapping_dict):
       on_crashed=[job_callback],
       on_cancellation=[job_callback])
 def job_flow(job_info):
-    """
-    Job flow
+    """Job flow
 
-    :param job_info: job info
-    :return results
+    Args:
+        job_info: job info
+
+    Returns:
+        results
     """
     job_data = job_info["data"]
     job_id = job_data["job_id"]
@@ -604,18 +626,19 @@ def job_flow(job_info):
 
 def run_code(source_code_index, src_code_dict, job_info,
              driver, transpiler, monitor_info):
-    """
-    Flow: run
+    """Flow: run
 
-    :param source_code_index: source code index
-    :param src_code_dict: src code dictionary
-    :param job_info: job info
-    :param driver: driver
-    :param transpiler: transpiler
-    :param monitor_info: monitor info
-    :return job results
-    """
+    Args:
+        source_code_index: source code index
+        src_code_dict: src code dictionary
+        job_info: job info
+        driver: driver
+        transpiler: transpiler
+        monitor_info: monitor info
 
+    Returns:
+        job results
+    """
     logger.info(f"Run source_code_index: {source_code_index}\n")
 
     transpile_results = None
@@ -753,15 +776,16 @@ def run_code(source_code_index, src_code_dict, job_info,
 def flow_parse(src_code_dict,
                transpiler,
                profiling_types):
-    """
-    Flow: parse
+    """Flow: parse
 
-    :param src_code_dict: src_code_dict
-    :param transpiler: transpiler
-    :param profiling_types: profiling types
-    :return results, profiling_time
-    """
+    Args:
+        src_code_dict: src_code_dict
+        transpiler: transpiler
+        profiling_types: profiling types
 
+    Returns:
+        results, profiling_time
+    """
     profiling_start = 0
     profiling_end = 0
 
@@ -787,16 +811,17 @@ def flow_transpile(parsed_src_code,
                    transpiler,
                    driver,
                    profiling_types):
-    """
-    Flow: transpile
+    """Flow: transpile
 
-    :param parsed_src_code: parsed_src_code
-    :param transpiler: transpiler
-    :param driver: driver
-    :param profiling_types: profiling types
-    :return results, profiling_time
-    """
+    Args:
+        parsed_src_code: parsed_src_code
+        transpiler: transpiler
+        driver: driver
+        profiling_types: profiling types
 
+    Returns:
+        results, profiling_time
+    """
     profiling_start = 0
     profiling_end = 0
 
@@ -820,10 +845,10 @@ def flow_transpile(parsed_src_code,
 
 
 def flow_task_monitor(monitor_info):
-    """
-    Flow: task monitor
+    """Flow: task monitor
 
-    :param monitor_info: monitor info
+    Args:
+        monitor_info: monitor info
     """
     task_monitor.submit(monitor_info)
 
@@ -833,17 +858,18 @@ def flow_run_driver(job_info,
                     driver,
                     data,
                     profiling_types):
-    """
-    Flow: run driver
+    """Flow: run driver
 
-    :param job_info: job info
-    :param num_qubits: number of qubits
-    :param driver: driver
-    :param data: data
-    :param profiling_types: profiling types
-    :return results, profiling_time
-    """
+    Args:
+        job_info: job info
+        num_qubits: number of qubits
+        driver: driver
+        data: data
+        profiling_types: profiling types
 
+    Returns:
+        results, profiling_time
+    """
     # call run() in driver
     profiling_start = 0
     profiling_end = 0
@@ -873,15 +899,16 @@ def flow_run_driver(job_info,
 
 
 def format_run_results(driver, job_id, data_index):
-    """
-    Format run results
+    """Format run results
 
-    :param driver: driver
-    :param job_id: job id
-    :param data_index: data index
-    :return formatted results
-    """
+    Args:
+        driver: driver
+        job_id: job id
+        data_index: data index
 
+    Returns:
+        formatted results
+    """
     results = None
     end_date = None
     job_status = None
@@ -917,15 +944,16 @@ def format_run_results(driver, job_id, data_index):
 
 
 def format_error_results(driver, err_cls, err_msg):
-    """
-    Format error results
+    """Format error results
 
-    :param driver: driver
-    :param err_cls: error class
-    :param err_msg: error message
-    :return: formatted error results
-    """
+    Args:
+        driver: driver
+        err_cls: error class
+        err_msg: error message
 
+    Returns:
+        formatted error results
+    """
     driver_results_fetch_mode = None
 
     if driver:

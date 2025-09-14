@@ -21,9 +21,8 @@ from qcos.common.constant import Constant
 
 
 class StLibrary:
-    """
-    ST Library
-    """
+    """ST Library"""
+
     @staticmethod
     def get_results(client, job_id):
         _status_code, _reason, _text, _response = \

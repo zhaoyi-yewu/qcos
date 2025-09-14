@@ -37,53 +37,51 @@ def validate_gate(actual: GateOperation, name: str, targets: list, arg: list):
 class TestDecompose:
     @classmethod
     def setup_class(cls):
-        cls.data = '''
-            OPENQASM 2.0;
-            include "qelib1.inc";
-            qreg q[6];
-            creg c[6];
-            gate test_single(theta, phi) a{
-                rx(theta) a;
-                h a;
-                ry(-phi) a;
-                rz(theta + phi) a;
-                x a;
-                y a;
-                z a;
-                s a;
-                sdg a;
-                tdg a;
-                t a;
-            }
+        cls.data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[6];
+        creg c[6];
+        gate test_single(theta, phi) a{
+            rx(theta) a;
+            h a;
+            ry(-phi) a;
+            rz(theta + phi) a;
+            x a;
+            y a;
+            z a;
+            s a;
+            sdg a;
+            tdg a;
+            t a;
+        }
+        gate test_two(x, y) a, b{
+            test_single(x, y) a;
+            cx a, b;
+            cy a, b;
+            cz a, b;
+            ch a, b;
+            crx(x) a, b;
+            cry(y) a, b;
+            crz(x+y) a, b;
+        }
+        test_two(sin(1.2), 1.3) q[2], q[3];
+        ccx q[0], q[1], q[4];
+        barrier q;
+        measure q[1] -> c[1];
+        """
 
-            gate test_two(x, y) a, b{
-                test_single(x, y) a;
-                cx a, b;
-                cy a, b;
-                cz a, b;
-                ch a, b;
-                crx(x) a, b;
-                cry(y) a, b;
-                crz(x+y) a, b;
-            }
-
-            test_two(sin(1.2), 1.3) q[2], q[3];
-            ccx q[0], q[1], q[4];
-            barrier q;
-            measure q[1] -> c[1];
-        '''
-
-        cls.simple_data = '''
-          OPENQASM 2.0;
-          include "qelib1.inc";
-          qreg q[1];
-          creg c[1];
-          h q[0];
-          h q[0];
-          x q[0];
-          rx(1) q[0];
-          measure q->c;
-        '''
+        cls.simple_data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        h q[0];
+        h q[0];
+        x q[0];
+        rx(1) q[0];
+        measure q->c;
+        """
 
     def test_decompose(self):
         tree = get_abs_tree(self.data)
@@ -151,18 +149,18 @@ class TestDecompose:
         validate_non_gate_ir(opt_gates[1], "measure", [0], 0)
 
     def test_optimizer_simple_with_reset(self):
-        simple_data = '''
-                  OPENQASM 2.0;
-                  include "qelib1.inc";
-                  qreg q[1];
-                  creg c[1];
-                  h q[0];
-                  reset q[0];
-                  h q[0];
-                  x q[0];
-                  rx(1) q[0];
-                  measure q->c;
-                '''
+        simple_data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        h q[0];
+        reset q[0];
+        h q[0];
+        x q[0];
+        rx(1) q[0];
+        measure q->c;
+        """
 
         tree = get_abs_tree(simple_data)
         assert tree is not None
@@ -193,27 +191,25 @@ class TestDecompose:
         validate_non_gate_ir(opt_gates[5], "measure", [0], 0)
 
     def test_optimizer_defined_gate_with_reset(self):
-        simple_data = '''
-            OPENQASM 2.0;
-            include "qelib1.inc";
-            qreg q[6];
-            creg c[6];
-            gate test_single(theta) a{
-                rx(theta) a;
-                rx(theta) a;
-                reset a;
-            }
-
-            gate test_two(x) a, b{
-                test_single(x) a;
-                test_single(x) b;
-            }
-
-            test_two(1.3) q[2], q[3];
-            ccx q[0], q[1], q[4];
-            barrier q;
-            measure q[1] -> c[1];
-                '''
+        simple_data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[6];
+        creg c[6];
+        gate test_single(theta) a{
+            rx(theta) a;
+            rx(theta) a;
+            reset a;
+        }
+        gate test_two(x) a, b{
+            test_single(x) a;
+            test_single(x) b;
+        }
+        test_two(1.3) q[2], q[3];
+        ccx q[0], q[1], q[4];
+        barrier q;
+        measure q[1] -> c[1];
+        """
 
         tree = get_abs_tree(simple_data)
         assert tree is not None
@@ -257,18 +253,18 @@ class TestDecompose:
         validate_non_gate_ir(opt_gates[21], "sync", [0, 1, 2, 3, 4, 5], -1)
 
     def test_optimizer_simple_with_barrier(self):
-        simple_data = '''
-                  OPENQASM 2.0;
-                  include "qelib1.inc";
-                  qreg q[1];
-                  creg c[1];
-                  h q[0];
-                  barrier q[0];
-                  h q[0];
-                  x q[0];
-                  rx(1) q[0];
-                  measure q->c;
-                '''
+        simple_data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        h q[0];
+        barrier q[0];
+        h q[0];
+        x q[0];
+        rx(1) q[0];
+        measure q->c;
+        """
 
         tree = get_abs_tree(simple_data)
         assert tree is not None
@@ -299,27 +295,27 @@ class TestDecompose:
         validate_non_gate_ir(opt_gates[5], "measure", [0], 0)
 
     def test_optimizer_defined_gate_with_barrier(self):
-        simple_data = '''
-            OPENQASM 2.0;
-            include "qelib1.inc";
-            qreg q[6];
-            creg c[6];
-            gate test_single(theta) a{
-                rx(theta) a;
-                rx(theta) a;
-                barrier a;
-            }
+        simple_data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[6];
+        creg c[6];
+        gate test_single(theta) a{
+            rx(theta) a;
+            rx(theta) a;
+            barrier a;
+        }
 
-            gate test_two(x) a, b{
-                test_single(x) a;
-                test_single(x) b;
-            }
+        gate test_two(x) a, b{
+            test_single(x) a;
+            test_single(x) b;
+        }
 
-            test_two(1.3) q[2], q[3];
-            ccx q[0], q[1], q[4];
-            barrier q;
-            measure q[1] -> c[1];
-                '''
+        test_two(1.3) q[2], q[3];
+        ccx q[0], q[1], q[4];
+        barrier q;
+        measure q[1] -> c[1];
+        """
 
         tree = get_abs_tree(simple_data)
         assert tree is not None

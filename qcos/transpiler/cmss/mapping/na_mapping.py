@@ -22,9 +22,7 @@ from qcos.transpiler.common.errors import MappingException
 
 
 class NASingleRoute(ABC):
-    """
-    NASingleRoute
-    """
+    """NASingleRoute"""
 
     def __init__(self):
         self.qids = None
@@ -37,12 +35,12 @@ class NASingleRoute(ABC):
         self.qpu_config = None
 
     def prepare_data(self, qbit_num, gates, qpu_configs):
-        """
-        配置qpu_config、gates、qbit_num，量子比特映射
+        """配置qpu_config、gates、qbit_num，量子比特映射
 
-        :param qbit_num: 比特数
-        :param gates: 门列表
-        :param qpu_configs: 拓扑
+        Args:
+            qbit_num: 比特数
+            gates: 门列表
+            qpu_configs: 拓扑
         """
 
         self.qpu_config = qpu_configs
@@ -76,10 +74,10 @@ class NASingleRoute(ABC):
         self.qids = [int(q[0][1:]) for q in sq]
 
     def execute_with_order(self):
-        """
-        遍历比特门，将逻辑量子比特映射到物理量子比特.
+        """遍历比特门，将逻辑量子比特映射到物理量子比特.
 
-        :return: gates 从逻辑映射到物理量子比特的门列表
+        Returns:
+            从逻辑映射到物理量子比特的门列表
         """
 
         gates_on_qubit = {}

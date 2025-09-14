@@ -114,9 +114,7 @@ qcos-cli get-device dummy
 
 
 class QcosShell(App):
-    """
-    QCOS shell
-    """
+    """QCOS shell"""
 
     CMD_GROUP_DEFAULT = "Default"
     CMD_GROUP_DRIVER = "Driver"
@@ -153,15 +151,15 @@ class QcosShell(App):
 
     def build_option_parser(
             self, description, version, argparse_kwargs=None):
-        """
-        Return an argparse option parser for this application.
-
+        """Return an argparse option parser for this application.
+        
         Subclasses may override this method to extend
         the parser with more global options.
 
-        :param description: full description of the application
-        :param version: version number for the application
-        :param argparse_kwargs: argparse keyword arguments
+        Args:
+            description: full description of the application
+            version: version number for the application
+            argparse_kwargs: argparse keyword arguments (Default value = None)
         """
         parser = argparse.ArgumentParser(
             description=description,
@@ -221,12 +219,11 @@ class QcosShell(App):
 
 
 class HelpAction(argparse.Action):
-    """
-    Print help message including sub-commands
-
+    """Print help message including sub-commands
+    
     Provide a custom action so the -h and --help options
     to the main app will print a list of the commands.
-
+    
     The commands are determined by checking the CommandManager
     instance, passed in as the "default" value for the action.
     """
@@ -257,16 +254,14 @@ class HelpAction(argparse.Action):
 
 
 class CommandHelper:
-    """
-    Command helper
-    """
+    """Command helper"""
 
     @staticmethod
     def handle_invalid_arguments(results):
-        """
-        Handle invalid arguments
+        """Handle invalid arguments
 
-        :param results: results
+        Args:
+            results: results
         """
         success, err_msg = results
         if success is False:
@@ -276,15 +271,14 @@ class CommandHelper:
 
     @staticmethod
     def check_results(resource, name, status_code, reason, jsonrpc_response):
-        """
-        Check results
-        raise exception if failed
+        """Check results
 
-        :param resource: resource
-        :param name: name
-        :param status_code: status code
-        :param reason: reason
-        :param jsonrpc_response: json-rpc response
+        Args:
+            resource: resource
+            name: name
+            status_code: status code
+            reason: reason
+            jsonrpc_response: json-rpc response
         """
         err_msg_list = []
         if status_code in [HttpCode.SUCCESS_OK]:
@@ -323,14 +317,16 @@ class CommandHelper:
     @staticmethod
     def get_table_list_data(list_dict_values, header_list,
                             is_dict=False, ignore_header_list=None):
-        """
-        Get list of data for showing table in cli
+        """Get list of data for showing table in cli
 
-        :param list_dict_values: list or dict of values
-        :param header_list: headers for table
-        :param is_dict: whether is dict or list values
-        :param ignore_header_list: headers to ignore
-        :return: list of table data
+        Args:
+            list_dict_values: list or dict of values
+            header_list: headers for table
+            is_dict: whether is dict or list values (Default value = False)
+            ignore_header_list: headers to ignore (Default value = None)
+
+        Returns:
+            list of table data
         """
         keys = {}
         _headers = []
@@ -382,11 +378,13 @@ class CommandHelper:
 
     @staticmethod
     def get_table_data(values):
-        """
-        Get data for showing table in cli
+        """Get data for showing table in cli
 
-        :param values: values
-        :return: table data
+        Args:
+            values: values
+
+        Returns:
+            table data
         """
         keys = []
         headers = []
@@ -405,27 +403,27 @@ class CommandHelper:
 
 # Version commands
 class Version(Command):
-    """
-    Get server version
-    """
+    """Get server version"""
 
     group = QcosShell.CMD_GROUP_VERSION
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
+        Args:
+            parsed_args: command line arguments
         """
         resource = self.group
 
@@ -450,27 +448,27 @@ class Version(Command):
 
 # Driver commands
 class GetDrivers(Lister):
-    """
-    Get driver list
-    """
+    """Get driver list"""
 
     group = QcosShell.CMD_GROUP_DRIVER
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
+        Args:
+            parsed_args: command line arguments
         """
         resource = self.group
         header_list = ["name", "alias_name", "version", "tech_type",
@@ -487,18 +485,18 @@ class GetDrivers(Lister):
 
 
 class GetDriver(ShowOne):
-    """
-    Get driver info
-    """
+    """Get driver info"""
 
     group = QcosShell.CMD_GROUP_DRIVER
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("driver_name", type=str,
@@ -506,10 +504,10 @@ class GetDriver(ShowOne):
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
+        Args:
+            parsed_args: command line arguments
         """
         resource = self.group
         driver_name = parsed_args.driver_name
@@ -524,27 +522,27 @@ class GetDriver(ShowOne):
 
 # Device commands
 class GetDevices(Lister):
-    """
-    Get device list
-    """
+    """Get device list"""
 
     group = QcosShell.CMD_GROUP_DEVICE
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
+        Args:
+            parsed_args: command line arguments
         """
         resource = self.group
         header_list = ["name", "alias_name", "driver_name", "enable", "status",
@@ -561,18 +559,18 @@ class GetDevices(Lister):
 
 
 class GetDevice(ShowOne):
-    """
-    Get device info
-    """
+    """Get device info"""
 
     group = QcosShell.CMD_GROUP_DEVICE
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("device_name", type=str,
@@ -580,10 +578,10 @@ class GetDevice(ShowOne):
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
+        Args:
+            parsed_args: command line arguments
         """
         resource = self.group
         device_name = parsed_args.device_name
@@ -598,27 +596,27 @@ class GetDevice(ShowOne):
 
 # Transpiler commands
 class GetTranspilers(Lister):
-    """
-    Get transpiler list
-    """
+    """Get transpiler list"""
 
     group = QcosShell.CMD_GROUP_TRANSPILER
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
+        Args:
+            parsed_args: command line arguments
         """
         resource = self.group
         header_list = ["name", "alias_name", "version",
@@ -635,18 +633,18 @@ class GetTranspilers(Lister):
 
 
 class GetTranspiler(ShowOne):
-    """
-    Get transpiler info
-    """
+    """Get transpiler info"""
 
     group = QcosShell.CMD_GROUP_TRANSPILER
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("transpiler_name", type=str,
@@ -654,10 +652,10 @@ class GetTranspiler(ShowOne):
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
+        Args:
+            parsed_args: command line arguments
         """
         resource = self.group
         transpiler_name = parsed_args.transpiler_name
@@ -672,18 +670,18 @@ class GetTranspiler(ShowOne):
 
 # System commands
 class Ping(Command):
-    """
-    Ping-pong to verify the availability of the system
-    """
+    """Ping-pong to verify the availability of the system"""
 
     group = QcosShell.CMD_GROUP_SYSTEM
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("message", type=str,
@@ -692,10 +690,10 @@ class Ping(Command):
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
+        Args:
+            parsed_args: command line arguments
         """
         resource = self.group
         message = parsed_args.message
@@ -708,9 +706,7 @@ class Ping(Command):
 
 # Job commands
 class SubmitJob(Command):
-    """
-    Submit job
-    """
+    """Submit job"""
 
     group = QcosShell.CMD_GROUP_JOB
 
@@ -722,11 +718,13 @@ class SubmitJob(Command):
         return file_path
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("--code-type", dest="code_type",
@@ -795,10 +793,10 @@ class SubmitJob(Command):
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
+        Args:
+            parsed_args: command line arguments
         """
         resource = self.group
         job_name = parsed_args.job_name
@@ -942,29 +940,31 @@ class SubmitJob(Command):
 
 
 class GetJobStatus(ShowOne):
-    """
-    Get job status
-    """
+    """Get job status"""
 
     group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("job_id", type=str, help="Job ID")
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
-        :return: results of command
+        Args:
+            parsed_args: command line arguments
+
+        Returns:
+            results of command
         """
         resource = self.group
         job_id = parsed_args.job_id
@@ -983,29 +983,31 @@ class GetJobStatus(ShowOne):
 
 
 class GetJobResults(ShowOne):
-    """
-    Get job results
-    """
+    """Get job results"""
 
     group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("job_id", type=str, help="Job ID")
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
-        :return: results of command
+        Args:
+            parsed_args: command line arguments
+
+        Returns:
+            results of command
         """
         resource = self.group
         job_id = parsed_args.job_id
@@ -1034,27 +1036,27 @@ class GetJobResults(ShowOne):
 
 
 class GetJobs(Lister):
-    """
-    Get jobs
-    """
+    """Get jobs"""
 
     group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
+        Args:
+            parsed_args: command line arguments
         """
         resource = self.group
         header_list = ["job_id", "job_name", "job_status", "progress",
@@ -1073,18 +1075,18 @@ class GetJobs(Lister):
 
 
 class CancelJobs(Command):
-    """
-    Cancel jobs
-    """
+    """Cancel jobs"""
 
     group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("job_ids", help="Job IDs")
@@ -1096,10 +1098,10 @@ class CancelJobs(Command):
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
+        Args:
+            parsed_args: command line arguments
         """
         resource = self.group
         job_ids = parsed_args.job_ids
@@ -1158,18 +1160,18 @@ class CancelJobs(Command):
 
 
 class DeleteJobs(Command):
-    """
-    Delete jobs
-    """
+    """Delete jobs"""
 
     group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("job_ids", help="Job IDs")
@@ -1181,10 +1183,10 @@ class DeleteJobs(Command):
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
+        Args:
+            parsed_args: command line arguments
         """
         resource = self.group
         job_ids = parsed_args.job_ids
@@ -1243,18 +1245,18 @@ class DeleteJobs(Command):
 
 
 class SetJobResults(Command):
-    """
-    Set job results
-    """
+    """Set job results"""
 
     group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
-        """
-        Get parser for this command
+        """Get parser for this command
 
-        :param prog_name: program name
-        :return: parser
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("--results",
@@ -1266,10 +1268,10 @@ class SetJobResults(Command):
         return parser
 
     def take_action(self, parsed_args):
-        """
-        Take action for command line arguments
+        """Take action for command line arguments
 
-        :param parsed_args: command line arguments
+        Args:
+            parsed_args: command line arguments
         """
         resource = self.group
         job_id = parsed_args.job_id
@@ -1322,9 +1324,7 @@ command_manager.add_command("list-transpilers", GetTranspilers)
 
 
 def set_debug_option(args):
-    """
-    Set debug option
-    """
+    """Set debug option"""
     parser = argparse.ArgumentParser(description="", add_help=False)
     parser.add_argument(
         "--debug",
@@ -1367,19 +1367,21 @@ SOURCE_CODE_FILE_INFO = {
 
 
 def get_content_by_type(code_type, file_path):
-    """
-    Get file content by file type
+    """Get file content by file type
 
-    :param code_type: code type
-    :param file_path: file path
-    :return: file content
+    Args:
+        code_type: code type
+        file_path: file path
+
+    Returns:
+        file content
     """
 
     def get_file_types():
-        """
-        Get file types
+        """Get file types
 
-        :return: file types
+        Returns:
+            file types
         """
         file_types = set()
         for _, code_type_info_list in SOURCE_CODE_FILE_INFO.items():
@@ -1417,10 +1419,10 @@ def get_content_by_type(code_type, file_path):
 
 # Application needs to be run with command line to parse.
 def main(argv=sys.argv[1:]):
-    """
-    Main function
+    """Main function
 
-    :param argv: arguments
+    Args:
+        argv: arguments (Default value = sys.argv[1:])
     """
     app = QcosShell(
         description=DESCRIPTION,

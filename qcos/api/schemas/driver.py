@@ -21,15 +21,13 @@ from pydantic import BaseModel
 
 
 class GetDriversRequest(BaseModel):
-    """
-    Get Drivers Request
+    """Get Drivers Request
     Pydantic Model for Get Drivers Request
     """
 
 
 class GetDriverRequest(BaseModel):
-    """
-    Get Driver Request
+    """Get Driver Request
     Pydantic Model for Get Driver Request
     """
     # driver name
@@ -37,8 +35,7 @@ class GetDriverRequest(BaseModel):
 
 
 class GetDriverResponse(BaseModel):
-    """
-    Get Driver Response
+    """Get Driver Response
     Pydantic Model for Get Driver Response
     """
     # driver name

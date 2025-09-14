@@ -28,13 +28,14 @@ module_name = "TRANSPILER"
 
 
 def _get_transpiler_info(transpiler_info):
-    """
-    Get transpiler info
+    """Get transpiler info
 
-    :param transpiler_info: transpiler info
-    :return: transpiler_info
-    """
+    Args:
+        transpiler_info: transpiler info
 
+    Returns:
+        transpiler_info
+    """
     _transpiler_info = {
         "name": transpiler_info.name,
         "alias_name": transpiler_info.alias_name,
@@ -49,12 +50,13 @@ def _get_transpiler_info(transpiler_info):
 def get_transpilers(
         body: schemas.GetTranspilersRequest = None
 ) -> Dict[str, schemas.GetTranspilerResponse]:
-    """
-    Get transpiler list request
+    """Get transpiler list request
 
-    :param body: message
-    :type body: schemas.GetTranspilersRequest
-    :return: Get transpilers response
+    Args:
+        body(schemas.GetTranspilersRequest): message
+
+    Returns:
+        Get transpilers response
     """
     func_name = "get_transpilers"
     logger.info(f"Call {func_name}: {body}")
@@ -71,12 +73,13 @@ def get_transpilers(
 def get_transpiler(
         body: schemas.GetTranspilerRequest
 ) -> schemas.GetTranspilerResponse:
-    """
-    Get transpiler info request
+    """Get transpiler info request
 
-    :param body: driver_name
-    :type body: schemas.GetTranspilerRequest
-    :return: Get transpiler info response
+    Args:
+        body(schemas.GetTranspilerRequest): driver_name
+
+    Returns:
+        Get transpiler info response
     """
     func_name = "get_transpiler"
     logger.info(f"Call {func_name}: {body}")

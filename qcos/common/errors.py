@@ -17,19 +17,17 @@
 
 
 class BaseException(Exception):
-    """
-    Base exception
-    """
+    """Base exception"""
 
     def __init__(self, message):
         super().__init__(message)
         self.message = str(message)
 
     def get_error_code(self):
-        """
-        Get error code
+        """Get error code
 
-        :return: error code
+        Returns:
+            error code
         """
         return self.error_code
 
@@ -38,9 +36,7 @@ class BaseException(Exception):
 
 
 class GenericException(BaseException):
-    """
-    Generic exception
-    """
+    """Generic exception"""
 
     module_name = "Generic"
     error_code = -10
@@ -48,27 +44,21 @@ class GenericException(BaseException):
 
 
 class InvalidArguments(BaseException):
-    """
-    Invalid arguments
-    """
+    """Invalid arguments"""
 
     error_code = -11
     err_type = "Invalid arguments"
 
 
 class NotFound(BaseException):
-    """
-    Not Found
-    """
+    """Not Found"""
 
     error_code = -12
     err_type = "Not Found"
 
 
 class WorkFlowError(BaseException):
-    """
-    Work Flow Error
-    """
+    """Work Flow Error"""
 
     module_name = "Workflow"
     error_code = -13
@@ -76,9 +66,7 @@ class WorkFlowError(BaseException):
 
 
 class JobEngineDriverInitError(BaseException):
-    """
-    Job Engine: Driver Init Error
-    """
+    """Job Engine: Driver Init Error"""
 
     module_name = "JobEngine"
     error_code = -100
@@ -86,9 +74,7 @@ class JobEngineDriverInitError(BaseException):
 
 
 class JobEngineTranspilerInitError(BaseException):
-    """
-    Job Engine: Transpiler Init Error
-    """
+    """Job Engine: Transpiler Init Error"""
 
     module_name = "JobEngine"
     error_code = -101
@@ -96,9 +82,7 @@ class JobEngineTranspilerInitError(BaseException):
 
 
 class JobEngineParseError(BaseException):
-    """
-    Job Engine: Parse Error
-    """
+    """Job Engine: Parse Error"""
 
     module_name = "JobEngine"
     error_code = -102
@@ -106,9 +90,7 @@ class JobEngineParseError(BaseException):
 
 
 class JobEngineTranspileError(BaseException):
-    """
-    Job Engine: Transpile Error
-    """
+    """Job Engine: Transpile Error"""
 
     module_name = "JobEngine"
     error_code = -103
@@ -116,9 +98,7 @@ class JobEngineTranspileError(BaseException):
 
 
 class JobEngineDriverRunError(BaseException):
-    """
-    Job Engine: Driver Run Error
-    """
+    """Job Engine: Driver Run Error"""
 
     module_name = "JobEngine"
     error_code = -104

@@ -37,12 +37,13 @@ module_name = "JOB"
 def submit_job(
         body: schemas.SubmitJobRequest
 ) -> schemas.SubmitJobResponse:
-    """
-    Submit job
+    """Submit job
 
-    :param body: job info
-    :type body: schemas.SubmitJobRequest
-    :return: job info
+    Args:
+        body(schemas.SubmitJobRequest): job info
+
+    Returns:
+        job info
     """
     func_name = "submit_job"
     logger.info(f"Call {func_name}: {body}")
@@ -416,12 +417,13 @@ def submit_job(
 def get_job_status(
         body: schemas.GetJobStatusRequest
 ) -> schemas.GetJobStatusResponse:
-    """
-    Get job status
+    """Get job status
 
-    :param body: job_id: job ID
-    :type body: schemas.GetJobStatusRequest
-    :return: job status
+    Args:
+        body(schemas.GetJobStatusRequest): job_id: job ID
+
+    Returns:
+        job status
     """
     func_name = "get_job_status"
     logger.info(f"Call {func_name}: {body}")
@@ -476,12 +478,13 @@ def get_job_status(
 def get_job_results(
         body: schemas.GetJobResultsRequest
 ) -> schemas.GetJobResultsResponse:
-    """
-    Get job results
+    """Get job results
 
-    :param body: job_id: job ID
-    :type body: schemas.GetJobResultsRequest
-    :return: job results
+    Args:
+        body(schemas.GetJobResultsRequest): job_id: job ID
+
+    Returns:
+        job results
     """
     func_name = "get_job_results"
     logger.info(f"Call {func_name}: {body}")
@@ -535,12 +538,13 @@ def get_job_results(
 def get_jobs(
         body: schemas.GetJobsRequest = None
 ) -> List[schemas.GetJobStatusResponse]:
-    """
-    Get job list
+    """Get job list
 
-    :param body: job_id: job ID
-    :type body: schemas.GetJobsRequest
-    :return: job list
+    Args:
+        body(schemas.GetJobsRequest): job_id: job ID
+
+    Returns:
+        job list
     """
     func_name = "get_jobs"
     logger.info(f"Call {func_name}: {body}")
@@ -578,12 +582,13 @@ def get_jobs(
 def cancel_jobs(
         body: schemas.CancelJobsRequest
 ) -> List[schemas.CancelJobsResponse]:
-    """
-    Cancel job
+    """Cancel job
 
-    :param body: job_ids: job IDs
-    :type body: schemas.CancelJobsRequest
-    :return: cancelled jobs info
+    Args:
+        body(schemas.CancelJobsRequest): job_ids: job IDs
+
+    Returns:
+        cancelled jobs info
     """
     func_name = "cancel_jobs"
     logger.info(f"Call {func_name}: {body}")
@@ -608,12 +613,13 @@ def cancel_jobs(
 def delete_jobs(
         body: schemas.DeleteJobsRequest
 ) -> List[schemas.DeleteJobsResponse]:
-    """
-    Delete job
+    """Delete job
 
-    :param body: job_ids: job IDs
-    :type body: schemas.DeleteJobsRequest
-    :return: deleted jobs info
+    Args:
+        body(schemas.DeleteJobsRequest): job_ids: job IDs
+
+    Returns:
+        deleted jobs info
     """
     func_name = "delete_jobs"
     logger.info(f"Call {func_name}: {body}")
@@ -639,11 +645,10 @@ def delete_jobs(
 def set_job_results(
         body: schemas.SetJobResultsRequest
 ) -> schemas.SetJobResultsResponse:
-    """
-    Set job results for existing job
+    """Set job results for existing job
 
-    :param body: job_id: job ID
-    :type body: schemas.SetJobResultsRequest
+    Args:
+        body(schemas.SetJobResultsRequest): job_id: job ID
     """
     func_name = "set_job_results"
     logger.info(f"Call {func_name}: {body}")
@@ -795,13 +800,15 @@ def set_job_results(
 
 
 def merge_results(response_info, parameters, results=None):
-    """
-    Merge results
+    """Merge results
 
-    :param response_info: response info
-    :param parameters: parameters from prefect
-    :param results: results from prefect
-    :return: new response info
+    Args:
+        response_info: response info
+        parameters: parameters from prefect
+        results: results from prefect (Default value = None)
+
+    Returns:
+        new response info
     """
     end_date = None
     if parameters:

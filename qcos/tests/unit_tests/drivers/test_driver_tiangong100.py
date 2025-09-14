@@ -31,7 +31,7 @@ class TestDriverTiangong100:
     def setup_class(cls):
         cls.qasm_str = {
             "source_code":
-                '''
+                """
                 OPENQASM 2.0;
                 include "qelib1.inc";
                 qreg q[5];
@@ -41,7 +41,7 @@ class TestDriverTiangong100:
                 x q[0];
                 rx(1) q[0];
                 measure q->c;
-                ''',
+                """,
             "index": "index"}
 
     def test_init_driver(self):

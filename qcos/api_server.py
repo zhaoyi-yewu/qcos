@@ -30,9 +30,7 @@ __version__ = Config.VERSION
 
 
 def daemonize():
-    """
-    Do the UNIX double-fork magic for properly detaching process
-    """
+    """Do the UNIX double-fork magic for properly detaching process"""
     try:
         pid = os.fork()
         if pid > 0:
@@ -60,9 +58,8 @@ def daemonize():
 
 
 def main():
-    """
-    Main entry
-    """
+    """Main entry"""
+
     PID_DIR = "/var/run/qcos"
     PID_FILE = f"{PID_DIR}/qcos-api.pid"
 

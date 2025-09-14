@@ -56,17 +56,17 @@ class TestJob:
                         mock_get_transpiler_manager, mock_get_transpiler,
                         mock_add, mock_validate_schema):
         mock_client = Mock(spec=SubmitJobResponse)
-        mock_client.source_code = ['''
-          OPENQASM 2.0;
-          include "qelib1.inc";
-          qreg q[1];
-          creg c[1];
-          h q[0];
-          h q[0];
-          x q[0];
-          rx(1) q[0];
-          measure q->c;
-        ''']
+        mock_client.source_code = ["""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        h q[0];
+        h q[0];
+        x q[0];
+        rx(1) q[0];
+        measure q->c;
+        """]
         mock_client.code_type = Constant.CODE_TYPE_QASM
         mock_client.circuit_aggregation = Constant.AGGREGATION_TYPE_INTERNAL
         mock_client.job_id = None
@@ -105,17 +105,17 @@ class TestJob:
             submit_job(mock_client)
         assert "BadRequestError" in str(e)
 
-        mock_client.source_code = ['''
-          OPENQASM 2.0;
-          include "qelib1.inc";
-          qreg q[1];
-          creg c[1];
-          h q[0];
-          h q[0];
-          x q[0];
-          rx(1) q[0];
-          measure q->c;
-        ''']
+        mock_client.source_code = ["""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        h q[0];
+        h q[0];
+        x q[0];
+        rx(1) q[0];
+        measure q->c;
+        """]
         mock_client.job_id = "111"
         with pytest.raises(BadRequestError) as e:
             submit_job(mock_client)

@@ -21,13 +21,13 @@ import networkx as nx
 class Node:
 
     def __init__(self, qubits, left=None, right=None, ignore=False) -> None:
-        """
-        搜索树节点，也称作社区，每个节点包含一组量子比特
+        """搜索树节点，也称作社区，每个节点包含一组量子比特
 
-        :param qubits: 节点包含的量子比特
-        :param left: 左子节点. Defaults to None.
-        :param right: 右子节点. Defaults to None.
-        :param ignore: 是否忽略该节点. Defaults to False.
+        Args:
+            qubits: 节点包含的量子比特
+            left: 左子节点. Defaults to None.
+            right: 右子节点. Defaults to None.
+            ignore: 是否忽略该节点. Defaults to False.
         """
         self.qubits = qubits
         self.left = left
@@ -38,14 +38,13 @@ class Node:
 
 
 class HierarchyTree:
-    """
-    基于CDAP构建搜索树
+    """基于CDAP构建搜索树
 
-    :param qpu_config: 硬件配置，包含硬件拓扑信息
-    :param weight: 错误率所占权重，越高表示越看中门和测量的保真度，为0表示只关心耦合情况.
-                   Defaults to 1.0.
+    Args:
+        qpu_config: 硬件配置，包含硬件拓扑信息
+        weight: 错误率所占权重，越高表示越看中门和测量的保真度，为0表示只关心耦合情况.
+        Defaults to 1.0.
     """
-
     def __init__(self, qpu_config, weight=1.0) -> None:
         ag = nx.Graph()
         for k, e in qpu_config['coupler_map'].items():
@@ -67,9 +66,7 @@ class HierarchyTree:
         self.all_qubits = qpu_config['qubits']
 
     def construct(self):
-        """
-        构建层次树，每次合并两个节点，直到最终只剩下一个节点
-        """
+        """构建层次树，每次合并两个节点，直到最终只剩下一个节点"""
         nodes = self.origin_node()
         while len(nodes) != 1:
             i, j = self.calc_merge_gain(nodes)
@@ -88,10 +85,9 @@ class HierarchyTree:
         self.root = nodes[0]
 
     def origin_node(self):
-        """
-        初始叶节点，每个比特/位置为一个叶节点
+        """初始叶节点，每个比特/位置为一个叶节点
 
-        :return nodes: 节点
+        Returns: 节点
         """
         nodes = []
         for node in self.graph.nodes():
@@ -105,10 +101,9 @@ class HierarchyTree:
         self.visit(node.right)
 
     def get_all_leaf(self):
-        """
-        dfs获取所有的叶节点
+        """dfs获取所有的叶节点
 
-        :return leafs: 所有的叶节点
+        Returns: 所有的叶节点
         """
         leafs = []
 
@@ -125,11 +120,12 @@ class HierarchyTree:
         return leafs
 
     def average_fidelity(self, node):
-        """
-        当前节点的平均保真度，主要为节点包含比特的测量保真度和两比特门保真度
+        """当前节点的平均保真度，主要为节点包含比特的测量保真度和两比特门保真度
 
-        :param node: 节点
-        :return read_f * cx_f: 当前节点的平均保真度
+        Args:
+            node: 节点
+
+        Returns: 当前节点的平均保真度
         """
         n = len(node.qubits)
         read_f = sum(self.graph.nodes[q]['weight'] for q in node.qubits) / n
@@ -146,11 +142,12 @@ class HierarchyTree:
         return fidelity
 
     def calc_modularity(self, nodes):
-        """
-        衡量当前划分的指标
+        """衡量当前划分的指标
 
-        :param nodes: 当前划分下所有的节点
-        :return modularity: 模块度
+        Args:
+            nodes: 当前划分下所有的节点
+
+        Returns: 模块度
         """
         modularity = 0
         for node in nodes:
@@ -167,12 +164,13 @@ class HierarchyTree:
         return modularity
 
     def calc_eigenvector(self, node_a, node_b):
-        """
-        计算两个节点间的平均两比特门保真度，以及平均测量保真度
+        """计算两个节点间的平均两比特门保真度，以及平均测量保真度
 
-        :param node_a: 节点a
-        :param node_b: 节点b
-        :return eigenvector: 两个节点间的平均两比特门保真度，以及平均测量保真度
+        Args:
+            node_a: 节点a
+            node_b: 节点b
+
+        Returns: 两个节点间的平均两比特门保真度，以及平均测量保真度
         """
         e = 0
         ecnt = 0
@@ -193,12 +191,13 @@ class HierarchyTree:
         return eigenvector
 
     def calc_merge_gain(self, nodes):
-        """
-        奖励函数，每次找奖励函数值最大的合并方案
+        """奖励函数，每次找奖励函数值最大的合并方案
         F = Qmerge - Qori + w * EV
 
-        :param nodes: 当前划分下所有的节点
-        :return comb: 奖励函数值最大的合并方案
+        Args:
+            nodes: 当前划分下所有的节点
+
+        Returns: 奖励函数值最大的合并方案
         """
         q_origin = self.calc_modularity(nodes)
         n = len(nodes)

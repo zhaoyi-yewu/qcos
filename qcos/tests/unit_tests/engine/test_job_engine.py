@@ -37,16 +37,16 @@ from qcos.engine.job_engine import SourceCodeInfo
 class TestJobEngine:
     @classmethod
     def setup_class(cls):
-        cls.simple_data = '''
-                  OPENQASM 2.0;
-                  include "qelib1.inc";
-                  qreg q[1];
-                  creg c[1];
-                  h q[0];
-                  x q[0];
-                  rx(1) q[0];
-                  measure q->c;
-                '''
+        cls.simple_data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        h q[0];
+        x q[0];
+        rx(1) q[0];
+        measure q->c;
+        """
 
         cls.job_data = {
             "job_id": "00000000-0000-4000-8000-000000000001",

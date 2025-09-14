@@ -31,9 +31,7 @@ from qcos.transpiler.transpiler_base import TranspilerBase
 
 
 class TranspilerCmss(TranspilerBase):
-    """
-    Transpiler Class for CMSS
-    """
+    """Transpiler Class for CMSS"""
 
     def __init__(self):
         super().__init__()
@@ -62,17 +60,18 @@ class TranspilerCmss(TranspilerBase):
 
 
     def init_transpiler(self):
-        """
-        Init transpiler
-        """
+        """Init transpiler"""
 
     def mapping(self, qpu_cfg, opt_result_dict):
-        """
-        mapping
+        """mapping
 
-        :param qpu_cfg: qpu_cfg
-        :param opt_result_dict: opt_result_dict
+        Args:
+          qpu_cfg: qpu_cfg
+          opt_result_dict: opt_result_dict
         :return mapping result dict
+
+        Returns:
+
         """
         factory = MappingFactory()
         mapper = factory.get_mapper_by_type(trans_cfg_inst.get_tech_type())
@@ -102,11 +101,14 @@ class TranspilerCmss(TranspilerBase):
             return mapping_res, mapping_dict
 
     def parse(self, src_code_dict):
-        """
-        parse src_code_dict
+        """parse src_code_dict
 
-        :param src_code_dict: src_code_dict
+        Args:
+          src_code_dict: src_code_dict
         :return parse result
+
+        Returns:
+
         """
         # compile
         parse_result_dict = {}
@@ -125,12 +127,16 @@ class TranspilerCmss(TranspilerBase):
             raise TranspilerException("unsupported input")
 
     def transpile(self, parse_result, supp_basis_gates: list):
-        """
-        CMSS transpiler function.
+        """CMSS transpiler function.
 
-        :param parse_result: parse result
-        :param supp_basis_gates: supported basis gates
+        Args:
+          parse_result: parse result
+          supp_basis_gates: supported basis gates
         :return basis gate list
+          supp_basis_gates: list: 
+
+        Returns:
+
         """
         qpu_cfg = trans_cfg_inst.get_qpu_cfg()
         if not qpu_cfg:

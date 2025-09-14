@@ -44,14 +44,10 @@ logger = logging.getLogger(__name__)
 
 
 class TaskFlowManager(ABC):
-    """
-    task manager based on prefect framework
-    """
+    """Task manager based on prefect framework"""
 
     def __init__(self):
-        """
-        Init TaskFlowManager
-        """
+        """Init TaskFlowManager"""
 
         self._client = None
         self._sync_client = None
@@ -75,9 +71,7 @@ class TaskFlowManager(ABC):
             return _state
 
     def start(self):
-        """
-        Create work pools, queues and start workers
-        """
+        """Create work pools, queues and start workers"""
 
         self._client = get_client()
         self._sync_client = get_client(sync_client=True)
@@ -91,27 +85,23 @@ class TaskFlowManager(ABC):
         self.loop.run_until_complete(self.process_aggregation_job())
 
     def set_driver_manager(self, driver_manager):
-        """
-        Set driver manager
+        """Set driver manager
 
-        :param driver_manager: driver manager
+        Args:
+            driver_manager: driver manager
         """
-
         self.driver_manager = driver_manager
 
     def set_device_manager(self, device_manager):
-        """
-        Set device manager
+        """Set device manager
 
-        :param device_manager: device manager
+        Args:
+            device_manager: device manager
         """
-
         self.device_manager = device_manager
 
     def check_connection(self):
-        """
-        Check connection to prefect server
-        """
+        """Check connection to prefect server"""
 
         def is_connected():
             try:
@@ -128,19 +118,17 @@ class TaskFlowManager(ABC):
             raise TimeoutError("Connection to prefect server timeout")
 
     async def create_pools(self):
-        """
-        Create all work pools, each policy has own work pools.
-        """
+        """Create all work pools, each policy has own work pools"""
 
         create_workpools = [self.create_pool(pool_name) for pool_name in
                             Constant.JOB_SCHED_POLICIES]
         return await asyncio.gather(*create_workpools)
 
     async def create_pool(self, pool_name):
-        """
-        Create work pool by prefect client.
+        """Create work pool by prefect client
 
-        :param pool_name: work pool name, using policy name
+        Args:
+            pool_name: work pool name, using policy name
         """
 
         pools = await self._client.read_work_pools()
@@ -152,8 +140,8 @@ class TaskFlowManager(ABC):
                     concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY))
 
     async def create_queues(self):
-        """
-        Create all work queues under work pool,
+        """Create all work queues under work pool
+
         each priority has own work queue.
         """
 
@@ -203,10 +191,10 @@ class TaskFlowManager(ABC):
                 raise TimeoutError("Workers start timeout")
 
     def start_work(self, pool_name):
-        """
-        Start worker by prefect client.
+        """Start worker by prefect client.
 
-        :param pool_name: work pool name
+        Args:
+            pool_name: work pool name
         """
         pool_name = Constant.JOB_SCHED_POLICIES[int(pool_name)]
         worker = ProcessWorker(
@@ -221,17 +209,18 @@ class TaskFlowManager(ABC):
             self, deploy_name: str,
             policy_type: str, priority: int,
             deploy_flow, path: str):
-        """
-        Deploy flow by prefect client.
+        """Deploy flow by prefect client.
 
-        :param deploy_name: deploy name
-        :param policy_type: policy type
-        :param priority: priority
-        :param deploy_flow: deploy flow function
-        :param path: .py path where the flow function relative to current path
-        :return deploy_id: deploy uuid
-        """
+        Args:
+            deploy_name: deploy name
+            policy_type: policy type
+            priority: priority
+            deploy_flow: deploy flow function
+            path: py path where the flow function relative to current path
 
+        Returns:
+            deploy uuid
+        """
         # TODO(jidalong) deal exception
         queue_name = f"{policy_type}_{priority}"
         # registry deploy
@@ -249,14 +238,15 @@ class TaskFlowManager(ABC):
         return deploy_id
 
     def run_task_flow(self, deployment_id, args: dict[str, Any]):
-        """
-        Run flow.
+        """Run flow
 
-        :param deployment_id: deploy uuid
-        :param args: flow function args in dict
-        :return flow_run_id: flow run uuid
-        """
+        Args:
+            deployment_id: deploy uuid
+            args: flow function args in dict
 
+        Returns:
+            flow run uuid
+        """
         flow_run_id = self.loop.run_until_complete(
             self.run_task_flow_by_client(deployment_id, args))
 
@@ -275,13 +265,15 @@ class TaskFlowManager(ABC):
     async def run_task_flow_by_client(self, deployment_id,
                                       args: dict[str, Any]):
         """
-        Run flow by prefect client.
+        Run flow by prefect client
 
-        :param deployment_id: deploy uuid
-        :param args: flow function args in dict
-        :return job_id: job uuid
+        Args:
+            deployment_id: deploy uuid
+            args: flow function args in dict
+
+        Returns:
+            job_id: job uuid
         """
-
         job_id = args["job_info"]["data"].get("job_id")
         if job_id is None:
             job_id = Library.create_uuid()
@@ -299,14 +291,13 @@ class TaskFlowManager(ABC):
         return job_id
 
     def get_task_flow_result(self, job_id):
-        """
-        Get flow run state and result.
+        """Get flow run state and result
 
-        :param job_id: job uuid
-        :return state: flow state
-        :return parameters: flow parameters
-        :return result: flow result
-        :return err_msg: flow error message
+        Args:
+            job_id: job uuid
+
+        Returns:
+            state, parameters, result, err_msg
         """
         flow_run_id = self.get_flow_run_id_by_job_id(job_id)
         if flow_run_id is None:
@@ -316,10 +307,10 @@ class TaskFlowManager(ABC):
         return state, parameters, result, err_msg
 
     def delete_flow_artifacts(self, flow_run_id):
-        """
-        Delete flow artifacts
+        """Delete flow artifacts
 
-        :param flow_run_id: flow run id
+        Args:
+            flow_run_id: flow run id
         """
         artifacts = self._sync_client.read_artifacts(
             artifact_filter=ArtifactFilter(
@@ -328,21 +319,25 @@ class TaskFlowManager(ABC):
             self._sync_client.delete_artifact(artifact.id)
 
     def get_job_artifact(self, job_id):
-        """
-        Get job artifact
+        """Get job artifact
 
-        :param job_id: job id
-        :return artifact
+        Args:
+            job_id: job id
+
+        Returns:
+            artifact
         """
         artifact = self.get_job_artifact_by_client(job_id)
         return artifact
 
     def get_job_artifact_by_client(self, job_id):
-        """
-        Get job artifact by client
+        """Get job artifact by client
 
-        :param job_id: job id
-        :return artifact
+        Args:
+            job_id: job id
+
+        Returns:
+            artifact
         """
         artifact = {}
         artifacts = self._sync_client.read_artifacts(
@@ -356,13 +351,14 @@ class TaskFlowManager(ABC):
         return artifact
 
     def has_flow(self, job_id):
-        """
-        Check if flow exists
+        """Check if flow exists
 
-        :param job_id: job uuid
-        :return if job exists
-        """
+        Args:
+            job_id: job uuid
 
+        Returns:
+            if job exists
+        """
         exist = False
         flow_run_id = self.get_flow_run_id_by_job_id(job_id)
         if flow_run_id:
@@ -371,16 +367,17 @@ class TaskFlowManager(ABC):
 
     def update_flow(self, job_id, name=None, parameters=None,
                     variables=None):
-        """
-        Update flow
+        """Update flow
 
-        :param job_id: job uuid
-        :param name: flow name
-        :param parameters: flow parameters
-        :param variables: flow variables
-        :return if flow exists
-        """
+        Args:
+            job_id: job uuid
+            name: flow name (Default value = None)
+            parameters: flow parameters (Default value = None)
+            variables: flow variables
 
+        Returns:
+            if flow exists (Default value = None)
+        """
         async def _update_flow(_flow_run_id,
                                _name=None,
                                _parameters=None,
@@ -406,16 +403,14 @@ class TaskFlowManager(ABC):
             _update_flow(flow_run_id, name, parameters, variables))
 
     def get_task_flow_result_by_client(self, flow_run_id):
-        """
-        Get flow run state and result by prefect client.
+        """Get flow run state and result by prefect client
 
-        :param flow_run_id: flow run uuid
-        :return state: flow state
-        :return parameters: flow parameters
-        :return result: flow result
-        :return err_msg: flow error message
-        """
+        Args:
+            flow_run_id: flow run uuid
 
+        Returns:
+            state_name, parameters, result, state_message
+        """
         # TODO(jidalong) deal exception
         # get flow info
         flow_run = self._sync_client.read_flow_run(flow_run_id)
@@ -432,12 +427,11 @@ class TaskFlowManager(ABC):
             return state.name, parameters, None, None
 
     def get_task_flow_list(self):
+        """Get flow run list
+        
+        Returns:
+            flow run list
         """
-        Get flow run list.
-
-        :return result: flow run list
-        """
-
         results = self.get_task_flow_list_by_client()
         return results
 
@@ -446,14 +440,15 @@ class TaskFlowManager(ABC):
             sort_fields=['-created'],
             reverse=False,
     ):
-        """
-        Get flow run list by prefect client.
+        """Get flow run list by prefect client.
 
-        :param sort_fields: sort fields
-        :param reverse: reverse order
-        :return result: flow run list
-        """
+        Args:
+            sort_fields: sort fields (Default value = ['-created'])
+            reverse: reverse order
 
+        Returns:
+            flow run list
+        """
         # TODO(jidalong) deal exception
         results_list = []
 
@@ -496,13 +491,14 @@ class TaskFlowManager(ABC):
         return results_list
 
     def delete_task_flow_run(self, job_ids):
-        """
-        Delete flow run.
+        """Delete flow run.
 
-        :param job_ids: job uuid list
-        :return success_list: success list
-        """
+        Args:
+            job_ids: job uuid list
 
+        Returns:
+            success list
+        """
         flow_run_ids = []
         for job_id in job_ids:
             flow_run_id = self.get_flow_run_id_by_job_id(job_id)
@@ -513,13 +509,14 @@ class TaskFlowManager(ABC):
         return success_list
 
     def delete_task_flow_run_by_client(self, flow_run_ids):
-        """
-        Delete flow run by client.
+        """Delete flow run by client.
 
-        :param flow_run_ids: flow run uuid list
-        :return success_list: success_list
-        """
+        Args:
+            flow_run_ids: flow run uuid list
 
+        Returns:
+            success_list
+        """
         success_list = []
         for (flow_run_id, job_id) in flow_run_ids:
             try:
@@ -547,13 +544,14 @@ class TaskFlowManager(ABC):
         return success_list
 
     def cancel_task_flow_run(self, job_ids):
-        """
-        Cancel flow run.
+        """Cancel flow run.
 
-        :param job_ids: job uuid list
-        :return success_list: success list
-        """
+        Args:
+            job_ids: job uuid list
 
+        Returns:
+            success list
+        """
         flow_run_ids = []
         for job_id in job_ids:
             flow_run_id = self.get_flow_run_id_by_job_id(job_id)
@@ -564,13 +562,14 @@ class TaskFlowManager(ABC):
         return success_list
 
     def cancel_task_flow_run_by_client(self, flow_run_ids):
-        """
-        Cancel flow run by client.
+        """Cancel flow run by client.
 
-        :param flow_run_ids: flow run uuid list
-        :return success_list: success_list
-        """
+        Args:
+            flow_run_ids: flow run uuid list
 
+        Returns:
+            success list
+        """
         success_list = []
         try:
             for (flow_run_id, job_id) in flow_run_ids:
@@ -626,19 +625,17 @@ class TaskFlowManager(ABC):
         return flow_info
 
     def run_callbacks(self, data, callbacks):
-        """
-        Run callbacks for job
+        """Run callbacks for job
 
-        :param data: data to send
-        :param callbacks: callbacks
+        Args:
+            data: data to send
+            callbacks: callbacks
         """
         return self.loop.run_until_complete(
             Library.async_run_callbacks(data, callbacks))
 
     async def process_aggregation_job(self):
-        """
-        Process aggregation job
-        """
+        """Process aggregation job"""
 
         def _update_aggregation_job(parent_id):
             try:

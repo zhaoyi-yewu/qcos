@@ -26,9 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 class DriverBase:
-    """
-    Quantum Computer base driver
-    """
+    """Quantum Computer base driver"""
 
     # Data types
     DATA_TYPE_GATE_SEQUENCE = "gate_sequence"
@@ -109,9 +107,7 @@ class DriverBase:
         self.driver_options_schema = None
 
     def validate_driver(self):
-        """
-        Validate driver
-        """
+        """Validate driver"""
         success = True
         err_msgs = []
         if self.enable_transpiler and self.supported_code_types:
@@ -125,50 +121,46 @@ class DriverBase:
         return success, "\n".join(err_msgs)
 
     def validate_driver_configs(self, configs):
-        """
-        Validate driver configs
+        """Validate driver configs
 
-        :return bool: True if successful, False otherwise
-        :return err_msg: error message
+        Args:
+            configs: configs to validate
+
+        Returns:
+            success, err_msgs
         """
         raise NotImplementedError(
             f"Driver: {self.__class__.__name__} "
             f"must implement method: validate_driver_configs")
 
     def init_driver(self):
-        """
-        Init driver
-        """
+        """Init driver"""
         raise NotImplementedError(f"Driver: {self.__class__.__name__} "
                                   f"must implement method: init_driver")
 
     def close_driver(self):
-        """
-        Close driver
-        """
+        """Close driver"""
         raise NotImplementedError(f"Driver: {self.__class__.__name__} "
                                   f"must implement method: close_driver")
 
     def get_driver_options_schema(self):
-        """
-        Get driver options schema
+        """Get driver options schema
 
-        :return: driver options schema
+        Returns:
+            driver options schema
         """
         return self.driver_options_schema
 
     def update_driver_options(self, driver_options):
-        """
-        Update driver options
+        """Update driver options
 
-        :param driver_options: new driver options
+        Args:
+            driver_options: new driver options
         """
         self.driver_options.update(driver_options)
 
     def get_driver_info(self):
-        """
-        Show driver info
-        """
+        """Show driver info"""
         show_list = [
             f"[{self.__class__.__name__}]",
             f"name: {self.name}",
@@ -184,183 +176,179 @@ class DriverBase:
         return "\n".join(show_list)
 
     def set_name(self, name):
-        """
-        Set driver name
+        """Set driver name
 
-        :param name: driver_name
+        Args:
+            name: driver_name
         """
         self.name = name
 
     def get_name(self):
-        """
-        Get driver name
+        """Get driver name
 
-        :return: driver name
+        Returns:
+            driver name
         """
         return self.name
 
     def set_alias_name(self, alias_name):
-        """
-        Set driver alias name
+        """Set driver alias name
 
-        :param alias_name: alias_name
+        Args:
+            alias_name: alias_name
         """
         self.alias_name = alias_name
 
     def get_alias_name(self):
-        """
-        Get driver alias name
+        """Get driver alias name
 
-        :return: driver alias name
+        Returns:
+            driver alias name
         """
         return self.alias_name
 
     def get_description(self):
-        """
-        Get driver description
+        """Get driver description
 
-        :return: description
+        Returns:
+            driver description
         """
         if self.description is None:
             return Library.get_brief_description(self.__doc__)
         return self.description
 
     def set_module_name(self, module_name):
-        """
-        Set module name
+        """Set module name
 
-        :param module_name: module name
+        Args:
+            module_name: module name
         """
         self._module_name = module_name
 
     def get_module_name(self):
-        """
-        Get module name
+        """Get module name
 
-        :return: module name
+        Returns:
+            module name
         """
         return self._module_name
 
     def set_class_name(self, class_name):
-        """
-        Set class name
+        """Set class name
 
-        :param class_name: class name
+        Args:
+            class_name: class name
         """
         self._class_name = class_name
 
     def get_class_name(self):
-        """
-        Get class name
+        """Get class name
 
-        :return: class name
+        Returns:
+            class name
         """
         return self._class_name
 
     def get_transpiler(self):
-        """
-        Get transpiler
-        """
+        """Get transpiler"""
         if self.enable_transpiler:
             return self.transpiler
         return None
 
     def get_supported_code_types(self):
-        """
-        Get supported code types
-        """
+        """Get supported code types"""
         return self.supported_code_types
 
     def get_supported_basis_gates(self):
-        """
-        Get supported basis gates
-
-        :return: list of supported basis gates
+        """Get supported basis gates
+        
+        Returns:
+            list of supported basis gates
         """
         return self.supported_basis_gates
 
     def get_supported_transpilers(self):
-        """
-        Get supported transpilers
+        """Get supported transpilers
 
-        :return: list of supported transpilers
+        Returns:
+            list of supported transpilers
         """
         return self.supported_transpilers
 
     def set_progress(self, progress):
-        """
-        Set progress
+        """Set progress
 
-        :param progress: progress percentage in integer between 0 and 100
+        Args:
+            progress: progress percentage in integer between 0 and 100
         """
         self.job_runtime_data["run_progress"] = progress
 
     def set_progress_by_task(self, task_name):
-        """
-        Set progress by task name
+        """Set progress by task name
 
-        :param task_name: task name
+        Args:
+            task_name: task name
         """
         progress = self.task_stages.get(task_name, None)
         if progress is not None:
             self.job_runtime_data["run_progress"] = progress
 
     def get_progress(self):
-        """
-        Get progress
+        """Get progress
 
-        :return: progress percentage in integer between 0 and 100
+        Returns:
+            progress percentage in integer between 0 and 100
         """
         return self.job_runtime_data["run_progress"]
 
     def set_device_status(self, device_status):
-        """
-        Set device status
+        """Set device status
 
-        :param device_status: device status
+        Args:
+            device_status: device status
         """
         self.job_runtime_data["device_status"] = device_status
 
     def set_configs(self, configs):
-        """
-        Set configs
+        """Set configs
 
-        :param configs: configs
+        Args:
+            configs: configs to set
         """
         self.job_runtime_data["configs"] = configs
 
     def get_configs(self):
-        """
-        Get configs
+        """Get configs
 
-        :return: configs
+        Returns:
+            configs
         """
         return self.job_runtime_data["configs"]
 
     def run(self, job_id, num_qubits, data,
             data_type=DATA_TYPE_GATE_SEQUENCE, shots=1):
-        """
-        Run job
+        """Run job
 
-        :param job_id: job ID
-        :param num_qubits: number of qubits
-        :param data: data
-        :param data_type: data type
-        :param shots: shots
+        Args:
+            job_id: job ID
+            num_qubits: number of qubits
+            data: data
+            data_type: data type (Default value = DATA_TYPE_GATE_SEQUENCE)
+            shots: shots (Default value = 1)
         """
         raise NotImplementedError(f"Driver: {self.__class__.__name__} "
                                   f"must implement method: run")
 
     def dry_run(self, job_id, num_qubits, data,
                 data_type=DATA_TYPE_GATE_SEQUENCE, shots=1):
-        """
-        Dry-run job
+        """Dry-run job
 
-        :param job_id: job ID
-        :param num_qubits: number of qubits
-        :param data: data
-        :param data_type: data type
-        :param shots: shots
+        Args:
+            job_id: job ID
+            num_qubits: number of qubits
+            data: data
+            data_type: data type (Default value = DATA_TYPE_GATE_SEQUENCE)
+            shots: shots (Default value = 1)
         """
         data_index = data["index"]
         logger.info(
@@ -372,34 +360,37 @@ class DriverBase:
         self.set_results(job_id, data_index, results=result)
 
     def cancel(self, job_id):
-        """
-        Cancel running job in driver.
+        """Cancel running job in driver.
+
         Driver should clean up any resources of the job
 
-        :param job_id: job ID
+        Args:
+            job_id: job ID
         """
         raise NotImplementedError(f"Driver: {self.__class__.__name__} "
                                   f"must implement method: cancel")
 
     def set_results(self, job_id, data_index, results):
-        """
-        Set job results
+        """Set job results
 
-        :param job_id: job ID
-        :param data_index: code index
-        :param results: results
+        Args:
+            job_id: job ID
+            data_index: code index
+            results: results
         """
         if job_id not in self.job_runtime_data["results"]:
             self.job_runtime_data["results"][job_id] = {}
         self.job_runtime_data["results"][job_id][data_index] = results
 
     def get_results(self, job_id=None, data_index=None):
-        """
-        Get results
+        """Get results
 
-        :param job_id: job ID
-        :param data_index: code index
-        :return: results
+        Args:
+            job_id: job ID (Default value = None)
+            data_index: code index (Default value = None)
+
+        Returns:
+            results
         """
         if job_id is not None:
             if data_index is not None:
@@ -411,35 +402,35 @@ class DriverBase:
         return self.job_runtime_data["results"]
 
     def get_default_data_type(self):
-        """
-        Get default data type
+        """Get default data type
 
-        :return: default data type
+        Returns:
+            default data type
         """
         return self.default_data_type
 
     def set_max_qubits(self, max_qubits):
-        """
-        Set max qubits
+        """Set max qubits
 
-        :param max_qubits: max qubits
+        Args:
+            max_qubits: max qubits
         """
         self.max_qubits = max_qubits
 
     def get_max_qubits(self):
-        """
-        Get max qubits
+        """Get max qubits
 
-        :return: max qubits
+        Returns:
+            max qubits
         """
         return self.max_qubits
 
     def get_fake_results(self, num_qubits, shots, data):
-        """
-        Get fake results
+        """Get fake results
 
-        :param num_qubits: number of qubits
-        :param shots: number of shots
-        :param data: source data
+        Args:
+            num_qubits: number of qubits
+            shots: number of shots
+            data: source data
         """
         return Library.generate_binary_combinations(num_qubits, shots)

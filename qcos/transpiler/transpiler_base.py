@@ -17,8 +17,8 @@
 
 
 class TranspilerBase:
-    """
-    Transpiler Base Class.
+    """Transpiler Base Class
+
     All Transpiler classes are inherited from this class.
     """
 
@@ -47,40 +47,36 @@ class TranspilerBase:
         self.qpu_config = None
 
     def init_transpiler(self):
-        """
-        Init transpiler
-        """
+        """Init transpiler"""
         raise NotImplementedError(f"Transpiler: {self.__class__.__name__} "
                                   f"must implement method: init_transpiler")
 
     def get_transpiler_options_schema(self):
-        """
-        Get transpiler options schema
+        """Get transpiler options schema
 
-        :return: transpiler options schema
+        Returns:
+            transpiler options schema
         """
         return self.transpiler_options_schema
 
     def update_transpiler_options(self, transpiler_options):
-        """
-        Update transpiler options
+        """Update transpiler options
 
-        :param transpiler_options: new transpiler options
+        Args:
+            transpiler_options: new transpiler options
         """
         self.transpiler_options.update(transpiler_options)
 
     def get_transpiler_options(self):
-        """
-        Get transpiler options
+        """Get transpiler options
 
-        :return: transpiler options
+        Returns:
+            transpiler options
         """
         return self.transpiler_options
 
     def get_transpiler_info(self):
-        """
-        Get transpiler info
-        """
+        """Get transpiler info"""
         show_list = [
             f"[{self.__class__.__name__}]",
             f"transpiler_name: {self.name}",
@@ -92,94 +88,98 @@ class TranspilerBase:
         return "\n".join(show_list)
 
     def set_name(self, name):
-        """
-        Set transpiler name
+        """Set transpiler name
 
-        :param name: transpiler_name
+        Args:
+            name: transpiler_name
         """
         self.name = name
 
     def get_name(self):
-        """
-        Get transpiler name
+        """Get transpiler name
 
-        :return: transpiler name
+        Returns:
+            transpiler name
         """
         return self.name
 
     def get_alias_name(self):
-        """
-        Get transpiler alias name
+        """Get transpiler alias name
 
-        :return: transpiler alias name
+        Returns:
+            transpiler alias name
         """
         return self.alias_name
 
     def get_version(self):
-        """
-        Get version
+        """Get version
 
-        :return: version
+        Returns:
+            version
         """
         return self.version
 
     def set_module_name(self, module_name):
-        """
-        Set module name
+        """Set module name
 
-        :param module_name: module name
+        Args:
+            module_name: module name
         """
         self._module_name = module_name
 
     def get_module_name(self):
-        """
-        Get module name
+        """Get module name
 
-        :return: module name
+        Returns:
+            module name
         """
         return self._module_name
 
     def set_class_name(self, class_name):
-        """
-        Set class name
+        """Set class name
 
-        :param class_name: class name
+        Args:
+            class_name: class name
         """
         self._class_name = class_name
 
     def get_class_name(self):
-        """
-        Get class name
+        """Get class name
 
-        :return: class name
+        Returns:
+            class name
         """
         return self._class_name
 
     def get_supported_code_types(self):
-        """
-        Get supported code types
+        """Get supported code types
 
-        :return: supported code types
+        Returns:
+            supported code types
         """
         return self.supported_code_types
 
     def parse(self, src_code_dict):
-        """
-        parse src code dict
+        """Parse src code dict
 
-        :param src_code_dict: src code dict
-        :return parse result
+        Args:
+            src_code_dict: src code dict
+
+        Returns:
+            parse result
         """
         raise NotImplementedError(f"Transpiler: {self.__class__.__name__} "
                                   f"must implement method: parse")
 
     def transpile(self, parse_result, supp_basis_gates: list):
-        """
-        Transpile codes
+        """Transpile codes
 
-        :param parse_result: parse result
-        :param supp_basis_gates: supported basis gates
-        :return basis gate list
+        Args:
+            parse_result: parse result
+            supp_basis_gates: supported basis gates
+
+        Returns:
+            basis gate list
         """
         raise NotImplementedError(f"Transpiler: {self.__class__.__name__} "
                                   "must implement method: transpile")

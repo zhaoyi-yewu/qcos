@@ -583,11 +583,13 @@ def p_error(error):
 
 
 def get_abs_tree(data):
-    """
-    解析OpenQASM，得到抽象语法树
+    """解析OpenQASM，得到抽象语法树
 
-    :param data: OpenQASM 语句
-    :return Node: 解析后的抽象语法树头节点
+    Args:
+        data: OpenQASM 语句
+
+    Returns:
+        解析后的抽象语法树头节点
     """
     lexer = lex.lex(module=tokrules)
     lexer.input(data)
@@ -596,22 +598,26 @@ def get_abs_tree(data):
 
 
 def get_ir(abs_tree):
-    """
-    解析抽象语法树，得到中间表示，其为Gate列表
+    """解析抽象语法树，得到中间表示，其为Gate列表
 
-    :param abs_tree: 抽象语法树
-    :return Tuple (int, list): 量子比特总数、解析得到的量子门列表
+    Args:
+        abs_tree: 抽象语法树
+
+    Returns:
+        量子比特总数、解析得到的量子门列表
     """
     vist = Visitor()
     return vist.visit_program(abs_tree)
 
 
 def compile(data):
-    """
-    解析OpenQASM，得到抽象语法树
+    """解析OpenQASM，得到抽象语法树
 
-    :param data: OpenQASM 语句
-    :return Tuple (int, list): 量子比特总数、解析得到的量子门列表
+    Args:
+        data: OpenQASM 语句
+
+    Returns:
+        量子比特总数、解析得到的量子门列表
     """
     abs_tree = get_abs_tree(data)
     return get_ir(abs_tree)

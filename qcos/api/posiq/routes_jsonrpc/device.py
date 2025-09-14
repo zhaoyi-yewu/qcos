@@ -30,11 +30,13 @@ module_name = "DEVICE"
 
 
 def _get_device_info(device_info):
-    """
-    Get device info
+    """Get device info
 
-    :param device_info: device info
-    :return: device_info
+    Args:
+        device_info: device info
+
+    Returns:
+        device_info
     """
 
     # replace pwd in extra_configs to ********
@@ -57,12 +59,13 @@ def _get_device_info(device_info):
 def get_devices(
         body: schemas.GetDevicesRequest = None
 ) -> Dict[str, schemas.GetDeviceResponse]:
-    """
-    Get device dict request
+    """Get device dict request
 
-    :param body: message
-    :type body: schemas.GetDevicesRequest
-    :return: Get devices response
+    Args:
+        body(schemas.GetDevicesRequest): message
+
+    Returns:
+        Get devices response
     """
     func_name = "get_devices"
     logger.info(f"Call {func_name}: {body}")
@@ -79,12 +82,13 @@ def get_devices(
 def get_device(
         body: schemas.GetDeviceRequest
 ) -> schemas.GetDeviceResponse:
-    """
-    Get device info request
+    """Get device info request
 
-    :param body: driver_name
-    :type body: schemas.GetDeviceRequest
-    :return: Get device info response
+    Args:
+        body(schemas.GetDeviceRequest): driver_name
+
+    Returns:
+        Get device info response
     """
     func_name = "get_device"
     logger.info(f"Call {func_name}: {body}")

@@ -20,9 +20,7 @@ from qcos.transpiler.cmss.common.base_operation import OperationType
 
 
 class Reset(BaseOperation):
-    """
-    重置操作，用于将量子比特重置到|0> 态
-    """
+    """重置操作，用于将量子比特重置到|0> 态"""
 
     def __init__(
             self, targets=None, arg_value=None,

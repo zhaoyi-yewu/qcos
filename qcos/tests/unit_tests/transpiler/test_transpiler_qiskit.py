@@ -23,16 +23,16 @@ from qcos.transpiler.qiskit.transpiler_qiskit import TranspilerQiskit
 class TestTranspilerQiskit:
     @classmethod
     def setup_class(cls):
-        cls.simple_data = '''
-          OPENQASM 2.0;
-          include "qelib1.inc";
-          qreg q[1];
-          creg c[1];
-          h q[0];
-          x q[0];
-          rx(1) q[0];
-          measure q->c;
-        '''
+        cls.simple_data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        h q[0];
+        x q[0];
+        rx(1) q[0];
+        measure q->c;
+        """
 
     def test_transpiler_qiskit(self):
         expected_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,

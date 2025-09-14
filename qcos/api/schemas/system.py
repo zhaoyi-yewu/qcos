@@ -19,8 +19,7 @@ from pydantic import BaseModel
 
 
 class PingRequest(BaseModel):
-    """
-    Ping Request
+    """Ping Request
     Pydantic Model for Ping Request
     """
     # message
@@ -28,8 +27,7 @@ class PingRequest(BaseModel):
 
 
 class PongResponse(BaseModel):
-    """
-    Pong Response
+    """Pong Response
     Pydantic Model for Pong Response
     """
     # message

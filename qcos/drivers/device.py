@@ -22,9 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class Device:
-    """
-    Device
-    """
+    """Device"""
     # Device status
     DEVICE_STATUS_ONLINE = "online"
     DEVICE_STATUS_OFFLINE = "offline"
@@ -56,52 +54,52 @@ class Device:
         self.configs = {}
 
     def init_device(self):
-        """
-        Init device
+        """Init device
 
-        :return success, err_msg
+        Returns:
+            success, err_msgs
         """
         success = True
         err_msg = None
         return success, err_msg
 
     def get_name(self):
-        """
-        Get device name
+        """Get device name
 
-        :return: device name
+        Returns:
+            device name
         """
         return self.name
 
     def get_driver(self):
-        """
-        Get device driver
+        """Get device driver
 
-        :return: device driver
+        Returns:
+            device driver
         """
         return self.driver
 
     def set_enable(self, enable):
-        """
-        Set enable
+        """Set enable
 
-        :param enable: enable or disable
+        Args:
+            enable: enable or disable
         """
         self.enable = enable
 
     def get_enable(self):
-        """
-        Get enable
+        """Get enable
 
-        :return: enable or disable
+        Returns:
+            enable or disable
         """
         return self.enable
 
     def set_status(self, status):
-        """
-        Set device status
+        """Set device status
 
-        :param status: device status
+        Args:
+            status: device status
         """
         if status not in self.DEVICE_STATUSES:
             logger.warning(f"Failed to set device status: '{status}'."
@@ -111,63 +109,59 @@ class Device:
         self.status = status
 
     def get_status(self):
-        """
-        Get device status
-        """
+        """Get device status"""
         return self.status
 
     def set_alias_name(self, alias_name):
-        """
-        Set device alias name
+        """Set device alias name
 
-        :param alias_name: device alias name
+        Args:
+            alias_name: device alias name
         """
         self.alias_name = alias_name
 
     def get_alias_name(self):
-        """
-        Get device alias name
+        """Get device alias name
 
-        :return: device alias name
+        Returns:
+            device alias name
         """
         return self.alias_name
 
     def set_description(self, description):
-        """
-        Set device description
+        """Set device description
 
-        :param description: device description
+        Args:
+            description: device description
         """
         self.description = description
 
     def get_description(self):
-        """
-        Get device description
+        """Get device description
 
-        :return: device description
+        Returns:
+            device description
         """
         return self.description
 
     def set_configs(self, configs):
-        """
-        Set device configs
+        """Set device configs
 
-        :param configs: device configs
+        Args:
+            configs: device configs
         """
         self.configs = configs
 
     def get_configs(self):
-        """
-        Get device configs
+        """Get device configs
 
-        :return: device configs
+        Returns:
+            device configs
         """
         return self.configs
 
     def get_device_info(self):
-        """
-        Show device info
-        """
+        """Show device info"""
         show_list = [
             f"device_name: {self.name}",
             f"device_alias_name: {self.alias_name}",

@@ -22,9 +22,7 @@ from qcos.transpiler.transpiler_base import TranspilerBase
 
 
 class TranspilerDummy(TranspilerBase):
-    """
-    Transpiler Class for Dummy
-    """
+    """Transpiler Class for Dummy"""
     def __init__(self):
         super().__init__()
         self.name = Constant.TRANSPILER_DUMMY
@@ -40,23 +38,25 @@ class TranspilerDummy(TranspilerBase):
         ]
 
     def init_transpiler(self):
-        """
-        Init transpiler
-        """
+        """Init transpiler"""
 
     def parse(self, src_code_dict):
-        """
-        parse src_code_dict
+        """Parse src_code_dict
 
-        :param src_code_dict: src_code_dict
-        :return parse result
+        Args:
+            src_code_dict: src_code_dict
+
+        Returns:
+            parse result
         """
 
     def transpile(self, parse_result, supp_basis_gates: list):
-        """
-        Transpile codes
+        """Transpile codes
 
-        :param parse_result: parse result
-        :param supp_basis_gates: supported basis gates
-        :return transpiled quantum circuit
+        Args:
+            parse_result: parse result
+            supp_basis_gates: supported basis gates
+
+        Returns:
+            transpiled quantum circuit
         """

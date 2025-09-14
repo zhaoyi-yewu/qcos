@@ -55,7 +55,7 @@ class TestDriverHanyuan1:
                  mock_get_task_results):
         qasm_str = {
             "source_code":
-                '''
+                """
                 OPENQASM 2.0;
                 include "qelib1.inc";
                 qreg q[5];
@@ -65,7 +65,7 @@ class TestDriverHanyuan1:
                 x q[0];
                 rx(1) q[0];
                 measure q->c;
-                ''',
+                """,
             "index": "index",
             "transpile_results": "transpile_results"
         }

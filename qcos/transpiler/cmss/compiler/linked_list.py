@@ -19,14 +19,12 @@ from qcos.transpiler.cmss.compiler.qtypes import Node as TreeNode
 
 
 class LinkedNode:
-    """
-    作用域节点类
-    """
+    """作用域节点类"""
     def __init__(self, data):
-        """
-        初始化作用域节点，设置作用域内的变量信息
+        """初始化作用域节点，设置作用域内的变量信息
 
-        :param data (Dict): 作用域内的变量信息
+        Args:
+            data (dict): 作用域内的变量信息
         """
         self.data = data
         self.next = None
@@ -34,9 +32,7 @@ class LinkedNode:
 
 
 class LinkedList:
-    """
-    作用域链表类
-    """
+    """作用域链表类"""
     def __init__(self):
         """
         初始化作用域链表，设置链表的虚拟头节点
@@ -49,27 +45,27 @@ class LinkedList:
         self.tail = self.head
 
     def get_tail(self) -> LinkedNode:
-        """
-        获取最内部的符号表节点，一般用于获取当前作用域的符号表。
-
-        :return LinkedNode: 链表的尾节点
+        """获取最内部的符号表节点，一般用于获取当前作用域的符号表。
+        
+        Returns:
+            链表的尾节点
         """
         return self.tail
 
     def get_head(self) -> LinkedNode:
-        """
-        头节点，只作为头部，不存放符号表数据
-
-        :return LinkedNode: 链表的头节点
+        """头节点，只作为头部，不存放符号表数据
+        
+        Returns:
+            链表的头节点
         """
         return self.head
 
     def add_tail(self, tail: LinkedNode, scope: TreeNode):
-        """
-        新增一个最内部的符号表节点，用在visitor新的作用域之前。
+        """新增一个最内部的符号表节点，用在visitor新的作用域之前。
 
-        :param tail (LinkedNode): 作用域节点
-        :param scope (TreeNode): 抽象语法树节点
+        Args:
+            tail (LinkedNode): 作用域节点
+            scope (TreeNode): 抽象语法树节点
         """
         if (scope is None or
                 (scope.type not in ("block_body", "top"))):
@@ -86,10 +82,10 @@ class LinkedList:
         self.size = self.size + 1
 
     def remove_tail(self) -> bool:
-        """
-        删除最内部的符号表，一般用于删除当前作用域的符号表。
+        """删除最内部的符号表，一般用于删除当前作用域的符号表
 
-        :return bool: 节点是否删除成功
+        Returns:
+            节点是否删除成功
         """
         if self.head == self.tail:
             return False

@@ -31,10 +31,10 @@ module_name = "VERSION"
 def version(
     body: schemas.GetVersionRequest = None
 ) -> schemas.GetVersionResponse:
-    """
-    Get server version
+    """Get server version
 
-    :return: version response
+    Args:
+        body: schemas.GetVersionRequest:  (Default value = None)
     """
     func_name = "version"
     logger.info(f"Call {func_name}: {body}")

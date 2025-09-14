@@ -28,14 +28,10 @@ logger = logging.getLogger(__name__)
 
 
 class TaskScheduler(ABC):
-    """
-    Task scheduler
-    """
+    """Task scheduler"""
 
     def __init__(self):
-        """
-        Init TaskScheduler
-        """
+        """Init TaskScheduler"""
 
         self._task_manager = TaskFlowManager()
         self._policy_factory = SchedulerPolicyHandlerFactory(
@@ -46,74 +42,72 @@ class TaskScheduler(ABC):
         self.device_manager = None
 
     def start_taskmanager(self):
-        """
-        Start TaskManager
-        """
+        """Start TaskManager"""
 
         self._task_manager.start()
 
     def set_driver_manager(self, driver_manager):
-        """
-        Set driver manager
+        """Set driver manager
 
-        :param driver_manager: driver manager
+        Args:
+            driver_manager: driver manager
         """
-
         self.driver_manager = driver_manager
         self._task_manager.set_driver_manager(driver_manager)
 
     def get_driver_manager(self):
-        """
-        Get driver manager
+        """Get driver manager
 
-        :return: driver manager
+        Returns:
+            driver manager
         """
         return self.driver_manager
 
     def set_transpiler_manager(self, transpiler_manager):
-        """
-        Set transpiler manager
+        """Set transpiler manager
 
-        :param transpiler_manager: transpiler manager
+        Args:
+            transpiler_manager: transpiler manager
         """
-
         self.transpiler_manager = transpiler_manager
 
     def get_transpiler_manager(self):
-        """
-        Get transpiler manager
+        """Get transpiler manager
 
-        :return: transpiler manager
+        Returns:
+            transpiler manager
         """
         return self.transpiler_manager
 
     def set_device_manager(self, device_manager):
-        """
-        Set device manager
+        """Set device manager
 
-        :param device_manager: device manager
+        Args:
+            device_manager: device manager
         """
-
         self.device_manager = device_manager
         self._task_manager.set_device_manager(device_manager)
 
     def get_device_manager(self):
-        """
-        Get device manager
+        """Get device manager
 
-        :return: device manager
+        Returns:
+            device manager
         """
         return self.device_manager
 
     def add(self, policy_type, job_info):
-        """
+        """Add job to scheduler
+
         Add job to scheduler, scheduler will get policy handler by policy_type,
         use handler to execute it.
 
-        :param policy_type: scheduler policy type
-        :param job_info: job info
-        :return job_id: job uuid
-        :return e: exception
+        Args:
+            policy_type: scheduler policy type
+            job_info: job info
+
+        Returns:
+            added job info, error messages
         """
         if job_info.job_id:
             exist = self.has_job(job_info.job_id)
@@ -172,14 +166,13 @@ class TaskScheduler(ABC):
             raise errors.WorkFlowError(e)
 
     def get_result_by_id(self, job_id):
-        """
-        Get result by job id
+        """Get result by job id
 
-        :param job_id: job id
-        :return results: result
-        :return parameters: parameters
-        :return state: state
-        :return error_message: flow error message
+        Args:
+            job_id: job id
+
+        Returns:
+            flow info
         """
         try:
             state, parameters, results, error_message = \
@@ -204,22 +197,22 @@ class TaskScheduler(ABC):
             raise errors.WorkFlowError(e)
 
     def has_job(self, job_id):
-        """
-        Check if flow exists
+        """Check if flow exists
 
-        :param job_id: job id
-        :return if flow exists
+        Args:
+            job_id: job id
+
+        Returns:
+            if flow exists
         """
         return self._task_manager.has_flow(job_id)
 
     def get_jobs(self):
-        """
-        Get job list
+        """Get job list
 
-        :return flow_list: flow run list
-        :return error: error
+        Returns:
+            job list
         """
-
         try:
             flow_list = self._task_manager.get_task_flow_list()
             for flow in flow_list:
@@ -231,12 +224,13 @@ class TaskScheduler(ABC):
             raise errors.WorkFlowError(e)
 
     def delete_jobs(self, ids):
-        """
-        Delete jobs
+        """Delete jobs
 
-        :param ids: job id list
-        :return flow_list: flow list
-        :return error: error
+        Args:
+            ids: job id list
+
+        Returns:
+            flow list
         """
 
         flow_list = self._task_manager.delete_task_flow_run(ids)
@@ -246,14 +240,14 @@ class TaskScheduler(ABC):
         return flow_list
 
     def cancel_jobs(self, ids):
-        """
-        Cancel jobs
+        """Cancel jobs
 
-        :param ids: job id list
-        :return flow_list: flow list
-        :return error: error
-        """
+        Args:
+            ids: job id list
 
+        Returns:
+            flow list
+        """
         flow_list = self._task_manager.cancel_task_flow_run(ids)
         for flow in flow_list:
             flow["job_status"] = self.get_job_status(
@@ -261,36 +255,40 @@ class TaskScheduler(ABC):
         return flow_list
 
     def update_job(self, job_id, name=None, parameters=None, variables=None):
-        """
-        Update job
+        """Update job
 
-        :param job_id: job id
-        :param name: job name
-        :param parameters: job parameters
-        :param variables: job variables
-        :return if flow exists
+        Args:
+            job_id: job id
+            name: job name (Default value = None)
+            parameters: job parameters (Default value = None)
+            variables: job variables
+
+        Returns:
+            if flow exists
         """
         return self._task_manager.update_flow(
             job_id, name, parameters, variables)
 
     def run_callbacks(self, data, callbacks):
-        """
-        Run callbacks for job
+        """Run callbacks for job
 
-        :param data: data to send
-        :param callbacks: callbacks
+        Args:
+            data: data to send
+            callbacks: callbacks
         """
         return self._task_manager.run_callbacks(data, callbacks)
 
     @staticmethod
     def get_job_status(job_status, flow_results, flow_parameters):
-        """
-        Get job status by combining flow state and user defined task status
+        """Get job status by combining flow state and user defined task status
 
-        :param job_status: job status
-        :param flow_results: flow results
-        :param flow_parameters: parameters
-        :return job_status
+        Args:
+            job_status: job status
+            flow_results: flow results
+            flow_parameters: parameters
+
+        Returns:
+            job status
         """
         job_status = job_status.upper()
         final_job_status = job_status
@@ -325,32 +323,29 @@ class TaskScheduler(ABC):
 
 
 class BaseSchedulerPolicy(ABC):
-    """
-    Base Scheduler Policy
-    """
+    """Base Scheduler Policy"""
 
     def __init__(self, task_manager: TaskFlowManager):
         self._task_manager = task_manager
 
 
 class PriorityPolicy(BaseSchedulerPolicy):
-    """
-    Priority Policy
-    """
+    """Priority Policy"""
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
         self._type = Constant.JOB_SCHED_POLICY_PRIORITY
 
     def exec_task(self, flow_info, job_info):
-        """
-        PriorityPolicy execute task
+        """PriorityPolicy execute task
 
-        :param flow_info: flow info
-        :param job_info: job info
-        :return job_id: job uuid
-        """
+        Args:
+            flow_info: flow info
+            job_info: job info
 
+        Returns:
+            job uuid
+        """
         priority = self.calculate_priority(job_info)
         job_deploy_id = self._task_manager.deploy_task_flow(
             flow_info["deploy_name"] + "_" + self._type,
@@ -364,19 +359,19 @@ class PriorityPolicy(BaseSchedulerPolicy):
         return job_run_id
 
     def calculate_priority(self, job_info):
-        """
-        calculate priority
+        """Calculate priority
 
-        :param job_info: job info
-        :return job_priority: job priority
+        Args:
+            job_info: job info
+
+        Returns:
+            job priority
         """
         return job_info["data"]["job_priority"]
 
 
 class HighResponseRatioPolicy(BaseSchedulerPolicy):
-    """
-    High Response Ratio Policy
-    """
+    """High Response Ratio Policy"""
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
@@ -388,9 +383,7 @@ class HighResponseRatioPolicy(BaseSchedulerPolicy):
 
 
 class ShortestJobFirstPolicy(BaseSchedulerPolicy):
-    """
-    Shortest Job First Policy
-    """
+    """Shortest Job First Policy"""
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
@@ -402,21 +395,21 @@ class ShortestJobFirstPolicy(BaseSchedulerPolicy):
 
 
 class TimePrecedencePolicy(BaseSchedulerPolicy):
-    """
-    Time Precedence Policy
-    """
+    """Time Precedence Policy"""
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
         self._type = Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE
 
     def exec_task(self, flow_info, job_info):
-        """
-        TimePrecedencePolicy execute task
+        """TimePrecedencePolicy execute task
 
-        :param flow_info: flow info
-        :param job_info: job info
-        :return job_id: job uuid
+        Args:
+            flow_info: flow info
+            job_info: job info
+
+        Returns:
+            job uuid
         """
 
         priority = self.calculate_priority(job_info)
@@ -432,19 +425,19 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
         return job_run_id
 
     def calculate_priority(self, job_info):
-        """
-        calculate priority
+        """Calculate priority
 
-        :param job_info: job info
-        :return job_priority: job priority
+        Args:
+            job_info: job info
+
+        Returns:
+            job priority
         """
         return job_info["data"]["job_priority"]
 
 
 class PeriodicPolicy(BaseSchedulerPolicy):
-    """
-    Periodic Policy
-    """
+    """Periodic Policy"""
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
@@ -456,9 +449,7 @@ class PeriodicPolicy(BaseSchedulerPolicy):
 
 
 class DependentPolicy(BaseSchedulerPolicy):
-    """
-    Dependent Policy
-    """
+    """Dependent Policy"""
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
@@ -470,9 +461,7 @@ class DependentPolicy(BaseSchedulerPolicy):
 
 
 class BatchPolicy(BaseSchedulerPolicy):
-    """
-    Batch Policy
-    """
+    """Batch Policy"""
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
@@ -484,9 +473,7 @@ class BatchPolicy(BaseSchedulerPolicy):
 
 
 class RealtimePolicy(BaseSchedulerPolicy):
-    """
-    Realtime Policy
-    """
+    """Realtime Policy"""
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
@@ -498,9 +485,7 @@ class RealtimePolicy(BaseSchedulerPolicy):
 
 
 class SchedulerPolicyHandlerFactory(ABC):
-    """
-    Scheduler Policy Handler Factory
-    """
+    """Scheduler Policy Handler Factory"""
 
     def __init__(self, task_manager):
         self._policy_mapping = {
@@ -523,13 +508,14 @@ class SchedulerPolicyHandlerFactory(ABC):
         }
 
     def get_policy_handler_by_name(self, name: str):
-        """
-        Get policy handler by name
+        """Get policy handler by name
 
-        :param name: policy name
-        :return policy_handler: policy handler
-        """
+        Args:
+            name: policy name
 
+        Returns:
+            policy handler
+        """
         policy_handler = self._policy_mapping.get(name)
         if policy_handler:
             return policy_handler

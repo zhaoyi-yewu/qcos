@@ -30,12 +30,11 @@ from qcos.drivers.driver_base import DriverBase
 
 
 class DriverHanyuan1(DriverBase):
-    """
-    中科酷原-汉原1 中性原子驱动
+    """中科酷原-汉原1 中性原子驱动
+
     Cascoldatom Hanyuan1 driver
     CA-NAQC-20Q-A1
     """
-
     verbose = False
     DEFAULT_CONTROL_SYSTEM_IP = "127.0.0.1"
     DEFAULT_CONTROL_SYSTEM_PORT = 18402
@@ -72,17 +71,17 @@ class DriverHanyuan1(DriverBase):
         }
 
     def init_driver(self):
-        """
-        Init driver
-        """
+        """Init driver"""
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def validate_driver_configs(self, configs):
-        """
-        Validate driver configs
+        """Validate driver configs
+        
+        Args:
+          configs: configs dictionary
 
-        :return bool: True if successful, False otherwise
-        :return err_msg: error message
+        Returns:
+            success, err_msg
         """
         success = True
         err_msg = None
@@ -125,20 +124,18 @@ class DriverHanyuan1(DriverBase):
         return success, err_msg
 
     def close_driver(self):
-        """
-        Close driver
-        """
+        """Close driver"""
         self.set_device_status(Device.DEVICE_STATUS_OFFLINE)
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
-        """
-        Run job
+        """Run job
 
-        :param job_id: job ID
-        :param num_qubits: number of qubits
-        :param data: data
-        :param data_type: data type
-        :param shots: shots
+        Args:
+            job_id: job ID
+            num_qubits: number of qubits
+            data: data
+            data_type: data type
+            shots: shots (Default value = 1)
         """
         # pylint: disable=duplicate-code
         data_index = data["index"]
@@ -189,20 +186,21 @@ class DriverHanyuan1(DriverBase):
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def cancel(self, job_id):
-        """
-        Cancel running job in driver.
+        """Cancel running job in driver.
+
         Driver should clean up any resources of the job
 
-        :param job_id: job ID
+        Args:
+            job_id: job ID
         """
         logger.info(f"Cancel job: job_id: {job_id}")
 
     def init_task(self, ip_address: str, port: int):
-        """
-        init task
+        """Init task
 
-        :param ip_address: server ip address
-        :param port: server port
+        Args:
+            ip_address: server ip address
+            port: server port
         """
         self.server_host = ip_address
         self.server_port = port
@@ -212,13 +210,13 @@ class DriverHanyuan1(DriverBase):
 
     @staticmethod
     def print_api_response(status_code, reason, text, result=None):
-        """
-        Print API response
+        """Print API response
 
-        :param status_code: status code
-        :param reason: reason
-        :param text: text
-        :param result: result
+        Args:
+            status_code: status code
+            reason: reason
+            text: text
+            result: result (Default value = None)
         """
         if DriverHanyuan1.verbose:
             print(f"Response: status_code: {status_code}, reason: {reason}, "
@@ -226,14 +224,16 @@ class DriverHanyuan1(DriverBase):
 
     @staticmethod
     def call_json_rpc(url, method_name, data=None, params=None):
-        """
-        call json rpc method
+        """Call json rpc method
 
-        :param url: json rpc url
-        :param method_name: method name
-        :param data: data
-        :param params: params
-        :return: response result
+        Args:
+            url: json rpc url
+            method_name: method name
+            data: data (Default value = None)
+            params: params (Default value = None)
+
+        Returns:
+            response result
         """
         status_code = None
         reason = None
@@ -268,16 +268,18 @@ class DriverHanyuan1(DriverBase):
 
     def submit_task(self, job_id: str, num_qubits: int, data: list,
                     data_type: str, shots: int, data_index: int) -> tuple:
-        """
-        submit task
+        """Submit task
 
-        :param job_id: job id
-        :param num_qubits: number of qubits
-        :param data: data
-        :param data_type: data type
-        :param shots: shots
-        :param data_index: data index
-        :return: (success, reason, text, result)
+        Args:
+            job_id: job id
+            num_qubits: number of qubits
+            data: data
+            data_type: data type
+            shots: shots
+            data_index: data index
+
+        Returns:
+            success, err_msgs
         """
         success = True
         err_msgs = []
@@ -334,13 +336,15 @@ class DriverHanyuan1(DriverBase):
                           job_id: str,
                           data_index: int,
                           expect_task_status: list) -> bool:
-        """
-        check task status
+        """Check task status
 
-        :param job_id: job id
-        :param data_index: data index
-        :param expect_task_status: expect task status
-        :return: task status
+        Args:
+            job_id: job id
+            data_index: data index
+            expect_task_status: expect task status
+
+        Returns:
+            task status
         """
         try:
             # construct request data
@@ -366,12 +370,14 @@ class DriverHanyuan1(DriverBase):
             return False
 
     def get_task_results(self, job_id: str, data_index: int):
-        """
-        check task results
+        """Check task results
 
-        :param job_id: job id
-        :param data_index: data index
-        :return: task results
+        Args:
+            job_id: job id
+            data_index: data index
+
+        Returns:
+            task results
         """
         success = True
         err_msgs = []

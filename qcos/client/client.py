@@ -29,9 +29,8 @@ logger = logging.getLogger(__name__)
 
 
 class Client:
-    """
-    QCOS client api
-    """
+    """QCOS client api"""
+
     verbose = False
 
     def __init__(self,
@@ -49,13 +48,13 @@ class Client:
 
     @staticmethod
     def print_api_response(status_code, reason, text, result=None):
-        """
-        Print API response
+        """Print API response
 
-        :param status_code: status code
-        :param reason: reason
-        :param text: text
-        :param result: result text
+        Args:
+            status_code: status code
+            reason: reason
+            text: text
+            result: result text (Default value = None)
         """
         if Client.verbose:
             print(f"Response: status_code: {status_code}, reason: {reason}, "
@@ -63,13 +62,13 @@ class Client:
 
     @staticmethod
     def call_json_rpc(url, method_name, data=None, params=None):
-        """
-        Call json-rpc
+        """Call json-rpc
 
-        :param url: json-rpc url
-        :param method_name: json-rpc method
-        :param data: json-rpc data
-        :param params: json-rpc params
+        Args:
+            url: json-rpc url
+            method_name: json-rpc method
+            data: json-rpc data (Default value = None)
+            params: json-rpc params (Default value = None)
         """
         status_code = None
         reason = None
@@ -93,10 +92,10 @@ class Client:
 
     @staticmethod
     def parse_jsonrpc_response(jsonrpc_response):
-        """
-        Parse json-rpc response
+        """Parse json-rpc response
 
-        :param jsonrpc_response: json-rpc response
+        Args:
+            jsonrpc_response: json-rpc response
         """
         parsed = parse(jsonrpc_response)
         if isinstance(parsed, Ok):
@@ -105,10 +104,10 @@ class Client:
 
     @staticmethod
     def handle_invalid_arguments(results):
-        """
-        Handle invalid arguments
+        """Handle invalid arguments
 
-        :param results: results
+        Args:
+          results: results
         """
         success, err_msg = results
         if success is False:
@@ -116,10 +115,10 @@ class Client:
 
     # [version]
     def version(self):
-        """
-        Get all api versions and capabilities
+        """Get all api versions and capabilities
 
-        :return: Version
+        Returns:
+            Version
         """
         method_name = "version"
 
@@ -130,10 +129,10 @@ class Client:
 
     # [Driver]
     def get_drivers(self):
-        """
-        Get driver list
+        """Get driver list
 
-        :return: Driver list message
+        Returns:
+            Driver list message
         """
         method_name = "get_drivers"
 
@@ -143,11 +142,13 @@ class Client:
         return status_code, reason, text, result
 
     def get_driver(self, driver_name):
-        """
-        Get driver info
+        """Get driver info
 
-        :param driver_name: driver name
-        :return: driver info
+        Args:
+            driver_name: driver name
+
+        Returns:
+            driver info
         """
         method_name = "get_driver"
 
@@ -163,10 +164,10 @@ class Client:
 
     # [Device]
     def get_devices(self):
-        """
-        Get device list
+        """Get device list
 
-        :return: Device list message
+        Returns:
+            Device list message
         """
         method_name = "get_devices"
 
@@ -176,11 +177,13 @@ class Client:
         return status_code, reason, text, result
 
     def get_device(self, device_name):
-        """
-        Get device info
+        """Get device info
 
-        :param device_name: device name
-        :return: device info
+        Args:
+            device_name: device name
+
+        Returns:
+            device info
         """
         method_name = "get_device"
 
@@ -196,10 +199,10 @@ class Client:
 
     # [Transpiler]
     def get_transpilers(self):
-        """
-        Get transpiler list
+        """Get transpiler list
 
-        :return: Transpiler list message
+        Returns:
+            Transpiler list message
         """
         method_name = "get_transpilers"
 
@@ -209,11 +212,13 @@ class Client:
         return status_code, reason, text, result
 
     def get_transpiler(self, transpiler_name):
-        """
-        Get transpiler info
+        """Get transpiler info
 
-        :param transpiler_name: transpiler name
-        :return: transpiler info
+        Args:
+            transpiler_name: transpiler name
+
+        Returns:
+            transpiler info
         """
         method_name = "get_transpiler"
 
@@ -229,11 +234,13 @@ class Client:
 
     # [System]
     def ping(self, message):
-        """
-        Ping-pong to verify the availability of the system
+        """Ping-pong to verify the availability of the system
 
-        :param message: Ping message
-        :return: Pong message
+        Args:
+            message: Ping message
+
+        Returns:
+            Pong message
         """
         method_name = "ping"
 
@@ -264,26 +271,28 @@ class Client:
             profiling=None,
             callbacks=None,
             dry_run=False):
-        """
-        Submit new job
+        """Submit new job
 
-        :param source_code: source code
-        :param code_type: code type
-        :param circuit_aggregation: circuit aggregation
-        :param job_id: job uuid
-        :param job_name: job name
-        :param job_type: job type
-        :param job_priority: job priority
-        :param description: job description
-        :param shots: shots
-        :param backend: backend name
-        :param driver_options: driver options
-        :param transpiler: transpiler name
-        :param transpiler_options: transpiler options
-        :param profiling: profiling types
-        :param callbacks: callbacks
-        :param dry_run: dry run
-        :return: submit_job result
+        Args:
+            source_code: source code
+            code_type: code type
+            circuit_aggregation: circuit aggregation
+            job_id: job uuid
+            job_name: job name
+            job_type: job type
+            job_priority: job priority
+            description: job description
+            shots: shots
+            backend: backend name
+            driver_options: driver options
+            transpiler: transpiler name
+            transpiler_options: transpiler options
+            profiling: profiling types
+            callbacks: callbacks
+            dry_run: dry run
+
+        Returns:
+            submit_job result
         """
         method_name = "submit_job"
 
@@ -313,11 +322,13 @@ class Client:
         return status_code, reason, text, result
 
     def get_job_status(self, job_id):
-        """
-        Get job status
+        """Get job status
 
-        :param job_id: job ID
-        :return: job status
+        Args:
+            job_id: job ID
+
+        Returns:
+            job status
         """
         method_name = "get_job_status"
 
@@ -334,11 +345,13 @@ class Client:
         return status_code, reason, text, result
 
     def get_job_results(self, job_id):
-        """
-        Get job results
+        """Get job results
 
-        :param job_id: job ID
-        :return: job results
+        Args:
+            job_id: job ID
+
+        Returns:
+            job results
         """
         method_name = "get_job_results"
 
@@ -355,10 +368,10 @@ class Client:
         return status_code, reason, text, result
 
     def get_jobs(self):
-        """
-        Get job status
+        """Get job status
 
-        :return: jobs
+        Returns:
+             job status
         """
         method_name = "get_jobs"
 
@@ -369,11 +382,13 @@ class Client:
         return status_code, reason, text, result
 
     def cancel_jobs(self, job_ids):
-        """
-        Cancel jobs
+        """Cancel jobs
 
-        :param job_ids: job IDs
-        :return: jobs
+        Args:
+            job_ids: job IDs
+
+        Returns:
+            jobs
         """
         method_name = "cancel_jobs"
 
@@ -391,11 +406,13 @@ class Client:
         return status_code, reason, text, result
 
     def delete_jobs(self, job_ids):
-        """
-        Delete jobs
+        """Delete jobs
 
-        :param job_ids: job IDs
-        :return: jobs
+        Args:
+            job_ids: job IDs
+
+        Returns:
+            jobs
         """
         method_name = "delete_jobs"
 
@@ -413,12 +430,14 @@ class Client:
         return status_code, reason, text, result
 
     def set_job_results(self, job_id, new_results):
-        """
-        Set job results
+        """Set job results
 
-        :param job_id: job ID
-        :param new_results: new results list to set
-        :return: jobs
+        Args:
+            job_id: job ID
+            new_results: new results list to set
+
+        Returns:
+            jobs
         """
         method_name = "set_job_results"
 

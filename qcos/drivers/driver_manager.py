@@ -28,17 +28,13 @@ logger = logging.getLogger(__name__)
 
 
 class DriverManager:
-    """
-    Driver manager
-    """
+    """Driver manager"""
 
     def __init__(self):
         self.drivers = {}
 
     def load_drivers(self):
-        """
-        Scan and load drivers
-        """
+        """Scan and load drivers"""
         logger.info("Loading drivers ...")
         base_module_name = "qcos.drivers"
         base_dir = os.path.dirname(__file__)
@@ -58,9 +54,7 @@ class DriverManager:
                 class_instance.set_class_name(_class.__qualname__)
 
     def init_drivers(self):
-        """
-        Init drivers
-        """
+        """Init drivers"""
         for driver_name, driver in self.drivers.items():
             # Validate driver
             success, err_msg = driver.validate_driver()
@@ -76,26 +70,28 @@ class DriverManager:
             logger.info(f"\n{driver.get_driver_info()}")
 
     def has_driver(self, driver_name):
-        """
-        Has driver
+        """Has driver
 
-        :param driver_name: driver name
-        :return: True or False
+        Args:
+            driver_name: driver name
+
+        Returns:
+            True or False
         """
         return driver_name in self.drivers
 
     def get_driver(self, driver_name):
-        """
-        Get driver
+        """Get driver
 
-        :param driver_name: driver name
+        Args:
+            driver_name: driver name
         """
         return self.drivers.get(driver_name, None)
 
     def get_drivers(self):
-        """
-        Get drivers
+        """Get drivers
 
-        :return: dict of drivers
+        Returns:
+            dict of drivers
         """
         return self.drivers

@@ -27,17 +27,17 @@ from qcos.tests.unit_tests.transpiler.comm import validate_non_gate_ir
 class TestTranspilerCmss:
     @classmethod
     def setup_class(cls):
-        cls.simple_data = '''
-          OPENQASM 2.0;
-          include "qelib1.inc";
-          qreg q[1];
-          creg c[1];
-          h q[0];
-          h q[0];
-          x q[0];
-          rx(1) q[0];
-          measure q->c;
-        '''
+        cls.simple_data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        h q[0];
+        h q[0];
+        x q[0];
+        rx(1) q[0];
+        measure q->c;
+        """
 
         cls.qpu_config = {
             "qubits": 6,

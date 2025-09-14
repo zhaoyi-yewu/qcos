@@ -20,9 +20,7 @@ from qcos.transpiler.cmss.common.base_operation import OperationType
 
 
 class Measure(BaseOperation):
-    """
-    测量操作，用于测量量子比特的状态，将其从量子态转换为经典态
-    """
+    """测量操作，用于测量量子比特的状态，将其从量子态转换为经典态"""
 
     def __init__(
             self, targets=None, arg_value=None,

@@ -50,9 +50,7 @@ logger = logging.getLogger(__name__)
 
 
 class Library:
-    """
-    Library
-    """
+    """Library"""
     @staticmethod
     def get_brief_description(description):
         output_list = []
@@ -65,12 +63,14 @@ class Library:
 
     @staticmethod
     def update_dict(dictionary, new_kvs):
-        """
-        Update a dictionary
+        """Update a dictionary
 
-        :param dictionary: dictionary to be updated
-        :param new_kvs: new key/values
-        :return: updated dictionary
+        Args:
+            dictionary: dictionary to be updated
+            new_kvs: new key/values
+
+        Returns:
+            updated dictionary
         """
         for key, value in new_kvs.items():
             if key in dictionary:
@@ -79,11 +79,13 @@ class Library:
 
     @staticmethod
     def remove_duplicates(lst):
-        """
-        Remove duplicates elements from a list
+        """Remove duplicates elements from a list
 
-        :param lst: list
-        :return: list
+        Args:
+            lst: list
+
+        Returns:
+            list
         """
         new_list = []
         for element in lst:
@@ -93,10 +95,10 @@ class Library:
 
     @staticmethod
     def kill_pid(pid_file):
-        """
-        Kill existing process from pid file
+        """Kill existing process from pid file
 
-        :param pid_file: pid file path
+        Args:
+            pid_file: pid file path
         """
         pid = None
         if not os.path.exists(pid_file):
@@ -129,10 +131,10 @@ class Library:
 
     @staticmethod
     def create_pid_file(file_path):
-        """
-        Crete pid file
+        """Crete pid file
 
-        :param file_path: file path
+        Args:
+            file_path: file path
         """
         try:
             pid = os.getpid()
@@ -143,13 +145,15 @@ class Library:
 
     @staticmethod
     def find_dirs(base_dir="/", pattern="*", recursive=False):
-        """
-        Find all dirs
+        """Find all dirs
 
-        :param base_dir: base dir to search
-        :param pattern: match pattern
-        :param recursive: recursive search
-        :return: dir list
+        Args:
+            base_dir: base dir to search (Default value = "/")
+            pattern: match pattern (Default value = "*")
+            recursive: recursive search (Default value = False)
+
+        Returns:
+            dir list
         """
         dirs = []
         if os.path.isdir(base_dir):
@@ -164,14 +168,16 @@ class Library:
 
     @staticmethod
     def find_files(base_dir, pattern="*", recursive=False, exclusives=None):
-        """
-        Find files under given dir
+        """Find files under given dir
 
-        :param base_dir: base dir to search
-        :param pattern: match pattern
-        :param recursive: recursive search
-        :param exclusives: filename to exclude
-        :return: file list
+        Args:
+            base_dir: base dir to search
+            pattern: match pattern (Default value = "*")
+            recursive: recursive search (Default value = False)
+            exclusives: filename to exclude (Default value = None)
+
+        Returns:
+            file list
         """
         files = []
         if recursive:
@@ -197,11 +203,13 @@ class Library:
 
     @staticmethod
     def mkdir(dir_name):
-        """
-        Create dir
+        """Create dir
 
-        :param dir_name: dir name
-        :return: True or False
+        Args:
+            dir_name: dir name
+
+        Returns:
+            True or False
         """
         if not os.path.exists(dir_name):
             os.mkdir(dir_name)
@@ -210,10 +218,10 @@ class Library:
 
     @staticmethod
     def mkdirs(dir):
-        """
-        Create dirs
+        """Create dirs
 
-        :param dir: dir name
+        Args:
+            dir: dir name
         """
         sub_path = os.path.dirname(dir)
         if not os.path.exists(sub_path):
@@ -223,11 +231,13 @@ class Library:
 
     @staticmethod
     def rm_file(file):
-        """
-        remove file
+        """remove file
 
-        :param file: file path
-        :return: True or False
+        Args:
+            file: file path
+
+        Returns:
+            True or False
         """
         if os.path.isfile(file):
             try:
@@ -240,14 +250,16 @@ class Library:
     def import_classes(
             pkg_dir, base_module_name="drivers", base_dir=None,
             base_class=None):
-        """
-        Import class from package dir
+        """Import class from package dir
 
-        :param pkg_dir: package dir
-        :param base_module_name: base module name
-        :param base_dir: base dir
-        :param base_class: base class
-        :return: class dict
+        Args:
+            pkg_dir: package dir
+            base_module_name: base module name (Default value = "drivers")
+            base_dir: base dir (Default value = None)
+            base_class: base class (Default value = None)
+
+        Returns:
+            class dict
         """
         classes = {}
         for (module_loader, name, is_pkg) in pkgutil.iter_modules([pkg_dir]):
@@ -263,13 +275,15 @@ class Library:
 
     @staticmethod
     def str_match(str, regex, ignore_case=False):
-        """
-        Match string with regex
+        """Match string with regex
 
-        :param str: string
-        :param regex: regex pattern
-        :param ignore_case: ignore case
-        :return: bool
+        Args:
+            str: string
+            regex: regex pattern
+            ignore_case: ignore case (Default value = False)
+
+        Returns:
+            bool
         """
         if ignore_case:
             reg = re.compile(regex, re.IGNORECASE)
@@ -281,13 +295,15 @@ class Library:
 
     @staticmethod
     def read_file(file_path, replace_pattern=None, customer_format=None):
-        """
-        Read text file
+        """Read text file
 
-        :param file_path: file path
-        :param replace_pattern: replace pattern
-        :param customer_format: customer format
-        :return: file content
+        Args:
+            file_path: file path
+            replace_pattern: replace pattern (Default value = None)
+            customer_format: customer format (Default value = None)
+
+        Returns:
+            file content
         """
         content = None
         with open(file_path, "r", encoding="utf-8") as file:
@@ -310,11 +326,14 @@ class Library:
 
     @staticmethod
     def read_toml_file(file_path: str):
-        """
-        Read toml file
+        """Read toml file
 
-        :param file_path: toml file path
-        :return: success, err_msg, toml dict
+        Args:
+            file_path: toml file path
+            file_path: str:
+
+        Returns:
+            success, err_msg, toml dict
         """
         try:
             with open(file_path, 'rb') as _file:
@@ -326,12 +345,14 @@ class Library:
 
     @staticmethod
     def write_to_toml(data: dict, file_path: str):
-        """
-        Write dict to toml file
+        """Write dict to toml file
 
-        :param data: data
-        :param file_path: file_path
-        :return: success, err_msg
+        Args:
+            data: data to write
+            file_path: file_path
+
+        Returns:
+            success, err_msg
         """
         try:
             with open(file_path, 'w', encoding='utf-8') as file:
@@ -342,12 +363,12 @@ class Library:
 
     @staticmethod
     def write_to_file(data, file_path, mode="w"):
-        """
-        Write to file
+        """Write to file
 
-        :param data: data
-        :param file_path: file path
-        :param mode: file open mode
+        Args:
+            data: data
+            file_path: file path
+            mode: file open mode (Default value = "w")
         """
         try:
             with open(file_path, mode, encoding='utf-8') as file:
@@ -358,10 +379,10 @@ class Library:
 
     @staticmethod
     def get_current_datetime():
-        """
-        Get current datetime
+        """Get current datetime
 
-        :return: datetime
+        Returns:
+            datetime
         """
         return datetime.now()
 
@@ -381,14 +402,16 @@ class Library:
     @staticmethod
     def validate_values_enum(value, param_name, value_list,
                              allow_none=False):
-        """
-        Validate values for enum
+        """Validate values for enum
 
-        :param value: value
-        :param param_name: param name
-        :param value_list: valid value list
-        :param allow_none: allow None value
-        :return: True or False
+        Args:
+            value: value
+            param_name: param name
+            value_list: valid value list
+            allow_none: allow None value (Default value = False)
+
+        Returns:
+            True or False
         """
         if value is None and allow_none:
             return True, None
@@ -400,12 +423,14 @@ class Library:
 
     @staticmethod
     def validate_values_uuid(value, param_name):
-        """
-        Validate values for uuid
+        """Validate values for uuid
 
-        :param value: value
-        :param param_name: param name
-        :return: True or False
+        Args:
+            value: value
+            param_name: param name
+
+        Returns:
+            True or False
         """
         try:
             uuid_obj = uuid.UUID(value, version=4)
@@ -420,14 +445,16 @@ class Library:
     @staticmethod
     def validate_values_range(
             value, param_name, min_value=None, max_value=None):
-        """
-        Validate values for int range
+        """Validate values for int range
 
-        :param value: value
-        :param param_name: param name
-        :param min_value: minimum value
-        :param max_value: maximum value
-        :return: True or False
+        Args:
+            value: value
+            param_name: param name
+            min_value: minimum value (Default value = None)
+            max_value: maximum value (Default value = None)
+
+        Returns:
+            True or False
         """
         err_msgs = []
         if min_value:
@@ -446,15 +473,17 @@ class Library:
     def validate_values_length(
             value, param_name, min_value=None, max_value=None,
             allow_none=False):
-        """
-        Validate values for int range
+        """Validate values for int range
 
-        :param value: value
-        :param param_name: param name
-        :param min_value: minimum value
-        :param max_value: maximum value
-        :param allow_none: allow None value
-        :return: True or False
+        Args:
+            value: value
+            param_name: param name
+            min_value: minimum value (Default value = None)
+            max_value: maximum value (Default value = None)
+            allow_none: allow None value (Default value = False)
+
+        Returns:
+            True or False
         """
         err_msgs = []
         if value is None and allow_none:
@@ -476,14 +505,16 @@ class Library:
     @staticmethod
     def validate_values_list(value, param_name, value_type,
                              allow_none=False):
-        """
-        Validate values for list
+        """Validate values for list
 
-        :param value: value
-        :param param_name: param name
-        :param value_type: data type of value
-        :param allow_none: allow None value
-        :return: True or False
+        Args:
+            value: value
+            param_name: param name
+            value_type: data type of value
+            allow_none: allow None value (Default value = False)
+
+        Returns:
+            True or False
         """
         if not isinstance(value, list):
             return (False, f"Invalid params: {param_name}={value}. "
@@ -502,13 +533,15 @@ class Library:
 
     @staticmethod
     def validate_schema(value, schema_obj, allow_none=False):
-        """
-        Validate schema values
+        """Validate schema values
 
-        :param value: value to be validated
-        :param schema_obj: schema obj
-        :param allow_none: allow None value
-        :return: None if success or error message
+        Args:
+            value: value to be validated
+            schema_obj: schema obj
+            allow_none: allow None value (Default value = False)
+
+        Returns:
+            None if success or error message
         """
         success = True
         err_msg = None
@@ -531,23 +564,23 @@ class Library:
             headers=None, auth=None, verify_ssl=False,
             retries=1, timeout=10, success_http_code=[200, 201],
             debug=False):
-        """
-        Call http api
+        """Call http api
 
-        :param url: api url
-        :param method: http method
-        :param data: data for http body
-        :param json: json data for http body
-        :param files: files for http body
-        :param params: params for http url
-        :param func_name: function name
-        :param headers: http headers
-        :param auth: http auth
-        :param verify_ssl: if verify ssl certificate
-        :param retries: times to retry if failed
-        :param timeout: timeout in seconds
-        :param success_http_code: success http status
-        :param debug: enable or disable debug
+        Args:
+            url: api url
+            method: http method
+            data: data for http body (Default value = None)
+            json: json data for http body (Default value = None)
+            files: files for http body (Default value = None)
+            params: params for http url (Default value = None)
+            func_name: function name (Default value = None)
+            headers: http headers (Default value = None)
+            auth: http auth (Default value = None)
+            verify_ssl: if verify ssl certificate (Default value = False)
+            retries: times to retry if failed (Default value = 1)
+            timeout: timeout in seconds (Default value = 10)
+            success_http_code: success http status (Default value = [200)
+            debug: enable or disable debug (Default value = False)
         """
         request_func = None
         r = None
@@ -590,21 +623,21 @@ class Library:
             headers=None, auth=None,
             retries=1, timeout=10, success_http_code=[200, 201],
             debug=False):
-        """
-        Async call http api
+        """Async call http api
 
-        :param url: api url
-        :param method: http method
-        :param data: data for http body
-        :param json: json data for http body
-        :param params: params for http url
-        :param func_name: function name
-        :param headers: http headers
-        :param auth: http auth
-        :param retries: times to retry if failed
-        :param timeout: timeout in seconds
-        :param success_http_code: success http status
-        :param debug: enable or disable debug
+        Args:
+            url: api url
+            method: http method
+            data: data for http body
+            json: json data for http body
+            params: params for http url
+            func_name: function name
+            headers: http headers
+            auth: http auth
+            retries: times to retry if failed
+            timeout: timeout in seconds
+            success_http_code: success http status
+            debug: enable or disable debug
         """
         retry_count = 0
         request_func = None
@@ -664,12 +697,14 @@ class Library:
 
     @staticmethod
     def is_valid_url(url, schemes):
-        """
-        Check if url is valid
+        """Check if url is valid
 
-        :param url: url to check
-        :param schemes: url schemes
-        :return: True if valid, False otherwise
+        Args:
+            url: url to check
+            schemes: url schemes
+
+        Returns:
+            True if valid, False otherwise
         """
         try:
             result = urlparse(url)
@@ -704,15 +739,19 @@ class Library:
     @staticmethod
     def loop_with_timeout(condition_check, timeout, interval,
                           *args, **kw_args):
-        """
-        Wait loop with timeout
+        """Wait loop with timeout
 
-        :param condition_check: function to check condition
-        :param timeout: timeout in seconds
-        :param interval: interval in seconds
-        :param args: arguments to function condition_check
-        :param kw_args: keyword arguments to function condition_check
-        :return: True if condition met, False otherwise
+        Args:
+            condition_check: function to check condition
+            timeout: timeout in seconds
+            interval: interval in seconds
+            args: arguments to function condition_check
+            kw_args: keyword arguments to function condition_check
+            *args: arguments to function condition_check
+            **kw_args: keyword arguments to function condition_check
+
+        Returns:
+            True if condition met, False otherwise
         """
         err_msg = None
         start_time = time.time()
@@ -733,13 +772,16 @@ class Library:
 
     @staticmethod
     def get_nested_dict_value(dictionary, *keys, default=None):
-        """
-        Get nested dict value
+        """Get nested dict value
 
-        :param dictionary: dictionary to get value from
-        :param keys: keys to get
-        :param default: default value
-        :return: value from dictionary
+        Args:
+            dictionary: dictionary to get value from
+            keys: keys to get
+            default: default value
+            *keys: keys to get
+
+        Returns:
+            value from dictionary
         """
         try:
             current = dictionary
@@ -752,11 +794,11 @@ class Library:
 
     @staticmethod
     def run_callbacks(data, callbacks):
-        """
-        Run callbacks for job
+        """Run callbacks for job
 
-        :param data: data to send
-        :param callbacks: callbacks
+        Args:
+            data: data to send
+            callbacks: callbacks
         """
         success = True
         err_msg = None
@@ -784,11 +826,11 @@ class Library:
 
     @staticmethod
     async def async_run_callbacks(data, callbacks):
-        """
-        Async run callbacks for job
+        """Async run callbacks for job
 
-        :param data: data to send
-        :param callbacks: callbacks
+        Args:
+            data: data to send
+            callbacks: callbacks
         """
         success = True
         err_msg = None
@@ -818,12 +860,14 @@ class Library:
 
     @staticmethod
     def get_sorted_keys(sort_obj, sort_fields):
-        """
-        Get sorted keys from sort_obj
+        """Get sorted keys from sort_obj
 
-        :param sort_obj: object to be sorted
-        :param sort_fields: field list to be sort
-        :return: sorted keys
+        Args:
+            sort_obj: object to be sorted
+            sort_fields: field list to be sort
+
+        Returns:
+            sorted keys
         """
         key_tuple = []
         for field in sort_fields:
@@ -861,13 +905,17 @@ class Library:
 
     @staticmethod
     def generate_binary_combinations(bit_length, total_count):
-        """
+        """Generate binary-bits combinations
+
         Generate binary-bits combinations with given bit_length and assign
         random percentages
 
-        :param bit_length: length of bits
-        :param total_count: total number of bits
-        :return: binary-bits combinations with random percentage
+        Args:
+            bit_length: length of bits
+            total_count: total number of bits
+
+        Returns:
+            binary-bits combinations with random percentage
         """
         result = {}
         if bit_length <= 0:
@@ -911,11 +959,13 @@ class Library:
 
     @staticmethod
     def md5_encrypt(text):
-        """
-        Encrypt text using md5
+        """Encrypt text using md5
 
-        :param text: Text to be encrypted
-        :return: Encrypted text
+        Args:
+            text: Text to be encrypted
+
+        Returns:
+            Encrypted text
         """
         # create md5 hash object
         md5_hash = hashlib.md5()

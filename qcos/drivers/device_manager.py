@@ -27,9 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class DeviceManager:
-    """
-    Device manager
-    """
+    """Device manager"""
 
     def __init__(self, config, driver_manager):
         self.config = config
@@ -37,9 +35,7 @@ class DeviceManager:
         self.devices = {}
 
     def load_devices(self):
-        """
-        Scan and load drivers
-        """
+        """Scan and load drivers"""
         logger.info("Load devices ...")
         devices = self.config.DEVICE_LIST
         for device_name in devices:
@@ -70,9 +66,7 @@ class DeviceManager:
                         f"reason: driver name: {driver_name} is not found")
 
     def init_devices(self):
-        """
-        Init devices
-        """
+        """Init devices"""
         for device_name, device in self.devices.items():
             device.set_status(device.DEVICE_STATUS_ONLINE)
             # Init driver
@@ -86,26 +80,31 @@ class DeviceManager:
             logger.info(f"\n{device.get_device_info()}")
 
     def has_device(self, device_name):
-        """
-        Has device
+        """Has device
 
-        :param device_name: device name
-        :return: True or False
+        Args:
+            device_name: device name
+
+        Returns:
+            True or False
         """
         return device_name in self.devices
 
     def get_device(self, device_name):
-        """
-        Get device
+        """Get device
 
-        :param device_name: device name
+        Args:
+            device_name: device name
+
+        Returns:
+            device instance
         """
         return self.devices.get(device_name, None)
 
     def get_devices(self):
-        """
-        Get devices
+        """Get devices
 
-        :return: dict of devices
+        Returns:
+            dict of device instances
         """
         return self.devices

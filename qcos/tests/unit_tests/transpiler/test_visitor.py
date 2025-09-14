@@ -28,59 +28,57 @@ vist = Visitor()
 class TestVisitor:
     @classmethod
     def setup_class(cls):
-        cls.data = '''
-            OPENQASM 2.0;
-            include "qelib1.inc";
-            qreg q[5];
-            creg q[5];
-            h q[0];
-            x q[0];
-        '''
+        cls.data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[5];
+        creg q[5];
+        h q[0];
+        x q[0];
+        """
 
-        cls.data_1 = '''
-            OPENQASM 2.0;
-            include "qelib1.inc";
-            creg q[5];
-            creg c[5];
-            h q[0];
-            x q[0];
-        '''
+        cls.data_1 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        creg q[5];
+        creg c[5];
+        h q[0];
+        x q[0];
+        """
 
-        cls.data_2 = '''
-            OPENQASM 2.0;
-            include "qelib1.inc";
-            qreg q[6];
-            creg c[6];
-            gate test_single(theta, phi) a{
-                rx(theta) a;
-                h a;
-                ry(-phi) a;
-                rz(theta + phi) a;
-                x a;
-                y a;
-                z a;
-                s a;
-                sdg a;
-                tdg a;
-                t a;
-            }
-
-            gate test_two(x, y) a, b{
-                test_single(x, y) a;
-                cx a, b;
-                cy a, b;
-                cz a, b;
-                ch a, b;
-                crx(x) a, b;
-                cry(y) a, b;
-                crz(x+y) a, b;
-            }
-
-            test_two(sin(1.2), 1.3) q[2], q[3];
-            ccx q[0], q[1], q[4];
-            barrier q;
-            measure q[1] -> c[1];
-        '''
+        cls.data_2 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[6];
+        creg c[6];
+        gate test_single(theta, phi) a{
+            rx(theta) a;
+            h a;
+            ry(-phi) a;
+            rz(theta + phi) a;
+            x a;
+            y a;
+            z a;
+            s a;
+            sdg a;
+            tdg a;
+            t a;
+        }
+        gate test_two(x, y) a, b{
+            test_single(x, y) a;
+            cx a, b;
+            cy a, b;
+            cz a, b;
+            ch a, b;
+            crx(x) a, b;
+            cry(y) a, b;
+            crz(x+y) a, b;
+        }
+        test_two(sin(1.2), 1.3) q[2], q[3];
+        ccx q[0], q[1], q[4];
+        barrier q;
+        measure q[1] -> c[1];
+        """
 
     def test_add_reg(self):
         vist.q_var = {'q'}

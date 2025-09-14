@@ -31,12 +31,11 @@ from qcos.drivers.driver_base import DriverBase
 
 
 class DriverTiangong100(DriverBase):
-    """
-    玻色量子-天工100 光量子伊辛机驱动
+    """玻色量子-天工100 光量子伊辛机驱动
+
     Qboson Tiangong100 driver
     CQ-D-100
     """
-
     # http request headers
     default_headers = {
         "accept": "application/json, text/plain, */*",
@@ -115,9 +114,8 @@ class DriverTiangong100(DriverBase):
         }
 
     def init_driver(self):
-        """
-        Init driver
-
+        """Init driver
+        
         注意:
         token有效期30天
         一般最长任务执行时间是10分钟
@@ -130,11 +128,13 @@ class DriverTiangong100(DriverBase):
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def validate_driver_configs(self, configs):
-        """
-        Validate driver configs
+        """Validate driver configs
 
-        :return bool: True if successful, False otherwise
-        :return err_msg: error message
+        Args:
+            configs: configs dictionary
+
+        Returns:
+            success, err_msg
         """
         success = True
         err_msg = None
@@ -156,21 +156,19 @@ class DriverTiangong100(DriverBase):
         return success, err_msg
 
     def close_driver(self):
-        """
-        Close driver
-        """
+        """Close driver"""
         # pylint: disable=duplicate-code
         self.set_device_status(Device.DEVICE_STATUS_OFFLINE)
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
-        """
-        Run job
+        """Run job
 
-        :param job_id: job ID
-        :param num_qubits: number of qubits
-        :param data: data
-        :param data_type: data type
-        :param shots: shots
+        Args:
+            job_id: job ID
+            num_qubits: number of qubits
+            data: data
+            data_type: data type
+            shots: shots (Default value = 1)
         """
         # pylint: disable=duplicate-code
         data_index = data["index"]
@@ -278,21 +276,24 @@ class DriverTiangong100(DriverBase):
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def cancel(self, job_id):
-        """
-        Cancel running job in driver.
+        """Cancel running job in driver.
+
         Driver should clean up any resources of the job
 
-        :param job_id: job ID
+        Args:
+            job_id: job ID
         """
         logger.info(f"Cancel job: job_id: {job_id}")
 
     def user_auth(self, username, password):
-        """
-        User authorization
+        """User authorization
 
-        :param username: username
-        :param password: password
-        :return success or fail, error message, token
+        Args:
+            username: username
+            password: password
+
+        Returns:
+            success or fail, error message, token
         """
         success = True
         err_msgs = []
@@ -321,11 +322,13 @@ class DriverTiangong100(DriverBase):
         return success, "\n".join(err_msgs), token
 
     def check_device_status(self, device_id):
-        """
-        Check device status
+        """Check device status
 
-        :param device_id: device id
-        :return success or fail, error message
+        Args:
+            device_id: device id
+
+        Returns:
+            success or fail, error message
         """
         success = True
         err_msgs = []
@@ -361,13 +364,15 @@ class DriverTiangong100(DriverBase):
         return success, "\n".join(err_msgs)
 
     def upload_file(self, job_id, data_index, data):
-        """
-        Upload qubo matrix file
+        """Upload qubo matrix file
 
-        :param job_id: job ID
-        :param data_index: data index
-        :param data: qubo matrix in dict format
-        :return success or fail, error message, file info
+        Args:
+            job_id: job ID
+            data_index: data index
+            data: qubo matrix in dict format
+
+        Returns:
+            success or fail, error message, file info
         """
         success = True
         err_msgs = []
@@ -422,11 +427,13 @@ class DriverTiangong100(DriverBase):
         return success, "\n".join(err_msgs), file_info
 
     def submit_tasks(self, tasks_info):
-        """
-        Submit tasks
+        """Submit tasks
 
-        :param tasks_info: tasks info
-        :return success or fail, error message
+        Args:
+            tasks_info: tasks info
+
+        Returns:
+            success or fail, error message
         """
         success = True
         err_msgs = []
@@ -450,11 +457,13 @@ class DriverTiangong100(DriverBase):
         return success, "\n".join(err_msgs)
 
     def get_task_id(self, task_name):
-        """
-        Get task id by task name
+        """Get task id by task name
 
-        :param task_name: task name
-        :return success or fail, error message, task info
+        Args:
+            task_name: task name
+
+        Returns:
+            success or fail, error message, task info
         """
         success = True
         err_msgs = []
@@ -493,12 +502,14 @@ class DriverTiangong100(DriverBase):
         return success, "\n".join(err_msgs), task_info
 
     def check_task_status(self, task_name, expect_task_status):
-        """
-        Check task status meets requirements
+        """Check task status meets requirements
 
-        :param task_name: task name
-        :param expect_task_status: expect task status list
-        :return: True if task status meets requirements, False otherwise
+        Args:
+            task_name: task name
+            expect_task_status: expect task status list
+
+        Returns:
+            True if task status meets requirements, False otherwise
         """
         success, err_msg, task_info = self.get_task_id(task_name)
         if success and task_info.get("status", self.task_status_unknown) in \
@@ -507,11 +518,13 @@ class DriverTiangong100(DriverBase):
         return False
 
     def get_task_results(self, task_id):
-        """
-        Get task results
+        """Get task results
 
-        :param task_id: task ID
-        :return success or fail, error message, task results
+        Args:
+            task_id: task ID
+
+        Returns:
+            success or fail, error message, task results
         """
         success = True
         err_msgs = []
@@ -538,11 +551,13 @@ class DriverTiangong100(DriverBase):
         return success, "\n".join(err_msgs), results
 
     def delete_task(self, task_id):
-        """
-        Delete task
+        """Delete task
 
-        :param task_id: task ID
-        :return success or fail, error message
+        Args:
+            task_id: task ID
+
+        Returns:
+            success or fail, error message
         """
         success = True
         err_msgs = []
@@ -566,12 +581,12 @@ class DriverTiangong100(DriverBase):
         return success, "\n".join(err_msgs)
 
     def get_fake_results(self, num_qubits, shots, data):
-        """
-        Get fake results
+        """Get fake results
 
-        :param num_qubits: number of qubits
-        :param shots: number of shots
-        :param data: source data
+        Args:
+            num_qubits: number of qubits
+            shots: number of shots
+            data: source data
         """
         results = []
         for i in range(10):  # return 10 best solutions is enough

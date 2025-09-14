@@ -45,14 +45,11 @@ LOG_FORMAT = "%(asctime)s %(process)d %(levelname)s [%(name)s] %(message)s"
 
 
 def _signal_handling():
-    """
-    Signal handling
-    """
+    """Signal handling"""
 
     def signal_handler(signame, *args):
-        """
-        Signal handler
-        """
+        """Signal handler"""
+
         try:
             if signame == "SIGHUP":
                 logger.info(f"Server has got signal {signame}, reloading...")
@@ -75,18 +72,16 @@ def _signal_handling():
 
 
 class Server:
-    """
-    Server
-    """
+    """Server"""
 
     def __init__(self):
         self._stream_handlers = None
 
     def _parse_arguments(self, argv):
-        """
-        Parse command line arguments and override local configuration
+        """Parse command line arguments and override local configuration
 
-        :param argv: command line arguments
+        Args:
+            argv: command line arguments
         """
         parser = argparse.ArgumentParser(description="QCOS api server")
         parser.add_argument("-v", "--version",
@@ -138,11 +133,12 @@ class Server:
 
     @staticmethod
     def _pid_lock(path):
-        """
-        Write the file in a file on the system.
-        Check if the process is not already running.
+        """Write the file in a file on the system
 
-        :param path: pid lock file path
+        Check if the process is not already running
+
+        Args:
+            path: pid lock file path
         """
         if os.path.exists(path):
             pid = None
@@ -171,9 +167,8 @@ class Server:
             sys.exit(1)
 
     def run(self, loop):
-        """
-        Run the server
-        """
+        """Run the server"""
+
         self._parse_arguments(sys.argv[1:])
         logger.info(PROGRAM_VERSION)
         logger.info(Config.show_info())

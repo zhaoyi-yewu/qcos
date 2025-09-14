@@ -17,24 +17,16 @@
 
 
 class DecomposeException(Exception):
-    """
-    Exception for Decompose
-    """
+    """Decompose Exception"""
 
 
 class OptException(Exception):
-    """
-    Exception for Optimization
-    """
+    """Optimization Exception"""
 
 
 class MappingException(Exception):
-    """
-    Exception for Mapping
-    """
+    """Mapping Exception"""
 
 
 class TranspilerException(Exception):
-    """
-    Exception for Mapping
-    """
+    """Transpiler Exception"""

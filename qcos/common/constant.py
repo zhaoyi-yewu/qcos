@@ -16,9 +16,7 @@
 # ----------------------------------------------------------------------
 
 class Constant:
-    """
-    Constants
-    """
+    """Constants"""
     # Flow limit
     FLOW_LIMIT = 100000
 
@@ -260,9 +258,7 @@ class HttpHeaders:
 
 
 class HttpMethod:
-    """
-    HTTP methods
-    """
+    """HTTP methods"""
     GET = "get"
     POST = "post"
     PUT = "put"
@@ -271,9 +267,7 @@ class HttpMethod:
 
 
 class HttpCode:
-    """
-    HTTP status codes
-    """
+    """HTTP status codes"""
     SUCCESS_OK = 200
     SUCCESS_CREATED = 201
     SUCCESS_ACCEPTED = 202

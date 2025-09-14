@@ -21,15 +21,13 @@ from pydantic import BaseModel
 
 
 class GetTranspilersRequest(BaseModel):
-    """
-    Get Transpilers Request
+    """Get Transpilers Request
     Pydantic Model for Get Transpilers Request
     """
 
 
 class GetTranspilerRequest(BaseModel):
-    """
-    Get Transpiler Request
+    """Get Transpiler Request
     Pydantic Model for Get Transpiler Request
     """
     # transpiler name
@@ -37,8 +35,7 @@ class GetTranspilerRequest(BaseModel):
 
 
 class GetTranspilerResponse(BaseModel):
-    """
-    Get Transpiler Response
+    """Get Transpiler Response
     Pydantic Model for Get Transpiler Response
     """
     # transpiler name

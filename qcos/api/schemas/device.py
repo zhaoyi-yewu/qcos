@@ -21,15 +21,13 @@ from pydantic import BaseModel
 
 
 class GetDevicesRequest(BaseModel):
-    """
-    Get Devices Request
+    """Get Devices Request
     Pydantic Model for Get Devices Request
     """
 
 
 class GetDeviceRequest(BaseModel):
-    """
-    Get Device Request
+    """Get Device Request
     Pydantic Model for Get Device Request
     """
     # device name
@@ -37,8 +35,7 @@ class GetDeviceRequest(BaseModel):
 
 
 class GetDeviceResponse(BaseModel):
-    """
-    Get Device Response
+    """Get Device Response
     Pydantic Model for Get Device Response
     """
     # device name

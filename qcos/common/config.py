@@ -20,9 +20,7 @@ from qcos.common.library import Library
 
 
 class Config:
-    """
-    Config class
-    """
+    """Config class"""
     # General configs
     VERSION = "1.0.0"
     DAEMON = False
@@ -53,14 +51,13 @@ class Config:
     # extra configs from .toml files
     EXTRA_CONFIGS = {}
 
-
     @classmethod
     def parse_toml_file(cls, config_file, extra_config=False):
-        """
-        Parse a TOML file
+        """Parse a TOML file
 
-        :param config_file: config file
-        :param extra_config: is extra config
+        Args:
+            config_file: config file
+            extra_config: is extra config (Default value = False)
         """
         success, err_msg, config_values = Library.read_toml_file(config_file)
         config_values = config_values.unwrap()
@@ -96,9 +93,7 @@ class Config:
 
     @classmethod
     def show_info(cls):
-        """
-        Show class variables.
-        """
+        """Show class variables"""
         outputs = ["[Configs]"]
         for k, v in vars(cls).items():
             if not k.startswith("__") and not isinstance(v, classmethod):

@@ -28,12 +28,13 @@ module_name = "SYSTEM"
 def ping(
         body: schemas.PingRequest
 ) -> schemas.PongResponse:
-    """
-    Ping-pong to verify the availability of the system
+    """Ping-pong to verify the availability of the system
 
-    :param body: message
-    :type body: schemas.PingRequest
-    :return: pong response
+    Args:
+        body(schemas.PingRequest): message
+
+    Returns:
+        pong response
     """
     func_name = "ping"
     logger.info(f"Call {func_name}: {body}")

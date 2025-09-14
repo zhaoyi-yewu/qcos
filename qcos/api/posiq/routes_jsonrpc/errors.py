@@ -41,91 +41,71 @@ from qcos.common.constant import HttpCode
 
 
 class JsonRpcBaseError(jsonrpc.BaseError):
-    """
-    JsonRpc Base Error
-    """
+    """JsonRpc Base Error"""
 
     class DataModel(BaseModel):
-        """
-        Data Model
-        """
+        """Data Model"""
         details: str
 
 
 class BadRequestError(JsonRpcBaseError):
-    """
-    Bad Request Error
-    """
+    """Bad Request Error"""
     CODE = -HttpCode.BAD_REQUEST_ERROR
     MESSAGE = "Bad Request"
 
 
 class UnauthorizedError(JsonRpcBaseError):
-    """
-    Unauthorized Error
-    """
+    """Unauthorized Error"""
     CODE = -HttpCode.UNAUTHORIZED_ERROR
     MESSAGE = "Unauthorized"
 
 
 class ForbiddenError(JsonRpcBaseError):
-    """
-    Forbidden Error
-    """
+    """Forbidden Error"""
     CODE = -HttpCode.FORBIDDEN_ERROR
     MESSAGE = "Forbidden"
 
 
 class NotFoundError(JsonRpcBaseError):
-    """
-    Not Found Error
-    """
+    """Not Found Error"""
     CODE = -HttpCode.NOT_FOUND_ERROR
     MESSAGE = "Not Found"
 
 
 class ConflictError(JsonRpcBaseError):
-    """
-    Conflict Error
-    """
+    """Conflict Error"""
     CODE = -HttpCode.CONFLICT_ERROR
     MESSAGE = "Conflict"
 
 
 class InternalServerError(JsonRpcBaseError):
-    """
-    Internal Server Error
-    """
+    """Internal Server Error"""
     CODE = -HttpCode.INTERNAL_SERVER_ERROR
     MESSAGE = "Internal Server Error"
 
 
 class NotImplementedError(JsonRpcBaseError):
-    """
-    Not Implemented Error
-    """
+    """Not Implemented Error"""
     CODE = -HttpCode.NOT_IMPLEMENTED_ERROR
     MESSAGE = "Not Implemented"
 
 
 class ServiceUnavailableError(JsonRpcBaseError):
-    """
-    Service Unavailable Error
-    """
+    """Service Unavailable Error"""
     CODE = -HttpCode.SERVICE_UNAVAILABLE_ERROR
     MESSAGE = "Service Unavailable"
 
 
 def handle_errors(err_cls, module_name, func_name, results, param_name, code):
-    """
-    Handle errors
+    """Handle errors
 
-    :param err_cls: error class
-    :param module_name: module name
-    :param func_name: function name
-    :param results: results for jsonrpc
-    :param param_name: name of the param
-    :param code: error code
+    Args:
+        err_cls: error class
+        module_name: module name
+        func_name: function name
+        results: results for jsonrpc
+        param_name: name of the param
+        code: error code
     """
     success, err_msg = results
     if success is False:
@@ -149,14 +129,14 @@ def handle_errors(err_cls, module_name, func_name, results, param_name, code):
 @staticmethod
 def handle_error_bad_requests(
         module_name, func_name, results, param_name=None, code=None):
-    """
-    Handle bad_requests error
+    """Handle bad_requests error
 
-    :param module_name: module name
-    :param func_name: function name
-    :param results: results for jsonrpc
-    :param param_name: name of the param
-    :param code: error code
+    Args:
+        module_name: module name
+        func_name: function name
+        results: results for jsonrpc
+        param_name: name of the param (Default value = None)
+        code: error code (Default value = None)
     """
     return handle_errors(
         BadRequestError,
@@ -169,14 +149,14 @@ def handle_error_bad_requests(
 
 def handle_error_unauthorized(
         module_name, func_name, results, param_name=None, code=None):
-    """
-    Handle unauthorized error
+    """Handle unauthorized error
 
-    :param module_name: module name
-    :param func_name: function name
-    :param results: results for jsonrpc
-    :param param_name: name of the param
-    :param code: error code
+    Args:
+        module_name: module name
+        func_name: function name
+        results: results for jsonrpc
+        param_name: name of the param (Default value = None)
+        code: error code (Default value = None)
     """
     return handle_errors(
         UnauthorizedError,
@@ -189,14 +169,14 @@ def handle_error_unauthorized(
 
 def handle_error_forbidden(
         module_name, func_name, results, param_name=None, code=None):
-    """
-    Handle forbidden error
+    """Handle forbidden error
 
-    :param module_name: module name
-    :param func_name: function name
-    :param results: results for jsonrpc
-    :param param_name: name of the param
-    :param code: error code
+    Args:
+        module_name: module name
+        func_name: function name
+        results: results for jsonrpc
+        param_name: name of the param (Default value = None)
+        code: error code (Default value = None)
     """
     return handle_errors(
         ForbiddenError,
@@ -209,14 +189,14 @@ def handle_error_forbidden(
 
 def handle_error_not_found(
         module_name, func_name, results, param_name=None, code=None):
-    """
-    Handle forbidden error
+    """Handle forbidden error
 
-    :param module_name: module name
-    :param func_name: function name
-    :param results: results for jsonrpc
-    :param param_name: name of the param
-    :param code: error code
+    Args:
+        module_name: module name
+        func_name: function name
+        results: results for jsonrpc
+        param_name: name of the param (Default value = None)
+        code: error code (Default value = None)
     """
     return handle_errors(
         NotFoundError,
@@ -229,14 +209,14 @@ def handle_error_not_found(
 
 def handle_error_conflict(
         module_name, func_name, results, param_name=None, code=None):
-    """
-    Handle conflict error
+    """Handle conflict error
 
-    :param module_name: module name
-    :param func_name: function name
-    :param results: results for jsonrpc
-    :param param_name: name of the param
-    :param code: error code
+    Args:
+        module_name: module name
+        func_name: function name
+        results: results for jsonrpc
+        param_name: name of the param (Default value = None)
+        code: error code (Default value = None)
     """
     return handle_errors(
         ConflictError,
@@ -249,14 +229,14 @@ def handle_error_conflict(
 
 def handle_error_internal_server(
         module_name, func_name, results, param_name=None, code=None):
-    """
-    Handle internal server error
+    """Handle internal server error
 
-    :param module_name: module name
-    :param func_name: function name
-    :param results: results for jsonrpc
-    :param param_name: name of the param
-    :param code: error code
+    Args:
+        module_name: module name
+        func_name: function name
+        results: results for jsonrpc
+        param_name: name of the param (Default value = None)
+        code: error code (Default value = None)
     """
     return handle_errors(
         InternalServerError,
@@ -269,14 +249,14 @@ def handle_error_internal_server(
 
 def handle_error_not_implemented(
         module_name, func_name, results, param_name=None, code=None):
-    """
-    Handle not implemented error
+    """Handle not implemented error
 
-    :param module_name: module name
-    :param func_name: function name
-    :param results: results for jsonrpc
-    :param param_name: name of the param
-    :param code: error code
+    Args:
+        module_name: module name
+        func_name: function name
+        results: results for jsonrpc
+        param_name: name of the param (Default value = None)
+        code: error code (Default value = None)
     """
     return handle_errors(
         NotImplementedError,
@@ -289,14 +269,14 @@ def handle_error_not_implemented(
 
 def handle_error_service_unavailable(
         module_name, func_name, results, param_name=None, code=None):
-    """
-    Handle service unavailable error
+    """Handle service unavailable error
 
-    :param module_name: module name
-    :param func_name: function name
-    :param results: results for jsonrpc
-    :param param_name: name of the param
-    :param code: error code
+    Args:
+        module_name: module name
+        func_name: function name
+        results: results for jsonrpc
+        param_name: name of the param (Default value = None)
+        code: error code (Default value = None)
     """
     return handle_errors(
         ServiceUnavailableError,

@@ -28,14 +28,15 @@ module_name = "DRIVER"
 
 
 def _get_driver_info(driver_info, transpiler):
-    """
-    Get driver info
+    """Get driver info
 
-    :param driver_info: driver_info
-    :param transpiler: transpiler instance
-    :return: device_info
-    """
+    Args:
+        driver_info: driver_info
+        transpiler: transpiler instance
 
+    Returns:
+        device_info
+    """
     supported_code_types = None
     if transpiler:
         supported_code_types = transpiler.get_supported_code_types()
@@ -63,12 +64,13 @@ def _get_driver_info(driver_info, transpiler):
 def get_drivers(
         body: schemas.GetDriversRequest = None
 ) -> Dict[str, schemas.GetDriverResponse]:
-    """
-    Get driver dict request
+    """Get driver dict request
 
-    :param body: message
-    :type body: schemas.GetDriversRequest
-    :return: Get drivers response
+    Args:
+        body(schemas.GetDriversRequest): message
+
+    Returns:
+        Get drivers response
     """
     func_name = "get_drivers"
     logger.info(f"Call {func_name}: {body}")
@@ -87,12 +89,13 @@ def get_drivers(
 def get_driver(
         body: schemas.GetDriverRequest
 ) -> schemas.GetDriverResponse:
-    """
-    Get driver info request
+    """Get driver info request
 
-    :param body: driver_name
-    :type body: schemas.GetDriverRequest
-    :return: Get driver info response
+    Args:
+        body(schemas.GetDriverRequest): driver_name
+
+    Returns:
+        Get driver info response
     """
     func_name = "get_driver"
     logger.info(f"Call {func_name}: {body}")

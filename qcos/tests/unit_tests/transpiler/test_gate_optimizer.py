@@ -24,42 +24,42 @@ from qcos.tests.unit_tests.transpiler.comm import validate_gate_ir
 class TestGateOptimizer:
     @classmethod
     def setup_class(cls):
-        cls.data = '''
-          OPENQASM 2.0;
-          include "qelib1.inc";
-          qreg q[5];
-          creg c[5];
-          h q[0];
-          h q[0];
-          x q[0];
-          ry(1) q[0];
-          x q[0];
-          h q[0];
-          x q[0];
-          h q[0];
-          s q[0];
-          sdg q[0];
-          x q[0];
-          x q[0];
-          cx q[1], q[0];
-          cx q[1], q[0];
-          ccx q[2], q[1], q[0];
-          ccx q[2], q[1], q[0];
-          ry(1) q[3];
-          ry(2.14) q[3];
-        '''
+        cls.data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[5];
+        creg c[5];
+        h q[0];
+        h q[0];
+        x q[0];
+        ry(1) q[0];
+        x q[0];
+        h q[0];
+        x q[0];
+        h q[0];
+        s q[0];
+        sdg q[0];
+        x q[0];
+        x q[0];
+        cx q[1], q[0];
+        cx q[1], q[0];
+        ccx q[2], q[1], q[0];
+        ccx q[2], q[1], q[0];
+        ry(1) q[3];
+        ry(2.14) q[3];
+        """
 
-        cls.merge_theta_data = '''
-          OPENQASM 2.0;
-          include "qelib1.inc";
-          qreg q[2];
-          creg c[2];
-          h q[0];
-          cx q[0], q[1];
-          measure q[0] -> c[0];
-          measure q[1] -> c[1];
-          if (c==1) x q[1];
-        '''
+        cls.merge_theta_data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        creg c[2];
+        h q[0];
+        cx q[0], q[1];
+        measure q[0] -> c[0];
+        measure q[1] -> c[1];
+        if (c==1) x q[1];
+        """
 
     def test_pass_optimize_gate(self):
         tree = get_abs_tree(self.data)
