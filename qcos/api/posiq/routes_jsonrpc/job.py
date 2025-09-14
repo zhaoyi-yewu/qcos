@@ -577,7 +577,7 @@ def get_jobs(
 @job_api_v1.method(errors=[jsonrpc_errors.NotImplementedError])
 def cancel_jobs(
         body: schemas.CancelJobsRequest
-) -> List[schemas.GetJobStatusResponse]:
+) -> List[schemas.CancelJobsResponse]:
     """
     Cancel job
 

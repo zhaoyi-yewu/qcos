@@ -224,6 +224,17 @@ class CancelJobsRequest(BaseModel):
     job_ids: list[UUID] = None
 
 
+class CancelJobsResponse(BaseModel):
+    """
+    Cancel Jobs Response
+    Pydantic Model for Cancel Jobs Response
+    """
+    # Job ID
+    job_id: UUID = None
+    # Job status
+    job_status: str = None
+
+
 class DeleteJobsRequest(BaseModel):
     """
     Delete Jobs Request

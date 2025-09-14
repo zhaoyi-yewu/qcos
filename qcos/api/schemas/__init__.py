@@ -25,7 +25,7 @@ from .job import (SubmitJobRequest, SubmitJobResponse,
                   GetJobStatusRequest, GetJobStatusResponse,
                   GetJobResultsRequest, GetJobResultsResponse,
                   GetJobsRequest,
-                  CancelJobsRequest,
+                  CancelJobsRequest, CancelJobsResponse,
                   DeleteJobsRequest, DeleteJobsResponse,
                   SetJobResultsRequest, SetJobResultsResponse)
 from .system import (PingRequest, PongResponse)

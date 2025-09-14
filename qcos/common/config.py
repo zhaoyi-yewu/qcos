@@ -86,6 +86,8 @@ class Config:
 
     @classmethod
     def validate(cls):
+        # remove duplicated devices
+        cls.DEVICE_LIST = Library.remove_duplicates(cls.DEVICE_LIST)
         success, err_msg = Library.validate_schema(cls.DEVICE_LIST,
                                                    [str],
                                                    allow_none=False)

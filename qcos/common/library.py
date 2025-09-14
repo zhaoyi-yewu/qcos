@@ -78,6 +78,20 @@ class Library:
         return dictionary
 
     @staticmethod
+    def remove_duplicates(lst):
+        """
+        Remove duplicates elements from a list
+
+        :param lst: list
+        :return: list
+        """
+        new_list = []
+        for element in lst:
+            if element not in new_list:
+                new_list.append(element)
+        return new_list
+
+    @staticmethod
     def kill_pid(pid_file):
         """
         Kill existing process from pid file
