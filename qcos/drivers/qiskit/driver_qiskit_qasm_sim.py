@@ -39,7 +39,7 @@ class DriverQiskitQasmSim(DriverBase):
         self.transpiler = Constant.TRANSPILER_QISKIT
         self.tech_type = Constant.TECH_TYPE_GENERIC_SIMULATOR
         self.supported_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
-                                      Constant.SINGLE_QUBIT_GATE_RX,
+                                      Constant.SINGLE_QUBIT_GATE_RY,
                                       Constant.SINGLE_QUBIT_GATE_RZ,
                                       Constant.TWO_QUBIT_GATE_CX]
         self.supported_transpilers = [Constant.TRANSPILER_QISKIT]
