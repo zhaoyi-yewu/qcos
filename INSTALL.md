@@ -1,11 +1,11 @@
 # <center>量子计算操作系统QCOS安装部署及使用说明</center>
 
-## 1. 编译、安装和运行 (基于容器)
+## 1. 编译、安装和运行 (推荐, 基于容器)
 ### 1.1 前提条件
-* 保证操作系统已安装了docker、docker-compose组件
+* 保证操作系统已安装了docker、docker-compose等组件
 ```shell
-BCLinux/CentOS/OpenEuler环境下示例:
-yum install -y docker docker-compose
+# BCLinux/CentOS/OpenEuler环境下示例:
+yum install -y docker docker-compose rsync
 ```
 
 ### 1.2 编辑.env配置文件
@@ -13,6 +13,16 @@ yum install -y docker docker-compose
 cd build-scripts
 cp ./env.template .env
 vim .env
+# .env配置文件说明
+# 1. DEV选项为False时表示编译出的镜像是生产环境镜像; True时表示编译出来的是开发环境镜像。开发环境会挂载(mount)宿主机源代码到容器中, 直接使用挂载的源代码运行, 方便开发者在宿主机上修改代码。而生产环境镜像中会集成源代码。
+# 2. 需要填写PREFECT_SERVER_API_HOST地址(一般填写为本机IP地址或者127.0.0.1)
+# 3. 如果本地可以访问外网, 无需填写YUM_MIRROR, PIP_MIRROR
+# 4. 如果本地无法访问外网, 需要保证局域网内有OpenEuler操作系统的YUM镜像源(YUM_MIRROR), 以及Python软件包镜像源(PIP_MIRROR)。
+# YUM_MIRROR地址格式示例: http://mirrors.cmecloud.cn
+# PIP_MIRROR地址格式示例: http://mirrors.cmecloud.cn/pip/simple
+# 5. DEBUG是内部开发使用的调试开关, 可以配成默认的False
+# 6. LOCAL_CICD是本地CICD的标记开关, 可以配成默认的False
+# 7. REGISTRY为Docker容器私有镜像仓库地址, 如果本机可以访问DockerHubze可以留空
 ```
 
 ### 1.3 编译qcos容器镜像
@@ -36,11 +46,11 @@ cd build-scripts
 ./run-docker.sh
 ```
 
-## 2. 编译、安装和运行 (非容器, 编译wheel包)
+## 2. 编译、安装和运行 (可选, 非容器, 编译wheel包)
 ### 2.1 前提条件
 * 保证操作系统已安装了python3-pip组件
 ```shell
-BCLinux/CentOS/OpenEuler环境下示例:
+# BCLinux/CentOS/OpenEuler环境下示例:
 yum install -y python3 python3-pip python3-sphinx python3-requests
 pip3 install -r ./requirements.txt -r ./test-requirements.txt
 ```
@@ -48,7 +58,7 @@ pip3 install -r ./requirements.txt -r ./test-requirements.txt
 ### 2.2 编译
 #### 2.2.1 基于poetry编译wheel包 
 ```shell
-BCLinux/CentOS/OpenEuler环境下示例:
+# BCLinux/CentOS/OpenEuler环境下示例:
 cd build-scripts
 ./build-wheel.sh
 或者
@@ -72,21 +82,20 @@ pip3 install ./dist/qcos-1.0.0-py3-none-any.whl
 
 ### 2.5 运行
 ```shell
-* 保证prefect服务已启动
-
-* 服务端:
+# 保证prefect服务已启动
+# 服务端:
 qcos-api --config-file /etc/qcos/qcos.toml --config-dir /etc/qcos/conf.d/
 ```
 
-## 3. 测试 (单元测试, 覆盖率测试, 代码格式检查)
+## 3. 测试 (单元测试UT, 覆盖率测试Coverage, 系统测试ST, 代码格式检查)
 ### 3.1 通过容器环境运行测试
-#### 3.1.1 单元测试
+#### 3.1.1 单元测试 (UT)
 ```shell
 cd ./build-scripts
 ./run-tests.sh -u
 ```
 
-#### 3.1.2 覆盖率测试
+#### 3.1.2 覆盖率测试 (Coverage)
 ```shell
 cd ./build-scripts
 ./run-tests.sh -c
@@ -95,15 +104,24 @@ cd ./build-scripts
 #### 3.1.3 覆盖率报告查看
 ```shell
 cd ./build-scripts
-# 命令行查看覆盖率报告
+./run-tests.sh -s
+# 使用浏览器打开./coverage_html/index.html查看覆盖率
+
+# 命令行模式下, 通过命令方式查看覆盖率报告 [可选]
 coverage3 report -m
-# 生成覆盖率HTML报告
-coverage3 html --title="QCOS Coverage Report" --include='src/*' -d coverage_html
-# 查看覆盖率HTML报告
+# 命令行模式下, 通过link工具查看覆盖率HTML报告 [可选]
 links ./coverage_html/index.html
 ```
 
-#### 3.1.4 代码格式检查 (flake8)
+#### 3.1.4 系统测试 (ST)
+```shell
+# 保证QCOS已经正常启动
+# 编辑/etc/qcos/qcos-st.toml, 修改API_SERVER_IP和API_SERVER_PORT为被测服务的IP地址以及端口号
+cd ./build-scripts
+./run-tests.sh -s
+```
+
+#### 3.1.5 代码格式检查 (flake8)
 ```shell
 cd ./build-scripts
 ./run-tests.sh -p
