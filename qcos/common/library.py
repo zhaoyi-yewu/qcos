@@ -54,6 +54,7 @@ logger = logging.getLogger(__name__)
 
 class Library:
     """Library"""
+
     @staticmethod
     def get_brief_description(description):
         output_list = []
@@ -563,6 +564,93 @@ class Library:
             success = False
             err_msg = str(e)
         return success, [err_msg]
+
+    @staticmethod
+    def check_qubo_matrixs_bit_width(qubo_matrixs):
+        """Check qubo matrixs bit width
+
+        Args:
+            qubo_matrixs: qubo matrixs to be checked
+
+        Returns: 
+            True or False
+        """
+
+        def is_int8_matrix(matrix):
+            """
+            check matrix is int8
+            """
+            return (
+                    np.all(np.equal(np.mod(matrix, 1), 0)) and
+                    matrix.min() >= -2 ** (Constant.MAX_QUBO_BIT_WIDTH - 1) and
+                    matrix.max() <= 2 ** (Constant.MAX_QUBO_BIT_WIDTH - 1) - 1
+            )
+
+        def scale_to_integer_matrix(matrix):
+            """
+            scale matrix to interger matrix
+            """
+            arr = np.array(matrix, dtype=float)
+            flat_arr = arr.flatten()
+            # find the least common denominator of all non-zero elements
+            denominators = []
+            logger.info(f"flat_arr: {flat_arr}")
+            for val in flat_arr:
+                if val != 0:
+                    # convert floating numbers to fractional form
+                    frac = Fraction(val).limit_denominator(1000000)
+                    denominators.append(frac.denominator)
+            logger.info(f"denominators: {denominators}")
+            if not denominators:
+                return arr.astype(int), 1
+
+            # calculate the least common multiple (LCM) of all denominators
+            def lcm(a, b):
+                return a * b // gcd(a, b)
+
+            scale_factor = reduce(lcm, denominators)
+            # apply scaling and convert to integers
+            scaled_matrix = (arr * scale_factor).round().astype(int)
+            return scaled_matrix
+
+        def find_matrix_gcd(matrix):
+            """
+            find the greatest common divisor (GCD) of 
+            all non-zero elements in a matrix.
+            """
+            flat_values = np.array(matrix).flatten().astype(int)
+            flat_values = np.abs(flat_values[flat_values != 0])
+            if len(flat_values) == 0:
+                return 0
+            return reduce(gcd, flat_values)
+
+        for qubo_matrix in qubo_matrixs:
+            # 1. change qubo matrix to ising matrix
+            n = len(qubo_matrix)
+            ising_matrix = np.zeros((n + 1, n + 1))
+            ising_h = np.zeros(n)
+            for i in range(n):
+                sum_row = 0
+                for j in range(n):
+                    sum_row += qubo_matrix[i][j] + qubo_matrix[j][i]
+                ising_h[i] = 0.25 * sum_row
+                for j in range(i + 1, n):
+                    ising_matrix[i, j] = 0.25 * qubo_matrix[i][j]
+                    ising_matrix[j, i] = ising_matrix[i][j]
+            ising_matrix[:n, n] = ising_h / 2
+            ising_matrix[n, :n] = ising_h / 2
+
+            # 2. scale the ising matrix and check bit width
+            scaled_ising_matrix = scale_to_integer_matrix(ising_matrix)
+            gcd_value = find_matrix_gcd(scaled_ising_matrix)
+            scaled_ising_matrix = scaled_ising_matrix / gcd_value
+            if not is_int8_matrix(scaled_ising_matrix):
+                return (
+                    False,
+                    f"The element values in the QUBO matrix: {qubo_matrix} "
+                    f"must be 8-bit signed integers",
+                )
+        return True, None
 
     @staticmethod
     def check_qubo_matrixs_bit_width(qubo_matrixs):
