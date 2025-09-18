@@ -248,6 +248,9 @@ class Constant:
     MIN_OPTIMIZATION_LEVEL = 0
     MAX_OPTIMIZATION_LEVEL = 3
 
+    # Max bitwidth
+    MAX_QUBO_BIT_WIDTH = 8
+
 
 class HttpHeaders:
     # headers

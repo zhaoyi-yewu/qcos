@@ -112,7 +112,7 @@ class TestLibrary:
 
     def test_get_current_datetime(self):
         times = library.get_current_datetime()
-        assert times == datetime.now()
+        assert isinstance(times, datetime)
 
     def test_validate_values_enum(self):
         value = ["6", "7", "8", "9"]
@@ -177,6 +177,19 @@ class TestLibrary:
 
         success, _ = library.validate_schema("9", None)
         assert success is False
+
+    def test_check_qubo_matrixs_bit_width(self):
+        qubo_matrixs = [[[-480, 508, -48],
+                         [508, -508, -48],
+                         [-48, -48, 60]]]
+        library.check_qubo_matrixs_bit_width(qubo_matrixs)
+        qubo_matrixs = [[[-512, 520, -48],
+                         [520, -520, -48],
+                         [-48, -48, 40]],
+                        [[-488, 516, -48],
+                         [516, -516, -48],
+                         [-48, -48, 60]]]
+        library.check_qubo_matrixs_bit_width(qubo_matrixs)
 
     def test_is_valid_url(self):
         success = library.is_valid_url("127.0.0.1", "Tzeentch")
