@@ -35,10 +35,10 @@ class TestDriverManager:
     @patch.object(DriverBase, "validate_driver")
     def test_init_drivers(self, mock_validate_driver):
         mock_validate_driver.return_value = iter([True, "err_msg"])
-        obj.init_drivers()
+        assert obj.init_drivers() is None
 
         mock_validate_driver.return_value = iter([False, "err_msg"])
-        obj.init_drivers()
+        assert obj.init_drivers() is None
 
     def test_has_driver(self):
         assert obj.has_driver("driver_name") is False

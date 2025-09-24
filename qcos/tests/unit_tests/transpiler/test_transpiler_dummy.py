@@ -15,26 +15,18 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from qcos.common.config import Config
-from qcos.drivers.device_manager import DeviceManager
-from qcos.drivers.driver_manager import DriverManager
-
-device_manager = DeviceManager(Config(), DriverManager())
+from qcos.transpiler.dummy.transpiler_dummy import TranspilerDummy
 
 
-class TestDeviceManager:
-    def test_load_devices(self):
-        device_manager.config.DEVICE_LIST = ["dummy"]
-        assert device_manager.load_devices() is None
+transpiler_dummy = TranspilerDummy()
 
-    def test_init_devices(self):
-        assert device_manager.init_devices() is None
 
-    def test_has_device(self):
-        assert device_manager.has_device("no_such_device") is False
+class TestTranspilerDummy:
+    def test_init_transpiler(self):
+        transpiler_dummy.init_transpiler()
 
-    def test_get_device(self):
-        assert device_manager.get_device("no_such_device") is None
+    def test_parse(self):
+        transpiler_dummy.parse(None)
 
-    def test_get_devices(self):
-        assert device_manager.get_devices() is not None
+    def test_transpile(self):
+        transpiler_dummy.transpile(None, [None])

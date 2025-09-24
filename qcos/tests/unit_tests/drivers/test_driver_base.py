@@ -15,12 +15,18 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from unittest.mock import patch
+
 import pytest
 
+from qcos.common.library import Library
 from qcos.drivers.driver_base import DriverBase
 
 
 driver_base = DriverBase()
+job_id = "00000000-0000-4000-8000-000000000001"
+num_qubits = 5
+data = {"index": 0, "source_code": None, "transpile_results": []}
 
 
 class TestDriverBase:
@@ -100,12 +106,12 @@ class TestDriverBase:
 
     def test_run(self):
         with pytest.raises(NotImplementedError) as context:
-            driver_base.run("1", 5, {})
+            driver_base.run(job_id, num_qubits, data)
         assert (f"Driver: {driver_base.__class__.__name__} "
                 f"must implement method: run")
 
     def test_dry_run(self):
-        assert driver_base.dry_run("1", 5, {"index": "233"}) is None
+        assert driver_base.dry_run(job_id, num_qubits, data) is None
 
     def test_get_default_data_type(self):
         data_type = driver_base.get_default_data_type()
@@ -114,3 +120,33 @@ class TestDriverBase:
     def test_set_max_qubits_and_get_max_qubits(self):
         driver_base.set_max_qubits(10)
         assert driver_base.get_max_qubits() == 10
+
+    def test_set_alias_name_and_get_alias_name(self):
+        driver_base.set_alias_name("alias_name")
+        assert driver_base.get_alias_name() == "alias_name"
+
+    def test_get_supported_transpilers(self):
+        supported_transpilers = driver_base.get_supported_transpilers()
+        assert supported_transpilers == driver_base.supported_transpilers
+
+    def test_set_progress_and_get_progress(self):
+        driver_base.set_progress(100)
+        assert driver_base.get_progress() == 100
+
+    def test_set_configs_and_get_configs(self):
+        configs = {}
+        driver_base.set_configs(configs)
+        assert driver_base.get_configs() == configs
+
+    def test_cancel(self):
+        with pytest.raises(NotImplementedError) as context:
+            driver_base.cancel(job_id)
+        assert "cancel" in str(context.value)
+
+    @patch.object(Library, "get_nested_dict_value")
+    def test_get_results(self, mock_get_nested_dict_value):
+        mock_get_nested_dict_value.return_value = {}
+        driver_base.get_results(job_id)
+
+    def test_set_device_status(self):
+        assert driver_base.set_device_status("") is None

@@ -21,25 +21,29 @@ from qiskit_aer.backends.aerbackend import AerBackend
 
 from qcos.drivers.qiskit.driver_qiskit_qasm_sim import DriverQiskitQasmSim
 
-obj = DriverQiskitQasmSim()
+driver_qasm_sim = DriverQiskitQasmSim()
+job_id = "00000000-0000-4000-8000-000000000001"
+num_qubits = 5
+data = {"index": 0, "source_code": None, "transpile_results": []}
+data_type = DriverQiskitQasmSim.DATA_TYPE_GATE_SEQUENCE
 
 
 class TestDriverQiskitQasmSim:
     def test_init_driver(self):
-        assert obj.init_driver() is None
+        assert driver_qasm_sim.init_driver() is None
 
     def test_validate_driver_configs(self):
         configs = {}
-        success, err_msg = obj.validate_driver_configs(configs)
+        success, err_msg = driver_qasm_sim.validate_driver_configs(configs)
         assert success is True
 
     def test_close_driver(self):
-        assert obj.close_driver() is None
+        assert driver_qasm_sim.close_driver() is None
 
     @patch.object(AerBackend, "run")
     def test_run(self, mock_run):
         mock_result_value = "模拟结果"
         mock_result_obj = Mock()
         mock_result_obj.mock_run.return_value = mock_result_value
-        obj.run("111", 6, {"index": "index",
-                           "transpile_results": "res"}, "datatype")
+        assert driver_qasm_sim.run(job_id, num_qubits,
+                                   data, data_type) is None

@@ -29,9 +29,9 @@ class TestFastApiServer:
     def test_patched_invalid_params_from_validation_error(self):
         mock_client = Mock(spec=RequestValidationError)
         mock_client.errors.return_value = [{"loc": ("body", ),
-                                            "msg": "113",
-                                            "type": "code",
-                                            "input": "in"},
+                                            "msg": "msg",
+                                            "type": "type",
+                                            "input": "input"},
                                            {"loc": ("body", )}]
         with pytest.raises(ValidationError) as e:
             patched_invalid_params_from_validation_error(mock_client)

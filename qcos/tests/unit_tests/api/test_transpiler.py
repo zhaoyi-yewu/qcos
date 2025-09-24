@@ -20,6 +20,7 @@ from unittest.mock import Mock, patch
 from qcos.api.posiq.routes_jsonrpc.transpiler import (get_transpilers,
                                                       get_transpiler)
 from qcos.api.schemas import GetTranspilerRequest
+from qcos.common.constant import Constant
 from qcos.task_manager import TaskScheduler
 from qcos.transpiler.transpiler_base import TranspilerBase
 from qcos.transpiler.transpiler_manager import TranspilerManager
@@ -42,5 +43,5 @@ class TestTranspiler:
         mock_get_transpiler_manager.return_value = TranspilerManager()
         mock_get_transpiler.return_value = TranspilerBase()
         mock_client = Mock(spec=GetTranspilerRequest)
-        mock_client.name = "dummy"
+        mock_client.name = Constant.TRANSPILER_DUMMY
         get_transpiler(mock_client)

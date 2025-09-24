@@ -33,10 +33,13 @@ from qcos.client.shell import (QcosShell, CommandHelper, Version, GetDrivers,
 from qcos.common import errors
 from qcos.common.config import Config
 from qcos.common.constant import HttpCode, Constant
+from qcos.tests.unit_tests.task_manager.constant_for_test import (
+    ConstantForTest)
 
 DESCRIPTION = "QCOS command line interface"
 VERSION = Config.VERSION
 command_manager = CommandManager("qcos")
+job_id = ConstantForTest.job_id
 
 shell = QcosShell(DESCRIPTION, VERSION, command_manager)
 shell.client = Client()
@@ -62,9 +65,6 @@ class TestQcosShell:
     def test_build_option_parser(self):
         shell.build_option_parser("description", "1.0.0")
 
-    # def test_initialize_app(self):
-    #     shell.initialize_app([])
-
 
 class TestCommandHelper:
     def test_handle_invalid_arguments(self):
@@ -83,7 +83,7 @@ class TestCommandHelper:
             [False, Error(114, "message", {"errors": [{
                 "msg": "msg1", "loc": "loc1"},
                 {"msg": "msg2", "loc": "loc2"}],
-                "details": "detail1"}, "111")])
+                "details": "detail"}, "")])
         with pytest.raises(errors.GenericException) as e:
             helper.check_results("resource", "Tzeentch", HttpCode.SUCCESS_OK,
                                  "reason", '{"name": "Nurgle"}')
@@ -275,7 +275,7 @@ class TestSubmitJob:
         mock_client.job_name = "name"
         mock_client.dry_run = None
         mock_client.code_type = Constant.CODE_TYPE_QASM
-        mock_client.job_id = "111"
+        mock_client.job_id = job_id
         mock_client.circuit_aggregation = Constant.AGGREGATION_TYPE_INTERNAL
         mock_client.job_type = Constant.JOB_TYPE_SAMPLING
         mock_client.job_priority = Constant.DEFAULT_JOB_PRIORITY
@@ -313,7 +313,7 @@ class TestGetJobStatus:
         mock_get_table_data.return_value = None
 
         mock_client = Mock(spec=Namespace)
-        mock_client.job_id = "111"
+        mock_client.job_id = job_id
         get_job_status.take_action(mock_client)
 
 
@@ -335,7 +335,7 @@ class TestGetJobResults:
         mock_get_table_data.return_value = None
 
         mock_client = Mock(spec=Namespace)
-        mock_client.job_id = "111"
+        mock_client.job_id = job_id
         get_job_results.take_action(mock_client)
 
 
@@ -365,7 +365,7 @@ class TestCancelJobs:
     @patch.object(CommandHelper, "check_results")
     def test_take_action(self, mock_check_results, mock_get_jobs,
                          mock_handle_invalid_arguments, mock_cancel_jobs):
-        mock_check_results.return_value = [{"k1": "v1", "job_id": "111"}, ]
+        mock_check_results.return_value = [{"k1": "v1", "job_id": job_id}, ]
         mock_get_jobs.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
         mock_cancel_jobs.return_value = (None, None, None, None)
@@ -389,7 +389,7 @@ class TestDeleteJobs:
     @patch.object(CommandHelper, "check_results")
     def test_take_action(self, mock_check_results, mock_get_jobs,
                          mock_handle_invalid_arguments, mock_delete_jobs):
-        mock_check_results.return_value = [{"k1": "v1", "job_id": ""}, ]
+        mock_check_results.return_value = [{"k1": "v1", "job_id": job_id}, ]
         mock_get_jobs.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
         mock_delete_jobs.return_value = (None, None, None, None)
@@ -400,7 +400,7 @@ class TestDeleteJobs:
         delete_jobs.take_action(mock_client)
 
         mock_client.job_ids = "NO"
-        mock_check_results.return_value = [{"k1": "v1", "job_id": "111"}, ]
+        mock_check_results.return_value = [{"k1": "v1", "job_id": job_id}, ]
         delete_jobs.take_action(mock_client)
 
 
@@ -418,15 +418,16 @@ class TestSetJobResults:
         mock_handle_invalid_arguments.return_value = None
 
         mock_client = Mock(spec=Namespace)
-        mock_client.job_id = "111"
+        mock_client.job_id = job_id
         mock_client.results = ['{"options": "options","option": "option"}',
                                '{"options": "options","option": "option"}']
         set_job_results.take_action(mock_client)
 
 
 def test_set_debug_option():
-    set_debug_option(None)
+    assert set_debug_option(None) is None
 
 
 def test_get_content_by_type():
-    get_content_by_type("no", "")
+    success, _, _ = get_content_by_type("no", "")
+    assert success is False

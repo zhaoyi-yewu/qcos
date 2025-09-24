@@ -15,23 +15,30 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import asyncio
 from datetime import datetime
 from unittest.mock import Mock, patch, MagicMock
 
+import pytest
+
 from qcos.common.constant import Constant
+from qcos.common.library import Library
 from qcos.drivers.driver_base import DriverBase
 from qcos.drivers.dummy.driver_dummy import DriverDummy
 from qcos.engine.job_engine import (init_driver, init_transpiler,
                                     driver_cancel, register_signals,
-                                    update_progress)
-from qcos.engine.job_engine import (
-    create_src_code_info,
-    update_src_code_info,
-    get_src_code_cnt,
-    get_internal_aggregated_results,
-    get_external_aggregated_results
-)
+                                    update_progress, run_code, flow_parse,
+                                    flow_transpile, flow_task_monitor,
+                                    flow_run_driver, create_src_code_info,
+                                    update_src_code_info, get_src_code_cnt,
+                                    get_internal_aggregated_results,
+                                    get_external_aggregated_results,
+                                    format_run_results, format_error_results,
+                                    job_callback, task_monitor, parse,
+                                    transpile, driver_run
+                                    )
 from qcos.engine.job_engine import SourceCodeInfo
+from qcos.transpiler.transpiler_base import TranspilerBase
 
 
 class TestJobEngine:
@@ -75,22 +82,28 @@ class TestJobEngine:
             "00000000-0000-4000-8000-000000000003-0": 2
         }
 
+    @patch('qcos.engine.job_engine.getattr')
+    @patch('qcos.engine.job_engine.importlib.import_module')
     @patch.object(DriverBase, "validate_driver_configs")
-    def test_init_driver(self, mock_validate_driver_configs):
+    def test_init_driver(self, mock_validate_driver_configs,
+                         mock_importlib, mock_getattr):
         driver_info = {"module_name": "name", "class_name": "DriverDummy"}
-        mock_run = Mock()
-        mock_run.name = DriverDummy()
+        mock_importlib.return_value = DriverDummy
+        mock_getattr.return_value = DriverDummy
+
         mock_validate_driver_configs.return_value = iter([True, "err_msg"])
 
         driver = init_driver.fn
-        driver(driver_info, None, None)
+        return_value = driver(driver_info, None, None)
+        assert return_value["driver"] is None
 
     def test_init_transpiler(self):
         transpiler_info = {"module_name": "name",
                            "class_name": "TranspilerDummy"}
 
         transpiler = init_transpiler.fn
-        transpiler(transpiler_info, None)
+        return_value = transpiler(transpiler_info, None)
+        assert return_value["transpiler"] is None
 
     def test_create_src_code_info_with_none_aggregation(self):
         result = create_src_code_info(self.job_data)
@@ -134,12 +147,113 @@ class TestJobEngine:
         assert len(result["sub_results"]) == 1
 
     def test_driver_cancel(self):
-        driver_cancel("111", DriverDummy)
+        assert driver_cancel(self.job_data["job_id"], DriverDummy) is None
 
     def test_register_signals(self):
-        register_signals("111", {"driver": DriverDummy})
+        assert register_signals(self.job_data["job_id"],
+                                {"driver": DriverDummy}) is None
 
     @patch('qcos.engine.job_engine.update_progress_artifact')
     def test_update_progress(self, mock_update_progress_artifact):
         mock_update_progress_artifact.return_value = None
-        update_progress("id", "progress")
+        assert update_progress("id", "progress") is None
+
+    @patch('qcos.engine.job_engine.flow_run_driver')
+    @patch('qcos.engine.job_engine.flow_transpile')
+    @patch('qcos.engine.job_engine.flow_parse')
+    def test_run_code(self, mock_flow_parse,
+                      mock_flow_transpile, mock_flow_run_driver):
+        mock_flow_parse.return_value = iter([{"parsed_src_code": "v"}, 233])
+        mock_flow_transpile.return_value = ({}, 466)
+        with pytest.raises(ValueError) as e:
+            run_code([1, 2, 3], {}, {"data": {}},
+                     DriverBase(), TranspilerBase(), {})
+        assert str(e.value) == "unexpected transpile_results or num_qubits"
+
+        mock_flow_parse.return_value = iter([{"parsed_src_code": "v"}, 233])
+        mock_flow_transpile.return_value = (
+            {"transpile_results": "s", "num_qubits": "6"}, 466)
+        mock_flow_run_driver.return_value = iter(
+            [{"results": "v", "metadata": "m"}, 233])
+        run_code([1, 2, 3], {}, {"data": {}},
+                 DriverBase(), TranspilerBase(), {})
+
+    @patch('qcos.engine.job_engine.parse.submit')
+    def test_flow_parse(self, mock_parse):
+        mock_parse.return_value = Mock()
+        result, _ = flow_parse({}, TranspilerBase(), Constant.PROFILING_TYPES)
+        assert isinstance(result, Mock) is True
+
+    @patch('qcos.engine.job_engine.transpile.submit')
+    def test_flow_transpile(self, mock_transpile):
+        mock_transpile.return_value = Mock()
+        result, _ = flow_transpile(
+            "",
+            TranspilerBase(),
+            DriverBase(),
+            Constant.PROFILING_TYPES)
+        assert isinstance(result, Mock) is True
+
+    @patch('qcos.engine.job_engine.task_monitor.submit')
+    def test_flow_task_monitor(self, mock_task_monitor):
+        mock_task_monitor.return_value = None
+        assert flow_task_monitor("") is None
+
+    @patch('qcos.engine.job_engine.driver_run.submit')
+    def test_flow_run_driver(self, mock_driver_run):
+        mock_driver_run.return_value = Mock()
+        result, _ = flow_run_driver({}, 6, DriverBase(),
+                                    {}, Constant.PROFILING_TYPES)
+        assert isinstance(result, Mock) is True
+
+    @patch.object(DriverBase, 'get_results')
+    def test_format_run_results(self, mock_get_results):
+        mock_get_results.return_value = "result"
+        driver = DriverDummy()
+        driver.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
+        results = format_run_results(driver, self.job_data["job_id"], 0)
+        assert results["results"] == "result"
+
+    def test_format_error_results(self):
+        driver = DriverDummy()
+        mock_client = Mock()
+        results = format_error_results(driver, mock_client, 0)
+        assert results["results"] is None
+
+    @patch.object(Library, 'async_run_callbacks')
+    @patch.object(Library, 'get_nested_dict_value')
+    def test_job_callback(self, mock_get_nested_dict_value,
+                          mock_async_run_callbacks):
+        mock_get_nested_dict_value.return_value = "value"
+        mock_async_run_callbacks.return_value = None, None
+        flow_run = Mock()
+        state = Mock()
+        state.name = Constant.PREFECT_STATE_CANCELLING
+        flow_run.name = self.job_data["job_id"]
+        flow_run.parameters = "parameters"
+        flow_run.state = Mock()
+        assert asyncio.run(job_callback("flow", flow_run, state)) is None
+
+    @patch('qcos.engine.job_engine.update_progress')
+    def test_task_monitor(self, mock_update_progress):
+        mock_update_progress.return_value = None
+        monitor_info = {
+            "running": False,
+            "driver": DriverBase(),
+            "progress": 30,
+            "source_code_count": 2,
+            "artifact_id": "test_artifact"
+        }
+        assert task_monitor.fn(monitor_info) is None
+
+    def test_parse(self):
+        return_value = parse.fn([], TranspilerBase())
+        assert return_value["parsed_src_code"] is None
+
+    def test_transpile(self):
+        return_value = transpile.fn([], DriverBase, TranspilerBase())
+        assert return_value["transpile_results"] is None
+
+    def test_driver_run(self):
+        return_value = driver_run.fn([], DriverBase, 5, self.job_data)
+        assert return_value["results"] is None

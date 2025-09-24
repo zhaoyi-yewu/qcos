@@ -20,6 +20,7 @@ from unittest.mock import Mock, patch
 from qcos.api.posiq.routes_jsonrpc.device import get_devices, get_device
 from qcos.api.schemas import GetDeviceRequest
 from qcos.common.config import Config
+from qcos.common.constant import Constant
 from qcos.drivers.device import Device
 from qcos.drivers.device_manager import DeviceManager
 from qcos.drivers.driver_manager import DriverManager
@@ -28,6 +29,9 @@ from qcos.task_manager import TaskScheduler
 
 
 class TestDevice:
+    @classmethod
+    def setup_class(cls):
+        cls.dummy = Constant.TRANSPILER_DUMMY
     @patch.object(DeviceManager, 'get_devices')
     @patch.object(TaskScheduler, 'get_device_manager')
     def test_get_devices(self, mock_get_device_manager, mock_get_devices):
@@ -35,15 +39,15 @@ class TestDevice:
         mock_get_device_manager.return_value = DeviceManager(
             Config(), DriverManager())
         mock_client = Mock(spec=GetDeviceRequest)
-        mock_client.name = "name"
+        mock_client.name = self.dummy
         get_devices(mock_client)
 
     @patch.object(DeviceManager, 'get_device')
     @patch.object(TaskScheduler, 'get_device_manager')
     def test_get_device(self, mock_get_device_manager, mock_get_device):
-        mock_get_device.return_value = Device("dummy", DriverDummy())
+        mock_get_device.return_value = Device(self.dummy, DriverDummy())
         mock_get_device_manager.return_value = DeviceManager(
             Config(), DriverManager())
         mock_client = Mock(spec=GetDeviceRequest)
-        mock_client.name = "dummy"
+        mock_client.name = self.dummy
         get_device(mock_client)

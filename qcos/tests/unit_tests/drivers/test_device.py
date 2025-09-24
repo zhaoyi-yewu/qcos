@@ -41,7 +41,7 @@ class TestDevice:
         assert enable is True
 
     def test_set_status(self):
-        assert device.set_status("no_status") is None
+        assert device.set_status("status") is None
         device.set_status(device.DEVICE_STATUS_ONLINE)
         status = device.get_status()
         assert status == "online"

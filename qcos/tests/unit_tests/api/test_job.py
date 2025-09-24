@@ -19,7 +19,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from qcos.api.posiq.routes_jsonrpc.errors import BadRequestError, NotFoundError
+from qcos.api.posiq.routes_jsonrpc.errors import BadRequestError
 from qcos.api.posiq.routes_jsonrpc.job import (
     submit_job, get_job_status, get_job_results,
     get_jobs, cancel_jobs, delete_jobs, set_job_results)
@@ -28,18 +28,24 @@ from qcos.api.schemas import (SubmitJobResponse, GetJobResultsRequest,
 from qcos.client.client import Client
 from qcos.common.config import Config
 from qcos.common.constant import Constant
-from qcos.common.errors import NotFound
 from qcos.common.library import Library
 from qcos.drivers.device import Device
 from qcos.drivers.device_manager import DeviceManager
 from qcos.drivers.driver_manager import DriverManager
 from qcos.drivers.dummy.driver_dummy import DriverDummy
 from qcos.task_manager import TaskScheduler
+from qcos.tests.unit_tests.task_manager.constant_for_test import (
+    ConstantForTest)
 from qcos.transpiler.transpiler_base import TranspilerBase
 from qcos.transpiler.transpiler_manager import TranspilerManager
 
 
 class TestJob:
+    @classmethod
+    def setup_class(cls):
+        cls.job_id = ConstantForTest.job_id
+        cls.job_ids = ConstantForTest.job_ids
+
     @patch.object(Library, 'validate_schema')
     @patch.object(TaskScheduler, 'add')
     @patch.object(TranspilerManager, 'get_transpiler')
@@ -85,7 +91,7 @@ class TestJob:
         mock_client.dry_run = None
 
         mock_validate_schema.return_value = (True, None)
-        mock_add.return_value = iter([{"job_id": "1234"}, None])
+        mock_add.return_value = ([{"job_id": self.job_id}, None])
         mock_get_transpiler_manager.return_value = TranspilerManager()
         mock_get_transpiler.return_value = TranspilerBase()
         mock_get_driver.return_value = DriverDummy()
@@ -125,7 +131,6 @@ class TestJob:
     def test_get_job_status(self, mock_get_result_by_id):
         mock_get_result_by_id.return_value = iter([{"artifact": {
             "progress": -1}}, "err_msg"])
-
         mock_client = Mock(spec=GetJobStatusRequest)
         mock_client.job_id = None
         get_job_status(mock_client)
@@ -136,7 +141,6 @@ class TestJob:
         mock_has_job.return_value = True
         mock_get_result_by_id.return_value = iter([{"artifact": {
             "progress": -1}}, "err_msg"])
-
         mock_client = Mock(spec=GetJobResultsRequest)
         mock_client.job_id = None
         get_job_results(mock_client)
@@ -144,9 +148,8 @@ class TestJob:
     @patch.object(TaskScheduler, 'get_jobs')
     def test_get_jobs(self, mock_get_jobs):
         mock_get_jobs.return_value = iter([[{"job_status": "status",
-                                             "id": "1234",
+                                             "id": self.job_id,
                                              "progress": "pro"}], None])
-
         mock_client = Mock(spec=GetJobResultsRequest)
         mock_client.job_id = None
         get_jobs(mock_client)
@@ -154,19 +157,17 @@ class TestJob:
     @patch.object(TaskScheduler, 'cancel_jobs')
     def test_cancel_jobs(self, mock_cancel_jobs):
         mock_cancel_jobs.return_value = [{"job_state": "state",
-                                          "id": "1234"},]
-
+                                          "id": self.job_id},]
         mock_client = Mock(spec=GetJobResultsRequest)
-        mock_client.job_ids = ["1", "2", "3"]
+        mock_client.job_ids = self.job_ids
         cancel_jobs(mock_client)
 
     @patch.object(TaskScheduler, 'delete_jobs')
     def test_delete_jobs(self, mock_delete_jobs):
         mock_delete_jobs.return_value = [{"job_state": "state",
-                                          "id": "1234"},]
-
+                                          "id": self.job_id},]
         mock_client = Mock(spec=GetJobResultsRequest)
-        mock_client.job_ids = ["1", "2", "3"]
+        mock_client.job_ids = self.job_ids
         delete_jobs(mock_client)
 
     @patch.object(TaskScheduler, 'run_callbacks')
@@ -186,6 +187,6 @@ class TestJob:
         mock_validate_schema.return_value = (True, None)
 
         mock_client = Mock(spec=SetJobResultsRequest)
-        mock_client.job_id = None
-        mock_client.results = {0: {"a": "1"}}
+        mock_client.job_id = self.job_id
+        mock_client.results = {0: {"a": "a"}}
         set_job_results(mock_client)

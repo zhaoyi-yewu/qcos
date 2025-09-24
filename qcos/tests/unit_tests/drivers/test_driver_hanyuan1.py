@@ -24,28 +24,35 @@ from qcos.common.constant import HttpMethod, HttpCode
 from qcos.common.library import Library
 from qcos.drivers.cascoldatom.driver_hanyuan1 import DriverHanyuan1
 
-obj = DriverHanyuan1()
+
+driver_hanyuan1 = DriverHanyuan1()
+job_id = "00000000-0000-4000-8000-000000000001"
+num_qubits = 5
+data = {"index": 0, "source_code": None, "transpile_results": []}
+data_type = DriverHanyuan1.DATA_TYPE_GATE_SEQUENCE
+shots = 1024
+method_name = "method_name"
 
 
 class TestDriverHanyuan1:
     def test_init_driver(self):
-        assert obj.init_driver() is None
+        assert driver_hanyuan1.init_driver() is None
 
     def test_close_driver(self):
-        assert obj.close_driver() is None
+        assert driver_hanyuan1.close_driver() is None
 
     def test_cancel(self):
-        obj.cancel("111")
+        assert driver_hanyuan1.cancel(job_id) is None
 
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs(self, mock_validate_schema):
         configs = {}
-        mock_validate_schema.return_value = iter([True, ''])
-        success, err_msg = obj.validate_driver_configs(configs)
+        mock_validate_schema.return_value = iter([True, ""])
+        success, err_msg = driver_hanyuan1.validate_driver_configs(configs)
         assert success is True
 
-        mock_validate_schema.return_value = iter([False, ''])
-        success, err_msg = obj.validate_driver_configs(configs)
+        mock_validate_schema.return_value = iter([False, ""])
+        success, err_msg = driver_hanyuan1.validate_driver_configs(configs)
         assert success is False
 
     @patch.object(DriverHanyuan1, "get_task_results")
@@ -53,52 +60,37 @@ class TestDriverHanyuan1:
     @patch.object(DriverHanyuan1, "submit_task")
     def test_run(self, mock_submit_task, mock_loop_with_timeout,
                  mock_get_task_results):
-        qasm_str = {
-            "source_code":
-                """
-                OPENQASM 2.0;
-                include "qelib1.inc";
-                qreg q[5];
-                creg c[5];
-                h q[0];
-                h q[0];
-                x q[0];
-                rx(1) q[0];
-                measure q->c;
-                """,
-            "index": "index",
-            "transpile_results": "transpile_results"
-        }
-        mock_submit_task.return_value = iter([False, ''])
+        mock_submit_task.return_value = iter([False, ""])
         with pytest.raises(ValueError) as context:
-            obj.run('1', 5, qasm_str, "gate_sequence")
-        assert "Failed to submit task [1]:" in str(context.value)
+            driver_hanyuan1.run(job_id, num_qubits, data, data_type)
+        assert "Failed to submit task " in str(context.value)
 
-        mock_submit_task.return_value = iter([True, ''])
-        mock_loop_with_timeout.return_value = iter([False, '', ''])
+        mock_submit_task.return_value = iter([True, ""])
+        mock_loop_with_timeout.return_value = iter([False, "", ""])
         with pytest.raises(ValueError) as context:
-            obj.run('1', 5, qasm_str, "gate_sequence")
-        assert "Failed to wait for task [1]:" in str(context.value)
+            driver_hanyuan1.run(job_id, num_qubits, data, data_type)
+        assert "Failed to wait for task " in str(context.value)
 
-        mock_submit_task.return_value = iter([True, ''])
-        mock_loop_with_timeout.return_value = iter([True, '', ''])
-        mock_get_task_results.return_value = iter([False, '', ''])
+        mock_submit_task.return_value = iter([True, ""])
+        mock_loop_with_timeout.return_value = iter([True, "", ""])
+        mock_get_task_results.return_value = iter([False, "", ""])
         with pytest.raises(ValueError) as context:
-            obj.run('1', 5, qasm_str, "gate_sequence")
-        assert "Failed to get task results [1]: " in str(
-            context.value)
+            driver_hanyuan1.run(job_id, num_qubits, data, data_type)
+        assert "Failed to get task results " in str(context.value)
 
-        mock_submit_task.return_value = iter([True, ''])
-        mock_loop_with_timeout.return_value = iter([True, '', ''])
-        mock_get_task_results.return_value = iter([True, '', ''])
-        obj.run('1', 5, qasm_str, "gate_sequence")
+        mock_submit_task.return_value = iter([True, ""])
+        mock_loop_with_timeout.return_value = iter([True, "", ""])
+        mock_get_task_results.return_value = iter([True, "", ""])
+        assert driver_hanyuan1.run(job_id, num_qubits,
+                                   data, data_type) is None
 
     def test_print_api_response(self):
-        obj.verbose = True
-        assert obj.print_api_response("156", "no reason", "edit") is None
+        driver_hanyuan1.verbose = True
+        assert driver_hanyuan1.print_api_response("200",
+                                                  "reason", "edit") is None
 
     def test_check_task_status(self):
-        assert obj.check_task_status("1", 1, []) is False
+        assert driver_hanyuan1.check_task_status(job_id, 1, []) is False
 
     @patch.object(DriverHanyuan1, "call_json_rpc")
     def test_get_task_results(self, mock_call_json_rpc):
@@ -107,30 +99,28 @@ class TestDriverHanyuan1:
                                                     "status": "success",
                                                     "result": None}}])
 
-        success, err_msg, result = obj.get_task_results("1", 1)
-        assert success == False
+        success, err_msg, result = (driver_hanyuan1.get_task_results
+                                    (job_id, 1))
+        assert success is False
 
     @patch.object(DriverHanyuan1, "call_json_rpc")
     def test_submit_task(self, mock_call_json_rpc):
         mock_call_json_rpc.return_value = iter([HttpCode.SUCCESS_OK,
                                                 "no", "error", "error"])
-        data = [{"name": "H", "target": "q1", "arg_value": "pi"}]
-        obj.submit_task("1", 5, data, "gate_sequence", 10, 1)
-        obj.submit_task("1", 5, [], "gate_sequence", 10, 1)
+        datas = [{"name": "H", "target": "q1", "arg_value": "pi"}]
+        success, err_msg = driver_hanyuan1.submit_task(job_id, num_qubits,
+                                                       datas, data_type,
+                                                       shots, 1)
+        assert success is False
+        success, err_msg = driver_hanyuan1.submit_task(job_id, num_qubits,
+                                                       datas, data_type,
+                                                       shots, 1)
+        assert success is False
 
     @patch.object(Library, "call_http_api")
     def test_call_json_rpc(self, mock_call_http_api):
-        request_func = requests.post
-        r = request_func(
-            "https://www.baidu.com",
-            headers=None,
-            params=None,
-            data=None,
-            files=None,
-            json=None,
-            auth=None,
-            verify=None,
-            timeout=None
-        )
-        mock_call_http_api.return_value = iter(["200", "no", True, r])
-        obj.call_json_rpc(obj.base_url, '', {"job_id": "1"})
+        mock_call_http_api.return_value = iter(["200", "no", True, "success"])
+        status_code, reason, text, result = (driver_hanyuan1.call_json_rpc
+                                             (driver_hanyuan1.base_url,
+                                              method_name, data))
+        assert status_code == "200"

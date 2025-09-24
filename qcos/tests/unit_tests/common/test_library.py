@@ -18,7 +18,7 @@
 import asyncio
 import os
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 from qcos.common.library import Library
 
@@ -27,15 +27,20 @@ library = Library()
 
 class TestLibrary:
     def test_get_brief_description(self):
-        description = "1 2 3 4 5"
+        description = "description"
         brief = library.get_brief_description(description)
         assert brief == description
 
     def test_update_dict(self):
-        new_kvs = {"a": "b", "c": "d"}
-        dictionary = {"a": "c"}
+        new_kvs = {"key1": "new_value1", "key2": "value2"}
+        dictionary = {"key1": "value1"}
         dictionary = library.update_dict(dictionary, new_kvs)
-        assert dictionary == {"a": "b"}
+        assert dictionary == {"key1": "new_value1"}
+
+    def test_remove_duplicates(self):
+        lst = ["value1", "value2"]
+        new_list = library.remove_duplicates(lst)
+        assert new_list == lst
 
     def test_create_pid_file(self):
         library.create_pid_file("test-pid_file.txt")
@@ -43,7 +48,8 @@ class TestLibrary:
         library.create_pid_file("")
 
     def test_find_dirs(self):
-        library.find_dirs(base_dir="tests", recursive=True)
+        dirs = library.find_dirs(base_dir="tests", recursive=True)
+        assert not dirs
 
     def test_find_files(self):
         library.find_files("tests", recursive=True, exclusives="_init_")
@@ -54,15 +60,20 @@ class TestLibrary:
         assert library.mkdir("test-file") is not None
 
     def test_rm_file(self):
-        assert library.rm_file("test.txt") is True
+        success = library.rm_file("test.txt")
         library.rm_file("no_such_dir")
+        assert success is True
 
     def test_import_classes(self):
-        library.import_classes("logger")
+        classes = library.import_classes("logger")
+        assert not classes
 
     def test_str_match(self):
-        assert library.str_match("abc", "abc", ignore_case=True) is True
-        assert library.str_match("abc", "abc") is True
+        success = library.str_match("abc", "abc", ignore_case=True)
+        assert success is True
+
+        success = library.str_match("abc", "abc")
+        assert success is True
 
     def test_read_file(self):
         content = library.read_file("test-pid_file.txt")
@@ -79,85 +90,143 @@ class TestLibrary:
         assert content is not None
 
     def test_read_csv_file(self):
-        library.read_csv_file("test-pid_file.txt")
+        assert library.read_csv_file("test-pid_file.txt") is not None
 
     def test_read_toml_file(self):
-        library.read_toml_file("test-pid_file.toml")
+        success, _, _ = library.read_toml_file("test-pid_file.toml")
+        assert success is False
         library.read_toml_file("")
 
     def test_write_to_toml(self):
         data = {"a": "b", "c": "d"}
-        library.write_to_toml(data, "test-pid_file.toml")
-        library.write_to_toml(data, "")
+        success, _ = library.write_to_toml(data, "test-pid_file.toml")
+        assert success is True
+
+        success, _ = library.write_to_toml(data, "")
+        assert success is False
 
     def test_write_to_file(self):
         data = {"a": "b", "c": "d"}
-        library.write_to_file(data, "test-pid_file.txt")
+        success, _ = library.write_to_file(data, "test-pid_file.txt")
+        assert success is False
 
     def test_get_current_datetime(self):
-        library.get_current_datetime()
+        times = library.get_current_datetime()
+        assert times == datetime.now()
 
     def test_validate_values_enum(self):
         value = ["6", "7", "8", "9"]
-        library.validate_values_enum("9", "Tzeentch", value)
-        library.validate_values_enum(None, "Tzeentch",
-                                     value, allow_none=True)
-        library.validate_values_enum("13", "Tzeentch", value)
+        success, _ = library.validate_values_enum("9", "Tzeentch", value)
+        assert success is True
+
+        success, _ = library.validate_values_enum(None, "Tzeentch",
+                                                  value, allow_none=True)
+        assert success is True
+
+        success, _ = library.validate_values_enum("13", "Tzeentch", value)
+        assert success is False
 
     def test_validate_values_uuid(self):
-        library.validate_values_uuid("9", "Tzeentch")
+        success, _ = library.validate_values_uuid("9", "Tzeentch")
+        assert success is False
 
     def test_validate_values_range(self):
-        library.validate_values_range(9, "Tzeentch")
-        library.validate_values_range(9, "Tzeentch",
-                                      min_value=13, max_value=6)
+        success, _ = library.validate_values_range(9, "Tzeentch")
+        assert success is True
+
+        success, _ = library.validate_values_range(9, "Tzeentch",
+                                                   min_value=13, max_value=6)
+        assert success is False
 
     def test_validate_values_length(self):
-        library.validate_values_length(None, "Tzeentch", allow_none=True)
-        library.validate_values_length(
-            "99", "Tzeentch", min_value=13, max_value=1)
-        library.validate_values_length("9", "Tzeentch")
+        success, _ = library.validate_values_length(None, "Tzeentch",
+                                                    allow_none=True)
+        assert success is True
+
+        success, _ = library.validate_values_length("99", "Tzeentch",
+                                                    min_value=13, max_value=1)
+        assert success is False
+
+        success, _ = library.validate_values_length("9", "Tzeentch")
+        assert success is True
 
     def test_validate_values_list(self):
         value = "987613"
-        library.validate_values_list(value, "Tzeentch", "chaos")
+        success, _ = library.validate_values_list(value, "Tzeentch", "chaos")
+        assert success is False
+
         value = [9, 8, 7, 6, 13]
-        library.validate_values_list(value, "Tzeentch", str)
+        success, _ = library.validate_values_list(value, "Tzeentch", str)
+        assert success is False
+
         value = [False, False]
-        library.validate_values_list(value, "Tzeentch", bool)
-        library.validate_values_list(value, "Tzeentch",
-                                     bool, allow_none=True)
+        success, _ = library.validate_values_list(value, "Tzeentch", bool)
+        assert success is False
+
+        success, _ = library.validate_values_list(value, "Tzeentch",
+                                                  bool, allow_none=True)
+        assert success is True
 
     def test_validate_schema(self):
-        library.validate_schema("9", "Tzeentch")
-        library.validate_schema(None, "Tzeentch", allow_none=True)
-        library.validate_schema("9", None)
+        success, _ = library.validate_schema("9", "Tzeentch")
+        assert success is False
+
+        success, _ = library.validate_schema(None, "Tzeentch",
+                                             allow_none=True)
+        assert success is True
+
+        success, _ = library.validate_schema("9", None)
+        assert success is False
 
     def test_is_valid_url(self):
-        library.is_valid_url("https://example.com", "Tzeentch")
+        success = library.is_valid_url("127.0.0.1", "Tzeentch")
+        assert success is False
 
     def test_get_zip_content(self):
-        library.get_zip_content("pid_file.zip")
+        success, _, _ = library.get_zip_content("pid_file.zip")
+        assert success is False
 
     def test_get_nested_dict_value(self):
         dictionary = {"a": "b", "c": "d"}
         keys = {"1": "1", "2": "2"}
-        library.get_nested_dict_value(dictionary, keys)
+        default = library.get_nested_dict_value(dictionary, keys)
+        assert default is None
 
-    def test_run_callbacks(self):
-        data = ["Tzeentch", "Nurgle", "Khorne", "Slaanesh"]
-        callbacks = [{"T": "Tzeentch", "N": "Nurgle",
-                      "K": "Khorne", "S": "Slaanesh",
-                      "url": "https://baidu.com"},
-                     {"E": "Emperor"},]
-        library.run_callbacks(data, callbacks)
+    @patch('requests.post')
+    def test_run_callbacks(self, mock_post):
+        data = {
+            "job_id": "job_id",
+            "job_status": "job_status",
+            "backend": "backend",
+            "results": "results"
+        }
+        callbacks = [{"method": "post", "headers": {},
+                      "retries": 3, "timeout": 10,
+                      "url": "127.0.0.1"},]
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": "success"}
+        mock_post.return_value = mock_response
+        success, _ = library.run_callbacks(data, callbacks)
+        assert success is True
 
-    def test_async_run_callbacks(self):
-        data = ["Tzeentch", "Nurgle", "Khorne", "Slaanesh"]
-        callbacks = [{"T": "Tzeentch", "N": "Nurgle",
-                      "K": "Khorne", "S": "Slaanesh"},
-                     {"E": "Emperor", "url": "https://baidu.com"},]
-        asyncio.run(library.async_run_callbacks(data, callbacks))
+    @patch('requests.post')
+    def test_async_run_callbacks(self, mock_post):
+        data = {
+            "job_id": "job_id",
+            "job_status": "job_status",
+            "backend": "backend",
+            "results": "results"
+        }
+        callbacks = [{"method": "post", "headers": {},
+                      "retries": 3, "timeout": 10,
+                      "url": "127.0.0.1"},]
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": "success"}
+        mock_post.return_value = mock_response
+        success, _ = asyncio.run(library.async_run_callbacks(data, callbacks))
+        assert success is False
 
     def test_get_sorted_keys(self):
         sort_obj = {"Tzeentch": datetime(2999, 12, 31, 23, 59, 59, 0),

@@ -20,41 +20,45 @@ from unittest.mock import patch
 from qcos.common.library import Library
 from qcos.drivers.dummy.driver_dummy import DriverDummy
 
-obj = DriverDummy()
+driver_dummy = DriverDummy()
+job_id = "00000000-0000-4000-8000-000000000001"
+num_qubits = 5
+data_type = DriverDummy.DATA_TYPE_GATE_SEQUENCE
+qasm_str = {
+    "source_code":
+        """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[5];
+        creg c[5];
+        h q[0];
+        h q[0];
+        x q[0];
+        rx(1) q[0];
+        measure q->c;
+        """,
+    "index": "index"}
 
 
 class TestDriverDummy:
 
     def test_init_driver(self):
-        assert obj.init_driver() is None
+        assert driver_dummy.init_driver() is None
 
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs(self, mock_validate_schema):
         configs = {}
-        mock_validate_schema.return_value = iter([True, ''])
-        success, err_msg = obj.validate_driver_configs(configs)
+        mock_validate_schema.return_value = iter([True, ""])
+        success, err_msg = driver_dummy.validate_driver_configs(configs)
         assert success is True
 
-        mock_validate_schema.return_value = iter([False, ''])
-        success, err_msg = obj.validate_driver_configs(configs)
+        mock_validate_schema.return_value = iter([False, ""])
+        success, err_msg = driver_dummy.validate_driver_configs(configs)
         assert success is False
 
     def test_close_driver(self):
-        assert obj.close_driver() is None
+        assert driver_dummy.close_driver() is None
 
     def test_run(self):
-        qasm_str = {
-            "source_code":
-                """
-                OPENQASM 2.0;
-                include "qelib1.inc";
-                qreg q[5];
-                creg c[5];
-                h q[0];
-                h q[0];
-                x q[0];
-                rx(1) q[0];
-                measure q->c;
-                """,
-            "index": "index"}
-        obj.run('1', 5, qasm_str, "gate_sequence")
+        assert driver_dummy.run(job_id, num_qubits,
+                                qasm_str, data_type) is None
