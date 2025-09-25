@@ -126,7 +126,6 @@ def handle_errors(err_cls, module_name, func_name, results, param_name, code):
         raise error
 
 
-@staticmethod
 def handle_error_bad_requests(
         module_name, func_name, results, param_name=None, code=None):
     """Handle bad_requests error

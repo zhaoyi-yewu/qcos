@@ -70,6 +70,7 @@ dependencies = [
     "typing_extensions==4.13.2",
     "uvicorn==0.34.2",
     "wheel==0.45.1",
+    "zerorpc==0.6.3",  # SpinQ driver only
 
     # test-requirements
     "bandit>=1.8.6",

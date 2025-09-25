@@ -411,14 +411,14 @@ class Library:
             allow_none: allow None value (Default value = False)
 
         Returns:
-            True or False
+            success of failed (bool), error message list
         """
         if value is None and allow_none:
             return True, None
         if value not in value_list:
-            return (False,
-                    f"Invalid params: {param_name}={value}. "
-                    f"reason: valid values: {', '.join(value_list)}")
+            err_msg = f"Invalid params: {param_name}={value}. "\
+                      f"reason: valid values: {', '.join(value_list)}"
+            return False, [err_msg]
         return True, None
 
     @staticmethod
@@ -430,16 +430,18 @@ class Library:
             param_name: param name
 
         Returns:
-            True or False
+            success of failed (bool), error message list
         """
         try:
             uuid_obj = uuid.UUID(value, version=4)
             if str(uuid_obj) != value:
-                return (False, f"Invalid params: {param_name}={value}. "
-                               f"reason: UUID version error")
+                err_msg = f"Invalid params: {param_name}={value}. "\
+                          f"reason: UUID version error"
+                return False, [err_msg]
         except ValueError:
-            return (False, f"Invalid params: {param_name}={value}. "
-                           f"reason: UUID value error")
+            err_msg = f"Invalid params: {param_name}={value}. "\
+                      f"reason: UUID value error"
+            return False, [err_msg]
         return True, None
 
     @staticmethod
@@ -454,7 +456,7 @@ class Library:
             max_value: maximum value (Default value = None)
 
         Returns:
-            True or False
+            success of failed (bool), error message list
         """
         err_msgs = []
         if min_value:
@@ -483,7 +485,7 @@ class Library:
             allow_none: allow None value (Default value = False)
 
         Returns:
-            True or False
+            success of failed (bool), error message list
         """
         err_msgs = []
         if value is None and allow_none:
@@ -514,21 +516,23 @@ class Library:
             allow_none: allow None value (Default value = False)
 
         Returns:
-            True or False
+            success of failed (bool), error message list
         """
         if not isinstance(value, list):
-            return (False, f"Invalid params: {param_name}={value}. "
-                           f"reason: type: list is required")
+            err_msg = f"Invalid params: {param_name}={value}. "\
+                      f"reason: type: list is required"
+            return False, [err_msg]
         for _value in value:
             if not isinstance(_value, value_type):
-                return (False, f"Invalid params: {param_name}={value}. "
-                               f"reason: valid list element value type: "
-                               f"{value_type}")
+                err_msg = f"Invalid params: {param_name}={value}. "\
+                          f"reason: valid list element value type: "\
+                          f"{value_type}"
+                return False, [err_msg]
             if not allow_none and not _value:
-                return (
-                    False,
-                    f"Invalid params: {param_name}={value}. "
-                    f"reason: None or empty element in list is not allowed")
+                err_msg = f"Invalid params: {param_name}={value}. "\
+                          f"reason: None or empty element in list is "\
+                          f"not allowed"
+                return False, [err_msg]
         return True, None
 
     @staticmethod
@@ -541,21 +545,21 @@ class Library:
             allow_none: allow None value (Default value = False)
 
         Returns:
-            None if success or error message
+            success of failed (bool), error message list
         """
         success = True
         err_msg = None
         if value is None and allow_none:
             return True, None
         if not schema_obj:
-            return False, "schema is not defined, value is not allowed"
+            return False, ["schema is not defined, value is not allowed"]
         try:
             _schema = Schema(schema_obj)
             _schema.validate(value)
         except Exception as e:
             success = False
             err_msg = str(e)
-        return success, err_msg
+        return success, [err_msg]
 
     @staticmethod
     def call_http_api(
@@ -738,7 +742,7 @@ class Library:
 
     @staticmethod
     def loop_with_timeout(condition_check, timeout, interval,
-                          *args, **kw_args):
+                          *args, **kwargs):
         """Wait loop with timeout
 
         Args:
@@ -746,9 +750,9 @@ class Library:
             timeout: timeout in seconds
             interval: interval in seconds
             args: arguments to function condition_check
-            kw_args: keyword arguments to function condition_check
+            kwargs: keyword arguments to function condition_check
             *args: arguments to function condition_check
-            **kw_args: keyword arguments to function condition_check
+            **kwargs: keyword arguments to function condition_check
 
         Returns:
             True if condition met, False otherwise
@@ -757,7 +761,7 @@ class Library:
         start_time = time.time()
         while True:
             # check condition
-            result = condition_check(*args, **kw_args)
+            result = condition_check(*args, **kwargs)
             if result:
                 return True, err_msg, result
 

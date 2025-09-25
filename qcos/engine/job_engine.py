@@ -89,18 +89,38 @@ def init_driver(driver_info, driver_options, device):
         # copy device configs to driver
         driver.set_configs(device_configs)
 
+        # init driver
+        driver.init_driver()
+
+        # init job
+        remote_transpiler_configs = driver.fetch_configs()
+
         # copy cfgs to transpiler cfg inst
         if driver.enable_transpiler:
-            transpiler_configs = device_configs.get("transpiler", None)
+            static_transpiler_configs = device_configs.get("transpiler", None)
             trans_cfg_inst.set_max_qubits(driver.get_max_qubits())
             trans_cfg_inst.set_tech_type(driver.tech_type)
             trans_cfg_inst.set_driver_name(driver.get_name())
-            if transpiler_configs:
-                qpu_configs = transpiler_configs.get("qpu_configs", None)
-                decomposition_rule = transpiler_configs.get(
+
+            # config qpu_config/decomposition_rule from config file
+            if static_transpiler_configs:
+                qpu_configs = static_transpiler_configs.get("qpu_configs",
+                                                            None)
+                decomposition_rule = static_transpiler_configs.get(
                     "decomposition_rule", None)
                 trans_cfg_inst.set_qpu_cfg(qpu_configs)
                 trans_cfg_inst.set_decompose_rule(decomposition_rule)
+
+            # config qpu_config/decomposition_rule dynamically
+            # override static_transpiler_configs if necessary
+            if remote_transpiler_configs:
+                qpu_configs = remote_transpiler_configs.get("qpu_configs",
+                                                             None)
+                decomposition_rule = remote_transpiler_configs.get(
+                    "decomposition_rule", None)
+                trans_cfg_inst.set_qpu_cfg(qpu_configs)
+                trans_cfg_inst.set_decompose_rule(decomposition_rule)
+
         return {"driver": driver, "error": None}
     except Exception as e:
         return {"driver": None, "error": ValueError(str(e))}
@@ -537,6 +557,28 @@ def get_external_aggregated_results(job_results, mapping_dict):
 def job_flow(job_info):
     """Job flow
 
+    Detail of job flow:
+    Create task_monitor -> Handle Circuit-Aggregation ->
+    loop src_code_list ->
+    [
+        run_code ->
+            init_driver ->
+                driver.validate_driver_configs(device_configs)
+                driver.set_configs(device_configs)
+                driver.init_driver() ->
+                driver.fetch_configs() ->
+            init_transpiler ->
+            flow_parse ->
+                transpiler.parse() ->
+            flow_transpile ->
+                transpiler.transpile() ->
+            flow_run_driver ->
+                driver_run ->
+                    driver.run() / driver.dry_run() ->
+        get_results
+    ]
+    return job_results_list
+
     Args:
         job_info: job info
 
@@ -796,7 +838,7 @@ def flow_parse(src_code_dict,
 
     # parser
     parse_task = parse.submit(src_code_dict, transpiler,
-        wait_for=[init_driver, init_transpiler])
+                              wait_for=[init_driver, init_transpiler])
     parse_task_result = parse_task.result()
 
     if (Constant.PROFILING_TYPE_DRIVER_PARSE in profiling_types or

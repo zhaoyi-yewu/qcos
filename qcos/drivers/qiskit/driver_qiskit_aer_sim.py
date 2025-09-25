@@ -62,7 +62,14 @@ class DriverQiskitAerSim(DriverBase):
 
     def close_driver(self):
         """Close driver"""
-        self.set_device_status(Device.DEVICE_STATUS_OFFLINE)
+
+    def fetch_configs(self):
+        """
+        Fetch configs
+
+        Returns:
+            remote transpiler configs
+        """
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
         """Run job

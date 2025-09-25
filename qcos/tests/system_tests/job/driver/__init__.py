@@ -14,11 +14,3 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-
-import sys
-
-from qcos.transpiler.cmss.transpiler_cmd_line import main
-
-
-if __name__ == "__main__":
-    sys.exit(main())

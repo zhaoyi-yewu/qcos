@@ -74,6 +74,9 @@ class DriverBase:
         self.enable_circuit_aggregation = False
         # max number of qubits
         self.max_qubits = 0
+        # available number of qubits.
+        # This value may vary according to the status of quantum hardware
+        self.available_num_qubits = -1
         # supported basis gates
         self.supported_basis_gates = None
         # supported transpilers
@@ -110,14 +113,20 @@ class DriverBase:
         """Validate driver"""
         success = True
         err_msgs = []
-        if self.enable_transpiler and self.supported_code_types:
-            success = False
-            err_msgs.append("supported_code_types should not be specified "
-                            "when driver.enable_transpiler=True")
-        elif not self.enable_transpiler and not self.supported_code_types:
-            success = False
-            err_msgs.append("supported_code_types must be specified "
-                            "when driver.enable_transpiler=False")
+        if self.enable_transpiler:
+            if self.supported_code_types:
+                success = False
+                err_msgs.append("supported_code_types should not be specified "
+                                "when driver.enable_transpiler=True")
+            if self.transpiler not in self.supported_transpilers:
+                success = False
+                err_msgs.append("driver.transpiler must be specified in "
+                                "driver.supported_transpilers list")
+        else:
+            if not self.supported_code_types:
+                success = False
+                err_msgs.append("supported_code_types must be specified "
+                                "when driver.enable_transpiler=False")
         return success, "\n".join(err_msgs)
 
     def validate_driver_configs(self, configs):
@@ -325,6 +334,16 @@ class DriverBase:
         """
         return self.job_runtime_data["configs"]
 
+    def fetch_configs(self):
+        """
+        Fetch configs
+
+        Returns:
+            remote transpiler configs
+        """
+        raise NotImplementedError(f"Driver: {self.__class__.__name__} "
+                                  f"must implement method: fetch_configs")
+
     def run(self, job_id, num_qubits, data,
             data_type=DATA_TYPE_GATE_SEQUENCE, shots=1):
         """Run job
@@ -372,6 +391,7 @@ class DriverBase:
 
     def set_results(self, job_id, data_index, results):
         """Set job results
+        Sample: results = {"00": 9, "11": 1}
 
         Args:
             job_id: job ID

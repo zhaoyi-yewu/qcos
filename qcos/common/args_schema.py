@@ -23,10 +23,11 @@ from .library import Library
 
 NAME_SCHEMA = And(
     Use(str),
-    lambda s: 1 <= len(s) <= 20,
+    lambda s: 1 <= len(s) <= 64,
     Regex(r'^[a-zA-Z0-9_\-]+$'),
-    error="String must contains: letters, numbers, dashes, underscores, "
-          "and string length must between [1-20]."
+    error="Name can only consist of the following parts: "
+          "letters, numbers, dashes, underscores. "
+          "The length of name must between [1-64]."
 )
 SOURCE_CODE_SCHEMA = list
 SOURCE_CODE_TEXT_SCHEMA = [str]

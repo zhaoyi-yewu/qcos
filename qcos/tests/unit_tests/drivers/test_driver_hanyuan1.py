@@ -15,10 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from unittest.mock import patch
-
 import pytest
 import requests
+
+from unittest.mock import patch
 
 from qcos.common.constant import HttpMethod, HttpCode
 from qcos.common.library import Library

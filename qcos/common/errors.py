@@ -46,6 +46,7 @@ class GenericException(BaseException):
 class InvalidArguments(BaseException):
     """Invalid arguments"""
 
+    module_name = "Generic"
     error_code = -11
     err_type = "Invalid arguments"
 
@@ -53,6 +54,7 @@ class InvalidArguments(BaseException):
 class NotFound(BaseException):
     """Not Found"""
 
+    module_name = "Generic"
     error_code = -12
     err_type = "Not Found"
 

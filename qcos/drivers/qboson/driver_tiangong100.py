@@ -99,6 +99,7 @@ class DriverTiangong100(DriverBase):
             Constant.CODE_TYPE_QUBO
         ]
         self.token = None
+        self.base_url = None
         # task stages and percentages
         self.task_stages = {
             self.TASK_STAGE_START: 0,
@@ -157,8 +158,14 @@ class DriverTiangong100(DriverBase):
 
     def close_driver(self):
         """Close driver"""
-        # pylint: disable=duplicate-code
-        self.set_device_status(Device.DEVICE_STATUS_OFFLINE)
+
+    def fetch_configs(self):
+        """
+        Fetch configs
+
+        Returns:
+            remote transpiler configs
+        """
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
         """Run job
@@ -541,7 +548,10 @@ class DriverTiangong100(DriverBase):
             err_code = response["code"]
             err_msg = response["msg"]
             if err_code == "0":
-                results = response["data"]["out_data"]
+                results = {
+                    "out_data": response["data"]["out_data"],
+                    "visual_data": response["data"]["visual_data"]
+                }
             else:
                 success = False
                 err_msgs.append(err_msg)

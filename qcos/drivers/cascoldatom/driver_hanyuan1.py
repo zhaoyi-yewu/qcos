@@ -16,12 +16,12 @@
 # ----------------------------------------------------------------------
 
 import copy
-from loguru import logger
-import time
-from schema import Optional, Or
-
 import requests
+import time
+
 from jsonrpcclient import request
+from loguru import logger
+from schema import Optional, Or
 
 from qcos.common.constant import Constant, HttpMethod, HttpCode
 from qcos.common.library import Library
@@ -112,7 +112,8 @@ class DriverHanyuan1(DriverBase):
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema)
         if not _success:
-            err_msg = f"driver config file error: {err_msgs}"
+            _err_msg = "\n".join(err_msgs)
+            err_msg = f"driver config file error: {_err_msg}"
             success = False
         else:
             # copy configs to self.qpu_configs
@@ -125,7 +126,14 @@ class DriverHanyuan1(DriverBase):
 
     def close_driver(self):
         """Close driver"""
-        self.set_device_status(Device.DEVICE_STATUS_OFFLINE)
+
+    def fetch_configs(self):
+        """
+        Fetch configs
+
+        Returns:
+            remote transpiler configs
+        """
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
         """Run job

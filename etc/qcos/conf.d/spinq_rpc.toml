@@ -1,0 +1,43 @@
+[spinq_rpc]
+alias_name = "量旋科技 超导驱动 (RPC版本)"
+driver = "DriverSpinQRpc"
+description = "量旋科技 超导驱动 (RPC版本)"
+
+rpc_host = "127.0.0.1"
+rpc_port = 4242
+username = "user"
+password = ""
+
+[spinq_rpc.transpiler.qpu_configs]
+# TODO(zhaoyi): to be defined
+qubits = 25
+storage_area = ["S27", "S28", "S29", "S35", "S36", "S37"]
+operate_area = ["P27", "P28", "P29", "P35", "P36", "P37"]
+
+coupler_map.G0 = ["P27", "P35"]
+coupler_map.G1 = ["P28", "P36"]
+coupler_map.G2 = ["P29", "P37"]
+coupler_map.G3 = ["P27", "P28"]
+coupler_map.G4 = ["P35", "P36"]
+coupler_map.G5 = ["P28", "P29"]
+
+readout_error.S27 = 1.0
+readout_error.S28 = 2.0
+readout_error.S35 = 3.0
+readout_error.S36 = 4.0
+readout_error.S29 = 5.0
+readout_error.S37 = 6.0
+
+coupler_error.G0 = 3.0
+coupler_error.G1 = 3.0
+coupler_error.G2 = 3.0
+coupler_error.G3 = 3.0
+coupler_error.G4 = 3.0
+coupler_error.G5 = 3.0
+
+closest.P27 = "S27"
+closest.P28 = "S28"
+closest.P35 = "S35"
+closest.P36 = "S36"
+closest.P29 = "S29"
+closest.P37 = "S37"

@@ -839,13 +839,10 @@ class SubmitJob(Command):
         # Validate argument: source_code
         CommandHelper.handle_invalid_arguments(Library.validate_schema(
             source_code_list, args_schema.SOURCE_CODE_SCHEMA))
-        if not source_code_list:
-            raise errors.InvalidArguments(
-                "Empty argument: source_code_files is not allowed")
 
         if not source_code_list:
             raise errors.InvalidArguments(
-                "source_code should not be empty")
+                "Invalid argument: source_code_list is required")
 
         # Validate argument: job_name
         if job_name:

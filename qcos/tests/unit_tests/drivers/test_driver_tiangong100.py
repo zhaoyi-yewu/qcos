@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import json
 from unittest.mock import patch
 
 import pytest
@@ -214,12 +215,16 @@ class TestDriverTiangong100:
 
     @patch.object(Library, "call_http_api")
     def test_get_task_results(self, mock_call_http_api):
-
-        mock_call_http_api.return_value = iter([200, '', '{"code": "0",'
-                                                         '"msg": "Bob",'
-                                                         '"data": {'
-                                                         '"out_data": 0'
-                                                         '}}', ''])
+        response = {
+            "code": "0",
+            "msg": "Bob",
+            "data": {
+                "out_data": [],
+                "visual_data": []
+            }
+        }
+        mock_call_http_api.return_value = iter([200, '',
+                                                json.dumps(response), ''])
         success, err_msg, result = obj.get_task_results("1")
         assert success is True
 

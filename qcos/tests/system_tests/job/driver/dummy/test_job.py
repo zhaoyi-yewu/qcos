@@ -77,6 +77,7 @@ class TestJob:
         assert status_code == HttpCode.SUCCESS_OK
         json_results = json.loads(text)
         result = json_results["result"]
+
         # check results from submit_job
         assert result["job_id"] == job_id
         assert result["job_name"] == job_name
@@ -101,8 +102,19 @@ class TestJob:
             job_id)
         # wait for additional time for job to finish resource cleanup
         time.sleep(5)
+
+        # check results
+        status_code, reason, text, response = self.client.get_job_results(
+            job_id)
+        assert status_code == HttpCode.SUCCESS_OK
+        job_result = json.loads(text)
+        job_error = job_result.get("error", {})
+        error_code = job_error.get("code", 0)
+        assert error_code == 0
         status_code, reason, text, response = self.client.delete_jobs([job_id])
         assert status_code == HttpCode.SUCCESS_OK
+
+        # check if job deleted
         status_code, reason, text, response = self.client.get_job_results(
             job_id)
         assert status_code == HttpCode.SUCCESS_OK
