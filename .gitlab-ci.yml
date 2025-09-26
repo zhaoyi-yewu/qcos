@@ -1,0 +1,18 @@
+# 阶段
+stages:
+  - build
+  - pylint
+
+# 拉取项目，打包
+build:
+  stage: build # 阶段名称 对应，stages
+  tags: # runner 标签(注册runner时设置的，可在 admin->runner中查看)
+    - sonic-runner
+  script: # 脚本（执行的命令行）
+    - echo "build success!!"
+pylint:
+  stage: pylint # 阶段名称 对应，stages
+  tags:
+    - sonic-runner
+  script: # 脚本pylint检查
+    - pylint src/

@@ -1,0 +1,6 @@
+*__pycache__*
+*.pyc
+.idea
+cna/core/compiler/parser.out
+cna/core/compiler/parsetab.py
+*.log
