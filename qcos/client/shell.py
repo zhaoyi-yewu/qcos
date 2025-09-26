@@ -766,10 +766,9 @@ class SubmitJob(Command):
                             default=None,
                             help="Set driver options")
         parser.add_argument("--transpiler", dest="transpiler",
-                            # choices=Constant.TRANSPILER_TYPES,
-                            help="Set transpiler name")
-        parser.add_argument("--transpiler-info",
-                            dest="transpiler_info", type=str,
+                            help="Set transpiler name. eg. cmss")
+        parser.add_argument("--transpiler-options",
+                            dest="transpiler_options", type=str,
                             default=None,
                             help="Set transpiler options")
         parser.add_argument("--profiling",

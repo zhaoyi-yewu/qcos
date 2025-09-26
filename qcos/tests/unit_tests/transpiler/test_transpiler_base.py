@@ -36,11 +36,11 @@ class TestTranspilerBase:
         assert obj.transpiler_options == {1: 1, 2: 2, 3: 3,4: 4}
 
     def test_get_transpiler_info(self):
-        assert obj.get_transpiler_info() == (f"[{obj.__class__.__name__}]"
-                                             f"\ntranspiler_name: {obj.name}"
-                                             f"\nenable: {obj.enable}"
-                                             f"\ntranspiler_info: "
-                                             f"{obj.transpiler_info}")
+        assert obj.get_transpiler_info() == \
+               (f"[{obj.__class__.__name__}]"
+                f"\ntranspiler_name: {obj.name}"
+                f"\nenable: {obj.enable}"
+                f"\ntranspiler_options: {obj.get_transpiler_options()}")
 
     def test_set_name_and_get_name(self):
         obj.set_name("name")
