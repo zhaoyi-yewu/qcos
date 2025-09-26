@@ -28,6 +28,9 @@ from qcos.common.constant import Constant
 from qcos.common.library import Library
 from qcos.drivers.device import Device
 from qcos.drivers.driver_base import DriverBase
+from qcos.transpiler.cmss.common.base_operation import OperationType
+from qcos.transpiler.cmss.common.gate_operation import GateOperation
+from qcos.transpiler.cmss.common.measure import Measure
 
 
 def rpc_retry(max_retries=3, retry_interval=1):
@@ -168,18 +171,53 @@ class DriverSpinQRpc(DriverBase):
             success = False
         return success, err_msg
 
-    def convert_gates(self, data):
+    def convert_single_gate(self, gate):
+        """Convert input qcos gate data to spinq gate data
+
+        Args:
+            gate: input data
+
+        Returns:
+            spin gate info dict
+        """
+        if gate.targets is None:
+            raise ValueError("unsupported gates.\n")
+
+        gate_info_dict = {"type": gate.name, "controlQubit": -1, "angle": 0}
+        if (gate.operation_type ==
+                OperationType.SINGLE_QUBIT_OPERATION.value):
+            gate_info_dict["qubitIndex"] = gate.targets[0]
+        elif (gate.operation_type ==
+              OperationType.DOUBLE_QUBIT_OPERATION.value):
+            gate_info_dict["controlQubit"] = gate.targets[0]
+            gate_info_dict["qubitIndex"] = gate.targets[1]
+        elif (gate.operation_type ==
+              OperationType.TRIPLE_QUBIT_OPERATION.value):
+            gate_info_dict["controlQubit"] = gate.targets[1]
+            gate_info_dict["qubitIndex"] = gate.targets[2]
+        else:
+            raise ValueError("unsupported gates.\n")
+
+        if gate.arg_value is not None and len(gate.arg_value) > 0:
+            gate_info_dict["angle"] = gate.arg_value[0]
+        return gate_info_dict
+
+    def convert_gates(self, transpile_results):
         """Convert input data to gates and measures
 
         Args:
-            data (dict): input data (sequence of basis gates)
+            transpile_results (list): input data (sequence of basis gates)
 
         Returns:
             gates, measures
         """
-        gates = None
-        measures = None
-        # TODO (xudong): to be implemented
+        gates = []
+        measures = []
+        for obj in transpile_results:
+            if isinstance(obj, Measure):
+                measures.extend(obj.targets)
+            if isinstance(obj, GateOperation):
+                gates.append(self.convert_single_gate(obj))
         return gates, measures
 
     def convert_results(self, results):
@@ -191,8 +229,7 @@ class DriverSpinQRpc(DriverBase):
         Returns:
             qcos results
         """
-        # TODO (xudong): to be implemented
-        converted_results = {"00": 9, "11": 1}
+        converted_results = results["qubit_result"]
         return converted_results
 
     def fetch_configs(self):
@@ -251,7 +288,7 @@ class DriverSpinQRpc(DriverBase):
 
         # 2. convert transpile_results to gates and measures
         logger.info("2. convert transpile_results to gates and measures")
-        gates, measures = self.convert_gates(data)
+        gates, measures = self.convert_gates(data["transpile_results"])
 
         # 3. Submit task
         logger.info("3. submit task")
@@ -294,7 +331,7 @@ class DriverSpinQRpc(DriverBase):
 
         # 7. convert results
         logger.info("7. convert results")
-        results = self.convert_results(_results)
+        results = self.convert_results(_results["task_result"])
 
         # 8. Save results and set driver status to ONLINE
         self.set_results(job_id, data_index, results=results)

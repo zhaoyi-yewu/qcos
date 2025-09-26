@@ -21,6 +21,8 @@ import zerorpc
 from unittest.mock import patch, MagicMock
 
 from qcos.drivers.spinq.driver_spinq_rpc import DriverSpinQRpc
+from qcos.transpiler.cmss.common.gate_operation import CX, H, RX, RY, RZ
+from qcos.transpiler.cmss.common.measure import Measure
 
 
 job_id = "00000000-0000-4000-8000-000000000001"
@@ -37,6 +39,13 @@ data = {'index': 0, 'source_code': None, 'transpile_results': []}
 data_type = DriverSpinQRpc.DATA_TYPE_GATE_SEQUENCE
 shots = 1024
 results = {"00": shots}
+
+
+def validate_converted_gate(actual_info, expected_info):
+    assert actual_info["angle"] == expected_info["angle"]
+    assert actual_info["controlQubit"] == expected_info["controlQubit"]
+    assert actual_info["qubitIndex"] == expected_info["qubitIndex"]
+    assert actual_info["type"] == expected_info["type"]
 
 
 class TestDriverSpinQRpc(unittest.TestCase):
@@ -124,10 +133,37 @@ class TestDriverSpinQRpc(unittest.TestCase):
         assert err_msg is not None
 
     def test_submit_task(self):
+        h = H([0])
+        cx = CX([1, 2])
+        rx = RX([3], [1.0])
+        ry = RY([4], [1.0])
+        rz = RZ([5], [1.0])
+        mea_targets = [0, 1, 2, 3, 4, 5]
+        measure = Measure(mea_targets)
+        transpile_results = [rx, ry, rz, h, cx, measure]
+        task_gates, measures = self.driver.convert_gates(transpile_results)
+        assert measures == mea_targets
+        assert len(task_gates) == 5
+
+        validate_converted_gate(task_gates[0],
+                                {'angle': 1.0, 'controlQubit': -1,
+                                 'qubitIndex': 3, 'type': 'rx'})
+        validate_converted_gate(task_gates[1],
+                                {'angle': 1.0, 'controlQubit': -1,
+                                 'qubitIndex': 4, 'type': 'ry'})
+        validate_converted_gate(task_gates[2],
+                                {'angle': 1.0, 'controlQubit': -1,
+                                 'qubitIndex': 5, 'type': 'rz'})
+        validate_converted_gate(task_gates[3],
+                                {'angle': 0, 'controlQubit': -1,
+                                 'qubitIndex': 0, 'type': 'h'})
+        validate_converted_gate(task_gates[4],
+                                {'angle': 0, 'controlQubit': 1,
+                                 'qubitIndex': 2, 'type': 'cx'})
         task_info = {
             "task_name": "task name",
-            "task_gates": [],
-            "measures": [],
+            "task_gates": task_gates,
+            "measures": measures,
             "task_desc": "task desc",
             "shots": shots
         }
