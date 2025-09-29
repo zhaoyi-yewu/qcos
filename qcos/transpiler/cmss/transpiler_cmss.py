@@ -23,6 +23,7 @@ from qcos.common.constant import Constant
 from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from qcos.transpiler.cmss.compiler.parser import compile
 from qcos.transpiler.cmss.mapping.hierachy_tree import HierarchyTree, get_block
+from qcos.transpiler.cmss.mapping.bplus_tree import get_block_bplus
 from qcos.transpiler.cmss.mapping.mapping_factory import MappingFactory
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 from qcos.transpiler.common.errors import TranspilerException
@@ -44,7 +45,7 @@ class TranspilerCmss(TranspilerBase):
         # supported code types
         self.supported_code_types = [
             Constant.CODE_TYPE_QASM,
-            Constant.CODE_TYPE_QASM2
+            Constant.CODE_TYPE_QASM2,
         ]
         # transpiler_options
         self.transpiler_options = {
@@ -52,12 +53,9 @@ class TranspilerCmss(TranspilerBase):
             "optimization_level": Constant.DEFAULT_OPTIMIZATION_LEVEL
         }
         # transpiler_options schema used in submit-job from user
-        self.transpiler_options_schema = {
-            Optional("optimization_level"): int
-        }
+        self.transpiler_options_schema = {Optional("optimization_level"): int}
         # qpu_config
         self.qpu_config = None
-
 
     def init_transpiler(self):
         """Init transpiler"""
@@ -88,14 +86,17 @@ class TranspilerCmss(TranspilerBase):
             ht.construct()
             mapping_res = []
             for key, value in opt_result_dict.items():
+                # 不使用b+树进行block查找
                 blk = get_block(ht, value[0])
+                # 使用b+树进行block查找
+                # blk = get_block_bplus(ht, value[0])
                 if blk is None:
                     # TODO (xudong): need to remove the task item.
                     self.total_qubits -= value[0]
                     continue
                 mapping_dict[key] = value[0]
-                qpu_cfg['operate_area'] = blk
-                qpu_cfg['storage_area'] = [qpu_cfg['closest'][o] for o in blk]
+                qpu_cfg["operate_area"] = blk
+                qpu_cfg["storage_area"] = [qpu_cfg["closest"][o] for o in blk]
                 mapper.prepare_data(value[0], value[1], qpu_cfg)
                 mapping_res += mapper.execute_with_order()
             return mapping_res, mapping_dict
@@ -133,7 +134,7 @@ class TranspilerCmss(TranspilerBase):
           parse_result: parse result
           supp_basis_gates: supported basis gates
         :return basis gate list
-          supp_basis_gates: list: 
+          supp_basis_gates: list:
 
         Returns:
 
@@ -146,8 +147,8 @@ class TranspilerCmss(TranspilerBase):
 
         opt_result_dict = {}
         opt_level = self.transpiler_options.get(
-            "optimization_level",
-            Constant.DEFAULT_OPTIMIZATION_LEVEL)
+            "optimization_level", Constant.DEFAULT_OPTIMIZATION_LEVEL
+        )
         for key, value in parse_result.items():
             opt_result = optimize_gate(value[1], opt_level)
             opt_result_dict[key] = (value[0], opt_result)
