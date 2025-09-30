@@ -104,7 +104,7 @@ class Server:
         # read and parse config files under config dir
         if args.config_dir:
             config_files = Library.find_files(args.config_dir,
-                                              pattern="*.toml",recursive=True)
+                                              pattern="*.toml", recursive=True)
             for config_file in config_files:
                 Config.parse_toml_file(config_file, extra_config=True)
 

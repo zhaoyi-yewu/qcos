@@ -66,6 +66,8 @@ qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/
 4. 玻色量子-光量子伊辛机, 真实运行
 qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.json
 qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.csv
+5. 量旋科技, 真实运行
+qcos-cli submit-job --code-type qasm --shots 10 --backend sping_rpc -f ./samples/qasm/2.0/simple-qasm.qasm
 
 * Get job status
 qcos-cli get-job-status 00000000-0000-4000-8000-000000000001
