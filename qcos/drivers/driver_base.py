@@ -20,7 +20,7 @@ import logging
 from qcos.common.constant import Constant
 from qcos.common.library import Library
 from qcos.drivers.device import Device
-
+from qcos.transpiler.cmss.common.measure import Measure
 
 logger = logging.getLogger(__name__)
 
@@ -453,4 +453,9 @@ class DriverBase:
             shots: number of shots
             data: source data
         """
-        return Library.generate_binary_combinations(num_qubits, shots)
+        gate_list = data["transpile_results"]
+        measure_qubits = set()
+        for obj in gate_list:
+            if isinstance(obj, Measure):
+                measure_qubits.update(obj.targets)
+        return Library.generate_binary_combinations(len(measure_qubits), shots)

@@ -74,9 +74,9 @@ def rpc_retry(max_retries=3, retry_interval=1):
 
 
 class DriverSpinQRpc(DriverBase):
-    """量旋科技 超导驱动 (RPC版本)
+    """量旋科技 大熊座-S25 超导驱动 (RPC版本)
 
-    SpinQ Superconducting driver (RPC)
+    SpinQ SQC-S25 Superconducting driver (RPC)
     """
 
     max_retries = 3
@@ -87,8 +87,8 @@ class DriverSpinQRpc(DriverBase):
     def __init__(self):
         super().__init__()
         self.version = "0.0.1"
-        self.alias_name = "量旋科技 超导量子计算机驱动 (RPC版本)"
-        self.description = "量旋科技 超导量子计算机驱动 (RPC版本)"
+        self.alias_name = "量旋科技大熊座-S25 超导量子计算机驱动 (RPC版本)"
+        self.description = "量旋科技大熊座-S25 超导量子计算机驱动 (RPC版本)"
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_SUPERCONDUCTING
@@ -171,19 +171,55 @@ class DriverSpinQRpc(DriverBase):
             success = False
         return success, err_msg
 
-    def convert_single_gate(self, gate):
+    def update_qubit_depth(self, qubit_depth, targets):
+        """update qubit depth
+
+        Args:
+            qubit_depth: qubit depth
+            targets: targets
+
+        Returns:
+            curr_qubit_depth
+        """
+        curr_qubit_depth = -1
+        if len(targets) == 1:
+            curr_qubit_depth = qubit_depth[targets[0]]
+            qubit_depth[targets[0]] += 1
+        elif len(targets) == 2:
+            curr_qubit_depth = max(qubit_depth[targets[0]],
+                                   qubit_depth[targets[1]])
+            qubit_depth[targets[0]] = curr_qubit_depth + 1
+            qubit_depth[targets[1]] = curr_qubit_depth + 1
+        elif len(targets) == 3:
+            curr_qubit_depth = max(qubit_depth[targets[0]],
+                                   qubit_depth[targets[1]],
+                                   qubit_depth[targets[2]])
+            qubit_depth[targets[0]] = curr_qubit_depth + 1
+            qubit_depth[targets[1]] = curr_qubit_depth + 1
+            qubit_depth[targets[2]] = curr_qubit_depth + 1
+        else:
+            raise ValueError("invalid target len.")
+        return curr_qubit_depth
+
+    def convert_gate(self, gate, qubit_depth):
         """Convert input qcos gate data to spinq gate data
 
         Args:
             gate: input data
+            qubit_depth: qubit depth
 
         Returns:
             spin gate info dict
         """
         if gate.targets is None:
-            raise ValueError("unsupported gates.\n")
+            raise ValueError("invalid target len.")
 
-        gate_info_dict = {"type": gate.name, "controlQubit": -1, "angle": 0}
+        curr_qubit_depth = self.update_qubit_depth(qubit_depth, gate.targets)
+
+        gate_info_dict = {"type": gate.name,
+                          "controlQubit": -1,
+                          "angle": 0,
+                          "timeslot": curr_qubit_depth}
         if (gate.operation_type ==
                 OperationType.SINGLE_QUBIT_OPERATION.value):
             gate_info_dict["qubitIndex"] = gate.targets[0]
@@ -196,28 +232,30 @@ class DriverSpinQRpc(DriverBase):
             gate_info_dict["controlQubit"] = gate.targets[1]
             gate_info_dict["qubitIndex"] = gate.targets[2]
         else:
-            raise ValueError("unsupported gates.\n")
+            raise ValueError("invalid gate type.")
 
         if gate.arg_value is not None and len(gate.arg_value) > 0:
             gate_info_dict["angle"] = gate.arg_value[0]
         return gate_info_dict
 
-    def convert_gates(self, transpile_results):
+    def convert_gates(self, transpile_results, num_qubits):
         """Convert input data to gates and measures
 
         Args:
             transpile_results (list): input data (sequence of basis gates)
+            num_qubits: number of qubits
 
         Returns:
             gates, measures
         """
         gates = []
         measures = []
+        qubit_depth = [0] * num_qubits
         for obj in transpile_results:
             if isinstance(obj, Measure):
                 measures.extend(obj.targets)
             if isinstance(obj, GateOperation):
-                gates.append(self.convert_single_gate(obj))
+                gates.append(self.convert_gate(obj, qubit_depth))
         return gates, measures
 
     def convert_results(self, results):
@@ -288,7 +326,8 @@ class DriverSpinQRpc(DriverBase):
 
         # 2. convert transpile_results to gates and measures
         logger.info("2. convert transpile_results to gates and measures")
-        gates, measures = self.convert_gates(data["transpile_results"])
+        gates, measures = self.convert_gates(
+            data["transpile_results"], num_qubits)
 
         # 3. Submit task
         logger.info("3. submit task")

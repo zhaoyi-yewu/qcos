@@ -38,7 +38,15 @@ chip_name = "chip_name"
 data = {'index': 0, 'source_code': None, 'transpile_results': []}
 data_type = DriverSpinQRpc.DATA_TYPE_GATE_SEQUENCE
 shots = 1024
-results = {"00": shots}
+results = \
+    {
+        "task_result": {
+            "qubit_result": {
+                "000": 1,
+                "010": 9
+            }
+        }
+    }
 
 
 def validate_converted_gate(actual_info, expected_info):
@@ -46,6 +54,7 @@ def validate_converted_gate(actual_info, expected_info):
     assert actual_info["controlQubit"] == expected_info["controlQubit"]
     assert actual_info["qubitIndex"] == expected_info["qubitIndex"]
     assert actual_info["type"] == expected_info["type"]
+    assert actual_info["timeslot"] == expected_info["timeslot"]
 
 
 class TestDriverSpinQRpc(unittest.TestCase):
@@ -141,25 +150,25 @@ class TestDriverSpinQRpc(unittest.TestCase):
         mea_targets = [0, 1, 2, 3, 4, 5]
         measure = Measure(mea_targets)
         transpile_results = [rx, ry, rz, h, cx, measure]
-        task_gates, measures = self.driver.convert_gates(transpile_results)
+        task_gates, measures = self.driver.convert_gates(transpile_results, 6)
         assert measures == mea_targets
         assert len(task_gates) == 5
 
         validate_converted_gate(task_gates[0],
                                 {'angle': 1.0, 'controlQubit': -1,
-                                 'qubitIndex': 3, 'type': 'rx'})
+                                 'qubitIndex': 3, 'type': 'rx', "timeslot": 0})
         validate_converted_gate(task_gates[1],
                                 {'angle': 1.0, 'controlQubit': -1,
-                                 'qubitIndex': 4, 'type': 'ry'})
+                                 'qubitIndex': 4, 'type': 'ry', "timeslot": 0})
         validate_converted_gate(task_gates[2],
                                 {'angle': 1.0, 'controlQubit': -1,
-                                 'qubitIndex': 5, 'type': 'rz'})
+                                 'qubitIndex': 5, 'type': 'rz', "timeslot": 0})
         validate_converted_gate(task_gates[3],
                                 {'angle': 0, 'controlQubit': -1,
-                                 'qubitIndex': 0, 'type': 'h'})
+                                 'qubitIndex': 0, 'type': 'h', "timeslot": 0})
         validate_converted_gate(task_gates[4],
                                 {'angle': 0, 'controlQubit': 1,
-                                 'qubitIndex': 2, 'type': 'cx'})
+                                 'qubitIndex': 2, 'type': 'cx', "timeslot": 0})
         task_info = {
             "task_name": "task name",
             "task_gates": task_gates,
@@ -197,3 +206,14 @@ class TestDriverSpinQRpc(unittest.TestCase):
         self.mock_client.request_logout.return_value = None
         self.mock_client.close.return_value = None
         assert self.driver.client_close(username, session_id) is None
+
+    def test_convert_results(self):
+        self.mock_client.get_task_result.return_value = json.dumps(results)
+        success, err_msg, response = self.driver.get_task_results(task_id)
+        assert success is True
+        assert response == results
+
+        conv_results = self.driver.convert_results(response["task_result"])
+        assert len(conv_results) == 2
+        assert conv_results["000"] == 1
+        assert conv_results["010"] == 9
