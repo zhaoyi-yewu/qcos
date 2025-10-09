@@ -87,7 +87,11 @@ class NASingleRoute(ABC):
         gates_on_qubit = {}
         measure = []
         for gate in self.gates:
-            assert len(gate.targets) == 1  # noqa: S101  # TODO: to be fixed
+            if len(gate.targets) != 1:
+                raise MappingException(
+                    f"invalid targets num: {len(gate.targets)}"
+                    f"Gate {gate.name} must have exactly one target"
+                )
             gate.targets = [
                 int(self.mapping[int(q)][1:]) for q in gate.targets
             ]
