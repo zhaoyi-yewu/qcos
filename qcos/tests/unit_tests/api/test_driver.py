@@ -36,7 +36,7 @@ class TestDriver:
     def test_get_drivers(self, mock_get_driver_manager, mock_get_drivers):
         mock_get_drivers.return_value = {}
         mock_get_driver_manager.return_value = DriverManager()
-        mock_client = Mock(spec=GetDriverRequest)
+        mock_client = Mock()
         mock_client.name = self.dummy
         get_drivers(mock_client)
 
@@ -50,6 +50,6 @@ class TestDriver:
         mock_get_transpiler_manager.return_value = TranspilerManager()
         mock_get_driver.return_value = DriverBase()
         mock_get_driver_manager.return_value = DriverManager()
-        mock_client = Mock(spec=GetDriverRequest)
+        mock_client = Mock()
         mock_client.name = self.dummy
         get_driver(mock_client)

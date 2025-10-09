@@ -41,5 +41,5 @@ class TestVersion:
         mock_get_transpiler_manager.return_value = TranspilerManager()
         mock_get_driver_manager.return_value = DriverManager()
         mock_get_drivers.return_value = {"Dummy": DriverDummy()}
-        mock_client = Mock(spec=GetVersionRequest)
+        mock_client = Mock()
         version(mock_client)
