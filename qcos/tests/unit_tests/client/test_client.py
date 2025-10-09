@@ -38,7 +38,7 @@ class TestClient:
     def test_call_json_rpc(self, mock_print_api_response):
         mock_print_api_response.return_value = self.return_values
         status_code, reason, text, result = (client.call_json_rpc
-                                             ("qcos.io/get", "get"))
+                                             ("127.0.0.1", "get"))
         assert status_code == -1
 
     def test_handle_invalid_arguments(self):

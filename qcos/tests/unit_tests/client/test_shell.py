@@ -113,9 +113,11 @@ class TestVersion:
     def test_get_parser(self):
         version.get_parser("")
 
+    @patch.object(Client, 'version')
     @patch.object(CommandHelper, "check_results")
-    def test_take_action(self, mock_check_results):
+    def test_take_action(self, mock_check_results, mock_version):
         mock_client = Mock(spec=Namespace)
+        mock_version.return_value = -1, None, None, None
         mock_check_results.return_value = {
             'capabilities':
             {'job_types': ["1", "2", "3"],
@@ -136,10 +138,12 @@ class TestVersion:
 class TestGetDrivers:
     def test_get_parser(self):
         get_drivers.get_parser("")
-
+    @patch.object(Client, 'get_drivers')
     @patch.object(CommandHelper, "get_table_list_data")
     @patch.object(CommandHelper, "check_results")
-    def test_take_action(self, mock_check_results, mock_get_table_list_data):
+    def test_take_action(self, mock_check_results, mock_get_table_list_data,
+                         mock_get_drivers):
+        mock_get_drivers.return_value = -1, None, None, None
         mock_client = Mock(spec=Namespace)
         mock_get_table_list_data.return_value = None
         mock_check_results.return_value = None
@@ -248,13 +252,14 @@ class TestSubmitJob:
         with pytest.raises(argparse.ArgumentTypeError) as e:
             submit_job.validate_filepath("")
         assert "Error" in str(e)
-
+    @patch.object(Client, "version")
     @patch.object(CommandHelper, "handle_invalid_arguments")
     @patch("qcos.client.shell.get_content_by_type")
     @patch.object(CommandHelper, "check_results")
     def test_take_action(self, mock_check_results,
                          mock_get_content_by_type,
-                         mock_handle_invalid_arguments):
+                         mock_handle_invalid_arguments, mock_version):
+        mock_version.return_value = -1, None, None, None
         mock_handle_invalid_arguments.return_value = None
         mock_get_content_by_type.return_value = (True, "no", "qcos")
         mock_check_results.return_value = {
