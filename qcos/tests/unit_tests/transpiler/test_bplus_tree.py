@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import pytest
 from unittest.mock import Mock, patch
 
 from qcos.transpiler.cmss.mapping.bplus_tree import (

@@ -161,23 +161,23 @@ class Constant:
 
     # Profiling types
     PROFILING_TYPE_ALL = "all"
-    PROFILING_TYPE_JOB = "job"
-    PROFILING_TYPE_SCHEDULE = "schedule"
+    PROFILING_TYPE_CODE = "code"
+    PROFILING_TYPE_SCHEDULING = "scheduling"
     PROFILING_TYPE_DRIVER_PARSE = "driver:parse"
     PROFILING_TYPE_DRIVER_TRANSPILE = "driver:transpile"
     PROFILING_TYPE_DRIVER_RUN = "driver:run"
     PROFILING_TYPES = [
         PROFILING_TYPE_ALL,
-        PROFILING_TYPE_JOB,
-        PROFILING_TYPE_SCHEDULE,
+        PROFILING_TYPE_CODE,
+        PROFILING_TYPE_SCHEDULING,
         PROFILING_TYPE_DRIVER_PARSE,
         PROFILING_TYPE_DRIVER_TRANSPILE,
         PROFILING_TYPE_DRIVER_RUN,
     ]
     PROFILING_INFO = {
-        PROFILING_TYPE_ALL: {"alias_name": "所有模块耗时"},
-        PROFILING_TYPE_JOB: {"alias_name": "作业耗时"},
-        PROFILING_TYPE_SCHEDULE: {"alias_name": "调度器耗时"},
+        PROFILING_TYPE_ALL: {"alias_name": "使能所有性能评估类型"},
+        PROFILING_TYPE_CODE: {"alias_name": "作业中单代码执行耗时"},
+        PROFILING_TYPE_SCHEDULING: {"alias_name": "调度器耗时"},
         PROFILING_TYPE_DRIVER_PARSE: {"alias_name": "代码解析耗时"},
         PROFILING_TYPE_DRIVER_TRANSPILE: {"alias_name": "转译器耗时"},
         PROFILING_TYPE_DRIVER_RUN: {"alias_name": "后端运行耗时"},

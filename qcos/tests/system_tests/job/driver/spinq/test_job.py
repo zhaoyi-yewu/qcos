@@ -15,13 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import json
 import multiprocessing
 import pytest
-import time
 
-import qcos.api.posiq.routes_jsonrpc.errors as jsonrpc_errors
-from qcos.common.constant import Constant, HttpCode
+from qcos.common.constant import Constant
 from qcos.common.library import Library
 from qcos.tests.system_tests.common.library import StLibrary
 from qcos.tests.system_tests.conftest import GLOBAL_CONFIGS, SAMPLES
@@ -46,90 +43,25 @@ class TestJob:
         cls.rpc_process.terminate()
 
     def test_submit_job(self):
-        driver_name = "spinq_rpc"
-        qasm_content = SAMPLES["simple-qasm.qasm"]
-        source_code_list = [qasm_content]
-        code_type = Constant.CODE_TYPE_QASM
-        job_id = str(Library.create_uuid(prefix=[0xF0]))
-        job_name = "test_spinq_submit_job"
-        circuit_aggregation = None
-        job_type = Constant.JOB_TYPE_SAMPLING
-        job_priority = Constant.DEFAULT_JOB_PRIORITY
-        description = "description: test_spinq_submit_job"
-        shots = Constant.DEFAULT_SHOTS
-        backend = driver_name
-        driver_options = None
-        transpiler = Constant.TRANSPILER_CMSS
-        transpiler_options = None
-        profiling = None
-        callbacks = None
-        dry_run = False
-        status_code, reason, text, response = self.client.submit_job(
-            source_code_list,
-            code_type=code_type,
-            job_id=job_id,
-            circuit_aggregation=circuit_aggregation,
-            job_name=job_name,
-            job_type=job_type,
-            job_priority=job_priority,
-            description=description,
-            shots=shots,
-            backend=backend,
-            driver_options=driver_options,
-            transpiler=transpiler,
-            transpiler_options=transpiler_options,
-            profiling=profiling,
-            callbacks=callbacks,
-            dry_run=dry_run,
+        job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_spinq_submit_job",
+            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_spinq_submit_job",
+            "backend": "spinq_rpc",
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "transpiler_options": None,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+        }
+        StLibrary.submit_job(
+            self.client, job_info, self.timeout, self.interval
         )
-        assert status_code == HttpCode.SUCCESS_OK
-        json_results = json.loads(text)
-        result = json_results["result"]
-
-        # check results from submit_job
-        assert result["job_id"] == job_id
-        assert result["job_name"] == job_name
-        assert result["job_type"] == job_type
-        assert result["job_priority"] == job_priority
-        assert result["description"] == description
-        assert result["shots"] == shots
-        assert result["backend"] == backend
-        assert result["driver_options"] == driver_options
-        assert result["transpiler"] == transpiler
-        assert result["transpiler_options"] == transpiler_options
-        assert result["profiling"] == profiling
-        assert result["callbacks"] == callbacks
-        assert result["dry_run"] == dry_run
-
-        # wait for job status to COMPLETED
-        success, err_msg, _ = Library.loop_with_timeout(
-            StLibrary.get_results,
-            self.timeout,
-            self.interval,
-            self.client,
-            job_id,
-        )
-        # wait for additional time for job to finish resource cleanup
-        time.sleep(5)
-
-        # check results
-        status_code, reason, text, response = self.client.get_job_results(
-            job_id
-        )
-        assert status_code == HttpCode.SUCCESS_OK
-        job_result = json.loads(text)
-        job_error = job_result.get("error", {})
-        error_code = job_error.get("code", 0)
-        assert error_code == 0
-        status_code, reason, text, response = self.client.delete_jobs([job_id])
-        assert status_code == HttpCode.SUCCESS_OK
-
-        # check if job deleted
-        status_code, reason, text, response = self.client.get_job_results(
-            job_id
-        )
-        assert status_code == HttpCode.SUCCESS_OK
-        job_result = json.loads(text)
-        job_error = job_result.get("error", {})
-        error_code = job_error.get("code", 0)
-        assert error_code == jsonrpc_errors.NotFoundError.CODE
+        StLibrary.delete_job(self.client, job_info["job_id"])

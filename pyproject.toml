@@ -94,11 +94,11 @@ qcos-cli = "qcos.client.shell:main"
 qcos-compiler = "qcos.transpiler.cmss.transpiler_cmd_line:main"
 
 [project.urls]
-# "Homepage" = ""
-# "Documentation" = ""
-# "Changelog" = ""
-# "Issue Tracker" = ""
-# "Source" = ""
+"Homepage" = "https://gitee.com/OpenWuYue/qcos"
+"Documentation" = "https://gitee.com/OpenWuYue/qcos/blob/develop/INSTALL.md"
+"Changelog" = "https://gitee.com/OpenWuYue/qcos/blob/develop/CHANGELOG"
+"Issue Tracker" = "https://gitee.com/OpenWuYue/qcos/issues"
+"Source" = "https://gitee.com/OpenWuYue/qcos"
 
 [tool.poetry.dependencies]
 
@@ -122,6 +122,7 @@ pretty = true
 show_error_context = true
 show_column_numbers = true
 warn_unused_ignores = true
+check_untyped_defs = false
 # remove gradually as progress is made
 disable_error_code = "import-untyped,var-annotated,import-not-found"
 # honor excludes by not following there through imports
@@ -162,7 +163,9 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "qcos/tests/**/*.py" = ["S101"]
-"qcos/**/*.py" = ["F401"]
+"qcos/**/__init__.py" = ["F401"]
+"qcos/transpiler/cmss/compiler/parser.py" = ["F401"]
+"qcos/transpiler/cmss/compiler/visitor.py" = ["F401"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["qcos"]

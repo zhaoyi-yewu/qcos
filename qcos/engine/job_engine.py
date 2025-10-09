@@ -60,11 +60,11 @@ class SourceCodeInfo:
 
 
 @task(persist_result=False)
-def init_driver(driver_info, driver_options, device):
+def init_driver(driver_class_info, driver_options, device):
     """Init driver from driver_info
 
     Args:
-        driver_info: driver info
+        driver_class_info: driver class info
         driver_options: driver options
         device: device info
 
@@ -73,8 +73,10 @@ def init_driver(driver_info, driver_options, device):
     """
 
     try:
-        driver_module = importlib.import_module(driver_info["module_name"])
-        driver_class = getattr(driver_module, driver_info["class_name"])
+        driver_module = importlib.import_module(
+            driver_class_info["module_name"]
+        )
+        driver_class = getattr(driver_module, driver_class_info["class_name"])
         driver = driver_class()
         device_configs = device.get("configs", None)
         # update driver options
@@ -608,6 +610,7 @@ def job_flow(job_info):
     """
     job_data = job_info["data"]
     job_id = job_data["job_id"]
+    profiling_code_start = 0
     monitor_info = {
         "artifact_id": None,
         "running": True,
@@ -623,6 +626,14 @@ def job_flow(job_info):
 
     # register signals for job cancelling
     register_signals(job_id, monitor_info)
+
+    # record parse start_time
+    profiling_types = job_data.get("profiling", [])
+    if profiling_types and (
+        Constant.PROFILING_TYPE_CODE in profiling_types
+        or Constant.PROFILING_TYPE_ALL in profiling_types
+    ):
+        profiling_code_start = time.time()
 
     # start task-monitor
     artifact_id = create_progress_artifact(progress=0.0, key=job_id)
@@ -642,7 +653,7 @@ def job_flow(job_info):
             f"{aggregation_info}"
         )
 
-        # deal sub job
+        # handle sub job
         if not aggregation_info.is_parent:
             monitor_info["source_code_count"] = 1
             monitor_info["progress"] = 100
@@ -675,6 +686,18 @@ def job_flow(job_info):
         )
         source_code_index += len(src_code_dict)
 
+        # profiling: job
+        if profiling_types and (
+            Constant.PROFILING_TYPE_CODE in profiling_types
+            or Constant.PROFILING_TYPE_ALL in profiling_types
+        ):
+            profiling_code_end = time.time()
+            profiling_code_duration = profiling_code_end - profiling_code_start
+            job_results["profiling"][Constant.PROFILING_TYPE_CODE] = (
+                profiling_code_duration
+            )
+
+        # handle job aggregation
         if src_code_info.aggregation_type == Constant.AGGREGATION_TYPE_NONE:
             job_results_list.append(job_results)
         elif (
@@ -690,7 +713,6 @@ def job_flow(job_info):
                 job_results, mapping_dict
             )
             job_results_list.extend(aggregated_res)
-        # pylint: enable=line-too-long
 
     monitor_info["running"] = False
     return job_results_list
@@ -1060,6 +1082,7 @@ def format_error_results(driver, err_cls, err_msg):
             "status": None,
             "end_date": None,
         },
+        "profiling": {},
         "error": None,
     }
 

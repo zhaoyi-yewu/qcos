@@ -28,6 +28,7 @@ from qcos.drivers.dummy.driver_dummy import DriverDummy
 from qcos.engine.job_engine import (
     init_driver,
     init_transpiler,
+    job_flow,
     driver_cancel,
     register_signals,
     update_progress,
@@ -71,6 +72,21 @@ class TestJobEngine:
             "job_id": "00000000-0000-4000-8000-000000000001",
             "source_code": [cls.simple_data],
             "circuit_aggregation": None,
+            "profiling": [],
+        }
+        cls.job_info = {
+            "data": cls.job_data,
+            "driver": {
+                "module_name": "qcos.drivers.dummy.driver_dummy",
+                "class_name": "DriverDummy",
+            },
+            "driver_options": None,
+            "device": "dummy",
+            "transpiler": {
+                "module_name": "qcos.transpiler.cmss.transpiler_cmss",
+                "class_name": "TranspilerCmss",
+            },
+            "transpiler_options": "dummy",
         }
         cls.src_code_info = SourceCodeInfo()
         cls.src_code_info.src_code_list = [
@@ -97,6 +113,7 @@ class TestJobEngine:
             "00000000-0000-4000-8000-000000000002-0": 2,
             "00000000-0000-4000-8000-000000000003-0": 2,
         }
+        cls.artifact_id = "00000001-0000-4000-8000-000000000001"
 
     @patch("qcos.engine.job_engine.getattr")
     @patch("qcos.engine.job_engine.importlib.import_module")
@@ -291,3 +308,45 @@ class TestJobEngine:
     def test_driver_run(self):
         return_value = driver_run.fn([], DriverBase, 5, self.job_data)
         assert return_value["results"] is None
+
+    @patch("qcos.engine.job_engine.register_signals")
+    @patch("qcos.engine.job_engine.create_progress_artifact")
+    @patch("qcos.engine.job_engine.flow_task_monitor")
+    @patch("qcos.engine.job_engine.run_code")
+    def test_job_flow(
+        self,
+        mock_run_code,
+        mock_flow_task_monitor,
+        mock_create_progress_artifact,
+        mock_register_signals,
+    ):
+        mock_run_code.return_value = (
+            self.job_results,
+            None,
+            None,
+            self.mapping_dict,
+        )
+        mock_flow_task_monitor.return_value = None
+        mock_register_signals.return_values = None
+        mock_create_progress_artifact.return_value = self.artifact_id
+        self.src_code_info.aggregation_type = Constant.AGGREGATION_TYPE_NONE
+        raw_job_flow_func = job_flow.__wrapped__
+        self.job_info["data"]["circuit_aggregation"] = None
+        self.job_info["data"]["profiling"] = [
+            Constant.PROFILING_TYPE_CODE,
+            Constant.PROFILING_TYPE_SCHEDULING,
+            Constant.PROFILING_TYPE_DRIVER_PARSE,
+            Constant.PROFILING_TYPE_DRIVER_TRANSPILE,
+            Constant.PROFILING_TYPE_DRIVER_RUN,
+        ]
+        job_results_list = raw_job_flow_func(self.job_info)
+        assert len(job_results_list) == len(
+            self.job_info["data"]["source_code"]
+        )
+        assert job_results_list[0] == self.job_results
+        mock_run_code.assert_called_once()
+        mock_create_progress_artifact.assert_called_once()
+        assert (
+            self.src_code_info.aggregation_type
+            == Constant.AGGREGATION_TYPE_NONE
+        )

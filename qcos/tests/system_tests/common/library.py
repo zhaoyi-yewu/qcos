@@ -16,8 +16,11 @@
 # ----------------------------------------------------------------------
 
 import json
+import time
 
-from qcos.common.constant import Constant
+import qcos.api.posiq.routes_jsonrpc.errors as jsonrpc_errors
+from qcos.common.constant import Constant, HttpCode
+from qcos.common.library import Library
 
 
 class StLibrary:
@@ -37,3 +40,91 @@ class StLibrary:
         ]:
             return True
         return False
+
+    @staticmethod
+    def submit_job(client, job_info, timeout=30, interval=5):
+        job_id = job_info["job_id"]
+        job_name = job_info["job_name"]
+        source_code_list = job_info["source_code_list"]
+        code_type = job_info["code_type"]
+        circuit_aggregation = job_info["circuit_aggregation"]
+        job_type = job_info["job_type"]
+        job_priority = job_info["job_priority"]
+        description = job_info["description"]
+        shots = job_info["shots"]
+        backend = job_info["backend"]
+        driver_options = job_info["driver_options"]
+        transpiler = job_info["transpiler"]
+        transpiler_options = job_info["transpiler_options"]
+        profiling = job_info["profiling"]
+        callbacks = job_info["callbacks"]
+        dry_run = job_info["dry_run"]
+        status_code, reason, text, response = client.submit_job(
+            source_code_list,
+            code_type=code_type,
+            job_id=job_id,
+            circuit_aggregation=circuit_aggregation,
+            job_name=job_name,
+            job_type=job_type,
+            job_priority=job_priority,
+            description=description,
+            shots=shots,
+            backend=backend,
+            driver_options=driver_options,
+            transpiler=transpiler,
+            transpiler_options=transpiler_options,
+            profiling=profiling,
+            callbacks=callbacks,
+            dry_run=dry_run,
+        )
+        assert status_code == HttpCode.SUCCESS_OK
+        json_results = json.loads(text)
+        result = json_results["result"]
+
+        # check results from submit_job
+        assert result["job_id"] == job_id
+        assert result["job_name"] == job_name
+        assert result["job_type"] == job_type
+        assert result["job_priority"] == job_priority
+        assert result["description"] == description
+        assert result["shots"] == shots
+        assert result["backend"] == backend
+        assert result["driver_options"] == driver_options
+        assert result["transpiler"] == transpiler
+        assert result["transpiler_options"] == transpiler_options
+        assert result["profiling"] == profiling
+        assert result["callbacks"] == callbacks
+        assert result["dry_run"] == dry_run
+
+        # wait for job status to COMPLETED
+        success, err_msg, _ = Library.loop_with_timeout(
+            StLibrary.get_results,
+            timeout,
+            interval,
+            client,
+            job_id,
+        )
+        # wait for additional time for job to finish resource cleanup
+        time.sleep(5)
+
+        # check results
+        status_code, reason, text, response = client.get_job_results(job_id)
+        assert status_code == HttpCode.SUCCESS_OK
+        job_result = json.loads(text)
+        job_error = job_result.get("error", {})
+        error_code = job_error.get("code", 0)
+        assert error_code == 0
+        return job_result
+
+    @staticmethod
+    def delete_job(client, job_id):
+        status_code, reason, text, response = client.delete_jobs([job_id])
+        assert status_code == HttpCode.SUCCESS_OK
+
+        # check if job deleted
+        status_code, reason, text, response = client.get_job_results(job_id)
+        assert status_code == HttpCode.SUCCESS_OK
+        job_result = json.loads(text)
+        job_error = job_result.get("error", {})
+        error_code = job_error.get("code", 0)
+        assert error_code == jsonrpc_errors.NotFoundError.CODE

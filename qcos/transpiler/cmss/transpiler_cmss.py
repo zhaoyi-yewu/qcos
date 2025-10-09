@@ -23,7 +23,6 @@ from qcos.common.constant import Constant
 from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from qcos.transpiler.cmss.compiler.parser import compile
 from qcos.transpiler.cmss.mapping.hierachy_tree import HierarchyTree, get_block
-from qcos.transpiler.cmss.mapping.bplus_tree import get_block_bplus
 from qcos.transpiler.cmss.mapping.mapping_factory import MappingFactory
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 from qcos.transpiler.common.errors import TranspilerException

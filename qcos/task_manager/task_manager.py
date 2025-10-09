@@ -453,6 +453,37 @@ class TaskFlowManager(ABC):
             elif state.name.upper() != Constant.PREFECT_STATE_COMPLETED:
                 return state.name, parameters, None, None
             result = state.result()
+
+            # set profiling
+            profiling = parameters["job_info"]["data"].get("profiling", None)
+            if profiling:
+                if (
+                    Constant.PROFILING_TYPE_ALL in profiling
+                    or Constant.PROFILING_TYPE_SCHEDULING in profiling
+                ):
+                    flow_run_states = self._sync_client.read_flow_run_states(
+                        flow_run_id
+                    )
+                    start_time = 0
+                    running_time = 0
+                    for flow_run_state in flow_run_states:
+                        if (
+                            flow_run_state.name.upper()
+                            == Constant.PREFECT_STATE_SCHEDULED
+                        ):
+                            start_time = flow_run_state.timestamp
+                        if (
+                            flow_run_state.name.upper()
+                            == Constant.PREFECT_STATE_RUNNING
+                        ):
+                            running_time = flow_run_state.timestamp
+                    job_scheduling_duration = (
+                        running_time.timestamp() - start_time.timestamp()
+                    )
+                    for _result in result:
+                        _result["profiling"][
+                            Constant.PROFILING_TYPE_SCHEDULING
+                        ] = job_scheduling_duration
             return state.name, parameters, result, None
         else:
             return state.name, parameters, None, None

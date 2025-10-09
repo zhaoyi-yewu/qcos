@@ -90,12 +90,12 @@ function run_unit_tests {
 function run_coverage {
     min_fail_rate=80
     echo "[Running code coverage test]"
-    ${wrapper} "rm -rf ./.coverage ./coverage.xml"
-    ${wrapper} "coverage3 run --omit '*/site-packages/*' -m pytest --disable-warnings -vv ${TOP_DIR}/qcos/tests/unit_tests"
-    ${wrapper} "coverage3 xml -o coverage.xml"
-    ${wrapper} "coverage3 report --include='${TOP_DIR}/qcos/*' --omit='${TOP_DIR}/qcos/tests/*' -m --fail-under=$min_fail_rate"
+    ${wrapper} "rm -rf ${BASE_DIR}/coverage ${BASE_DIR}/coverage.xml"
+    ${wrapper} "coverage3 run --data-file=${BASE_DIR}/.coverage --omit='*/site-packages/*' -m pytest --disable-warnings -vv ${TOP_DIR}/qcos/tests/unit_tests"
+    ${wrapper} "coverage3 xml --data-file=${BASE_DIR}/.coverage -o ${BASE_DIR}/coverage.xml"
+    ${wrapper} "coverage3 report --data-file=${BASE_DIR}/.coverage --include='${TOP_DIR}/qcos/*' --omit='${TOP_DIR}/qcos/tests/*' -m --fail-under=$min_fail_rate"
     coverage_success=$?
-    ${wrapper} "coverage3 html --title='QCOS Coverage Report' --include='${TOP_DIR}/qcos/*' --omit='${TOP_DIR}/qcos/tests/*' -d coverage_html"
+    ${wrapper} "coverage3 html --data-file=${BASE_DIR}/.coverage --title='QCOS Coverage Report' --include='${TOP_DIR}/qcos/*' --omit='${TOP_DIR}/qcos/tests/*' -d ${BASE_DIR}/coverage_html"
     echo
 }
 

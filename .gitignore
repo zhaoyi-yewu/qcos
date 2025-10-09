@@ -29,8 +29,9 @@ lib64
 pip-log.txt
 
 # Unit test / coverage reports
-.coverage
-.coverage*
+cicd/.coverage
+cicd/coverage.xml
+cicd/coverage_html
 .tox
 .cache
 nosetests.xml
