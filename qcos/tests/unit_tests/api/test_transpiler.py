@@ -53,8 +53,10 @@ class TestTranspiler:
     @patch.object(TranspilerManager, "get_transpiler")
     @patch.object(TaskScheduler, "get_transpiler_manager")
     def test_get_transpiler(
-        self, mock_get_transpiler_manager, mock_get_transpiler,
-        mock_get_transpiler_info
+        self,
+        mock_get_transpiler_manager,
+        mock_get_transpiler,
+        mock_get_transpiler_info,
     ):
         mock_get_transpiler_info.return_value = response_info
         mock_get_transpiler_manager.return_value = TranspilerManager()

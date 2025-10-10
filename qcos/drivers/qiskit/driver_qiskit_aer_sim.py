@@ -26,6 +26,7 @@ from qcos.drivers.driver_base import DriverBase
 
 class DriverQiskitAerSim(DriverBase):
     """Qiskit Aer 模拟器驱动"""
+
     def __init__(self):
         super().__init__()
         self.version = "0.0.1"
@@ -34,10 +35,12 @@ class DriverQiskitAerSim(DriverBase):
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_QISKIT
         self.tech_type = Constant.TECH_TYPE_GENERIC_SIMULATOR
-        self.supported_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
-                                      Constant.SINGLE_QUBIT_GATE_RY,
-                                      Constant.SINGLE_QUBIT_GATE_RZ,
-                                      Constant.TWO_QUBIT_GATE_CX]
+        self.supported_basis_gates = [
+            Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
+            Constant.SINGLE_QUBIT_GATE_RZ,
+            Constant.TWO_QUBIT_GATE_CX,
+        ]
         self.supported_transpilers = [Constant.TRANSPILER_QISKIT]
         self.enable_circuit_aggregation = True
         self.max_qubits = 30
@@ -84,7 +87,8 @@ class DriverQiskitAerSim(DriverBase):
         data_index = data["index"]
         logger.info(
             f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
-            f"data_type: {data_type}, data: {data}")
+            f"data_type: {data_type}, data: {data}"
+        )
 
         self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_device_status(Device.DEVICE_STATUS_BUSY)

@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from loguru import logger
 
 from qcos.common.constant import Constant
 from qcos.transpiler.transpiler_base import TranspilerBase
@@ -23,6 +22,7 @@ from qcos.transpiler.transpiler_base import TranspilerBase
 
 class TranspilerDummy(TranspilerBase):
     """Transpiler Class for Dummy"""
+
     def __init__(self):
         super().__init__()
         self.name = Constant.TRANSPILER_DUMMY
@@ -34,7 +34,7 @@ class TranspilerDummy(TranspilerBase):
         self.supported_code_types = [
             Constant.CODE_TYPE_QASM,
             Constant.CODE_TYPE_QASM2,
-            Constant.CODE_TYPE_QASM3
+            Constant.CODE_TYPE_QASM3,
         ]
 
     def init_transpiler(self):

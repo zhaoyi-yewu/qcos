@@ -18,12 +18,23 @@
 import pytest
 
 from qcos.api.posiq.routes_jsonrpc.errors import (
-    handle_error_bad_requests, BadRequestError, UnauthorizedError,
-    handle_error_unauthorized, ForbiddenError, handle_error_forbidden,
-    NotFoundError, handle_error_not_found, ConflictError,
-    handle_error_conflict, InternalServerError, handle_error_internal_server,
-    handle_error_not_implemented, ServiceUnavailableError,
-    NotImplementedError, handle_error_service_unavailable)
+    handle_error_bad_requests,
+    BadRequestError,
+    UnauthorizedError,
+    handle_error_unauthorized,
+    ForbiddenError,
+    handle_error_forbidden,
+    NotFoundError,
+    handle_error_not_found,
+    ConflictError,
+    handle_error_conflict,
+    InternalServerError,
+    handle_error_internal_server,
+    handle_error_not_implemented,
+    ServiceUnavailableError,
+    NotImplementedError,
+    handle_error_service_unavailable,
+)
 
 module_name = "module_name"
 func_name = "func_name"

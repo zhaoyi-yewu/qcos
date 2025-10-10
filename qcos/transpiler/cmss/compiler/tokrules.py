@@ -15,15 +15,17 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-t_EQ = r'\=\='
-t_ignore = ' \t\r'
-t_ARROW = r'->'
+t_EQ = r"\=\="
+t_ignore = " \t\r"
+t_ARROW = r"->"
 
 
 # 解析错误的时候直接抛出异常
 def t_error(lex_error):
-    raise SyntaxError(f"in line {lex_error.lineno}, "
-                      f"lex error at token : {lex_error.value[0]}")
+    raise SyntaxError(
+        f"in line {lex_error.lineno}, "
+        f"lex error at token : {lex_error.value[0]}"
+    )
 
 
 # 记录行号，方便出错定位
@@ -52,7 +54,7 @@ def t_NUMBER(number):
 
 def t_BOOL(boolean):
     r"""true|false"""
-    if boolean.value == 'true':
+    if boolean.value == "true":
         boolean.value = bool(1)
     else:
         boolean.value = bool(0)
@@ -67,40 +69,59 @@ def t_STDFILE(t):
 # 标识符的命令规则
 def t_ID(t):
     r"""[a-zA-Z_][a-zA-Z_0-9]*"""
-    t.type = reserved.get(t.value, 'ID')  # Check for reserved words
+    t.type = reserved.get(t.value, "ID")  # Check for reserved words
     return t
 
 
 reserved = {
-    'OPENQASM': 'OPENQASM',
-    'include': 'INCLUDE',
-    'if': 'IF',
-    'qreg': 'QREG',
-    'creg': 'CREG',
-    'bit': 'BIT',
-    'qubit': 'QUBIT',
-    'gate': 'GATE',
-    'measure': 'MEASURE',
-    'pi': 'PI',
-    'sin': 'SIN',
-    'cos': 'COS',
-    'tan': 'TAN',
-    'exp': 'EXP',
-    'ln': 'LN',
-    'sqrt': 'SQRT',
-    'barrier': 'BARRIER',
-    'for': 'FOR',
-    'int': 'INT',
-    'in': 'IN',
-    'array': 'ARRAY',
-    'float': 'FLOAT',
-    'bool': 'BOOL',
-    'reset': 'RESET',
+    "OPENQASM": "OPENQASM",
+    "include": "INCLUDE",
+    "if": "IF",
+    "qreg": "QREG",
+    "creg": "CREG",
+    "bit": "BIT",
+    "qubit": "QUBIT",
+    "gate": "GATE",
+    "measure": "MEASURE",
+    "pi": "PI",
+    "sin": "SIN",
+    "cos": "COS",
+    "tan": "TAN",
+    "exp": "EXP",
+    "ln": "LN",
+    "sqrt": "SQRT",
+    "barrier": "BARRIER",
+    "for": "FOR",
+    "int": "INT",
+    "in": "IN",
+    "array": "ARRAY",
+    "float": "FLOAT",
+    "bool": "BOOL",
+    "reset": "RESET",
 }
 
 # 输入中支持的符号头token，当然也支持t_PLUS = r'\+'的方式将加号定义为token
-literals = ['+', '-', '*', '/', '%', '<', '>', '=', ',', '(', ')',
-            '[', ']', '{', '}', ';', ':', '"']
+literals = [
+    "+",
+    "-",
+    "*",
+    "/",
+    "%",
+    "<",
+    ">",
+    "=",
+    ",",
+    "(",
+    ")",
+    "[",
+    "]",
+    "{",
+    "}",
+    ";",
+    ":",
+    '"',
+]
 
-tokens = (['EQ', 'REAL', 'NUMBER', 'ID', 'ARROW', 'STDFILE']
-          + list(reserved.values()))
+tokens = ["EQ", "REAL", "NUMBER", "ID", "ARROW", "STDFILE"] + list(
+    reserved.values()
+)

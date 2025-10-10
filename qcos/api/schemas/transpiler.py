@@ -15,8 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from typing import Optional
-
 from pydantic import BaseModel
 
 
@@ -30,25 +28,27 @@ class GetTranspilerRequest(BaseModel):
     """Get Transpiler Request
     Pydantic Model for Get Transpiler Request
     """
+
     # transpiler name
-    name: str = None
+    name: str
 
 
 class GetTranspilerResponse(BaseModel):
     """Get Transpiler Response
     Pydantic Model for Get Transpiler Response
     """
+
     # transpiler name
-    name: str = None
+    name: str
     # transpiler alias name
-    alias_name: str = None
+    alias_name: str | None = None
     # version
-    version: str = None
+    version: str | None = None
     # enable this transpiler or not
     enable: bool = True
     # supported code types
     supported_code_types: list = []
     # transpiler_options
-    transpiler_options: Optional[dict] = None
+    transpiler_options: dict | None = None
     # transpiler_options schema
-    transpiler_options_schema: Optional[dict] = None
+    transpiler_options_schema: dict | None = None

@@ -80,13 +80,15 @@ class TestLibrary:
         assert content is not None
 
         pattern = {"1": "1"}
-        content = library.read_file("test-pid_file.txt",
-                                    replace_pattern=pattern)
+        content = library.read_file(
+            "test-pid_file.txt", replace_pattern=pattern
+        )
         assert content is not None
 
         formats = {"2": "2"}
-        content = library.read_file("test-pid_file.txt",
-                                    customer_format=formats)
+        content = library.read_file(
+            "test-pid_file.txt", customer_format=formats
+        )
         assert content is not None
 
     def test_read_csv_file(self):
@@ -119,8 +121,9 @@ class TestLibrary:
         success, _ = library.validate_values_enum("9", "Tzeentch", value)
         assert success is True
 
-        success, _ = library.validate_values_enum(None, "Tzeentch",
-                                                  value, allow_none=True)
+        success, _ = library.validate_values_enum(
+            None, "Tzeentch", value, allow_none=True
+        )
         assert success is True
 
         success, _ = library.validate_values_enum("13", "Tzeentch", value)
@@ -134,17 +137,20 @@ class TestLibrary:
         success, _ = library.validate_values_range(9, "Tzeentch")
         assert success is True
 
-        success, _ = library.validate_values_range(9, "Tzeentch",
-                                                   min_value=13, max_value=6)
+        success, _ = library.validate_values_range(
+            9, "Tzeentch", min_value=13, max_value=6
+        )
         assert success is False
 
     def test_validate_values_length(self):
-        success, _ = library.validate_values_length(None, "Tzeentch",
-                                                    allow_none=True)
+        success, _ = library.validate_values_length(
+            None, "Tzeentch", allow_none=True
+        )
         assert success is True
 
-        success, _ = library.validate_values_length("99", "Tzeentch",
-                                                    min_value=13, max_value=1)
+        success, _ = library.validate_values_length(
+            "99", "Tzeentch", min_value=13, max_value=1
+        )
         assert success is False
 
         success, _ = library.validate_values_length("9", "Tzeentch")
@@ -163,16 +169,16 @@ class TestLibrary:
         success, _ = library.validate_values_list(value, "Tzeentch", bool)
         assert success is False
 
-        success, _ = library.validate_values_list(value, "Tzeentch",
-                                                  bool, allow_none=True)
+        success, _ = library.validate_values_list(
+            value, "Tzeentch", bool, allow_none=True
+        )
         assert success is True
 
     def test_validate_schema(self):
         success, _ = library.validate_schema("9", "Tzeentch")
         assert success is False
 
-        success, _ = library.validate_schema(None, "Tzeentch",
-                                             allow_none=True)
+        success, _ = library.validate_schema(None, "Tzeentch", allow_none=True)
         assert success is True
 
         success, _ = library.validate_schema("9", None)
@@ -218,17 +224,23 @@ class TestLibrary:
         default = library.get_nested_dict_value(dictionary, keys)
         assert default is None
 
-    @patch('requests.post')
+    @patch("requests.post")
     def test_run_callbacks(self, mock_post):
         data = {
             "job_id": "job_id",
             "job_status": "job_status",
             "backend": "backend",
-            "results": "results"
+            "results": "results",
         }
-        callbacks = [{"method": "post", "headers": {},
-                      "retries": 3, "timeout": 10,
-                      "url": "127.0.0.1"},]
+        callbacks = [
+            {
+                "method": "post",
+                "headers": {},
+                "retries": 3,
+                "timeout": 10,
+                "url": "127.0.0.1",
+            },
+        ]
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"result": "success"}
@@ -236,17 +248,23 @@ class TestLibrary:
         success, _ = library.run_callbacks(data, callbacks)
         assert success is True
 
-    @patch('requests.post')
+    @patch("requests.post")
     def test_async_run_callbacks(self, mock_post):
         data = {
             "job_id": "job_id",
             "job_status": "job_status",
             "backend": "backend",
-            "results": "results"
+            "results": "results",
         }
-        callbacks = [{"method": "post", "headers": {},
-                      "retries": 3, "timeout": 10,
-                      "url": "127.0.0.1"},]
+        callbacks = [
+            {
+                "method": "post",
+                "headers": {},
+                "retries": 3,
+                "timeout": 10,
+                "url": "127.0.0.1",
+            },
+        ]
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"result": "success"}
@@ -255,8 +273,12 @@ class TestLibrary:
         assert success is False
 
     def test_get_sorted_keys(self):
-        sort_obj = {"Tzeentch": datetime(2999, 12, 31, 23, 59, 59, 0),
-                    "N": "Nurgle", "K": "Khorne", "S": "Slaanesh"}
+        sort_obj = {
+            "Tzeentch": datetime(2999, 12, 31, 23, 59, 59, 0),
+            "N": "Nurgle",
+            "K": "Khorne",
+            "S": "Slaanesh",
+        }
         library.get_sorted_keys(sort_obj, ["-Tzeentch", "Tzeentch"])
         library.get_sorted_keys(sort_obj, "Tzeentch")
 
@@ -270,3 +292,12 @@ class TestLibrary:
         os.remove("test-pid_file.toml")
         os.remove("test-pid_file.txt")
         os.rmdir("test-file")
+
+    def test_check_qubo_matrixs_bit_width(self):
+        qubo_matrixs = [[[-480, 508, -48], [508, -508, -48], [-48, -48, 60]]]
+        library.check_qubo_matrixs_bit_width(qubo_matrixs)
+        qubo_matrixs = [
+            [[-512, 520, -48], [520, -520, -48], [-48, -48, 40]],
+            [[-488, 516, -48], [516, -516, -48], [-48, -48, 60]],
+        ]
+        library.check_qubo_matrixs_bit_width(qubo_matrixs)

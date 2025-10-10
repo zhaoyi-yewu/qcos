@@ -19,7 +19,6 @@ import networkx as nx
 
 
 class Node:
-
     def __init__(self, qubits, left=None, right=None, ignore=False) -> None:
         """搜索树节点，也称作社区，每个节点包含一组量子比特
 
@@ -45,33 +44,37 @@ class HierarchyTree:
         weight: 错误率所占权重，越高表示越看中门和测量的保真度，为0表示只关心耦合情况.
         Defaults to 1.0.
     """
+
     def __init__(self, qpu_config, weight=1.0) -> None:
         ag = nx.Graph()
-        for k, e in qpu_config['coupler_map'].items():
+        for k, e in qpu_config["coupler_map"].items():
             ag.add_edge(
-                e[0],
-                e[1],
-                weight=1.0 - qpu_config['coupler_error'][k] / 100)
+                e[0], e[1], weight=1.0 - qpu_config["coupler_error"][k] / 100
+            )
 
         for q in ag.nodes():
-            ag.nodes[q]['weight'] = 1.0
-            if q in qpu_config['readout_error']:
-                ag.nodes[q]['weight'] = (
-                        1.0 - qpu_config['readout_error'][q] / 100)
+            ag.nodes[q]["weight"] = 1.0
+            if q in qpu_config["readout_error"]:
+                ag.nodes[q]["weight"] = (
+                    1.0 - qpu_config["readout_error"][q] / 100
+                )
 
         self.graph = ag
         self.edge_count = len(ag.edges())
         self.weight = weight
         self.root = None
-        self.all_qubits = qpu_config['qubits']
+        self.all_qubits = qpu_config["qubits"]
 
     def construct(self):
         """构建层次树，每次合并两个节点，直到最终只剩下一个节点"""
         nodes = self.origin_node()
         while len(nodes) != 1:
             i, j = self.calc_merge_gain(nodes)
-            node = Node(nodes[i].qubits + nodes[j].qubits,
-                        left=nodes[i], right=nodes[j])
+            node = Node(
+                nodes[i].qubits + nodes[j].qubits,
+                left=nodes[i],
+                right=nodes[j],
+            )
             node.left.parent = node
             node.left.pos = 0
             node.right.parent = node
@@ -128,13 +131,14 @@ class HierarchyTree:
         Returns: 当前节点的平均保真度
         """
         n = len(node.qubits)
-        read_f = sum(self.graph.nodes[q]['weight'] for q in node.qubits) / n
+        read_f = sum(self.graph.nodes[q]["weight"] for q in node.qubits) / n
         cx_f, en = 0.0, 0
         for i in range(n):
             for j in range(i):
                 if self.graph.has_edge(node.qubits[i], node.qubits[j]):
-                    cx_f += self.graph.edges[
-                        (node.qubits[i], node.qubits[j])]['weight']
+                    cx_f += self.graph.edges[(node.qubits[i], node.qubits[j])][
+                        "weight"
+                    ]
                     en += 1
         if en > 0:
             cx_f /= en
@@ -179,12 +183,12 @@ class HierarchyTree:
         for qa in node_a.qubits:
             for qb in node_b.qubits:
                 if self.graph.has_edge(qa, qb):
-                    e += self.graph.edges[(qa, qb)]['weight']
+                    e += self.graph.edges[(qa, qb)]["weight"]
                     ecnt += 1
                     qubits.add(qa)
                     qubits.add(qb)
         for q in qubits:
-            v += self.graph.nodes[q]['weight']
+            v += self.graph.nodes[q]["weight"]
         if e == 0 or v == 0:
             return 0
         eigenvector = (e / ecnt) * (v / len(qubits)) * self.weight

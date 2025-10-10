@@ -23,7 +23,9 @@ class Move(BaseOperation):
     """移动操作, 用于执行量子比特在存储区和操纵区之间的移动操作"""
 
     def __init__(
-            self, targets=None, arg_value=None,
-            operation_type=OperationType.MOVE.value
+        self,
+        targets=None,
+        arg_value=None,
+        operation_type=OperationType.MOVE.value,
     ) -> None:
         super().__init__("move", targets, arg_value, operation_type)

@@ -26,11 +26,13 @@ config = Config()
 
 
 class TestConfig:
-    @patch.object(Library, 'read_toml_file')
+    @patch.object(Library, "read_toml_file")
     def test_parse_toml_file(self, mock_read_toml_file):
         mock_obj = Mock()
-        mock_obj.unwrap.return_value = {"1": {"1": "Alice", "2": 2},
-                                        "2": {"1": "Bob", "3": 3}}
+        mock_obj.unwrap.return_value = {
+            "1": {"1": "Alice", "2": 2},
+            "2": {"1": "Bob", "3": 3},
+        }
         mock_read_toml_file.return_value = iter([True, "err_msg", mock_obj])
         with pytest.raises(errors.GenericException) as context:
             config.parse_toml_file("config.toml")

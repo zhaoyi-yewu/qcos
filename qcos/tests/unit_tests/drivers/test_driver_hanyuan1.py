@@ -16,11 +16,10 @@
 # ----------------------------------------------------------------------
 
 import pytest
-import requests
 
 from unittest.mock import patch
 
-from qcos.common.constant import HttpMethod, HttpCode
+from qcos.common.constant import HttpCode
 from qcos.common.library import Library
 from qcos.drivers.cascoldatom.driver_hanyuan1 import DriverHanyuan1
 
@@ -58,8 +57,9 @@ class TestDriverHanyuan1:
     @patch.object(DriverHanyuan1, "get_task_results")
     @patch.object(Library, "loop_with_timeout")
     @patch.object(DriverHanyuan1, "submit_task")
-    def test_run(self, mock_submit_task, mock_loop_with_timeout,
-                 mock_get_task_results):
+    def test_run(
+        self, mock_submit_task, mock_loop_with_timeout, mock_get_task_results
+    ):
         mock_submit_task.return_value = iter([False, ""])
         with pytest.raises(ValueError) as context:
             driver_hanyuan1.run(job_id, num_qubits, data, data_type)
@@ -81,46 +81,50 @@ class TestDriverHanyuan1:
         mock_submit_task.return_value = iter([True, ""])
         mock_loop_with_timeout.return_value = iter([True, "", ""])
         mock_get_task_results.return_value = iter([True, "", ""])
-        assert driver_hanyuan1.run(job_id, num_qubits,
-                                   data, data_type) is None
+        assert driver_hanyuan1.run(job_id, num_qubits, data, data_type) is None
 
     def test_print_api_response(self):
         driver_hanyuan1.verbose = True
-        assert driver_hanyuan1.print_api_response("200",
-                                                  "reason", "edit") is None
+        assert (
+            driver_hanyuan1.print_api_response("200", "reason", "edit") is None
+        )
 
     def test_check_task_status(self):
         assert driver_hanyuan1.check_task_status(job_id, 1, []) is False
 
     @patch.object(DriverHanyuan1, "call_json_rpc")
     def test_get_task_results(self, mock_call_json_rpc):
-        mock_call_json_rpc.return_value = iter([HttpCode.SUCCESS_OK, "no",
-                                                "error", {"result": {
-                                                    "status": "success",
-                                                    "result": None}}])
+        mock_call_json_rpc.return_value = iter(
+            [
+                HttpCode.SUCCESS_OK,
+                "no",
+                "error",
+                {"result": {"status": "success", "result": None}},
+            ]
+        )
 
-        success, err_msg, result = (driver_hanyuan1.get_task_results
-                                    (job_id, 1))
+        success, err_msg, result = driver_hanyuan1.get_task_results(job_id, 1)
         assert success is False
 
     @patch.object(DriverHanyuan1, "call_json_rpc")
     def test_submit_task(self, mock_call_json_rpc):
-        mock_call_json_rpc.return_value = iter([HttpCode.SUCCESS_OK,
-                                                "no", "error", "error"])
+        mock_call_json_rpc.return_value = iter(
+            [HttpCode.SUCCESS_OK, "no", "error", "error"]
+        )
         datas = [{"name": "H", "target": "q1", "arg_value": "pi"}]
-        success, err_msg = driver_hanyuan1.submit_task(job_id, num_qubits,
-                                                       datas, data_type,
-                                                       shots, 1)
+        success, err_msg = driver_hanyuan1.submit_task(
+            job_id, num_qubits, datas, data_type, shots, 1
+        )
         assert success is False
-        success, err_msg = driver_hanyuan1.submit_task(job_id, num_qubits,
-                                                       datas, data_type,
-                                                       shots, 1)
+        success, err_msg = driver_hanyuan1.submit_task(
+            job_id, num_qubits, datas, data_type, shots, 1
+        )
         assert success is False
 
     @patch.object(Library, "call_http_api")
     def test_call_json_rpc(self, mock_call_http_api):
         mock_call_http_api.return_value = iter(["200", "no", True, "success"])
-        status_code, reason, text, result = (driver_hanyuan1.call_json_rpc
-                                             (driver_hanyuan1.base_url,
-                                              method_name, data))
+        status_code, reason, text, result = driver_hanyuan1.call_json_rpc(
+            driver_hanyuan1.base_url, method_name, data
+        )
         assert status_code == "200"

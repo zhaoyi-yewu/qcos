@@ -44,32 +44,36 @@ class NASingleRoute(ABC):
         """
 
         self.qpu_config = qpu_configs
-        self.storage_area = self.qpu_config['storage_area']
-        self.operate_area = self.qpu_config['operate_area']
+        self.storage_area = self.qpu_config["storage_area"]
+        self.operate_area = self.qpu_config["operate_area"]
         self.ag = nx.Graph()
-        for k, (a, b) in self.qpu_config['coupler_map'].items():
-            if (a not in self.operate_area) or (
-                    b not in self.operate_area):
+        for k, (a, b) in self.qpu_config["coupler_map"].items():
+            if (a not in self.operate_area) or (b not in self.operate_area):
                 continue
             self.ag.add_edge(a, b)
         self.ag.shortest_length = dict(
-            nx.shortest_path_length(self.ag, source=None,
-                                    target=None,
-                                    weight=None,
-                                    method='dijkstra'))
+            nx.shortest_path_length(
+                self.ag,
+                source=None,
+                target=None,
+                weight=None,
+                method="dijkstra",
+            )
+        )
 
         self.gates = gates
         self.qbit_num = qbit_num
         if len(self.storage_area) < self.qbit_num:
             raise MappingException(
                 f"not enough qubits, need {self.qbit_num}, "
-                f"but only{len(self.storage_area)}")
+                f"but only{len(self.storage_area)}"
+            )
 
         err_dict = {}
-        for k, v in self.qpu_config['readout_error'].items():
+        for k, v in self.qpu_config["readout_error"].items():
             if k in self.storage_area:
                 err_dict[k] = v
-        sq = sorted(err_dict.items(), key=lambda e: e[1])[:self.qbit_num]
+        sq = sorted(err_dict.items(), key=lambda e: e[1])[: self.qbit_num]
         self.mapping = {a: b[0] for a, b in zip(range(self.qbit_num), sq)}
         self.qids = [int(q[0][1:]) for q in sq]
 
@@ -83,10 +87,11 @@ class NASingleRoute(ABC):
         gates_on_qubit = {}
         measure = []
         for gate in self.gates:
-            assert len(gate.targets) == 1
-            gate.targets = [int(self.mapping[int(q)][1:])
-                            for q in gate.targets]
-            if gate.name == 'measure':
+            assert len(gate.targets) == 1  # noqa: S101  # TODO: to be fixed
+            gate.targets = [
+                int(self.mapping[int(q)][1:]) for q in gate.targets
+            ]
+            if gate.name == "measure":
                 measure.append(gate)
                 continue
             if gate.targets[0] not in gates_on_qubit:

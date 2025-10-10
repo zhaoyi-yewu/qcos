@@ -19,7 +19,8 @@ from unittest.mock import patch
 
 from qcos.client.client import Client
 from qcos.tests.unit_tests.task_manager.constant_for_test import (
-    ConstantForTest)
+    ConstantForTest,
+)
 
 client = Client()
 
@@ -37,8 +38,9 @@ class TestClient:
     @patch.object(Client, "print_api_response")
     def test_call_json_rpc(self, mock_print_api_response):
         mock_print_api_response.return_value = self.return_values
-        status_code, reason, text, result = (client.call_json_rpc
-                                             ("127.0.0.1", "get"))
+        status_code, reason, text, result = client.call_json_rpc(
+            "127.0.0.1", "get"
+        )
         assert status_code == -1
 
     def test_handle_invalid_arguments(self):
@@ -83,8 +85,7 @@ class TestClient:
     @patch.object(Client, "call_json_rpc")
     def test_get_transpiler(self, mock_call_json_rpc):
         mock_call_json_rpc.return_value = self.return_values
-        status_code, reason, text, result = (client.get_transpiler
-                                             ("transpiler"))
+        status_code, reason, text, result = client.get_transpiler("transpiler")
         assert result == "result"
 
     @patch.object(Client, "call_json_rpc")
@@ -127,5 +128,6 @@ class TestClient:
     def test_set_job_results(self, mock_call_json_rpc):
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.set_job_results(
-            self.job_id, "result")
+            self.job_id, "result"
+        )
         assert text == "text"

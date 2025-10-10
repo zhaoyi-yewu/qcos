@@ -91,25 +91,25 @@ qcos-api --config-file /etc/qcos/qcos.toml --config-dir /etc/qcos/conf.d/
 ### 3.1 通过容器环境运行测试
 #### 3.1.1 单元测试 (UT)
 ```shell
-cd ./build-scripts
+cd ./cicd
 ./run-tests.sh -u
 ```
 
 #### 3.1.2 覆盖率测试 (Coverage)
 ```shell
-cd ./build-scripts
+cd ./cicd
 ./run-tests.sh -c
 ```
 
 #### 3.1.3 覆盖率报告查看
 ```shell
-cd ./build-scripts
+cd ./cicd
 ./run-tests.sh -s
 # 使用浏览器打开./coverage_html/index.html查看覆盖率
 
-# 命令行模式下, 通过命令方式查看覆盖率报告 [可选]
+# 或者, 在命令行模式下, 通过命令方式查看覆盖率报告 [可选]
 coverage3 report -m
-# 命令行模式下, 通过link工具查看覆盖率HTML报告 [可选]
+# 或者, 在命令行模式下, 通过link工具查看覆盖率HTML报告 [可选]
 links ./coverage_html/index.html
 ```
 
@@ -117,14 +117,31 @@ links ./coverage_html/index.html
 ```shell
 # 保证QCOS已经正常启动
 # 编辑/etc/qcos/qcos-st.toml, 修改API_SERVER_IP和API_SERVER_PORT为被测服务的IP地址以及端口号
-cd ./build-scripts
+cd ./cicd
 ./run-tests.sh -s
 ```
 
-#### 3.1.5 代码格式检查 (flake8)
+#### 3.1.5 代码格式检查 (ruff format)
 ```shell
-cd ./build-scripts
-./run-tests.sh -p
+项目根目录下:
+  ruff format --check qcos
+或者:
+  ./cicd/code-formatter.sh
+
+自动修复代码格式:
+  ruff format qcos
+或者:
+  ./cicd/code-formatter.sh -f
+```
+
+#### 3.1.6 代码静态分析lint (pylint+ruff+mypy)
+```shell
+项目根目录下:
+  pylint qcos
+  ruff check qcos
+  mypy qcos
+或者:
+  ./cicd/code-linter.sh
 ```
 
 ## 4. 文档

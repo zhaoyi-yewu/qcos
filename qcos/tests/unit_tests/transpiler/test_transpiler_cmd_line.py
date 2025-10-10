@@ -17,9 +17,13 @@
 from unittest.mock import patch
 
 from qcos.transpiler.cmss.transpiler_cmd_line import (
-    read_qasm_from_file, Timer, main)
+    read_qasm_from_file,
+    Timer,
+    main,
+)
 
 timer = Timer()
+
 
 class TestTranspilerCmdLine:
     def test_read_qasm_from_file(self):
@@ -29,8 +33,13 @@ class TestTranspilerCmdLine:
     @patch("qcos.transpiler.cmss.transpiler_cmd_line.optimize_gate")
     @patch("qcos.transpiler.cmss.transpiler_cmd_line.get_ir")
     @patch("qcos.transpiler.cmss.transpiler_cmd_line.get_abs_tree")
-    def test_main(self, mock_get_abs_tree, mock_get_ir,
-                  mock_optimize_gate, mock_decompose_gates):
+    def test_main(
+        self,
+        mock_get_abs_tree,
+        mock_get_ir,
+        mock_optimize_gate,
+        mock_decompose_gates,
+    ):
         mock_get_abs_tree.return_value = None
         mock_get_ir.return_value = (None, None)
         mock_optimize_gate.return_value = None

@@ -35,27 +35,26 @@ class TestTranspilerQiskit:
         """
 
     def test_transpiler_qiskit(self):
-        expected_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
-                                Constant.SINGLE_QUBIT_GATE_RY,
-                                Constant.SINGLE_QUBIT_GATE_RZ,
-                                Constant.TWO_QUBIT_GATE_CX]
+        expected_basis_gates = [
+            Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
+            Constant.SINGLE_QUBIT_GATE_RZ,
+            Constant.TWO_QUBIT_GATE_CX,
+        ]
         trans_cfg_inst.set_driver_name("DriverQiskitAerSim")
         transpiler = TranspilerQiskit()
         src_code_info = {"000": self.simple_data}
         parse_result = transpiler.parse(src_code_info)
-        transpiled_circuit, _ = transpiler.transpile(parse_result,
-                                                     expected_basis_gates)
+        transpiled_circuit, _ = transpiler.transpile(
+            parse_result, expected_basis_gates
+        )
         assert len(transpiled_circuit) == 3
 
     def test_transpiler_qiskit_abnormal(self):
-        expected_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
-                                Constant.SINGLE_QUBIT_GATE_RY,
-                                Constant.SINGLE_QUBIT_GATE_RZ,
-                                Constant.TWO_QUBIT_GATE_CX]
         trans_cfg_inst.set_driver_name("DriverQiskitAerSim")
         transpiler = TranspilerQiskit()
         src_code_info = {"000": self.simple_data}
         try:
-            parse_result = transpiler.parse(src_code_info)
+            transpiler.parse(src_code_info)
         except Exception as e:
-            assert 'unsupported input' in str(e)
+            assert "unsupported input" in str(e)

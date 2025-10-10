@@ -15,8 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from typing import Optional
-
 from pydantic import BaseModel
 
 
@@ -30,25 +28,27 @@ class GetDeviceRequest(BaseModel):
     """Get Device Request
     Pydantic Model for Get Device Request
     """
+
     # device name
-    name: str = None
+    name: str
 
 
 class GetDeviceResponse(BaseModel):
     """Get Device Response
     Pydantic Model for Get Device Response
     """
+
     # device name
-    name: str = None
+    name: str
     # device alias name
-    alias_name: str = None
+    alias_name: str | None = None
     # description
-    description: Optional[str] = None
+    description: str | None = None
     # driver name
-    driver_name: str = None
+    driver_name: str
     # device enable
-    enable: bool = None
+    enable: bool
     # device status
-    status: str = None
+    status: str
     # configs
-    configs: Optional[dict] = None
+    configs: dict | None = None

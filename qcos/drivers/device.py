@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class Device:
     """Device"""
+
     # Device status
     DEVICE_STATUS_ONLINE = "online"
     DEVICE_STATUS_OFFLINE = "offline"
@@ -34,7 +35,7 @@ class Device:
         DEVICE_STATUS_OFFLINE,
         DEVICE_STATUS_BUSY,
         DEVICE_STATUS_MAINTAIN,
-        DEVICE_STATUS_UNKNOWN
+        DEVICE_STATUS_UNKNOWN,
     ]
 
     def __init__(self, name, driver):
@@ -104,9 +105,10 @@ class Device:
             status: device status
         """
         if status not in self.DEVICE_STATUSES:
-            logger.warning(f"Failed to set device status: '{status}'."
-                           f"valid statuses: {', '.join(self.DEVICE_STATUSES)}"
-                           )
+            logger.warning(
+                f"Failed to set device status: '{status}'."
+                f"valid statuses: {', '.join(self.DEVICE_STATUSES)}"
+            )
             return
         self.status = status
 
@@ -171,6 +173,6 @@ class Device:
             f"driver_name: {self.driver.get_name()}",
             f"enable: {self.enable}",
             f"status: {self.status}",
-            f"configs: {self.configs}"
+            f"configs: {self.configs}",
         ]
         return "\n".join(show_list)

@@ -1210,7 +1210,7 @@ class Visitor:
                 # np.exp, np.log, np.sqrt
                 n = self.get_call_param_value(arg.children[0], func_dict, pos)
                 # pylint: disable=eval-used
-                value = eval(arg.leaf.format(n), func_dict)
+                value = eval(arg.leaf.format(n), func_dict)  # noqa: S307
             else:
                 value = None
         return value

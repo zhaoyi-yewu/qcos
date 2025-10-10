@@ -28,6 +28,7 @@ class GetVersionResponse(BaseModel):
     """Get Version Response
     Pydantic Model for Get Version Response
     """
+
     # version
     version: str
     api_version: str

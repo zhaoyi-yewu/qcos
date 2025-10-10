@@ -44,9 +44,12 @@ class TestTranspilerCmss:
             "storage_area": ["S27", "S28", "S29", "S35", "S36", "S37"],
             "operate_area": ["P27", "P28", "P29", "P35", "P36", "P37"],
             "coupler_map": {
-                "G0": ["P27", "P35"], "G1": ["P28", "P36"],
-                "G2": ["P29", "P37"], "G3": ["P27", "P28"],
-                "G4": ["P35", "P36"], "G5": ["P28", "P29"]
+                "G0": ["P27", "P35"],
+                "G1": ["P28", "P36"],
+                "G2": ["P29", "P37"],
+                "G3": ["P27", "P28"],
+                "G4": ["P35", "P36"],
+                "G5": ["P28", "P29"],
             },
             "readout_error": {
                 "S27": 1.0,
@@ -54,7 +57,7 @@ class TestTranspilerCmss:
                 "S35": 3.0,
                 "S36": 4.0,
                 "S29": 5.0,
-                "S37": 6.0
+                "S37": 6.0,
             },
             "coupler_error": {
                 "G0": 3.0,
@@ -62,7 +65,7 @@ class TestTranspilerCmss:
                 "G2": 3.0,
                 "G3": 3.0,
                 "G4": 3.0,
-                "G5": 3.0
+                "G5": 3.0,
             },
             "closest": {
                 "P27": "S27",
@@ -70,8 +73,8 @@ class TestTranspilerCmss:
                 "P35": "S35",
                 "P36": "S36",
                 "P29": "S29",
-                "P37": "S37"
-            }
+                "P37": "S37",
+            },
         }
         trans_cfg_inst.set_qpu_cfg(cls.qpu_config)
         trans_cfg_inst.set_tech_type(Constant.TECH_TYPE_NEUTRAL_ATOM)
@@ -79,30 +82,36 @@ class TestTranspilerCmss:
 
     def test_transpiler_cmss(self):
         transpiler = TranspilerCmss()
-        expected_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
-                                Constant.SINGLE_QUBIT_GATE_RY]
+        expected_basis_gates = [
+            Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
+        ]
         src_code_info = {"000": self.simple_data}
         parse_result = transpiler.parse(src_code_info)
-        basis_gate_list, _ = transpiler.transpile(parse_result,
-                                                  expected_basis_gates)
+        basis_gate_list, _ = transpiler.transpile(
+            parse_result, expected_basis_gates
+        )
         assert len(basis_gate_list) == 2
-        validate_gate_ir(basis_gate_list[0], 'rx', [27], 1, False)
+        validate_gate_ir(basis_gate_list[0], "rx", [27], 1, False)
         validate_non_gate_ir(basis_gate_list[1], "measure", [27], 0)
 
     def test_transpiler_aggregation_succ(self):
         transpiler = TranspilerCmss()
-        expected_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
-                                Constant.SINGLE_QUBIT_GATE_RY]
+        expected_basis_gates = [
+            Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
+        ]
         src_code_info = {
             "000": self.simple_data,
             "111": self.simple_data,
             "222": self.simple_data,
             "333": self.simple_data,
-            "444": self.simple_data
+            "444": self.simple_data,
         }
         parse_result = transpiler.parse(src_code_info)
-        basis_gate_list, _ = transpiler.transpile(parse_result,
-                                                  expected_basis_gates)
+        basis_gate_list, _ = transpiler.transpile(
+            parse_result, expected_basis_gates
+        )
         assert len(basis_gate_list) == 10
 
     def test_transpiler_aggregation_partly_succ(self):
@@ -112,14 +121,17 @@ class TestTranspilerCmss:
             return
 
         transpiler = TranspilerCmss()
-        expected_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
-                                Constant.SINGLE_QUBIT_GATE_RY]
+        expected_basis_gates = [
+            Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
+        ]
         src_code_info = {
             "000": qasm_data,
             "111": qasm_data,
             "222": qasm_data,
         }
         parse_result = transpiler.parse(src_code_info)
-        basis_gate_list, _ = transpiler.transpile(parse_result,
-                                                  expected_basis_gates)
+        basis_gate_list, _ = transpiler.transpile(
+            parse_result, expected_basis_gates
+        )
         assert len(basis_gate_list) == 8

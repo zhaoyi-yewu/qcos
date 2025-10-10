@@ -33,14 +33,14 @@ def pytest_addoption(parser):
         "--env",
         action="store",
         default="dev",
-        help="Specify environment：dev, test, prod"
+        help="Specify environment：dev, test, prod",
     )
 
     parser.addoption(
         "--config-path",
         dest="config_path",
         default="/etc/qcos/qcos-st.toml",
-        help="Specify config file path"
+        help="Specify config file path",
     )
 
 
@@ -77,6 +77,8 @@ def load_configs():
     """Load configs"""
     samples_dir = GLOBAL_CONFIGS["samples_dir"]
     SAMPLES["simple-qasm.qasm"] = Library.read_file(
-        f"{samples_dir}/qasm/2.0/simple-qasm.qasm")
+        f"{samples_dir}/qasm/2.0/simple-qasm.qasm"
+    )
     SAMPLES["simple-qasm-1-bit.qasm"] = Library.read_file(
-        f"{samples_dir}/qasm/2.0/simple-qasm-1-bit.qasm")
+        f"{samples_dir}/qasm/2.0/simple-qasm-1-bit.qasm"
+    )

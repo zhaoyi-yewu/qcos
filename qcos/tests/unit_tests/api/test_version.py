@@ -18,7 +18,6 @@
 from unittest.mock import Mock, patch
 
 from qcos.api.posiq.routes_jsonrpc.version import version
-from qcos.api.schemas import GetVersionRequest
 from qcos.drivers.driver_base import DriverBase
 from qcos.drivers.driver_manager import DriverManager
 from qcos.drivers.dummy.driver_dummy import DriverDummy
@@ -28,14 +27,19 @@ from qcos.transpiler.transpiler_manager import TranspilerManager
 
 
 class TestVersion:
-    @patch.object(TranspilerManager, 'get_transpiler')
-    @patch.object(DriverBase, 'get_supported_transpilers')
-    @patch.object(TaskScheduler, 'get_transpiler_manager')
-    @patch.object(DriverManager, 'get_drivers')
-    @patch.object(TaskScheduler, 'get_driver_manager')
-    def test_version(self, mock_get_driver_manager, mock_get_drivers,
-                     mock_get_transpiler_manager,
-                     mock_get_supported_transpilers, mock_get_transpiler):
+    @patch.object(TranspilerManager, "get_transpiler")
+    @patch.object(DriverBase, "get_supported_transpilers")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    @patch.object(DriverManager, "get_drivers")
+    @patch.object(TaskScheduler, "get_driver_manager")
+    def test_version(
+        self,
+        mock_get_driver_manager,
+        mock_get_drivers,
+        mock_get_transpiler_manager,
+        mock_get_supported_transpilers,
+        mock_get_transpiler,
+    ):
         mock_get_supported_transpilers.return_value = ["transpilers"]
         mock_get_transpiler.return_value = TranspilerBase()
         mock_get_transpiler_manager.return_value = TranspilerManager()

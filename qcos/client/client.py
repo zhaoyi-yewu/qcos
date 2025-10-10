@@ -33,9 +33,11 @@ class Client:
 
     verbose = False
 
-    def __init__(self,
-                 api_listen_ip=Config.API_SERVER_LISTEN_IP,
-                 api_port=Config.API_SERVER_LISTEN_PORT):
+    def __init__(
+        self,
+        api_listen_ip=Config.API_SERVER_LISTEN_IP,
+        api_port=Config.API_SERVER_LISTEN_PORT,
+    ):
         api_version = "v1"
         base_endpoint_url = f"http://{api_listen_ip}:{api_port}"
         endpoint_url = f"{base_endpoint_url}/{api_version}"
@@ -57,8 +59,10 @@ class Client:
             result: result text (Default value = None)
         """
         if Client.verbose:
-            print(f"Response: status_code: {status_code}, reason: {reason}, "
-                  f"text: {text}, result: {result}")
+            print(
+                f"Response: status_code: {status_code}, reason: {reason}, "
+                f"text: {text}, result: {result}"
+            )
 
     @staticmethod
     def call_json_rpc(url, method_name, data=None, params=None):
@@ -77,10 +81,14 @@ class Client:
         jsonrpc_data = request(method_name, params={"body": data})
         try:
             status_code, reason, text, result = Library.call_http_api(
-                url, method=HttpMethod.POST, json=jsonrpc_data,
-                params=params, func_name=method_name,
+                url,
+                method=HttpMethod.POST,
+                json=jsonrpc_data,
+                params=params,
+                func_name=method_name,
                 headers=HttpHeaders.DEFAULT_JSON_HEADERS,
-                debug=Client.verbose)
+                debug=Client.verbose,
+            )
         except requests.exceptions.ConnectionError as ce:
             status_code = -1
             reason = f"Connection error: {str(ce)}"
@@ -124,7 +132,8 @@ class Client:
 
         # construct data and call json rpc
         status_code, reason, text, result = Client.call_json_rpc(
-            self.version_url, method_name, {})
+            self.version_url, method_name, {}
+        )
         return status_code, reason, text, result
 
     # [Driver]
@@ -138,7 +147,8 @@ class Client:
 
         # construct data and call json rpc
         status_code, reason, text, result = Client.call_json_rpc(
-            self.driver_url, method_name, data=None)
+            self.driver_url, method_name, data=None
+        )
         return status_code, reason, text, result
 
     def get_driver(self, driver_name):
@@ -153,13 +163,12 @@ class Client:
         method_name = "get_driver"
 
         # construct data and call json rpc
-        data = {
-            "name": driver_name
-        }
+        data = {"name": driver_name}
 
         # construct data and call json rpc
         status_code, reason, text, result = Client.call_json_rpc(
-            self.driver_url, method_name, data)
+            self.driver_url, method_name, data
+        )
         return status_code, reason, text, result
 
     # [Device]
@@ -173,7 +182,8 @@ class Client:
 
         # construct data and call json rpc
         status_code, reason, text, result = Client.call_json_rpc(
-            self.device_url, method_name, data=None)
+            self.device_url, method_name, data=None
+        )
         return status_code, reason, text, result
 
     def get_device(self, device_name):
@@ -188,13 +198,12 @@ class Client:
         method_name = "get_device"
 
         # construct data and call json rpc
-        data = {
-            "name": device_name
-        }
+        data = {"name": device_name}
 
         # construct data and call json rpc
         status_code, reason, text, result = Client.call_json_rpc(
-            self.device_url, method_name, data)
+            self.device_url, method_name, data
+        )
         return status_code, reason, text, result
 
     # [Transpiler]
@@ -208,7 +217,8 @@ class Client:
 
         # construct data and call json rpc
         status_code, reason, text, result = Client.call_json_rpc(
-            self.transpiler_url, method_name, data=None)
+            self.transpiler_url, method_name, data=None
+        )
         return status_code, reason, text, result
 
     def get_transpiler(self, transpiler_name):
@@ -223,13 +233,12 @@ class Client:
         method_name = "get_transpiler"
 
         # construct data and call json rpc
-        data = {
-            "name": transpiler_name
-        }
+        data = {"name": transpiler_name}
 
         # construct data and call json rpc
         status_code, reason, text, result = Client.call_json_rpc(
-            self.transpiler_url, method_name, data)
+            self.transpiler_url, method_name, data
+        )
         return status_code, reason, text, result
 
     # [System]
@@ -245,32 +254,33 @@ class Client:
         method_name = "ping"
 
         # construct data and call json rpc
-        data = {
-            "message": message
-        }
+        data = {"message": message}
         status_code, reason, text, result = Client.call_json_rpc(
-            self.system_url, method_name, data)
+            self.system_url, method_name, data
+        )
         return status_code, reason, text, result
 
     # [Job]
     def submit_job(
-            self,
-            source_code, *,
-            circuit_aggregation=None,
-            code_type=Constant.CODE_TYPE_QASM,
-            job_id=None,
-            job_name=None,
-            job_type=Constant.JOB_TYPE_SAMPLING,
-            job_priority=Constant.DEFAULT_JOB_PRIORITY,
-            description=None,
-            shots=Constant.DEFAULT_SHOTS,
-            backend=Constant.DRIVER_DUMMY,
-            driver_options=None,
-            transpiler=Constant.TRANSPILER_CMSS,
-            transpiler_options=None,
-            profiling=None,
-            callbacks=None,
-            dry_run=False):
+        self,
+        source_code,
+        *,
+        circuit_aggregation=None,
+        code_type=Constant.CODE_TYPE_QASM,
+        job_id=None,
+        job_name=None,
+        job_type=Constant.JOB_TYPE_SAMPLING,
+        job_priority=Constant.DEFAULT_JOB_PRIORITY,
+        description=None,
+        shots=Constant.DEFAULT_SHOTS,
+        backend=Constant.DRIVER_DUMMY,
+        driver_options=None,
+        transpiler=Constant.TRANSPILER_CMSS,
+        transpiler_options=None,
+        profiling=None,
+        callbacks=None,
+        dry_run=False,
+    ):
         """Submit new job
 
         Args:
@@ -312,13 +322,14 @@ class Client:
             "transpiler_options": transpiler_options,
             "profiling": profiling,
             "callbacks": callbacks,
-            "dry_run": dry_run
+            "dry_run": dry_run,
         }
 
         if job_id:
             data["job_id"] = str(job_id)
         status_code, reason, text, result = Client.call_json_rpc(
-            self.job_url, method_name, data)
+            self.job_url, method_name, data
+        )
         return status_code, reason, text, result
 
     def get_job_status(self, job_id):
@@ -333,15 +344,15 @@ class Client:
         method_name = "get_job_status"
 
         # Validate argument: job_id
-        Client.handle_invalid_arguments(Library.validate_values_uuid(
-            job_id, "job_id"))
+        Client.handle_invalid_arguments(
+            Library.validate_values_uuid(job_id, "job_id")
+        )
 
         # construct data and call json rpc
-        data = {
-            "job_id": job_id
-        }
+        data = {"job_id": job_id}
         status_code, reason, text, result = Client.call_json_rpc(
-            self.job_url, method_name, data)
+            self.job_url, method_name, data
+        )
         return status_code, reason, text, result
 
     def get_job_results(self, job_id):
@@ -356,15 +367,15 @@ class Client:
         method_name = "get_job_results"
 
         # Validate argument: job_id
-        Client.handle_invalid_arguments(Library.validate_values_uuid(
-            job_id, "job_id"))
+        Client.handle_invalid_arguments(
+            Library.validate_values_uuid(job_id, "job_id")
+        )
 
         # construct data and call json rpc
-        data = {
-            "job_id": job_id
-        }
+        data = {"job_id": job_id}
         status_code, reason, text, result = Client.call_json_rpc(
-            self.job_url, method_name, data)
+            self.job_url, method_name, data
+        )
         return status_code, reason, text, result
 
     def get_jobs(self):
@@ -378,7 +389,8 @@ class Client:
         # construct data and call json rpc
         data = {}
         status_code, reason, text, result = Client.call_json_rpc(
-            self.job_url, method_name, data)
+            self.job_url, method_name, data
+        )
         return status_code, reason, text, result
 
     def cancel_jobs(self, job_ids):
@@ -395,14 +407,14 @@ class Client:
         # Validate argument: job_id
         for job_id in job_ids:
             Client.handle_invalid_arguments(
-                Library.validate_values_uuid(job_id, "job_id"))
+                Library.validate_values_uuid(job_id, "job_id")
+            )
 
         # construct data and call json rpc
-        data = {
-            "job_ids": job_ids
-        }
+        data = {"job_ids": job_ids}
         status_code, reason, text, result = Client.call_json_rpc(
-            self.job_url, method_name, data)
+            self.job_url, method_name, data
+        )
         return status_code, reason, text, result
 
     def delete_jobs(self, job_ids):
@@ -419,14 +431,14 @@ class Client:
         # Validate argument: job_id
         for job_id in job_ids:
             Client.handle_invalid_arguments(
-                Library.validate_values_uuid(job_id, "job_id"))
+                Library.validate_values_uuid(job_id, "job_id")
+            )
 
         # construct data and call json rpc
-        data = {
-            "job_ids": job_ids
-        }
+        data = {"job_ids": job_ids}
         status_code, reason, text, result = Client.call_json_rpc(
-            self.job_url, method_name, data)
+            self.job_url, method_name, data
+        )
         return status_code, reason, text, result
 
     def set_job_results(self, job_id, new_results):
@@ -443,13 +455,12 @@ class Client:
 
         # Validate argument: job_id
         Client.handle_invalid_arguments(
-            Library.validate_values_uuid(job_id, "job_id"))
+            Library.validate_values_uuid(job_id, "job_id")
+        )
 
         # construct data and call json rpc
-        data = {
-            "job_id": job_id,
-            "results": new_results
-        }
+        data = {"job_id": job_id, "results": new_results}
         status_code, reason, text, result = Client.call_json_rpc(
-            self.job_url, method_name, data)
+            self.job_url, method_name, data
+        )
         return status_code, reason, text, result

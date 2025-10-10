@@ -127,11 +127,17 @@ class TestJob:
         mock_client.description = Constant.AGGREGATION_TYPE_NONE
         mock_client.shots = Constant.DEFAULT_SHOTS
         mock_client.backend = Constant.DRIVER_DUMMY
-        mock_client.driver_options = {"driver_options": "options", }
+        mock_client.driver_options = {
+            "driver_options": "options",
+        }
         mock_client.transpiler = Constant.TRANSPILER_CMSS
-        mock_client.transpiler_options = {"transpiler_options": "options", }
+        mock_client.transpiler_options = {
+            "transpiler_options": "options",
+        }
         mock_client.profiling = ["1", "2"]
-        mock_client.callbacks = ["callbacks", ]
+        mock_client.callbacks = [
+            "callbacks",
+        ]
         mock_client.dry_run = True
 
         mock_validate_schema.return_value = (True, None)
@@ -188,8 +194,9 @@ class TestJob:
     @patch("qcos.api.posiq.routes_jsonrpc.job.merge_results")
     @patch.object(TaskScheduler, "get_result_by_id")
     @patch.object(TaskScheduler, "has_job")
-    def test_get_job_results(self, mock_has_job, mock_get_result_by_id,
-                             mock_merge_results):
+    def test_get_job_results(
+        self, mock_has_job, mock_get_result_by_id, mock_merge_results
+    ):
         mock_has_job.return_value = True
         mock_merge_results.return_value = response_info
         mock_get_result_by_id.return_value = iter(

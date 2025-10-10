@@ -29,6 +29,7 @@ from qcos.transpiler.transpiler_base import TranspilerBase
 
 class TranspilerQiskit(TranspilerBase):
     """Transpiler Class for Qiskit"""
+
     def __init__(self):
         super().__init__()
         self.name = Constant.TRANSPILER_QISKIT
@@ -40,7 +41,7 @@ class TranspilerQiskit(TranspilerBase):
         self.supported_code_types = [
             Constant.CODE_TYPE_QASM,
             Constant.CODE_TYPE_QASM2,
-            Constant.CODE_TYPE_QASM3
+            Constant.CODE_TYPE_QASM3,
         ]
         # transpiler_options
         self.transpiler_options = {
@@ -48,9 +49,7 @@ class TranspilerQiskit(TranspilerBase):
             "optimization_level": Constant.DEFAULT_OPTIMIZATION_LEVEL
         }
         # transpiler_options schema used in submit-job from user
-        self.transpiler_options_schema = {
-            Optional("optimization_level"): int
-        }
+        self.transpiler_options_schema = {Optional("optimization_level"): int}
 
     def init_transpiler(self):
         """Init transpiler"""
@@ -95,7 +94,7 @@ class TranspilerQiskit(TranspilerBase):
             parse_result,
             simulator,
             optimization_level=self.transpiler_options["optimization_level"],
-            basis_gates=supp_basis_gates
+            basis_gates=supp_basis_gates,
         )
 
         return transpiled_circuit, None

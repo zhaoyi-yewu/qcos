@@ -20,6 +20,7 @@ from enum import Enum
 
 class OperationType(Enum):
     """操作类型"""
+
     SINGLE_QUBIT_OPERATION = 1
     DOUBLE_QUBIT_OPERATION = 2
     TRIPLE_QUBIT_OPERATION = 3
@@ -33,8 +34,11 @@ class BaseOperation:
     """中间表示类基类"""
 
     def __init__(
-            self, name, targets=None, arg_value=None,
-            operation_type=OperationType.SINGLE_QUBIT_OPERATION.value
+        self,
+        name,
+        targets=None,
+        arg_value=None,
+        operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
     ) -> None:
         """Init BaseOperation
 
@@ -53,5 +57,7 @@ class BaseOperation:
         self.operation_type = operation_type
 
     def __repr__(self):
-        return (f"{type(self).__name__}(targets={self.targets},"
-                f"arg_value={self.arg_value})")
+        return (
+            f"{type(self).__name__}(targets={self.targets},"
+            f"arg_value={self.arg_value})"
+        )

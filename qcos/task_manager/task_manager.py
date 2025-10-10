@@ -18,7 +18,6 @@
 import asyncio
 import threading
 import logging
-import uuid
 from abc import ABC
 from time import sleep
 from pathlib import Path
@@ -28,9 +27,14 @@ from prefect import get_client
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.objects import WorkerStatus, StateType
 from prefect.client.schemas.filters import (
-    ArtifactFilter, ArtifactFilterFlowRunId, ArtifactFilterKey,
-    FlowRunFilter, FlowRunFilterName,
-    FlowRunFilterState, FlowRunFilterTags)
+    ArtifactFilter,
+    ArtifactFilterFlowRunId,
+    ArtifactFilterKey,
+    FlowRunFilter,
+    FlowRunFilterName,
+    FlowRunFilterState,
+    FlowRunFilterTags,
+)
 from prefect.exceptions import ObjectNotFound
 from prefect.states import State
 from prefect.workers import ProcessWorker
@@ -63,9 +67,11 @@ class TaskFlowManager(ABC):
         _state = state.upper()
         if _state == Constant.PREFECT_STATE_CRASHED:
             return Constant.JOB_STATUS_FAILED
-        elif _state in [Constant.PREFECT_STATE_SCHEDULED,
-                        Constant.PREFECT_STATE_PENDING,
-                        Constant.PREFECT_STATE_LATE]:
+        elif _state in [
+            Constant.PREFECT_STATE_SCHEDULED,
+            Constant.PREFECT_STATE_PENDING,
+            Constant.PREFECT_STATE_LATE,
+        ]:
             return Constant.JOB_STATUS_QUEUED
         else:
             return _state
@@ -109,19 +115,22 @@ class TaskFlowManager(ABC):
                 if hello and hello.status_code == HttpCode.SUCCESS_OK:
                     return True
                 return False
-            except Exception as e:
+            except Exception:
                 return False
 
         success, err_msg, results = Library.loop_with_timeout(
-            is_connected, 60, 5)
+            is_connected, 60, 5
+        )
         if not success or not results:
             raise TimeoutError("Connection to prefect server timeout")
 
     async def create_pools(self):
         """Create all work pools, each policy has own work pools"""
 
-        create_workpools = [self.create_pool(pool_name) for pool_name in
-                            Constant.JOB_SCHED_POLICIES]
+        create_workpools = [
+            self.create_pool(pool_name)
+            for pool_name in Constant.JOB_SCHED_POLICIES
+        ]
         return await asyncio.gather(*create_workpools)
 
     async def create_pool(self, pool_name):
@@ -133,11 +142,13 @@ class TaskFlowManager(ABC):
 
         pools = await self._client.read_work_pools()
         if not any(pool.name == pool_name for pool in pools):
-            work_pool = await self._client.create_work_pool(
+            await self._client.create_work_pool(
                 work_pool=WorkPoolCreate(
                     name=pool_name,
                     type=Constant.DEFAULT_JOB_POOL_TYPE,
-                    concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY))
+                    concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY,
+                )
+            )
 
     async def create_queues(self):
         """Create all work queues under work pool
@@ -150,11 +161,12 @@ class TaskFlowManager(ABC):
             for priority in range(1, Constant.MAX_JOB_PRIORITY + 1):
                 queue_name = f"{pool_name}_{priority}"
                 if not any(queue.name == queue_name for queue in queues):
-                    work_queue = await self._client.create_work_queue(
+                    await self._client.create_work_queue(
                         name=queue_name,
                         work_pool_name=pool_name,
                         priority=priority,
-                        concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY)
+                        concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY,
+                    )
 
     async def start_workers(self):
         """
@@ -164,22 +176,25 @@ class TaskFlowManager(ABC):
         # start worker
         for policy in range(len(Constant.JOB_SCHED_POLICIES)):
             pool_name = str(policy)
-            worker_thread = threading.Thread(target=self.start_work,
-                                             args=(pool_name),
-                                             daemon=True)
+            worker_thread = threading.Thread(
+                target=self.start_work, args=(pool_name), daemon=True
+            )
             worker_thread.start()
 
         # wait for all workers are online
-        all_worker_status = {workpool: False for workpool in
-                             Constant.JOB_SCHED_POLICIES}
+        all_worker_status = {
+            workpool: False for workpool in Constant.JOB_SCHED_POLICIES
+        }
         time = 0
         for policy in Constant.JOB_SCHED_POLICIES:
-            workers = await self._client.read_workers_for_work_pool(
-                policy)
-            work_status = [worker.status == WorkerStatus.ONLINE for
-                           worker in workers]
-            if all(work_status) and len(
-                    work_status) == Constant.MAX_JOB_WORKER:
+            workers = await self._client.read_workers_for_work_pool(policy)
+            work_status = [
+                worker.status == WorkerStatus.ONLINE for worker in workers
+            ]
+            if (
+                all(work_status)
+                and len(work_status) == Constant.MAX_JOB_WORKER
+            ):
                 all_worker_status[policy] = True
             if all_worker_status.values():
                 self.worker_status = True
@@ -200,15 +215,21 @@ class TaskFlowManager(ABC):
         worker = ProcessWorker(
             work_pool_name=pool_name,
             limit=Constant.DEFAULT_POOL_CONCURRENCY,
-            work_queues=[f'{pool_name}_{str(i)}' for i in
-                         range(1, Constant.MAX_JOB_PRIORITY + 1)]
+            work_queues=[
+                f"{pool_name}_{str(i)}"
+                for i in range(1, Constant.MAX_JOB_PRIORITY + 1)
+            ],
         )
         asyncio.run(worker.start(printer=self._console.print))
 
     def deploy_task_flow(
-            self, deploy_name: str,
-            policy_type: str, priority: int,
-            deploy_flow, path: str):
+        self,
+        deploy_name: str,
+        policy_type: str,
+        priority: int,
+        deploy_flow,
+        path: str,
+    ):
         """Deploy flow by prefect client.
 
         Args:
@@ -233,7 +254,7 @@ class TaskFlowManager(ABC):
             work_pool_name=policy_type,
             work_queue_name=queue_name,
             print_next_steps=False,
-            ignore_warnings=True
+            ignore_warnings=True,
         )
         return deploy_id
 
@@ -248,7 +269,8 @@ class TaskFlowManager(ABC):
             flow run uuid
         """
         flow_run_id = self.loop.run_until_complete(
-            self.run_task_flow_by_client(deployment_id, args))
+            self.run_task_flow_by_client(deployment_id, args)
+        )
 
         return flow_run_id
 
@@ -257,13 +279,15 @@ class TaskFlowManager(ABC):
         flow_run_filter = FlowRunFilter(name=FlowRunFilterName(**name))
 
         flow_runs = self._sync_client.read_flow_runs(
-            flow_run_filter=flow_run_filter)
+            flow_run_filter=flow_run_filter
+        )
         if len(flow_runs) == 0:
             return None
         return flow_runs[0].id
 
-    async def run_task_flow_by_client(self, deployment_id,
-                                      args: dict[str, Any]):
+    async def run_task_flow_by_client(
+        self, deployment_id, args: dict[str, Any]
+    ):
         """
         Run flow by prefect client
 
@@ -282,11 +306,12 @@ class TaskFlowManager(ABC):
         if args["job_info"]["data"]["circuit_aggregation"]:
             tags = [args["job_info"]["data"]["circuit_aggregation"]]
         # TODO(jidalong) deal exception
-        flow_run = await self._client.create_flow_run_from_deployment(
+        await self._client.create_flow_run_from_deployment(
             name=str(job_id),
             deployment_id=deployment_id,
             parameters=args,
-            tags=tags, )
+            tags=tags,
+        )
 
         return job_id
 
@@ -302,8 +327,9 @@ class TaskFlowManager(ABC):
         flow_run_id = self.get_flow_run_id_by_job_id(job_id)
         if flow_run_id is None:
             raise ObjectNotFound(Exception("Job not found"))
-        state, parameters, result, err_msg = \
+        state, parameters, result, err_msg = (
             self.get_task_flow_result_by_client(flow_run_id)
+        )
         return state, parameters, result, err_msg
 
     def delete_flow_artifacts(self, flow_run_id):
@@ -314,7 +340,9 @@ class TaskFlowManager(ABC):
         """
         artifacts = self._sync_client.read_artifacts(
             artifact_filter=ArtifactFilter(
-                flow_run_id=ArtifactFilterFlowRunId(any_=[flow_run_id])))
+                flow_run_id=ArtifactFilterFlowRunId(any_=[flow_run_id])
+            )
+        )
         for artifact in artifacts:
             self._sync_client.delete_artifact(artifact.id)
 
@@ -342,7 +370,9 @@ class TaskFlowManager(ABC):
         artifact = {}
         artifacts = self._sync_client.read_artifacts(
             artifact_filter=ArtifactFilter(
-                key=ArtifactFilterKey(any_=[str(job_id)])))
+                key=ArtifactFilterKey(any_=[str(job_id)])
+            )
+        )
         if artifacts:
             _artifact = artifacts[0]
             if _artifact.type == "progress":
@@ -365,8 +395,7 @@ class TaskFlowManager(ABC):
             exist = True
         return exist
 
-    def update_flow(self, job_id, name=None, parameters=None,
-                    variables=None):
+    def update_flow(self, job_id, name=None, parameters=None, variables=None):
         """Update flow
 
         Args:
@@ -378,10 +407,10 @@ class TaskFlowManager(ABC):
         Returns:
             if flow exists (Default value = None)
         """
-        async def _update_flow(_flow_run_id,
-                               _name=None,
-                               _parameters=None,
-                               _variables=None):
+
+        async def _update_flow(
+            _flow_run_id, _name=None, _parameters=None, _variables=None
+        ):
             success = True
             err_msg = None
             try:
@@ -389,7 +418,8 @@ class TaskFlowManager(ABC):
                     _flow_run_id,
                     name=_name,
                     parameters=_parameters,
-                    job_variables=_variables)
+                    job_variables=_variables,
+                )
             except Exception as e:
                 success = False
                 err_msg = str(e)
@@ -400,7 +430,8 @@ class TaskFlowManager(ABC):
             return False
 
         return self.loop.run_until_complete(
-            _update_flow(flow_run_id, name, parameters, variables))
+            _update_flow(flow_run_id, name, parameters, variables)
+        )
 
     def get_task_flow_result_by_client(self, flow_run_id):
         """Get flow run state and result by prefect client
@@ -428,7 +459,7 @@ class TaskFlowManager(ABC):
 
     def get_task_flow_list(self):
         """Get flow run list
-        
+
         Returns:
             flow run list
         """
@@ -436,9 +467,9 @@ class TaskFlowManager(ABC):
         return results
 
     def get_task_flow_list_by_client(
-            self,
-            sort_fields=['-created'],
-            reverse=False,
+        self,
+        sort_fields=["-created"],
+        reverse=False,
     ):
         """Get flow run list by prefect client.
 
@@ -454,8 +485,7 @@ class TaskFlowManager(ABC):
 
         # get artifacts info, eg: progress
         artifacts_map = {}
-        artifacts = self._sync_client.read_artifacts(
-            limit=Constant.FLOW_LIMIT)
+        artifacts = self._sync_client.read_artifacts(limit=Constant.FLOW_LIMIT)
         for artifact in artifacts:
             if artifact.key:
                 artifacts_map[artifact.key] = {}
@@ -468,12 +498,13 @@ class TaskFlowManager(ABC):
         sorted_flows = sorted(
             flow_runs,
             key=lambda sort_obj: Library.get_sorted_keys(
-                sort_obj, sort_fields),
-            reverse=reverse)
+                sort_obj, sort_fields
+            ),
+            reverse=reverse,
+        )
         for flow_run in sorted_flows:
             id = flow_run.name
-            is_uuid, _ = Library.validate_values_uuid(
-                id, "job_id")
+            is_uuid, _ = Library.validate_values_uuid(id, "job_id")
             if not is_uuid:
                 continue
             flow_state = flow_run.state.name.upper()
@@ -485,9 +516,14 @@ class TaskFlowManager(ABC):
             artifact = artifacts_map.get(id, {})
             progress = artifact.get("progress", -1)
             results_list.append(
-                {"id": id, "state": state, "parameters": parameters,
-                 "progress": progress,
-                 "results": results})
+                {
+                    "id": id,
+                    "state": state,
+                    "parameters": parameters,
+                    "progress": progress,
+                    "results": results,
+                }
+            )
         return results_list
 
     def delete_task_flow_run(self, job_ids):
@@ -518,12 +554,14 @@ class TaskFlowManager(ABC):
             success_list
         """
         success_list = []
-        for (flow_run_id, job_id) in flow_run_ids:
+        for flow_run_id, job_id in flow_run_ids:
             try:
                 flow_run = self._sync_client.read_flow_run(flow_run_id)
             except ObjectNotFound:
-                logger.error(f"Prefect execute flow error: "
-                             f"can't find flow_run_id: {flow_run_id}")
+                logger.error(
+                    f"Prefect execute flow error: "
+                    f"can't find flow_run_id: {flow_run_id}"
+                )
                 continue
             except Exception as e:
                 logger.error(f"Prefect execute flow error: {str(e)}")
@@ -534,13 +572,12 @@ class TaskFlowManager(ABC):
                     # delete flow
                     self._sync_client.delete_flow_run(flow_run_id)
                     success_list.append(
-                        {"id": job_id,
-                         "state": Constant.JOB_STATUS_DELETED})
+                        {"id": job_id, "state": Constant.JOB_STATUS_DELETED}
+                    )
                     # delete flow artifact
                     self.delete_flow_artifacts(flow_run_id)
                 except Exception as e:
-                    logger.error(
-                        f"Prefect delete_flow_run error: {str(e)}")
+                    logger.error(f"Prefect delete_flow_run error: {str(e)}")
         return success_list
 
     def cancel_task_flow_run(self, job_ids):
@@ -572,12 +609,14 @@ class TaskFlowManager(ABC):
         """
         success_list = []
         try:
-            for (flow_run_id, job_id) in flow_run_ids:
+            for flow_run_id, job_id in flow_run_ids:
                 try:
                     flow_run = self._sync_client.read_flow_run(flow_run_id)
                 except ObjectNotFound:
-                    logger.error(f"Prefect execute flow error: "
-                                 f"can't find flow_run_id: {flow_run_id}")
+                    logger.error(
+                        f"Prefect execute flow error: "
+                        f"can't find flow_run_id: {flow_run_id}"
+                    )
                     continue
                 except Exception as e:
                     logger.error(f"Prefect execute flow error: {str(e)}")
@@ -588,18 +627,20 @@ class TaskFlowManager(ABC):
                     try:
                         cancelling_state = State(type=StateType.CANCELLING)
                         self._sync_client.set_flow_run_state(
-                            flow_run_id,
-                            state=cancelling_state,
-                            force=True
+                            flow_run_id, state=cancelling_state, force=True
                         )
                         success_list.append(
-                            {"id": job_id,
-                             "state": Constant.JOB_STATUS_CANCELLED})
+                            {
+                                "id": job_id,
+                                "state": Constant.JOB_STATUS_CANCELLED,
+                            }
+                        )
                         # delete flow artifact
                         self.delete_flow_artifacts(flow_run_id)
                     except Exception as e:
                         logger.error(
-                            f"Prefect delete_flow_run error: {str(e)}")
+                            f"Prefect delete_flow_run error: {str(e)}"
+                        )
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
 
@@ -610,17 +651,18 @@ class TaskFlowManager(ABC):
         t = {"all_": tags}
 
         flow_run_filter = FlowRunFilter(
-            state=FlowRunFilterState(**s),
-            tags=FlowRunFilterTags(**t))
+            state=FlowRunFilterState(**s), tags=FlowRunFilterTags(**t)
+        )
         flow_runs = self._sync_client.read_flow_runs(
-            flow_run_filter=flow_run_filter)
+            flow_run_filter=flow_run_filter
+        )
         return flow_runs
 
     def get_flow_info_by_backend(self, backend):
         flow_info = {
             "deploy_name": backend,
             "deploy_flow_func": job_flow,
-            "deploy_flow_path": "../engine/job_engine.py"
+            "deploy_flow_path": "../engine/job_engine.py",
         }
         return flow_info
 
@@ -632,7 +674,8 @@ class TaskFlowManager(ABC):
             callbacks: callbacks
         """
         return self.loop.run_until_complete(
-            Library.async_run_callbacks(data, callbacks))
+            Library.async_run_callbacks(data, callbacks)
+        )
 
     async def process_aggregation_job(self):
         """Process aggregation job"""
@@ -641,12 +684,16 @@ class TaskFlowManager(ABC):
             try:
                 # update sub jobs results into memory by parent job id
                 state, parameters, results, error_message = (
-                    self.get_task_flow_result(parent_id))
-                if (state.upper() == Constant.PREFECT_STATE_COMPLETED
-                        and results is not None):
+                    self.get_task_flow_result(parent_id)
+                )
+                if (
+                    state.upper() == Constant.PREFECT_STATE_COMPLETED
+                    and results is not None
+                ):
                     if results[0]["sub_results"] is not None:
-                        for job_id, sub_results in (
-                                results[0]["sub_results"].items()):
+                        for job_id, sub_results in results[0][
+                            "sub_results"
+                        ].items():
                             self.aggregation_jobs[job_id] = [sub_results]
             except Exception as e:
                 logger.error(f"Prefect get aggregation job error: {str(e)}")
@@ -658,7 +705,8 @@ class TaskFlowManager(ABC):
                 # 2.get sub job results stored in memory
                 aggregation_parm["is_parent"] = False
                 aggregation_parm["sub_results"] = self.aggregation_jobs.get(
-                    flow_run.name)
+                    flow_run.name
+                )
                 self.aggregation_jobs.pop(flow_run.name)
             else:
                 # 3.get sub jobs which can aggregated with parent job
@@ -668,15 +716,18 @@ class TaskFlowManager(ABC):
                 tags = [Constant.AGGREGATION_TYPE_EXTERNAL]
                 flow_runs = self.list_flow_runs_by_filter(state, tags)
                 for sub_flow_run in flow_runs:
-                    if (sub_flow_run.parameters["job_info"]["data"][
-                        "circuit_aggregation"] ==
-                            Constant.AGGREGATION_TYPE_EXTERNAL
-                            and flow_run.parameters["job_info"]["data"][
-                                "backend"] ==
-                            sub_flow_run.parameters["job_info"]["data"][
-                                "backend"]
-                            and sub_flow_run.work_pool_name ==
-                            flow_run.work_pool_name):
+                    if (
+                        sub_flow_run.parameters["job_info"]["data"][
+                            "circuit_aggregation"
+                        ]
+                        == Constant.AGGREGATION_TYPE_EXTERNAL
+                        and flow_run.parameters["job_info"]["data"]["backend"]
+                        == sub_flow_run.parameters["job_info"]["data"][
+                            "backend"
+                        ]
+                        and sub_flow_run.work_pool_name
+                        == flow_run.work_pool_name
+                    ):
                         if len(sub_jobs) >= Constant.MAX_AGGREGATION_JOBS:
                             break
                         sub_jobs[sub_flow_run.name] = sub_flow_run.parameters
@@ -687,8 +738,9 @@ class TaskFlowManager(ABC):
                 self.parent_aggregation_jobs.append(flow_run.name)
 
             # 5.resume flow run and send sub job info(aggregation_parm)
-            self._sync_client.resume_flow_run(flow_run.id,
-                                              run_input=aggregation_parm)
+            self._sync_client.resume_flow_run(
+                flow_run.id, run_input=aggregation_parm
+            )
 
         def _process_aggregation_jobs():
             while True:
@@ -706,6 +758,7 @@ class TaskFlowManager(ABC):
                     _process_aggregation_job(flow_run)
                 sleep(Constant.DEFAULT_AGGREGATION_JOB_INTERVAL)
 
-        aggregation_thread = threading.Thread(target=_process_aggregation_jobs,
-                                              daemon=True)
+        aggregation_thread = threading.Thread(
+            target=_process_aggregation_jobs, daemon=True
+        )
         aggregation_thread.start()

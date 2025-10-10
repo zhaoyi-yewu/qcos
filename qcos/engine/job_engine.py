@@ -21,11 +21,13 @@ import importlib
 import signal
 import sys
 import time
-from typing import Any, List, Optional, Dict
+from typing import Any
 
 from prefect import flow, task, pause_flow_run
-from prefect.artifacts import (create_progress_artifact,
-                               update_progress_artifact)
+from prefect.artifacts import (
+    create_progress_artifact,
+    update_progress_artifact,
+)
 from prefect.input import RunInput
 from loguru import logger
 
@@ -42,19 +44,19 @@ logger.add(
     Config.PREFECT_LOG_FILE,
     rotation=Constant.PREFECT_JOB_LOG_ROTATION,
     retention=Constant.PREFECT_JOB_LOG_RETENTION,
-    format=Constant.PREFECT_JOB_LOG_FORMAT
+    format=Constant.PREFECT_JOB_LOG_FORMAT,
 )
 
 
 class AggregationInput(RunInput):
     is_parent: bool
-    sub_jobs: Optional[Dict] = None
-    sub_results: Optional[List[Any]] = None
+    sub_jobs: dict | None = None
+    sub_results: list[Any] | None = None
 
 
 class SourceCodeInfo:
     aggregation_type: str
-    src_code_list: List[Dict]
+    src_code_list: list[dict]
 
 
 @task(persist_result=False)
@@ -104,20 +106,24 @@ def init_driver(driver_info, driver_options, device):
 
             # config qpu_config/decomposition_rule from config file
             if static_transpiler_configs:
-                qpu_configs = static_transpiler_configs.get("qpu_configs",
-                                                            None)
+                qpu_configs = static_transpiler_configs.get(
+                    "qpu_configs", None
+                )
                 decomposition_rule = static_transpiler_configs.get(
-                    "decomposition_rule", None)
+                    "decomposition_rule", None
+                )
                 trans_cfg_inst.set_qpu_cfg(qpu_configs)
                 trans_cfg_inst.set_decompose_rule(decomposition_rule)
 
             # config qpu_config/decomposition_rule dynamically
             # override static_transpiler_configs if necessary
             if remote_transpiler_configs:
-                qpu_configs = remote_transpiler_configs.get("qpu_configs",
-                                                             None)
+                qpu_configs = remote_transpiler_configs.get(
+                    "qpu_configs", None
+                )
                 decomposition_rule = remote_transpiler_configs.get(
-                    "decomposition_rule", None)
+                    "decomposition_rule", None
+                )
                 trans_cfg_inst.set_qpu_cfg(qpu_configs)
                 trans_cfg_inst.set_decompose_rule(decomposition_rule)
 
@@ -140,9 +146,11 @@ def init_transpiler(transpiler_class_info, transpiler_options):
 
     try:
         transpiler_module = importlib.import_module(
-            transpiler_class_info["module_name"])
-        transpiler_class = getattr(transpiler_module,
-                                   transpiler_class_info["class_name"])
+            transpiler_class_info["module_name"]
+        )
+        transpiler_class = getattr(
+            transpiler_module, transpiler_class_info["class_name"]
+        )
         transpiler = transpiler_class()
         if transpiler_options:
             transpiler.update_transpiler_options(transpiler_options)
@@ -159,15 +167,18 @@ def task_monitor(monitor_info):
         if not driver:
             driver = monitor_info["driver"]
         if driver:
-            job_progress = int(monitor_info["progress"] +
-                               int(driver.get_progress() /
-                                   monitor_info["source_code_count"]))
+            job_progress = int(
+                monitor_info["progress"]
+                + int(
+                    driver.get_progress() / monitor_info["source_code_count"]
+                )
+            )
             if last_job_progress != job_progress:
                 # update flow
-                update_progress(monitor_info['artifact_id'], job_progress)
+                update_progress(monitor_info["artifact_id"], job_progress)
             last_job_progress = job_progress
         time.sleep(1)
-    update_progress(monitor_info['artifact_id'], 100)
+    update_progress(monitor_info["artifact_id"], 100)
 
 
 @task(persist_result=False)
@@ -184,11 +195,9 @@ def parse(src_code_dict, transpiler):
     try:
         parsed_src_code = transpiler.parse(src_code_dict)
         logger.info(f"final parsed src code: {parsed_src_code}")
-        return {"parsed_src_code": parsed_src_code,
-                "error": None}
+        return {"parsed_src_code": parsed_src_code, "error": None}
     except Exception as e:
-        return {"parsed_src_code": None,
-                "error": ValueError(str(e))}
+        return {"parsed_src_code": None, "error": ValueError(str(e))}
 
 
 @task(persist_result=False)
@@ -207,18 +216,23 @@ def transpile(parsed_gates, driver, transpiler):
     try:
         supp_basis_gates = driver.get_supported_basis_gates()
         transpile_results, mapping_dict = transpiler.transpile(
-            parsed_gates, supp_basis_gates)
+            parsed_gates, supp_basis_gates
+        )
         num_qubits = transpiler.total_qubits
         logger.info(f"final transpiled_result: {transpile_results}")
-        return {"transpile_results": transpile_results,
-                "mapping_dict": mapping_dict,
-                "num_qubits": num_qubits,
-                "error": None}
+        return {
+            "transpile_results": transpile_results,
+            "mapping_dict": mapping_dict,
+            "num_qubits": num_qubits,
+            "error": None,
+        }
     except Exception as e:
-        return {"transpile_results": None,
-                "mapping_dict": None,
-                "num_qubits": num_qubits,
-                "error": ValueError(str(e))}
+        return {
+            "transpile_results": None,
+            "mapping_dict": None,
+            "num_qubits": num_qubits,
+            "error": ValueError(str(e)),
+        }
 
 
 @task(persist_result=False)
@@ -243,15 +257,19 @@ def driver_run(job_info, driver, num_qubits, data):
         if dry_run:
             logger.info(
                 f"dry_run: job_id: {job_id}, num_qubits: {num_qubits}, "
-                f"data: {data}, data_type: {data_type}, shots: {shots}")
-            driver.dry_run(job_id, num_qubits, data,
-                           data_type=data_type, shots=shots)
+                f"data: {data}, data_type: {data_type}, shots: {shots}"
+            )
+            driver.dry_run(
+                job_id, num_qubits, data, data_type=data_type, shots=shots
+            )
         else:
             logger.info(
                 f"run: job_id: {job_id}, num_qubits: {num_qubits}, "
-                f"data: {data}, data_type: {data_type}, shots: {shots}")
-            driver.run(job_id, num_qubits, data,
-                       data_type=data_type, shots=shots)
+                f"data: {data}, data_type: {data_type}, shots: {shots}"
+            )
+            driver.run(
+                job_id, num_qubits, data, data_type=data_type, shots=shots
+            )
 
         return format_run_results(driver, job_id, data["index"])
     except Exception as e:
@@ -291,9 +309,11 @@ async def job_callback(flow, flow_run, state):
     results = flow_run.state.result()
     results_fetch_mode_sync = False
     callbacks = Library.get_nested_dict_value(
-        parameters, "job_info", "data", "callbacks", default=None)
+        parameters, "job_info", "data", "callbacks", default=None
+    )
     backend = Library.get_nested_dict_value(
-        parameters, "job_info", "data", "backend", default=None)
+        parameters, "job_info", "data", "backend", default=None
+    )
     if not callbacks:
         return
 
@@ -305,9 +325,11 @@ async def job_callback(flow, flow_run, state):
     if results:
         for result in results:
             results_fetch_mode = Library.get_nested_dict_value(
-                result, "metadata", "results_fetch_mode", default=None)
+                result, "metadata", "results_fetch_mode", default=None
+            )
             status = Library.get_nested_dict_value(
-                result, "metadata", "status", default=None)
+                result, "metadata", "status", default=None
+            )
             if status != Constant.JOB_STATUS_COMPLETED:
                 is_failed = True
             if results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
@@ -322,10 +344,9 @@ async def job_callback(flow, flow_run, state):
             "job_id": job_id,
             "job_status": job_status,
             "backend": backend,
-            "results": results
+            "results": results,
         }
-        success, err_msg = await Library.async_run_callbacks(
-            data, callbacks)
+        success, err_msg = await Library.async_run_callbacks(data, callbacks)
         if not success:
             logger.error(f"Callback Error: {err_msg}")
 
@@ -337,6 +358,7 @@ def register_signals(job_id, monitor):
         job_id: job id
         monitor: monitor
     """
+
     def handle_sigterm(signum, frame):
         """Handles SIGTERM(cancel) signal sent from Prefect.
 
@@ -350,6 +372,7 @@ def register_signals(job_id, monitor):
         driver = monitor["driver"]
         driver_cancel(job_id, driver)
         sys.exit(0)
+
     signal.signal(signal.SIGTERM, handle_sigterm)
 
 
@@ -360,10 +383,7 @@ def update_progress(artifact_id, progress):
         artifact_id: artifact id
         progress: progress
     """
-    update_progress_artifact(
-        artifact_id=artifact_id,
-        progress=progress
-    )
+    update_progress_artifact(artifact_id=artifact_id, progress=progress)
 
 
 def create_src_code_info(job_data):
@@ -384,8 +404,7 @@ def create_src_code_info(job_data):
         src_code_info.src_code_list = []
         for source_code in source_code_list:
             src_code_map = {}
-            src_code_map[job_id + "-" + str(src_code_index)] = (
-                source_code)
+            src_code_map[job_id + "-" + str(src_code_index)] = source_code
             src_code_index += 1
             src_code_info.src_code_list.append(src_code_map)
     else:
@@ -394,12 +413,10 @@ def create_src_code_info(job_data):
         src_code_map = {}
         for source_code in source_code_list:
             if len(src_code_map) >= Constant.MAX_AGGREGATION_JOBS:
-                src_code_info.src_code_list.append(
-                    src_code_map)
+                src_code_info.src_code_list.append(src_code_map)
                 src_code_map.clear()
                 continue
-            src_code_map[job_id + "-" + str(src_code_index)] = (
-                source_code)
+            src_code_map[job_id + "-" + str(src_code_index)] = source_code
             src_code_index += 1
 
         if len(src_code_map) != 0:
@@ -425,8 +442,7 @@ def update_src_code_info(src_code_info, aggregation_info):
     src_code_info.src_code_list.pop()
     for key, value in aggregation_info.sub_jobs.items():
         if len(src_code_map) >= Constant.MAX_AGGREGATION_JOBS:
-            src_code_info.src_code_list.append(
-                src_code_map)
+            src_code_info.src_code_list.append(src_code_map)
             src_code_map.clear()
             continue
         src_code = value["job_info"]["data"]["source_code"][0]
@@ -533,27 +549,32 @@ def get_external_aggregated_results(job_results, mapping_dict):
             job_results["results"] = value
             job_results["num_qubits"] = len(next(iter(value.keys())))
             continue
-        single_result = {"results": value,
-                         "num_qubits": len(next(iter(value.keys()))),
-                         "metadata": job_results["metadata"],
-                         "profiling": job_results["profiling"]}
+        single_result = {
+            "results": value,
+            "num_qubits": len(next(iter(value.keys()))),
+            "metadata": job_results["metadata"],
+            "profiling": job_results["profiling"],
+        }
         # TODO(all) workaround code, need to improve it.
         end_time = single_result["metadata"]["end_date"]
         if isinstance(end_time, datetime):
             new_time = end_time.isoformat()
             single_result["metadata"]["end_date"] = new_time
-        new_id = job_id.rsplit('-', 1)[0]
+        new_id = job_id.rsplit("-", 1)[0]
         sub_results[new_id] = single_result
 
     job_results["sub_results"] = sub_results
     return job_results
 
 
-@flow(name="job_engine", persist_result=True,
-      on_completion=[job_callback],
-      on_failure=[job_callback],
-      on_crashed=[job_callback],
-      on_cancellation=[job_callback])
+@flow(
+    name="job_engine",
+    persist_result=True,
+    on_completion=[job_callback],
+    on_failure=[job_callback],
+    on_crashed=[job_callback],
+    on_cancellation=[job_callback],
+)
 def job_flow(job_info):
     """Job flow
 
@@ -593,10 +614,12 @@ def job_flow(job_info):
         "driver": None,
         "source_code_index": 0,
         "source_code_count": 0,
-        "progress": -1
+        "progress": -1,
     }
-    logger.info(f"Processing work flow: job_engine. "
-                f"job_id: {job_id}, job_info: {job_info}")
+    logger.info(
+        f"Processing work flow: job_engine. "
+        f"job_id: {job_id}, job_info: {job_info}"
+    )
 
     # register signals for job cancelling
     register_signals(job_id, monitor_info)
@@ -613,12 +636,11 @@ def job_flow(job_info):
         # TODO(jidalong) handle timeout
         # circuit_aggregation(multi) tag flow run will automatically paused
         # here waiting for aggregation_info generated by task manager
-        aggregation_info = pause_flow_run(
-            wait_for_input=AggregationInput
-        )
+        aggregation_info = pause_flow_run(wait_for_input=AggregationInput)
         logger.info(
             f"Process aggregation sub job, aggregation_info: "
-            f"{aggregation_info}")
+            f"{aggregation_info}"
+        )
 
         # deal sub job
         if not aggregation_info.is_parent:
@@ -640,25 +662,33 @@ def job_flow(job_info):
     # TODO(xudong) need to handle aggregation failed items
     for src_code_dict in src_code_info.src_code_list:
         monitor_info["source_code_index"] = source_code_index
-        monitor_info["progress"] = (percentage_base * source_code_index
-                                    / source_code_count)
+        monitor_info["progress"] = (
+            percentage_base * source_code_index / source_code_count
+        )
         job_results, driver, transpiler, mapping_dict = run_code(
             source_code_index,
             src_code_dict,
             job_info,
             driver,
             transpiler,
-            monitor_info)
+            monitor_info,
+        )
         source_code_index += len(src_code_dict)
 
-        # pylint: disable=line-too-long
         if src_code_info.aggregation_type == Constant.AGGREGATION_TYPE_NONE:
             job_results_list.append(job_results)
-        elif src_code_info.aggregation_type == Constant.AGGREGATION_TYPE_EXTERNAL:
-            aggregated_res = get_external_aggregated_results(job_results, mapping_dict)
+        elif (
+            src_code_info.aggregation_type
+            == Constant.AGGREGATION_TYPE_EXTERNAL
+        ):
+            aggregated_res = get_external_aggregated_results(
+                job_results, mapping_dict
+            )
             job_results_list.append(aggregated_res)
         else:
-            aggregated_res = get_internal_aggregated_results(job_results, mapping_dict)
+            aggregated_res = get_internal_aggregated_results(
+                job_results, mapping_dict
+            )
             job_results_list.extend(aggregated_res)
         # pylint: enable=line-too-long
 
@@ -666,8 +696,14 @@ def job_flow(job_info):
     return job_results_list
 
 
-def run_code(source_code_index, src_code_dict, job_info,
-             driver, transpiler, monitor_info):
+def run_code(
+    source_code_index,
+    src_code_dict,
+    job_info,
+    driver,
+    transpiler,
+    monitor_info,
+):
     """Flow: run
 
     Args:
@@ -692,17 +728,21 @@ def run_code(source_code_index, src_code_dict, job_info,
 
     # init driver (init only once in a flow)
     if not driver:
-        future_driver = init_driver.submit(job_info["driver"],
-                                           job_data["driver_options"],
-                                           job_info["device"])
+        future_driver = init_driver.submit(
+            job_info["driver"], job_data["driver_options"], job_info["device"]
+        )
         driver_task_result = future_driver.result()
         # init driver: error handling
         err_msg = driver_task_result.get("error", None)
         if err_msg:
-            return format_error_results(
-                None,
-                errors.JobEngineDriverInitError,
-                err_msg), driver, transpiler, mapping_dict
+            return (
+                format_error_results(
+                    None, errors.JobEngineDriverInitError, err_msg
+                ),
+                driver,
+                transpiler,
+                mapping_dict,
+            )
         driver = driver_task_result["driver"]
         logger.info(f"Init driver: {driver.name}")
         monitor_info["driver"] = driver
@@ -712,45 +752,50 @@ def run_code(source_code_index, src_code_dict, job_info,
         if driver.enable_transpiler:
             future_transpiler = init_transpiler.submit(
                 job_info["transpiler"],
-                job_data.get("transpiler_options", None))
+                job_data.get("transpiler_options", None),
+            )
             transpiler_task_result = future_transpiler.result()
             # init transpiler: error handling
             err_msg = transpiler_task_result.get("error", None)
             if err_msg:
-                return format_error_results(
+                return (
+                    format_error_results(
+                        driver, errors.JobEngineTranspilerInitError, err_msg
+                    ),
                     driver,
-                    errors.JobEngineTranspilerInitError,
-                    err_msg), driver, transpiler, mapping_dict
+                    transpiler,
+                    mapping_dict,
+                )
             transpiler = transpiler_task_result["transpiler"]
-            logger.info("Init transpiler: "
-                        f"{transpiler.name} ({transpiler.alias_name})")
+            logger.info(
+                f"Init transpiler: {transpiler.name} ({transpiler.alias_name})"
+            )
 
     job_results = {
         "results": None,
         "num_qubits": None,
         "metadata": None,
         "profiling": {},
-        "sub_results": None
+        "sub_results": None,
     }
 
     source_code = None
     if driver.enable_transpiler:
         # [flow_parse]
         parse_results, profiling_time = flow_parse(
-            src_code_dict,
-            transpiler,
-            profiling_types
+            src_code_dict, transpiler, profiling_types
         )
         if profiling_time:
-            job_results["profiling"][
-                Constant.PROFILING_TYPE_DRIVER_PARSE] = profiling_time
+            job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_PARSE] = (
+                profiling_time
+            )
 
         # parser: error handling
         err_msg = parse_results.get("error", None)
         if err_msg:
-            job_results = format_error_results(driver,
-                                               errors.JobEngineParseError,
-                                               err_msg)
+            job_results = format_error_results(
+                driver, errors.JobEngineParseError, err_msg
+            )
             return job_results, driver, transpiler, mapping_dict
 
         # [flow_transpile]
@@ -758,22 +803,25 @@ def run_code(source_code_index, src_code_dict, job_info,
             parse_results["parsed_src_code"],
             transpiler,
             driver,
-            profiling_types
+            profiling_types,
         )
         if profiling_time:
             job_results["profiling"][
-                Constant.PROFILING_TYPE_DRIVER_TRANSPILE] = profiling_time
+                Constant.PROFILING_TYPE_DRIVER_TRANSPILE
+            ] = profiling_time
 
         # transpile: error handling
         err_msg = transpile_task_results.get("error", None)
         mapping_dict = transpile_task_results.get("mapping_dict", None)
         if err_msg:
-            job_results = format_error_results(driver,
-                                               errors.JobEngineTranspileError,
-                                               err_msg)
+            job_results = format_error_results(
+                driver, errors.JobEngineTranspileError, err_msg
+            )
             return job_results, driver, transpiler, mapping_dict
 
-        transpile_results = transpile_task_results.get("transpile_results", None) # pylint: disable=line-too-long
+        transpile_results = transpile_task_results.get(
+            "transpile_results", None
+        )
         num_qubits = transpile_task_results.get("num_qubits", None)
         if transpile_results is None or num_qubits is None:
             raise ValueError("unexpected transpile_results or num_qubits")
@@ -786,26 +834,23 @@ def run_code(source_code_index, src_code_dict, job_info,
         data = {
             "index": source_code_index,
             "source_code": source_code,
-            "transpile_results": transpile_results
+            "transpile_results": transpile_results,
         }
         run_results, profiling_time = flow_run_driver(
-            job_info,
-            num_qubits,
-            driver,
-            data,
-            profiling_types
+            job_info, num_qubits, driver, data, profiling_types
         )
 
         if profiling_time:
-            job_results["profiling"][
-                Constant.PROFILING_TYPE_DRIVER_RUN] = profiling_time
+            job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_RUN] = (
+                profiling_time
+            )
 
         # run: error handling
         err_msg = run_results.get("error", None)
         if err_msg:
-            job_results = format_error_results(driver,
-                                               errors.JobEngineDriverRunError,
-                                               err_msg)
+            job_results = format_error_results(
+                driver, errors.JobEngineDriverRunError, err_msg
+            )
             return job_results, driver, transpiler, mapping_dict
 
         # prepare job_results
@@ -815,9 +860,7 @@ def run_code(source_code_index, src_code_dict, job_info,
     return job_results, driver, transpiler, mapping_dict
 
 
-def flow_parse(src_code_dict,
-               transpiler,
-               profiling_types):
+def flow_parse(src_code_dict, transpiler, profiling_types):
     """Flow: parse
 
     Args:
@@ -832,27 +875,29 @@ def flow_parse(src_code_dict,
     profiling_end = 0
 
     # record parse start_time
-    if (Constant.PROFILING_TYPE_DRIVER_PARSE in profiling_types or
-            Constant.PROFILING_TYPE_ALL in profiling_types):
+    if (
+        Constant.PROFILING_TYPE_DRIVER_PARSE in profiling_types
+        or Constant.PROFILING_TYPE_ALL in profiling_types
+    ):
         profiling_start = time.time()
 
     # parser
-    parse_task = parse.submit(src_code_dict, transpiler,
-                              wait_for=[init_driver, init_transpiler])
+    parse_task = parse.submit(
+        src_code_dict, transpiler, wait_for=[init_driver, init_transpiler]
+    )
     parse_task_result = parse_task.result()
 
-    if (Constant.PROFILING_TYPE_DRIVER_PARSE in profiling_types or
-            Constant.PROFILING_TYPE_ALL in profiling_types):
+    if (
+        Constant.PROFILING_TYPE_DRIVER_PARSE in profiling_types
+        or Constant.PROFILING_TYPE_ALL in profiling_types
+    ):
         profiling_end = time.time()
 
     profiling_time = profiling_end - profiling_start
     return parse_task_result, profiling_time
 
 
-def flow_transpile(parsed_src_code,
-                   transpiler,
-                   driver,
-                   profiling_types):
+def flow_transpile(parsed_src_code, transpiler, driver, profiling_types):
     """Flow: transpile
 
     Args:
@@ -868,19 +913,26 @@ def flow_transpile(parsed_src_code,
     profiling_end = 0
 
     # record transpile start_time
-    if (Constant.PROFILING_TYPE_DRIVER_TRANSPILE in profiling_types or
-            Constant.PROFILING_TYPE_ALL in profiling_types):
+    if (
+        Constant.PROFILING_TYPE_DRIVER_TRANSPILE in profiling_types
+        or Constant.PROFILING_TYPE_ALL in profiling_types
+    ):
         profiling_start = time.time()
 
     # transpile codes
     transpile_task = transpile.submit(
-        parsed_src_code, driver, transpiler,
-        wait_for=[init_driver, init_transpiler, parse])
+        parsed_src_code,
+        driver,
+        transpiler,
+        wait_for=[init_driver, init_transpiler, parse],
+    )
     transpile_task_results = transpile_task.result()
 
     # record transpile end_time
-    if (Constant.PROFILING_TYPE_DRIVER_TRANSPILE in profiling_types or
-            Constant.PROFILING_TYPE_ALL in profiling_types):
+    if (
+        Constant.PROFILING_TYPE_DRIVER_TRANSPILE in profiling_types
+        or Constant.PROFILING_TYPE_ALL in profiling_types
+    ):
         profiling_end = time.time()
     profiling_time = profiling_end - profiling_start
     return transpile_task_results, profiling_time
@@ -895,11 +947,7 @@ def flow_task_monitor(monitor_info):
     task_monitor.submit(monitor_info)
 
 
-def flow_run_driver(job_info,
-                    num_qubits,
-                    driver,
-                    data,
-                    profiling_types):
+def flow_run_driver(job_info, num_qubits, driver, data, profiling_types):
     """Flow: run driver
 
     Args:
@@ -917,8 +965,10 @@ def flow_run_driver(job_info,
     profiling_end = 0
 
     # record driver_run start_time
-    if (Constant.PROFILING_TYPE_DRIVER_RUN in profiling_types or
-            Constant.PROFILING_TYPE_ALL in profiling_types):
+    if (
+        Constant.PROFILING_TYPE_DRIVER_RUN in profiling_types
+        or Constant.PROFILING_TYPE_ALL in profiling_types
+    ):
         profiling_start = time.time()
 
     wait_for = [init_driver]
@@ -926,14 +976,16 @@ def flow_run_driver(job_info,
         wait_for = [transpile]
 
     run_task = driver_run.submit(
-        job_info, driver, num_qubits, data,
-        wait_for=wait_for)
+        job_info, driver, num_qubits, data, wait_for=wait_for
+    )
 
     run_task_results = run_task.result()
 
     # record driver_run end_time
-    if (Constant.PROFILING_TYPE_DRIVER_RUN in profiling_types or
-            Constant.PROFILING_TYPE_ALL in profiling_types):
+    if (
+        Constant.PROFILING_TYPE_DRIVER_RUN in profiling_types
+        or Constant.PROFILING_TYPE_ALL in profiling_types
+    ):
         profiling_end = time.time()
 
     profiling_time = profiling_end - profiling_start
@@ -964,9 +1016,9 @@ def format_run_results(driver, job_id, data_index):
         "metadata": {
             "results_fetch_mode": driver_results_fetch_mode,
             "status": None,
-            "end_date": None
+            "end_date": None,
         },
-        "error": None
+        "error": None,
     }
 
     if driver_results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
@@ -1006,9 +1058,9 @@ def format_error_results(driver, err_cls, err_msg):
         "metadata": {
             "results_fetch_mode": driver_results_fetch_mode,
             "status": None,
-            "end_date": None
+            "end_date": None,
         },
-        "error": None
+        "error": None,
     }
 
     err = err_cls(err_msg)
@@ -1016,6 +1068,6 @@ def format_error_results(driver, err_cls, err_msg):
     job_results["metadata"]["end_date"] = Library.get_current_datetime()
     job_results["error"] = {
         "code": err.get_error_code(),
-        "message": err.get_err_msgs()
+        "message": err.get_err_msgs(),
     }
     return job_results

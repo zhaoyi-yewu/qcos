@@ -404,7 +404,7 @@ class TestDecompose:
                     ("rz", [0], ["b+pi"]),
                     ("rx", [0], ["pi/2"]),
                     ("rz", [0], ["a+pi"]),
-                ]
+                ],
             }
         }
 

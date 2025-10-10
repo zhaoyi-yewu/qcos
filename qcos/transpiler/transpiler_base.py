@@ -48,8 +48,10 @@ class TranspilerBase:
 
     def init_transpiler(self):
         """Init transpiler"""
-        raise NotImplementedError(f"Transpiler: {self.__class__.__name__} "
-                                  f"must implement method: init_transpiler")
+        raise NotImplementedError(
+            f"Transpiler: {self.__class__.__name__} "
+            f"must implement method: init_transpiler"
+        )
 
     def get_transpiler_options_schema(self):
         """Get transpiler options schema
@@ -168,8 +170,10 @@ class TranspilerBase:
         Returns:
             parse result
         """
-        raise NotImplementedError(f"Transpiler: {self.__class__.__name__} "
-                                  f"must implement method: parse")
+        raise NotImplementedError(
+            f"Transpiler: {self.__class__.__name__} "
+            f"must implement method: parse"
+        )
 
     def transpile(self, parse_result, supp_basis_gates: list):
         """Transpile codes
@@ -181,5 +185,7 @@ class TranspilerBase:
         Returns:
             basis gate list
         """
-        raise NotImplementedError(f"Transpiler: {self.__class__.__name__} "
-                                  "must implement method: transpile")
+        raise NotImplementedError(
+            f"Transpiler: {self.__class__.__name__} "
+            "must implement method: transpile"
+        )

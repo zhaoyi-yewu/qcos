@@ -24,23 +24,23 @@ from .library import Library
 NAME_SCHEMA = And(
     Use(str),
     lambda s: 1 <= len(s) <= 64,
-    Regex(r'^[a-zA-Z0-9_\-]+$'),
+    Regex(r"^[a-zA-Z0-9_\-]+$"),
     error="Name can only consist of the following parts: "
-          "letters, numbers, dashes, underscores. "
-          "The length of name must between [1-64]."
+    "letters, numbers, dashes, underscores. "
+    "The length of name must between [1-64].",
 )
 SOURCE_CODE_SCHEMA = list
 SOURCE_CODE_TEXT_SCHEMA = [str]
 SOURCE_CODE_QUBO_SCHEMA = [[[Or(int, float)]]]
 
 SOURCE_RESULTS_SUCCESS = {  # results
-        "results": dict,
-        Optional("num_qubits"): int
-    }
+    "results": dict,
+    Optional("num_qubits"): int,
+}
 SOURCE_RESULTS_ERROR = {  # error messages
-        "code": int,
-        "message": str
-    }
+    "code": int,
+    "message": str,
+}
 SOURCE_SET_RESULTS = [Or(SOURCE_RESULTS_SUCCESS, SOURCE_RESULTS_ERROR)]
 
 CALLBACKS_SCHEMA = [
@@ -51,7 +51,7 @@ CALLBACKS_SCHEMA = [
         "url": lambda s: Library.is_valid_url(s, {"http", "https"}),
         Optional("headers"): dict,
         Optional("retries"): int,
-        Optional("timeout"): int
+        Optional("timeout"): int,
     }
 ]
 DRIVER_OPTIONS = dict

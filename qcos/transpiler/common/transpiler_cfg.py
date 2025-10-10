@@ -19,8 +19,14 @@
 class TranspilerCfg:
     """Transpiler Config Class"""
 
-    def __init__(self, decomp_rule=None, qpu_cfg=None, max_qubits=0,
-                 tech_type=None, driver_name=None) -> None:
+    def __init__(
+        self,
+        decomp_rule=None,
+        qpu_cfg=None,
+        max_qubits=0,
+        tech_type=None,
+        driver_name=None,
+    ) -> None:
         self.decompose_rule = decomp_rule
         self.qpu_cfg = qpu_cfg
         self.max_qubits = max_qubits

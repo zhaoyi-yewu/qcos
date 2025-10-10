@@ -28,20 +28,22 @@ from qcos.transpiler.transpiler_manager import TranspilerManager
 
 
 response_info = {
-    'alias_name': Constant.TECH_TYPE_NEUTRAL_ATOM,
-    'description': Constant.TECH_TYPE_NEUTRAL_ATOM,
-    'enable_circuit_aggregation': True,
-    'enable_transpiler': True,
-    'max_qubits': 10,
-    'name': Constant.TRANSPILER_DUMMY,
-    'results_fetch_mode': Constant.RESULTS_FETCH_MODE_SYNC,
-    'supported_basis_gates': [Constant.SINGLE_QUBIT_GATE_X,
-                              Constant.SINGLE_QUBIT_GATE_Y],
-    'supported_code_types': [],
-    'supported_transpilers': [Constant.TRANSPILER_CMSS],
-    'tech_type': Constant.TECH_TYPE_NEUTRAL_ATOM,
-    'transpiler': Constant.TRANSPILER_CMSS,
-    'version': Config.VERSION
+    "alias_name": Constant.TECH_TYPE_NEUTRAL_ATOM,
+    "description": Constant.TECH_TYPE_NEUTRAL_ATOM,
+    "enable_circuit_aggregation": True,
+    "enable_transpiler": True,
+    "max_qubits": 10,
+    "name": Constant.TRANSPILER_DUMMY,
+    "results_fetch_mode": Constant.RESULTS_FETCH_MODE_SYNC,
+    "supported_basis_gates": [
+        Constant.SINGLE_QUBIT_GATE_X,
+        Constant.SINGLE_QUBIT_GATE_Y,
+    ],
+    "supported_code_types": [],
+    "supported_transpilers": [Constant.TRANSPILER_CMSS],
+    "tech_type": Constant.TECH_TYPE_NEUTRAL_ATOM,
+    "transpiler": Constant.TRANSPILER_CMSS,
+    "version": Config.VERSION,
 }
 
 

@@ -20,6 +20,7 @@ from qcos.transpiler.cmss.compiler.qtypes import Node as TreeNode
 
 class LinkedNode:
     """作用域节点类"""
+
     def __init__(self, data):
         """初始化作用域节点，设置作用域内的变量信息
 
@@ -33,6 +34,7 @@ class LinkedNode:
 
 class LinkedList:
     """作用域链表类"""
+
     def __init__(self):
         """
         初始化作用域链表，设置链表的虚拟头节点
@@ -46,7 +48,7 @@ class LinkedList:
 
     def get_tail(self) -> LinkedNode:
         """获取最内部的符号表节点，一般用于获取当前作用域的符号表。
-        
+
         Returns:
             链表的尾节点
         """
@@ -54,7 +56,7 @@ class LinkedList:
 
     def get_head(self) -> LinkedNode:
         """头节点，只作为头部，不存放符号表数据
-        
+
         Returns:
             链表的头节点
         """
@@ -67,12 +69,14 @@ class LinkedList:
             tail (LinkedNode): 作用域节点
             scope (TreeNode): 抽象语法树节点
         """
-        if (scope is None or
-                (scope.type not in ("block_body", "top"))):
+        if scope is None or (scope.type not in ("block_body", "top")):
             raise TypeError("invalid scope tp add symbol table")
 
-        if (tail.data is None or not isinstance(tail.data, dict)
-                or len(tail.data) != 0):
+        if (
+            tail.data is None
+            or not isinstance(tail.data, dict)
+            or len(tail.data) != 0
+        ):
             raise TypeError("invalid data type when init symbol table")
 
         temp = self.tail

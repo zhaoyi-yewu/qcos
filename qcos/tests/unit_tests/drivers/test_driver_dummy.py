@@ -25,9 +25,8 @@ driver_dummy = DriverDummy()
 job_id = "00000000-0000-4000-8000-000000000001"
 num_qubits = 5
 data_type = DriverDummy.DATA_TYPE_GATE_SEQUENCE
-qasm_str = {
-    "source_code":
-        """
+data_qasm = {
+    "source_code": """
         OPENQASM 2.0;
         include "qelib1.inc";
         qreg q[5];
@@ -38,11 +37,12 @@ qasm_str = {
         rx(1) q[0];
         measure q->c;
         """,
-    "index": "index"}
+    "index": "index",
+    "transpile_results": [],
+}
 
 
 class TestDriverDummy:
-
     def test_init_driver(self):
         assert driver_dummy.init_driver() is None
 
@@ -63,5 +63,6 @@ class TestDriverDummy:
     @patch.object(DriverBase, "get_fake_results")
     def test_run(self, mock_get_fake_results):
         mock_get_fake_results.return_value = "fake"
-        assert driver_dummy.run(job_id, num_qubits,
-                                qasm_str, data_type) is None
+        assert (
+            driver_dummy.run(job_id, num_qubits, data_qasm, data_type) is None
+        )

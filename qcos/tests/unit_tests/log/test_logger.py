@@ -20,11 +20,13 @@ import os
 import unittest
 from unittest.mock import Mock
 
-from qcos.log.logger import (ColouredFormatter,
-                             ColouredStreamHandler,
-                             LogFilter,
-                             CompressedRotatingFileHandler,
-                             init_logger)
+from qcos.log.logger import (
+    ColouredFormatter,
+    ColouredStreamHandler,
+    LogFilter,
+    CompressedRotatingFileHandler,
+    init_logger,
+)
 
 formatter = ColouredFormatter()
 
@@ -46,23 +48,23 @@ class TestColouredFormatter:
 
         mock_record.levelno = logging.CRITICAL
         msg = formatter.format(mock_record, colour=True)
-        assert "\x1B[31m" in msg
+        assert "\x1b[31m" in msg
 
         mock_record.levelno = logging.ERROR
         msg = formatter.format(mock_record, colour=True)
-        assert "\x1B[31m" in msg
+        assert "\x1b[31m" in msg
 
         mock_record.levelno = logging.WARNING
         msg = formatter.format(mock_record, colour=True)
-        assert "\x1B[33m" in msg
+        assert "\x1b[33m" in msg
 
         mock_record.levelno = logging.INFO
         msg = formatter.format(mock_record, colour=True)
-        assert "\x1B[32m" in msg
+        assert "\x1b[32m" in msg
 
         mock_record.levelno = logging.DEBUG - 1
         msg = formatter.format(mock_record, colour=True)
-        assert "\x1B[0m" in msg
+        assert "\x1b[0m" in msg
 
 
 handler = ColouredStreamHandler()
@@ -101,7 +103,6 @@ class TestLogFilter:
 
 
 class TestCompressedRotatingFileHandler(unittest.TestCase):
-
     def setUp(self):
         self.file_handler = CompressedRotatingFileHandler("files")
 
@@ -112,8 +113,7 @@ class TestCompressedRotatingFileHandler(unittest.TestCase):
 
 
 def test_init_logger():
-    handlers = init_logger(logging.DEBUG + 1,
-                           logfile="log_file", quiet=True)
+    handlers = init_logger(logging.DEBUG + 1, logfile="log_file", quiet=True)
     assert handlers is not None
 
     handlers = init_logger(1, logfile="log_file", compression=False)

@@ -140,23 +140,21 @@ class TaskScheduler(ABC):
 
         # execute task
         try:
-            flow_info = self._task_manager.get_flow_info_by_backend(
-                backend)
+            flow_info = self._task_manager.get_flow_info_by_backend(backend)
             policy_handler = self._policy_factory.get_policy_handler_by_name(
-                policy_type)
+                policy_type
+            )
             job_json_info = {}
             job_json_info["data"] = job_info.model_dump()
             job_json_info["driver"] = {
                 "module_name": driver_module_name,
-                "class_name": driver_class_name
+                "class_name": driver_class_name,
             }
             job_json_info["transpiler"] = {
                 "module_name": transpiler_module_name,
-                "class_name": transpiler_class_name
+                "class_name": transpiler_class_name,
             }
-            job_json_info["device"] = {
-                "configs": device.get_configs()
-            }
+            job_json_info["device"] = {"configs": device.get_configs()}
 
             job_id = policy_handler.exec_task(flow_info, job_json_info)
             res = {"job_id": job_id}
@@ -175,8 +173,9 @@ class TaskScheduler(ABC):
             flow info
         """
         try:
-            state, parameters, results, error_message = \
+            state, parameters, results, error_message = (
                 self._task_manager.get_task_flow_result(job_id)
+            )
             state = self._task_manager.transform_to_qcos_state(state)
             job_status = self.get_job_status(state, results, parameters)
             artifact = self._task_manager.get_job_artifact(job_id)
@@ -217,7 +216,8 @@ class TaskScheduler(ABC):
             flow_list = self._task_manager.get_task_flow_list()
             for flow in flow_list:
                 flow["job_status"] = self.get_job_status(
-                    flow["state"], flow["results"], flow["parameters"])
+                    flow["state"], flow["results"], flow["parameters"]
+                )
             return flow_list, None
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
@@ -235,8 +235,7 @@ class TaskScheduler(ABC):
 
         flow_list = self._task_manager.delete_task_flow_run(ids)
         for flow in flow_list:
-            flow["job_status"] = self.get_job_status(
-                flow["state"], None, None)
+            flow["job_status"] = self.get_job_status(flow["state"], None, None)
         return flow_list
 
     def cancel_jobs(self, ids):
@@ -250,8 +249,7 @@ class TaskScheduler(ABC):
         """
         flow_list = self._task_manager.cancel_task_flow_run(ids)
         for flow in flow_list:
-            flow["job_status"] = self.get_job_status(
-                flow["state"], None, None)
+            flow["job_status"] = self.get_job_status(flow["state"], None, None)
         return flow_list
 
     def update_job(self, job_id, name=None, parameters=None, variables=None):
@@ -267,7 +265,8 @@ class TaskScheduler(ABC):
             if flow exists
         """
         return self._task_manager.update_flow(
-            job_id, name, parameters, variables)
+            job_id, name, parameters, variables
+        )
 
     def run_callbacks(self, data, callbacks):
         """Run callbacks for job
@@ -352,10 +351,11 @@ class PriorityPolicy(BaseSchedulerPolicy):
             self._type,
             priority,
             flow_info["deploy_flow_func"],
-            flow_info["deploy_flow_path"])
+            flow_info["deploy_flow_path"],
+        )
         job_run_id = self._task_manager.run_task_flow(
-            job_deploy_id,
-            {"job_info": job_info})
+            job_deploy_id, {"job_info": job_info}
+        )
         return job_run_id
 
     def calculate_priority(self, job_info):
@@ -368,30 +368,6 @@ class PriorityPolicy(BaseSchedulerPolicy):
             job priority
         """
         return job_info["data"]["job_priority"]
-
-
-class HighResponseRatioPolicy(BaseSchedulerPolicy):
-    """High Response Ratio Policy"""
-
-    def __init__(self, task_manager: TaskFlowManager):
-        super().__init__(task_manager)
-        self._type = Constant.JOB_SCHED_POLICY_HIGH_RESPONSE_RATIO
-
-    # TODO(jidalong) HighResponseRatioPolicy
-    def exec_task(self):
-        return
-
-
-class ShortestJobFirstPolicy(BaseSchedulerPolicy):
-    """Shortest Job First Policy"""
-
-    def __init__(self, task_manager: TaskFlowManager):
-        super().__init__(task_manager)
-        self._type = Constant.JOB_SCHED_POLICY_HIGH_RESPONSE_RATIO
-
-    # TODO(jidalong) ShortestJobFirstPolicy
-    def exec_task(self):
-        return
 
 
 class TimePrecedencePolicy(BaseSchedulerPolicy):
@@ -418,10 +394,11 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
             self._type,
             priority,
             flow_info["deploy_flow_func"],
-            flow_info["deploy_flow_path"])
+            flow_info["deploy_flow_path"],
+        )
         job_run_id = self._task_manager.run_task_flow(
-            job_deploy_id,
-            {"job_info": job_info})
+            job_deploy_id, {"job_info": job_info}
+        )
         return job_run_id
 
     def calculate_priority(self, job_info):
@@ -489,22 +466,14 @@ class SchedulerPolicyHandlerFactory(ABC):
 
     def __init__(self, task_manager):
         self._policy_mapping = {
-            Constant.JOB_SCHED_POLICY_PRIORITY:
-                PriorityPolicy(task_manager),
-            Constant.JOB_SCHED_POLICY_HIGH_RESPONSE_RATIO:
-                HighResponseRatioPolicy(task_manager),
-            Constant.JOB_SCHED_POLICY_SHORTEST_JOB_FIRST:
-                ShortestJobFirstPolicy(task_manager),
-            Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE:
-                TimePrecedencePolicy(task_manager),
-            Constant.JOB_SCHED_POLICY_PERIODIC:
-                PeriodicPolicy(task_manager),
-            Constant.JOB_SCHED_POLICY_DEPENDENT:
-                DependentPolicy(task_manager),
-            Constant.JOB_SCHED_POLICY_BATCH:
-                BatchPolicy(task_manager),
-            Constant.JOB_SCHED_POLICY_REALTIME:
-                RealtimePolicy(task_manager),
+            Constant.JOB_SCHED_POLICY_PRIORITY: PriorityPolicy(task_manager),
+            Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE: TimePrecedencePolicy(
+                task_manager
+            ),
+            Constant.JOB_SCHED_POLICY_PERIODIC: PeriodicPolicy(task_manager),
+            Constant.JOB_SCHED_POLICY_DEPENDENT: DependentPolicy(task_manager),
+            Constant.JOB_SCHED_POLICY_BATCH: BatchPolicy(task_manager),
+            Constant.JOB_SCHED_POLICY_REALTIME: RealtimePolicy(task_manager),
         }
 
     def get_policy_handler_by_name(self, name: str):

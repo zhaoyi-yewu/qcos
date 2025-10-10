@@ -17,7 +17,6 @@
 
 import copy
 import logging
-from typing import Dict
 
 from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
@@ -41,8 +40,7 @@ def _get_device_info(device_info):
 
     # replace pwd in extra_configs to ********
     configs = copy.deepcopy(device_info.configs)
-    Library.update_dict(configs,
-                        {"password": "*" * 8})
+    Library.update_dict(configs, {"password": "*" * 8})
     _device_info = {
         "name": device_info.name,
         "alias_name": device_info.alias_name,
@@ -57,8 +55,8 @@ def _get_device_info(device_info):
 
 @device_api_v1.method(errors=[])
 def get_devices(
-        body: schemas.GetDevicesRequest = None
-) -> Dict[str, schemas.GetDeviceResponse]:
+    body: schemas.GetDevicesRequest,
+) -> dict[str, schemas.GetDeviceResponse]:
     """Get device dict request
 
     Args:
@@ -74,14 +72,15 @@ def get_devices(
     devices = device_manager.get_devices()
     response_info = {}
     for device_name, device_info in sorted(devices.items()):
-        response_info[device_name] = _get_device_info(device_info)
+        _response_info = _get_device_info(device_info)
+        response_info[device_name] = schemas.GetDeviceResponse.model_validate(
+            _response_info
+        )
     return response_info
 
 
 @device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
-def get_device(
-        body: schemas.GetDeviceRequest
-) -> schemas.GetDeviceResponse:
+def get_device(body: schemas.GetDeviceRequest) -> schemas.GetDeviceResponse:
     """Get device info request
 
     Args:
@@ -101,7 +100,8 @@ def get_device(
         jsonrpc_errors.handle_error_not_found(
             module_name,
             func_name,
-            (False, f"Device: '{device_name}' is not found")
+            (False, f"Device: '{device_name}' is not found"),
         )
-    response_info = _get_device_info(device_info)
+    _response_info = _get_device_info(device_info)
+    response_info = schemas.GetDeviceResponse.model_validate(_response_info)
     return response_info

@@ -45,53 +45,62 @@ class JsonRpcBaseError(jsonrpc.BaseError):
 
     class DataModel(BaseModel):
         """Data Model"""
+
         details: str
 
 
 class BadRequestError(JsonRpcBaseError):
     """Bad Request Error"""
+
     CODE = -HttpCode.BAD_REQUEST_ERROR
     MESSAGE = "Bad Request"
 
 
 class UnauthorizedError(JsonRpcBaseError):
     """Unauthorized Error"""
+
     CODE = -HttpCode.UNAUTHORIZED_ERROR
     MESSAGE = "Unauthorized"
 
 
 class ForbiddenError(JsonRpcBaseError):
     """Forbidden Error"""
+
     CODE = -HttpCode.FORBIDDEN_ERROR
     MESSAGE = "Forbidden"
 
 
 class NotFoundError(JsonRpcBaseError):
     """Not Found Error"""
+
     CODE = -HttpCode.NOT_FOUND_ERROR
     MESSAGE = "Not Found"
 
 
 class ConflictError(JsonRpcBaseError):
     """Conflict Error"""
+
     CODE = -HttpCode.CONFLICT_ERROR
     MESSAGE = "Conflict"
 
 
 class InternalServerError(JsonRpcBaseError):
     """Internal Server Error"""
+
     CODE = -HttpCode.INTERNAL_SERVER_ERROR
     MESSAGE = "Internal Server Error"
 
 
 class NotImplementedError(JsonRpcBaseError):
     """Not Implemented Error"""
+
     CODE = -HttpCode.NOT_IMPLEMENTED_ERROR
     MESSAGE = "Not Implemented"
 
 
 class ServiceUnavailableError(JsonRpcBaseError):
     """Service Unavailable Error"""
+
     CODE = -HttpCode.SERVICE_UNAVAILABLE_ERROR
     MESSAGE = "Service Unavailable"
 
@@ -117,9 +126,7 @@ def handle_errors(err_cls, module_name, func_name, results, param_name, code):
         if isinstance(err_msg, list):
             details = f"{param_str}{';'.join(err_msg)}"
 
-        error = err_cls(
-            data={"details": details}
-        )
+        error = err_cls(data={"details": details})
         if code:
             error.CODE = code
         error.MESSAGE = f"[{module_name}] Failed to {func_name}"
@@ -127,7 +134,8 @@ def handle_errors(err_cls, module_name, func_name, results, param_name, code):
 
 
 def handle_error_bad_requests(
-        module_name, func_name, results, param_name=None, code=None):
+    module_name, func_name, results, param_name=None, code=None
+):
     """Handle bad_requests error
 
     Args:
@@ -138,16 +146,13 @@ def handle_error_bad_requests(
         code: error code (Default value = None)
     """
     return handle_errors(
-        BadRequestError,
-        module_name,
-        func_name,
-        results,
-        param_name,
-        code)
+        BadRequestError, module_name, func_name, results, param_name, code
+    )
 
 
 def handle_error_unauthorized(
-        module_name, func_name, results, param_name=None, code=None):
+    module_name, func_name, results, param_name=None, code=None
+):
     """Handle unauthorized error
 
     Args:
@@ -158,16 +163,13 @@ def handle_error_unauthorized(
         code: error code (Default value = None)
     """
     return handle_errors(
-        UnauthorizedError,
-        module_name,
-        func_name,
-        results,
-        param_name,
-        code)
+        UnauthorizedError, module_name, func_name, results, param_name, code
+    )
 
 
 def handle_error_forbidden(
-        module_name, func_name, results, param_name=None, code=None):
+    module_name, func_name, results, param_name=None, code=None
+):
     """Handle forbidden error
 
     Args:
@@ -178,16 +180,13 @@ def handle_error_forbidden(
         code: error code (Default value = None)
     """
     return handle_errors(
-        ForbiddenError,
-        module_name,
-        func_name,
-        results,
-        param_name,
-        code)
+        ForbiddenError, module_name, func_name, results, param_name, code
+    )
 
 
 def handle_error_not_found(
-        module_name, func_name, results, param_name=None, code=None):
+    module_name, func_name, results, param_name=None, code=None
+):
     """Handle forbidden error
 
     Args:
@@ -198,16 +197,13 @@ def handle_error_not_found(
         code: error code (Default value = None)
     """
     return handle_errors(
-        NotFoundError,
-        module_name,
-        func_name,
-        results,
-        param_name,
-        code)
+        NotFoundError, module_name, func_name, results, param_name, code
+    )
 
 
 def handle_error_conflict(
-        module_name, func_name, results, param_name=None, code=None):
+    module_name, func_name, results, param_name=None, code=None
+):
     """Handle conflict error
 
     Args:
@@ -218,16 +214,13 @@ def handle_error_conflict(
         code: error code (Default value = None)
     """
     return handle_errors(
-        ConflictError,
-        module_name,
-        func_name,
-        results,
-        param_name,
-        code)
+        ConflictError, module_name, func_name, results, param_name, code
+    )
 
 
 def handle_error_internal_server(
-        module_name, func_name, results, param_name=None, code=None):
+    module_name, func_name, results, param_name=None, code=None
+):
     """Handle internal server error
 
     Args:
@@ -238,16 +231,13 @@ def handle_error_internal_server(
         code: error code (Default value = None)
     """
     return handle_errors(
-        InternalServerError,
-        module_name,
-        func_name,
-        results,
-        param_name,
-        code)
+        InternalServerError, module_name, func_name, results, param_name, code
+    )
 
 
 def handle_error_not_implemented(
-        module_name, func_name, results, param_name=None, code=None):
+    module_name, func_name, results, param_name=None, code=None
+):
     """Handle not implemented error
 
     Args:
@@ -258,16 +248,13 @@ def handle_error_not_implemented(
         code: error code (Default value = None)
     """
     return handle_errors(
-        NotImplementedError,
-        module_name,
-        func_name,
-        results,
-        param_name,
-        code)
+        NotImplementedError, module_name, func_name, results, param_name, code
+    )
 
 
 def handle_error_service_unavailable(
-        module_name, func_name, results, param_name=None, code=None):
+    module_name, func_name, results, param_name=None, code=None
+):
     """Handle service unavailable error
 
     Args:
@@ -283,4 +270,5 @@ def handle_error_service_unavailable(
         func_name,
         results,
         param_name,
-        code)
+        code,
+    )

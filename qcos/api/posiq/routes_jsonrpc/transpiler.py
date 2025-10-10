@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 import logging
-from typing import Dict
 
 from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
@@ -41,15 +40,15 @@ def _get_transpiler_info(transpiler_info):
         "alias_name": transpiler_info.alias_name,
         "version": transpiler_info.get_version(),
         "enable": transpiler_info.enable,
-        "supported_code_types": transpiler_info.supported_code_types
+        "supported_code_types": transpiler_info.supported_code_types,
     }
     return _transpiler_info
 
 
 @transpiler_api_v1.method(errors=[])
 def get_transpilers(
-        body: schemas.GetTranspilersRequest = None
-) -> Dict[str, schemas.GetTranspilerResponse]:
+    body: schemas.GetTranspilersRequest,
+) -> dict[str, schemas.GetTranspilerResponse]:
     """Get transpiler list request
 
     Args:
@@ -65,13 +64,16 @@ def get_transpilers(
     transpilers = transpiler_manager.get_transpilers()
     response_info = {}
     for transpiler_name, transpiler_info in sorted(transpilers.items()):
-        response_info[transpiler_name] = _get_transpiler_info(transpiler_info)
+        _response_info = _get_transpiler_info(transpiler_info)
+        response_info[transpiler_name] = (
+            schemas.GetTranspilerResponse.model_validate(_response_info)
+        )
     return response_info
 
 
 @transpiler_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
 def get_transpiler(
-        body: schemas.GetTranspilerRequest
+    body: schemas.GetTranspilerRequest,
 ) -> schemas.GetTranspilerResponse:
     """Get transpiler info request
 
@@ -92,7 +94,10 @@ def get_transpiler(
         jsonrpc_errors.handle_error_not_found(
             module_name,
             func_name,
-            (False, f"Transpiler: '{transpiler_name}' is not found")
+            (False, f"Transpiler: '{transpiler_name}' is not found"),
         )
-    response_info = _get_transpiler_info(transpiler_info)
+    _response_info = _get_transpiler_info(transpiler_info)
+    response_info = schemas.GetTranspilerResponse.model_validate(
+        _response_info
+    )
     return response_info

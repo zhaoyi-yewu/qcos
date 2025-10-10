@@ -39,10 +39,15 @@ class TranspilerManager:
         module_dirs = Library.find_dirs(base_dir=base_dir, recursive=True)
         for pkg_dir in module_dirs:
             classes = Library.import_classes(
-                pkg_dir, base_module_name=base_module_name,
+                pkg_dir,
+                base_module_name=base_module_name,
                 base_dir=base_dir,
-                base_class=TranspilerBase)
-            for class_name, _class, in classes.items():
+                base_class=TranspilerBase,
+            )
+            for (
+                class_name,
+                _class,
+            ) in classes.items():
                 logger.info(f"Loading transpiler: {class_name}")
                 class_instance = _class()
                 if not class_instance.enable:

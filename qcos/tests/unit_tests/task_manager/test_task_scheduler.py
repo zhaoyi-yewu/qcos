@@ -22,22 +22,25 @@ from unittest.mock import patch, Mock
 from qcos.common.constant import Constant
 from qcos.drivers.driver_manager import DriverManager
 from qcos.task_manager.task_manager import TaskFlowManager
-from qcos.task_manager.task_scheduler import (TaskScheduler, PriorityPolicy,
-                                              SchedulerPolicyHandlerFactory,
-                                              RealtimePolicy, BatchPolicy,
-                                              DependentPolicy, PeriodicPolicy,
-                                              ShortestJobFirstPolicy,
-                                              HighResponseRatioPolicy)
+from qcos.task_manager.task_scheduler import (
+    TaskScheduler,
+    PriorityPolicy,
+    SchedulerPolicyHandlerFactory,
+    RealtimePolicy,
+    BatchPolicy,
+    DependentPolicy,
+    PeriodicPolicy,
+)
 from qcos.task_manager.task_scheduler import TimePrecedencePolicy
 from qcos.transpiler.transpiler_manager import TranspilerManager
 from qcos.tests.unit_tests.task_manager.constant_for_test import (
-    ConstantForTest)
+    ConstantForTest,
+)
 
 task = TaskScheduler()
 
 
 class TestTaskScheduler:
-
     def test_set_driver_manager(self):
         driver_manager = DriverManager()
         task.set_driver_manager(driver_manager)
@@ -68,17 +71,19 @@ class TestTaskScheduler:
     @patch.object(TaskScheduler, "get_job_status")
     @patch.object(TaskFlowManager, "transform_to_qcos_state")
     @patch.object(TaskFlowManager, "get_task_flow_result")
-    def test_get_result_by_id(self, mock_get_task_flow_result,
-                              mock_transform_to_qcos_state,
-                              mock_get_job_status,
-                              mock_get_job_artifact):
+    def test_get_result_by_id(
+        self,
+        mock_get_task_flow_result,
+        mock_transform_to_qcos_state,
+        mock_get_job_status,
+        mock_get_job_artifact,
+    ):
         mock_transform_to_qcos_state.return_value = "state"
         mock_get_job_status.return_value = "job_status"
         mock_get_job_artifact.return_value = "job_artifact"
-        mock_get_task_flow_result.return_value = iter(["state",
-                                                       "parameters",
-                                                       "results",
-                                                       "error_message"])
+        mock_get_task_flow_result.return_value = iter(
+            ["state", "parameters", "results", "error_message"]
+        )
         task.get_result_by_id(ConstantForTest.job_id)
 
     @patch.object(TaskFlowManager, "has_flow")
@@ -101,7 +106,8 @@ class TestTaskScheduler:
     def test_remove_jobs(self, mock_delete_task_flow_run, mock_get_job_status):
         mock_get_job_status.return_value = 111
         mock_delete_task_flow_run.return_value = [
-            {"job_status": 111, "state": 222}, ]
+            {"job_status": 111, "state": 222},
+        ]
         task.delete_jobs([1, 2, 3])
 
     @patch.object(TaskFlowManager, "update_flow")
@@ -117,23 +123,23 @@ class TestTaskScheduler:
         assert callback is None
 
     def test_get_job_status(self):
-        flow_results = [{"metadata": {
-            "status": 1, "statuses": 2}},
-            {"data": {
-                "data1": 1}}]
+        flow_results = [
+            {"metadata": {"status": 1, "statuses": 2}},
+            {"data": {"data1": 1}},
+        ]
 
-        flow_parameters = {"updated_job_info": {
-            "results": [{"metadata": {"1": 1}},
-                        {"status": {"2": 2}}]
-        }, "info": 233}
+        flow_parameters = {
+            "updated_job_info": {
+                "results": [{"metadata": {"1": 1}}, {"status": {"2": 2}}]
+            },
+            "info": 233,
+        }
         task.get_job_status("job_status", flow_results, flow_parameters)
 
 
 task_manager = TaskFlowManager()
 priority_policy = PriorityPolicy(task_manager)
 time_precedence_policy = TimePrecedencePolicy(task_manager)
-high_response_ratio_policy = HighResponseRatioPolicy(task_manager)
-shortest_job_first_policy = ShortestJobFirstPolicy(task_manager)
 periodic_policy = PeriodicPolicy(task_manager)
 dependent_policy = DependentPolicy(task_manager)
 batch_policy = BatchPolicy(task_manager)
@@ -142,30 +148,19 @@ factory = SchedulerPolicyHandlerFactory(task_manager)
 
 
 class TestPriorityPolicy:
-
     @patch.object(TaskFlowManager, "deploy_task_flow")
     @patch.object(TaskFlowManager, "run_task_flow")
     def test_exec_task(self, mock_run_task_flow, mock_deploy_task_flow):
         mock_deploy_task_flow.return_value = 114
         mock_run_task_flow.return_value = 514
 
-        result = priority_policy.exec_task(ConstantForTest.flow_info,
-                                           ConstantForTest.args["job_info"])
+        result = priority_policy.exec_task(
+            ConstantForTest.flow_info, ConstantForTest.args["job_info"]
+        )
         assert result == 514
 
 
-class TestHighResponseRatioPolicy:
-    def test_exec_task(self):
-        high_response_ratio_policy.exec_task()
-
-
-class TestShortestJobFirstPolicy:
-    def test_exec_task(self):
-        shortest_job_first_policy.exec_task()
-
-
 class TestTimePrecedencePolicy:
-
     @patch.object(TaskFlowManager, "deploy_task_flow")
     @patch.object(TaskFlowManager, "run_task_flow")
     def test_exec_task(self, mock_run_task_flow, mock_deploy_task_flow):
@@ -173,7 +168,8 @@ class TestTimePrecedencePolicy:
         mock_run_task_flow.return_value = 514
 
         result = time_precedence_policy.exec_task(
-            ConstantForTest.flow_info, ConstantForTest.args["job_info"])
+            ConstantForTest.flow_info, ConstantForTest.args["job_info"]
+        )
         assert result == 514
 
 
@@ -200,4 +196,5 @@ class TestRealtimePolicy:
 class TestSchedulerPolicyHandlerFactory:
     def test_get_policy_handler_by_name(self):
         factory.get_policy_handler_by_name(
-            Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE)
+            Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE
+        )

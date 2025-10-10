@@ -66,7 +66,7 @@ class TestGetIr:
         assert len(ir) == 21
         validate_gate_ir(ir[0], "rx", ["2"], 1, False)
         validate_gate_ir(ir[1], "h", ["2"], 1, True)
-        validate_gate_ir(ir[2], "ry", ["2"],1, False)
+        validate_gate_ir(ir[2], "ry", ["2"], 1, False)
         validate_gate_ir(ir[3], "rz", ["2"], 1, False)
         validate_gate_ir(ir[4], "x", ["2"], 1, True)
         validate_gate_ir(ir[5], "y", ["2"], 1, True)

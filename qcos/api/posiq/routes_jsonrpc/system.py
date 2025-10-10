@@ -25,9 +25,7 @@ module_name = "SYSTEM"
 
 
 @system_api_v1.method()
-def ping(
-        body: schemas.PingRequest
-) -> schemas.PongResponse:
+def ping(body: schemas.PingRequest) -> schemas.PongResponse:
     """Ping-pong to verify the availability of the system
 
     Args:
@@ -41,7 +39,6 @@ def ping(
 
     message = body.message
 
-    response_info = {
-        "message": message,
-    }
+    _response_info = {"message": message}
+    response_info = schemas.PongResponse.model_validate(_response_info)
     return response_info

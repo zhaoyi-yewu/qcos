@@ -28,25 +28,29 @@ from qcos.transpiler.cmss.common.measure import Measure
 job_id = "00000000-0000-4000-8000-000000000001"
 task_id = "123456"
 session_id = "1000000000000000000000000000000000000001"
-coupling_list = [(0, 1), (1, 0), (1, 2), (2, 1), (0, 3), (3, 0),
-                 (1, 4), (2, 5), (5, 2), (3, 4), (4, 3), (4, 5),
-                 (5, 4)]
+coupling_list = [
+    (0, 1),
+    (1, 0),
+    (1, 2),
+    (2, 1),
+    (0, 3),
+    (3, 0),
+    (1, 4),
+    (2, 5),
+    (5, 2),
+    (3, 4),
+    (4, 3),
+    (4, 5),
+    (5, 4),
+]
 username = "username"
 password = ""
 num_qubits = 5
 chip_name = "chip_name"
-data = {'index': 0, 'source_code': None, 'transpile_results': []}
+data = {"index": 0, "source_code": None, "transpile_results": []}
 data_type = DriverSpinQRpc.DATA_TYPE_GATE_SEQUENCE
 shots = 1024
-results = \
-    {
-        "task_result": {
-            "qubit_result": {
-                "000": 1,
-                "010": 9
-            }
-        }
-    }
+results = {"task_result": {"qubit_result": {"000": 1, "010": 9}}}
 
 
 def validate_converted_gate(actual_info, expected_info):
@@ -73,10 +77,7 @@ class TestDriverSpinQRpc(unittest.TestCase):
     def test_fetch_configs(self, mock_user_auth, mock_client_class):
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
-        _results = {
-            "session_id": session_id,
-            "coupling_list": coupling_list
-        }
+        _results = {"session_id": session_id, "coupling_list": coupling_list}
         mock_user_auth.return_value = True, "", _results
         assert self.driver.fetch_configs() is not None
 
@@ -95,7 +96,7 @@ class TestDriverSpinQRpc(unittest.TestCase):
             "rpc_host": DriverSpinQRpc.default_rpc_host,
             "rpc_port": DriverSpinQRpc.default_rpc_port,
             "username": "username",
-            "password": "password"
+            "password": "password",
         }
         success, err_msg = self.driver.validate_driver_configs(configs)
         assert success is True
@@ -108,8 +109,13 @@ class TestDriverSpinQRpc(unittest.TestCase):
     @patch.object(DriverSpinQRpc, "check_task_status")
     @patch.object(DriverSpinQRpc, "get_task_results")
     @patch.object(DriverSpinQRpc, "client_close")
-    def test_run(self, mock_client_close, mock_get_task_results,
-                 mock_check_task_status, mock_submit_task):
+    def test_run(
+        self,
+        mock_client_close,
+        mock_get_task_results,
+        mock_check_task_status,
+        mock_submit_task,
+    ):
         mock_submit_task.return_value = True, "", task_id
         mock_check_task_status.return_value = True
         mock_get_task_results.return_value = True, "", results
@@ -123,18 +129,20 @@ class TestDriverSpinQRpc(unittest.TestCase):
             "qubits_num": 5,
             "session_id": session_id,
             "chip_name": chip_name,
-            "coupling_list": []
+            "coupling_list": [],
         }
         self.mock_client.request_login.return_value = json.dumps(
-            request_login_response)
+            request_login_response
+        )
         success, err_msg, _results = self.driver.user_auth(username, password)
         assert success is True
         assert err_msg is None
         assert _results == request_login_response
 
     def test_user_auth_rpc_error(self):
-        self.mock_client.request_login.side_effect = \
+        self.mock_client.request_login.side_effect = (
             zerorpc.exceptions.LostRemote("Connection lost")
+        )
         self.mock_client.client.close = None
         self.mock_client.client.connect = None
         success, err_msg, _results = self.driver.user_auth(username, password)
@@ -154,27 +162,62 @@ class TestDriverSpinQRpc(unittest.TestCase):
         assert measures == mea_targets
         assert len(task_gates) == 5
 
-        validate_converted_gate(task_gates[0],
-                                {'angle': 1.0, 'controlQubit': -1,
-                                 'qubitIndex': 3, 'type': 'rx', "timeslot": 0})
-        validate_converted_gate(task_gates[1],
-                                {'angle': 1.0, 'controlQubit': -1,
-                                 'qubitIndex': 4, 'type': 'ry', "timeslot": 0})
-        validate_converted_gate(task_gates[2],
-                                {'angle': 1.0, 'controlQubit': -1,
-                                 'qubitIndex': 5, 'type': 'rz', "timeslot": 0})
-        validate_converted_gate(task_gates[3],
-                                {'angle': 0, 'controlQubit': -1,
-                                 'qubitIndex': 0, 'type': 'h', "timeslot": 0})
-        validate_converted_gate(task_gates[4],
-                                {'angle': 0, 'controlQubit': 1,
-                                 'qubitIndex': 2, 'type': 'cx', "timeslot": 0})
+        validate_converted_gate(
+            task_gates[0],
+            {
+                "angle": 1.0,
+                "controlQubit": -1,
+                "qubitIndex": 3,
+                "type": "rx",
+                "timeslot": 0,
+            },
+        )
+        validate_converted_gate(
+            task_gates[1],
+            {
+                "angle": 1.0,
+                "controlQubit": -1,
+                "qubitIndex": 4,
+                "type": "ry",
+                "timeslot": 0,
+            },
+        )
+        validate_converted_gate(
+            task_gates[2],
+            {
+                "angle": 1.0,
+                "controlQubit": -1,
+                "qubitIndex": 5,
+                "type": "rz",
+                "timeslot": 0,
+            },
+        )
+        validate_converted_gate(
+            task_gates[3],
+            {
+                "angle": 0,
+                "controlQubit": -1,
+                "qubitIndex": 0,
+                "type": "h",
+                "timeslot": 0,
+            },
+        )
+        validate_converted_gate(
+            task_gates[4],
+            {
+                "angle": 0,
+                "controlQubit": 1,
+                "qubitIndex": 2,
+                "type": "cx",
+                "timeslot": 0,
+            },
+        )
         task_info = {
             "task_name": "task name",
             "task_gates": task_gates,
             "measures": measures,
             "task_desc": "task desc",
-            "shots": shots
+            "shots": shots,
         }
         self.mock_client.push_task.return_value = 0, task_id
         success, err_msg, _task_id = self.driver.submit_task(task_info)

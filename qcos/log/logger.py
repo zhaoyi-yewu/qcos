@@ -26,10 +26,11 @@ from logging.handlers import RotatingFileHandler
 
 class ColouredFormatter(logging.Formatter):
     """Coloured Formatter for logger module"""
-    RESET = "\x1B[0m"
-    RED = "\x1B[31m"
-    YELLOW = "\x1B[33m"
-    GREEN = "\x1B[32m"
+
+    RESET = "\x1b[0m"
+    RED = "\x1b[31m"
+    YELLOW = "\x1b[33m"
+    GREEN = "\x1b[32m"
     PINK = "\x1b[35m"
 
     def format(self, record, colour=False):
@@ -58,7 +59,8 @@ class ColouredFormatter(logging.Formatter):
         # do not show uvicorn filename and line number in logs
         if record.name.startswith("uvicorn"):
             message = message.replace(
-                f"{record.name}:{record.lineno}", "uvicorn")
+                f"{record.name}:{record.lineno}", "uvicorn"
+            )
 
         message = f"{colour}{message}{self.RESET}"
 
@@ -92,11 +94,16 @@ class LogFilter(logging.Filter):
     """This filter some noise from the logs"""
 
     def filter(self, record):
-        if isinstance(record.msg, str) and \
-                "/settings" in record.msg and "200" in record.msg:
+        if (
+            isinstance(record.msg, str)
+            and "/settings" in record.msg
+            and "200" in record.msg
+        ):
             return 0
-        if isinstance(record.msg, str) and \
-                "HTTP Request: %s %s " in record.msg:
+        if (
+            isinstance(record.msg, str)
+            and "HTTP Request: %s %s " in record.msg
+        ):
             return 0
         return 1
 
@@ -110,7 +117,7 @@ class CompressedRotatingFileHandler(RotatingFileHandler):
         if self.backupCount > 0:
             for i in range(self.backupCount - 1, 0, -1):
                 sfn = f"{self.baseFilename}.{i}.gz"
-                dfn = f"{self.baseFilename}.{i+1}.gz"
+                dfn = f"{self.baseFilename}.{i + 1}.gz"
                 if os.path.exists(sfn):
                     if os.path.exists(dfn):
                         os.remove(dfn)
@@ -118,17 +125,25 @@ class CompressedRotatingFileHandler(RotatingFileHandler):
             dfn = self.baseFilename + ".1.gz"
             if os.path.exists(dfn):
                 os.remove(dfn)
-            with open(self.baseFilename, "rb") \
-                    as f_in, gzip.open(dfn, "wb") as f_out:
+            with (
+                open(self.baseFilename, "rb") as f_in,
+                gzip.open(dfn, "wb") as f_out,
+            ):
                 shutil.copyfileobj(f_in, f_out)
         self.mode = "w"
         self.stream = self._open()
 
 
 def init_logger(
-        level, *,
-        logfile=None, max_bytes=10000000, backup_count=10,
-        console=True, compression=True, quiet=False):
+    level,
+    *,
+    logfile=None,
+    max_bytes=10000000,
+    backup_count=10,
+    console=True,
+    compression=True,
+    quiet=False,
+):
     file_stream_handler = None
     console_stream_handler = None
     handlers = []
@@ -136,23 +151,23 @@ def init_logger(
     if logfile and len(logfile) > 0:
         if compression:
             file_stream_handler = CompressedRotatingFileHandler(
-                logfile,
-                maxBytes=max_bytes,
-                backupCount=backup_count)
+                logfile, maxBytes=max_bytes, backupCount=backup_count
+            )
         else:
             file_stream_handler = RotatingFileHandler(
-                logfile,
-                maxBytes=max_bytes,
-                backupCount=backup_count)
+                logfile, maxBytes=max_bytes, backupCount=backup_count
+            )
         file_stream_handler.formatter = ColouredFormatter(
             "{asctime} {levelname} {filename}:{lineno} {message}",
-            "%Y-%m-%d %H:%M:%S", "{"
+            "%Y-%m-%d %H:%M:%S",
+            "{",
         )
     if console:
         console_stream_handler = ColouredStreamHandler(sys.stdout)
         console_stream_handler.formatter = ColouredFormatter(
             "{asctime} {levelname} {name}:{lineno}#RESET# {message}",
-            "%Y-%m-%d %H:%M:%S", "{"
+            "%Y-%m-%d %H:%M:%S",
+            "{",
         )
     if quiet:
         file_stream_handler.addFilter(logging.Filter(name="user_facing"))

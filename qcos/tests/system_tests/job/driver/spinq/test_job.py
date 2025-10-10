@@ -37,10 +37,7 @@ class TestJob:
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
         print("Start SpinQ server")
-        cls.rpc_process = multiprocessing.Process(
-            target=main,
-            daemon=True
-        )
+        cls.rpc_process = multiprocessing.Process(target=main, daemon=True)
         cls.rpc_process.start()
 
     @classmethod
@@ -53,7 +50,7 @@ class TestJob:
         qasm_content = SAMPLES["simple-qasm.qasm"]
         source_code_list = [qasm_content]
         code_type = Constant.CODE_TYPE_QASM
-        job_id = str(Library.create_uuid(prefix=[0xf0]))
+        job_id = str(Library.create_uuid(prefix=[0xF0]))
         job_name = "test_spinq_submit_job"
         circuit_aggregation = None
         job_type = Constant.JOB_TYPE_SAMPLING
@@ -83,7 +80,8 @@ class TestJob:
             transpiler_options=transpiler_options,
             profiling=profiling,
             callbacks=callbacks,
-            dry_run=dry_run)
+            dry_run=dry_run,
+        )
         assert status_code == HttpCode.SUCCESS_OK
         json_results = json.loads(text)
         result = json_results["result"]
@@ -109,13 +107,15 @@ class TestJob:
             self.timeout,
             self.interval,
             self.client,
-            job_id)
+            job_id,
+        )
         # wait for additional time for job to finish resource cleanup
         time.sleep(5)
 
         # check results
         status_code, reason, text, response = self.client.get_job_results(
-            job_id)
+            job_id
+        )
         assert status_code == HttpCode.SUCCESS_OK
         job_result = json.loads(text)
         job_error = job_result.get("error", {})
@@ -126,7 +126,8 @@ class TestJob:
 
         # check if job deleted
         status_code, reason, text, response = self.client.get_job_results(
-            job_id)
+            job_id
+        )
         assert status_code == HttpCode.SUCCESS_OK
         job_result = json.loads(text)
         job_error = job_result.get("error", {})

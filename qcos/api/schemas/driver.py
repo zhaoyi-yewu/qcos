@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -30,37 +29,39 @@ class GetDriverRequest(BaseModel):
     """Get Driver Request
     Pydantic Model for Get Driver Request
     """
+
     # driver name
-    name: str = None
+    name: str
 
 
 class GetDriverResponse(BaseModel):
     """Get Driver Response
     Pydantic Model for Get Driver Response
     """
+
     # driver name
-    name: str = None
+    name: str
     # driver alias name
-    alias_name: str = None
+    alias_name: str | None = None
     # driver version
-    version: Optional[str] = None
+    version: str
     # driver description
-    description: Optional[str] = None
+    description: str
     # tech_type
-    tech_type: Optional[str] = None
+    tech_type: str
     # max_qubits
-    max_qubits: int = None
+    max_qubits: int
     # enable transpiler
-    enable_transpiler: Optional[bool] = None
+    enable_transpiler: bool
     # transpiler
-    transpiler: Optional[str] = None
+    transpiler: str | None
     # supported transpilers
-    supported_transpilers: Optional[list] = None
+    supported_transpilers: list
     # enable circuit aggregation
-    enable_circuit_aggregation: Optional[bool] = None
+    enable_circuit_aggregation: bool
     # supported code types
-    supported_code_types: Optional[list] = None
+    supported_code_types: list
     # supported basis gates
-    supported_basis_gates: Optional[list] = None
+    supported_basis_gates: list | None
     # results fetch mode
-    results_fetch_mode: Optional[str] = None
+    results_fetch_mode: str

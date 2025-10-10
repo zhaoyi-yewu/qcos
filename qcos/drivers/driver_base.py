@@ -31,10 +31,7 @@ class DriverBase:
     # Data types
     DATA_TYPE_GATE_SEQUENCE = "gate_sequence"
     DATA_TYPE_QUBO = "qubo"
-    DATA_TYPES = [
-        DATA_TYPE_GATE_SEQUENCE,
-        DATA_TYPE_QUBO
-    ]
+    DATA_TYPES = [DATA_TYPE_GATE_SEQUENCE, DATA_TYPE_QUBO]
 
     # TASK STAGES
     TASK_STAGE_START = "start"
@@ -87,7 +84,7 @@ class DriverBase:
         self.task_stages = {
             self.TASK_STAGE_START: 0,
             self.TASK_STAGE_WAIT_TASK: 50,
-            self.TASK_STAGE_COMPLETE: 100
+            self.TASK_STAGE_COMPLETE: 100,
         }
 
         # job runtime data
@@ -97,7 +94,7 @@ class DriverBase:
             "configs": {},
             # results from run(): fetches the results from quantum computer
             # format: {JOB_ID: {"results": RESULTS}}
-            "results": {}
+            "results": {},
         }
 
         # measurement results fetch mode
@@ -116,17 +113,23 @@ class DriverBase:
         if self.enable_transpiler:
             if self.supported_code_types:
                 success = False
-                err_msgs.append("supported_code_types should not be specified "
-                                "when driver.enable_transpiler=True")
+                err_msgs.append(
+                    "supported_code_types should not be specified "
+                    "when driver.enable_transpiler=True"
+                )
             if self.transpiler not in self.supported_transpilers:
                 success = False
-                err_msgs.append("driver.transpiler must be specified in "
-                                "driver.supported_transpilers list")
+                err_msgs.append(
+                    "driver.transpiler must be specified in "
+                    "driver.supported_transpilers list"
+                )
         else:
             if not self.supported_code_types:
                 success = False
-                err_msgs.append("supported_code_types must be specified "
-                                "when driver.enable_transpiler=False")
+                err_msgs.append(
+                    "supported_code_types must be specified "
+                    "when driver.enable_transpiler=False"
+                )
         return success, "\n".join(err_msgs)
 
     def validate_driver_configs(self, configs):
@@ -140,17 +143,22 @@ class DriverBase:
         """
         raise NotImplementedError(
             f"Driver: {self.__class__.__name__} "
-            f"must implement method: validate_driver_configs")
+            f"must implement method: validate_driver_configs"
+        )
 
     def init_driver(self):
         """Init driver"""
-        raise NotImplementedError(f"Driver: {self.__class__.__name__} "
-                                  f"must implement method: init_driver")
+        raise NotImplementedError(
+            f"Driver: {self.__class__.__name__} "
+            f"must implement method: init_driver"
+        )
 
     def close_driver(self):
         """Close driver"""
-        raise NotImplementedError(f"Driver: {self.__class__.__name__} "
-                                  f"must implement method: close_driver")
+        raise NotImplementedError(
+            f"Driver: {self.__class__.__name__} "
+            f"must implement method: close_driver"
+        )
 
     def get_driver_options_schema(self):
         """Get driver options schema
@@ -180,7 +188,7 @@ class DriverBase:
             f"transpiler: {self.transpiler}",
             f"enable_circuit_aggregation: {self.enable_circuit_aggregation}",
             f"results_fetch_mode: {self.results_fetch_mode}",
-            f"max_qubits: {self.max_qubits}"
+            f"max_qubits: {self.max_qubits}",
         ]
         return "\n".join(show_list)
 
@@ -270,7 +278,7 @@ class DriverBase:
 
     def get_supported_basis_gates(self):
         """Get supported basis gates
-        
+
         Returns:
             list of supported basis gates
         """
@@ -341,11 +349,19 @@ class DriverBase:
         Returns:
             remote transpiler configs
         """
-        raise NotImplementedError(f"Driver: {self.__class__.__name__} "
-                                  f"must implement method: fetch_configs")
+        raise NotImplementedError(
+            f"Driver: {self.__class__.__name__} "
+            f"must implement method: fetch_configs"
+        )
 
-    def run(self, job_id, num_qubits, data,
-            data_type=DATA_TYPE_GATE_SEQUENCE, shots=1):
+    def run(
+        self,
+        job_id,
+        num_qubits,
+        data,
+        data_type=DATA_TYPE_GATE_SEQUENCE,
+        shots=1,
+    ):
         """Run job
 
         Args:
@@ -355,11 +371,18 @@ class DriverBase:
             data_type: data type (Default value = DATA_TYPE_GATE_SEQUENCE)
             shots: shots (Default value = 1)
         """
-        raise NotImplementedError(f"Driver: {self.__class__.__name__} "
-                                  f"must implement method: run")
+        raise NotImplementedError(
+            f"Driver: {self.__class__.__name__} must implement method: run"
+        )
 
-    def dry_run(self, job_id, num_qubits, data,
-                data_type=DATA_TYPE_GATE_SEQUENCE, shots=1):
+    def dry_run(
+        self,
+        job_id,
+        num_qubits,
+        data,
+        data_type=DATA_TYPE_GATE_SEQUENCE,
+        shots=1,
+    ):
         """Dry-run job
 
         Args:
@@ -373,7 +396,8 @@ class DriverBase:
         logger.info(
             f"Dry-run: job_id: {job_id}, shots: {shots}, "
             f"num_qubits: {num_qubits}, "
-            f"data_type: {data_type}, data: {data}")
+            f"data_type: {data_type}, data: {data}"
+        )
 
         result = self.get_fake_results(num_qubits, shots, data)
         self.set_results(job_id, data_index, results=result)
@@ -386,8 +410,9 @@ class DriverBase:
         Args:
             job_id: job ID
         """
-        raise NotImplementedError(f"Driver: {self.__class__.__name__} "
-                                  f"must implement method: cancel")
+        raise NotImplementedError(
+            f"Driver: {self.__class__.__name__} must implement method: cancel"
+        )
 
     def set_results(self, job_id, data_index, results):
         """Set job results
@@ -416,9 +441,13 @@ class DriverBase:
             if data_index is not None:
                 return Library.get_nested_dict_value(
                     self.job_runtime_data["results"],
-                    job_id, data_index, default=None)
+                    job_id,
+                    data_index,
+                    default=None,
+                )
             return Library.get_nested_dict_value(
-                self.job_runtime_data["results"], job_id, default=None)
+                self.job_runtime_data["results"], job_id, default=None
+            )
         return self.job_runtime_data["results"]
 
     def get_default_data_type(self):

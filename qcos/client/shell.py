@@ -39,6 +39,7 @@ DESCRIPTION = "QCOS command line interface"
 
 """
 # pylint: disable=line-too-long
+# noqa: E501
 QCOS commands:
 
 [Job commands]
@@ -132,7 +133,7 @@ class QcosShell(App):
         CMD_GROUP_DEVICE,
         CMD_GROUP_TRANSPILER,
         CMD_GROUP_SYSTEM,
-        CMD_GROUP_JOB
+        CMD_GROUP_JOB,
     ]
 
     def __init__(self, description, version, command_manager):
@@ -140,21 +141,21 @@ class QcosShell(App):
             description=description,
             version=version,
             command_manager=command_manager,
-            deferred_help=True
+            deferred_help=True,
         )
         self.client = None
 
     def initialize_app(self, argv):
         super().initialize_app(argv)
-        self.client = Client(api_listen_ip=self.options.api_host,
-                             api_port=self.options.api_port)
+        self.client = Client(
+            api_listen_ip=self.options.api_host, api_port=self.options.api_port
+        )
         # override cliff help.HelpAction
         help.HelpAction = HelpAction
 
-    def build_option_parser(
-            self, description, version, argparse_kwargs=None):
+    def build_option_parser(self, description, version, argparse_kwargs=None):
         """Return an argparse option parser for this application.
-        
+
         Subclasses may override this method to extend
         the parser with more global options.
 
@@ -173,12 +174,14 @@ class QcosShell(App):
             version=VERSION,
         )
         parser.add_argument(
-            "-v", "--verbose",
+            "-v",
+            "--verbose",
             action="count",
             dest="verbose_level",
             default=self.DEFAULT_VERBOSE_LEVEL,
             help="Increase verbosity of output and show tracebacks on"
-                 " errors. You can repeat this option.")
+            " errors. You can repeat this option.",
+        )
         parser.add_argument(
             "--debug",
             default=False,
@@ -186,11 +189,13 @@ class QcosShell(App):
             help="Show tracebacks on errors.",
         )
         parser.add_argument(
-            "-q", "--quiet",
+            "-q",
+            "--quiet",
             action="store_const",
             dest="verbose_level",
             const=0,
-            help="Suppress output except warnings and errors.")
+            help="Suppress output except warnings and errors.",
+        )
         parser.add_argument(
             "--log-file",
             action="store",
@@ -202,17 +207,19 @@ class QcosShell(App):
             dest="api_host",
             default="127.0.0.1",
             help=f"Specify api server address. "
-                 f"Default: {Config.API_SERVER_LISTEN_IP}",
+            f"Default: {Config.API_SERVER_LISTEN_IP}",
         )
         parser.add_argument(
             "--api-port",
-            dest="api_port", type=int,
+            dest="api_port",
+            type=int,
             default=Config.API_SERVER_LISTEN_PORT,
             help="Specify api server port. "
-                 f"Default: {Config.API_SERVER_LISTEN_PORT}",
+            f"Default: {Config.API_SERVER_LISTEN_PORT}",
         )
         parser.add_argument(
-            "-h", "--help",
+            "-h",
+            "--help",
             dest="deferred_help",
             action="store_true",
             help="Show help message and exit.",
@@ -222,10 +229,10 @@ class QcosShell(App):
 
 class HelpAction(argparse.Action):
     """Print help message including sub-commands
-    
+
     Provide a custom action so the -h and --help options
     to the main app will print a list of the commands.
-    
+
     The commands are determined by checking the CommandManager
     instance, passed in as the "default" value for the action.
     """
@@ -248,8 +255,8 @@ class HelpAction(argparse.Action):
             grouped_cmds[group].append((name, one_liner.capitalize()))
         for cmd_group in QcosShell.CMD_GROUPS:
             app.stdout.write(f"  \033[33m[{cmd_group}]\033[39m\n")
-            for (name, one_liner) in grouped_cmds[cmd_group]:
-                name = f'\033[36m{name}\033[39m'
+            for name, one_liner in grouped_cmds[cmd_group]:
+                name = f"\033[36m{name}\033[39m"
                 app.stdout.write(f"  {name.ljust(max_len)}  {one_liner}\n")
             app.stdout.write("\n")
         raise help.HelpExit()
@@ -287,7 +294,8 @@ class CommandHelper:
             try:
                 jsonrpc_response_dict = json.loads(jsonrpc_response)
                 success, parsed = Client.parse_jsonrpc_response(
-                    jsonrpc_response_dict)
+                    jsonrpc_response_dict
+                )
                 if success:
                     return parsed.result
                 code = parsed.code
@@ -297,12 +305,14 @@ class CommandHelper:
                     for err_msg in err_msgs:
                         err_msg_list.append(
                             f"{message} ({code})\n{err_msg['msg']} "
-                            f", loc: {', '.join(err_msg['loc'])}")
+                            f", loc: {', '.join(err_msg['loc'])}"
+                        )
                     err_details = parsed.data.get("details", None)
                     if err_details:
                         err_msg_list.append(
                             f"ErrorMsg: {message} ({code}). "
-                            f"Details: {err_details}")
+                            f"Details: {err_details}"
+                        )
                 else:
                     err_msg_list.append(f"{message} ({code})")
             except Exception as e:
@@ -314,11 +324,13 @@ class CommandHelper:
             err_msgs = f"{','.join(err_msg_list)}.\n"
         raise errors.GenericException(
             f"Failed to process {resource}: '{name}'. "
-            f"[status_code: {status_code}]\n{err_msgs}")
+            f"[status_code: {status_code}]\n{err_msgs}"
+        )
 
     @staticmethod
-    def get_table_list_data(list_dict_values, header_list,
-                            is_dict=False, ignore_header_list=None):
+    def get_table_list_data(
+        list_dict_values, header_list, is_dict=False, ignore_header_list=None
+    ):
         """Get list of data for showing table in cli
 
         Args:
@@ -367,7 +379,7 @@ class CommandHelper:
                 headers.append(header_name)
 
         # make values
-        for  value in list_values:
+        for value in list_values:
             values = []
             for header in header_list:
                 header_name = header.upper()
@@ -431,12 +443,14 @@ class Version(Command):
 
         status_code, reason, text, result = self.app.client.version()
         json_results = CommandHelper.check_results(
-            resource, "version", status_code, reason, text)
-        caps = json_results['capabilities']
+            resource, "version", status_code, reason, text
+        )
+        caps = json_results["capabilities"]
         print(f"Server version: {json_results['version']}")
         print(f"API version: {json_results['api_version']}")
-        print(f"Supported API versions: "
-              f"{json_results['supported_api_versions']}")
+        print(
+            f"Supported API versions: {json_results['supported_api_versions']}"
+        )
         print(f"Platform version: {json_results['platform_version']}")
         print("Capabilities:")
         print(f"  job_types: {', '.join(sorted(caps['job_types']))}")
@@ -444,8 +458,10 @@ class Version(Command):
         print(f"  tech_types: {caps['tech_types']}")
         print(f"  drivers: {caps['drivers']}")
         print(f"  transpilers: {caps['transpilers']}")
-        print("  driver_transpiler_mappings: "
-              f"{caps['driver_transpiler_mappings']}")
+        print(
+            "  driver_transpiler_mappings: "
+            f"{caps['driver_transpiler_mappings']}"
+        )
 
 
 # Driver commands
@@ -473,14 +489,23 @@ class GetDrivers(Lister):
             parsed_args: command line arguments
         """
         resource = self.group
-        header_list = ["name", "alias_name", "version", "tech_type",
-                       "max_qubits", "transpiler", "description"]
+        header_list = [
+            "name",
+            "alias_name",
+            "version",
+            "tech_type",
+            "max_qubits",
+            "transpiler",
+            "description",
+        ]
 
         status_code, reason, text, result = self.app.client.get_drivers()
         json_results = CommandHelper.check_results(
-            resource, "get_drivers", status_code, reason, text)
+            resource, "get_drivers", status_code, reason, text
+        )
         table_values = CommandHelper.get_table_list_data(
-            json_results, header_list, is_dict=True)
+            json_results, header_list, is_dict=True
+        )
         if not json_results:
             print("No drivers found")
         return table_values
@@ -501,8 +526,7 @@ class GetDriver(ShowOne):
             parser
         """
         parser = super().get_parser(prog_name)
-        parser.add_argument("driver_name", type=str,
-                            help="Driver name")
+        parser.add_argument("driver_name", type=str, help="Driver name")
         return parser
 
     def take_action(self, parsed_args):
@@ -515,9 +539,11 @@ class GetDriver(ShowOne):
         driver_name = parsed_args.driver_name
 
         status_code, reason, text, result = self.app.client.get_driver(
-            driver_name)
+            driver_name
+        )
         json_results = CommandHelper.check_results(
-            resource, "get_driver", status_code, reason, text)
+            resource, "get_driver", status_code, reason, text
+        )
         table_values = CommandHelper.get_table_data(json_results)
         return table_values
 
@@ -547,14 +573,22 @@ class GetDevices(Lister):
             parsed_args: command line arguments
         """
         resource = self.group
-        header_list = ["name", "alias_name", "driver_name", "enable", "status",
-                       "description"]
+        header_list = [
+            "name",
+            "alias_name",
+            "driver_name",
+            "enable",
+            "status",
+            "description",
+        ]
 
         status_code, reason, text, result = self.app.client.get_devices()
         json_results = CommandHelper.check_results(
-            resource, "get_devices", status_code, reason, text)
+            resource, "get_devices", status_code, reason, text
+        )
         table_values = CommandHelper.get_table_list_data(
-            json_results, header_list, is_dict=True)
+            json_results, header_list, is_dict=True
+        )
         if not json_results:
             print("No devices found")
         return table_values
@@ -575,8 +609,7 @@ class GetDevice(ShowOne):
             parser
         """
         parser = super().get_parser(prog_name)
-        parser.add_argument("device_name", type=str,
-                            help="Device name")
+        parser.add_argument("device_name", type=str, help="Device name")
         return parser
 
     def take_action(self, parsed_args):
@@ -589,9 +622,11 @@ class GetDevice(ShowOne):
         device_name = parsed_args.device_name
 
         status_code, reason, text, result = self.app.client.get_device(
-            device_name)
+            device_name
+        )
         json_results = CommandHelper.check_results(
-            resource, "get_device", status_code, reason, text)
+            resource, "get_device", status_code, reason, text
+        )
         table_values = CommandHelper.get_table_data(json_results)
         return table_values
 
@@ -621,14 +656,21 @@ class GetTranspilers(Lister):
             parsed_args: command line arguments
         """
         resource = self.group
-        header_list = ["name", "alias_name", "version",
-                       "enable", "supported_code_types"]
+        header_list = [
+            "name",
+            "alias_name",
+            "version",
+            "enable",
+            "supported_code_types",
+        ]
 
         status_code, reason, text, result = self.app.client.get_transpilers()
         json_results = CommandHelper.check_results(
-            resource, "get_transpilers", status_code, reason, text)
+            resource, "get_transpilers", status_code, reason, text
+        )
         table_values = CommandHelper.get_table_list_data(
-            json_results, header_list, is_dict=True)
+            json_results, header_list, is_dict=True
+        )
         if not json_results:
             print("No transpilers found")
         return table_values
@@ -649,8 +691,9 @@ class GetTranspiler(ShowOne):
             parser
         """
         parser = super().get_parser(prog_name)
-        parser.add_argument("transpiler_name", type=str,
-                            help="Transpiler name")
+        parser.add_argument(
+            "transpiler_name", type=str, help="Transpiler name"
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -663,9 +706,11 @@ class GetTranspiler(ShowOne):
         transpiler_name = parsed_args.transpiler_name
 
         status_code, reason, text, result = self.app.client.get_transpiler(
-            transpiler_name)
+            transpiler_name
+        )
         json_results = CommandHelper.check_results(
-            resource, "get_transpiler", status_code, reason, text)
+            resource, "get_transpiler", status_code, reason, text
+        )
         table_values = CommandHelper.get_table_data(json_results)
         return table_values
 
@@ -686,9 +731,9 @@ class Ping(Command):
             parser
         """
         parser = super().get_parser(prog_name)
-        parser.add_argument("message", type=str,
-                            default="",
-                            help="Message to send")
+        parser.add_argument(
+            "message", type=str, default="", help="Message to send"
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -702,7 +747,8 @@ class Ping(Command):
 
         status_code, reason, text, result = self.app.client.ping(message)
         json_results = CommandHelper.check_results(
-            resource, "ping", status_code, reason, text)
+            resource, "ping", status_code, reason, text
+        )
         print(f"Pong: {json_results['message']}")
 
 
@@ -715,8 +761,9 @@ class SubmitJob(Command):
     @staticmethod
     def validate_filepath(file_path):
         if not os.path.exists(file_path):
-            raise argparse.ArgumentTypeError(f"Error: file: {file_path} "
-                                             f"does not exist")
+            raise argparse.ArgumentTypeError(
+                f"Error: file: {file_path} does not exist"
+            )
         return file_path
 
     def get_parser(self, prog_name):
@@ -729,68 +776,110 @@ class SubmitJob(Command):
             parser
         """
         parser = super().get_parser(prog_name)
-        parser.add_argument("--code-type", dest="code_type",
-                            choices=Constant.CODE_TYPES,
-                            default=Constant.CODE_TYPE_QASM,
-                            help=f"Code Types: "
-                                 f"{','.join(Constant.CODE_TYPES)}")
-        parser.add_argument("--job-id", dest="job_id",
-                            type=str,
-                            help="Job uuid")
-        parser.add_argument("--circuit-aggregation",
-                            dest="circuit_aggregation",
-                            choices=Constant.AGGREGATION_TYPES,
-                            help="Circuit aggregation: "
-                                 f"{','.join(Constant.AGGREGATION_TYPES)}")
-        parser.add_argument("-n", "--job-name", dest="job_name",
-                            type=str,
-                            default=None,
-                            help="Job name")
-        parser.add_argument("--job-type", dest="job_type",
-                            default=f"{Constant.JOB_TYPE_SAMPLING}",
-                            choices=Constant.JOB_TYPES,
-                            help=f"Job type: {','.join(Constant.JOB_TYPES)}")
-        parser.add_argument("--job-priority",
-                            dest="job_priority", type=int,
-                            default=f"{Constant.DEFAULT_JOB_PRIORITY}",
-                            help="Set job priority")
-        parser.add_argument("--description",
-                            dest="description",
-                            default=None,
-                            help="Set job description")
-        parser.add_argument("--shots", dest="shots", type=int,
-                            default=Constant.DEFAULT_SHOTS, help="Shots")
-        parser.add_argument("--backend", dest="backend",
-                            default=f"{Constant.DRIVER_DUMMY}",
-                            help="Set backend driver name")
-        parser.add_argument("--driver-options",
-                            dest="driver_options", type=str,
-                            default=None,
-                            help="Set driver options")
-        parser.add_argument("--transpiler", dest="transpiler",
-                            help="Set transpiler name. eg. cmss")
-        parser.add_argument("--transpiler-options",
-                            dest="transpiler_options", type=str,
-                            default=None,
-                            help="Set transpiler options")
-        parser.add_argument("--profiling",
-                            nargs="*",
-                            type=str,
-                            choices=Constant.PROFILING_TYPES,
-                            dest="profiling",
-                            help=f"Profiling types: "
-                                 f"{','.join(Constant.PROFILING_TYPES)}")
-        parser.add_argument("--callbacks", dest="callbacks",
-                            type=str, help="Callbacks list")
-        parser.add_argument("-D", "--dry-run", dest="dry_run",
-                            action="store_true", help="Dry run")
-        parser.add_argument("-f", "--source-code-file",
-                            dest="source_code_files",
-                            nargs="+",
-                            type=self.validate_filepath,
-                            required=True,
-                            help="Source code file, files can be specified "
-                                 "multiple times")
+        parser.add_argument(
+            "--code-type",
+            dest="code_type",
+            choices=Constant.CODE_TYPES,
+            default=Constant.CODE_TYPE_QASM,
+            help=f"Code Types: {','.join(Constant.CODE_TYPES)}",
+        )
+        parser.add_argument(
+            "--job-id", dest="job_id", type=str, help="Job uuid"
+        )
+        parser.add_argument(
+            "--circuit-aggregation",
+            dest="circuit_aggregation",
+            choices=Constant.AGGREGATION_TYPES,
+            help="Circuit aggregation: "
+            f"{','.join(Constant.AGGREGATION_TYPES)}",
+        )
+        parser.add_argument(
+            "-n",
+            "--job-name",
+            dest="job_name",
+            type=str,
+            default=None,
+            help="Job name",
+        )
+        parser.add_argument(
+            "--job-type",
+            dest="job_type",
+            default=f"{Constant.JOB_TYPE_SAMPLING}",
+            choices=Constant.JOB_TYPES,
+            help=f"Job type: {','.join(Constant.JOB_TYPES)}",
+        )
+        parser.add_argument(
+            "--job-priority",
+            dest="job_priority",
+            type=int,
+            default=f"{Constant.DEFAULT_JOB_PRIORITY}",
+            help="Set job priority",
+        )
+        parser.add_argument(
+            "--description",
+            dest="description",
+            default=None,
+            help="Set job description",
+        )
+        parser.add_argument(
+            "--shots",
+            dest="shots",
+            type=int,
+            default=Constant.DEFAULT_SHOTS,
+            help="Shots",
+        )
+        parser.add_argument(
+            "--backend",
+            dest="backend",
+            default=f"{Constant.DRIVER_DUMMY}",
+            help="Set backend driver name",
+        )
+        parser.add_argument(
+            "--driver-options",
+            dest="driver_options",
+            type=str,
+            default=None,
+            help="Set driver options",
+        )
+        parser.add_argument(
+            "--transpiler",
+            dest="transpiler",
+            help="Set transpiler name. eg. cmss",
+        )
+        parser.add_argument(
+            "--transpiler-options",
+            dest="transpiler_options",
+            type=str,
+            default=None,
+            help="Set transpiler options",
+        )
+        parser.add_argument(
+            "--profiling",
+            nargs="*",
+            type=str,
+            choices=Constant.PROFILING_TYPES,
+            dest="profiling",
+            help=f"Profiling types: {','.join(Constant.PROFILING_TYPES)}",
+        )
+        parser.add_argument(
+            "--callbacks", dest="callbacks", type=str, help="Callbacks list"
+        )
+        parser.add_argument(
+            "-D",
+            "--dry-run",
+            dest="dry_run",
+            action="store_true",
+            help="Dry run",
+        )
+        parser.add_argument(
+            "-f",
+            "--source-code-file",
+            dest="source_code_files",
+            nargs="+",
+            type=self.validate_filepath,
+            required=True,
+            help="Source code file, files can be specified multiple times",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -819,62 +908,89 @@ class SubmitJob(Command):
         # request capabilities
         status_code, reason, text, result = self.app.client.version()
         json_results = CommandHelper.check_results(
-            resource, "version", status_code, reason, text)
-        caps = json_results['capabilities']
+            resource, "version", status_code, reason, text
+        )
+        caps = json_results["capabilities"]
         supported_transpilers = caps["transpilers"]
 
         # Validate argument: code_type
-        CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
-            code_type, "code_type", Constant.CODE_TYPES))
+        CommandHelper.handle_invalid_arguments(
+            Library.validate_values_enum(
+                code_type, "code_type", Constant.CODE_TYPES
+            )
+        )
 
         # read source code files
         source_code_list = []
         if parsed_args.source_code_files:
             for source_code_file in parsed_args.source_code_files:
                 success, err_msg, file_content = get_content_by_type(
-                    code_type, source_code_file)
+                    code_type, source_code_file
+                )
                 if not success:
                     raise errors.InvalidArguments(err_msg)
                 source_code_list.append(file_content)
 
         # Validate argument: source_code
-        CommandHelper.handle_invalid_arguments(Library.validate_schema(
-            source_code_list, args_schema.SOURCE_CODE_SCHEMA))
+        CommandHelper.handle_invalid_arguments(
+            Library.validate_schema(
+                source_code_list, args_schema.SOURCE_CODE_SCHEMA
+            )
+        )
 
         if not source_code_list:
             raise errors.InvalidArguments(
-                "Invalid argument: source_code_list is required")
+                "Invalid argument: source_code_list is required"
+            )
 
         # Validate argument: job_name
         if job_name:
-            CommandHelper.handle_invalid_arguments(Library.validate_schema(
-                job_name, args_schema.NAME_SCHEMA,
-                allow_none=True))
+            CommandHelper.handle_invalid_arguments(
+                Library.validate_schema(
+                    job_name, args_schema.NAME_SCHEMA, allow_none=True
+                )
+            )
 
         # Validate argument: job_id
         if job_id:
             CommandHelper.handle_invalid_arguments(
-                Library.validate_values_uuid(job_id, "job_id"))
+                Library.validate_values_uuid(job_id, "job_id")
+            )
 
         # Validate argument: job_type
-        CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
-            job_type, "job_type", Constant.JOB_TYPES))
+        CommandHelper.handle_invalid_arguments(
+            Library.validate_values_enum(
+                job_type, "job_type", Constant.JOB_TYPES
+            )
+        )
 
         # Validate argument: job_priority
-        CommandHelper.handle_invalid_arguments(Library.validate_values_range(
-            job_priority, "job_priority",
-            Constant.MIN_JOB_PRIORITY, Constant.MAX_JOB_PRIORITY))
+        CommandHelper.handle_invalid_arguments(
+            Library.validate_values_range(
+                job_priority,
+                "job_priority",
+                Constant.MIN_JOB_PRIORITY,
+                Constant.MAX_JOB_PRIORITY,
+            )
+        )
 
         # Validate argument: job_priority
-        CommandHelper.handle_invalid_arguments(Library.validate_values_length(
-            description, "description",
-            Constant.MIN_DESCRIPTION_LENGTH, Constant.MAX_DESCRIPTION_LENGTH,
-            allow_none=True))
+        CommandHelper.handle_invalid_arguments(
+            Library.validate_values_length(
+                description,
+                "description",
+                Constant.MIN_DESCRIPTION_LENGTH,
+                Constant.MAX_DESCRIPTION_LENGTH,
+                allow_none=True,
+            )
+        )
 
         # Validate argument: shots
-        CommandHelper.handle_invalid_arguments(Library.validate_values_range(
-            shots, "shots",
-            Constant.MIN_SHOTS, Constant.MAX_SHOTS))
+        CommandHelper.handle_invalid_arguments(
+            Library.validate_values_range(
+                shots, "shots", Constant.MIN_SHOTS, Constant.MAX_SHOTS
+            )
+        )
 
         # Validate argument: driver_options
         if driver_options:
@@ -882,15 +998,23 @@ class SubmitJob(Command):
                 driver_options = json.loads(driver_options)
             except json.decoder.JSONDecodeError as exc:
                 raise errors.InvalidArguments(
-                    "Invalid argument: driver_options") from exc
-            CommandHelper.handle_invalid_arguments(Library.validate_schema(
-                driver_options, args_schema.DRIVER_OPTIONS,
-                allow_none=True))
+                    "Invalid argument: driver_options"
+                ) from exc
+            CommandHelper.handle_invalid_arguments(
+                Library.validate_schema(
+                    driver_options, args_schema.DRIVER_OPTIONS, allow_none=True
+                )
+            )
 
         # Validate argument: transpiler
-        CommandHelper.handle_invalid_arguments(Library.validate_values_enum(
-            transpiler, "transpiler", supported_transpilers.keys(),
-            allow_none=True))
+        CommandHelper.handle_invalid_arguments(
+            Library.validate_values_enum(
+                transpiler,
+                "transpiler",
+                supported_transpilers.keys(),
+                allow_none=True,
+            )
+        )
 
         # Validate argument: transpiler_options
         if transpiler_options:
@@ -898,10 +1022,15 @@ class SubmitJob(Command):
                 transpiler_options = json.loads(transpiler_options)
             except json.decoder.JSONDecodeError as exc:
                 raise errors.InvalidArguments(
-                    "Invalid argument: transpiler_options") from exc
-            CommandHelper.handle_invalid_arguments(Library.validate_schema(
-                transpiler_options, args_schema.TRANSPILER_OPTIONS,
-                allow_none=True))
+                    "Invalid argument: transpiler_options"
+                ) from exc
+            CommandHelper.handle_invalid_arguments(
+                Library.validate_schema(
+                    transpiler_options,
+                    args_schema.TRANSPILER_OPTIONS,
+                    allow_none=True,
+                )
+            )
 
         # Validate argument: callbacks
         callbacks_json = None
@@ -910,9 +1039,13 @@ class SubmitJob(Command):
                 callbacks_json = json.loads(callbacks)
             except json.decoder.JSONDecodeError as e:
                 raise errors.InvalidArguments(
-                    f"Invalid argument: callback. reason: {e}")
-            CommandHelper.handle_invalid_arguments(Library.validate_schema(
-                callbacks_json, args_schema.CALLBACKS_SCHEMA))
+                    f"Invalid argument: callback. reason: {e}"
+                )
+            CommandHelper.handle_invalid_arguments(
+                Library.validate_schema(
+                    callbacks_json, args_schema.CALLBACKS_SCHEMA
+                )
+            )
 
         # call api
         status_code, reason, text, result = self.app.client.submit_job(
@@ -931,9 +1064,11 @@ class SubmitJob(Command):
             transpiler_options=transpiler_options,
             profiling=profiling,
             callbacks=callbacks_json,
-            dry_run=dry_run)
+            dry_run=dry_run,
+        )
         results = CommandHelper.check_results(
-            resource, "submit_job", status_code, reason, text)
+            resource, "submit_job", status_code, reason, text
+        )
         print(f"Job ID: {results.get('job_id', None)}")
 
 
@@ -968,14 +1103,17 @@ class GetJobStatus(ShowOne):
         job_id = parsed_args.job_id
 
         # Validate argument: job_id
-        CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(
-            job_id, "job_id"))
+        CommandHelper.handle_invalid_arguments(
+            Library.validate_values_uuid(job_id, "job_id")
+        )
 
         # call api
-        status_code, reason, text, result = \
-            self.app.client.get_job_status(job_id)
+        status_code, reason, text, result = self.app.client.get_job_status(
+            job_id
+        )
         json_results = CommandHelper.check_results(
-            resource, "get_job_status", status_code, reason, text)
+            resource, "get_job_status", status_code, reason, text
+        )
         table_values = CommandHelper.get_table_data(json_results)
         return table_values
 
@@ -1011,14 +1149,17 @@ class GetJobResults(ShowOne):
         job_id = parsed_args.job_id
 
         # Validate argument: job_id
-        CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(
-            job_id, "job_id"))
+        CommandHelper.handle_invalid_arguments(
+            Library.validate_values_uuid(job_id, "job_id")
+        )
 
         # call api
-        status_code, reason, text, result = \
-            self.app.client.get_job_results(job_id)
+        status_code, reason, text, result = self.app.client.get_job_results(
+            job_id
+        )
         json_results = CommandHelper.check_results(
-            resource, "get_job_results", status_code, reason, text)
+            resource, "get_job_results", status_code, reason, text
+        )
 
         _results = json_results.get("results", None)
         if _results:
@@ -1057,16 +1198,26 @@ class GetJobs(Lister):
             parsed_args: command line arguments
         """
         resource = self.group
-        header_list = ["job_id", "job_name", "job_status", "progress",
-                       "backend", "job_type", "shots",
-                       "creation_date", "end_date"]
+        header_list = [
+            "job_id",
+            "job_name",
+            "job_status",
+            "progress",
+            "backend",
+            "job_type",
+            "shots",
+            "creation_date",
+            "end_date",
+        ]
 
         # call api
         status_code, reason, text, result = self.app.client.get_jobs()
         json_results = CommandHelper.check_results(
-            resource, "get_jobs", status_code, reason, text)
+            resource, "get_jobs", status_code, reason, text
+        )
         table_values = CommandHelper.get_table_list_data(
-            json_results, header_list, is_dict=False)
+            json_results, header_list, is_dict=False
+        )
         if not json_results:
             print("No jobs found")
         return table_values
@@ -1088,11 +1239,14 @@ class CancelJobs(Command):
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("job_ids", help="Job IDs")
-        parser.add_argument("-y", "--yes",
-                            default=False,
-                            dest="assume_yes",
-                            action="store_true",
-                            help="Answer yes for all question")
+        parser.add_argument(
+            "-y",
+            "--yes",
+            default=False,
+            dest="assume_yes",
+            action="store_true",
+            help="Answer yes for all question",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -1110,14 +1264,14 @@ class CancelJobs(Command):
             # get all job ids
             status_code, reason, text, result = self.app.client.get_jobs()
             json_results = CommandHelper.check_results(
-                resource, "get_jobs", status_code, reason, text)
+                resource, "get_jobs", status_code, reason, text
+            )
             if json_results:
                 for job_info in json_results:
                     job_id = job_info["job_id"]
                     job_id_list.append(job_id)
             if not assume_yes:
-                confirm = input(
-                    "Are you sure to delete all jobs ? (y/n) ")
+                confirm = input("Are you sure to delete all jobs ? (y/n) ")
                 _confirm = confirm.lower().strip()
                 if _confirm not in ("y", "yes"):
                     print("User cancelled operation, abort!")
@@ -1130,26 +1284,31 @@ class CancelJobs(Command):
                     job_id = job_id.strip()
                     # Validate argument: job_id
                     CommandHelper.handle_invalid_arguments(
-                        Library.validate_values_uuid(
-                            job_id, "job_id"))
+                        Library.validate_values_uuid(job_id, "job_id")
+                    )
                     job_id_list.append(job_id)
                 except ValueError as e:
                     raise errors.InvalidArguments(
-                        f"Invalid job_id: {job_id}.") from e
+                        f"Invalid job_id: {job_id}."
+                    ) from e
 
         # call api
-        status_code, reason, text, result = \
-            self.app.client.cancel_jobs(job_id_list)
+        status_code, reason, text, result = self.app.client.cancel_jobs(
+            job_id_list
+        )
         json_results = CommandHelper.check_results(
-            resource, "cancel_job", status_code, reason, text)
+            resource, "cancel_job", status_code, reason, text
+        )
 
         # print results
         jobs = []
         for result in json_results:
             jobs.append(result["job_id"])
         if jobs:
-            print(f"The following {len(jobs)} "
-                  f"jobs will be cancelled: {', '.join(map(str, jobs))}")
+            print(
+                f"The following {len(jobs)} "
+                f"jobs will be cancelled: {', '.join(map(str, jobs))}"
+            )
         else:
             if job_ids.lower() == "all":
                 print("No jobs found")
@@ -1173,11 +1332,14 @@ class DeleteJobs(Command):
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("job_ids", help="Job IDs")
-        parser.add_argument("-y", "--yes",
-                            default=False,
-                            dest="assume_yes",
-                            action="store_true",
-                            help="Answer yes for all question")
+        parser.add_argument(
+            "-y",
+            "--yes",
+            default=False,
+            dest="assume_yes",
+            action="store_true",
+            help="Answer yes for all question",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -1195,14 +1357,14 @@ class DeleteJobs(Command):
             # get all job ids
             status_code, reason, text, result = self.app.client.get_jobs()
             json_results = CommandHelper.check_results(
-                resource, "get_jobs", status_code, reason, text)
+                resource, "get_jobs", status_code, reason, text
+            )
             if json_results:
                 for job_info in json_results:
                     job_id = job_info["job_id"]
                     job_id_list.append(job_id)
             if not assume_yes:
-                confirm = input(
-                    "Are you sure to delete all jobs ? (y/n) ")
+                confirm = input("Are you sure to delete all jobs ? (y/n) ")
                 _confirm = confirm.lower().strip()
                 if _confirm not in ("y", "yes"):
                     print("User cancelled operation, abort!")
@@ -1215,26 +1377,31 @@ class DeleteJobs(Command):
                     job_id = job_id.strip()
                     # Validate argument: job_id
                     CommandHelper.handle_invalid_arguments(
-                        Library.validate_values_uuid(
-                            job_id, "job_id"))
+                        Library.validate_values_uuid(job_id, "job_id")
+                    )
                     job_id_list.append(job_id)
                 except ValueError as e:
                     raise errors.InvalidArguments(
-                        f"Invalid job_id: {job_id}") from e
+                        f"Invalid job_id: {job_id}"
+                    ) from e
 
         # call api
-        status_code, reason, text, result = \
-            self.app.client.delete_jobs(job_id_list)
+        status_code, reason, text, result = self.app.client.delete_jobs(
+            job_id_list
+        )
         json_results = CommandHelper.check_results(
-            resource, "delete_job", status_code, reason, text)
+            resource, "delete_job", status_code, reason, text
+        )
 
         # print results
         jobs = []
         for result in json_results:
             jobs.append(result["job_id"])
         if jobs:
-            print(f"The following {len(jobs)} "
-                  f"jobs will be deleted: {', '.join(map(str, jobs))}")
+            print(
+                f"The following {len(jobs)} "
+                f"jobs will be deleted: {', '.join(map(str, jobs))}"
+            )
         else:
             if job_ids.lower() == "all":
                 print("No jobs found")
@@ -1257,11 +1424,14 @@ class SetJobResults(Command):
             parser
         """
         parser = super().get_parser(prog_name)
-        parser.add_argument("--results",
-                            dest="results", type=str,
-                            nargs="+",
-                            required=True,
-                            help="Job Results")
+        parser.add_argument(
+            "--results",
+            dest="results",
+            type=str,
+            nargs="+",
+            required=True,
+            help="Job Results",
+        )
         parser.add_argument("job_id", type=str, help="Job ID")
         return parser
 
@@ -1277,8 +1447,9 @@ class SetJobResults(Command):
         new_results_list = []
 
         # Validate argument: job_id
-        CommandHelper.handle_invalid_arguments(Library.validate_values_uuid(
-            job_id, "job_id"))
+        CommandHelper.handle_invalid_arguments(
+            Library.validate_values_uuid(job_id, "job_id")
+        )
 
         # convert results
         for result in results:
@@ -1286,14 +1457,17 @@ class SetJobResults(Command):
                 new_results = json.loads(result)
                 new_results_list.append(new_results)
             except json.decoder.JSONDecodeError as exc:
-                raise errors.InvalidArguments("Invalid argument: results") \
-                    from exc
+                raise errors.InvalidArguments(
+                    "Invalid argument: results"
+                ) from exc
 
         # call api
-        status_code, reason, text, result = \
-            self.app.client.set_job_results(job_id, new_results_list)
+        status_code, reason, text, result = self.app.client.set_job_results(
+            job_id, new_results_list
+        )
         CommandHelper.check_results(
-            resource, "set_job_results", status_code, reason, text)
+            resource, "set_job_results", status_code, reason, text
+        )
 
 
 # Register commands
@@ -1337,30 +1511,39 @@ def set_debug_option(args):
 
 # Source code file information
 SOURCE_CODE_FILE_INFO = {
-    Constant.CODE_TYPE_QASM: [{
-        "file_type": Constant.FILE_TYPE_QASM,
-        "reader": Library.read_file,
-        "parser": None
-    }],
-    Constant.CODE_TYPE_QASM2: [{
-        "file_type": Constant.FILE_TYPE_QASM,
-        "reader": Library.read_file,
-        "parser": None
-    }],
-    Constant.CODE_TYPE_QASM3: [{
-        "file_type": Constant.FILE_TYPE_QASM,
-        "reader": Library.read_file,
-        "parser": None
-    }],
-    Constant.CODE_TYPE_QUBO: [{
-        "file_type": Constant.FILE_TYPE_JSON,
-        "reader": Library.read_file,
-        "parser": json.loads
-    }, {
-        "file_type": Constant.FILE_TYPE_CSV,
-        "reader": Library.read_csv_file,
-        "parser": json.loads
-    }],
+    Constant.CODE_TYPE_QASM: [
+        {
+            "file_type": Constant.FILE_TYPE_QASM,
+            "reader": Library.read_file,
+            "parser": None,
+        }
+    ],
+    Constant.CODE_TYPE_QASM2: [
+        {
+            "file_type": Constant.FILE_TYPE_QASM,
+            "reader": Library.read_file,
+            "parser": None,
+        }
+    ],
+    Constant.CODE_TYPE_QASM3: [
+        {
+            "file_type": Constant.FILE_TYPE_QASM,
+            "reader": Library.read_file,
+            "parser": None,
+        }
+    ],
+    Constant.CODE_TYPE_QUBO: [
+        {
+            "file_type": Constant.FILE_TYPE_JSON,
+            "reader": Library.read_file,
+            "parser": json.loads,
+        },
+        {
+            "file_type": Constant.FILE_TYPE_CSV,
+            "reader": Library.read_csv_file,
+            "parser": json.loads,
+        },
+    ],
 }
 
 
@@ -1392,8 +1575,10 @@ def get_content_by_type(code_type, file_path):
     code_type_info_list = SOURCE_CODE_FILE_INFO.get(code_type, None)
     if not code_type_info_list:
         success = False
-        err_msg = f"Unsupported code type: {code_type}. Valid code_types: " \
-                  f"{', '.join(SOURCE_CODE_FILE_INFO.keys())}"
+        err_msg = (
+            f"Unsupported code type: {code_type}. Valid code_types: "
+            f"{', '.join(SOURCE_CODE_FILE_INFO.keys())}"
+        )
         return success, err_msg, None
     file_name, file_ext = os.path.splitext(file_path)
     reader = None
@@ -1406,8 +1591,10 @@ def get_content_by_type(code_type, file_path):
             break
     if not reader:
         success = False
-        err_msg = f"Unsupported file extension: {file_ext}. " \
-                  f"Valid code_types: {', '.join(get_file_types())}"
+        err_msg = (
+            f"Unsupported file extension: {file_ext}. "
+            f"Valid code_types: {', '.join(get_file_types())}"
+        )
         return success, err_msg, None
     file_content = reader(file_path)
     if parser:
@@ -1425,7 +1612,7 @@ def main(argv=sys.argv[1:]):
     app = QcosShell(
         description=DESCRIPTION,
         version=VERSION,
-        command_manager=command_manager
+        command_manager=command_manager,
     )
     argcomplete.autocomplete(app.parser)  # enable auto-complete
     set_debug_option(argv)

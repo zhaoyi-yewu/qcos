@@ -15,18 +15,27 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from .driver import (GetDriversRequest,
-                     GetDriverRequest, GetDriverResponse)
-from .device import (GetDevicesRequest,
-                     GetDeviceRequest, GetDeviceResponse)
-from .transpiler import (GetTranspilersRequest,
-                         GetTranspilerRequest, GetTranspilerResponse)
-from .job import (SubmitJobRequest, SubmitJobResponse,
-                  GetJobStatusRequest, GetJobStatusResponse,
-                  GetJobResultsRequest, GetJobResultsResponse,
-                  GetJobsRequest,
-                  CancelJobsRequest, CancelJobsResponse,
-                  DeleteJobsRequest, DeleteJobsResponse,
-                  SetJobResultsRequest, SetJobResultsResponse)
-from .system import (PingRequest, PongResponse)
-from .version import (GetVersionRequest, GetVersionResponse)
+from .driver import GetDriversRequest, GetDriverRequest, GetDriverResponse
+from .device import GetDevicesRequest, GetDeviceRequest, GetDeviceResponse
+from .transpiler import (
+    GetTranspilersRequest,
+    GetTranspilerRequest,
+    GetTranspilerResponse,
+)
+from .job import (
+    SubmitJobRequest,
+    SubmitJobResponse,
+    GetJobStatusRequest,
+    GetJobStatusResponse,
+    GetJobResultsRequest,
+    GetJobResultsResponse,
+    GetJobsRequest,
+    CancelJobsRequest,
+    CancelJobsResponse,
+    DeleteJobsRequest,
+    DeleteJobsResponse,
+    SetJobResultsRequest,
+    SetJobResultsResponse,
+)
+from .system import PingRequest, PongResponse
+from .version import GetVersionRequest, GetVersionResponse

@@ -49,23 +49,27 @@ class TestDriverBase:
         configs = {}
         with pytest.raises(NotImplementedError) as context:
             driver_base.validate_driver_configs(configs)
-        assert (f"Driver: {driver_base.__class__.__name__} "
-                f"must implement method: validate_driver_configs"
-                in str(context.value))
+        assert (
+            f"Driver: {driver_base.__class__.__name__} "
+            f"must implement method: validate_driver_configs"
+            in str(context.value)
+        )
 
     def test_init_driver(self):
         with pytest.raises(NotImplementedError) as context:
             driver_base.init_driver()
-        assert (f"Driver: {driver_base.__class__.__name__} "
-                f"must implement method: init_driver"
-                in str(context.value))
+        assert (
+            f"Driver: {driver_base.__class__.__name__} "
+            f"must implement method: init_driver" in str(context.value)
+        )
 
     def test_close_driver(self):
         with pytest.raises(NotImplementedError) as context:
             driver_base.close_driver()
-        assert (f"Driver: {driver_base.__class__.__name__} "
-                f"must implement method: close_driver"
-                in str(context.value))
+        assert (
+            f"Driver: {driver_base.__class__.__name__} "
+            f"must implement method: close_driver" in str(context.value)
+        )
 
     def test_get_driver_options_schema(self):
         driver_options_schema = driver_base.get_driver_options_schema()
@@ -105,10 +109,12 @@ class TestDriverBase:
         assert supported_transpilers == driver_base.supported_basis_gates
 
     def test_run(self):
-        with pytest.raises(NotImplementedError) as context:
+        with pytest.raises(NotImplementedError):
             driver_base.run(job_id, num_qubits, data)
-        assert (f"Driver: {driver_base.__class__.__name__} "
-                f"must implement method: run")
+        assert (
+            f"Driver: {driver_base.__class__.__name__} "
+            f"must implement method: run"
+        )
 
     def test_dry_run(self):
         assert driver_base.dry_run(job_id, num_qubits, data) is None

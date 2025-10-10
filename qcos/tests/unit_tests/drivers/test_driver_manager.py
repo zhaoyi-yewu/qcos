@@ -26,7 +26,6 @@ obj = DriverManager()
 
 
 class TestDriverManager:
-
     @patch.object(Library, "import_classes")
     def test_load_drivers(self, mock_import_classes):
         mock_import_classes.return_value = {"class": DriverDummy}

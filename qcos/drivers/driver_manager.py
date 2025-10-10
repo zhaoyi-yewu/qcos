@@ -41,10 +41,15 @@ class DriverManager:
         module_dirs = Library.find_dirs(base_dir=base_dir, recursive=True)
         for pkg_dir in module_dirs:
             classes = Library.import_classes(
-                pkg_dir, base_module_name=base_module_name,
+                pkg_dir,
+                base_module_name=base_module_name,
                 base_dir=base_dir,
-                base_class=DriverBase)
-            for class_name, _class, in classes.items():
+                base_class=DriverBase,
+            )
+            for (
+                class_name,
+                _class,
+            ) in classes.items():
                 logger.info(f"Loading driver: {class_name}")
                 class_instance = _class()
                 name = class_name
@@ -62,8 +67,10 @@ class DriverManager:
                 # Init driver
                 driver.init_driver()
             if not success:
-                logger.error(f"Driver: {driver_name} is disabled. "
-                             f"Error message: {err_msg}")
+                logger.error(
+                    f"Driver: {driver_name} is disabled. "
+                    f"Error message: {err_msg}"
+                )
                 driver.enable = False
                 driver.set_device_status(Device.DEVICE_STATUS_OFFLINE)
             # Show driver info

@@ -29,7 +29,6 @@ data_type = DriverQiskitAerSim.DATA_TYPE_GATE_SEQUENCE
 
 
 class TestDriverQiskitAerSim:
-
     def test_init_driver(self):
         assert driver_aer_sim.init_driver() is None
 

@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 import logging
-import typing
 
 import fastapi_jsonrpc as jsonrpc
 from fastapi_jsonrpc import InvalidParams
@@ -26,8 +25,13 @@ from pydantic import ValidationError
 from uvicorn.main import Server as UvicornServer
 
 from qcos.api.posiq.routes_jsonrpc.routes import (
-    base_api, driver_api_v1, device_api_v1, transpiler_api_v1,
-    job_api_v1, system_api_v1)
+    base_api,
+    driver_api_v1,
+    device_api_v1,
+    transpiler_api_v1,
+    job_api_v1,
+    system_api_v1,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +39,8 @@ app = jsonrpc.API()
 
 
 def patched_invalid_params_from_validation_error(
-        exc: typing.Union[ValidationError, RequestValidationError]) -> (
-        InvalidParams):
+    exc: ValidationError | RequestValidationError,
+) -> InvalidParams:
     """Patched invalid_params_from_validation_error for fastapi_jsonrpc
 
     Args:
@@ -49,25 +53,27 @@ def patched_invalid_params_from_validation_error(
     errors = []
     details = []
     for err in exc.errors():
-        err.pop('url', None)
-        if 'loc' in err:
-            if err['loc'][:1] == ('body',):
-                err['loc'] = err['loc'][1:]
+        err.pop("url", None)
+        if "loc" in err:
+            if err["loc"][:1] == ("body",):
+                err["loc"] = err["loc"][1:]
             else:
-                err['loc'] = (f"<{err['loc'][0]}>",) + err['loc'][1:]
+                err["loc"] = (f"<{err['loc'][0]}>",) + err["loc"][1:]
         errors.append(err)
+        loc_list = [str(item) for item in err.get("loc", [])]
         details.append(
             f"{err.get('msg', '')}. Actual value: "
-            f"{'.'.join(err.get('loc', []))}={err.get('input', '')}, "
-            f"Except type: {err.get('type', '')}")
-    return InvalidParams(data={
-        'details': "; ".join(details),
-        'errors': errors}
+            f"{'.'.join(loc_list)}={err.get('input', '')}, "
+            f"Except type: {err.get('type', '')}"
+        )
+    return InvalidParams(
+        data={"details": "; ".join(details), "errors": errors}
     )
 
 
 jsonrpc.invalid_params_from_validation_error = (
-    patched_invalid_params_from_validation_error)
+    patched_invalid_params_from_validation_error
+)
 
 
 app.add_middleware(
@@ -75,7 +81,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 app.bind_entrypoint(base_api)
 app.bind_entrypoint(driver_api_v1)
@@ -97,4 +103,4 @@ def handle_exit(*args, **kwargs):
     unicorn_exit_handler(*args, **kwargs)
 
 
-UvicornServer.handle_exit = handle_exit
+UvicornServer.handle_exit = handle_exit  # type: ignore[method-assign]

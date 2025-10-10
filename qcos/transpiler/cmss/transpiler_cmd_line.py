@@ -33,7 +33,7 @@ DESCRIPTION = "QCOS Transpiler command line interface"
 
 def read_qasm_from_file(file_path):
     try:
-        with open(file_path, 'r', encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             return f.read()
     except Exception as e:
         logger.error(f"read file error: {e}")
@@ -90,7 +90,7 @@ def main():
 
         # 优化分解后的门电路
         with Timer() as opt2_timer:
-            optimized_gates = optimize_gate(transpiled_gates)
+            optimize_gate(transpiled_gates)
         logger.info(f"门电路优化耗时: {opt2_timer.elapsed:.4f}秒")
 
     logger.info(f"\n整个流程总耗时: {total_timer.elapsed:.4f}秒")

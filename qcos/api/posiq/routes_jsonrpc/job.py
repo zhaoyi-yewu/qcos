@@ -17,7 +17,6 @@
 
 import logging
 from datetime import datetime
-from typing import List
 
 from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
@@ -31,12 +30,14 @@ logger = logging.getLogger(__name__)
 module_name = "JOB"
 
 
-@job_api_v1.method(errors=[jsonrpc_errors.BadRequestError,
-                           jsonrpc_errors.ConflictError,
-                           jsonrpc_errors.InternalServerError])
-def submit_job(
-        body: schemas.SubmitJobRequest
-) -> schemas.SubmitJobResponse:
+@job_api_v1.method(
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.ConflictError,
+        jsonrpc_errors.InternalServerError,
+    ]
+)
+def submit_job(body: schemas.SubmitJobRequest) -> schemas.SubmitJobResponse:
     """Submit job
 
     Args:
@@ -72,7 +73,7 @@ def submit_job(
         func_name,
         Library.validate_values_enum(
             code_type, "code_type", Constant.CODE_TYPES
-        )
+        ),
     )
 
     # validate: circuit_aggregation
@@ -81,24 +82,21 @@ def submit_job(
             module_name,
             func_name,
             Library.validate_values_enum(
-                circuit_aggregation, "circuit_aggregation",
-                Constant.AGGREGATION_TYPES
-            )
+                circuit_aggregation,
+                "circuit_aggregation",
+                Constant.AGGREGATION_TYPES,
+            ),
         )
 
     # Validate: source_code
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
         func_name,
-        Library.validate_schema(
-            source_code, args_schema.SOURCE_CODE_SCHEMA
-        )
+        Library.validate_schema(source_code, args_schema.SOURCE_CODE_SCHEMA),
     )
     if not source_code:
         jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (False, "source_code should not be empty")
+            module_name, func_name, (False, "source_code should not be empty")
         )
 
     # Validate: source_code by code_type
@@ -108,14 +106,12 @@ def submit_job(
             func_name,
             Library.validate_schema(
                 source_code, args_schema.SOURCE_CODE_QUBO_SCHEMA
-            )
+            ),
         )
         jsonrpc_errors.handle_error_bad_requests(
             module_name,
             func_name,
-            Library.check_qubo_matrixs_bit_width(
-                source_code
-            )
+            Library.check_qubo_matrixs_bit_width(source_code),
         )
     else:
         jsonrpc_errors.handle_error_bad_requests(
@@ -123,13 +119,14 @@ def submit_job(
             func_name,
             Library.validate_schema(
                 source_code, args_schema.SOURCE_CODE_TEXT_SCHEMA
-            )
+            ),
         )
 
     # Validate: source_code by circuit_aggregation
-    if (code_type not in [
-        Constant.CODE_TYPE_QUBO] and circuit_aggregation ==
-            Constant.AGGREGATION_TYPE_INTERNAL):
+    if (
+        code_type not in [Constant.CODE_TYPE_QUBO]
+        and circuit_aggregation == Constant.AGGREGATION_TYPE_INTERNAL
+    ):
         jsonrpc_errors.handle_error_bad_requests(
             module_name,
             func_name,
@@ -138,8 +135,8 @@ def submit_job(
                 "source_code",
                 None,
                 Constant.MAX_AGGREGATION_JOBS,
-                allow_none=False
-            )
+                allow_none=False,
+            ),
         )
 
     # validate: job_id
@@ -147,7 +144,7 @@ def submit_job(
         jsonrpc_errors.handle_error_bad_requests(
             module_name,
             func_name,
-            Library.validate_values_uuid(str(job_id), "job_id")
+            Library.validate_values_uuid(str(job_id), "job_id"),
         )
 
     # validate: job_name
@@ -156,18 +153,16 @@ def submit_job(
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
         func_name,
-        Library.validate_schema(job_name,
-                                args_schema.NAME_SCHEMA,
-                                allow_none=True)
+        Library.validate_schema(
+            job_name, args_schema.NAME_SCHEMA, allow_none=True
+        ),
     )
 
     # validate: job_type
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
         func_name,
-        Library.validate_values_enum(
-            job_type, "job_type", Constant.JOB_TYPES
-        )
+        Library.validate_values_enum(job_type, "job_type", Constant.JOB_TYPES),
     )
 
     # validate: job_priority
@@ -178,8 +173,8 @@ def submit_job(
             job_priority,
             "job_priority",
             Constant.MIN_JOB_PRIORITY,
-            Constant.MAX_JOB_PRIORITY
-        )
+            Constant.MAX_JOB_PRIORITY,
+        ),
     )
 
     # validate: description
@@ -193,8 +188,8 @@ def submit_job(
             "description",
             Constant.MIN_DESCRIPTION_LENGTH,
             Constant.MAX_DESCRIPTION_LENGTH,
-            allow_none=True
-        )
+            allow_none=True,
+        ),
     )
 
     # validate: shots
@@ -202,11 +197,8 @@ def submit_job(
         module_name,
         func_name,
         Library.validate_values_range(
-            shots,
-            "shots",
-            Constant.MIN_SHOTS,
-            Constant.MAX_SHOTS
-        )
+            shots, "shots", Constant.MIN_SHOTS, Constant.MAX_SHOTS
+        ),
     )
 
     # get device
@@ -217,11 +209,7 @@ def submit_job(
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
         func_name,
-        Library.validate_values_enum(
-            backend,
-            "backend",
-            devices
-        )
+        Library.validate_values_enum(backend, "backend", devices),
     )
 
     # get driver from backend
@@ -234,18 +222,16 @@ def submit_job(
     # check device status
     if not enable_device:
         jsonrpc_errors.handle_error_conflict(
-            module_name,
-            func_name,
-            (False, "device is disabled")
+            module_name, func_name, (False, "device is disabled")
         )
     elif device_status in [
         device.DEVICE_STATUS_OFFLINE,
-        device.DEVICE_STATUS_UNKNOWN
+        device.DEVICE_STATUS_UNKNOWN,
     ]:
         jsonrpc_errors.handle_error_conflict(
             module_name,
             func_name,
-            (False, f"device status is {device_status}")
+            (False, f"device status is {device_status}"),
         )
 
     # validate: driver_options
@@ -255,20 +241,16 @@ def submit_job(
             module_name,
             func_name,
             Library.validate_schema(
-                driver_options,
-                args_schema.DRIVER_OPTIONS,
-                allow_none=True
-            )
+                driver_options, args_schema.DRIVER_OPTIONS, allow_none=True
+            ),
         )
         jsonrpc_errors.handle_error_bad_requests(
             module_name,
             func_name,
             Library.validate_schema(
-                driver_options,
-                driver_options_schema,
-                allow_none=True
+                driver_options, driver_options_schema, allow_none=True
             ),
-            param_name="driver_options"
+            param_name="driver_options",
         )
 
     # if transpiler is not specified, set the default transpiler from driver
@@ -280,9 +262,11 @@ def submit_job(
         module_name,
         func_name,
         Library.validate_values_enum(
-            transpiler_name, "transpiler",
-            Constant.TRANSPILERS, allow_none=True
-        )
+            transpiler_name,
+            "transpiler",
+            Constant.TRANSPILERS,
+            allow_none=True,
+        ),
     )
 
     # validate supported_transpilers
@@ -296,8 +280,8 @@ def submit_job(
                 transpiler_name,
                 "transpiler",
                 driver.supported_transpilers,
-                allow_none=False
-            )
+                allow_none=False,
+            ),
         )
         body.transpiler = transpiler_name
         transpiler = transpiler_manager.get_transpiler(transpiler_name)
@@ -311,8 +295,8 @@ def submit_job(
                 Library.validate_schema(
                     transpiler_options,
                     args_schema.TRANSPILER_OPTIONS,
-                    allow_none=True
-                )
+                    allow_none=True,
+                ),
             )
             jsonrpc_errors.handle_error_bad_requests(
                 module_name,
@@ -320,9 +304,9 @@ def submit_job(
                 Library.validate_schema(
                     transpiler_options,
                     transpiler_options_schema,
-                    allow_none=True
+                    allow_none=True,
                 ),
-                param_name="transpiler_options"
+                param_name="transpiler_options",
             )
 
         # get supported_code_types
@@ -340,11 +324,8 @@ def submit_job(
         module_name,
         func_name,
         Library.validate_values_enum(
-            code_type,
-            "code_type",
-            supported_code_types,
-            allow_none=False
-        )
+            code_type, "code_type", supported_code_types, allow_none=False
+        ),
     )
 
     # validate: profiling
@@ -357,8 +338,8 @@ def submit_job(
                     _profiling,
                     "profiling",
                     Constant.PROFILING_TYPES,
-                    allow_none=True
-                )
+                    allow_none=True,
+                ),
             )
 
     # validate: callbacks
@@ -366,10 +347,7 @@ def submit_job(
         jsonrpc_errors.handle_error_bad_requests(
             module_name,
             func_name,
-            Library.validate_schema(
-                callbacks,
-                args_schema.CALLBACKS_SCHEMA
-            )
+            Library.validate_schema(callbacks, args_schema.CALLBACKS_SCHEMA),
         )
 
     # generate creation_date
@@ -378,32 +356,31 @@ def submit_job(
     end_date = None
 
     # submit job
-    res = None
+    res = {}
     err = None
     try:
-        res, err = scheduler.add(Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
-                                 body)
+        res, err = scheduler.add(
+            Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE, body
+        )
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, str(e))
+            module_name, func_name, (False, str(e))
         )
 
     # handle submit response
     if err:
         jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, err)
+            module_name, func_name, (False, err)
         )
 
-    response_info = {
+    _response_info = {
         "job_id": res["job_id"],
         "job_name": job_name,
         "job_type": job_type,
         "job_status": Constant.JOB_STATUS_UNKNOWN,
         "job_priority": job_priority,
+        "code_type": code_type,
+        "source_code": source_code,
         "description": description,
         "backend": backend,
         "driver_options": driver_options,
@@ -414,15 +391,17 @@ def submit_job(
         "callbacks": callbacks,
         "dry_run": dry_run,
         "creation_date": creation_date,
-        "end_date": end_date
+        "end_date": end_date,
     }
+    response_info = schemas.SubmitJobResponse.model_validate(_response_info)
     return response_info
 
 
-@job_api_v1.method(errors=[jsonrpc_errors.NotFoundError,
-                           jsonrpc_errors.InternalServerError])
+@job_api_v1.method(
+    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError]
+)
 def get_job_status(
-        body: schemas.GetJobStatusRequest
+    body: schemas.GetJobStatusRequest,
 ) -> schemas.GetJobStatusResponse:
     """Get job status
 
@@ -438,52 +417,48 @@ def get_job_status(
     job_id = body.job_id
 
     # query job status
-    response = None
+    response = {}
     err = None
     try:
         response, err = scheduler.get_result_by_id(job_id)
     except errors.NotFound:
         # check if job exists
         jsonrpc_errors.handle_error_not_found(
-            module_name,
-            func_name,
-            (False, f"Job: '{job_id}' is not found")
+            module_name, func_name, (False, f"Job: '{job_id}' is not found")
         )
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, str(e))
+            module_name, func_name, (False, str(e))
         )
 
     # handle job results errors
     if response.get("error_message"):
         jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, response["error_message"])
+            module_name, func_name, (False, response["error_message"])
         )
 
     # get job_status
     job_status = response.get("job_status")
-    progress = response.get("artifact").get("progress", -1)
+    progress = response.get("artifact", {}).get("progress", -1)
 
     # construct response
-    response_info = {
+    _response_info = {
         "job_id": job_id,
         "job_status": job_status,
-        "progress": progress
+        "progress": progress,
     }
     parameters = response.get("parameters", None)
     results = response.get("results", None)
-    response_info = merge_results(response_info, parameters, results=results)
+    _response_info = merge_results(_response_info, parameters, results=results)
+    response_info = schemas.GetJobStatusResponse.model_validate(_response_info)
     return response_info
 
 
-@job_api_v1.method(errors=[jsonrpc_errors.NotFoundError,
-                           jsonrpc_errors.InternalServerError])
+@job_api_v1.method(
+    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError]
+)
 def get_job_results(
-        body: schemas.GetJobResultsRequest
+    body: schemas.GetJobResultsRequest,
 ) -> schemas.GetJobResultsResponse:
     """Get job results
 
@@ -499,52 +474,48 @@ def get_job_results(
     job_id = body.job_id
 
     # query job results
-    response = None
-    err = None
+    response = {}
     try:
         response, err = scheduler.get_result_by_id(job_id)
     except errors.NotFound:
         # check if job exists
         jsonrpc_errors.handle_error_not_found(
-            module_name,
-            func_name,
-            (False, f"Job: '{job_id}' is not found")
+            module_name, func_name, (False, f"Job: '{job_id}' is not found")
         )
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, str(e))
+            module_name, func_name, (False, str(e))
         )
 
     # handle job results errors
     if response.get("error_message"):
         jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, response["error_message"])
+            module_name, func_name, (False, response["error_message"])
         )
 
     # existing results reported by driver
     job_status = response.get("job_status")
     parameters = response.get("parameters", None)
     results = response.get("results", None)
-    progress = response.get("artifact").get("progress", -1)
+    progress = response.get("artifact", {}).get("progress", -1)
 
     # construct response
-    response_info = {
+    _response_info = {
         "job_id": job_id,
         "job_status": job_status,
-        "progress": progress
+        "progress": progress,
     }
-    response_info = merge_results(response_info, parameters, results=results)
+    _response_info = merge_results(_response_info, parameters, results=results)
+    response_info = schemas.GetJobResultsResponse.model_validate(
+        _response_info
+    )
     return response_info
 
 
 @job_api_v1.method(errors=[jsonrpc_errors.InternalServerError])
 def get_jobs(
-        body: schemas.GetJobsRequest = None
-) -> List[schemas.GetJobStatusResponse]:
+    body: schemas.GetJobsRequest,
+) -> list[schemas.GetJobStatusResponse]:
     """Get job list
 
     Args:
@@ -557,38 +528,40 @@ def get_jobs(
     logger.info(f"Call {func_name}: {body}")
 
     # query jobs' results
-    responses = None
+    responses = []
     err = None
     try:
         responses, err = scheduler.get_jobs()
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, str(e))
+            module_name, func_name, (False, str(e))
         )
 
     # construct response
     response_list = []
     for response in responses:
         job_status = response.get("job_status")
-        response_info = {
+        _response_info = {
             "job_id": response.get("id"),
             "job_status": job_status,
-            "progress": response.get("progress")
+            "progress": response.get("progress"),
         }
         parameters = response.get("parameters", None)
         results = response.get("results", None)
-        response_info = merge_results(
-            response_info, parameters, results=results)
+        _response_info = merge_results(
+            _response_info, parameters, results=results
+        )
+        response_info = schemas.GetJobStatusResponse.model_validate(
+            _response_info
+        )
         response_list.append(response_info)
     return response_list
 
 
 @job_api_v1.method(errors=[jsonrpc_errors.NotImplementedError])
 def cancel_jobs(
-        body: schemas.CancelJobsRequest
-) -> List[schemas.CancelJobsResponse]:
+    body: schemas.CancelJobsRequest,
+) -> list[schemas.CancelJobsResponse]:
     """Cancel job
 
     Args:
@@ -609,17 +582,19 @@ def cancel_jobs(
     success_list = scheduler.cancel_jobs(job_ids)
 
     # construct response
-    response_info = [{
-        "job_id": job.get("id"),
-        "job_status": job.get("state")
-    } for job in success_list]
+    response_info = [
+        schemas.CancelJobsResponse(
+            job_id=job.get("id"), job_status=job.get("state")
+        )
+        for job in success_list
+    ]
     return response_info
 
 
 @job_api_v1.method(errors=[])
 def delete_jobs(
-        body: schemas.DeleteJobsRequest
-) -> List[schemas.DeleteJobsResponse]:
+    body: schemas.DeleteJobsRequest,
+) -> list[schemas.DeleteJobsResponse]:
     """Delete job
 
     Args:
@@ -640,17 +615,20 @@ def delete_jobs(
     success_list = scheduler.delete_jobs(job_ids)
 
     # construct response
-    response_info = [{
-        "job_id": job.get("id"),
-        "job_status": job.get("state")
-    } for job in success_list]
+    response_info = [
+        schemas.DeleteJobsResponse(
+            job_id=job.get("id"), job_status=job.get("state")
+        )
+        for job in success_list
+    ]
     return response_info
 
 
-@job_api_v1.method(errors=[jsonrpc_errors.NotFoundError,
-                           jsonrpc_errors.InternalServerError])
+@job_api_v1.method(
+    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError]
+)
 def set_job_results(
-        body: schemas.SetJobResultsRequest
+    body: schemas.SetJobResultsRequest,
 ) -> schemas.SetJobResultsResponse:
     """Set job results for existing job
 
@@ -666,56 +644,45 @@ def set_job_results(
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
         func_name,
-        Library.validate_schema(
-            new_results, args_schema.SOURCE_SET_RESULTS
-        )
+        Library.validate_schema(new_results, args_schema.SOURCE_SET_RESULTS),
     )
 
     # get existing job results
-    response = None
-    err = None
+    response = {}
     try:
         response, err = scheduler.get_result_by_id(job_id)
     except errors.NotFound:
         # check if job exists
         jsonrpc_errors.handle_error_not_found(
-            module_name,
-            func_name,
-            (False, f"Job: '{job_id}' is not found")
+            module_name, func_name, (False, f"Job: '{job_id}' is not found")
         )
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, str(e))
+            module_name, func_name, (False, str(e))
         )
 
     job_status = response["job_status"]
-    if job_status not in [Constant.JOB_STATUS_RUNNING,
-                          Constant.JOB_STATUS_COMPLETED]:
-        err_msg = f"Job: '{job_id}' is not in RUNNING or COMPLETED state. "\
-                  f"Can't {func_name}"
+    if job_status not in [
+        Constant.JOB_STATUS_RUNNING,
+        Constant.JOB_STATUS_COMPLETED,
+    ]:
+        err_msg = (
+            f"Job: '{job_id}' is not in RUNNING or COMPLETED state. "
+            f"Can't {func_name}"
+        )
         jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, err_msg)
+            module_name, func_name, (False, err_msg)
         )
 
     # handle job status errors
     if response.get("error_message"):
         jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, response["error_message"])
+            module_name, func_name, (False, response["error_message"])
         )
 
     parameters = response.get("parameters", None)
     source_code = Library.get_nested_dict_value(
-        parameters,
-        "job_info",
-        "data",
-        "source_code",
-        default=[]
+        parameters, "job_info", "data", "source_code", default=[]
     )
 
     # copy existing results and updated using new_results
@@ -725,9 +692,12 @@ def set_job_results(
         for _ in range(len(source_code)):
             existing_results.append(
                 {
-                    'metadata': {}, 'profiling': {}, 'results': {},
-                    'status': Constant.JOB_STATUS_UNKNOWN
-                })
+                    "metadata": {},
+                    "profiling": {},
+                    "results": {},
+                    "status": Constant.JOB_STATUS_UNKNOWN,
+                }
+            )
 
     # get end_date
     end_date = Library.get_current_datetime()
@@ -737,8 +707,11 @@ def set_job_results(
         jsonrpc_errors.handle_error_internal_server(
             module_name,
             func_name,
-            (False, "Length of new results should be the same as "
-                    "the length of the existing results")
+            (
+                False,
+                "Length of new results should be the same as "
+                "the length of the existing results",
+            ),
         )
 
     # update results/errors
@@ -757,14 +730,14 @@ def set_job_results(
             result["metadata"]["status"] = Constant.JOB_STATUS_COMPLETED
         result["metadata"]["end_date"] = end_date
         i += 1
-    job_status = Constant.JOB_STATUS_FAILED if is_failed \
+    job_status = (
+        Constant.JOB_STATUS_FAILED
+        if is_failed
         else Constant.JOB_STATUS_COMPLETED
+    )
 
     updated_parameters = {
-        "updated_job_info": {
-            "results": existing_results,
-            "end_date": end_date
-        }
+        "updated_job_info": {"results": existing_results, "end_date": end_date}
     }
 
     # updated parameters
@@ -775,34 +748,35 @@ def set_job_results(
     success, err_msg = scheduler.update_job(job_id, parameters=parameters)
     if not success:
         jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, err_msg)
+            module_name, func_name, (False, err_msg)
         )
 
     # run callbacks
     callbacks = Library.get_nested_dict_value(
-        parameters, "job_info", "data", "callbacks", default=None)
+        parameters, "job_info", "data", "callbacks", default=None
+    )
 
     # construct response
     backend = Library.get_nested_dict_value(
-        parameters, "job_info", "data", "backend", default=None)
+        parameters, "job_info", "data", "backend", default=None
+    )
 
-    response_info = {
+    _response_info = {
         "job_id": job_id,
         "job_status": job_status,
         "backend": backend,
-        "results": existing_results
+        "results": existing_results,
     }
 
-    success, err_msg = scheduler.run_callbacks(response_info, callbacks)
+    success, err_msg = scheduler.run_callbacks(_response_info, callbacks)
     if not success:
         jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, err_msg)
+            module_name, func_name, (False, err_msg)
         )
 
+    response_info = schemas.SetJobResultsResponse.model_validate(
+        _response_info
+    )
     return response_info
 
 
@@ -838,7 +812,8 @@ def merge_results(response_info, parameters, results=None):
         if response_info["results"]:
             for result in response_info["results"]:
                 _end_date = Library.get_nested_dict_value(
-                    result, "metadata", "end_date", default=None)
+                    result, "metadata", "end_date", default=None
+                )
                 if isinstance(_end_date, str):
                     _end_date = datetime.fromisoformat(_end_date)
                 if _end_date and end_date:

@@ -45,8 +45,9 @@ def rpc_retry(max_retries=3, retry_interval=1):
     def decorator(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-            retries = max_retries if max_retries is not None \
-                else self.max_retries
+            retries = (
+                max_retries if max_retries is not None else self.max_retries
+            )
             retry_count = 0
             err_msgs = []
 
@@ -54,8 +55,10 @@ def rpc_retry(max_retries=3, retry_interval=1):
                 try:
                     # run function
                     return func(self, *args, **kwargs)
-                except (zerorpc.exceptions.LostRemote,
-                        zerorpc.exceptions.RemoteError) as e:
+                except (
+                    zerorpc.exceptions.LostRemote,
+                    zerorpc.exceptions.RemoteError,
+                ) as e:
                     # handle rpc connection errors
                     err_msgs.append(f"RPC connection error: {str(e)}")
                     self._client.close()
@@ -69,7 +72,9 @@ def rpc_retry(max_retries=3, retry_interval=1):
 
             # all attempts are failed
             return False, "\n".join(err_msgs), None
+
         return wrapper
+
     return decorator
 
 
@@ -111,7 +116,7 @@ class DriverSpinQRpc(DriverBase):
             self.TASK_STAGE_SUBMIT_TASK: 20,
             self.TASK_STAGE_WAIT_TASK: 30,
             self.TASK_STAGE_GET_RESULTS: 95,
-            self.TASK_STAGE_COMPLETE: 100
+            self.TASK_STAGE_COMPLETE: 100,
         }
 
         # private variables
@@ -124,8 +129,7 @@ class DriverSpinQRpc(DriverBase):
         self._session_id = None
 
     def init_driver(self):
-        """Init driver
-        """
+        """Init driver"""
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def close_driver(self):
@@ -159,12 +163,13 @@ class DriverSpinQRpc(DriverBase):
                     "coupler_map": {str: [str]},
                     "readout_error": {str: Or(float, int)},
                     Optional("coupler_error"): {str: Or(float, int)},
-                    Optional("closest"): {str: str}
+                    Optional("closest"): {str: str},
                 }
-            }
+            },
         }
         _success, err_msgs = Library.validate_schema(
-            configs, driver_config_schema)
+            configs, driver_config_schema
+        )
         if not _success:
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
@@ -186,14 +191,17 @@ class DriverSpinQRpc(DriverBase):
             curr_qubit_depth = qubit_depth[targets[0]]
             qubit_depth[targets[0]] += 1
         elif len(targets) == 2:
-            curr_qubit_depth = max(qubit_depth[targets[0]],
-                                   qubit_depth[targets[1]])
+            curr_qubit_depth = max(
+                qubit_depth[targets[0]], qubit_depth[targets[1]]
+            )
             qubit_depth[targets[0]] = curr_qubit_depth + 1
             qubit_depth[targets[1]] = curr_qubit_depth + 1
         elif len(targets) == 3:
-            curr_qubit_depth = max(qubit_depth[targets[0]],
-                                   qubit_depth[targets[1]],
-                                   qubit_depth[targets[2]])
+            curr_qubit_depth = max(
+                qubit_depth[targets[0]],
+                qubit_depth[targets[1]],
+                qubit_depth[targets[2]],
+            )
             qubit_depth[targets[0]] = curr_qubit_depth + 1
             qubit_depth[targets[1]] = curr_qubit_depth + 1
             qubit_depth[targets[2]] = curr_qubit_depth + 1
@@ -216,19 +224,18 @@ class DriverSpinQRpc(DriverBase):
 
         curr_qubit_depth = self.update_qubit_depth(qubit_depth, gate.targets)
 
-        gate_info_dict = {"type": gate.name,
-                          "controlQubit": -1,
-                          "angle": 0,
-                          "timeslot": curr_qubit_depth}
-        if (gate.operation_type ==
-                OperationType.SINGLE_QUBIT_OPERATION.value):
+        gate_info_dict = {
+            "type": gate.name,
+            "controlQubit": -1,
+            "angle": 0,
+            "timeslot": curr_qubit_depth,
+        }
+        if gate.operation_type == OperationType.SINGLE_QUBIT_OPERATION.value:
             gate_info_dict["qubitIndex"] = gate.targets[0]
-        elif (gate.operation_type ==
-              OperationType.DOUBLE_QUBIT_OPERATION.value):
+        elif gate.operation_type == OperationType.DOUBLE_QUBIT_OPERATION.value:
             gate_info_dict["controlQubit"] = gate.targets[0]
             gate_info_dict["qubitIndex"] = gate.targets[1]
-        elif (gate.operation_type ==
-              OperationType.TRIPLE_QUBIT_OPERATION.value):
+        elif gate.operation_type == OperationType.TRIPLE_QUBIT_OPERATION.value:
             gate_info_dict["controlQubit"] = gate.targets[1]
             gate_info_dict["qubitIndex"] = gate.targets[2]
         else:
@@ -294,15 +301,14 @@ class DriverSpinQRpc(DriverBase):
         logger.info("1. user authentication")
         self.set_progress_by_task(self.TASK_STAGE_USER_AUTHENTICATION)
         success, err_msg, _results = self.user_auth(
-            self._username, self._password)
+            self._username, self._password
+        )
         if not success:
             raise ValueError(f"Authorize failed: {err_msg}")
 
         self._session_id = _results["session_id"]
         # TODO: (zhouyunxiao) handle results["coupling_list"]
-        transpiler_configs = {
-            "qpu_configs": _results["coupling_list"]
-        }
+        transpiler_configs = {"qpu_configs": _results["coupling_list"]}
         return transpiler_configs
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
@@ -319,7 +325,8 @@ class DriverSpinQRpc(DriverBase):
         data_index = data["index"]
         logger.info(
             f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
-            f"data_type: {data_type}, data: {data}")
+            f"data_type: {data_type}, data: {data}"
+        )
 
         self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_device_status(Device.DEVICE_STATUS_BUSY)
@@ -327,7 +334,8 @@ class DriverSpinQRpc(DriverBase):
         # 2. convert transpile_results to gates and measures
         logger.info("2. convert transpile_results to gates and measures")
         gates, measures = self.convert_gates(
-            data["transpile_results"], num_qubits)
+            data["transpile_results"], num_qubits
+        )
 
         # 3. Submit task
         logger.info("3. submit task")
@@ -339,7 +347,7 @@ class DriverSpinQRpc(DriverBase):
             "task_gates": gates,
             "measures": measures,
             "task_desc": task_desc,
-            "shots": shots
+            "shots": shots,
         }
         success, err_msg, task_id = self.submit_task(task_info)
         if not success:
@@ -349,19 +357,25 @@ class DriverSpinQRpc(DriverBase):
         logger.info("4. wait and check task_status")
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
         success, err_msg, _ = Library.loop_with_timeout(
-            self.check_task_status, self.task_time_out, 5, task_id,
-            expect_task_status=[TaskStatus.finished.value])
+            self.check_task_status,
+            self.task_time_out,
+            5,
+            task_id,
+            expect_task_status=[TaskStatus.finished.value],
+        )
         if not success:
-            raise ValueError(f"Failed to wait for task [{task_name}]: "
-                             f"{err_msg}")
+            raise ValueError(
+                f"Failed to wait for task [{task_name}]: {err_msg}"
+            )
 
         # 5. Get task results
         logger.info("5. get task results")
         self.set_progress_by_task(self.TASK_STAGE_GET_RESULTS)
         success, err_msg, _results = self.get_task_results(task_id)
         if not success:
-            raise ValueError(f"Failed to get task results [{job_id}]: "
-                             f"{err_msg}")
+            raise ValueError(
+                f"Failed to get task results [{job_id}]: {err_msg}"
+            )
 
         # 6. close rpc client
         logger.info("6. close rpc client")
@@ -487,6 +501,7 @@ class DriverSpinQRpc(DriverBase):
 
 class TaskStatus(enum.Enum):
     """Task status"""
+
     finished = 0
     failed = 1
     running = 2

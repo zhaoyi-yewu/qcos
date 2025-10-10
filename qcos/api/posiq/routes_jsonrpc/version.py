@@ -29,7 +29,7 @@ module_name = "VERSION"
 
 @base_api.method()
 def version(
-    body: schemas.GetVersionRequest = None
+    body: schemas.GetVersionRequest,
 ) -> schemas.GetVersionResponse:
     """Get server version
 
@@ -49,7 +49,7 @@ def version(
         driver_name_mapping[driver_name] = {
             "enable_transpiler": driver.enable_transpiler,
             "supported_code_types": driver.get_supported_code_types(),
-            "description": driver.get_description()
+            "description": driver.get_description(),
         }
         if driver_name not in driver_transpiler_mappings:
             driver_transpiler_mappings[driver_name] = set()
@@ -61,7 +61,7 @@ def version(
                 supported_code_types = transpiler.get_supported_code_types()
                 transpiler_name_mappings[transpiler_name] = {
                     "alias_name": transpiler_alias_name,
-                    "supported_code_types": supported_code_types
+                    "supported_code_types": supported_code_types,
                 }
             driver_transpiler_mappings[driver_name].add(transpiler_name)
 
@@ -72,19 +72,17 @@ def version(
         "transpilers": transpiler_name_mappings,
         "tech_types": Constant.TECH_TYPE_INFO,
         "profiling": Constant.PROFILING_INFO,
-        "driver_transpiler_mappings": driver_transpiler_mappings
+        "driver_transpiler_mappings": driver_transpiler_mappings,
     }
 
-    response_info = {
+    _response_info = {
         "version": Config.VERSION,
         "api_version": Config.API_VERSION_V1,
         "supported_api_versions": [
-            {
-                "version": Config.API_VERSION_V1,
-                "status": "CURRENT"
-            }
+            {"version": Config.API_VERSION_V1, "status": "CURRENT"}
         ],
         "platform_version": Config.PLATFORM_VERSION,
-        "capabilities": capabilities
+        "capabilities": capabilities,
     }
+    response_info = schemas.GetVersionResponse.model_validate(_response_info)
     return response_info

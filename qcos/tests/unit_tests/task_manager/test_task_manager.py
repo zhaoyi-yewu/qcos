@@ -24,11 +24,12 @@ from unittest.mock import patch, Mock, AsyncMock
 from qcos.common.constant import Constant, HttpCode
 from qcos.task_manager.task_manager import TaskFlowManager
 from qcos.tests.unit_tests.task_manager.constant_for_test import (
-    ConstantForTest)
+    ConstantForTest,
+)
 
 
 class TestTaskFlowManager(unittest.TestCase):
-    @patch.object(TaskFlowManager, 'check_connection')
+    @patch.object(TaskFlowManager, "check_connection")
     def setUp(self, mock_check_connection):
         self.task_manager = TaskFlowManager()
 
@@ -59,8 +60,8 @@ class TestTaskFlowManager(unittest.TestCase):
         self.task_manager.check_connection()
 
     def test_set_driver_manager(self):
-        self.task_manager.set_driver_manager('driver_manager')
-        self.assertEqual(self.task_manager.driver_manager, 'driver_manager')
+        self.task_manager.set_driver_manager("driver_manager")
+        self.assertEqual(self.task_manager.driver_manager, "driver_manager")
 
     def test_create_pools(self):
         mock_client = AsyncMock()
@@ -92,25 +93,29 @@ class TestTaskFlowManager(unittest.TestCase):
         assert results is None
 
     def test_run_task_flow(self):
-        flow_info = (self.task_manager.
-                     get_flow_info_by_backend(Constant.DRIVER_DUMMY))
-        self.assertEqual(flow_info['deploy_flow_path'],
-                         '../engine/job_engine.py')
+        flow_info = self.task_manager.get_flow_info_by_backend(
+            Constant.DRIVER_DUMMY
+        )
+        self.assertEqual(
+            flow_info["deploy_flow_path"], "../engine/job_engine.py"
+        )
 
         mock_client = Mock()
         mock_run = Mock()
         mock_run.run_task_flow_by_client.return_value = mock_client
         self.task_manager.loop = mock_client
-        flow_info = (self.task_manager.
-                     run_task_flow(flow_info, ConstantForTest.args))
+        flow_info = self.task_manager.run_task_flow(
+            flow_info, ConstantForTest.args
+        )
         assert flow_info is not None
 
     def test_get_flow_run_id_by_job_id(self):
         mock_client = Mock()
         self.task_manager._sync_client = mock_client
         mock_client.read_flow_runs.return_value = []
-        ans = (self.task_manager.get_flow_run_id_by_job_id
-               (ConstantForTest.job_id))
+        ans = self.task_manager.get_flow_run_id_by_job_id(
+            ConstantForTest.job_id
+        )
         assert ans is None
 
     def test_run_task_flow_by_client(self):
@@ -118,8 +123,11 @@ class TestTaskFlowManager(unittest.TestCase):
         self.task_manager._client = mock_client
         mock_run = AsyncMock()
         mock_client.create_flow_run_from_deployment.return_value = mock_run
-        job_id = asyncio.run(self.task_manager.run_task_flow_by_client
-                             (ConstantForTest.job_id, ConstantForTest.args))
+        job_id = asyncio.run(
+            self.task_manager.run_task_flow_by_client(
+                ConstantForTest.job_id, ConstantForTest.args
+            )
+        )
         assert job_id is not None
 
     @patch.object(TaskFlowManager, "get_flow_run_id_by_job_id")
@@ -130,7 +138,7 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_get_flow_run_id_by_job_id.return_value = None
         with pytest.raises(Exception) as context:
             self.task_manager.get_task_flow_result(ConstantForTest.job_id)
-        assert str(context.value) == 'None'
+        assert str(context.value) == "None"
 
     def test_delete_flow_artifacts(self):
         mock_client = Mock()
@@ -154,12 +162,13 @@ class TestTaskFlowManager(unittest.TestCase):
         self.task_manager._sync_client = mock_client
         mock_client.read_artifacts.return_value = []
         job_id = self.task_manager.get_job_artifact_by_client(
-            ConstantForTest.job_id)
+            ConstantForTest.job_id
+        )
         assert job_id is not None
 
     @patch.object(TaskFlowManager, "get_flow_run_id_by_job_id")
     def test_has_flow(self, mock_get_flow_run_id_by_job_id):
-        mock_get_flow_run_id_by_job_id.return_value = '1234'
+        mock_get_flow_run_id_by_job_id.return_value = "1234"
         exist = self.task_manager.has_flow(ConstantForTest.job_id)
         assert exist is True
 
@@ -170,8 +179,7 @@ class TestTaskFlowManager(unittest.TestCase):
         self.task_manager.loop = mock_client
         mock_run._update_flow.return_value = mock_client
         mock_get_flow_run_id_by_job_id.return_value = None
-        success = self.task_manager.update_flow(
-            ConstantForTest.job_id)
+        success = self.task_manager.update_flow(ConstantForTest.job_id)
         assert success is False
 
         mock_get_flow_run_id_by_job_id.return_value = "1234"
@@ -183,7 +191,8 @@ class TestTaskFlowManager(unittest.TestCase):
         self.task_manager._sync_client = mock_client
         mock_run.read_flow_run.return_value = {}
         results = self.task_manager.get_task_flow_result_by_client(
-            ConstantForTest.job_id)
+            ConstantForTest.job_id
+        )
         assert results is not None
 
     def test_get_task_flow_list(self):
@@ -214,7 +223,8 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_client = Mock()
         self.task_manager._sync_client = mock_client
         results = self.task_manager.delete_task_flow_run_by_client(
-            ConstantForTest.flow_run_ids)
+            ConstantForTest.flow_run_ids
+        )
         assert results is not None
 
     def test_run_callbacks(self):
@@ -233,8 +243,11 @@ class TestTaskFlowManager(unittest.TestCase):
 
     @patch.object(TaskFlowManager, "cancel_task_flow_run_by_client")
     @patch.object(TaskFlowManager, "get_flow_run_id_by_job_id")
-    def test_cancel_task_flow_run(self, mock_get_flow_run_id_by_job_id,
-                                  mock_cancel_task_flow_run_by_client):
+    def test_cancel_task_flow_run(
+        self,
+        mock_get_flow_run_id_by_job_id,
+        mock_cancel_task_flow_run_by_client,
+    ):
         mock_get_flow_run_id_by_job_id.return_value = "1234"
         mock_cancel_task_flow_run_by_client.return_value = None
         self.task_manager.cancel_task_flow_run(ConstantForTest.job_ids)

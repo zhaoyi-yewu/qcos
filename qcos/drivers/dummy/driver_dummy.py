@@ -32,6 +32,7 @@ class DriverDummy(DriverBase):
 
     Dummy neutral-atom driver for test purpose
     """
+
     def __init__(self):
         super().__init__()
         self.version = "0.0.1"
@@ -40,8 +41,10 @@ class DriverDummy(DriverBase):
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
-        self.supported_basis_gates = [Constant.SINGLE_QUBIT_GATE_X,
-                                      Constant.SINGLE_QUBIT_GATE_Y]
+        self.supported_basis_gates = [
+            Constant.SINGLE_QUBIT_GATE_X,
+            Constant.SINGLE_QUBIT_GATE_Y,
+        ]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_aggregation = True
         self.default_results_type = self.DATA_TYPE_GATE_SEQUENCE
@@ -49,9 +52,7 @@ class DriverDummy(DriverBase):
         self.max_qubits = 10
         # pylint: disable=duplicate-code
         self.extra_configs = {}
-        self.driver_options_schema = {
-            Optional("sleep"): int
-        }
+        self.driver_options_schema = {Optional("sleep"): int}
 
     def init_driver(self):
         """Init driver"""
@@ -82,29 +83,27 @@ class DriverDummy(DriverBase):
                     "coupler_map": {str: [str]},
                     "readout_error": {str: Or(float, int)},
                     Optional("coupler_error"): {str: Or(float, int)},
-                    Optional("closest"): {str: str}
+                    Optional("closest"): {str: str},
                 },
                 "decomposition_rule": {
-                    str: {
-                        "gates": [list],
-                        Optional("params"): [str]
-                    }
-                }
-            }
+                    str: {"gates": [list], Optional("params"): [str]}
+                },
+            },
         }
         _success, err_msgs = Library.validate_schema(
-            configs, driver_config_schema)
+            configs, driver_config_schema
+        )
         if not _success:
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
             success = False
         else:
             # copy configs to self.qpu_configs
-            self.qpu_configs = copy.deepcopy(
-                configs.get("qpu_configs", {}))
+            self.qpu_configs = copy.deepcopy(configs.get("qpu_configs", {}))
             # copy configs to self.decomposition_rule
             self.decomposition_rule = copy.deepcopy(
-                configs.get("decomposition_rule", {}))
+                configs.get("decomposition_rule", {})
+            )
         return success, err_msg
 
     def close_driver(self):
@@ -132,7 +131,8 @@ class DriverDummy(DriverBase):
         data_index = data["index"]
         logger.info(
             f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
-            f"data_type: {data_type}, data: {data}")
+            f"data_type: {data_type}, data: {data}"
+        )
 
         self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_device_status(Device.DEVICE_STATUS_BUSY)

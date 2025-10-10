@@ -23,7 +23,9 @@ class Sync(BaseOperation):
     """同步操作，用于在量子电路中同步操作，确保某些操作在特定的时间点同时发生"""
 
     def __init__(
-            self, targets=None, arg_value=None,
-            operation_type=OperationType.SYNC.value
+        self,
+        targets=None,
+        arg_value=None,
+        operation_type=OperationType.SYNC.value,
     ) -> None:
         super().__init__("sync", targets, arg_value, operation_type)

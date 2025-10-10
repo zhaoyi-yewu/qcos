@@ -84,17 +84,33 @@ class Server:
             argv: command line arguments
         """
         parser = argparse.ArgumentParser(description="QCOS api server")
-        parser.add_argument("-v", "--version",
-                            help="Show the version", action="version",
-                            version=PROGRAM_VERSION)
-        parser.add_argument("-c", "--config-file",
-                            dest="config_file", default="/etc/qcos/qcos.toml",
-                            help="Config file path")
-        parser.add_argument("--config-dir",
-                            dest="config_dir", default="/etc/qcos/conf.d/",
-                            help="Config dir path")
-        parser.add_argument("-d", "--daemon", dest="daemon",
-                            action="store_true", help="Start as a daemon")
+        parser.add_argument(
+            "-v",
+            "--version",
+            help="Show the version",
+            action="version",
+            version=PROGRAM_VERSION,
+        )
+        parser.add_argument(
+            "-c",
+            "--config-file",
+            dest="config_file",
+            default="/etc/qcos/qcos.toml",
+            help="Config file path",
+        )
+        parser.add_argument(
+            "--config-dir",
+            dest="config_dir",
+            default="/etc/qcos/conf.d/",
+            help="Config dir path",
+        )
+        parser.add_argument(
+            "-d",
+            "--daemon",
+            dest="daemon",
+            action="store_true",
+            help="Start as a daemon",
+        )
 
         args = parser.parse_args(argv)
         # read and parse config file
@@ -103,8 +119,9 @@ class Server:
 
         # read and parse config files under config dir
         if args.config_dir:
-            config_files = Library.find_files(args.config_dir,
-                                              pattern="*.toml", recursive=True)
+            config_files = Library.find_files(
+                args.config_dir, pattern="*.toml", recursive=True
+            )
             for config_file in config_files:
                 Config.parse_toml_file(config_file, extra_config=True)
 
@@ -128,7 +145,7 @@ class Server:
             backup_count=10,
             console=True,
             compression=True,
-            quiet=False
+            quiet=False,
         )
 
     @staticmethod
@@ -156,7 +173,8 @@ class Server:
 
             if pid:
                 logger.critical(
-                    "VBMS api server is already running pid: %d", pid)
+                    "VBMS api server is already running pid: %d", pid
+                )
                 sys.exit(1)
 
         try:
@@ -175,8 +193,9 @@ class Server:
 
         _signal_handling()
         try:
-            logger.info(f"Starting server, listening on "
-                        f"{Config.API_SERVER_LISTEN_IP}")
+            logger.info(
+                f"Starting server, listening on {Config.API_SERVER_LISTEN_IP}"
+            )
             # only show uvicorn access logs in debug mode
             access_log = False
             if logger.getEffectiveLevel() == logging.DEBUG:
@@ -191,7 +210,7 @@ class Server:
                 access_log=access_log,
                 lifespan="on",
                 ssl_keyfile=Config.KEY_FILE if Config.USE_SSL else None,
-                ssl_certfile=Config.CERT_FILE if Config.USE_SSL else None
+                ssl_certfile=Config.CERT_FILE if Config.USE_SSL else None,
             )
 
             # overwrite uvicorn loggers with our own logger
@@ -233,4 +252,5 @@ class Server:
             loop.run_until_complete(server.serve())
         except Exception as e:
             raise errors.GenericException(
-                f"Critical error while running the server: {e}") from e
+                f"Critical error while running the server: {e}"
+            ) from e

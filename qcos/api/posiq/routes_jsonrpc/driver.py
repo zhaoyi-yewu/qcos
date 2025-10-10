@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 import logging
-from typing import Dict
 
 from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
@@ -55,15 +54,15 @@ def _get_driver_info(driver_info, transpiler):
         "enable_circuit_aggregation": driver_info.enable_circuit_aggregation,
         "supported_code_types": supported_code_types,
         "supported_basis_gates": driver_info.get_supported_basis_gates(),
-        "results_fetch_mode": driver_info.results_fetch_mode
+        "results_fetch_mode": driver_info.results_fetch_mode,
     }
     return _driver_info
 
 
 @driver_api_v1.method(errors=[])
 def get_drivers(
-        body: schemas.GetDriversRequest = None
-) -> Dict[str, schemas.GetDriverResponse]:
+    body: schemas.GetDriversRequest,
+) -> dict[str, schemas.GetDriverResponse]:
     """Get driver dict request
 
     Args:
@@ -81,14 +80,15 @@ def get_drivers(
     for driver_name, driver_info in drivers.items():
         transpiler_manager = scheduler.get_transpiler_manager()
         transpiler = transpiler_manager.get_transpiler(driver_info.transpiler)
-        response_info[driver_name] = _get_driver_info(driver_info, transpiler)
+        _response_info = _get_driver_info(driver_info, transpiler)
+        response_info[driver_name] = schemas.GetDriverResponse.model_validate(
+            _response_info
+        )
     return response_info
 
 
 @driver_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
-def get_driver(
-        body: schemas.GetDriverRequest
-) -> schemas.GetDriverResponse:
+def get_driver(body: schemas.GetDriverRequest) -> schemas.GetDriverResponse:
     """Get driver info request
 
     Args:
@@ -108,9 +108,10 @@ def get_driver(
         jsonrpc_errors.handle_error_not_found(
             module_name,
             func_name,
-            (False, f"Driver: '{driver_name}' is not found")
+            (False, f"Driver: '{driver_name}' is not found"),
         )
     transpiler_manager = scheduler.get_transpiler_manager()
     transpiler = transpiler_manager.get_transpiler(driver_info.transpiler)
-    response_info = _get_driver_info(driver_info, transpiler)
+    _response_info = _get_driver_info(driver_info, transpiler)
+    response_info = schemas.GetDriverResponse.model_validate(_response_info)
     return response_info

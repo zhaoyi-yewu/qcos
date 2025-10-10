@@ -15,8 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+
 class Constant:
     """Constants"""
+
     # Flow limit
     FLOW_LIMIT = 100000
 
@@ -26,8 +28,12 @@ class Constant:
     CODE_TYPE_QASM3 = "qasm3"
     CODE_TYPE_QUBO = "qubo"
     CODE_TYPES_FORMAT_TEXT = [CODE_TYPE_QASM, CODE_TYPE_QASM2, CODE_TYPE_QASM3]
-    CODE_TYPES = [CODE_TYPE_QASM, CODE_TYPE_QASM2, CODE_TYPE_QASM3,
-                  CODE_TYPE_QUBO]
+    CODE_TYPES = [
+        CODE_TYPE_QASM,
+        CODE_TYPE_QASM2,
+        CODE_TYPE_QASM3,
+        CODE_TYPE_QUBO,
+    ]
 
     # Aggregation types
     AGGREGATION_TYPE_INTERNAL = "internal"
@@ -36,7 +42,7 @@ class Constant:
     AGGREGATION_TYPES = [
         AGGREGATION_TYPE_NONE,
         AGGREGATION_TYPE_INTERNAL,
-        AGGREGATION_TYPE_EXTERNAL
+        AGGREGATION_TYPE_EXTERNAL,
     ]
 
     # File types
@@ -78,7 +84,7 @@ class Constant:
         SINGLE_QUBIT_GATE_TDG,
         SINGLE_QUBIT_GATE_U1,
         SINGLE_QUBIT_GATE_U2,
-        SINGLE_QUBIT_GATE_U3
+        SINGLE_QUBIT_GATE_U3,
     ]
     # two-qubit gates
     TWO_QUBIT_GATE_CH = "ch"
@@ -95,17 +101,15 @@ class Constant:
         TWO_QUBIT_GATE_CRZ,
         TWO_QUBIT_GATE_CX,
         TWO_QUBIT_GATE_CY,
-        TWO_QUBIT_GATE_CZ
+        TWO_QUBIT_GATE_CZ,
     ]
     # three-qubit gates
     THREE_QUBIT_GATE_CCX = "ccx"
-    THREE_QUBIT_GATE_LIST = [
-        THREE_QUBIT_GATE_CCX
-    ]
+    THREE_QUBIT_GATE_LIST = [THREE_QUBIT_GATE_CCX]
     # all gate list
-    ALL_GATE_LIST = (SINGLE_QUBIT_GATE_LIST +
-                     TWO_QUBIT_GATE_LIST +
-                     THREE_QUBIT_GATE_LIST)
+    ALL_GATE_LIST = (
+        SINGLE_QUBIT_GATE_LIST + TWO_QUBIT_GATE_LIST + THREE_QUBIT_GATE_LIST
+    )
     ALL_GATES = "all"
 
     # Drivers
@@ -131,7 +135,7 @@ class Constant:
         TECH_TYPE_ION_TRAP: {"alias_name": "离子阱"},
         TECH_TYPE_SUPERCONDUCTING: {"alias_name": "超导"},
         TECH_TYPE_PHOTON: {"alias_name": "光量子"},
-        TECH_TYPE_GENERIC_SIMULATOR: {"alias_name": "通用量子模拟器"}
+        TECH_TYPE_GENERIC_SIMULATOR: {"alias_name": "通用量子模拟器"},
     }
 
     # Job types
@@ -141,8 +145,6 @@ class Constant:
 
     # Job scheduling policy
     JOB_SCHED_POLICY_PRIORITY = "priority"
-    JOB_SCHED_POLICY_HIGH_RESPONSE_RATIO = "high_response_ratio"
-    JOB_SCHED_POLICY_SHORTEST_JOB_FIRST = "shortest_job_first"
     JOB_SCHED_POLICY_TIME_PRECEDENCE = "time_precedence"
     JOB_SCHED_POLICY_PERIODIC = "periodic"
     JOB_SCHED_POLICY_DEPENDENT = "dependent"
@@ -164,19 +166,21 @@ class Constant:
     PROFILING_TYPE_DRIVER_PARSE = "driver:parse"
     PROFILING_TYPE_DRIVER_TRANSPILE = "driver:transpile"
     PROFILING_TYPE_DRIVER_RUN = "driver:run"
-    PROFILING_TYPES = [PROFILING_TYPE_ALL,
-                       PROFILING_TYPE_JOB,
-                       PROFILING_TYPE_SCHEDULE,
-                       PROFILING_TYPE_DRIVER_PARSE,
-                       PROFILING_TYPE_DRIVER_TRANSPILE,
-                       PROFILING_TYPE_DRIVER_RUN]
+    PROFILING_TYPES = [
+        PROFILING_TYPE_ALL,
+        PROFILING_TYPE_JOB,
+        PROFILING_TYPE_SCHEDULE,
+        PROFILING_TYPE_DRIVER_PARSE,
+        PROFILING_TYPE_DRIVER_TRANSPILE,
+        PROFILING_TYPE_DRIVER_RUN,
+    ]
     PROFILING_INFO = {
         PROFILING_TYPE_ALL: {"alias_name": "所有模块耗时"},
         PROFILING_TYPE_JOB: {"alias_name": "作业耗时"},
         PROFILING_TYPE_SCHEDULE: {"alias_name": "调度器耗时"},
         PROFILING_TYPE_DRIVER_PARSE: {"alias_name": "代码解析耗时"},
         PROFILING_TYPE_DRIVER_TRANSPILE: {"alias_name": "转译器耗时"},
-        PROFILING_TYPE_DRIVER_RUN: {"alias_name": "后端运行耗时"}
+        PROFILING_TYPE_DRIVER_RUN: {"alias_name": "后端运行耗时"},
     }
 
     # Callback types
@@ -209,10 +213,16 @@ class Constant:
     JOB_STATUS_CANCELLING = "CANCELLING"
     JOB_STATUS_CANCELLED = "CANCELLED"
     JOB_STATUS_DELETED = "DELETED"
-    JOB_STATUSES = [JOB_STATUS_UNKNOWN, JOB_STATUS_QUEUED, JOB_STATUS_RUNNING,
-                    JOB_STATUS_FAILED, JOB_STATUS_COMPLETED,
-                    JOB_STATUS_CANCELLING, JOB_STATUS_CANCELLED,
-                    JOB_STATUS_DELETED]
+    JOB_STATUSES = [
+        JOB_STATUS_UNKNOWN,
+        JOB_STATUS_QUEUED,
+        JOB_STATUS_RUNNING,
+        JOB_STATUS_FAILED,
+        JOB_STATUS_COMPLETED,
+        JOB_STATUS_CANCELLING,
+        JOB_STATUS_CANCELLED,
+        JOB_STATUS_DELETED,
+    ]
 
     # Prefect flow state
     PREFECT_STATE_RUNNING = "RUNNING"
@@ -223,15 +233,14 @@ class Constant:
     PREFECT_STATE_COMPLETED = "COMPLETED"
     PREFECT_STATE_CRASHED = "CRASHED"
     PREFECT_STATE_CANCELLING = "CANCELLING"
-    PREFECT_CANCEL_REQUIRED_STATES = [
-        PREFECT_STATE_RUNNING
-    ]
+    PREFECT_CANCEL_REQUIRED_STATES = [PREFECT_STATE_RUNNING]
 
     # Prefect job log
     PREFECT_JOB_LOG_ROTATION = "500 MB"
     PREFECT_JOB_LOG_RETENTION = "30 days"
-    PREFECT_JOB_LOG_FORMAT = ("{time:YYYY-MM-DD HH:mm:ss} | {level} "
-                              "| {name} | {message}")
+    PREFECT_JOB_LOG_FORMAT = (
+        "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name} | {message}"
+    )
 
     # Shots
     DEFAULT_SHOTS = 1
@@ -256,12 +265,13 @@ class HttpHeaders:
     # headers
     DEFAULT_JSON_HEADERS = {
         "Content-Type": "application/json",
-        "Accept": "application/json"
+        "Accept": "application/json",
     }
 
 
 class HttpMethod:
     """HTTP methods"""
+
     GET = "get"
     POST = "post"
     PUT = "put"
@@ -271,6 +281,7 @@ class HttpMethod:
 
 class HttpCode:
     """HTTP status codes"""
+
     SUCCESS_OK = 200
     SUCCESS_CREATED = 201
     SUCCESS_ACCEPTED = 202

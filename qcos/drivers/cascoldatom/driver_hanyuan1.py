@@ -35,6 +35,7 @@ class DriverHanyuan1(DriverBase):
     Cascoldatom Hanyuan1 driver
     CA-NAQC-20Q-A1
     """
+
     verbose = False
     DEFAULT_CONTROL_SYSTEM_IP = "127.0.0.1"
     DEFAULT_CONTROL_SYSTEM_PORT = 18402
@@ -52,8 +53,10 @@ class DriverHanyuan1(DriverBase):
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
-        self.supported_basis_gates = [Constant.SINGLE_QUBIT_GATE_RX,
-                                      Constant.SINGLE_QUBIT_GATE_RY]
+        self.supported_basis_gates = [
+            Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
+        ]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_aggregation = True
         self.max_qubits = 10
@@ -67,7 +70,7 @@ class DriverHanyuan1(DriverBase):
             self.TASK_STAGE_SUBMIT_TASK: 20,
             self.TASK_STAGE_WAIT_TASK: 30,
             self.TASK_STAGE_GET_RESULTS: 95,
-            self.TASK_STAGE_COMPLETE: 100
+            self.TASK_STAGE_COMPLETE: 100,
         }
 
     def init_driver(self):
@@ -76,7 +79,7 @@ class DriverHanyuan1(DriverBase):
 
     def validate_driver_configs(self, configs):
         """Validate driver configs
-        
+
         Args:
           configs: configs dictionary
 
@@ -99,29 +102,27 @@ class DriverHanyuan1(DriverBase):
                     "coupler_map": {str: [str]},
                     "readout_error": {str: Or(float, int)},
                     Optional("coupler_error"): {str: Or(float, int)},
-                    Optional("closest"): {str: str}
+                    Optional("closest"): {str: str},
                 },
                 Optional("decomposition_rule"): {
-                    str: {
-                        "gates": [list],
-                        Optional("params"): [str]
-                    }
-                }
-            }
+                    str: {"gates": [list], Optional("params"): [str]}
+                },
+            },
         }
         _success, err_msgs = Library.validate_schema(
-            configs, driver_config_schema)
+            configs, driver_config_schema
+        )
         if not _success:
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
             success = False
         else:
             # copy configs to self.qpu_configs
-            self.qpu_configs = copy.deepcopy(
-                configs.get("qpu_configs", {}))
+            self.qpu_configs = copy.deepcopy(configs.get("qpu_configs", {}))
             # copy configs to self.decomposition_rule
             self.decomposition_rule = copy.deepcopy(
-                configs.get("decomposition_rule", {}))
+                configs.get("decomposition_rule", {})
+            )
         return success, err_msg
 
     def close_driver(self):
@@ -149,14 +150,16 @@ class DriverHanyuan1(DriverBase):
         data_index = data["index"]
         logger.info(
             f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
-            f"data_type: {data_type}, data: {data}")
+            f"data_type: {data_type}, data: {data}"
+        )
 
         self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_device_status(Device.DEVICE_STATUS_BUSY)
         gates_list = data["transpile_results"]
         extra_configs = self.get_configs()
         ip_address = extra_configs.get(
-            "ip_address", self.DEFAULT_CONTROL_SYSTEM_IP)
+            "ip_address", self.DEFAULT_CONTROL_SYSTEM_IP
+        )
         port = extra_configs.get("port", self.DEFAULT_CONTROL_SYSTEM_PORT)
 
         # 1. init task connection
@@ -168,7 +171,8 @@ class DriverHanyuan1(DriverBase):
         logger.info("submit task")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
         success, err_msg = self.submit_task(
-            job_id, num_qubits, gates_list, data_type, shots, data_index)
+            job_id, num_qubits, gates_list, data_type, shots, data_index
+        )
         if not success:
             raise ValueError(f"Failed to submit task [{job_id}]: {err_msg}")
 
@@ -176,8 +180,13 @@ class DriverHanyuan1(DriverBase):
         logger.info("wait task status")
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
         success, err_msg, _ = Library.loop_with_timeout(
-            self.check_task_status, 1800, 5, job_id, data_index,
-            expect_task_status=[self.task_status_completed])
+            self.check_task_status,
+            1800,
+            5,
+            job_id,
+            data_index,
+            expect_task_status=[self.task_status_completed],
+        )
         if not success:
             raise ValueError(f"Failed to wait for task [{job_id}]: {err_msg}")
 
@@ -186,8 +195,9 @@ class DriverHanyuan1(DriverBase):
         self.set_progress_by_task(self.TASK_STAGE_GET_RESULTS)
         success, err_msg, results = self.get_task_results(job_id, data_index)
         if not success:
-            raise ValueError(f"Failed to get task results [{job_id}]: "
-                             f"{err_msg}")
+            raise ValueError(
+                f"Failed to get task results [{job_id}]: {err_msg}"
+            )
 
         self.set_results(job_id, data_index, results=results)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
@@ -227,8 +237,10 @@ class DriverHanyuan1(DriverBase):
             result: result (Default value = None)
         """
         if DriverHanyuan1.verbose:
-            print(f"Response: status_code: {status_code}, reason: {reason}, "
-                  f"text: {text}, result: {result}")
+            print(
+                f"Response: status_code: {status_code}, reason: {reason}, "
+                f"text: {text}, result: {result}"
+            )
 
     @staticmethod
     def call_json_rpc(url, method_name, data=None, params=None):
@@ -251,12 +263,16 @@ class DriverHanyuan1(DriverBase):
             jsonrpc_data = request(method_name, params={"body": data})
 
             status_code, reason, text, response_obj = Library.call_http_api(
-                url, method=HttpMethod.POST, json=jsonrpc_data,
-                params=params, func_name=method_name,
-                debug=DriverHanyuan1.verbose)
+                url,
+                method=HttpMethod.POST,
+                json=jsonrpc_data,
+                params=params,
+                func_name=method_name,
+                debug=DriverHanyuan1.verbose,
+            )
 
             # 解析Response对象获取JSON数据
-            if response_obj and hasattr(response_obj, 'json'):
+            if response_obj and hasattr(response_obj, "json"):
                 try:
                     result = response_obj.json()
                 except Exception as e:
@@ -274,8 +290,15 @@ class DriverHanyuan1(DriverBase):
         DriverHanyuan1.print_api_response(status_code, reason, text, result)
         return status_code, reason, text, result
 
-    def submit_task(self, job_id: str, num_qubits: int, data: list,
-                    data_type: str, shots: int, data_index: int) -> tuple:
+    def submit_task(
+        self,
+        job_id: str,
+        num_qubits: int,
+        data: list,
+        data_type: str,
+        shots: int,
+        data_index: int,
+    ) -> tuple:
         """Submit task
 
         Args:
@@ -293,15 +316,18 @@ class DriverHanyuan1(DriverBase):
         err_msgs = []
         try:
             # process data format
-            gate_list = data.get('basis_gate_list', data) \
-                if isinstance(data, dict) else data
+            gate_list = (
+                data.get("basis_gate_list", data)
+                if isinstance(data, dict)
+                else data
+            )
 
             processed_data = []
             for gate in gate_list:
                 gate_dict = {
                     "name": gate.name.upper(),
                     "targets": gate.targets,
-                    "arg_value": gate.arg_value
+                    "arg_value": gate.arg_value,
                 }
                 processed_data.append(gate_dict)
 
@@ -313,18 +339,19 @@ class DriverHanyuan1(DriverBase):
                 "data_type": data_type,
                 "shots": shots,
                 "qubit_num": num_qubits,
-                "timestamp": time.time()
+                "timestamp": time.time(),
             }
 
             method_name = "submit_task"
             status_code, reason, text, result = self.call_json_rpc(
-                self.base_url, method_name, request_data)
+                self.base_url, method_name, request_data
+            )
 
             # 检查JSON-RPC响应
             if status_code == HttpCode.SUCCESS_OK and result:
                 if "error" in result:
                     success = False
-                    err_msgs.append(result['error'])
+                    err_msgs.append(result["error"])
                 elif "result" in result:
                     success = True
                 else:
@@ -340,10 +367,9 @@ class DriverHanyuan1(DriverBase):
 
         return success, "\n".join(err_msgs)
 
-    def check_task_status(self,
-                          job_id: str,
-                          data_index: int,
-                          expect_task_status: list) -> bool:
+    def check_task_status(
+        self, job_id: str, data_index: int, expect_task_status: list
+    ) -> bool:
         """Check task status
 
         Args:
@@ -356,25 +382,25 @@ class DriverHanyuan1(DriverBase):
         """
         try:
             # construct request data
-            request_data = {
-                "job_id": job_id,
-                "data_index": data_index
-            }
+            request_data = {"job_id": job_id, "data_index": data_index}
 
             method_name = "query_task_status"
             status_code, reason, text, result = self.call_json_rpc(
-                self.base_url, method_name, request_data)
+                self.base_url, method_name, request_data
+            )
 
             if status_code == HttpCode.SUCCESS_OK and result:
                 result = result.get("result")
-                if result.get("status", self.task_status_unknown) in \
-                    expect_task_status:
+                if (
+                    result.get("status", self.task_status_unknown)
+                    in expect_task_status
+                ):
                     return True
                 else:
                     return False
             else:
                 return False
-        except Exception as e:
+        except Exception:
             return False
 
     def get_task_results(self, job_id: str, data_index: int):
@@ -392,14 +418,12 @@ class DriverHanyuan1(DriverBase):
         results = None
 
         # construct request data
-        request_data = {
-            "job_id": job_id,
-            "data_index": data_index
-        }
+        request_data = {"job_id": job_id, "data_index": data_index}
 
         method_name = "query_task_result"
         status_code, reason, text, result = self.call_json_rpc(
-            self.base_url, method_name, request_data)
+            self.base_url, method_name, request_data
+        )
 
         if status_code == HttpCode.SUCCESS_OK and result:
             result = result.get("result")

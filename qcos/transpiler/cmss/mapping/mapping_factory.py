@@ -24,9 +24,7 @@ class MappingFactory:
     """Get Transpiler via Type"""
 
     def __init__(self):
-        self._mapping = {
-            Constant.TECH_TYPE_NEUTRAL_ATOM: NASingleRoute()
-        }
+        self._mapping = {Constant.TECH_TYPE_NEUTRAL_ATOM: NASingleRoute()}
 
     def get_mapper_by_type(self, tech_type: str):
         """Get mapper by type

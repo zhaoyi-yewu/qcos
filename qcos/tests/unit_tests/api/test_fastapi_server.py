@@ -22,17 +22,18 @@ from fastapi.exceptions import RequestValidationError
 from pydantic_core import ValidationError
 
 from qcos.api.fastapi_server import (
-    patched_invalid_params_from_validation_error, handle_exit)
+    patched_invalid_params_from_validation_error,
+    handle_exit,
+)
 
 
 class TestFastApiServer:
     def test_patched_invalid_params_from_validation_error(self):
         mock_client = Mock(spec=RequestValidationError)
-        mock_client.errors.return_value = [{"loc": ("body", ),
-                                            "msg": "msg",
-                                            "type": "type",
-                                            "input": "input"},
-                                           {"loc": ("body", )}]
+        mock_client.errors.return_value = [
+            {"loc": ("body",), "msg": "msg", "type": "type", "input": "input"},
+            {"loc": ("body",)},
+        ]
         with pytest.raises(ValidationError) as e:
             patched_invalid_params_from_validation_error(mock_client)
         assert "errors" in str(e)

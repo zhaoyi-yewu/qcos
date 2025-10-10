@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 from datetime import datetime
-from typing import Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -28,178 +27,184 @@ class SubmitJobRequest(BaseModel):
     """Submit Job Request
     Pydantic Model for Submit Job Request
     """
+
     # Code types: qasm, qasm2, qasm3, qubo
     code_type: str = Constant.CODE_TYPE_QASM
     # Source code list
     source_code: list = []
     # description
-    description: Optional[str] = None
+    description: str | None = None
     # device name
     backend: str = Constant.DRIVER_DUMMY
     # Driver options
-    driver_options: Optional[dict] = None
+    driver_options: dict | None = None
     # Transpiler
-    transpiler: Optional[str] = Constant.TRANSPILER_CMSS
+    transpiler: str | None = None
     # Transpiler options
-    transpiler_options: Optional[dict] = None
+    transpiler_options: dict | None = None
     # Circuit aggregation: internal multi
-    circuit_aggregation: Optional[str] = None
+    circuit_aggregation: str | None = None
     # Job ID
-    job_id: Optional[UUID] = None
+    job_id: UUID | None = None
     # Job name
-    job_name: Optional[str] = None
+    job_name: str | None = None
     # Job type
     job_type: str = Constant.JOB_TYPE_SAMPLING
     # Job priority
     job_priority: int = Constant.DEFAULT_JOB_PRIORITY
     # Profiling
-    profiling: Optional[list] = []
+    profiling: list | None = None
     # Shots
     shots: int = Constant.DEFAULT_SHOTS
     # Callbacks
-    callbacks: Optional[list] = None
+    callbacks: list | None = None
     # Dry-run
-    dry_run: Optional[bool] = False
+    dry_run: bool = False
     # Creation date
-    creation_date: Optional[datetime] = None
+    creation_date: datetime | None = None
 
 
 class SubmitJobResponse(BaseModel):
     """Submit Job Response
     Pydantic Model for Submit Job Response
     """
+
     # Job ID
-    job_id: UUID = None
+    job_id: UUID
     # Job name
-    job_name: Optional[str] = None
+    job_name: str | None = None
     # Job type
-    job_type: str = None
+    job_type: str
     # Job status
-    job_status: str = None
+    job_status: str
     # Job priority
-    job_priority: int = None
+    job_priority: int
     # Code type
-    code_type: str = None
+    code_type: str
     # Source code list
-    source_code: list = []
+    source_code: list
     # Description
-    description: Optional[str] = None
-    # device name
-    backend: str = None
+    description: str | None = None
+    # Backend device name
+    backend: str
     # Driver options
-    driver_options: Optional[dict] = None
+    driver_options: dict | None = None
     # Transpiler
-    transpiler: Optional[str] = None
+    transpiler: str | None = None
     # Transpiler options
-    transpiler_options: Optional[dict] = None
+    transpiler_options: dict | None = None
     # Circuit aggregation: internal, multi
-    circuit_aggregation: Optional[str] = None
+    circuit_aggregation: str | None = None
     # Shots
-    shots: int = None
+    shots: int
     # Profiling
-    profiling: Optional[list] = []
+    profiling: list | None = None
     # Dry-run
-    dry_run: Optional[bool] = False
+    dry_run: bool
     # Callbacks
-    callbacks: Optional[list] = None
+    callbacks: list | None = None
     # Creation date
-    creation_date: Optional[datetime] = None
+    creation_date: datetime
     # End date
-    end_date: Optional[datetime] = None
+    end_date: datetime | None = None
 
 
 class GetJobStatusRequest(BaseModel):
     """Get Job Status Request
     Pydantic Model for Get Job Status Request
     """
+
     # Job ID
-    job_id: UUID = None
+    job_id: UUID
 
 
 class GetJobStatusResponse(BaseModel):
     """Get Job Status Response
     Pydantic Model for Get Job Status Response
     """
+
     # Job ID
-    job_id: UUID = None
+    job_id: UUID
     # Job name
-    job_name: Optional[str] = None
+    job_name: str | None = None
     # Job status
-    job_status: str = None
-    # device name
-    backend: Optional[str] = None
-    # Driver options
-    driver_options: Optional[dict] = None
-    # Transpiler
-    transpiler: Optional[str] = None
-    # Transpiler options
-    transpiler_options: Optional[dict] = None
-    # Circuit aggregation: internal, multi
-    circuit_aggregation: Optional[str] = None
+    job_status: str
     # Job priority
-    job_priority: Optional[int] = None
+    job_priority: int
     # Description
-    description: Optional[str] = None
+    description: str | None = None
+    # Backend device name
+    backend: str
+    # Driver options
+    driver_options: dict | None = None
+    # Transpiler
+    transpiler: str | None = None
+    # Transpiler options
+    transpiler_options: dict | None = None
+    # Circuit aggregation: internal, multi
+    circuit_aggregation: str | None = None
     # Shots
-    shots: Optional[int] = None
+    shots: int
     # Dry-run
-    dry_run: Optional[bool] = False
+    dry_run: bool
     # Progress
-    progress: Optional[int] = -1
-    # Creation Date
-    creation_date: Optional[datetime] = None
+    progress: int | None = -1
+    # Creation date
+    creation_date: datetime
     # End date
-    end_date: Optional[datetime] = None
+    end_date: datetime | None = None
 
 
 class GetJobResultsRequest(BaseModel):
     """Get Job Results Request
     Pydantic Model for Get Job Results Request
     """
+
     # Job ID
-    job_id: UUID = None
+    job_id: UUID
 
 
 class GetJobResultsResponse(BaseModel):
     """Get Job Results Response
     Pydantic Model for Get Job Results Response
     """
+
     # Job ID
-    job_id: UUID = None
+    job_id: UUID
     # Job name
-    job_name: Optional[str] = None
+    job_name: str | None = None
     # Job status
-    job_status: str = None
-    # Code type
-    code_type: str = None
-    # Source code list
-    source_code: list = []
-    # device name
-    backend: Optional[str] = None
-    # Driver options
-    driver_options: Optional[dict] = None
-    # Transpiler
-    transpiler: Optional[str] = None
-    # Transpiler options
-    transpiler_options: Optional[dict] = None
-    # Circuit aggregation: internal, multi
-    circuit_aggregation: Optional[str] = None
+    job_status: str
     # Job priority
-    job_priority: Optional[int] = None
+    job_priority: int
+    # Code type
+    code_type: str
     # Description
-    description: Optional[str] = None
+    description: str | None = None
+    # Source code list
+    source_code: list
+    # Backend device name
+    backend: str
+    # Driver options
+    driver_options: dict | None = None
+    # Transpiler
+    transpiler: str | None = None
+    # Transpiler options
+    transpiler_options: dict | None = None
+    # Circuit aggregation: internal, multi
+    circuit_aggregation: str | None = None
     # Shots
-    shots: Optional[int] = None
+    shots: int
     # Dry-run
-    dry_run: Optional[bool] = False
+    dry_run: bool
     # Progress
-    progress: Optional[int] = -1
+    progress: int | None = -1
     # Results
-    results: Optional[Union[str, int, list, dict]] = None
-    # Creation Date
-    creation_date: Optional[datetime] = None
+    results: str | int | list | dict | None = None
+    # Creation date
+    creation_date: datetime
     # End date
-    end_date: Optional[datetime] = None
+    end_date: datetime | None = None
 
 
 class GetJobsRequest(BaseModel):
@@ -212,57 +217,63 @@ class CancelJobsRequest(BaseModel):
     """Cancel Jobs Request
     Pydantic Model for Cancel Jobs Request
     """
+
     # Job IDs
-    job_ids: list[UUID] = None
+    job_ids: list[UUID]
 
 
 class CancelJobsResponse(BaseModel):
     """Cancel Jobs Response
     Pydantic Model for Cancel Jobs Response
     """
+
     # Job ID
-    job_id: UUID = None
+    job_id: UUID
     # Job status
-    job_status: str = None
+    job_status: str
 
 
 class DeleteJobsRequest(BaseModel):
     """Delete Jobs Request
     Pydantic Model for Delete Jobs Request
     """
+
     # Job IDs
-    job_ids: list[UUID] = None
+    job_ids: list[UUID]
 
 
 class DeleteJobsResponse(BaseModel):
     """Delete Jobs Response
     Pydantic Model for Delete Jobs Response
     """
+
     # Job ID
-    job_id: UUID = None
+    job_id: UUID
     # Job status
-    job_status: str = None
+    job_status: str
 
 
 class SetJobResultsRequest(BaseModel):
     """Set Job Results Request
     Pydantic Model for Set Job Results Request
     """
+
     # Job ID
-    job_id: UUID = None
+    job_id: UUID
     # Results
-    results: Optional[Union[str, int, list, dict]] = None
+    results: list
     # Errors
-    errors: Optional[Union[str, int, list, dict]] = None
+    errors: str | int | list | dict | None = None
 
 
 class SetJobResultsResponse(BaseModel):
     """Set Job Results Response
     Pydantic Model for Set Job Results Response
     """
+
     # Job ID
-    job_id: UUID = None
+    job_id: UUID
     # QC driver name
-    backend: Optional[str] = None
+    backend: str
     # Job status
-    job_status: str = None
+    job_status: str

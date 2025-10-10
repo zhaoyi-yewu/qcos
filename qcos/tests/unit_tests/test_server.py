@@ -25,9 +25,8 @@ server = Server()
 
 class TestServer:
     @patch("qcos.server.argparse.ArgumentParser")
-    @patch.object(ArgumentParser, 'parse_args')
+    @patch.object(ArgumentParser, "parse_args")
     def test__parse_arguments(self, mock_parse_args, mock_argument_parser):
-        mock_argument_parser = Mock()
         mock_args = Mock()
         mock_parse_args.return_value = mock_args
         mock_args.config_file = False

@@ -30,10 +30,14 @@ from qcos.transpiler.cmss.common.reset import Reset
 
 class GateOperation(BaseOperation):
     """中间表示类"""
+
     def __init__(
-            self, name, targets=None, arg_value=None,
-            operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
-            hermitian=True
+        self,
+        name,
+        targets=None,
+        arg_value=None,
+        operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+        hermitian=True,
     ) -> None:
         """Init GateOperation
 
@@ -69,7 +73,7 @@ class GateOperation(BaseOperation):
         其中based_gates为一个三元组（name, targets, exps）,name表示门名称，targets为
         作用比特下标列表(从0开始)，exps为参数对应的表达式，以字符串的形式表示，表达式中的操
         作数可为param中定义的形式化参数以及常量，常量中π可用pi表示
-        
+
         举例如下：
         decomposition_rule = {
             "u3":{
@@ -100,8 +104,10 @@ class GateOperation(BaseOperation):
             params_list = custom_gate.get("params", [])
             need_args = self.arg_value
             if len(params_list) != len(need_args):
-                raise DecomposeException(f"Gate: {self.name} requires arg: "
-                                         f"{need_args}, found {params_list}")
+                raise DecomposeException(
+                    f"Gate: {self.name} requires arg: "
+                    f"{need_args}, found {params_list}"
+                )
             params = dict(zip(params_list, need_args))
             params["pi"] = np.pi
             decomposed_gates = custom_gate.get("gates", [])
@@ -111,7 +117,7 @@ class GateOperation(BaseOperation):
             for name, qids, arg_value in decomposed_gates:
                 qubits = [self.targets[qid] for qid in qids]
                 # pylint: disable=eval-used
-                args = [eval(arg, params) for arg in arg_value]
+                args = [eval(arg, params) for arg in arg_value]  # noqa: S307
                 gates.append(create_gate(name, qubits, args))
             return gates
 
@@ -123,8 +129,10 @@ class GateOperation(BaseOperation):
         raise DecomposeException("please specify the decomposition gates")
 
     def __repr__(self):
-        return (f"{type(self).__name__}(targets={self.targets},"
-                f"arg_value={self.arg_value})")
+        return (
+            f"{type(self).__name__}(targets={self.targets},"
+            f"arg_value={self.arg_value})"
+        )
 
 
 # 实例化门，需包含一个默认的分解方法
@@ -135,8 +143,10 @@ class H(GateOperation):
         super().__init__(Constant.SINGLE_QUBIT_GATE_H, targets, arg_value)
 
     def default_decompose(self):
-        gates = [RY(targets=self.targets, arg_value=np.pi / 2),
-                 RX(targets=self.targets, arg_value=np.pi)]
+        gates = [
+            RY(targets=self.targets, arg_value=np.pi / 2),
+            RX(targets=self.targets, arg_value=np.pi),
+        ]
         return gates
 
 
@@ -167,8 +177,10 @@ class Z(GateOperation):
         super().__init__(Constant.SINGLE_QUBIT_GATE_Z, targets, arg_value)
 
     def default_decompose(self):
-        gates = [RY(targets=self.targets, arg_value=np.pi),
-                 RX(targets=self.targets, arg_value=np.pi)]
+        gates = [
+            RY(targets=self.targets, arg_value=np.pi),
+            RX(targets=self.targets, arg_value=np.pi),
+        ]
         return gates
 
 
@@ -180,13 +192,16 @@ class S(GateOperation):
     """
 
     def __init__(self, targets=None, arg_value=None) -> None:
-        super().__init__(Constant.SINGLE_QUBIT_GATE_S, targets, arg_value,
-                         hermitian=False)
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_S, targets, arg_value, hermitian=False
+        )
 
     def default_decompose(self):
-        gates = [RX(targets=self.targets, arg_value=3 * np.pi / 2),
-                 RY(targets=self.targets, arg_value=np.pi / 2),
-                 RX(targets=self.targets, arg_value=np.pi / 2)]
+        gates = [
+            RX(targets=self.targets, arg_value=3 * np.pi / 2),
+            RY(targets=self.targets, arg_value=np.pi / 2),
+            RX(targets=self.targets, arg_value=np.pi / 2),
+        ]
         return gates
 
 
@@ -198,13 +213,16 @@ class SDG(GateOperation):
     """
 
     def __init__(self, targets=None, arg_value=None) -> None:
-        super().__init__(Constant.SINGLE_QUBIT_GATE_SDG, targets, arg_value,
-                         hermitian=False)
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_SDG, targets, arg_value, hermitian=False
+        )
 
     def default_decompose(self):
-        gates = [RX(targets=self.targets, arg_value=3 * np.pi / 2),
-                 RY(targets=self.targets, arg_value=3 * np.pi / 2),
-                 RX(targets=self.targets, arg_value=np.pi / 2)]
+        gates = [
+            RX(targets=self.targets, arg_value=3 * np.pi / 2),
+            RY(targets=self.targets, arg_value=3 * np.pi / 2),
+            RX(targets=self.targets, arg_value=np.pi / 2),
+        ]
         return gates
 
 
@@ -215,9 +233,11 @@ class T(GateOperation):
     使得|1⟩变为e^iπ/4∣1⟩，而|0⟩分量保持不变。
     T门在Bloch球中对应于绕Z轴旋转π/4的操作。
     """
+
     def __init__(self, targets=None, arg_value=None) -> None:
-        super().__init__(Constant.SINGLE_QUBIT_GATE_T, targets, arg_value,
-                         hermitian=False)
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_T, targets, arg_value, hermitian=False
+        )
 
     def default_decompose(self):
         return list([RZ(targets=self.targets, arg_value=np.pi / 4)])
@@ -232,8 +252,9 @@ class TDG(GateOperation):
     """
 
     def __init__(self, targets=None, arg_value=None) -> None:
-        super().__init__(Constant.SINGLE_QUBIT_GATE_TDG, targets, arg_value,
-                         hermitian=False)
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_TDG, targets, arg_value, hermitian=False
+        )
 
     def default_decompose(self):
         return list([RZ(targets=self.targets, arg_value=-np.pi / 4)])
@@ -247,8 +268,9 @@ class RX(GateOperation):
     """
 
     def __init__(self, targets=None, arg_value=None) -> None:
-        super().__init__(Constant.SINGLE_QUBIT_GATE_RX, targets, arg_value,
-                         hermitian=False)
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_RX, targets, arg_value, hermitian=False
+        )
 
     def default_decompose(self):
         return list([self])
@@ -262,8 +284,9 @@ class RY(GateOperation):
     """
 
     def __init__(self, targets=None, arg_value=None) -> None:
-        super().__init__(Constant.SINGLE_QUBIT_GATE_RY, targets, arg_value,
-                         hermitian=False)
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_RY, targets, arg_value, hermitian=False
+        )
 
     def default_decompose(self):
         return list([self])
@@ -277,8 +300,9 @@ class RZ(GateOperation):
     """
 
     def __init__(self, targets=None, arg_value=None) -> None:
-        super().__init__(Constant.SINGLE_QUBIT_GATE_RZ, targets, arg_value,
-                         hermitian=False)
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_RZ, targets, arg_value, hermitian=False
+        )
 
     def default_decompose(self):
         return list([self])
@@ -293,11 +317,14 @@ class CZ(GateOperation):
     """
 
     def __init__(
-            self, targets=None, arg_value=None,
-            gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
     ) -> None:
-        super().__init__(Constant.TWO_QUBIT_GATE_CZ, targets,arg_value,
-                         gate_type)
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_CZ, targets, arg_value, gate_type
+        )
 
     def default_decompose(self):
         gates = H(targets=[self.targets[1]]).decompose()
@@ -315,11 +342,14 @@ class CX(GateOperation):
     """
 
     def __init__(
-            self, targets=None, arg_value=None,
-            gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
     ) -> None:
-        super().__init__(Constant.TWO_QUBIT_GATE_CX, targets, arg_value,
-                         gate_type)
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_CX, targets, arg_value, gate_type
+        )
 
     def default_decompose(self):
         return list([self])
@@ -334,11 +364,14 @@ class CY(GateOperation):
     """
 
     def __init__(
-            self, targets=None, arg_value=None,
-            gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
     ) -> None:
-        super().__init__(Constant.TWO_QUBIT_GATE_CY, targets, arg_value,
-                         gate_type)
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_CY, targets, arg_value, gate_type
+        )
 
     def default_decompose(self):
         gates = []
@@ -352,11 +385,14 @@ class CH(GateOperation):
     """受控Hadamard门，当控制量子比特为|1⟩时，对目标量子比特应用Hadamard门（H门）"""
 
     def __init__(
-            self, targets=None, arg_value=None,
-            gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
     ) -> None:
-        super().__init__(Constant.TWO_QUBIT_GATE_CH, targets, arg_value,
-                         gate_type)
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_CH, targets, arg_value, gate_type
+        )
 
     def default_decompose(self):
         gates = []
@@ -378,21 +414,30 @@ class CRX(GateOperation):
     """受控单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿X轴旋转θ角度"""
 
     def __init__(
-            self, targets=None, arg_value=None,
-            gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
     ) -> None:
-        super().__init__(Constant.TWO_QUBIT_GATE_CRX, targets, arg_value,
-                         gate_type, hermitian=False)
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_CRX,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
 
     def default_decompose(self):
         gates = []
         gates += H([self.targets[1]]).decompose()
         gates.append(CX(self.targets))
-        gates.append(RZ(targets=[self.targets[1]],
-                        arg_value=-self.arg_value[0] / 2))
+        gates.append(
+            RZ(targets=[self.targets[1]], arg_value=-self.arg_value[0] / 2)
+        )
         gates.append(CX(self.targets))
-        gates.append(RZ(targets=[self.targets[1]],
-                        arg_value=self.arg_value[0] / 2))
+        gates.append(
+            RZ(targets=[self.targets[1]], arg_value=self.arg_value[0] / 2)
+        )
         gates += H([self.targets[1]]).decompose()
         return gates
 
@@ -401,17 +446,26 @@ class CRY(GateOperation):
     """受控的单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿Y轴旋转θ角度"""
 
     def __init__(
-            self, targets=None, arg_value=None,
-            gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
     ) -> None:
-        super().__init__(Constant.TWO_QUBIT_GATE_CRY, targets, arg_value,
-                         gate_type, hermitian=False)
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_CRY,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
 
     def default_decompose(self):
-        gates = [CX(self.targets), RY(targets=[self.targets[1]],
-                                      arg_value=-self.arg_value[0] / 2),
-                 CX(self.targets), RY(targets=[self.targets[1]],
-                                      arg_value=self.arg_value[0] / 2)]
+        gates = [
+            CX(self.targets),
+            RY(targets=[self.targets[1]], arg_value=-self.arg_value[0] / 2),
+            CX(self.targets),
+            RY(targets=[self.targets[1]], arg_value=self.arg_value[0] / 2),
+        ]
         return gates
 
 
@@ -419,17 +473,26 @@ class CRZ(GateOperation):
     """受控的单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿Z轴旋转θ角度"""
 
     def __init__(
-            self, targets=None, arg_value=None,
-            gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
     ) -> None:
-        super().__init__(Constant.TWO_QUBIT_GATE_CRZ, targets, arg_value,
-                         gate_type, hermitian=False)
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_CRZ,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
 
     def default_decompose(self):
-        gates = [CX(self.targets), RZ(targets=[self.targets[1]],
-                                      arg_value=-self.arg_value[0] / 2),
-                 CX(self.targets), RZ(targets=[self.targets[1]],
-                                      arg_value=self.arg_value[0] / 2)]
+        gates = [
+            CX(self.targets),
+            RZ(targets=[self.targets[1]], arg_value=-self.arg_value[0] / 2),
+            CX(self.targets),
+            RZ(targets=[self.targets[1]], arg_value=self.arg_value[0] / 2),
+        ]
         return gates
 
 
@@ -437,11 +500,14 @@ class CCX(GateOperation):
     """Toffoli门，如果两个控制量子比特都处于|1⟩状态，则对目标量子比特应用X门（Pauli-X门）"""
 
     def __init__(
-            self, targets=None, arg_value=None,
-            gate_type=OperationType.TRIPLE_QUBIT_OPERATION.value
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.TRIPLE_QUBIT_OPERATION.value,
     ) -> None:
-        super().__init__(Constant.THREE_QUBIT_GATE_CCX, targets, arg_value,
-                         gate_type)
+        super().__init__(
+            Constant.THREE_QUBIT_GATE_CCX, targets, arg_value, gate_type
+        )
 
     def default_decompose(self):
         gates = []
@@ -467,8 +533,9 @@ class U1(GateOperation):
     """U1门，对应于绕Z轴的相位旋转，参数为λ"""
 
     def __init__(self, targets=None, arg_value=None) -> None:
-        super().__init__(Constant.SINGLE_QUBIT_GATE_U1, targets, arg_value,
-                         hermitian=False)
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_U1, targets, arg_value, hermitian=False
+        )
 
     def default_decompose(self):
         return list([RZ(self.targets, self.arg_value)])
@@ -478,13 +545,16 @@ class U2(GateOperation):
     """U2门，对应于 π/2 角度的极坐标旋转，参数为ϕ和λ"""
 
     def __init__(self, targets=None, arg_value=None) -> None:
-        super().__init__(Constant.SINGLE_QUBIT_GATE_U2, targets, arg_value,
-                         hermitian=False)
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_U2, targets, arg_value, hermitian=False
+        )
 
     def default_decompose(self):
-        gates = [RZ(self.targets, self.arg_value[0] + np.pi / 2),
-                 RX(self.targets, np.pi / 2),
-                 RZ(self.targets, self.arg_value[1] - np.pi / 2)]
+        gates = [
+            RZ(self.targets, self.arg_value[0] + np.pi / 2),
+            RX(self.targets, np.pi / 2),
+            RZ(self.targets, self.arg_value[1] - np.pi / 2),
+        ]
         return gates[::-1]
 
 
@@ -492,15 +562,18 @@ class U3(GateOperation):
     """U3门，对应于任意角度的极坐标旋转，参数为θ、ϕ和λ"""
 
     def __init__(self, targets=None, arg_value=None) -> None:
-        super().__init__(Constant.SINGLE_QUBIT_GATE_U3, targets, arg_value,
-                         hermitian=False)
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_U3, targets, arg_value, hermitian=False
+        )
 
     def default_decompose(self):
-        gates = [RZ(self.targets, self.arg_value[1] + np.pi * 3),
-                 RX(self.targets, np.pi / 2),
-                 RZ(self.targets, self.arg_value[0] + np.pi),
-                 RX(self.targets, np.pi / 2),
-                 RZ(self.targets, self.arg_value[2])]
+        gates = [
+            RZ(self.targets, self.arg_value[1] + np.pi * 3),
+            RX(self.targets, np.pi / 2),
+            RZ(self.targets, self.arg_value[0] + np.pi),
+            RX(self.targets, np.pi / 2),
+            RZ(self.targets, self.arg_value[2]),
+        ]
         return gates[::-1]
 
 

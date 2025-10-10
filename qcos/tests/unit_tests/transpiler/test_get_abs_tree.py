@@ -117,7 +117,7 @@ class TestGetAbsTree:
         tree = get_abs_tree(self.data)
         register_usage_found = False
         for child in tree.children:
-            if child.type == "uop" and child.leaf == [['q', 2], ['q', 3]]:
+            if child.type == "uop" and child.leaf == [["q", 2], ["q", 3]]:
                 register_usage_found = True
                 assert child.pos == 31
                 assert len(child.children) == 2

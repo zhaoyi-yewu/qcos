@@ -67,7 +67,7 @@ def pass_merge_theta(ir: list):
             break
         if ir[-1].name in ["rx", "ry", "rz", "crx", "cry", "crz", "u1"]:
             ir[-2].arg_value[0] += ir[-1].arg_value[0]
-            ir[-2].arg_value[0] %= (4 * np.pi)
+            ir[-2].arg_value[0] %= 4 * np.pi
             ir.pop(-1)
             if abs(ir[-1].arg_value[0]) < 1e-5:
                 ir.pop(-1)
@@ -93,10 +93,12 @@ def pass_u_udg(ir: list):
         if ir[-1].targets != ir[-2].targets:
             break
         # pylint: disable=too-many-boolean-expressions
-        if (ir[-1].name == "s" and ir[-2].name == "sdg") or (
-                ir[-1].name == "sdg" and ir[-2].name == "s") or (
-                ir[-1].name == "t" and ir[-2].name == "tdg") or (
-                ir[-1].name == "tdg" and ir[-2].name == "t"):
+        if (
+            (ir[-1].name == "s" and ir[-2].name == "sdg")
+            or (ir[-1].name == "sdg" and ir[-2].name == "s")
+            or (ir[-1].name == "t" and ir[-2].name == "tdg")
+            or (ir[-1].name == "tdg" and ir[-2].name == "t")
+        ):
             ir.pop(-1)
             ir.pop(-1)
             passed = True
@@ -119,7 +121,8 @@ def pass_three_gate_model(ir: list):
         if len(ir) < 3:
             break
         if (ir[-1].targets != ir[-2].targets) or (
-                ir[-1].targets != ir[-3].targets):
+            ir[-1].targets != ir[-3].targets
+        ):
             break
         if ir[-1].name == "h" and ir[-3].name == "h":
             if ir[-2].name in ("x", "z"):
@@ -128,11 +131,7 @@ def pass_three_gate_model(ir: list):
                 ir.pop(-1)
                 new_name = "z" if ori_gate.name == "x" else "x"
                 ir.append(
-                    create_gate(
-                        new_name,
-                        ori_gate.targets,
-                        ori_gate.arg_value
-                    )
+                    create_gate(new_name, ori_gate.targets, ori_gate.arg_value)
                 )
                 passed = True
                 continue
@@ -145,7 +144,7 @@ def pass_three_gate_model(ir: list):
                     create_gate(
                         ori_gate.name,
                         ori_gate.targets,
-                        -1.0 * ori_gate.arg_value[0]
+                        -1.0 * ori_gate.arg_value[0],
                     )
                 )
                 passed = True
@@ -169,8 +168,9 @@ def do_pass(ir: list):
         passed |= pass_three_gate_model(ir)
 
 
-def optimize_gate(ir: list,
-                  opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL):
+def optimize_gate(
+    ir: list, opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL
+):
     """基础门优化
 
     优化策略主要包含如下几个：

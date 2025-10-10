@@ -82,23 +82,21 @@ class TestVisitor:
         """
 
     def test_add_reg(self):
-        vist.q_var = {'q'}
+        vist.q_var = {"q"}
         with pytest.raises(SyntaxError) as context:
-            vist.add_reg('q', 2, 'qreg', 5)
+            vist.add_reg("q", 2, "qreg", 5)
         assert f"in line {5}, {'qreg'} redefined" in str(context.value)
         vist.q_var = {}
 
     def test_check_reg(self):
         with pytest.raises(NameError) as context:
-            vist.check_reg(['q', 0], RegType.QREG, 5)
-        assert (
-            f"in line {5}, qreg {'q'} is not defined" in str(
-                context.value))
+            vist.check_reg(["q", 0], RegType.QREG, 5)
+        assert f"in line {5}, qreg {'q'} is not defined" in str(context.value)
 
-        vist.q_var = {'q': 0}
+        vist.q_var = {"q": 0}
         with pytest.raises(IndexError) as context:
-            vist.check_reg(['q', 0], RegType.QREG, 5)
-        assert (f"in line {5}, creg {'q'} out of bound" in str(context.value))
+            vist.check_reg(["q", 0], RegType.QREG, 5)
+        assert f"in line {5}, creg {'q'} out of bound" in str(context.value)
         vist.q_var = {}
 
     def test_visit_program(self):

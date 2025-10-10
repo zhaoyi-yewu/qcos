@@ -22,13 +22,15 @@ class PingRequest(BaseModel):
     """Ping Request
     Pydantic Model for Ping Request
     """
+
     # message
-    message: str = None
+    message: str | None = None
 
 
 class PongResponse(BaseModel):
     """Pong Response
     Pydantic Model for Pong Response
     """
+
     # message
-    message: str = None
+    message: str | None = None

@@ -1,11 +1,45 @@
 # stages
 stages:
-  - pylint
+  # Test
+  - test
 
-# pylint
-pylint:
-  stage: pylint
+# code-linter
+code-linter:
+  stage: test
   tags:
     - sonic-runner
-  script: # pylint check
-    - pylint qcos
+  script:
+    - ./cicd/code-linter.sh
+
+# code-style
+code-style:
+  stage: test
+  tags:
+    - sonic-runner
+  script:
+    - ./cicd/code-formatter.sh
+
+# ut
+ut:
+  stage: test
+  tags:
+    - sonic-runner
+  script:
+    - ./cicd/run-tests.sh -u
+
+# coverage
+coverage:
+  stage: test
+  tags:
+    - sonic-runner
+  script:
+    - ./cicd/run-tests.sh -c
+  coverage: '/^TOTAL\s+\S+\s+\S+\s+(\d+)%$/'
+
+# st
+#st:
+#  stage: test
+#  tags:
+#    - sonic-runner
+#  script:
+#    - ./cicd/run-tests.sh -s

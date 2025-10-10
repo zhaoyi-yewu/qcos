@@ -109,7 +109,7 @@ class Library:
             return
         try:
             # Read and validate PID file content
-            with open(pid_file, 'r', encoding="utf-8") as f:
+            with open(pid_file, encoding="utf-8") as f:
                 pid_str = f.read().strip()
                 if not pid_str.isdigit():
                     raise ValueError(f"Invalid pid format: {pid_str}")
@@ -246,14 +246,14 @@ class Library:
         if os.path.isfile(file):
             try:
                 os.remove(file)
-            except Exception as e:
-                pass
+            except Exception:
+                logger.info(f"Unable to remove file: {file}")
         return True
 
     @staticmethod
     def import_classes(
-            pkg_dir, base_module_name="drivers", base_dir=None,
-            base_class=None):
+        pkg_dir, base_module_name="drivers", base_dir=None, base_class=None
+    ):
         """Import class from package dir
 
         Args:
@@ -266,10 +266,11 @@ class Library:
             class dict
         """
         classes = {}
-        for (module_loader, name, is_pkg) in pkgutil.iter_modules([pkg_dir]):
+        for module_loader, name, is_pkg in pkgutil.iter_modules([pkg_dir]):
             module_path = module_loader.path.replace(base_dir, "")
-            module_name = (f"{base_module_name}"
-                           f"{module_path.replace('/', '.')}.{name}")
+            module_name = (
+                f"{base_module_name}{module_path.replace('/', '.')}.{name}"
+            )
             module = importlib.import_module(module_name)
             for _, obj in inspect.getmembers(module):
                 if inspect.isclass(obj):
@@ -310,7 +311,7 @@ class Library:
             file content
         """
         content = None
-        with open(file_path, "r", encoding="utf-8") as file:
+        with open(file_path, encoding="utf-8") as file:
             content = file.read()
         if replace_pattern:
             content = content.format(**replace_pattern)
@@ -322,7 +323,7 @@ class Library:
     @staticmethod
     def read_csv_file(file_path):
         content_list = []
-        with open(file_path, "r", encoding="utf-8") as csv_file:
+        with open(file_path, encoding="utf-8") as csv_file:
             csv_reader = csv.reader(csv_file)
             for row in csv_reader:
                 content_list.append([int(value) for value in row])
@@ -340,7 +341,7 @@ class Library:
             success, err_msg, toml dict
         """
         try:
-            with open(file_path, 'rb') as _file:
+            with open(file_path, "rb") as _file:
                 return True, None, tomlkit.load(_file)
         except FileNotFoundError:
             return False, f"file: {file_path} does not exist", None
@@ -359,7 +360,7 @@ class Library:
             success, err_msg
         """
         try:
-            with open(file_path, 'w', encoding='utf-8') as file:
+            with open(file_path, "w", encoding="utf-8") as file:
                 tomlkit.dump(data, file)
             return True, None
         except Exception as e:
@@ -375,7 +376,7 @@ class Library:
             mode: file open mode (Default value = "w")
         """
         try:
-            with open(file_path, mode, encoding='utf-8') as file:
+            with open(file_path, mode, encoding="utf-8") as file:
                 file.write(data)
             return True, None
         except Exception as e:
@@ -404,8 +405,7 @@ class Library:
         return new_uuid
 
     @staticmethod
-    def validate_values_enum(value, param_name, value_list,
-                             allow_none=False):
+    def validate_values_enum(value, param_name, value_list, allow_none=False):
         """Validate values for enum
 
         Args:
@@ -420,8 +420,10 @@ class Library:
         if value is None and allow_none:
             return True, None
         if value not in value_list:
-            err_msg = f"Invalid params: {param_name}={value}. "\
-                      f"reason: valid values: {', '.join(value_list)}"
+            err_msg = (
+                f"Invalid params: {param_name}={value}. "
+                f"reason: valid values: {', '.join(value_list)}"
+            )
             return False, [err_msg]
         return True, None
 
@@ -439,18 +441,23 @@ class Library:
         try:
             uuid_obj = uuid.UUID(value, version=4)
             if str(uuid_obj) != value:
-                err_msg = f"Invalid params: {param_name}={value}. "\
-                          f"reason: UUID version error"
+                err_msg = (
+                    f"Invalid params: {param_name}={value}. "
+                    f"reason: UUID version error"
+                )
                 return False, [err_msg]
         except ValueError:
-            err_msg = f"Invalid params: {param_name}={value}. "\
-                      f"reason: UUID value error"
+            err_msg = (
+                f"Invalid params: {param_name}={value}. "
+                f"reason: UUID value error"
+            )
             return False, [err_msg]
         return True, None
 
     @staticmethod
     def validate_values_range(
-            value, param_name, min_value=None, max_value=None):
+        value, param_name, min_value=None, max_value=None
+    ):
         """Validate values for int range
 
         Args:
@@ -465,20 +472,24 @@ class Library:
         err_msgs = []
         if min_value:
             if value < min_value:
-                err_msgs.append(f"Invalid params: {param_name}={value}. "
-                                f"reason: value should >= {min_value}")
+                err_msgs.append(
+                    f"Invalid params: {param_name}={value}. "
+                    f"reason: value should >= {min_value}"
+                )
         if max_value:
             if value > max_value:
-                err_msgs.append(f"Invalid params: {param_name}={value}. "
-                                f"reason: value should <= {max_value}")
+                err_msgs.append(
+                    f"Invalid params: {param_name}={value}. "
+                    f"reason: value should <= {max_value}"
+                )
         if err_msgs:
             return False, err_msgs
         return True, None
 
     @staticmethod
     def validate_values_length(
-            value, param_name, min_value=None, max_value=None,
-            allow_none=False):
+        value, param_name, min_value=None, max_value=None, allow_none=False
+    ):
         """Validate values for int range
 
         Args:
@@ -498,19 +509,20 @@ class Library:
             if len(value) < min_value:
                 err_msgs.append(
                     f"Invalid params: {param_name}={value}. "
-                    f"reason: length of value should >= {min_value}")
+                    f"reason: length of value should >= {min_value}"
+                )
         if max_value:
             if len(value) > max_value:
                 err_msgs.append(
                     f"Invalid params: {param_name}={value}. "
-                    f"reason: length of value should <= {max_value}")
+                    f"reason: length of value should <= {max_value}"
+                )
         if err_msgs:
             return False, err_msgs
         return True, None
 
     @staticmethod
-    def validate_values_list(value, param_name, value_type,
-                             allow_none=False):
+    def validate_values_list(value, param_name, value_type, allow_none=False):
         """Validate values for list
 
         Args:
@@ -523,19 +535,25 @@ class Library:
             success of failed (bool), error message list
         """
         if not isinstance(value, list):
-            err_msg = f"Invalid params: {param_name}={value}. "\
-                      f"reason: type: list is required"
+            err_msg = (
+                f"Invalid params: {param_name}={value}. "
+                f"reason: type: list is required"
+            )
             return False, [err_msg]
         for _value in value:
             if not isinstance(_value, value_type):
-                err_msg = f"Invalid params: {param_name}={value}. "\
-                          f"reason: valid list element value type: "\
-                          f"{value_type}"
+                err_msg = (
+                    f"Invalid params: {param_name}={value}. "
+                    f"reason: valid list element value type: "
+                    f"{value_type}"
+                )
                 return False, [err_msg]
             if not allow_none and not _value:
-                err_msg = f"Invalid params: {param_name}={value}. "\
-                          f"reason: None or empty element in list is "\
-                          f"not allowed"
+                err_msg = (
+                    f"Invalid params: {param_name}={value}. "
+                    f"reason: None or empty element in list is "
+                    f"not allowed"
+                )
                 return False, [err_msg]
         return True, None
 
@@ -572,7 +590,7 @@ class Library:
         Args:
             qubo_matrixs: qubo matrixs to be checked
 
-        Returns: 
+        Returns:
             True or False
         """
 
@@ -581,9 +599,9 @@ class Library:
             check matrix is int8
             """
             return (
-                    np.all(np.equal(np.mod(matrix, 1), 0)) and
-                    matrix.min() >= -2 ** (Constant.MAX_QUBO_BIT_WIDTH - 1) and
-                    matrix.max() <= 2 ** (Constant.MAX_QUBO_BIT_WIDTH - 1) - 1
+                np.all(np.equal(np.mod(matrix, 1), 0))
+                and matrix.min() >= -(2 ** (Constant.MAX_QUBO_BIT_WIDTH - 1))
+                and matrix.max() <= 2 ** (Constant.MAX_QUBO_BIT_WIDTH - 1) - 1
             )
 
         def scale_to_integer_matrix(matrix):
@@ -615,7 +633,7 @@ class Library:
 
         def find_matrix_gcd(matrix):
             """
-            find the greatest common divisor (GCD) of 
+            find the greatest common divisor (GCD) of
             all non-zero elements in a matrix.
             """
             flat_values = np.array(matrix).flatten().astype(int)
@@ -741,11 +759,22 @@ class Library:
 
     @staticmethod
     def call_http_api(
-            url, method, *,
-            data=None, json=None, files=None, params=None, func_name=None,
-            headers=None, auth=None, verify_ssl=False,
-            retries=1, timeout=10, success_http_code=[200, 201],
-            debug=False):
+        url,
+        method,
+        *,
+        data=None,
+        json=None,
+        files=None,
+        params=None,
+        func_name=None,
+        headers=None,
+        auth=None,
+        verify_ssl=False,
+        retries=1,
+        timeout=10,
+        success_http_code=[200, 201],
+        debug=False,
+    ):
         """Call http api
 
         Args:
@@ -770,7 +799,8 @@ class Library:
             logger.info(
                 f"Request [{func_name}]: {url}, "
                 f"METHOD: {method.upper()}, HEADER: {headers}, "
-                f"PARAMS: {params}, DATA: {data}, JSON: {json}")
+                f"PARAMS: {params}, DATA: {data}, JSON: {json}"
+            )
         if method == HttpMethod.POST:
             request_func = requests.post
         elif method == HttpMethod.PUT:
@@ -792,7 +822,7 @@ class Library:
                 json=json,
                 auth=auth,
                 verify=verify_ssl,
-                timeout=timeout
+                timeout=timeout,
             )
             if r.status_code in success_http_code:
                 break
@@ -800,11 +830,20 @@ class Library:
 
     @staticmethod
     async def async_call_http_api(
-            url, method, *,
-            data=None, json=None, params=None, func_name=None,
-            headers=None, auth=None,
-            retries=1, timeout=10, success_http_code=[200, 201],
-            debug=False):
+        url,
+        method,
+        *,
+        data=None,
+        json=None,
+        params=None,
+        func_name=None,
+        headers=None,
+        auth=None,
+        retries=1,
+        timeout=10,
+        success_http_code=[200, 201],
+        debug=False,
+    ):
         """Async call http api
 
         Args:
@@ -829,14 +868,16 @@ class Library:
             logger.info(
                 f"Async request [{func_name}]: {url}, "
                 f"METHOD: {method}, HEADER: {headers}, PARAMS: {params}, "
-                f"DATA: {data}, JSON: {json}")
+                f"DATA: {data}, JSON: {json}"
+            )
 
         while retry_count < retries:
             try:
                 # set timeout
                 client_timeout = ClientTimeout(total=timeout)
                 async with aiohttp.ClientSession(
-                        timeout=client_timeout) as session:
+                    timeout=client_timeout
+                ) as session:
                     if method == HttpMethod.POST:
                         request_func = session.post
                     elif method == HttpMethod.PUT:
@@ -849,12 +890,13 @@ class Library:
                         request_func = requests.get
 
                     async with request_func(
-                            url,
-                            params=params,
-                            data=data,
-                            json=json,
-                            headers=headers,
-                            auth=auth) as response:
+                        url,
+                        params=params,
+                        data=data,
+                        json=json,
+                        headers=headers,
+                        auth=auth,
+                    ) as response:
                         status_code = response.status
                         description = HTTPStatus(status_code).phrase
                         if status_code in success_http_code:
@@ -866,9 +908,11 @@ class Library:
                                 await asyncio.sleep(1)
                             else:
                                 # max retries reached
-                                err_msg = (f"Error status_code: {status_code},"
-                                           f" description: {description}")
-            except (ClientError, asyncio.TimeoutError) as e:
+                                err_msg = (
+                                    f"Error status_code: {status_code},"
+                                    f" description: {description}"
+                                )
+            except (TimeoutError, ClientError) as e:
                 retry_count += 1
                 if retry_count < retries:
                     await asyncio.sleep(1)
@@ -890,10 +934,7 @@ class Library:
         """
         try:
             result = urlparse(url)
-            return all([
-                result.scheme in schemes,
-                result.netloc
-            ])
+            return all([result.scheme in schemes, result.netloc])
         except ValueError:
             return False
         return True
@@ -904,11 +945,11 @@ class Library:
         err_msgs = []
         results = {}
         try:
-            with zipfile.ZipFile(zip_filepath, 'r') as zf:
+            with zipfile.ZipFile(zip_filepath, "r") as zf:
                 file_names = zf.namelist()
                 for file_name in file_names:
                     with zf.open(file_name) as file:
-                        result = file.read().decode('utf-8')
+                        result = file.read().decode("utf-8")
                         results[file_name] = result
         except FileNotFoundError:
             err_msgs.append("Zip file: {zip_filepath} is not found")
@@ -919,8 +960,7 @@ class Library:
         return success, err_msgs, results
 
     @staticmethod
-    def loop_with_timeout(condition_check, timeout, interval,
-                          *args, **kwargs):
+    def loop_with_timeout(condition_check, timeout, interval, *args, **kwargs):
         """Wait loop with timeout
 
         Args:
@@ -993,13 +1033,15 @@ class Library:
             retries = callback.get("retries", 3)
             timeout = callback.get("timeout", 10)
             if url:
-                _success, err_msg, text, result = \
-                    Library.call_http_api(
-                        url, method,
-                        data=json.dumps(data),
-                        func_name="run_callbacks",
-                        headers=headers,
-                        retries=retries, timeout=timeout)
+                _success, err_msg, text, result = Library.call_http_api(
+                    url,
+                    method,
+                    data=json.dumps(data),
+                    func_name="run_callbacks",
+                    headers=headers,
+                    retries=retries,
+                    timeout=timeout,
+                )
                 if not _success:
                     success = False
             else:
@@ -1027,13 +1069,20 @@ class Library:
             retries = callback.get("retries", 3)
             timeout = callback.get("timeout", 10)
             if url:
-                _success, err_msg, text, result = \
-                    await Library.async_call_http_api(
-                        url, method,
-                        data=json.dumps(data, default=str),
-                        func_name="run_callbacks",
-                        headers=headers,
-                        retries=retries, timeout=timeout)
+                (
+                    _success,
+                    err_msg,
+                    text,
+                    result,
+                ) = await Library.async_call_http_api(
+                    url,
+                    method,
+                    data=json.dumps(data, default=str),
+                    func_name="run_callbacks",
+                    headers=headers,
+                    retries=retries,
+                    timeout=timeout,
+                )
                 if not _success:
                     success = False
             else:
@@ -1075,14 +1124,16 @@ class Library:
                 _value = value
                 if reverse_flag != 1:
                     tzinfo = value.tzinfo
-                    future_datetime = datetime(2999, 12, 31, 23, 59, 59, 0,
-                                               tzinfo)
+                    future_datetime = datetime(
+                        2999, 12, 31, 23, 59, 59, 0, tzinfo
+                    )
                     _value = future_datetime - value
                 key_tuple.append(_value)
             else:
                 # handling other data types
                 key_tuple.append(
-                    value if reverse_flag == 1 else str(value)[::-1])
+                    value if reverse_flag == 1 else str(value)[::-1]
+                )
         return tuple(key_tuple)
 
     @staticmethod
@@ -1106,10 +1157,9 @@ class Library:
         result_value_weight_range = (80, 100)
 
         # 1. generate all binary-bit combinations
-        total_combinations = 2 ** bit_length
+        total_combinations = 2**bit_length
         combinations = [
-            bin(num)[2:].zfill(bit_length)
-            for num in range(total_combinations)
+            bin(num)[2:].zfill(bit_length) for num in range(total_combinations)
         ]
 
         # 2. generate random weights
@@ -1117,9 +1167,13 @@ class Library:
 
         # 3. calculate and assign counts to combinations
         length = len(combinations)
-        first_value_count = int(random.randint(result_value_weight_range[0],
-                                               result_value_weight_range[1])
-                                * total_count / 100)
+        first_value_count = int(
+            random.randint(
+                result_value_weight_range[0], result_value_weight_range[1]
+            )
+            * total_count
+            / 100
+        )
         current_total_count = 0
         i = 0
         for combo, weight in zip(combinations, weights):
@@ -1128,8 +1182,11 @@ class Library:
             elif i == length - 1:
                 combo_count = total_count - current_total_count
             else:
-                combo_count = math.ceil(random.randint(0, 1) * (
-                        total_count - first_value_count) / length)
+                combo_count = math.ceil(
+                    random.randint(0, 1)
+                    * (total_count - first_value_count)
+                    / length
+                )
                 if current_total_count >= combo_count:
                     combo_count = 0
             current_total_count += combo_count
@@ -1151,7 +1208,7 @@ class Library:
         """
         # create md5 hash object
         md5_hash = hashlib.md5()
-        md5_hash.update(text.encode('utf-8'))
+        md5_hash.update(text.encode("utf-8"))
 
         # get hex hash
         encrypted_text = md5_hash.hexdigest()

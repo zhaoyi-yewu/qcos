@@ -26,13 +26,19 @@ from qcos.task_manager import TaskScheduler
 class TestApiServer:
     @patch.object(TaskScheduler, "start_taskmanager")
     @patch.object(Server, "run")
-    @patch('qcos.api_server.asyncio.get_event_loop')
+    @patch("qcos.api_server.asyncio.get_event_loop")
     @patch.object(Library, "create_pid_file")
     @patch.object(Library, "mkdir")
     @patch.object(Library, "kill_pid")
-    def test_main(self, mock_kill_pid, mock_mkdir,
-                  mock_create_pid_file, mock_get_event_loop,
-                  mock_run, mock_start_taskmanager):
+    def test_main(
+        self,
+        mock_kill_pid,
+        mock_mkdir,
+        mock_create_pid_file,
+        mock_get_event_loop,
+        mock_run,
+        mock_start_taskmanager,
+    ):
         mock_start_taskmanager.return_value = None
         mock_run.return_value = None
         mock_loop = Mock()

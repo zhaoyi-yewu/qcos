@@ -111,6 +111,11 @@ include = ["*"]
 exclude = []
 namespaces = true
 
+[tool.isort]
+profile = "black"
+force_grid_wrap = "2"
+known_first_party = "qcos"
+
 [tool.mypy]
 incremental = true
 pretty = true
@@ -130,6 +135,11 @@ files = "qcos"
 [tool.ruff]
 line-length = 79
 target-version = "py311"
+exclude = [
+    ".venv/",
+    ".git/",
+    "__pycache__/",
+]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "S", "U"]
@@ -137,17 +147,38 @@ ignore = [
     "E731",  # Do not assign a `lambda` expression, use a `def`
     "E741",  # Ambiguous variable name: `l`
     "S104",  # Possible binding to all interfaces
+    "S311",  # Standard pseudo-random generators are not suitable for
+             # cryptographic purposes
+    "S324",  # Probable use of insecure hash functions in `hashlib`: `md5`
     "UP009", # UTF-8 encoding declaration is unnecessary
     "UP031", # Use format specifiers instead of percent format
     "UP032", # Use f-string instead of `format` call
-    "UP018",  # Unnecessary `int` call (rewrite as a literal)
-    "UP024",  # Replace aliased errors with `OSError`
-    "UP030",  # Use implicit references for positional format fields
-    "UP038",  # Use `X | Y` in `isinstance` call instead of `(X, Y)`
-    "UP039",  # Unnecessary parentheses after class definition
+    "UP018", # Unnecessary `int` call (rewrite as a literal)
+    "UP024", # Replace aliased errors with `OSError`
+    "UP030", # Use implicit references for positional format fields
+    "UP038", # Use `X | Y` in `isinstance` call instead of `(X, Y)`
+    "UP039", # Unnecessary parentheses after class definition
 ]
 
 [tool.ruff.lint.per-file-ignores]
+"qcos/tests/**/*.py" = ["S101"]
+"qcos/**/*.py" = ["F401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["qcos"]
+known-third-party = ["requests", "pandas", "numpy"]
+lines-after-imports = 2
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+skip-magic-trailing-comma = false
+line-ending = "auto"
+exclude = [
+    "qcos/transpiler/cmss/compiler/parser.py",
+    "qcos/transpiler/cmss/compiler/visitor.py",
+]
 
 [tool.poetry.extras]
 docs = ["Sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon"]

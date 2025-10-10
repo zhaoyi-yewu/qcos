@@ -25,12 +25,15 @@ class StLibrary:
 
     @staticmethod
     def get_results(client, job_id):
-        _status_code, _reason, _text, _response = \
-            client.get_job_results(job_id)
+        _status_code, _reason, _text, _response = client.get_job_results(
+            job_id
+        )
         job_result = json.loads(_text)
         job_status = job_result["result"]["job_status"]
-        if job_status in [Constant.JOB_STATUS_COMPLETED,
-                          Constant.JOB_STATUS_FAILED,
-                          Constant.JOB_STATUS_CANCELLED]:
+        if job_status in [
+            Constant.JOB_STATUS_COMPLETED,
+            Constant.JOB_STATUS_FAILED,
+            Constant.JOB_STATUS_CANCELLED,
+        ]:
             return True
         return False

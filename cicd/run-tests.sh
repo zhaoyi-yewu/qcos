@@ -74,8 +74,8 @@ fi
 
 
 function run_pep8 {
-    echo "[Running flake8]"
-    ${wrapper} "flake8"
+    echo "[Running pep8 check]"
+    ${wrapper} "${TOP_DIR}/cicd/code-formatter.sh"
     pep8_success=$?
     echo
 }
@@ -154,10 +154,10 @@ function print_report {
     fi
 
     echo "[QCOS Test Results]"
-    echo "Flask8 Python PEP8 coding style check: [$pep8_result]"
-    echo "Unit tests check                     : [$unit_test_result]"
-    echo "Code coverage check                  : [$coverage_result]"
-    echo "System tests check                   : [$system_test_result]"
+    echo "Python PEP8 coding style check: [$pep8_result]"
+    echo "Unit tests check              : [$unit_test_result]"
+    echo "Code coverage check           : [$coverage_result]"
+    echo "System tests check            : [$system_test_result]"
 
     if [ $failure = true ]; then
         exit 1

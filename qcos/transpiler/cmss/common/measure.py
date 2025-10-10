@@ -23,7 +23,9 @@ class Measure(BaseOperation):
     """测量操作，用于测量量子比特的状态，将其从量子态转换为经典态"""
 
     def __init__(
-            self, targets=None, arg_value=None,
-            operation_type=OperationType.MEASURE.value
+        self,
+        targets=None,
+        arg_value=None,
+        operation_type=OperationType.MEASURE.value,
     ) -> None:
         super().__init__("measure", targets, arg_value, operation_type)

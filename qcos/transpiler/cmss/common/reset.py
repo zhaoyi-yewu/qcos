@@ -23,7 +23,9 @@ class Reset(BaseOperation):
     """重置操作，用于将量子比特重置到|0> 态"""
 
     def __init__(
-            self, targets=None, arg_value=None,
-            operation_type=OperationType.RESET.value
+        self,
+        targets=None,
+        arg_value=None,
+        operation_type=OperationType.RESET.value,
     ) -> None:
         super().__init__("reset", targets, arg_value, operation_type)
