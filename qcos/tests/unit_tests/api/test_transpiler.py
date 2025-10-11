@@ -17,29 +17,46 @@
 
 from unittest.mock import Mock, patch
 
-from qcos.api.posiq.routes_jsonrpc.transpiler import (get_transpilers,
-                                                      get_transpiler)
+from qcos.api.posiq.routes_jsonrpc.transpiler import (
+    get_transpilers,
+    get_transpiler,
+)
 from qcos.api.schemas import GetTranspilerRequest
 from qcos.common.constant import Constant
 from qcos.task_manager import TaskScheduler
 from qcos.transpiler.transpiler_base import TranspilerBase
 from qcos.transpiler.transpiler_manager import TranspilerManager
 
+response_info = {
+    "name": "",
+    "alias_name": "",
+    "version": "",
+    "supported_code_types": [],
+    "transpiler_options": {},
+    "transpiler_options_schema": {},
+    "enable": True,
+}
+
 
 class TestTranspiler:
-    @patch.object(TranspilerManager, 'get_transpilers')
-    @patch.object(TaskScheduler, 'get_transpiler_manager')
-    def test_get_transpilers(self, mock_get_transpiler_manager,
-                             mock_get_transpilers):
+    @patch.object(TranspilerManager, "get_transpilers")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    def test_get_transpilers(
+        self, mock_get_transpiler_manager, mock_get_transpilers
+    ):
         mock_get_transpiler_manager.return_value = TranspilerManager()
         mock_get_transpilers.return_value = {}
         mock_client = Mock(spec=GetTranspilerRequest)
         get_transpilers(mock_client)
 
-    @patch.object(TranspilerManager, 'get_transpiler')
-    @patch.object(TaskScheduler, 'get_transpiler_manager')
-    def test_get_transpiler(self, mock_get_transpiler_manager,
-                            mock_get_transpiler):
+    @patch("qcos.api.posiq.routes_jsonrpc.transpiler._get_transpiler_info")
+    @patch.object(TranspilerManager, "get_transpiler")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    def test_get_transpiler(
+        self, mock_get_transpiler_manager, mock_get_transpiler,
+        mock_get_transpiler_info
+    ):
+        mock_get_transpiler_info.return_value = response_info
         mock_get_transpiler_manager.return_value = TranspilerManager()
         mock_get_transpiler.return_value = TranspilerBase()
         mock_client = Mock(spec=GetTranspilerRequest)

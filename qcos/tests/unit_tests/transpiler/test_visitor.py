@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import os
 import pytest
 
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree
@@ -103,3 +104,4 @@ class TestVisitor:
     def test_visit_program(self):
         tree = get_abs_tree(self.data_2)
         vist.visit_program(tree)
+        os.remove("log_file")

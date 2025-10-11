@@ -18,21 +18,40 @@
 from unittest.mock import Mock, patch
 
 from qcos.api.posiq.routes_jsonrpc.driver import get_drivers, get_driver
-from qcos.api.schemas import GetDriverRequest
+from qcos.common.config import Config
 from qcos.common.constant import Constant
-from qcos.drivers.driver_base import DriverBase
 from qcos.drivers.driver_manager import DriverManager
+from qcos.drivers.dummy.driver_dummy import DriverDummy
 from qcos.task_manager import TaskScheduler
 from qcos.transpiler.transpiler_base import TranspilerBase
 from qcos.transpiler.transpiler_manager import TranspilerManager
+
+
+response_info = {
+    'alias_name': Constant.TECH_TYPE_NEUTRAL_ATOM,
+    'description': Constant.TECH_TYPE_NEUTRAL_ATOM,
+    'enable_circuit_aggregation': True,
+    'enable_transpiler': True,
+    'max_qubits': 10,
+    'name': Constant.TRANSPILER_DUMMY,
+    'results_fetch_mode': Constant.RESULTS_FETCH_MODE_SYNC,
+    'supported_basis_gates': [Constant.SINGLE_QUBIT_GATE_X,
+                              Constant.SINGLE_QUBIT_GATE_Y],
+    'supported_code_types': [],
+    'supported_transpilers': [Constant.TRANSPILER_CMSS],
+    'tech_type': Constant.TECH_TYPE_NEUTRAL_ATOM,
+    'transpiler': Constant.TRANSPILER_CMSS,
+    'version': Config.VERSION
+}
 
 
 class TestDriver:
     @classmethod
     def setup_class(cls):
         cls.dummy = Constant.TRANSPILER_DUMMY
-    @patch.object(DriverManager, 'get_drivers')
-    @patch.object(TaskScheduler, 'get_driver_manager')
+
+    @patch.object(DriverManager, "get_drivers")
+    @patch.object(TaskScheduler, "get_driver_manager")
     def test_get_drivers(self, mock_get_driver_manager, mock_get_drivers):
         mock_get_drivers.return_value = {}
         mock_get_driver_manager.return_value = DriverManager()
@@ -40,16 +59,26 @@ class TestDriver:
         mock_client.name = self.dummy
         get_drivers(mock_client)
 
-    @patch.object(TranspilerManager, 'get_transpiler')
-    @patch.object(TaskScheduler, 'get_transpiler_manager')
-    @patch.object(DriverManager, 'get_driver')
-    @patch.object(TaskScheduler, 'get_driver_manager')
-    def test_get_driver(self, mock_get_driver_manager, mock_get_driver,
-                        mock_get_transpiler_manager, mock_get_transpiler):
+    @patch("qcos.api.posiq.routes_jsonrpc.driver._get_driver_info")
+    @patch.object(TranspilerManager, "get_transpiler")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    @patch.object(DriverManager, "get_driver")
+    @patch.object(TaskScheduler, "get_driver_manager")
+    def test_get_driver(
+        self,
+        mock_get_driver_manager,
+        mock_get_driver,
+        mock_get_transpiler_manager,
+        mock_get_transpiler,
+        mock__get_driver_info,
+    ):
         mock_get_transpiler.return_value = TranspilerBase()
         mock_get_transpiler_manager.return_value = TranspilerManager()
-        mock_get_driver.return_value = DriverBase()
+        return_dummy = DriverDummy()
+        return_dummy.name = self.dummy
+        mock_get_driver.return_value = return_dummy
         mock_get_driver_manager.return_value = DriverManager()
+        mock__get_driver_info.return_value = response_info
         mock_client = Mock()
         mock_client.name = self.dummy
         get_driver(mock_client)

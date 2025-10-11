@@ -18,6 +18,7 @@
 from unittest.mock import patch
 
 from qcos.common.library import Library
+from qcos.drivers.driver_base import DriverBase
 from qcos.drivers.dummy.driver_dummy import DriverDummy
 
 driver_dummy = DriverDummy()
@@ -59,6 +60,8 @@ class TestDriverDummy:
     def test_close_driver(self):
         assert driver_dummy.close_driver() is None
 
-    def test_run(self):
+    @patch.object(DriverBase, "get_fake_results")
+    def test_run(self, mock_get_fake_results):
+        mock_get_fake_results.return_value = "fake"
         assert driver_dummy.run(job_id, num_qubits,
                                 qasm_str, data_type) is None
