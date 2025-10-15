@@ -18,35 +18,23 @@
 import csv
 import json
 import os
-import random
 import tempfile
 from datetime import datetime, timedelta
 
 from loguru import logger
 
-from qcos.common.constant import Constant, HttpCode, HttpMethod
+from qcos.common.constant import HttpCode, HttpMethod
 from qcos.common.library import Library
 from qcos.drivers.device import Device
-from qcos.drivers.driver_base import DriverBase
+from qcos.drivers.qboson.driver_tiangong_base import DriverTiangongBase
 
 
-class DriverTiangong100(DriverBase):
+class DriverTiangong100(DriverTiangongBase):
     """玻色量子-天工100 光量子伊辛机驱动
 
     Qboson Tiangong100 driver
     CQ-D-100
     """
-
-    # http request headers
-    default_headers = {
-        "accept": "application/json, text/plain, */*",
-        "accept-language": "zh-CN",
-    }
-    auth_headers = {
-        "accept": "application/json, text/plain, */*",
-        "accept-language": "zh-CN",
-        "Authorization": None,
-    }
 
     # url path
     login_path = "kdev/terminal/login"
@@ -92,12 +80,7 @@ class DriverTiangong100(DriverBase):
         self.version = "0.0.1"
         self.alias_name = "玻色量子-天工100 光量子伊辛机驱动"
         self.description = "玻色量子-天工100 光量子伊辛机驱动"
-        self.enable_transpiler = False
-        self.tech_type = Constant.TECH_TYPE_PHOTON
         self.max_qubits = 100
-        self.default_data_type = DriverBase.DATA_TYPE_QUBO
-        self.supported_code_types = [Constant.CODE_TYPE_QUBO]
-        self.token = None
         self.base_url = None
         # task stages and percentages
         self.task_stages = {
@@ -126,7 +109,7 @@ class DriverTiangong100(DriverBase):
         # pylint: disable=line-too-long
         # noqa: E501
         """
-        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
+        super().init_driver()
 
     def validate_driver_configs(self, configs):
         """Validate driver configs
@@ -156,17 +139,6 @@ class DriverTiangong100(DriverBase):
             err_msg = f"driver config file error: {_err_msg}"
             success = False
         return success, err_msg
-
-    def close_driver(self):
-        """Close driver"""
-
-    def fetch_configs(self):
-        """
-        Fetch configs
-
-        Returns:
-            remote transpiler configs
-        """
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
         """Run job
@@ -289,16 +261,6 @@ class DriverTiangong100(DriverBase):
         self.set_results(job_id, data_index, results=results)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
-
-    def cancel(self, job_id):
-        """Cancel running job in driver.
-
-        Driver should clean up any resources of the job
-
-        Args:
-            job_id: job ID
-        """
-        logger.info(f"Cancel job: job_id: {job_id}")
 
     def user_auth(self, username, password):
         """User authorization
@@ -613,25 +575,3 @@ class DriverTiangong100(DriverBase):
             success = False
             err_msgs.append(reason)
         return success, "\n".join(err_msgs)
-
-    def get_fake_results(self, num_qubits, shots, data):
-        """Get fake results
-
-        Args:
-            num_qubits: number of qubits
-            shots: number of shots
-            data: source data
-        """
-        results = []
-        for i in range(10):  # return 10 best solutions is enough
-            code_length = len(data.get("source_code", [])[0])
-            result = {
-                "result": i + 1,
-                "quboValue": -112,
-                "maxcutValue": 28.0,
-                "solutionVector": [
-                    random.randint(0, 1) for _ in range(code_length)
-                ],
-            }
-            results.append(result)
-        return results
