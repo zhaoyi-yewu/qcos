@@ -19,9 +19,9 @@ import logging
 from pathlib import Path
 import time
 
-from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
-from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
-from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
+from qcos.common.constant import Constant
+from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
+from qcos.transpiler.qiskit.transpiler_qiskit import TranspilerQiskit
 
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class Timer:
 
 
 def main():
-    relative_path = "samples/qasm/3.0/benchmark/100bits_50000d.qasm"
+    relative_path = "samples/qasm/3.0/benchmark/100bits_50000d_v2.qasm"
     file_path = Path(relative_path).resolve()
 
     if not file_path.exists():
@@ -61,32 +61,28 @@ def main():
         logger.error("read file failure")
         return
 
+    expected_basis_gates = [
+        Constant.SINGLE_QUBIT_GATE_RX,
+        Constant.SINGLE_QUBIT_GATE_RY,
+        Constant.SINGLE_QUBIT_GATE_RZ,
+        Constant.TWO_QUBIT_GATE_CX,
+    ]
+    trans_cfg_inst.set_driver_name("DriverQiskitAerSim")
+
+    transpiler = TranspilerQiskit()
+    src_code_info = {"000": qasm_data}
+
     # performace testing
     logger.info("开始性能测试...")
     with Timer() as total_timer:
         # generate abs tree
-        with Timer() as ast_timer:
-            tree = get_abs_tree(qasm_data)
-        logger.info(f"生成抽象语法树耗时: {ast_timer.elapsed:.4f}秒")
+        with Timer() as parse_timer:
+            parse_result = transpiler.parse(src_code_info)
+        logger.info(f"解析QASM文件耗时: {parse_timer.elapsed:.4f}秒")
 
         # generate IR
-        with Timer() as ir_timer:
-            q_num, ir = get_ir(tree)
-        logger.info(f"转换为IR耗时: {ir_timer.elapsed:.4f}秒")
+        with Timer() as tranpile_timer:
+            _ = transpiler.transpile(parse_result, expected_basis_gates)
+        logger.info(f"编译量子电路: {tranpile_timer.elapsed:.4f}秒")
 
-        # optimize IR
-        with Timer() as opt1_timer:
-            optimized_ir = optimize_gate(ir)
-        logger.info(f"IR优化耗时: {opt1_timer.elapsed:.4f}秒")
-
-        # decompose gate by rules
-        with Timer() as decompose_timer:
-            transpiled_gates = decompose_gates(optimized_ir)
-        logger.info(f"门分解耗时: {decompose_timer.elapsed:.4f}秒")
-
-        # optimize the transpiled gates
-        with Timer() as opt2_timer:
-            optimize_gate(transpiled_gates)
-        logger.info(f"门电路优化耗时: {opt2_timer.elapsed:.4f}秒")
-
-    logger.info(f"\n整个流程总耗时: {total_timer.elapsed:.4f}秒")
+    logger.info(f"\n整个流程Qiskit总耗时: {total_timer.elapsed:.4f}秒")

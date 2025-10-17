@@ -19,6 +19,7 @@ from loguru import logger
 from schema import Optional
 
 import qiskit
+import qiskit.qasm3
 from qiskit_aer import QasmSimulator, AerSimulator
 
 from qcos.common.constant import Constant
@@ -64,9 +65,13 @@ class TranspilerQiskit(TranspilerBase):
             parse result
         """
         if isinstance(src_code_dict, dict) and len(src_code_dict) == 1:
-            source_code = next(iter(src_code_dict.values()))
+            source_code: str = next(iter(src_code_dict.values()))
             logger.info(f"source_code:\n{source_code}")
-            parse_result = qiskit.QuantumCircuit.from_qasm_str(source_code)
+            if "OPENQASM 3.0" in source_code:
+                parse_result = qiskit.qasm3.loads(source_code)
+            else:
+                parse_result = qiskit.QuantumCircuit.from_qasm_str(source_code)
+
             self.total_qubits = parse_result.num_qubits
             return parse_result
         else:

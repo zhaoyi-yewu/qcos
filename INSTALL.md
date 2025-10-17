@@ -22,7 +22,7 @@ vim .env
 # PIP_MIRROR地址格式示例: http://mirrors.cmecloud.cn/pip/simple
 # 5. DEBUG是内部开发使用的调试开关, 可以配成默认的False
 # 6. LOCAL_CICD是本地CICD的标记开关, 可以配成默认的False
-# 7. REGISTRY为Docker容器私有镜像仓库地址, 如果本机可以访问DockerHubze可以留空
+# 7. REGISTRY为Docker容器私有镜像仓库地址, 如果本机可以访问DockerHub, 则可以留空
 ```
 
 ### 1.3 编译qcos容器镜像
@@ -56,7 +56,7 @@ pip3 install -r ./requirements.txt -r ./test-requirements.txt
 ```
 
 ### 2.2 编译
-#### 2.2.1 基于poetry编译wheel包 
+#### 2.2.1 基于poetry编译wheel包
 ```shell
 # BCLinux/CentOS/OpenEuler环境下示例:
 cd build-scripts
