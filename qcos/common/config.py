@@ -49,6 +49,9 @@ class Config:
     # [DEVICES]
     DEVICE_LIST = []
 
+    # valid sections
+    VALID_SECTIONS = ["DEFAULT", "API_SERVER", "DEVICES"]
+
     # extra configs from .toml files
     EXTRA_CONFIGS = {}
 
@@ -73,15 +76,22 @@ class Config:
                     cls.EXTRA_CONFIGS[section][key] = value
         else:
             for section, options in config_values.items():
-                for option in options.items():
-                    key, value = option
-                    key_upper = key.upper()
-                    if hasattr(cls, key_upper):
-                        setattr(cls, key_upper, value)
-                    else:
-                        raise errors.GenericException(
-                            f"Can't find config key: {key}"
-                        )
+                if section in Config.VALID_SECTIONS:
+                    for option in options.items():
+                        key, value = option
+                        key_upper = key.upper()
+                        if hasattr(cls, key_upper):
+                            setattr(cls, key_upper, value)
+                        else:
+                            raise errors.GenericException(
+                                f"Can't find config key: {key}"
+                            )
+                else:
+                    for option in options.items():
+                        key, value = option
+                        if section not in cls.EXTRA_CONFIGS:
+                            cls.EXTRA_CONFIGS[section] = {}
+                        cls.EXTRA_CONFIGS[section][key] = value
 
     @classmethod
     def validate(cls):

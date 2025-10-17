@@ -21,14 +21,12 @@ BASE_DIR=$(readlink -f ${BASE_DIR})
 TOP_DIR=$(readlink -f ${BASE_DIR}/..)
 OUTPUT_DIR=${BASE_DIR}/output
 RPM_TOP_DIR=${OUTPUT_DIR}/rpmbuild
+RPM_SPEC_DIR=${BASE_DIR}/cli/rpm-specs
 
-VERSION=1.0.0
-DIST=.oe1
+QCOS_CLI_VERSION=${CLI_PKG_VERSION:-1.0.0}
+QCOS_CLI_DIST=${CLI_PKG_DIST:-.oe1}
 
 # create qcos-client rpm package
-# clean temp dirs
-rm -rf ${RPM_TOP_DIR} ${OUTPUT_DIR}/dist
-
 # create rpmbuild dirs
 mkdir -p ${RPM_TOP_DIR}/SOURCES ${RPM_TOP_DIR}/BUILD \
   ${RPM_TOP_DIR}/BUILDROOT ${RPM_TOP_DIR}/RPMS \
@@ -36,15 +34,12 @@ mkdir -p ${RPM_TOP_DIR}/SOURCES ${RPM_TOP_DIR}/BUILD \
 
 # create source sdist file
 cd ${TOP_DIR}
-python3 ${TOP_DIR}/setup.py sdist --formats=gztar -d ${OUTPUT_DIR}/dist
-
-# mv source sdist file to .rpmbuild/SOURCES/
-mv ${OUTPUT_DIR}/dist/qcos-${VERSION}.tar.gz ${RPM_TOP_DIR}/SOURCES/
+tar czvf ${RPM_TOP_DIR}/SOURCES/qcos-${QCOS_CLI_VERSION}.tar.gz --transform "s#^#qcos-${QCOS_CLI_VERSION}/#g" ./setup.py LICENSE qcos bin/qcos-cli.py
 
 # build rpm package
-rpmbuild -v --nodeps -ba ${TOP_DIR}/rpm-specs/qcos-client.spec \
-  --define="_topdir ${RPM_TOP_DIR}" --define="version ${VERSION}" \
-  --define="dist ${DIST}"
+rpmbuild -v --nodeps -ba ${RPM_SPEC_DIR}/qcos-client.spec \
+  --define="_topdir ${RPM_TOP_DIR}" --define="version ${QCOS_CLI_VERSION}" \
+  --define="dist ${QCOS_CLI_DIST}"
 
 # print results
 echo

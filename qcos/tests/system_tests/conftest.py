@@ -28,6 +28,9 @@ GLOBAL_CONFIGS = {}
 SAMPLES = {}
 
 
+default_qcos_st_config_path = "/etc/qcos/qcos-st.toml"
+
+
 def pytest_addoption(parser):
     parser.addoption(
         "--env",
@@ -39,8 +42,9 @@ def pytest_addoption(parser):
     parser.addoption(
         "--config-path",
         dest="config_path",
-        default="/etc/qcos/qcos-st.toml",
-        help="Specify config file path",
+        default=default_qcos_st_config_path,
+        help="Specify config file path, default: "
+        f"{default_qcos_st_config_path}",
     )
 
 
@@ -61,7 +65,7 @@ def global_configs(request):
     api_server = config.get("API_SERVER", {})
     api_host = api_server.get("API_SERVER_IP", "127.0.0.1")
     api_port = api_server.get("API_SERVER_PORT", Config.API_SERVER_LISTEN_PORT)
-    client = Client(api_listen_ip=api_host, api_port=api_port)
+    client = Client(api_server_ip=api_host, api_server_port=api_port)
     GLOBAL_CONFIGS["client"] = client
     GLOBAL_CONFIGS["timeout"] = 30
     GLOBAL_CONFIGS["interval"] = 5

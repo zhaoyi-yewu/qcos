@@ -23,6 +23,7 @@ BUILD_CONTEXT=${abs_cwd}/.build-context
 # create temp dir build-context
 rm -rf ${BUILD_CONTEXT}
 mkdir -p ${BUILD_CONTEXT}
+mkdir -p ${BUILD_CONTEXT}/pkg
 
 # create yum repo file
 if [ -n "${YUM_MIRROR}" ]; then
@@ -81,8 +82,15 @@ trusted-host=$(echo "${PIP_MIRROR#*://}" | awk -F[/:] '{print $1}')
 EOM
 fi
 
+# get commit id and save to file
+git_commit_id=$(git rev-parse HEAD 2>/dev/null || echo "")
+echo ${git_commit_id} > ${top_dir}/latest-commit-id.txt
+
 # copy dirs/files to build-context
-files=("qcos" "etc" "requirements.txt" "test-requirements.txt" "build-scripts/entrypoint.sh" "bin/qcos-api.py" "bin/qcos-cli.py" "bin/qcos-transpiler.py")
+files=("latest-commit-id.txt" "qcos" "etc" "requirements.txt" \
+       "test-requirements.txt" "build-scripts/qcos/entrypoint.sh" \
+       "build-scripts/cli/entrypoint.sh" "bin/qcos-api.py" "bin/qcos-cli.py" \
+       "bin/qcos-transpiler.py")
 for file_path in "${files[@]}"; do
   src=${top_dir}/${file_path}
   dst=${BUILD_CONTEXT}/

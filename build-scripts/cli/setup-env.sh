@@ -13,21 +13,17 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-source ./setup-env.sh
+set -e
 
-export QCOS_LOCAL_SRC_DIR="${top_dir}"
+BASE_DIR=$(dirname "${BASH_SOURCE[0]}")
+BASE_DIR=$(readlink -f ${BASE_DIR})
+TOP_DIR=$(readlink -f ${BASE_DIR}/../..)
+BUILD_SCRIPTS_DIR=${TOP_DIR}/build-scripts
+OUTPUT_DIR=${BUILD_SCRIPTS_DIR}/output/dist
 
-echo "Creating QCOS dockers ..."
-# copy config files
-mkdir -p /etc/qcos/prefect
-mkdir -p /var/qcos/db
-
-if [ "${DEV,,}" = "false" ]; then
-  docker-compose -f docker-compose.yaml down
-  docker-compose -f docker-compose.yaml up -d
-  echo "Run QCOS bash: docker exec -it qcos bash"
-else
-  docker-compose -f docker-compose-dev.yaml down
-  docker-compose -f docker-compose-dev.yaml up -d
-  echo "Run QCOS bash: docker exec -it qcos-dev bash"
+env_file=${BUILD_SCRIPTS_DIR}/.env
+if ! [ -f "${env_file}" ]; then
+    echo "Error: can't find config file: '${env_file}'"
+    exit 1
 fi
+source ${env_file}

@@ -13,21 +13,23 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-source ./setup-env.sh
+set -e
 
-export QCOS_LOCAL_SRC_DIR="${top_dir}"
+echo "Creating K8s QCOS pods ..."
 
-echo "Creating QCOS dockers ..."
-# copy config files
-mkdir -p /etc/qcos/prefect
-mkdir -p /var/qcos/db
-
-if [ "${DEV,,}" = "false" ]; then
-  docker-compose -f docker-compose.yaml down
-  docker-compose -f docker-compose.yaml up -d
-  echo "Run QCOS bash: docker exec -it qcos bash"
-else
-  docker-compose -f docker-compose-dev.yaml down
-  docker-compose -f docker-compose-dev.yaml up -d
-  echo "Run QCOS bash: docker exec -it qcos-dev bash"
+if [ ! -f .env ]; then
+  echo "Can't find file .env"
+  exit 1
 fi
+
+k8s_namespace="default"
+export PREFECT_SERVER_PORT=${PREFECT_SERVER_PORT:-4200}
+export QCOS_API_PORT=${QCOS_API_PORT:-4200}
+export PREFECT_IMAGE_NAME=${PREFECT_IMAGE_NAME:-prefecthq/prefect}
+export PREFECT_IMAGE_VERSION=${PREFECT_IMAGE_VERSION:-3.3.3-python3.13}
+export QCOS_IMAGE_NAME=${QCOS_IMAGE_NAME:-qcos}
+export QCOS_IMAGE_VERSION=${QCOS_IMAGE_VERSION:-2025-06-01}
+
+export $(grep -v '^#' .env | xargs)
+envsubst < ./k8s-qcos-single.yaml | cat
+# envsubst < ./k8s-qcos-single.yaml | kubectl apply -n ${k8s_namespace} -f -

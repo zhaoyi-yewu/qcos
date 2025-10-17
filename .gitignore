@@ -27,6 +27,7 @@ lib64
 
 # Installer logs
 pip-log.txt
+latest-commit-id.txt
 
 # Unit test / coverage reports
 cicd/.coverage

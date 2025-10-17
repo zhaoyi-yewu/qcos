@@ -11,4 +11,6 @@ API_LOG_FILE = "/var/log/qcos/qcos-api.log"
 PREFECT_LOG_FILE = "/var/log/qcos/qcos-prefect.log"
 
 [DEVICES]
-DEVICE_LIST = ["dummy", "hanyuan1", "tiangong100", "spinq_rpc", "qiskit_aer_sim", "qiskit_qasm_sim"]
+# DEVICE_LIST example:
+# DEVICE_LIST = ["dummy", "hanyuan1", "tiangong100", "spinq_rpc", "qiskit_aer_sim", "qiskit_qasm_sim"
+DEVICE_LIST = ["dummy"]

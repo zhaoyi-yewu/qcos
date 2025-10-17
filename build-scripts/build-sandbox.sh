@@ -13,21 +13,18 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-source ./setup-env.sh
+set -e
 
-export QCOS_LOCAL_SRC_DIR="${top_dir}"
+source ./setup-build-context.sh
 
-echo "Creating QCOS dockers ..."
-# copy config files
-mkdir -p /etc/qcos/prefect
-mkdir -p /var/qcos/db
+SANDBOX_CONTAINER_NAME=qcos-sandbox
+SANDBOX_IMAGE_NAME=qcos-sandbox
+SANDBOX_IMAGE_VERSION=dev
 
-if [ "${DEV,,}" = "false" ]; then
-  docker-compose -f docker-compose.yaml down
-  docker-compose -f docker-compose.yaml up -d
-  echo "Run QCOS bash: docker exec -it qcos bash"
-else
-  docker-compose -f docker-compose-dev.yaml down
-  docker-compose -f docker-compose-dev.yaml up -d
-  echo "Run QCOS bash: docker exec -it qcos-dev bash"
-fi
+# build qcos building-system
+DOCKER_BUILDKIT=0 docker build -f ./sandbox/Dockerfile --no-cache --rm --network host \
+  --build-arg CONTAINER_BASE_IMAGE=${CONTAINER_BASE_IMAGE} \
+  --build-arg CONTAINER_NAME=${SANDBOX_CONTAINER_NAME} \
+  --build-arg SANDBOX_IMAGE_VERSION=${SANDBOX_IMAGE_VERSION} \
+  --build-arg DEV=${DEV} \
+  -t ${SANDBOX_IMAGE_NAME}:${SANDBOX_IMAGE_VERSION} .

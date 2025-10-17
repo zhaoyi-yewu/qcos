@@ -35,11 +35,11 @@ class Client:
 
     def __init__(
         self,
-        api_listen_ip=Config.API_SERVER_LISTEN_IP,
-        api_port=Config.API_SERVER_LISTEN_PORT,
+        api_server_ip=Config.API_SERVER_LISTEN_IP,
+        api_server_port=Config.API_SERVER_LISTEN_PORT,
     ):
         api_version = "v1"
-        base_endpoint_url = f"http://{api_listen_ip}:{api_port}"
+        base_endpoint_url = f"http://{api_server_ip}:{api_server_port}"
         endpoint_url = f"{base_endpoint_url}/{api_version}"
         self.version_url = f"{base_endpoint_url}/version"
         self.driver_url = f"{endpoint_url}/driver"

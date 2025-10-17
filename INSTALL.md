@@ -27,7 +27,13 @@ vim .env
 
 ### 1.3 编译qcos容器镜像
 ```shell
-./build-docker.sh
+# 操作系统镜像 (容器内包含命令行)
+./build-images.sh
+
+# 独立的命令行镜像 [可选]
+./build-sandbox.sh  # 编译qcos-cli wheel包用的容器环境
+./run-sandbox.sh  # 运行sandbox容器环境
+./build-images.sh --cli
 ```
 
 ### 1.4 修改配置文件
@@ -43,7 +49,11 @@ vim .env
 ### 1.5 运行容器
 ```shell
 cd build-scripts
+# 基于docker容器运行
 ./run-docker.sh
+
+# 或者, 基于K8s pod运行:
+./run-k8s-pods.sh
 ```
 
 ## 2. 编译、安装和运行 (可选, 非容器, 编译wheel包)
@@ -56,7 +66,7 @@ pip3 install -r ./requirements.txt -r ./test-requirements.txt
 ```
 
 ### 2.2 编译
-#### 2.2.1 基于poetry编译wheel包
+#### 2.2.1 基于poetry编译操作系统wheel包
 ```shell
 # BCLinux/CentOS/OpenEuler环境下示例:
 cd build-scripts

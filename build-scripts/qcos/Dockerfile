@@ -40,7 +40,7 @@ RUN \
     cp -rf ${BUILD_CONTEXT}/requirements.txt /root/ && \
     cp -rf ${BUILD_CONTEXT}/test-requirements.txt /root/ && \
 # config system
-    /bin/cp ${BUILD_CONTEXT}/build-scripts/entrypoint.sh / && \
+    /bin/cp ${BUILD_CONTEXT}/build-scripts/qcos/entrypoint.sh / && \
     chmod +x /entrypoint.sh && \
 # copy yum repos and create dirs
     if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then rm -rf /etc/yum.repos.d/*.repo; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi && \
@@ -51,7 +51,7 @@ RUN \
     mkdir -p /var/log/qcos/ && \
 # install basic rpms
     yum install -y hostname openssh openssh-clients sshpass iputils iproute \
-      telnet net-tools openssl util-linux vim findutils  \
+      telnet net-tools openssl util-linux vim findutils dos2unix \
       make gcc rust cargo \
       python3 python3-pip python3-sphinx python3-requests python3-devel && \
 # create symbolic link for python3
@@ -64,8 +64,10 @@ RUN \
     ssh-keygen -A && \
 # copy config files \
     cp ${BUILD_CONTEXT}/etc/qcos/qcos*.toml /etc/qcos-template/ && \
+# write build info \
+    commit_id=$(cat "${BUILD_CONTEXT}/latest-commit-id.txt" 2>/dev/null || echo "") && \
+    echo -e "QCOS build info\nversion: ${QCOS_IMAGE_VERSION}\ncommit id: ${commit_id}\nbuild time: ${build_date}\n" > /root/build-info.txt && \
 # cleanup build-context
-    echo -e "QCOS build info\nversion: ${QCOS_IMAGE_VERSION}\nBuild time: ${build_date}\n" > /root/build-info.txt && \
     yum clean all && \
     rm -rf ${BUILD_CONTEXT}
 

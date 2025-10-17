@@ -18,7 +18,6 @@
 from unittest.mock import patch, Mock
 import pytest
 
-from qcos.common import errors
 from qcos.common.config import Config
 from qcos.common.library import Library
 
@@ -34,12 +33,19 @@ class TestConfig:
             "2": {"1": "Bob", "3": 3},
         }
         mock_read_toml_file.return_value = iter([True, "err_msg", mock_obj])
-        with pytest.raises(errors.GenericException) as context:
+
+        mock_read_toml_file.return_value = iter([False, "err_msg", mock_obj])
+        with pytest.raises(Exception) as context:
             config.parse_toml_file("config.toml")
         assert str(context.value) is not None
 
         mock_read_toml_file.return_value = iter([True, "err_msg", mock_obj])
         config.parse_toml_file("config.toml", extra_config=True)
+
+        mock_read_toml_file.return_value = iter([False, "err_msg", mock_obj])
+        with pytest.raises(Exception) as context:
+            config.parse_toml_file("config.toml", extra_config=True)
+        assert str(context.value) is not None
 
     def test_show_info(self):
         config.show_info()

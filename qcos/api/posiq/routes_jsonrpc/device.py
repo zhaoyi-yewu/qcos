@@ -55,7 +55,7 @@ def _get_device_info(device_info):
 
 @device_api_v1.method(errors=[])
 def get_devices(
-    body: schemas.GetDevicesRequest,
+    body: schemas.GetDevicesRequest | None,
 ) -> dict[str, schemas.GetDeviceResponse]:
     """Get device dict request
 

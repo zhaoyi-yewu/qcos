@@ -24,12 +24,12 @@ BASE_DIR=$(readlink -f ${BASE_DIR})
 TOP_DIR=$(readlink -f ${BASE_DIR}/..)
 
 function usage {
-    echo "Usage: $0 [OPTION] ..."
-    echo "Python code linter"
-    echo ""
-    echo "  -f, --fix             Fix code errors"
-    echo "  -h, --help            Print this usage message"
-    echo ""
+  echo "Usage: $0 [OPTION] ..."
+  echo "Python code linter"
+  echo ""
+  echo "  -f, --fix             Fix code errors"
+  echo "  -h, --help            Print this usage message"
+  echo ""
 }
 
 opts=$(getopt -o fh --long fix,help -- "$@")

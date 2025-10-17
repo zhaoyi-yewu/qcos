@@ -292,6 +292,10 @@ class DriverBase:
         """
         return self.supported_transpilers
 
+    def get_tech_type(self):
+        """Get tech type"""
+        return self.tech_type
+
     def set_progress(self, progress):
         """Set progress
 

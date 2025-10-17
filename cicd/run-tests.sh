@@ -67,101 +67,101 @@ done
 
 # check user input options
 if [ "$pep8" = false ] && [ "$unit_test" = false ] && [ "$coverage" = false ] && [ "$system_test" = false ]; then
-    echo -e "Error: Invalid arguments\n"
-    usage
-    exit 1
+  echo -e "Error: Invalid arguments\n"
+  usage
+  exit 1
 fi
 
 
 function run_pep8 {
-    echo "[Running pep8 check]"
-    ${wrapper} "${TOP_DIR}/cicd/code-formatter.sh"
-    pep8_success=$?
-    echo
+  echo "[Running pep8 check]"
+  ${wrapper} "${TOP_DIR}/cicd/code-formatter.sh"
+  pep8_success=$?
+  echo
 }
 
 function run_unit_tests {
-    echo "[Running unit tests]"
-    ${wrapper} "python3 -m pytest --disable-warnings -vv ${TOP_DIR}/qcos/tests/unit_tests"
-    unit_test_success=$?
-    echo
+  echo "[Running unit tests]"
+  ${wrapper} "python3 -m pytest --disable-warnings -vv ${TOP_DIR}/qcos/tests/unit_tests"
+  unit_test_success=$?
+  echo
 }
 
 function run_coverage {
-    min_fail_rate=80
-    echo "[Running code coverage test]"
-    ${wrapper} "rm -rf ${BASE_DIR}/coverage ${BASE_DIR}/coverage.xml"
-    ${wrapper} "coverage3 run --data-file=${BASE_DIR}/.coverage --omit='*/site-packages/*' -m pytest --disable-warnings -vv ${TOP_DIR}/qcos/tests/unit_tests"
-    ${wrapper} "coverage3 xml --data-file=${BASE_DIR}/.coverage -o ${BASE_DIR}/coverage.xml"
-    ${wrapper} "coverage3 report --data-file=${BASE_DIR}/.coverage --include='${TOP_DIR}/qcos/*' --omit='${TOP_DIR}/qcos/tests/*' -m --fail-under=$min_fail_rate"
-    coverage_success=$?
-    ${wrapper} "coverage3 html --data-file=${BASE_DIR}/.coverage --title='QCOS Coverage Report' --include='${TOP_DIR}/qcos/*' --omit='${TOP_DIR}/qcos/tests/*' -d ${BASE_DIR}/coverage_html"
-    echo
+  min_fail_rate=80
+  echo "[Running code coverage test]"
+  ${wrapper} "rm -rf ${BASE_DIR}/coverage ${BASE_DIR}/coverage.xml"
+  ${wrapper} "coverage3 run --data-file=${BASE_DIR}/.coverage --omit='*/site-packages/*' -m pytest --disable-warnings -vv ${TOP_DIR}/qcos/tests/unit_tests"
+  ${wrapper} "coverage3 xml --data-file=${BASE_DIR}/.coverage -o ${BASE_DIR}/coverage.xml"
+  ${wrapper} "coverage3 report --data-file=${BASE_DIR}/.coverage --include='${TOP_DIR}/qcos/*' --omit='${TOP_DIR}/qcos/tests/*' -m --fail-under=$min_fail_rate"
+  coverage_success=$?
+  ${wrapper} "coverage3 html --data-file=${BASE_DIR}/.coverage --title='QCOS Coverage Report' --include='${TOP_DIR}/qcos/*' --omit='${TOP_DIR}/qcos/tests/*' -d ${BASE_DIR}/coverage_html"
+  echo
 }
 
 function run_system_tests {
-    echo "[Running system tests]"
-    ${wrapper} "python3 -m pytest --disable-warnings -vv ${TOP_DIR}/qcos/tests/system_tests"
-    system_test_success=$?
-    echo
+  echo "[Running system tests]"
+  ${wrapper} "python3 -m pytest --disable-warnings -vv ${TOP_DIR}/qcos/tests/system_tests"
+  system_test_success=$?
+  echo
 }
 
 function run_tests {
-    if [ "$pep8" = true ]; then
-        run_pep8
-    fi
-    if [ "$unit_test" = true ]; then
-        run_unit_tests
-    fi
-    if [ "$coverage" = true ]; then
-        run_coverage
-    fi
-    if [ "$system_test" = true ]; then
-        run_system_tests
-    fi
+  if [ "$pep8" = true ]; then
+    run_pep8
+  fi
+  if [ "$unit_test" = true ]; then
+    run_unit_tests
+  fi
+  if [ "$coverage" = true ]; then
+    run_coverage
+  fi
+  if [ "$system_test" = true ]; then
+    run_system_tests
+  fi
 }
 
 function print_report {
-    failure=false
-    pep8_result="N/A"
-    unit_test_result="N/A"
-    coverage_result="N/A"
-    system_test_result="N/A"
+  failure=false
+  pep8_result="N/A"
+  unit_test_result="N/A"
+  coverage_result="N/A"
+  system_test_result="N/A"
 
-    if [ $pep8_success -eq 0 ]; then
-      pep8_result="SUCCESS"
-    elif [ $pep8_success -gt 0 ]; then
-      pep8_result="FAILURE"
-      failure=true
-    fi
-    if [ $unit_test_success -eq 0 ]; then
-      unit_test_result="SUCCESS"
-    elif [ $unit_test_success -gt 0 ]; then
-      unit_test_result="FAILURE"
-      failure=true
-    fi
-    if [ $coverage_success -eq 0 ]; then
-      coverage_result="SUCCESS"
-    elif [ $coverage_success -gt 0 ]; then
-      coverage_result="FAILURE"
-      failure=true
-    fi
-    if [ $system_test_success -eq 0 ]; then
-      system_test_result="SUCCESS"
-    elif [ $system_test_success -gt 0 ]; then
-      system_test_result="FAILURE"
-      failure=true
-    fi
+  if [ $pep8_success -eq 0 ]; then
+    pep8_result="SUCCESS"
+  elif [ $pep8_success -gt 0 ]; then
+    pep8_result="FAILURE"
+    failure=true
+  fi
+  if [ $unit_test_success -eq 0 ]; then
+    unit_test_result="SUCCESS"
+  elif [ $unit_test_success -gt 0 ]; then
+    unit_test_result="FAILURE"
+    failure=true
+  fi
+  if [ $coverage_success -eq 0 ]; then
+    coverage_result="SUCCESS"
+  elif [ $coverage_success -gt 0 ]; then
+    coverage_result="FAILURE"
+    failure=true
+  fi
+  if [ $system_test_success -eq 0 ]; then
+    system_test_result="SUCCESS"
+  elif [ $system_test_success -gt 0 ]; then
+    system_test_result="FAILURE"
+    failure=true
+  fi
 
-    echo "[QCOS Test Results]"
-    echo "Python PEP8 coding style check: [$pep8_result]"
-    echo "Unit tests check              : [$unit_test_result]"
-    echo "Code coverage check           : [$coverage_result]"
-    echo "System tests check            : [$system_test_result]"
+  echo "[QCOS Test Results]"
+  echo "Python PEP8 coding style check: [$pep8_result]"
+  echo "Unit tests check              : [$unit_test_result]"
+  echo "Code coverage check           : [$coverage_result]"
+  echo "System tests check            : [$system_test_result]"
 
-    if [ $failure = true ]; then
-        exit 1
-    fi
+  if [ $failure = true ]; then
+    exit 1
+  fi
 }
 
 run_tests

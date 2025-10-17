@@ -15,19 +15,8 @@
 
 source ./setup-env.sh
 
-export QCOS_LOCAL_SRC_DIR="${top_dir}"
+echo "Creating QCOS sandbox dockers ..."
 
-echo "Creating QCOS dockers ..."
-# copy config files
-mkdir -p /etc/qcos/prefect
-mkdir -p /var/qcos/db
-
-if [ "${DEV,,}" = "false" ]; then
-  docker-compose -f docker-compose.yaml down
-  docker-compose -f docker-compose.yaml up -d
-  echo "Run QCOS bash: docker exec -it qcos bash"
-else
-  docker-compose -f docker-compose-dev.yaml down
-  docker-compose -f docker-compose-dev.yaml up -d
-  echo "Run QCOS bash: docker exec -it qcos-dev bash"
-fi
+docker-compose -f docker-compose-sandbox.yaml down
+docker-compose -f docker-compose-sandbox.yaml up -d
+echo "Run QCOS sandbox bash: docker exec -it qcos-sandbox bash"

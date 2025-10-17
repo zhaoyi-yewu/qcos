@@ -514,7 +514,7 @@ def get_job_results(
 
 @job_api_v1.method(errors=[jsonrpc_errors.InternalServerError])
 def get_jobs(
-    body: schemas.GetJobsRequest,
+    body: schemas.GetJobsRequest | None,
 ) -> list[schemas.GetJobStatusResponse]:
     """Get job list
 
@@ -529,7 +529,6 @@ def get_jobs(
 
     # query jobs' results
     responses = []
-    err = None
     try:
         responses, err = scheduler.get_jobs()
     except errors.WorkFlowError as e:

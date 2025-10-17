@@ -12,22 +12,13 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# fix file permissions
+set -e
 
-source ./setup-env.sh
+cwd=$(dirname "${BASH_SOURCE[0]}")
+top_dir=$(realpath ${cwd}/..)
 
-export QCOS_LOCAL_SRC_DIR="${top_dir}"
-
-echo "Creating QCOS dockers ..."
-# copy config files
-mkdir -p /etc/qcos/prefect
-mkdir -p /var/qcos/db
-
-if [ "${DEV,,}" = "false" ]; then
-  docker-compose -f docker-compose.yaml down
-  docker-compose -f docker-compose.yaml up -d
-  echo "Run QCOS bash: docker exec -it qcos bash"
-else
-  docker-compose -f docker-compose-dev.yaml down
-  docker-compose -f docker-compose-dev.yaml up -d
-  echo "Run QCOS bash: docker exec -it qcos-dev bash"
-fi
+# fix file permissions for dir: qcos
+qcos_dir=${top_dir}/qcos
+find ${qcos_dir} -type f ! -name "*.pyc*" -exec dos2unix {} \;
+find ${qcos_dir} -type f ! -name "*.pyc*" -exec chmod 644 -R {} \;

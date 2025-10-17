@@ -1,13 +1,6 @@
 %{!?upstream_version: %global upstream_version %{version}%{?milestone}}
-%if 0%{?fedora} || 0%{?rhel} > 7
-%global pyver %{python3_pkgversion}
-%else
-%global pyver 2
-%endif
-
-%if 0%{?rhel} || 0%{?fedora}
-%global rdo 1
-%endif
+%global min_pyver 3.11
+%define _unpackaged_files_terminate_build 0
 
 Name:          qcos
 Version:       %{version}
@@ -18,16 +11,17 @@ URL:           none
 Source0:       qcos-%{version}.tar.gz
 BuildArch:     noarch
 BuildRequires: python3
-Requires:      python3
+Requires:      python(abi) >= %{min_pyver}
 
 %description
 QCOS command line interface
 
 %package -n python3-qcosclient
-Summary:        Python QCOS client/shell
-Group:          Applications/System
-Requires:       python3-cliff >= 3.7.0
-Requires:       python3-argcomplete >= 1.9.5
+Summary:       Python QCOS client/shell
+Group:         Applications/System
+Requires:      python(abi) >= %{min_pyver}
+Requires:      python3-cliff >= 3.7.0
+Requires:      python3-argcomplete >= 1.9.5
 
 %description -n python3-qcosclient
 QCOS command line interface
@@ -49,9 +43,12 @@ QCOS command line interface
 %{python3_sitelib}/qcos/common
 %{python3_sitelib}/qcos/libs
 %{python3_sitelib}/qcos*.egg-info
+
+%exclude %{python3_sitelib}/**/__pycache__/
+%exclude %{python3_sitelib}/**/__pycache__/*
 %exclude %{python3_sitelib}/qcos/api_server.py
 %exclude %{python3_sitelib}/qcos/server.py
-%exclude %{python3_sitelib}/qcos/__pycache__
+
 
 %changelog
 * Mon Jun 9 2025 Yi Zhao <zhaoyi_yewu@cmss.chinamobile.com> 1.0.0

@@ -27,21 +27,6 @@ class StLibrary:
     """ST Library"""
 
     @staticmethod
-    def get_results(client, job_id):
-        _status_code, _reason, _text, _response = client.get_job_results(
-            job_id
-        )
-        job_result = json.loads(_text)
-        job_status = job_result["result"]["job_status"]
-        if job_status in [
-            Constant.JOB_STATUS_COMPLETED,
-            Constant.JOB_STATUS_FAILED,
-            Constant.JOB_STATUS_CANCELLED,
-        ]:
-            return True
-        return False
-
-    @staticmethod
     def submit_job(client, job_info, timeout=30, interval=5):
         job_id = job_info["job_id"]
         job_name = job_info["job_name"]
@@ -98,7 +83,7 @@ class StLibrary:
 
         # wait for job status to COMPLETED
         success, err_msg, _ = Library.loop_with_timeout(
-            StLibrary.get_results,
+            StLibrary.get_job_status,
             timeout,
             interval,
             client,
@@ -108,6 +93,12 @@ class StLibrary:
         time.sleep(5)
 
         # check results
+        job_result = StLibrary.get_job_results(client, job_id)
+
+        return job_result
+
+    @staticmethod
+    def get_job_results(client, job_id):
         status_code, reason, text, response = client.get_job_results(job_id)
         assert status_code == HttpCode.SUCCESS_OK
         job_result = json.loads(text)
@@ -115,6 +106,19 @@ class StLibrary:
         error_code = job_error.get("code", 0)
         assert error_code == 0
         return job_result
+
+    @staticmethod
+    def get_job_status(client, job_id):
+        _status_code, _reason, _text, _response = client.get_job_status(job_id)
+        job_result = json.loads(_text)
+        job_status = job_result["result"]["job_status"]
+        if job_status in [
+            Constant.JOB_STATUS_COMPLETED,
+            Constant.JOB_STATUS_FAILED,
+            Constant.JOB_STATUS_CANCELLED,
+        ]:
+            return True
+        return False
 
     @staticmethod
     def delete_job(client, job_id):
@@ -128,3 +132,71 @@ class StLibrary:
         job_error = job_result.get("error", {})
         error_code = job_error.get("code", 0)
         assert error_code == jsonrpc_errors.NotFoundError.CODE
+
+    @staticmethod
+    def get_devices(client):
+        status_code, reason, text, response = client.get_devices()
+        assert status_code == HttpCode.SUCCESS_OK
+        result = json.loads(text)
+        error = result.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0
+        devices = result["result"]
+        return devices
+
+    @staticmethod
+    def get_device(client, device_name):
+        status_code, reason, text, response = client.get_device(device_name)
+        assert status_code == HttpCode.SUCCESS_OK
+        result = json.loads(text)
+        error = result.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0
+        device = result["result"]
+        return device
+
+    @staticmethod
+    def get_drivers(client):
+        status_code, reason, text, response = client.get_drivers()
+        assert status_code == HttpCode.SUCCESS_OK
+        result = json.loads(text)
+        error = result.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0
+        drivers = result["result"]
+        return drivers
+
+    @staticmethod
+    def get_driver(client, driver_name):
+        status_code, reason, text, response = client.get_driver(driver_name)
+        assert status_code == HttpCode.SUCCESS_OK
+        result = json.loads(text)
+        error = result.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0
+        driver = result["result"]
+        return driver
+
+    @staticmethod
+    def get_transpilers(client):
+        status_code, reason, text, response = client.get_transpilers()
+        assert status_code == HttpCode.SUCCESS_OK
+        result = json.loads(text)
+        error = result.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0
+        transpilers = result["result"]
+        return transpilers
+
+    @staticmethod
+    def get_transpiler(client, transpiler_name):
+        status_code, reason, text, response = client.get_transpiler(
+            transpiler_name
+        )
+        assert status_code == HttpCode.SUCCESS_OK
+        result = json.loads(text)
+        error = result.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0
+        transpiler = result["result"]
+        return transpiler

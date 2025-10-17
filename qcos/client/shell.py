@@ -147,8 +147,10 @@ class QcosShell(App):
 
     def initialize_app(self, argv):
         super().initialize_app(argv)
+        api_server_ip = self.options.api_host
+        api_server_port = self.options.api_port
         self.client = Client(
-            api_listen_ip=self.options.api_host, api_port=self.options.api_port
+            api_server_ip=api_server_ip, api_server_port=api_server_port
         )
         # override cliff help.HelpAction
         help.HelpAction = HelpAction
@@ -202,20 +204,26 @@ class QcosShell(App):
             default=None,
             help="Specify a file to log output. Disabled by default.",
         )
+        default_api_server_ip = os.environ.get(
+            "API_SERVER_IP", Config.API_SERVER_LISTEN_IP
+        )
         parser.add_argument(
             "--api-host",
             dest="api_host",
-            default="127.0.0.1",
+            default=default_api_server_ip,
             help=f"Specify api server address. "
-            f"Default: {Config.API_SERVER_LISTEN_IP}",
+            f"Default: {default_api_server_ip}",
+        )
+        default_api_server_port = os.environ.get(
+            "API_SERVER_PORT", Config.API_SERVER_LISTEN_PORT
         )
         parser.add_argument(
             "--api-port",
             dest="api_port",
             type=int,
-            default=Config.API_SERVER_LISTEN_PORT,
+            default=int(default_api_server_port),
             help="Specify api server port. "
-            f"Default: {Config.API_SERVER_LISTEN_PORT}",
+            f"Default: {default_api_server_port}",
         )
         parser.add_argument(
             "-h",

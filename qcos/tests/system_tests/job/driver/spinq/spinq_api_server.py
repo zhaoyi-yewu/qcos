@@ -31,7 +31,7 @@ rpc_listen_ip = "0.0.0.0"
 rpc_listen_port = 4242
 _shots = 0
 PID_DIR = "/var/run/qcos"
-PID_FILE = f"{PID_DIR}/driver-spinq-rpc-server.pid"
+PID_FILE = f"{PID_DIR}/driver-spinq-api-server.pid"
 
 
 def init_logging():
@@ -198,7 +198,7 @@ def main():
     bind_address = f"tcp://{rpc_listen_ip}:{rpc_listen_port}"
 
     # 启动服务
-    logger.info(f"SpinQ RPC Server simulator started on {bind_address}")
+    logger.info(f"SpinQ API Server simulator started on {bind_address}")
     logger.info("Press Ctrl+C to stop service ...")
     try:
         server.bind(bind_address)

@@ -13,20 +13,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-set -e
+source ./setup-env.sh
 
-source ./setup-build-context.sh
+echo "Creating QCOS cli dockers ..."
 
-OUTPUT_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-amd64-${QCOS_IMAGE_VERSION}.tar.xz
-
-# build docker image
-DOCKER_BUILDKIT=0 docker build -f Dockerfile --no-cache --rm --network host \
-  --build-arg CONTAINER_BASE_IMAGE=${CONTAINER_BASE_IMAGE} \
-  --build-arg CONTAINER_NAME=${QCOS_CONTAINER_NAME} \
-  --build-arg QCOS_IMAGE_VERSION=${QCOS_IMAGE_VERSION} \
-  --build-arg DEV=${DEV} \
-  -t ${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION} .
-
-# export docker image
-mkdir -p ${OUTPUT_IMAGE_DIR}
-docker save ${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION} | xz -c --fast -T 0 > ${OUTPUT_IMAGE_PATH}
+docker-compose -f docker-compose-cli.yaml down
+docker-compose -f docker-compose-cli.yaml up -d
+echo "Run QCOS cli bash: docker exec -it qcos-cli bash"
