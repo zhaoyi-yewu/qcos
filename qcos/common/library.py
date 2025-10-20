@@ -39,6 +39,7 @@ import uuid
 import zipfile
 
 from aiohttp import ClientTimeout, ClientError
+from cryptography.fernet import Fernet
 from datetime import datetime
 from fractions import Fraction
 from functools import reduce
@@ -1214,3 +1215,92 @@ class Library:
         encrypted_text = md5_hash.hexdigest()
 
         return encrypted_text
+
+    @staticmethod
+    def encrypt_text(plaintext, encryption_prefix="++", fernet_key=""):
+        """Encrypt text
+
+        Args:
+            plaintext: plain text
+            encryption_prefix: encryption prefix
+            fernet_key: fernet key
+
+        Returns:
+            success, error message, encrypted text
+        """
+        encrypted_text = None
+        try:
+            cipher_suite = Fernet(fernet_key)
+            encoded_text = cipher_suite.encrypt(plaintext.encode()).decode(
+                "utf-8"
+            )
+            encrypted_text = f"{encryption_prefix}{encoded_text}"
+        except Exception as e:
+            err_msg = f"Encryption failed. Reason: {repr(e)}"
+            return False, err_msg, None
+        return True, None, encrypted_text
+
+    @staticmethod
+    def decrypt_text(cipher_text, encryption_prefix="++", fernet_key=""):
+        """Decrypt text
+
+        Args:
+            cipher_text: ciphered text
+            encryption_prefix: encryption prefix
+            fernet_key: fernet key
+
+        Returns:
+            success, error message, decrypted text
+        """
+        decrypted_text = None
+        if not cipher_text.startswith(encryption_prefix):
+            err_msg = (
+                "Decryption failed, ciphertext must starts with: "
+                f"{encryption_prefix}"
+            )
+            return False, err_msg, None
+        try:
+            cipher_suite = Fernet(fernet_key)
+            cipher_text = cipher_text.replace(encryption_prefix, "")
+            decrypted_text = cipher_suite.decrypt(cipher_text.encode()).decode(
+                "utf-8"
+            )
+        except Exception as e:
+            err_msg = f"Decryption failed. Reason: {repr(e)}"
+            return False, err_msg, None
+        return True, None, decrypted_text
+
+    @staticmethod
+    def mask_password(configs, password_replace="*" * 8):
+        """
+        Mask password
+
+        Args:
+            configs: configs
+            password_replace: password text to be replaced
+
+        Returns:
+            replaced configs
+        """
+        configs = copy.deepcopy(configs)
+        # if configs is dict
+        if isinstance(configs, dict):
+            new_config = {}
+            for key, value in configs.items():
+                # if key contains "password"
+                if "password" in str(key).lower():
+                    new_config[key] = password_replace
+                else:
+                    # handle values recursively
+                    new_config[key] = Library.mask_password(
+                        value, password_replace=password_replace
+                    )
+            return new_config
+        # if configs is list or tuple
+        elif isinstance(configs, (list, tuple)):
+            # handle elements recursively
+            return type(configs)(
+                Library.mask_password(item, password_replace=password_replace)
+                for item in configs
+            )
+        return configs

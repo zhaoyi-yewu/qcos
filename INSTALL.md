@@ -161,7 +161,30 @@ cd build-scripts
 ./build-docs.sh
 ```
 
-## 5. 命令行示例
+## 5. 安全加固
+### 5.1 自定义驱动配置文件中的账户密码加密
+1. 如果驱动配置文件中需要配置密码, 用于和远程量子设备API进行认证, 可以选择使用加密后的密码 (也可以直接用明文密码)
+```shell
+进入qcos容器
+docker exec -it qcos bash
+cd bin
+$ ./encrypt-password.py -e my_password
+Original text : my_password
+Encrypted text: ++gAAAAABo9gU4yf6G9lQQoNpH1LkBSYDsRYs1qNBln_Sf2N5OQP2siY65uaLCoz8-NYFWCfHDj8pCyxHSs4ltSKsdv-yz9muSAQ==
+
+把加密后的密码填入配置文件中, 比如:
+vim /etc/qcos/conf.d/dummy.toml
+[dummy]
+alias_name = "空载测试设备"
+driver = "DriverDummy"
+password = "++gAAAAABo9gU4yf6G9lQQoNpH1LkBSYDsRYs1qNBln_Sf2N5OQP2siY65uaLCoz8-NYFWCfHDj8pCyxHSs4ltSKsdv-yz9muSAQ=="
+```
+2. QCOS日志中对驱动配置文件中的密码进行屏蔽
+只需要定义驱动配置文件中密码字段时, 使用包含password字符串的字段即可, 该密码字段会在日志打印时自动被屏蔽, 替换成********。
+比如: password, user_password, my_password, my_password_1等等
+
+
+## 6. 命令行示例
 ```shell
 [作业命令]
 * 提交作业

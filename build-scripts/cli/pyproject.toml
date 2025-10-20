@@ -38,13 +38,11 @@ classifiers = [
 # Format for dependency strings: https://peps.python.org/pep-0508/
 dependencies = [
     # requirements
-    "aiohttp==3.12.13",
     "argcomplete==3.6.2",
     "cliff==4.10.0",
     "jsonrpcclient==4.0.3",
-    "numpy==1.26.4",
+    "requests==2.31.0",
     "schema==0.7.7",
-    "tomlkit==0.13.3",
 ]
 
 [project.scripts]

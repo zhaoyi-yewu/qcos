@@ -18,10 +18,10 @@ set -e
 
 BASE_DIR=$(dirname "$0")
 BASE_DIR=$(readlink -f ${BASE_DIR})
-TOP_DIR=$(readlink -f ${BASE_DIR}/..)
+TOP_DIR=$(readlink -f ${BASE_DIR}/../..)
 OUTPUT_DIR=${BASE_DIR}/output
 RPM_TOP_DIR=${OUTPUT_DIR}/rpmbuild
-RPM_SPEC_DIR=${BASE_DIR}/cli/rpm-specs
+RPM_SPEC_DIR=${BASE_DIR}/rpm-specs
 
 QCOS_CLI_VERSION=${CLI_PKG_VERSION:-1.0.0}
 QCOS_CLI_DIST=${CLI_PKG_DIST:-.oe1}

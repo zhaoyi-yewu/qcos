@@ -14,11 +14,30 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# Don't import library
 
 from schema import And, Optional, Or, Regex, Use
+from urllib.parse import urlparse
 
 from .constant import Constant, HttpMethod
-from .library import Library
+
+
+def is_valid_url(url, schemes):
+    """Check if url is valid
+
+    Args:
+        url: url to check
+        schemes: url schemes
+
+    Returns:
+        True if valid, False otherwise
+    """
+    try:
+        result = urlparse(url)
+        return all([result.scheme in schemes, result.netloc])
+    except ValueError:
+        return False
+    return True
 
 
 NAME_SCHEMA = And(
@@ -48,7 +67,7 @@ CALLBACKS_SCHEMA = [
         "name": str,
         "type": Or(*Constant.CALLBACK_TYPES),
         "method": Or(HttpMethod.POST),
-        "url": lambda s: Library.is_valid_url(s, {"http", "https"}),
+        "url": lambda s: is_valid_url(s, {"http", "https"}),
         Optional("headers"): dict,
         Optional("retries"): int,
         Optional("timeout"): int,

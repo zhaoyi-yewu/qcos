@@ -25,14 +25,18 @@ mkdir -p ${CLI_SRC_DIR}
 
 # copy cli src files
 mkdir -p ${CLI_SRC_DIR}/qcos
+mkdir -p ${CLI_SRC_DIR}/qcos/common
 cd ${CLI_SRC_DIR}
 cp -rf ${BUILD_SCRIPTS_DIR}/cli/pyproject.toml ${CLI_SRC_DIR}/
 cp -rf ${TOP_DIR}/LICENSE ${CLI_SRC_DIR}/
 cp -rf ${TOP_DIR}/README.md ${CLI_SRC_DIR}/
 cp -rf ${TOP_DIR}/qcos/__init__.py ${CLI_SRC_DIR}/qcos/
 cp -rf ${TOP_DIR}/qcos/client ${CLI_SRC_DIR}/qcos/
-cp -rf ${TOP_DIR}/qcos/common ${CLI_SRC_DIR}/qcos/
-cp -rf ${TOP_DIR}/qcos/libs ${CLI_SRC_DIR}/qcos/
+cp -rf ${TOP_DIR}/qcos/common/__init__.py ${CLI_SRC_DIR}/qcos/common
+cp -rf ${TOP_DIR}/qcos/common/args_schema.py ${CLI_SRC_DIR}/qcos/common
+cp -rf ${TOP_DIR}/qcos/common/client_library.py ${CLI_SRC_DIR}/qcos/common
+cp -rf ${TOP_DIR}/qcos/common/constant.py ${CLI_SRC_DIR}/qcos/common
+cp -rf ${TOP_DIR}/qcos/common/errors.py ${CLI_SRC_DIR}/qcos/common
 
 if [ -n "${PIP_MIRROR}" ]; then
   poetry source add --priority=primary pip_mirror "${PIP_MIRROR}"

@@ -17,6 +17,8 @@
 
 import logging
 
+from qcos.common.library import Library
+
 
 logger = logging.getLogger(__name__)
 
@@ -158,12 +160,18 @@ class Device:
         """
         self.configs = configs
 
-    def get_configs(self):
+    def get_configs(self, hide_password=False):
         """Get device configs
+
+        Args:
+            hide_password: hide device password
 
         Returns:
             device configs
         """
+        if hide_password:
+            return Library.mask_password(self.configs)
+
         return self.configs
 
     def get_device_info(self):
@@ -175,6 +183,6 @@ class Device:
             f"driver_name: {self.driver.get_name()}",
             f"enable: {self.enable}",
             f"status: {self.status}",
-            f"configs: {self.configs}",
+            f"configs: {self.get_configs(hide_password=True)}",
         ]
         return "\n".join(show_list)

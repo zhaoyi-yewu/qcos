@@ -17,12 +17,14 @@
 
 import asyncio
 import os
+import tempfile
 from datetime import datetime
 from unittest.mock import patch, Mock
 
 from qcos.common.library import Library
 
 library = Library()
+fernet_key = "abcBn4Ol_3bJ7t0IW7TmPCCZurqfw_QRa810U43o_m0="
 
 
 class TestLibrary:
@@ -76,23 +78,35 @@ class TestLibrary:
         assert success is True
 
     def test_read_file(self):
-        content = library.read_file("test-pid_file.txt")
+        file_path = None
+        with tempfile.NamedTemporaryFile(
+            mode="w+", newline="", suffix=".txt", delete=False
+        ) as temp_file:
+            temp_file.write("")
+            file_path = temp_file.name
+
+        content = library.read_file(file_path)
         assert content is not None
 
         pattern = {"1": "1"}
-        content = library.read_file(
-            "test-pid_file.txt", replace_pattern=pattern
-        )
+        content = library.read_file(file_path, replace_pattern=pattern)
         assert content is not None
 
         formats = {"2": "2"}
-        content = library.read_file(
-            "test-pid_file.txt", customer_format=formats
-        )
+        content = library.read_file(file_path, customer_format=formats)
         assert content is not None
+        os.unlink(file_path)
 
     def test_read_csv_file(self):
-        assert library.read_csv_file("test-pid_file.txt") is not None
+        file_path = None
+        with tempfile.NamedTemporaryFile(
+            mode="w+", newline="", suffix=".csv", delete=False
+        ) as temp_file:
+            temp_file.write("")
+            file_path = temp_file.name
+
+        assert library.read_csv_file(file_path) is not None
+        os.unlink(file_path)
 
     def test_read_toml_file(self):
         success, _, _ = library.read_toml_file("test-pid_file.toml")
@@ -301,3 +315,72 @@ class TestLibrary:
             [[-488, 516, -48], [516, -516, -48], [-48, -48, 60]],
         ]
         library.check_qubo_matrixs_bit_width(qubo_matrixs)
+
+    def test_encrypt_text(self):
+        success, err_msg, encrypted_text = library.encrypt_text(
+            "test", encryption_prefix="++", fernet_key=fernet_key
+        )
+        print(encrypted_text)
+        assert success is True
+        assert encrypted_text.startswith("++")
+
+    def test_encrypt_text_wrong_fernet_key(self):
+        success, err_msg, encrypted_text = library.encrypt_text(
+            "test", encryption_prefix="++", fernet_key="abc"
+        )
+        assert success is False
+
+    def test_decrypt_text(self):
+        plain_text = "test"
+        encrypted_text = (
+            "++gAAAAABo9uFW1Y929YObWvGy84O5KL8orwhXKirq"
+            "87L9Fh2SyxFnl-xWyXh1TXReuofLyevojRPeoWAWkl"
+            "27e8oOAZiGeoM-Qg=="
+        )
+        success, err_msg, decrypted_text = library.decrypt_text(
+            encrypted_text, encryption_prefix="++", fernet_key=fernet_key
+        )
+        assert success is True
+        assert decrypted_text == plain_text
+
+    def test_decrypt_text_wrong_encrypted_text(self):
+        encrypted_text = (
+            "gAAAAABo9uFW1Y929YObWvGy84O5KL8orwhXKirq"
+            "87L9Fh2SyxFnl-xWyXh1TXReuofLyevojRPeoWAWkl"
+            "27e8oOAZiGeoM-Qg=="
+        )
+        success, err_msg, decrypted_text = library.decrypt_text(
+            encrypted_text, encryption_prefix="++", fernet_key=fernet_key
+        )
+        assert success is False
+
+    def test_decrypt_text_wrong_fernet_key(self):
+        encrypted_text = (
+            "++gAAAAABo9uFW1Y929YObWvGy84O5KL8orwhXKirq"
+            "87L9Fh2SyxFnl-xWyXh1TXReuofLyevojRPeoWAWkl"
+            "27e8oOAZiGeoM-Qg=="
+        )
+        wrong_fernet_key = "abc"
+        success, err_msg, decrypted_text = library.decrypt_text(
+            encrypted_text, encryption_prefix="++", fernet_key=wrong_fernet_key
+        )
+        assert success is False
+
+    def test_mask_password(self):
+        password_replace = "*" * 8
+        configs = {
+            "password": "a123456",
+            "my_password": "b123456",
+            "my_password_1": "c123456",
+            "test": "d123456",
+        }
+        expected_configs = {
+            "password": password_replace,
+            "my_password": password_replace,
+            "my_password_1": password_replace,
+            "test": "d123456",
+        }
+        actual_configs = library.mask_password(
+            configs, password_replace=password_replace
+        )
+        assert actual_configs == expected_configs

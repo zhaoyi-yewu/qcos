@@ -14,10 +14,20 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# Don't import any libraries
 
 
 class Constant:
     """Constants"""
+
+    # QCOS service default IP and port
+    DEFAULT_API_SERVER_LISTEN_IP = "127.0.0.1"
+    DEFAULT_API_SERVER_LISTEN_PORT = 18400
+    DEFAULT_API_VERSION = "v1"
+
+    # Security
+    DEFAULT_FERNET_KEY = "qevBn4Ol_3bJ7t0IW7TmPCCZurqfw_QRa810U43o_m0="
+    ENCRYPTION_PREFIX = "++"
 
     # Flow limit
     FLOW_LIMIT = 100000

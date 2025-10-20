@@ -61,7 +61,7 @@ def _get_driver_info(driver_info, transpiler):
 
 @driver_api_v1.method(errors=[])
 def get_drivers(
-    body: schemas.GetDriversRequest | None,
+    body: schemas.GetDriversRequest | None = None,
 ) -> dict[str, schemas.GetDriverResponse]:
     """Get driver dict request
 

@@ -514,7 +514,7 @@ def get_job_results(
 
 @job_api_v1.method(errors=[jsonrpc_errors.InternalServerError])
 def get_jobs(
-    body: schemas.GetJobsRequest | None,
+    body: schemas.GetJobsRequest | None = None,
 ) -> list[schemas.GetJobStatusResponse]:
     """Get job list
 

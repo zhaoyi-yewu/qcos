@@ -21,9 +21,8 @@ import requests
 from jsonrpcclient import Ok, parse, request
 
 from qcos.common import errors
-from qcos.common.config import Config
+from qcos.common.client_library import ClientLibrary
 from qcos.common.constant import Constant, HttpHeaders, HttpMethod
-from qcos.common.library import Library
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +34,10 @@ class Client:
 
     def __init__(
         self,
-        api_server_ip=Config.API_SERVER_LISTEN_IP,
-        api_server_port=Config.API_SERVER_LISTEN_PORT,
+        api_server_ip=Constant.DEFAULT_API_SERVER_LISTEN_IP,
+        api_server_port=Constant.DEFAULT_API_SERVER_LISTEN_PORT,
     ):
-        api_version = "v1"
+        api_version = Constant.DEFAULT_API_VERSION
         base_endpoint_url = f"http://{api_server_ip}:{api_server_port}"
         endpoint_url = f"{base_endpoint_url}/{api_version}"
         self.version_url = f"{base_endpoint_url}/version"
@@ -80,7 +79,7 @@ class Client:
         result = None
         jsonrpc_data = request(method_name, params={"body": data})
         try:
-            status_code, reason, text, result = Library.call_http_api(
+            status_code, reason, text, result = ClientLibrary.call_http_api(
                 url,
                 method=HttpMethod.POST,
                 json=jsonrpc_data,
@@ -345,7 +344,7 @@ class Client:
 
         # Validate argument: job_id
         Client.handle_invalid_arguments(
-            Library.validate_values_uuid(job_id, "job_id")
+            ClientLibrary.validate_values_uuid(job_id, "job_id")
         )
 
         # construct data and call json rpc
@@ -368,7 +367,7 @@ class Client:
 
         # Validate argument: job_id
         Client.handle_invalid_arguments(
-            Library.validate_values_uuid(job_id, "job_id")
+            ClientLibrary.validate_values_uuid(job_id, "job_id")
         )
 
         # construct data and call json rpc
@@ -407,7 +406,7 @@ class Client:
         # Validate argument: job_id
         for job_id in job_ids:
             Client.handle_invalid_arguments(
-                Library.validate_values_uuid(job_id, "job_id")
+                ClientLibrary.validate_values_uuid(job_id, "job_id")
             )
 
         # construct data and call json rpc
@@ -431,7 +430,7 @@ class Client:
         # Validate argument: job_id
         for job_id in job_ids:
             Client.handle_invalid_arguments(
-                Library.validate_values_uuid(job_id, "job_id")
+                ClientLibrary.validate_values_uuid(job_id, "job_id")
             )
 
         # construct data and call json rpc
@@ -455,7 +454,7 @@ class Client:
 
         # Validate argument: job_id
         Client.handle_invalid_arguments(
-            Library.validate_values_uuid(job_id, "job_id")
+            ClientLibrary.validate_values_uuid(job_id, "job_id")
         )
 
         # construct data and call json rpc

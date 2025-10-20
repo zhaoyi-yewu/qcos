@@ -28,13 +28,12 @@ from cliff.commandmanager import CommandManager
 from cliff.lister import Lister
 from cliff.show import ShowOne
 
-from .client import Client
+from qcos.client.client import Client
 from qcos.common import args_schema, errors
-from qcos.common.config import Config
+from qcos.common.client_library import ClientLibrary
 from qcos.common.constant import Constant, HttpCode
-from qcos.common.library import Library
 
-VERSION = Config.VERSION
+VERSION = "1.0.0"
 DESCRIPTION = "QCOS command line interface"
 
 """
@@ -205,7 +204,7 @@ class QcosShell(App):
             help="Specify a file to log output. Disabled by default.",
         )
         default_api_server_ip = os.environ.get(
-            "API_SERVER_IP", Config.API_SERVER_LISTEN_IP
+            "API_SERVER_IP", Constant.DEFAULT_API_SERVER_LISTEN_IP
         )
         parser.add_argument(
             "--api-host",
@@ -215,7 +214,7 @@ class QcosShell(App):
             f"Default: {default_api_server_ip}",
         )
         default_api_server_port = os.environ.get(
-            "API_SERVER_PORT", Config.API_SERVER_LISTEN_PORT
+            "API_SERVER_PORT", Constant.DEFAULT_API_SERVER_LISTEN_PORT
         )
         parser.add_argument(
             "--api-port",
@@ -250,7 +249,9 @@ class HelpAction(argparse.Action):
         max_len = 0
         app = self.default
         parser.print_help(app.stdout)
-        app.stdout.write(f"\nCommands for API {Config.API_VERSION}:\n")
+        app.stdout.write(
+            f"\nCommands for API: /{Constant.DEFAULT_API_VERSION}:\n"
+        )
         command_manager = app.command_manager
         for name, ep in sorted(command_manager):
             factory = ep.load()
@@ -329,7 +330,7 @@ class CommandHelper:
             err_msg_list.append(reason)
         err_msgs = ""
         if err_msg_list:
-            err_msgs = f"{','.join(err_msg_list)}.\n"
+            err_msgs = f"{', '.join(err_msg_list)}.\n"
         raise errors.GenericException(
             f"Failed to process {resource}: '{name}'. "
             f"[status_code: {status_code}]\n{err_msgs}"
@@ -923,7 +924,7 @@ class SubmitJob(Command):
 
         # Validate argument: code_type
         CommandHelper.handle_invalid_arguments(
-            Library.validate_values_enum(
+            ClientLibrary.validate_values_enum(
                 code_type, "code_type", Constant.CODE_TYPES
             )
         )
@@ -941,7 +942,7 @@ class SubmitJob(Command):
 
         # Validate argument: source_code
         CommandHelper.handle_invalid_arguments(
-            Library.validate_schema(
+            ClientLibrary.validate_schema(
                 source_code_list, args_schema.SOURCE_CODE_SCHEMA
             )
         )
@@ -954,7 +955,7 @@ class SubmitJob(Command):
         # Validate argument: job_name
         if job_name:
             CommandHelper.handle_invalid_arguments(
-                Library.validate_schema(
+                ClientLibrary.validate_schema(
                     job_name, args_schema.NAME_SCHEMA, allow_none=True
                 )
             )
@@ -962,19 +963,19 @@ class SubmitJob(Command):
         # Validate argument: job_id
         if job_id:
             CommandHelper.handle_invalid_arguments(
-                Library.validate_values_uuid(job_id, "job_id")
+                ClientLibrary.validate_values_uuid(job_id, "job_id")
             )
 
         # Validate argument: job_type
         CommandHelper.handle_invalid_arguments(
-            Library.validate_values_enum(
+            ClientLibrary.validate_values_enum(
                 job_type, "job_type", Constant.JOB_TYPES
             )
         )
 
         # Validate argument: job_priority
         CommandHelper.handle_invalid_arguments(
-            Library.validate_values_range(
+            ClientLibrary.validate_values_range(
                 job_priority,
                 "job_priority",
                 Constant.MIN_JOB_PRIORITY,
@@ -984,7 +985,7 @@ class SubmitJob(Command):
 
         # Validate argument: job_priority
         CommandHelper.handle_invalid_arguments(
-            Library.validate_values_length(
+            ClientLibrary.validate_values_length(
                 description,
                 "description",
                 Constant.MIN_DESCRIPTION_LENGTH,
@@ -995,7 +996,7 @@ class SubmitJob(Command):
 
         # Validate argument: shots
         CommandHelper.handle_invalid_arguments(
-            Library.validate_values_range(
+            ClientLibrary.validate_values_range(
                 shots, "shots", Constant.MIN_SHOTS, Constant.MAX_SHOTS
             )
         )
@@ -1009,14 +1010,14 @@ class SubmitJob(Command):
                     "Invalid argument: driver_options"
                 ) from exc
             CommandHelper.handle_invalid_arguments(
-                Library.validate_schema(
+                ClientLibrary.validate_schema(
                     driver_options, args_schema.DRIVER_OPTIONS, allow_none=True
                 )
             )
 
         # Validate argument: transpiler
         CommandHelper.handle_invalid_arguments(
-            Library.validate_values_enum(
+            ClientLibrary.validate_values_enum(
                 transpiler,
                 "transpiler",
                 supported_transpilers.keys(),
@@ -1033,7 +1034,7 @@ class SubmitJob(Command):
                     "Invalid argument: transpiler_options"
                 ) from exc
             CommandHelper.handle_invalid_arguments(
-                Library.validate_schema(
+                ClientLibrary.validate_schema(
                     transpiler_options,
                     args_schema.TRANSPILER_OPTIONS,
                     allow_none=True,
@@ -1050,7 +1051,7 @@ class SubmitJob(Command):
                     f"Invalid argument: callback. reason: {e}"
                 )
             CommandHelper.handle_invalid_arguments(
-                Library.validate_schema(
+                ClientLibrary.validate_schema(
                     callbacks_json, args_schema.CALLBACKS_SCHEMA
                 )
             )
@@ -1112,7 +1113,7 @@ class GetJobStatus(ShowOne):
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(
-            Library.validate_values_uuid(job_id, "job_id")
+            ClientLibrary.validate_values_uuid(job_id, "job_id")
         )
 
         # call api
@@ -1158,7 +1159,7 @@ class GetJobResults(ShowOne):
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(
-            Library.validate_values_uuid(job_id, "job_id")
+            ClientLibrary.validate_values_uuid(job_id, "job_id")
         )
 
         # call api
@@ -1292,7 +1293,7 @@ class CancelJobs(Command):
                     job_id = job_id.strip()
                     # Validate argument: job_id
                     CommandHelper.handle_invalid_arguments(
-                        Library.validate_values_uuid(job_id, "job_id")
+                        ClientLibrary.validate_values_uuid(job_id, "job_id")
                     )
                     job_id_list.append(job_id)
                 except ValueError as e:
@@ -1385,7 +1386,7 @@ class DeleteJobs(Command):
                     job_id = job_id.strip()
                     # Validate argument: job_id
                     CommandHelper.handle_invalid_arguments(
-                        Library.validate_values_uuid(job_id, "job_id")
+                        ClientLibrary.validate_values_uuid(job_id, "job_id")
                     )
                     job_id_list.append(job_id)
                 except ValueError as e:
@@ -1456,7 +1457,7 @@ class SetJobResults(Command):
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(
-            Library.validate_values_uuid(job_id, "job_id")
+            ClientLibrary.validate_values_uuid(job_id, "job_id")
         )
 
         # convert results
@@ -1522,33 +1523,33 @@ SOURCE_CODE_FILE_INFO = {
     Constant.CODE_TYPE_QASM: [
         {
             "file_type": Constant.FILE_TYPE_QASM,
-            "reader": Library.read_file,
+            "reader": ClientLibrary.read_file,
             "parser": None,
         }
     ],
     Constant.CODE_TYPE_QASM2: [
         {
             "file_type": Constant.FILE_TYPE_QASM,
-            "reader": Library.read_file,
+            "reader": ClientLibrary.read_file,
             "parser": None,
         }
     ],
     Constant.CODE_TYPE_QASM3: [
         {
             "file_type": Constant.FILE_TYPE_QASM,
-            "reader": Library.read_file,
+            "reader": ClientLibrary.read_file,
             "parser": None,
         }
     ],
     Constant.CODE_TYPE_QUBO: [
         {
             "file_type": Constant.FILE_TYPE_JSON,
-            "reader": Library.read_file,
+            "reader": ClientLibrary.read_file,
             "parser": json.loads,
         },
         {
             "file_type": Constant.FILE_TYPE_CSV,
-            "reader": Library.read_csv_file,
+            "reader": ClientLibrary.read_csv_file,
             "parser": json.loads,
         },
     ],

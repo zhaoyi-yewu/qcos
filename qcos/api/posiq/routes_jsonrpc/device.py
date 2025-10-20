@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import copy
 import logging
 
 from qcos.api import schemas
@@ -39,8 +38,7 @@ def _get_device_info(device_info):
     """
 
     # replace pwd in extra_configs to ********
-    configs = copy.deepcopy(device_info.configs)
-    Library.update_dict(configs, {"password": "*" * 8})
+    configs = Library.mask_password(device_info.configs)
     _device_info = {
         "name": device_info.name,
         "alias_name": device_info.alias_name,
@@ -55,7 +53,7 @@ def _get_device_info(device_info):
 
 @device_api_v1.method(errors=[])
 def get_devices(
-    body: schemas.GetDevicesRequest | None,
+    body: schemas.GetDevicesRequest | None = None,
 ) -> dict[str, schemas.GetDeviceResponse]:
     """Get device dict request
 

@@ -47,7 +47,7 @@ def _get_transpiler_info(transpiler_info):
 
 @transpiler_api_v1.method(errors=[])
 def get_transpilers(
-    body: schemas.GetTranspilersRequest | None,
+    body: schemas.GetTranspilersRequest | None = None,
 ) -> dict[str, schemas.GetTranspilerResponse]:
     """Get transpiler list request
 

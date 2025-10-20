@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 from qcos.common import errors
+from qcos.common.constant import Constant
 from qcos.common.library import Library
 
 
@@ -36,8 +37,8 @@ class Config:
     WORKERS = 8
 
     # [API_SERVER]
-    API_SERVER_LISTEN_IP = "127.0.0.1"
-    API_SERVER_LISTEN_PORT = 18400
+    API_SERVER_LISTEN_IP = Constant.DEFAULT_API_SERVER_LISTEN_IP
+    API_SERVER_LISTEN_PORT = Constant.DEFAULT_API_SERVER_LISTEN_PORT
     API_LOG_FILE = "/var/log/qcos/qcos-api.log"
     PREFECT_LOG_FILE = "/var/log/qcos/qcos-prefect.log"
 
@@ -63,6 +64,23 @@ class Config:
             config_file: config file
             extra_config: is extra config (Default value = False)
         """
+
+        def decrypt_value(value, section_key):
+            decrypted_value = value
+            if isinstance(value, str) and value.startswith(
+                Constant.ENCRYPTION_PREFIX
+            ):
+                success, err_msg, decrypted_value = Library.decrypt_text(
+                    value,
+                    encryption_prefix=Constant.ENCRYPTION_PREFIX,
+                    fernet_key=Constant.DEFAULT_FERNET_KEY,
+                )
+                if not success:
+                    raise errors.GenericException(
+                        f"Can't decrypt text: {value} ({section_key})"
+                    )
+            return decrypted_value
+
         success, err_msg, config_values = Library.read_toml_file(config_file)
         config_values = config_values.unwrap()
         if not success:
@@ -73,7 +91,9 @@ class Config:
                     key, value = option
                     if section not in cls.EXTRA_CONFIGS:
                         cls.EXTRA_CONFIGS[section] = {}
-                    cls.EXTRA_CONFIGS[section][key] = value
+                    cls.EXTRA_CONFIGS[section][key] = decrypt_value(
+                        value, f"{section}:{key}"
+                    )
         else:
             for section, options in config_values.items():
                 if section in Config.VALID_SECTIONS:
@@ -81,7 +101,9 @@ class Config:
                         key, value = option
                         key_upper = key.upper()
                         if hasattr(cls, key_upper):
-                            setattr(cls, key_upper, value)
+                            setattr(
+                                cls, key_upper, decrypt_value(value, key_upper)
+                            )
                         else:
                             raise errors.GenericException(
                                 f"Can't find config key: {key}"
@@ -91,7 +113,9 @@ class Config:
                         key, value = option
                         if section not in cls.EXTRA_CONFIGS:
                             cls.EXTRA_CONFIGS[section] = {}
-                        cls.EXTRA_CONFIGS[section][key] = value
+                        cls.EXTRA_CONFIGS[section][key] = decrypt_value(
+                            value, f"{section}:{key}"
+                        )
 
     @classmethod
     def validate(cls):
@@ -106,9 +130,14 @@ class Config:
     @classmethod
     def show_info(cls):
         """Show class variables"""
-        outputs = ["[Configs]"]
-        for k, v in vars(cls).items():
+        configs = {}
+        cls_vars = vars(cls)
+        for k, v in cls_vars.items():
             if not k.startswith("__") and not isinstance(v, classmethod):
                 if v:
-                    outputs.append(f"{k:<20}: {v}")
+                    configs[k] = v
+        configs = Library.mask_password(configs)
+        outputs = ["[Configs]"]
+        for k, v in configs.items():
+            outputs.append(f"{k:<20}: {v}")
         return "\n".join(outputs) + "\n"

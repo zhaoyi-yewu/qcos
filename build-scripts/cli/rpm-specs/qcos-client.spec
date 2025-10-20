@@ -41,7 +41,6 @@ QCOS command line interface
 %{python3_sitelib}/qcos/__init__.py
 %{python3_sitelib}/qcos/client
 %{python3_sitelib}/qcos/common
-%{python3_sitelib}/qcos/libs
 %{python3_sitelib}/qcos*.egg-info
 
 %exclude %{python3_sitelib}/**/__pycache__/
