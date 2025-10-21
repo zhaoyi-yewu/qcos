@@ -19,10 +19,10 @@ import logging
 from pathlib import Path
 import time
 
+from qcos.common.constant import Constant
 from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
-
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -47,12 +47,38 @@ class Timer:
         self.elapsed = self.end - self.start
 
 
-def main():
-    relative_path = "samples/qasm/3.0/benchmark/100bits_50000d.qasm"
-    file_path = Path(relative_path).resolve()
-
+def main(
+    input_file: str,
+    output_file: str,
+    qasm_version: str = "3.0",
+    opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
+):
+    """
+    cmss-transpiler performance test
+    """
+    # input args check
+    file_path = Path(input_file).resolve()
     if not file_path.exists():
-        logger.error(f"file not existed - {file_path}")
+        logger.error(f"input file[{file_path}] not existed")
+        return
+
+    output_file_path = Path(output_file).resolve()
+    if output_file_path.exists():
+        logger.error(f"output file[{output_file_path}] has existed")
+        return
+    else:
+        # create output file
+        with open(output_file_path, "w", encoding="utf-8") as f:
+            f.write(f"testing file: {input_file}\n")
+        file_handler = logging.FileHandler(output_file_path)
+        logger.addHandler(file_handler)
+
+    # check qasm version
+    if qasm_version not in ["2.0", "3.0"]:
+        logger.error(
+            f"""only support openqasm version 2 or 3.
+            openqasm version: {qasm_version}"""
+        )
         return
 
     # load data from qasm file
@@ -62,31 +88,33 @@ def main():
         return
 
     # performace testing
-    logger.info("开始性能测试...")
+    logger.info("start qiskit performace testing...")
     with Timer() as total_timer:
         # generate abs tree
         with Timer() as ast_timer:
             tree = get_abs_tree(qasm_data)
-        logger.info(f"生成抽象语法树耗时: {ast_timer.elapsed:.4f}秒")
+        logger.info(f"abs tree: {ast_timer.elapsed:.4f}s")
 
         # generate IR
         with Timer() as ir_timer:
-            q_num, ir = get_ir(tree)
-        logger.info(f"转换为IR耗时: {ir_timer.elapsed:.4f}秒")
+            _, ir = get_ir(tree)
+        logger.info(f"IR generating: {ir_timer.elapsed:.4f}s")
 
         # optimize IR
         with Timer() as opt1_timer:
-            optimized_ir = optimize_gate(ir)
-        logger.info(f"IR优化耗时: {opt1_timer.elapsed:.4f}秒")
+            optimized_ir = optimize_gate(ir, opt_level=opt_level)
+        logger.info(f"IR optimizing: {opt1_timer.elapsed:.4f}s")
 
         # decompose gate by rules
         with Timer() as decompose_timer:
             transpiled_gates = decompose_gates(optimized_ir)
-        logger.info(f"门分解耗时: {decompose_timer.elapsed:.4f}秒")
+        logger.info(f"gates decomposing: {decompose_timer.elapsed:.4f}s")
 
         # optimize the transpiled gates
         with Timer() as opt2_timer:
-            optimize_gate(transpiled_gates)
-        logger.info(f"门电路优化耗时: {opt2_timer.elapsed:.4f}秒")
+            optimize_gate(transpiled_gates, opt_level=opt_level)
+        logger.info(f"gates optimizing: {opt2_timer.elapsed:.4f}s\n")
 
-    logger.info(f"\n整个流程总耗时: {total_timer.elapsed:.4f}秒")
+    logger.info(
+        f"total running time of cmss-transpiler: {total_timer.elapsed:.4f}s"
+    )

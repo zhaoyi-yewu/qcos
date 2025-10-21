@@ -44,4 +44,6 @@ class TestTranspilerCmdLine:
         mock_get_ir.return_value = (None, None)
         mock_optimize_gate.return_value = None
         mock_decompose_gates.return_value = None
-        main()
+        default_input_file = "samples/qasm/3.0/benchmark/100bits_50000d.qasm"
+        default_output_file = "qiskit_transpiler_perf.log"
+        main(input_file=default_input_file, output_file=default_output_file)

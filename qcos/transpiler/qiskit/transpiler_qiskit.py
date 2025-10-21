@@ -31,7 +31,7 @@ from qcos.transpiler.transpiler_base import TranspilerBase
 class TranspilerQiskit(TranspilerBase):
     """Transpiler Class for Qiskit"""
 
-    def __init__(self):
+    def __init__(self, opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL):
         super().__init__()
         self.name = Constant.TRANSPILER_QISKIT
         # alias name
@@ -45,9 +45,17 @@ class TranspilerQiskit(TranspilerBase):
             Constant.CODE_TYPE_QASM3,
         ]
         # transpiler_options
+        if (
+            opt_level < Constant.MIN_OPTIMIZATION_LEVEL
+            or opt_level > Constant.MAX_OPTIMIZATION_LEVEL
+        ):
+            raise TranspilerException(
+                f"unsupported optimizing level. opt_level: {opt_level}"
+            )
+
         self.transpiler_options = {
             # default optimization level
-            "optimization_level": Constant.DEFAULT_OPTIMIZATION_LEVEL
+            "optimization_level": opt_level
         }
         # transpiler_options schema used in submit-job from user
         self.transpiler_options_schema = {Optional("optimization_level"): int}

@@ -16,9 +16,52 @@
 # ----------------------------------------------------------------------
 
 import sys
+import argparse
 
 from qcos.transpiler.cmss.transpiler_cmd_line import main
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    parser = argparse.ArgumentParser(description="cmss transpiler cli")
+    parser.add_argument(
+        "-i",
+        "--input-file",
+        dest="input_file",
+        type=str,
+        required=True,
+        help="input file",
+    )
+    parser.add_argument(
+        "-q",
+        "--qasm-version",
+        dest="qasm_version",
+        type=str,
+        default="3.0",
+        help="openqasm version",
+    )
+    parser.add_argument(
+        "-o",
+        "--opt-level",
+        dest="opt_level",
+        type=int,
+        default=1,
+        help="optimization level",
+    )
+    parser.add_argument(
+        "-O",
+        "--output-file",
+        dest="output_file",
+        type=str,
+        required=True,
+        help="output file",
+    )
+    args = parser.parse_args()
+
+    sys.exit(
+        main(
+            input_file=args.input_file,
+            output_file=args.output_file,
+            qasm_version=args.qasm_version,
+            opt_level=args.opt_level,
+        )
+    )
