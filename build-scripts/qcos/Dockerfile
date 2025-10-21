@@ -47,6 +47,7 @@ RUN \
     if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
     mkdir -p /etc/qcos/ && \
     mkdir -p /etc/qcos-template/ && \
+    mkdir -p /etc/qcos/ssl/ && \
     mkdir -p /var/run/qcos/ && \
     mkdir -p /var/log/qcos/ && \
 # install basic rpms

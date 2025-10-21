@@ -166,9 +166,9 @@ cd build-scripts
 1. 如果驱动配置文件中需要配置密码, 用于和远程量子设备API进行认证, 可以选择使用加密后的密码 (也可以直接用明文密码)
 ```shell
 进入qcos容器
-docker exec -it qcos bash
+$ docker exec -it qcos bash
 cd bin
-$ ./encrypt-password.py -e my_password
+./encrypt-password.py -e my_password
 Original text : my_password
 Encrypted text: ++gAAAAABo9gU4yf6G9lQQoNpH1LkBSYDsRYs1qNBln_Sf2N5OQP2siY65uaLCoz8-NYFWCfHDj8pCyxHSs4ltSKsdv-yz9muSAQ==
 
@@ -183,6 +183,53 @@ password = "++gAAAAABo9gU4yf6G9lQQoNpH1LkBSYDsRYs1qNBln_Sf2N5OQP2siY65uaLCoz8-NY
 只需要定义驱动配置文件中密码字段时, 使用包含password字符串的字段即可, 该密码字段会在日志打印时自动被屏蔽, 替换成********。
 比如: password, user_password, my_password, my_password_1等等
 
+### 5.2 使用HTTPS加密的API连接
+1. 生成自签名证书 (如果已经有证书可以跳过)
+```shell
+进入qcos容器
+$ docker exec -it qcos bash
+cd bin
+./make-ssl-cert.py --ip-list 127.0.0.1 --dns-list localhost
+```
+输出的SSL密钥和证书文件默认位于: /etc/qcos/ssl/
+
+2. 修改QCOS的配置文件, 使能SSL, 并且配置证书
+```shell
+vim /etc/qcos/qcos.toml
+[SSL]
+# Enable HTTPS for API server
+USE_SSL = true
+
+# SSL CERT_FILE
+# eg. CERT_FILE = "/etc/qcos/ssl/ssl.crt"
+CERT_FILE = "/etc/qcos/ssl/ssl.crt"
+
+# SSL KEY_FILE
+# eg. KEY_FILE = "/etc/qcos/ssl/ssl.key"
+KEY_FILE = "/etc/qcos/ssl/ssl.key"
+
+# SSL CA_FILE (Optional)
+# eg. CA_FILE = "/etc/qcos/ssl/cacert.pem"
+CA_FILE = "/etc/qcos/ssl/cacert.pem"
+```
+
+3. 重启QCOS服务
+```shell
+$ docker restart qcos
+```
+
+4. 命令行使用SSL证书
+```shell
+使用环境变量:
+export USE_SSL=true
+export SSL_CERTFILE=/etc/qcos/ssl/ssl.crt
+export SSL_KEYFILE=/etc/qcos/ssl/ssl.key
+export SSL_CAFILE=/etc/qcos/ssl/cacert.pem
+
+qcos-cli version
+或者, 使用命令行参数:
+qcos-cli --use-ssl --ssl-certfile /etc/qcos/ssl/ssl.crt --ssl-keyfile /etc/qcos/ssl/ssl.key --ssl-cafile /etc/qcos/ssl/cacert.pem version
+```
 
 ## 6. 命令行示例
 ```shell

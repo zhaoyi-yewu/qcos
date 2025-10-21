@@ -24,10 +24,12 @@ sdist
 develop-eggs
 .installed.cfg
 lib64
+*.zip
 
 # Installer logs
 pip-log.txt
 latest-commit-id.txt
+*.log
 
 # Unit test / coverage reports
 cicd/.coverage
@@ -47,3 +49,5 @@ build-scripts/.build-context/
 build-scripts/.env
 build-scripts/images/
 build-scripts/output/
+build-scripts/cli/output/
+

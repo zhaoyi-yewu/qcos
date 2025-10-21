@@ -53,9 +53,9 @@ USAGE
             formatter_class=RawDescriptionHelpFormatter
         )
         group = parser.add_mutually_exclusive_group(required=True)
-        group.add_argument("-e", "--encrypt", dest="plaintext",
+        group.add_argument("-e", "--encrypt", dest="plain_text",
                             help="text needs to be encrypted")
-        group.add_argument("-d", "--decrypt", dest="ciphertext",
+        group.add_argument("-d", "--decrypt", dest="cipher_text",
                             help="text needs to be decrypted")
         parser.add_argument("-k", "--key", dest="fernet_key",
                             default=Constant.DEFAULT_FERNET_KEY,
@@ -63,8 +63,8 @@ USAGE
 
         # parse arguments
         args = parser.parse_args()
-        plain_text = args.plaintext
-        cipher_text = args.ciphertext
+        plain_text = args.plain_text
+        cipher_text = args.cipher_text
 
         # fernet cipher suite with provided key
         fernet_key = args.fernet_key

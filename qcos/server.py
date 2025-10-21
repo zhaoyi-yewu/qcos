@@ -209,8 +209,9 @@ class Server:
                 reload=False,
                 access_log=access_log,
                 lifespan="on",
-                ssl_keyfile=Config.KEY_FILE if Config.USE_SSL else None,
                 ssl_certfile=Config.CERT_FILE if Config.USE_SSL else None,
+                ssl_keyfile=Config.KEY_FILE if Config.USE_SSL else None,
+                ssl_ca_certs=Config.CACERT_FILE if Config.USE_SSL else None,
             )
 
             # overwrite uvicorn loggers with our own logger

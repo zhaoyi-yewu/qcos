@@ -43,7 +43,10 @@ class ClientLibrary:
         func_name=None,
         headers=None,
         auth=None,
-        verify_ssl=False,
+        use_ssl=False,
+        verify_ssl=True,
+        cert_file=None,
+        key_file=None,
         retries=1,
         timeout=10,
         success_http_code=[200, 201],
@@ -61,7 +64,10 @@ class ClientLibrary:
             func_name: function name (Default value = None)
             headers: http headers (Default value = None)
             auth: http auth (Default value = None)
+            use_ssl: if use ssl certificate
             verify_ssl: if verify ssl certificate (Default value = False)
+            cert_file: ssl cert file
+            key_file: ssl key file
             retries: times to retry if failed (Default value = 1)
             timeout: timeout in seconds (Default value = 10)
             success_http_code: success http status (Default value = [200)
@@ -86,6 +92,10 @@ class ClientLibrary:
         else:
             request_func = requests.get
 
+        cert = None
+        if use_ssl and cert_file and key_file:
+            cert = (cert_file, key_file)
+
         for i in range(1, retries + 1):
             r = request_func(
                 url,
@@ -97,6 +107,7 @@ class ClientLibrary:
                 auth=auth,
                 verify=verify_ssl,
                 timeout=timeout,
+                cert=cert,
             )
             if r.status_code in success_http_code:
                 break

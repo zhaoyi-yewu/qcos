@@ -46,12 +46,13 @@ class Config:
     USE_SSL = False
     CERT_FILE = None
     KEY_FILE = None
+    CACERT_FILE = None
 
     # [DEVICES]
     DEVICE_LIST = []
 
     # valid sections
-    VALID_SECTIONS = ["DEFAULT", "API_SERVER", "DEVICES"]
+    VALID_SECTIONS = ["DEFAULT", "API_SERVER", "SSL", "DEVICES"]
 
     # extra configs from .toml files
     EXTRA_CONFIGS = {}
@@ -134,8 +135,7 @@ class Config:
         cls_vars = vars(cls)
         for k, v in cls_vars.items():
             if not k.startswith("__") and not isinstance(v, classmethod):
-                if v:
-                    configs[k] = v
+                configs[k] = v
         configs = Library.mask_password(configs)
         outputs = ["[Configs]"]
         for k, v in configs.items():

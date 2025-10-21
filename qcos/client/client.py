@@ -27,6 +27,15 @@ from qcos.common.constant import Constant, HttpHeaders, HttpMethod
 logger = logging.getLogger(__name__)
 
 
+class SSL:
+    """SSL configs"""
+
+    use_ssl = False
+    cert_file = None
+    key_file = None
+    ca_file = None
+
+
 class Client:
     """QCOS client api"""
 
@@ -36,9 +45,23 @@ class Client:
         self,
         api_server_ip=Constant.DEFAULT_API_SERVER_LISTEN_IP,
         api_server_port=Constant.DEFAULT_API_SERVER_LISTEN_PORT,
+        use_ssl=False,
+        ssl_certfile=None,
+        ssl_keyfile=None,
+        ssl_cafile=None,
     ):
+        # SSL configs
+        SSL.use_ssl = use_ssl
+        SSL.cert_file = ssl_certfile
+        SSL.key_file = ssl_keyfile
+        SSL.ca_file = ssl_cafile
+
+        # API endpoint configs
         api_version = Constant.DEFAULT_API_VERSION
-        base_endpoint_url = f"http://{api_server_ip}:{api_server_port}"
+        http_proto = "http"
+        if use_ssl:
+            http_proto = "https"
+        base_endpoint_url = f"{http_proto}://{api_server_ip}:{api_server_port}"
         endpoint_url = f"{base_endpoint_url}/{api_version}"
         self.version_url = f"{base_endpoint_url}/version"
         self.driver_url = f"{endpoint_url}/driver"
@@ -77,6 +100,7 @@ class Client:
         reason = None
         text = None
         result = None
+
         jsonrpc_data = request(method_name, params={"body": data})
         try:
             status_code, reason, text, result = ClientLibrary.call_http_api(
@@ -86,6 +110,10 @@ class Client:
                 params=params,
                 func_name=method_name,
                 headers=HttpHeaders.DEFAULT_JSON_HEADERS,
+                use_ssl=SSL.use_ssl,
+                verify_ssl=SSL.ca_file if SSL.ca_file else False,
+                cert_file=SSL.cert_file,
+                key_file=SSL.key_file,
                 debug=Client.verbose,
             )
         except requests.exceptions.ConnectionError as ce:

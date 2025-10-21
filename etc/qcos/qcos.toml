@@ -10,6 +10,22 @@ API_SERVER_LISTEN_PORT = 18400
 API_LOG_FILE = "/var/log/qcos/qcos-api.log"
 PREFECT_LOG_FILE = "/var/log/qcos/qcos-prefect.log"
 
+[SSL]
+# Enable HTTPS for API server
+USE_SSL = false
+
+# SSL CERT_FILE
+# eg. CERT_FILE = "/etc/qcos/ssl/ssl.crt"
+# CERT_FILE =
+
+# SSL KEY_FILE
+# eg. KEY_FILE = "/etc/qcos/ssl/ssl.key"
+# KEY_FILE =
+
+# SSL CACERT_FILE (Optional)
+# eg. CACERT_FILE = "/etc/qcos/ssl/cacert.pem"
+# CACERT_FILE =
+
 [DEVICES]
 # DEVICE_LIST example:
 # DEVICE_LIST = ["dummy", "hanyuan1", "tiangong100", "spinq_rpc", "qiskit_aer_sim", "qiskit_qasm_sim"

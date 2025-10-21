@@ -148,8 +148,37 @@ class QcosShell(App):
         super().initialize_app(argv)
         api_server_ip = self.options.api_host
         api_server_port = self.options.api_port
+
+        # check ssl configs
+        use_ssl = self.options.use_ssl
+        ssl_certfile = self.options.ssl_certfile
+        ssl_keyfile = self.options.ssl_keyfile
+        ssl_cafile = self.options.ssl_cafile
+        if ssl_certfile and not os.path.exists(ssl_certfile):
+            raise errors.InvalidArguments(
+                f"Error: file not found: {ssl_certfile}"
+            )
+        if ssl_keyfile and not os.path.exists(ssl_keyfile):
+            raise errors.InvalidArguments(
+                f"Error: file not found: {ssl_keyfile}"
+            )
+        if ssl_cafile and not os.path.exists(ssl_cafile):
+            raise errors.InvalidArguments(
+                f"Error: file not found: {ssl_cafile}"
+            )
+        if use_ssl and not (ssl_certfile and ssl_keyfile):
+            raise errors.InvalidArguments(
+                "Error: ssl_certfile and ssl_keyfile must be set when "
+                "use_ssl is enabled"
+            )
+
         self.client = Client(
-            api_server_ip=api_server_ip, api_server_port=api_server_port
+            api_server_ip=api_server_ip,
+            api_server_port=api_server_port,
+            use_ssl=use_ssl,
+            ssl_certfile=ssl_certfile,
+            ssl_keyfile=ssl_keyfile,
+            ssl_cafile=ssl_cafile,
         )
         # override cliff help.HelpAction
         help.HelpAction = HelpAction
@@ -203,6 +232,8 @@ class QcosShell(App):
             default=None,
             help="Specify a file to log output. Disabled by default.",
         )
+
+        # API host configs
         default_api_server_ip = os.environ.get(
             "API_SERVER_IP", Constant.DEFAULT_API_SERVER_LISTEN_IP
         )
@@ -224,6 +255,49 @@ class QcosShell(App):
             help="Specify api server port. "
             f"Default: {default_api_server_port}",
         )
+
+        # SSL configs
+        env_use_ssl = os.environ.get("USE_SSL", "")
+        default_use_ssl = env_use_ssl.lower() == "true"
+        parser.add_argument(
+            "--use-ssl",
+            action="store_true",
+            dest="use_ssl",
+            default=default_use_ssl,
+            help="Use SSL (https) connections",
+        )
+        default_ssl_certfile = os.environ.get(
+            "SSL_CERTFILE", "/etc/qcos/ssl/ssl.crt"
+        )
+        parser.add_argument(
+            "--ssl-certfile",
+            dest="ssl_certfile",
+            type=str,
+            default=default_ssl_certfile,
+            help=f"Specify SSL certfile. Default: {default_ssl_certfile}",
+        )
+        default_ssl_keyfile = os.environ.get(
+            "SSL_KEYFILE", "/etc/qcos/ssl/ssl.key"
+        )
+        parser.add_argument(
+            "--ssl-keyfile",
+            dest="ssl_keyfile",
+            type=str,
+            default=default_ssl_keyfile,
+            help=f"Specify SSL keyfile. Default: {default_ssl_keyfile}",
+        )
+        default_ssl_cafile = os.environ.get(
+            "SSL_CAFILE", "/etc/qcos/ssl/cacert.pem"
+        )
+        parser.add_argument(
+            "--ssl-cafile",
+            dest="ssl_cafile",
+            type=str,
+            default=default_ssl_cafile,
+            help=f"Specify SSL cafile. Default: {default_ssl_cafile}",
+        )
+
+        # Help
         parser.add_argument(
             "-h",
             "--help",
