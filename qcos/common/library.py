@@ -633,13 +633,11 @@ class Library:
             flat_arr = arr.flatten()
             # find the least common denominator of all non-zero elements
             denominators = []
-            logger.info(f"flat_arr: {flat_arr}")
             for val in flat_arr:
                 if val != 0:
                     # convert floating numbers to fractional form
                     frac = Fraction(val).limit_denominator(1000000)
                     denominators.append(frac.denominator)
-            logger.info(f"denominators: {denominators}")
             if not denominators:
                 return arr.astype(int), 1
 

@@ -32,7 +32,7 @@ from qcos.engine.job_engine import (
     driver_cancel,
     register_signals,
     update_progress,
-    run_code,
+    _run_code,
     flow_parse,
     flow_transpile,
     flow_task_monitor,
@@ -212,7 +212,7 @@ class TestJobEngine:
         mock_flow_parse.return_value = iter([{"parsed_src_code": "v"}, 233])
         mock_flow_transpile.return_value = ({}, 466)
         with pytest.raises(ValueError) as e:
-            run_code(
+            _run_code(
                 [1, 2, 3], {}, {"data": {}}, DriverBase(), TranspilerBase(), {}
             )
         assert str(e.value) == "unexpected transpile_results or num_qubits"
@@ -225,7 +225,7 @@ class TestJobEngine:
         mock_flow_run_driver.return_value = iter(
             [{"results": "v", "metadata": "m"}, 233]
         )
-        run_code(
+        _run_code(
             [1, 2, 3], {}, {"data": {}}, DriverBase(), TranspilerBase(), {}
         )
 
@@ -312,7 +312,7 @@ class TestJobEngine:
     @patch("qcos.engine.job_engine.register_signals")
     @patch("qcos.engine.job_engine.create_progress_artifact")
     @patch("qcos.engine.job_engine.flow_task_monitor")
-    @patch("qcos.engine.job_engine.run_code")
+    @patch("qcos.engine.job_engine._run_code")
     def test_job_flow(
         self,
         mock_run_code,
@@ -339,6 +339,7 @@ class TestJobEngine:
             Constant.PROFILING_TYPE_DRIVER_TRANSPILE,
             Constant.PROFILING_TYPE_DRIVER_RUN,
         ]
+        self.job_info["data"]["code_type"] = Constant.CODE_TYPE_QASM
         job_results_list = raw_job_flow_func(self.job_info)
         assert len(job_results_list) == len(
             self.job_info["data"]["source_code"]

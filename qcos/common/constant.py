@@ -261,6 +261,7 @@ class Constant:
     DEFAULT_QUBITS = 1
     MIN_QUBITS = 1
     MAX_QUBITS = 1024
+    MAX_QUBO_QUBITS = 100
 
     # Optimization level
     DEFAULT_OPTIMIZATION_LEVEL = 1
