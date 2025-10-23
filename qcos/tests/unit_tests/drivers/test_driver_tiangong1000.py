@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import json
 from unittest.mock import patch
 
 import pytest
@@ -107,16 +108,21 @@ class TestDriverTiangong1000:
 
     @patch.object(Library, "call_http_api")
     def test_user_auth(self, mock_call_http_api):
+        json_dict = {
+            "code": "",
+            "msg": "",
+        }
         mock_call_http_api.return_value = iter(
-            [503, "", '{"code": "","msg": ""}', ""]
+            [503, "", json.dumps(json_dict), ""]
         )
         success, err_msg, token = driver_tiangong1000.user_auth(
             user_id, password_sdk_code
         )
         assert success is False
 
+        json_dict = {"code": "0", "msg": "", "data": {"token": "ABCD"}}
         mock_call_http_api.return_value = iter(
-            [200, "", '{"code": "0","msg": "","data": {"token": "ABCD"}}', ""]
+            [200, "", json.dumps(json_dict), ""]
         )
         success, err_msg, token = driver_tiangong1000.user_auth(
             user_id, password_sdk_code
@@ -125,8 +131,9 @@ class TestDriverTiangong1000:
 
     @patch.object(Library, "call_http_api")
     def test_submit_tasks(self, mock_call_http_api):
+        json_dict = {"code": "0", "msg": "", "data": {"task_id": "1"}}
         mock_call_http_api.return_value = iter(
-            [200, "", '{"code": "0","msg": "","data": {"task_id": "1"}}', ""]
+            [200, "", json.dumps(json_dict), ""]
         )
         success, err_msg, task_id = driver_tiangong1000.submit_tasks(
             job_id, data_index, data
@@ -154,16 +161,21 @@ class TestDriverTiangong1000:
 
     @patch.object(Library, "call_http_api")
     def test_get_task_realtime_result(self, mock_call_http_api):
+        json_dict = {
+            "code": "0",
+            "msg": "",
+            "data": {
+                "task_status": "1",
+                "qubo_value": "[-109]",
+                "qubo_solution_data": "[-109]",
+                "visual_data": "[80]",
+            },
+        }
         mock_call_http_api.return_value = iter(
             [
                 200,
                 "",
-                '{"code": "0",'
-                '"msg": "",'
-                '"data": {'
-                '"task_status": 3,'
-                '"qubo_value_url": -109'
-                "}}",
+                json.dumps(json_dict),
                 "",
             ]
         )
@@ -171,8 +183,10 @@ class TestDriverTiangong1000:
             driver_tiangong1000.get_task_realtime_result("2")
         )
         assert success is True
-        assert realtime_status["task_status"] == 3
-        assert realtime_status["task_result"] == -109
+        assert realtime_status["task_status"] == "1"
+        assert realtime_status["qubo_value"] == "[-109]"
+        assert realtime_status["qubo_solution_data"] == "[-109]"
+        assert realtime_status["visual_data"] == "[80]"
 
     @patch.object(DriverTiangong1000, "get_task_realtime_result")
     def test_get_results(self, mock_get_task_realtime_result):

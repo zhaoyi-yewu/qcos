@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import ast
 import csv
 import json
 import os
@@ -339,7 +340,11 @@ class DriverTiangong1000(DriverTiangongBase):
             if err_code == "0":
                 realtime_status = {
                     "task_status": response["data"]["task_status"],
-                    "task_result": response["data"]["qubo_value_url"],
+                    "qubo_value": response["data"]["qubo_value"],
+                    "qubo_solution_data": response["data"][
+                        "qubo_solution_data"
+                    ],
+                    "visual_data": response["data"]["visual_data"],
                 }
             else:
                 success = False
@@ -363,9 +368,29 @@ class DriverTiangong1000(DriverTiangongBase):
         success, err_msg, final_results = self.get_task_realtime_result(
             task_id
         )
-        task_result = final_results.get("task_result", None)
+        out_data = []
+        qubo_value = final_results.get("qubo_value", None)
+        qubo_value_list = ast.literal_eval(qubo_value)
+
+        qubo_solution_data = final_results.get("qubo_solution_data", None)
+        formatted_data = qubo_solution_data.replace("|", "").replace("  ", " ")
+        qubo_solution_list = ast.literal_eval(formatted_data)
+
+        qubo_value_len = len(qubo_value_list)
+        qubo_solution_data_len = len(qubo_solution_list)
+        if qubo_value_len != qubo_solution_data_len:
+            raise ValueError("Invalid result")
+
+        for i in range(qubo_value_len):
+            single_result = {}
+            single_result["result"] = i + 1
+            single_result["quboValue"] = qubo_value_list[i]
+            single_result["solutionVector"] = qubo_solution_list[i]
+            out_data.append(single_result)
+
+        visual_data = final_results.get("visual_data", None)
         results = {
-            "out_data": task_result,
-            "visual_data": task_result,
+            "out_data": out_data,
+            "visual_data": visual_data,
         }
         return success, "\n".join(err_msg), results
