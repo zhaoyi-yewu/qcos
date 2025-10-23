@@ -287,6 +287,20 @@ class Client:
         )
         return status_code, reason, text, result
 
+    def system_info(self):
+        """Get system info
+
+        Returns:
+            System info
+        """
+        method_name = "system_info"
+
+        # construct data and call json rpc
+        status_code, reason, text, result = Client.call_json_rpc(
+            self.system_url, method_name, data=None
+        )
+        return status_code, reason, text, result
+
     # [Job]
     def submit_job(
         self,

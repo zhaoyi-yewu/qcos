@@ -33,13 +33,32 @@ else
   cat << EOM > ${qcos_config_file_path}
 [DEFAULT]
 DEBUG = ${_DEBUG,,}
-WORKERS = 8
+# max jobs (all status) [GLOBAL CONFIG]
+MAX_JOBS = 10000
+# max queued+running jobs [GLOBAL CONFIG]
+MAX_QUEUED_JOBS = 1000
 
 [API_SERVER]
+# API workers
+API_WORKERS = 8
+# API server listen ip
 API_SERVER_LISTEN_IP = "${API_SERVER_LISTEN_IP:-0.0.0.0}"
+# API server listen port
 API_SERVER_LISTEN_PORT = ${API_SERVER_LISTEN_PORT:-18400}
+
+[LOG]
+# api log file
 API_LOG_FILE = "${API_LOG_FILE:-/var/log/qcos/qcos-api.log}"
+# prefect log file
 PREFECT_LOG_FILE = "${PREFECT_LOG_FILE:-/var/log/qcos/qcos-prefect.log}"
+# log format
+LOG_FORMAT = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
+# log rotate, max_size (MB). default: 10MB
+LOG_ROTATE_MAX_SIZE_MB = 10
+# log rotate, backup count. default: 10
+LOG_ROTATE_BACKUP_COUNT = 10
+# log rotate, compression. default: true
+LOG_ROTATE_COMPRESSION = true
 
 [SSL]
 # Enable HTTPS for API server

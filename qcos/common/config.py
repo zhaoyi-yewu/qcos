@@ -34,13 +34,24 @@ class Config:
 
     # [DEFAULT]
     DEBUG = False
-    WORKERS = 8
+    MAX_JOBS = 10000
+    MAX_QUEUED_JOBS = 1000
 
     # [API_SERVER]
+    API_WORKERS = 8
     API_SERVER_LISTEN_IP = Constant.DEFAULT_API_SERVER_LISTEN_IP
     API_SERVER_LISTEN_PORT = Constant.DEFAULT_API_SERVER_LISTEN_PORT
+
+    # [LOG]
     API_LOG_FILE = "/var/log/qcos/qcos-api.log"
     PREFECT_LOG_FILE = "/var/log/qcos/qcos-prefect.log"
+    # LOG_FORMAT = "{asctime} {levelname} {filename}:{lineno} {message}"
+    LOG_FORMAT = (
+        "%(asctime)s %(levelname)s %(filename)s:%(lineno)s %(message)s"
+    )
+    LOG_ROTATE_MAX_SIZE_MB = 10
+    LOG_ROTATE_BACKUP_COUNT = 10
+    LOG_ROTATE_COMPRESSION = True
 
     # [SSL]
     USE_SSL = False
@@ -52,7 +63,7 @@ class Config:
     DEVICE_LIST = []
 
     # valid sections
-    VALID_SECTIONS = ["DEFAULT", "API_SERVER", "SSL", "DEVICES"]
+    VALID_SECTIONS = ["DEFAULT", "API_SERVER", "LOG", "SSL", "DEVICES"]
 
     # extra configs from .toml files
     EXTRA_CONFIGS = {}

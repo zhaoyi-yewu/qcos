@@ -23,15 +23,17 @@ import gzip
 
 from logging.handlers import RotatingFileHandler
 
+from qcos.common.config import Config
+
 
 class ColouredFormatter(logging.Formatter):
     """Coloured Formatter for logger module"""
 
     RESET = "\x1b[0m"
+    WHITE = "\x1b[37m"
     RED = "\x1b[31m"
     YELLOW = "\x1b[33m"
-    GREEN = "\x1b[32m"
-    PINK = "\x1b[35m"
+    GREY = "\x1b[38m"
 
     def format(self, record, colour=False):
         """Format log record"""
@@ -48,9 +50,9 @@ class ColouredFormatter(logging.Formatter):
         elif level_no >= logging.WARNING:
             colour = self.YELLOW
         elif level_no >= logging.INFO:
-            colour = self.GREEN
+            colour = self.WHITE
         elif level_no >= logging.DEBUG:
-            colour = self.PINK
+            colour = self.GREY
         else:
             colour = self.RESET
 
@@ -157,18 +159,10 @@ def init_logger(
             file_stream_handler = RotatingFileHandler(
                 logfile, maxBytes=max_bytes, backupCount=backup_count
             )
-        file_stream_handler.formatter = ColouredFormatter(
-            "{asctime} {levelname} {filename}:{lineno} {message}",
-            "%Y-%m-%d %H:%M:%S",
-            "{",
-        )
+        file_stream_handler.formatter = ColouredFormatter(Config.LOG_FORMAT)
     if console:
         console_stream_handler = ColouredStreamHandler(sys.stdout)
-        console_stream_handler.formatter = ColouredFormatter(
-            "{asctime} {levelname} {name}:{lineno}#RESET# {message}",
-            "%Y-%m-%d %H:%M:%S",
-            "{",
-        )
+        console_stream_handler.formatter = ColouredFormatter(Config.LOG_FORMAT)
     if quiet:
         file_stream_handler.addFilter(logging.Filter(name="user_facing"))
         console_stream_handler.addFilter(logging.Filter(name="user_facing"))

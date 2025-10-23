@@ -33,20 +33,20 @@ class TestTaskFlowManager(unittest.TestCase):
     def setUp(self, mock_check_connection):
         self.task_manager = TaskFlowManager()
 
-    def test_transform_to_qcos_state(self):
+    def test_convert_to_qcos_state(self):
         # case 1: JOB_STATUS_FAILED
         state = Constant.PREFECT_STATE_CRASHED
-        v = self.task_manager.transform_to_qcos_state(state)
+        v = self.task_manager.convert_to_qcos_state(state)
         self.assertEqual(v, Constant.JOB_STATUS_FAILED)
 
         # case 2: JOB_STATUS_QUEUED
         state = Constant.PREFECT_STATE_SCHEDULED
-        v = self.task_manager.transform_to_qcos_state(state)
+        v = self.task_manager.convert_to_qcos_state(state)
         self.assertEqual(v, Constant.JOB_STATUS_QUEUED)
 
         # case 3: unknown status
         state = "unknown"
-        v = self.task_manager.transform_to_qcos_state(state)
+        v = self.task_manager.convert_to_qcos_state(state)
         self.assertEqual(v, state.upper())
 
     def test_check_connection(self):

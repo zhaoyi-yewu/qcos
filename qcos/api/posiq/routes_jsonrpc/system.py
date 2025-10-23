@@ -18,7 +18,10 @@
 import logging
 
 from qcos.api import schemas
+from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from qcos.api.posiq.routes_jsonrpc.routes import system_api_v1
+from qcos.common import errors
+from qcos.task_manager import scheduler
 
 logger = logging.getLogger(__name__)
 module_name = "SYSTEM"
@@ -41,4 +44,34 @@ def ping(body: schemas.PingRequest) -> schemas.PongResponse:
 
     _response_info = {"message": message}
     response_info = schemas.PongResponse.model_validate(_response_info)
+    return response_info
+
+
+@system_api_v1.method()
+def system_info(
+    body: schemas.SystemInfoRequest | None = None,
+) -> schemas.SystemInfoResponse:
+    """Get system info
+
+    Args:
+        body(schemas.SystemInfoRequest): System Info Request
+
+    Returns:
+        system info response
+    """
+    func_name = "system_info"
+    logger.info(f"Call {func_name}: {body}")
+
+    # query jobs' results
+    responses = []
+    try:
+        responses, err = scheduler.get_jobs()
+    except errors.WorkFlowError as e:
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, str(e))
+        )
+    total_jobs_count = len(responses)
+
+    _response_info = {"total_jobs_count": total_jobs_count}
+    response_info = schemas.SystemInfoResponse.model_validate(_response_info)
     return response_info

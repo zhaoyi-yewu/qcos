@@ -141,10 +141,10 @@ class Server:
         self._stream_handlers = init_logger(
             logger_level,
             logfile=log_file,
-            max_bytes=10000000,
-            backup_count=10,
+            max_bytes=Config.LOG_ROTATE_MAX_SIZE_MB * 1000000,
+            backup_count=Config.LOG_ROTATE_BACKUP_COUNT,
             console=True,
-            compression=True,
+            compression=Config.LOG_ROTATE_COMPRESSION,
             quiet=False,
         )
 
@@ -205,7 +205,7 @@ class Server:
                 app,
                 host=Config.API_SERVER_LISTEN_IP,
                 port=Config.API_SERVER_LISTEN_PORT,
-                workers=Config.WORKERS,
+                workers=Config.API_WORKERS,
                 reload=False,
                 access_log=access_log,
                 lifespan="on",

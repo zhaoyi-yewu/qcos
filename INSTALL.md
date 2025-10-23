@@ -251,7 +251,6 @@ qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qas
 qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation internal --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm ./samples/qasm/2.0/simple-qasm.qasm
 qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation external --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
 
-
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
 qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
 3. 中科酷原-汉原1 中性原子驱动, 真实运行
@@ -287,12 +286,16 @@ qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"resul
 ** 设置多作业结果, 针对多源代码的作业
 qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}' '{"code": -104, "message": "error test"}'
 
+[版本命令]
+* 请求服务端版本请求命令
+qcos-cli version
+
 [系统命令]
 * ping命令
 qcos-cli ping 123
 
-* 服务端版本请求命令
-qcos-cli version
+* 获取系统信息
+qcos-cli system-info
 
 [驱动命令]
 * 获取所有驱动信息列表

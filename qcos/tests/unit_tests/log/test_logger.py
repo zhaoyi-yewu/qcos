@@ -44,27 +44,27 @@ class TestColouredFormatter:
         mock_record.levelno = logging.DEBUG
         formatter.format(mock_record)
         msg = formatter.format(mock_record, colour=True)
-        assert "\x1b[35m" in msg
+        assert ColouredFormatter.GREY in msg
 
         mock_record.levelno = logging.CRITICAL
         msg = formatter.format(mock_record, colour=True)
-        assert "\x1b[31m" in msg
+        assert ColouredFormatter.RED in msg
 
         mock_record.levelno = logging.ERROR
         msg = formatter.format(mock_record, colour=True)
-        assert "\x1b[31m" in msg
+        assert ColouredFormatter.RED in msg
 
         mock_record.levelno = logging.WARNING
         msg = formatter.format(mock_record, colour=True)
-        assert "\x1b[33m" in msg
+        assert ColouredFormatter.YELLOW in msg
 
         mock_record.levelno = logging.INFO
         msg = formatter.format(mock_record, colour=True)
-        assert "\x1b[32m" in msg
+        assert ColouredFormatter.WHITE in msg
 
         mock_record.levelno = logging.DEBUG - 1
         msg = formatter.format(mock_record, colour=True)
-        assert "\x1b[0m" in msg
+        assert ColouredFormatter.RESET in msg
 
 
 handler = ColouredStreamHandler()
@@ -78,8 +78,8 @@ class TestColouredStreamHandler:
         mock_record.stack_info = None
 
         ans = handler.format(mock_record)
-        assert ans is not None
 
+        assert ans is not None
         assert handler.emit(mock_record) is None
 
 

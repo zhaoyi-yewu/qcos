@@ -37,13 +37,14 @@ from qcos.common import errors
 from qcos.common.library import Library
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 
-
-# 配置 Loguru
+# Config Loguru
 # pylint: disable=duplicate-code
 logger.add(
     Config.PREFECT_LOG_FILE,
-    rotation=Constant.PREFECT_JOB_LOG_ROTATION,
-    retention=Constant.PREFECT_JOB_LOG_RETENTION,
+    level="DEBUG" if Config.DEBUG else "INFO",
+    rotation=f"{Config.LOG_ROTATE_MAX_SIZE_MB} MB",
+    compression="gz" if Config.LOG_ROTATE_COMPRESSION else None,
+    retention=Config.LOG_ROTATE_BACKUP_COUNT,
     format=Constant.PREFECT_JOB_LOG_FORMAT,
 )
 

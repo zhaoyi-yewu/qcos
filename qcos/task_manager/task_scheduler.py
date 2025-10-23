@@ -21,6 +21,7 @@ from abc import ABC
 from prefect import exceptions as prefect_exceptions
 
 from qcos.common import errors
+from qcos.common.config import Config
 from qcos.common.constant import Constant
 from .task_manager import TaskFlowManager
 
@@ -109,10 +110,38 @@ class TaskScheduler(ABC):
         Returns:
             added job info, error messages
         """
+        # check Job UUID
         if job_info.job_id:
             exist = self.has_job(job_info.job_id)
             if exist:
                 return None, f"Job uuid is already existed: {job_info.job_id}"
+
+        # check current all flows count exceed MAX_JOBS
+        all_flows = self._task_manager.get_flow_runs_with_filters()
+        all_flow_count = len(all_flows)
+        if all_flow_count >= Config.MAX_JOBS:
+            return None, (
+                f"Current job count exceeds max job limit: {Config.MAX_JOBS}"
+            )
+        if all_flow_count >= Constant.FLOW_LIMIT:
+            return None, (
+                f"Current job count exceeds max flow limit: "
+                f"{Constant.FLOW_LIMIT}"
+            )
+
+        # check current queued+running flows count exceed MAX_QUEUED_JOBS
+        wait_states = self._task_manager.convert_to_prefect_states(
+            Constant.PREFECT_WAIT_STATES
+        )
+        wait_states_flows = self._task_manager.get_flow_runs_with_filters(
+            states=wait_states
+        )
+        wait_states_flow_count = len(wait_states_flows)
+        if wait_states_flow_count >= Config.MAX_QUEUED_JOBS:
+            return None, (
+                f"Current running+queued job count exceeds "
+                f"max queued job limit: {Config.MAX_QUEUED_JOBS}"
+            )
 
         # get driver info
         backend = job_info.backend
@@ -176,7 +205,7 @@ class TaskScheduler(ABC):
             state, parameters, results, error_message = (
                 self._task_manager.get_task_flow_result(job_id)
             )
-            state = self._task_manager.transform_to_qcos_state(state)
+            state = self._task_manager.convert_to_qcos_state(state)
             job_status = self.get_job_status(state, results, parameters)
             artifact = self._task_manager.get_job_artifact(job_id)
             response = {

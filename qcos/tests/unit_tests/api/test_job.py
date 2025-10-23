@@ -215,7 +215,7 @@ class TestJob:
                     {
                         "job_status": Constant.JOB_STATUS_UNKNOWN,
                         "id": self.job_id,
-                        "progress": "pro",
+                        "progress": -1,
                     }
                 ],
                 None,

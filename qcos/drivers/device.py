@@ -55,6 +55,10 @@ class Device:
         self.enable = False
         # status
         self.status = self.DEVICE_STATUS_OFFLINE
+        # qubits
+        self.max_qubits = driver.get_max_qubits()
+        # qubits
+        self.tech_type = driver.get_tech_type()
         # progress
         self.progress = 0
         # configs
@@ -183,6 +187,8 @@ class Device:
             f"driver_name: {self.driver.get_name()}",
             f"enable: {self.enable}",
             f"status: {self.status}",
+            f"tech_type: {self.tech_type}",
+            f"max_qubits: {self.max_qubits}",
             f"configs: {self.get_configs(hide_password=True)}",
         ]
         return "\n".join(show_list)

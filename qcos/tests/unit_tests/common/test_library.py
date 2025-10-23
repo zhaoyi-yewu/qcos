@@ -18,10 +18,14 @@
 import asyncio
 import os
 import tempfile
+import uuid
 from datetime import datetime
 from unittest.mock import patch, Mock
 
 from qcos.common.library import Library
+from qcos.tests.unit_tests.task_manager.constant_for_test import (
+    ConstantForTest,
+)
 
 library = Library()
 fernet_key = "abcBn4Ol_3bJ7t0IW7TmPCCZurqfw_QRa810U43o_m0="
@@ -44,25 +48,45 @@ class TestLibrary:
         new_list = library.remove_duplicates(lst)
         assert new_list == lst
 
+    def test_create_file(self):
+        test_file = "test1.txt"
+        library.create_file(test_file, "123", mode=0o644)
+        library.rm_file(test_file)
+
     def test_create_pid_file(self):
-        library.create_pid_file("test-pid_file.txt")
-        library.create_pid_file("test.txt")
-        library.create_pid_file("")
+        test_file = "test.pid"
+        library.create_pid_file(test_file)
+        assert os.path.isfile(test_file)
+        library.rm_file(test_file)
+
+    def test_kill_pid(self):
+        test_file = "test.pid"
+        library.create_file(test_file, "99999999")
+        library.kill_pid("test.pid")
+        library.kill_pid("test.pid1")
+        library.rm_file(test_file)
 
     def test_find_dirs(self):
         dirs = library.find_dirs(base_dir="tests", recursive=True)
         assert not dirs
 
     def test_find_files(self):
-        library.find_files("tests", recursive=True, exclusives="_init_")
-        library.find_files("tests")
+        library.find_files("./")
+        library.find_files(
+            "./", pattern="test*", recursive=True, exclusives="test*"
+        )
         library.find_files("no_such_dir")
+        library.find_files("./", pattern="test*", recursive=True)
 
-    def test_mkdir(self):
-        assert library.mkdir("test-file") is not None
+    def test_mkdir_rmdir(self):
+        dir_name = "test-dir"
+        success = library.mkdir(dir_name)
+        assert success is True
+        success, _ = library.rmdir(dir_name)
+        assert success is True
 
     def test_rm_file(self):
-        success = library.rm_file("test.txt")
+        success, _ = library.rm_file("test.txt")
         library.rm_file("no_such_dir")
         assert success is True
 
@@ -106,24 +130,20 @@ class TestLibrary:
             file_path = temp_file.name
 
         assert library.read_csv_file(file_path) is not None
-        os.unlink(file_path)
+        library.rm_file(file_path)
 
     def test_read_toml_file(self):
-        success, _, _ = library.read_toml_file("test-pid_file.toml")
+        success, _, _ = library.read_toml_file("test-toml.toml")
         assert success is False
-        library.read_toml_file("")
 
     def test_write_to_toml(self):
         data = {"a": "b", "c": "d"}
-        success, _ = library.write_to_toml(data, "test-pid_file.toml")
+        test_file = "test.toml"
+        success, _ = library.create_toml(test_file, data)
         assert success is True
+        library.rm_file(test_file)
 
-        success, _ = library.write_to_toml(data, "")
-        assert success is False
-
-    def test_write_to_file(self):
-        data = {"a": "b", "c": "d"}
-        success, _ = library.write_to_file(data, "test-pid_file.txt")
+        success, _ = library.create_toml("", data)
         assert success is False
 
     def test_get_current_datetime(self):
@@ -132,67 +152,71 @@ class TestLibrary:
 
     def test_validate_values_enum(self):
         value = ["6", "7", "8", "9"]
-        success, _ = library.validate_values_enum("9", "Tzeentch", value)
+        success, _ = library.validate_values_enum("9", "test1", value)
         assert success is True
 
         success, _ = library.validate_values_enum(
-            None, "Tzeentch", value, allow_none=True
+            None, "test1", value, allow_none=True
         )
         assert success is True
 
-        success, _ = library.validate_values_enum("13", "Tzeentch", value)
+        success, _ = library.validate_values_enum("13", "test1", value)
         assert success is False
 
     def test_validate_values_uuid(self):
-        success, _ = library.validate_values_uuid("9", "Tzeentch")
+        uuid_1 = ConstantForTest.job_id
+        success, _ = library.validate_values_uuid(uuid_1, "test1")
+        assert success is True
+
+        success, _ = library.validate_values_uuid("9", "test2")
         assert success is False
 
     def test_validate_values_range(self):
-        success, _ = library.validate_values_range(9, "Tzeentch")
+        success, _ = library.validate_values_range(9, "test1")
         assert success is True
 
         success, _ = library.validate_values_range(
-            9, "Tzeentch", min_value=13, max_value=6
+            9, "test1", min_value=13, max_value=6
         )
         assert success is False
 
     def test_validate_values_length(self):
         success, _ = library.validate_values_length(
-            None, "Tzeentch", allow_none=True
+            None, "test1", allow_none=True
         )
         assert success is True
 
         success, _ = library.validate_values_length(
-            "99", "Tzeentch", min_value=13, max_value=1
+            "99", "test1", min_value=13, max_value=1
         )
         assert success is False
 
-        success, _ = library.validate_values_length("9", "Tzeentch")
+        success, _ = library.validate_values_length("9", "test1")
         assert success is True
 
     def test_validate_values_list(self):
         value = "987613"
-        success, _ = library.validate_values_list(value, "Tzeentch", "chaos")
+        success, _ = library.validate_values_list(value, "test1", "chaos")
         assert success is False
 
         value = [9, 8, 7, 6, 13]
-        success, _ = library.validate_values_list(value, "Tzeentch", str)
+        success, _ = library.validate_values_list(value, "test1", str)
         assert success is False
 
         value = [False, False]
-        success, _ = library.validate_values_list(value, "Tzeentch", bool)
+        success, _ = library.validate_values_list(value, "test1", bool)
         assert success is False
 
         success, _ = library.validate_values_list(
-            value, "Tzeentch", bool, allow_none=True
+            value, "test1", bool, allow_none=True
         )
         assert success is True
 
     def test_validate_schema(self):
-        success, _ = library.validate_schema("9", "Tzeentch")
+        success, _ = library.validate_schema("9", "test1")
         assert success is False
 
-        success, _ = library.validate_schema(None, "Tzeentch", allow_none=True)
+        success, _ = library.validate_schema(None, "test1", allow_none=True)
         assert success is True
 
         success, _ = library.validate_schema("9", None)
@@ -225,7 +249,7 @@ class TestLibrary:
         library.check_qubo_matrixs_bit_width(qubo_matrixs)
 
     def test_is_valid_url(self):
-        success = library.is_valid_url("127.0.0.1", "Tzeentch")
+        success = library.is_valid_url("127.0.0.1", "test1")
         assert success is False
 
     def test_get_zip_content(self):
@@ -302,10 +326,6 @@ class TestLibrary:
     def test_generate_binary_combinations(self):
         library.generate_binary_combinations(9, 10)
         library.generate_binary_combinations(0, 10)
-
-        os.remove("test-pid_file.toml")
-        os.remove("test-pid_file.txt")
-        os.rmdir("test-file")
 
     def test_check_qubo_matrixs_bit_width(self):
         qubo_matrixs = [[[-480, 508, -48], [508, -508, -48], [-48, -48, 60]]]
@@ -384,3 +404,11 @@ class TestLibrary:
             configs, password_replace=password_replace
         )
         assert actual_configs == expected_configs
+
+    def test_create_uuid(self):
+        new_uuid_1 = library.create_uuid()
+        assert isinstance(new_uuid_1, uuid.UUID)
+        new_uuid_2 = library.create_uuid(prefix=[0xF0])
+        assert isinstance(new_uuid_2, uuid.UUID)
+        new_uuid_bytes_2 = new_uuid_2.bytes
+        assert new_uuid_bytes_2[0] == 0xF0

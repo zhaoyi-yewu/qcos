@@ -63,7 +63,16 @@ class TaskFlowManager(ABC):
         self.parent_aggregation_jobs = []
         self.aggregation_jobs = {}
 
-    def transform_to_qcos_state(self, state):
+    @staticmethod
+    def convert_to_qcos_state(state):
+        """Convert to qcos state
+
+        Args:
+            state: prefect state
+
+        Returns:
+            qcos state
+        """
         _state = state.upper()
         if _state == Constant.PREFECT_STATE_CRASHED:
             return Constant.JOB_STATUS_FAILED
@@ -75,6 +84,41 @@ class TaskFlowManager(ABC):
             return Constant.JOB_STATUS_QUEUED
         else:
             return _state
+
+    @staticmethod
+    def convert_to_prefect_states(states):
+        """Convert qcos states to prefect states
+
+        Args:
+            states: qcos states list
+
+        Returns:
+            prefect states list
+        """
+        prefect_states = []
+        for state in states:
+            state = state.upper()
+            new_state = None
+            if state == Constant.PREFECT_STATE_RUNNING:
+                new_state = StateType.RUNNING
+            elif state == Constant.PREFECT_STATE_SCHEDULED:
+                new_state = StateType.SCHEDULED
+            elif state == Constant.PREFECT_STATE_PENDING:
+                new_state = StateType.PENDING
+            elif state == Constant.PREFECT_STATE_FAILED:
+                new_state = StateType.FAILED
+            elif state == Constant.PREFECT_STATE_COMPLETED:
+                new_state = StateType.COMPLETED
+            elif state == Constant.PREFECT_STATE_CRASHED:
+                new_state = StateType.CRASHED
+            elif state == Constant.PREFECT_STATE_CANCELLING:
+                new_state = StateType.CANCELLING
+            elif state == Constant.PREFECT_STATE_CANCELLED:
+                new_state = StateType.CANCELLED
+            elif state == Constant.PREFECT_STATE_PAUSED:
+                new_state = StateType.PAUSED
+            prefect_states.append(new_state)
+        return prefect_states
 
     def start(self):
         """Create work pools, queues and start workers"""
@@ -537,9 +581,10 @@ class TaskFlowManager(ABC):
             id = flow_run.name
             is_uuid, _ = Library.validate_values_uuid(id, "job_id")
             if not is_uuid:
+                logger.error(f"wrong: {id}")
                 continue
             flow_state = flow_run.state.name.upper()
-            state = self.transform_to_qcos_state(flow_state)
+            state = self.convert_to_qcos_state(flow_state)
             parameters = flow_run.parameters
             results = None
             if flow_state == Constant.PREFECT_STATE_COMPLETED:
@@ -677,13 +722,33 @@ class TaskFlowManager(ABC):
 
         return success_list
 
-    def list_flow_runs_by_filter(self, state, tags):
-        s = {"type": {"any_": state}}
-        t = {"all_": tags}
+    def get_flow_runs_with_filters(self, states=None, tags=None):
+        """Get flow runs with filters
 
-        flow_run_filter = FlowRunFilter(
-            state=FlowRunFilterState(**s), tags=FlowRunFilterTags(**t)
-        )
+        Args:
+            states: flow states
+            tags: flow tags
+
+        Returns:
+            flow runs
+        """
+        # init filter dict
+        flow_run_filter_kwargs = {}
+
+        # assign state_filter if state is not None
+        if states is not None:
+            state_filter = FlowRunFilterState(type={"any_": states})
+            flow_run_filter_kwargs["state"] = state_filter
+
+        # assign tags_filter if tags is not None
+        if tags is not None:
+            tags_filter = FlowRunFilterTags(all_=tags)
+            flow_run_filter_kwargs["tags"] = tags_filter
+
+        # create flow run filter with flow_run_filter_kwargs
+        flow_run_filter = FlowRunFilter(**flow_run_filter_kwargs)
+
+        # get flow runs with flow_run_filter
         flow_runs = self._sync_client.read_flow_runs(
             flow_run_filter=flow_run_filter
         )
@@ -743,9 +808,9 @@ class TaskFlowManager(ABC):
                 # 3.get sub jobs which can aggregated with parent job
                 sub_jobs = {}
 
-                state = [StateType.SCHEDULED]
+                states = [StateType.SCHEDULED]
                 tags = [Constant.AGGREGATION_TYPE_EXTERNAL]
-                flow_runs = self.list_flow_runs_by_filter(state, tags)
+                flow_runs = self.get_flow_runs_with_filters(states, tags)
                 for sub_flow_run in flow_runs:
                     if (
                         sub_flow_run.parameters["job_info"]["data"][
@@ -781,9 +846,9 @@ class TaskFlowManager(ABC):
 
                 # 2.periodic get paused flow runs
                 # which are aggregation jobs running currently
-                state = [StateType.PAUSED]
+                states = [StateType.PAUSED]
                 tags = [Constant.AGGREGATION_TYPE_EXTERNAL]
-                flow_runs = self.list_flow_runs_by_filter(state, tags)
+                flow_runs = self.get_flow_runs_with_filters(states, tags)
 
                 for flow_run in flow_runs:
                     _process_aggregation_job(flow_run)

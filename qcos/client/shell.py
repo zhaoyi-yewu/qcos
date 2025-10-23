@@ -92,12 +92,16 @@ qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"resul
 ** Set multi-results for multi-source-code job
 qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}' '{"code": -104, "message": "error test"}'
 
+[Version commands]
+* Get server version
+qcos-cli version
+
 [System commands]
 * Ping server
 qcos-cli ping 123
 
-* Get server version
-qcos-cli version
+* Show system information
+qcos-cli system-info
 
 [Driver commands]
 * List drivers
@@ -154,23 +158,24 @@ class QcosShell(App):
         ssl_certfile = self.options.ssl_certfile
         ssl_keyfile = self.options.ssl_keyfile
         ssl_cafile = self.options.ssl_cafile
-        if ssl_certfile and not os.path.exists(ssl_certfile):
-            raise errors.InvalidArguments(
-                f"Error: file not found: {ssl_certfile}"
-            )
-        if ssl_keyfile and not os.path.exists(ssl_keyfile):
-            raise errors.InvalidArguments(
-                f"Error: file not found: {ssl_keyfile}"
-            )
-        if ssl_cafile and not os.path.exists(ssl_cafile):
-            raise errors.InvalidArguments(
-                f"Error: file not found: {ssl_cafile}"
-            )
-        if use_ssl and not (ssl_certfile and ssl_keyfile):
-            raise errors.InvalidArguments(
-                "Error: ssl_certfile and ssl_keyfile must be set when "
-                "use_ssl is enabled"
-            )
+        if use_ssl:
+            if ssl_certfile and not os.path.exists(ssl_certfile):
+                raise errors.InvalidArguments(
+                    f"Error: file not found: {ssl_certfile}"
+                )
+            if ssl_keyfile and not os.path.exists(ssl_keyfile):
+                raise errors.InvalidArguments(
+                    f"Error: file not found: {ssl_keyfile}"
+                )
+            if ssl_cafile and not os.path.exists(ssl_cafile):
+                raise errors.InvalidArguments(
+                    f"Error: file not found: {ssl_cafile}"
+                )
+            if not (ssl_certfile and ssl_keyfile):
+                raise errors.InvalidArguments(
+                    "Error: ssl_certfile and ssl_keyfile must be set when "
+                    "use_ssl is enabled"
+                )
 
         self.client = Client(
             api_server_ip=api_server_ip,
@@ -835,6 +840,40 @@ class Ping(Command):
         print(f"Pong: {json_results['message']}")
 
 
+class SystemInfo(ShowOne):
+    """Show system information"""
+
+    group = QcosShell.CMD_GROUP_SYSTEM
+
+    def get_parser(self, prog_name):
+        """Get parser for this command
+
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
+        """
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        """Take action for command line arguments
+
+        Args:
+            parsed_args: command line arguments
+        """
+        resource = self.group
+
+        status_code, reason, text, result = self.app.client.system_info()
+        json_results = CommandHelper.check_results(
+            resource, "system_info", status_code, reason, text
+        )
+        print("System Info: ")
+        table_values = CommandHelper.get_table_data(json_results)
+        return table_values
+
+
 # Job commands
 class SubmitJob(Command):
     """Submit job"""
@@ -1301,7 +1340,9 @@ class GetJobs(Lister):
         table_values = CommandHelper.get_table_list_data(
             json_results, header_list, is_dict=False
         )
-        if not json_results:
+        if json_results:
+            print(f"Total jobs: {len(json_results)}")
+        else:
             print("No jobs found")
         return table_values
 
@@ -1559,6 +1600,7 @@ command_manager = CommandManager("qcos")
 command_manager.add_command("version", Version)
 # system command
 command_manager.add_command("ping", Ping)
+command_manager.add_command("system-info", SystemInfo)
 # job command
 command_manager.add_command("submit-job", SubmitJob)
 command_manager.add_command("get-job-status", GetJobStatus)

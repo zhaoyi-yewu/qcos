@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
 # Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
@@ -135,18 +134,56 @@ class Library:
                 print(f"Failed to delete PID file: {e}")
 
     @staticmethod
+    def create_file(file_path, file_content, mkdir=False, mode=None):
+        """Create file
+
+        Args:
+            file_path: file path
+            file_content: file content
+            mkdir: if make dir
+            mode: file mode
+
+        Returns:
+            success, error messages
+        """
+        if mkdir:
+            _dir = os.path.dirname(file_path)
+            Library.mkdirs(_dir)
+        with open(file_path, "wb") as output:
+            output.write(file_content.encode("utf-8"))
+        if mode:
+            try:
+                os.chmod(file_path, mode)
+            except Exception as e:
+                return False, f"failed to write file: {file_path}. {e}"
+        return True, None
+
+    @staticmethod
     def create_pid_file(file_path):
         """Crete pid file
 
         Args:
             file_path: file path
         """
-        try:
-            pid = os.getpid()
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(str(pid))
-        except Exception as e:
-            print(f"Unable to create pid file: {file_path}\n{e}")
+        pid = os.getpid()
+        Library.create_file(file_path, str(pid))
+
+    @staticmethod
+    def rm_file(file_path):
+        """remove file
+
+        Args:
+            file_path: file path
+
+        Returns:
+            True or False
+        """
+        if os.path.isfile(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                return False, f"failed to remove file: {file_path}. {e}"
+        return True, None
 
     @staticmethod
     def find_dirs(base_dir="/", pattern="*", recursive=False):
@@ -235,21 +272,20 @@ class Library:
             os.mkdir(dir)
 
     @staticmethod
-    def rm_file(file):
-        """remove file
+    def rmdir(dir):
+        """Remove dir
 
         Args:
-            file: file path
+            dir: dir name
 
         Returns:
-            True or False
+            success, error messages
         """
-        if os.path.isfile(file):
-            try:
-                os.remove(file)
-            except Exception:
-                logger.info(f"Unable to remove file: {file}")
-        return True
+        try:
+            os.rmdir(dir)
+        except Exception as e:
+            return False, f"failed to remove dir: {dir}. {e}"
+        return True, None
 
     @staticmethod
     def import_classes(
@@ -350,12 +386,12 @@ class Library:
             return False, f"toml parser exception: {e}", None
 
     @staticmethod
-    def write_to_toml(data: dict, file_path: str):
+    def create_toml(file_path: str, data: dict):
         """Write dict to toml file
 
         Args:
-            data: data to write
             file_path: file_path
+            data: data to write
 
         Returns:
             success, err_msg
@@ -366,22 +402,6 @@ class Library:
             return True, None
         except Exception as e:
             return False, f"failed to write toml file: {file_path}. {e}"
-
-    @staticmethod
-    def write_to_file(data, file_path, mode="w"):
-        """Write to file
-
-        Args:
-            data: data
-            file_path: file path
-            mode: file open mode (Default value = "w")
-        """
-        try:
-            with open(file_path, mode, encoding="utf-8") as file:
-                file.write(data)
-            return True, None
-        except Exception as e:
-            return False, f"failed to write file: {file_path}. {e}"
 
     @staticmethod
     def get_current_datetime():

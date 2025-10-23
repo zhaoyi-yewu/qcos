@@ -37,5 +37,10 @@ from .job import (
     SetJobResultsRequest,
     SetJobResultsResponse,
 )
-from .system import PingRequest, PongResponse
+from .system import (
+    PingRequest,
+    PongResponse,
+    SystemInfoRequest,
+    SystemInfoResponse,
+)
 from .version import GetVersionRequest, GetVersionResponse

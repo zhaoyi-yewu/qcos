@@ -34,3 +34,18 @@ class PongResponse(BaseModel):
 
     # message
     message: str | None = None
+
+
+class SystemInfoRequest(BaseModel):
+    """System Info Request
+    Pydantic Model for System Info Request
+    """
+
+
+class SystemInfoResponse(BaseModel):
+    """System Info Response
+    Pydantic Model for System Info Response
+    """
+
+    # message
+    total_jobs_count: int

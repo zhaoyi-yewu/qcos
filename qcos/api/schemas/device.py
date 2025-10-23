@@ -50,5 +50,9 @@ class GetDeviceResponse(BaseModel):
     enable: bool
     # device status
     status: str
+    # tech type
+    tech_type: str
+    # max qubits
+    max_qubits: int
     # configs
     configs: dict | None = None

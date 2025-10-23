@@ -46,6 +46,8 @@ def _get_device_info(device_info):
         "driver_name": device_info.driver.get_name(),
         "enable": device_info.enable,
         "status": device_info.status,
+        "tech_type": device_info.tech_type,
+        "max_qubits": device_info.max_qubits,
         "configs": configs,
     }
     return _device_info

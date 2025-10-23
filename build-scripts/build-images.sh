@@ -116,6 +116,15 @@ function build_image {
   if [ "${qcos}" = true ];then
     build_qcos
   fi
+
+  # print info of exported images
+  echo
+  if [ "${cli}" = true ];then
+    echo "Exported qcos-cli docker image: ${OUTPUT_QCOS_CLI_IMAGE_PATH}"
+  fi
+  if [ "${qcos}" = true ];then
+    echo "Exported qcos docker image: ${OUTPUT_QCOS_IMAGE_PATH}"
+  fi
 }
 
 mkdir -p ${OUTPUT_IMAGE_DIR}
