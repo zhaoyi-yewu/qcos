@@ -38,7 +38,7 @@ from qcos.common.config import Config
 from qcos.common.constant import Constant
 from qcos.common import errors
 from qcos.common.library import Library
-from qcos.subqubo import subqubo
+from qcos.engine.qubo import subqubo
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 
 # Config Loguru
@@ -688,8 +688,6 @@ def job_flow(job_info):
             percentage_base * source_code_index / source_code_count
         )
         job_results, driver, transpiler, mapping_dict = run_code(
-            job_id,
-            code_type,
             source_code_index,
             src_code_dict,
             job_info,
@@ -902,8 +900,6 @@ def _run_code(
 
 
 def run_code(
-    job_id,
-    code_type,
     source_code_index,
     src_code_dict,
     job_info,
@@ -912,11 +908,9 @@ def run_code(
     monitor_info,
 ):
     """
-    Run code: Support subQUBO
+    Run code
 
     Args:
-        job_id: job id
-        code_type: code type
         source_code_index: source code index
         src_code_dict: src code dictionary
         job_info: job info
@@ -929,80 +923,16 @@ def run_code(
     """
     job_results = {}
     mapping_dict = None
+    code_type = job_info["data"]["code_type"]
     if code_type == Constant.CODE_TYPE_QUBO:
-        qubo_matrix = src_code_dict[f"{job_id}-{source_code_index}"]
-        if len(qubo_matrix) > Constant.MAX_QUBO_QUBITS:
-            logger.info("start subqubo")
-            subqubo.set_qubo_matrix(np.array(qubo_matrix))
-            solution_pool = subqubo.init_instance_pool()
-            # find best_solution from solution's pool
-            best_solution, _ = subqubo.find_best_solution(solution_pool)
-            converged_num = 0
-            cycles_num = 0
-            sub_job_results = []
-            while converged_num <= subqubo.get_max_converged_num():
-                cycles_num += 1
-                solution_pool = subqubo.optimize_solution_pool(solution_pool)
-                n_e_pools = subqubo.create_sub_solution_pools(solution_pool)
-                new_solutions = []
-                for i in range(subqubo.N_E):
-                    subqubo_matrix, tmp_solution, extracted_index = (
-                        subqubo.construct_subqubo(n_e_pools[i])
-                    )
-                    src_sub_code_dict = {}
-                    sub_source_code_index = (
-                        f"{str(source_code_index)}-{str(cycles_num)}-{str(i)}"
-                    )
-                    src_sub_code_dict[job_id + sub_source_code_index] = list(
-                        subqubo_matrix
-                    )
-                    sub_job_results, driver, transpiler, mapping_dict = (
-                        _run_code(
-                            sub_source_code_index,
-                            src_sub_code_dict,
-                            job_info,
-                            driver,
-                            transpiler,
-                            monitor_info,
-                        )
-                    )
-                    subqubo_solution = (
-                        sub_job_results.get("results", {})
-                        .get("out_data", [{}])[0]
-                        .get("solutionVector", [])
-                    )
-
-                    solution = subqubo.merge_solution(
-                        tmp_solution, subqubo_solution, extracted_index
-                    )
-                    new_solutions.append(solution)
-                x_best, solution_pool = subqubo.update_solution_pool(
-                    solution_pool, new_solutions
-                )
-                if best_solution.energy > x_best.energy:
-                    best_solution.solution = x_best.solution.copy()
-                    best_solution.energy = x_best.energy
-                    converged_num = 0
-                elif best_solution.energy <= x_best.energy:
-                    converged_num = converged_num + 1
-            job_results = sub_job_results
-            job_results["results"] = {}
-            job_results["results"]["outdata"] = []
-            for i in range(len(solution_pool)):
-                solution = {}
-                solution["result"] = i + 1
-                solution["quboValue"] = solution_pool[i].energy
-                solution["solutionVector"] = solution_pool[i].solution.tolist()
-                job_results["results"]["outdata"].append(solution)
-        else:
-            job_results, driver, transpiler, mapping_dict = _run_code(
-                source_code_index,
-                src_code_dict,
-                job_info,
-                driver,
-                transpiler,
-                monitor_info,
-            )
+        job_results, driver, transpiler, mapping_dict = run_qubo_code(
+            source_code_index,
+            src_code_dict,
+            job_info,
+            driver,
+            None,
+            monitor_info,
+        )
     else:
         job_results, driver, transpiler, mapping_dict = _run_code(
             source_code_index,
@@ -1010,6 +940,109 @@ def run_code(
             job_info,
             driver,
             transpiler,
+            monitor_info,
+        )
+    return job_results, driver, transpiler, mapping_dict
+
+
+def run_qubo_code(
+    source_code_index,
+    src_code_dict,
+    job_info,
+    driver,
+    transpiler,
+    monitor_info,
+):
+    """
+    Run qubo code
+
+    Args:
+        source_code_index: source code index
+        src_code_dict: src code dictionary
+        job_info: job info
+        driver: driver
+        transpiler: transpiler
+        monitor_info: monitor info
+
+    Returns:
+        job results
+    """
+    job_results = {}
+    mapping_dict = None
+    job_id = job_info["data"]["job_id"]
+    driver_module = importlib.import_module(job_info["driver"]["module_name"])
+    driver_class = getattr(driver_module, job_info["driver"]["class_name"])
+    driver = driver_class()
+    max_qubits = driver.get_max_qubits()
+    qubo_matrix = src_code_dict[f"{job_id}-{source_code_index}"]
+    if len(qubo_matrix) > max_qubits:
+        logger.info("start subqubo")
+        subqubo.set_qubo_matrix(np.array(qubo_matrix))
+        solution_pool = subqubo.init_instance_pool()
+        # find best_solution from solution's pool
+        best_solution, _ = subqubo.find_best_solution(solution_pool)
+        converged_num = 0
+        cycles_num = 0
+        sub_job_results = []
+        while converged_num <= subqubo.get_max_converged_num():
+            cycles_num += 1
+            solution_pool = subqubo.optimize_solution_pool(solution_pool)
+            n_e_pools = subqubo.create_sub_solution_pools(solution_pool)
+            new_solutions = []
+            for i in range(subqubo.N_E):
+                subqubo_matrix, tmp_solution, extracted_index = (
+                    subqubo.construct_subqubo(n_e_pools[i])
+                )
+                src_sub_code_dict = {}
+                sub_source_code_index = (
+                    f"{str(source_code_index)}-{str(cycles_num)}-{str(i)}"
+                )
+                src_sub_code_dict[job_id + sub_source_code_index] = list(
+                    subqubo_matrix
+                )
+                sub_job_results, driver, transpiler, mapping_dict = _run_code(
+                    sub_source_code_index,
+                    src_sub_code_dict,
+                    job_info,
+                    driver,
+                    transpiler,
+                    monitor_info,
+                )
+                subqubo_solution = (
+                    sub_job_results.get("results", {})
+                    .get("out_data", [{}])[0]
+                    .get("solutionVector", [])
+                )
+
+                solution = subqubo.merge_solution(
+                    tmp_solution, subqubo_solution, extracted_index
+                )
+                new_solutions.append(solution)
+            x_best, solution_pool = subqubo.update_solution_pool(
+                solution_pool, new_solutions
+            )
+            if best_solution.energy > x_best.energy:
+                best_solution.solution = x_best.solution.copy()
+                best_solution.energy = x_best.energy
+                converged_num = 0
+            elif best_solution.energy <= x_best.energy:
+                converged_num = converged_num + 1
+        job_results = sub_job_results
+        job_results["results"] = {}
+        job_results["results"]["outdata"] = []
+        for i in range(len(solution_pool)):
+            solution = {}
+            solution["result"] = i + 1
+            solution["quboValue"] = solution_pool[i].energy
+            solution["solutionVector"] = solution_pool[i].solution.tolist()
+            job_results["results"]["outdata"].append(solution)
+    else:
+        job_results, driver, transpiler, mapping_dict = _run_code(
+            source_code_index,
+            src_code_dict,
+            job_info,
+            driver,
+            None,
             monitor_info,
         )
     return job_results, driver, transpiler, mapping_dict

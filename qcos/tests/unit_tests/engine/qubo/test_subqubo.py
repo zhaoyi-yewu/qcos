@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import patch
 
 
-from qcos.subqubo import SubQUBOMultiSolution, QUBOSolution
+from qcos.engine.qubo import SubQUBOMultiSolution, QUBOSolution
 
 
 class TestSubQUBOMultiSolution:

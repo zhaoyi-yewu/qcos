@@ -631,8 +631,10 @@ class Library:
             qubo_matrixs: qubo matrixs to be checked
 
         Returns:
-            True or False
+            success of failed (bool), error message list
         """
+        success = True
+        err_msgs = []
 
         def is_int8_matrix(matrix):
             """
@@ -680,33 +682,38 @@ class Library:
                 return 0
             return reduce(gcd, flat_values)
 
-        for qubo_matrix in qubo_matrixs:
-            # 1. change qubo matrix to ising matrix
-            n = len(qubo_matrix)
-            ising_matrix = np.zeros((n + 1, n + 1))
-            ising_h = np.zeros(n)
-            for i in range(n):
-                sum_row = 0
-                for j in range(n):
-                    sum_row += qubo_matrix[i][j] + qubo_matrix[j][i]
-                ising_h[i] = 0.25 * sum_row
-                for j in range(i + 1, n):
-                    ising_matrix[i, j] = 0.25 * qubo_matrix[i][j]
-                    ising_matrix[j, i] = ising_matrix[i][j]
-            ising_matrix[:n, n] = ising_h / 2
-            ising_matrix[n, :n] = ising_h / 2
+        try:
+            for qubo_matrix in qubo_matrixs:
+                # 1. change qubo matrix to ising matrix
+                n = len(qubo_matrix)
+                ising_matrix = np.zeros((n + 1, n + 1))
+                ising_h = np.zeros(n)
+                for i in range(n):
+                    sum_row = 0
+                    for j in range(n):
+                        sum_row += qubo_matrix[i][j] + qubo_matrix[j][i]
+                    ising_h[i] = 0.25 * sum_row
+                    for j in range(i + 1, n):
+                        ising_matrix[i, j] = 0.25 * qubo_matrix[i][j]
+                        ising_matrix[j, i] = ising_matrix[i][j]
+                ising_matrix[:n, n] = ising_h / 2
+                ising_matrix[n, :n] = ising_h / 2
 
-            # 2. scale the ising matrix and check bit width
-            scaled_ising_matrix = scale_to_integer_matrix(ising_matrix)
-            gcd_value = find_matrix_gcd(scaled_ising_matrix)
-            scaled_ising_matrix = scaled_ising_matrix / gcd_value
-            if not is_int8_matrix(scaled_ising_matrix):
-                return (
-                    False,
-                    f"The element values in the QUBO matrix: {qubo_matrix} "
-                    f"must be 8-bit signed integers",
-                )
-        return True, None
+                # 2. scale the ising matrix and check bit width
+                scaled_ising_matrix = scale_to_integer_matrix(ising_matrix)
+                gcd_value = find_matrix_gcd(scaled_ising_matrix)
+                scaled_ising_matrix = scaled_ising_matrix / gcd_value
+                if not is_int8_matrix(scaled_ising_matrix):
+                    success = False
+                    err_msgs.append(
+                        f"The element values in the QUBO matrix: "
+                        f"{qubo_matrix} must be 8-bit signed integers",
+                    )
+        except Exception as e:
+            success = False
+            err_msg = str(e)
+            return success, [err_msg]
+        return success, err_msgs
 
     @staticmethod
     def check_qubo_matrixs_bit_width(qubo_matrixs):

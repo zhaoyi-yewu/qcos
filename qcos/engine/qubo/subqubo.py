@@ -18,7 +18,7 @@
 import numpy as np
 import random
 
-from qcos.subqubo.tabu import QUBOSolution, TabuSearch
+from qcos.engine.qubo.tabu import QUBOSolution, TabuSearch
 
 
 class SubQUBOMultiSolution:
