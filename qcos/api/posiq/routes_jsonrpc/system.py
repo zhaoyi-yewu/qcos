@@ -17,11 +17,14 @@
 
 import logging
 
+from fastapi import Depends
+
 from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from qcos.api.posiq.routes_jsonrpc.routes import system_api_v1
 from qcos.common import errors
 from qcos.task_manager import scheduler
+from .dependencies.authentication import auth
 
 logger = logging.getLogger(__name__)
 module_name = "SYSTEM"
@@ -50,11 +53,13 @@ def ping(body: schemas.PingRequest) -> schemas.PongResponse:
 @system_api_v1.method()
 def system_info(
     body: schemas.SystemInfoRequest | None = None,
+    auth_data: dict | None = Depends(auth),
 ) -> schemas.SystemInfoResponse:
     """Get system info
 
     Args:
         body(schemas.SystemInfoRequest): System Info Request
+        auth_data: auth data
 
     Returns:
         system info response
@@ -65,6 +70,7 @@ def system_info(
     # query jobs' results
     responses = []
     try:
+        # TODO (guozhufeng): auth_data to be implemented
         responses, err = scheduler.get_jobs()
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(

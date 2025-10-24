@@ -18,6 +18,8 @@
 import logging
 from datetime import datetime
 
+from fastapi import Depends
+
 from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from qcos.api.posiq.routes_jsonrpc.routes import job_api_v1
@@ -25,6 +27,7 @@ from qcos.common import args_schema, errors
 from qcos.common.constant import Constant
 from qcos.common.library import Library
 from qcos.task_manager import scheduler
+from .dependencies.authentication import auth
 
 logger = logging.getLogger(__name__)
 module_name = "JOB"
@@ -37,11 +40,14 @@ module_name = "JOB"
         jsonrpc_errors.InternalServerError,
     ]
 )
-def submit_job(body: schemas.SubmitJobRequest) -> schemas.SubmitJobResponse:
+def submit_job(
+    body: schemas.SubmitJobRequest, auth_data: dict | None = Depends(auth)
+) -> schemas.SubmitJobResponse:
     """Submit job
 
     Args:
         body(schemas.SubmitJobRequest): job info
+        auth_data: auth data
 
     Returns:
         job info
@@ -359,6 +365,7 @@ def submit_job(body: schemas.SubmitJobRequest) -> schemas.SubmitJobResponse:
     res = {}
     err = None
     try:
+        # TODO (guozhufeng): auth_data to be implemented
         res, err = scheduler.add(
             Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE, body
         )
@@ -515,11 +522,13 @@ def get_job_results(
 @job_api_v1.method(errors=[jsonrpc_errors.InternalServerError])
 def get_jobs(
     body: schemas.GetJobsRequest | None = None,
+    auth_data: dict | None = Depends(auth),
 ) -> list[schemas.GetJobStatusResponse]:
     """Get job list
 
     Args:
         body(schemas.GetJobsRequest): job_id: job ID
+        auth_data: auth data
 
     Returns:
         job list
@@ -530,6 +539,7 @@ def get_jobs(
     # query jobs' results
     responses = []
     try:
+        # TODO (guozhufeng): auth_data to be implemented
         responses, err = scheduler.get_jobs()
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
@@ -557,7 +567,7 @@ def get_jobs(
     return response_list
 
 
-@job_api_v1.method(errors=[jsonrpc_errors.NotImplementedError])
+@job_api_v1.method(errors=[])
 def cancel_jobs(
     body: schemas.CancelJobsRequest,
 ) -> list[schemas.CancelJobsResponse]:

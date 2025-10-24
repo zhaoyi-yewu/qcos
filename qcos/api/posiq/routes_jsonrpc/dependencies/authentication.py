@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
+import logging
+
+from fastapi import Header
+
+from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
+from qcos.common.config import Config
+from qcos.common.library import Library
+
+
+logger = logging.getLogger(__name__)
+
+
+def auth(
+    x_qcos_virtual_instance_id: str | None = Header(
+        None, alias="x-qcos-virtual-instance-id"
+    ),
+):
+    auth_data = None
+    if not Config.ENABLE_VIRT:
+        return None
+    success, err_msg, device_name, instance_id = (
+        Library.decrypt_virtual_instance_id(
+            x_qcos_virtual_instance_id, salt=Config.PASSWORD_SALT
+        )
+    )
+    if not success:
+        jsonrpc_errors.handle_error_unauthorized(
+            "authentication",
+            "auth",
+            (False, ["Unauthorized access to the instance"]),
+        )
+    if device_name == "all" and instance_id == "all":  # admin user
+        auth_data = None
+    else:
+        auth_data = {
+            "device_name": device_name,
+            "instance_id": instance_id,
+        }
+    return auth_data

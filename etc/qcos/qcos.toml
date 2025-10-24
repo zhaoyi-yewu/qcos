@@ -6,6 +6,10 @@ DEBUG = false
 MAX_JOBS = 10000
 # max queued+running jobs [GLOBAL CONFIG]
 MAX_QUEUED_JOBS = 1000
+# enable virtualization
+ENABLE_VIRT = false
+# salt for password/encryption
+PASSWORD_SALT = "abcd"
 
 [API_SERVER]
 # API workers

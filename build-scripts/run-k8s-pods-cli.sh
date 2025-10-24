@@ -15,7 +15,7 @@
 
 set -e
 
-echo "Creating K8s QCOS pods ..."
+echo "Creating K8s QCOS cli pod ..."
 
 if [ ! -f .env ]; then
   echo "Can't find file .env"
@@ -23,12 +23,10 @@ if [ ! -f .env ]; then
 fi
 
 k8s_namespace="default"
-export PREFECT_SERVER_PORT=${PREFECT_SERVER_PORT:-4200}
-export QCOS_API_LISTEN_PORT=${QCOS_API_LISTEN_PORT:-18400}
-export PREFECT_IMAGE_NAME=${PREFECT_IMAGE_NAME:-prefecthq/prefect}
-export PREFECT_IMAGE_VERSION=${PREFECT_IMAGE_VERSION:-3.3.3-python3.13}
-export QCOS_IMAGE_NAME=${QCOS_IMAGE_NAME:-qcos}
+export API_SERVER_IP=${API_SERVER_IP:-127.0.0.1}
+export API_SERVER_PORT=${API_SERVER_PORT:-18400}
+export QCOS_VIRTUAL_INSTANCE_ID=${QCOS_VIRTUAL_INSTANCE_ID}
 export QCOS_IMAGE_VERSION=${QCOS_IMAGE_VERSION:-2025-06-01}
 
 export $(grep -v '^#' .env | xargs)
-envsubst < ./k8s-qcos-single.yaml | kubectl apply -n ${k8s_namespace} -f -
+envsubst < ./k8s-qcos-cli.yaml | kubectl apply -n ${k8s_namespace} -f -

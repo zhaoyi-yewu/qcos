@@ -1322,3 +1322,49 @@ class Library:
                 for item in configs
             )
         return configs
+
+    @staticmethod
+    def encrypt_virtual_instance_id(device_name, uuid_str, salt=""):
+        """Encrypt virtual instance id
+
+        Args:
+            device_name: device name
+            uuid_str: uuid string
+            salt: salt
+
+        Returns:
+            success, error message, virtual instance id
+        """
+        new_uuid = None
+        try:
+            uuid_salt_str = device_name + "-" + uuid_str + "-" + salt
+            md5_hash = hashlib.md5(uuid_salt_str.encode("utf-8")).hexdigest()
+            verify_code = (
+                md5_hash[0] + md5_hash[1] + md5_hash[-2] + md5_hash[-1]
+            )
+            new_uuid = device_name + "-" + uuid_str + "-" + verify_code
+        except Exception as e:
+            err_msg = f"Encryption failed. Reason: {repr(e)}"
+            return False, err_msg, None
+        return True, None, new_uuid
+
+    @staticmethod
+    def decrypt_virtual_instance_id(virtual_instance_id, salt=""):
+        """Decrypt virtual instance id
+
+        Args:
+            virtual_instance_id: virtual instance id
+            salt: salt
+
+        Returns:
+            success, error message, device_name, instance_id
+        """
+        # TODO (guozhufeng): to be implemeted
+        device_name = "a"
+        instance_id = "b"
+        try:
+            pass
+        except Exception as e:
+            err_msg = f"Encryption failed. Reason: {repr(e)}"
+            return False, err_msg, device_name, instance_id
+        return True, None, device_name, instance_id

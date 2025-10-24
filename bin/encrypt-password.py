@@ -54,9 +54,9 @@ USAGE
         )
         group = parser.add_mutually_exclusive_group(required=True)
         group.add_argument("-e", "--encrypt", dest="plain_text",
-                            help="text needs to be encrypted")
+                           help="text needs to be encrypted")
         group.add_argument("-d", "--decrypt", dest="cipher_text",
-                            help="text needs to be decrypted")
+                           help="text needs to be decrypted")
         parser.add_argument("-k", "--key", dest="fernet_key",
                             default=Constant.DEFAULT_FERNET_KEY,
                             help="Fernet key")

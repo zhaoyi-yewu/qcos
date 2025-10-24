@@ -22,6 +22,7 @@ qcos_st_config_file_path=/etc/qcos/qcos-st.toml
 qcos_template_st_config_file_path=/etc/qcos-template/qcos-st.toml
 
 mkdir -p /etc/qcos/
+mkdir -p /etc/qcos/ssl
 mkdir -p ${qcos_extra_config_file_dir}
 _DEBUG=${DEBUG:-false}
 
@@ -37,6 +38,10 @@ DEBUG = ${_DEBUG,,}
 MAX_JOBS = 10000
 # max queued+running jobs [GLOBAL CONFIG]
 MAX_QUEUED_JOBS = 1000
+# enable virtualization
+ENABLE_VIRT = false
+# salt for password/encryption
+PASSWORD_SALT = "abcd"
 
 [API_SERVER]
 # API workers

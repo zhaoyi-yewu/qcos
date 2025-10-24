@@ -1,0 +1,71 @@
+# ----------------------------------------------------------------------
+# Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
+# Create namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: qcos
+---
+# Deploy qcos
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qcos-cli
+  namespace: qcos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qcos-cli
+  template:
+    metadata:
+      labels:
+        app: qcos-cli
+    spec:
+      hostNetwork: false
+      restartPolicy: Always
+      containers:
+      - name: qcos
+        image: ${REGISTRY}${QCOS_IMAGE_NAME}-cli:${QCOS_CLI_IMAGE_VERSION}
+        # securityContext:
+        #   privileged: true
+        stdin: true
+        tty: true
+        workingDir: /root
+        env:
+        - name: TZ
+          value: "Asia/Shanghai"
+        - name: API_SERVER_IP
+          value: ${API_SERVER_IP}
+        - name: API_SERVER_PORT
+          value: ${API_SERVER_PORT}
+        - name: QCOS_VIRTUAL_INSTANCE_ID
+          value: ${QCOS_VIRTUAL_INSTANCE_ID}
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1000m"
+            memory: "2Gi"
+      nodeSelector:
+        qcos-cli: enabled
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app: qcos-cli
+            topologyKey: "kubernetes.io/hostname"

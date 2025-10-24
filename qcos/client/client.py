@@ -16,6 +16,8 @@
 # ----------------------------------------------------------------------
 
 import logging
+import os
+
 import requests
 
 from jsonrpcclient import Ok, parse, request
@@ -100,7 +102,16 @@ class Client:
         reason = None
         text = None
         result = None
+        headers = HttpHeaders.DEFAULT_JSON_HEADERS
 
+        # get qcos virtual instance id
+        qcos_virtual_instance_id = os.environ.get(
+            "QCOS_VIRTUAL_INSTANCE_ID", None
+        )
+        if qcos_virtual_instance_id:
+            headers["x-qcos-virtual-instance-id"] = qcos_virtual_instance_id
+
+        # call http api
         jsonrpc_data = request(method_name, params={"body": data})
         try:
             status_code, reason, text, result = ClientLibrary.call_http_api(
@@ -109,7 +120,7 @@ class Client:
                 json=jsonrpc_data,
                 params=params,
                 func_name=method_name,
-                headers=HttpHeaders.DEFAULT_JSON_HEADERS,
+                headers=headers,
                 use_ssl=SSL.use_ssl,
                 verify_ssl=SSL.ca_file if SSL.ca_file else False,
                 cert_file=SSL.cert_file,

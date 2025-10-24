@@ -64,6 +64,11 @@ class DeviceManager:
                         f"device: {device_name} is disabled. "
                         f"reason: driver name: {driver_name} is not found"
                     )
+            else:
+                logger.warning(
+                    f"device: {device_name} is not loaded. "
+                    f"reason: device config file is not found"
+                )
 
     def init_devices(self):
         """Init devices"""

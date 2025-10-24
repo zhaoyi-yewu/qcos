@@ -17,11 +17,14 @@
 
 import logging
 
+from fastapi import Depends
+
 from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from qcos.api.posiq.routes_jsonrpc.routes import device_api_v1
 from qcos.common.library import Library
 from qcos.task_manager import scheduler
+from .dependencies.authentication import auth
 
 logger = logging.getLogger(__name__)
 module_name = "DEVICE"
@@ -56,11 +59,13 @@ def _get_device_info(device_info):
 @device_api_v1.method(errors=[])
 def get_devices(
     body: schemas.GetDevicesRequest | None = None,
+    auth_data: dict | None = Depends(auth),
 ) -> dict[str, schemas.GetDeviceResponse]:
     """Get device dict request
 
     Args:
-        body(schemas.GetDevicesRequest): message
+        body(schemas.GetDevicesRequest): devices request
+        auth_data: auth data
 
     Returns:
         Get devices response
@@ -69,6 +74,7 @@ def get_devices(
     logger.info(f"Call {func_name}: {body}")
 
     device_manager = scheduler.get_device_manager()
+    # TODO (guozhufeng): auth_data to be implemented
     devices = device_manager.get_devices()
     response_info = {}
     for device_name, device_info in sorted(devices.items()):
@@ -84,7 +90,7 @@ def get_device(body: schemas.GetDeviceRequest) -> schemas.GetDeviceResponse:
     """Get device info request
 
     Args:
-        body(schemas.GetDeviceRequest): driver_name
+        body(schemas.GetDeviceRequest): device name
 
     Returns:
         Get device info response

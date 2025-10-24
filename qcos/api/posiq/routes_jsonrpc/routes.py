@@ -15,15 +15,27 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from fastapi import Depends
 import fastapi_jsonrpc as jsonrpc
 
 from qcos.common.config import Config
+from .dependencies.authentication import auth
 
 
 BASE_ENDPOINT = f"/{Config.API_VERSION}"
 base_api = jsonrpc.Entrypoint("")
-system_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/system")
-job_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/job")
-driver_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/driver")
-device_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/device")
-transpiler_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/transpiler")
+system_api_v1 = jsonrpc.Entrypoint(
+    f"{BASE_ENDPOINT}/system", common_dependencies=[Depends(auth)]
+)
+job_api_v1 = jsonrpc.Entrypoint(
+    f"{BASE_ENDPOINT}/job", common_dependencies=[Depends(auth)]
+)
+driver_api_v1 = jsonrpc.Entrypoint(
+    f"{BASE_ENDPOINT}/driver", common_dependencies=[Depends(auth)]
+)
+device_api_v1 = jsonrpc.Entrypoint(
+    f"{BASE_ENDPOINT}/device", common_dependencies=[Depends(auth)]
+)
+transpiler_api_v1 = jsonrpc.Entrypoint(
+    f"{BASE_ENDPOINT}/transpiler", common_dependencies=[Depends(auth)]
+)

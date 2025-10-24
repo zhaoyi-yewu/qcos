@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
 # Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
@@ -7,20 +8,9 @@
 # of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-
-source ./setup-env.sh
-
-echo "Creating QCOS cli dockers ..."
-
-export API_SERVER_IP=127.0.0.1
-export API_SERVER_PORT=18400
-export QCOS_VIRTUAL_INSTANCE_ID=dummy-5eb2cc2b195242aeb2d60cf4907a606b-43c5
-
-docker-compose -f docker-compose-cli.yaml down
-docker-compose -f docker-compose-cli.yaml up -d
-echo "Run QCOS cli bash: docker exec -it qcos-cli bash"

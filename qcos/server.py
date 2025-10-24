@@ -173,7 +173,7 @@ class Server:
 
             if pid:
                 logger.critical(
-                    "VBMS api server is already running pid: %d", pid
+                    "QCOS api server is already running pid: %d", pid
                 )
                 sys.exit(1)
 

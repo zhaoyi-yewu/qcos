@@ -473,6 +473,8 @@ class CommandHelper:
                 header_name = header.upper()
                 if header_name in _headers:
                     v = value.get(keys[header_name], None)
+                    if v is None:  # remove None values
+                        v = ""
                     values.append(v)
             all_values.append(tuple(values))
         results = (tuple(headers), tuple(all_values))
