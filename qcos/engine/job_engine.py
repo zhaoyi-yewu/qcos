@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import asyncio
 import copy
 from datetime import datetime
 import importlib
@@ -29,6 +30,7 @@ from prefect.artifacts import (
     create_progress_artifact,
     update_progress_artifact,
 )
+from prefect.context import get_run_context
 from prefect.input import RunInput
 from loguru import logger
 
@@ -164,7 +166,7 @@ def init_transpiler(transpiler_class_info, transpiler_options):
         return {"transpiler": None, "error": ValueError(str(e))}
 
 
-@task
+@task(persist_result=False)
 def task_monitor(monitor_info):
     driver = None
     last_job_progress = 0
@@ -298,20 +300,22 @@ def driver_cancel(job_id, driver):
         logger.error(f"Cancel job: job_id: {job_id} failed. {str(e)}")
 
 
-async def job_callback(flow, flow_run, state):
+async def job_callback(flow, flow_run, state, results=None):
     """Job callback
 
     Args:
         flow: flow
         flow_run: flow run
         state: flow state
+        results: flow results
     """
     job_id = flow_run.name  # use name as job uuid
     job_status = Constant.JOB_STATUS_COMPLETED
     is_failed = False
     flow_state_name = state.name.upper()
     parameters = flow_run.parameters
-    results = flow_run.state.result()
+    if results is None:
+        results = flow_run.state.result()
     results_fetch_mode_sync = False
     callbacks = Library.get_nested_dict_value(
         parameters, "job_info", "data", "callbacks", default=None
@@ -339,7 +343,8 @@ async def job_callback(flow, flow_run, state):
                 is_failed = True
             if results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
                 results_fetch_mode_sync = True
-    if callbacks and results_fetch_mode_sync:
+
+    if callbacks and results and results_fetch_mode_sync:
         # if job_info contains callback list and driver is in sync mode
         # run async callback
         if is_failed:
@@ -354,6 +359,10 @@ async def job_callback(flow, flow_run, state):
         success, err_msg = await Library.async_run_callbacks(data, callbacks)
         if not success:
             logger.error(f"Callback Error: {err_msg}")
+            for result in results:
+                result["metadata"]["callback_success"] = False
+
+    return results
 
 
 def register_signals(job_id, monitor):
@@ -573,10 +582,7 @@ def get_external_aggregated_results(job_results, mapping_dict):
 
 
 @flow(
-    name="job_engine",
     persist_result=True,
-    on_completion=[job_callback],
-    on_failure=[job_callback],
     on_crashed=[job_callback],
     on_cancellation=[job_callback],
 )
@@ -615,6 +621,7 @@ def job_flow(job_info):
     job_id = job_data["job_id"]
     profiling_code_start = 0
     code_type = job_data["code_type"]
+    callbacks = job_data.get("callbacks", None)
     monitor_info = {
         "artifact_id": None,
         "running": True,
@@ -719,7 +726,14 @@ def job_flow(job_info):
             )
             job_results_list.extend(aggregated_res)
 
+    # handle completed/failed callbacks
+    if callbacks:
+        context = get_run_context()
+        run_job_callback(context, job_results_list)
+
+    # set monitor_info
     monitor_info["running"] = False
+
     return job_results_list
 
 
@@ -1213,3 +1227,24 @@ def format_error_results(driver, err_cls, err_msg):
         "message": err.get_err_msgs(),
     }
     return job_results
+
+
+def run_job_callback(context, job_results_list):
+    """Run job_callback
+
+    Args:
+        context: context
+        job_results_list: list of job results
+    """
+    current_flow = context.flow
+    current_flow_run = context.flow_run
+    current_flow_state = current_flow_run.state
+    _job_results_list = asyncio.run(
+        job_callback(
+            current_flow,
+            current_flow_run,
+            current_flow_state,
+            results=job_results_list,
+        )
+    )
+    return _job_results_list

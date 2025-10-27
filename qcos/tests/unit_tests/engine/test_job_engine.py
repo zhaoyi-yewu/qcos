@@ -283,7 +283,10 @@ class TestJobEngine:
         flow_run.name = self.job_data["job_id"]
         flow_run.parameters = "parameters"
         flow_run.state = Mock()
-        assert asyncio.run(job_callback("flow", flow_run, state)) is None
+        assert (
+            asyncio.run(job_callback("flow", flow_run, state, results=[]))
+            is None
+        )
 
     @patch("qcos.engine.job_engine.update_progress")
     def test_task_monitor(self, mock_update_progress):

@@ -249,7 +249,12 @@ class Server:
             scheduler.set_transpiler_manager(transpiler_manager)
             scheduler.set_device_manager(device_manager)
 
+            # run any unfinished callbacks
+            logger.info("Processing unfinished callbacks ...")
+            scheduler.process_callbacks()
+
             # run forever
+            logger.info("API server running ...")
             loop.run_until_complete(server.serve())
         except Exception as e:
             raise errors.GenericException(
