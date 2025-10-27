@@ -24,34 +24,18 @@ from qcos.drivers.device import Device
 from qcos.drivers.driver_base import DriverBase
 
 
-class DriverTiangongBase(DriverBase):
-    """玻色量子-天工 光量子伊辛机驱动 基类
+class DriverQuboBase(DriverBase):
+    """QUBO驱动基类
 
-    Qboson Tiangong Base driver
+    QUBO Base driver
     """
-
-    # http request headers
-    default_headers = {
-        "accept": "application/json, text/plain, */*",
-        "accept-language": "zh-CN",
-    }
-    auth_headers = {
-        "accept": "application/json, text/plain, */*",
-        "accept-language": "zh-CN",
-        "Authorization": None,
-    }
 
     def __init__(self):
         super().__init__()
-        self.version = "0.0.1"
-        self.alias_name = "玻色量子-天工 光量子伊辛机驱动"
-        self.description = "玻色量子-天工 光量子伊辛机驱动"
         self.enable_transpiler = False
         self.tech_type = Constant.TECH_TYPE_PHOTON
-        self.max_qubits = 0
         self.default_data_type = DriverBase.DATA_TYPE_QUBO
         self.supported_code_types = [Constant.CODE_TYPE_QUBO]
-        self.token = None
 
     def init_driver(self):
         """Init driver"""

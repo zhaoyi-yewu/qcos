@@ -38,13 +38,16 @@ class DriverManager:
         logger.info("Loading drivers ...")
         base_module_name = "qcos.drivers"
         base_dir = os.path.dirname(__file__)
-        module_dirs = Library.find_dirs(base_dir=base_dir, recursive=True)
+        module_dirs = Library.find_dirs(
+            base_dir=base_dir, recursive=True, excludes=["*__pycache__"]
+        )
         for pkg_dir in module_dirs:
             classes = Library.import_classes(
                 pkg_dir,
                 base_module_name=base_module_name,
                 base_dir=base_dir,
                 base_class=DriverBase,
+                excluded_class="Base$",
             )
             for (
                 class_name,

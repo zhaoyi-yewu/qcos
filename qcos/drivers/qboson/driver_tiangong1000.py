@@ -26,10 +26,10 @@ from loguru import logger
 from qcos.common.constant import HttpCode, HttpMethod
 from qcos.common.library import Library
 from qcos.drivers.device import Device
-from qcos.drivers.qboson.driver_tiangong_base import DriverTiangongBase
+from qcos.drivers.driver_qubo_base import DriverQuboBase
 
 
-class DriverTiangong1000(DriverTiangongBase):
+class DriverTiangong1000(DriverQuboBase):
     """玻色量子-天工1000 光量子伊辛机驱动
 
     Qboson Tiangong1000 driver

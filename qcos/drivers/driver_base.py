@@ -46,6 +46,17 @@ class DriverBase:
     TASK_STAGE_GET_RESULTS = "get_results"
     TASK_STAGE_COMPLETE = "complete"
 
+    # http request headers
+    default_headers = {
+        "accept": "application/json, text/plain, */*",
+        "accept-language": "zh-CN",
+    }
+    auth_headers = {
+        "accept": "application/json, text/plain, */*",
+        "accept-language": "zh-CN",
+        "Authorization": None,
+    }
+
     def __init__(self):
         # driver version
         self.version = "unknown"

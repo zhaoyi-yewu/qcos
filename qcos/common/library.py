@@ -186,23 +186,32 @@ class Library:
         return True, None
 
     @staticmethod
-    def find_dirs(base_dir="/", pattern="*", recursive=False):
+    def find_dirs(base_dir="/", pattern="*", recursive=False, excludes=[]):
         """Find all dirs
 
         Args:
             base_dir: base dir to search (Default value = "/")
             pattern: match pattern (Default value = "*")
             recursive: recursive search (Default value = False)
+            excludes: excluded patterns (Default value = [])
 
         Returns:
-            dir list
+            matched dir list
         """
         dirs = []
         if os.path.isdir(base_dir):
             dirs.append(base_dir)
             if recursive:
                 for root, dir_names, filenames in os.walk(base_dir):
-                    for dir_name in fnmatch.filter(dir_names, pattern):
+                    matched_dirs = set(fnmatch.filter(dir_names, pattern))
+                    excluded_dirs = set()
+                    for exclude in excludes:
+                        _excluded_dirs = set(
+                            fnmatch.filter(matched_dirs, exclude)
+                        )
+                        excluded_dirs.update(_excluded_dirs)
+                    included_dirs = matched_dirs - excluded_dirs
+                    for dir_name in included_dirs:
                         _dir_name = os.path.join(root, dir_name)
                         if _dir_name not in dirs:
                             dirs.append(_dir_name)
@@ -289,7 +298,11 @@ class Library:
 
     @staticmethod
     def import_classes(
-        pkg_dir, base_module_name="drivers", base_dir=None, base_class=None
+        pkg_dir,
+        base_module_name="drivers",
+        base_dir=None,
+        base_class=None,
+        excluded_class=None,
     ):
         """Import class from package dir
 
@@ -298,6 +311,7 @@ class Library:
             base_module_name: base module name (Default value = "drivers")
             base_dir: base dir (Default value = None)
             base_class: base class (Default value = None)
+            excluded_class: excluded class (Default value = None)
 
         Returns:
             class dict
@@ -311,8 +325,13 @@ class Library:
             module = importlib.import_module(module_name)
             for _, obj in inspect.getmembers(module):
                 if inspect.isclass(obj):
-                    if issubclass(obj, base_class) and obj != base_class:
-                        classes[obj.__name__] = obj
+                    if issubclass(obj, base_class):
+                        cls_name = obj.__name__
+                        if excluded_class and Library.str_match(
+                            cls_name, excluded_class
+                        ):
+                            continue
+                        classes[cls_name] = obj
         return classes
 
     @staticmethod

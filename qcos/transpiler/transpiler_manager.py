@@ -43,6 +43,7 @@ class TranspilerManager:
                 base_module_name=base_module_name,
                 base_dir=base_dir,
                 base_class=TranspilerBase,
+                excluded_class="Base$",
             )
             for (
                 class_name,
