@@ -412,3 +412,13 @@ class TestLibrary:
         assert isinstance(new_uuid_2, uuid.UUID)
         new_uuid_bytes_2 = new_uuid_2.bytes
         assert new_uuid_bytes_2[0] == 0xF0
+
+    def test_encrypt_virtual_instance_id(self):
+        uuid_str = "5eb2cc2b195242aeb2d60cf4907a606b"
+        success, _, _ = library.encrypt_virtual_instance_id("dummy", uuid_str)
+        assert success is True
+
+    def test_decrypt_virtual_instance_id(self):
+        instance_id = "dummy-5eb2cc2b195242aeb2d60cf4907a606b-43c5"
+        success, _, _, _ = library.decrypt_virtual_instance_id(instance_id)
+        assert success is False

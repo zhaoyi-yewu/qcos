@@ -49,6 +49,7 @@ from qcos.engine.job_engine import (
     parse,
     transpile,
     driver_run,
+    run_job_callback,
 )
 from qcos.engine.job_engine import SourceCodeInfo
 from qcos.transpiler.transpiler_base import TranspilerBase
@@ -354,3 +355,12 @@ class TestJobEngine:
             self.src_code_info.aggregation_type
             == Constant.AGGREGATION_TYPE_NONE
         )
+
+    @patch("qcos.engine.job_engine.asyncio.run")
+    def test_run_job_callback(self, mock_run):
+        mock_run.return_value = "job_results_list"
+        mock_context = Mock()
+        mock_context.flow = "flow"
+        mock_context.flow_run = Mock()
+        mock_context.flow_run.state = "state"
+        _job_results_list = run_job_callback(mock_context, [])

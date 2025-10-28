@@ -17,9 +17,14 @@
 
 from unittest.mock import Mock, patch
 
-from qcos.api.posiq.routes_jsonrpc.driver import get_drivers, get_driver
+from qcos.api.posiq.routes_jsonrpc.driver import (
+    get_drivers,
+    get_driver,
+    _get_driver_info,
+)
 from qcos.common.config import Config
 from qcos.common.constant import Constant
+from qcos.drivers.driver_base import DriverBase
 from qcos.drivers.driver_manager import DriverManager
 from qcos.drivers.dummy.driver_dummy import DriverDummy
 from qcos.task_manager import TaskScheduler
@@ -84,3 +89,9 @@ class TestDriver:
         mock_client = Mock()
         mock_client.name = self.dummy
         get_driver(mock_client)
+
+    @patch.object(DriverBase, "get_supported_code_types")
+    def test__get_driver_info(self, mock_get_supported_code_types):
+        mock_get_supported_code_types.return_value = []
+        mock_client = DriverBase()
+        _get_driver_info(mock_client, None)

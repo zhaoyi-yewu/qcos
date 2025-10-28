@@ -50,5 +50,5 @@ class TestSystem:
                 None,
             ]
         )
-        response_info = system_info()
+        response_info = system_info(None, None)
         assert response_info.total_jobs_count == 1

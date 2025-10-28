@@ -64,7 +64,7 @@ class TestTaskScheduler:
         job_info = SimpleNamespace(**job_info)
 
         with pytest.raises(Exception) as context:
-            task.add(Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE, job_info)
+            task.add(Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE, job_info, None)
         assert str(context.value) is not None
 
     @patch.object(TaskFlowManager, "get_job_artifact")
@@ -98,7 +98,7 @@ class TestTaskScheduler:
         mock_get_task_flow_list.return_value = {"job_status": 111}
 
         with pytest.raises(Exception) as context:
-            task.get_jobs()
+            task.get_jobs(None)
         assert str(context.value) is not None
 
     @patch.object(TaskScheduler, "get_job_status")
@@ -136,6 +136,18 @@ class TestTaskScheduler:
         }
         task.get_job_status("job_status", flow_results, flow_parameters)
 
+    @patch.object(TaskFlowManager, "get_flow_runs_with_filters")
+    def test_process_callbacks(self, mock_get_flow_runs_with_filters):
+        mock_get_flow_runs_with_filters.return_value = []
+        task.process_callbacks()
+
+    @patch.object(TaskScheduler, "get_job_status")
+    @patch.object(TaskFlowManager, "cancel_task_flow_run")
+    def test_cancel_jobs(self, mock_cancel_task_flow_run, mock_get_job_status):
+        mock_cancel_task_flow_run.return_value = []
+        mock_get_job_status.return_value = None
+        task.cancel_jobs(ConstantForTest.job_ids)
+
 
 task_manager = TaskFlowManager()
 priority_policy = PriorityPolicy(task_manager)
@@ -155,7 +167,9 @@ class TestPriorityPolicy:
         mock_run_task_flow.return_value = 514
 
         result = priority_policy.exec_task(
-            ConstantForTest.flow_info, ConstantForTest.args["job_info"]
+            ConstantForTest.flow_info,
+            ConstantForTest.args["job_info"],
+            None,
         )
         assert result == 514
 
@@ -168,7 +182,9 @@ class TestTimePrecedencePolicy:
         mock_run_task_flow.return_value = 514
 
         result = time_precedence_policy.exec_task(
-            ConstantForTest.flow_info, ConstantForTest.args["job_info"]
+            ConstantForTest.flow_info,
+            ConstantForTest.args["job_info"],
+            None,
         )
         assert result == 514
 

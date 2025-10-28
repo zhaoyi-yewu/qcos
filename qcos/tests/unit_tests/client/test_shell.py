@@ -20,6 +20,7 @@ from argparse import Namespace
 from unittest.mock import patch, Mock
 
 import pytest
+from cliff.app import App
 from cliff.commandmanager import CommandManager
 from jsonrpcclient import Ok, Error
 
@@ -44,6 +45,7 @@ from qcos.client.shell import (
     set_debug_option,
     get_content_by_type,
     GetDriver,
+    SystemInfo,
 )
 from qcos.common import errors
 from qcos.common.config import Config
@@ -75,11 +77,21 @@ get_jobs = GetJobs(shell, None)
 cancel_jobs = CancelJobs(shell, None)
 delete_jobs = DeleteJobs(shell, None)
 set_job_results = SetJobResults(shell, None)
+system_info = SystemInfo(shell, None)
 
 
 class TestQcosShell:
     def test_build_option_parser(self):
         shell.build_option_parser("description", "1.0.0")
+
+    @patch.object(App, "initialize_app")
+    def test_initialize_app(self, mock_initialize_app):
+        mock_initialize_app.return_value = None
+        mock_options = Mock()
+        shell.options = mock_options
+        mock_options.api_host = "api_host"
+        mock_options.use_ssl = False
+        shell.initialize_app([])
 
 
 class TestCommandHelper:
@@ -352,6 +364,7 @@ class TestSubmitJob:
         mock_client.profiling = ["1", "2"]
         mock_client.callbacks = '{"options": "options", "option": "option"}'
         mock_client.source_code_files = ["qcos", "os"]
+        mock_client.instance_id = "instance_id"
 
         submit_job.take_action(mock_client)
 
@@ -517,6 +530,23 @@ class TestSetJobResults:
             '{"options": "options","option": "option"}',
         ]
         set_job_results.take_action(mock_client)
+
+
+class TestSystemInfo:
+    def test_get_parser(self):
+        system_info.get_parser("")
+
+    @patch.object(CommandHelper, "get_table_data")
+    @patch.object(CommandHelper, "check_results")
+    @patch.object(Client, "system_info")
+    def test_take_action(
+        self, mock_system_info, mock_check_results, mock_get_table_data
+    ):
+        mock_system_info.return_value = iter([None, None, None, None])
+        mock_check_results.return_value = None
+        mock_get_table_data.return_value = None
+        mock_client = Mock(spec=Namespace)
+        system_info.take_action(mock_client)
 
 
 def test_set_debug_option():

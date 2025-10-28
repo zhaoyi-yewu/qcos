@@ -155,11 +155,11 @@ class TestJob:
         device.set_enable(True)
         device.set_status("online")
         mock_get_devices.return_value = {mock_client.backend: device}
-        submit_job(mock_client)
+        submit_job(mock_client, None)
 
         mock_client.source_code = None
         with pytest.raises(BadRequestError) as e:
-            submit_job(mock_client)
+            submit_job(mock_client, None)
         assert "BadRequestError" in str(e)
 
         mock_client.source_code = [
@@ -177,7 +177,7 @@ class TestJob:
         ]
         mock_client.job_id = "111"
         with pytest.raises(BadRequestError) as e:
-            submit_job(mock_client)
+            submit_job(mock_client, None)
         assert "BadRequestError" in str(e)
 
     @patch("qcos.api.posiq.routes_jsonrpc.job.merge_results")
@@ -224,7 +224,7 @@ class TestJob:
         mock_merge_results.return_value = response_info
         mock_client = Mock(spec=GetJobResultsRequest)
         mock_client.job_id = None
-        get_jobs(mock_client)
+        get_jobs(mock_client, None)
 
     @patch.object(TaskScheduler, "cancel_jobs")
     def test_cancel_jobs(self, mock_cancel_jobs):

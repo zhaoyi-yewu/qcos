@@ -98,7 +98,7 @@ class TaskScheduler(ABC):
         """
         return self.device_manager
 
-    def add(self, policy_type, job_info):
+    def add(self, policy_type, job_info, tags):
         """Add job to scheduler
 
         Add job to scheduler, scheduler will get policy handler by policy_type,
@@ -107,6 +107,7 @@ class TaskScheduler(ABC):
         Args:
             policy_type: scheduler policy type
             job_info: job info
+            tags: prefect flow tags
 
         Returns:
             added job info, error messages
@@ -186,7 +187,7 @@ class TaskScheduler(ABC):
             }
             job_json_info["device"] = {"configs": device.get_configs()}
 
-            job_id = policy_handler.exec_task(flow_info, job_json_info)
+            job_id = policy_handler.exec_task(flow_info, job_json_info, tags)
             res = {"job_id": job_id}
             return res, None
         except Exception as e:
@@ -236,14 +237,17 @@ class TaskScheduler(ABC):
         """
         return self._task_manager.has_flow(job_id)
 
-    def get_jobs(self):
+    def get_jobs(self, tags):
         """Get job list
+
+        Args:
+            tags: prefect flow tags
 
         Returns:
             job list
         """
         try:
-            flow_list = self._task_manager.get_task_flow_list()
+            flow_list = self._task_manager.get_task_flow_list(tags)
             for flow in flow_list:
                 flow["job_status"] = self.get_job_status(
                     flow["state"], flow["results"], flow["parameters"]
@@ -405,12 +409,13 @@ class PriorityPolicy(BaseSchedulerPolicy):
         super().__init__(task_manager)
         self._type = Constant.JOB_SCHED_POLICY_PRIORITY
 
-    def exec_task(self, flow_info, job_info):
+    def exec_task(self, flow_info, job_info, tags):
         """PriorityPolicy execute task
 
         Args:
             flow_info: flow info
             job_info: job info
+            tags: prefect flow tags
 
         Returns:
             job uuid
@@ -424,7 +429,7 @@ class PriorityPolicy(BaseSchedulerPolicy):
             flow_info["deploy_flow_path"],
         )
         job_run_id = self._task_manager.run_task_flow(
-            job_deploy_id, {"job_info": job_info}
+            job_deploy_id, {"job_info": job_info}, tags
         )
         return job_run_id
 
@@ -447,12 +452,13 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
         super().__init__(task_manager)
         self._type = Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE
 
-    def exec_task(self, flow_info, job_info):
+    def exec_task(self, flow_info, job_info, tags):
         """TimePrecedencePolicy execute task
 
         Args:
             flow_info: flow info
             job_info: job info
+            tags: prefect flow tags
 
         Returns:
             job uuid
@@ -467,7 +473,7 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
             flow_info["deploy_flow_path"],
         )
         job_run_id = self._task_manager.run_task_flow(
-            job_deploy_id, {"job_info": job_info}
+            job_deploy_id, {"job_info": job_info}, tags
         )
         return job_run_id
 

@@ -74,10 +74,12 @@ def get_devices(
     logger.info(f"Call {func_name}: {body}")
 
     device_manager = scheduler.get_device_manager()
-    # TODO (guozhufeng): auth_data to be implemented
     devices = device_manager.get_devices()
     response_info = {}
     for device_name, device_info in sorted(devices.items()):
+        if auth_data is not None:
+            if device_name != auth_data["device_name"]:
+                continue
         _response_info = _get_device_info(device_info)
         response_info[device_name] = schemas.GetDeviceResponse.model_validate(
             _response_info
@@ -86,11 +88,15 @@ def get_devices(
 
 
 @device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
-def get_device(body: schemas.GetDeviceRequest) -> schemas.GetDeviceResponse:
+def get_device(
+    body: schemas.GetDeviceRequest,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.GetDeviceResponse:
     """Get device info request
 
     Args:
         body(schemas.GetDeviceRequest): device name
+        auth_data: auth data
 
     Returns:
         Get device info response
@@ -102,6 +108,9 @@ def get_device(body: schemas.GetDeviceRequest) -> schemas.GetDeviceResponse:
 
     device_manager = scheduler.get_device_manager()
     device_info = device_manager.get_device(device_name)
+    if auth_data is not None:
+        if auth_data["device_name"] != device_name:
+            device_info = None
     if not device_info:
         jsonrpc_errors.handle_error_not_found(
             module_name,

@@ -42,7 +42,7 @@ class TestDevice:
         )
         mock_client = Mock(spec=GetDeviceRequest)
         mock_client.name = self.dummy
-        get_devices(mock_client)
+        get_devices(mock_client, None)
 
     @patch.object(DeviceManager, "get_device")
     @patch.object(TaskScheduler, "get_device_manager")
@@ -53,4 +53,4 @@ class TestDevice:
         )
         mock_client = Mock(spec=GetDeviceRequest)
         mock_client.name = self.dummy
-        get_device(mock_client)
+        get_device(mock_client, None)

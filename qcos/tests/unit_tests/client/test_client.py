@@ -39,7 +39,7 @@ class TestClient:
     def test_call_json_rpc(self, mock_print_api_response):
         mock_print_api_response.return_value = self.return_values
         status_code, reason, text, result = client.call_json_rpc(
-            "127.0.0.1", "get"
+            "127.0.0.1", "get", {}
         )
         assert status_code == -1
 
@@ -131,3 +131,21 @@ class TestClient:
             self.job_id, "result"
         )
         assert text == "text"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_system_info(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.system_info()
+        assert result == "result"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_get_job_results(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.get_job_results(self.job_id)
+        assert status_code == -1
+
+    @patch("qcos.client.client.parse")
+    def test_parse_jsonrpc_response(self, mock_parse):
+        mock_parse.return_value = None
+        success, parse = client.parse_jsonrpc_response(None)
+        assert not success

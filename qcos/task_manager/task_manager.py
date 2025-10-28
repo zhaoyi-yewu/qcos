@@ -302,18 +302,19 @@ class TaskFlowManager(ABC):
         )
         return deploy_id
 
-    def run_task_flow(self, deployment_id, args: dict[str, Any]):
+    def run_task_flow(self, deployment_id, args: dict[str, Any], tags=None):
         """Run flow
 
         Args:
             deployment_id: deploy uuid
             args: flow function args in dict
+            tags: prefect flow tags
 
         Returns:
             flow run uuid
         """
         flow_run_id = self.loop.run_until_complete(
-            self.run_task_flow_by_client(deployment_id, args)
+            self.run_task_flow_by_client(deployment_id, args, tags)
         )
 
         return flow_run_id
@@ -330,7 +331,10 @@ class TaskFlowManager(ABC):
         return flow_runs[0].id
 
     async def run_task_flow_by_client(
-        self, deployment_id, args: dict[str, Any]
+        self,
+        deployment_id,
+        args: dict[str, Any],
+        tags,
     ):
         """
         Run flow by prefect client
@@ -338,6 +342,7 @@ class TaskFlowManager(ABC):
         Args:
             deployment_id: deploy uuid
             args: flow function args in dict
+            tags: prefect flow tags
 
         Returns:
             job_id: job uuid
@@ -346,15 +351,20 @@ class TaskFlowManager(ABC):
         if job_id is None:
             job_id = Library.create_uuid()
             args["job_info"]["data"]["job_id"] = job_id
-        tags = None
+        prefect_tags = None
         if args["job_info"]["data"]["circuit_aggregation"]:
-            tags = [args["job_info"]["data"]["circuit_aggregation"]]
+            prefect_tags = [args["job_info"]["data"]["circuit_aggregation"]]
+        if tags is not None:
+            if prefect_tags is not None:
+                prefect_tags.append(tags)
+            else:
+                prefect_tags = [tags]
         # TODO(jidalong) deal exception
         await self._client.create_flow_run_from_deployment(
             name=str(job_id),
             deployment_id=deployment_id,
             parameters=args,
-            tags=tags,
+            tags=prefect_tags,
         )
 
         return job_id
@@ -532,17 +542,21 @@ class TaskFlowManager(ABC):
         else:
             return state.name, parameters, None, None
 
-    def get_task_flow_list(self):
+    def get_task_flow_list(self, tags):
         """Get flow run list
+
+        Args:
+            tags: prefect flow tags
 
         Returns:
             flow run list
         """
-        results = self.get_task_flow_list_by_client()
+        results = self.get_task_flow_list_by_client(tags)
         return results
 
     def get_task_flow_list_by_client(
         self,
+        tags,
         sort_fields=["-created"],
         reverse=False,
     ):
@@ -551,6 +565,7 @@ class TaskFlowManager(ABC):
         Args:
             sort_fields: sort fields (Default value = ['-created'])
             reverse: reverse order
+            tags: prefect flow tags
 
         Returns:
             flow run list
@@ -569,7 +584,11 @@ class TaskFlowManager(ABC):
                     artifacts_map[artifact.key]["progress"] = artifact.data
 
         # get flows info
-        flow_runs = self._sync_client.read_flow_runs()
+        if tags is not None:
+            flow_runs = self.get_flow_runs_with_filters(tags=tags)
+        else:
+            flow_runs = self.get_flow_runs_with_filters()
+
         sorted_flows = sorted(
             flow_runs,
             key=lambda sort_obj: Library.get_sorted_keys(
@@ -727,7 +746,7 @@ class TaskFlowManager(ABC):
 
         Args:
             states: flow states
-            tags: flow tags
+            tags: prefect flow tags
 
         Returns:
             flow runs

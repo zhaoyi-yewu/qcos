@@ -1385,12 +1385,32 @@ class Library:
         Returns:
             success, error message, device_name, instance_id
         """
-        # TODO (guozhufeng): to be implemeted
-        device_name = "a"
-        instance_id = "b"
+        err_msg = None
         try:
-            pass
-        except Exception as e:
-            err_msg = f"Encryption failed. Reason: {repr(e)}"
+            # admin user
+            if virtual_instance_id is None:
+                return True, err_msg, "all", "all"
+            # split virtual_instance_id
+            first = virtual_instance_id.index("-")
+            last = virtual_instance_id.rindex("-")
+
+            device_name = virtual_instance_id[:first]
+            instance_id = virtual_instance_id[first + 1 : last]
+            expect_verify_code = virtual_instance_id[last + 1 :]
+
+            uuid_salt_str = f"{device_name}-{instance_id}-{salt}"
+            md5_hash = hashlib.md5(uuid_salt_str.encode("utf-8")).hexdigest()
+            verify_code = (
+                md5_hash[0] + md5_hash[1] + md5_hash[-2] + md5_hash[-1]
+            )
+
+            if verify_code == expect_verify_code:
+                return True, err_msg, device_name, instance_id
+
+            err_msg = "Decryption failed. Reason: Unauthorized"
+            device_name = None
+            instance_id = None
             return False, err_msg, device_name, instance_id
-        return True, None, device_name, instance_id
+        except Exception as e:
+            err_msg = f"Decryption failed. Reason: {repr(e)}"
+            return False, err_msg, None, None

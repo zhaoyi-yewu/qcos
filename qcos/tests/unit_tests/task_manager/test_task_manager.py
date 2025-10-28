@@ -105,7 +105,9 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_run.run_task_flow_by_client.return_value = mock_client
         self.task_manager.loop = mock_client
         flow_info = self.task_manager.run_task_flow(
-            flow_info, ConstantForTest.args
+            flow_info,
+            ConstantForTest.args,
+            None,
         )
         assert flow_info is not None
 
@@ -125,7 +127,7 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_client.create_flow_run_from_deployment.return_value = mock_run
         job_id = asyncio.run(
             self.task_manager.run_task_flow_by_client(
-                ConstantForTest.job_id, ConstantForTest.args
+                ConstantForTest.job_id, ConstantForTest.args, None
             )
         )
         assert job_id is not None
@@ -199,15 +201,19 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_client = Mock()
         self.task_manager.get_task_flow_list_by_client = mock_client
         mock_client.get_task_flow_list_by_client.return_value = []
-        results = self.task_manager.get_task_flow_list()
+        results = self.task_manager.get_task_flow_list(None)
         assert results is not None
 
-    def test_get_task_flow_list_by_client(self):
+    @patch.object(TaskFlowManager, "get_flow_runs_with_filters")
+    def test_get_task_flow_list_by_client(
+        self,
+        mock_get_flow_runs_with_filters,
+    ):
         mock_client = Mock()
+        mock_get_flow_runs_with_filters.return_value = []
         self.task_manager._sync_client = mock_client
         mock_client.read_artifacts.return_value = []
-        mock_client.read_flow_runs.return_value = []
-        results = self.task_manager.get_task_flow_list_by_client()
+        results = self.task_manager.get_task_flow_list_by_client(tags=None)
         assert results is not None
 
     @patch.object(TaskFlowManager, "get_flow_run_id_by_job_id")
@@ -251,3 +257,23 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_get_flow_run_id_by_job_id.return_value = "1234"
         mock_cancel_task_flow_run_by_client.return_value = None
         self.task_manager.cancel_task_flow_run(ConstantForTest.job_ids)
+
+    def test_convert_to_prefect_states(self):
+        states = [
+            Constant.PREFECT_STATE_RUNNING,
+            Constant.PREFECT_STATE_SCHEDULED,
+            Constant.PREFECT_STATE_PENDING,
+            Constant.PREFECT_STATE_FAILED,
+            Constant.PREFECT_STATE_COMPLETED,
+            Constant.PREFECT_STATE_CRASHED,
+            Constant.PREFECT_STATE_CANCELLING,
+            Constant.PREFECT_STATE_CANCELLED,
+            Constant.PREFECT_STATE_PAUSED,
+        ]
+        prefect_states = self.task_manager.convert_to_prefect_states(states)
+        assert len(prefect_states) == 9
+
+    def test_cancel_task_flow_run_by_client(self):
+        self.task_manager.cancel_task_flow_run_by_client(
+            ConstantForTest.job_ids
+        )

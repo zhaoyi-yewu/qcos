@@ -365,9 +365,13 @@ def submit_job(
     res = {}
     err = None
     try:
-        # TODO (guozhufeng): auth_data to be implemented
+        virtual_instance_id = None
+        if auth_data is not None:
+            virtual_instance_id = auth_data["instance_id"]
         res, err = scheduler.add(
-            Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE, body
+            Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
+            body,
+            virtual_instance_id,
         )
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
@@ -539,8 +543,10 @@ def get_jobs(
     # query jobs' results
     responses = []
     try:
-        # TODO (guozhufeng): auth_data to be implemented
-        responses, err = scheduler.get_jobs()
+        virtual_instance_id = None
+        if auth_data is not None:
+            virtual_instance_id = auth_data["instance_id"]
+        responses, err = scheduler.get_jobs(virtual_instance_id)
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
             module_name, func_name, (False, str(e))
