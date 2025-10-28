@@ -14,17 +14,28 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+import pytest
 
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 from qcos.tests.unit_tests.transpiler.comm import read_qasm_from_file
 from qcos.tests.unit_tests.transpiler.comm import validate_gate_ir
 from qcos.tests.unit_tests.transpiler.comm import validate_non_gate_ir
+from qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 
 
+@pytest.mark.usefixtures("global_configs")
 class TestSampleQasm:
+    @classmethod
+    def setup_class(cls):
+        cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
+
+    @classmethod
+    def teardown_class(cls):
+        pass
+
     def test_adder_qasm(self):
-        file_path = "../../../samples/qasm/2.0/adder.qasm"
+        file_path = f"{self.samples_dir}/qasm/2.0/adder.qasm"
         qasm_data = read_qasm_from_file(file_path)
         if qasm_data is None:
             return
@@ -55,7 +66,7 @@ class TestSampleQasm:
         validate_non_gate_ir(opt_gates[34], "measure", [9], 0)
 
     def test_big_adder_qasm(self):
-        file_path = "../../../samples/qasm/2.0/bigadder.qasm"
+        file_path = f"{self.samples_dir}/qasm/2.0/bigadder.qasm"
         qasm_data = read_qasm_from_file(file_path)
         if qasm_data is None:
             return
