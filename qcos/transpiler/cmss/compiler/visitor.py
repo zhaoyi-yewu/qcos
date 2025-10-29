@@ -65,6 +65,7 @@ class Visitor:
             "cy": (2, 0),
             "cz": (2, 0),
             "ch": (2, 0),
+            "swap": (2, 0),
             "crx": (2, 1),
             "cry": (2, 1),
             "crz": (2, 1),
@@ -619,7 +620,6 @@ class Visitor:
                     raise RuntimeError(
                         f"in line {s.pos}, need to specific qubits")
 
-
             if qreg_num == -1:
                 self.check_qlist(qids, s.pos)
                 self.eval_gate(uid, s.children[1], qids, s.pos)
@@ -627,7 +627,6 @@ class Visitor:
                 for qubits in qids:
                     self.check_qlist([qubits], s.pos)
                     self.eval_gate(uid, s.children[1], [qubits], s.pos)
-
 
     def var_to_number(self, in_var, pos):
         """如果in_var[1]是整数返回值，

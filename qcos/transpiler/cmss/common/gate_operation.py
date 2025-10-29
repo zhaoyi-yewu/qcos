@@ -381,6 +381,27 @@ class CY(GateOperation):
         return gates
 
 
+class SWAP(GateOperation):
+    """交换门，交换两个量子比特。"""
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_SWAP, targets, arg_value, gate_type
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates.append(CX([self.targets[0], self.targets[1]]))
+        gates.append(CX([self.targets[1], self.targets[0]]))
+        gates.append(CX([self.targets[0], self.targets[1]]))
+        return gates
+
+
 class CH(GateOperation):
     """受控Hadamard门，当控制量子比特为|1⟩时，对目标量子比特应用Hadamard门（H门）"""
 
@@ -619,6 +640,8 @@ def create_gate(name, targets=None, arg_value=None, allow_undefined=False):
         return CZ(targets, arg_value)
     elif name == Constant.TWO_QUBIT_GATE_CH:
         return CH(targets, arg_value)
+    elif name == Constant.TWO_QUBIT_GATE_SWAP:
+        return SWAP(targets, arg_value)
     elif name == Constant.TWO_QUBIT_GATE_CRX:
         return CRX(targets, arg_value)
     elif name == Constant.TWO_QUBIT_GATE_CRY:

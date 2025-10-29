@@ -422,6 +422,19 @@ class TestDecompose:
         validate_gate(decom_gate[3], "rx", [0], [np.pi / 2])
         validate_gate(decom_gate[4], "rz", [0], [1 + np.pi])
 
+    def test_swap_decompose(self):
+        swap = create_gate("swap", [0, 1], [])
+        assert (
+            swap.operation_type == OperationType.DOUBLE_QUBIT_OPERATION.value
+        )
+        assert swap.name == "swap"
+        assert swap.hermitian is True
+        decom_gate = swap.decompose()
+        assert len(decom_gate) == 3
+        validate_gate(decom_gate[0], "cx", [0, 1], [])
+        validate_gate(decom_gate[1], "cx", [1, 0], [])
+        validate_gate(decom_gate[2], "cx", [0, 1], [])
+
     def test_create_rx_exception(self):
         try:
             create_gate("rx", [0, 1], [1, 2, 3])

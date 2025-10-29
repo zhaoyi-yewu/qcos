@@ -86,6 +86,28 @@ class TestGetIr:
         validate_non_gate_ir(ir[19], "sync", [0, 1, 2, 3, 4, 5], -1)
         validate_non_gate_ir(ir[20], "measure", [1], 0)
 
+    def test_swap_gate(self):
+        data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        creg c[2];
+        x q[0];
+        swap q[0], q[1];
+        measure q[0] -> c[0];
+        measure q[1] -> c[1];
+        """
+        tree = get_abs_tree(data)
+        assert tree is not None
+        q_num, ir = get_ir(tree)
+        assert ir is not None
+        assert q_num == 2
+        assert len(ir) == 4
+        validate_gate_ir(ir[0], "x", ["0"], 1, True)
+        validate_gate_ir(ir[1], "swap", ["0", "1"], 2, True)
+        validate_non_gate_ir(ir[2], "measure", [0], 0)
+        validate_non_gate_ir(ir[3], "measure", [1], 0)
+
     def test_for_empty(self):
         data = """
         OPENQASM 3.0;

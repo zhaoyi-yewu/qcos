@@ -104,6 +104,7 @@ class Constant:
     TWO_QUBIT_GATE_CX = "cx"
     TWO_QUBIT_GATE_CY = "cy"
     TWO_QUBIT_GATE_CZ = "cz"
+    TWO_QUBIT_GATE_SWAP = "swap"
     TWO_QUBIT_GATE_LIST = [
         TWO_QUBIT_GATE_CH,
         TWO_QUBIT_GATE_CRX,
@@ -112,6 +113,7 @@ class Constant:
         TWO_QUBIT_GATE_CX,
         TWO_QUBIT_GATE_CY,
         TWO_QUBIT_GATE_CZ,
+        TWO_QUBIT_GATE_SWAP,
     ]
     # three-qubit gates
     THREE_QUBIT_GATE_CCX = "ccx"
