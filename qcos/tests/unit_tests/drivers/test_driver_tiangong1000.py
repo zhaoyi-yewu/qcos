@@ -165,10 +165,10 @@ class TestDriverTiangong1000:
             "code": "0",
             "msg": "",
             "data": {
-                "task_status": "1",
-                "qubo_value": "[-109]",
-                "qubo_solution_data": "[-109]",
-                "visual_data": "[80]",
+                "task_status": 1,
+                "qubo_value": [-109],
+                "qubo_solution_data": [-109],
+                "visual_data": [80],
             },
         }
         mock_call_http_api.return_value = iter(
@@ -183,10 +183,10 @@ class TestDriverTiangong1000:
             driver_tiangong1000.get_task_realtime_result("2")
         )
         assert success is True
-        assert realtime_status["task_status"] == "1"
-        assert realtime_status["qubo_value"] == "[-109]"
-        assert realtime_status["qubo_solution_data"] == "[-109]"
-        assert realtime_status["visual_data"] == "[80]"
+        assert realtime_status["task_status"] == 1
+        assert realtime_status["qubo_value"] == [-109]
+        assert realtime_status["qubo_solution_data"] == [-109]
+        assert realtime_status["visual_data"] == [80]
 
     @patch.object(DriverTiangong1000, "get_task_realtime_result")
     def test_get_results(self, mock_get_task_realtime_result):
