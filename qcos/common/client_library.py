@@ -48,7 +48,7 @@ class ClientLibrary:
         cert_file=None,
         key_file=None,
         retries=1,
-        timeout=10,
+        timeout=30,
         success_http_code=[200, 201],
         debug=False,
     ):

@@ -257,7 +257,8 @@ class DriverTiangong1000(DriverQuboBase):
                 data = {
                     "task_name": task_name,
                     "name": filename,
-                    "is_qubo": "true",
+                    "is_qubo": True,
+                    "machine_name": "CPQC-1000",
                 }
                 # Submit task
                 url = f"{self.domain_url_task}/{self.task_path}/"
@@ -326,6 +327,7 @@ class DriverTiangong1000(DriverQuboBase):
 
         # Get task status
         url = f"{self.domain_url_task}/{self.task_path}/{task_id}/"
+        logger.info(f"get task result url: {url}")
         status_code, reason, text, r = Library.call_http_api(
             url,
             HttpMethod.GET,
