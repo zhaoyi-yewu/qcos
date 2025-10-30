@@ -19,16 +19,21 @@ set -e
 docker_registry="cicdcsy.harbor.cmss.com:18080/wuyue-platform/qcos/"
 source_qcos_image=qcos:2025-06-01
 source_qcos_cli_image=qcos-cli:2025-06-01
+source_prefect_image=prefecthq/prefect:3.3.3-python3.13
 
 target_qcos_image=${docker_registry}${source_qcos_image}
 target_qcos_cli_image=${docker_registry}${source_qcos_cli_image}
+target_prefect_image=${docker_registry}${source_prefect_image}
 
 # tag docker image
 docker rmi -f ${target_qcos_image}
 docker rmi -f ${target_qcos_cli_image}
+docker rmi -f ${target_prefect_image}
 docker tag ${source_qcos_image} ${target_qcos_image}
 docker tag ${source_qcos_cli_image} ${target_qcos_cli_image}
+docker tag ${source_prefect_image} ${target_prefect_image}
 
 # push image to registry
 docker push ${target_qcos_image}
 docker push ${target_qcos_cli_image}
+docker push ${target_prefect_image}

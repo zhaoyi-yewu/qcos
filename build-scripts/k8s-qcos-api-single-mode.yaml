@@ -16,14 +16,14 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: qcos
+  name: ${QCOS_NAMESPACE}
 ---
 # Create code-data PVC
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: code-data-pvc
-  namespace: qcos
+  namespace: ${QCOS_NAMESPACE}
 spec:
   accessModes:
     - ReadWriteOnce
@@ -37,7 +37,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: database-pvc
-  namespace: qcos
+  namespace: ${QCOS_NAMESPACE}
 spec:
   accessModes:
     - ReadWriteOnce
@@ -46,12 +46,12 @@ spec:
       storage: 1Gi
   storageClassName: ""
 ---
-# 添加 QCOS ConfigMap
+# Create QCOS ConfigMap
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: qcos-config
-  namespace: qcos
+  namespace: ${QCOS_NAMESPACE}
 data:
   qcos.toml: |
     [DEFAULT]
@@ -60,6 +60,10 @@ data:
     MAX_JOBS = 10000
     # max queued+running jobs [GLOBAL CONFIG]
     MAX_QUEUED_JOBS = 1000
+    # enable virtualization
+    ENABLE_VIRT = ${QCOS_ENABLE_VIRT}
+    # salt for password/encryption
+    PASSWORD_SALT = "${PASSWORD_SALT}"
     
     [API_SERVER]
     # API workers
@@ -67,7 +71,7 @@ data:
     # API server listen ip
     API_SERVER_LISTEN_IP = "0.0.0.0"
     # API server listen port
-    API_SERVER_LISTEN_PORT = ${QCOS_API_LISTEN_PORT}
+    API_SERVER_LISTEN_PORT = ${QCOS_API_SERVER_PORT}
     
     [LOG]
     # api log file
@@ -163,7 +167,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: prefect-server
-  namespace: qcos
+  namespace: ${QCOS_NAMESPACE}
 spec:
   replicas: 1
   selector:
@@ -243,7 +247,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: prefect-server
-  namespace: qcos
+  namespace: ${QCOS_NAMESPACE}
 spec:
   selector:
     app: prefect-server
@@ -256,17 +260,17 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: qcos-api
-  namespace: qcos
+  name: ${QCOS_CONTAINER_NAME}
+  namespace: ${QCOS_NAMESPACE}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: qcos-api
+      app: ${QCOS_CONTAINER_NAME}
   template:
     metadata:
       labels:
-        app: qcos-api
+        app: ${QCOS_CONTAINER_NAME}
     spec:
       hostNetwork: false
       restartPolicy: Always
@@ -278,7 +282,7 @@ spec:
           'until wget -q --spider http://${PREFECT_SERVER_API_HOST}:${PREFECT_SERVER_PORT}/api; do echo "waiting for prefect-server ..."; sleep 2; done; echo "prefect-server is ready"'
         ]
       containers:
-      - name: qcos
+      - name: ${QCOS_CONTAINER_NAME}
         image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
         # securityContext:
         #   privileged: true
@@ -288,13 +292,13 @@ spec:
         command: ["/entrypoint.sh"]
         env:
         - name: DEBUG
-          value: ${DEBUG}
+          value: "${DEBUG}"
         - name: DEV
-          value: ${DEV}
+          value: "${DEV}"
         - name: TZ
           value: "Asia/Shanghai"
         - name: QCOS_CONTAINER_NAME
-          value: ${QCOS_CONTAINER_NAME}
+          value: "${QCOS_CONTAINER_NAME}"
         - name: PREFECT_SERVER_API_HOST
           value: "${PREFECT_SERVER_API_HOST}"
         - name: PREFECT_API_URL
@@ -305,8 +309,10 @@ spec:
           value: "/var/qcos/storage"
         - name: PYTHONPATH
           value: "/root/qcos-project"
+        - name: QCOS_ENABLE_VIRT
+          value: "${QCOS_ENABLE_VIRT}"
         - name: QCOS_VIRTUAL_INSTANCE_ID
-          value: dummy-5eb2cc2b195242aeb2d60cf4907a606b-43c5
+          value: "${QCOS_VIRTUAL_INSTANCE_ID}"
         resources:
           requests:
             cpu: "1000m"
@@ -316,14 +322,14 @@ spec:
             memory: "4Gi"
         livenessProbe:
           tcpSocket:
-            port: ${QCOS_API_PORT}
+            port: ${QCOS_API_SERVER_PORT}
           initialDelaySeconds: 30
           periodSeconds: 60
           timeoutSeconds: 10
           failureThreshold: 3
         readinessProbe:
           tcpSocket:
-            port: ${QCOS_API_PORT}
+            port: ${QCOS_API_SERVER_PORT}
           initialDelaySeconds: 5
           periodSeconds: 60
           timeoutSeconds: 10
@@ -352,26 +358,26 @@ spec:
       - name: qcos-config-device-dummy
         configMap:
           name: qcos-config
-      nodeSelector:
-        qcos-api: enabled
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchLabels:
-                app: qcos-api
-            topologyKey: "kubernetes.io/hostname"
+#      nodeSelector:
+#        qcos-api: enabled
+#      affinity:
+#        podAntiAffinity:
+#          requiredDuringSchedulingIgnoredDuringExecution:
+#          - labelSelector:
+#              matchLabels:
+#                app: qcos-api
+#            topologyKey: "kubernetes.io/hostname"
 ---
 # qcos service (ClusterIP)
 apiVersion: v1
 kind: Service
 metadata:
-  name: qcos
-  namespace: qcos
+  name: ${QCOS_CONTAINER_NAME}
+  namespace: ${QCOS_NAMESPACE}
 spec:
   selector:
-    app: qcos-api
+    app: ${QCOS_CONTAINER_NAME}
   type: ClusterIP
   ports:
-  - port: ${QCOS_API_PORT}
-    targetPort: ${QCOS_API_PORT}
+  - port: ${QCOS_API_SERVER_PORT}
+    targetPort: ${QCOS_API_SERVER_PORT}

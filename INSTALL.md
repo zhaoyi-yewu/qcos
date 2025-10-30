@@ -99,22 +99,30 @@ qcos-api --config-file /etc/qcos/qcos.toml --config-dir /etc/qcos/conf.d/
 
 ## 3. 测试 (单元测试UT, 覆盖率测试Coverage, 系统测试ST, 代码格式检查)
 ### 3.1 通过容器环境运行测试
+启动并进入qcos-sandbox容器
+```shell
+./run-sandbox.sh
+docker exec -it qcos-sandbox bash
+```
 #### 3.1.1 单元测试 (UT)
+在qcos-sandbox容器内执行:
 ```shell
 cd ./cicd
 ./run-tests.sh -u
 ```
 
 #### 3.1.2 覆盖率测试 (Coverage)
+在qcos-sandbox容器内执行:
 ```shell
 cd ./cicd
 ./run-tests.sh -c
 ```
 
 #### 3.1.3 覆盖率报告查看
+在qcos-sandbox容器内执行:
 ```shell
+在qcos-sandbox容器内执行
 cd ./cicd
-./run-tests.sh -s
 # 使用浏览器打开./coverage_html/index.html查看覆盖率
 
 # 或者, 在命令行模式下, 通过命令方式查看覆盖率报告 [可选]
@@ -124,6 +132,7 @@ links ./coverage_html/index.html
 ```
 
 #### 3.1.4 系统测试 (ST)
+在qcos-sandbox容器内执行:
 ```shell
 # 保证QCOS已经正常启动
 # 编辑/etc/qcos/qcos-st.toml, 修改API_SERVER_IP和API_SERVER_PORT为被测服务的IP地址以及端口号
@@ -132,6 +141,7 @@ cd ./cicd
 ```
 
 #### 3.1.5 代码格式检查 (ruff format)
+在qcos-sandbox容器内执行:
 ```shell
 项目根目录下:
   ruff format --check qcos
@@ -145,6 +155,7 @@ cd ./cicd
 ```
 
 #### 3.1.6 代码静态分析lint (pylint+ruff+mypy)
+在qcos-sandbox容器内执行:
 ```shell
 项目根目录下:
   pylint qcos
@@ -156,6 +167,7 @@ cd ./cicd
 
 ## 4. 文档
 ### 4.1 编译Sphinx文档和OpenAPI文档
+在qcos-sandbox容器内执行:
 ```shell
 cd build-scripts
 ./build-docs.sh

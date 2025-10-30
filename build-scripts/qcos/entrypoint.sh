@@ -35,17 +35,17 @@ else
 [DEFAULT]
 DEBUG = ${_DEBUG,,}
 # max jobs (all status) [GLOBAL CONFIG]
-MAX_JOBS = 10000
+MAX_JOBS = ${MAX_JOBS:-10000}
 # max queued+running jobs [GLOBAL CONFIG]
-MAX_QUEUED_JOBS = 1000
+MAX_QUEUED_JOBS = ${MAX_QUEUED_JOBS:-1000}
 # enable virtualization
-ENABLE_VIRT = false
+ENABLE_VIRT = ${ENABLE_VIRT:-false}
 # salt for password/encryption
-PASSWORD_SALT = "abcd"
+PASSWORD_SALT = ${PASSWORD_SALT:-abcd}
 
 [API_SERVER]
 # API workers
-API_WORKERS = 8
+API_WORKERS = ${API_WORKERS:-8}
 # API server listen ip
 API_SERVER_LISTEN_IP = "${API_SERVER_LISTEN_IP:-0.0.0.0}"
 # API server listen port
@@ -84,7 +84,7 @@ USE_SSL = false
 [DEVICES]
 # DEVICE_LIST example:
 # DEVICE_LIST = ["dummy", "hanyuan1", "tiangong100", "tiangong1000", "spinq_rpc", "qiskit_aer_sim", "qiskit_qasm_sim"]
-DEVICE_LIST = ["dummy"]
+DEVICE_LIST = [${DEVICE_LIST:-\"dummy\"}]
 EOM
 fi
 

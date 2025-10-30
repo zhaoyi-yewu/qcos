@@ -16,10 +16,6 @@
 set -e
 
 source ./setup-build-context.sh
-export QCOS_LOCAL_SRC_DIR="${top_dir}"
-export SANDBOX_CONTAINER_NAME=qcos-sandbox
-export SANDBOX_IMAGE_NAME=qcos-sandbox
-export SANDBOX_IMAGE_VERSION=dev
 SANDBOX_TOP_DIR=/root/qcos-project
 
 OUTPUT_QCOS_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-amd64-${QCOS_IMAGE_VERSION}.tar.xz
