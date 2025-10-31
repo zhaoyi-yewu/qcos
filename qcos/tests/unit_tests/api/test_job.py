@@ -30,12 +30,16 @@ from qcos.api.posiq.routes_jsonrpc.job import (
     cancel_jobs,
     delete_jobs,
     set_job_results,
+    update_job,
 )
 from qcos.api.schemas import (
     SubmitJobResponse,
-    GetJobResultsRequest,
     GetJobStatusRequest,
+    GetJobResultsRequest,
+    CancelJobsRequest,
+    DeleteJobsRequest,
     SetJobResultsRequest,
+    UpdateJobRequest,
 )
 from qcos.client.client import Client
 from qcos.common.config import Config
@@ -231,7 +235,7 @@ class TestJob:
         mock_cancel_jobs.return_value = [
             {"state": Constant.PREFECT_STATE_CANCELLING, "id": uuid4()},
         ]
-        mock_client = Mock(spec=GetJobResultsRequest)
+        mock_client = Mock(spec=CancelJobsRequest)
         mock_client.job_ids = self.job_ids
         cancel_jobs(mock_client)
 
@@ -240,7 +244,7 @@ class TestJob:
         mock_delete_jobs.return_value = [
             {"state": Constant.PREFECT_STATE_CANCELLING, "id": uuid4()},
         ]
-        mock_client = Mock(spec=GetJobResultsRequest)
+        mock_client = Mock(spec=DeleteJobsRequest)
         mock_client.job_ids = self.job_ids
         delete_jobs(mock_client)
 
@@ -283,3 +287,44 @@ class TestJob:
         mock_client.job_id = self.job_id
         mock_client.results = {0: {"a": "a"}}
         set_job_results(mock_client)
+
+    @patch.object(TaskScheduler, "update_job")
+    @patch.object(TaskScheduler, "get_result_by_id")
+    def test_update_job(self, mock_get_result_by_id, mock_update_job):
+        mock_get_result_by_id.return_value = (
+            {
+                "job_status": "QUEUED",
+                "parameters": {},
+                "results": None,
+                "artifact": {"progress": -1},
+                "error_message": None,
+            },
+            None,
+        )
+        mock_update_job.return_value = (
+            {
+                "job_id": uuid4(),
+                "job_name": "",
+                "job_type": "",
+                "job_status": "",
+                "job_priority": 1,
+                "code_type": "",
+                "source_code": [],
+                "description": "",
+                "backend": "",
+                "driver_options": {},
+                "transpiler": "",
+                "transpiler_options": {},
+                "shots": 10,
+                "profiling": None,
+                "callbacks": None,
+                "dry_run": True,
+                "creation_date": datetime.now(),
+                "end_date": None,
+            },
+            None,
+        )
+        mock_client = Mock(spec=UpdateJobRequest)
+        mock_client.job_id = self.job_id
+        mock_client.job_priority = 1
+        update_job(mock_client)

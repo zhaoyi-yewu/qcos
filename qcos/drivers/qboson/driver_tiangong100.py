@@ -192,7 +192,6 @@ class DriverTiangong100(DriverQuboBase):
         success, err_msg = self.check_device_status(device_id)
         if not success:
             raise ValueError(err_msg)
-
         # 5. Upload file
         logger.info("5. upload file")
         self.set_progress_by_task(self.TASK_STAGE_UPLOAD_FILE)

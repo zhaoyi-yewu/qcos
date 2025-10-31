@@ -795,6 +795,79 @@ def set_job_results(
     return response_info
 
 
+@job_api_v1.method(errors=[])
+def update_job(body: schemas.UpdateJobRequest) -> schemas.UpdateJobResponse:
+    """Update job
+
+    Args:
+        body(schemas.UpdateJobsRequest): job info
+
+    Returns:
+        update job param
+    """
+    func_name = "update_job"
+    logger.info(f"Call {func_name}: {body}")
+
+    parameters = {"job_id": body.job_id, "job_priority": body.job_priority}
+
+    job_id = body.job_id
+
+    try:
+        response, err = scheduler.get_result_by_id(job_id)
+    except errors.NotFound:
+        # check if job exists
+        jsonrpc_errors.handle_error_not_found(
+            module_name, func_name, (False, f"Job: '{job_id}' is not found")
+        )
+    except errors.WorkFlowError as e:
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, str(e))
+        )
+
+    job_status = response["job_status"]
+    if job_status != Constant.JOB_STATUS_QUEUED:
+        err_msg = f"Job: '{job_id}' is not in QUEUED state. Can't {func_name}"
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, err_msg)
+        )
+
+    # update job
+    try:
+        job, err = scheduler.update_job(job_id=job_id, parameters=parameters)
+    except errors.WorkFlowError as e:
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, str(e))
+        )
+    if err is not None:
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, err)
+        )
+
+    # construct response
+    _response_info = {
+        "job_id": job.get("job_id"),
+        "job_name": job.get("job_status"),
+        "job_type": job.get("job_type"),
+        "job_status": job.get("job_status"),
+        "job_priority": job.get("job_priority"),
+        "code_type": job.get("code_type"),
+        "source_code": job.get("source_code"),
+        "description": job.get("description"),
+        "backend": job.get("backend"),
+        "driver_options": job.get("driver_options"),
+        "transpiler": job.get("transpiler"),
+        "transpiler_options": job.get("transpiler_options"),
+        "shots": job.get("shots"),
+        "profiling": job.get("profiling"),
+        "callbacks": job.get("callbacks"),
+        "dry_run": job.get("dry_run"),
+        "creation_date": job.get("creation_date"),
+        "end_date": job.get("end_date"),
+    }
+    response_info = schemas.UpdateJobResponse.model_validate(_response_info)
+    return response_info
+
+
 def merge_results(response_info, parameters, results=None):
     """Merge results
 

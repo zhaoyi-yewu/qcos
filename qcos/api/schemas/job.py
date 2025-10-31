@@ -277,3 +277,59 @@ class SetJobResultsResponse(BaseModel):
     backend: str
     # Job status
     job_status: str
+
+
+class UpdateJobRequest(BaseModel):
+    """Update Job Request
+    Pydantic Model for Update Job Request
+    """
+
+    # Job ID
+    job_id: UUID
+    # Job priority
+    job_priority: int | None = None
+
+
+class UpdateJobResponse(BaseModel):
+    """Update Job Response
+    Pydantic Model for Update Job Response
+    """
+
+    # Job ID
+    job_id: UUID
+    # Job name
+    job_name: str | None = None
+    # Job type
+    job_type: str
+    # Job status
+    job_status: str
+    # Job priority
+    job_priority: int
+    # Code type
+    code_type: str
+    # Source code list
+    source_code: list
+    # Description
+    description: str | None = None
+    # Backend device name
+    backend: str
+    # Driver options
+    driver_options: dict | None = None
+    # Transpiler
+    transpiler: str | None = None
+    # Transpiler options
+    transpiler_options: dict | None = None
+    # Circuit aggregation: internal, multi
+    circuit_aggregation: str | None = None
+    # Shots
+    shots: int
+    # Profiling
+    profiling: list | None = None
+    # Dry-run
+    dry_run: bool
+    # Callbacks
+    callbacks: list | None = None
+    # Creation date
+    creation_date: datetime
+    # End date
+    end_date: datetime | None = None

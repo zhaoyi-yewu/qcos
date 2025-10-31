@@ -149,3 +149,9 @@ class TestClient:
         mock_parse.return_value = None
         success, parse = client.parse_jsonrpc_response(None)
         assert not success
+
+    @patch.object(Client, "call_json_rpc")
+    def test_update_job(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.update_job("msg")
+        assert reason == "reason"

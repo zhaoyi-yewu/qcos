@@ -46,6 +46,7 @@ from qcos.client.shell import (
     get_content_by_type,
     GetDriver,
     SystemInfo,
+    UpdateJob,
 )
 from qcos.common import errors
 from qcos.common.config import Config
@@ -78,6 +79,7 @@ cancel_jobs = CancelJobs(shell, None)
 delete_jobs = DeleteJobs(shell, None)
 set_job_results = SetJobResults(shell, None)
 system_info = SystemInfo(shell, None)
+update_job = UpdateJob(shell, None)
 
 
 class TestQcosShell:
@@ -556,3 +558,26 @@ def test_set_debug_option():
 def test_get_content_by_type():
     success, _, _ = get_content_by_type("no", "")
     assert success is False
+
+
+class TestUpdateJob:
+    def test_get_parser(self):
+        update_job.get_parser("")
+
+    @patch.object(Client, "update_job")
+    @patch.object(CommandHelper, "handle_invalid_arguments")
+    @patch.object(CommandHelper, "check_results")
+    def test_take_action(
+        self,
+        mock_check_results,
+        mock_handle_invalid_arguments,
+        mock_update_job,
+    ):
+        mock_handle_invalid_arguments.return_value = None
+        mock_check_results.return_value = {"job_id": job_id}
+        mock_update_job.return_value = iter([None, None, None, None])
+        mock_client = Mock(spec=Namespace)
+        mock_client.job_id = job_id
+        mock_client.job_priority = Constant.DEFAULT_JOB_PRIORITY
+
+        update_job.take_action(mock_client)

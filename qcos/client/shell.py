@@ -1535,6 +1535,79 @@ class DeleteJobs(Command):
                 print(f"Jobs: {job_ids} are not found or non-deletable")
 
 
+class UpdateJob(Command):
+    """Update job"""
+
+    group = QcosShell.CMD_GROUP_JOB
+
+    def get_parser(self, prog_name):
+        """Get parser for this command
+
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--job-id", dest="job_id", type=str, help="Job uuid"
+        )
+        parser.add_argument(
+            "--job-priority",
+            dest="job_priority",
+            type=int,
+            default=f"{Constant.DEFAULT_JOB_PRIORITY}",
+            help="Set job priority",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        """Take action for command line arguments
+
+        Args:
+            parsed_args: command line arguments
+        """
+        resource = self.group
+        job_id = parsed_args.job_id
+        job_priority = parsed_args.job_priority
+
+        # Validate argument: job_id
+        if job_id:
+            CommandHelper.handle_invalid_arguments(
+                ClientLibrary.validate_values_uuid(job_id, "job_id")
+            )
+
+        # Validate argument: job_priority
+        CommandHelper.handle_invalid_arguments(
+            ClientLibrary.validate_values_range(
+                job_priority,
+                "job_priority",
+                Constant.MIN_JOB_PRIORITY,
+                Constant.MAX_JOB_PRIORITY,
+            )
+        )
+
+        # call api
+        status_code, reason, text, result = self.app.client.update_job(
+            job_id=job_id, job_priority=job_priority
+        )
+        json_results = CommandHelper.check_results(
+            resource, "update_job", status_code, reason, text
+        )
+
+        # print results
+        job = json_results["job_id"]
+        if job:
+            print(
+                f"The following job {job} priority will be "
+                f"updated to {job_priority}"
+            )
+        else:
+            if not json_results:
+                print("Job not found")
+
+
 class SetJobResults(Command):
     """Set job results"""
 
@@ -1611,6 +1684,7 @@ command_manager.add_command("list-jobs", GetJobs)
 command_manager.add_command("cancel-jobs", CancelJobs)
 command_manager.add_command("delete-jobs", DeleteJobs)
 command_manager.add_command("set-job-results", SetJobResults)
+command_manager.add_command("update-job", UpdateJob)
 # driver command
 command_manager.add_command("get-driver", GetDriver)
 command_manager.add_command("list-drivers", GetDrivers)

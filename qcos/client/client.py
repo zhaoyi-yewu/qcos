@@ -516,3 +516,27 @@ class Client:
             self.job_url, method_name, data
         )
         return status_code, reason, text, result
+
+    def update_job(
+        self, job_id=None, job_priority=Constant.DEFAULT_JOB_PRIORITY
+    ):
+        """Update job
+
+        Args:
+            job_id: job uuid
+            job_priority: job priority
+
+        Returns:
+            update_job result
+        """
+        method_name = "update_job"
+
+        # construct data and call json rpc
+        data = {"job_priority": job_priority}
+
+        if job_id:
+            data["job_id"] = str(job_id)
+        status_code, reason, text, result = Client.call_json_rpc(
+            self.job_url, method_name, data
+        )
+        return status_code, reason, text, result

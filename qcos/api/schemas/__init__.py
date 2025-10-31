@@ -36,6 +36,8 @@ from .job import (
     DeleteJobsResponse,
     SetJobResultsRequest,
     SetJobResultsResponse,
+    UpdateJobRequest,
+    UpdateJobResponse,
 )
 from .system import (
     PingRequest,

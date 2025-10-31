@@ -621,6 +621,26 @@ class TaskFlowManager(ABC):
             )
         return results_list
 
+    def get_task_flow_run(self, job_id):
+        """Get flow run.
+        Args:
+            job_id: job id
+        Returns:
+            flow run
+        """
+        flow_run_id = self.get_flow_run_id_by_job_id(job_id)
+        flow_run = None
+        try:
+            flow_run = self._sync_client.read_flow_run(flow_run_id)
+        except ObjectNotFound:
+            logger.error(
+                f"Prefect execute flow error: "
+                f"can't find flow_run_id: {flow_run_id}"
+            )
+        except Exception as e:
+            logger.error(f"Prefect execute flow error: {str(e)}")
+        return flow_run
+
     def delete_task_flow_run(self, job_ids):
         """Delete flow run.
 

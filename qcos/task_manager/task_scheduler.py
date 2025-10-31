@@ -286,7 +286,13 @@ class TaskScheduler(ABC):
             flow["job_status"] = self.get_job_status(flow["state"], None, None)
         return flow_list
 
-    def update_job(self, job_id, name=None, parameters=None, variables=None):
+    def update_job(
+        self,
+        job_id,
+        name=None,
+        parameters=None,
+        variables=None,
+    ):
         """Update job
 
         Args:
@@ -298,9 +304,49 @@ class TaskScheduler(ABC):
         Returns:
             if flow exists
         """
-        return self._task_manager.update_flow(
-            job_id, name, parameters, variables
-        )
+        res = None
+        err_msg = None
+        # 1 Get flow run
+        flow_run = self._task_manager.get_task_flow_run(job_id)
+        if flow_run is None:
+            err_msg = f"Job: '{job_id}' is not found"
+            return None, f"Execute update job failed: {err_msg}"
+        job_priority = parameters.get("job_priority")
+        # 2 Get flow parameters
+        flow_parameters = flow_run.parameters
+        job_json_info = flow_parameters["job_info"]
+        if job_json_info["data"]["job_priority"] == job_priority:
+            res, err_msg = self._task_manager.update_flow(
+                job_id, name, parameters, variables
+            )
+            if res is False:
+                return res, err_msg
+        else:
+            # 3 Delete task
+            self._task_manager.delete_task_flow_run([job_id])
+            # 4 Update parameters and resubmit the task
+            job_json_info["data"]["job_priority"] = job_priority
+            backend = job_json_info["data"]["backend"]
+            try:
+                flow_info = self._task_manager.get_flow_info_by_backend(
+                    backend
+                )
+                policy_handler = (
+                    self._policy_factory.get_policy_handler_by_name(
+                        Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
+                    )
+                )
+                job_id = policy_handler.exec_task(
+                    flow_info, job_json_info, None
+                )
+            except errors.WorkFlowError as e:
+                logger.error(f"Prefect execute update flow error: {str(e)}")
+                raise errors.WorkFlowError(e)
+        # 5 Get flow run again
+        flow_run = self._task_manager.get_task_flow_run(job_id)
+        response_info = flow_run.parameters["job_info"]["data"]
+        response_info["job_status"] = Constant.JOB_STATUS_QUEUED
+        return response_info, None
 
     def run_callbacks(self, data, callbacks):
         """Run callbacks for job

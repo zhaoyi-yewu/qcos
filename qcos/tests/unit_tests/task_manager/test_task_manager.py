@@ -217,6 +217,16 @@ class TestTaskFlowManager(unittest.TestCase):
         assert results is not None
 
     @patch.object(TaskFlowManager, "get_flow_run_id_by_job_id")
+    def test_get_task_flow_run(self, mock_get_flow_run_id_by_job_id):
+        mock_get_flow_run_id_by_job_id.return_value = 1
+        mock_client = Mock()
+        self.task_manager._sync_client = mock_client
+        mock_client.read_artifacts.return_value = []
+        mock_client.read_flow_runs.return_value = []
+        results = self.task_manager.get_task_flow_run(1)
+        assert results is not None
+
+    @patch.object(TaskFlowManager, "get_flow_run_id_by_job_id")
     def test_delete_task_flow_run(self, mock_get_flow_run_id_by_job_id):
         mock_get_flow_run_id_by_job_id.return_value = ["1", "2", "3"]
         mock_run = Mock()

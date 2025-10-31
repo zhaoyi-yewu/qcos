@@ -111,10 +111,47 @@ class TestTaskScheduler:
         task.delete_jobs([1, 2, 3])
 
     @patch.object(TaskFlowManager, "update_flow")
-    def test_update_job(self, mock_update_flow):
+    @patch.object(TaskFlowManager, "get_task_flow_run")
+    @patch.object(TaskFlowManager, "delete_task_flow_run")
+    @patch.object(TaskFlowManager, "get_flow_info_by_backend")
+    @patch.object(SchedulerPolicyHandlerFactory, "get_policy_handler_by_name")
+    def test_update_job(
+        self,
+        mock_get_policy_handler_by_name,
+        mock_get_flow_info_by_backend,
+        mock_delete_task_flow_run,
+        mock_get_task_flow_run,
+        mock_update_flow,
+    ):
+        mock_flow_run = Mock()
+        mock_state = Mock()
+        mock_state.name = "QUEUED"
+        mock_flow_run.state = mock_state
+        mock_flow_run.parameters = {
+            "job_info": {
+                "data": {
+                    "job_priority": 2,
+                    "backend": "tiangong100",
+                    "code_type": "qubo",
+                }
+            }
+        }
         mock_update_flow.return_value = True
-        result = task.update_job(ConstantForTest.job_id)
-        assert result is True
+        mock_get_task_flow_run.return_value = mock_flow_run
+        mock_delete_task_flow_run.return_value = [
+            {"job_status": 111, "state": 222},
+        ]
+        mock_get_flow_info_by_backend.return_value = {
+            "deploy_name": "tiangong100"
+        }
+        mock_policy_handler = Mock()
+        mock_get_policy_handler_by_name.return_value = mock_policy_handler
+        mock_policy_handler.exec_task.return_value = "mock_job_id_123"
+        task.update_job(ConstantForTest.job_id, parameters={"job_priority": 1})
+        mock_get_policy_handler_by_name.assert_called_once_with(
+            Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE
+        )
+        mock_policy_handler.exec_task.assert_called_once()
 
     @patch.object(TaskFlowManager, "run_callbacks")
     def test_run_callbacks(self, mock_callbacks):
