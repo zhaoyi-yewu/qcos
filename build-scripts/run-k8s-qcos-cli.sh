@@ -15,12 +15,37 @@
 
 set -e
 
-echo "Creating K8s QCOS cli pod ..."
+function usage {
+    echo "Usage: $0 [OPTION] ..."
+    echo "Run QCOS cli with K8s"
+    echo ""
+    echo "  -c, --config  Config file"
+    echo "  -h, --help    Print this usage message"
+    echo ""
+}
 
-if [ ! -f k8s-env ]; then
-  echo "Can't find file: k8s-env. Please copy from k8s-env.template"
+opts=$(getopt -o c:h --long config:,help -- "$@")
+if [[ $? -ne 0 ]]; then
   exit 1
 fi
 
-export $(grep -v '^#' k8s-env | xargs)
+eval set -- "$opts"
+
+config_file="k8s-env"
+
+while true; do
+  case "$1" in
+    -h | --help )     usage ; exit 0; shift ;;
+    -c | --config )   config_file="$2";   shift 2 ;;
+    -- ) shift; break ;;
+    * )         break ;;
+  esac
+done
+
+if [ ! -f "${config_file}" ]; then
+  echo "Can't find file: ${config_file}. Please make a copy from k8s-env.template"
+  exit 1
+fi
+
+export $(grep -v '^#' "${config_file}" | xargs)
 envsubst < ./k8s-qcos-cli.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -

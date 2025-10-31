@@ -300,71 +300,6 @@ def driver_cancel(job_id, driver):
         logger.error(f"Cancel job: job_id: {job_id} failed. {str(e)}")
 
 
-async def job_callback(flow, flow_run, state, results=None):
-    """Job callback
-
-    Args:
-        flow: flow
-        flow_run: flow run
-        state: flow state
-        results: flow results
-    """
-    job_id = flow_run.name  # use name as job uuid
-    job_status = Constant.JOB_STATUS_COMPLETED
-    is_failed = False
-    flow_state_name = state.name.upper()
-    parameters = flow_run.parameters
-    if results is None:
-        results = flow_run.state.result()
-    results_fetch_mode_sync = False
-    callbacks = Library.get_nested_dict_value(
-        parameters, "job_info", "data", "callbacks", default=None
-    )
-    backend = Library.get_nested_dict_value(
-        parameters, "job_info", "data", "backend", default=None
-    )
-    if not callbacks:
-        return
-
-    if flow_state_name == Constant.PREFECT_STATE_CANCELLING:
-        job_status = Constant.JOB_STATUS_CANCELLED
-        results = None
-        results_fetch_mode_sync = True
-
-    if results:
-        for result in results:
-            results_fetch_mode = Library.get_nested_dict_value(
-                result, "metadata", "results_fetch_mode", default=None
-            )
-            status = Library.get_nested_dict_value(
-                result, "metadata", "status", default=None
-            )
-            if status != Constant.JOB_STATUS_COMPLETED:
-                is_failed = True
-            if results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
-                results_fetch_mode_sync = True
-
-    if callbacks and results and results_fetch_mode_sync:
-        # if job_info contains callback list and driver is in sync mode
-        # run async callback
-        if is_failed:
-            job_status = Constant.JOB_STATUS_FAILED
-
-        data = {
-            "job_id": job_id,
-            "job_status": job_status,
-            "backend": backend,
-            "results": results,
-        }
-        success, err_msg = await Library.async_run_callbacks(data, callbacks)
-        if not success:
-            logger.error(f"Callback Error: {err_msg}")
-            for result in results:
-                result["metadata"]["callback_success"] = False
-
-    return results
-
-
 def register_signals(job_id, monitor):
     """Register signal handlers
 
@@ -583,8 +518,9 @@ def get_external_aggregated_results(job_results, mapping_dict):
 
 @flow(
     persist_result=True,
-    on_crashed=[job_callback],
-    on_cancellation=[job_callback],
+    on_failure=[Library.job_callback],
+    on_crashed=[Library.job_callback],
+    on_cancellation=[Library.job_callback],
 )
 def job_flow(job_info):
     """Job flow
@@ -765,51 +701,6 @@ def _run_code(
     profiling_types = [] if profiling_types is None else profiling_types
     mapping_dict = None
 
-    # init driver (init only once in a flow)
-    if not driver:
-        future_driver = init_driver.submit(
-            job_info["driver"], job_data["driver_options"], job_info["device"]
-        )
-        driver_task_result = future_driver.result()
-        # init driver: error handling
-        err_msg = driver_task_result.get("error", None)
-        if err_msg:
-            return (
-                format_error_results(
-                    None, errors.JobEngineDriverInitError, err_msg
-                ),
-                driver,
-                transpiler,
-                mapping_dict,
-            )
-        driver = driver_task_result["driver"]
-        logger.info(f"Init driver: {driver.name}")
-        monitor_info["driver"] = driver
-
-    # init transpiler (init only once in a flow)
-    if not transpiler:
-        if driver.enable_transpiler:
-            future_transpiler = init_transpiler.submit(
-                job_info["transpiler"],
-                job_data.get("transpiler_options", None),
-            )
-            transpiler_task_result = future_transpiler.result()
-            # init transpiler: error handling
-            err_msg = transpiler_task_result.get("error", None)
-            if err_msg:
-                return (
-                    format_error_results(
-                        driver, errors.JobEngineTranspilerInitError, err_msg
-                    ),
-                    driver,
-                    transpiler,
-                    mapping_dict,
-                )
-            transpiler = transpiler_task_result["transpiler"]
-            logger.info(
-                f"Init transpiler: {transpiler.name} ({transpiler.alias_name})"
-            )
-
     job_results = {
         "results": None,
         "num_qubits": None,
@@ -923,7 +814,54 @@ def run_code(
     """
     job_results = {}
     mapping_dict = None
-    code_type = job_info["data"]["code_type"]
+    job_data = job_info["data"]
+    code_type = job_data["code_type"]
+
+    # init driver (init only once in a flow)
+    if not driver:
+        future_driver = init_driver.submit(
+            job_info["driver"], job_data["driver_options"], job_info["device"]
+        )
+        driver_task_result = future_driver.result()
+        # init driver: error handling
+        err_msg = driver_task_result.get("error", None)
+        if err_msg:
+            return (
+                format_error_results(
+                    None, errors.JobEngineDriverInitError, err_msg
+                ),
+                driver,
+                transpiler,
+                mapping_dict,
+            )
+        driver = driver_task_result["driver"]
+        logger.info(f"Init driver: {driver.name}")
+        monitor_info["driver"] = driver
+
+    # init transpiler (init only once in a flow)
+    if not transpiler:
+        if driver.enable_transpiler:
+            future_transpiler = init_transpiler.submit(
+                job_info["transpiler"],
+                job_data.get("transpiler_options", None),
+            )
+            transpiler_task_result = future_transpiler.result()
+            # init transpiler: error handling
+            err_msg = transpiler_task_result.get("error", None)
+            if err_msg:
+                return (
+                    format_error_results(
+                        driver, errors.JobEngineTranspilerInitError, err_msg
+                    ),
+                    driver,
+                    transpiler,
+                    mapping_dict,
+                )
+            transpiler = transpiler_task_result["transpiler"]
+            logger.info(
+                f"Init transpiler: {transpiler.name} ({transpiler.alias_name})"
+            )
+
     if code_type == Constant.CODE_TYPE_QUBO:
         job_results, driver, transpiler, mapping_dict = run_qubo_code(
             source_code_index,
@@ -970,9 +908,7 @@ def run_qubo_code(
     job_results = {}
     mapping_dict = None
     job_id = job_info["data"]["job_id"]
-    driver_module = importlib.import_module(job_info["driver"]["module_name"])
-    driver_class = getattr(driver_module, job_info["driver"]["class_name"])
-    driver = driver_class()
+
     max_qubits = driver.get_max_qubits()
     qubo_matrix = src_code_dict[f"{job_id}-{source_code_index}"]
     if len(qubo_matrix) > max_qubits:
@@ -1273,7 +1209,7 @@ def run_job_callback(context, job_results_list):
     current_flow_run = context.flow_run
     current_flow_state = current_flow_run.state
     _job_results_list = asyncio.run(
-        job_callback(
+        Library.job_callback(
             current_flow,
             current_flow_run,
             current_flow_state,

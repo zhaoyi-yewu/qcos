@@ -15,14 +15,40 @@
 
 set -e
 
-echo "Creating K8s QCOS pods ..."
+function usage {
+    echo "Usage: $0 [OPTION] ..."
+    echo "Run QCOS with K8s"
+    echo ""
+    echo "  -c, --config  Config file"
+    echo "  -h, --help    Print this usage message"
+    echo ""
+}
 
-if [ ! -f k8s-env ]; then
-  echo "Can't find file: k8s-env. Please copy from k8s-env.template"
+opts=$(getopt -o c:h --long config:,help -- "$@")
+if [[ $? -ne 0 ]]; then
   exit 1
 fi
 
-echo "Note: you must create PVs before running this script"
+eval set -- "$opts"
 
-export $(grep -v '^#' k8s-env | xargs)
+config_file="k8s-env"
+
+while true; do
+  case "$1" in
+    -h | --help )     usage ; exit 0; shift ;;
+    -c | --config )   config_file="$2";   shift 2 ;;
+    -- ) shift; break ;;
+    * )         break ;;
+  esac
+done
+
+if [ ! -f "${config_file}" ]; then
+  echo "Can't find file: ${config_file}. Please make a copy from k8s-env.template"
+  exit 1
+fi
+
+export $(grep -v '^#' "${config_file}" | xargs)
+echo "Creating K8s QCOS pods (${config_file}) ..."
+echo "Note: you must create PVCs(${K8S_CODE_DATA_PVC}, ${K8S_DATABASE_PVC}) before running this script"
+
 envsubst < ./k8s-qcos-api-single-mode.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -

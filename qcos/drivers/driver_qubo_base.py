@@ -17,10 +17,7 @@
 
 import random
 
-from loguru import logger
-
 from qcos.common.constant import Constant
-from qcos.drivers.device import Device
 from qcos.drivers.driver_base import DriverBase
 
 
@@ -36,60 +33,6 @@ class DriverQuboBase(DriverBase):
         self.tech_type = Constant.TECH_TYPE_PHOTON
         self.default_data_type = DriverBase.DATA_TYPE_QUBO
         self.supported_code_types = [Constant.CODE_TYPE_QUBO]
-
-    def init_driver(self):
-        """Init driver"""
-        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
-
-    def validate_driver_configs(self, configs):
-        """Validate driver configs
-
-        Args:
-            configs: configs dictionary
-
-        Returns:
-            success, err_msg
-        """
-        raise NotImplementedError(
-            f"Driver: {self.__class__.__name__} "
-            f"must implement method: validate_driver_configs"
-        )
-
-    def close_driver(self):
-        """Close driver"""
-
-    def fetch_configs(self):
-        """
-        Fetch configs
-
-        Returns:
-            remote transpiler configs
-        """
-
-    def run(self, job_id, num_qubits, data, data_type, shots=1):
-        """Run job
-
-        Args:
-            job_id: job ID
-            num_qubits: number of qubits
-            data: data
-            data_type: data type
-            shots: shots (Default value = 1)
-        """
-        raise NotImplementedError(
-            f"Driver: {self.__class__.__name__} "
-            f"must implement method: validate_driver_configs"
-        )
-
-    def cancel(self, job_id):
-        """Cancel running job in driver.
-
-        Driver should clean up any resources of the job
-
-        Args:
-            job_id: job ID
-        """
-        logger.info(f"Cancel job: job_id: {job_id}")
 
     def get_fake_results(self, num_qubits, shots, data):
         """Get fake results

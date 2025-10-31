@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import asyncio
 import logging
 from abc import ABC
 
@@ -361,41 +362,12 @@ class TaskScheduler(ABC):
         """Process unfinished callbacks"""
         flow_runs = self._task_manager.get_flow_runs_with_filters()
         for flow_run in flow_runs:
-            callback_success = True
-            parameters = flow_run.parameters
-            callbacks_list = Library.get_nested_dict_value(
-                parameters, "job_info", "data", "callbacks", default=None
+            # TODO (zhaoyi): improve callback when restart
+            asyncio.run(
+                Library.job_callback(
+                    None, flow_run, flow_run.state, results=None
+                )
             )
-            state = flow_run.state
-            if state.is_final():
-                result_list = state.result()
-            else:
-                continue
-            for result in result_list:
-                _callback_success = Library.get_nested_dict_value(
-                    result, "metadata", "callback_success", default=True
-                )
-                if _callback_success is False:
-                    callback_success = False
-                    break
-            if not callback_success and callbacks_list:
-                job_id = flow_run.name
-                qcos_state = self._task_manager.convert_to_qcos_state(
-                    state.name
-                )
-                job_status = self.get_job_status(
-                    qcos_state, result_list, parameters
-                )
-                backend = Library.get_nested_dict_value(
-                    parameters, "job_info", "data", "backend", default=None
-                )
-                data = {
-                    "job_id": job_id,
-                    "job_status": job_status,
-                    "backend": backend,
-                    "results": result_list,
-                }
-                self.run_callbacks(data, callbacks_list)
 
     @staticmethod
     def get_job_status(job_status, flow_results, flow_parameters):

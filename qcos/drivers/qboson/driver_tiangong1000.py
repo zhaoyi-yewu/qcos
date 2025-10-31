@@ -67,6 +67,10 @@ class DriverTiangong1000(DriverQuboBase):
             self.TASK_STAGE_COMPLETE: 100,
         }
 
+    def init_driver(self):
+        """Init driver"""
+        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
+
     def validate_driver_configs(self, configs):
         """Validate driver configs
 
@@ -94,6 +98,17 @@ class DriverTiangong1000(DriverQuboBase):
             err_msg = f"driver config file error: {_err_msg}"
             success = False
         return success, err_msg
+
+    def close_driver(self):
+        """Close driver"""
+
+    def fetch_configs(self):
+        """
+        Fetch configs
+
+        Returns:
+            remote transpiler configs
+        """
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
         """Run job
@@ -179,6 +194,16 @@ class DriverTiangong1000(DriverQuboBase):
         self.set_results(job_id, data_index, results=results)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
+
+    def cancel(self, job_id):
+        """Cancel running job in driver.
+
+        Driver should clean up any resources of the job
+
+        Args:
+            job_id: job ID
+        """
+        logger.info(f"Cancel job: job_id: {job_id}")
 
     def user_auth(self, user_id, sdk_code):
         """User authorization

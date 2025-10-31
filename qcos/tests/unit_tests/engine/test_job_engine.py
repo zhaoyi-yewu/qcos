@@ -17,7 +17,7 @@
 
 import asyncio
 from datetime import datetime
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, AsyncMock
 
 import pytest
 
@@ -44,7 +44,6 @@ from qcos.engine.job_engine import (
     get_external_aggregated_results,
     format_run_results,
     format_error_results,
-    job_callback,
     task_monitor,
     parse,
     transpile,
@@ -285,7 +284,9 @@ class TestJobEngine:
         flow_run.parameters = "parameters"
         flow_run.state = Mock()
         assert (
-            asyncio.run(job_callback("flow", flow_run, state, results=[]))
+            asyncio.run(
+                Library.job_callback("flow", flow_run, state, results=[])
+            )
             is None
         )
 
@@ -316,7 +317,7 @@ class TestJobEngine:
     @patch("qcos.engine.job_engine.register_signals")
     @patch("qcos.engine.job_engine.create_progress_artifact")
     @patch("qcos.engine.job_engine.flow_task_monitor")
-    @patch("qcos.engine.job_engine._run_code")
+    @patch("qcos.engine.job_engine.run_code")
     def test_job_flow(
         self,
         mock_run_code,
@@ -344,6 +345,7 @@ class TestJobEngine:
             Constant.PROFILING_TYPE_DRIVER_RUN,
         ]
         self.job_info["data"]["code_type"] = Constant.CODE_TYPE_QASM
+        self.job_info["data"]["driver_options"] = {}
         job_results_list = raw_job_flow_func(self.job_info)
         assert len(job_results_list) == len(
             self.job_info["data"]["source_code"]
@@ -356,11 +358,20 @@ class TestJobEngine:
             == Constant.AGGREGATION_TYPE_NONE
         )
 
-    @patch("qcos.engine.job_engine.asyncio.run")
-    def test_run_job_callback(self, mock_run):
-        mock_run.return_value = "job_results_list"
+    def test_run_job_callback(self):
+        mock_job_callback = AsyncMock()
+        Library.job_callback = mock_job_callback
+
+        mock_flow = Mock()
+        mock_flow.name = "test_flow"
+        mock_flow_run = Mock()
+        mock_flow_run.id = "flow_run_123"
+        mock_state = Mock()
+        mock_state.name = "Completed"
+        mock_flow_run.state = mock_state
         mock_context = Mock()
-        mock_context.flow = "flow"
-        mock_context.flow_run = Mock()
-        mock_context.flow_run.state = "state"
-        _job_results_list = run_job_callback(mock_context, [])
+        mock_context.flow = mock_flow
+        mock_context.flow_run = mock_flow_run
+
+        job_results_list = None
+        _job_results_list = run_job_callback(mock_context, job_results_list)

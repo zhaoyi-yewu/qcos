@@ -47,7 +47,7 @@ from math import gcd
 from schema import Schema
 from urllib.parse import urlparse
 
-from .constant import HttpHeaders, HttpMethod, Constant
+from .constant import HttpCode, HttpHeaders, HttpMethod, Constant
 
 logger = logging.getLogger(__name__)
 
@@ -1414,3 +1414,97 @@ class Library:
         except Exception as e:
             err_msg = f"Decryption failed. Reason: {repr(e)}"
             return False, err_msg, None, None
+
+    @staticmethod
+    async def job_callback(flow, flow_run, state, results=None):
+        """Job callback
+
+        Args:
+            flow: flow
+            flow_run: flow run
+            state: flow state
+            results: flow results
+        """
+        job_id = flow_run.name  # use name as job uuid
+        job_status = Constant.JOB_STATUS_COMPLETED
+        is_failed = False
+        flow_state_name = state.name.upper()
+        parameters = flow_run.parameters
+        error_results = None
+        callback_success = True
+        callbacks = Library.get_nested_dict_value(
+            parameters, "job_info", "data", "callbacks", default=None
+        )
+        backend = Library.get_nested_dict_value(
+            parameters, "job_info", "data", "backend", default=None
+        )
+
+        if not callbacks:
+            return
+
+        if flow_state_name in Constant.PREFECT_WAIT_STATES:
+            return
+
+        if flow_state_name in [
+            Constant.PREFECT_STATE_RUNNING,
+            Constant.PREFECT_STATE_COMPLETED,
+        ]:
+            if results is None:
+                results = await flow_run.state.result()
+        else:
+            error_details = None
+            results = None
+            is_failed = True
+            if flow_state_name == Constant.PREFECT_STATE_CANCELLING:
+                job_status = Constant.JOB_STATUS_CANCELLED
+            try:
+                await flow_run.state.result()
+            except Exception as e:
+                error_details = f"{e.__class__.__name__}: {str(e)}"
+
+            error_results = {
+                "code": -HttpCode.INTERNAL_SERVER_ERROR,
+                "message": "[JOB] Running failed in job engine",
+                "data": {"details": error_details},
+            }
+
+        if results:
+            for result in results:
+                status = Library.get_nested_dict_value(
+                    result, "metadata", "status", default=None
+                )
+                if status != Constant.JOB_STATUS_COMPLETED:
+                    is_failed = True
+                _callback_success = Library.get_nested_dict_value(
+                    result, "metadata", "callback_success", default=False
+                )
+                if not _callback_success:
+                    callback_success = False
+
+        if not callback_success:
+            # run callbacks
+            # if job_info contains callback list and driver is in sync mode
+            # run async callback
+            if is_failed:
+                job_status = Constant.JOB_STATUS_FAILED
+
+            data = {
+                "job_id": job_id,
+                "job_status": job_status,
+                "backend": backend,
+            }
+            if results:
+                data["results"] = results
+            if error_results:
+                data["error"] = error_results
+
+            success, err_msg = await Library.async_run_callbacks(
+                data, callbacks
+            )
+            if success:
+                for result in results:
+                    result["metadata"]["callback_success"] = True
+            else:
+                logger.error(f"Callback Error: {err_msg}")
+
+            return results
