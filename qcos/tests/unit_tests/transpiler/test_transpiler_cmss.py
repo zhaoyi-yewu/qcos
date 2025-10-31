@@ -116,7 +116,7 @@ class TestTranspilerCmss:
         basis_gate_list, _ = transpiler.transpile(
             parse_result, expected_basis_gates
         )
-        assert len(basis_gate_list) in [8, 10]
+        assert len(basis_gate_list) == 10
 
     def test_transpiler_aggregation_partly_succ(self):
         file_path = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
@@ -138,4 +138,4 @@ class TestTranspilerCmss:
         basis_gate_list, _ = transpiler.transpile(
             parse_result, expected_basis_gates
         )
-        assert len(basis_gate_list) in [8, 12]
+        assert len(basis_gate_list) == 8

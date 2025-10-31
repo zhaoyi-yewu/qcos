@@ -250,22 +250,33 @@ def ignore_node(node):
 
 def get_block(ht, qnum):
     leafs = ht.get_all_leaf()
-    candidates = set()
+    candidates = []
+    seen = set()
     for leaf in leafs:
         while leaf is not None:
             if not leaf.ignore and len(leaf.qubits) >= qnum:
-                candidates.add(leaf)
+                # 使用id来确保每个节点只添加一次
+                node_id = id(leaf)
+                if node_id not in seen:
+                    seen.add(node_id)
+                    candidates.append(leaf)
                 break
             leaf = leaf.parent
     if not candidates:
         return None
-    best_node = None
-    max_f = -10000
 
-    for node in candidates:
-        f = ht.average_fidelity(node)
-        if f > max_f:
-            best_node = node
-            max_f = f
+    # 按确定性规则排序：
+    # 1. 保真度降序（负号用于降序）
+    # 2. 节点/社区大小升序（优先选择更小的节点，避免资源浪费）
+    # 3. qubits排序（确定性排序）
+    candidates.sort(
+        key=lambda node: (
+            -ht.average_fidelity(node),
+            len(node.qubits),
+            tuple(sorted(node.qubits)),
+        )
+    )
+
+    best_node = candidates[0]
     remove(best_node)
     return best_node.qubits.copy()
