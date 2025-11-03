@@ -82,6 +82,7 @@ function build_cli {
     --build-arg CONTAINER_BASE_IMAGE=${CONTAINER_BASE_IMAGE} \
     --build-arg CONTAINER_NAME=${QCOS_CONTAINER_NAME}-cli \
     --build-arg QCOS_IMAGE_VERSION=${QCOS_IMAGE_VERSION} \
+    --build-arg DEV=${DEV} \
     -t ${QCOS_IMAGE_NAME}-cli:${QCOS_IMAGE_VERSION} .
 
   # save image

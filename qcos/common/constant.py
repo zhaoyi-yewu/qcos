@@ -20,10 +20,14 @@
 class Constant:
     """Constants"""
 
-    # QCOS service default IP and port
-    DEFAULT_API_SERVER_LISTEN_IP = "127.0.0.1"
+    # QCOS server default IP and port
+    DEFAULT_API_SERVER_LISTEN_IP = ""
     DEFAULT_API_SERVER_LISTEN_PORT = 18400
     DEFAULT_API_VERSION = "v1"
+
+    # QCOS client-side server default IP and port
+    DEFAULT_QCOS_SERVER_IP = "127.0.0.1"
+    DEFAULT_QCOS_SERVER_PORT = 18400
 
     # Security
     DEFAULT_FERNET_KEY = "qevBn4Ol_3bJ7t0IW7TmPCCZurqfw_QRa810U43o_m0="

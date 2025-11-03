@@ -49,7 +49,7 @@ data:
     # api log file
     API_LOG_FILE = "/var/log/qcos/qcos-api.log"
     # prefect log file
-    PREFECT_LOG_FILE = "/var/log/qcos/qcos-prefect.log"
+    PREFECT_LOG_FILE = "/var/log/qcos/qcos-engine.log"
     # log format
     LOG_FORMAT = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
     # log rotate, max_size (MB). default: 10MB
@@ -162,21 +162,21 @@ spec:
         ]
         volumeMounts:
         - name: code-data
-          mountPath: /root/qcos
+          mountPath: /root/qcos-project
         - name: database-dir
           mountPath: /var/qcos
       containers:
       - name: prefect-server
         image: ${REGISTRY}${PREFECT_IMAGE_NAME}:${PREFECT_IMAGE_VERSION}
         imagePullPolicy: IfNotPresent
-        command: ["prefect", "server", "start", "--host", "0.0.0.0"]
+        command: ["prefect", "server", "start"]
         env:
         - name: TZ
           value: "Asia/Shanghai"
         #- name: PREFECT_SERVER_API_HOST
         #  value: "${PREFECT_SERVER_API_HOST}"
         - name: PREFECT_API_URL
-          value: "http://${PREFECT_SERVER_API_HOST}:${PREFECT_SERVER_PORT}/api"
+          value: "http://${PREFECT_SERVER_API_HOST}:4200/api"
         - name: PREFECT_SERVER_DATABASE_CONNECTION_URL
           value: "sqlite+aiosqlite:////var/qcos/db/prefect.db"
         - name: PREFECT_LOCAL_STORAGE_PATH
@@ -190,25 +190,25 @@ spec:
           limits:
             cpu: "2000m"
             memory: "4Gi"
-        livenessProbe:
-          httpGet:
-            path: /api/health
-            port: 4200
-          initialDelaySeconds: 60
-          periodSeconds: 60
-          timeoutSeconds: 10
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /api/health
-            port: 4200
-          initialDelaySeconds: 10
-          periodSeconds: 60
-          timeoutSeconds: 10
-          successThreshold: 1
+#        livenessProbe:
+#          httpGet:
+#            path: /api/health
+#            port: 4200
+#          initialDelaySeconds: 60
+#          periodSeconds: 60
+#          timeoutSeconds: 10
+#          failureThreshold: 3
+#        readinessProbe:
+#          httpGet:
+#            path: /api/health
+#            port: 4200
+#          initialDelaySeconds: 10
+#          periodSeconds: 60
+#          timeoutSeconds: 10
+#          successThreshold: 1
         volumeMounts:
         - name: code-data
-          mountPath: /root/qcos
+          mountPath: /root/qcos-project
         - name: database-dir
           mountPath: /var/qcos
       volumes:
@@ -240,7 +240,7 @@ spec:
   type: ClusterIP
   ports:
   - port: ${PREFECT_SERVER_PORT}
-    targetPort: ${PREFECT_SERVER_PORT}
+    targetPort: 4200
 ---
 # Deploy qcos
 apiVersion: apps/v1
@@ -260,14 +260,14 @@ spec:
     spec:
       hostNetwork: false
       restartPolicy: Always
-      initContainers:
-      - name: wait-prefect-server
-        image: ${REGISTRY}busybox:1.36.1
-        imagePullPolicy: IfNotPresent
-        command: [
-          'sh', '-c',
-          'until wget -q --spider http://${PREFECT_SERVER_API_HOST}:${PREFECT_SERVER_PORT}/api; do echo "waiting for prefect-server ..."; sleep 2; done; echo "prefect-server is ready"'
-        ]
+#      initContainers:
+#      - name: wait-prefect-server
+#        image: ${REGISTRY}busybox:1.36.1
+#        imagePullPolicy: IfNotPresent
+#        command: [
+#          'sh', '-c',
+#          'until wget -q --spider http://${PREFECT_SERVER_API_HOST}:${PREFECT_SERVER_PORT}/api; do echo "waiting for prefect-server ..."; sleep 2; done; echo "prefect-server is ready"'
+#        ]
       containers:
       - name: ${QCOS_CONTAINER_NAME}
         image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
@@ -277,7 +277,8 @@ spec:
         stdin: true
         tty: true
         workingDir: /root
-        command: ["/entrypoint.sh"]
+        command: ["/bin/sleep infinity"]
+        # command: ["/entrypoint.sh"]
         env:
         - name: DEBUG
           value: "${DEBUG}"
@@ -287,16 +288,24 @@ spec:
           value: "Asia/Shanghai"
         - name: QCOS_CONTAINER_NAME
           value: "${QCOS_CONTAINER_NAME}"
-        - name: PREFECT_SERVER_API_HOST
-          value: "${PREFECT_SERVER_API_HOST}"
+        #- name: PREFECT_SERVER_API_HOST
+        #  value: "${PREFECT_SERVER_API_HOST}"
         - name: PREFECT_API_URL
-          value: "http://${PREFECT_SERVER_API_HOST}:${PREFECT_SERVER_PORT}/api"
+          value: "${PREFECT_API_URL}"
         - name: PREFECT_SERVER_DATABASE_CONNECTION_URL
           value: "sqlite+aiosqlite:///var/qcos/db/prefect.db"
         - name: PREFECT_LOCAL_STORAGE_PATH
           value: "/var/qcos/storage"
         - name: PYTHONPATH
           value: "/root/qcos-project"
+        - name: API_SERVER_LISTEN_IP
+          value: "${API_SERVER_LISTEN_IP}"
+        - name: API_SERVER_LISTEN_PORT
+          value: "${API_SERVER_LISTEN_PORT}“
+        - name: QCOS_SERVER_IP
+          value: "${QCOS_SERVER_IP}"
+        - name: QCOS_SERVER_PORT
+          value: "${QCOS_SERVER_PORT}"
         - name: QCOS_ENABLE_VIRT
           value: "${QCOS_ENABLE_VIRT}"
         - name: QCOS_VIRTUAL_INSTANCE_ID
@@ -308,23 +317,23 @@ spec:
           limits:
             cpu: "2000m"
             memory: "4Gi"
-        livenessProbe:
-          tcpSocket:
-            port: ${QCOS_API_SERVER_PORT}
-          initialDelaySeconds: 30
-          periodSeconds: 60
-          timeoutSeconds: 10
-          failureThreshold: 3
-        readinessProbe:
-          tcpSocket:
-            port: ${QCOS_API_SERVER_PORT}
-          initialDelaySeconds: 5
-          periodSeconds: 60
-          timeoutSeconds: 10
-          successThreshold: 1
+#        livenessProbe:
+#          tcpSocket:
+#            port: 18400
+#          initialDelaySeconds: 30
+#          periodSeconds: 60
+#          timeoutSeconds: 10
+#          failureThreshold: 3
+#        readinessProbe:
+#          tcpSocket:
+#            port: 18400
+#          initialDelaySeconds: 5
+#          periodSeconds: 60
+#          timeoutSeconds: 10
+#          successThreshold: 1
         volumeMounts:
         - name: code-data
-          mountPath: /root/qcos
+          mountPath: /root/qcos-project
         - name: database-dir
           mountPath: /var/qcos
         - name: qcos-config
@@ -368,4 +377,4 @@ spec:
   type: ClusterIP
   ports:
   - port: ${QCOS_API_SERVER_PORT}
-    targetPort: ${QCOS_API_SERVER_PORT}
+    targetPort: 18400

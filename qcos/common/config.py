@@ -55,7 +55,7 @@ class Config:
     # api log file
     API_LOG_FILE = "/var/log/qcos/qcos-api.log"
     # prefect log file
-    PREFECT_LOG_FILE = "/var/log/qcos/qcos-prefect.log"
+    PREFECT_LOG_FILE = "/var/log/qcos/qcos-engine.log"
     # log format
     LOG_FORMAT = (
         "%(asctime)s %(levelname)s %(filename)s:%(lineno)s %(message)s"

@@ -90,6 +90,7 @@ echo ${git_commit_id} > ${top_dir}/latest-commit-id.txt
 files=("latest-commit-id.txt" "qcos" "etc" "requirements.txt" \
        "test-requirements.txt" "build-scripts/qcos/entrypoint.sh" \
        "build-scripts/cli/entrypoint.sh" "bin/qcos-api.py" "bin/qcos-cli.py" \
+       "build-scripts/cli/requirements.txt" \
        "bin/qcos-transpiler.py")
 for file_path in "${files[@]}"; do
   src=${top_dir}/${file_path}

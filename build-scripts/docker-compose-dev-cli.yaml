@@ -14,8 +14,8 @@
 
 version: '3'
 services:
-  qcos-cli:
-    container_name: qcos-cli
+  qcos-dev-cli:
+    container_name: qcos-dev-cli
     image: ${REGISTRY}${QCOS_IMAGE_NAME}-cli:${QCOS_IMAGE_VERSION}
     network_mode: "host"
     restart: always
@@ -23,11 +23,14 @@ services:
     tty: True
     working_dir: /root
     environment:
+      DEBUG: ${DEBUG}
+      DEV: ${DEV}
       TZ: Asia/Shanghai
       QCOS_CONTAINER_NAME: ${QCOS_CONTAINER_NAME}
       QCOS_SERVER_IP: ${QCOS_SERVER_IP}
       QCOS_SERVER_PORT: ${QCOS_SERVER_PORT}
       QCOS_VIRTUAL_INSTANCE_ID: ${QCOS_VIRTUAL_INSTANCE_ID}
+      PYTHONPATH: /root/qcos-project
     logging:
       driver: "json-file"
       options:
@@ -35,4 +38,6 @@ services:
         max-file: "10"
     volumes:
       - /etc/hosts:/etc/hosts
+      - ${QCOS_LOCAL_SRC_DIR}:/root/qcos-project
+      - ${QCOS_LOCAL_SRC_DIR}/bin/qcos-cli.py:/usr/bin/qcos-cli
     entrypoint: /entrypoint.sh

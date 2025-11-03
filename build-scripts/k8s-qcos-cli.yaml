@@ -48,10 +48,10 @@ spec:
         env:
         - name: TZ
           value: "Asia/Shanghai"
-        - name: API_SERVER_IP
-          value: "${QCOS_API_SERVER_IP}"
-        - name: API_SERVER_PORT
-          value: "${QCOS_API_SERVER_PORT}"
+        - name: QCOS_SERVER_IP
+          value: "${QCOS_SERVER_IP}"
+        - name: QCOS_SERVER_PORT
+          value: "${QCOS_SERVER_PORT}"
         - name: QCOS_VIRTUAL_INSTANCE_ID
           value: "${QCOS_VIRTUAL_INSTANCE_ID}"
         resources:

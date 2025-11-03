@@ -47,7 +47,7 @@ PASSWORD_SALT = ${PASSWORD_SALT:-abcd}
 # API workers
 API_WORKERS = ${API_WORKERS:-8}
 # API server listen ip
-API_SERVER_LISTEN_IP = "${API_SERVER_LISTEN_IP:-0.0.0.0}"
+API_SERVER_LISTEN_IP = "${API_SERVER_LISTEN_IP:-}"
 # API server listen port
 API_SERVER_LISTEN_PORT = ${API_SERVER_LISTEN_PORT:-18400}
 
@@ -97,6 +97,7 @@ else
 fi
 
 # run QCOS
+rm -rf /var/run/qcos/qcos-api.pid
 /usr/bin/qcos-api --config-file ${qcos_config_file_path} --config-dir ${qcos_extra_config_file_dir}
 if [ "${DEV,,}" = "true" ]; then
   sleep infinity

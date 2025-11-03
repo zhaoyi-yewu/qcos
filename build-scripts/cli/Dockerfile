@@ -18,6 +18,7 @@ FROM ${CONTAINER_BASE_IMAGE}
 ARG BUILD_CONTEXT=/tmp/build-context
 ARG CONTAINER_NAME
 ARG QCOS_IMAGE_VERSION
+ARG DEV
 
 LABEL stage=builder
 LABEL build=${CONTAINER_NAME}
@@ -31,7 +32,9 @@ WORKDIR /root
 RUN \
 # copy qcos dir
     build_date=`date` && \
-# config system \
+    if [ "${DEV,,}" != "false" ]; then mkdir -p /root/qcos-project; fi && \
+    if [ "${DEV,,}" != "false" ]; then cp -rf ${BUILD_CONTEXT}/bin/qcos-cli.py /usr/bin/qcos-cli; fi && \
+# config system
     /bin/cp ${BUILD_CONTEXT}/build-scripts/cli/entrypoint.sh / && \
     chmod +x /entrypoint.sh && \
 # copy yum repos and create dirs
@@ -41,15 +44,16 @@ RUN \
     yum install -y hostname openssh openssh-clients sshpass iputils iproute \
       telnet net-tools openssl util-linux vim findutils  \
       python3 python3-pip python3-requests python3-devel && \
-      ls ${BUILD_CONTEXT}/pkg/ && \
-    pip3 install ${BUILD_CONTEXT}/pkg/qcos_cli-1.0.0-py3-none-any.whl && \
+    if [ "${DEV,,}" = "false" ]; then pip3 install ${BUILD_CONTEXT}/pkg/qcos_cli-1.0.0-py3-none-any.whl; fi && \
 # create symbolic link for python3
     ln -sf /usr/bin/python3 /usr/bin/python && \
+# install python3 deps
+    if [ "${DEV,,}" != "false" ]; then pip3 install --no-cache-dir --upgrade -r ${BUILD_CONTEXT}/build-scripts/cli/requirements.txt; fi && \
 # generate ssh keys
     rm -rf /root/.ssh/id_rsa && \
     ssh-keygen -t rsa -f /root/.ssh/id_rsa -q -N "" && \
     ssh-keygen -A && \
-# write build info \
+# write build info
     commit_id=$(cat "${BUILD_CONTEXT}/latest-commit-id.txt" 2>/dev/null || echo "") && \
     echo -e "QCOS-cli build info\nversion: ${QCOS_IMAGE_VERSION}\ncommit id: ${commit_id}\nbuild time: ${build_date}\n" > /root/build-info.txt && \
 # cleanup build-context

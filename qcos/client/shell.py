@@ -240,7 +240,7 @@ class QcosShell(App):
 
         # API host configs
         default_api_server_ip = os.environ.get(
-            "API_SERVER_IP", Constant.DEFAULT_API_SERVER_LISTEN_IP
+            "QCOS_SERVER_IP", Constant.DEFAULT_QCOS_SERVER_IP
         )
         parser.add_argument(
             "--api-host",
@@ -250,7 +250,7 @@ class QcosShell(App):
             f"Default: {default_api_server_ip}",
         )
         default_api_server_port = os.environ.get(
-            "API_SERVER_PORT", Constant.DEFAULT_API_SERVER_LISTEN_PORT
+            "QCOS_SERVER_PORT", Constant.DEFAULT_QCOS_SERVER_PORT
         )
         parser.add_argument(
             "--api-port",

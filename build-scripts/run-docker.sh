@@ -18,9 +18,11 @@ source ./setup-env.sh
 export QCOS_LOCAL_SRC_DIR="${top_dir}"
 
 echo "Creating QCOS dockers ..."
+
 # copy config files
 mkdir -p /etc/qcos/prefect
 mkdir -p /var/qcos/db
+rm -rf /etc/qcos/prefect/profiles.toml
 
 if [ "${DEV,,}" = "false" ]; then
   docker-compose -f docker-compose.yaml down

@@ -193,9 +193,12 @@ class Server:
 
         _signal_handling()
         try:
-            logger.info(
-                f"Starting server, listening on {Config.API_SERVER_LISTEN_IP}"
+            _listen_ip = (
+                Config.API_SERVER_LISTEN_IP
+                if Config.API_SERVER_LISTEN_IP
+                else "all IPs"
             )
+            logger.info(f"Starting server, listening on '{_listen_ip}'")
             # only show uvicorn access logs in debug mode
             access_log = False
             if logger.getEffectiveLevel() == logging.DEBUG:
