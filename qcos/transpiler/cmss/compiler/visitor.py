@@ -350,55 +350,6 @@ class Visitor:
             # self.visitUop(s)
             self.visit_uop_v3(s)
 
-    def visit_uop(self, s: Node):
-        """首先检查门是否在可用门字典中,
-        然后检查参数数量是否与门需要的一致，以及量子比特是否已定义且无重复,
-        最后若调用时在自定义门中则添加相关元组以便后续解析,
-        否则通过eval_gate添加量子门操作对应的中间表示到结果列表中。
-
-        Args:
-          s: uop节点
-          s: Node: 
-
-        Returns:
-
-        """
-        self.check_node_type(s, "uop")
-
-        uid = s.children[0]
-        if not self.allow_undefined:
-            if uid not in self.gate:
-                raise NameError(f"in line {s.pos}, gate {uid} is not defined")
-
-        if uid in self.gate:
-            qnum, pnum = self.gate[uid]
-            if pnum != len(s.children[1]):
-                raise RuntimeError(f"in line {s.pos}, parameter error, "
-                                   f"need {pnum} but {len(s.children[1])}")
-
-            if qnum != len(s.leaf):
-                raise RuntimeError(f"in line {s.pos}, qubit error, "
-                                   f"need {qnum} but {len(s.leaf)}")
-
-        qids = []
-        if self.in_gate:
-            for qubit in s.leaf:
-                self.check_in_gate_qubit(qubit, s.pos)
-                qids.append(qubit[0])
-        else:
-            for qubit in s.leaf:
-                if len(qubit) != 2:
-                    raise RuntimeError(f"in line {s.pos}, need specific qubit")
-                qids.append(str(self.check_reg(qubit, RegType.QREG, s.pos)[0]))
-
-        self.check_qlist(qids, s.pos)
-
-        if self.in_gate:
-            self.defined_gate[self.now_gate]["base_gate"].append(
-                (uid, s.children[1], qids))
-        else:
-            self.eval_gate(uid, s.children[1], qids, s.pos)
-
     def eval_gate(self, uid, args, qids, pos, func_dict=None):
         """解析自定义门中的子语句
         如果是全局的量子操作，则直接添加对应的中间表示,
