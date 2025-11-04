@@ -965,13 +965,13 @@ def run_qubo_code(
                 converged_num = converged_num + 1
         job_results = sub_job_results
         job_results["results"] = {}
-        job_results["results"]["outdata"] = []
+        job_results["results"]["out_data"] = []
         for i in range(len(solution_pool)):
             solution = {}
             solution["result"] = i + 1
             solution["quboValue"] = solution_pool[i].energy
             solution["solutionVector"] = solution_pool[i].solution.tolist()
-            job_results["results"]["outdata"].append(solution)
+            job_results["results"]["out_data"].append(solution)
     else:
         job_results, driver, transpiler, mapping_dict = _run_code(
             source_code_index,
