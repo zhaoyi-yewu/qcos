@@ -17,6 +17,12 @@
 
 """
 encrypt-virtual-instance-id.py -- encrypt/decrypt virtual instance id
+
+Encryption example:
+./encrypt-virtual-instance-id.py -e -s 1234 -dn dummy -i 1234567890
+
+Decryption example:
+./encrypt-virtual-instance-id.py -d -s 1234 -vi dummy-1234567890-5ae3
 """
 
 import sys
@@ -107,7 +113,7 @@ USAGE
                       f"instance_id: {instance_id}, salt: {salt}")
                 print(f"output: virtual_instance_id: {virtual_instance_id}")
             else:
-                print(f"Encryption failed. Reason: {err_msg}", file=sys.stderr)
+                print(f"{err_msg}", file=sys.stderr)
 
         # Handle decryption
         if args.decryption_mode:
@@ -116,12 +122,13 @@ USAGE
                     virtual_instance_id,
                     salt=salt)
             if success:
+                print("Decryption is successful")
                 print(f"input : virtual_instance_id: {virtual_instance_id}, "
                       f"salt: {salt}")
                 print(f"output: device_name: {device_name}, instance_id: "
                       f"{instance_id}")
             else:
-                print(f"Decryption failed. Reason: {err_msg}", file=sys.stderr)
+                print(f"{err_msg}", file=sys.stderr)
 
         return 0
 

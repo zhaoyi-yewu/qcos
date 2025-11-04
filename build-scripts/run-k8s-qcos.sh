@@ -12,6 +12,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# run K8s qcos
 
 set -e
 
@@ -47,7 +48,7 @@ if [ ! -f "${config_file}" ]; then
   exit 1
 fi
 
-export $(grep -v '^#' "${config_file}" | xargs)
+source "${config_file}"
 echo "Creating K8s QCOS pods (${config_file}) ..."
 echo "Note: you must create PVCs(${K8S_CODE_DATA_PVC}, ${K8S_DATABASE_PVC}) before running this script"
 

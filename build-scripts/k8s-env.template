@@ -1,51 +1,53 @@
+#!bin/sh
 # copy env.template to k8s-pod.env, and configure k8s-pod.env
 # K8s pod configs
 
 # once K8s pods deployed, run the following commands to ensure the pods are running properly
-# curl http://prefect-server.${QCOS_NAMESPACE}.svc:${PREFECT_SERVER_PORT}
+# curl http://prefect-server.${QCOS_NAMESPACE}:${PREFECT_SERVER_PORT}
 # OR
 # curl http://prefect-server.${QCOS_NAMESPACE}.svc.cluster.local:${PREFECT_SERVER_PORT}
 
 # QCOS server config
-QCOS_NAMESPACE=qcos
-QCOS_CONTAINER_NAME=qcos-api
-QCOS_CLI_CONTAINER_NAME=qcos-cli
+export QCOS_NAMESPACE=qcos
+export QCOS_CONTAINER_NAME=qcos-api
+export QCOS_CLI_CONTAINER_NAME=qcos-cli
 # QCOS API Server IP configures
 # listen on all IPv4+IPv6 address (Default): QCOS_API_SERVER_IP=
 # listen on all IPV4 address: QCOS_API_SERVER_IP=0.0.0.0
 # listen on all IPv6 address: QCOS_API_SERVER_IP=::
-QCOS_API_SERVER_IP=
-QCOS_API_SERVER_PORT=18400
-PREFECT_API_URL=http://127.0.0.1:4200/api
-QCOS_ENABLE_VIRT=true
-PASSWORD_SALT=abcd
-QCOS_VIRTUAL_INSTANCE_ID=device-1234567890-b23f
+export QCOS_API_SERVER_IP=
+export QCOS_API_SERVER_PORT=18400
+export PREFECT_API_URL=http://prefect-server.${QCOS_NAMESPACE}:4200/api
+export QCOS_ENABLE_VIRT=true
+export PASSWORD_SALT=1234
 
 # QCOS client config
-QCOS_SERVER_IP=127.0.0.1
-QCOS_SERVER_PORT=18400
+export QCOS_SERVER_IP=${QCOS_CONTAINER_NAME}.${QCOS_NAMESPACE}
+export QCOS_SERVER_PORT=${QCOS_API_SERVER_PORT}
+export QCOS_VIRTUAL_INSTANCE_ID=dummy-1234567890-f97a
+export QCOS_ADMIN_VIRTUAL_INSTANCE_ID=all-all-3366
 
 # K8s volumes
-K8S_CODE_DATA_PVC="code-data-pvc"
-K8S_DATABASE_PVC="database-pvc"
+export K8S_CODE_DATA_PVC="code-data-pvc"
+export K8S_DATABASE_PVC="database-pvc"
 
 # Prefect configures
 # Prefect server API IP configures
 # listen on all IPv4+IPv6 address (Default): PREFECT_SERVER_API_HOST=
 # listen on all IPV4 address: PREFECT_SERVER_API_HOST=0.0.0.0
 # listen on all IPv6 address: PREFECT_SERVER_API_HOST=::
-PREFECT_SERVER_API_HOST=
-PREFECT_SERVER_PORT=4200
+export PREFECT_SERVER_API_HOST=
+export PREFECT_SERVER_PORT=4200
 
 # image name and version
-REGISTRY=cicdcsy.harbor.cmss.com:18080/wuyue-platform/qcos/
-QCOS_IMAGE_NAME=qcos
-QCOS_IMAGE_VERSION=2025-06-01
-QCOS_CLI_IMAGE_NAME=qcos-cli
-QCOS_CLI_IMAGE_VERSION=2025-06-01
-PREFECT_IMAGE_NAME=prefecthq/prefect
-PREFECT_IMAGE_VERSION=3.3.3-python3.13
+export REGISTRY=cicdcsy.harbor.cmss.com:18080/wuyue-platform/qcos/
+export QCOS_IMAGE_NAME=qcos
+export QCOS_IMAGE_VERSION=2025-06-01
+export QCOS_CLI_IMAGE_NAME=qcos-cli
+export QCOS_CLI_IMAGE_VERSION=2025-06-01
+export PREFECT_IMAGE_NAME=prefecthq/prefect
+export PREFECT_IMAGE_VERSION=3.3.3-python3.13
 
 # others
-DEBUG=False
-DEV=False
+export DEBUG=False
+export DEV=False

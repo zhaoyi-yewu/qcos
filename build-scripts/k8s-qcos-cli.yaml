@@ -39,7 +39,7 @@ spec:
       containers:
       - name: ${QCOS_CLI_CONTAINER_NAME}
         image: ${REGISTRY}${QCOS_IMAGE_NAME}-cli:${QCOS_CLI_IMAGE_VERSION}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         # securityContext:
         #   privileged: true
         stdin: true

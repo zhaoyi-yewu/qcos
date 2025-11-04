@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # ----------------------------------------------------------------------
 # Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
@@ -12,13 +12,13 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-# run K8s qcos-cli
+# delete k8s qcos
 
 set -e
 
 function usage {
     echo "Usage: $0 [OPTION] ..."
-    echo "Run QCOS cli with K8s"
+    echo "Delete QCOS with K8s"
     echo ""
     echo "  -c, --config  Config file"
     echo "  -h, --help    Print this usage message"
@@ -49,4 +49,9 @@ if [ ! -f "${config_file}" ]; then
 fi
 
 source "${config_file}"
-envsubst < ./k8s-qcos-cli.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -
+echo "Deleting K8s QCOS pods (${config_file}) ..."
+
+kubectl delete deployment --ignore-not-found=true -n ${QCOS_NAMESPACE} prefect-server qcos-api qcos-cli
+# kubectl delete svc --ignore-not-found=true -n ${QCOS_NAMESPACE} prefect-server qcos-api
+# kubectl delete pvc --ignore-not-found=true -n ${QCOS_NAMESPACE} code-data-pvc database-pvc
+# kubectl delete ns ${QCOS_NAMESPACE}

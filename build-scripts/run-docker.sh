@@ -25,6 +25,7 @@ mkdir -p /var/qcos/db
 rm -rf /etc/qcos/prefect/profiles.toml
 
 if [ "${DEV,,}" = "false" ]; then
+  docker volume rm code-data -f
   docker-compose -f docker-compose.yaml down
   docker-compose -f docker-compose.yaml up -d
   echo "Run QCOS bash: docker exec -it qcos bash"

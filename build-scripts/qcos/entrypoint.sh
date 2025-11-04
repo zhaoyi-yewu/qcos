@@ -95,6 +95,7 @@ else
   echo "QCOS ST config file: ${qcos_st_config_file_path} not exists. auto generate ...."
   cp -f ${qcos_template_st_config_file_path} ${qcos_st_config_file_path}
 fi
+echo "Prefect API URL: ${PREFECT_API_URL}"
 
 # run QCOS
 rm -rf /var/run/qcos/qcos-api.pid
