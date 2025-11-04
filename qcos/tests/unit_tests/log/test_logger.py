@@ -109,7 +109,11 @@ class TestCompressedRotatingFileHandler(unittest.TestCase):
     def test_doRollover(self):
         self.file_handler.backupCount = 10
         assert self.file_handler.doRollover() is None
+
+    def tearDown(self):
+        del self.file_handler
         os.remove("files.1.gz")
+        os.remove("files")
 
 
 def test_init_logger():
@@ -118,4 +122,5 @@ def test_init_logger():
 
     handlers = init_logger(1, logfile="log_file", compression=False)
     assert handlers is not None
-    os.remove("files")
+    del handlers
+    os.remove("log_file")

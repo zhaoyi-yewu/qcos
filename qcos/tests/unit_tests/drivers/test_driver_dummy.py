@@ -66,3 +66,6 @@ class TestDriverDummy:
         assert (
             driver_dummy.run(job_id, num_qubits, data_qasm, data_type) is None
         )
+
+    def test_cancel(self):
+        assert driver_dummy.cancel(job_id) is None

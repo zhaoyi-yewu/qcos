@@ -50,7 +50,8 @@ class TestLibrary:
 
     def test_create_file(self):
         test_file = "test1.txt"
-        library.create_file(test_file, "123", mode=0o644)
+        success, _ = library.create_file(test_file, "123", mode=0o644)
+        assert success is True
         library.rm_file(test_file)
 
     def test_create_pid_file(self):
@@ -62,8 +63,8 @@ class TestLibrary:
     def test_kill_pid(self):
         test_file = "test.pid"
         library.create_file(test_file, "99999999")
-        library.kill_pid("test.pid")
-        library.kill_pid("test.pid1")
+        assert library.kill_pid("test.pid") is None
+        assert library.kill_pid("test.pid1") is None
         library.rm_file(test_file)
 
     def test_find_dirs(self):
@@ -71,12 +72,17 @@ class TestLibrary:
         assert not dirs
 
     def test_find_files(self):
-        library.find_files("./")
-        library.find_files(
-            "./", pattern="test*", recursive=True, exclusives="test*"
+        assert library.find_files("./") is not None
+        assert not (
+            library.find_files(
+                "./", pattern="test*", recursive=True, exclusives="test*"
+            )
         )
-        library.find_files("no_such_dir")
-        library.find_files("./", pattern="test*", recursive=True)
+        assert not library.find_files("no_such_dir")
+        assert (
+            library.find_files("./", pattern="test*", recursive=True)
+            is not None
+        )
 
     def test_mkdir_rmdir(self):
         dir_name = "test-dir"
@@ -321,11 +327,14 @@ class TestLibrary:
         library.get_sorted_keys(sort_obj, "Tzeentch")
 
         sort_obj = ["Tzeentch", "Nurgle", "Khorne", "Slaanesh"]
-        library.get_sorted_keys(sort_obj, "Tzeentch")
+        key_tuple = library.get_sorted_keys(sort_obj, "Tzeentch")
+        assert key_tuple is not None
 
     def test_generate_binary_combinations(self):
-        library.generate_binary_combinations(9, 10)
-        library.generate_binary_combinations(0, 10)
+        return_dict = library.generate_binary_combinations(9, 10)
+        assert return_dict is not None
+        return_dict = library.generate_binary_combinations(0, 10)
+        assert return_dict == {}
 
     def test_check_qubo_matrixs_bit_width(self):
         qubo_matrixs = [[[-480, 508, -48], [508, -508, -48], [-48, -48, 60]]]
@@ -334,7 +343,8 @@ class TestLibrary:
             [[-512, 520, -48], [520, -520, -48], [-48, -48, 40]],
             [[-488, 516, -48], [516, -516, -48], [-48, -48, 60]],
         ]
-        library.check_qubo_matrixs_bit_width(qubo_matrixs)
+        success, _ = library.check_qubo_matrixs_bit_width(qubo_matrixs)
+        assert success is False
 
     def test_encrypt_text(self):
         success, err_msg, encrypted_text = library.encrypt_text(

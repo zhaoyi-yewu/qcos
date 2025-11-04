@@ -237,7 +237,7 @@ class TestJob:
         ]
         mock_client = Mock(spec=CancelJobsRequest)
         mock_client.job_ids = self.job_ids
-        cancel_jobs(mock_client)
+        cancel_jobs(mock_client, None)
 
     @patch.object(TaskScheduler, "delete_jobs")
     def test_delete_jobs(self, mock_delete_jobs):
@@ -246,7 +246,7 @@ class TestJob:
         ]
         mock_client = Mock(spec=DeleteJobsRequest)
         mock_client.job_ids = self.job_ids
-        delete_jobs(mock_client)
+        delete_jobs(mock_client, None)
 
     @patch.object(Library, "get_nested_dict_value")
     @patch.object(TaskScheduler, "run_callbacks")

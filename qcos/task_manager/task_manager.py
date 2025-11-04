@@ -314,14 +314,25 @@ class TaskFlowManager(ABC):
             flow run uuid
         """
         flow_run_id = self.loop.run_until_complete(
-            self.run_task_flow_by_client(deployment_id, args, tags)
+            self.run_task_flow_by_client(deployment_id, args, tags=tags)
         )
 
         return flow_run_id
 
-    def get_flow_run_id_by_job_id(self, job_id):
-        name = {"any_": [str(job_id)]}
-        flow_run_filter = FlowRunFilter(name=FlowRunFilterName(**name))
+    def get_flow_run_id_by_job_id(self, job_id, tags=None):
+        flow_run_filter_kwargs = {}
+
+        if job_id is not None:
+            name_filter = FlowRunFilterName(any_=[str(job_id)])
+            flow_run_filter_kwargs["name"] = name_filter
+
+        if tags is not None:
+            tags_filter = FlowRunFilterTags(all_=tags)
+            flow_run_filter_kwargs["tags"] = tags_filter
+        # create flow run filter with flow_run_filter_kwargs
+        flow_run_filter = FlowRunFilter(**flow_run_filter_kwargs)
+
+        # get flow runs with flow_run_filter
 
         flow_runs = self._sync_client.read_flow_runs(
             flow_run_filter=flow_run_filter
@@ -334,7 +345,7 @@ class TaskFlowManager(ABC):
         self,
         deployment_id,
         args: dict[str, Any],
-        tags,
+        tags=None,
     ):
         """
         Run flow by prefect client
@@ -356,9 +367,9 @@ class TaskFlowManager(ABC):
             prefect_tags = [args["job_info"]["data"]["circuit_aggregation"]]
         if tags is not None:
             if prefect_tags is not None:
-                prefect_tags.append(tags)
+                prefect_tags.extend(tags)
             else:
-                prefect_tags = [tags]
+                prefect_tags = tags
         # TODO(jidalong) deal exception
         await self._client.create_flow_run_from_deployment(
             name=str(job_id),
@@ -542,7 +553,7 @@ class TaskFlowManager(ABC):
         else:
             return state.name, parameters, None, None
 
-    def get_task_flow_list(self, tags):
+    def get_task_flow_list(self, tags=None):
         """Get flow run list
 
         Args:
@@ -551,12 +562,12 @@ class TaskFlowManager(ABC):
         Returns:
             flow run list
         """
-        results = self.get_task_flow_list_by_client(tags)
+        results = self.get_task_flow_list_by_client(tags=tags)
         return results
 
     def get_task_flow_list_by_client(
         self,
-        tags,
+        tags=None,
         sort_fields=["-created"],
         reverse=False,
     ):
@@ -584,10 +595,7 @@ class TaskFlowManager(ABC):
                     artifacts_map[artifact.key]["progress"] = artifact.data
 
         # get flows info
-        if tags is not None:
-            flow_runs = self.get_flow_runs_with_filters(tags=tags)
-        else:
-            flow_runs = self.get_flow_runs_with_filters()
+        flow_runs = self.get_flow_runs_with_filters(tags=tags)
 
         sorted_flows = sorted(
             flow_runs,
@@ -641,18 +649,19 @@ class TaskFlowManager(ABC):
             logger.error(f"Prefect execute flow error: {str(e)}")
         return flow_run
 
-    def delete_task_flow_run(self, job_ids):
+    def delete_task_flow_run(self, job_ids, tags=None):
         """Delete flow run.
 
         Args:
             job_ids: job uuid list
+            tags: prefect flow tags
 
         Returns:
             success list
         """
         flow_run_ids = []
         for job_id in job_ids:
-            flow_run_id = self.get_flow_run_id_by_job_id(job_id)
+            flow_run_id = self.get_flow_run_id_by_job_id(job_id, tags=tags)
             if flow_run_id:
                 flow_run_ids.append((flow_run_id, job_id))
 
@@ -695,18 +704,19 @@ class TaskFlowManager(ABC):
                     logger.error(f"Prefect delete_flow_run error: {str(e)}")
         return success_list
 
-    def cancel_task_flow_run(self, job_ids):
+    def cancel_task_flow_run(self, job_ids, tags=None):
         """Cancel flow run.
 
         Args:
             job_ids: job uuid list
+            tags: prefect flow tags
 
         Returns:
             success list
         """
         flow_run_ids = []
         for job_id in job_ids:
-            flow_run_id = self.get_flow_run_id_by_job_id(job_id)
+            flow_run_id = self.get_flow_run_id_by_job_id(job_id, tags=tags)
             if flow_run_id:
                 flow_run_ids.append((flow_run_id, job_id))
 

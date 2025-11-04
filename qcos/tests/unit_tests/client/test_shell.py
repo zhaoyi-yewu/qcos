@@ -84,7 +84,8 @@ update_job = UpdateJob(shell, None)
 
 class TestQcosShell:
     def test_build_option_parser(self):
-        shell.build_option_parser("description", "1.0.0")
+        parser = shell.build_option_parser(DESCRIPTION, VERSION)
+        assert parser.description == DESCRIPTION
 
     @patch.object(App, "initialize_app")
     def test_initialize_app(self, mock_initialize_app):
@@ -93,7 +94,7 @@ class TestQcosShell:
         shell.options = mock_options
         mock_options.api_host = "api_host"
         mock_options.use_ssl = False
-        shell.initialize_app([])
+        assert shell.initialize_app([]) is None
 
 
 class TestCommandHelper:
@@ -143,29 +144,33 @@ class TestCommandHelper:
         assert "114" in str(e)
 
     def test_get_table_list_data(self):
-        helper.get_table_list_data(
+        result = helper.get_table_list_data(
             [{"key": "value"}, {"T": "Tzeentch"}],
             ["Tzeentch", "Nurgle", "Khorne", "Slaanesh", "Emperor"],
         )
+        assert result is not None
 
     def test_get_table_data(self):
-        helper.get_table_data({"key": "value", "T": "Tzeentch"})
+        result = helper.get_table_data({"key": "value", "T": "Tzeentch"})
+        assert result is not None
 
     def test_get_content_by_type(self):
         get_content_by_type(Constant.CODE_TYPE_QASM, "qcos")
-        get_content_by_type("0111", "qcos")
+        success, _, _ = get_content_by_type("0111", "qcos")
+        assert success is False
 
     @patch("argparse.ArgumentParser.parse_known_args")
     def test_set_debug_option(self, mock_parse_known_args):
         mock_client = Mock()
         mock_client.debug = True
         mock_parse_known_args.return_value = (mock_client, None)
-        set_debug_option("args")
+        assert set_debug_option("args") is None
 
 
 class TestVersion:
     def test_get_parser(self):
-        version.get_parser("")
+        parser = version.get_parser("")
+        assert parser is not None
 
     @patch.object(Client, "version")
     @patch.object(CommandHelper, "check_results")
@@ -186,12 +191,13 @@ class TestVersion:
             "supported_api_versions": 4,
             "platform_version": 5,
         }
-        version.take_action(mock_client)
+        assert version.take_action(mock_client) is None
 
 
 class TestGetDrivers:
     def test_get_parser(self):
-        get_drivers.get_parser("")
+        parser = get_drivers.get_parser("")
+        assert parser is not None
 
     @patch.object(Client, "get_drivers")
     @patch.object(CommandHelper, "get_table_list_data")
@@ -203,12 +209,14 @@ class TestGetDrivers:
         mock_client = Mock(spec=Namespace)
         mock_get_table_list_data.return_value = None
         mock_check_results.return_value = None
-        get_drivers.take_action(mock_client)
+        table_values = get_drivers.take_action(mock_client)
+        assert table_values is None
 
 
 class TestGetDriver:
     def test_get_parser(self):
-        get_driver.get_parser("")
+        parser = get_driver.get_parser("")
+        assert parser is not None
 
     @patch.object(CommandHelper, "get_table_data")
     @patch.object(CommandHelper, "check_results")
@@ -221,12 +229,14 @@ class TestGetDriver:
         mock_get_driver.return_value = iter([None, None, None, None])
         mock_get_table_data.return_value = None
         mock_check_results.return_value = None
-        get_driver.take_action(mock_client)
+        table_values = get_driver.take_action(mock_client)
+        assert table_values is None
 
 
 class TestGetDevices:
     def test_get_parser(self):
-        get_devices.get_parser("")
+        parser = get_devices.get_parser("")
+        assert parser is not None
 
     @patch.object(CommandHelper, "get_table_list_data")
     @patch.object(CommandHelper, "check_results")
@@ -238,12 +248,14 @@ class TestGetDevices:
         mock_get_devices.return_value = iter([None, None, None, None])
         mock_get_table_list_data.return_value = None
         mock_check_results.return_value = None
-        get_devices.take_action(mock_client)
+        table_values = get_devices.take_action(mock_client)
+        assert table_values is None
 
 
 class TestGetDevice:
     def test_get_parser(self):
-        get_device.get_parser("")
+        parser = get_device.get_parser("")
+        assert parser is not None
 
     @patch.object(CommandHelper, "get_table_data")
     @patch.object(CommandHelper, "check_results")
@@ -256,12 +268,14 @@ class TestGetDevice:
         mock_get_device.return_value = iter([None, None, None, None])
         mock_get_table_data.return_value = None
         mock_check_results.return_value = None
-        get_device.take_action(mock_client)
+        table_values = get_device.take_action(mock_client)
+        assert table_values is None
 
 
 class TestGetTranspilers:
     def test_get_parser(self):
-        get_transpilers.get_parser("")
+        parser = get_transpilers.get_parser("")
+        assert parser is not None
 
     @patch.object(CommandHelper, "get_table_list_data")
     @patch.object(CommandHelper, "check_results")
@@ -276,12 +290,14 @@ class TestGetTranspilers:
         mock_get_transpilers.return_value = iter([None, None, None, None])
         mock_get_table_list_data.return_value = None
         mock_check_results.return_value = None
-        get_transpilers.take_action(mock_client)
+        table_values = get_transpilers.take_action(mock_client)
+        assert table_values is None
 
 
 class TestGetTranspiler:
     def test_get_parser(self):
-        get_transpiler.get_parser("")
+        parser = get_transpiler.get_parser("")
+        assert parser is not None
 
     @patch.object(CommandHelper, "get_table_data")
     @patch.object(CommandHelper, "check_results")
@@ -294,12 +310,14 @@ class TestGetTranspiler:
         mock_get_transpiler.return_value = iter([None, None, None, None])
         mock_get_table_data.return_value = None
         mock_check_results.return_value = None
-        get_transpiler.take_action(mock_client)
+        table_values = get_transpiler.take_action(mock_client)
+        assert table_values is None
 
 
 class TestPing:
     def test_get_parser(self):
-        ping.get_parser("")
+        parser = ping.get_parser("")
+        assert parser is not None
 
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "ping")
@@ -308,7 +326,8 @@ class TestPing:
         mock_client.message = "msg"
         mock_ping.return_value = iter([None, None, None, None])
         mock_check_results.return_value = {"message": "msg"}
-        ping.take_action(mock_client)
+
+        assert ping.take_action(mock_client) is None
 
 
 class TestSubmitJob:
@@ -368,15 +387,17 @@ class TestSubmitJob:
         mock_client.source_code_files = ["qcos", "os"]
         mock_client.instance_id = "instance_id"
 
-        submit_job.take_action(mock_client)
+        assert submit_job.take_action(mock_client) is None
 
     def test_get_parser(self):
-        submit_job.get_parser("")
+        parser = submit_job.get_parser("")
+        assert parser is not None
 
 
 class TestGetJobStatus:
     def test_get_parser(self):
-        get_job_status.get_parser("")
+        parser = get_job_status.get_parser("")
+        assert parser is not None
 
     @patch.object(CommandHelper, "get_table_data")
     @patch.object(CommandHelper, "handle_invalid_arguments")
@@ -396,12 +417,14 @@ class TestGetJobStatus:
 
         mock_client = Mock(spec=Namespace)
         mock_client.job_id = job_id
-        get_job_status.take_action(mock_client)
+        table_values = get_job_status.take_action(mock_client)
+        assert table_values is None
 
 
 class TestGetJobResults:
     def test_get_parser(self):
-        get_job_results.get_parser("")
+        parser = get_job_results.get_parser("")
+        assert parser is not None
 
     @patch.object(CommandHelper, "get_table_data")
     @patch.object(CommandHelper, "handle_invalid_arguments")
@@ -423,12 +446,14 @@ class TestGetJobResults:
 
         mock_client = Mock(spec=Namespace)
         mock_client.job_id = job_id
-        get_job_results.take_action(mock_client)
+        table_values = get_job_results.take_action(mock_client)
+        assert table_values is None
 
 
 class TestGetJobs:
     def test_get_parser(self):
-        get_jobs.get_parser("")
+        parser = get_jobs.get_parser("")
+        assert parser is not None
 
     @patch.object(CommandHelper, "get_table_list_data")
     @patch.object(Client, "get_jobs")
@@ -440,12 +465,14 @@ class TestGetJobs:
         mock_get_table_data.return_value = None
         mock_check_results.return_value = None
         mock_client = Mock(spec=Namespace)
-        get_jobs.take_action(mock_client)
+        table_values = get_jobs.take_action(mock_client)
+        assert table_values is None
 
 
 class TestCancelJobs:
     def test_get_parser(self):
-        cancel_jobs.get_parser("")
+        parser = cancel_jobs.get_parser("")
+        assert parser is not None
 
     @patch.object(Client, "cancel_jobs")
     @patch.object(CommandHelper, "handle_invalid_arguments")
@@ -471,12 +498,13 @@ class TestCancelJobs:
         cancel_jobs.take_action(mock_client)
 
         mock_client.job_ids = "NO"
-        cancel_jobs.take_action(mock_client)
+        assert cancel_jobs.take_action(mock_client) is None
 
 
 class TestDeleteJobs:
     def test_get_parser(self):
-        delete_jobs.get_parser("")
+        parser = delete_jobs.get_parser("")
+        assert parser is not None
 
     @patch.object(Client, "delete_jobs")
     @patch.object(CommandHelper, "handle_invalid_arguments")
@@ -505,12 +533,13 @@ class TestDeleteJobs:
         mock_check_results.return_value = [
             {"k1": "v1", "job_id": job_id},
         ]
-        delete_jobs.take_action(mock_client)
+        assert delete_jobs.take_action(mock_client) is None
 
 
 class TestSetJobResults:
     def test_get_parser(self):
-        set_job_results.get_parser("")
+        parser = set_job_results.get_parser("")
+        assert parser is not None
 
     @patch.object(CommandHelper, "handle_invalid_arguments")
     @patch.object(Client, "set_job_results")
@@ -531,12 +560,13 @@ class TestSetJobResults:
             '{"options": "options","option": "option"}',
             '{"options": "options","option": "option"}',
         ]
-        set_job_results.take_action(mock_client)
+        assert set_job_results.take_action(mock_client) is None
 
 
 class TestSystemInfo:
     def test_get_parser(self):
-        system_info.get_parser("")
+        parser = system_info.get_parser("")
+        assert parser is not None
 
     @patch.object(CommandHelper, "get_table_data")
     @patch.object(CommandHelper, "check_results")
@@ -548,7 +578,8 @@ class TestSystemInfo:
         mock_check_results.return_value = None
         mock_get_table_data.return_value = None
         mock_client = Mock(spec=Namespace)
-        system_info.take_action(mock_client)
+        table_values = system_info.take_action(mock_client)
+        assert table_values is None
 
 
 def test_set_debug_option():
@@ -562,7 +593,8 @@ def test_get_content_by_type():
 
 class TestUpdateJob:
     def test_get_parser(self):
-        update_job.get_parser("")
+        parser = update_job.get_parser("")
+        assert parser is not None
 
     @patch.object(Client, "update_job")
     @patch.object(CommandHelper, "handle_invalid_arguments")
@@ -580,4 +612,4 @@ class TestUpdateJob:
         mock_client.job_id = job_id
         mock_client.job_priority = Constant.DEFAULT_JOB_PRIORITY
 
-        update_job.take_action(mock_client)
+        assert update_job.take_action(mock_client) is None

@@ -48,4 +48,4 @@ class TestConfig:
         assert str(context.value) is not None
 
     def test_show_info(self):
-        config.show_info()
+        assert config.show_info() is not None

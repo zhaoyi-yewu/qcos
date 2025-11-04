@@ -64,7 +64,8 @@ class TestDriver:
         mock_get_driver_manager.return_value = DriverManager()
         mock_client = Mock()
         mock_client.name = self.dummy
-        get_drivers(mock_client)
+        response = get_drivers(mock_client)
+        assert not response
 
     @patch("qcos.api.posiq.routes_jsonrpc.driver._get_driver_info")
     @patch.object(TranspilerManager, "get_transpiler")
@@ -88,10 +89,12 @@ class TestDriver:
         mock__get_driver_info.return_value = response_info
         mock_client = Mock()
         mock_client.name = self.dummy
-        get_driver(mock_client)
+        response = get_driver(mock_client)
+        assert response.name == self.dummy
 
     @patch.object(DriverBase, "get_supported_code_types")
     def test__get_driver_info(self, mock_get_supported_code_types):
         mock_get_supported_code_types.return_value = []
         mock_client = DriverBase()
-        _get_driver_info(mock_client, None)
+        _driver_info = _get_driver_info(mock_client, None)
+        assert _driver_info["name"] is None

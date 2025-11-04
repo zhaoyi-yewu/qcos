@@ -18,6 +18,7 @@
 from unittest.mock import Mock, patch
 
 from qcos.api.posiq.routes_jsonrpc.version import version
+from qcos.common.config import Config
 from qcos.drivers.driver_base import DriverBase
 from qcos.drivers.driver_manager import DriverManager
 from qcos.drivers.dummy.driver_dummy import DriverDummy
@@ -46,4 +47,5 @@ class TestVersion:
         mock_get_driver_manager.return_value = DriverManager()
         mock_get_drivers.return_value = {"Dummy": DriverDummy()}
         mock_client = Mock()
-        version(mock_client)
+        response_info = version(mock_client)
+        assert response_info.version == Config.VERSION

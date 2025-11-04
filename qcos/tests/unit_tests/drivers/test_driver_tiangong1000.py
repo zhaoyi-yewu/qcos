@@ -106,6 +106,9 @@ class TestDriverTiangong1000:
             is None
         )
 
+    def test_cancel(self):
+        assert driver_tiangong1000.cancel(job_id) is None
+
     @patch.object(Library, "call_http_api")
     def test_user_auth(self, mock_call_http_api):
         json_dict = {
@@ -210,3 +213,12 @@ class TestDriverTiangong1000:
         )
         assert success is True
         assert realtime_status["task_result"] == -109
+
+    @patch.object(DriverTiangong1000, "get_task_realtime_result")
+    def test_get_task_results(self, mock_get_task_realtime_result):
+        mock_get_task_realtime_result.return_value = (
+            True,
+            "None",
+            {"qubo_value": "1", "qubo_solution_data": "1"},
+        )
+        driver_tiangong1000.get_task_results("1")

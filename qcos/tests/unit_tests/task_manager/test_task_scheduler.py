@@ -20,7 +20,6 @@ from types import SimpleNamespace
 from unittest.mock import patch, Mock
 
 from qcos.common.constant import Constant
-from qcos.drivers.driver_manager import DriverManager
 from qcos.task_manager.task_manager import TaskFlowManager
 from qcos.task_manager.task_scheduler import (
     TaskScheduler,
@@ -32,7 +31,6 @@ from qcos.task_manager.task_scheduler import (
     PeriodicPolicy,
 )
 from qcos.task_manager.task_scheduler import TimePrecedencePolicy
-from qcos.transpiler.transpiler_manager import TranspilerManager
 from qcos.tests.unit_tests.task_manager.constant_for_test import (
     ConstantForTest,
 )
@@ -41,19 +39,38 @@ task = TaskScheduler()
 
 
 class TestTaskScheduler:
-    def test_set_driver_manager(self):
-        driver_manager = DriverManager()
-        task.set_driver_manager(driver_manager)
+    @patch.object(TaskFlowManager, "start")
+    def test_start_taskmanager(self, mock_start):
+        mock_start.return_value = None
+        assert task.start_taskmanager() is None
+
+    @patch.object(TaskFlowManager, "set_driver_manager")
+    def test_set_driver_manager(self, mock_set_driver_manager):
+        mock_set_driver_manager.return_value = None
+        driver_manager = None
+        assert task.set_driver_manager(driver_manager) is None
 
     def test_get_driver_manager(self):
-        task.get_driver_manager()
+        driver_manager = task.get_driver_manager()
+        assert driver_manager is None
 
     def test_set_transpiler_manager(self):
-        transpiler_manager = TranspilerManager()
-        task.set_transpiler_manager(transpiler_manager)
+        transpiler_manager = None
+        assert task.set_transpiler_manager(transpiler_manager) is None
 
     def test_get_transpiler_manager(self):
-        task.get_transpiler_manager()
+        transpiler_manager = task.get_transpiler_manager()
+        assert transpiler_manager is None
+
+    @patch.object(TaskFlowManager, "set_device_manager")
+    def test_set_device_manager(self, mock_set_device_manager):
+        mock_set_device_manager.return_value = None
+        device_manager = None
+        assert task.set_device_manager(device_manager) is None
+
+    def test_get_device_manager(self):
+        device_manager = task.get_device_manager()
+        assert device_manager is None
 
     @patch.object(TaskScheduler, "has_job")
     def test_add(self, mock_has_job):
@@ -84,7 +101,8 @@ class TestTaskScheduler:
         mock_get_task_flow_result.return_value = iter(
             ["state", "parameters", "results", "error_message"]
         )
-        task.get_result_by_id(ConstantForTest.job_id)
+        response, _ = task.get_result_by_id(ConstantForTest.job_id)
+        assert response["results"] == "results"
 
     @patch.object(TaskFlowManager, "has_flow")
     def test_has_job(self, mock_has_flow):
@@ -103,12 +121,21 @@ class TestTaskScheduler:
 
     @patch.object(TaskScheduler, "get_job_status")
     @patch.object(TaskFlowManager, "delete_task_flow_run")
-    def test_remove_jobs(self, mock_delete_task_flow_run, mock_get_job_status):
+    def test_delete_jobs(self, mock_delete_task_flow_run, mock_get_job_status):
         mock_get_job_status.return_value = 111
         mock_delete_task_flow_run.return_value = [
             {"job_status": 111, "state": 222},
         ]
-        task.delete_jobs([1, 2, 3])
+        flow_list = task.delete_jobs([1, 2, 3], None)
+        assert flow_list[0]["state"] == 222
+
+    @patch.object(TaskScheduler, "get_job_status")
+    @patch.object(TaskFlowManager, "cancel_task_flow_run")
+    def test_cancel_jobs(self, mock_cancel_task_flow_run, mock_get_job_status):
+        mock_cancel_task_flow_run.return_value = []
+        mock_get_job_status.return_value = None
+        flow_list = task.cancel_jobs(ConstantForTest.job_ids, None)
+        assert not flow_list
 
     @patch.object(TaskFlowManager, "update_flow")
     @patch.object(TaskFlowManager, "get_task_flow_run")
@@ -171,19 +198,15 @@ class TestTaskScheduler:
             },
             "info": 233,
         }
-        task.get_job_status("job_status", flow_results, flow_parameters)
+        final_job_status = task.get_job_status(
+            "job_status", flow_results, flow_parameters
+        )
+        assert final_job_status == 1
 
     @patch.object(TaskFlowManager, "get_flow_runs_with_filters")
     def test_process_callbacks(self, mock_get_flow_runs_with_filters):
         mock_get_flow_runs_with_filters.return_value = []
-        task.process_callbacks()
-
-    @patch.object(TaskScheduler, "get_job_status")
-    @patch.object(TaskFlowManager, "cancel_task_flow_run")
-    def test_cancel_jobs(self, mock_cancel_task_flow_run, mock_get_job_status):
-        mock_cancel_task_flow_run.return_value = []
-        mock_get_job_status.return_value = None
-        task.cancel_jobs(ConstantForTest.job_ids)
+        assert task.process_callbacks() is None
 
 
 task_manager = TaskFlowManager()
@@ -210,6 +233,12 @@ class TestPriorityPolicy:
         )
         assert result == 514
 
+    def test_calculate_priority(self):
+        job_info = priority_policy.calculate_priority(
+            ConstantForTest.args["job_info"]
+        )
+        assert job_info == 1
+
 
 class TestTimePrecedencePolicy:
     @patch.object(TaskFlowManager, "deploy_task_flow")
@@ -224,6 +253,12 @@ class TestTimePrecedencePolicy:
             None,
         )
         assert result == 514
+
+    def test_calculate_priority(self):
+        job_info = time_precedence_policy.calculate_priority(
+            ConstantForTest.args["job_info"]
+        )
+        assert job_info == 1
 
 
 class TestPeriodicPolicy:
@@ -248,6 +283,7 @@ class TestRealtimePolicy:
 
 class TestSchedulerPolicyHandlerFactory:
     def test_get_policy_handler_by_name(self):
-        factory.get_policy_handler_by_name(
+        policy_handler = factory.get_policy_handler_by_name(
             Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE
         )
+        assert policy_handler is not None

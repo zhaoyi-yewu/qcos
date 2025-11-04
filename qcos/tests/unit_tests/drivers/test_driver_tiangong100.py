@@ -256,3 +256,6 @@ class TestDriverTiangong100:
     def test_get_fake_results(self):
         result = driver_tiangong100.get_fake_results(num_qubits, shots, data)
         assert len(result) == 10
+
+    def test_cancel(self):
+        assert driver_tiangong100.cancel(job_id) is None

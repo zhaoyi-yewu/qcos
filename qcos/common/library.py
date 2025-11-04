@@ -1409,9 +1409,7 @@ class Library:
                 return True, err_msg, device_name, instance_id
 
             err_msg = "Decryption failed. Reason: Unauthorized"
-            device_name = None
-            instance_id = None
-            return False, err_msg, device_name, instance_id
+            return False, err_msg, None, None
         except Exception as e:
             err_msg = f"Decryption failed. Reason: {repr(e)}"
             return False, err_msg, None, None

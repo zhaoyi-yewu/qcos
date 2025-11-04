@@ -156,3 +156,8 @@ class TestDriverBase:
 
     def test_set_device_status(self):
         assert driver_base.set_device_status("") is None
+
+    def test_fetch_configs(self):
+        with pytest.raises(NotImplementedError) as context:
+            driver_base.fetch_configs()
+        assert "fetch_configs" in str(context)

@@ -365,14 +365,16 @@ def submit_job(
     res = {}
     err = None
     try:
-        virtual_instance_id = None
+        tags = None
         if auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
+            tags = [virtual_instance_id]
         res, err = scheduler.add(
             Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
             body,
-            virtual_instance_id,
+            tags=tags,
         )
+
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
             module_name, func_name, (False, str(e))
@@ -543,10 +545,11 @@ def get_jobs(
     # query jobs' results
     responses = []
     try:
-        virtual_instance_id = None
+        tags = None
         if auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
-        responses, err = scheduler.get_jobs(virtual_instance_id)
+            tags = [virtual_instance_id]
+        responses, err = scheduler.get_jobs(tags=tags)
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
             module_name, func_name, (False, str(e))
@@ -576,11 +579,13 @@ def get_jobs(
 @job_api_v1.method(errors=[])
 def cancel_jobs(
     body: schemas.CancelJobsRequest,
+    auth_data: dict | None = Depends(auth),
 ) -> list[schemas.CancelJobsResponse]:
     """Cancel job
 
     Args:
         body(schemas.CancelJobsRequest): job_ids: job IDs
+        auth_data: auth data
 
     Returns:
         cancelled jobs info
@@ -593,9 +598,12 @@ def cancel_jobs(
     # get unique job_ids
     job_ids = list(dict.fromkeys(job_ids))
 
+    tags = None
+    if auth_data is not None:
+        virtual_instance_id = auth_data["instance_id"]
+        tags = [virtual_instance_id]
     # cancel jobs
-    success_list = scheduler.cancel_jobs(job_ids)
-
+    success_list = scheduler.cancel_jobs(job_ids, tags=tags)
     # construct response
     response_info = [
         schemas.CancelJobsResponse(
@@ -609,11 +617,13 @@ def cancel_jobs(
 @job_api_v1.method(errors=[])
 def delete_jobs(
     body: schemas.DeleteJobsRequest,
+    auth_data: dict | None = Depends(auth),
 ) -> list[schemas.DeleteJobsResponse]:
     """Delete job
 
     Args:
         body(schemas.DeleteJobsRequest): job_ids: job IDs
+        auth_data: auth data
 
     Returns:
         deleted jobs info
@@ -625,10 +635,12 @@ def delete_jobs(
 
     # get unique job_ids
     job_ids = list(dict.fromkeys(job_ids))
-
+    tags = None
+    if auth_data is not None:
+        virtual_instance_id = auth_data["instance_id"]
+        tags = [virtual_instance_id]
     # delete jobs
-    success_list = scheduler.delete_jobs(job_ids)
-
+    success_list = scheduler.delete_jobs(job_ids, tags=tags)
     # construct response
     response_info = [
         schemas.DeleteJobsResponse(

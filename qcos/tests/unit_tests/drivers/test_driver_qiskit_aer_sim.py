@@ -46,3 +46,6 @@ class TestDriverQiskitAerSim:
         mock_result_obj = Mock()
         mock_result_obj.mock_run.return_value = mock_result_value
         assert driver_aer_sim.run(job_id, num_qubits, data, data_type) is None
+
+    def test_cancel(self):
+        assert driver_aer_sim.cancel(job_id) is None

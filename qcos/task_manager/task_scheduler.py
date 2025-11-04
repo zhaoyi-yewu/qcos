@@ -99,7 +99,7 @@ class TaskScheduler(ABC):
         """
         return self.device_manager
 
-    def add(self, policy_type, job_info, tags):
+    def add(self, policy_type, job_info, tags=None):
         """Add job to scheduler
 
         Add job to scheduler, scheduler will get policy handler by policy_type,
@@ -188,7 +188,9 @@ class TaskScheduler(ABC):
             }
             job_json_info["device"] = {"configs": device.get_configs()}
 
-            job_id = policy_handler.exec_task(flow_info, job_json_info, tags)
+            job_id = policy_handler.exec_task(
+                flow_info, job_json_info, tags=tags
+            )
             res = {"job_id": job_id}
             return res, None
         except Exception as e:
@@ -238,7 +240,7 @@ class TaskScheduler(ABC):
         """
         return self._task_manager.has_flow(job_id)
 
-    def get_jobs(self, tags):
+    def get_jobs(self, tags=None):
         """Get job list
 
         Args:
@@ -248,7 +250,7 @@ class TaskScheduler(ABC):
             job list
         """
         try:
-            flow_list = self._task_manager.get_task_flow_list(tags)
+            flow_list = self._task_manager.get_task_flow_list(tags=tags)
             for flow in flow_list:
                 flow["job_status"] = self.get_job_status(
                     flow["state"], flow["results"], flow["parameters"]
@@ -258,31 +260,33 @@ class TaskScheduler(ABC):
             logger.error(f"Prefect execute flow error: {str(e)}")
             raise errors.WorkFlowError(e)
 
-    def delete_jobs(self, ids):
+    def delete_jobs(self, ids, tags=None):
         """Delete jobs
 
         Args:
             ids: job id list
+            tags: prefect flow tags
 
         Returns:
             flow list
         """
 
-        flow_list = self._task_manager.delete_task_flow_run(ids)
+        flow_list = self._task_manager.delete_task_flow_run(ids, tags=tags)
         for flow in flow_list:
             flow["job_status"] = self.get_job_status(flow["state"], None, None)
         return flow_list
 
-    def cancel_jobs(self, ids):
+    def cancel_jobs(self, ids, tags=None):
         """Cancel jobs
 
         Args:
             ids: job id list
+            tags: prefect flow tags
 
         Returns:
             flow list
         """
-        flow_list = self._task_manager.cancel_task_flow_run(ids)
+        flow_list = self._task_manager.cancel_task_flow_run(ids, tags=tags)
         for flow in flow_list:
             flow["job_status"] = self.get_job_status(flow["state"], None, None)
         return flow_list
@@ -427,7 +431,7 @@ class PriorityPolicy(BaseSchedulerPolicy):
         super().__init__(task_manager)
         self._type = Constant.JOB_SCHED_POLICY_PRIORITY
 
-    def exec_task(self, flow_info, job_info, tags):
+    def exec_task(self, flow_info, job_info, tags=None):
         """PriorityPolicy execute task
 
         Args:
@@ -447,7 +451,7 @@ class PriorityPolicy(BaseSchedulerPolicy):
             flow_info["deploy_flow_path"],
         )
         job_run_id = self._task_manager.run_task_flow(
-            job_deploy_id, {"job_info": job_info}, tags
+            job_deploy_id, {"job_info": job_info}, tags=tags
         )
         return job_run_id
 
@@ -470,7 +474,7 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
         super().__init__(task_manager)
         self._type = Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE
 
-    def exec_task(self, flow_info, job_info, tags):
+    def exec_task(self, flow_info, job_info, tags=None):
         """TimePrecedencePolicy execute task
 
         Args:
@@ -491,7 +495,7 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
             flow_info["deploy_flow_path"],
         )
         job_run_id = self._task_manager.run_task_flow(
-            job_deploy_id, {"job_info": job_info}, tags
+            job_deploy_id, {"job_info": job_info}, tags=tags
         )
         return job_run_id
 

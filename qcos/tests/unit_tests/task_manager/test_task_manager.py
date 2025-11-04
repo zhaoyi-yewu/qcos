@@ -63,6 +63,10 @@ class TestTaskFlowManager(unittest.TestCase):
         self.task_manager.set_driver_manager("driver_manager")
         self.assertEqual(self.task_manager.driver_manager, "driver_manager")
 
+    def test_set_device_manager(self):
+        self.task_manager.set_device_manager("device_manager")
+        self.assertEqual(self.task_manager.device_manager, "device_manager")
+
     def test_create_pools(self):
         mock_client = AsyncMock()
         self.task_manager._client = mock_client
@@ -233,7 +237,10 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_client = Mock()
         mock_client.delete_task_flow_run_by_client.return_value = mock_run
         self.task_manager.loop = mock_client
-        self.task_manager.delete_task_flow_run(ConstantForTest.job_ids)
+        success_list = self.task_manager.delete_task_flow_run(
+            ConstantForTest.job_ids, None
+        )
+        assert not success_list
 
     def test_delete_task_flow_run_by_client(self):
         mock_client = Mock()
@@ -266,7 +273,10 @@ class TestTaskFlowManager(unittest.TestCase):
     ):
         mock_get_flow_run_id_by_job_id.return_value = "1234"
         mock_cancel_task_flow_run_by_client.return_value = None
-        self.task_manager.cancel_task_flow_run(ConstantForTest.job_ids)
+        success_list = self.task_manager.cancel_task_flow_run(
+            ConstantForTest.job_ids, None
+        )
+        assert success_list is None
 
     def test_convert_to_prefect_states(self):
         states = [
@@ -284,6 +294,7 @@ class TestTaskFlowManager(unittest.TestCase):
         assert len(prefect_states) == 9
 
     def test_cancel_task_flow_run_by_client(self):
-        self.task_manager.cancel_task_flow_run_by_client(
+        success_list = self.task_manager.cancel_task_flow_run_by_client(
             ConstantForTest.job_ids
         )
+        assert not success_list

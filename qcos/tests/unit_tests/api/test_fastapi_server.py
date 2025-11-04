@@ -41,4 +41,4 @@ class TestFastApiServer:
     @patch("qcos.api.fastapi_server.unicorn_exit_handler")
     def test_handle_exit(self, mock_unicorn_exit_handler):
         mock_unicorn_exit_handler.return_value = None
-        handle_exit((), {})
+        assert handle_exit((), {}) is None

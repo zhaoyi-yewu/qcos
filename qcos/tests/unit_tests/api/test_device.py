@@ -42,7 +42,8 @@ class TestDevice:
         )
         mock_client = Mock(spec=GetDeviceRequest)
         mock_client.name = self.dummy
-        get_devices(mock_client, None)
+        response_info = get_devices(mock_client, None)
+        assert not response_info
 
     @patch.object(DeviceManager, "get_device")
     @patch.object(TaskScheduler, "get_device_manager")
@@ -53,4 +54,5 @@ class TestDevice:
         )
         mock_client = Mock(spec=GetDeviceRequest)
         mock_client.name = self.dummy
-        get_device(mock_client, None)
+        response_info = get_device(mock_client, None)
+        assert response_info.name == self.dummy

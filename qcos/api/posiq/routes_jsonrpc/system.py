@@ -70,11 +70,11 @@ def system_info(
     # query jobs' results
     responses = []
     try:
-        # TODO (guozhufeng): auth_data to be implemented
-        virtual_instance_id = None
+        tags = None
         if auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
-        responses, err = scheduler.get_jobs(virtual_instance_id)
+            tags = [virtual_instance_id]
+        responses, err = scheduler.get_jobs(tags=tags)
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
             module_name, func_name, (False, str(e))

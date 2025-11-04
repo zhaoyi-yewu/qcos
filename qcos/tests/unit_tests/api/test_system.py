@@ -34,7 +34,8 @@ class TestSystem:
     def test_ping(self):
         mock_client = Mock(spec=PingRequest)
         mock_client.message = "message"
-        ping(mock_client)
+        response_info = ping(mock_client)
+        assert response_info.message == "message"
 
     @patch.object(TaskScheduler, "get_jobs")
     def test_system_info(self, mock_get_jobs):
