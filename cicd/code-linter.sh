@@ -57,7 +57,7 @@ if [ "${fix}" = false ]; then
   echo "Checking dir: qcos (pylint)"
   pylint qcos
   echo "Checking dir: qcos (ruff)"
-  ruff check qcos
+  ruff check --preview qcos
   echo "Checking dir: qcos (mypy)"
   mypy qcos
 else

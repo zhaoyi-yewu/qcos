@@ -145,7 +145,7 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "S", "U"]
+select = ["E4", "E7", "E9", "F", "S", "U", "CPY001"]
 ignore = [
     "E731",  # Do not assign a `lambda` expression, use a `def`
     "E741",  # Ambiguous variable name: `l`
@@ -173,6 +173,9 @@ ignore = [
 known-first-party = ["qcos"]
 known-third-party = ["requests", "pandas", "numpy"]
 lines-after-imports = 2
+
+[tool.ruff.lint.flake8-copyright]
+notice-rgx = "(?s)^#!/usr/bin/env python3.*?(coding: utf-8).*?(Copyright).*?(China Mobile \\(SuZhou\\)).*?(qcos is licensed under Mulan PSL v2).*"
 
 [tool.ruff.format]
 quote-style = "double"
