@@ -203,6 +203,7 @@ def p_for_statement(for_stmt):
     for_statement : FOR scalar_type ID IN NUMBER '{' block_body '}'
                   | FOR scalar_type ID IN '[' range_exp ']' '{' block_body '}'
                   | FOR scalar_type ID IN ID '{' block_body '}'
+                  | FOR scalar_type ID IN array_literal '{' block_body '}'
     """
     id = for_stmt[3]
     scalar_type = for_stmt[2]
@@ -213,13 +214,22 @@ def p_for_statement(for_stmt):
                 "for_statement",
                 [scalar_type, id, for_stmt[4], for_stmt[5], for_stmt[7]],
                 "in_id",
-                for_stmt.lineno(1))
-        else:
+                for_stmt.lineno(1),
+            )
+        elif isinstance(loop_condition, int):
             for_stmt[0] = Node(
                 "for_statement",
                 [scalar_type, id, for_stmt[4], for_stmt[5], for_stmt[7]],
                 "in_number",
-                for_stmt.lineno(1))
+                for_stmt.lineno(1),
+            )
+        else:
+            for_stmt[0] = Node(
+                "for_statement",
+                [scalar_type, id, for_stmt[4], for_stmt[5], for_stmt[7]],
+                "in_array",
+                for_stmt.lineno(1),
+            )
     elif len(for_stmt) == 11:
         for_stmt[0] = Node(
             "for_statement",

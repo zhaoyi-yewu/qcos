@@ -460,6 +460,16 @@ class Visitor:
                     s.children[4], iterator_var_type, iterator_var_name, start)
                 start = start + step
 
+        elif s.leaf == "in_array":
+            array_exp = s.children[3]
+            iterator_var_name = s.children[1]
+            iterator_var_type = s.children[0].leaf
+            arr = self.visit_array_literal(array_exp)
+            for i in arr:
+                self.visit_for_block_body(
+                    s.children[4], iterator_var_type, iterator_var_name, i
+                )
+
     def visit_range_expression(self, s: Node):
         """处理 range_exp 节点, 用在for语句中
 

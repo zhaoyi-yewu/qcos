@@ -195,12 +195,18 @@ class TestGetIr:
         for int i in arr {
            h q[i];
         }
+
+        for int i in {2, 4} {
+            h q[i];
+        }
         """
         tree = get_abs_tree(data)
         assert tree is not None
         q_num, ir = get_ir(tree)
         assert ir is not None
         assert q_num == 5
-        assert len(ir) == 2
+        assert len(ir) == 4
         validate_gate_ir(ir[0], "h", ["1"], 1, True)
         validate_gate_ir(ir[1], "h", ["3"], 1, True)
+        validate_gate_ir(ir[2], "h", ["2"], 1, True)
+        validate_gate_ir(ir[3], "h", ["4"], 1, True)
