@@ -37,8 +37,8 @@ RUN \
     if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
 # install basic rpms
     yum install -y hostname openssh openssh-clients sshpass iputils iproute \
-      telnet net-tools openssl util-linux vim findutils rpm-build dos2unix \
-      make gcc rust cargo rsync \
+      telnet net-tools openssl util-linux vim findutils dos2unix wget \
+      rpm-build make gcc rust cargo rsync \
       python3 python3-pip python3-sphinx python3-requests python3-devel && \
 # create symbolic link for python3
     ln -sf /usr/bin/python3 /usr/bin/python && \

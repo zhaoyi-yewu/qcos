@@ -115,18 +115,24 @@ class TestDriverTiangong1000:
             "code": "",
             "msg": "",
         }
-        mock_call_http_api.return_value = iter(
-            [503, "", json.dumps(json_dict), ""]
-        )
+        mock_call_http_api.return_value = iter([
+            503,
+            "",
+            json.dumps(json_dict),
+            "",
+        ])
         success, err_msg, token = driver_tiangong1000.user_auth(
             user_id, password_sdk_code
         )
         assert success is False
 
         json_dict = {"code": "0", "msg": "", "data": {"token": "ABCD"}}
-        mock_call_http_api.return_value = iter(
-            [200, "", json.dumps(json_dict), ""]
-        )
+        mock_call_http_api.return_value = iter([
+            200,
+            "",
+            json.dumps(json_dict),
+            "",
+        ])
         success, err_msg, token = driver_tiangong1000.user_auth(
             user_id, password_sdk_code
         )
@@ -135,9 +141,12 @@ class TestDriverTiangong1000:
     @patch.object(Library, "call_http_api")
     def test_submit_tasks(self, mock_call_http_api):
         json_dict = {"code": "0", "msg": "", "data": {"task_id": "1"}}
-        mock_call_http_api.return_value = iter(
-            [200, "", json.dumps(json_dict), ""]
-        )
+        mock_call_http_api.return_value = iter([
+            200,
+            "",
+            json.dumps(json_dict),
+            "",
+        ])
         success, err_msg, task_id = driver_tiangong1000.submit_tasks(
             job_id, data_index, data
         )
@@ -150,13 +159,11 @@ class TestDriverTiangong1000:
         success = driver_tiangong1000.check_task_status("1", 5)
         assert success is False
 
-        mock_get_task_realtime_result.return_value = iter(
-            [
-                True,
-                "",
-                {"task_status": driver_tiangong1000.task_status_completed},
-            ]
-        )
+        mock_get_task_realtime_result.return_value = iter([
+            True,
+            "",
+            {"task_status": driver_tiangong1000.task_status_completed},
+        ])
         success = driver_tiangong1000.check_task_status(
             "1", [driver_tiangong1000.task_status_completed]
         )
@@ -174,14 +181,12 @@ class TestDriverTiangong1000:
                 "visual_data": [80],
             },
         }
-        mock_call_http_api.return_value = iter(
-            [
-                200,
-                "",
-                json.dumps(json_dict),
-                "",
-            ]
-        )
+        mock_call_http_api.return_value = iter([
+            200,
+            "",
+            json.dumps(json_dict),
+            "",
+        ])
         success, err_msg, realtime_status = (
             driver_tiangong1000.get_task_realtime_result("2")
         )
@@ -193,21 +198,21 @@ class TestDriverTiangong1000:
 
     @patch.object(DriverTiangong1000, "get_task_realtime_result")
     def test_get_results(self, mock_get_task_realtime_result):
-        mock_get_task_realtime_result.return_value = iter(
-            [
-                False,
-                "",
-                {"task_status": driver_tiangong1000.task_status_completed},
-            ]
-        )
+        mock_get_task_realtime_result.return_value = iter([
+            False,
+            "",
+            {"task_status": driver_tiangong1000.task_status_completed},
+        ])
         success, err_msg, realtime_status = (
             driver_tiangong1000.get_task_realtime_result("2")
         )
         assert success is False
 
-        mock_get_task_realtime_result.return_value = iter(
-            [True, "", {"task_result": -109}]
-        )
+        mock_get_task_realtime_result.return_value = iter([
+            True,
+            "",
+            {"task_result": -109},
+        ])
         success, err_msg, realtime_status = (
             driver_tiangong1000.get_task_realtime_result("2")
         )

@@ -222,9 +222,10 @@ class TestJobEngine:
             {"transpile_results": "s", "num_qubits": "6"},
             466,
         )
-        mock_flow_run_driver.return_value = iter(
-            [{"results": "v", "metadata": "m"}, 233]
-        )
+        mock_flow_run_driver.return_value = iter([
+            {"results": "v", "metadata": "m"},
+            233,
+        ])
         _run_code(
             [1, 2, 3], {}, {"data": {}}, DriverBase(), TranspilerBase(), {}
         )

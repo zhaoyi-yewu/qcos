@@ -55,8 +55,8 @@ cd "${TOP_DIR}"
 echo "Code format start ..."
 if [ "${fix}" = false ]; then
   echo "Check dir: qcos (ruff)"
-  ruff format --check qcos
+  ruff format --preview --check qcos
 else
   echo "Check and format code in dir: qcos (ruff)"
-  ruff format qcos
+  ruff format --preview qcos
 fi

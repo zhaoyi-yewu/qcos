@@ -91,9 +91,10 @@ class DAGCircuit:
             inp_node = DAGInNode(wire=wire)
             outp_node = DAGOutNode(wire=wire)
 
-            input_map_id, output_map_id = self._multi_graph.add_nodes_from(
-                [inp_node, outp_node]
-            )
+            input_map_id, output_map_id = self._multi_graph.add_nodes_from([
+                inp_node,
+                outp_node,
+            ])
             inp_node._node_id = input_map_id
             outp_node._node_id = output_map_id
             self.input_map[wire] = inp_node

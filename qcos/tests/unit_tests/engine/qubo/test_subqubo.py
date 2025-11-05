@@ -29,9 +29,11 @@ class TestSubQUBOMultiSolution:
     @classmethod
     def setup_class(cls):
         # Creating a QUBO matrix for testing
-        cls.qubo_matrix = np.array(
-            [[1, 0.5, 0.3], [0.5, 2, 0.4], [0.3, 0.4, 3]]
-        )
+        cls.qubo_matrix = np.array([
+            [1, 0.5, 0.3],
+            [0.5, 2, 0.4],
+            [0.3, 0.4, 3],
+        ])
 
         # Creating a test solution
         cls.test_solution = QUBOSolution(

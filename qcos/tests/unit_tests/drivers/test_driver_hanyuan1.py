@@ -94,23 +94,24 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "call_json_rpc")
     def test_get_task_results(self, mock_call_json_rpc):
-        mock_call_json_rpc.return_value = iter(
-            [
-                HttpCode.SUCCESS_OK,
-                "no",
-                "error",
-                {"result": {"status": "success", "result": None}},
-            ]
-        )
+        mock_call_json_rpc.return_value = iter([
+            HttpCode.SUCCESS_OK,
+            "no",
+            "error",
+            {"result": {"status": "success", "result": None}},
+        ])
 
         success, err_msg, result = driver_hanyuan1.get_task_results(job_id, 1)
         assert success is False
 
     @patch.object(DriverHanyuan1, "call_json_rpc")
     def test_submit_task(self, mock_call_json_rpc):
-        mock_call_json_rpc.return_value = iter(
-            [HttpCode.SUCCESS_OK, "no", "error", "error"]
-        )
+        mock_call_json_rpc.return_value = iter([
+            HttpCode.SUCCESS_OK,
+            "no",
+            "error",
+            "error",
+        ])
         datas = [{"name": "H", "target": "q1", "arg_value": "pi"}]
         success, err_msg = driver_hanyuan1.submit_task(
             job_id, num_qubits, datas, data_type, shots, 1

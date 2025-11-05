@@ -39,17 +39,15 @@ class TestSystem:
 
     @patch.object(TaskScheduler, "get_jobs")
     def test_system_info(self, mock_get_jobs):
-        mock_get_jobs.return_value = iter(
+        mock_get_jobs.return_value = iter([
             [
-                [
-                    {
-                        "job_status": Constant.JOB_STATUS_RUNNING,
-                        "id": self.job_id,
-                        "progress": 100,
-                    }
-                ],
-                None,
-            ]
-        )
+                {
+                    "job_status": Constant.JOB_STATUS_RUNNING,
+                    "id": self.job_id,
+                    "progress": 100,
+                }
+            ],
+            None,
+        ])
         response_info = system_info(None, None)
         assert response_info.total_jobs_count == 1

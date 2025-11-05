@@ -98,9 +98,12 @@ class TestTaskScheduler:
         mock_convert_to_qcos_state.return_value = "state"
         mock_get_job_status.return_value = "job_status"
         mock_get_job_artifact.return_value = "job_artifact"
-        mock_get_task_flow_result.return_value = iter(
-            ["state", "parameters", "results", "error_message"]
-        )
+        mock_get_task_flow_result.return_value = iter([
+            "state",
+            "parameters",
+            "results",
+            "error_message",
+        ])
         response, _ = task.get_result_by_id(ConstantForTest.job_id)
         assert response["results"] == "results"
 

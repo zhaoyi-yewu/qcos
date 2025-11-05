@@ -27,12 +27,13 @@ services:
       PREFECT_API_URL: "http://${PREFECT_SERVER_API_HOST}:4200/api"
       PREFECT_LOCAL_STORAGE_PATH: /var/qcos/storage
       PREFECT_API_DEFAULT_LIMIT: 100000
+      PYTHONPATH: /root/qcos-project
     volumes:
       - /etc/hosts:/etc/hosts
       - /var/log/qcos:/var/log/qcos
       - /var/qcos:/var/qcos
       - /etc/qcos/prefect:/root/.prefect
-      - code-data:/root/qcos
+      - code-data:/root/qcos-project
   qcos:
     container_name: qcos
     image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
@@ -72,7 +73,7 @@ services:
       - /var/log/qcos:/var/log/qcos
       - /var/run/qcos:/var/run/qcos
       - /var/qcos:/var/qcos
-      - code-data:/root/qcos
+      - code-data:/root/qcos-project
     entrypoint: /entrypoint.sh
 volumes:
   code-data: {}

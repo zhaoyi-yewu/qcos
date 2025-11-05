@@ -267,7 +267,7 @@ spec:
         imagePullPolicy: Always
         command: [
           'sh', '-c',
-          'rm -rf /mnt/shared/qcos; cp -rf /root/qcos-project/qcos /mnt/shared/ ; echo "prefect-server: http://prefect-server.${QCOS_NAMESPACE}:${PREFECT_SERVER_PORT}/api"; until wget -q --spider http://prefect-server.${QCOS_NAMESPACE}:${PREFECT_SERVER_PORT}/api; do echo "waiting for prefect-server ..."; sleep 2; done; echo "prefect-server is ready"'
+          'rm -rf /mnt/shared/qcos; cp -rf /root/qcos-project/qcos /mnt/shared/; echo "prefect-server: http://prefect-server.${QCOS_NAMESPACE}:${PREFECT_SERVER_PORT}/api"; until wget -q --spider http://prefect-server.${QCOS_NAMESPACE}:${PREFECT_SERVER_PORT}/api; do echo "waiting for prefect-server ..."; sleep 2; done; echo "prefect-server is ready"'
         ]
         volumeMounts:
           - name: code-data

@@ -91,9 +91,11 @@ class TestDriverTiangong100:
 
         mock_user_auth.return_value = iter([True, "", ""])
         mock_check_device_status.return_value = iter([True, "no"])
-        mock_upload_file.return_value = iter(
-            [True, "", {"creator": "", "id": "", "name": ""}]
-        )
+        mock_upload_file.return_value = iter([
+            True,
+            "",
+            {"creator": "", "id": "", "name": ""},
+        ])
         mock_submit_tasks.return_value = iter([False, ""])
         with pytest.raises(ValueError) as context:
             driver_tiangong100.run(job_id, num_qubits, data, data_type)
@@ -101,9 +103,11 @@ class TestDriverTiangong100:
 
         mock_user_auth.return_value = iter([True, "", ""])
         mock_check_device_status.return_value = iter([True, "no"])
-        mock_upload_file.return_value = iter(
-            [True, "", {"creator": "", "id": "", "name": ""}]
-        )
+        mock_upload_file.return_value = iter([
+            True,
+            "",
+            {"creator": "", "id": "", "name": ""},
+        ])
         mock_submit_tasks.return_value = iter([True, ""])
         mock_loop_with_timeout.return_value = iter([False, "", ""])
         with pytest.raises(ValueError) as context:
@@ -112,9 +116,11 @@ class TestDriverTiangong100:
 
         mock_user_auth.return_value = iter([True, "", ""])
         mock_check_device_status.return_value = iter([True, "no"])
-        mock_upload_file.return_value = iter(
-            [True, "", {"creator": "", "id": "", "name": ""}]
-        )
+        mock_upload_file.return_value = iter([
+            True,
+            "",
+            {"creator": "", "id": "", "name": ""},
+        ])
         mock_submit_tasks.return_value = iter([True, ""])
         mock_loop_with_timeout.return_value = iter([True, "", ""])
         mock_get_task_id.return_value = iter([False, "", {"id": ""}])
@@ -124,9 +130,11 @@ class TestDriverTiangong100:
 
         mock_user_auth.return_value = iter([True, "", ""])
         mock_check_device_status.return_value = iter([True, "no"])
-        mock_upload_file.return_value = iter(
-            [True, "", {"creator": "", "id": "", "name": ""}]
-        )
+        mock_upload_file.return_value = iter([
+            True,
+            "",
+            {"creator": "", "id": "", "name": ""},
+        ])
         mock_submit_tasks.return_value = iter([True, ""])
         mock_loop_with_timeout.return_value = iter([True, "", ""])
         mock_get_task_id.return_value = iter([True, "", {"id": ""}])
@@ -137,9 +145,11 @@ class TestDriverTiangong100:
 
         mock_user_auth.return_value = iter([True, "", ""])
         mock_check_device_status.return_value = iter([True, "no"])
-        mock_upload_file.return_value = iter(
-            [True, "", {"creator": "", "id": "", "name": ""}]
-        )
+        mock_upload_file.return_value = iter([
+            True,
+            "",
+            {"creator": "", "id": "", "name": ""},
+        ])
         mock_submit_tasks.return_value = iter([True, ""])
         mock_loop_with_timeout.return_value = iter([True, "", ""])
         mock_get_task_id.return_value = iter([True, "", {"id": ""}])
@@ -150,17 +160,23 @@ class TestDriverTiangong100:
 
     @patch.object(Library, "call_http_api")
     def test_user_auth(self, mock_call_http_api):
-        mock_call_http_api.return_value = iter(
-            [200, "", '{"code": "","msg": ""}', ""]
-        )
+        mock_call_http_api.return_value = iter([
+            200,
+            "",
+            '{"code": "","msg": ""}',
+            "",
+        ])
         success, err_msg, token = driver_tiangong100.user_auth(
             username, password
         )
         assert success is False
 
-        mock_call_http_api.return_value = iter(
-            [200, "", '{"code": "","msg": ""}', ""]
-        )
+        mock_call_http_api.return_value = iter([
+            200,
+            "",
+            '{"code": "","msg": ""}',
+            "",
+        ])
         success, err_msg, token = driver_tiangong100.user_auth(
             username, password
         )
@@ -168,38 +184,29 @@ class TestDriverTiangong100:
 
     @patch.object(Library, "call_http_api")
     def test_check_device_status(self, mock_call_http_api):
-        mock_call_http_api.return_value = iter(
-            [
-                200,
-                "",
-                '{"code": "0",'
-                '"msg": "",'
-                '"data": {'
-                '"status": 0,'
-                '"status_desc": 1'
-                "}}",
-                "",
-            ]
-        )
+        mock_call_http_api.return_value = iter([
+            200,
+            "",
+            '{"code": "0","msg": "","data": {"status": 0,"status_desc": 1}}',
+            "",
+        ])
         success, err_msg = driver_tiangong100.check_device_status(job_id)
         assert success is False
 
     @patch.object(Library, "call_http_api")
     def test_upload_file(self, mock_call_http_api):
-        mock_call_http_api.return_value = iter(
-            [
-                200,
-                "",
-                '{"code": "0",'
-                '"msg": "",'
-                '"data": {'
-                '"creator": "",'
-                '"id": "",'
-                ' "name": ""'
-                "}}",
-                "",
-            ]
-        )
+        mock_call_http_api.return_value = iter([
+            200,
+            "",
+            '{"code": "0",'
+            '"msg": "",'
+            '"data": {'
+            '"creator": "",'
+            '"id": "",'
+            ' "name": ""'
+            "}}",
+            "",
+        ])
         success, err_msg, file_info = driver_tiangong100.upload_file(
             job_id, "", data
         )
@@ -207,17 +214,23 @@ class TestDriverTiangong100:
 
     @patch.object(Library, "call_http_api")
     def test_submit_tasks(self, mock_call_http_api):
-        mock_call_http_api.return_value = iter(
-            [200, "", '{"code": "0","msg": ""}', ""]
-        )
+        mock_call_http_api.return_value = iter([
+            200,
+            "",
+            '{"code": "0","msg": ""}',
+            "",
+        ])
         success, err_msg = driver_tiangong100.submit_tasks([])
         assert success is True
 
     @patch.object(Library, "call_http_api")
     def test_get_task_id(self, mock_call_http_api):
-        mock_call_http_api.return_value = iter(
-            [200, "", '{"code": "0","msg": "","data": {}}', ""]
-        )
+        mock_call_http_api.return_value = iter([
+            200,
+            "",
+            '{"code": "0","msg": "","data": {}}',
+            "",
+        ])
         success, err_msg, task_info = driver_tiangong100.get_task_id(task_id)
         assert success is False
 
@@ -229,27 +242,23 @@ class TestDriverTiangong100:
 
     @patch.object(Library, "call_http_api")
     def test_get_task_results(self, mock_call_http_api):
-        mock_call_http_api.return_value = iter(
-            [
-                200,
-                "",
-                '{"code": "0",'
-                '"msg": "",'
-                '"data": {'
-                '"out_data": 0,'
-                '"visual_data": 0'
-                "}}",
-                "",
-            ]
-        )
+        mock_call_http_api.return_value = iter([
+            200,
+            "",
+            '{"code": "0","msg": "","data": {"out_data": 0,"visual_data": 0}}',
+            "",
+        ])
         success, err_msg, result = driver_tiangong100.get_task_results(job_id)
         assert success is True
 
     @patch.object(Library, "call_http_api")
     def test_delete_task(self, mock_call_http_api):
-        mock_call_http_api.return_value = iter(
-            [200, "", '{"code": "0","msg": ""}', ""]
-        )
+        mock_call_http_api.return_value = iter([
+            200,
+            "",
+            '{"code": "0","msg": ""}',
+            "",
+        ])
         success, err_msg = driver_tiangong100.delete_task(job_id)
         assert success is True
 

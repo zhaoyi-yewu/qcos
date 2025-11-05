@@ -618,15 +618,13 @@ class TaskFlowManager(ABC):
                 results = flow_run.state.result()
             artifact = artifacts_map.get(id, {})
             progress = artifact.get("progress", -1)
-            results_list.append(
-                {
-                    "id": id,
-                    "state": state,
-                    "parameters": parameters,
-                    "progress": progress,
-                    "results": results,
-                }
-            )
+            results_list.append({
+                "id": id,
+                "state": state,
+                "parameters": parameters,
+                "progress": progress,
+                "results": results,
+            })
         return results_list
 
     def get_task_flow_run(self, job_id):
@@ -695,9 +693,10 @@ class TaskFlowManager(ABC):
                 try:
                     # delete flow
                     self._sync_client.delete_flow_run(flow_run_id)
-                    success_list.append(
-                        {"id": job_id, "state": Constant.JOB_STATUS_DELETED}
-                    )
+                    success_list.append({
+                        "id": job_id,
+                        "state": Constant.JOB_STATUS_DELETED,
+                    })
                     # delete flow artifact
                     self.delete_flow_artifacts(flow_run_id)
                 except Exception as e:
@@ -754,12 +753,10 @@ class TaskFlowManager(ABC):
                         self._sync_client.set_flow_run_state(
                             flow_run_id, state=cancelling_state, force=True
                         )
-                        success_list.append(
-                            {
-                                "id": job_id,
-                                "state": Constant.JOB_STATUS_CANCELLED,
-                            }
-                        )
+                        success_list.append({
+                            "id": job_id,
+                            "state": Constant.JOB_STATUS_CANCELLED,
+                        })
                         # delete flow artifact
                         self.delete_flow_artifacts(flow_run_id)
                     except Exception as e:

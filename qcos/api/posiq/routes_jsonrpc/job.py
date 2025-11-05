@@ -717,14 +717,12 @@ def set_job_results(
     if not existing_results:
         existing_results = []
         for _ in range(len(source_code)):
-            existing_results.append(
-                {
-                    "metadata": {},
-                    "profiling": {},
-                    "results": {},
-                    "status": Constant.JOB_STATUS_UNKNOWN,
-                }
-            )
+            existing_results.append({
+                "metadata": {},
+                "profiling": {},
+                "results": {},
+                "status": Constant.JOB_STATUS_UNKNOWN,
+            })
 
     # get end_date
     end_date = Library.get_current_datetime()

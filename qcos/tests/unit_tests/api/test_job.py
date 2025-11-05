@@ -187,9 +187,10 @@ class TestJob:
     @patch("qcos.api.posiq.routes_jsonrpc.job.merge_results")
     @patch.object(TaskScheduler, "get_result_by_id")
     def test_get_job_status(self, mock_get_result_by_id, mock_merge_results):
-        mock_get_result_by_id.return_value = iter(
-            [{"artifact": {"progress": -1}}, "err_msg"]
-        )
+        mock_get_result_by_id.return_value = iter([
+            {"artifact": {"progress": -1}},
+            "err_msg",
+        ])
         mock_client = Mock(spec=GetJobStatusRequest)
         mock_client.job_id = None
         mock_merge_results.return_value = response_info
@@ -203,9 +204,10 @@ class TestJob:
     ):
         mock_has_job.return_value = True
         mock_merge_results.return_value = response_info
-        mock_get_result_by_id.return_value = iter(
-            [{"artifact": {"progress": -1}}, "err_msg"]
-        )
+        mock_get_result_by_id.return_value = iter([
+            {"artifact": {"progress": -1}},
+            "err_msg",
+        ])
         mock_client = Mock(spec=GetJobResultsRequest)
         mock_client.job_id = None
         get_job_results(mock_client)
@@ -213,18 +215,16 @@ class TestJob:
     @patch("qcos.api.posiq.routes_jsonrpc.job.merge_results")
     @patch.object(TaskScheduler, "get_jobs")
     def test_get_jobs(self, mock_get_jobs, mock_merge_results):
-        mock_get_jobs.return_value = iter(
+        mock_get_jobs.return_value = iter([
             [
-                [
-                    {
-                        "job_status": Constant.JOB_STATUS_UNKNOWN,
-                        "id": self.job_id,
-                        "progress": -1,
-                    }
-                ],
-                None,
-            ]
-        )
+                {
+                    "job_status": Constant.JOB_STATUS_UNKNOWN,
+                    "id": self.job_id,
+                    "progress": -1,
+                }
+            ],
+            None,
+        ])
         mock_merge_results.return_value = response_info
         mock_client = Mock(spec=GetJobResultsRequest)
         mock_client.job_id = None
@@ -264,23 +264,21 @@ class TestJob:
         mock_get_nested_dict_value.return_value = ""
         mock_run_callbacks.return_value = iter([True, None])
         mock_update_job.return_value = iter([True, None])
-        mock_get_result_by_id.return_value = iter(
-            [
-                {
-                    "job_status": Constant.JOB_STATUS_RUNNING,
-                    "parameters": [],
-                    "results": [
-                        {
-                            "metadata": {
-                                "status": Constant.JOB_STATUS_COMPLETED,
-                                "end_date": "never",
-                            }
-                        },
-                    ],
-                },
-                "err_msg",
-            ]
-        )
+        mock_get_result_by_id.return_value = iter([
+            {
+                "job_status": Constant.JOB_STATUS_RUNNING,
+                "parameters": [],
+                "results": [
+                    {
+                        "metadata": {
+                            "status": Constant.JOB_STATUS_COMPLETED,
+                            "end_date": "never",
+                        }
+                    },
+                ],
+            },
+            "err_msg",
+        ])
         mock_validate_schema.return_value = (True, None)
 
         mock_client = Mock(spec=SetJobResultsRequest)

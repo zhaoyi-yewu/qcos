@@ -105,9 +105,10 @@ class TestCommandHelper:
 
     @patch.object(Client, "parse_jsonrpc_response")
     def test_check_results(self, mock_parse_jsonrpc_response):
-        mock_parse_jsonrpc_response.return_value = iter(
-            [True, Ok("result", "id")]
-        )
+        mock_parse_jsonrpc_response.return_value = iter([
+            True,
+            Ok("result", "id"),
+        ])
         helper.check_results(
             "resource",
             "Tzeentch",
@@ -116,23 +117,21 @@ class TestCommandHelper:
             '{"name": "Nurgle"}',
         )
 
-        mock_parse_jsonrpc_response.return_value = iter(
-            [
-                False,
-                Error(
-                    114,
-                    "message",
-                    {
-                        "errors": [
-                            {"msg": "msg1", "loc": "loc1"},
-                            {"msg": "msg2", "loc": "loc2"},
-                        ],
-                        "details": "detail",
-                    },
-                    "",
-                ),
-            ]
-        )
+        mock_parse_jsonrpc_response.return_value = iter([
+            False,
+            Error(
+                114,
+                "message",
+                {
+                    "errors": [
+                        {"msg": "msg1", "loc": "loc1"},
+                        {"msg": "msg2", "loc": "loc2"},
+                    ],
+                    "details": "detail",
+                },
+                "",
+            ),
+        ])
         with pytest.raises(errors.GenericException) as e:
             helper.check_results(
                 "resource",

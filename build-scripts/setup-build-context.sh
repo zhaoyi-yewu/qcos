@@ -91,7 +91,8 @@ files=("latest-commit-id.txt" "qcos" "etc" "requirements.txt" \
        "test-requirements.txt" "build-scripts/qcos/entrypoint.sh" \
        "build-scripts/cli/entrypoint.sh" "bin/qcos-api.py" "bin/qcos-cli.py" \
        "build-scripts/cli/requirements.txt" \
-       "bin/qcos-transpiler.py")
+       "bin/qcos-transpiler.py" \
+       "samples/")
 for file_path in "${files[@]}"; do
   src=${top_dir}/${file_path}
   dst=${BUILD_CONTEXT}/

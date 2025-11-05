@@ -34,6 +34,7 @@ RUN \
     build_date=`date` && \
     if [ "${DEV,,}" != "false" ]; then mkdir -p /root/qcos-project; fi && \
     if [ "${DEV,,}" != "false" ]; then cp -rf ${BUILD_CONTEXT}/bin/qcos-cli.py /usr/bin/qcos-cli; fi && \
+    cp -rf ${BUILD_CONTEXT}/samples /root/ && \
 # config system
     /bin/cp ${BUILD_CONTEXT}/build-scripts/cli/entrypoint.sh / && \
     chmod +x /entrypoint.sh && \
@@ -42,7 +43,7 @@ RUN \
     if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
 # install basic rpms
     yum install -y hostname openssh openssh-clients sshpass iputils iproute \
-      telnet net-tools openssl util-linux vim findutils  \
+      telnet net-tools openssl util-linux vim findutils \
       python3 python3-pip python3-requests python3-devel && \
     if [ "${DEV,,}" = "false" ]; then pip3 install ${BUILD_CONTEXT}/pkg/qcos_cli-1.0.0-py3-none-any.whl; fi && \
 # create symbolic link for python3

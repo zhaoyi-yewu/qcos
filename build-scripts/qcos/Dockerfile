@@ -39,6 +39,7 @@ RUN \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-transpiler.py /usr/bin/qcos-transpiler && \
     cp -rf ${BUILD_CONTEXT}/requirements.txt /root/ && \
     cp -rf ${BUILD_CONTEXT}/test-requirements.txt /root/ && \
+    cp -rf ${BUILD_CONTEXT}/samples /root/ && \
 # config system
     /bin/cp ${BUILD_CONTEXT}/build-scripts/qcos/entrypoint.sh / && \
     chmod +x /entrypoint.sh && \

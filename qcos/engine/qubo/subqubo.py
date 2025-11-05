@@ -187,18 +187,16 @@ class SubQUBOMultiSolution:
             np.ndarray: temporary solution in QUBO-matrix
             np.ndarray: extracted index
         """
-        vars_of_x = np.array(
-            [
-                abs(
-                    sum(
-                        n_s_solutions_pool[k].solution[j]
-                        for k in range(len(n_s_solutions_pool))
-                    )
-                    - len(n_s_solutions_pool) / 2
+        vars_of_x = np.array([
+            abs(
+                sum(
+                    n_s_solutions_pool[k].solution[j]
+                    for k in range(len(n_s_solutions_pool))
                 )
-                for j in range(self.qubo.shape[0])
-            ]
-        )
+                - len(n_s_solutions_pool) / 2
+            )
+            for j in range(self.qubo.shape[0])
+        ])
         # Select a solution randomly as the tentative solution
         tmp_solution = random.choice(n_s_solutions_pool)
         extracted_index = np.argsort(vars_of_x)[: self.subqubo_size]
