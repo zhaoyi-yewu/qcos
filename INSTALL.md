@@ -78,6 +78,15 @@ poetry build
 ### 2.3 安装
 ```shell
 pip3 install ./dist/qcos-1.0.0-py3-none-any.whl
+
+# 创建服务运行需要用到的目录
+mkdir -p /var/qcos/db/; mkdir -p /var/qcos/storage
+# 添加服务运行需要的系统环境变量
+export PREFECT_SERVER_API_HOST="127.0.0.1"
+export PREFECT_SERVER_DATABASE_CONNECTION_URL="sqlite+aiosqlite:////var/qcos/db/prefect.db"
+export PREFECT_API_URL="http://127.0.0.1:4200/api"
+export PREFECT_LOCAL_STORAGE_PATH="/var/qcos/storage"
+export PREFECT_API_DEFAULT_LIMIT=100000
 ```
 
 ### 2.4 修改配置文件
@@ -92,8 +101,9 @@ pip3 install ./dist/qcos-1.0.0-py3-none-any.whl
 
 ### 2.5 运行
 ```shell
-# 保证prefect服务已启动
-# 服务端:
+# 启动prefect服务
+prefect server start
+# 启动QCOS服务
 qcos-api --config-file /etc/qcos/qcos.toml --config-dir /etc/qcos/conf.d/
 ```
 
