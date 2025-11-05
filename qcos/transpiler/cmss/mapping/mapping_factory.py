@@ -17,6 +17,7 @@
 
 from qcos.common.constant import Constant
 from qcos.transpiler.cmss.mapping import NASingleRoute
+from qcos.transpiler.cmss.mapping import SCRoute
 from qcos.transpiler.common.errors import MappingException
 
 
@@ -24,7 +25,10 @@ class MappingFactory:
     """Get Transpiler via Type"""
 
     def __init__(self):
-        self._mapping = {Constant.TECH_TYPE_NEUTRAL_ATOM: NASingleRoute()}
+        self._mapping = {
+            Constant.TECH_TYPE_NEUTRAL_ATOM: NASingleRoute(),
+            Constant.TECH_TYPE_SUPERCONDUCTING: SCRoute(),
+        }
 
     def get_mapper_by_type(self, tech_type: str):
         """Get mapper by type

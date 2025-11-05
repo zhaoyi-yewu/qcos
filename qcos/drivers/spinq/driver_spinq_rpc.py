@@ -106,7 +106,7 @@ class DriverSpinQRpc(DriverBase):
         ]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_aggregation = True
-        self.max_qubits = 25
+        self.max_qubits = 57  # 根据配置文件更新为 57 个量子比特
         self.default_data_type = DriverBase.DATA_TYPE_GATE_SEQUENCE
 
         # task stages and percentages
@@ -150,6 +150,9 @@ class DriverSpinQRpc(DriverBase):
         err_msg = None
 
         # check and load driver configs
+        # Note: storage_area and operate_area are optional for
+        # superconducting devices as they don't require separate storage
+        # and operation areas like neutral atom devices
         driver_config_schema = {  # TODO(zhouyunxiao): qpu_configs redefine
             "rpc_host": str,
             "rpc_port": int,
@@ -158,8 +161,8 @@ class DriverSpinQRpc(DriverBase):
             Optional("transpiler"): {
                 "qpu_configs": {
                     "qubits": int,
-                    "storage_area": [str],
-                    "operate_area": [str],
+                    Optional("storage_area"): [str],
+                    Optional("operate_area"): [str],
                     "coupler_map": {str: [str]},
                     "readout_error": {str: Or(float, int)},
                     Optional("coupler_error"): {str: Or(float, int)},
@@ -250,14 +253,25 @@ class DriverSpinQRpc(DriverBase):
 
         Args:
             transpile_results (list): input data (sequence of basis gates)
-            num_qubits: number of qubits
+            num_qubits: number of qubits (logical qubits)
 
         Returns:
             gates, measures
         """
         gates = []
         measures = []
-        qubit_depth = [0] * num_qubits
+        # qubit_depth 需要根据物理量子比特的最大索引来初始化
+        # 因为 mapping 后的物理量子比特索引可能超出逻辑量子比特数
+        # 使用 available_num_qubits（从硬件获取的物理量子比特数）
+        max_physical_qubits = self.available_num_qubits
+
+        # 确保至少能容纳所有物理量子比特索引（0 到 max_physical_qubits-1）
+        # 所以需要初始化 max_physical_qubits 个元素
+        qubit_depth = [0] * max_physical_qubits
+        logger.info(
+            f"Initializing qubit_depth with {max_physical_qubits} qubits "
+            f"(logical qubits: {num_qubits})"
+        )
         for obj in transpile_results:
             if isinstance(obj, Measure):
                 measures.extend(obj.targets)
@@ -307,8 +321,16 @@ class DriverSpinQRpc(DriverBase):
             raise ValueError(f"Authorize failed: {err_msg}")
 
         self._session_id = _results["session_id"]
-        # TODO: (zhouyunxiao) handle results["coupling_list"]
-        transpiler_configs = {"qpu_configs": _results["coupling_list"]}
+
+        # 使用 qpu_configs（字典格式）
+        if "qpu_configs" in _results and isinstance(
+            _results["qpu_configs"], dict
+        ):
+            qpu_configs = _results["qpu_configs"]
+            logger.info("Using qpu_configs from remote response (dict format)")
+        else:
+            raise ValueError("qpu_configs not found in response")
+        transpiler_configs = {"qpu_configs": qpu_configs}
         return transpiler_configs
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):

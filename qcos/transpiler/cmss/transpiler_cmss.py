@@ -24,6 +24,7 @@ from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from qcos.transpiler.cmss.compiler.parser import compile
 from qcos.transpiler.cmss.mapping.hierachy_tree import HierarchyTree, get_block
 from qcos.transpiler.cmss.mapping.mapping_factory import MappingFactory
+from qcos.transpiler.cmss.mapping.sc_mapping import SCRoute
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 from qcos.transpiler.common.errors import TranspilerException
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
@@ -88,14 +89,18 @@ class TranspilerCmss(TranspilerBase):
                 # 不使用b+树进行block查找
                 blk = get_block(ht, value[0])
                 # 使用b+树进行block查找
+                # TODO (wangjujun): use b+ tree by parameter.
                 # blk = get_block_bplus(ht, value[0])
                 if blk is None:
                     # TODO (xudong): need to remove the task item.
                     self.total_qubits -= value[0]
                     continue
                 mapping_dict[key] = value[0]
-                qpu_cfg["operate_area"] = blk
-                qpu_cfg["storage_area"] = [qpu_cfg["closest"][o] for o in blk]
+                if not isinstance(mapper, SCRoute):
+                    qpu_cfg["operate_area"] = blk
+                    qpu_cfg["storage_area"] = [
+                        qpu_cfg["closest"][o] for o in blk
+                    ]
                 mapper.prepare_data(value[0], value[1], qpu_cfg)
                 mapping_res += mapper.execute_with_order()
             return mapping_res, mapping_dict

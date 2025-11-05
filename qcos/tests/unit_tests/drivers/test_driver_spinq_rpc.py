@@ -77,7 +77,14 @@ class TestDriverSpinQRpc(unittest.TestCase):
     def test_fetch_configs(self, mock_user_auth, mock_client_class):
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
-        _results = {"session_id": session_id, "coupling_list": coupling_list}
+        _results = {
+            "session_id": session_id,
+            "coupling_list": coupling_list,
+            "qpu_configs": {
+                "num_qubits": 6,
+                "coupling_map": coupling_list,
+            },
+        }
         mock_user_auth.return_value = True, "", _results
         assert self.driver.fetch_configs() is not None
 
@@ -150,6 +157,8 @@ class TestDriverSpinQRpc(unittest.TestCase):
         assert err_msg is not None
 
     def test_submit_task(self):
+        # 设置 available_num_qubits，因为 convert_gates 需要它来初始化 qubit_depth
+        self.driver.available_num_qubits = 6
         h = H([0])
         cx = CX([1, 2])
         rx = RX([3], [1.0])
