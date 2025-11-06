@@ -32,14 +32,24 @@ def auth(
         None, alias="x-qcos-virtual-instance-id"
     ),
 ):
+    success = True
     auth_data = None
+    device_name = None
+    instance_id = None
+
     if not Config.ENABLE_VIRT:
         return None
-    success, err_msg, device_name, instance_id = (
-        Library.decrypt_virtual_instance_id(
-            x_qcos_virtual_instance_id, salt=Config.PASSWORD_SALT
+
+    if x_qcos_virtual_instance_id is None:
+        success = False
+
+    if success:
+        success, err_msg, device_name, instance_id = (
+            Library.decrypt_virtual_instance_id(
+                x_qcos_virtual_instance_id, salt=Config.PASSWORD_SALT
+            )
         )
-    )
+
     if not success:
         jsonrpc_errors.handle_error_unauthorized(
             "authentication",

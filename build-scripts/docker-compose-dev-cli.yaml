@@ -21,7 +21,7 @@ services:
     restart: always
     stdin_open: True
     tty: True
-    working_dir: /root
+    working_dir: /root/qcos-project
     environment:
       DEBUG: ${DEBUG}
       DEV: ${DEV}

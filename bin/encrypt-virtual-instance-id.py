@@ -112,6 +112,7 @@ USAGE
                 print(f"input : device_name : {device_name}, "
                       f"instance_id: {instance_id}, salt: {salt}")
                 print(f"output: virtual_instance_id: {virtual_instance_id}")
+                print(f"export QCOS_VIRTUAL_INSTANCE_ID={virtual_instance_id}")
             else:
                 print(f"{err_msg}", file=sys.stderr)
 

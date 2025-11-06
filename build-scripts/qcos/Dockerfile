@@ -59,7 +59,7 @@ RUN \
 # create symbolic link for python3
     ln -sf /usr/bin/python3 /usr/bin/python && \
 # install python3 deps
-    pip3 install --no-cache-dir --upgrade -r /root/requirements.txt -r /root/test-requirements.txt && \
+    pip3 install --no-cache-dir --no-deps --upgrade -r /root/requirements.txt -r /root/test-requirements.txt && \
 # generate ssh keys
     rm -rf /root/.ssh/id_rsa && \
     ssh-keygen -t rsa -f /root/.ssh/id_rsa -q -N "" && \

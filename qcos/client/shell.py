@@ -494,7 +494,7 @@ class CommandHelper:
         headers = []
         _values = []
         for k, v in values.items():
-            if not v:
+            if v is None:  # remove None values
                 continue
             headers.append(k.upper())
             keys.append(k)

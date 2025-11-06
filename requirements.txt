@@ -32,4 +32,11 @@ typing-inspection==0.4.1
 typing_extensions==4.13.2
 uvicorn==0.34.2
 wheel==0.45.1
-zerorpc==0.6.3  # SpinQ driver only
+
+# Vendor drivers dependencies
+# SpinQ driver only
+zerorpc==0.6.3
+# UQC driver only
+openqasm3==1.0.1
+python-socketio==5.12.1
+uqc_client==0.0.9

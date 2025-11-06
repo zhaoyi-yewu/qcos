@@ -62,7 +62,7 @@ cd build-scripts
 ```shell
 # BCLinux/CentOS/OpenEuler环境下示例:
 yum install -y python3 python3-pip python3-sphinx python3-requests
-pip3 install -r ./requirements.txt -r ./test-requirements.txt
+pip3 install --no-deps -r ./requirements.txt -r ./test-requirements.txt
 ```
 
 ### 2.2 编译
@@ -77,7 +77,7 @@ poetry build
 
 ### 2.3 安装
 ```shell
-pip3 install ./dist/qcos-1.0.0-py3-none-any.whl
+pip3 install --no-deps ./dist/qcos-1.0.0-py3-none-any.whl
 
 # 创建服务运行需要用到的目录
 mkdir -p /var/qcos/db/; mkdir -p /var/qcos/storage
