@@ -299,17 +299,20 @@ class DriverTiangong1000(DriverQuboBase):
                     response = json.loads(text)
                     err_code = response["code"]
                     err_msg = response["msg"]
-                    data = response["data"]
-                    task_id = data["task_id"]
-                    if err_code != "0":
+                    if err_code == "0":
+                        task_id = response["data"]["task_id"]
+                    else:
                         success = False
                         err_msgs.append(err_msg)
                 else:
                     success = False
                     err_msgs.append(reason)
         except Exception as e:
-            logger.info(f"exception happens: {e}")
-            logger.info(f"exception type: {type(e).__name__}")
+            success = False
+            err_msgs.append(
+                f"Unexpected exception happens."
+                f"Exception type: {type(e).__name__}"
+            )
         finally:
             # remove csv file
             if os.path.exists(csv_filepath):
