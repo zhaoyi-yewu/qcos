@@ -463,3 +463,17 @@ class TestVisitor:
         q_num, ir = vist.visit_program(tree)
         assert len(ir) == 23
         assert q_num == 6
+
+    def test_pi(self):
+        data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        creg c[2];
+        rx(pi) q[0];
+        """
+        vist = Visitor()
+        tree = get_abs_tree(data)
+        q_num, ir = vist.visit_program(tree)
+        assert len(ir) == 1
+        assert q_num == 2

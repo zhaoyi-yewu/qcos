@@ -1117,6 +1117,8 @@ class Visitor:
             if self.is_id(arg.leaf):
                 if func_dict is not None and arg.leaf in func_dict:
                     value = func_dict[arg.leaf]
+                elif arg.leaf == "np.pi":
+                    value = np.pi
                 else:
                     value = self.find_val_in_symbol_table(arg.leaf, pos)
             else:
