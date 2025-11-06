@@ -78,7 +78,7 @@ def get_devices(
     response_info = {}
     for device_name, device_info in sorted(devices.items()):
         if auth_data is not None:
-            if device_name != auth_data["device_name"]:
+            if device_name not in auth_data["device_name"]:
                 continue
         _response_info = _get_device_info(device_info)
         response_info[device_name] = schemas.GetDeviceResponse.model_validate(
@@ -109,7 +109,7 @@ def get_device(
     device_manager = scheduler.get_device_manager()
     device_info = device_manager.get_device(device_name)
     if auth_data is not None:
-        if auth_data["device_name"] != device_name:
+        if device_name not in auth_data["device_name"]:
             device_info = None
     if not device_info:
         jsonrpc_errors.handle_error_not_found(

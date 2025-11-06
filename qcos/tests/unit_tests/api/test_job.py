@@ -194,7 +194,7 @@ class TestJob:
         mock_client = Mock(spec=GetJobStatusRequest)
         mock_client.job_id = None
         mock_merge_results.return_value = response_info
-        get_job_status(mock_client)
+        get_job_status(mock_client, None)
 
     @patch("qcos.api.posiq.routes_jsonrpc.job.merge_results")
     @patch.object(TaskScheduler, "get_result_by_id")
@@ -210,7 +210,7 @@ class TestJob:
         ])
         mock_client = Mock(spec=GetJobResultsRequest)
         mock_client.job_id = None
-        get_job_results(mock_client)
+        get_job_results(mock_client, None)
 
     @patch("qcos.api.posiq.routes_jsonrpc.job.merge_results")
     @patch.object(TaskScheduler, "get_jobs")
@@ -284,7 +284,7 @@ class TestJob:
         mock_client = Mock(spec=SetJobResultsRequest)
         mock_client.job_id = self.job_id
         mock_client.results = {0: {"a": "a"}}
-        set_job_results(mock_client)
+        set_job_results(mock_client, None)
 
     @patch.object(TaskScheduler, "update_job")
     @patch.object(TaskScheduler, "get_result_by_id")
@@ -325,4 +325,4 @@ class TestJob:
         mock_client = Mock(spec=UpdateJobRequest)
         mock_client.job_id = self.job_id
         mock_client.job_priority = 1
-        update_job(mock_client)
+        update_job(mock_client, None)

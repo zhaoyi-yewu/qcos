@@ -414,12 +414,13 @@ def submit_job(
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError]
 )
 def get_job_status(
-    body: schemas.GetJobStatusRequest,
+    body: schemas.GetJobStatusRequest, auth_data: dict | None = Depends(auth)
 ) -> schemas.GetJobStatusResponse:
     """Get job status
 
     Args:
         body(schemas.GetJobStatusRequest): job_id: job ID
+        auth_data: auth data
 
     Returns:
         job status
@@ -433,7 +434,11 @@ def get_job_status(
     response = {}
     err = None
     try:
-        response, err = scheduler.get_result_by_id(job_id)
+        tags = None
+        if auth_data is not None:
+            virtual_instance_id = auth_data["instance_id"]
+            tags = [virtual_instance_id]
+        response, err = scheduler.get_result_by_id(job_id, tags=tags)
     except errors.NotFound:
         # check if job exists
         jsonrpc_errors.handle_error_not_found(
@@ -471,12 +476,13 @@ def get_job_status(
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError]
 )
 def get_job_results(
-    body: schemas.GetJobResultsRequest,
+    body: schemas.GetJobResultsRequest, auth_data: dict | None = Depends(auth)
 ) -> schemas.GetJobResultsResponse:
     """Get job results
 
     Args:
         body(schemas.GetJobResultsRequest): job_id: job ID
+        auth_data: auth data
 
     Returns:
         job results
@@ -489,7 +495,11 @@ def get_job_results(
     # query job results
     response = {}
     try:
-        response, err = scheduler.get_result_by_id(job_id)
+        tags = None
+        if auth_data is not None:
+            virtual_instance_id = auth_data["instance_id"]
+            tags = [virtual_instance_id]
+        response, err = scheduler.get_result_by_id(job_id, tags)
     except errors.NotFound:
         # check if job exists
         jsonrpc_errors.handle_error_not_found(
@@ -655,12 +665,13 @@ def delete_jobs(
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError]
 )
 def set_job_results(
-    body: schemas.SetJobResultsRequest,
+    body: schemas.SetJobResultsRequest, auth_data: dict | None = Depends(auth)
 ) -> schemas.SetJobResultsResponse:
     """Set job results for existing job
 
     Args:
         body(schemas.SetJobResultsRequest): job_id: job ID
+        auth_data: auth data
     """
     func_name = "set_job_results"
     logger.info(f"Call {func_name}: {body}")
@@ -677,7 +688,11 @@ def set_job_results(
     # get existing job results
     response = {}
     try:
-        response, err = scheduler.get_result_by_id(job_id)
+        tags = None
+        if auth_data is not None:
+            virtual_instance_id = auth_data["instance_id"]
+            tags = [virtual_instance_id]
+        response, err = scheduler.get_result_by_id(job_id, tags)
     except errors.NotFound:
         # check if job exists
         jsonrpc_errors.handle_error_not_found(
@@ -806,11 +821,14 @@ def set_job_results(
 
 
 @job_api_v1.method(errors=[])
-def update_job(body: schemas.UpdateJobRequest) -> schemas.UpdateJobResponse:
+def update_job(
+    body: schemas.UpdateJobRequest, auth_data: dict | None = Depends(auth)
+) -> schemas.UpdateJobResponse:
     """Update job
 
     Args:
         body(schemas.UpdateJobsRequest): job info
+        auth_data: auth data
 
     Returns:
         update job param
@@ -823,7 +841,11 @@ def update_job(body: schemas.UpdateJobRequest) -> schemas.UpdateJobResponse:
     job_id = body.job_id
 
     try:
-        response, err = scheduler.get_result_by_id(job_id)
+        tags = None
+        if auth_data is not None:
+            virtual_instance_id = auth_data["instance_id"]
+            tags = [virtual_instance_id]
+        response, err = scheduler.get_result_by_id(job_id, tags)
     except errors.NotFound:
         # check if job exists
         jsonrpc_errors.handle_error_not_found(
@@ -843,7 +865,13 @@ def update_job(body: schemas.UpdateJobRequest) -> schemas.UpdateJobResponse:
 
     # update job
     try:
-        job, err = scheduler.update_job(job_id=job_id, parameters=parameters)
+        tags = None
+        if auth_data is not None:
+            virtual_instance_id = auth_data["instance_id"]
+            tags = [virtual_instance_id]
+        job, err = scheduler.update_job(
+            job_id=job_id, parameters=parameters, tags=tags
+        )
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
             module_name, func_name, (False, str(e))

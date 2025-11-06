@@ -197,18 +197,19 @@ class TaskScheduler(ABC):
             logger.error(f"Prefect execute flow error: {str(e)}")
             raise errors.WorkFlowError(e)
 
-    def get_result_by_id(self, job_id):
+    def get_result_by_id(self, job_id, tags=None):
         """Get result by job id
 
         Args:
             job_id: job id
+            tags: prefect flow tags
 
         Returns:
             flow info
         """
         try:
             state, parameters, results, error_message = (
-                self._task_manager.get_task_flow_result(job_id)
+                self._task_manager.get_task_flow_result(job_id, tags)
             )
             state = self._task_manager.convert_to_qcos_state(state)
             job_status = self.get_job_status(state, results, parameters)
@@ -297,6 +298,7 @@ class TaskScheduler(ABC):
         name=None,
         parameters=None,
         variables=None,
+        tags=None,
     ):
         """Update job
 
@@ -305,6 +307,7 @@ class TaskScheduler(ABC):
             name: job name (Default value = None)
             parameters: job parameters (Default value = None)
             variables: job variables
+            tags: prefect flow tags
 
         Returns:
             if flow exists
@@ -312,7 +315,7 @@ class TaskScheduler(ABC):
         res = None
         err_msg = None
         # 1 Get flow run
-        flow_run = self._task_manager.get_task_flow_run(job_id)
+        flow_run = self._task_manager.get_task_flow_run(job_id, tags)
         if flow_run is None:
             err_msg = f"Job: '{job_id}' is not found"
             return None, f"Execute update job failed: {err_msg}"
@@ -328,7 +331,7 @@ class TaskScheduler(ABC):
                 return res, err_msg
         else:
             # 3 Delete task
-            self._task_manager.delete_task_flow_run([job_id])
+            self._task_manager.delete_task_flow_run([job_id], tags)
             # 4 Update parameters and resubmit the task
             job_json_info["data"]["job_priority"] = job_priority
             backend = job_json_info["data"]["backend"]

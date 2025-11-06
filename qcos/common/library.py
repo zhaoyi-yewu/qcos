@@ -1351,11 +1351,11 @@ class Library:
         return configs
 
     @staticmethod
-    def encrypt_virtual_instance_id(device_name, uuid_str, salt=""):
+    def encrypt_virtual_instance_id(device_name_list, uuid_str, salt=""):
         """Encrypt virtual instance id
 
         Args:
-            device_name: device name
+            device_name_list: device name
             uuid_str: uuid string
             salt: salt
 
@@ -1364,12 +1364,13 @@ class Library:
         """
         new_uuid = None
         try:
-            uuid_salt_str = device_name + "-" + uuid_str + "-" + salt
+            device_name = "+".join(device_name_list)
+            uuid_salt_str = device_name + "|" + uuid_str + "|" + salt
             md5_hash = hashlib.md5(uuid_salt_str.encode("utf-8")).hexdigest()
             verify_code = (
                 md5_hash[0] + md5_hash[1] + md5_hash[-2] + md5_hash[-1]
             )
-            new_uuid = device_name + "-" + uuid_str + "-" + verify_code
+            new_uuid = device_name + "|" + uuid_str + "|" + verify_code
         except Exception as e:
             err_msg = f"Encryption failed. Reason: {repr(e)}"
             return False, err_msg, None
@@ -1389,21 +1390,22 @@ class Library:
         err_msg = None
         try:
             # split virtual_instance_id
-            first = virtual_instance_id.index("-")
-            last = virtual_instance_id.rindex("-")
+            first = virtual_instance_id.index("|")
+            last = virtual_instance_id.rindex("|")
 
             device_name = virtual_instance_id[:first]
+            device_name_list = device_name.split("+")
             instance_id = virtual_instance_id[first + 1 : last]
             actual_verify_code = virtual_instance_id[last + 1 :]
 
-            uuid_salt_str = f"{device_name}-{instance_id}-{salt}"
+            uuid_salt_str = f"{device_name}|{instance_id}|{salt}"
             md5_hash = hashlib.md5(uuid_salt_str.encode("utf-8")).hexdigest()
             expect_verify_code = (
                 md5_hash[0] + md5_hash[1] + md5_hash[-2] + md5_hash[-1]
             )
 
             if actual_verify_code == expect_verify_code:
-                return True, err_msg, device_name, instance_id
+                return True, err_msg, device_name_list, instance_id
 
             err_msg = "Decryption failed. Reason: Unauthorized"
             return False, err_msg, None, None

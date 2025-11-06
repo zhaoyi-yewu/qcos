@@ -380,16 +380,17 @@ class TaskFlowManager(ABC):
 
         return job_id
 
-    def get_task_flow_result(self, job_id):
+    def get_task_flow_result(self, job_id, tags=None):
         """Get flow run state and result
 
         Args:
             job_id: job uuid
+            tags: prefect flow tags
 
         Returns:
             state, parameters, result, err_msg
         """
-        flow_run_id = self.get_flow_run_id_by_job_id(job_id)
+        flow_run_id = self.get_flow_run_id_by_job_id(job_id, tags)
         if flow_run_id is None:
             raise ObjectNotFound(Exception("Job not found"))
         state, parameters, result, err_msg = (
@@ -627,14 +628,15 @@ class TaskFlowManager(ABC):
             })
         return results_list
 
-    def get_task_flow_run(self, job_id):
+    def get_task_flow_run(self, job_id, tags=None):
         """Get flow run.
         Args:
             job_id: job id
+            tags: prefect flow tags
         Returns:
             flow run
         """
-        flow_run_id = self.get_flow_run_id_by_job_id(job_id)
+        flow_run_id = self.get_flow_run_id_by_job_id(job_id, tags)
         flow_run = None
         try:
             flow_run = self._sync_client.read_flow_run(flow_run_id)
