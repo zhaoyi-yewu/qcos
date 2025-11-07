@@ -243,6 +243,22 @@ class T(GateOperation):
         return list([RZ(targets=self.targets, arg_value=np.pi / 4)])
 
 
+class P(GateOperation):
+    """P门
+
+    P门是单量子比特的相位旋转门，用于在Bloch球上实现绕Z轴旋转λ角度的操作。
+    它对量子态的 |1⟩ 分量施加一个相位因子 e^{iλ}，而 |0⟩ 分量保持不变。
+    """
+
+    def __init__(self, targets=None, arg_value=None) -> None:
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_P, targets, arg_value, hermitian=False
+        )
+
+    def default_decompose(self):
+        return list([RZ(targets=self.targets, arg_value=self.arg_value)])
+
+
 class TDG(GateOperation):
     """TDG门
 
@@ -306,6 +322,55 @@ class RZ(GateOperation):
 
     def default_decompose(self):
         return list([self])
+
+
+class SX(GateOperation):
+    """SX门（也称为 √X 门 或 square-root of NOT 门）
+
+    Pauli-X 门（即量子NOT门）的一半旋转，
+    它在Bloch球上对应于 绕 X 轴旋转 π/2 的操作。
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+    ) -> None:
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_SX, targets, arg_value, hermitian=False
+        )
+
+    def default_decompose(self):
+        gates = SDG(targets=self.targets).decompose()
+        gates += H(targets=self.targets).decompose()
+        gates += SDG(targets=self.targets).decompose()
+        return gates
+
+
+class SXDG(GateOperation):
+    """SXDG 门（也写作 √X† 或 SX⁻¹）是 SX 门的共轭转置（逆操作），
+    也称为 inverse square-root of X gate。
+
+    它在 Bloch 球上对应于 绕 X 轴旋转 -π/2 的操作。
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+    ) -> None:
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_SXDG,
+            targets,
+            arg_value,
+            hermitian=False,
+        )
+
+    def default_decompose(self):
+        gates = S(targets=self.targets).decompose()
+        gates += H(targets=self.targets).decompose()
+        gates += S(targets=self.targets).decompose()
+        return gates
 
 
 class CZ(GateOperation):
@@ -517,6 +582,275 @@ class CRZ(GateOperation):
         return gates
 
 
+class CU1(GateOperation):
+    """CU1 门是一个 **受控相位旋转门**，是单量子比特 U1(λ) 门的受控版本。
+    当控制量子比特为 |1⟩ 时，目标量子比特执行一个绕 Z 轴旋转角度 λ 的 U1 门；
+    当控制量子比特为 |0⟩ 时，不进行任何操作。"""
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_CU1,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates += U1(
+            targets=[self.targets[0]], arg_value=self.arg_value[0] / 2
+        ).decompose()
+        gates.append(CX(self.targets))
+        gates += U1(
+            targets=[self.targets[1]], arg_value=-self.arg_value[0] / 2
+        ).decompose()
+        gates.append(CX(self.targets))
+        gates += U1(
+            targets=[self.targets[1]], arg_value=self.arg_value[0] / 2
+        ).decompose()
+        return gates
+
+
+class CP(GateOperation):
+    """CP门（Controlled-Phase 门）
+
+    CP 门（Controlled-Phase Gate）是一个 **受控相位旋转门**，
+    对目标量子比特施加受控的 Z 轴旋转操作。
+    当控制量子比特为 |1⟩ 时，目标量子比特执行绕 Z 轴旋转角度 λ 的相位门 P(λ)；
+    当控制量子比特为 |0⟩ 时，目标量子比特保持不变。"""
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_CP,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates += P(
+            targets=[self.targets[0]], arg_value=self.arg_value[0] / 2
+        ).decompose()
+        gates.append(CX(self.targets))
+        gates += P(
+            targets=[self.targets[1]], arg_value=-self.arg_value[0] / 2
+        ).decompose()
+        gates.append(CX(self.targets))
+        gates += P(
+            targets=[self.targets[1]], arg_value=self.arg_value[0] / 2
+        ).decompose()
+        return gates
+
+
+class CU3(GateOperation):
+    """CU3门（受控U3门）
+
+    CU3 门是一种两量子比特门，用于在控制比特为 |1⟩ 时，
+    对目标比特施加 U3(θ, φ, λ) 操作；当控制比特为 |0⟩ 时，
+    目标比特保持不变。"""
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_CU3,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates += U1(
+            targets=[self.targets[0]],
+            arg_value=(self.arg_value[2] + self.arg_value[1]) / 2,
+        ).decompose()
+        gates += U1(
+            targets=[self.targets[1]],
+            arg_value=(self.arg_value[2] - self.arg_value[1]) / 2,
+        ).decompose()
+        gates.append(CX(self.targets))
+        gates += U3(
+            targets=[self.targets[1]],
+            arg_value=[
+                -self.arg_value[0] / 2,
+                0,
+                -(self.arg_value[1] + self.arg_value[2]) / 2,
+            ],
+        ).decompose()
+        gates.append(CX(self.targets))
+        gates += U3(
+            targets=[self.targets[1]],
+            arg_value=[
+                self.arg_value[0] / 2,
+                self.arg_value[1],
+                0,
+            ],
+        ).decompose()
+        return gates
+
+
+class CSX(GateOperation):
+    """CSX门（受控SX门）
+
+    CSX 门是一种两量子比特受控门，
+    当控制比特处于 |1⟩ 状态时，对目标比特施加 SX 门（√X 门）；
+    当控制比特为 |0⟩ 时，目标比特保持不变。"""
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_CSX,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates += H([self.targets[1]]).decompose()
+        gates += CU1(self.targets, [np.pi / 2]).decompose()
+        gates += H([self.targets[1]]).decompose()
+        return gates
+
+
+class CU(GateOperation):
+    """CU门（受控U门）
+
+    CU 门是一种通用的两量子比特受控门，
+    当控制比特处于 |1⟩ 状态时，对目标比特施加一个任意的单量子比特酉变换 U；
+    当控制比特为 |0⟩ 时，目标比特保持不变。"""
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_CU,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates += P([self.targets[0]], [self.arg_value[3]]).decompose()
+        gates += P(
+            [self.targets[0]], [(self.arg_value[2] + self.arg_value[1]) / 2]
+        ).decompose()
+        gates += P(
+            [self.targets[1]], [(self.arg_value[2] - self.arg_value[1]) / 2]
+        ).decompose()
+        gates.append(CX(self.targets))
+        gates += U3(
+            [self.targets[1]],
+            [
+                -self.arg_value[0] / 2,
+                0,
+                -(self.arg_value[1] + self.arg_value[2]) / 2,
+            ],
+        ).decompose()
+        gates.append(CX(self.targets))
+        gates += U3(
+            [self.targets[1]],
+            [
+                self.arg_value[0] / 2,
+                self.arg_value[1],
+                0,
+            ],
+        ).decompose()
+        return gates
+
+
+class RXX(GateOperation):
+    """RXX门（双量子比特 X-X 旋转门）
+
+    RXX 门是一种双量子比特旋转门，
+    用于在两个量子比特的 X 方向上进行相互耦合的旋转操作。"""
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_RXX,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates += U3(
+            [self.targets[0]], [np.pi / 2, self.arg_value[0], 0]
+        ).decompose()
+        gates += H([self.targets[1]]).decompose()
+        gates.append(CX([self.targets[0], self.targets[1]]))
+        gates += U1([self.targets[1]], -self.arg_value[0]).decompose()
+        gates.append(CX([self.targets[0], self.targets[1]]))
+        gates += H([self.targets[1]]).decompose()
+        gates += U2(
+            [self.targets[0]], [-np.pi, np.pi - self.arg_value[0]]
+        ).decompose()
+        return gates
+
+
+class RZZ(GateOperation):
+    """RZZ门（双量子比特 Z-Z 旋转门）
+
+    RZZ 门是一种双量子比特旋转门，
+    用于在两个量子比特的 Z 方向上进行相互耦合的旋转操作。"""
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_RZZ,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates.append(CX(self.targets))
+        gates += U1([self.targets[1]], [self.arg_value[0]]).decompose()
+        gates.append(CX(self.targets))
+        return gates
+
+
 class CCX(GateOperation):
     """Toffoli门，如果两个控制量子比特都处于|1⟩状态，则对目标量子比特应用X门（Pauli-X门）"""
 
@@ -547,6 +881,303 @@ class CCX(GateOperation):
         gates += T([self.targets[0]]).decompose()
         gates += TDG([self.targets[1]]).decompose()
         gates.append(CX([self.targets[0], self.targets[1]]))
+        return gates
+
+
+class CSWAP(GateOperation):
+    """CSWAP 门（也称 Fredkin 门）是一种 三比特受控交换门，
+
+    它根据第一个比特（控制比特）的状态，决定是否交换后两个比特（目标比特）的状态。"""
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.TRIPLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.THREE_QUBIT_GATE_CSWAP,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates.append(CX([self.targets[2], self.targets[1]]))
+        gates += CCX(self.targets).decompose()
+        gates.append(CX([self.targets[2], self.targets[1]]))
+        return gates
+
+
+class RCCX(GateOperation):
+    """RCCX门（相对相位受控受控X门 / Relative-Phase Toffoli Gate）
+
+    RCCX 门是一种三量子比特逻辑门，
+    是 Toffoli 门（CCX）的一个相对相位版本，
+    即在实现相同控制逻辑的同时，引入了相位差，
+    从而在物理实现上更简洁、资源消耗更低。"""
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.TRIPLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.THREE_QUBIT_GATE_RCCX,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates += U2([self.targets[2]], [0, np.pi]).decompose()
+        gates += U1([self.targets[2]], [np.pi / 4]).decompose()
+        gates.append(CX([self.targets[1], self.targets[2]]))
+        gates += U1([self.targets[2]], [-np.pi / 4]).decompose()
+        gates.append(CX([self.targets[0], self.targets[2]]))
+        gates += U1([self.targets[2]], [np.pi / 4]).decompose()
+        gates.append(CX([self.targets[1], self.targets[2]]))
+        gates += U1([self.targets[2]], [-np.pi / 4]).decompose()
+        gates += U2([self.targets[2]], [0, np.pi]).decompose()
+        return gates
+
+
+class RC3X(GateOperation):
+    """RC3X门（Relative-phase Toffoli 门）
+
+    RC3X 门是 Toffoli（CCX）门的相对相位版本，
+    当两个控制量子比特均为 |1⟩ 时，对目标量子比特施加 X 操作，
+    但在部分叠加态上引入相对相位差。"""
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.FOUR_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.FOUR_QUBIT_GATE_RC3X,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates += U2([self.targets[3]], [0, np.pi]).decompose()
+        gates += U1([self.targets[3]], [np.pi / 4]).decompose()
+        gates.append(CX([self.targets[2], self.targets[3]]))
+        gates += U1([self.targets[3]], [-np.pi / 4]).decompose()
+        gates += U2([self.targets[3]], [0, np.pi]).decompose()
+        gates.append(CX([self.targets[0], self.targets[3]]))
+        gates += U1([self.targets[3]], [np.pi / 4]).decompose()
+        gates.append(CX([self.targets[1], self.targets[3]]))
+        gates += U1([self.targets[3]], [-np.pi / 4]).decompose()
+        gates.append(CX([self.targets[0], self.targets[3]]))
+        gates += U1([self.targets[3]], [np.pi / 4]).decompose()
+        gates.append(CX([self.targets[1], self.targets[3]]))
+        gates += U1([self.targets[3]], [-np.pi / 4]).decompose()
+        gates += U2([self.targets[3]], [0, np.pi]).decompose()
+        gates += U1([self.targets[3]], [np.pi / 4]).decompose()
+        gates.append(CX([self.targets[2], self.targets[3]]))
+        gates += U1([self.targets[3]], [-np.pi / 4]).decompose()
+        gates += U2([self.targets[3]], [0, np.pi]).decompose()
+        return gates
+
+
+class C3X(GateOperation):
+    """C3X门（三控制X门 / 三重受控非门）
+
+    C3X 门是多控制量子门的一种，具有三个控制量子比特和一个目标量子比特。
+    当且仅当三个控制量子比特均为 |1⟩ 时，C3X 门对目标量子比特施加 X（非）操作；
+    否则，目标量子比特保持不变。"""
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.FOUR_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.FOUR_QUBIT_GATE_C3X,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates += H([self.targets[3]]).decompose()
+        gates += P([self.targets[0]], [np.pi / 8]).decompose()
+        gates += P([self.targets[1]], [np.pi / 8]).decompose()
+        gates += P([self.targets[2]], [np.pi / 8]).decompose()
+        gates += P([self.targets[3]], [np.pi / 8]).decompose()
+        gates.append(CX([self.targets[0], self.targets[1]]))
+        gates += P([self.targets[1]], [-np.pi / 8]).decompose()
+        gates.append(CX([self.targets[0], self.targets[1]]))
+        gates.append(CX([self.targets[1], self.targets[2]]))
+        gates += P([self.targets[2]], [-np.pi / 8]).decompose()
+        gates.append(CX([self.targets[0], self.targets[2]]))
+        gates += P([self.targets[2]], [np.pi / 8]).decompose()
+        gates.append(CX([self.targets[1], self.targets[2]]))
+        gates += P([self.targets[2]], [-np.pi / 8]).decompose()
+        gates.append(CX([self.targets[0], self.targets[2]]))
+        gates.append(CX([self.targets[2], self.targets[3]]))
+        gates += P([self.targets[3]], [-np.pi / 8]).decompose()
+        gates.append(CX([self.targets[1], self.targets[3]]))
+        gates += P([self.targets[3]], [np.pi / 8]).decompose()
+        gates.append(CX([self.targets[2], self.targets[3]]))
+        gates += P([self.targets[3]], [-np.pi / 8]).decompose()
+        gates.append(CX([self.targets[0], self.targets[3]]))
+        gates += P([self.targets[3]], [np.pi / 8]).decompose()
+        gates.append(CX([self.targets[2], self.targets[3]]))
+        gates += P([self.targets[3]], [-np.pi / 8]).decompose()
+        gates.append(CX([self.targets[1], self.targets[3]]))
+        gates += P([self.targets[3]], [np.pi / 8]).decompose()
+        gates.append(CX([self.targets[2], self.targets[3]]))
+        gates += P([self.targets[3]], [-np.pi / 8]).decompose()
+        gates.append(CX([self.targets[0], self.targets[3]]))
+        gates += H([self.targets[3]]).decompose()
+        return gates
+
+
+class C3SQRTX(GateOperation):
+    """C3√X门（三控制√X门 / 三重受控平方根X门）
+
+    C3√X 门是具有三个控制量子比特的受控平方根X门（Controlled-Square-Root-of-X）。
+    当且仅当三个控制量子比特均处于 |1⟩ 状态时，
+    它对目标量子比特施加 √X 操作（即 X 门的平方根）；
+    否则，目标量子比特保持不变。"""
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.FOUR_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.FOUR_QUBIT_GATE_C3SQRTX,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates += H([self.targets[3]]).decompose()
+        gates += CU1(
+            [self.targets[0], self.targets[3]], [np.pi / 8]
+        ).decompose()
+        gates += H([self.targets[3]]).decompose()
+        gates.append(CX([self.targets[0], self.targets[1]]))
+        gates += H([self.targets[3]]).decompose()
+        gates += CU1(
+            [self.targets[1], self.targets[3]], [-np.pi / 8]
+        ).decompose()
+        gates += H([self.targets[3]]).decompose()
+        gates.append(CX([self.targets[0], self.targets[1]]))
+        gates += H([self.targets[3]]).decompose()
+        gates += CU1(
+            [self.targets[1], self.targets[3]], [np.pi / 8]
+        ).decompose()
+        gates += H([self.targets[3]]).decompose()
+        gates.append(CX([self.targets[1], self.targets[2]]))
+        gates += H([self.targets[3]]).decompose()
+        gates += CU1(
+            [self.targets[2], self.targets[3]], [-np.pi / 8]
+        ).decompose()
+        gates += H([self.targets[3]]).decompose()
+        gates.append(CX([self.targets[0], self.targets[2]]))
+        gates += H([self.targets[3]]).decompose()
+        gates += CU1(
+            [self.targets[2], self.targets[3]], [np.pi / 8]
+        ).decompose()
+        gates += H([self.targets[3]]).decompose()
+        gates.append(CX([self.targets[1], self.targets[2]]))
+        gates += H([self.targets[3]]).decompose()
+        gates += CU1(
+            [self.targets[2], self.targets[3]], [-np.pi / 8]
+        ).decompose()
+        gates += H([self.targets[3]]).decompose()
+        gates.append(CX([self.targets[0], self.targets[2]]))
+        gates += H([self.targets[3]]).decompose()
+        gates += CU1(
+            [self.targets[2], self.targets[3]], [np.pi / 8]
+        ).decompose()
+        gates += H([self.targets[3]]).decompose()
+
+        return gates
+
+
+class C4X(GateOperation):
+    """C4X门（四控制X门 / 四重受控非门）
+
+    C4X 门是具有四个控制量子比特的多控制X门（Multi-Controlled X Gate），
+    也称为四重受控非门（Four-Controlled-NOT Gate）。
+
+    当且仅当四个控制量子比特全部处于 |1⟩ 状态时，
+    C4X 门对目标量子比特施加 X 操作（即翻转其量子态：|0⟩ ↔ |1⟩）；
+    否则，目标量子比特保持不变。"""
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.FIVE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.FIVE_QUBIT_GATE_C4X,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates += H([self.targets[4]]).decompose()
+        gates += CU1(
+            [self.targets[3], self.targets[4]], [np.pi / 2]
+        ).decompose()
+        gates += H([self.targets[4]]).decompose()
+        gates += C3X(
+            [
+                self.targets[0],
+                self.targets[1],
+                self.targets[2],
+                self.targets[3],
+            ]
+        ).decompose()
+        gates += H([self.targets[4]]).decompose()
+        gates += CU1(
+            [self.targets[3], self.targets[4]], [-np.pi / 2]
+        ).decompose()
+        gates += H([self.targets[4]]).decompose()
+        gates += C3X(
+            [
+                self.targets[0],
+                self.targets[1],
+                self.targets[2],
+                self.targets[3],
+            ]
+        ).decompose()
+        gates += C3SQRTX(
+            [
+                self.targets[0],
+                self.targets[1],
+                self.targets[2],
+                self.targets[4],
+            ]
+        ).decompose()
+
         return gates
 
 
@@ -624,10 +1255,16 @@ def create_gate(name, targets=None, arg_value=None, allow_undefined=False):
         return RY(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_RZ:
         return RZ(targets, arg_value)
+    elif name == Constant.SINGLE_QUBIT_GATE_SX:
+        return SX(targets, arg_value)
+    elif name == Constant.SINGLE_QUBIT_GATE_SXDG:
+        return SXDG(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_S:
         return S(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_T:
         return T(targets, arg_value)
+    elif name == Constant.SINGLE_QUBIT_GATE_P:
+        return P(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_SDG:
         return SDG(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_TDG:
@@ -648,8 +1285,34 @@ def create_gate(name, targets=None, arg_value=None, allow_undefined=False):
         return CRY(targets, arg_value)
     elif name == Constant.TWO_QUBIT_GATE_CRZ:
         return CRZ(targets, arg_value)
+    elif name == Constant.TWO_QUBIT_GATE_CU1:
+        return CU1(targets, arg_value)
+    elif name == Constant.TWO_QUBIT_GATE_CP:
+        return CP(targets, arg_value)
+    elif name == Constant.TWO_QUBIT_GATE_CU3:
+        return CU3(targets, arg_value)
+    elif name == Constant.TWO_QUBIT_GATE_CSX:
+        return CSX(targets, arg_value)
+    elif name == Constant.TWO_QUBIT_GATE_CU:
+        return CU(targets, arg_value)
+    elif name == Constant.TWO_QUBIT_GATE_RXX:
+        return RXX(targets, arg_value)
+    elif name == Constant.TWO_QUBIT_GATE_RZZ:
+        return RZZ(targets, arg_value)
     elif name == Constant.THREE_QUBIT_GATE_CCX:
         return CCX(targets, arg_value)
+    elif name == Constant.THREE_QUBIT_GATE_CSWAP:
+        return CSWAP(targets, arg_value)
+    elif name == Constant.THREE_QUBIT_GATE_RCCX:
+        return RCCX(targets, arg_value)
+    elif name == Constant.FOUR_QUBIT_GATE_RC3X:
+        return RC3X(targets, arg_value)
+    elif name == Constant.FOUR_QUBIT_GATE_C3X:
+        return C3X(targets, arg_value)
+    elif name == Constant.FOUR_QUBIT_GATE_C3SQRTX:
+        return C3SQRTX(targets, arg_value)
+    elif name == Constant.FIVE_QUBIT_GATE_C4X:
+        return C4X(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_U1:
         return U1(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_U2:

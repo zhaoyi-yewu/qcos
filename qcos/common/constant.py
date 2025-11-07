@@ -76,9 +76,12 @@ class Constant:
     SINGLE_QUBIT_GATE_H = "h"
     SINGLE_QUBIT_GATE_S = "s"
     SINGLE_QUBIT_GATE_T = "t"
+    SINGLE_QUBIT_GATE_P = "p"
     SINGLE_QUBIT_GATE_RX = "rx"
     SINGLE_QUBIT_GATE_RY = "ry"
     SINGLE_QUBIT_GATE_RZ = "rz"
+    SINGLE_QUBIT_GATE_SX = "sx"
+    SINGLE_QUBIT_GATE_SXDG = "sxdg"
     SINGLE_QUBIT_GATE_SDG = "sdg"
     SINGLE_QUBIT_GATE_TDG = "tdg"
     SINGLE_QUBIT_GATE_U1 = "u1"
@@ -91,9 +94,12 @@ class Constant:
         SINGLE_QUBIT_GATE_H,
         SINGLE_QUBIT_GATE_S,
         SINGLE_QUBIT_GATE_T,
+        SINGLE_QUBIT_GATE_P,
         SINGLE_QUBIT_GATE_RX,
         SINGLE_QUBIT_GATE_RY,
         SINGLE_QUBIT_GATE_RZ,
+        SINGLE_QUBIT_GATE_SX,
+        SINGLE_QUBIT_GATE_SXDG,
         SINGLE_QUBIT_GATE_SDG,
         SINGLE_QUBIT_GATE_TDG,
         SINGLE_QUBIT_GATE_U1,
@@ -109,6 +115,13 @@ class Constant:
     TWO_QUBIT_GATE_CY = "cy"
     TWO_QUBIT_GATE_CZ = "cz"
     TWO_QUBIT_GATE_SWAP = "swap"
+    TWO_QUBIT_GATE_CU1 = "cu1"
+    TWO_QUBIT_GATE_CP = "cp"
+    TWO_QUBIT_GATE_CU3 = "cu3"
+    TWO_QUBIT_GATE_CSX = "csx"
+    TWO_QUBIT_GATE_CU = "cu"
+    TWO_QUBIT_GATE_RXX = "rxx"
+    TWO_QUBIT_GATE_RZZ = "rzz"
     TWO_QUBIT_GATE_LIST = [
         TWO_QUBIT_GATE_CH,
         TWO_QUBIT_GATE_CRX,
@@ -118,13 +131,44 @@ class Constant:
         TWO_QUBIT_GATE_CY,
         TWO_QUBIT_GATE_CZ,
         TWO_QUBIT_GATE_SWAP,
+        TWO_QUBIT_GATE_CU1,
+        TWO_QUBIT_GATE_CP,
+        TWO_QUBIT_GATE_CU3,
+        TWO_QUBIT_GATE_CSX,
+        TWO_QUBIT_GATE_CU,
+        TWO_QUBIT_GATE_RXX,
+        TWO_QUBIT_GATE_RZZ,
     ]
     # three-qubit gates
     THREE_QUBIT_GATE_CCX = "ccx"
-    THREE_QUBIT_GATE_LIST = [THREE_QUBIT_GATE_CCX]
+    THREE_QUBIT_GATE_CSWAP = "cswap"
+    THREE_QUBIT_GATE_RCCX = "rccx"
+    THREE_QUBIT_GATE_LIST = [
+        THREE_QUBIT_GATE_CCX,
+        THREE_QUBIT_GATE_CSWAP,
+        THREE_QUBIT_GATE_RCCX,
+    ]
+    # four-qubit gates
+    FOUR_QUBIT_GATE_RC3X = "rc3x"
+    FOUR_QUBIT_GATE_C3X = "c3x"
+    FOUR_QUBIT_GATE_C3SQRTX = "c3sqrtx"
+    FOUR_QUBIT_GATE_LIST = [
+        FOUR_QUBIT_GATE_RC3X,
+        FOUR_QUBIT_GATE_C3X,
+        FOUR_QUBIT_GATE_C3SQRTX,
+    ]
+    # five-qubit gates
+    FIVE_QUBIT_GATE_C4X = "c4x"
+    FIVE_QUBIT_GATE_LIST = [
+        FIVE_QUBIT_GATE_C4X,
+    ]
     # all gate list
     ALL_GATE_LIST = (
-        SINGLE_QUBIT_GATE_LIST + TWO_QUBIT_GATE_LIST + THREE_QUBIT_GATE_LIST
+        SINGLE_QUBIT_GATE_LIST
+        + TWO_QUBIT_GATE_LIST
+        + THREE_QUBIT_GATE_LIST
+        + FOUR_QUBIT_GATE_LIST
+        + FIVE_QUBIT_GATE_LIST
     )
     ALL_GATES = "all"
 

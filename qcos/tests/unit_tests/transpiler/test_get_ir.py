@@ -210,3 +210,49 @@ class TestGetIr:
         validate_gate_ir(ir[1], "h", ["3"], 1, True)
         validate_gate_ir(ir[2], "h", ["2"], 1, True)
         validate_gate_ir(ir[3], "h", ["4"], 1, True)
+
+    def test_gate(self):
+        data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[5];
+        creg c[5];
+        p(pi) q[0];
+        sx q[0];
+        sxdg q[1];
+        cswap q[0], q[1], q[2];
+        cu1(pi/2) q[0], q[1];
+        cp (pi/2) q[1], q[2];
+        cu3(pi/2, pi/2, pi/2) q[0], q[1];
+        csx q[1], q[2];
+        cu(pi/2, pi/2, pi/2,pi) q[0], q[2];
+        rxx(pi/2) q[0],q[1];
+        rzz(pi/2) q[0],q[1];
+        rccx q[0], q[1], q[2];
+        rc3x q[0], q[1], q[2], q[3];
+        c3x q[0], q[1], q[2], q[3];
+        c3sqrtx q[0], q[1], q[2], q[3];
+        c4x q[0], q[1], q[2], q[3], q[4];
+        """
+        tree = get_abs_tree(data)
+        assert tree is not None
+        q_num, ir = get_ir(tree)
+        assert ir is not None
+        assert q_num == 5
+        assert len(ir) == 16
+        validate_gate_ir(ir[0], "p", ["0"], 1, False)
+        validate_gate_ir(ir[1], "sx", ["0"], 1, False)
+        validate_gate_ir(ir[2], "sxdg", ["1"], 1, False)
+        validate_gate_ir(ir[3], "cswap", ["0", "1", "2"], 3, False)
+        validate_gate_ir(ir[4], "cu1", ["0", "1"], 2, False)
+        validate_gate_ir(ir[5], "cp", ["1", "2"], 2, False)
+        validate_gate_ir(ir[6], "cu3", ["0", "1"], 2, False)
+        validate_gate_ir(ir[7], "csx", ["1", "2"], 2, False)
+        validate_gate_ir(ir[8], "cu", ["0", "2"], 2, False)
+        validate_gate_ir(ir[9], "rxx", ["0", "1"], 2, False)
+        validate_gate_ir(ir[10], "rzz", ["0", "1"], 2, False)
+        validate_gate_ir(ir[11], "rccx", ["0", "1", "2"], 3, False)
+        validate_gate_ir(ir[12], "rc3x", ["0", "1", "2", "3"], 4, False)
+        validate_gate_ir(ir[13], "c3x", ["0", "1", "2", "3"], 4, False)
+        validate_gate_ir(ir[14], "c3sqrtx", ["0", "1", "2", "3"], 4, False)
+        validate_gate_ir(ir[15], "c4x", ["0", "1", "2", "3", "4"], 5, False)

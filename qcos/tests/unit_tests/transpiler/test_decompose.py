@@ -435,6 +435,157 @@ class TestDecompose:
         validate_gate(decom_gate[1], "cx", [1, 0], [])
         validate_gate(decom_gate[2], "cx", [0, 1], [])
 
+    def test_p_decompose(self):
+        p = create_gate("p", [0], [np.pi])
+        assert p.operation_type == OperationType.SINGLE_QUBIT_OPERATION.value
+        assert p.name == "p"
+        assert p.hermitian is False
+        decom_gate = p.decompose()
+        assert len(decom_gate) == 1
+        validate_gate(decom_gate[0], "rz", [0], [np.pi])
+
+    def test_sx_decompose(self):
+        sx = create_gate("sx", [0], [])
+        assert sx.operation_type == OperationType.SINGLE_QUBIT_OPERATION.value
+        assert sx.name == "sx"
+        assert sx.hermitian is False
+        decom_gate = sx.decompose()
+        assert len(decom_gate) == 8
+        validate_gate(decom_gate[0], "rx", [0], [3 * np.pi / 2])
+        validate_gate(decom_gate[1], "ry", [0], [3 * np.pi / 2])
+        validate_gate(decom_gate[2], "rx", [0], [np.pi / 2])
+        validate_gate(decom_gate[3], "ry", [0], [np.pi / 2])
+        validate_gate(decom_gate[4], "rx", [0], [np.pi])
+        validate_gate(decom_gate[5], "rx", [0], [3 * np.pi / 2])
+        validate_gate(decom_gate[6], "ry", [0], [3 * np.pi / 2])
+        validate_gate(decom_gate[7], "rx", [0], [np.pi / 2])
+
+    def test_sxdg_decompose(self):
+        sx = create_gate("sxdg", [0], [])
+        assert sx.operation_type == OperationType.SINGLE_QUBIT_OPERATION.value
+        assert sx.name == "sxdg"
+        assert sx.hermitian is False
+        decom_gate = sx.decompose()
+        assert len(decom_gate) == 8
+        validate_gate(decom_gate[0], "rx", [0], [3 * np.pi / 2])
+        validate_gate(decom_gate[1], "ry", [0], [np.pi / 2])
+        validate_gate(decom_gate[2], "rx", [0], [np.pi / 2])
+        validate_gate(decom_gate[3], "ry", [0], [np.pi / 2])
+        validate_gate(decom_gate[4], "rx", [0], [np.pi])
+        validate_gate(decom_gate[5], "rx", [0], [3 * np.pi / 2])
+        validate_gate(decom_gate[6], "ry", [0], [np.pi / 2])
+        validate_gate(decom_gate[7], "rx", [0], [np.pi / 2])
+
+    def test_cswap_decompose(self):
+        cswap = create_gate("cswap", [0, 1, 2], [])
+        assert (
+            cswap.operation_type == OperationType.TRIPLE_QUBIT_OPERATION.value
+        )
+        assert cswap.name == "cswap"
+        assert cswap.hermitian is False
+        decom_gate = cswap.decompose()
+        assert len(decom_gate) == 19
+
+    def test_cu1_decompose(self):
+        cu1 = create_gate("cu1", [0, 1], [np.pi / 2])
+        assert cu1.operation_type == OperationType.DOUBLE_QUBIT_OPERATION.value
+        assert cu1.name == "cu1"
+        assert cu1.hermitian is False
+        decom_gate = cu1.decompose()
+        assert len(decom_gate) == 5
+
+    def test_cp_decompose(self):
+        cp = create_gate("cp", [0, 1], [np.pi / 2])
+        assert cp.operation_type == OperationType.DOUBLE_QUBIT_OPERATION.value
+        assert cp.name == "cp"
+        assert cp.hermitian is False
+        decom_gate = cp.decompose()
+        assert len(decom_gate) == 5
+
+    def test_cu3_decompose(self):
+        cu3 = create_gate("cu3", [0, 1], [1, 2, 3])
+        assert cu3.operation_type == OperationType.DOUBLE_QUBIT_OPERATION.value
+        assert cu3.name == "cu3"
+        assert cu3.hermitian is False
+        decom_gate = cu3.decompose()
+        assert len(decom_gate) == 14
+
+    def test_csx_decompose(self):
+        csx = create_gate("csx", [0, 1], [])
+        assert csx.operation_type == OperationType.DOUBLE_QUBIT_OPERATION.value
+        assert csx.name == "csx"
+        assert csx.hermitian is False
+        decom_gate = csx.decompose()
+        assert len(decom_gate) == 9
+
+    def test_cu_decompose(self):
+        cu = create_gate("cu", [0, 1], [np.pi, np.pi, np.pi, np.pi / 2])
+        assert cu.operation_type == OperationType.DOUBLE_QUBIT_OPERATION.value
+        assert cu.name == "cu"
+        assert cu.hermitian is False
+        decom_gate = cu.decompose()
+        assert len(decom_gate) == 15
+
+    def test_rxx_decompose(self):
+        rxx = create_gate("rxx", [0, 1], [np.pi / 2])
+        assert rxx.operation_type == OperationType.DOUBLE_QUBIT_OPERATION.value
+        assert rxx.name == "rxx"
+        assert rxx.hermitian is False
+        decom_gate = rxx.decompose()
+        assert len(decom_gate) == 15
+
+    def test_rzz_decompose(self):
+        rzz = create_gate("rzz", [0, 1], [np.pi / 2])
+        assert rzz.operation_type == OperationType.DOUBLE_QUBIT_OPERATION.value
+        assert rzz.name == "rzz"
+        assert rzz.hermitian is False
+        decom_gate = rzz.decompose()
+        assert len(decom_gate) == 3
+
+    def test_rccx_decompose(self):
+        rccx = create_gate("rccx", [0, 1, 2])
+        assert (
+            rccx.operation_type == OperationType.TRIPLE_QUBIT_OPERATION.value
+        )
+        assert rccx.name == "rccx"
+        assert rccx.hermitian is False
+        decom_gate = rccx.decompose()
+        assert len(decom_gate) == 13
+
+    def test_rc3x_decompose(self):
+        rc3x = create_gate("rc3x", [0, 1, 2, 3])
+        assert rc3x.operation_type == OperationType.FOUR_QUBIT_OPERATION.value
+        assert rc3x.name == "rc3x"
+        assert rc3x.hermitian is False
+        decom_gate = rc3x.decompose()
+        assert len(decom_gate) == 26
+
+    def test_c3x_decompose(self):
+        c3x = create_gate("c3x", [0, 1, 2, 3])
+        assert c3x.operation_type == OperationType.FOUR_QUBIT_OPERATION.value
+        assert c3x.name == "c3x"
+        assert c3x.hermitian is False
+        decom_gate = c3x.decompose()
+        assert len(decom_gate) == 33
+
+    def test_c3sqrtx_decompose(self):
+        c3sqrtx = create_gate("c3sqrtx", [0, 1, 2, 3])
+        assert (
+            c3sqrtx.operation_type == OperationType.FOUR_QUBIT_OPERATION.value
+        )
+        assert c3sqrtx.name == "c3sqrtx"
+        assert c3sqrtx.hermitian is False
+        decom_gate = c3sqrtx.decompose()
+        assert len(decom_gate) == 69
+
+    def test_c4x_decompose(self):
+        c4x = create_gate("c4x", [0, 1, 2, 3, 4])
+        assert c4x.operation_type == OperationType.FIVE_QUBIT_OPERATION.value
+        assert c4x.name == "c4x"
+        assert c4x.hermitian is False
+        decom_gate = c4x.decompose()
+        assert len(decom_gate) == 153
+
     def test_create_rx_exception(self):
         try:
             create_gate("rx", [0, 1], [1, 2, 3])
