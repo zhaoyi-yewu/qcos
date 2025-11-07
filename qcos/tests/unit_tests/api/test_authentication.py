@@ -29,5 +29,5 @@ class TestAuthentication:
         mock_config.ENABLE_VIRT = True
         mock_decrypt_virtual_instance_id.return_value = True, None, None, None
         auth_data = auth("test")
-        assert auth_data["device_name"] is None
+        assert auth_data["device_names"] is None
         assert auth_data["instance_id"] is None

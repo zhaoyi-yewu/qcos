@@ -34,7 +34,7 @@ def auth(
 ):
     success = True
     auth_data = None
-    device_name = None
+    device_names = None
     instance_id = None
 
     if not Config.ENABLE_VIRT:
@@ -44,7 +44,7 @@ def auth(
         success = False
 
     if success:
-        success, err_msg, device_name, instance_id = (
+        success, err_msg, device_names, instance_id = (
             Library.decrypt_virtual_instance_id(
                 x_qcos_virtual_instance_id, salt=Config.PASSWORD_SALT
             )
@@ -56,11 +56,11 @@ def auth(
             "auth",
             (False, ["Unauthorized access to the instance"]),
         )
-    if device_name == "all" and instance_id == "all":  # admin user
+    if device_names == "all" and instance_id == "all":  # admin user
         auth_data = None
     else:
         auth_data = {
-            "device_name": device_name,
+            "device_names": device_names,
             "instance_id": instance_id,
         }
     return auth_data
