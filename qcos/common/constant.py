@@ -253,6 +253,8 @@ class Constant:
     PREFECT_CANCEL_REQUIRED_STATES = [PREFECT_STATE_RUNNING]
     PREFECT_WAIT_STATES = [PREFECT_STATE_SCHEDULED, PREFECT_STATE_PENDING]
 
+    VID_TAGS_PREFIX = "VIRTUAL_INSTANCE_ID"
+
     # Prefect job log
     PREFECT_JOB_LOG_FORMAT = (
         "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name} | {message}"

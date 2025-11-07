@@ -23,6 +23,7 @@ from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from qcos.api.posiq.routes_jsonrpc.routes import system_api_v1
 from qcos.common import errors
+from qcos.common.constant import Constant
 from qcos.task_manager import scheduler
 from .dependencies.authentication import auth
 
@@ -73,7 +74,7 @@ def system_info(
         tags = None
         if auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
-            tags = [virtual_instance_id]
+            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         responses, err = scheduler.get_jobs(tags=tags)
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(

@@ -368,7 +368,7 @@ def submit_job(
         tags = None
         if auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
-            tags = [virtual_instance_id]
+            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         res, err = scheduler.add(
             Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
             body,
@@ -436,7 +436,7 @@ def get_job_status(
         tags = None
         if auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
-            tags = [virtual_instance_id]
+            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         response, _ = scheduler.get_result_by_id(job_id, tags=tags)
     except errors.NotFound:
         # check if job exists
@@ -497,8 +497,8 @@ def get_job_results(
         tags = None
         if auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
-            tags = [virtual_instance_id]
-        response, _ = scheduler.get_result_by_id(job_id, tags)
+            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
+        response, _ = scheduler.get_result_by_id(job_id, tags=tags)
     except errors.NotFound:
         # check if job exists
         jsonrpc_errors.handle_error_not_found(
@@ -557,7 +557,7 @@ def get_jobs(
         tags = None
         if auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
-            tags = [virtual_instance_id]
+            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         responses, err = scheduler.get_jobs(tags=tags)
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
@@ -610,7 +610,7 @@ def cancel_jobs(
     tags = None
     if auth_data is not None:
         virtual_instance_id = auth_data["instance_id"]
-        tags = [virtual_instance_id]
+        tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
     # cancel jobs
     success_list = scheduler.cancel_jobs(job_ids, tags=tags)
     # construct response
@@ -647,7 +647,7 @@ def delete_jobs(
     tags = None
     if auth_data is not None:
         virtual_instance_id = auth_data["instance_id"]
-        tags = [virtual_instance_id]
+        tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
     # delete jobs
     success_list = scheduler.delete_jobs(job_ids, tags=tags)
     # construct response
@@ -690,7 +690,7 @@ def set_job_results(
         tags = None
         if auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
-            tags = [virtual_instance_id]
+            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         response, err = scheduler.get_result_by_id(job_id, tags)
     except errors.NotFound:
         # check if job exists
@@ -843,7 +843,7 @@ def update_job(
         tags = None
         if auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
-            tags = [virtual_instance_id]
+            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         response, err = scheduler.get_result_by_id(job_id, tags)
     except errors.NotFound:
         # check if job exists
@@ -867,9 +867,11 @@ def update_job(
         tags = None
         if auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
-            tags = [virtual_instance_id]
+            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         job, err = scheduler.update_job(
-            job_id=job_id, parameters=parameters, tags=tags
+            job_id=job_id,
+            parameters=parameters,
+            tags=tags,
         )
     except errors.WorkFlowError as e:
         jsonrpc_errors.handle_error_internal_server(
