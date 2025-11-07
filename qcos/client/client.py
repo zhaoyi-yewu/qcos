@@ -42,6 +42,7 @@ class Client:
     """QCOS client api"""
 
     verbose = False
+    timeout = 30
 
     def __init__(
         self,
@@ -51,7 +52,11 @@ class Client:
         ssl_certfile=None,
         ssl_keyfile=None,
         ssl_cafile=None,
+        timeout=370,
     ):
+        # Config
+        Client.timeout = timeout
+
         # SSL configs
         SSL.use_ssl = use_ssl
         SSL.cert_file = ssl_certfile
@@ -104,6 +109,20 @@ class Client:
         result = None
         headers = HttpHeaders.DEFAULT_JSON_HEADERS
 
+        # config client timeout
+        timeout = Client.timeout
+        try:
+            qcos_client_timeout = os.environ.get("QCOS_CLIENT_TIMEOUT")
+            if qcos_client_timeout:
+                timeout = int(qcos_client_timeout)
+        except Exception:
+            return (
+                -1,
+                f"Invalid QCOS_CLIENT_TIMEOUT: {qcos_client_timeout}",
+                text,
+                result,
+            )
+
         # get qcos virtual instance id
         qcos_virtual_instance_id = os.environ.get(
             "QCOS_VIRTUAL_INSTANCE_ID", None
@@ -126,6 +145,7 @@ class Client:
                 cert_file=SSL.cert_file,
                 key_file=SSL.key_file,
                 debug=Client.verbose,
+                timeout=timeout,
             )
         except requests.exceptions.ConnectionError as ce:
             status_code = -1

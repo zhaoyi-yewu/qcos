@@ -432,13 +432,12 @@ def get_job_status(
 
     # query job status
     response = {}
-    err = None
     try:
         tags = None
         if auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
             tags = [virtual_instance_id]
-        response, err = scheduler.get_result_by_id(job_id, tags=tags)
+        response, _ = scheduler.get_result_by_id(job_id, tags=tags)
     except errors.NotFound:
         # check if job exists
         jsonrpc_errors.handle_error_not_found(
@@ -499,7 +498,7 @@ def get_job_results(
         if auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
             tags = [virtual_instance_id]
-        response, err = scheduler.get_result_by_id(job_id, tags)
+        response, _ = scheduler.get_result_by_id(job_id, tags)
     except errors.NotFound:
         # check if job exists
         jsonrpc_errors.handle_error_not_found(
