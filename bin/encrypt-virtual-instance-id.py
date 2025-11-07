@@ -22,7 +22,7 @@ Encryption example:
 ./encrypt-virtual-instance-id.py -e -s 1234 -dn dummy -i 1234567890
 
 Decryption example:
-./encrypt-virtual-instance-id.py -d -s 1234 -vi dummy-1234567890-5ae3
+./encrypt-virtual-instance-id.py -d -s 1234 -vi ZHVtbXl8MTIzNDU2Nzg5MHwzNGNk
 """
 
 import sys
@@ -61,9 +61,10 @@ USAGE
                                 help="decryption mode")
 
         encryption_mode = parser.add_argument_group("Encryption mode")
-        encryption_mode.add_argument("-dn", "--device-name",
-                                     dest="device_name",
-                                     help="device name")
+        encryption_mode.add_argument("-dn", "--device-names",
+                                     dest="device_names",
+                                     nargs="+",
+                                     help="device names")
         encryption_mode.add_argument("-i", "--instance-id",
                                      dest="instance_id",
                                      help="instance id")
@@ -78,12 +79,12 @@ USAGE
 
         # parse arguments
         args = parser.parse_args()
-        device_name = args.device_name
+        device_names = args.device_names
         instance_id = args.instance_id
         virtual_instance_id = args.virtual_instance_id
         salt = args.salt
         if args.encryption_mode:
-            if not device_name or not instance_id:
+            if not device_names or not instance_id:
                 print("Error: device_name and instance_id are required "
                       "in encryption mode")
                 exit(1)
@@ -96,7 +97,7 @@ USAGE
                 print("Error: virtual_instance_id is required "
                       "in decryption mode")
                 exit(1)
-            if device_name or instance_id:
+            if device_names or instance_id:
                 print("Error: device_name and instance_id should not be set "
                       "in decryption mode")
                 exit(1)
@@ -105,29 +106,38 @@ USAGE
         if args.encryption_mode:
             success, err_msg, virtual_instance_id = \
                 Library.encrypt_virtual_instance_id(
-                    device_name,
+                    device_names,
                     instance_id,
-                    salt=salt)
+                    salt=salt,
+                    encode=True)
             if success:
-                print(f"input : device_name : {device_name}, "
-                      f"instance_id: {instance_id}, salt: {salt}")
-                print(f"output: virtual_instance_id: {virtual_instance_id}")
+                print("[Input]")
+                print(f"device_name: {', '.join(device_names)}")
+                print(f"instance_id: {instance_id}, salt: {salt}")
+                print("")
+                print("[Output]")
+                print(f"virtual_instance_id: {virtual_instance_id}")
                 print(f"export QCOS_VIRTUAL_INSTANCE_ID={virtual_instance_id}")
+                print("")
             else:
                 print(f"{err_msg}", file=sys.stderr)
 
         # Handle decryption
         if args.decryption_mode:
-            success, err_msg, device_name, instance_id = \
+            success, err_msg, device_names, instance_id = \
                 Library.decrypt_virtual_instance_id(
                     virtual_instance_id,
-                    salt=salt)
+                    salt=salt, encode=True)
             if success:
                 print("Decryption is successful")
-                print(f"input : virtual_instance_id: {virtual_instance_id}, "
-                      f"salt: {salt}")
-                print(f"output: device_name: {device_name}, instance_id: "
-                      f"{instance_id}")
+                print("[Input]")
+                print(f"virtual_instance_id: {virtual_instance_id}")
+                print(f"salt: {salt}")
+                print("")
+                print("[Output]")
+                print(f"device_names: {', '.join(device_names)}")
+                print(f"instance_id: {instance_id}")
+                print("")
             else:
                 print(f"{err_msg}", file=sys.stderr)
 

@@ -17,6 +17,7 @@
 
 import aiohttp
 import asyncio
+import base64
 import copy
 import csv
 import fnmatch
@@ -1351,13 +1352,16 @@ class Library:
         return configs
 
     @staticmethod
-    def encrypt_virtual_instance_id(device_names_list, uuid_str, salt=""):
+    def encrypt_virtual_instance_id(
+        device_names_list, uuid_str, salt="", encode=False
+    ):
         """Encrypt virtual instance id
 
         Args:
             device_names_list: device name
             uuid_str: uuid string
             salt: salt
+            encode: whether to encode with utf-8
 
         Returns:
             success, error message, virtual instance id
@@ -1365,30 +1369,43 @@ class Library:
         new_uuid = None
         try:
             device_names = "+".join(device_names_list)
-            uuid_salt_str = device_names + "|" + uuid_str + "|" + salt
+            uuid_salt_str = f"{device_names}|{uuid_str}|{salt}"
             md5_hash = hashlib.md5(uuid_salt_str.encode("utf-8")).hexdigest()
             verify_code = (
                 md5_hash[0] + md5_hash[1] + md5_hash[-2] + md5_hash[-1]
             )
-            new_uuid = device_names + "|" + uuid_str + "|" + verify_code
+            new_uuid = f"{device_names}|{uuid_str}|{verify_code}"
         except Exception as e:
             err_msg = f"Encryption failed. Reason: {repr(e)}"
             return False, err_msg, None
+
+        if encode:
+            new_uuid = base64.b64encode(new_uuid.encode("utf-8")).decode(
+                "utf-8"
+            )
         return True, None, new_uuid
 
     @staticmethod
-    def decrypt_virtual_instance_id(virtual_instance_id, salt=""):
+    def decrypt_virtual_instance_id(
+        virtual_instance_id, salt="", encode=False
+    ):
         """Decrypt virtual instance id
 
         Args:
             virtual_instance_id: virtual instance id
             salt: salt
+            encode: whether to encode with utf-8
 
         Returns:
             success, error message, device_names, instance_id
         """
         err_msg = None
         try:
+            if encode is True:
+                virtual_instance_id = base64.b64decode(
+                    virtual_instance_id
+                ).decode("utf-8")
+
             # split virtual_instance_id
             first = virtual_instance_id.index("|")
             last = virtual_instance_id.rindex("|")

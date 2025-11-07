@@ -428,7 +428,20 @@ class TestLibrary:
         success, _, _ = library.encrypt_virtual_instance_id("dummy", uuid_str)
         assert success is True
 
+        success, _, _ = library.encrypt_virtual_instance_id(
+            "dummy", uuid_str, encode=True
+        )
+        assert success is True
+
     def test_decrypt_virtual_instance_id(self):
         instance_id = "dummy-5eb2cc2b195242aeb2d60cf4907a606b-43c5"
         success, _, _, _ = library.decrypt_virtual_instance_id(instance_id)
+        assert success is False
+
+        instance_id = (
+            "ZHVtbXktNWViMmNjMmIxOTUyNDJhZWIyZDYwY2Y0OTA3YTYwNmItNDNjNQ=="
+        )
+        success, _, _, _ = library.decrypt_virtual_instance_id(
+            instance_id, encode=True
+        )
         assert success is False
