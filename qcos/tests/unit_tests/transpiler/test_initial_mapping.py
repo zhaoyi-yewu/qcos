@@ -21,6 +21,7 @@ from qcos.transpiler.cmss.mapping.dg import DG
 from qcos.transpiler.cmss.mapping.initial_mapping import get_initial_mapping
 from qcos.transpiler.cmss.mapping.subgraph_mapping import (
     subgraph_isomorphism_mapping,
+    topgraph_mapping,
 )
 
 
@@ -77,3 +78,26 @@ class TestInitialMapping:
             dependency_graph, adjacency_graph
         )
         assert mapping is None
+
+    def test_topgraph_mapping(self):
+        # liner topo
+        adjacency_graph = Graph()
+        edges = [(0, 1), (1, 2), (2, 3), (3, 4), (7, 8)]
+        adjacency_graph.add_edges_from(edges)
+
+        dependency_graph = DG()
+        # connected
+        gate1 = ("cx", (0, 1), [])
+        gate2 = ("cx", (1, 2), [])
+        # not connected
+        gate3 = ("cx", (2, 0), [])
+        gate4 = ("cx", (0, 3), [])
+        dependency_graph.add_multi_gates([gate1, gate2, gate3])
+        num, mapping = topgraph_mapping(dependency_graph, adjacency_graph)
+        assert num == 2
+        assert mapping == [0, 1, 2]
+
+        dependency_graph.add_gate(gate4)
+        num, mapping = topgraph_mapping(dependency_graph, adjacency_graph)
+        assert num == 2
+        assert mapping == [0, 1, 2, 3]

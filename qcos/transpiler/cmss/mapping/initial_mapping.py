@@ -20,6 +20,7 @@ from networkx import Graph
 from qcos.transpiler.cmss.mapping.dg import DG
 from qcos.transpiler.cmss.mapping.subgraph_mapping import (
     subgraph_isomorphism_mapping,
+    topgraph_mapping,
 )
 
 
@@ -34,7 +35,7 @@ def get_initial_mapping(
             and Heuristic Search."
         subgraph_isomorphism: Based on subgraph isomorphism, achieves precise
             allocation of qubits (this method may not always yield a solution).
-        Topgraph: Combines the above two methods. For the top part of the
+        topgraph: Combines the above two methods. For the top part of the
             circuit topology graph, subgraph isomorphism is used. ref "Qubit
             Mapping Based on Subgraph Isomorphism and Filtered Depth-Limited
             Search."
@@ -55,8 +56,7 @@ def get_initial_mapping(
         return None
     elif method == "subgraph_isomorphism":
         return subgraph_isomorphism_mapping(dependency_graph, adjacency_graph)
-    elif method == "Topgraph":
-        # TODO
-        return None
+    elif method == "topgraph":
+        return topgraph_mapping(dependency_graph, adjacency_graph)
     else:
         raise ValueError(f"Unsupported method {method} for initial mapping")

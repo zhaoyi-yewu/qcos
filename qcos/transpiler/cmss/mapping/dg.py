@@ -86,6 +86,20 @@ class DG(DiGraph):
         else:
             self.add_edge(node_in, node_out, qubits=qubits)
 
+    def add_multi_gates(self, gates: list, absorb=False):
+        """Add multiple gates to the graph.
+
+        Args:
+            gates (list): list of gates
+            absorb (bool, optional): Whether absorb the gate. Defaults to
+                False.
+        """
+        for gate in gates:
+            if absorb:
+                self.add_gate_absorb(gate)
+            else:
+                self.add_gate(gate)
+
     def add_gate(self, gate: tuple, add_edges=True):
         """
         Add a gate to the graph.
@@ -124,6 +138,14 @@ class DG(DiGraph):
                     self.add_line(node_parent, node_new, [q])
                 self.qubit_to_node[q] = node_new
         return node_new
+
+    def get_dg_num_q(self):
+        """Get the number of qubits in the dependency graph."""
+        max_q = 0
+        for node in self.nodes:
+            max_q = max(max_q, *self.nodes[node]["qubits"])
+        self.num_q = max_q + 1
+        return self.num_q
 
     def get_node_num_q(self, node):
         return len(self.nodes[node]["qubits"])
@@ -271,12 +293,12 @@ class DG(DiGraph):
             ir (list[GateOperation]): ir list
         """
         if len(ir) == 0:
-            return
+            return []
         if isinstance(ir[0].targets[0], int):
-            return
+            return ir
         for gate in ir:
             gate.targets = [int(q) for q in gate.targets]
-        return
+        return ir
 
     def from_ir(self, ir: list[GateOperation], absorb=True):
         """Build graph from ir.
@@ -288,6 +310,7 @@ class DG(DiGraph):
         Returns:
             list: measure operations
         """
+        self.convert_ir(ir)
         measure_op = []
         for gate in ir:
             name = gate.name
