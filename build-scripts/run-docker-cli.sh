@@ -13,6 +13,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+set -e
+
 source ./setup-env.sh
 
 export QCOS_LOCAL_SRC_DIR="${top_dir}"

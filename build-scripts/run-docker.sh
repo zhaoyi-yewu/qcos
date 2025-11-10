@@ -13,6 +13,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+set -e
+
 source ./setup-env.sh
 
 export QCOS_LOCAL_SRC_DIR="${top_dir}"
@@ -25,8 +27,8 @@ mkdir -p /var/qcos/db
 rm -rf /etc/qcos/prefect/profiles.toml
 
 if [ "${DEV,,}" = "false" ]; then
-  docker volume rm code-data -f
   docker-compose -f docker-compose.yaml down
+  docker volume rm build-scripts_code-data
   docker-compose -f docker-compose.yaml up -d
   echo "Run QCOS bash: docker exec -it qcos bash"
 else

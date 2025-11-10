@@ -18,7 +18,7 @@ services:
     container_name: prefect-server
     image: ${REGISTRY}${PREFECT_IMAGE_NAME}:${PREFECT_IMAGE_VERSION}
     restart: always
-    command: prefect server start
+    command: prefect server start --host ""
     network_mode: "host"
     environment:
       TZ: Asia/Shanghai

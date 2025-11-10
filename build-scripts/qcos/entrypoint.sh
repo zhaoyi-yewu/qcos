@@ -100,6 +100,4 @@ echo "Prefect API URL: ${PREFECT_API_URL}"
 # run QCOS
 rm -rf /var/run/qcos/qcos-api.pid
 /usr/bin/qcos-api --config-file ${qcos_config_file_path} --config-dir ${qcos_extra_config_file_dir}
-if [ "${DEV,,}" = "true" ]; then
-  sleep infinity
-fi
+sleep infinity

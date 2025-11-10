@@ -169,7 +169,7 @@ spec:
       - name: prefect-server
         image: ${REGISTRY}${PREFECT_IMAGE_NAME}:${PREFECT_IMAGE_VERSION}
         imagePullPolicy: IfNotPresent
-        command: ["prefect", "server", "start"]
+        command: ["prefect", "server", "start", "--host \"\""]
         env:
         - name: TZ
           value: "Asia/Shanghai"

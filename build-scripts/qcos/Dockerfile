@@ -38,7 +38,8 @@ RUN \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-api.py /usr/bin/qcos-api && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-transpiler.py /usr/bin/qcos-transpiler && \
     cp -rf ${BUILD_CONTEXT}/requirements.txt /root/ && \
-    cp -rf ${BUILD_CONTEXT}/test-requirements.txt /root/ && \
+    cp -rf ${BUILD_CONTEXT}/requirements-driver.txt /root/ && \
+    cp -rf ${BUILD_CONTEXT}/requirements-test.txt /root/ && \
     cp -rf ${BUILD_CONTEXT}/samples /root/ && \
 # config system
     /bin/cp ${BUILD_CONTEXT}/build-scripts/qcos/entrypoint.sh / && \
@@ -59,7 +60,8 @@ RUN \
 # create symbolic link for python3
     ln -sf /usr/bin/python3 /usr/bin/python && \
 # install python3 deps
-    pip3 install --no-cache-dir --no-deps --upgrade -r /root/requirements.txt -r /root/test-requirements.txt && \
+    pip3 install --no-cache-dir --upgrade -r /root/requirements.txt -r /root/requirements-test.txt && \
+    pip3 install --no-cache-dir --upgrade -r /root/requirements-driver.txt && \
 # generate ssh keys
     rm -rf /root/.ssh/id_rsa && \
     ssh-keygen -t rsa -f /root/.ssh/id_rsa -q -N "" && \

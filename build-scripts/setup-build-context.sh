@@ -88,9 +88,9 @@ echo ${git_commit_id} > ${top_dir}/latest-commit-id.txt
 
 # copy dirs/files to build-context
 files=("latest-commit-id.txt" "qcos" "etc" "requirements.txt" \
-       "test-requirements.txt" "build-scripts/qcos/entrypoint.sh" \
+       "requirements-test.txt" "build-scripts/qcos/entrypoint.sh" \
        "build-scripts/cli/entrypoint.sh" "bin/qcos-api.py" "bin/qcos-cli.py" \
-       "build-scripts/cli/requirements.txt" \
+       "build-scripts/cli/requirements.txt" "requirements-driver.txt" \
        "bin/qcos-transpiler.py" \
        "samples/")
 for file_path in "${files[@]}"; do

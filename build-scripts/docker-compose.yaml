@@ -18,13 +18,13 @@ services:
     container_name: prefect-server
     image: ${REGISTRY}${PREFECT_IMAGE_NAME}:${PREFECT_IMAGE_VERSION}
     restart: always
-    command: prefect server start
+    command: prefect server start --host ""
     network_mode: "host"
     environment:
       TZ: Asia/Shanghai
       PREFECT_SERVER_API_HOST: ${PREFECT_SERVER_API_HOST}
       PREFECT_SERVER_DATABASE_CONNECTION_URL: "sqlite+aiosqlite:////var/qcos/db/prefect.db"
-      PREFECT_API_URL: "http://${PREFECT_SERVER_API_HOST}:4200/api"
+      PREFECT_API_URL: "${PREFECT_API_URL}"
       PREFECT_LOCAL_STORAGE_PATH: /var/qcos/storage
       PREFECT_API_DEFAULT_LIMIT: 100000
       PYTHONPATH: /root/qcos-project
