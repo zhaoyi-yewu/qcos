@@ -110,8 +110,10 @@ def get_driver(body: schemas.GetDriverRequest) -> schemas.GetDriverResponse:
             func_name,
             (False, f"Driver: '{driver_name}' is not found"),
         )
-    transpiler_manager = scheduler.get_transpiler_manager()
-    transpiler = transpiler_manager.get_transpiler(driver_info.transpiler)
+    transpiler = None
+    if driver_info.enable_transpiler:
+        transpiler_manager = scheduler.get_transpiler_manager()
+        transpiler = transpiler_manager.get_transpiler(driver_info.transpiler)
     _response_info = _get_driver_info(driver_info, transpiler)
     response_info = schemas.GetDriverResponse.model_validate(_response_info)
     return response_info
