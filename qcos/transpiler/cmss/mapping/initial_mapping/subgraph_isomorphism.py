@@ -18,16 +18,16 @@
 from networkx import Graph
 from networkx.algorithms import isomorphism
 
-from qcos.transpiler.cmss.mapping.dg import DG
+from qcos.transpiler.cmss.mapping.utils.dg import DG
 
 
-def subgraph_isomorphism_mapping(dependency_graph: DG, adjacency_graph: Graph):
+def subgraph_isomorphism_mapping(dependency_graph: DG, coupling_graph: Graph):
     """
     Qubit precise allocation based on subgraph isomorphism.
 
     Args:
         dependency_graph (DG): Quantum circuit topology
-        adjacency_graph (Graph): Hardware Topology
+        coupling_graph (Graph): Hardware Topology
 
     Returns:
         list: mapping from logical qubits to physical qubits
@@ -45,7 +45,7 @@ def subgraph_isomorphism_mapping(dependency_graph: DG, adjacency_graph: Graph):
         subgraph.add_edge(qubits[0], qubits[1])
 
     # subgraph isomorphism
-    matcher = isomorphism.GraphMatcher(adjacency_graph, subgraph)
+    matcher = isomorphism.GraphMatcher(coupling_graph, subgraph)
     log_to_phy = None
     # if an isomorphic subgraph is found
     if matcher.subgraph_is_isomorphic():
@@ -59,23 +59,20 @@ def subgraph_isomorphism_mapping(dependency_graph: DG, adjacency_graph: Graph):
     return log_to_phy
 
 
-def topgraph_mapping(dependency_graph: DG, adjacency_graph: Graph):
+def topgraph_mapping(dependency_graph: DG, coupling_graph: Graph):
     """
     Find the largest subcircuit that is isomorphic to the hardware topology.
     And assign the remaining unallocated logical qubits sequentially.
 
     Args:
         dependency_graph (DG): dependency graph of the whole circuit.
-        adjacency_graph (Graph): adjacency graph of the hardware.
+        coupling_graph (Graph): adjacency graph of the hardware.
 
     Returns:
-        tuple(int, list): return the count of cx gates in the largest
-            subcircuit, and the mapping from logical qubits to physical qubits.
+        list: return the mapping from logical qubits to physical qubits.
     """
     # the graph of circuit is isomorphic to the hardware
-    log_to_phy = subgraph_isomorphism_mapping(
-        dependency_graph, adjacency_graph
-    )
+    log_to_phy = subgraph_isomorphism_mapping(dependency_graph, coupling_graph)
     if log_to_phy is not None:
         return log_to_phy
 
@@ -88,8 +85,8 @@ def topgraph_mapping(dependency_graph: DG, adjacency_graph: Graph):
                 cx_list.append(targets)
 
     # search the max front circuit isomorphic to the hardware
-    front_gate_num, phy_to_log = topgraph_search(
-        cx_list, adjacency_graph, 0, len(cx_list) - 1
+    _, phy_to_log = topgraph_search(
+        cx_list, coupling_graph, 0, len(cx_list) - 1
     )
 
     # convert phy_to_log to log_to_phy
@@ -102,24 +99,24 @@ def topgraph_mapping(dependency_graph: DG, adjacency_graph: Graph):
     # assign the unallocated qubits in order.
     assigned_physical = list(filter(lambda x: x is not None, log_to_phy))
     # all physical bits
-    physical_bits = adjacency_graph.nodes
+    physical_bits = coupling_graph.nodes
     unassigned_physical = sorted(list(physical_bits - assigned_physical))
     unassigned_index = 0
     for i in range(len(log_to_phy)):
         if log_to_phy[i] is None:
             log_to_phy[i] = unassigned_physical[unassigned_index]
             unassigned_index += 1
-    return front_gate_num, log_to_phy
+    return log_to_phy
 
 
 def topgraph_search(
-    cx_list: list, adjacency_graph: Graph, left: int, right: int
+    cx_list: list, coupling_graph: Graph, left: int, right: int
 ):
     """Use binary search to find the largest subcircuit that is isomorphic.
 
     Args:
         cx_list (list): list of all cnot gates
-        adjacency_graph (Graph): adjacency graph of the hardware.
+        coupling_graph (Graph): adjacency graph of the hardware.
         left (int): left boundary of the search range
         right (int): right boundary of the search range
 
@@ -138,7 +135,7 @@ def topgraph_search(
             q1, q2 = cx_list[i]
             top_graph.add_edge(q1, q2)
 
-        matcher = isomorphism.GraphMatcher(adjacency_graph, top_graph)
+        matcher = isomorphism.GraphMatcher(coupling_graph, top_graph)
         match = matcher.subgraph_is_isomorphic()
         if match:
             # find an isomorphism, try to expand the range.

@@ -18,8 +18,8 @@
 import networkx as nx
 import numpy as np
 
-from qcos.transpiler.cmss.mapping.front_circuit import FrontCircuit
-from qcos.transpiler.cmss.mapping.dg import DG
+from qcos.transpiler.cmss.mapping.utils.front_circuit import FrontCircuit
+from qcos.transpiler.cmss.mapping.utils.dg import DG
 
 
 class TestFrontCircuit:

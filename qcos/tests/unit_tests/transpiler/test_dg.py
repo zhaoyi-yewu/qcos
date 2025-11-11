@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------
 
 from unittest.mock import patch
-from qcos.transpiler.cmss.mapping.dg import DG
+from qcos.transpiler.cmss.mapping.utils.dg import DG
 from qcos.transpiler.cmss.common.gate_operation import X, H, CX
 
 

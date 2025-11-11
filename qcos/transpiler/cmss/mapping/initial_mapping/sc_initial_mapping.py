@@ -17,15 +17,18 @@
 
 from networkx import Graph
 
-from qcos.transpiler.cmss.mapping.dg import DG
-from qcos.transpiler.cmss.mapping.subgraph_mapping import (
+from qcos.transpiler.cmss.mapping.utils.dg import DG
+from qcos.transpiler.cmss.mapping.initial_mapping.subgraph_isomorphism import (
     subgraph_isomorphism_mapping,
     topgraph_mapping,
+)
+from qcos.transpiler.cmss.mapping.initial_mapping.simulated_annealing import (
+    sa_initial_mapping,
 )
 
 
 def get_initial_mapping(
-    dependency_graph: DG, adjacency_graph: Graph, method="naive"
+    dependency_graph: DG, coupling_graph: Graph, method="naive"
 ):
     """
     Get the initial mapping, providing 4 methods:
@@ -42,7 +45,7 @@ def get_initial_mapping(
 
     Args:
         dependency_graph (DG): dependency graph of the circuit
-        adjacency_graph (Graph): adjacency graph of the quantum machine
+        coupling_graph (Graph): adjacency graph of the quantum machine
         method (str, optional): mapping method. Defaults to 'naive'.
 
     Returns:
@@ -50,13 +53,12 @@ def get_initial_mapping(
             logical and physical qubits.
     """
     if method == "naive":
-        return list(range(len(adjacency_graph)))
+        return list(range(dependency_graph.get_dg_num_q()))
     elif method == "simulated_annealing":
-        # TODO
-        return None
+        return sa_initial_mapping(dependency_graph, coupling_graph)
     elif method == "subgraph_isomorphism":
-        return subgraph_isomorphism_mapping(dependency_graph, adjacency_graph)
+        return subgraph_isomorphism_mapping(dependency_graph, coupling_graph)
     elif method == "topgraph":
-        return topgraph_mapping(dependency_graph, adjacency_graph)
+        return topgraph_mapping(dependency_graph, coupling_graph)
     else:
         raise ValueError(f"Unsupported method {method} for initial mapping")
