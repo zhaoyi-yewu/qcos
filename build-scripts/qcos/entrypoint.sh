@@ -34,10 +34,12 @@ else
   cat << EOM > ${qcos_config_file_path}
 [DEFAULT]
 DEBUG = ${_DEBUG,,}
-# max jobs (all status) [GLOBAL CONFIG]
+# [GLOBAL CONFIG] max jobs (all status)
 MAX_JOBS = ${MAX_JOBS:-10000}
-# max queued+running jobs [GLOBAL CONFIG]
+# [GLOBAL CONFIG] max queued+running jobs
 MAX_QUEUED_JOBS = ${MAX_QUEUED_JOBS:-1000}
+# [GLOBAL CONFIG] max jobs for virtual instance
+MAX_JOBS_PER_VIRTUAL_INSTANCE = ${MAX_JOBS_PER_VIRTUAL_INSTANCE:-10}
 # enable virtualization
 ENABLE_VIRT = ${ENABLE_VIRT:-false}
 # salt for password/encryption

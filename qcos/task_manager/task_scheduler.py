@@ -131,6 +131,21 @@ class TaskScheduler(ABC):
                 f"Current job count exceeds max flow limit: "
                 f"{Constant.FLOW_LIMIT}"
             )
+        if tags is not None:
+            virtual_instance_flows = (
+                self._task_manager.get_flow_runs_with_filters(tags=tags)
+            )
+            virtual_instance_flows_count = len(virtual_instance_flows)
+            if (
+                virtual_instance_flows_count
+                >= Config.MAX_JOBS_PER_VIRTUAL_INSTANCE
+            ):
+                return (
+                    None,
+                    f"Current job count exceeds max instance job limit: "
+                    f"{Config.MAX_JOBS_PER_VIRTUAL_INSTANCE}."
+                    "Please delete some jobs",
+                )
 
         # check current queued+running flows count exceed MAX_QUEUED_JOBS
         wait_states = self._task_manager.convert_to_prefect_states(

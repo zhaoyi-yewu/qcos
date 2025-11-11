@@ -34,10 +34,12 @@ class Config:
 
     # [DEFAULT]
     DEBUG = False
-    # max jobs (all status) [GLOBAL CONFIG]
+    # [GLOBAL CONFIG] max jobs (all status)
     MAX_JOBS = 10000
-    # max queued+running jobs [GLOBAL CONFIG]
+    # [GLOBAL CONFIG] max queued+running jobs
     MAX_QUEUED_JOBS = 1000
+    # [GLOBAL CONFIG] max jobs for virtual instance
+    MAX_JOBS_PER_VIRTUAL_INSTANCE = 10
     # enable virtualization
     ENABLE_VIRT = False
     # salt for password/encryption
