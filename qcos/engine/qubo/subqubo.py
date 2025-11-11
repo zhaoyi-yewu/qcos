@@ -32,7 +32,7 @@ class SubQUBOMultiSolution:
         N_E=1,
         N_S=5,
         qubo_matrix: np.ndarray | None = None,
-        subqubo_size=5,
+        subqubo_size=100,
         max_converged_num=3,
     ) -> None:
         """
@@ -56,6 +56,15 @@ class SubQUBOMultiSolution:
         self.subqubo_size = subqubo_size
         self.max_converged_num = max_converged_num
         self.pool = None
+
+    def set_subqubo_size(self, subqubo_size):
+        """
+        Set subqubo size
+
+        Args:
+            subqubo_size (int): new_subqubo_size
+        """
+        self.subqubo_size = subqubo_size
 
     def set_qubo_matrix(self, qubo_matrix: np.ndarray):
         """
@@ -157,7 +166,6 @@ class SubQUBOMultiSolution:
         if energy < solution_i.energy:
             solution_i.solution = solution
             solution_i.energy = energy
-
         return solution_i
 
     def optimize_solution_pool(self, pool):
@@ -172,7 +180,6 @@ class SubQUBOMultiSolution:
         for solution_i in pool:
             solution = self._optimize_solution(solution_i)
             updated_pool.append(solution)
-
         return updated_pool
 
     def construct_subqubo(self, n_s_solutions_pool):
@@ -212,7 +219,7 @@ class SubQUBOMultiSolution:
 
         Args:
             tmp_solution (QUBOSolution): tmp solution
-            sub_solution (list): sub solution to be merged
+            sub_solution (np.ndarray): sub solution to be merged
             extracted_index (list): extracted index of sub solution
         Returns:
             QUBOSolution: merged solution

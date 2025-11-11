@@ -59,7 +59,7 @@ class TestSubQUBOMultiSolution:
         assert solver_default.N_E == 1
         assert solver_default.N_S == 5
         assert isinstance(solver_default.qubo, np.ndarray)
-        assert solver_default.subqubo_size == 5
+        assert solver_default.subqubo_size == 100
         assert solver_default.max_converged_num == 3
         # Testing custom parameter initialization
         assert self.solver.N_I == 5
@@ -68,6 +68,11 @@ class TestSubQUBOMultiSolution:
         assert np.array_equal(self.solver.qubo, self.qubo_matrix)
         assert self.solver.subqubo_size == 2
         assert self.solver.max_converged_num == 2
+
+    def test_set_subqubo_size(self):
+        """Test Settings subqubo size"""
+        self.solver.set_subqubo_size(10)
+        assert self.solver.subqubo_size == 10
 
     def test_set_qubo_matrix(self):
         """Test Settings QUBO Matrix"""
@@ -195,7 +200,7 @@ class TestSubQUBOMultiSolution:
         extracted_index = [0, 2]
 
         merged = self.solver.merge_solution(
-            tmp_solution, sub_solution, extracted_index
+            tmp_solution, np.array(sub_solution), extracted_index
         )
 
         # Verify merge results

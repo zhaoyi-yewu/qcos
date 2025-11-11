@@ -27,7 +27,6 @@ import inspect
 import json
 import logging
 import math
-import numpy as np
 import os
 import pkgutil
 import random
@@ -42,10 +41,7 @@ import zipfile
 from aiohttp import ClientTimeout, ClientError
 from cryptography.fernet import Fernet
 from datetime import datetime
-from fractions import Fraction
-from functools import reduce
 from http import HTTPStatus
-from math import gcd
 from schema import Schema
 from urllib.parse import urlparse
 

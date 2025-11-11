@@ -336,16 +336,6 @@ class TestLibrary:
         return_dict = library.generate_binary_combinations(0, 10)
         assert return_dict == {}
 
-    def test_check_qubo_matrixs_bit_width(self):
-        qubo_matrixs = [[[-480, 508, -48], [508, -508, -48], [-48, -48, 60]]]
-        library.check_qubo_matrixs_bit_width(qubo_matrixs)
-        qubo_matrixs = [
-            [[-512, 520, -48], [520, -520, -48], [-48, -48, 40]],
-            [[-488, 516, -48], [516, -516, -48], [-48, -48, 60]],
-        ]
-        success, _ = library.check_qubo_matrixs_bit_width(qubo_matrixs)
-        assert success is False
-
     def test_encrypt_text(self):
         success, err_msg, encrypted_text = library.encrypt_text(
             "test", encryption_prefix="++", fernet_key=fernet_key

@@ -114,11 +114,6 @@ def submit_job(
                 source_code, args_schema.SOURCE_CODE_QUBO_SCHEMA
             ),
         )
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            Library.check_qubo_matrixs_bit_width(source_code),
-        )
     else:
         jsonrpc_errors.handle_error_bad_requests(
             module_name,
