@@ -341,7 +341,7 @@ class DriverTiangong1000(DriverQuboBase):
         return False
 
     def get_task_realtime_result(self, task_id):
-        """Get task realtiem result
+        """Get task realtime result
 
         Args:
             task_id: task ID
@@ -367,14 +367,20 @@ class DriverTiangong1000(DriverQuboBase):
             err_code = response["code"]
             err_msg = response["msg"]
             if err_code == "0":
-                realtime_status = {
-                    "task_status": response["data"]["task_status"],
-                    "qubo_value": response["data"]["qubo_value"],
-                    "qubo_solution_data": response["data"][
-                        "qubo_solution_data"
-                    ],
-                    "visual_data": response["data"]["visual_data"],
-                }
+                task_status = response["data"]["task_status"]
+                if task_status == self.task_status_failed:
+                    desc = response["data"]["desc"]
+                    success = False
+                    err_msgs.append(f"Task failed: {desc}")
+                else:
+                    realtime_status = {
+                        "task_status": response["data"]["task_status"],
+                        "qubo_value": response["data"]["qubo_value"],
+                        "qubo_solution_data": response["data"][
+                            "qubo_solution_data"
+                        ],
+                        "visual_data": response["data"]["visual_data"],
+                    }
             else:
                 success = False
                 err_msgs.append(err_msg)
@@ -397,6 +403,10 @@ class DriverTiangong1000(DriverQuboBase):
         success, err_msg, final_results = self.get_task_realtime_result(
             task_id
         )
+        if not success:
+            raise ValueError(
+                f"Failed to get task results [{task_id}]: {err_msg}"
+            )
         out_data = []
         qubo_value = final_results.get("qubo_value", None)
         qubo_solution_data = final_results.get("qubo_solution_data", None)
