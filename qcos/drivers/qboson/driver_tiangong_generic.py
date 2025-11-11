@@ -28,11 +28,10 @@ from qcos.drivers.device import Device
 from qcos.drivers.driver_qubo_base import DriverQuboBase
 
 
-class DriverTiangong1000(DriverQuboBase):
-    """玻色量子-天工1000 光量子伊辛机驱动
+class DriverTiangongGeneric(DriverQuboBase):
+    """玻色量子-天工通用光量子伊辛机驱动
 
-    Qboson Tiangong1000 driver
-    CQ-D-1000
+    Qboson Tiangong generic driver
     """
 
     # url path
@@ -51,9 +50,8 @@ class DriverTiangong1000(DriverQuboBase):
         self.domain_url_task = None
         self.domain_url_auth = None
         self.version = "0.0.1"
-        self.alias_name = "玻色量子-天工1000 光量子伊辛机驱动"
-        self.description = "玻色量子-天工1000 光量子伊辛机驱动"
-        self.max_qubits = 1000
+        self.alias_name = "玻色量子-天工通用光量子伊辛机驱动"
+        self.description = "玻色量子-天工通用光量子伊辛机驱动"
         self.token = None
         # task stages and percentages
         self.task_stages = {
@@ -89,11 +87,16 @@ class DriverTiangong1000(DriverQuboBase):
             "domain_url_task": str,
             "user_id": str,
             "password_sdk_code": str,
+            "machine_name": str,
+            "max_qubit": int,
         }
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema
         )
-        if not _success:
+        if _success:
+            self.max_qubits = configs.get("max_qubit", 1000)
+            self.machine_name = configs.get("machine_name", "CPQC-1000")
+        else:
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
             success = False
@@ -283,7 +286,7 @@ class DriverTiangong1000(DriverQuboBase):
                     "task_name": task_name,
                     "name": filename,
                     "is_qubo": True,
-                    "machine_name": "CPQC-1000",
+                    "machine_name": self.machine_name,
                 }
                 # Submit task
                 url = f"{self.domain_url_task}/{self.task_path}/"

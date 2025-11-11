@@ -1,7 +1,7 @@
-[tiangong1000]
-alias_name = "玻色量子-天工1000"
-driver = "DriverTiangong1000"
-description = "玻色量子-天工1000(tiangong1000)"
+[tiangong_generic]
+alias_name = "玻色量子-天工"
+driver = "DriverTiangongGeneric"
+description = "玻色量子-天工(tiangong_generic)"
 
 # 用户可灵活配置domain_url_auth。
 # 生产域: https://open.qboson.com
@@ -15,3 +15,5 @@ domain_url_task = "https://new-open-pre.qboson.com"
 
 user_id = "000000000000001"
 password_sdk_code = ""
+machine_name = ""
+max_qubit = 10
