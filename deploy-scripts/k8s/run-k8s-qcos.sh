@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # ----------------------------------------------------------------------
 # Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
@@ -12,13 +12,13 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-# delete k8s qcos
+# run K8s qcos
 
 set -e
 
 function usage {
     echo "Usage: $0 [OPTION] ..."
-    echo "Delete QCOS with K8s"
+    echo "Run QCOS with K8s"
     echo ""
     echo "  -c, --config  Config file"
     echo "  -h, --help    Print this usage message"
@@ -43,15 +43,15 @@ while true; do
   esac
 done
 
+config_file=$(readlink -f ${config_file})
 if [ ! -f "${config_file}" ]; then
   echo "Can't find file: ${config_file}. Please make a copy from k8s-env.template"
   exit 1
 fi
 
 source "${config_file}"
-echo "Deleting K8s QCOS pods (${config_file}) ..."
+echo "Creating K8s QCOS pods, namespace: ${QCOS_NAMESPACE} (${config_file}) ..."
+echo "Note: you must create PVCs(${K8S_CODE_DATA_PVC}, ${K8S_DATABASE_PVC}) before running this script"
 
-kubectl delete deployment --ignore-not-found=true -n ${QCOS_NAMESPACE} prefect-server qcos-api qcos-cli
-# kubectl delete svc --ignore-not-found=true -n ${QCOS_NAMESPACE} prefect-server qcos-api
-# kubectl delete pvc --ignore-not-found=true -n ${QCOS_NAMESPACE} code-data-pvc database-pvc
-# kubectl delete ns ${QCOS_NAMESPACE}
+envsubst < ./k8s-device-config-${QCOS_NAMESPACE}.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -
+envsubst < ./k8s-qcos-api-single-mode.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -

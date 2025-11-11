@@ -12,13 +12,13 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-# run K8s qcos
+# run K8s qcos-cli
 
 set -e
 
 function usage {
     echo "Usage: $0 [OPTION] ..."
-    echo "Run QCOS with K8s"
+    echo "Run QCOS cli with K8s"
     echo ""
     echo "  -c, --config  Config file"
     echo "  -h, --help    Print this usage message"
@@ -43,13 +43,12 @@ while true; do
   esac
 done
 
+config_file=$(readlink -f ${config_file})
 if [ ! -f "${config_file}" ]; then
   echo "Can't find file: ${config_file}. Please make a copy from k8s-env.template"
   exit 1
 fi
 
 source "${config_file}"
-echo "Creating K8s QCOS pods (${config_file}) ..."
-echo "Note: you must create PVCs(${K8S_CODE_DATA_PVC}, ${K8S_DATABASE_PVC}) before running this script"
-
-envsubst < ./k8s-qcos-api-single-mode.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -
+echo "Creating K8s QCOS cli pods, namespace: ${QCOS_NAMESPACE} (${config_file}) ..."
+envsubst < ./k8s-qcos-cli.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -

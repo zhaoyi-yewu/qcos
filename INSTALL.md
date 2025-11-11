@@ -47,13 +47,31 @@ vim .env
 <b>注意:</b> 设备配置文件必须位于/etc/qcos/conf.d下, 文件名需要和qcos.toml中DEVICE_LIST列出的设备名一致。 文件中section必须对应相关设备名, 比如dummy设备的配置需要放在section: [dummy]下
 
 ### 1.5 运行容器
+### 1.5.1 运行容器 (Docker)
 ```shell
-cd build-scripts
 # 基于docker容器运行
+cd build-scripts
 ./run-docker.sh
+```
 
-# 或者, 基于K8s pod运行:
-./run-k8s-pods.sh
+### 1.5.2 运行容器 (K8s pod)
+```shell
+# 基于K8s pod运行:
+cd deploy-scripts/k8s
+# 创建配置文件, 设置环境变量
+cp ./k8s-env.template ./k8s-env
+# 修改k8s-env中的变量
+# 注意:
+# 1. 可用过配置不同的QCOS_NAMESPACE来启动多个操作系统实例
+vim ./k8s-env
+
+# 运行基于k8s的操作系统pod容器: qcos
+./run-k8s-qcos.sh
+# 运行基于k8s的命令行容器: qcos-cli
+./run-k8s-qcos-cli.sh
+
+# 删除K8s pod:
+./delete-k8s-qcos.sh -c k8s-env-qcos
 ```
 
 ## 2. 编译、安装和运行 (可选, 非容器, 编译wheel包)

@@ -18,122 +18,6 @@ kind: Namespace
 metadata:
   name: ${QCOS_NAMESPACE}
 ---
-# Create QCOS ConfigMap
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: qcos-config
-  namespace: ${QCOS_NAMESPACE}
-data:
-  qcos.toml: |
-    [DEFAULT]
-    DEBUG = false
-    # max jobs (all status) [GLOBAL CONFIG]
-    MAX_JOBS = 10000
-    # max queued+running jobs [GLOBAL CONFIG]
-    MAX_QUEUED_JOBS = 1000
-    # enable virtualization
-    ENABLE_VIRT = ${QCOS_ENABLE_VIRT}
-    # salt for password/encryption
-    PASSWORD_SALT = "${PASSWORD_SALT}"
-    
-    [API_SERVER]
-    # API workers
-    API_WORKERS = 8
-    # API server listen ip
-    API_SERVER_LISTEN_IP = ""
-    # API server listen port
-    API_SERVER_LISTEN_PORT = ${QCOS_API_SERVER_PORT}
-    
-    [LOG]
-    # api log file
-    API_LOG_FILE = "/var/log/qcos/qcos-api.log"
-    # prefect log file
-    PREFECT_LOG_FILE = "/var/log/qcos/qcos-engine.log"
-    # log format
-    LOG_FORMAT = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
-    # log rotate, max_size (MB). default: 10MB
-    LOG_ROTATE_MAX_SIZE_MB = 10
-    # log rotate, backup count. default: 10
-    LOG_ROTATE_BACKUP_COUNT = 10
-    # log rotate, compression. default: true
-    LOG_ROTATE_COMPRESSION = true
-    
-    [SSL]
-    # Enable HTTPS for API server
-    USE_SSL = false
-    
-    # SSL CERT_FILE
-    # eg. CERT_FILE = "/etc/qcos/ssl/ssl.crt"
-    # CERT_FILE =
-    
-    # SSL KEY_FILE
-    # eg. KEY_FILE = "/etc/qcos/ssl/ssl.key"
-    # KEY_FILE =
-    
-    # SSL CACERT_FILE (Optional)
-    # eg. CACERT_FILE = "/etc/qcos/ssl/cacert.pem"
-    # CACERT_FILE =
-    
-    [DEVICES]
-    # DEVICE_LIST example:
-    # DEVICE_LIST = ["dummy", "hanyuan1", "tiangong100", "spinq_rpc", "qiskit_aer_sim", "qiskit_qasm_sim"
-    DEVICE_LIST = ["dummy"]
-
-  dummy.toml: |
-    [dummy]
-    alias_name = "空载测试设备"
-    driver = "DriverDummy"
-    description = "空载测试设备(dummy)"
-    
-    [dummy.transpiler.qpu_configs]
-    # Samples
-    qubits = 6
-    storage_area = ["S27", "S28", "S29", "S35", "S36", "S37"]
-    operate_area = ["P27", "P28", "P29", "P35", "P36", "P37"]
-    
-    coupler_map.G0 = ["P27", "P35"]
-    coupler_map.G1 = ["P28", "P36"]
-    coupler_map.G2 = ["P29", "P37"]
-    coupler_map.G3 = ["P27", "P28"]
-    coupler_map.G4 = ["P35", "P36"]
-    coupler_map.G5 = ["P28", "P29"]
-    
-    readout_error.S27 = 1.0
-    readout_error.S28 = 2.0
-    readout_error.S35 = 3.0
-    readout_error.S36 = 4.0
-    readout_error.S29 = 5.0
-    readout_error.S37 = 6.0
-    
-    coupler_error.G0 = 3.0
-    coupler_error.G1 = 3.0
-    coupler_error.G2 = 3.0
-    coupler_error.G3 = 3.0
-    coupler_error.G4 = 3.0
-    coupler_error.G5 = 3.0
-    
-    closest.P27 = "S27"
-    closest.P28 = "S28"
-    closest.P35 = "S35"
-    closest.P36 = "S36"
-    closest.P29 = "S29"
-    closest.P37 = "S37"
-    
-    [dummy.transpiler.decomposition_rule]
-    # Samples
-    u3.params = ["a", "b", "c"]
-    u3.gates = [
-        ["rz", [0], ["c"]],
-        ["rx", [0], ["pi/2"]],
-        ["rz", [0], ["b+pi"]],
-        ["rx", [0], ["pi/2"]],
-        ["rz", [0], ["a+pi"]]
-    ]
-    h.gates = [
-        ["rx", [0], ["pi/2"]]
-    ]
----
 # Deploy prefect-server
 apiVersion: apps/v1
 kind: Deployment
@@ -163,33 +47,36 @@ spec:
         volumeMounts:
         - name: code-data
           mountPath: /root/qcos-project
-        - name: database-dir
-          mountPath: /var/qcos
+        #- name: database-dir
+        #  mountPath: /var/qcos
       containers:
       - name: prefect-server
         image: ${REGISTRY}${PREFECT_IMAGE_NAME}:${PREFECT_IMAGE_VERSION}
         imagePullPolicy: IfNotPresent
-        command: ["prefect", "server", "start", "--host \"\""]
+        command: ["prefect", "server", "start", "--host", ""]
         env:
         - name: TZ
           value: "Asia/Shanghai"
         - name: PREFECT_SERVER_API_HOST
           value: "${PREFECT_SERVER_API_HOST}"
         - name: PREFECT_API_URL
-          value: "http://${PREFECT_SERVER_API_HOST}:4200/api"
+          value: "${PREFECT_API_URL}"
         - name: PREFECT_SERVER_DATABASE_CONNECTION_URL
-          value: "sqlite+aiosqlite:////var/qcos/db/prefect.db"
+          value: "sqlite+aiosqlite:////tmp/prefect.db"
+          #value: "sqlite+aiosqlite:////var/qcos/db/prefect.db"
+        - name: PREFECT_API_DATABASE_TIMEOUT
+          value: "30"
         - name: PREFECT_LOCAL_STORAGE_PATH
           value: "/var/qcos/storage"
         - name: PREFECT_API_DEFAULT_LIMIT
           value: "100000"
         resources:
           requests:
-            cpu: "1000m"
-            memory: "2Gi"
-          limits:
             cpu: "2000m"
             memory: "4Gi"
+          limits:
+            cpu: "4000m"
+            memory: "8Gi"
         livenessProbe:
           httpGet:
             path: /api/health
@@ -209,15 +96,15 @@ spec:
         volumeMounts:
         - name: code-data
           mountPath: /root/qcos-project
-        - name: database-dir
-          mountPath: /var/qcos
+        #- name: database-dir
+        #  mountPath: /var/qcos
       volumes:
       - name: code-data
         persistentVolumeClaim:
           claimName: ${K8S_CODE_DATA_PVC}
-      - name: database-dir
-        persistentVolumeClaim:
-          claimName: ${K8S_DATABASE_PVC}
+      #- name: database-dir
+      #  persistentVolumeClaim:
+      #    claimName: ${K8S_DATABASE_PVC}
 #      nodeSelector:
 #        qcos-prefect: enabled
 #      affinity:
@@ -338,8 +225,8 @@ spec:
         volumeMounts:
         - name: code-data
           mountPath: /root/qcos-project
-        - name: database-dir
-          mountPath: /var/qcos
+        #- name: database-dir
+        #  mountPath: /var/qcos
         - name: qcos-config
           mountPath: /etc/qcos/qcos.toml
           subPath: qcos.toml
@@ -350,24 +237,27 @@ spec:
       - name: code-data
         persistentVolumeClaim:
           claimName: ${K8S_CODE_DATA_PVC}
-      - name: database-dir
-        persistentVolumeClaim:
-          claimName: ${K8S_DATABASE_PVC}
+      #- name: database-dir
+      #  persistentVolumeClaim:
+      #    claimName: ${K8S_DATABASE_PVC}
       - name: qcos-config
         configMap:
           name: qcos-config
       - name: qcos-config-device-dummy
         configMap:
           name: qcos-config
-#      nodeSelector:
-#        qcos-api: enabled
 #      affinity:
-#        podAntiAffinity:
+#        podAffinity:
 #          requiredDuringSchedulingIgnoredDuringExecution:
 #          - labelSelector:
-#              matchLabels:
-#                app: qcos-api
+#              matchExpressions:
+#              - key: app
+#                operator: In
+#                values:
+#                - prefect-server
 #            topologyKey: "kubernetes.io/hostname"
+#      nodeSelector:
+#        qcos-api: enabled
 ---
 # qcos service (ClusterIP)
 apiVersion: v1
