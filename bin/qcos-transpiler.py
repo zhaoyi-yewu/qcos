@@ -32,20 +32,28 @@ if __name__ == "__main__":
         help="input file",
     )
     parser.add_argument(
-        "-q",
-        "--qasm-version",
-        dest="qasm_version",
-        type=str,
-        default="3.0",
-        help="openqasm version",
-    )
-    parser.add_argument(
         "-o",
         "--opt-level",
         dest="opt_level",
         type=int,
         default=1,
         help="optimization level",
+    )
+    parser.add_argument(
+        "-t",
+        "--tech-type",
+        dest="tech_type",
+        type=str,
+        default="",
+        help="technology type",
+    )
+    parser.add_argument(
+        "-c",
+        "--config-file",
+        dest="config_file",
+        type=str,
+        default="",
+        help="config file",
     )
     parser.add_argument(
         "-O",
@@ -61,7 +69,8 @@ if __name__ == "__main__":
         main(
             input_file=args.input_file,
             output_file=args.output_file,
-            qasm_version=args.qasm_version,
             opt_level=args.opt_level,
+            tech_type=args.tech_type,
+            config_file=args.config_file,
         )
     )

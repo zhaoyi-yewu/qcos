@@ -19,8 +19,11 @@ import os
 import pytest
 from pathlib import Path
 
+from qcos.common.library import Library
+
 
 GLOBAL_CONFIGS = {}
+SAMPLES = {}
 
 
 @pytest.fixture(scope="session")
@@ -29,3 +32,7 @@ def global_configs():
     top_dir = Path(current_path).resolve().parent.parent.parent
     GLOBAL_CONFIGS["base_dir"] = str(top_dir)
     GLOBAL_CONFIGS["samples_dir"] = f"{top_dir}/samples"
+    samples_dir = GLOBAL_CONFIGS["samples_dir"]
+    SAMPLES["simple-qasm.qasm"] = Library.read_file(
+        f"{samples_dir}/qasm/2.0/simple-qasm.qasm"
+    )

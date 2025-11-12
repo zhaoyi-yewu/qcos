@@ -77,13 +77,19 @@ class TranspilerQiskit(TranspilerBase):
             logger.info(f"source_code:\n{source_code}")
             if "OPENQASM 3.0" in source_code:
                 parse_result = qiskit.qasm3.loads(source_code)
-            else:
+            elif "OPENQASM 2.0" in source_code:
                 parse_result = qiskit.QuantumCircuit.from_qasm_str(source_code)
+            else:
+                raise TranspilerException(
+                    "unsupported openqasm version in qiskit transpiler"
+                )
 
             self.total_qubits = parse_result.num_qubits
             return parse_result
         else:
-            raise TranspilerException("unsupported input")
+            raise TranspilerException(
+                "unsupported input for qiskit transpiler"
+            )
 
     def transpile(self, parse_result, supp_basis_gates: list):
         """Transpile codes
@@ -104,10 +110,10 @@ class TranspilerQiskit(TranspilerBase):
             raise TranspilerException(f"invalid driver name: {driver_name}")
 
         transpiled_circuit = qiskit.transpile(
-            parse_result,
-            simulator,
+            circuits=parse_result,
+            backend=simulator,
             optimization_level=self.transpiler_options["optimization_level"],
             basis_gates=supp_basis_gates,
         )
 
-        return transpiled_circuit, None
+        return transpiled_circuit

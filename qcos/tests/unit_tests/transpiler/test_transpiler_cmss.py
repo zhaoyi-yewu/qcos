@@ -18,12 +18,10 @@ import pytest
 
 from qcos.common.constant import Constant
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
-
 from qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
-from qcos.tests.unit_tests.transpiler.comm import read_qasm_from_file
 from qcos.tests.unit_tests.transpiler.comm import validate_gate_ir
 from qcos.tests.unit_tests.transpiler.comm import validate_non_gate_ir
-from qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
+from qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS, SAMPLES
 
 
 @pytest.mark.usefixtures("global_configs")
@@ -119,8 +117,7 @@ class TestTranspilerCmss:
         assert len(basis_gate_list) == 10
 
     def test_transpiler_aggregation_partly_succ(self):
-        file_path = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
-        qasm_data = read_qasm_from_file(file_path)
+        qasm_data = SAMPLES["simple-qasm.qasm"]
         if qasm_data is None:
             return
 

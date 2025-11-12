@@ -16,6 +16,8 @@
 # ----------------------------------------------------------------------
 from unittest.mock import patch
 
+from qcos.common.constant import Constant
+from qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 from qcos.transpiler.cmss.transpiler_cmd_line import (
     read_qasm_from_file,
     Timer,
@@ -26,6 +28,9 @@ timer = Timer()
 
 
 class TestTranspilerCmdLine:
+    def __init__(self):
+        self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
+
     def test_read_qasm_from_file(self):
         read_qasm_from_file("None")
 
@@ -47,3 +52,29 @@ class TestTranspilerCmdLine:
         default_input_file = "samples/qasm/3.0/benchmark/100bits_50000d.qasm"
         default_output_file = "qiskit_transpiler_perf.log"
         main(input_file=default_input_file, output_file=default_output_file)
+
+    def test_qiskt_transpiler_tech(self):
+        qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
+        output_file = "qiskit_transpiler_perf.log"
+        opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
+        tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
+        config_file = "etc/qcos/conf.d/hanyuan1.toml"
+        main(
+            input_file=qasm_file,
+            output_file=output_file,
+            opt_level=opt_level,
+            tech_type=tech_type,
+            config_file=config_file,
+        )
+
+    def test_qiskt_transpiler_notech(self):
+        qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
+        output_file = "qiskit_transpiler_perf.log"
+        opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
+        main(
+            input_file=qasm_file,
+            output_file=output_file,
+            opt_level=opt_level,
+            tech_type="",
+            config_file="",
+        )

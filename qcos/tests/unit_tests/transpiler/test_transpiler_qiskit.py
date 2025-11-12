@@ -45,7 +45,7 @@ class TestTranspilerQiskit:
         transpiler = TranspilerQiskit()
         src_code_info = {"000": self.simple_data}
         parse_result = transpiler.parse(src_code_info)
-        transpiled_circuit, _ = transpiler.transpile(
+        transpiled_circuit = transpiler.transpile(
             parse_result, expected_basis_gates
         )
         assert len(transpiled_circuit) == 3

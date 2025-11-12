@@ -18,8 +18,12 @@
 import logging
 from pathlib import Path
 import time
+from datetime import datetime
 
+from qcos.common.config import Config
 from qcos.common.constant import Constant
+from qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
+from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
@@ -50,8 +54,9 @@ class Timer:
 def main(
     input_file: str,
     output_file: str,
-    qasm_version: str = "3.0",
     opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
+    tech_type: str = "",
+    config_file: str = "",
 ):
     """
     cmss-transpiler performance test
@@ -64,56 +69,85 @@ def main(
 
     output_file_path = Path(output_file).resolve()
     if output_file_path.exists():
-        logger.error(f"output file[{output_file_path}] has existed")
-        return
-    else:
-        # create output file
-        with open(output_file_path, "w", encoding="utf-8") as f:
-            f.write(f"testing file: {input_file}\n")
-        file_handler = logging.FileHandler(output_file_path)
-        logger.addHandler(file_handler)
-
-    # check qasm version
-    if qasm_version not in ["2.0", "3.0"]:
-        logger.error(
-            f"""only support openqasm version 2 or 3.
-            openqasm version: {qasm_version}"""
+        logger.info(f"output file[{output_file_path}] has existed")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_file_path = output_file_path.with_stem(
+            f"{output_file_path.stem}_{timestamp}"
         )
-        return
+
+    # create output file
+    with open(output_file_path, "w", encoding="utf-8") as f:
+        f.write(f"testing file: {input_file}\n")
+    file_handler = logging.FileHandler(output_file_path)
+    logger.addHandler(file_handler)
 
     # load data from qasm file
     qasm_data = read_qasm_from_file(str(file_path))
     if qasm_data is None:
-        logger.error("read file failure")
+        logger.error(f"read[{file_path}] file failure")
         return
 
     # performace testing
     logger.info("start qiskit performace testing...")
     with Timer() as total_timer:
-        # generate abs tree
-        with Timer() as ast_timer:
-            tree = get_abs_tree(qasm_data)
-        logger.info(f"abs tree: {ast_timer.elapsed:.4f}s")
+        if tech_type != "":
+            # parse the config file of qpu
+            abs_config_path = Path(config_file).resolve()
+            if not abs_config_path.exists():
+                raise ValueError(f"config file[{config_file}] not existed!")
 
-        # generate IR
-        with Timer() as ir_timer:
-            _, ir = get_ir(tree)
-        logger.info(f"IR generating: {ir_timer.elapsed:.4f}s")
+            qpu_config = {}
+            Config.parse_toml_file(config_file, extra_config=True)
+            if tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM:
+                qpu_config = Config.EXTRA_CONFIGS["hanyuan1"]["transpiler"][
+                    "qpu_configs"
+                ]
+                trans_cfg_inst.set_qpu_cfg(qpu_config)
+                trans_cfg_inst.set_tech_type(tech_type)
+                trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
+            else:
+                raise ValueError(f"tech_type[{tech_type}] is not supported!")
 
-        # optimize IR
-        with Timer() as opt1_timer:
-            optimized_ir = optimize_gate(ir, opt_level=opt_level)
-        logger.info(f"IR optimizing: {opt1_timer.elapsed:.4f}s")
+            transpiler = TranspilerCmss(optimization_level=opt_level)
+            expected_basis_gates = [
+                Constant.SINGLE_QUBIT_GATE_RX,
+                Constant.SINGLE_QUBIT_GATE_RY,
+            ]
+            # generate basis gates list
+            with Timer() as ast_timer:
+                src_code_info = {"000": qasm_data}
+                parse_result = transpiler.parse(src_code_info)
+            logger.info(f"parse openqasm: {ast_timer.elapsed:.4f}s")
 
-        # decompose gate by rules
-        with Timer() as decompose_timer:
-            transpiled_gates = decompose_gates(optimized_ir)
-        logger.info(f"gates decomposing: {decompose_timer.elapsed:.4f}s")
+            # optimize the transpiled gates
+            with Timer() as tranpile_timer:
+                _, _ = transpiler.transpile(parse_result, expected_basis_gates)
+            logger.info(f"cmss tranpiler: {tranpile_timer.elapsed:.4f}s\n")
+        else:
+            # generate abs tree
+            with Timer() as ast_timer:
+                tree = get_abs_tree(qasm_data)
+            logger.info(f"abs tree: {ast_timer.elapsed:.4f}s")
 
-        # optimize the transpiled gates
-        with Timer() as opt2_timer:
-            optimize_gate(transpiled_gates, opt_level=opt_level)
-        logger.info(f"gates optimizing: {opt2_timer.elapsed:.4f}s\n")
+            # generate IR
+            with Timer() as ir_timer:
+                _, ir = get_ir(tree)
+            logger.info(f"IR generating: {ir_timer.elapsed:.4f}s")
+
+            # optimize IR
+            with Timer() as opt1_timer:
+                optimized_ir = optimize_gate(ir, opt_level=opt_level)
+            logger.info(f"IR optimizing: {opt1_timer.elapsed:.4f}s")
+
+            # decompose gate by rules
+            with Timer() as decompose_timer:
+                transpiled_gates = decompose_gates(optimized_ir)
+            logger.info(f"gates decomposing: {decompose_timer.elapsed:.4f}s")
+
+            # optimize the transpiled gates
+            with Timer() as opt2_timer:
+                optimize_gate(transpiled_gates, opt_level=opt_level)
+            logger.info(f"gates optimizing: {opt2_timer.elapsed:.4f}s\n")
 
     logger.info(
         f"total running time of cmss-transpiler: {total_timer.elapsed:.4f}s"

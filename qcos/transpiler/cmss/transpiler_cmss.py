@@ -34,7 +34,9 @@ from qcos.transpiler.transpiler_base import TranspilerBase
 class TranspilerCmss(TranspilerBase):
     """Transpiler Class for CMSS"""
 
-    def __init__(self):
+    def __init__(
+        self, optimization_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL
+    ):
         super().__init__()
         self.total_qubits = 0
         self.name = Constant.TRANSPILER_CMSS
@@ -48,9 +50,20 @@ class TranspilerCmss(TranspilerBase):
             Constant.CODE_TYPE_QASM2,
         ]
         # transpiler_options
+        if (
+            optimization_level < Constant.MIN_OPTIMIZATION_LEVEL
+            or optimization_level > Constant.MAX_OPTIMIZATION_LEVEL
+        ):
+            raise TranspilerException(
+                f"""
+                optimization_level should be between
+                {Constant.MIN_OPTIMIZATION_LEVEL} and
+                {Constant.MAX_OPTIMIZATION_LEVEL}
+                """
+            )
         self.transpiler_options = {
             # default optimization level
-            "optimization_level": Constant.DEFAULT_OPTIMIZATION_LEVEL
+            "optimization_level": optimization_level
         }
         # transpiler_options schema used in submit-job from user
         self.transpiler_options_schema = {Optional("optimization_level"): int}
@@ -137,11 +150,11 @@ class TranspilerCmss(TranspilerBase):
         Args:
           parse_result: parse result
           supp_basis_gates: supported basis gates
-        :return basis gate list
-          supp_basis_gates: list:
 
         Returns:
-
+            basis gate list(list): basis gate list by cmss transpiler
+            mapping_dict(dict): mapping dict by cmss mapping.
+            only for neutral atom now
         """
         qpu_cfg = trans_cfg_inst.get_qpu_cfg()
         if not qpu_cfg:

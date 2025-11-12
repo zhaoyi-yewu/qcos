@@ -39,14 +39,6 @@ if __name__ == "__main__":
         help="basis gates",
     )
     parser.add_argument(
-        "-q",
-        "--qasm-version",
-        dest="qasm_version",
-        type=str,
-        default="3.0",
-        help="openqasm version",
-    )
-    parser.add_argument(
         "-o",
         "--opt-level",
         dest="opt_level",
@@ -68,7 +60,6 @@ if __name__ == "__main__":
         main(
             input_file=args.input_file,
             basis_gates=args.gates_list,
-            qasm_version=args.qasm_version,
             opt_level=args.opt_level,
             output_file=args.output_file,
         )

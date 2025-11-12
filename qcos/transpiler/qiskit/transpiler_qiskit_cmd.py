@@ -74,7 +74,6 @@ class Timer:
 def main(
     input_file: str,
     basis_gates: str = "",
-    qasm_version: str = "3.0",
     opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
     output_file: str = "",
 ):
@@ -95,13 +94,6 @@ def main(
             f.write(f"testing file: {input_file}\n")
         file_handler = logging.FileHandler(output_file_path)
         logger.addHandler(file_handler)
-
-    if qasm_version not in ["2.0", "3.0"]:
-        logger.error(
-            f"""only support openqasm version 2.0 or 3.0
-            openqasm version: {qasm_version}"""
-        )
-        return
 
     # load data from qasm file
     qasm_data = read_qasm_from_file(str(file_path))
