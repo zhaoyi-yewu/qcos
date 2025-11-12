@@ -1148,35 +1148,29 @@ class C4X(GateOperation):
             [self.targets[3], self.targets[4]], [np.pi / 2]
         ).decompose()
         gates += H([self.targets[4]]).decompose()
-        gates += C3X(
-            [
-                self.targets[0],
-                self.targets[1],
-                self.targets[2],
-                self.targets[3],
-            ]
-        ).decompose()
+        gates += C3X([
+            self.targets[0],
+            self.targets[1],
+            self.targets[2],
+            self.targets[3],
+        ]).decompose()
         gates += H([self.targets[4]]).decompose()
         gates += CU1(
             [self.targets[3], self.targets[4]], [-np.pi / 2]
         ).decompose()
         gates += H([self.targets[4]]).decompose()
-        gates += C3X(
-            [
-                self.targets[0],
-                self.targets[1],
-                self.targets[2],
-                self.targets[3],
-            ]
-        ).decompose()
-        gates += C3SQRTX(
-            [
-                self.targets[0],
-                self.targets[1],
-                self.targets[2],
-                self.targets[4],
-            ]
-        ).decompose()
+        gates += C3X([
+            self.targets[0],
+            self.targets[1],
+            self.targets[2],
+            self.targets[3],
+        ]).decompose()
+        gates += C3SQRTX([
+            self.targets[0],
+            self.targets[1],
+            self.targets[2],
+            self.targets[4],
+        ]).decompose()
 
         return gates
 
