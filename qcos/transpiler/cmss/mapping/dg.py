@@ -19,8 +19,14 @@ import networkx as nx
 from networkx.algorithms import approximation as approx
 from networkx import DiGraph
 
-from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
-from qcos.transpiler.cmss.common.gate_operation import GateOperation
+from qcos.transpiler.cmss.compiler.parser import (
+    get_abs_tree,
+    get_ir,
+)
+from qcos.transpiler.cmss.common.gate_operation import (
+    GateOperation,
+    create_gate,
+)
 
 
 class DG(DiGraph):
@@ -328,8 +334,54 @@ class DG(DiGraph):
     def to_ir(self, add_barrier=False, decompose_swap=False):
         """
         Convert the DG to a ir.
+        If decompose_swap is set to True, we will decompose each SWAP
+        into 3 CNOTs.
         """
-        # TODO
+        from .front_circuit import FrontCircuit  # pylint: disable=import-outside-toplevel
+
+        # init circuits
+        ag = nx.complete_graph(self.num_q)
+        circuit = FrontCircuit(self, ag)
+        ir = []
+        # add qiskit gates one by one
+        while circuit.num_remain_nodes > 0:
+            front_nodes = circuit.front_layer
+            if len(front_nodes) == 0:
+                raise RuntimeError("No front nodes available")
+            for node in front_nodes:
+                gates = self.get_node_gates(node)
+                for gate in gates:
+                    if decompose_swap and gate[0] == "swap":
+                        q0, q1 = gate[1]
+                        ir.append(
+                            create_gate(
+                                "cx", targets=[q0, q1], arg_value=gate[2]
+                            )
+                        )
+                        ir.append(
+                            create_gate(
+                                "cx", targets=[q1, q0], arg_value=gate[2]
+                            )
+                        )
+                        ir.append(
+                            create_gate(
+                                "cx", targets=[q0, q1], arg_value=gate[2]
+                            )
+                        )
+                    else:
+                        ir.append(
+                            create_gate(
+                                gate[0],
+                                targets=list(gate[1]),
+                                arg_value=gate[2],
+                            )
+                        )
+                if add_barrier:
+                    ir.append(
+                        create_gate("sync", targets=list(range(self.num_q)))
+                    )
+            circuit.execute_front_layer()
+        return ir
 
     def draw(self):
         """Draw DG graph"""
