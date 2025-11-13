@@ -174,7 +174,7 @@ known-third-party = ["requests", "pandas", "numpy"]
 lines-after-imports = 2
 
 [tool.ruff.lint.flake8-copyright]
-notice-rgx = "(?s)^#!/usr/bin/env python3.*?(coding: utf-8).*?(Copyright).*?(China Mobile \\(SuZhou\\)).*?(qcos is licensed under Mulan PSL v2).*"
+notice-rgx = "(?s)^#!/usr/bin/env python3.*?(coding: utf-8).*?(Copyright© 2025-2025 China Mobile \\(SuZhou\\)).*?(qcos is licensed under Mulan PSL v2).*"
 
 [tool.ruff.format]
 quote-style = "double"
