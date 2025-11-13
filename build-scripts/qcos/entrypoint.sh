@@ -85,7 +85,7 @@ USE_SSL = false
 
 [DEVICES]
 # DEVICE_LIST example:
-# DEVICE_LIST = ["dummy", "hanyuan1", "tiangong100", "tiangong_generic", "spinq_rpc", "qiskit_aer_sim", "qiskit_qasm_sim"]
+# DEVICE_LIST = ["dummy", "hanyuan1", "tiangong100", "tiangong_generic", "spinq_rpc", "qiskit_aer_sim", "qiskit_qasm_sim", "uqc_matrix2"]
 DEVICE_LIST = [${DEVICE_LIST:-\"dummy\"}]
 EOM
 fi

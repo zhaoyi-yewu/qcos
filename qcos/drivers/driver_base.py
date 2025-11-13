@@ -31,7 +31,8 @@ class DriverBase:
     # Data types
     DATA_TYPE_GATE_SEQUENCE = "gate_sequence"
     DATA_TYPE_QUBO = "qubo"
-    DATA_TYPES = [DATA_TYPE_GATE_SEQUENCE, DATA_TYPE_QUBO]
+    DATA_TYPE_QASM3 = "qasm3"
+    DATA_TYPES = [DATA_TYPE_GATE_SEQUENCE, DATA_TYPE_QUBO, DATA_TYPE_QASM3]
 
     # TASK STAGES
     TASK_STAGE_START = "start"

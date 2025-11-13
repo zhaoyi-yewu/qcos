@@ -1,0 +1,9 @@
+[uqc_matrix2]
+alias_name = "幺正量子 UQC-Matrix2 离子阱驱动"
+driver = "DriverUQCMatrix2"
+description = "幺正量子 UQC-Matrix2 离子阱驱动"
+
+uqc_host = "cloud.unitaryqubit.com"
+uqc_port = "8080"
+token = ""
+device_name = "Matrix2"
