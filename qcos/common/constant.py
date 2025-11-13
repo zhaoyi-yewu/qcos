@@ -87,6 +87,7 @@ class Constant:
     SINGLE_QUBIT_GATE_U1 = "u1"
     SINGLE_QUBIT_GATE_U2 = "u2"
     SINGLE_QUBIT_GATE_U3 = "u3"
+    SINGLE_QUBIT_GATE_RESET = "reset"
     SINGLE_QUBIT_GATE_LIST = [
         SINGLE_QUBIT_GATE_X,
         SINGLE_QUBIT_GATE_Y,

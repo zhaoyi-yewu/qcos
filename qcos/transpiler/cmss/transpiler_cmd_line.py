@@ -61,11 +61,12 @@ def main(
     """
     cmss-transpiler performance test
     """
+    success = False
     # input args check
     file_path = Path(input_file).resolve()
     if not file_path.exists():
         logger.error(f"input file[{file_path}] not existed")
-        return
+        return success
 
     output_file_path = Path(output_file).resolve()
     if output_file_path.exists():
@@ -85,7 +86,7 @@ def main(
     qasm_data = read_qasm_from_file(str(file_path))
     if qasm_data is None:
         logger.error(f"read[{file_path}] file failure")
-        return
+        return success
 
     # performace testing
     logger.info("start qiskit performace testing...")
@@ -105,14 +106,29 @@ def main(
                 trans_cfg_inst.set_qpu_cfg(qpu_config)
                 trans_cfg_inst.set_tech_type(tech_type)
                 trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
+
+                transpiler = TranspilerCmss(optimization_level=opt_level)
+                expected_basis_gates = [
+                    Constant.SINGLE_QUBIT_GATE_RX,
+                    Constant.SINGLE_QUBIT_GATE_RY,
+                ]
+            elif tech_type == Constant.TECH_TYPE_SUPERCONDUCTING:
+                qpu_config = Config.EXTRA_CONFIGS["spinq_rpc"]["transpiler"][
+                    "qpu_configs"
+                ]
+                trans_cfg_inst.set_qpu_cfg(qpu_config)
+                trans_cfg_inst.set_tech_type(tech_type)
+                trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
+
+                transpiler = TranspilerCmss(optimization_level=opt_level)
+                expected_basis_gates = [
+                    Constant.SINGLE_QUBIT_GATE_RX,
+                    Constant.SINGLE_QUBIT_GATE_RY,
+                    Constant.TWO_QUBIT_GATE_CX,
+                ]
             else:
                 raise ValueError(f"tech_type[{tech_type}] is not supported!")
 
-            transpiler = TranspilerCmss(optimization_level=opt_level)
-            expected_basis_gates = [
-                Constant.SINGLE_QUBIT_GATE_RX,
-                Constant.SINGLE_QUBIT_GATE_RY,
-            ]
             # generate basis gates list
             with Timer() as ast_timer:
                 src_code_info = {"000": qasm_data}
@@ -152,3 +168,5 @@ def main(
     logger.info(
         f"total running time of cmss-transpiler: {total_timer.elapsed:.4f}s"
     )
+    success = True
+    return success

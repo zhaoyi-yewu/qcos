@@ -1,4 +1,5 @@
-# ide/virtual env/logs
+# vscode/ide/virtual env/logs
+.vscode
 .idea
 .venv
 *.patch

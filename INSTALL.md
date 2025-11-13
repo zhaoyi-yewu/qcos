@@ -310,7 +310,7 @@ qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"e
 qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_subqubo": false}' -f ./samples/qubo/qubo_200X200.csv
 
 5. 量旋科技, 真实运行
-qcos-cli submit-job --code-type qasm --shots 10 --backend sping_rpc -f ./samples/qasm/2.0/simple-qasm.qasm
+qcos-cli submit-job --code-type qasm --shots 10 --backend spinq_rpc -f ./samples/qasm/2.0/simple-qasm.qasm
 6. 幺正量子, 真实运行
 qcos-cli submit-job --code-type qasm3 --shots 100 --backend uqc_matrix2 -f ./samples/qasm/3.0/4-qubit-grover.qasm
 * 获取作业状态

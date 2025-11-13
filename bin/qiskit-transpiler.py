@@ -35,7 +35,7 @@ if __name__ == "__main__":
         "--gates-list",
         dest="gates_list",
         type=str,
-        default=None,
+        default="",
         help="basis gates",
     )
     parser.add_argument(
@@ -45,6 +45,14 @@ if __name__ == "__main__":
         type=int,
         default=1,
         help="optimization level",
+    )
+    parser.add_argument(
+        "-c",
+        "--config-file",
+        dest="config_file",
+        type=str,
+        default="",
+        help="config file",
     )
     parser.add_argument(
         "-O",
@@ -61,6 +69,7 @@ if __name__ == "__main__":
             input_file=args.input_file,
             basis_gates=args.gates_list,
             opt_level=args.opt_level,
+            config_file=args.config_file,
             output_file=args.output_file,
         )
     )

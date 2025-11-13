@@ -18,7 +18,9 @@
 import logging
 from pathlib import Path
 import time
+from datetime import datetime
 
+from qcos.common.config import Config
 from qcos.common.constant import Constant
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from qcos.transpiler.qiskit.transpiler_qiskit import TranspilerQiskit
@@ -75,47 +77,74 @@ def main(
     input_file: str,
     basis_gates: str = "",
     opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
+    config_file: str = "",
     output_file: str = "",
 ):
     """qiskit-transpiler performance test"""
+    success = False
     # input args check
     file_path = Path(input_file).resolve()
     if not file_path.exists():
         logger.error(f"input file[{file_path}] not existed")
-        return
+        return success
 
     output_file_path = Path(output_file).resolve()
     if output_file_path.exists():
-        logger.error(f"output file[{output_file_path}] has existed")
-        return
-    else:
-        # create output file
-        with open(output_file_path, "w", encoding="utf-8") as f:
-            f.write(f"testing file: {input_file}\n")
-        file_handler = logging.FileHandler(output_file_path)
-        logger.addHandler(file_handler)
+        logger.info(f"output file[{output_file_path}] has existed")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_file_path = output_file_path.with_stem(
+            f"{output_file_path.stem}_{timestamp}"
+        )
+
+    # create output file
+    with open(output_file_path, "w", encoding="utf-8") as f:
+        f.write(f"testing file: {input_file}\n")
+    file_handler = logging.FileHandler(output_file_path)
+    logger.addHandler(file_handler)
 
     # load data from qasm file
     qasm_data = read_qasm_from_file(str(file_path))
     if qasm_data is None:
         logger.error("read file failure")
-        return
+        return success
 
-    if basis_gates is None:
+    # baisis gates set
+    if basis_gates == "":
         basis_gates_list = [
             Constant.SINGLE_QUBIT_GATE_RX,
             Constant.SINGLE_QUBIT_GATE_RY,
             Constant.SINGLE_QUBIT_GATE_RZ,
+            Constant.SINGLE_QUBIT_GATE_X,
+            Constant.SINGLE_QUBIT_GATE_H,
             Constant.TWO_QUBIT_GATE_CX,
+            Constant.TWO_QUBIT_GATE_CZ,
         ]
     else:
         basis_gates_list = basis_gates.split(",")
         for gate in basis_gates_list:
+            gate = gate.strip()
             if gate not in legal_basis_gates:
                 logger.error(f"unsupported the illegal gate[{gate}]")
-                return
+                return success
 
-    trans_cfg_inst.set_driver_name("DriverQiskitAerSim")
+    # config file parsing
+    if config_file != "":
+        abs_config_path = Path(config_file).resolve()
+        if not abs_config_path.exists():
+            raise ValueError(f"config file[{config_file}] not existed!")
+
+        qpu_config = {}
+        Config.parse_toml_file(config_file, extra_config=True)
+        qpu_config = Config.EXTRA_CONFIGS["qiskit_marrakesh"]["transpiler"][
+            "qpu_configs"
+        ]
+        trans_cfg_inst.set_qpu_cfg(qpu_config)
+        trans_cfg_inst.set_tech_type(Constant.TECH_TYPE_SUPERCONDUCTING)
+        trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
+
+        trans_cfg_inst.set_driver_name("NoDriverQiskit")
+    else:
+        trans_cfg_inst.set_driver_name("DriverQiskitAerSim")
 
     transpiler = TranspilerQiskit(opt_level=opt_level)
     src_code_info = {"000": qasm_data}
@@ -138,3 +167,5 @@ def main(
     logger.info(
         f"total running time of qiskit-transpiler: {total_timer.elapsed:.4f}s"
     )
+    success = True
+    return success

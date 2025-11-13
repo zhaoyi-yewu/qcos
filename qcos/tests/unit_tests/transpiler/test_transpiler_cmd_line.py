@@ -14,10 +14,12 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+import pytest
 from unittest.mock import patch
 
 from qcos.common.constant import Constant
-from qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
+from qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 from qcos.transpiler.cmss.transpiler_cmd_line import (
     read_qasm_from_file,
     Timer,
@@ -27,10 +29,8 @@ from qcos.transpiler.cmss.transpiler_cmd_line import (
 timer = Timer()
 
 
+@pytest.mark.usefixtures("global_configs")
 class TestTranspilerCmdLine:
-    def __init__(self):
-        self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
-
     def test_read_qasm_from_file(self):
         read_qasm_from_file("None")
 
@@ -50,31 +50,52 @@ class TestTranspilerCmdLine:
         mock_optimize_gate.return_value = None
         mock_decompose_gates.return_value = None
         default_input_file = "samples/qasm/3.0/benchmark/100bits_50000d.qasm"
-        default_output_file = "qiskit_transpiler_perf.log"
-        main(input_file=default_input_file, output_file=default_output_file)
+        default_output_file = "cmss_transpiler_perf.log"
+        res = main(
+            input_file=default_input_file, output_file=default_output_file
+        )
+        assert res is True
 
-    def test_qiskt_transpiler_tech(self):
+    def test_cmss_transpiler_tech_na(self):
+        self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
         qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
-        output_file = "qiskit_transpiler_perf.log"
+        output_file = "cmss_transpiler_perf.log"
         opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
         tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
         config_file = "etc/qcos/conf.d/hanyuan1.toml"
-        main(
+        res = main(
             input_file=qasm_file,
             output_file=output_file,
             opt_level=opt_level,
             tech_type=tech_type,
             config_file=config_file,
         )
+        assert res is True
 
-    def test_qiskt_transpiler_notech(self):
+    def test_cmss_transpiler_tech_sc(self):
+        self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
         qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
-        output_file = "qiskit_transpiler_perf.log"
+        output_file = "cmss_transpiler_perf.log"
         opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
-        main(
+        res = main(
+            input_file=qasm_file,
+            output_file=output_file,
+            opt_level=opt_level,
+            tech_type=Constant.TECH_TYPE_SUPERCONDUCTING,
+            config_file="etc/qcos/conf.d/spinq_rpc.toml",
+        )
+        assert res is True
+
+    def test_cmss_transpiler_notech(self):
+        self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
+        qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
+        output_file = "cmss_transpiler_perf.log"
+        opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
+        res = main(
             input_file=qasm_file,
             output_file=output_file,
             opt_level=opt_level,
             tech_type="",
             config_file="",
         )
+        assert res is True
