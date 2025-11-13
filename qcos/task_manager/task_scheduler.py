@@ -131,7 +131,8 @@ class TaskScheduler(ABC):
                 f"Current job count exceeds max flow limit: "
                 f"{Constant.FLOW_LIMIT}"
             )
-        if tags is not None:
+        # check max jobs of virtual_instance when ENABLE_VIRT is True
+        if Config.ENABLE_VIRT and tags is not None:
             virtual_instance_flows = (
                 self._task_manager.get_flow_runs_with_filters(tags=tags)
             )
@@ -143,7 +144,7 @@ class TaskScheduler(ABC):
                 return (
                     None,
                     f"Current job count exceeds max instance job limit: "
-                    f"{Config.MAX_JOBS_PER_VIRTUAL_INSTANCE}."
+                    f"{Config.MAX_JOBS_PER_VIRTUAL_INSTANCE}. "
                     "Please delete some jobs",
                 )
 

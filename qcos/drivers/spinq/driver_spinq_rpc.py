@@ -399,13 +399,8 @@ class DriverSpinQRpc(DriverBase):
                 f"Failed to get task results [{job_id}]: {err_msg}"
             )
 
-        # 6. close rpc client
-        logger.info("6. close rpc client")
-        self.client_close(self._username, self._session_id)
-        self._session_id = None
-
-        # 7. convert results
-        logger.info("7. convert results")
+        # 6. convert results
+        logger.info("6. convert results")
         results = self.convert_results(_results["task_result"])
 
         # 8. Save results and set driver status to ONLINE

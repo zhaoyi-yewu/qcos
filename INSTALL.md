@@ -172,12 +172,12 @@ cd ./cicd
 在qcos-sandbox容器内执行:
 ```shell
 项目根目录下:
-  ruff format --check qcos
+  ruff format --preview --check qcos
 或者:
   ./cicd/code-formatter.sh
 
 自动修复代码格式:
-  ruff format qcos
+  ruff format --preview qcos
 或者:
   ./cicd/code-formatter.sh -f
 ```

@@ -47,8 +47,8 @@ spec:
         volumeMounts:
         - name: code-data
           mountPath: /root/qcos-project
-        #- name: database-dir
-        #  mountPath: /var/qcos
+        - name: database-dir
+          mountPath: /var/qcos
       containers:
       - name: prefect-server
         image: ${REGISTRY}${PREFECT_IMAGE_NAME}:${PREFECT_IMAGE_VERSION}
@@ -96,15 +96,15 @@ spec:
         volumeMounts:
         - name: code-data
           mountPath: /root/qcos-project
-        #- name: database-dir
-        #  mountPath: /var/qcos
+        - name: database-dir
+          mountPath: /var/qcos
       volumes:
       - name: code-data
         persistentVolumeClaim:
           claimName: ${K8S_CODE_DATA_PVC}
-      #- name: database-dir
-      #  persistentVolumeClaim:
-      #    claimName: ${K8S_DATABASE_PVC}
+      - name: database-dir
+        persistentVolumeClaim:
+          claimName: ${K8S_DATABASE_PVC}
 #      nodeSelector:
 #        qcos-prefect: enabled
 #      affinity:
@@ -146,6 +146,11 @@ spec:
         app: ${QCOS_CONTAINER_NAME}
     spec:
       hostNetwork: false
+      # [Optional] config hostAliases
+      # hostAliases:
+      #  - ip: "10.0.0.1"
+      #    hostnames:
+      #      - test.com
       restartPolicy: Always
       initContainers:
       - name: wait-prefect-server
@@ -163,12 +168,9 @@ spec:
       - name: ${QCOS_CONTAINER_NAME}
         image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
         imagePullPolicy: Always
-        # securityContext:
-        #   privileged: true
         stdin: true
         tty: true
         workingDir: /root
-        # command: ["/bin/sleep", "infinity"]
         command: ["/entrypoint.sh"]
         env:
         - name: DEBUG
@@ -185,8 +187,6 @@ spec:
           value: "${QCOS_API_SERVER_PORT}"
         - name: QCOS_ENABLE_VIRT
           value: "${QCOS_ENABLE_VIRT}"
-        #- name: PREFECT_SERVER_API_HOST
-        #  value: "${PREFECT_SERVER_API_HOST}"
         - name: PREFECT_API_URL
           value: "${PREFECT_API_URL}"
         - name: PREFECT_SERVER_DATABASE_CONNECTION_URL
@@ -225,37 +225,32 @@ spec:
         volumeMounts:
         - name: code-data
           mountPath: /root/qcos-project
-        #- name: database-dir
-        #  mountPath: /var/qcos
         - name: qcos-config
           mountPath: /etc/qcos/qcos.toml
           subPath: qcos.toml
-        - name: qcos-config-device-dummy
-          mountPath: /etc/qcos/conf.d/dummy.toml
-          subPath: dummy.toml
+        - name: qcos-config-device-${QCOS_DEVICE_NAME}
+          mountPath: /etc/qcos/conf.d/${QCOS_DEVICE_NAME}.toml
+          subPath: ${QCOS_DEVICE_NAME}.toml
       volumes:
       - name: code-data
         persistentVolumeClaim:
           claimName: ${K8S_CODE_DATA_PVC}
-      #- name: database-dir
-      #  persistentVolumeClaim:
-      #    claimName: ${K8S_DATABASE_PVC}
       - name: qcos-config
         configMap:
           name: qcos-config
-      - name: qcos-config-device-dummy
+      - name: qcos-config-device-${QCOS_DEVICE_NAME}
         configMap:
           name: qcos-config
-#      affinity:
-#        podAffinity:
-#          requiredDuringSchedulingIgnoredDuringExecution:
-#          - labelSelector:
-#              matchExpressions:
-#              - key: app
-#                operator: In
-#                values:
-#                - prefect-server
-#            topologyKey: "kubernetes.io/hostname"
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - prefect-server
+            topologyKey: "kubernetes.io/hostname"
 #      nodeSelector:
 #        qcos-api: enabled
 ---

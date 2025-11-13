@@ -17,11 +17,12 @@ export QCOS_CONTAINER_NAME=qcos-api
 # listen on all IPv6 address: QCOS_API_SERVER_IP=::
 export QCOS_API_SERVER_IP=
 export QCOS_API_SERVER_PORT=18400
+export QCOS_DEVICE_NAME=dummy
 export PREFECT_API_URL=http://prefect-server.${QCOS_NAMESPACE}:4200/api
 
 # [Optional] Enable virtual instance, and set password salt
 export QCOS_ENABLE_VIRT=false
-export PASSWORD_SALT=1234
+export QCOS_PASSWORD_SALT=1234
 
 # QCOS client config
 # [Optional] specify qcos cli configs

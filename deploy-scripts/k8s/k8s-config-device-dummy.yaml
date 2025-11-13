@@ -37,7 +37,7 @@ data:
     # enable virtualization
     ENABLE_VIRT = ${QCOS_ENABLE_VIRT}
     # salt for password/encryption
-    PASSWORD_SALT = "${PASSWORD_SALT}"
+    PASSWORD_SALT = "${QCOS_PASSWORD_SALT}"
 
     [API_SERVER]
     # API workers

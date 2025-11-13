@@ -52,7 +52,7 @@ class Client:
         ssl_certfile=None,
         ssl_keyfile=None,
         ssl_cafile=None,
-        timeout=370,
+        timeout=30,
     ):
         # Config
         Client.timeout = timeout

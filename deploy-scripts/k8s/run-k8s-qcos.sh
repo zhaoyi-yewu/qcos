@@ -53,5 +53,5 @@ source "${config_file}"
 echo "Creating K8s QCOS pods, namespace: ${QCOS_NAMESPACE} (${config_file}) ..."
 echo "Note: you must create PVCs(${K8S_CODE_DATA_PVC}, ${K8S_DATABASE_PVC}) before running this script"
 
-envsubst < ./k8s-device-config-${QCOS_NAMESPACE}.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -
+envsubst < ./k8s-config-device-${QCOS_DEVICE_NAME}.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -
 envsubst < ./k8s-qcos-api-single-mode.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -

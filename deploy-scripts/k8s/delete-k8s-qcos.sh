@@ -53,6 +53,7 @@ source "${config_file}"
 echo "Deleting K8s QCOS pods, namespace: ${QCOS_NAMESPACE} (${config_file}) ..."
 
 kubectl delete deployment --ignore-not-found=true -n ${QCOS_NAMESPACE} prefect-server qcos-api qcos-cli
+kubectl delete configmap --ignore-not-found=true -n ${QCOS_NAMESPACE} qcos-config
 kubectl delete svc --ignore-not-found=true -n ${QCOS_NAMESPACE} prefect-server qcos-api
 # kubectl delete pvc --ignore-not-found=true -n ${QCOS_NAMESPACE} code-data-pvc database-pvc
 # kubectl delete ns ${QCOS_NAMESPACE}
