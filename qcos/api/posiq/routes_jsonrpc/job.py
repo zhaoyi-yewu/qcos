@@ -53,7 +53,7 @@ def submit_job(
         job info
     """
     func_name = "submit_job"
-    logger.info(f"Call {func_name}: {body}")
+    logger.debug(f"Call {func_name}: {body}")
 
     source_code = body.source_code
     code_type = body.code_type

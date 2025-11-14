@@ -271,18 +271,10 @@ def driver_run(job_info, driver, num_qubits, data):
         dry_run = job_data.get("dry_run", False)
         data_type = driver.get_default_data_type()
         if dry_run:
-            logger.info(
-                f"dry_run: job_id: {job_id}, num_qubits: {num_qubits}, "
-                f"data: {data}, data_type: {data_type}, shots: {shots}"
-            )
             driver.dry_run(
                 job_id, num_qubits, data, data_type=data_type, shots=shots
             )
         else:
-            logger.info(
-                f"run: job_id: {job_id}, num_qubits: {num_qubits}, "
-                f"data: {data}, data_type: {data_type}, shots: {shots}"
-            )
             driver.run(
                 job_id, num_qubits, data, data_type=data_type, shots=shots
             )
@@ -999,6 +991,7 @@ def run_qubo_code(
         job_results = process_qubo_solution(
             job_results, last_idx, np.array(qubo_matrix)
         )
+    job_results["num_qubits"] = len(qubo_matrix)
     return job_results, driver, transpiler, mapping_dict
 
 

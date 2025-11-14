@@ -125,7 +125,7 @@ class DriverTiangongGeneric(DriverQuboBase):
         """
         # pylint: disable=duplicate-code
         data_index = data["index"]
-        logger.info(
+        logger.debug(
             f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
             f"data_type: {data_type}, data: {data}"
         )
