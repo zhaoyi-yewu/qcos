@@ -106,7 +106,7 @@ class DriverUQCMatrix2(DriverBase):
     def fetch_configs(self):
         """Fetch configs"""
         extra_configs = self.get_configs()
-        self.user_token = extra_configs.get("user_token", "")
+        self.user_token = extra_configs.get("token", "")
         self.uqc_host = extra_configs.get("uqc_host", "")
         self.uqc_port = extra_configs.get("uqc_port", "")
         try:
@@ -114,7 +114,7 @@ class DriverUQCMatrix2(DriverBase):
             uqc_config.SERVER_HOST = self.uqc_host
             uqc_config.SERVER_PORT = self.uqc_port
         except Exception as e:
-            raise ValueError(f"UρU exception: {e}") from e
+            raise ValueError(f"UQC exception: {e}") from e
 
     def cancel(self, job_id):
         """Cancel running job in driver.

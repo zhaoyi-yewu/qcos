@@ -207,6 +207,11 @@ def submit_job(
     devices = device_manger.get_devices()
 
     # validate: backend
+    if auth_data is not None:
+        if backend not in auth_data["device_names"]:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name, func_name, (False, f"no such device: {backend}")
+            )
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
         func_name,
