@@ -32,10 +32,12 @@ data:
     MAX_JOBS = 10000
     # [GLOBAL CONFIG] max queued+running jobs
     MAX_QUEUED_JOBS = 1000
-    # [GLOBAL CONFIG] max jobs for virtual instance
-    MAX_JOBS_PER_VIRTUAL_INSTANCE = 10
+
+    [VIRT]
     # enable virtualization
     ENABLE_VIRT = ${QCOS_ENABLE_VIRT}
+    # [GLOBAL CONFIG] max jobs for virtual instance
+    MAX_JOBS_PER_VIRTUAL_INSTANCE = 10
     # salt for password/encryption
     PASSWORD_SALT = "${QCOS_PASSWORD_SALT}"
 
@@ -79,7 +81,7 @@ data:
 
     [DEVICES]
     # DEVICE_LIST example:
-    # DEVICE_LIST = ["dummy", "hanyuan1", "tiangong100", "spinq_rpc", "qiskit_aer_sim", "qiskit_qasm_sim"
+    # DEVICE_LIST = ["dummy", "hanyuan1", "tiangong100", "tiangong_generic", "spinq_rpc", "qiskit_aer_sim", "qiskit_qasm_sim"]
     DEVICE_LIST = ["dummy"]
 
   dummy.toml: |

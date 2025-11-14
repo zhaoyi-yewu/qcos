@@ -956,11 +956,12 @@ class SubmitJob(Command):
             default=Constant.DEFAULT_SHOTS,
             help="Shots",
         )
+        default_backend = Constant.DEVICE_DUMMY
         parser.add_argument(
             "--backend",
             dest="backend",
-            default=f"{Constant.DRIVER_DUMMY}",
-            help="Set backend driver name",
+            default=default_backend,
+            help=f"Set backend device name. eg: {default_backend}",
         )
         parser.add_argument(
             "--driver-options",
@@ -969,10 +970,12 @@ class SubmitJob(Command):
             default=None,
             help="Set driver options",
         )
+        default_transpiler = Constant.TRANSPILER_CMSS
         parser.add_argument(
             "--transpiler",
             dest="transpiler",
-            help="Set transpiler name. eg. cmss",
+            default=default_transpiler,
+            help=f"Set transpiler name. eg. {default_transpiler}",
         )
         parser.add_argument(
             "--transpiler-options",

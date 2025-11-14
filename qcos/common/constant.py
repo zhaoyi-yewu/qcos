@@ -176,6 +176,9 @@ class Constant:
     DRIVER_DUMMY = "dummy"
     DRIVERS = set()  # autofilled during driver registration
 
+    # Devices
+    DEVICE_DUMMY = "dummy"
+
     # Transpiler
     TRANSPILER_CMSS = "cmss"
     TRANSPILER_QISKIT = "qiskit"

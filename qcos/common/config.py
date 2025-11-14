@@ -30,7 +30,7 @@ class Config:
     API_VERSION = API_VERSION_V1
     PROGRAM_NAME = "WuYue-QCOS"
     PROGRAM_AUTHOR = "CMSS"
-    PLATFORM_VERSION = f"五岳量子计算操作系统(qcos) v{VERSION}"
+    PLATFORM_VERSION = f"五岳量子计算操作系统(QCOS) v{VERSION}"
 
     # [DEFAULT]
     DEBUG = False
@@ -38,10 +38,12 @@ class Config:
     MAX_JOBS = 10000
     # [GLOBAL CONFIG] max queued+running jobs
     MAX_QUEUED_JOBS = 1000
-    # [GLOBAL CONFIG] max jobs for virtual instance
-    MAX_JOBS_PER_VIRTUAL_INSTANCE = 10
+
+    # [VIRT]
     # enable virtualization
     ENABLE_VIRT = False
+    # [GLOBAL CONFIG] max jobs for virtual instance
+    MAX_JOBS_PER_VIRTUAL_INSTANCE = 10
     # salt for password/encryption
     PASSWORD_SALT = ""
 
@@ -86,7 +88,7 @@ class Config:
     DEVICE_LIST = []
 
     # valid sections
-    VALID_SECTIONS = ["DEFAULT", "API_SERVER", "LOG", "SSL", "DEVICES"]
+    VALID_SECTIONS = ["DEFAULT", "VIRT", "API_SERVER", "LOG", "SSL", "DEVICES"]
 
     # extra configs from .toml files
     EXTRA_CONFIGS = {}

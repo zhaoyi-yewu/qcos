@@ -30,11 +30,12 @@ logger = logging.getLogger(__name__)
 module_name = "DEVICE"
 
 
-def _get_device_info(device_info):
+def _get_device_info(device_info, auth_data=None):
     """Get device info
 
     Args:
         device_info: device info
+        auth_data: authentication data
 
     Returns:
         device_info
@@ -53,6 +54,10 @@ def _get_device_info(device_info):
         "max_qubits": device_info.max_qubits,
         "configs": configs,
     }
+    if auth_data is not None:
+        # only admin user can access to config info
+        # remove config info in device_info for non-admin user
+        _device_info.pop("configs")
     return _device_info
 
 
@@ -80,7 +85,7 @@ def get_devices(
         if auth_data is not None:
             if device_name not in auth_data["device_names"]:
                 continue
-        _response_info = _get_device_info(device_info)
+        _response_info = _get_device_info(device_info, auth_data)
         response_info[device_name] = schemas.GetDeviceResponse.model_validate(
             _response_info
         )
@@ -117,6 +122,6 @@ def get_device(
             func_name,
             (False, f"Device: '{device_name}' is not found"),
         )
-    _response_info = _get_device_info(device_info)
+    _response_info = _get_device_info(device_info, auth_data)
     response_info = schemas.GetDeviceResponse.model_validate(_response_info)
     return response_info
