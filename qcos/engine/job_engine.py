@@ -38,7 +38,16 @@ from qcos.common.config import Config
 from qcos.common.constant import Constant
 from qcos.common import errors
 from qcos.common.library import Library
-from qcos.engine.qubo import subqubo
+from qcos.engine.qubo import (
+    subqubo,
+    check_qubo_matrix_bit_width,
+    precision_reduction,
+    qubo_matrix_to_ising_matrix,
+    ising_matrix_to_qubo_matrix,
+    scale_to_integer_matrix,
+    get_spins_num,
+    process_qubo_solution,
+)
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 
 # Config Loguru
@@ -908,71 +917,60 @@ def run_qubo_code(
     job_results = {}
     mapping_dict = None
     job_id = job_info["data"]["job_id"]
-
     max_qubits = driver.get_max_qubits()
+    enable_subqubo = driver.get_enable_subqubo()
     qubo_matrix = src_code_dict[f"{job_id}-{source_code_index}"]
-    if len(qubo_matrix) > max_qubits:
-        logger.info("start subqubo")
-        subqubo.set_qubo_matrix(np.array(qubo_matrix))
-        solution_pool = subqubo.init_instance_pool()
-        # find best_solution from solution's pool
-        best_solution, _ = subqubo.find_best_solution(solution_pool)
-        converged_num = 0
-        cycles_num = 0
-        sub_job_results = []
-        while converged_num <= subqubo.get_max_converged_num():
-            cycles_num += 1
-            solution_pool = subqubo.optimize_solution_pool(solution_pool)
-            n_e_pools = subqubo.create_sub_solution_pools(solution_pool)
-            new_solutions = []
-            for i in range(subqubo.N_E):
-                subqubo_matrix, tmp_solution, extracted_index = (
-                    subqubo.construct_subqubo(n_e_pools[i])
-                )
-                src_sub_code_dict = {}
-                sub_source_code_index = (
-                    f"{str(source_code_index)}-{str(cycles_num)}-{str(i)}"
-                )
-                src_sub_code_dict[job_id + sub_source_code_index] = list(
-                    subqubo_matrix
-                )
-                sub_job_results, driver, transpiler, mapping_dict = _run_code(
-                    sub_source_code_index,
-                    src_sub_code_dict,
-                    job_info,
-                    driver,
-                    transpiler,
-                    monitor_info,
-                )
-                subqubo_solution = (
-                    sub_job_results.get("results", {})
-                    .get("out_data", [{}])[0]
-                    .get("solutionVector", [])
-                )
-
-                solution = subqubo.merge_solution(
-                    tmp_solution, subqubo_solution, extracted_index
-                )
-                new_solutions.append(solution)
-            x_best, solution_pool = subqubo.update_solution_pool(
-                solution_pool, new_solutions
+    max_precision_value = 2 ** (Constant.MAX_QUBO_BIT_WIDTH - 1) - 1
+    # Determine in advance whether precision reduction is necessary
+    success, err_msg = check_qubo_matrix_bit_width(
+        np.array(qubo_matrix), Constant.MAX_QUBO_BIT_WIDTH
+    )
+    if not success and err_msg:
+        return (
+            format_error_results(
+                driver, errors.JobEngineCheckWidthError, err_msg
+            ),
+            driver,
+            transpiler,
+            mapping_dict,
+        )
+    ising_matrix = qubo_matrix_to_ising_matrix(np.array(qubo_matrix))
+    scaled_ising_matrix = scale_to_integer_matrix(ising_matrix)
+    # If the QUBO matrix is to be reduced in precision,
+    # calculate the total number of spin bits.
+    _, _, total_spins_num = get_spins_num(
+        scaled_ising_matrix, max_precision_value
+    )
+    # Need subqubo and precision reduction
+    if total_spins_num > max_qubits + 1:
+        if not enable_subqubo:
+            qubo_matrix_length = total_spins_num - 1
+            driver_name = driver.get_name()
+            err_msg = (
+                f"Current QUBO matrix scales to {qubo_matrix_length} bits "
+                f"after precision reduction, exceeding Device {driver_name}'s"
+                f" {max_qubits}-bit limit. Consider using enable_subqubo."
             )
-            if best_solution.energy > x_best.energy:
-                best_solution.solution = x_best.solution.copy()
-                best_solution.energy = x_best.energy
-                converged_num = 0
-            elif best_solution.energy <= x_best.energy:
-                converged_num = converged_num + 1
-        job_results = sub_job_results
-        job_results["results"] = {}
-        job_results["results"]["out_data"] = []
-        for i in range(len(solution_pool)):
-            solution = {}
-            solution["result"] = i + 1
-            solution["quboValue"] = solution_pool[i].energy
-            solution["solutionVector"] = solution_pool[i].solution.tolist()
-            job_results["results"]["out_data"].append(solution)
-    else:
+            return (
+                format_error_results(
+                    driver, errors.JobEngineQubitLimitExceededError, err_msg
+                ),
+                driver,
+                transpiler,
+                mapping_dict,
+            )
+        job_results, driver, transpiler, mapping_dict = run_subqubo_code(
+            max_qubits,
+            total_spins_num,
+            source_code_index,
+            src_code_dict,
+            job_info,
+            driver,
+            transpiler,
+            monitor_info,
+        )
+    # No need to subqubo and precision reduction
+    elif total_spins_num == len(qubo_matrix) + 1:
         job_results, driver, transpiler, mapping_dict = _run_code(
             source_code_index,
             src_code_dict,
@@ -981,6 +979,149 @@ def run_qubo_code(
             None,
             monitor_info,
         )
+    # No need subqubo, but need precision reduction
+    else:
+        precision_ising_matrix, last_idx, _ = precision_reduction(
+            ising_matrix, Constant.MAX_QUBO_BIT_WIDTH
+        )
+        precision_qubo_matrix = ising_matrix_to_qubo_matrix(
+            precision_ising_matrix
+        )
+        src_code_dict[f"{job_id}-{source_code_index}"] = precision_qubo_matrix
+        job_results, driver, transpiler, mapping_dict = _run_code(
+            source_code_index,
+            src_code_dict,
+            job_info,
+            driver,
+            None,
+            monitor_info,
+        )
+        job_results = process_qubo_solution(
+            job_results, last_idx, np.array(qubo_matrix)
+        )
+    return job_results, driver, transpiler, mapping_dict
+
+
+def run_subqubo_code(
+    max_qubits,
+    total_spins_num,
+    source_code_index,
+    src_code_dict,
+    job_info,
+    driver,
+    transpiler,
+    monitor_info,
+):
+    job_results = {}
+    mapping_dict = None
+    job_id = job_info["data"]["job_id"]
+    qubo_matrix = src_code_dict[f"{job_id}-{source_code_index}"]
+    logger.info("start subqubo")
+    subqubo_size = int(
+        np.floor(max_qubits * len(qubo_matrix) / total_spins_num)
+    )
+    if subqubo_size <= max_qubits / 4:
+        err_msg = (
+            f"SubQUBO size {subqubo_size} below threshold "
+            f"{int(max_qubits / 4)}."
+        )
+        return (
+            format_error_results(
+                driver, errors.JobEnginePrecisionTooHighError, err_msg
+            ),
+            driver,
+            transpiler,
+            mapping_dict,
+        )
+    subqubo.set_subqubo_size(subqubo_size)
+    subqubo.set_qubo_matrix(np.array(qubo_matrix))
+    solution_pool = subqubo.init_instance_pool()
+    # find best_solution from solution's pool
+    best_solution, _ = subqubo.find_best_solution(solution_pool)
+    converged_num = 0
+    cycles_num = 0
+    sub_job_results = []
+    while converged_num <= subqubo.get_max_converged_num():
+        cycles_num += 1
+        solution_pool = subqubo.optimize_solution_pool(solution_pool)
+        n_e_pools = subqubo.create_sub_solution_pools(solution_pool)
+        new_solutions = []
+        for i in range(subqubo.N_E):
+            subqubo_matrix, tmp_solution, extracted_index = (
+                subqubo.construct_subqubo(n_e_pools[i])
+            )
+            # Check if subqubo needs precision reduction
+            success, err_msg = check_qubo_matrix_bit_width(
+                np.array(subqubo_matrix), Constant.MAX_QUBO_BIT_WIDTH
+            )
+            need_precision_reduction = False
+            last_idx = []
+            if not success:
+                if err_msg:
+                    return (
+                        format_error_results(
+                            driver, errors.JobEngineCheckWidthError, err_msg
+                        ),
+                        driver,
+                        transpiler,
+                        mapping_dict,
+                    )
+                # Accuracy below target and reduce precision
+                need_precision_reduction = True
+                subqubo_ising_matrix = qubo_matrix_to_ising_matrix(
+                    np.array(subqubo_matrix)
+                )
+                subqubo_precision_ising_matrix, last_idx, _ = (
+                    precision_reduction(
+                        subqubo_ising_matrix, Constant.MAX_QUBO_BIT_WIDTH
+                    )
+                )
+                subqubo_matrix = ising_matrix_to_qubo_matrix(
+                    subqubo_precision_ising_matrix
+                )
+                subqubo_matrix = subqubo_matrix.tolist()
+            src_sub_code_dict = {}
+            sub_source_code_index = (
+                f"{str(source_code_index)}-{str(cycles_num)}-{str(i)}"
+            )
+            src_sub_code_dict[job_id + sub_source_code_index] = subqubo_matrix
+            sub_job_results, driver, transpiler, mapping_dict = _run_code(
+                sub_source_code_index,
+                src_sub_code_dict,
+                job_info,
+                driver,
+                transpiler,
+                monitor_info,
+            )
+            subqubo_solution = (
+                sub_job_results.get("results", {})
+                .get("out_data", [{}])[0]
+                .get("solutionVector", [])
+            )
+            if need_precision_reduction:
+                subqubo_solution = np.array(subqubo_solution)[last_idx[:-1]]
+            solution = subqubo.merge_solution(
+                tmp_solution, subqubo_solution, extracted_index
+            )
+            new_solutions.append(solution)
+        x_best, solution_pool = subqubo.update_solution_pool(
+            solution_pool, new_solutions
+        )
+        if best_solution.energy > x_best.energy:
+            best_solution.solution = x_best.solution.copy()
+            best_solution.energy = x_best.energy
+            converged_num = 0
+        elif best_solution.energy <= x_best.energy:
+            converged_num = converged_num + 1
+    job_results = sub_job_results
+    job_results["results"] = {}
+    job_results["results"]["out_data"] = []
+    for i in range(len(solution_pool)):
+        solution = {}
+        solution["result"] = i + 1
+        solution["quboValue"] = solution_pool[i].energy
+        solution["solutionVector"] = solution_pool[i].solution.tolist()
+        job_results["results"]["out_data"].append(solution)
     return job_results, driver, transpiler, mapping_dict
 
 

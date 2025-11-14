@@ -17,6 +17,8 @@
 
 import random
 
+from schema import Optional
+
 from qcos.common.constant import Constant
 from qcos.drivers.driver_base import DriverBase
 
@@ -33,6 +35,8 @@ class DriverQuboBase(DriverBase):
         self.tech_type = Constant.TECH_TYPE_PHOTON
         self.default_data_type = DriverBase.DATA_TYPE_QUBO
         self.supported_code_types = [Constant.CODE_TYPE_QUBO]
+        self.driver_options = {"enable_subqubo": False}
+        self.driver_options_schema = {Optional("enable_subqubo"): bool}
 
     def get_fake_results(self, num_qubits, shots, data):
         """Get fake results
@@ -55,3 +59,11 @@ class DriverQuboBase(DriverBase):
             }
             results.append(result)
         return results
+
+    def get_enable_subqubo(self):
+        """Get enable_subqubo
+
+        Returns:
+            enable_subqubo
+        """
+        return self.driver_options["enable_subqubo"]

@@ -106,3 +106,28 @@ class JobEngineDriverRunError(BaseException):
     module_name = "JobEngine"
     error_code = -104
     err_type = "Driver Run Error"
+
+
+class JobEngineCheckWidthError(BaseException):
+    """Job Engine: Check QUBO Matrix Bit Width Error"""
+
+    module_name = "JobEngine"
+    error_code = -105
+    err_type = "Check QUBO Matrix Bit Width Error"
+
+
+class JobEnginePrecisionTooHighError(BaseException):
+    """Job Engine: Precision is too high, resulting in subqubo
+    with too few bits for processing"""
+
+    module_name = "JobEngine"
+    error_code = -106
+    err_type = "Precision is too high Error"
+
+
+class JobEngineQubitLimitExceededError(BaseException):
+    """Job Engine: Device Qubit Limit Exceeded Error"""
+
+    module_name = "JobEngine"
+    error_code = -107
+    err_type = "Device Qubit Limit Exceeded Error"

@@ -295,11 +295,16 @@ qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation external -
 qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
 3. 中科酷原-汉原1 中性原子驱动, 真实运行
 qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
+
 4. 玻色量子-光量子伊辛机, 真实运行
 qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.json
 qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.csv
 qcos-cli submit-job --code-type qubo --backend tiangong_generic -f ./samples/qubo/simple-qubo.json
 qcos-cli submit-job --code-type qubo --backend tiangong_generic -f ./samples/qubo/simple-qubo.csv
+4.1 使用--driver-options '{"enable_subqubo": true}'开启subqubo功能（默认关闭）
+qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_subqubo": true}' -f ./samples/qubo/qubo_200X200.csv
+qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_subqubo": false}' -f ./samples/qubo/qubo_200X200.csv
+
 5. 量旋科技, 真实运行
 qcos-cli submit-job --code-type qasm --shots 10 --backend sping_rpc -f ./samples/qasm/2.0/simple-qasm.qasm
 
