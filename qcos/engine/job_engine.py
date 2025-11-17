@@ -705,7 +705,7 @@ def _run_code(
     job_results = {
         "results": None,
         "num_qubits": None,
-        "metadata": None,
+        "metadata": {"status": Constant.JOB_STATUS_RUNNING},
         "profiling": {},
         "sub_results": None,
     }

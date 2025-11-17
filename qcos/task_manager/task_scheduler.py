@@ -415,7 +415,12 @@ class TaskScheduler(ABC):
                 metadata = flow_result.get("metadata", None)
                 if metadata:
                     _flow_results_status = metadata.get("status", None)
-                    flow_results_status = _flow_results_status
+                    if _flow_results_status == Constant.JOB_STATUS_RUNNING:
+                        flow_results_status = _flow_results_status
+                        break
+                    if _flow_results_status == Constant.JOB_STATUS_FAILED:
+                        flow_results_status = _flow_results_status
+                        break
 
         # get job_status from user-defined parameters
         if flow_parameters:

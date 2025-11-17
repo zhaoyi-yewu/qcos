@@ -190,21 +190,49 @@ class TestTaskScheduler:
         assert callback is None
 
     def test_get_job_status(self):
-        flow_results = [
-            {"metadata": {"status": 1, "statuses": 2}},
+        flow_results_1 = [
+            {"metadata": {"status": Constant.JOB_STATUS_COMPLETED}},
             {"data": {"data1": 1}},
         ]
+        job_status_1 = Constant.JOB_STATUS_RUNNING
+        final_job_status = task.get_job_status(
+            job_status_1, flow_results_1, None
+        )
+        assert final_job_status == Constant.JOB_STATUS_RUNNING
+
+        flow_results_2 = [
+            {"metadata": {"status": Constant.JOB_STATUS_RUNNING}},
+            {"metadata": {"status": Constant.JOB_STATUS_COMPLETED}},
+        ]
+        job_status_2 = Constant.JOB_STATUS_RUNNING
+        final_job_status = task.get_job_status(
+            job_status_2, flow_results_2, None
+        )
+        assert final_job_status == Constant.JOB_STATUS_RUNNING
+
+        flow_results_3 = [
+            {"metadata": {"status": Constant.JOB_STATUS_FAILED}},
+            {"metadata": {"status": Constant.JOB_STATUS_COMPLETED}},
+        ]
+        job_status_3 = Constant.JOB_STATUS_RUNNING
+        final_job_status = task.get_job_status(
+            job_status_3, flow_results_3, None
+        )
+        assert final_job_status == Constant.JOB_STATUS_FAILED
 
         flow_parameters = {
             "updated_job_info": {
-                "results": [{"metadata": {"1": 1}}, {"status": {"2": 2}}]
+                "results": [
+                    {"metadata": {"status": Constant.JOB_STATUS_RUNNING}}
+                ]
             },
             "info": 233,
         }
+        job_status_4 = Constant.JOB_STATUS_COMPLETED
         final_job_status = task.get_job_status(
-            "job_status", flow_results, flow_parameters
+            job_status_4, None, flow_parameters
         )
-        assert final_job_status == 1
+        assert final_job_status == Constant.JOB_STATUS_RUNNING
 
     @patch.object(TaskFlowManager, "get_flow_runs_with_filters")
     def test_process_callbacks(self, mock_get_flow_runs_with_filters):
