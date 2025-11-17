@@ -28,10 +28,10 @@ from qcos.drivers.device import Device
 from qcos.drivers.driver_qubo_base import DriverQuboBase
 
 
-class DriverTiangongGeneric(DriverQuboBase):
-    """玻色量子-天工通用光量子伊辛机驱动
+class DriverTiangongBase(DriverQuboBase):
+    """玻色量子-天工光量子伊辛机驱动基类
 
-    Qboson Tiangong generic driver
+    Qboson Tiangong driver Base
     """
 
     # url path
@@ -50,8 +50,9 @@ class DriverTiangongGeneric(DriverQuboBase):
         self.domain_url_task = None
         self.domain_url_auth = None
         self.version = "0.0.1"
-        self.alias_name = "玻色量子-天工通用光量子伊辛机驱动"
-        self.description = "玻色量子-天工通用光量子伊辛机驱动"
+        self.alias_name = "玻色量子-天工光量子伊辛机驱动"
+        self.description = "玻色量子-天工光量子伊辛机驱动"
+        self.max_qubits = 1000
         self.token = None
         # task stages and percentages
         self.task_stages = {
@@ -88,13 +89,11 @@ class DriverTiangongGeneric(DriverQuboBase):
             "user_id": str,
             "password_sdk_code": str,
             "machine_name": str,
-            "max_qubit": int,
         }
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema
         )
         if _success:
-            self.max_qubits = configs.get("max_qubit", 1000)
             self.machine_name = configs.get("machine_name", "CPQC-1000")
         else:
             _err_msg = "\n".join(err_msgs)

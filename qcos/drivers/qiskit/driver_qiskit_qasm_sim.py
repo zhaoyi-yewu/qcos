@@ -62,6 +62,7 @@ class DriverQiskitQasmSim(DriverBase):
         """
         success = True
         err_msg = None
+
         return success, err_msg
 
     def close_driver(self):

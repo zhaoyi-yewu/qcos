@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 from loguru import logger
-
 from qiskit_aer import AerSimulator
 
 from qcos.common.constant import Constant
@@ -61,6 +60,7 @@ class DriverQiskitAerSim(DriverBase):
         """
         success = True
         err_msg = None
+
         return success, err_msg
 
     def close_driver(self):

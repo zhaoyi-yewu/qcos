@@ -192,3 +192,11 @@ class Device:
             f"configs: {self.get_configs(hide_password=True)}",
         ]
         return "\n".join(show_list)
+
+    def set_max_qubits(self, max_qubits):
+        """Set device max qubits
+
+        Args:
+            max_qubits: device max qubits
+        """
+        self.max_qubits = max_qubits

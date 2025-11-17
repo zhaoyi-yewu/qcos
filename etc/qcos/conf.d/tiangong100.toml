@@ -8,3 +8,6 @@ username = "test"
 password = ""
 project_id = 1
 device_id = 1
+
+# [Optional] max qubits of device
+# device_max_qubits = 10

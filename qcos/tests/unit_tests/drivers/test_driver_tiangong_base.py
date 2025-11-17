@@ -21,22 +21,22 @@ from unittest.mock import patch
 import pytest
 
 from qcos.common.library import Library
-from qcos.drivers.qboson.driver_tiangong_generic import DriverTiangongGeneric
+from qcos.drivers.qboson.driver_tiangong_base import DriverTiangongBase
 
-driver_tiangong_generic = DriverTiangongGeneric()
+driver_tiangong_base = DriverTiangongBase()
 job_id = "00000000-0000-4000-8000-000000000001"
 data_index = "123456"
 num_qubits = 5
 data = {"index": 0, "source_code": "code", "transpile_results": []}
-data_type = driver_tiangong_generic.DATA_TYPE_GATE_SEQUENCE
+data_type = driver_tiangong_base.DATA_TYPE_GATE_SEQUENCE
 shots = 1024
 user_id = "000000000000001"
 password_sdk_code = ""
 
 
-class TestDriverTiangongGeneric:
+class TestDriverTiangongBase:
     def test_init_driver(self):
-        assert driver_tiangong_generic.init_driver() is None
+        assert driver_tiangong_base.init_driver() is None
 
     def test_validate_driver_configs(self):
         configs = {
@@ -45,23 +45,22 @@ class TestDriverTiangongGeneric:
             "user_id": "000000000000001",
             "password_sdk_code": "",
             "machine_name": "CPQC-1000",
-            "max_qubit": 1000,
         }
-        success, err_msg = driver_tiangong_generic.validate_driver_configs(
+        success, err_msg = driver_tiangong_base.validate_driver_configs(
             configs
         )
         assert success is True
 
         configs = {}
-        success, err_msg = driver_tiangong_generic.validate_driver_configs(
+        success, err_msg = driver_tiangong_base.validate_driver_configs(
             configs
         )
         assert success is False
 
-    @patch.object(DriverTiangongGeneric, "get_task_results")
+    @patch.object(DriverTiangongBase, "get_task_results")
     @patch.object(Library, "loop_with_timeout")
-    @patch.object(DriverTiangongGeneric, "submit_tasks")
-    @patch.object(DriverTiangongGeneric, "user_auth")
+    @patch.object(DriverTiangongBase, "submit_tasks")
+    @patch.object(DriverTiangongBase, "user_auth")
     @patch.object(Library, "is_valid_url")
     def test_run(
         self,
@@ -73,26 +72,26 @@ class TestDriverTiangongGeneric:
     ):
         mock_is_valid_url.return_value = False
         with pytest.raises(ValueError) as context:
-            driver_tiangong_generic.run(job_id, num_qubits, data, data_type)
+            driver_tiangong_base.run(job_id, num_qubits, data, data_type)
         assert "Invalid URL " in str(context.value)
 
         mock_is_valid_url.return_value = True
         mock_user_auth.return_value = iter([False, "", None])
         with pytest.raises(ValueError) as context:
-            driver_tiangong_generic.run(job_id, num_qubits, data, data_type)
+            driver_tiangong_base.run(job_id, num_qubits, data, data_type)
         assert "Authorize failed " in str(context.value)
 
         mock_user_auth.return_value = iter([True, "", "fakeToken"])
         mock_submit_tasks.return_value = iter([False, "", "123"])
         with pytest.raises(ValueError) as context:
-            driver_tiangong_generic.run(job_id, num_qubits, data, data_type)
+            driver_tiangong_base.run(job_id, num_qubits, data, data_type)
         assert "Failed to submit task: " in str(context.value)
 
         mock_user_auth.return_value = iter([True, "", "fakeToken"])
         mock_submit_tasks.return_value = iter([True, "", "123"])
         mock_loop_with_timeout.return_value = iter([False, "", ""])
         with pytest.raises(ValueError) as context:
-            driver_tiangong_generic.run(job_id, num_qubits, data, data_type)
+            driver_tiangong_base.run(job_id, num_qubits, data, data_type)
         assert "Failed to wait for task " in str(context.value)
 
         mock_user_auth.return_value = iter([True, "", "fakeToken"])
@@ -100,7 +99,7 @@ class TestDriverTiangongGeneric:
         mock_loop_with_timeout.return_value = iter([True, "", ""])
         mock_get_task_status.return_value = iter([False, "", ""])
         with pytest.raises(ValueError) as context:
-            driver_tiangong_generic.run(job_id, num_qubits, data, data_type)
+            driver_tiangong_base.run(job_id, num_qubits, data, data_type)
         assert "Failed to get task results " in str(context.value)
 
         mock_user_auth.return_value = iter([True, "", "fakeToken"])
@@ -108,12 +107,12 @@ class TestDriverTiangongGeneric:
         mock_loop_with_timeout.return_value = iter([True, "", ""])
         mock_get_task_status.return_value = iter([True, "", "-109"])
         assert (
-            driver_tiangong_generic.run(job_id, num_qubits, data, data_type)
+            driver_tiangong_base.run(job_id, num_qubits, data, data_type)
             is None
         )
 
     def test_cancel(self):
-        assert driver_tiangong_generic.cancel(job_id) is None
+        assert driver_tiangong_base.cancel(job_id) is None
 
     @patch.object(Library, "call_http_api")
     def test_user_auth(self, mock_call_http_api):
@@ -127,7 +126,7 @@ class TestDriverTiangongGeneric:
             json.dumps(json_dict),
             "",
         ])
-        success, err_msg, token = driver_tiangong_generic.user_auth(
+        success, err_msg, token = driver_tiangong_base.user_auth(
             user_id, password_sdk_code
         )
         assert success is False
@@ -139,7 +138,7 @@ class TestDriverTiangongGeneric:
             json.dumps(json_dict),
             "",
         ])
-        success, err_msg, token = driver_tiangong_generic.user_auth(
+        success, err_msg, token = driver_tiangong_base.user_auth(
             user_id, password_sdk_code
         )
         assert success is True
@@ -153,25 +152,25 @@ class TestDriverTiangongGeneric:
             json.dumps(json_dict),
             "",
         ])
-        success, err_msg, task_id = driver_tiangong_generic.submit_tasks(
+        success, err_msg, task_id = driver_tiangong_base.submit_tasks(
             job_id, data_index, data
         )
         assert success is True
         assert task_id == "1"
 
-    @patch.object(DriverTiangongGeneric, "get_task_realtime_result")
+    @patch.object(DriverTiangongBase, "get_task_realtime_result")
     def test_check_task_status(self, mock_get_task_realtime_result):
         mock_get_task_realtime_result.return_value = iter([False, "", None])
-        success = driver_tiangong_generic.check_task_status("1", 5)
+        success = driver_tiangong_base.check_task_status("1", 5)
         assert success is False
 
         mock_get_task_realtime_result.return_value = iter([
             True,
             "",
-            {"task_status": driver_tiangong_generic.task_status_completed},
+            {"task_status": driver_tiangong_base.task_status_completed},
         ])
-        success = driver_tiangong_generic.check_task_status(
-            "1", [driver_tiangong_generic.task_status_completed]
+        success = driver_tiangong_base.check_task_status(
+            "1", [driver_tiangong_base.task_status_completed]
         )
         assert success is True
 
@@ -194,7 +193,7 @@ class TestDriverTiangongGeneric:
             "",
         ])
         success, err_msg, realtime_status = (
-            driver_tiangong_generic.get_task_realtime_result("2")
+            driver_tiangong_base.get_task_realtime_result("2")
         )
         assert success is True
         assert realtime_status["task_status"] == 1
@@ -202,15 +201,15 @@ class TestDriverTiangongGeneric:
         assert realtime_status["qubo_solution_data"] == [-109]
         assert realtime_status["visual_data"] == [80]
 
-    @patch.object(DriverTiangongGeneric, "get_task_realtime_result")
+    @patch.object(DriverTiangongBase, "get_task_realtime_result")
     def test_get_results(self, mock_get_task_realtime_result):
         mock_get_task_realtime_result.return_value = iter([
             False,
             "",
-            {"task_status": driver_tiangong_generic.task_status_completed},
+            {"task_status": driver_tiangong_base.task_status_completed},
         ])
         success, err_msg, realtime_status = (
-            driver_tiangong_generic.get_task_realtime_result("2")
+            driver_tiangong_base.get_task_realtime_result("2")
         )
         assert success is False
 
@@ -220,16 +219,16 @@ class TestDriverTiangongGeneric:
             {"task_result": -109},
         ])
         success, err_msg, realtime_status = (
-            driver_tiangong_generic.get_task_realtime_result("2")
+            driver_tiangong_base.get_task_realtime_result("2")
         )
         assert success is True
         assert realtime_status["task_result"] == -109
 
-    @patch.object(DriverTiangongGeneric, "get_task_realtime_result")
+    @patch.object(DriverTiangongBase, "get_task_realtime_result")
     def test_get_task_results(self, mock_get_task_realtime_result):
         mock_get_task_realtime_result.return_value = (
             True,
             "None",
             {"qubo_value": "1", "qubo_solution_data": "1"},
         )
-        driver_tiangong_generic.get_task_results("1")
+        driver_tiangong_base.get_task_results("1")

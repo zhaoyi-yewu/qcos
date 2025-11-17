@@ -138,6 +138,7 @@ class DriverTiangong100(DriverQuboBase):
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
             success = False
+
         return success, err_msg
 
     def close_driver(self):

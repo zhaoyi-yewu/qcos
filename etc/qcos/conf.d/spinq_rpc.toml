@@ -8,6 +8,9 @@ rpc_port = 4242
 username = "user"
 password = ""
 
+# [Optional] max qubits of device
+# device_max_qubits = 10
+
 [spinq_rpc.transpiler.qpu_configs]
 # TODO(wangjujun): to be defined
 

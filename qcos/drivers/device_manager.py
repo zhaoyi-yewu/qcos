@@ -40,13 +40,50 @@ class DeviceManager:
             device_configs = self.config.EXTRA_CONFIGS.get(device_name)
             if device_configs:
                 driver_name = device_configs.pop("driver", None)
+                if (
+                    driver_name is None
+                    or isinstance(driver_name, str) is False
+                ):
+                    logger.warning(
+                        f"device: {device_name} is disabled. "
+                        f"reason: driver name: {driver_name} is invalid"
+                    )
+                    continue
+
                 alias_name = device_configs.pop("alias_name", None)
+                if (
+                    alias_name is not None
+                    and isinstance(alias_name, str) is False
+                ):
+                    logger.warning(
+                        f"device: {device_name} is disabled. "
+                        f"reason: driver name: {alias_name} is invalid"
+                    )
+                    continue
+
                 description = device_configs.pop("description", None)
+                if (
+                    description is not None
+                    and isinstance(description, str) is False
+                ):
+                    logger.warning(
+                        f"device: {device_name} is disabled. "
+                        f"reason: driver name: {description} is invalid"
+                    )
+                    continue
+
                 driver = self.driver_manager.get_driver(driver_name)
                 if driver:
                     device = Device(device_name, driver)
+                    device_max_qubits = device_configs.pop(
+                        "device_max_qubits", None
+                    )
                     device.set_alias_name(alias_name)
                     device.set_description(description)
+                    if device_max_qubits is not None and isinstance(
+                        device_max_qubits, int
+                    ):
+                        device.set_max_qubits(device_max_qubits)
                     success, err_msg = driver.validate_driver_configs(
                         device_configs
                     )
