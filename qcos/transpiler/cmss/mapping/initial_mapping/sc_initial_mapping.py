@@ -25,6 +25,9 @@ from qcos.transpiler.cmss.mapping.initial_mapping.subgraph_isomorphism import (
 from qcos.transpiler.cmss.mapping.initial_mapping.simulated_annealing import (
     sa_initial_mapping,
 )
+from qcos.transpiler.cmss.mapping.initial_mapping.sabre_mapping import (
+    sabre_initial_mapping,
+)
 
 
 def get_initial_mapping(
@@ -52,13 +55,22 @@ def get_initial_mapping(
         list[int]: represents a mapping in which indices and values stand for
             logical and physical qubits.
     """
+    # if there is zero 2-qubit gate, no need to mapping
+    if dependency_graph.num_gate_2q == 0:
+        method = "naive"
+
     if method == "naive":
-        return list(range(dependency_graph.get_dg_num_q()))
+        return list(range(dependency_graph.num_q))
     elif method == "simulated_annealing":
         return sa_initial_mapping(dependency_graph, coupling_graph)
     elif method == "subgraph_isomorphism":
         return subgraph_isomorphism_mapping(dependency_graph, coupling_graph)
     elif method == "topgraph":
         return topgraph_mapping(dependency_graph, coupling_graph)
+    elif method == "sabre":
+        ir = dependency_graph.origin_ir
+        num_qubits = dependency_graph.num_q
+        mapping = sabre_initial_mapping(ir, coupling_graph)
+        return mapping[:num_qubits]
     else:
         raise ValueError(f"Unsupported method {method} for initial mapping")

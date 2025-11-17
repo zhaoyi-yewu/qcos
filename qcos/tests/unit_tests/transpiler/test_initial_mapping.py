@@ -28,18 +28,51 @@ from qcos.transpiler.cmss.mapping.initial_mapping.subgraph_isomorphism import (
 
 
 class TestInitialMapping:
+    qasm_str1 = """
+    OPENQASM 2.0;
+    include "qelib1.inc";
+    qreg q[2];
+    creg c[2];
+    cx q[0],q[1];
+    measure q -> c;
+    """
+
+    qasm_str2 = """
+    OPENQASM 2.0;
+    include "qelib1.inc";
+    qreg q[4];
+    creg c[4];
+    x q[0];
+    cx q[0],q[1];
+    x q[1];
+    cx q[1],q[3];
+    x q[2];
+    cx q[2],q[3];
+    measure q -> c;
+    """
+
+    qasm_str3 = """
+    OPENQASM 2.0;
+    include "qelib1.inc";
+    qreg q[2];
+    creg c[2];
+    x q[0];
+    x q[1];
+    measure q -> c;
+    """
+
     def test_get_init_mapping(self):
         coupling_graph = Graph()
-        dependency_graph = DG()
         edges = [(0, 1), (1, 2), (2, 3), (3, 0)]
         coupling_graph.add_edges_from(edges)
-        # naive method
-        gate1 = ("cx", (0, 1), [])
-        dependency_graph.add_gate(gate1)
+
+        # test qasm1
+        dependency_graph = DG()
+        dependency_graph.from_qasm_string(self.qasm_str1)
+
         mapping = get_initial_mapping(dependency_graph, coupling_graph)
         assert mapping == [0, 1]
 
-        # subgraph_isomorphism method
         mapping = get_initial_mapping(
             dependency_graph, coupling_graph, method="subgraph_isomorphism"
         )
@@ -54,6 +87,47 @@ class TestInitialMapping:
             dependency_graph, coupling_graph, method="simulated_annealing"
         )
         assert len(mapping) == 2
+
+        mapping = get_initial_mapping(
+            dependency_graph, coupling_graph, method="sabre"
+        )
+        assert mapping == [0, 1]
+
+        # test qasm2
+        dependency_graph = DG()
+        dependency_graph.from_qasm_string(self.qasm_str2)
+
+        mapping = get_initial_mapping(dependency_graph, coupling_graph)
+        assert mapping == [0, 1, 2, 3]
+
+        mapping = get_initial_mapping(
+            dependency_graph, coupling_graph, method="subgraph_isomorphism"
+        )
+        assert mapping is None
+
+        mapping = get_initial_mapping(
+            dependency_graph, coupling_graph, method="simulated_annealing"
+        )
+        assert len(mapping) == 4
+
+        mapping = get_initial_mapping(
+            dependency_graph, coupling_graph, method="topgraph"
+        )
+        assert mapping == [0, 1, 3, 2]
+
+        mapping = get_initial_mapping(
+            dependency_graph, coupling_graph, method="sabre"
+        )
+        assert mapping == [1, 0, 2, 3]
+
+        # test qasm3
+        dependency_graph = DG()
+        dependency_graph.from_qasm_string(self.qasm_str3)
+
+        mapping = get_initial_mapping(
+            dependency_graph, coupling_graph, method="topgraph"
+        )
+        assert mapping == [0, 1]
 
     def test_subgraph_isomorphism_mapping(self):
         coupling_graph = Graph()

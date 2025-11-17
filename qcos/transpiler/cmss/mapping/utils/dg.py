@@ -42,6 +42,7 @@ class DG(DiGraph):
         self.num_gate_1q = 0
         self.node_count = 0
         self.num_q = None
+        self.origin_ir = None
 
     @property
     def num_gate(self):
@@ -360,6 +361,9 @@ class DG(DiGraph):
                 self.add_gate_absorb(format_gate)
             else:
                 self.add_gate(format_gate)
+        self.origin_ir = ir
+        if self.num_q is None:
+            self.num_q = self.get_dg_num_q()
         return measure_op
 
     def to_ir(self, add_barrier=False, decompose_swap=False):
