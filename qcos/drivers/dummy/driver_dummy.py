@@ -95,7 +95,7 @@ class DriverDummy(DriverBase):
         )
         if not _success:
             _err_msg = "\n".join(err_msgs)
-            err_msg = f"driver config file error: {_err_msg}"
+            err_msg = f"device config file error: {_err_msg}"
             success = False
         else:
             # copy configs to self.qpu_configs

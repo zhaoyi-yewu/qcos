@@ -1,7 +1,9 @@
 [tiangong550_v2]
-alias_name = "玻色量子-天工"
+alias_name = "玻色量子-天工550"
 driver = "DriverTiangong550V2"
 description = "玻色量子-天工(tiangong550_v2)"
+# [Optional] max qubits of device
+# device_max_qubits = 100
 
 # 用户可灵活配置domain_url_auth。
 # 生产域: https://open.qboson.com
@@ -16,6 +18,3 @@ domain_url_task = "https://new-open-pre.qboson.com"
 user_id = "000000000000001"
 password_sdk_code = ""
 machine_name = ""
-
-# [Optional] max qubits of device
-# device_max_qubits = 10

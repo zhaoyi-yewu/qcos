@@ -56,7 +56,7 @@ class DriverUQCMatrix2(DriverBase):
         self.enable_circuit_aggregation = False
         self.max_qubits = 5
         self.default_data_type = DriverBase.DATA_TYPE_QASM3
-        self.supported_code_types = DriverBase.DATA_TYPE_QASM3
+        self.supported_code_types = [DriverBase.DATA_TYPE_QASM3]
 
         # task stages and percentages
         self.task_stages = {
@@ -107,8 +107,8 @@ class DriverUQCMatrix2(DriverBase):
         """Fetch configs"""
         extra_configs = self.get_configs()
         self.user_token = extra_configs.get("token", "")
-        self.uqc_host = extra_configs.get("uqc_host", "")
-        self.uqc_port = extra_configs.get("uqc_port", "")
+        self.uqc_host = extra_configs.get("uqc_host", "127.0.0.1")
+        self.uqc_port = extra_configs.get("uqc_port", 8080)
         try:
             self._uqc = uqc_client.UQC(self.user_token)
             uqc_config.SERVER_HOST = self.uqc_host

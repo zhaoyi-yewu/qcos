@@ -17,6 +17,9 @@
 
 import logging
 
+from schema import Optional
+
+from qcos.common.library import Library
 from qcos.drivers.device import Device
 
 
@@ -30,6 +33,12 @@ class DeviceManager:
         self.config = config
         self.driver_manager = driver_manager
         self.devices = {}
+        self.default_device_config_schema = {
+            "driver": str,
+            Optional("alias_name"): str,
+            Optional("description"): str,
+            Optional("device_max_qubits"): int,
+        }
 
     def load_devices(self):
         """Scan and load drivers"""
@@ -39,50 +48,35 @@ class DeviceManager:
             logger.info(f"Loading device: {device_name}")
             device_configs = self.config.EXTRA_CONFIGS.get(device_name)
             if device_configs:
+                _success, err_msgs = Library.validate_schema(
+                    device_configs,
+                    self.default_device_config_schema,
+                    ignore_extra_keys=True,
+                )
+                if not _success:
+                    _err_msg = "\n".join(err_msgs)
+                    err_msg = (
+                        f"device: {device_name} is disabled. "
+                        f"device config file error: {_err_msg}"
+                    )
+                    logger.warning(err_msg)
+                    continue
+
                 driver_name = device_configs.pop("driver", None)
-                if (
-                    driver_name is None
-                    or isinstance(driver_name, str) is False
-                ):
-                    logger.warning(
-                        f"device: {device_name} is disabled. "
-                        f"reason: driver name: {driver_name} is invalid"
-                    )
-                    continue
-
                 alias_name = device_configs.pop("alias_name", None)
-                if (
-                    alias_name is not None
-                    and isinstance(alias_name, str) is False
-                ):
-                    logger.warning(
-                        f"device: {device_name} is disabled. "
-                        f"reason: driver name: {alias_name} is invalid"
-                    )
-                    continue
-
                 description = device_configs.pop("description", None)
-                if (
-                    description is not None
-                    and isinstance(description, str) is False
-                ):
-                    logger.warning(
-                        f"device: {device_name} is disabled. "
-                        f"reason: driver name: {description} is invalid"
-                    )
-                    continue
+                device_max_qubits = device_configs.pop(
+                    "device_max_qubits", None
+                )
 
                 driver = self.driver_manager.get_driver(driver_name)
                 if driver:
                     device = Device(device_name, driver)
-                    device_max_qubits = device_configs.pop(
-                        "device_max_qubits", None
-                    )
-                    device.set_alias_name(alias_name)
-                    device.set_description(description)
-                    if device_max_qubits is not None and isinstance(
-                        device_max_qubits, int
-                    ):
+                    if alias_name is not None:
+                        device.set_alias_name(alias_name)
+                    if description is not None:
+                        device.set_description(description)
+                    if device_max_qubits is not None:
                         device.set_max_qubits(device_max_qubits)
                     success, err_msg = driver.validate_driver_configs(
                         device_configs

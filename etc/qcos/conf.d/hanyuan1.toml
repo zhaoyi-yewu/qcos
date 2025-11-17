@@ -2,13 +2,12 @@
 alias_name = "中科酷原-汉原1"
 driver = "DriverHanyuan1"
 description = "中科酷原-汉原1(hanyuan1)"
+# [Optional] max qubits of device
+# device_max_qubits = 10
 
 ip_address = "127.0.0.1"
 port = 18402
 callback_baseurl = "http://127.0.0.1"
-
-# [Optional] max qubits of device
-# device_max_qubits = 10
 
 [hanyuan1.transpiler.qpu_configs]
 qubits = 6

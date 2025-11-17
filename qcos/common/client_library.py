@@ -145,13 +145,16 @@ class ClientLibrary:
         return json.dumps(content_list)
 
     @staticmethod
-    def validate_schema(value, schema_obj, allow_none=False):
+    def validate_schema(
+        value, schema_obj, allow_none=False, ignore_extra_keys=False
+    ):
         """Validate schema values
 
         Args:
             value: value to be validated
             schema_obj: schema obj
             allow_none: allow None value (Default value = False)
+            ignore_extra_keys: ignore extra keys (Default value = False)
 
         Returns:
             success of failed (bool), error message list
@@ -163,7 +166,7 @@ class ClientLibrary:
         if not schema_obj:
             return False, ["schema is not defined, value is not allowed"]
         try:
-            _schema = Schema(schema_obj)
+            _schema = Schema(schema_obj, ignore_extra_keys=ignore_extra_keys)
             _schema.validate(value)
         except Exception as e:
             success = False

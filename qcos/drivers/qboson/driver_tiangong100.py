@@ -353,8 +353,8 @@ class DriverTiangong100(DriverQuboBase):
                         data_status
                     ]["desc"]
                     err_msgs.append(
-                        f"Unexpected device status: {device_status_desc}, \
-                        controller status: {data['status_desc']}"
+                        f"Unexpected device status: {device_status_desc}, "
+                        f"controller status: {data['status_desc']}"
                     )
             else:
                 success = False

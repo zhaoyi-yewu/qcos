@@ -54,7 +54,7 @@ RUN \
     mkdir -p /var/log/qcos/ && \
 # install basic rpms
     yum install -y hostname openssh openssh-clients sshpass iputils iproute \
-      telnet net-tools openssl util-linux vim findutils dos2unix wget \
+      telnet net-tools openssl util-linux vim findutils dos2unix wget rsync \
       make gcc rust cargo \
       python3 python3-pip python3-sphinx python3-requests python3-devel && \
 # create symbolic link for python3

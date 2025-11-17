@@ -119,9 +119,11 @@ class Config:
             return decrypted_value
 
         success, err_msg, config_values = Library.read_toml_file(config_file)
-        config_values = config_values.unwrap()
         if not success:
-            raise errors.GenericException(err_msg)
+            raise errors.GenericException(
+                f"Error in config file: {config_file}. Reason: {err_msg}"
+            )
+        config_values = config_values.unwrap()
         if extra_config:
             for section, options in config_values.items():
                 for option in options.items():

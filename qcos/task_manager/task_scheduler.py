@@ -143,9 +143,13 @@ class TaskScheduler(ABC):
             ):
                 return (
                     None,
-                    f"Current job count exceeds max instance job limit: "
-                    f"{Config.MAX_JOBS_PER_VIRTUAL_INSTANCE}. "
-                    "Please delete some jobs",
+                    "The number of current jobs "
+                    f"({virtual_instance_flows_count}) has exceeded the "
+                    "maximum quota limit "
+                    f"({Config.MAX_JOBS_PER_VIRTUAL_INSTANCE}) for this "
+                    "instance. "
+                    "Please delete some existing jobs before creating "
+                    "new ones",
                 )
 
         # check current queued+running flows count exceed MAX_QUEUED_JOBS

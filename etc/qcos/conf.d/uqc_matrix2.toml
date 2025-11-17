@@ -2,8 +2,10 @@
 alias_name = "幺正量子 UQC-Matrix2 离子阱驱动"
 driver = "DriverUQCMatrix2"
 description = "幺正量子 UQC-Matrix2 离子阱驱动"
+# [Optional] max qubits of device
+# device_max_qubits = 100
 
 uqc_host = "cloud.unitaryqubit.com"
-uqc_port = "8080"
+uqc_port = 8080
 token = ""
 device_name = "Matrix2"

@@ -271,7 +271,7 @@ class DriverHanyuan1(DriverBase):
                 debug=DriverHanyuan1.verbose,
             )
 
-            # 解析Response对象获取JSON数据
+            # parse response_obj and get json
             if response_obj and hasattr(response_obj, "json"):
                 try:
                     result = response_obj.json()

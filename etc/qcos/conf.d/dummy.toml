@@ -2,7 +2,6 @@
 alias_name = "空载测试设备"
 driver = "DriverDummy"
 description = "空载测试设备(dummy)"
-
 # [Optional] max qubits of device
 # device_max_qubits = 10
 
