@@ -50,7 +50,7 @@ class TestTranspilerCmdLine:
         mock_optimize_gate.return_value = None
         mock_decompose_gates.return_value = None
         default_input_file = "samples/qasm/3.0/benchmark/100bits_50000d.qasm"
-        default_output_file = "cmss_transpiler_perf.log"
+        default_output_file = ""
         res = main(
             input_file=default_input_file, output_file=default_output_file
         )
@@ -59,7 +59,7 @@ class TestTranspilerCmdLine:
     def test_cmss_transpiler_tech_na(self):
         self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
         qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
-        output_file = "cmss_transpiler_perf.log"
+        output_file = ""
         opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
         tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
         config_file = "etc/qcos/conf.d/hanyuan1.toml"
@@ -75,7 +75,7 @@ class TestTranspilerCmdLine:
     def test_cmss_transpiler_tech_sc(self):
         self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
         qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
-        output_file = "cmss_transpiler_perf.log"
+        output_file = ""
         opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
         res = main(
             input_file=qasm_file,
@@ -89,7 +89,7 @@ class TestTranspilerCmdLine:
     def test_cmss_transpiler_notech(self):
         self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
         qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
-        output_file = "cmss_transpiler_perf.log"
+        output_file = ""
         opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
         res = main(
             input_file=qasm_file,

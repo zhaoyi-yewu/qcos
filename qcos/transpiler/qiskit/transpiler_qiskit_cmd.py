@@ -88,19 +88,20 @@ def main(
         logger.error(f"input file[{file_path}] not existed")
         return success
 
-    output_file_path = Path(output_file).resolve()
-    if output_file_path.exists():
-        logger.info(f"output file[{output_file_path}] has existed")
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file_path = output_file_path.with_stem(
-            f"{output_file_path.stem}_{timestamp}"
-        )
+    if output_file != "":
+        output_file_path = Path(output_file).resolve()
+        if output_file_path.exists():
+            logger.info(f"output file[{output_file_path}] has existed")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_file_path = output_file_path.with_stem(
+                f"{output_file_path.stem}_{timestamp}"
+            )
 
-    # create output file
-    with open(output_file_path, "w", encoding="utf-8") as f:
-        f.write(f"testing file: {input_file}\n")
-    file_handler = logging.FileHandler(output_file_path)
-    logger.addHandler(file_handler)
+        # create output file
+        with open(output_file_path, "w", encoding="utf-8") as f:
+            f.write(f"testing file: {input_file}\n")
+        file_handler = logging.FileHandler(output_file_path)
+        logger.addHandler(file_handler)
 
     # load data from qasm file
     qasm_data = read_qasm_from_file(str(file_path))

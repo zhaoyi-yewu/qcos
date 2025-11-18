@@ -60,7 +60,7 @@ if __name__ == "__main__":
         "--output-file",
         dest="output_file",
         type=str,
-        required=True,
+        default="",
         help="output file",
     )
     args = parser.parse_args()

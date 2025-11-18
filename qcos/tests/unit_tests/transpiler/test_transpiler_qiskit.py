@@ -84,7 +84,7 @@ class TestTranspilerQiskit:
 
         self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
         qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
-        output_file = "qiskit_transpiler_perf.log"
+        output_file = ""
         expected_basis_gates = "rx,ry,cx"
         opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
         res = main(
@@ -99,7 +99,7 @@ class TestTranspilerQiskit:
     def test_transpiler_qiskit_tech_sc(self):
         self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
         qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
-        output_file = "qiskit_transpiler_perf.log"
+        output_file = ""
         opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
         res = main(
             input_file=qasm_file,
