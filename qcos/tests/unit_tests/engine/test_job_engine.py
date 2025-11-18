@@ -132,7 +132,7 @@ class TestJobEngine:
         mock_validate_driver_configs.return_value = iter([True, "err_msg"])
 
         driver = init_driver.fn
-        return_value = driver(driver_info, None, None)
+        return_value = driver(driver_info, None, None, {"data": {}})
         assert return_value["driver"] is None
 
     def test_init_transpiler(self):

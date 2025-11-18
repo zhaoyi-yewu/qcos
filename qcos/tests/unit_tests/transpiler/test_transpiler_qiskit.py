@@ -39,6 +39,8 @@ TRANSPILE_METHOD_PATH = (
 class TestTranspilerQiskit:
     @classmethod
     def setup_class(cls):
+        cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
+        cls.etc_path = GLOBAL_CONFIGS["etc_dir"]
         cls.simple_data = """
         OPENQASM 2.0;
         include "qelib1.inc";
@@ -82,8 +84,8 @@ class TestTranspilerQiskit:
     def test_transpiler_qiskit_noconfig(self, mock_transpile):
         mock_transpile.return_value = None
 
-        self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
-        qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
+        etc_path = GLOBAL_CONFIGS["etc_dir"]
+        qasm_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
         output_file = ""
         expected_basis_gates = "rx,ry,cx"
         opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
@@ -92,19 +94,18 @@ class TestTranspilerQiskit:
             output_file=output_file,
             basis_gates=expected_basis_gates,
             opt_level=opt_level,
-            config_file="etc/topology/qiskit_marrakesh.toml",
+            config_file=f"{etc_path}/topology/qiskit_marrakesh.toml",
         )
         assert res is True
 
     def test_transpiler_qiskit_tech_sc(self):
-        self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
-        qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
+        qasm_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
         output_file = ""
         opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
         res = main(
             input_file=qasm_file,
             output_file=output_file,
             opt_level=opt_level,
-            config_file="etc/topology/qiskit_marrakesh.toml",
+            config_file=f"{self.etc_path}/topology/qiskit_marrakesh.toml",
         )
         assert res is True

@@ -34,14 +34,14 @@ _shots = 0
 PID_DIR = "/var/run/qcos"
 PID_FILE = f"{PID_DIR}/driver-spinq-api-server.pid"
 
-# 配置数据（从 TOML 文件加载）
+# config data (from toml file)
 _config_data = None
 _qubits_num = 57
 _coupling_list = []
-_qpu_configs = None  # 保存完整的 qpu_configs（字典格式）
+_qpu_configs = None
 
-# 任务存储：task_id -> task_info
-_tasks = {}  # 存储任务信息，包括 measures 和 shots
+# tasks: task_id -> task_info
+_tasks = {}  # task info, includes measures and shots
 
 
 def init_logging():
@@ -53,10 +53,10 @@ def init_logging():
 
 
 def load_config():
-    """从 TOML 配置文件加载配置"""
+    """load configs from toml file"""
     global _config_data, _qubits_num, _coupling_list, _qpu_configs
 
-    # 查找第一个存在的配置文件
+    # find config file
     config_file = Path("/etc/qcos/conf.d/spinq_rpc.toml")
     if not config_file.exists():
         logger.warning(
@@ -65,7 +65,7 @@ def load_config():
         )
         raise FileNotFoundError(f"Config file not found: {config_file}")
 
-    # 读取 TOML 文件
+    # read toml file
     success, err_msg, config_data = Library.read_toml_file(str(config_file))
     if not success:
         logger.warning(
@@ -75,32 +75,32 @@ def load_config():
 
     _config_data = config_data
 
-    # 提取 qpu_configs
+    # get qpu_configs
     qpu_configs = (
         config_data.get("spinq_rpc", {})
         .get("transpiler", {})
         .get("qpu_configs", {})
     )
 
-    # 保存完整的 qpu_configs（字典格式）
+    # save qpu_configs in dict format
     _qpu_configs = qpu_configs.copy()
     logger.info(f"Loaded complete qpu_configs: {len(_qpu_configs)} keys")
 
-    # 获取 qubits 数量
+    # get number of qubits
     _qubits_num = qpu_configs.get("qubits")
     if not _qubits_num:
         raise ValueError("qubits_num not found in config")
     logger.info(f"Loaded config: qubits_num={_qubits_num}")
 
-    # 从 coupler_map 生成 coupling_list
+    # get coupling_list from coupler_map
     coupler_map = qpu_configs.get("coupler_map")
     if not coupler_map:
         raise ValueError("coupler_map not found in config")
     _coupling_list = []
 
-    # 将 "Q0", "Q1" 格式转换为数字索引
+    # convert "Q0", "Q1" into numerical index
     def qubit_name_to_index(name):
-        """将 "Q0" 格式转换为数字索引 0"""
+        """convert "Q0" into numerical index: 0"""
         if isinstance(name, str) and name.startswith("Q"):
             try:
                 return int(name[1:])
@@ -108,7 +108,7 @@ def load_config():
                 return None
         return None
 
-    # 遍历所有耦合器，生成耦合列表
+    # iterate all coupling map and generate coupling list
     for coupler_name, qubit_pair in coupler_map.items():
         if isinstance(qubit_pair, list) and len(qubit_pair) == 2:
             q0_name, q1_name = qubit_pair[0], qubit_pair[1]
@@ -116,7 +116,7 @@ def load_config():
             q1_idx = qubit_name_to_index(q1_name)
 
             if q0_idx is not None and q1_idx is not None:
-                # 添加双向耦合
+                # append coupling pair to coupling list
                 _coupling_list.append((q0_idx, q1_idx))
                 _coupling_list.append((q1_idx, q0_idx))
 
@@ -143,14 +143,14 @@ def request_login(username, password):
     Returns:
         response
     """
-    # 检查配置是否已加载
+    # check if qpu_configs is loaded
     if _qpu_configs is None:
         raise RuntimeError(
             "qpu_configs not loaded. Please ensure load_config() "
             "was called successfully before handling requests."
         )
 
-    # 从配置中获取芯片名称
+    # load chip name from configs
     chip_name = "chip_name"
     if _config_data:
         chip_name = _config_data.get("spinq_rpc", {}).get(
@@ -163,7 +163,7 @@ def request_login(username, password):
         "session_id": "1000000000000000000000000000000000000001",
         "chip_name": chip_name,
         "coupling_list": _coupling_list,
-        "qpu_configs": _qpu_configs,  # 添加：返回完整的 qpu_configs（字典格式）
+        "qpu_configs": _qpu_configs,
     }
     logger.info(
         f"[request_login|request] username: {username}, password: {password}"
@@ -207,11 +207,11 @@ def push_task(task_name, task_gates, measures, task_desc, shots, session_id):
     response = (status, task_id)
     _shots = shots
 
-    # 保存任务信息，包括 measures 和 shots
+    # store results, includes measures and shots
     _tasks[task_id] = {
         "task_name": task_name,
         "task_gates": task_gates,
-        "measures": measures,  # 保存测量比特列表
+        "measures": measures,  # store measures bits list
         "task_desc": task_desc,
         "shots": shots,
         "session_id": session_id,
@@ -258,12 +258,11 @@ def get_task_result(task_id, session_id):
     Returns:
         response
     """
-    # 返回格式需要与驱动期望一致：
-    # driver 中调用 convert_results(_results["task_result"])
-    # convert_results 期望 results["qubit_result"]
-    # 所以返回格式应该是: {"task_result": {"qubit_result": {...}}}
+    # convert_results(_results["task_result"]) called in driver
+    # convert_results expects: results["qubit_result"]
+    # results format: {"task_result": {"qubit_result": {...}}}
 
-    # 从任务信息中获取 measures 和 shots
+    # get measures and shots from task
     task_info = _tasks.get(task_id)
     if not task_info:
         logger.warning(f"Task {task_id} not found, returning empty result")
@@ -271,15 +270,14 @@ def get_task_result(task_id, session_id):
     measures = task_info.get("measures", [])
     shots = task_info.get("shots", 0)
 
-    # 根据 measures 的长度生成正确的结果
+    # generate results
     num_measures = len(measures)
     if num_measures > 0:
-        # 使用 Library.generate_binary_combinations 生成所有可能的二进制组合
         qubit_result = Library.generate_binary_combinations(
             num_measures, shots
         )
     else:
-        # 如果没有 measures，返回空结果
+        # if no measures, return empty results
         qubit_result = {}
         logger.warning(
             f"Task {task_id} has no measures, returning empty result"
@@ -299,7 +297,7 @@ def main():
     # init logging
     init_logging()
 
-    # 加载配置文件
+    # load configs
     load_config()
 
     # kill existing process
@@ -317,7 +315,7 @@ def main():
     server = zerorpc.Server(service, heartbeat=5)
     bind_address = f"tcp://{rpc_listen_ip}:{rpc_listen_port}"
 
-    # 启动服务
+    # start SpinQ API service
     logger.info(f"SpinQ API Server simulator started on {bind_address}")
     logger.info("Press Ctrl+C to stop service ...")
     try:

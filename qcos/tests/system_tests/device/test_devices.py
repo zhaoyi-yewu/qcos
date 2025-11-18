@@ -52,3 +52,21 @@ class TestDevice:
         assert device["enable"] is True
         assert device["name"] == device_name
         assert device["status"] == Device.DEVICE_STATUS_ONLINE
+
+    def test_get_devices_check_details(self):
+        devices = StLibrary.get_devices(self.client)
+        assert isinstance(devices, dict)
+        for device_name, device_info in devices.items():
+            device = StLibrary.get_device(self.client, device_name)
+            _drvice_name = device["name"]
+            assert device_name == _drvice_name
+            assert isinstance(device["name"], str)
+            assert isinstance(device["alias_name"], str)
+            assert isinstance(device["description"], str)
+            assert isinstance(device["driver_name"], str)
+            assert isinstance(device["enable"], bool)
+            assert isinstance(device["status"], str)
+            assert isinstance(device["tech_type"], str | None)
+            assert isinstance(device["max_qubits"], int)
+            assert isinstance(device["configs"], dict | None)
+            assert device["max_qubits"] > 0

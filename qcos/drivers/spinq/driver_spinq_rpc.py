@@ -209,7 +209,7 @@ class DriverSpinQRpc(DriverBase):
             qubit_depth[targets[1]] = curr_qubit_depth + 1
             qubit_depth[targets[2]] = curr_qubit_depth + 1
         else:
-            raise ValueError("invalid target len.")
+            raise ValueError("invalid target length.")
         return curr_qubit_depth
 
     def convert_gate(self, gate, qubit_depth):
@@ -223,7 +223,7 @@ class DriverSpinQRpc(DriverBase):
             spin gate info dict
         """
         if gate.targets is None:
-            raise ValueError("invalid target len.")
+            raise ValueError("invalid target length.")
 
         curr_qubit_depth = self.update_qubit_depth(qubit_depth, gate.targets)
 
@@ -260,13 +260,17 @@ class DriverSpinQRpc(DriverBase):
         """
         gates = []
         measures = []
-        # qubit_depth 需要根据物理量子比特的最大索引来初始化
-        # 因为 mapping 后的物理量子比特索引可能超出逻辑量子比特数
-        # 使用 available_num_qubits（从硬件获取的物理量子比特数）
+        # qubit_depth needs to be initialized based on the maximum index of
+        # physical qubits.
+        # the index of physical qubits after mapping may exceed the number of
+        # logical qubits
+        # Use available_num_qubits (the number of physical qubits obtained from
+        # the hardware)
         max_physical_qubits = self.available_num_qubits
 
-        # 确保至少能容纳所有物理量子比特索引（0 到 max_physical_qubits-1）
-        # 所以需要初始化 max_physical_qubits 个元素
+        # Ensure it can accommodate at least all physical qubit indices
+        # (from 0 to max_physical_qubits-1)
+        # Therefore, it is necessary to initialize max_physical_qubits elements
         qubit_depth = [0] * max_physical_qubits
         logger.info(
             f"Initializing qubit_depth with {max_physical_qubits} qubits "
@@ -322,7 +326,7 @@ class DriverSpinQRpc(DriverBase):
 
         self._session_id = _results["session_id"]
 
-        # 使用 qpu_configs（字典格式）
+        # qpu_configs must be a dict
         if "qpu_configs" in _results and isinstance(
             _results["qpu_configs"], dict
         ):

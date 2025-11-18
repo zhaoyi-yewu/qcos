@@ -498,9 +498,19 @@ class DriverBase:
             shots: number of shots
             data: source data
         """
+        bit_length = 0
         gate_list = data["transpile_results"]
         measure_qubits = set()
-        for obj in gate_list:
-            if isinstance(obj, Measure):
-                measure_qubits.update(obj.targets)
-        return Library.generate_binary_combinations(len(measure_qubits), shots)
+        if gate_list:
+            for obj in gate_list:
+                if isinstance(obj, Measure):
+                    measure_qubits.update(obj.targets)
+            bit_length = len(measure_qubits)
+        else:
+            if not num_qubits:
+                max_qubits = self.max_qubits
+                if not max_qubits:
+                    max_qubits = 5
+                num_qubits = max_qubits
+            bit_length = num_qubits
+        return Library.generate_binary_combinations(bit_length, shots)

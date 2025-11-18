@@ -55,10 +55,42 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        StLibrary.submit_job(
+        job_results = StLibrary.submit_job(
             self.client, job_info, self.timeout, self.interval
         )
         StLibrary.delete_job(self.client, job_info["job_id"])
+        assert (
+            job_results["result"]["job_status"]
+            == Constant.JOB_STATUS_COMPLETED
+        )
+
+    def test_submit_job_dry_run(self):
+        job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_submit_job",
+            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_submit_job",
+            "backend": Constant.DRIVER_DUMMY,
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "transpiler_options": None,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": True,
+        }
+        job_results = StLibrary.submit_job(
+            self.client, job_info, self.timeout, self.interval
+        )
+        StLibrary.delete_job(self.client, job_info["job_id"])
+        assert (
+            job_results["result"]["job_status"]
+            == Constant.JOB_STATUS_COMPLETED
+        )
 
     def test_submit_job_profiling(self):
         job_info = {
@@ -85,10 +117,10 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        job_result = StLibrary.submit_job(
+        job_results = StLibrary.submit_job(
             self.client, job_info, self.timeout, self.interval
         )
-        profiling_results = job_result["result"]["results"][0].get(
+        profiling_results = job_results["result"]["results"][0].get(
             "profiling", {}
         )
         assert isinstance(profiling_results, dict)
@@ -108,3 +140,7 @@ class TestJob:
             profiling_results[Constant.PROFILING_TYPE_DRIVER_RUN], float
         )
         StLibrary.delete_job(self.client, job_info["job_id"])
+        assert (
+            job_results["result"]["job_status"]
+            == Constant.JOB_STATUS_COMPLETED
+        )

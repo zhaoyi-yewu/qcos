@@ -74,18 +74,20 @@ class SourceCodeInfo:
 
 
 @task(persist_result=False)
-def init_driver(driver_class_info, driver_options, device):
+def init_driver(driver_class_info, driver_options, device, job_info):
     """Init driver from driver_class_info
 
     Args:
         driver_class_info: driver class info
         driver_options: driver options
         device: device info
+        job_info: job info
 
     Returns:
         driver
     """
 
+    job_data = job_info["data"]
     try:
         driver_module = importlib.import_module(
             driver_class_info["module_name"]
@@ -111,7 +113,9 @@ def init_driver(driver_class_info, driver_options, device):
         driver.init_driver()
 
         # init job
-        remote_transpiler_configs = driver.fetch_configs()
+        remote_transpiler_configs = None
+        if not job_data.get("dry_run", False):
+            remote_transpiler_configs = driver.fetch_configs()
 
         # copy cfgs to transpiler cfg inst
         if driver.enable_transpiler:
@@ -767,6 +771,7 @@ def _run_code(
             "source_code": source_code,
             "transpile_results": transpile_results,
         }
+
         run_results, profiling_time = flow_run_driver(
             job_info, num_qubits, driver, data, profiling_types
         )
@@ -821,7 +826,10 @@ def run_code(
     # init driver (init only once in a flow)
     if not driver:
         future_driver = init_driver.submit(
-            job_info["driver"], job_data["driver_options"], job_info["device"]
+            job_info["driver"],
+            job_data["driver_options"],
+            job_info["device"],
+            job_info,
         )
         driver_task_result = future_driver.result()
         # init driver: error handling

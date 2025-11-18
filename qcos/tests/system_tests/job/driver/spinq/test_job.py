@@ -61,10 +61,42 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        StLibrary.submit_job(
+        job_results = StLibrary.submit_job(
             self.client, job_info, self.timeout, self.interval
         )
         StLibrary.delete_job(self.client, job_info["job_id"])
+        assert (
+            job_results["result"]["job_status"]
+            == Constant.JOB_STATUS_COMPLETED
+        )
+
+    def test_submit_job_dry_run(self):
+        job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_spinq_submit_job",
+            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_spinq_submit_job",
+            "backend": "spinq_rpc",
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "transpiler_options": None,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": True,
+        }
+        job_results = StLibrary.submit_job(
+            self.client, job_info, self.timeout, self.interval
+        )
+        StLibrary.delete_job(self.client, job_info["job_id"])
+        assert (
+            job_results["result"]["job_status"]
+            == Constant.JOB_STATUS_COMPLETED
+        )
 
     def test_submit_job_with_multiple_source_code(self):
         job_info = {
@@ -88,7 +120,11 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        StLibrary.submit_job(
+        job_results = StLibrary.submit_job(
             self.client, job_info, self.timeout, self.interval
         )
         StLibrary.delete_job(self.client, job_info["job_id"])
+        assert (
+            job_results["result"]["job_status"]
+            == Constant.JOB_STATUS_COMPLETED
+        )

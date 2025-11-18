@@ -31,6 +31,11 @@ timer = Timer()
 
 @pytest.mark.usefixtures("global_configs")
 class TestTranspilerCmdLine:
+    @classmethod
+    def setup_class(cls):
+        cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
+        cls.etc_dir = GLOBAL_CONFIGS["etc_dir"]
+
     def test_read_qasm_from_file(self):
         read_qasm_from_file("None")
 
@@ -49,7 +54,9 @@ class TestTranspilerCmdLine:
         mock_get_ir.return_value = (None, None)
         mock_optimize_gate.return_value = None
         mock_decompose_gates.return_value = None
-        default_input_file = "samples/qasm/3.0/benchmark/100bits_50000d.qasm"
+        default_input_file = (
+            f"{self.samples_dir}/qasm/3.0/benchmark/100bits_50000d.qasm"
+        )
         default_output_file = ""
         res = main(
             input_file=default_input_file, output_file=default_output_file
@@ -57,12 +64,11 @@ class TestTranspilerCmdLine:
         assert res is True
 
     def test_cmss_transpiler_tech_na(self):
-        self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
-        qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
+        qasm_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
         output_file = ""
         opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
         tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
-        config_file = "etc/qcos/conf.d/hanyuan1.toml"
+        config_file = f"{self.etc_dir}/qcos/conf.d/hanyuan1.toml"
         res = main(
             input_file=qasm_file,
             output_file=output_file,
@@ -86,8 +92,7 @@ class TestTranspilerCmdLine:
 
         mock_topgraph_mapping.side_effect = mock_mapping
 
-        self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
-        qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
+        qasm_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
         output_file = ""
         opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
         res = main(
@@ -95,13 +100,12 @@ class TestTranspilerCmdLine:
             output_file=output_file,
             opt_level=opt_level,
             tech_type=Constant.TECH_TYPE_SUPERCONDUCTING,
-            config_file="etc/qcos/conf.d/spinq_rpc.toml",
+            config_file=f"{self.etc_dir}/qcos/conf.d/spinq_rpc.toml",
         )
         assert res is True
 
     def test_cmss_transpiler_notech(self):
-        self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
-        qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
+        qasm_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
         output_file = ""
         opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
         res = main(
