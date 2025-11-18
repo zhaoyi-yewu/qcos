@@ -17,4 +17,7 @@ domain_url_task = "https://new-open-pre.qboson.com"
 
 user_id = "000000000000001"
 password_sdk_code = ""
-machine_name = ""
+machine_name = "CPQC-1000"
+
+# [Optional] max qubits of device
+# device_max_qubits = 10

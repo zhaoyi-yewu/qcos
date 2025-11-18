@@ -177,6 +177,7 @@ class DriverTiangong100(DriverQuboBase):
         username = extra_configs.get("username", "")
         password = extra_configs.get("password", "")
         self.base_url = extra_configs.get("base_url", "")
+        task_name = f"{job_id}_{data_index}"
 
         # 1. Load qubo matrix
         logger.info("1. load qubo matrix")
@@ -192,7 +193,9 @@ class DriverTiangong100(DriverQuboBase):
         # 3. User authentication and get token
         logger.info("3. user authentication")
         self.set_progress_by_task(self.TASK_STAGE_USER_AUTHENTICATION)
-        success, err_msg, self.token = self.user_auth(username, password)
+        success, err_msg, self.token = Library.loop_with_timeout(
+            self.user_auth, 3600, 5, username, password
+        )
         if not success:
             raise ValueError(f"Authorize failed [{job_id}]: {err_msg}")
         self.auth_headers["Authorization"] = f"JWT {self.token}"
@@ -201,14 +204,19 @@ class DriverTiangong100(DriverQuboBase):
         # 4. Check device status
         logger.info("4. check_device_status")
         self.set_progress_by_task(self.TASK_STAGE_CHECK_DEVICE_STATUS)
-        success, err_msg = self.check_device_status(device_id)
+        success, err_msg, _ = Library.loop_with_timeout(
+            self.check_device_status, 3600, 5, device_id
+        )
         if not success:
-            raise ValueError(err_msg)
+            raise ValueError(
+                f"Failed to check device status [{task_name}]: {err_msg}"
+            )
+
         # 5. Upload file
         logger.info("5. upload file")
         self.set_progress_by_task(self.TASK_STAGE_UPLOAD_FILE)
-        success, err_msg, file_info = self.upload_file(
-            job_id, data_index, qubo_matrix
+        success, err_msg, file_info = Library.loop_with_timeout(
+            self.upload_file, 3600, 5, job_id, data_index, qubo_matrix
         )
         if not success:
             raise ValueError(f"Failed to upload file [{job_id}]: {err_msg}")
@@ -216,7 +224,6 @@ class DriverTiangong100(DriverQuboBase):
         # 6. Submit task
         logger.info("6. submit task")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
-        task_name = f"{job_id}_{data_index}"
         estimated_datetime = datetime.now() + timedelta(minutes=1)
         estimated_datetime_str = estimated_datetime.strftime(
             "%Y-%m-%d %H:%M:%S"
@@ -233,8 +240,9 @@ class DriverTiangong100(DriverQuboBase):
             "project_id": project_id,
         }
         tasks_info = {"data": [task_info]}
-
-        success, err_msg = self.submit_tasks(tasks_info)
+        success, err_msg, _ = Library.loop_with_timeout(
+            self.submit_tasks, 3600, 5, tasks_info
+        )
         if not success:
             raise ValueError(f"Failed to submit task [{task_name}]: {err_msg}")
 
@@ -362,7 +370,7 @@ class DriverTiangong100(DriverQuboBase):
         else:
             success = False
             err_msgs.append(reason)
-        return success, "\n".join(err_msgs)
+        return success, "\n".join(err_msgs), None
 
     def upload_file(self, job_id, data_index, data):
         """Upload qubo matrix file
@@ -462,7 +470,7 @@ class DriverTiangong100(DriverQuboBase):
         else:
             success = False
             err_msgs.append(reason)
-        return success, "\n".join(err_msgs)
+        return success, "\n".join(err_msgs), None
 
     def get_task_id(self, task_name):
         """Get task id by task name
@@ -516,16 +524,19 @@ class DriverTiangong100(DriverQuboBase):
             expect_task_status: expect task status list
 
         Returns:
-            True if task status meets requirements, False otherwise
+            bool: True if task status meets requirements, False otherwise
+            str: error message
+            str: task status
         """
         success, err_msg, task_info = self.get_task_id(task_name)
-        if (
-            success
-            and task_info.get("status", self.task_status_unknown)
-            in expect_task_status
-        ):
-            return True
-        return False
+        task_status = task_info.get("status", self.task_status_unknown)
+        if success and task_status in expect_task_status:
+            return True, None, None
+        err_msg = (
+            f"Task status is not in {expect_task_status}, "
+            f"and current status: {task_status}"
+        )
+        return False, err_msg, None
 
     def get_task_results(self, task_id):
         """Get task results

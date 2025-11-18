@@ -459,13 +459,18 @@ class DriverSpinQRpc(DriverBase):
             expect_task_status: expected task status
 
         Returns:
-            success of failed
+            bool: success of failed
+            str: error message
+            str: task status
         """
         success, _, task_status = self.get_task_status(task_id)
-        if success:
-            if task_status in expect_task_status:
-                return True
-        return False
+        if success and task_status in expect_task_status:
+            return True, None, task_status
+        err_msg = (
+            f"Task status is not in {expect_task_status}, "
+            f"and current status: {task_status}"
+        )
+        return False, err_msg, None
 
     @rpc_retry()
     def get_task_status(self, task_id):

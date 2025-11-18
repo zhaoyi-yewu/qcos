@@ -1025,14 +1025,14 @@ class Library:
         start_time = time.time()
         while True:
             # check condition
-            result = condition_check(*args, **kwargs)
-            if result:
+            success, err_msg, result = condition_check(*args, **kwargs)
+            if success:
                 return True, err_msg, result
 
             # check timeout
             elapsed = time.time() - start_time
             if elapsed >= timeout:
-                err_msg = "Timed out"
+                err_msg = f"Timed out: {err_msg}"
                 return False, err_msg, None
 
             # sleep

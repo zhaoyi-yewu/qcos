@@ -157,15 +157,13 @@ class TaskFlowManager(ABC):
             try:
                 hello = self._sync_client.hello()
                 if hello and hello.status_code == HttpCode.SUCCESS_OK:
-                    return True
-                return False
-            except Exception:
-                return False
+                    return True, None, None
+                return False, "Connection failed", None
+            except Exception as e:
+                return False, str(e), None
 
-        success, err_msg, results = Library.loop_with_timeout(
-            is_connected, 60, 5
-        )
-        if not success or not results:
+        success, err_msg, _ = Library.loop_with_timeout(is_connected, 60, 5)
+        if not success:
             raise TimeoutError("Connection to prefect server timeout")
 
     async def create_pools(self):

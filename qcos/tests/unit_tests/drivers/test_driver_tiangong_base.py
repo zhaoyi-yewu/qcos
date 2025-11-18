@@ -76,35 +76,44 @@ class TestDriverTiangongBase:
         assert "Invalid URL " in str(context.value)
 
         mock_is_valid_url.return_value = True
-        mock_user_auth.return_value = iter([False, "", None])
+        mock_loop_with_timeout.return_value = iter([False, "", None])
         with pytest.raises(ValueError) as context:
             driver_tiangong_base.run(job_id, num_qubits, data, data_type)
         assert "Authorize failed " in str(context.value)
 
-        mock_user_auth.return_value = iter([True, "", "fakeToken"])
-        mock_submit_tasks.return_value = iter([False, "", "123"])
+        mock_loop_with_timeout.side_effect = [
+            iter([True, "", "fakeToken"]),
+            iter([False, "", "123"]),
+        ]
+        # mock_submit_tasks.return_value = iter([False, "", "123"])
         with pytest.raises(ValueError) as context:
             driver_tiangong_base.run(job_id, num_qubits, data, data_type)
         assert "Failed to submit task: " in str(context.value)
 
-        mock_user_auth.return_value = iter([True, "", "fakeToken"])
-        mock_submit_tasks.return_value = iter([True, "", "123"])
-        mock_loop_with_timeout.return_value = iter([False, "", ""])
+        mock_loop_with_timeout.side_effect = [
+            iter([True, "", "fakeToken"]),
+            iter([True, "", "123"]),
+            iter([False, "", ""]),
+        ]
         with pytest.raises(ValueError) as context:
             driver_tiangong_base.run(job_id, num_qubits, data, data_type)
         assert "Failed to wait for task " in str(context.value)
 
-        mock_user_auth.return_value = iter([True, "", "fakeToken"])
-        mock_submit_tasks.return_value = iter([True, "", "123"])
-        mock_loop_with_timeout.return_value = iter([True, "", ""])
+        mock_loop_with_timeout.side_effect = [
+            iter([True, "", "fakeToken"]),
+            iter([True, "", "123"]),
+            iter([True, "", ""]),
+        ]
         mock_get_task_status.return_value = iter([False, "", ""])
         with pytest.raises(ValueError) as context:
             driver_tiangong_base.run(job_id, num_qubits, data, data_type)
         assert "Failed to get task results " in str(context.value)
 
-        mock_user_auth.return_value = iter([True, "", "fakeToken"])
-        mock_submit_tasks.return_value = iter([True, "", "123"])
-        mock_loop_with_timeout.return_value = iter([True, "", ""])
+        mock_loop_with_timeout.side_effect = [
+            iter([True, "", "fakeToken"]),
+            iter([True, "", "123"]),
+            iter([True, "", ""]),
+        ]
         mock_get_task_status.return_value = iter([True, "", "-109"])
         assert (
             driver_tiangong_base.run(job_id, num_qubits, data, data_type)
@@ -160,8 +169,12 @@ class TestDriverTiangongBase:
 
     @patch.object(DriverTiangongBase, "get_task_realtime_result")
     def test_check_task_status(self, mock_get_task_realtime_result):
-        mock_get_task_realtime_result.return_value = iter([False, "", None])
-        success = driver_tiangong_base.check_task_status("1", 5)
+        mock_get_task_realtime_result.return_value = iter([
+            False,
+            "",
+            {"task_status": driver_tiangong_base.task_status_completed},
+        ])
+        success, _, _ = driver_tiangong_base.check_task_status("1", 5)
         assert success is False
 
         mock_get_task_realtime_result.return_value = iter([
@@ -169,7 +182,7 @@ class TestDriverTiangongBase:
             "",
             {"task_status": driver_tiangong_base.task_status_completed},
         ])
-        success = driver_tiangong_base.check_task_status(
+        success, _, _ = driver_tiangong_base.check_task_status(
             "1", [driver_tiangong_base.task_status_completed]
         )
         assert success is True

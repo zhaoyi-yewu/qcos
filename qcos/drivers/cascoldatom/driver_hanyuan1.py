@@ -369,7 +369,7 @@ class DriverHanyuan1(DriverBase):
 
     def check_task_status(
         self, job_id: str, data_index: int, expect_task_status: list
-    ) -> bool:
+    ) -> tuple:
         """Check task status
 
         Args:
@@ -378,7 +378,9 @@ class DriverHanyuan1(DriverBase):
             expect_task_status: expect task status
 
         Returns:
-            task status
+            bool: True if task status meets requirements, False otherwise
+            str: error message
+            str: task status
         """
         try:
             # construct request data
@@ -391,17 +393,22 @@ class DriverHanyuan1(DriverBase):
 
             if status_code == HttpCode.SUCCESS_OK and result:
                 result = result.get("result")
-                if (
-                    result.get("status", self.task_status_unknown)
-                    in expect_task_status
-                ):
-                    return True
-                else:
-                    return False
+                task_status = result.get("status", self.task_status_unknown)
+                if task_status in expect_task_status:
+                    return True, None, task_status
+                err_msg = (
+                    f"Task status is not in {expect_task_status}, "
+                    f"and current status: {task_status}"
+                )
+                return False, err_msg, None
             else:
-                return False
-        except Exception:
-            return False
+                return (
+                    False,
+                    (f"Failed to get task status, status_code: {status_code}"),
+                    None,
+                )
+        except Exception as e:
+            return False, str(e), None
 
     def get_task_results(self, job_id: str, data_index: int):
         """Check task results

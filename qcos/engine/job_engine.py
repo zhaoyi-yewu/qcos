@@ -988,10 +988,12 @@ def run_qubo_code(
             None,
             monitor_info,
         )
-        job_results = process_qubo_solution(
-            job_results, last_idx, np.array(qubo_matrix)
-        )
-    job_results["num_qubits"] = len(qubo_matrix)
+        if job_results["results"]:
+            job_results = process_qubo_solution(
+                job_results, last_idx, np.array(qubo_matrix)
+            )
+    if job_results:
+        job_results["num_qubits"] = len(qubo_matrix)
     return job_results, driver, transpiler, mapping_dict
 
 
@@ -1086,17 +1088,20 @@ def run_subqubo_code(
                 transpiler,
                 monitor_info,
             )
-            subqubo_solution = (
-                sub_job_results.get("results", {})
-                .get("out_data", [{}])[0]
-                .get("solutionVector", [])
-            )
-            if need_precision_reduction:
-                subqubo_solution = np.array(subqubo_solution)[last_idx[:-1]]
-            solution = subqubo.merge_solution(
-                tmp_solution, subqubo_solution, extracted_index
-            )
-            new_solutions.append(solution)
+            if sub_job_results["results"]:
+                subqubo_solution = (
+                    sub_job_results.get("results", {})
+                    .get("out_data", [{}])[0]
+                    .get("solutionVector", [])
+                )
+                if need_precision_reduction:
+                    subqubo_solution = np.array(subqubo_solution)[
+                        last_idx[:-1]
+                    ]
+                solution = subqubo.merge_solution(
+                    tmp_solution, subqubo_solution, extracted_index
+                )
+                new_solutions.append(solution)
         x_best, solution_pool = subqubo.update_solution_pool(
             solution_pool, new_solutions
         )

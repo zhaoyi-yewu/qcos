@@ -71,87 +71,101 @@ class TestDriverTiangong100:
         assert "Invalid URL " in str(context.value)
 
         mock_is_valid_url.return_value = True
-        mock_user_auth.return_value = iter([False, "", ""])
+        mock_loop_with_timeout.return_value = iter([False, "", ""])
         with pytest.raises(ValueError) as context:
             driver_tiangong100.run(job_id, num_qubits, data, data_type)
         assert "Authorize failed " in str(context.value)
 
-        mock_user_auth.return_value = iter([True, "", ""])
-        mock_check_device_status.return_value = iter([False, "no"])
+        mock_loop_with_timeout.side_effect = [
+            iter([True, "", ""]),
+            iter([False, "no", None]),
+        ]
         with pytest.raises(ValueError) as context:
             driver_tiangong100.run(job_id, num_qubits, data, data_type)
         assert str(context.value) is not None
 
-        mock_user_auth.return_value = iter([True, "", ""])
-        mock_check_device_status.return_value = iter([True, "no"])
-        mock_upload_file.return_value = iter([False, "", ""])
+        mock_loop_with_timeout.side_effect = [
+            iter([True, "", ""]),
+            iter([True, "no", None]),
+            iter([False, "", ""]),
+        ]
         with pytest.raises(ValueError) as context:
             driver_tiangong100.run(job_id, num_qubits, data, data_type)
         assert "Failed to upload file " in str(context.value)
 
-        mock_user_auth.return_value = iter([True, "", ""])
-        mock_check_device_status.return_value = iter([True, "no"])
-        mock_upload_file.return_value = iter([
-            True,
-            "",
-            {"creator": "", "id": "", "name": ""},
-        ])
-        mock_submit_tasks.return_value = iter([False, ""])
+        mock_loop_with_timeout.side_effect = [
+            iter([True, "", ""]),
+            iter([True, "no", None]),
+            iter([
+                True,
+                "",
+                {"creator": "", "id": "", "name": ""},
+            ]),
+            iter([False, "", ""]),
+        ]
         with pytest.raises(ValueError) as context:
             driver_tiangong100.run(job_id, num_qubits, data, data_type)
         assert "Failed to submit task " in str(context.value)
 
-        mock_user_auth.return_value = iter([True, "", ""])
-        mock_check_device_status.return_value = iter([True, "no"])
-        mock_upload_file.return_value = iter([
-            True,
-            "",
-            {"creator": "", "id": "", "name": ""},
-        ])
-        mock_submit_tasks.return_value = iter([True, ""])
-        mock_loop_with_timeout.return_value = iter([False, "", ""])
+        mock_loop_with_timeout.side_effect = [
+            iter([True, "", ""]),
+            iter([True, "no", None]),
+            iter([
+                True,
+                "",
+                {"creator": "", "id": "", "name": ""},
+            ]),
+            iter([True, "", ""]),
+            iter([False, "", ""]),
+        ]
         with pytest.raises(ValueError) as context:
             driver_tiangong100.run(job_id, num_qubits, data, data_type)
         assert "Failed to wait for task " in str(context.value)
 
-        mock_user_auth.return_value = iter([True, "", ""])
-        mock_check_device_status.return_value = iter([True, "no"])
-        mock_upload_file.return_value = iter([
-            True,
-            "",
-            {"creator": "", "id": "", "name": ""},
-        ])
-        mock_submit_tasks.return_value = iter([True, ""])
-        mock_loop_with_timeout.return_value = iter([True, "", ""])
+        mock_loop_with_timeout.side_effect = [
+            iter([True, "", ""]),
+            iter([True, "no", None]),
+            iter([
+                True,
+                "",
+                {"creator": "", "id": "", "name": ""},
+            ]),
+            iter([True, "", ""]),
+            iter([True, "", ""]),
+        ]
         mock_get_task_id.return_value = iter([False, "", {"id": ""}])
         with pytest.raises(ValueError) as context:
             driver_tiangong100.run(job_id, num_qubits, data, data_type)
         assert "Failed to get task id " in str(context.value)
 
-        mock_user_auth.return_value = iter([True, "", ""])
-        mock_check_device_status.return_value = iter([True, "no"])
-        mock_upload_file.return_value = iter([
-            True,
-            "",
-            {"creator": "", "id": "", "name": ""},
-        ])
-        mock_submit_tasks.return_value = iter([True, ""])
-        mock_loop_with_timeout.return_value = iter([True, "", ""])
+        mock_loop_with_timeout.side_effect = [
+            iter([True, "", ""]),
+            iter([True, "no", None]),
+            iter([
+                True,
+                "",
+                {"creator": "", "id": "", "name": ""},
+            ]),
+            iter([True, "", ""]),
+            iter([True, "", ""]),
+        ]
         mock_get_task_id.return_value = iter([True, "", {"id": ""}])
         mock_get_task_results.return_value = iter([False, "", ""])
         with pytest.raises(ValueError) as context:
             driver_tiangong100.run(job_id, num_qubits, data, data_type)
         assert "Failed to get task results " in str(context.value)
 
-        mock_user_auth.return_value = iter([True, "", ""])
-        mock_check_device_status.return_value = iter([True, "no"])
-        mock_upload_file.return_value = iter([
-            True,
-            "",
-            {"creator": "", "id": "", "name": ""},
-        ])
-        mock_submit_tasks.return_value = iter([True, ""])
-        mock_loop_with_timeout.return_value = iter([True, "", ""])
+        mock_loop_with_timeout.side_effect = [
+            iter([True, "", ""]),
+            iter([True, "no", None]),
+            iter([
+                True,
+                "",
+                {"creator": "", "id": "", "name": ""},
+            ]),
+            iter([True, "", ""]),
+            iter([True, "", ""]),
+        ]
         mock_get_task_id.return_value = iter([True, "", {"id": ""}])
         mock_get_task_results.return_value = iter([True, "", ""])
         assert (
@@ -190,7 +204,7 @@ class TestDriverTiangong100:
             '{"code": "0","msg": "","data": {"status": 0,"status_desc": 1}}',
             "",
         ])
-        success, err_msg = driver_tiangong100.check_device_status(job_id)
+        success, err_msg, _ = driver_tiangong100.check_device_status(job_id)
         assert success is False
 
     @patch.object(Library, "call_http_api")
@@ -220,7 +234,7 @@ class TestDriverTiangong100:
             '{"code": "0","msg": ""}',
             "",
         ])
-        success, err_msg = driver_tiangong100.submit_tasks([])
+        success, err_msg, _ = driver_tiangong100.submit_tasks([])
         assert success is True
 
     @patch.object(Library, "call_http_api")
@@ -237,7 +251,7 @@ class TestDriverTiangong100:
     @patch.object(DriverTiangong100, "get_task_id")
     def test_check_task_status(self, mock_get_task_id):
         mock_get_task_id.return_value = iter([True, "", {"name": ""}])
-        success = driver_tiangong100.check_task_status(job_id, [])
+        success, _, _ = driver_tiangong100.check_task_status(job_id, [])
         assert success is False
 
     @patch.object(Library, "call_http_api")

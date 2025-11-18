@@ -199,13 +199,19 @@ class DriverUQCMatrix2(DriverBase):
             expect_task_status: expected task status
 
         Returns:
-            success of failed
+            bool: success of failed
+            str: error message
+            str: task status
         """
         success, task_status = self.get_task_status(task_id)
         if success:
             if task_status in expect_task_status:
-                return True
-        return False
+                return True, None, task_status
+        err_msg = (
+            f"Task status is not in {expect_task_status}, "
+            f"and current status: {task_status}"
+        )
+        return False, err_msg, None
 
     def get_task_status(self, task_id):
         """Get task status

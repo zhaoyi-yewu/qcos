@@ -90,7 +90,8 @@ class TestDriverHanyuan1:
         )
 
     def test_check_task_status(self):
-        assert driver_hanyuan1.check_task_status(job_id, 1, []) is False
+        success, _, _ = driver_hanyuan1.check_task_status(job_id, 1, [])
+        assert success is False
 
     @patch.object(DriverHanyuan1, "call_json_rpc")
     def test_get_task_results(self, mock_call_json_rpc):

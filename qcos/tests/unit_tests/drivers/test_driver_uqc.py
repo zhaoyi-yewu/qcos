@@ -114,7 +114,9 @@ class TestDriverUqc:
     @patch.object(DriverUQCMatrix2, "get_task_status")
     def test_check_task_status(self, mock_get_task_status):
         mock_get_task_status.return_value = True, expect_task_status
-        success = driver_uqc.check_task_status(task_id, expect_task_status)
+        success, _, _ = driver_uqc.check_task_status(
+            task_id, expect_task_status
+        )
         assert success is True
 
     @patch.object(UQC, "get_task_status")

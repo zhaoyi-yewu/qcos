@@ -124,7 +124,7 @@ class TestDriverSpinQRpc(unittest.TestCase):
         mock_submit_task,
     ):
         mock_submit_task.return_value = True, "", task_id
-        mock_check_task_status.return_value = True
+        mock_check_task_status.return_value = True, None, None
         mock_get_task_results.return_value = True, "", results
         mock_client_close.return_value = None
         self.driver.run(job_id, num_qubits, data, data_type, shots)
@@ -237,8 +237,11 @@ class TestDriverSpinQRpc(unittest.TestCase):
     def test_check_task_status(self, mock_get_task_status):
         finished = 0
         mock_get_task_status.return_value = True, "", finished
-        success = self.driver.check_task_status(task_id, [finished])
+        success, _, task_status = self.driver.check_task_status(
+            task_id, [finished]
+        )
         assert success is True
+        assert task_status is finished
 
     def test_get_task_status(self):
         finished = 0

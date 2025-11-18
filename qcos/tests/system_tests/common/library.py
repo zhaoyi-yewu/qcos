@@ -112,13 +112,18 @@ class StLibrary:
         _status_code, _reason, _text, _response = client.get_job_status(job_id)
         job_result = json.loads(_text)
         job_status = job_result["result"]["job_status"]
-        if job_status in [
+        expect_task_status = [
             Constant.JOB_STATUS_COMPLETED,
             Constant.JOB_STATUS_FAILED,
             Constant.JOB_STATUS_CANCELLED,
-        ]:
-            return True
-        return False
+        ]
+        if job_status in expect_task_status:
+            return True, None, None
+        err_msg = (
+            f"Job status not in {expect_task_status}, "
+            f"and current status: {job_status}"
+        )
+        return False, err_msg, None
 
     @staticmethod
     def delete_job(client, job_id):

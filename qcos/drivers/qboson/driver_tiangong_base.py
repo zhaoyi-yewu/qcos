@@ -153,8 +153,8 @@ class DriverTiangongBase(DriverQuboBase):
         self.set_progress_by_task(self.TASK_STAGE_USER_AUTHENTICATION)
         user_id = extra_configs.get("user_id", "")
         password_sdk_code = extra_configs.get("password_sdk_code", "")
-        success, err_msg, self.token = self.user_auth(
-            user_id, password_sdk_code
+        success, err_msg, self.token = Library.loop_with_timeout(
+            self.user_auth, 3600, 5, user_id, password_sdk_code
         )
         if not success:
             raise ValueError(f"Authorize failed [{job_id}]: {err_msg}")
@@ -164,8 +164,8 @@ class DriverTiangongBase(DriverQuboBase):
         # 4. Submit task
         logger.info("4. submit task")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
-        success, err_msg, task_id = self.submit_tasks(
-            job_id, data_index, qubo_matrix
+        success, err_msg, task_id = Library.loop_with_timeout(
+            self.submit_tasks, 3600, 5, job_id, data_index, qubo_matrix
         )
         if not success:
             raise ValueError(f"Failed to submit task: {err_msg}")
@@ -329,18 +329,23 @@ class DriverTiangongBase(DriverQuboBase):
             expect_task_status: expect task status list
 
         Returns:
-            True if task status meets requirements, False otherwise
+            bool: True if task status meets requirements, False otherwise
+            str: error message
+            str: task status
         """
         success, err_msg, realtime_result = self.get_task_realtime_result(
             task_id
         )
-        if (
-            success
-            and realtime_result.get("task_status", self.task_status_computing)
-            in expect_task_status
-        ):
-            return True
-        return False
+        task_status = realtime_result.get(
+            "task_status", self.task_status_computing
+        )
+        if success and task_status in expect_task_status:
+            return True, None, task_status
+        err_msg = (
+            f"Task status is not in {expect_task_status}, "
+            f"and current status: {task_status}"
+        )
+        return False, err_msg, None
 
     def get_task_realtime_result(self, task_id):
         """Get task realtime result
