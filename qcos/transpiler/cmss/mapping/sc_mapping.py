@@ -136,7 +136,7 @@ class SCRoute(ABC):
                 mapped_targets = []
                 for logical_q in gate.targets:
                     # 确保逻辑量子比特索引是整数
-                    logical_q_int = int(logical_q)
+                    logical_q_int = logical_q
                     if logical_q_int in self.mapping:
                         physical_q = self.mapping[logical_q_int]
                         # 转换为数字索引（从 "Q0" 格式提取数字）

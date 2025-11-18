@@ -70,9 +70,9 @@ class TestGateOptimizer:
         assert len(ir) == 18
         opt_gates = optimize_gate(ir)
         assert len(opt_gates) == 3
-        validate_gate_ir(opt_gates[0], "ry", ["0"], 1, False)
-        validate_gate_ir(opt_gates[1], "z", ["0"], 1, True)
-        validate_gate_ir(opt_gates[2], "ry", ["3"], 1, False)
+        validate_gate_ir(opt_gates[0], "ry", [0], 1, False)
+        validate_gate_ir(opt_gates[1], "z", [0], 1, True)
+        validate_gate_ir(opt_gates[2], "ry", [3], 1, False)
 
     def test_pass_merge_theta(self):
         tree = get_abs_tree(self.merge_theta_data)
@@ -81,6 +81,6 @@ class TestGateOptimizer:
         assert ir is not None
         assert q_num == 2
         assert len(ir) == 4
-        validate_gate_ir(ir[0], "h", ["0"], 1, True)
-        validate_gate_ir(ir[1], "cx", ["0", "1"], 2, True)
+        validate_gate_ir(ir[0], "h", [0], 1, True)
+        validate_gate_ir(ir[1], "cx", [0, 1], 2, True)
         assert pass_merge_theta(ir) is False

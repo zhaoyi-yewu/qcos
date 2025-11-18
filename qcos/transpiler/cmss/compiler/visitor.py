@@ -587,11 +587,11 @@ class Visitor:
                             f"in line {s.pos}, qreg length should be the same")
                     qreg_num = len(id_list)
                     for item in id_list:
-                        qids.append(str(item))
+                        qids.append(item)
                 elif len(qubit) == 2:
                     temp = qubit[1]
                     qubit[1] = self.var_to_number(qubit, s.pos)
-                    qids.append(str(self.check_reg(qubit, RegType.QREG, s.pos)[0])) # pylint: disable=line-too-long
+                    qids.append(self.check_reg(qubit, RegType.QREG, s.pos)[0])
                     qubit[1] = temp
                 else:
                     raise RuntimeError(

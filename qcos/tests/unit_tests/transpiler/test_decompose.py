@@ -94,15 +94,15 @@ class TestDecompose:
 
         decomposed_gates = decompose_gates(ir)
         assert len(decomposed_gates) == 85
-        validate_gate_ir(decomposed_gates[0], "rx", ["2"], 1, False)
-        validate_gate_ir(decomposed_gates[1], "ry", ["2"], 1, False)
-        validate_gate_ir(decomposed_gates[4], "rz", ["2"], 1, False)
-        validate_gate_ir(decomposed_gates[7], "ry", ["2"], 1, False)
-        validate_gate_ir(decomposed_gates[21], "cx", ["2", "3"], 2, True)
-        validate_gate_ir(decomposed_gates[24], "rx", ["3"], 1, False)
-        validate_gate_ir(decomposed_gates[27], "cx", ["2", "3"], 2, True)
-        validate_gate_ir(decomposed_gates[53], "rz", ["3"], 1, False)
-        validate_gate_ir(decomposed_gates[62], "cx", ["2", "3"], 2, True)
+        validate_gate_ir(decomposed_gates[0], "rx", [2], 1, False)
+        validate_gate_ir(decomposed_gates[1], "ry", [2], 1, False)
+        validate_gate_ir(decomposed_gates[4], "rz", [2], 1, False)
+        validate_gate_ir(decomposed_gates[7], "ry", [2], 1, False)
+        validate_gate_ir(decomposed_gates[21], "cx", [2, 3], 2, True)
+        validate_gate_ir(decomposed_gates[24], "rx", [3], 1, False)
+        validate_gate_ir(decomposed_gates[27], "cx", [2, 3], 2, True)
+        validate_gate_ir(decomposed_gates[53], "rz", [3], 1, False)
+        validate_gate_ir(decomposed_gates[62], "cx", [2, 3], 2, True)
 
     def test_optimizer(self):
         tree = get_abs_tree(self.data)
@@ -118,15 +118,15 @@ class TestDecompose:
 
         opt_gates = optimize_gate(decomposed_gates)
         assert len(opt_gates) == 77
-        validate_gate_ir(opt_gates[0], "rx", ["2"], 1, False)
-        validate_gate_ir(opt_gates[1], "ry", ["2"], 1, False)
-        validate_gate_ir(opt_gates[4], "rz", ["2"], 1, False)
-        validate_gate_ir(opt_gates[7], "rx", ["2"], 1, False)
-        validate_gate_ir(opt_gates[22], "cx", ["2", "3"], 2, True)
-        validate_gate_ir(opt_gates[24], "rx", ["3"], 1, False)
-        validate_gate_ir(opt_gates[29], "cx", ["2", "3"], 2, True)
-        validate_gate_ir(opt_gates[47], "rz", ["3"], 1, False)
-        validate_gate_ir(opt_gates[52], "cx", ["2", "3"], 2, True)
+        validate_gate_ir(opt_gates[0], "rx", [2], 1, False)
+        validate_gate_ir(opt_gates[1], "ry", [2], 1, False)
+        validate_gate_ir(opt_gates[4], "rz", [2], 1, False)
+        validate_gate_ir(opt_gates[7], "rx", [2], 1, False)
+        validate_gate_ir(opt_gates[22], "cx", [2, 3], 2, True)
+        validate_gate_ir(opt_gates[24], "rx", [3], 1, False)
+        validate_gate_ir(opt_gates[29], "cx", [2, 3], 2, True)
+        validate_gate_ir(opt_gates[47], "rz", [3], 1, False)
+        validate_gate_ir(opt_gates[52], "cx", [2, 3], 2, True)
 
     def test_optimizer_simple(self):
         tree = get_abs_tree(self.simple_data)
@@ -145,7 +145,7 @@ class TestDecompose:
 
         opt_gates = optimize_gate(decomposed_gates)
         assert len(opt_gates) == 2
-        validate_gate_ir(opt_gates[0], "rx", ["0"], 1, False)
+        validate_gate_ir(opt_gates[0], "rx", [0], 1, False)
         validate_non_gate_ir(opt_gates[1], "measure", [0], 0)
 
     def test_optimizer_simple_with_reset(self):
@@ -169,24 +169,24 @@ class TestDecompose:
         assert ir is not None
         assert q_num == 1
         assert len(ir) == 6
-        validate_gate_ir(ir[0], "h", ["0"], 1, True)
+        validate_gate_ir(ir[0], "h", [0], 1, True)
         validate_non_gate_ir(ir[1], "reset", [0], -3)
 
         opt_gates = optimize_gate(ir)
         assert len(opt_gates) == 6
-        validate_gate_ir(opt_gates[0], "h", ["0"], 1, True)
+        validate_gate_ir(opt_gates[0], "h", [0], 1, True)
         validate_non_gate_ir(opt_gates[1], "reset", [0], -3)
 
         decomposed_gates = decompose_gates(opt_gates)
         assert len(decomposed_gates) == 8
-        validate_gate_ir(decomposed_gates[0], "ry", ["0"], 1, False)
-        validate_gate_ir(decomposed_gates[1], "rx", ["0"], 1, False)
+        validate_gate_ir(decomposed_gates[0], "ry", [0], 1, False)
+        validate_gate_ir(decomposed_gates[1], "rx", [0], 1, False)
         validate_non_gate_ir(decomposed_gates[2], "reset", [0], -3)
         opt_gates = optimize_gate(decomposed_gates)
 
         assert len(opt_gates) == 6
-        validate_gate_ir(opt_gates[0], "ry", ["0"], 1, False)
-        validate_gate_ir(opt_gates[1], "rx", ["0"], 1, False)
+        validate_gate_ir(opt_gates[0], "ry", [0], 1, False)
+        validate_gate_ir(opt_gates[1], "rx", [0], 1, False)
         validate_non_gate_ir(opt_gates[2], "reset", [0], -3)
         validate_non_gate_ir(opt_gates[5], "measure", [0], 0)
 
@@ -217,39 +217,39 @@ class TestDecompose:
         q_num, ir = get_ir(tree)
         assert ir is not None
         assert len(ir) == 9
-        validate_gate_ir(ir[0], "rx", ["2"], 1, False)
-        validate_non_gate_ir(ir[2], "reset", ["2"], -3)
-        validate_gate_ir(ir[3], "rx", ["3"], 1, False)
-        validate_non_gate_ir(ir[5], "reset", ["3"], -3)
+        validate_gate_ir(ir[0], "rx", [2], 1, False)
+        validate_non_gate_ir(ir[2], "reset", [2], -3)
+        validate_gate_ir(ir[3], "rx", [3], 1, False)
+        validate_non_gate_ir(ir[5], "reset", [3], -3)
         validate_non_gate_ir(ir[7], "sync", [0, 1, 2, 3, 4, 5], -1)
 
         opt_gates = optimize_gate(ir)
         assert opt_gates is not None
         assert len(opt_gates) == 7
-        validate_gate_ir(opt_gates[0], "rx", ["2"], 1, False)
-        validate_non_gate_ir(opt_gates[1], "reset", ["2"], -3)
-        validate_gate_ir(opt_gates[2], "rx", ["3"], 1, False)
-        validate_non_gate_ir(opt_gates[3], "reset", ["3"], -3)
+        validate_gate_ir(opt_gates[0], "rx", [2], 1, False)
+        validate_non_gate_ir(opt_gates[1], "reset", [2], -3)
+        validate_gate_ir(opt_gates[2], "rx", [3], 1, False)
+        validate_non_gate_ir(opt_gates[3], "reset", [3], -3)
         validate_non_gate_ir(opt_gates[5], "sync", [0, 1, 2, 3, 4, 5], -1)
 
         decomp_gates = decompose_gates(opt_gates)
         assert decomp_gates is not None
         assert len(decomp_gates) == 23
-        validate_gate_ir(decomp_gates[0], "rx", ["2"], 1, False)
-        validate_non_gate_ir(decomp_gates[1], "reset", ["2"], -3)
-        validate_gate_ir(decomp_gates[2], "rx", ["3"], 1, False)
-        validate_non_gate_ir(decomp_gates[3], "reset", ["3"], -3)
-        validate_gate_ir(decomp_gates[6], "cx", ["1", "4"], 2, True)
+        validate_gate_ir(decomp_gates[0], "rx", [2], 1, False)
+        validate_non_gate_ir(decomp_gates[1], "reset", [2], -3)
+        validate_gate_ir(decomp_gates[2], "rx", [3], 1, False)
+        validate_non_gate_ir(decomp_gates[3], "reset", [3], -3)
+        validate_gate_ir(decomp_gates[6], "cx", [1, 4], 2, True)
         validate_non_gate_ir(decomp_gates[21], "sync", [0, 1, 2, 3, 4, 5], -1)
 
         opt_gates = optimize_gate(decomp_gates)
         assert opt_gates is not None
         assert len(opt_gates) == 23
-        validate_gate_ir(opt_gates[0], "rx", ["2"], 1, False)
-        validate_non_gate_ir(opt_gates[1], "reset", ["2"], -3)
-        validate_gate_ir(opt_gates[2], "rx", ["3"], 1, False)
-        validate_non_gate_ir(opt_gates[3], "reset", ["3"], -3)
-        validate_gate_ir(opt_gates[6], "cx", ["1", "4"], 2, True)
+        validate_gate_ir(opt_gates[0], "rx", [2], 1, False)
+        validate_non_gate_ir(opt_gates[1], "reset", [2], -3)
+        validate_gate_ir(opt_gates[2], "rx", [3], 1, False)
+        validate_non_gate_ir(opt_gates[3], "reset", [3], -3)
+        validate_gate_ir(opt_gates[6], "cx", [1, 4], 2, True)
         validate_non_gate_ir(opt_gates[21], "sync", [0, 1, 2, 3, 4, 5], -1)
 
     def test_optimizer_simple_with_barrier(self):
@@ -273,24 +273,24 @@ class TestDecompose:
         assert ir is not None
         assert q_num == 1
         assert len(ir) == 6
-        validate_gate_ir(ir[0], "h", ["0"], 1, True)
+        validate_gate_ir(ir[0], "h", [0], 1, True)
         validate_non_gate_ir(ir[1], "sync", [0], -1)
 
         opt_gates = optimize_gate(ir)
         assert len(opt_gates) == 6
-        validate_gate_ir(opt_gates[0], "h", ["0"], 1, True)
+        validate_gate_ir(opt_gates[0], "h", [0], 1, True)
         validate_non_gate_ir(opt_gates[1], "sync", [0], -1)
 
         decomposed_gates = decompose_gates(opt_gates)
         assert len(decomposed_gates) == 8
-        validate_gate_ir(decomposed_gates[0], "ry", ["0"], 1, False)
-        validate_gate_ir(decomposed_gates[1], "rx", ["0"], 1, False)
+        validate_gate_ir(decomposed_gates[0], "ry", [0], 1, False)
+        validate_gate_ir(decomposed_gates[1], "rx", [0], 1, False)
         validate_non_gate_ir(decomposed_gates[2], "sync", [0], -1)
 
         opt_gates = optimize_gate(decomposed_gates)
         assert len(opt_gates) == 6
-        validate_gate_ir(opt_gates[0], "ry", ["0"], 1, False)
-        validate_gate_ir(opt_gates[1], "rx", ["0"], 1, False)
+        validate_gate_ir(opt_gates[0], "ry", [0], 1, False)
+        validate_gate_ir(opt_gates[1], "rx", [0], 1, False)
         validate_non_gate_ir(opt_gates[2], "sync", [0], -1)
         validate_non_gate_ir(opt_gates[5], "measure", [0], 0)
 
@@ -323,39 +323,39 @@ class TestDecompose:
         q_num, ir = get_ir(tree)
         assert ir is not None
         assert len(ir) == 9
-        validate_gate_ir(ir[0], "rx", ["2"], 1, False)
-        validate_non_gate_ir(ir[2], "sync", ["2"], -1)
-        validate_gate_ir(ir[3], "rx", ["3"], 1, False)
-        validate_non_gate_ir(ir[5], "sync", ["3"], -1)
+        validate_gate_ir(ir[0], "rx", [2], 1, False)
+        validate_non_gate_ir(ir[2], "sync", [2], -1)
+        validate_gate_ir(ir[3], "rx", [3], 1, False)
+        validate_non_gate_ir(ir[5], "sync", [3], -1)
         validate_non_gate_ir(ir[7], "sync", [0, 1, 2, 3, 4, 5], -1)
 
         opt_gates = optimize_gate(ir)
         assert opt_gates is not None
         assert len(opt_gates) == 7
-        validate_gate_ir(opt_gates[0], "rx", ["2"], 1, False)
-        validate_non_gate_ir(opt_gates[1], "sync", ["2"], -1)
-        validate_gate_ir(opt_gates[2], "rx", ["3"], 1, False)
-        validate_non_gate_ir(opt_gates[3], "sync", ["3"], -1)
+        validate_gate_ir(opt_gates[0], "rx", [2], 1, False)
+        validate_non_gate_ir(opt_gates[1], "sync", [2], -1)
+        validate_gate_ir(opt_gates[2], "rx", [3], 1, False)
+        validate_non_gate_ir(opt_gates[3], "sync", [3], -1)
         validate_non_gate_ir(opt_gates[5], "sync", [0, 1, 2, 3, 4, 5], -1)
 
         decomp_gates = decompose_gates(opt_gates)
         assert decomp_gates is not None
         assert len(decomp_gates) == 23
-        validate_gate_ir(decomp_gates[0], "rx", ["2"], 1, False)
-        validate_non_gate_ir(decomp_gates[1], "sync", ["2"], -1)
-        validate_gate_ir(decomp_gates[2], "rx", ["3"], 1, False)
-        validate_non_gate_ir(decomp_gates[3], "sync", ["3"], -1)
-        validate_gate_ir(decomp_gates[6], "cx", ["1", "4"], 2, True)
+        validate_gate_ir(decomp_gates[0], "rx", [2], 1, False)
+        validate_non_gate_ir(decomp_gates[1], "sync", [2], -1)
+        validate_gate_ir(decomp_gates[2], "rx", [3], 1, False)
+        validate_non_gate_ir(decomp_gates[3], "sync", [3], -1)
+        validate_gate_ir(decomp_gates[6], "cx", [1, 4], 2, True)
         validate_non_gate_ir(decomp_gates[21], "sync", [0, 1, 2, 3, 4, 5], -1)
 
         opt_gates = optimize_gate(decomp_gates)
         assert opt_gates is not None
         assert len(opt_gates) == 23
-        validate_gate_ir(opt_gates[0], "rx", ["2"], 1, False)
-        validate_non_gate_ir(opt_gates[1], "sync", ["2"], -1)
-        validate_gate_ir(opt_gates[2], "rx", ["3"], 1, False)
-        validate_non_gate_ir(opt_gates[3], "sync", ["3"], -1)
-        validate_gate_ir(opt_gates[6], "cx", ["1", "4"], 2, True)
+        validate_gate_ir(opt_gates[0], "rx", [2], 1, False)
+        validate_non_gate_ir(opt_gates[1], "sync", [2], -1)
+        validate_gate_ir(opt_gates[2], "rx", [3], 1, False)
+        validate_non_gate_ir(opt_gates[3], "sync", [3], -1)
+        validate_gate_ir(opt_gates[6], "cx", [1, 4], 2, True)
         validate_non_gate_ir(opt_gates[21], "sync", [0, 1, 2, 3, 4, 5], -1)
 
     def test_create_u1(self):

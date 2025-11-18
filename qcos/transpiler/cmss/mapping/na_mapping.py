@@ -92,9 +92,7 @@ class NASingleRoute(ABC):
                     f"invalid targets num: {len(gate.targets)}"
                     f"Gate {gate.name} must have exactly one target"
                 )
-            gate.targets = [
-                int(self.mapping[int(q)][1:]) for q in gate.targets
-            ]
+            gate.targets = [int(self.mapping[q][1:]) for q in gate.targets]
             if gate.name == "measure":
                 measure.append(gate)
                 continue
