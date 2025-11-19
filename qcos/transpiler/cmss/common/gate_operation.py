@@ -1259,6 +1259,8 @@ def create_gate(name, targets=None, arg_value=None, allow_undefined=False):
         return T(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_P:
         return P(targets, arg_value)
+    elif name == Constant.SINGLE_QUBIT_GATE_U:
+        return U3(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_SDG:
         return SDG(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_TDG:

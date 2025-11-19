@@ -89,6 +89,7 @@ class Visitor:
             "u1": (1, 1),
             "u2": (1, 2),
             "u3": (1, 3),
+            "u": (1, 3),
         }
         self.defined_gate = {}
         self.now_gate = ""

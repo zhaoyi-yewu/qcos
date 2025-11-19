@@ -233,13 +233,14 @@ class TestGetIr:
         c3x q[0], q[1], q[2], q[3];
         c3sqrtx q[0], q[1], q[2], q[3];
         c4x q[0], q[1], q[2], q[3], q[4];
+        u(pi/2, pi/2, pi) q[1];
         """
         tree = get_abs_tree(data)
         assert tree is not None
         q_num, ir = get_ir(tree)
         assert ir is not None
         assert q_num == 5
-        assert len(ir) == 16
+        assert len(ir) == 17
         validate_gate_ir(ir[0], "p", [0], 1, False)
         validate_gate_ir(ir[1], "sx", [0], 1, False)
         validate_gate_ir(ir[2], "sxdg", [1], 1, False)
@@ -256,3 +257,4 @@ class TestGetIr:
         validate_gate_ir(ir[13], "c3x", [0, 1, 2, 3], 4, False)
         validate_gate_ir(ir[14], "c3sqrtx", [0, 1, 2, 3], 4, False)
         validate_gate_ir(ir[15], "c4x", [0, 1, 2, 3, 4], 5, False)
+        validate_gate_ir(ir[16], "u3", [1], 1, False)
