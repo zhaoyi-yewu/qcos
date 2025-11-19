@@ -15,16 +15,38 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 import copy
+
 import networkx as nx
 import numpy as np
+
 from qcos.transpiler.cmss.mapping.utils.dg import DG
 from qcos.transpiler.cmss.mapping.utils.front_circuit import FrontCircuit
 
+
 gate_depth = {
-    'cx': 1, 'h': 1, 't': 1, 'x': 1, 'y': 1, 'z': 1, 's': 1, 'rx': 1, 'ry': 1,
-    'rz': 1, 'u3': 1, 'tdg': 1, 'swap': 3, 'p': 1, 'u2': 1, 'u1': 1, 'u': 1,
-    'cz': 1, 'sdg': 1, 'sx': 1, 'sxdg': 1
+    "cx": 1,
+    "h": 1,
+    "t": 1,
+    "x": 1,
+    "y": 1,
+    "z": 1,
+    "s": 1,
+    "rx": 1,
+    "ry": 1,
+    "rz": 1,
+    "u3": 1,
+    "tdg": 1,
+    "swap": 3,
+    "p": 1,
+    "u2": 1,
+    "u1": 1,
+    "u": 1,
+    "cz": 1,
+    "sdg": 1,
+    "sx": 1,
+    "sxdg": 1,
 }
+
 
 def swap_qubits_(qubits, swap_qubits):
     qubits_new = []
@@ -38,57 +60,66 @@ def swap_qubits_(qubits, swap_qubits):
                 qubits_new.append(q)
     return qubits_new
 
+
 def hybridization(dg_swap1, dg_swap2, dg_ori, prob1=0.5):
-    '''
+    """
     We choose the first prob1% gates in dg_swap1 and the last (1-prob1)% gates
     in dg_swap2.
-    '''
+    """
     dg_swap_new = copy.deepcopy(dg_ori)
-    node_thre = int(
-        (len(dg_swap1.nodes) - len(dg_swap2.swap_nodes)) * prob1
-    )
+    node_thre = int((len(dg_swap1.nodes) - len(dg_swap2.swap_nodes)) * prob1)
     exchange1, exchange2 = dg_swap1.exchange_log, dg_swap2.exchange_log
     for node1, node2 in exchange1:
         node_max = min(node1, node2)
-        if ((node1, node2) in dg_swap_new.exchange_log or
-                (node2, node1) in dg_swap_new.exchange_log):
+        if (node1, node2) in dg_swap_new.exchange_log or (
+            node2,
+            node1,
+        ) in dg_swap_new.exchange_log:
             continue
         if node_max <= node_thre:
             dg_swap_new.exchange(node1, node2)
     for node1, node2 in exchange2:
-        if ((node1, node2) in dg_swap_new.exchange_log or
-                (node2, node1) in dg_swap_new.exchange_log):
+        if (node1, node2) in dg_swap_new.exchange_log or (
+            node2,
+            node1,
+        ) in dg_swap_new.exchange_log:
             continue
         node_max = max(node1, node2)
         if node_max > node_thre:
             dg_swap_new.exchange(node1, node2)
     return dg_swap_new
 
+
 def hybridization2(dg_swap1, dg_swap2, dg_ori, prob1=0.5):
-    '''
+    """
     For each exchange, we randomly accept (prob1%) in dg_swap1 or
     [(1-prob1)%] that in dg_swap2.
-    '''
+    """
     dg_swap_new = copy.deepcopy(dg_ori)
     exchange1, exchange2 = dg_swap1.exchange_log, dg_swap2.exchange_log
     for node1, node2 in exchange1:
         if np.random.rand() < prob1:
-            if ((node1, node2) in dg_swap_new.exchange_log or
-                    (node2, node1) in dg_swap_new.exchange_log):
+            if (node1, node2) in dg_swap_new.exchange_log or (
+                node2,
+                node1,
+            ) in dg_swap_new.exchange_log:
                 continue
             dg_swap_new.exchange(node1, node2)
     for node1, node2 in exchange2:
         if np.random.rand() < (1 - prob1):
-            if ((node1, node2) in dg_swap_new.exchange_log or
-                    (node2, node1) in dg_swap_new.exchange_log):
+            if (node1, node2) in dg_swap_new.exchange_log or (
+                node2,
+                node1,
+            ) in dg_swap_new.exchange_log:
                 continue
             dg_swap_new.exchange(node1, node2)
     return dg_swap_new
 
+
 def hybridization3(dg_swap1, dg_swap2, dg_ori):
-    '''
+    """
     For each exchange, we accept all exchanges in dg_swap1 and dg_swap2.
-    '''
+    """
     dg_swap_new = copy.deepcopy(dg_ori)
     exchange1 = dg_swap1.exchange_log.copy()
     exchange2 = dg_swap2.exchange_log.copy()
@@ -103,23 +134,28 @@ def hybridization3(dg_swap1, dg_swap2, dg_ori):
     if len(exchange2) > 0:
         exchange.extend(exchange2)
     for node1, node2 in exchange:
-        if ((node1, node2) in dg_swap_new.exchange_log or
-                (node2, node1) in dg_swap_new.exchange_log):
+        if (node1, node2) in dg_swap_new.exchange_log or (
+            node2,
+            node1,
+        ) in dg_swap_new.exchange_log:
             continue
         dg_swap_new.exchange(node1, node2)
     return dg_swap_new
 
+
 def hybridization4(dg_swap1, dg_swap2, dg_ori):
-    '''
+    """
     For each exchange, we use dg_swap1 and then try to exchange using dg_swap2
     one-by-one and accept only that reducing depth.
-    '''
+    """
     dg_swap_new = copy.deepcopy(dg_swap1)
     exchange2 = dg_swap2.exchange_log.copy()
     depth_ori = dg_swap_new.depth
     for node1, node2 in exchange2:
-        if ((node1, node2) in dg_swap_new.exchange_log or
-                (node2, node1) in dg_swap_new.exchange_log):
+        if (node1, node2) in dg_swap_new.exchange_log or (
+            node2,
+            node1,
+        ) in dg_swap_new.exchange_log:
             continue
         flag = dg_swap_new.exchange(node1, node2)
         if flag:
@@ -141,14 +177,14 @@ def hybridization4(dg_swap1, dg_swap2, dg_ori):
 
 
 class DGSwap(DG):
-    def __init__(self, ag, cost_func='depth'):
+    def __init__(self, ag, cost_func="depth"):
         super().__init__()
         # add root node
         self.add_node(self.node_count)
         self.root = self.node_count
         self.node_count += 1
-        self.nodes[self.root]['gates'] = []
-        self.nodes[self.root]['qubits'] = list(range(max(list(ag.nodes)) + 1))
+        self.nodes[self.root]["gates"] = []
+        self.nodes[self.root]["qubits"] = list(range(max(list(ag.nodes)) + 1))
         self.qubit_to_node = [self.root] * (max(list(ag.nodes)) + 1)
         self.cost_func = cost_func
         # attrs
@@ -162,27 +198,27 @@ class DGSwap(DG):
 
     @property
     def depth(self):
-        return nx.dag_longest_path_length(self, weight='depth')
+        return nx.dag_longest_path_length(self, weight="depth")
 
     @property
     def node_scores(self):
         node_scores = {}
         depth_ori = self.depth
         for edge in self.edges:
-            if 'depth' not in self.edges[edge]:
+            if "depth" not in self.edges[edge]:
                 raise ValueError("Edge missing depth attribute")
-            d_ori = self.edges[edge]['depth']
-            self.edges[edge]['depth'] = 0
+            d_ori = self.edges[edge]["depth"]
+            self.edges[edge]["depth"] = 0
             depth_new = self.depth
-            self.edges[edge]['depth'] = d_ori
+            self.edges[edge]["depth"] = d_ori
             node_scores[edge[1]] = depth_ori - depth_new
         return node_scores
 
     @property
     def cost(self):
-        if self.cost_func == 'depth':
+        if self.cost_func == "depth":
             return self.cost_depth
-        if self.cost_func == 'depth_tie_break':
+        if self.cost_func == "depth_tie_break":
             return self.cost_depth_tie_break
         return None
 
@@ -232,7 +268,7 @@ class DGSwap(DG):
             if node == self.root:
                 continue
             name = self.get_node_gates(node)[0][0]
-            if name == 'swap':
+            if name == "swap":
                 swap_nodes.append(node)
         self.swap_nodes = tuple(swap_nodes)
         # add depth information to each edge
@@ -247,7 +283,7 @@ class DGSwap(DG):
         gates = self.get_node_gates(node)
         if len(gates) != 1:
             raise ValueError("Expected exactly one gate")
-        self.edges[edge]['depth'] = gate_depth[gates[0][0]]
+        self.edges[edge]["depth"] = gate_depth[gates[0][0]]
 
     def check_node_connectivity(self, node):
         qubits = self.get_node_qubits(node)
@@ -256,15 +292,15 @@ class DGSwap(DG):
         return qubits in self.ag.edges
 
     def exchangeable(self, node1, node2):
-        '''Unimplemented!'''
+        """Unimplemented!"""
         raise NotImplementedError()
 
     def random_mutation(self, mutate_time, max_try=None):
-        '''
+        """
         Randomly choose mutate_time node pairs to do exchanging
         Return:
             The number of exchanges having been done.
-        '''
+        """
         if max_try is None:
             max_try = mutate_time * 2
         count = 0
@@ -283,12 +319,12 @@ class DGSwap(DG):
         return count
 
     def random_mutation2(self, max_try=None):
-        '''
+        """
         Randomly choose mutate_time node pairs to do exchanging until depth
         is changed.
         Return:
             The number of exchanges having been done.
-        '''
+        """
         depth_ori = self.depth
         if max_try is None:
             max_try = 50
@@ -308,11 +344,11 @@ class DGSwap(DG):
         return count
 
     def random_mutation3(self, max_try):
-        '''
+        """
         Randomly choose mutate_time node pairs to do exchanging and accept this
         exchange only if cost is decreased.
         Try max_try times
-        '''
+        """
         cost_current = self.cost
         count = 0
         while count < max_try:
@@ -334,7 +370,7 @@ class DGSwap(DG):
                     break
 
     def exchange(self, node1, node2):
-        '''Exchange the positions of node1 and node2'''
+        """Exchange the positions of node1 and node2"""
         if self.root in (node1, node2):
             return False
         gate1 = self.get_node_gates(node1)[0]
@@ -342,10 +378,10 @@ class DGSwap(DG):
         # check commutation
         if self.root in (node1, node2):
             return False
-        if gate1[0] == 'swap':
+        if gate1[0] == "swap":
             swap_node, non_swap_node = node1, node2
         else:
-            if gate2[0] == 'swap':
+            if gate2[0] == "swap":
                 swap_node, non_swap_node = node2, node1
             else:
                 return False
@@ -411,14 +447,14 @@ class DGSwap(DG):
         ## swap based exchange
         self.remove_edge(edge[0], edge[1])
         ### update qubits in non-swap node
-        self.nodes[non_swap_node]['qubits'] = qubits_swap
+        self.nodes[non_swap_node]["qubits"] = qubits_swap
         gate = self.get_node_gates(non_swap_node)[0]
         gate_new = (
             gate[0],
             tuple(swap_qubits_(gate[1], swap_qubits)),
-            gate[2]
+            gate[2],
         )
-        self.nodes[non_swap_node]['gates'] = [gate_new]
+        self.nodes[non_swap_node]["gates"] = [gate_new]
         ### add back edge
         self.add_line(edge[1], edge[0])
         self.add_depth_to_edge((edge[1], edge[0]))
@@ -433,7 +469,7 @@ class DGSwap(DG):
         return True
 
     def cx_to_swap(self):
-        '''Try to combine all 3 consecutive CNOTs to 1 SWAP'''
+        """Try to combine all 3 consecutive CNOTs to 1 SWAP"""
         self.clear_attrs()
         for node in list(self.nodes):
             if node == self.root:
@@ -449,7 +485,7 @@ class DGSwap(DG):
                 gates = self.get_node_gates(node)
                 if len(gates) != 1:
                     raise ValueError("Expected exactly one gate")
-                if gates[0][0] != 'cx':
+                if gates[0][0] != "cx":
                     break
                 q00, q11 = self.get_node_qubits(node)
                 if q00 != q0 or q11 != q1:
@@ -462,10 +498,10 @@ class DGSwap(DG):
             if len(swap_nodes) == 3:
                 node = self.cascade_node(swap_nodes[0], swap_nodes[1])
                 node = self.cascade_node(node, swap_nodes[2])
-                self.nodes[node]['gates'] = [('swap', (q0, q1), [])]
-                self.nodes[node]['qubits'] = [q0, q1]
-                self.nodes[node]['num_gate_1q'] = 0
-                self.nodes[node]['num_gate_2q'] = 1
+                self.nodes[node]["gates"] = [("swap", (q0, q1), [])]
+                self.nodes[node]["qubits"] = [q0, q1]
+                self.nodes[node]["num_gate_1q"] = 0
+                self.nodes[node]["num_gate_2q"] = 1
 
     def swap_to_cx(self):
         self.clear_attrs()
@@ -478,58 +514,62 @@ class DGSwap(DG):
             gates = self.get_node_gates(node)
             gates_new = []
             for gate in gates:
-                if gate[0] == 'swap' or gate[0] == 'SWAP':
+                if gate[0] == "swap" or gate[0] == "SWAP":
                     q0, q1 = gate[1]
-                    gates_new.append(('cx', (q0, q1), []))
-                    gates_new.append(('cx', (q1, q0), []))
-                    gates_new.append(('cx', (q0, q1), []))
-                    self.nodes[node]['num_gate_2q'] += 2
+                    gates_new.append(("cx", (q0, q1), []))
+                    gates_new.append(("cx", (q1, q0), []))
+                    gates_new.append(("cx", (q0, q1), []))
+                    self.nodes[node]["num_gate_2q"] += 2
                 else:
                     gates_new.append(gate)
-            self.nodes[node]['gates'] = gates_new
+            self.nodes[node]["gates"] = gates_new
 
     def get_node_cx_list(self, node):
-        '''If there existing SWAP, we decompose it into 3 CNOTs'''
+        """If there existing SWAP, we decompose it into 3 CNOTs"""
         cx_list = []
-        names = ('cx', 'swap')
+        names = ("cx", "swap")
         for name, qubits, _ in self.get_node_gates(node):
             if name not in names:
                 raise ValueError(f"Unexpected gate name: {name}")
-            if name == 'cx':
+            if name == "cx":
                 cx_list.append(tuple(qubits))
-            if name == 'swap':
+            if name == "swap":
                 cx_list.extend([
                     (qubits[0], qubits[1]),
                     (qubits[1], qubits[0]),
-                    (qubits[0], qubits[1])
+                    (qubits[0], qubits[1]),
                 ])
         return cx_list
 
-    def qiskit_circuit(self, save_to_file=False, add_barrier=False,
-                       decompose_swap=False,
-                       file_name='circuit'):
+    def qiskit_circuit(
+        self,
+        save_to_file=False,
+        add_barrier=False,
+        decompose_swap=False,
+        file_name="circuit",
+    ):
         dg = copy.deepcopy(self)
         dg.remove_node(dg.root)
         return super(DGSwap, dg).qiskit_circuit(
             save_to_file=save_to_file,
             add_barrier=add_barrier,
             decompose_swap=decompose_swap,
-            file_name=file_name
+            file_name=file_name,
         )
 
     def depth_to_node_list(self):
-        '''
-        Return 2 lists. 
-        
-        depth_to_node list, in which each indice indicates a 
-        specific depth and its value is also a list (length num_q), called 
+        """
+        Return 2 lists.
+
+        depth_to_node list, in which each indice indicates a
+        specific depth and its value is also a list (length num_q), called
         qubit_to_node list. In qubit_to_node, each value, if not None, tells
         which node occupies that time slot.
-        
+
         node_to_depth list
-        
+
         Notice that in this mothod each node can contain more than one gate.
-        '''
+        """
         depth = self.qiskit_circuit(decompose_swap=1).depth()
         num_q = len(self.ag)
         depth_to_node = [[None] * num_q for _ in range(depth)]
@@ -554,9 +594,7 @@ class DGSwap(DG):
                         current_depth += 1
                         for q in qubits:
                             if depth_to_node[current_depth][q] is not None:
-                                raise ValueError(
-                                    "Depth slot already occupied"
-                                )
+                                raise ValueError("Depth slot already occupied")
                             depth_to_node[current_depth][q] = node
                         if current_depth not in node_to_depth[node]:
                             node_to_depth[node].append(current_depth)
@@ -566,4 +604,3 @@ class DGSwap(DG):
 
             circuit.execute_front_layer()
         return depth_to_node, node_to_depth
-

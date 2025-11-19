@@ -16,17 +16,18 @@
 # ----------------------------------------------------------------------
 
 import networkx as nx
-from networkx.algorithms import approximation as approx
 from networkx import DiGraph
+from networkx.algorithms import approximation as approx
 
-from qcos.transpiler.cmss.compiler.parser import (
-    get_abs_tree,
-    get_ir,
-)
 from qcos.transpiler.cmss.common.gate_operation import (
     GateOperation,
     create_gate,
 )
+from qcos.transpiler.cmss.compiler.parser import (
+    get_abs_tree,
+    get_ir,
+)
+from qcos.transpiler.cmss.mapping.utils.front_circuit import FrontCircuit
 
 
 class DG(DiGraph):
@@ -149,6 +150,7 @@ class DG(DiGraph):
         """Get the number of qubits in the dependency graph."""
         max_q = 0
         for node in self.nodes:
+            # pylint: disable=unsubscriptable-object
             max_q = max(max_q, *self.nodes[node]["qubits"])
         self.num_q = max_q + 1
         return self.num_q
@@ -166,7 +168,36 @@ class DG(DiGraph):
         return self.nodes[node]["gates"]
 
     def get_node_qubits(self, node):
-        return self.nodes[node]["qubits"]
+        """Return the qubits associated with a node with robust type checks.
+
+        This implementation accesses the underlying node data defensively and
+        provides clear error messages if the node or expected attribute is not
+        present or not in the expected format. It ensures the returned value
+        is a list of qubits.
+        """
+        try:
+            node_data = self.nodes[node]
+        except Exception as exc:  # defensive: networkx node access may raise
+            raise TypeError(f"无法访问节点 {node} 的数据: {exc}") from exc
+
+        # Ensure node_data behaves like a mapping/dict
+        if not isinstance(node_data, dict):
+            try:
+                node_data = dict(node_data)
+            except Exception as exc:
+                raise TypeError(
+                    f"节点 {node} 的数据不可转换为 dict: {exc}"
+                ) from exc
+
+        if "qubits" not in node_data:
+            raise KeyError(f"节点 {node} 缺少 'qubits' 属性")
+
+        qubits = node_data["qubits"]
+        if not isinstance(qubits, (list, tuple)):
+            raise TypeError(f"节点 {node} 的 'qubits' 属性必须是列表或元组")
+
+        # Normalize to list for callers
+        return list(qubits)
 
     def get_node_depth(self, node: int):
         """Get depth of a node, one SWAP takes 3 depth.
@@ -337,7 +368,8 @@ class DG(DiGraph):
         If decompose_swap is set to True, we will decompose each SWAP
         into 3 CNOTs.
         """
-        from .front_circuit import FrontCircuit  # pylint: disable=import-outside-toplevel
+        # FrontCircuit is imported at module level to avoid
+        # import-outside-toplevel
 
         # init circuits
         ag = nx.complete_graph(self.num_q)

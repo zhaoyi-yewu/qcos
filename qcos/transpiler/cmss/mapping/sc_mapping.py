@@ -23,7 +23,7 @@ from qcos.transpiler.common.errors import MappingException
 from qcos.transpiler.cmss.mapping.utils.dg import DG
 from qcos.transpiler.cmss.mapping.routing.mt_tree import MCTree
 from qcos.transpiler.cmss.mapping.initial_mapping.sc_initial_mapping import (
-    get_initial_mapping
+    get_initial_mapping,
 )
 from qcos.transpiler.cmss.mapping.routing.sc_routing import SCRouting
 
@@ -46,8 +46,8 @@ class SCRoute(ABC):
         self.measure_ops = None
         self.num_q_vir = None
         self.search_tree = None
-        self.method_init_mapping = 'topgraph'
-        self.objective = 'size'
+        self.method_init_mapping = "topgraph"
+        self.objective = "size"
         self.routing = SCRouting()  # 路由搜索实例
 
     def _layout_dict_to_list(self, layout_dict):
@@ -89,9 +89,9 @@ class SCRoute(ABC):
             disable_qubits: 不可用比特列表. Defaults to [].
         """
         qpu_config_dice = {}
-        if 'coupler_map' not in qpu_config:
+        if "coupler_map" not in qpu_config:
             raise MappingException("Cannot find 'coupler_map' in qpu_config")
-        coupler_map = qpu_config['coupler_map']
+        coupler_map = qpu_config["coupler_map"]
         adjacency_list = []
         if not isinstance(coupler_map, dict):
             raise MappingException(
@@ -127,7 +127,7 @@ class SCRoute(ABC):
             if Q1 in disable_qubits or Q2 in disable_qubits:
                 continue
             adjacency_list.append([q1, q2])
-        qpu_config_dice['adjacency_list'] = adjacency_list
+        qpu_config_dice["adjacency_list"] = adjacency_list
         return qpu_config_dice
 
     def _convert_gate_targets_to_int(self, gates):
@@ -152,17 +152,18 @@ class SCRoute(ABC):
         self.qpu_config = qpu_configs
         # 解析QPU配置，获取耦合列表
         qpu_config_dice = self._import_qpu_file(self.qpu_config)
-        adjacency_list = qpu_config_dice['adjacency_list']
+        adjacency_list = qpu_config_dice["adjacency_list"]
 
         # 检查并构建架构图(AG)
         if isinstance(adjacency_list, list):
             qubits = []
             for edge in adjacency_list:
                 qubits.extend(edge)
-                if (not isinstance(edge[0], int) or
-                        not isinstance(edge[1], int)):
+                if not isinstance(edge[0], int) or not isinstance(
+                    edge[1], int
+                ):
                     raise MappingException(
-                        'adjacency_list can only contain int'
+                        "adjacency_list can only contain int"
                     )
             # 生成AG
             self.ag = nx.Graph()
@@ -179,13 +180,16 @@ class SCRoute(ABC):
         # 计算最短路径
         self.ag.shortest_length = dict(
             nx.shortest_path_length(
-                self.ag, source=None, target=None, weight=None,
-                method='dijkstra'
+                self.ag,
+                source=None,
+                target=None,
+                weight=None,
+                method="dijkstra",
             )
         )
         self.ag.shortest_length_weight = self.ag.shortest_length
         self.ag.shortest_path = nx.shortest_path(
-            self.ag, source=None, target=None, weight=None, method='dijkstra'
+            self.ag, source=None, target=None, weight=None, method="dijkstra"
         )
         # 生成依赖图(DG)
         self.dg = DG()
@@ -216,14 +220,15 @@ class SCRoute(ABC):
         self.initial_layout = self._layout_list_to_dict(init_map)
 
         # 初始化搜索树
-        select_mode = ['KS', 15]
+        select_mode = ["KS", 15]
         use_prune = 1
         use_hash = 1
         score_layer = 5
 
         init_map = self._layout_dict_to_list(self.initial_layout)
         self.search_tree = MCTree(
-            self.ag, self.dg,
+            self.ag,
+            self.dg,
             objective=self.objective,
             select_mode=select_mode,
             score_layer=score_layer,
@@ -249,6 +254,6 @@ class SCRoute(ABC):
             ag=self.ag,
             initial_layout=self.initial_layout,
             num_q_vir=self.num_q_vir,
-            measure_ops=self.measure_ops
+            measure_ops=self.measure_ops,
         )
         return mapped_ir

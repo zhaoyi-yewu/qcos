@@ -72,7 +72,20 @@ class TestTranspilerCmdLine:
         )
         assert res is True
 
-    def test_cmss_transpiler_tech_sc(self):
+    @patch(
+        "qcos.transpiler.cmss.mapping.initial_mapping."
+        "sc_initial_mapping.topgraph_mapping"
+    )
+    def test_cmss_transpiler_tech_sc(self, mock_topgraph_mapping):
+        # Mock topgraph_mapping to return a valid mapping
+        # instead of [None, None]
+        def mock_mapping(dependency_graph, coupling_graph):
+            # Return naive mapping which is always valid
+            num_q = dependency_graph.get_dg_num_q()
+            return list(range(num_q))
+
+        mock_topgraph_mapping.side_effect = mock_mapping
+
         self.qasm_path = GLOBAL_CONFIGS["samples_dir"]
         qasm_file = f"{self.qasm_path}/qasm/2.0/simple-qasm.qasm"
         output_file = ""

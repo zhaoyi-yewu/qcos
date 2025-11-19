@@ -23,7 +23,7 @@ from qcos.transpiler.common.errors import MappingException
 
 class SCRouting(ABC):
     """超导设备路由搜索类
-    
+
     负责执行基于蒙特卡罗树搜索的量子比特路由，插入SWAP门以满足硬件拓扑约束。
     """
 
@@ -42,8 +42,9 @@ class SCRouting(ABC):
         layout_dict_r = {v: k for k, v in layout_dict.items()}
         return layout_dict_r
 
-    def execute_routing(self, search_tree, ag, initial_layout, num_q_vir,
-                        measure_ops):
+    def execute_routing(
+        self, search_tree, ag, initial_layout, num_q_vir, measure_ops
+    ):
         """执行路由搜索，返回映射后的门列表
 
         Args:
@@ -64,7 +65,7 @@ class SCRouting(ABC):
             raise MappingException("initial_layout cannot be None")
 
         # MCT搜索过程
-        while search_tree.nodes[search_tree.root_node]['num_remain_gates'] > 0:
+        while search_tree.nodes[search_tree.root_node]["num_remain_gates"] > 0:
             while search_tree.selec_count < self.selec_times:
                 # selection: 选择一个节点进行扩展
                 exp_node, _ = search_tree.selection()
@@ -72,7 +73,6 @@ class SCRouting(ABC):
                 search_tree.expansion(exp_node)
             # decision: 做出决策，选择最优路径
             search_tree.decision()
-
 
         # 生成映射后的依赖图
         dg_qct = search_tree.to_dg()
