@@ -15,7 +15,44 @@
 
 # Merge from local to remote gitee git repo
 
+# 1. Initialize git repo
+# mkdir WuYue
+# cd WuYue
+# git init
+# git remote add origin ssh://git@gitlab.cmss.com:2223/OCRI/WuYueOs.git
+# git remote add gitee git@gitee.com:OpenWuYue/qcos.git
+# git checkout --orphan gitee
+# git pull origin gitee --allow-unrelated-histories
+# git branch --set-upstream-to=origin/gitee gitee
+#
+# git checkout --orphan temp
+# git rm -rf .
+# git checkout --orphan gitee-develop
+# git pull gitee develop --allow-unrelated-histories
+# git branch --set-upstream-to=gitee/develop gitee-develop
+#
+# 2. Update repos
+# git checkout gitee
+# git pull --rebase
+#
+# git checkout gitee-develop
+# git pull --rebase
+#
+# 3. find out cmss local commit id to merge
+# git log --oneline | grep 'Support init'
+# 462375b4 Support initial SpinQ driver
+# {COMMIT_ID} is 462375b4
+# git log --oneline --no-merges 462375b4..HEAD | cat
+#
+# 4. run this script
+# ./merge-to-gitee.sh -c {COMMIT_ID} [-l {LAST_COMMIT_ID}]
+
 set -e
+
+
+BASE_DIR=$(dirname "$0")
+BASE_DIR=$(readlink -f ${BASE_DIR})
+TOP_DIR=$(readlink -f ${BASE_DIR}/../..)
 
 commit_id=""
 
@@ -38,34 +75,39 @@ function usage {
     echo "Merge to remote gitee repo"
     echo ""
     echo "  -c, --commit-id       Local commit ID (remote: ${cmss_remote}, remote_branch: ${cmss_local_branch})"
+    echo "  -l, --last-commit-id  Last local commit ID (Optional) (remote: ${cmss_remote}, remote_branch: ${cmss_local_branch})"
     echo "  -h, --help            Print this usage message"
     echo ""
 }
 
-opts=$(getopt -o c:h --long commit-id:,help -- "$@")
+opts=$(getopt -o c:l:h --long commit-id:last-commit-id:,help -- "$@")
 if [[ $? -ne 0 ]]; then
   exit 1
 fi
 
 eval set -- "$opts"
 
+last_commit_id=""
 while true; do
   case "$1" in
     -h | --help )        usage ; exit 0; shift ;;
     -c | --commit-id )   commit_id="$2";   shift 2 ;;
+    -l | --last-commit-id )   last_commit_id="$2";   shift 2 ;;
     -- ) shift; break ;;
     * )         break ;;
   esac
 done
 
 # check user input
-if [ -z "$commit_id" ]; then
-    echo -e "Error: Invalid arguments (commit-id is required)\n"
-    usage
-    exit 1
+if [ -z "${commit_id}" ]; then
+  echo -e "Error: Invalid arguments (commit-id is required)\n"
+  usage
+  exit 1
 fi
 
 # Fetch codes from gitee
+git reset --hard
+ git cherry-pick --abort || true
 echo "[Fetch codes from ${gitee_remote}, branch: ${gitee_remote_branch}:${gitee_local_branch} ...]"
 git checkout ${gitee_local_branch}
 git pull --rebase ${gitee_remote} ${gitee_remote_branch}:${gitee_local_branch}
@@ -75,21 +117,19 @@ echo
 echo "[Fetch codes from ${cmss_remote}, branch: ${cmss_local_branch} ...]"
 git checkout ${cmss_local_branch}
 git pull --rebase ${cmss_remote} ${cmss_local_branch}:${cmss_local_branch}
-echo 
+echo
 
 # Merge local branch: ${cmss_local_branch} to ${gitee_remote}:{gitee_local_branch}
-echo "git checkout ${cmss_local_merge_branch}"
-git checkout ${cmss_local_branch}
-if git show-ref --verify --quiet refs/heads/"${cmss_local_merge_branch}"; then
-    echo "git branch ${cmss_local_merge_branch} exists"
-else
-    git checkout -b ${cmss_local_merge_branch}
-fi
-git checkout ${cmss_local_merge_branch}
-git reset --hard
+echo "create new branch and merge codes: ${cmss_local_merge_branch}"
+git branch -D ${cmss_local_merge_branch} || true
+git checkout -b ${cmss_local_merge_branch} ${gitee_local_branch}
 
 # merge commit
-git cherry-pick ${commit_id}
+if [ -z "${last_commit_id}" ]; then
+  git cherry-pick -m 1 ${commit_id}
+else
+  git log --oneline --no-merges --format="%h" ${commit_id}~1..${last_commit_id} | tac | xargs git cherry-pick -m 1
+fi
 
 new_commit_id=`git log -1 | head -1 | awk '{print $2}'`
 echo "new_commit_id: ${new_commit_id}"
@@ -133,4 +173,3 @@ git-filter-repo --force \
 
 # print next step
 echo "Run: git push ${gitee_remote} ${cmss_local_merge_branch}:${gitee_remote_branch}"
-
