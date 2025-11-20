@@ -31,8 +31,14 @@ class DriverBase:
     # Data types
     DATA_TYPE_GATE_SEQUENCE = "gate_sequence"
     DATA_TYPE_QUBO = "qubo"
+    DATA_TYPE_QASM2 = "qasm2"
     DATA_TYPE_QASM3 = "qasm3"
-    DATA_TYPES = [DATA_TYPE_GATE_SEQUENCE, DATA_TYPE_QUBO, DATA_TYPE_QASM3]
+    DATA_TYPES = [
+        DATA_TYPE_GATE_SEQUENCE,
+        DATA_TYPE_QUBO,
+        DATA_TYPE_QASM2,
+        DATA_TYPE_QASM3,
+    ]
 
     # TASK STAGES
     TASK_STAGE_START = "start"
@@ -42,6 +48,7 @@ class DriverBase:
     TASK_STAGE_USER_AUTHENTICATION = "user_authentication"
     TASK_STAGE_CHECK_DEVICE_STATUS = "check_device_status"
     TASK_STAGE_UPLOAD_FILE = "upload_file"
+    TASK_STAGE_PREPARE_DATA = "prepare_data"
     TASK_STAGE_SUBMIT_TASK = "submit_task"
     TASK_STAGE_WAIT_TASK = "wait_task"
     TASK_STAGE_GET_RESULTS = "get_results"

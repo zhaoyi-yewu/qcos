@@ -1,0 +1,14 @@
+[wy-hanyuan1]
+alias_name = "WY-中科酷原-汉原1"
+driver = "DriverWuyueHanyuan1"
+description = "WY-中科酷原-汉原1(wy-hanyuan1)"
+# [Optional] max qubits of device
+# device_max_qubits = 100
+
+ip_address = "127.0.0.1"
+port = 8181
+client_id = "12345678"
+eng_code = "12345678"
+password_secret = ""
+password_pub_key = ""
+password_pri_key = ""
