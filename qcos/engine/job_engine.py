@@ -561,7 +561,6 @@ def job_flow(job_info):
     job_data = job_info["data"]
     job_id = job_data["job_id"]
     profiling_code_start = 0
-    code_type = job_data["code_type"]
     callbacks = job_data.get("callbacks", None)
     monitor_info = {
         "artifact_id": None,
