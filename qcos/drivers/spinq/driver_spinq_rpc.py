@@ -471,7 +471,7 @@ class DriverSpinQRpc(DriverBase):
         if success and task_status in expect_task_status:
             return True, None, task_status
         err_msg = (
-            f"Task status is not in {expect_task_status}, "
+            f"Task status is not in {', '.join(expect_task_status)}, "
             f"and current status: {task_status}"
         )
         return False, err_msg, None

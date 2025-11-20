@@ -40,6 +40,7 @@ from qcos.common import errors
 from qcos.common.library import Library
 from qcos.engine.qubo import (
     subqubo,
+    check_matrix,
     check_qubo_matrix_bit_width,
     precision_reduction,
     qubo_matrix_to_ising_matrix,
@@ -920,6 +921,17 @@ def run_qubo_code(
     enable_subqubo = driver.get_enable_subqubo()
     qubo_matrix = src_code_dict[f"{job_id}-{source_code_index}"]
     max_precision_value = 2 ** (Constant.MAX_QUBO_BIT_WIDTH - 1) - 1
+    # Check if the matrix is valid
+    success, err_msg = check_matrix(qubo_matrix)
+    if not success and err_msg:
+        return (
+            format_error_results(
+                driver, errors.JobEngineCheckMatrixError, err_msg
+            ),
+            driver,
+            transpiler,
+            mapping_dict,
+        )
     # Determine in advance whether precision reduction is necessary
     success, err_msg = check_qubo_matrix_bit_width(
         np.array(qubo_matrix), Constant.MAX_QUBO_BIT_WIDTH

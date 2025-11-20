@@ -89,6 +89,30 @@ def is_int_matrix(matrix, param_bit):
     )
 
 
+def check_matrix(matrix):
+    """
+    Check if the input 2D list is a square array (i.e., the number
+    of rows and columns are equal)
+
+    Args:
+        matrix: list(list())
+
+    Returns:
+        bool: True if valid, False otherwise
+        error_msg: str
+    """
+    if not matrix:
+        return False, "Input cannot be an empty list"
+    try:
+        matrix = np.array(matrix)
+    except Exception as e:
+        return False, f"Abnormal matrix: {str(e)}"
+    matrix_shape = matrix.shape
+    if matrix_shape[0] != matrix_shape[1]:
+        return False, "Input matrix is not square"
+    return True, None
+
+
 def check_qubo_matrix_bit_width(qubo_matrix, param_bit):
     """Check qubo matrixs bit width
     Args:

@@ -131,3 +131,11 @@ class JobEngineQubitLimitExceededError(BaseException):
     module_name = "JobEngine"
     error_code = -107
     err_type = "Device Qubit Limit Exceeded Error"
+
+
+class JobEngineCheckMatrixError(BaseException):
+    """Job Engine: Check Matrix Error"""
+
+    module_name = "JobEngine"
+    error_code = -108
+    err_type = "Check Matrix Error"

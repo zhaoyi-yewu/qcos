@@ -529,13 +529,14 @@ class DriverTiangong100(DriverQuboBase):
             str: task status
         """
         success, err_msg, task_info = self.get_task_id(task_name)
-        task_status = task_info.get("status", self.task_status_unknown)
-        if success and task_status in expect_task_status:
-            return True, None, None
-        err_msg = (
-            f"Task status is not in {expect_task_status}, "
-            f"and current status: {task_status}"
-        )
+        if success:
+            task_status = task_info.get("status", self.task_status_unknown)
+            if task_status in expect_task_status:
+                return True, None, task_status
+            err_msg = (
+                f"Task status is not in {', '.join(expect_task_status)}, "
+                f"and current status: {task_status}"
+            )
         return False, err_msg, None
 
     def get_task_results(self, task_id):

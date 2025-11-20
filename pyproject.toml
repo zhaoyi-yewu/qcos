@@ -14,7 +14,14 @@ authors = [
     {name = "Ji Dalong", email = "jidalong_yewu@cmss.chinamobile.com"},
     {name = "Xu Dong", email = "xudong_yewu@cmss.chinamobile.com"},
     {name = "Wu Fangwei", email = "wufangwei_yewu@cmss.chinamobile.com"},
-    {name = "Guo Zhufeng", email = "guozhufeng_yewu@cmss.chinamobile.com"}
+    {name = "Guo Zhufeng", email = "guozhufeng_yewu@cmss.chinamobile.com"},
+    {name = "Liu Zhifeng", email = "liuzhifeng_yewu@cmss.chinamobile.com"},
+    {name = "Zhou Yunxiao", email = "zhouyunxiao_yewu@cmss.chinamobile.com"},
+    {name = "Ye Zhiwei", email = "yezhiwei_yewu@cmss.chinamobile.com"},
+    {name = "Huang Yachao", email = "huangyachao_yewu@cmss.chinamobile.com"},
+    {name = "Wang Jujun", email = "wangjujun_yewu@cmss.chinamobile.com"},
+    {name = "Lian Wencong", email = "lianwencong_yewu@cmss.chinamobile.com"},
+    {name = "Xu Yu", email = "xuyu2_yewu@cmss.chinamobile.com"}
 ]
 keywords = ["qcos", "quantum", "system"]
 

@@ -20,6 +20,7 @@ from .tabu import QUBOSolution, TabuSearch
 from .qubo_precision import (
     find_matrix_gcd,
     scale_to_integer_matrix,
+    check_matrix,
     check_qubo_matrix_bit_width,
     qubo_matrix_to_ising_matrix,
     ising_matrix_to_qubo_matrix,

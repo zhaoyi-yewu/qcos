@@ -345,6 +345,7 @@ class TestJobEngine:
         mock_init_transpiler.assert_not_called()
         mock_run_qubo_code.assert_called_once()
 
+    @patch("qcos.engine.job_engine.check_matrix")
     @patch("qcos.engine.job_engine.check_qubo_matrix_bit_width")
     @patch("qcos.engine.job_engine.qubo_matrix_to_ising_matrix")
     @patch("qcos.engine.job_engine.scale_to_integer_matrix")
@@ -359,6 +360,7 @@ class TestJobEngine:
         mock_scale_matrix,
         mock_ising_matrix,
         mock_check_bit_width,
+        mock_check_matrix,
     ):
         job_id = "00000000-0000-4000-8000-000000000001"
         source_code_index = 0
@@ -380,6 +382,7 @@ class TestJobEngine:
         mock_transpiler = Mock()
         monitor_info = {"progress": 0}
         mock_check_bit_width.return_value = (True, "")
+        mock_check_matrix.return_value = (True, "")
         mock_ising_matrix.return_value = np.array([[0, 1], [1, 0]])
         mock_scale_matrix.return_value = np.array([[0, 1], [1, 0]])
         mock_get_spins_num.return_value = (
@@ -410,6 +413,7 @@ class TestJobEngine:
         mock_run_code.assert_called_once()
         mock_check_bit_width.assert_called_once()
 
+    @patch("qcos.engine.job_engine.check_matrix")
     @patch("qcos.engine.job_engine.check_qubo_matrix_bit_width")
     @patch("qcos.engine.job_engine.qubo_matrix_to_ising_matrix")
     @patch("qcos.engine.job_engine.scale_to_integer_matrix")
@@ -424,6 +428,7 @@ class TestJobEngine:
         mock_scale_matrix,
         mock_ising_matrix,
         mock_check_bit_width,
+        mock_check_matrix,
     ):
         job_id = "00000000-0000-4000-8000-000000000001"
         source_code_index = 0
@@ -444,6 +449,7 @@ class TestJobEngine:
         mock_transpiler = Mock()
         monitor_info = {"progress": 0}
         mock_check_bit_width.return_value = (True, "")
+        mock_check_matrix.return_value = (True, "")
         mock_ising_matrix.return_value = np.array([[0, 1], [1, 0]])
         mock_scale_matrix.return_value = np.array([[0, 1], [1, 0]])
         mock_get_spins_num.return_value = (
@@ -474,6 +480,7 @@ class TestJobEngine:
         mock_run_code.assert_called_once()
         mock_check_bit_width.assert_called_once()
 
+    @patch("qcos.engine.job_engine.check_matrix")
     @patch("qcos.engine.job_engine.check_qubo_matrix_bit_width")
     @patch("qcos.engine.job_engine.qubo_matrix_to_ising_matrix")
     @patch("qcos.engine.job_engine.scale_to_integer_matrix")
@@ -488,6 +495,7 @@ class TestJobEngine:
         mock_scale_matrix,
         mock_ising_matrix,
         mock_check_bit_width,
+        mock_check_matrix,
     ):
         job_id = "00000000-0000-4000-8000-000000000001"
         source_code_index = 0
@@ -509,6 +517,7 @@ class TestJobEngine:
         mock_transpiler = Mock()
         monitor_info = {"progress": 0}
         mock_check_bit_width.return_value = (True, "")
+        mock_check_matrix.return_value = (True, "")
         mock_ising_matrix.return_value = np.array([[0, 1], [1, 0]])
         mock_scale_matrix.return_value = np.array([[0, 1], [1, 0]])
         mock_get_spins_num.return_value = ([3, 3], [0, 3, 6], 6)

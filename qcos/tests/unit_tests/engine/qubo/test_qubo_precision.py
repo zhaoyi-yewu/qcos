@@ -22,6 +22,7 @@ from qcos.engine.qubo.qubo_precision import (
     find_matrix_gcd,
     scale_to_integer_matrix,
     is_int_matrix,
+    check_matrix,
     check_qubo_matrix_bit_width,
     qubo_matrix_to_ising_matrix,
     ising_matrix_to_qubo_matrix,
@@ -83,6 +84,29 @@ class TestQUBOPrecision:
         # Non-integer matrix
         non_int = np.array([[1.5, 2], [3, 4]])
         assert not is_int_matrix(non_int, 8)
+
+    def test_check_matrix(self):
+        """Test check_matrix"""
+        # Valid QUBO matrix
+        valid_qubo = [[1, 0.5], [0.5, 2]]
+        success, errors = check_matrix(valid_qubo)
+        assert success
+        assert errors is None
+        # Invalid QUBO matrix
+        invalid_qubo = [[1, 0.5], [0.5, 2], [0.5, 2]]
+        success, errors = check_matrix(invalid_qubo)
+        assert not success
+        assert "Input matrix is not square" in errors
+        # Invalid QUBO matrix
+        invalid_qubo = None
+        success, errors = check_matrix(invalid_qubo)
+        assert not success
+        assert "Input cannot be an empty list" in errors
+        # Invalid QUBO matrix
+        invalid_qubo = [[0.5], [0.5, 2]]
+        success, errors = check_matrix(invalid_qubo)
+        assert not success
+        assert "Abnormal matrix" in errors
 
     def test_check_qubo_matrix_bit_width(self):
         """Test QUBO matrix bit width checking"""
