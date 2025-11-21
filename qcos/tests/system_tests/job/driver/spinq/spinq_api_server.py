@@ -52,12 +52,12 @@ def init_logging():
     )
 
 
-def load_config():
-    """load configs from toml file"""
+def load_config(path: str = "/etc/qcos/conf.d/spinq_rpc.toml"):
+    """从 TOML 配置文件加载配置"""
     global _config_data, _qubits_num, _coupling_list, _qpu_configs
 
     # find config file
-    config_file = Path("/etc/qcos/conf.d/spinq_rpc.toml")
+    config_file = Path(path)
     if not config_file.exists():
         logger.warning(
             "Config file not found, using default values "
@@ -71,7 +71,7 @@ def load_config():
         logger.warning(
             f"Failed to read config file: {err_msg}, using default values"
         )
-        return
+        return None
 
     _config_data = config_data
 
@@ -121,6 +121,7 @@ def load_config():
                 _coupling_list.append((q1_idx, q0_idx))
 
     logger.info(f"Loaded {len(_coupling_list)} coupling pairs from config")
+    return _config_data, _qubits_num, _coupling_list, _qpu_configs
 
 
 class TaskStatus(enum.Enum):

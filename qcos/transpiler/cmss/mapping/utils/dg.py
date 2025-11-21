@@ -343,19 +343,18 @@ class DG(DiGraph):
             gate.targets = [int(q) for q in gate.targets]
         return ir
 
-    def from_ir(self, ir: QuantumCircuit, absorb=True):
-        """Build graph from ir.
+    def from_ir(self, circ: QuantumCircuit, absorb=True):
+        """Build graph from circ.
 
         Args:
-            ir (list[GateOperation]): ir list
+            circ (QuantumCircuit): quantum circuit
             absorb (bool, optional): Whether absorb the gate. Defaults to True.
 
         Returns:
             list: measure operations
         """
-        self.convert_ir(ir)
         measure_op = []
-        for gate in ir.get_operations():
+        for gate in circ.get_operations():
             name = gate.name
             if name in ("barrier", "measure"):
                 if name == "measure":
@@ -366,7 +365,7 @@ class DG(DiGraph):
                 self.add_gate_absorb(format_gate)
             else:
                 self.add_gate(format_gate)
-        self.origin_ir = ir
+        self.origin_ir = circ.get_operations()
         if self.num_q is None:
             self.num_q = self.get_dg_num_q()
         return measure_op

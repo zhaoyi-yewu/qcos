@@ -60,7 +60,7 @@ def get_initial_mapping(
         method = "naive"
 
     if method == "naive":
-        return list(range(dependency_graph.num_q))
+        return list(range(dependency_graph.get_dg_num_q()))
     elif method == "simulated_annealing":
         return sa_initial_mapping(dependency_graph, coupling_graph)
     elif method == "subgraph_isomorphism":
@@ -70,7 +70,7 @@ def get_initial_mapping(
     elif method == "sabre":
         ir = dependency_graph.origin_ir
         num_qubits = dependency_graph.num_q
-        mapping = sabre_initial_mapping(ir.get_operations(), coupling_graph)
+        mapping = sabre_initial_mapping(ir, coupling_graph)
         return mapping[:num_qubits]
     else:
         raise ValueError(f"Unsupported method {method} for initial mapping")
