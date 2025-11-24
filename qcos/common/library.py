@@ -27,6 +27,7 @@ import inspect
 import json
 import logging
 import math
+import numpy as np
 import os
 import pkgutil
 import random
@@ -665,6 +666,38 @@ class Library:
             success = False
             err_msg = str(e)
         return success, [err_msg]
+
+    @staticmethod
+    def validate_qubo_matrices(qubo_matrices):
+        """validate qubo matrices
+
+        Args:
+            qubo_matrices: qubo matrices
+
+        Returns:
+            success of failed (bool), error message
+        """
+        if not qubo_matrices:
+            return False, "qubo matrices list cannot be an empty list"
+        try:
+            matrices = np.array(qubo_matrices, dtype=float)
+        except Exception as e:
+            return False, f"Abnormal qubo matrices list, error: {str(e)}"
+        matrices_shape = matrices.shape
+        if len(matrices_shape) != 3:
+            return False, "Current input qubo matrices list is not 3D list"
+        for i in range(matrices_shape[0]):
+            try:
+                matrix = np.array(qubo_matrices[i], dtype=float)
+            except Exception as e:
+                return False, (
+                    f"The {i + 1}-th matrix in the list is "
+                    f"a non-regular matrix, error: {str(e)}"
+                )
+            matrix_shape = matrix.shape
+            if matrix_shape[0] != matrix_shape[1]:
+                return False, f"The {i + 1}-th matrix is not square matrix"
+        return True, None
 
     @staticmethod
     def call_http_api(

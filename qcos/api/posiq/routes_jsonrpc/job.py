@@ -110,9 +110,7 @@ def submit_job(
         jsonrpc_errors.handle_error_bad_requests(
             module_name,
             func_name,
-            Library.validate_schema(
-                source_code, args_schema.SOURCE_CODE_QUBO_SCHEMA
-            ),
+            Library.validate_qubo_matrices(source_code),
         )
     else:
         jsonrpc_errors.handle_error_bad_requests(

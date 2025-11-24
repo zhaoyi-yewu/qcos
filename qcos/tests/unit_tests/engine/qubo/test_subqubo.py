@@ -307,7 +307,7 @@ class TestSubQUBOMultiSolution:
         assert np.array_equal(order, [0])
 
     def test_large_qubo_matrix(self):
-        """Testing large QUBO matrices"""
+        """Testing large QUBO matrix"""
         large_qubo = np.random.rand(10, 10)
         large_qubo = (large_qubo + large_qubo.T) / 2
 

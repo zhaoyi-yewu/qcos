@@ -131,7 +131,7 @@ class TestQUBOPrecision:
             assert "Test error" in errors[0]
 
     def test_qubo_ising_matrix_conversion(self):
-        """Test conversion between QUBO and Ising matrices"""
+        """Test conversion between QUBO and Ising matrix"""
         # Test QUBO to Ising conversion
         qubo_matrix = np.array([[1, 0.5], [0.5, 2]])
         ising_matrix = qubo_matrix_to_ising_matrix(qubo_matrix)

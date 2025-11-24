@@ -114,7 +114,7 @@ def check_matrix(matrix):
 
 
 def check_qubo_matrix_bit_width(qubo_matrix, param_bit):
-    """Check qubo matrixs bit width
+    """Check qubo matrix bit width
     Args:
         qubo_matrix(np.ndarray): qubo matrix to be checked
         param_bit(int): param bit width

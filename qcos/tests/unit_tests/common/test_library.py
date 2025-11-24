@@ -228,6 +228,31 @@ class TestLibrary:
         success, _ = library.validate_schema("9", None)
         assert success is False
 
+    def test_validate_qubo_matrices(self):
+        normal_qubo1 = [[[1, 2, 3], [4, 5, 6], [7, 8, 9]]]
+        success, _ = library.validate_qubo_matrices(normal_qubo1)
+        assert success is True
+
+        normal_qubo2 = [[[1, 2], [4, 5]], [[4, 5], [7, 8]]]
+        success, _ = library.validate_qubo_matrices(normal_qubo2)
+        assert success is True
+
+        qubo1 = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+        success, _ = library.validate_qubo_matrices(qubo1)
+        assert success is False
+
+        qubo2 = [[1, 2, 3], [4, 5, 6]]
+        success, _ = library.validate_qubo_matrices(qubo2)
+        assert success is False
+
+        qubo3 = [[2, 3], [4, 5, 6]]
+        success, _ = library.validate_qubo_matrices(qubo3)
+        assert success is False
+
+        qubo4 = [["a", 2, 3], [4, 5, 6]]
+        success, _ = library.validate_qubo_matrices(qubo4)
+        assert success is False
+
     def test_is_valid_url(self):
         success = library.is_valid_url("127.0.0.1", "test1")
         assert success is False
