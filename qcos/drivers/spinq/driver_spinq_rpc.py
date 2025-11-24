@@ -92,8 +92,8 @@ class DriverSpinQRpc(DriverBase):
     def __init__(self):
         super().__init__()
         self.version = "0.0.1"
-        self.alias_name = "量旋科技大熊座-S25 超导量子计算机驱动 (RPC版本)"
-        self.description = "量旋科技大熊座-S25 超导量子计算机驱动 (RPC版本)"
+        self.alias_name = "量旋科技 大熊座-S25 超导量子计算机驱动 (RPC版本)"
+        self.description = "量旋科技 大熊座-S25 超导量子计算机驱动 (RPC版本)"
         self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_SUPERCONDUCTING

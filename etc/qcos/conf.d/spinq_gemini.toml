@@ -1,0 +1,18 @@
+[spinq_gemini]
+alias_name = "量旋科技-双子座核磁量子计算机"
+driver = "DriverSpinQCloudGemini"
+description = "量旋科技-双子座核磁量子计算机"
+# [Optional] max qubits of device
+# device_max_qubits = 100
+
+# [Optional] remote host
+# remote_host = "cloud.spinq.cn"
+
+# [Optional] remote port
+# remote_port = 6060
+
+# [Required] user name
+username = "user"
+
+# [Required] key file content
+password_key = ""

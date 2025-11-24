@@ -33,6 +33,7 @@ import random
 import re
 import requests
 import signal
+import tempfile
 import time
 import tomlkit
 import uuid
@@ -167,6 +168,34 @@ class Library:
         Library.create_file(file_path, str(pid))
 
     @staticmethod
+    def create_temp_file(file_content, dir=None, dir_mode=None):
+        """Create temp file
+
+        Args:
+            file_content: file content
+            dir: directory to create temp file
+            dir_mode: directory mode
+
+        Returns:
+            temp_dir_prefix
+        """
+        # pylint: disable=consider-using-with
+        Library.mkdirs(dir, mode=dir_mode)
+        tf = tempfile.NamedTemporaryFile(delete=True, mode="w+b", dir=dir)
+        try:
+            if isinstance(file_content, str):
+                tf.write(file_content.encode("utf-8"))
+            elif isinstance(file_content, bytes):
+                tf.write(file_content)
+            else:
+                raise TypeError("file_content type must be str or bytes")
+            tf.seek(0)
+        except Exception as e:
+            tf.close()
+            raise e
+        return tf
+
+    @staticmethod
     def rm_file(file_path):
         """remove file
 
@@ -251,32 +280,40 @@ class Library:
         return files
 
     @staticmethod
-    def mkdir(dir_name):
+    def mkdir(dir_name, mode=None):
         """Create dir
 
         Args:
             dir_name: dir name
+            mode: dir mode
 
         Returns:
             True or False
         """
         if not os.path.exists(dir_name):
-            os.mkdir(dir_name)
+            if mode:
+                os.mkdir(dir_name, mode)
+            else:
+                os.mkdir(dir_name)
             return True
         return False
 
     @staticmethod
-    def mkdirs(dir):
+    def mkdirs(dir, mode=None):
         """Create dirs
 
         Args:
             dir: dir name
+            mode: dir mode
         """
         sub_path = os.path.dirname(dir)
         if not os.path.exists(sub_path):
-            Library.mkdirs(sub_path)
+            Library.mkdirs(sub_path, mode)
         if not os.path.exists(dir):
-            os.mkdir(dir)
+            if mode:
+                os.mkdir(dir, mode=mode)
+            else:
+                os.mkdir(dir)
 
     @staticmethod
     def rmdir(dir):
@@ -320,16 +357,21 @@ class Library:
             module_name = (
                 f"{base_module_name}{module_path.replace('/', '.')}.{name}"
             )
-            module = importlib.import_module(module_name)
-            for _, obj in inspect.getmembers(module):
-                if inspect.isclass(obj):
-                    if issubclass(obj, base_class):
-                        cls_name = obj.__name__
-                        if excluded_class and Library.str_match(
-                            cls_name, excluded_class
-                        ):
-                            continue
-                        classes[cls_name] = obj
+            try:
+                module = importlib.import_module(module_name)
+                for _, obj in inspect.getmembers(module):
+                    if inspect.isclass(obj):
+                        if issubclass(obj, base_class):
+                            cls_name = obj.__name__
+                            if excluded_class and Library.str_match(
+                                cls_name, excluded_class
+                            ):
+                                continue
+                            classes[cls_name] = obj
+            except Exception as e:
+                logger.error(
+                    f"Failed to import module: {module_name}. Reason: {e}"
+                )
         return classes
 
     @staticmethod

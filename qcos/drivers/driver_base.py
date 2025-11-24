@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import logging
+import tempfile
 
 from qcos.common.constant import Constant
 from qcos.common.library import Library
@@ -47,6 +48,7 @@ class DriverBase:
     TASK_STAGE_VALIDATING = "validating"
     TASK_STAGE_USER_AUTHENTICATION = "user_authentication"
     TASK_STAGE_CHECK_DEVICE_STATUS = "check_device_status"
+    TASK_STAGE_COMPILE = "compile"
     TASK_STAGE_UPLOAD_FILE = "upload_file"
     TASK_STAGE_PREPARE_DATA = "prepare_data"
     TASK_STAGE_SUBMIT_TASK = "submit_task"
@@ -64,6 +66,8 @@ class DriverBase:
         "accept-language": "zh-CN",
         "Authorization": None,
     }
+
+    temp_driver_dir = f"/{tempfile.gettempdir()}/qcos/drivers/"
 
     def __init__(self):
         # driver version
