@@ -23,7 +23,7 @@ authors = [
     {name = "Lian Wencong", email = "lianwencong_yewu@cmss.chinamobile.com"},
     {name = "Xu Yu", email = "xuyu2_yewu@cmss.chinamobile.com"}
 ]
-keywords = ["qcos", "quantum", "system"]
+keywords = ["qcos", "quantum", "operating", "system"]
 
 # Add PyPI classifiers here
 classifiers = [
@@ -96,9 +96,7 @@ dependencies = [
 
 [project.scripts]
 # Command line interface entrypoint scripts
-
 qcos-api = "qcos.api_server:main"
-qcos-cli = "qcos.client.shell:main"
 qcos-compiler = "qcos.transpiler.cmss.transpiler_cmd_line:main"
 
 [project.urls]

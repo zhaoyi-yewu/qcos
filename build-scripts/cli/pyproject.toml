@@ -16,7 +16,7 @@ authors = [
     {name = "Wu Fangwei", email = "wufangwei_yewu@cmss.chinamobile.com"},
     {name = "Guo Zhufeng", email = "guozhufeng_yewu@cmss.chinamobile.com"}
 ]
-keywords = ["qcos", "quantum", "system"]
+keywords = ["qcos", "quantum", "operating", "system"]
 
 # Add PyPI classifiers here
 classifiers = [
