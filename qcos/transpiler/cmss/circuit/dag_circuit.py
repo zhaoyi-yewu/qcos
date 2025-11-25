@@ -25,6 +25,7 @@ from qcos.transpiler.cmss.circuit.dag_node import (
     DAGInNode,
     DAGOutNode,
 )
+from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 
 class DAGCircuit:
@@ -314,11 +315,11 @@ class DAGCircuit:
         return self._op_names.copy()
 
     @classmethod
-    def ir_to_dag(cls, ir: list):
+    def ir_to_dag(cls, ir: QuantumCircuit):
         """Convert IR to DAGCircuit.
 
         Args:
-            ir (list): gates list.
+            ir (QuantumCircuit): quantum circuit.
 
         Returns:
             DAGCircuit: DAGCircuit corresponding to IR.
@@ -327,12 +328,12 @@ class DAGCircuit:
 
         # count the number of qubits
         tmp_qubits = set()
-        for gate in ir:
+        for gate in ir.get_operations():
             tmp_qubits.update(gate.targets)
         num_qubits = max(int(x) for x in tmp_qubits) + 1
 
         dag_circuit.add_qubits(num_qubits)
         # Add gates to the DAG
-        for gate in ir:
+        for gate in ir.get_operations():
             dag_circuit.apply_operation_back(gate)
         return dag_circuit

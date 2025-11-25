@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
+from qcos.transpiler.cmss.common.gate_operation import (
+    BaseOperation,
+)
+
+
+class QuantumCircuit:
+    def __init__(self, num_qubits: int = 0, num_clbits: int = 0):
+        """
+        Initialize QuantumCircuit object.
+
+        Args:
+            num_qubits (int): number of qubits in the circuit.
+            num_clbits (int): number of classical bits in the circuit.
+        """
+        self._num_qubits = num_qubits
+        self._num_clbits = num_clbits
+        # instructions by gate operations
+        self._operations: list[BaseOperation] = []
+
+    def append(self, operation: BaseOperation):
+        """
+        Append a gate operation to the quantum circuit.
+
+        Args:
+            operation (BaseOperation): The gate operation to append.
+        """
+        if isinstance(operation, BaseOperation):
+            self._operations.append(operation)
+            self._num_qubits = (
+                max(operation.targets) + 1
+                if max(operation.targets) >= self._num_qubits
+                else self._num_qubits
+            )
+        else:
+            raise TypeError("Invalid operation type!")
+
+    def append_operations(self, operations: list[BaseOperation]):
+        """
+        Append multiple gate operations to the quantum circuit.
+
+        Args:
+            operations (list[BaseOperation]): The list of gate
+            operations to append.
+        """
+        if isinstance(operations, list):
+            for op in operations:
+                self._operations.append(op)
+                self._num_qubits = (
+                    max(op.targets) + 1
+                    if max(op.targets) >= self._num_qubits
+                    else self._num_qubits
+                )
+        else:
+            raise TypeError("Invalid operation type!")
+
+    def get_operations(self):
+        return self._operations
+
+    @property
+    def num_qubits(self):
+        return self._num_qubits
+
+    @property
+    def num_clbits(self):
+        return self._num_clbits
+
+    def set_num_qubits(self, num_qubits: int):
+        if not isinstance(num_qubits, int):
+            raise TypeError("num_qubits must be an integer")
+        if num_qubits < 0:
+            raise ValueError("num_qubits must be non-negative")
+        self._num_qubits = num_qubits
+
+    def set_num_clbits(self, num_clbits: int):
+        if not isinstance(num_clbits, int):
+            raise TypeError("num_clbits must be an integer")
+        if num_clbits < 0:
+            raise ValueError("num_clbits must be non-negative")
+        self._num_clbits = num_clbits
+
+    def depth(self):
+        """
+        calculate the depth of the quantum circuit
+
+        Returns:
+            depth (int): depth of the quantum circuit
+        """
+        qubit_ops = [0] * (self._num_qubits + self._num_clbits)
+        ignore_gates = ["sync", "reset", "move"]
+        for op in self._operations:
+            levels = []
+            for q in op.targets:
+                if op.name in ignore_gates:
+                    levels.append(qubit_ops[q])
+                else:
+                    levels.append(qubit_ops[q] + 1)
+
+            # max depth of every target qubit
+            max_level = max(levels)
+            for q in op.targets:
+                qubit_ops[q] = max_level
+
+        return max(qubit_ops)
+
+    def width(self):
+        """
+        calculate the width of the quantum circuit
+
+        Returns:
+            width (int): number of bits in the quantum circuit
+        """
+        return self._num_qubits + self._num_clbits

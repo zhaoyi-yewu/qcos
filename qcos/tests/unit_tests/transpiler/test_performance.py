@@ -37,15 +37,15 @@ class TestPerformance:
         print(f"get_abs_tree use {abs_end - start} seconds")
         assert tree is not None
 
-        q_num, ir = get_ir(tree)
+        cir = get_ir(tree)
         ir_end = time.time()
         print(f"get_ir use {ir_end - abs_end} seconds")
-        assert ir is not None
-        assert len(ir) == 5000000
-        validate_gate_ir(ir[0], "rx", ["0"], 1, False)
-        validate_gate_ir(ir[99], "rx", ["99"], 1, False)
+        gates_list = cir.get_operations()
+        assert len(gates_list) == 5000000
+        validate_gate_ir(gates_list[0], "rx", ["0"], 1, False)
+        validate_gate_ir(gates_list[99], "rx", ["99"], 1, False)
 
-        optimized_ir = optimize_gate(ir)
+        optimized_ir = optimize_gate(gates_list)
         opt_end1 = time.time()
         print(f"optimize ir use {opt_end1 - ir_end} seconds")
         assert optimized_ir is not None

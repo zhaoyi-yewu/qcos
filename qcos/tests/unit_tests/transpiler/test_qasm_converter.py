@@ -51,7 +51,7 @@ u3(1.57079632679, 0.78539816339, 0.39269908169) q[1];"""
         openqasm2_data = openqasm2_header + body
         tree = get_abs_tree(openqasm2_data)
         assert tree is not None
-        _, ir = get_ir(tree)
+        ir = get_ir(tree)
         assert ir is not None
         converter = QasmConverter(ir)
         qasm = converter.to_qasm2()
@@ -60,7 +60,7 @@ u3(1.57079632679, 0.78539816339, 0.39269908169) q[1];"""
         openqasm3_data = openqasm3_header + body
         tree = get_abs_tree(openqasm3_data)
         assert tree is not None
-        _, ir = get_ir(tree)
+        ir = get_ir(tree)
         assert ir is not None
         converter = QasmConverter(ir)
         qasm = converter.to_qasm3()
@@ -97,7 +97,7 @@ rzz(1.0471975512) q[2], q[3];"""
         openqasm2_data = openqasm2_header + body
         tree = get_abs_tree(openqasm2_data)
         assert tree is not None
-        _, ir = get_ir(tree)
+        ir = get_ir(tree)
         assert ir is not None
         converter = QasmConverter(ir)
         qasm = converter.to_qasm2()
@@ -106,7 +106,7 @@ rzz(1.0471975512) q[2], q[3];"""
         openqasm3_data = openqasm3_header + body
         tree = get_abs_tree(openqasm3_data)
         assert tree is not None
-        _, ir = get_ir(tree)
+        ir = get_ir(tree)
         assert ir is not None
         converter = QasmConverter(ir)
         qasm = converter.to_qasm3()
@@ -131,7 +131,7 @@ rccx q[0], q[1], q[2];"""
         openqasm2_data = openqasm2_header + body
         tree = get_abs_tree(openqasm2_data)
         assert tree is not None
-        _, ir = get_ir(tree)
+        ir = get_ir(tree)
         assert ir is not None
         converter = QasmConverter(ir)
         qasm = converter.to_qasm2()
@@ -140,7 +140,7 @@ rccx q[0], q[1], q[2];"""
         openqasm3_data = openqasm3_header + body
         tree = get_abs_tree(openqasm3_data)
         assert tree is not None
-        _, ir = get_ir(tree)
+        ir = get_ir(tree)
         assert ir is not None
         converter = QasmConverter(ir)
         qasm = converter.to_qasm3()
@@ -165,7 +165,7 @@ c3sqrtx q[0], q[1], q[2], q[3];"""
         openqasm2_data = openqasm2_header + body
         tree = get_abs_tree(openqasm2_data)
         assert tree is not None
-        _, ir = get_ir(tree)
+        ir = get_ir(tree)
         assert ir is not None
         converter = QasmConverter(ir)
         qasm = converter.to_qasm2()
@@ -174,7 +174,7 @@ c3sqrtx q[0], q[1], q[2], q[3];"""
         openqasm3_data = openqasm3_header + body
         tree = get_abs_tree(openqasm3_data)
         assert tree is not None
-        _, ir = get_ir(tree)
+        ir = get_ir(tree)
         assert ir is not None
         converter = QasmConverter(ir)
         qasm = converter.to_qasm3()
@@ -197,7 +197,7 @@ c4x q[0], q[1], q[2], q[3], q[4];"""
         openqasm2_data = openqasm2_header + body
         tree = get_abs_tree(openqasm2_data)
         assert tree is not None
-        _, ir = get_ir(tree)
+        ir = get_ir(tree)
         assert ir is not None
         converter = QasmConverter(ir)
         qasm = converter.to_qasm2()
@@ -206,7 +206,7 @@ c4x q[0], q[1], q[2], q[3], q[4];"""
         openqasm3_data = openqasm3_header + body
         tree = get_abs_tree(openqasm3_data)
         assert tree is not None
-        _, ir = get_ir(tree)
+        ir = get_ir(tree)
         assert ir is not None
         converter = QasmConverter(ir)
         qasm = converter.to_qasm3()
@@ -231,7 +231,7 @@ measure q[1] -> c[1];"""
         openqasm2_data = openqasm2_header + body
         tree = get_abs_tree(openqasm2_data)
         assert tree is not None
-        _, ir = get_ir(tree)
+        ir = get_ir(tree)
         assert ir is not None
         converter = QasmConverter(ir)
         qasm = converter.to_qasm2()
@@ -240,7 +240,7 @@ measure q[1] -> c[1];"""
         openqasm3_data = openqasm3_header + body
         tree = get_abs_tree(openqasm3_data)
         assert tree is not None
-        _, ir = get_ir(tree)
+        ir = get_ir(tree)
         assert ir is not None
         converter = QasmConverter(ir)
         qasm = converter.to_qasm3()
@@ -267,7 +267,7 @@ rz(0.2) q[2];"""
 
         tree = get_abs_tree(data)
         assert tree is not None
-        _, ir = get_ir(tree)
+        ir = get_ir(tree)
         assert ir is not None
         converter = QasmConverter(ir)
         qasm = converter.to_qasm3()

@@ -60,31 +60,31 @@ class TestGetIr:
     def test_get_ir(self):
         tree = get_abs_tree(self.data)
         assert tree is not None
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 6
-        assert len(ir) == 21
-        validate_gate_ir(ir[0], "rx", [2], 1, False)
-        validate_gate_ir(ir[1], "h", [2], 1, True)
-        validate_gate_ir(ir[2], "ry", [2], 1, False)
-        validate_gate_ir(ir[3], "rz", [2], 1, False)
-        validate_gate_ir(ir[4], "x", [2], 1, True)
-        validate_gate_ir(ir[5], "y", [2], 1, True)
-        validate_gate_ir(ir[6], "z", [2], 1, True)
-        validate_gate_ir(ir[7], "s", [2], 1, False)
-        validate_gate_ir(ir[8], "sdg", [2], 1, False)
-        validate_gate_ir(ir[9], "tdg", [2], 1, False)
-        validate_gate_ir(ir[10], "t", [2], 1, False)
-        validate_gate_ir(ir[11], "cx", [2, 3], 2, True)
-        validate_gate_ir(ir[12], "cy", [2, 3], 2, True)
-        validate_gate_ir(ir[13], "cz", [2, 3], 2, True)
-        validate_gate_ir(ir[14], "ch", [2, 3], 2, True)
-        validate_gate_ir(ir[15], "crx", [2, 3], 2, False)
-        validate_gate_ir(ir[16], "cry", [2, 3], 2, False)
-        validate_gate_ir(ir[17], "crz", [2, 3], 2, False)
-        validate_gate_ir(ir[18], "ccx", [0, 1, 4], 3, True)
-        validate_non_gate_ir(ir[19], "sync", [0, 1, 2, 3, 4, 5], -1)
-        validate_non_gate_ir(ir[20], "measure", [1], 0)
+        assert len(gates_list) == 21
+        validate_gate_ir(gates_list[0], "rx", [2], 1, False)
+        validate_gate_ir(gates_list[1], "h", [2], 1, True)
+        validate_gate_ir(gates_list[2], "ry", [2], 1, False)
+        validate_gate_ir(gates_list[3], "rz", [2], 1, False)
+        validate_gate_ir(gates_list[4], "x", [2], 1, True)
+        validate_gate_ir(gates_list[5], "y", [2], 1, True)
+        validate_gate_ir(gates_list[6], "z", [2], 1, True)
+        validate_gate_ir(gates_list[7], "s", [2], 1, False)
+        validate_gate_ir(gates_list[8], "sdg", [2], 1, False)
+        validate_gate_ir(gates_list[9], "tdg", [2], 1, False)
+        validate_gate_ir(gates_list[10], "t", [2], 1, False)
+        validate_gate_ir(gates_list[11], "cx", [2, 3], 2, True)
+        validate_gate_ir(gates_list[12], "cy", [2, 3], 2, True)
+        validate_gate_ir(gates_list[13], "cz", [2, 3], 2, True)
+        validate_gate_ir(gates_list[14], "ch", [2, 3], 2, True)
+        validate_gate_ir(gates_list[15], "crx", [2, 3], 2, False)
+        validate_gate_ir(gates_list[16], "cry", [2, 3], 2, False)
+        validate_gate_ir(gates_list[17], "crz", [2, 3], 2, False)
+        validate_gate_ir(gates_list[18], "ccx", [0, 1, 4], 3, True)
+        validate_non_gate_ir(gates_list[19], "sync", [0, 1, 2, 3, 4, 5], -1)
+        validate_non_gate_ir(gates_list[20], "measure", [1], 0)
 
     def test_swap_gate(self):
         data = """
@@ -99,14 +99,15 @@ class TestGetIr:
         """
         tree = get_abs_tree(data)
         assert tree is not None
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
+        assert gates_list is not None
         assert q_num == 2
-        assert len(ir) == 4
-        validate_gate_ir(ir[0], "x", [0], 1, True)
-        validate_gate_ir(ir[1], "swap", [0, 1], 2, True)
-        validate_non_gate_ir(ir[2], "measure", [0], 0)
-        validate_non_gate_ir(ir[3], "measure", [1], 0)
+        assert len(gates_list) == 4
+        validate_gate_ir(gates_list[0], "x", [0], 1, True)
+        validate_gate_ir(gates_list[1], "swap", [0, 1], 2, True)
+        validate_non_gate_ir(gates_list[2], "measure", [0], 0)
+        validate_non_gate_ir(gates_list[3], "measure", [1], 0)
 
     def test_for_empty(self):
         data = """
@@ -117,10 +118,11 @@ class TestGetIr:
         """
         tree = get_abs_tree(data)
         assert tree is not None
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
+        assert gates_list is not None
         assert q_num == 0
-        assert len(ir) == 0
+        assert len(gates_list) == 0
 
     def test_for_gates(self):
         data = """
@@ -135,14 +137,14 @@ class TestGetIr:
         """
         tree = get_abs_tree(data)
         assert tree is not None
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 2
-        assert len(ir) == 4
-        validate_gate_ir(ir[0], "x", [1], 1, True)
-        validate_gate_ir(ir[1], "h", [0], 1, True)
-        validate_gate_ir(ir[2], "x", [1], 1, True)
-        validate_gate_ir(ir[3], "h", [0], 1, True)
+        assert len(gates_list) == 4
+        validate_gate_ir(gates_list[0], "x", [1], 1, True)
+        validate_gate_ir(gates_list[1], "h", [0], 1, True)
+        validate_gate_ir(gates_list[2], "x", [1], 1, True)
+        validate_gate_ir(gates_list[3], "h", [0], 1, True)
 
     def test_for_gates_idx(self):
         data = """
@@ -157,14 +159,14 @@ class TestGetIr:
         """
         tree = get_abs_tree(data)
         assert tree is not None
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 2
-        assert len(ir) == 4
-        validate_gate_ir(ir[0], "x", [0], 1, True)
-        validate_gate_ir(ir[1], "h", [0], 1, True)
-        validate_gate_ir(ir[2], "x", [1], 1, True)
-        validate_gate_ir(ir[3], "h", [1], 1, True)
+        assert len(gates_list) == 4
+        validate_gate_ir(gates_list[0], "x", [0], 1, True)
+        validate_gate_ir(gates_list[1], "h", [0], 1, True)
+        validate_gate_ir(gates_list[2], "x", [1], 1, True)
+        validate_gate_ir(gates_list[3], "h", [1], 1, True)
 
     def test_bracket_reg(self):
         data = """
@@ -178,12 +180,12 @@ class TestGetIr:
         """
         tree = get_abs_tree(data)
         assert tree is not None
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 2
-        assert len(ir) == 2
-        validate_gate_ir(ir[0], "h", [0], 1, True)
-        validate_gate_ir(ir[1], "h", [1], 1, True)
+        assert len(gates_list) == 2
+        validate_gate_ir(gates_list[0], "h", [0], 1, True)
+        validate_gate_ir(gates_list[1], "h", [1], 1, True)
 
     def test_for_array(self):
         data = """
@@ -202,14 +204,14 @@ class TestGetIr:
         """
         tree = get_abs_tree(data)
         assert tree is not None
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 5
-        assert len(ir) == 4
-        validate_gate_ir(ir[0], "h", [1], 1, True)
-        validate_gate_ir(ir[1], "h", [3], 1, True)
-        validate_gate_ir(ir[2], "h", [2], 1, True)
-        validate_gate_ir(ir[3], "h", [4], 1, True)
+        assert len(gates_list) == 4
+        validate_gate_ir(gates_list[0], "h", [1], 1, True)
+        validate_gate_ir(gates_list[1], "h", [3], 1, True)
+        validate_gate_ir(gates_list[2], "h", [2], 1, True)
+        validate_gate_ir(gates_list[3], "h", [4], 1, True)
 
     def test_gate(self):
         data = """
@@ -237,24 +239,24 @@ class TestGetIr:
         """
         tree = get_abs_tree(data)
         assert tree is not None
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 5
-        assert len(ir) == 17
-        validate_gate_ir(ir[0], "p", [0], 1, False)
-        validate_gate_ir(ir[1], "sx", [0], 1, False)
-        validate_gate_ir(ir[2], "sxdg", [1], 1, False)
-        validate_gate_ir(ir[3], "cswap", [0, 1, 2], 3, False)
-        validate_gate_ir(ir[4], "cu1", [0, 1], 2, False)
-        validate_gate_ir(ir[5], "cp", [1, 2], 2, False)
-        validate_gate_ir(ir[6], "cu3", [0, 1], 2, False)
-        validate_gate_ir(ir[7], "csx", [1, 2], 2, False)
-        validate_gate_ir(ir[8], "cu", [0, 2], 2, False)
-        validate_gate_ir(ir[9], "rxx", [0, 1], 2, False)
-        validate_gate_ir(ir[10], "rzz", [0, 1], 2, False)
-        validate_gate_ir(ir[11], "rccx", [0, 1, 2], 3, False)
-        validate_gate_ir(ir[12], "rc3x", [0, 1, 2, 3], 4, False)
-        validate_gate_ir(ir[13], "c3x", [0, 1, 2, 3], 4, False)
-        validate_gate_ir(ir[14], "c3sqrtx", [0, 1, 2, 3], 4, False)
-        validate_gate_ir(ir[15], "c4x", [0, 1, 2, 3, 4], 5, False)
-        validate_gate_ir(ir[16], "u3", [1], 1, False)
+        assert len(gates_list) == 17
+        validate_gate_ir(gates_list[0], "p", [0], 1, False)
+        validate_gate_ir(gates_list[1], "sx", [0], 1, False)
+        validate_gate_ir(gates_list[2], "sxdg", [1], 1, False)
+        validate_gate_ir(gates_list[3], "cswap", [0, 1, 2], 3, False)
+        validate_gate_ir(gates_list[4], "cu1", [0, 1], 2, False)
+        validate_gate_ir(gates_list[5], "cp", [1, 2], 2, False)
+        validate_gate_ir(gates_list[6], "cu3", [0, 1], 2, False)
+        validate_gate_ir(gates_list[7], "csx", [1, 2], 2, False)
+        validate_gate_ir(gates_list[8], "cu", [0, 2], 2, False)
+        validate_gate_ir(gates_list[9], "rxx", [0, 1], 2, False)
+        validate_gate_ir(gates_list[10], "rzz", [0, 1], 2, False)
+        validate_gate_ir(gates_list[11], "rccx", [0, 1, 2], 3, False)
+        validate_gate_ir(gates_list[12], "rc3x", [0, 1, 2, 3], 4, False)
+        validate_gate_ir(gates_list[13], "c3x", [0, 1, 2, 3], 4, False)
+        validate_gate_ir(gates_list[14], "c3sqrtx", [0, 1, 2, 3], 4, False)
+        validate_gate_ir(gates_list[15], "c4x", [0, 1, 2, 3, 4], 5, False)
+        validate_gate_ir(gates_list[16], "u3", [1], 1, False)

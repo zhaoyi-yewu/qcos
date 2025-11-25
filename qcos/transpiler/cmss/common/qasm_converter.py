@@ -16,25 +16,24 @@
 # ----------------------------------------------------------------------
 
 from qcos.transpiler.cmss.common.base_operation import BaseOperation
+from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 
 class QasmConverter:
     """Convert a list of Operations into OpenQASM 2.0 or 3.0 code."""
 
-    def __init__(self, operations: list[BaseOperation], qubit_num: int = 0):
+    def __init__(self, circuit: QuantumCircuit):
         """
         Args:
-            operations: A list of Operation objects.
-            qubit_num: Total number of qubits (optional; if not provided,
-                       it will be inferred automatically based on the max
-                       target index).
+            circuit: quantum circuit to be converted
         """
-        self.operations = operations
+        self.operations = circuit.get_operations()
+        qubit_num = circuit.num_qubits
         if qubit_num == 0:
             # Extract integer indices from targets
             max_idx = max(
                 max(int(t) for t in op.targets)
-                for op in operations
+                for op in self.operations
                 if op.targets
             )
             qubit_num = max_idx + 1

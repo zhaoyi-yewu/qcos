@@ -70,7 +70,7 @@ def get_initial_mapping(
     elif method == "sabre":
         ir = dependency_graph.origin_ir
         num_qubits = dependency_graph.num_q
-        mapping = sabre_initial_mapping(ir, coupling_graph)
+        mapping = sabre_initial_mapping(ir.get_operations(), coupling_graph)
         return mapping[:num_qubits]
     else:
         raise ValueError(f"Unsupported method {method} for initial mapping")

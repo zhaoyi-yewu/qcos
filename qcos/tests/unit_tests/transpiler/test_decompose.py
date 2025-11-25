@@ -87,12 +87,12 @@ class TestDecompose:
         tree = get_abs_tree(self.data)
         assert tree is not None
 
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 6
-        assert len(ir) == 21
+        assert len(gates_list) == 21
 
-        decomposed_gates = decompose_gates(ir)
+        decomposed_gates = decompose_gates(gates_list)
         assert len(decomposed_gates) == 85
         validate_gate_ir(decomposed_gates[0], "rx", [2], 1, False)
         validate_gate_ir(decomposed_gates[1], "ry", [2], 1, False)
@@ -108,12 +108,12 @@ class TestDecompose:
         tree = get_abs_tree(self.data)
         assert tree is not None
 
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 6
-        assert len(ir) == 21
+        assert len(gates_list) == 21
 
-        decomposed_gates = decompose_gates(ir)
+        decomposed_gates = decompose_gates(gates_list)
         assert len(decomposed_gates) == 85
 
         opt_gates = optimize_gate(decomposed_gates)
@@ -132,12 +132,12 @@ class TestDecompose:
         tree = get_abs_tree(self.simple_data)
         assert tree is not None
 
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gate_list = cir.num_qubits, cir.get_operations()
         assert q_num == 1
-        assert len(ir) == 5
+        assert len(gate_list) == 5
 
-        opt_gates = optimize_gate(ir)
+        opt_gates = optimize_gate(gate_list)
         assert len(opt_gates) == 3
 
         decomposed_gates = decompose_gates(opt_gates)
@@ -165,14 +165,14 @@ class TestDecompose:
         tree = get_abs_tree(simple_data)
         assert tree is not None
 
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 1
-        assert len(ir) == 6
-        validate_gate_ir(ir[0], "h", [0], 1, True)
-        validate_non_gate_ir(ir[1], "reset", [0], -3)
+        assert len(gates_list) == 6
+        validate_gate_ir(gates_list[0], "h", [0], 1, True)
+        validate_non_gate_ir(gates_list[1], "reset", [0], -3)
 
-        opt_gates = optimize_gate(ir)
+        opt_gates = optimize_gate(gates_list)
         assert len(opt_gates) == 6
         validate_gate_ir(opt_gates[0], "h", [0], 1, True)
         validate_non_gate_ir(opt_gates[1], "reset", [0], -3)
@@ -214,16 +214,16 @@ class TestDecompose:
         tree = get_abs_tree(simple_data)
         assert tree is not None
 
-        q_num, ir = get_ir(tree)
-        assert ir is not None
-        assert len(ir) == 9
-        validate_gate_ir(ir[0], "rx", [2], 1, False)
-        validate_non_gate_ir(ir[2], "reset", [2], -3)
-        validate_gate_ir(ir[3], "rx", [3], 1, False)
-        validate_non_gate_ir(ir[5], "reset", [3], -3)
-        validate_non_gate_ir(ir[7], "sync", [0, 1, 2, 3, 4, 5], -1)
+        cir = get_ir(tree)
+        gates_list = cir.get_operations()
+        assert len(gates_list) == 9
+        validate_gate_ir(gates_list[0], "rx", [2], 1, False)
+        validate_non_gate_ir(gates_list[2], "reset", [2], -3)
+        validate_gate_ir(gates_list[3], "rx", [3], 1, False)
+        validate_non_gate_ir(gates_list[5], "reset", [3], -3)
+        validate_non_gate_ir(gates_list[7], "sync", [0, 1, 2, 3, 4, 5], -1)
 
-        opt_gates = optimize_gate(ir)
+        opt_gates = optimize_gate(gates_list)
         assert opt_gates is not None
         assert len(opt_gates) == 7
         validate_gate_ir(opt_gates[0], "rx", [2], 1, False)
@@ -269,14 +269,14 @@ class TestDecompose:
         tree = get_abs_tree(simple_data)
         assert tree is not None
 
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 1
-        assert len(ir) == 6
-        validate_gate_ir(ir[0], "h", [0], 1, True)
-        validate_non_gate_ir(ir[1], "sync", [0], -1)
+        assert len(gates_list) == 6
+        validate_gate_ir(gates_list[0], "h", [0], 1, True)
+        validate_non_gate_ir(gates_list[1], "sync", [0], -1)
 
-        opt_gates = optimize_gate(ir)
+        opt_gates = optimize_gate(gates_list)
         assert len(opt_gates) == 6
         validate_gate_ir(opt_gates[0], "h", [0], 1, True)
         validate_non_gate_ir(opt_gates[1], "sync", [0], -1)
@@ -320,16 +320,16 @@ class TestDecompose:
         tree = get_abs_tree(simple_data)
         assert tree is not None
 
-        q_num, ir = get_ir(tree)
-        assert ir is not None
-        assert len(ir) == 9
-        validate_gate_ir(ir[0], "rx", [2], 1, False)
-        validate_non_gate_ir(ir[2], "sync", [2], -1)
-        validate_gate_ir(ir[3], "rx", [3], 1, False)
-        validate_non_gate_ir(ir[5], "sync", [3], -1)
-        validate_non_gate_ir(ir[7], "sync", [0, 1, 2, 3, 4, 5], -1)
+        cir = get_ir(tree)
+        gates_list = cir.get_operations()
+        assert len(gates_list) == 9
+        validate_gate_ir(gates_list[0], "rx", [2], 1, False)
+        validate_non_gate_ir(gates_list[2], "sync", [2], -1)
+        validate_gate_ir(gates_list[3], "rx", [3], 1, False)
+        validate_non_gate_ir(gates_list[5], "sync", [3], -1)
+        validate_non_gate_ir(gates_list[7], "sync", [0, 1, 2, 3, 4, 5], -1)
 
-        opt_gates = optimize_gate(ir)
+        opt_gates = optimize_gate(gates_list)
         assert opt_gates is not None
         assert len(opt_gates) == 7
         validate_gate_ir(opt_gates[0], "rx", [2], 1, False)

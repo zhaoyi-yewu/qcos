@@ -34,21 +34,21 @@ class TestSabre:
         gate1 = X([0])
         gate2 = CX([0, 1])
         gate3 = H([1])
-        ir = [gate1, gate2, gate3]
-        sabre.execute(ir)
+        gates_list = [gate1, gate2, gate3]
+        sabre.execute(gates_list)
         assert sabre.logic2phy == [0, 1, 2, 3]
-        assert len(sabre.phy_exe_gates) == len(ir)
+        assert len(sabre.phy_exe_gates) == len(gates_list)
 
         gate1 = CX([0, 1])
         gate2 = CX([2, 3])
         gate3 = CX([1, 2])
         gate4 = CX([0, 2])
-        ir = [gate1, gate2, gate3, gate4]
-        sabre.execute(ir)
+        gates_list = [gate1, gate2, gate3, gate4]
+        sabre.execute(gates_list)
         # mapping is modified
         assert sabre.logic2phy == [1, 0, 2, 3]
         # inserted one swap gate
-        assert len(sabre.phy_exe_gates) == len(ir) + 1
+        assert len(sabre.phy_exe_gates) == len(gates_list) + 1
         # between gate3 and gate4
         assert isinstance(sabre.phy_exe_gates[3], SWAP)
 
@@ -56,10 +56,10 @@ class TestSabre:
         gate2 = CX([1, 3])
         gate3 = CX([0, 2])
         gate4 = CX([0, 1])
-        ir = [gate1, gate2, gate3, gate4]
-        sabre.execute(ir)
+        gates_list = [gate1, gate2, gate3, gate4]
+        sabre.execute(gates_list)
         assert sabre.logic2phy == [1, 0, 2, 3]
-        assert len(sabre.phy_exe_gates) == len(ir) + 1
+        assert len(sabre.phy_exe_gates) == len(gates_list) + 1
         assert isinstance(sabre.phy_exe_gates[1], SWAP)
 
     def test_sabre_mapping(self):
@@ -72,8 +72,8 @@ class TestSabre:
         gate2 = CX([2, 3])
         gate3 = CX([1, 2])
         gate4 = CX([0, 2])
-        ir = [gate1, gate2, gate3, gate4]
-        mapping = sabre_initial_mapping(ir, coupling_graph)
+        gates_list = [gate1, gate2, gate3, gate4]
+        mapping = sabre_initial_mapping(gates_list, coupling_graph)
         # insert one swap, between gate1 and gate2
         assert mapping == [0, 1, 2, 3]
 
@@ -81,8 +81,8 @@ class TestSabre:
         gate2 = CX([1, 3])
         gate3 = CX([0, 2])
         gate4 = CX([0, 1])
-        ir = [gate1, gate2, gate3, gate4]
-        mapping = sabre_initial_mapping(ir, coupling_graph)
-        sabre.execute(ir, initial_l2p=mapping)
+        gates_list = [gate1, gate2, gate3, gate4]
+        mapping = sabre_initial_mapping(gates_list, coupling_graph)
+        sabre.execute(gates_list, initial_l2p=mapping)
         # insert one swap, between gate3 and gate4
         assert mapping == [2, 0, 3, 1]

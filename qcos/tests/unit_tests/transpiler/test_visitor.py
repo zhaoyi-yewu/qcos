@@ -151,8 +151,10 @@ class TestVisitor:
         """
         vist = Visitor()
         tree = get_abs_tree(data)
-        q_num, ir = vist.visit_program(tree)
-        assert len(ir) == 0
+        cir = vist.visit_program(tree)
+        gates_list = cir.get_operations()
+        q_num = cir.num_qubits
+        assert len(gates_list) == 0
         assert q_num == 3
 
         data = """
@@ -163,8 +165,10 @@ class TestVisitor:
         """
         vist = Visitor()
         tree = get_abs_tree(data)
-        q_num, ir = vist.visit_program(tree)
-        assert len(ir) == 0
+        cir = vist.visit_program(tree)
+        gates_list = cir.get_operations()
+        q_num = cir.num_qubits
+        assert len(gates_list) == 0
         assert q_num == 1
 
     def test_def_gate(self):
@@ -206,8 +210,10 @@ class TestVisitor:
         """
         vist = Visitor()
         tree = get_abs_tree(data)
-        q_num, ir = vist.visit_program(tree)
-        assert len(ir) == 5
+        cir = vist.visit_program(tree)
+        gates_list = cir.get_operations()
+        q_num = cir.num_qubits
+        assert len(gates_list) == 5
         assert q_num == 3
 
     def test_for(self):
@@ -226,8 +232,10 @@ class TestVisitor:
         """
         vist = Visitor()
         tree = get_abs_tree(data)
-        q_num, ir = vist.visit_program(tree)
-        assert len(ir) == 1
+        cir = vist.visit_program(tree)
+        gates_list = cir.get_operations()
+        q_num = cir.num_qubits
+        assert len(gates_list) == 1
         assert q_num == 3
 
     def test_assign_statement(self):
@@ -248,8 +256,10 @@ class TestVisitor:
         """
         vist = Visitor()
         tree = get_abs_tree(data)
-        q_num, ir = vist.visit_program(tree)
-        assert len(ir) == 0
+        cir = vist.visit_program(tree)
+        gates_list = cir.get_operations()
+        q_num = cir.num_qubits
+        assert len(gates_list) == 0
         assert q_num == 2
 
     def test_qop(self):
@@ -338,8 +348,10 @@ class TestVisitor:
         """
         vist = Visitor()
         tree = get_abs_tree(data)
-        q_num, ir = vist.visit_program(tree)
-        assert len(ir) == 5
+        cir = vist.visit_program(tree)
+        gates_list = cir.get_operations()
+        q_num = cir.num_qubits
+        assert len(gates_list) == 5
         assert q_num == 3
 
         data = """
@@ -373,8 +385,10 @@ class TestVisitor:
         """
         vist = Visitor()
         tree = get_abs_tree(data)
-        q_num, ir = vist.visit_program(tree)
-        assert len(ir) == 3
+        cir = vist.visit_program(tree)
+        gates_list = cir.get_operations()
+        q_num = cir.num_qubits
+        assert len(gates_list) == 3
         assert q_num == 5
 
     def test_uop_v3(self):
@@ -460,8 +474,10 @@ class TestVisitor:
         """
         vist = Visitor()
         tree = get_abs_tree(data)
-        q_num, ir = vist.visit_program(tree)
-        assert len(ir) == 23
+        cir = vist.visit_program(tree)
+        gates_list = cir.get_operations()
+        q_num = cir.num_qubits
+        assert len(gates_list) == 23
         assert q_num == 6
 
     def test_pi(self):
@@ -474,6 +490,8 @@ class TestVisitor:
         """
         vist = Visitor()
         tree = get_abs_tree(data)
-        q_num, ir = vist.visit_program(tree)
-        assert len(ir) == 1
+        cir = vist.visit_program(tree)
+        gates_list = cir.get_operations()
+        q_num = cir.num_qubits
+        assert len(gates_list) == 1
         assert q_num == 2

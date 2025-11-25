@@ -80,16 +80,16 @@ class SABRE:
         self.logic2phy = []
         self.phy_exe_gates = []
 
-    def execute(self, ir: list[GateOperation], initial_l2p=None):
+    def execute(self, gates_list: list[GateOperation], initial_l2p=None):
         """
         Execute the SABRE mapping on the input circuit (IR).
 
         Args:
-            ir (list[GateOperation]): Input quantum circuit as a list of gates.
+            gates_list (list[GateOperation]): a list of gates.
             initial_l2p (list[int], optional): initial logical to physical
                 mapping. Defaults to None.
         """
-        logic_qubit_num = self.get_qubit_num_from_ir(ir)
+        logic_qubit_num = self.get_qubit_num_from_ir(gates_list)
         phy_qubit_num = self.phy_qubit_num
 
         # initialize logical to physical mapping
@@ -112,7 +112,7 @@ class SABRE:
         phy_exe_gates = []
         # list storing the latest node acting on each logical qubit
         pre_nodes: list[Node | None] = [None for _ in range(logic_qubit_num)]
-        for gate in ir:
+        for gate in gates_list:
             node = Node(gate)
             # in-degree of the node
             pre_number = 0
@@ -203,18 +203,18 @@ class SABRE:
         self.logic2phy = self.cur_l2p
         self.phy_exe_gates = phy_exe_gates
 
-    def get_qubit_num_from_ir(self, ir: list[GateOperation]) -> int:
+    def get_qubit_num_from_ir(self, gates_list: list[GateOperation]) -> int:
         """
-        Get the logic qubit number from the ir.
+        Get the logic qubit number from the gates_list.
 
         Args:
-            ir (list[GateOperation]): Input quantum circuit as a list of gates.
+            gates_list (list[GateOperation]): a list of gates.
 
         Returns:
             int: number of logic qubits.
         """
         bits_set = set()
-        for gate in ir:
+        for gate in gates_list:
             bits_set.update(gate.targets)
         logic_qubit_num = len(bits_set)
         return logic_qubit_num

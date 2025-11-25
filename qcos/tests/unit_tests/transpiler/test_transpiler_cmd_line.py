@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------
 
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from qcos.common.constant import Constant
 from qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
@@ -50,8 +50,11 @@ class TestTranspilerCmdLine:
         mock_optimize_gate,
         mock_decompose_gates,
     ):
+        mock_obj = MagicMock()
+        mock_obj.get_operations.return_value = None
+
         mock_get_abs_tree.return_value = None
-        mock_get_ir.return_value = (None, None)
+        mock_get_ir.return_value = mock_obj
         mock_optimize_gate.return_value = None
         mock_decompose_gates.return_value = None
         default_input_file = (

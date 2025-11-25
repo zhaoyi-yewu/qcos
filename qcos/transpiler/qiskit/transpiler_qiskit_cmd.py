@@ -158,7 +158,7 @@ def main(
             parse_result = transpiler.parse(src_code_info)
         logger.info(f"parsing OpenQASM: {parse_timer.elapsed:.4f}s")
 
-        # generate IR
+        # transpile the circuit by qiskit
         with Timer() as tranpile_timer:
             _ = transpiler.transpile(parse_result, basis_gates_list)
         logger.info(

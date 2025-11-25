@@ -18,6 +18,7 @@
 from unittest.mock import patch
 from qcos.transpiler.cmss.mapping.utils.dg import DG
 from qcos.transpiler.cmss.common.gate_operation import X, H, CX
+from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 
 class TestDG:
@@ -198,9 +199,12 @@ class TestDG:
         gate1 = X([0])
         gate2 = CX([0, 1])
         gate3 = H([1])
-        ir = [gate1, gate2, gate3]
+        gates_list = [gate1, gate2, gate3]
         assert dg.num_gate_1q == 0
         assert dg.num_gate_2q == 0
-        dg.from_ir(ir)
+        cir = QuantumCircuit()
+        for gate in gates_list:
+            cir.append(gate)
+        dg.from_ir(cir)
         assert dg.num_gate_1q == 2
         assert dg.num_gate_2q == 1

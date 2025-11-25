@@ -19,6 +19,8 @@ from abc import ABC
 import networkx as nx
 from loguru import logger
 
+from qcos.transpiler.cmss.common.gate_operation import BaseOperation
+from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 from qcos.transpiler.common.errors import MappingException
 from qcos.transpiler.cmss.mapping.utils.dg import DG
 from qcos.transpiler.cmss.mapping.routing.mt_tree import MCTree
@@ -139,7 +141,9 @@ class SCRoute(ABC):
                 continue
             gate.targets = [int(q) for q in gate.targets]
 
-    def prepare_data(self, qbit_num, gates, qpu_configs):
+    def prepare_data(
+        self, qbit_num: int, gates: list[BaseOperation], qpu_configs: dict
+    ):
         """准备数据，包括构建AG、DG等
 
         Args:
@@ -208,7 +212,9 @@ class SCRoute(ABC):
         self._convert_gate_targets_to_int(non_measure_gates)
         self._convert_gate_targets_to_int(measure_ops)
         # 使用from_ir方法构建DG
-        self.measure_ops = self.dg.from_ir(non_measure_gates, absorb=True)
+        qc = QuantumCircuit()
+        qc.append_operations(non_measure_gates)
+        self.measure_ops = self.dg.from_ir(qc, absorb=True)
         # 合并measure操作
         self.measure_ops.extend(measure_ops)
         self.num_q_vir = self.dg.num_q

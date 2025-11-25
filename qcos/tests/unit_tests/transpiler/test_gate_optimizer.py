@@ -64,11 +64,11 @@ class TestGateOptimizer:
     def test_pass_optimize_gate(self):
         tree = get_abs_tree(self.data)
         assert tree is not None
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 5
-        assert len(ir) == 18
-        opt_gates = optimize_gate(ir)
+        assert len(gates_list) == 18
+        opt_gates = optimize_gate(gates_list)
         assert len(opt_gates) == 3
         validate_gate_ir(opt_gates[0], "ry", [0], 1, False)
         validate_gate_ir(opt_gates[1], "z", [0], 1, True)
@@ -77,10 +77,10 @@ class TestGateOptimizer:
     def test_pass_merge_theta(self):
         tree = get_abs_tree(self.merge_theta_data)
         assert tree is not None
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 2
-        assert len(ir) == 4
-        validate_gate_ir(ir[0], "h", [0], 1, True)
-        validate_gate_ir(ir[1], "cx", [0, 1], 2, True)
-        assert pass_merge_theta(ir) is False
+        assert len(gates_list) == 4
+        validate_gate_ir(gates_list[0], "h", [0], 1, True)
+        validate_gate_ir(gates_list[1], "cx", [0, 1], 2, True)
+        assert pass_merge_theta(gates_list) is False

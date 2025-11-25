@@ -21,12 +21,14 @@ from qcos.transpiler.cmss.common.gate_operation import GateOperation
 from qcos.transpiler.cmss.mapping.routing.sabre_routing import SABRE
 
 
-def sabre_initial_mapping(ir: list[GateOperation], coupling_graph: Graph):
+def sabre_initial_mapping(
+    gates_list: list[GateOperation], coupling_graph: Graph
+):
     """
     Get the initial mapping.
 
     Args:
-        ir (list[GateOperation]): Input quantum circuit as a list of gates.
+        gates_list (list[GateOperation]): a list of gates.
         coupling_graph (Graph): coupling graph of the quantum machine.
 
     Returns:
@@ -34,11 +36,11 @@ def sabre_initial_mapping(ir: list[GateOperation], coupling_graph: Graph):
     """
     sabre = SABRE(coupling_graph)
     # TODO lwc: use subcircuit is faster
-    reverse_ir = list(reversed(ir))
+    reverse_gates = list(reversed(gates_list))
     # get initial mapping for reverse ir
-    sabre.execute(ir)
+    sabre.execute(gates_list)
     reverse_mapping = sabre.logic2phy.copy()
     # get the initial mapping for original ir
-    sabre.execute(reverse_ir, initial_l2p=reverse_mapping)
+    sabre.execute(reverse_gates, initial_l2p=reverse_mapping)
     mapping = sabre.logic2phy.copy()
     return mapping

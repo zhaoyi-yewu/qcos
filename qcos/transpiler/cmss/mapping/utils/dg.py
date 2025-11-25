@@ -20,7 +20,6 @@ from networkx import DiGraph
 from networkx.algorithms import approximation as approx
 
 from qcos.transpiler.cmss.common.gate_operation import (
-    GateOperation,
     create_gate,
 )
 from qcos.transpiler.cmss.compiler.parser import (
@@ -28,6 +27,7 @@ from qcos.transpiler.cmss.compiler.parser import (
     get_ir,
 )
 from qcos.transpiler.cmss.mapping.utils.front_circuit import FrontCircuit
+from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 
 class DG(DiGraph):
@@ -129,7 +129,10 @@ class DG(DiGraph):
         (
             self.nodes[node_new]["num_gate_1q"],
             self.nodes[node_new]["num_gate_2q"],
-        ) = 0, 0
+        ) = (
+            0,
+            0,
+        )
         if len(gate[1]) == 1:
             self.nodes[node_new]["num_gate_1q"] += 1
             self.num_gate_1q += 1
@@ -318,27 +321,29 @@ class DG(DiGraph):
             list: measure operations
         """
         abs_tree = get_abs_tree(qasm_string)
-        qnum, ir = get_ir(abs_tree)
-        self.convert_ir(ir)
+        cir = get_ir(abs_tree)
+        qnum = cir.num_qubits
+        self.convert_ir(cir)
         self.num_q = qnum
         self.num_q_log = qnum
-        return self.from_ir(ir, absorb=absorb)
+        return self.from_ir(cir, absorb=absorb)
 
-    def convert_ir(self, ir: list[GateOperation]):
+    def convert_ir(self, ir: QuantumCircuit):
         """Convert the target qubits from str to int in ir.
 
         Args:
-            ir (list[GateOperation]): ir list
+            ir (QuantumCircuit): quantum circuit intermediate representation
         """
-        if len(ir) == 0:
+        gates_list = ir.get_operations()
+        if len(gates_list) == 0:
             return []
-        if isinstance(ir[0].targets[0], int):
+        if isinstance(gates_list[0].targets[0], int):
             return ir
-        for gate in ir:
+        for gate in gates_list:
             gate.targets = [int(q) for q in gate.targets]
         return ir
 
-    def from_ir(self, ir: list[GateOperation], absorb=True):
+    def from_ir(self, ir: QuantumCircuit, absorb=True):
         """Build graph from ir.
 
         Args:
@@ -350,7 +355,7 @@ class DG(DiGraph):
         """
         self.convert_ir(ir)
         measure_op = []
-        for gate in ir:
+        for gate in ir.get_operations():
             name = gate.name
             if name in ("barrier", "measure"):
                 if name == "measure":

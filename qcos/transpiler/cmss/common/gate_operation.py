@@ -1223,7 +1223,12 @@ class U3(GateOperation):
         return gates[::-1]
 
 
-def create_gate(name, targets=None, arg_value=None, allow_undefined=False):
+def create_gate(
+    name: str,
+    targets: list = [],
+    arg_value: list = [],
+    allow_undefined: bool = False,
+):
     """Create gate object
 
     Args:

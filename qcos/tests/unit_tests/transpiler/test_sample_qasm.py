@@ -42,11 +42,11 @@ class TestSampleQasm:
 
         tree = get_abs_tree(qasm_data)
         assert tree is not None
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 10
-        assert len(ir) == 35
-        opt_gates = optimize_gate(ir)
+        assert len(gates_list) == 35
+        opt_gates = optimize_gate(gates_list)
         assert len(opt_gates) == 35
         validate_gate_ir(opt_gates[0], "x", [1], 1, True)
         validate_gate_ir(opt_gates[1], "x", [5], 1, True)
@@ -73,11 +73,11 @@ class TestSampleQasm:
 
         tree = get_abs_tree(qasm_data)
         assert tree is not None
-        q_num, ir = get_ir(tree)
-        assert ir is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 18
-        assert len(ir) == 69
-        opt_gates = optimize_gate(ir)
+        assert len(gates_list) == 69
+        opt_gates = optimize_gate(gates_list)
         assert len(opt_gates) == 69
         validate_gate_ir(opt_gates[0], "x", [2], 1, True)
         validate_gate_ir(opt_gates[1], "x", [10], 1, True)

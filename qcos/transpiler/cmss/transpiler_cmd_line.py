@@ -27,6 +27,7 @@ from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
+from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -148,17 +149,20 @@ def main(
 
             # generate IR
             with Timer() as ir_timer:
-                _, ir = get_ir(tree)
+                cir: QuantumCircuit = get_ir(tree)
+                gates_list = cir.get_operations()
             logger.info(f"IR generating: {ir_timer.elapsed:.4f}s")
 
             # optimize IR
             with Timer() as opt1_timer:
-                optimized_ir = optimize_gate(ir, opt_level=opt_level)
+                optimized_gates = optimize_gate(
+                    gates_list, opt_level=opt_level
+                )
             logger.info(f"IR optimizing: {opt1_timer.elapsed:.4f}s")
 
             # decompose gate by rules
             with Timer() as decompose_timer:
-                transpiled_gates = decompose_gates(optimized_ir)
+                transpiled_gates = decompose_gates(optimized_gates)
             logger.info(f"gates decomposing: {decompose_timer.elapsed:.4f}s")
 
             # optimize the transpiled gates
