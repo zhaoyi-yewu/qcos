@@ -34,7 +34,7 @@ data = {"index": 0, "source_code": "code", "transpile_results": []}
 data_type = DriverBase.DATA_TYPE_QASM3
 shots = 1000
 expect_task_status = "SUCCESS"
-result = [
+result_matrix2 = [
     [0.0, 445.4878490937944],
     [1.0, -4.955214948811051],
     [2.0, -6.847017287746492],
@@ -68,6 +68,7 @@ result = [
     [30.0, -0.019221976218295026],
     [31.0, 0.00039622957709540456],
 ]
+result_simulator = {"0x0": 45, "0x3": 55}
 
 
 class TestDriverUqc:
@@ -90,17 +91,17 @@ class TestDriverUqc:
 
     @patch.object(DriverUQCMatrix2, "normalize_task_results")
     @patch.object(DriverUQCMatrix2, "get_task_results")
-    @patch.object(Library, "loop_with_timeout")
+    @patch.object(DriverUQCMatrix2, "get_task_status")
     @patch.object(UQC, "submit_task")
     def test_run(
         self,
         mock_submit_task,
-        mock_loop_with_timeout,
+        mock_get_task_status,
         mock_get_task_results,
         mock_normalize_task_results,
     ):
         mock_submit_task.return_value = task_id
-        mock_loop_with_timeout.return_value = True, None, None
+        mock_get_task_status.return_value = "SUCCESS"
         mock_get_task_results.return_value = (
             True,
             [{"datasets": {"computational_basis_histogram": []}}],
@@ -111,24 +112,24 @@ class TestDriverUqc:
             driver_uqc.run(job_id, num_qubits, data, data_type, shots) is None
         )
 
-    @patch.object(DriverUQCMatrix2, "get_task_status")
-    def test_check_task_status(self, mock_get_task_status):
-        mock_get_task_status.return_value = True, expect_task_status
-        success, _, _ = driver_uqc.check_task_status(
-            task_id, expect_task_status
-        )
-        assert success is True
-
-    @patch.object(UQC, "get_task_status")
-    def test_get_task_status(self, mock_get_task_status):
-        mock_get_task_status.return_value = expect_task_status
+    @patch.object(UQC, "get_task_result")
+    def test_get_task_results(self, mock_get_task_results):
+        mock_get_task_results.return_value = {}
         driver_uqc._uqc = Mock()
-        success, _ = driver_uqc.get_task_status(task_id)
+        success, results = driver_uqc.get_task_results(task_id)
         assert success is True
+        assert results is not None
 
     def test_is_valid_shots(self):
         assert driver_uqc.is_valid_shots(shots) is None
 
+    def test_convert_results(self):
+        results = driver_uqc.convert_results(result_simulator, num_qubits)
+        assert results["00000"] == 45
+        assert results["00011"] == 55
+
     def test_normalize_task_results(self):
-        results = driver_uqc.normalize_task_results(result, num_qubits, shots)
-        assert len(results) == 32
+        results = driver_uqc.normalize_task_results(
+            result_matrix2, num_qubits, shots
+        )
+        assert len(results) == 12

@@ -15,7 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import json
+import re
 
 import numpy as np
 import uqc_client
@@ -39,10 +39,10 @@ class DriverUQCMatrix2(DriverBase):
 
     def __init__(self):
         super().__init__()
-        self.user_token = None
+        self.token = None
         self.uqc_host = None
         self.uqc_port = None
-        self.device_name = "Matrix2"
+        self.backend_device_name = "Matrix2"
         self.version = "0.0.1"
         self.alias_name = "幺正量子 UQC-Matrix2 离子阱驱动"
         self.description = "幺正量子 UQC-Matrix2 离子阱驱动"
@@ -85,7 +85,7 @@ class DriverUQCMatrix2(DriverBase):
             "uqc_host": str,
             "uqc_port": int,
             "token": str,
-            "device_name": str,
+            "backend_device_name": str,
         }
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema
@@ -106,13 +106,14 @@ class DriverUQCMatrix2(DriverBase):
     def fetch_configs(self):
         """Fetch configs"""
         extra_configs = self.get_configs()
-        self.user_token = extra_configs.get("token", "")
+        self.token = extra_configs.get("token", "")
         self.uqc_host = extra_configs.get("uqc_host", "127.0.0.1")
-        self.uqc_port = extra_configs.get("uqc_port", 8080)
+        self.uqc_port = extra_configs.get("uqc_port", 5001)
+        self.backend_device_name = extra_configs.get("backend_device_name", "")
         try:
-            self._uqc = uqc_client.UQC(self.user_token)
             uqc_config.SERVER_HOST = self.uqc_host
             uqc_config.SERVER_PORT = self.uqc_port
+            self._uqc = uqc_client.UQC(self.token)
         except Exception as e:
             raise ValueError(f"UQC exception: {e}") from e
 
@@ -142,6 +143,10 @@ class DriverUQCMatrix2(DriverBase):
             f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
             f"data_type: {data_type}, data: {data}"
         )
+        if num_qubits is None and self.default_data_type == "qasm3":
+            pattern = r"qubit\s*\[\s*(\d+)\s*\]"
+            matches = re.findall(pattern, data["source_code"], re.IGNORECASE)
+            num_qubits = sum(int(match) for match in matches)
 
         self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_device_status(Device.DEVICE_STATUS_BUSY)
@@ -155,20 +160,15 @@ class DriverUQCMatrix2(DriverBase):
         logger.info("2. submit task")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
         task_id = self._uqc.submit_task(
-            data["source_code"], self.device_name, shots
+            data["source_code"], self.backend_device_name, shots
         )
 
         # 3. Wait for task_status success
         logger.info("3. wait for task_status is success")
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
-        success, err_msg, _ = Library.loop_with_timeout(
-            self.check_task_status,
-            self.task_time_out,
-            5,
-            task_id,
-            expect_task_status=[self.task_status_success],
-        )
-        if not success:
+        status = self.get_task_status(task_id)
+
+        if status != self.task_status_success:
             raise ValueError(f"Failed to get task results [{job_id}]")
 
         # 4. Get task results
@@ -179,39 +179,25 @@ class DriverUQCMatrix2(DriverBase):
             raise ValueError(f"failed to get task {task_id} result")
 
         # 5. Normalize results
+
+        results = _results
         logger.info("5. normalize results")
-        normalized_result = self.normalize_task_results(
-            _results[0]["datasets"]["computational_basis_histogram"],
-            num_qubits,
-            shots,
-        )
-        self.set_results(job_id, data_index, results=normalized_result)
+        if self.backend_device_name == "qiskit-sim":
+            results = self.convert_results(
+                _results[0]["results"][0]["data"]["counts"],
+                num_qubits,
+            )
+        if self.backend_device_name == "Matrix2":
+            results = self.normalize_task_results(
+                _results[0]["datasets"]["computational_basis_histogram"],
+                num_qubits,
+                shots,
+            )
+        self.set_results(job_id, data_index, results=results)
 
         # 6. Save results and set driver status to ONLINE
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
-
-    def check_task_status(self, task_id, expect_task_status):
-        """Check task status
-
-        Args:
-            task_id: task id
-            expect_task_status: expected task status
-
-        Returns:
-            bool: success of failed
-            str: error message
-            str: task status
-        """
-        success, task_status = self.get_task_status(task_id)
-        if success:
-            if task_status in expect_task_status:
-                return True, None, task_status
-        err_msg = (
-            f"Task status is not in {', '.join(expect_task_status)}, "
-            f"and current status: {task_status}"
-        )
-        return False, err_msg, None
 
     def get_task_status(self, task_id):
         """Get task status
@@ -220,10 +206,14 @@ class DriverUQCMatrix2(DriverBase):
             task_id: task id
 
         Returns:
-            success, error message, task_id
+            status
         """
-        task_status = self._uqc.get_task_status(task_id)
-        return True, task_status
+        while (status := self._uqc.get_task_status()) not in [
+            "SUCCESS",
+            "FAILURE",
+        ]:
+            logger.info(f"task_id: {task_id} status: {status}")
+        return status
 
     def get_task_results(self, task_id):
         """Get task results
@@ -232,13 +222,12 @@ class DriverUQCMatrix2(DriverBase):
             task_id: task id
 
         Returns:
-            task results
+            success or fail, task results
         """
         resp_json = self._uqc.get_task_result(task_id)
         if resp_json is None:
             return False, None
-        response = json.loads(resp_json)
-        return True, response
+        return True, resp_json
 
     def normalize_task_results(self, results, num_qubits, shots):
         """Normalize task results
@@ -249,7 +238,7 @@ class DriverUQCMatrix2(DriverBase):
             shots: number of shots
 
         Returns:
-            Normalized task results
+            normalized task results
         """
         dict_result = {}
 
@@ -272,8 +261,27 @@ class DriverUQCMatrix2(DriverBase):
 
         result = np.column_stack((indices, counts))
         for key, value in result:
+            if value == 0:
+                continue
             keys = f"{bin(key)[2:].zfill(num_qubits)}"
             dict_result[keys] = int(value)
+        return dict_result
+
+    def convert_results(self, results, num_qubits):
+        """valid shots
+
+        Args:
+            results: task results
+            num_qubits: number of qubits
+
+        Returns:
+            converted task results
+        """
+        dict_result = {}
+        for key, value in results.items():
+            decimal_num = int(key, 16)
+            bin_str = bin(decimal_num)
+            dict_result[bin_str[2:].zfill(num_qubits)] = value
         return dict_result
 
     def is_valid_shots(self, shots):
