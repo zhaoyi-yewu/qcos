@@ -154,12 +154,20 @@ def sa_initial_mapping(
 
     if start_mapping is None:
         start_mapping = list(coupling_graph.nodes)
-    if len(start_mapping) != len(coupling_graph.nodes()):
+    if (
+        len(start_mapping) != len(coupling_graph.nodes())
+        or None in start_mapping
+    ):
         # if logical qubits is less than physical, we extend logical qubit to
         # ensure the completeness and delete added qubits at the end of the
         # algorithm
         for v in coupling_graph.nodes():
             if v not in start_mapping:
+                count = start_mapping.count(None)
+                if count:
+                    idx = start_mapping.index(None)
+                    start_mapping[idx] = v
+                    continue
                 start_mapping.append(v)
     # initialize the weighted cost matrix
     cost_m, qubits_logic = init_cost_matrix(

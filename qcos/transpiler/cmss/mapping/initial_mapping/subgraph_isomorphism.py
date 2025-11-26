@@ -19,6 +19,9 @@ from networkx import Graph
 from networkx.algorithms import isomorphism
 
 from qcos.transpiler.cmss.mapping.utils.dg import DG
+from qcos.transpiler.cmss.mapping.initial_mapping.simulated_annealing import (
+    sa_initial_mapping,
+)
 
 
 def subgraph_isomorphism_mapping(dependency_graph: DG, coupling_graph: Graph):
@@ -96,16 +99,10 @@ def topgraph_mapping(dependency_graph: DG, coupling_graph: Graph):
         if q_log < num_qubits:
             log_to_phy[q_log] = q_phy
 
-    # assign the unallocated qubits in order.
-    assigned_physical = list(filter(lambda x: x is not None, log_to_phy))
-    # all physical bits
-    physical_bits = coupling_graph.nodes
-    unassigned_physical = sorted(list(physical_bits - assigned_physical))
-    unassigned_index = 0
-    for i in range(len(log_to_phy)):
-        if log_to_phy[i] is None:
-            log_to_phy[i] = unassigned_physical[unassigned_index]
-            unassigned_index += 1
+    # use simulated annealing to assign the remaining unallocated qubits
+    log_to_phy = sa_initial_mapping(
+        dependency_graph, coupling_graph, log_to_phy
+    )
     return log_to_phy
 
 
