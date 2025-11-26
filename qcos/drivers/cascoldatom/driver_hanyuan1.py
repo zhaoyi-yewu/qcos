@@ -141,13 +141,17 @@ class DriverHanyuan1(DriverBase):
 
         Args:
             job_id: job ID
-            num_qubits: number of qubits
-            data: data
-            data_type: data type
-            shots: shots (Default value = 1)
+            num_qubits: number of qubits(可选，某些任务类型不需要)
+            data: data(可选，某些任务类型不需要)
+            data_type: data type(gate_sequence, qu_topo, 或其他)
+            shots: shots (可选，某些任务类型不需要)
         """
-        # pylint: disable=duplicate-code
-        data_index = data["index"]
+        # 根据 data_type 获取 data_index，某些任务类型可能不需要
+        if data and isinstance(data, dict):
+            data_index = data.get("index", 0)
+        else:
+            data_index = 0
+
         logger.info(
             f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
             f"data_type: {data_type}, data: {data}"
@@ -155,7 +159,10 @@ class DriverHanyuan1(DriverBase):
 
         self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_device_status(Device.DEVICE_STATUS_BUSY)
-        gates_list = data["transpile_results"]
+        # 根据 data_type 提取所需的数据
+        gates_list = None
+        if data_type == "gate_sequence" and data:
+            gates_list = data.get("transpile_results")
         extra_configs = self.get_configs()
         ip_address = extra_configs.get(
             "ip_address", self.DEFAULT_CONTROL_SYSTEM_IP
@@ -171,8 +178,7 @@ class DriverHanyuan1(DriverBase):
         logger.info("submit task")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
         success, err_msg = self.submit_task(
-            job_id, num_qubits, gates_list, data_type, shots, data_index
-        )
+            job_id, num_qubits, gates_list, data_type, shots, data_index, data)
         if not success:
             raise ValueError(f"Failed to submit task [{job_id}]: {err_msg}")
 
@@ -290,31 +296,45 @@ class DriverHanyuan1(DriverBase):
         DriverHanyuan1.print_api_response(status_code, reason, text, result)
         return status_code, reason, text, result
 
-    def submit_task(
-        self,
-        job_id: str,
-        num_qubits: int,
-        data: list,
-        data_type: str,
-        shots: int,
-        data_index: int,
-    ) -> tuple:
-        """Submit task
+    def _build_request_data(
+		self,
+		job_id: str,
+		data_type: str,
+        num_qubits: int = None,
+		data: list = None,
+		shots: int = None,
+		data_index: int = 0,
+        raw_data: dict = None,
+	) -> dict:
+        """_build_request_data
+        根据不同的 data_type 构建请求数据
+        可扩展方法，方便后续添加新的任务类型
 
         Args:
-            job_id: job id
-            num_qubits: number of qubits
-            data: data
-            data_type: data type
-            shots: shots
-            data_index: data index
-
-        Returns:
-            success, err_msgs
+        	job_id: job id
+        	data_type: data type (gate_sequence, qu_topo, 或其他)
+        	num_qubits: number of qubits (可选)
+        	data: gate list data (可选)
+        	shots: shots (可选)
+        	data_index: data index
+        	raw_data: 原始数据字典 (可选)
+		
+        Returns: 
+			构建好的请求数据字典
         """
-        success = True
-        err_msgs = []
-        try:
+        # 基础请求数据
+        request_data = {
+            "job_id": job_id,
+            "data_type": data_type,
+            "timestamp": time.time()
+        }
+
+        # 根据不同的 data_type 构建不同的请求数据
+        if data_type == "gate_sequence":
+            # gate_sequence 类型：需要完整的参数
+            if data is None:
+                raise ValueError("gate_sequence task requires data parameter")
+
             # process data format
             gate_list = (
                 data.get("basis_gate_list", data)
@@ -331,16 +351,61 @@ class DriverHanyuan1(DriverBase):
                 }
                 processed_data.append(gate_dict)
 
-            # construct request data
-            request_data = {
-                "job_id": job_id,
+            request_data.update({
                 "data_index": data_index,
                 "data": processed_data,
-                "data_type": data_type,
-                "shots": shots,
-                "qubit_num": num_qubits,
-                "timestamp": time.time(),
-            }
+                "shots": shots if shots is not None else 1,
+                "qubit_num": num_qubits if num_qubits is not None else 1
+            })
+
+        elif data_type == "qu_topo":
+            # qu_topo 类型：只需要 job_id 和 data_type
+            # 不添加其他参数
+            pass
+
+        else:
+            # 其他未定义的任务类型：默认处理，待扩展
+            pass
+
+        return request_data
+
+    def submit_task(
+        self,
+        job_id: str,
+        num_qubits: int,
+        data: list,
+        data_type: str,
+        shots: int,
+        data_index: int,
+        raw_data: dict = None,
+    ) -> tuple:
+        """submit task
+        支持多种 data_type 的任务提交
+
+        Args:
+            job_id: job id
+            num_qubits: number of qubits (可选，某些任务类型不需要)
+            data: gate list data (可选，某些任务类型不需要)
+            data_type: data type (gate_sequence, qu_topo, 或其他)
+            shots: shots (可选，某些任务类型不需要)
+            data_index: data index
+            raw_data: 原始数据字典 (可选，用于扩展)
+        Returns:
+            (success, err_msg)
+        """
+        success = True
+        err_msgs = []
+        try:
+            # 根据 data_type 构建请求数据
+            request_data = self._build_request_data(
+                job_id=job_id,
+                data_type=data_type,
+                num_qubits=num_qubits,
+                data=data,
+                shots=shots,
+                data_index=data_index,
+                raw_data=raw_data
+            )
 
             method_name = "submit_task"
             status_code, reason, text, result = self.call_json_rpc(
@@ -445,6 +510,10 @@ class DriverHanyuan1(DriverBase):
             else:
                 success = False
                 err_m = result.get("result")
-                err_msgs.append(err_m)
+                # 确保错误消息是字符串
+                if err_m is not None:
+                    err_msgs.append(str(err_m))
+                else:
+                    err_msgs.append("task failed with unknown error")
 
         return success, "\n".join(err_msgs), results
