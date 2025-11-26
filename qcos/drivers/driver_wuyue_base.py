@@ -516,4 +516,9 @@ class DriverWuyueBase(DriverBase):
                 f"Failed to get task results [{task_id}]: {err_msg}"
             )
         results = final_results.get("result", None)
+        if isinstance(results, str):
+            results_dict = json.loads(results)
+            results = {
+                key: value for key, value in results_dict.items() if value != 0
+            }
         return success, "\n".join(err_msg), results

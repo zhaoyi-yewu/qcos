@@ -14,6 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
 import json
 from unittest.mock import patch, MagicMock
 
@@ -350,13 +351,14 @@ class TestDriverWuyueBase:
         self, mock_call_http_api, mock_decrypt_by_private_key
     ):
         """Test get_task_results with successful result retrieval"""
+        test_result = {"00": 10, "01": 11, "10": 9, "11": 0}
         mock_response = {
             "code": 1,
             "msg": "Success",
             "data": [
                 {
                     "taskStatus": driver_wuyue_base.task_status_completed,
-                    "outData": {"lineResult": "test_result"},
+                    "outData": {"lineResult": json.dumps(test_result)},
                 }
             ],
         }
@@ -373,7 +375,10 @@ class TestDriverWuyueBase:
         )
         assert success is True
         assert err_msg == ""
-        assert results == "test_result"
+        assert len(results) == 3
+        assert results["00"] == 10
+        assert results["01"] == 11
+        assert results["10"] == 9
 
     @patch.object(Library, "call_http_api")
     def test_get_task_results_http_error(self, mock_call_http_api):
