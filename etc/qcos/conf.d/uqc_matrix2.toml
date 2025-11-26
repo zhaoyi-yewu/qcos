@@ -6,7 +6,7 @@ description = "幺正量子 UQC-Matrix2 离子阱驱动"
 # device_max_qubits = 100
 
 uqc_host = "cloud.unitaryqubit.com"
-uqc_port = 8080
+uqc_port = 5001
 token = ""
 # backend_device_name: "Matrix2" or "qiskit-sim"
 backend_device_name = "Matrix2"
