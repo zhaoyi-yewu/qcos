@@ -45,6 +45,7 @@ class DriverSpinQCloudBase(DriverBase):
         self.supported_basis_gates = [
             # Gates: H, I, X, Y, Z, RX, RY, RZ, P, S, T, TDG, U, CX, CY, CZ,
             # SWAP, CCX, CCZ
+            Constant.SINGLE_QUBIT_GATE_H,
             Constant.SINGLE_QUBIT_GATE_X,
             Constant.SINGLE_QUBIT_GATE_Y,
             Constant.SINGLE_QUBIT_GATE_Z,

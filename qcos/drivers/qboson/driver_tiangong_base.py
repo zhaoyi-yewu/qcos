@@ -343,7 +343,8 @@ class DriverTiangongBase(DriverQuboBase):
             if task_status in expect_task_status:
                 return True, None, task_status
             err_msg = (
-                f"Task status is not in {', '.join(expect_task_status)}, "
+                "Task status is not in "
+                f"{', '.join(map(str, expect_task_status))}, "
                 f"and current status: {task_status}"
             )
         return False, err_msg, None
