@@ -106,7 +106,7 @@ class DriverUQCMatrix2(DriverBase):
     def fetch_configs(self):
         """Fetch configs"""
         extra_configs = self.get_configs()
-        self.token = extra_configs.get("token", "")
+        self.token = extra_configs.get("password_token", "")
         self.uqc_host = extra_configs.get("uqc_host", "127.0.0.1")
         self.uqc_port = extra_configs.get("uqc_port", 5001)
         self.backend_device_name = extra_configs.get("backend_device_name", "")
