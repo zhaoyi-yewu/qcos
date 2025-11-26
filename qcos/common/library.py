@@ -691,12 +691,18 @@ class Library:
                 matrix = np.array(qubo_matrices[i], dtype=float)
             except Exception as e:
                 return False, (
-                    f"The {i + 1}-th matrix in the list is "
+                    f"matrix in the list is "
                     f"a non-regular matrix, error: {str(e)}"
                 )
             matrix_shape = matrix.shape
             if matrix_shape[0] != matrix_shape[1]:
                 return False, f"The {i + 1}-th matrix is not square matrix"
+            elif matrix_shape[0] > Constant.MAX_QUBO_QUBITS:
+                return False, (
+                    f"The {i + 1}-th Matrix has {matrix_shape[0]} "
+                    f"qubits, exceeding the maximum limit of "
+                    f"{Constant.MAX_QUBO_QUBITS}"
+                )
         return True, None
 
     @staticmethod

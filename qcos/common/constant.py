@@ -329,6 +329,7 @@ class Constant:
 
     # Max bitwidth
     MAX_QUBO_BIT_WIDTH = 8
+    MAX_QUBO_QUBITS = 2000
 
 
 class HttpHeaders:
