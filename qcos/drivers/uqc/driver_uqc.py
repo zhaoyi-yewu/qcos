@@ -84,7 +84,7 @@ class DriverUQCMatrix2(DriverBase):
         driver_config_schema = {
             "uqc_host": str,
             "uqc_port": int,
-            "token": str,
+            "password_token": str,
             "backend_device_name": str,
         }
         _success, err_msgs = Library.validate_schema(
