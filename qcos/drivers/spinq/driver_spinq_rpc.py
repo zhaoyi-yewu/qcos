@@ -326,15 +326,7 @@ class DriverSpinQRpc(DriverBase):
 
         self._session_id = _results["session_id"]
 
-        # qpu_configs must be a dict
-        if "qpu_configs" in _results and isinstance(
-            _results["qpu_configs"], dict
-        ):
-            qpu_configs = _results["qpu_configs"]
-            logger.info("Using qpu_configs from remote response (dict format)")
-        else:
-            raise ValueError("qpu_configs not found in response")
-        transpiler_configs = {"qpu_configs": qpu_configs}
+        transpiler_configs = {"qpu_configs": _results["coupling_list"]}
         return transpiler_configs
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):

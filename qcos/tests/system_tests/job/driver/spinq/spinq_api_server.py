@@ -163,7 +163,7 @@ def request_login(username, password):
         "qubits_num": _qubits_num,
         "session_id": "1000000000000000000000000000000000000001",
         "chip_name": chip_name,
-        "coupling_list": _coupling_list,
+        "coupling_list": _qpu_configs,
         "qpu_configs": _qpu_configs,
     }
     logger.info(
