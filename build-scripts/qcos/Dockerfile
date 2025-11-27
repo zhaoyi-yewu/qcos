@@ -55,7 +55,7 @@ RUN \
 # install basic rpms
     yum install -y hostname openssh openssh-clients sshpass iputils iproute \
       telnet net-tools openssl util-linux vim findutils dos2unix wget rsync \
-      make cmake gcc g++ rust cargo \
+      gettext make cmake gcc g++ rust cargo \
       python3 python3-pip python3-sphinx python3-requests python3-devel && \
 # create symbolic link for python3
     ln -sf /usr/bin/python3 /usr/bin/python && \

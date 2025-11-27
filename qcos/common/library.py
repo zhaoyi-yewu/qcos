@@ -1218,13 +1218,18 @@ class Library:
         return True, None, decrypted_text
 
     @staticmethod
-    def mask_password(configs, password_replace="*" * 8):
+    def mask_password(
+        configs,
+        password_replace="*" * 8,
+        keys_to_match=r"^(?:_.*|.*(password|secret|hidden).*)$",
+    ):
         """
         Mask password
 
         Args:
             configs: configs
             password_replace: password text to be replaced
+            keys_to_match: keys to be matched (regular expression)
 
         Returns:
             replaced configs
@@ -1234,20 +1239,27 @@ class Library:
         if isinstance(configs, dict):
             new_config = {}
             for key, value in configs.items():
-                # if key contains "password"
-                if "password" in str(key).lower():
+                # if key matches regex: keys_to_match
+                regex = re.compile(keys_to_match, re.IGNORECASE)
+                if regex.match(key):
                     new_config[key] = password_replace
                 else:
                     # handle values recursively
                     new_config[key] = Library.mask_password(
-                        value, password_replace=password_replace
+                        value,
+                        password_replace=password_replace,
+                        keys_to_match=keys_to_match,
                     )
             return new_config
         # if configs is list or tuple
         elif isinstance(configs, (list, tuple)):
             # handle elements recursively
             return type(configs)(
-                Library.mask_password(item, password_replace=password_replace)
+                Library.mask_password(
+                    item,
+                    password_replace=password_replace,
+                    keys_to_match=keys_to_match,
+                )
                 for item in configs
             )
         return configs

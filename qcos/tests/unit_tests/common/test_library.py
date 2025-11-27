@@ -388,16 +388,52 @@ class TestLibrary:
     def test_mask_password(self):
         password_replace = "*" * 8
         configs = {
-            "password": "a123456",
-            "my_password": "b123456",
-            "my_password_1": "c123456",
-            "test": "d123456",
+            "test": "000000",
+            "_param": "1a123456",
+            "_password": "1b123456",
+            "password": "2a123456",
+            "my_password": "2b123456",
+            "my_password_1": "2c123456",
+            "secret": "2a123456",
+            "my_secret": "2b123456",
+            "my_secret_1": "2c123456",
+            "hidden": "3a123456",
+            "my_hidden": "3b123456",
+            "my_hidden_1": "3c123456",
+            "list": ["1", "2", "3"],
+            "dict": {"1": {"a": "1"}, "2": {"b": "2"}, "3": {"c": "3"}},
+            "list_dict": [{"password": "1"}, "2"],
+            "list_pass": ["1", "2", "password"],
+            "dict_pass": {
+                "1": {"a": 1},
+                "2": {"password": "123"},
+                "3": {"c": 3},
+            },
+            "list_dict_pass": [{"password": "123"}, "2"],
         }
         expected_configs = {
+            "test": "000000",
+            "_param": password_replace,
+            "_password": password_replace,
             "password": password_replace,
             "my_password": password_replace,
             "my_password_1": password_replace,
-            "test": "d123456",
+            "secret": password_replace,
+            "my_secret": password_replace,
+            "my_secret_1": password_replace,
+            "hidden": password_replace,
+            "my_hidden": password_replace,
+            "my_hidden_1": password_replace,
+            "list": ["1", "2", "3"],
+            "dict": {"1": {"a": "1"}, "2": {"b": "2"}, "3": {"c": "3"}},
+            "list_dict": [{"password": password_replace}, "2"],
+            "list_pass": ["1", "2", "password"],
+            "dict_pass": {
+                "1": {"a": 1},
+                "2": {"password": password_replace},
+                "3": {"c": 3},
+            },
+            "list_dict_pass": [{"password": password_replace}, "2"],
         }
         actual_configs = library.mask_password(
             configs, password_replace=password_replace

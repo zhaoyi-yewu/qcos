@@ -20,37 +20,37 @@ function usage {
     echo "Usage: $0 [OPTION] ..."
     echo "Run QCOS with K8s"
     echo ""
-    echo "  -c, --config  Config file"
-    echo "  -h, --help    Print this usage message"
+    echo "  -e, --env-file  Environment file"
+    echo "  -h, --help      Print this usage message"
     echo ""
 }
 
-opts=$(getopt -o c:h --long config:,help -- "$@")
+opts=$(getopt -o e:h --long env-file:,help -- "$@")
 if [[ $? -ne 0 ]]; then
   exit 1
 fi
 
 eval set -- "$opts"
 
-config_file="k8s-env"
+env_file="k8s-env"
 
 while true; do
   case "$1" in
     -h | --help )     usage ; exit 0; shift ;;
-    -c | --config )   config_file="$2";   shift 2 ;;
+    -e | --env-file ) env_file="$2";   shift 2 ;;
     -- ) shift; break ;;
     * )         break ;;
   esac
 done
 
-config_file=$(readlink -f ${config_file})
-if [ ! -f "${config_file}" ]; then
-  echo "Can't find file: ${config_file}. Please make a copy from k8s-env.template"
+env_file=$(readlink -f ${env_file})
+if [ ! -f "${env_file}" ]; then
+  echo "Can't find env file: ${env_file}. Please make a copy from k8s-env.template"
   exit 1
 fi
 
-source "${config_file}"
-echo "Creating K8s QCOS pods, namespace: ${QCOS_NAMESPACE} (${config_file}) ..."
+source "${env_file}"
+echo "Creating K8s QCOS pods, namespace: ${QCOS_NAMESPACE} (${env_file}) ..."
 echo "Note: you must create PVCs(${K8S_CODE_DATA_PVC}, ${K8S_DATABASE_PVC}) before running this script"
 
 envsubst < ./k8s-config-device-${QCOS_DEVICE_NAME}.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -
