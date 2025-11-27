@@ -1436,3 +1436,15 @@ class Library:
                 logger.error(f"Callback Error: {err_msg}")
 
             return results
+
+
+def _s(secret):
+    """secret text wrapper
+
+    Args:
+        secret: secret text to be wrapped
+
+    Returns:
+        wrapped secret text
+    """
+    return secret
