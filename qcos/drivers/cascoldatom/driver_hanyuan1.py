@@ -22,7 +22,8 @@ from typing import Any
 
 from jsonrpcclient import request
 from loguru import logger
-#from schema import Optional as SchemaOptional, Or
+
+# from schema import Optional as SchemaOptional, Or
 from schema import Optional, Or
 
 from qcos.common.constant import Constant, HttpMethod, HttpCode
@@ -145,12 +146,11 @@ class DriverHanyuan1(DriverBase):
         """
         data_type = "qu_topo"
 
-        success, err_msg = self.submit_task(
-            data_type=data_type
-        )
+        success, err_msg = self.submit_task(data_type=data_type)
         if not success:
-            raise ValueError(f"Failed to fetch configs [{data_type}]: "
-                            f"{err_msg}")
+            raise ValueError(
+                f"Failed to fetch configs [{data_type}]: {err_msg}"
+            )
 
         logger.info("wait for configs")
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
@@ -162,15 +162,17 @@ class DriverHanyuan1(DriverBase):
             expect_task_status=[self.task_status_completed],
         )
         if not success:
-            raise ValueError(f"Failed to wait for configs [{data_type}]: "
-                            f"{err_msg}")
+            raise ValueError(
+                f"Failed to wait for configs [{data_type}]: {err_msg}"
+            )
 
         success, err_msg, qu_configs = self.get_task_results(
             data_type=data_type
         )
         if not success:
-            raise ValueError(f"Failed to get task results [{data_type}]: "
-                            f"{err_msg}")
+            raise ValueError(
+                f"Failed to get task results [{data_type}]: {err_msg}"
+            )
         return qu_configs
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
@@ -203,11 +205,10 @@ class DriverHanyuan1(DriverBase):
             num_qubits=num_qubits,
             data=gates_list,
             shots=shots,
-            data_index=data_index
+            data_index=data_index,
         )
         if not success:
-            raise ValueError(f"Failed to submit task [{job_id}]: "
-                            f"{err_msg}")
+            raise ValueError(f"Failed to submit task [{job_id}]: {err_msg}")
 
         # 2. wait task results
         logger.info("wait task status")
@@ -222,8 +223,7 @@ class DriverHanyuan1(DriverBase):
             data_index=data_index,
         )
         if not success:
-            raise ValueError(f"Failed to wait for task [{job_id}]: "
-                            f"{err_msg}")
+            raise ValueError(f"Failed to wait for task [{job_id}]: {err_msg}")
 
         # 3. get task results
         logger.info("wait done")
@@ -235,8 +235,8 @@ class DriverHanyuan1(DriverBase):
         )
         if not success:
             raise ValueError(
-                f"Failed to get task results [{job_id}]: "
-                f"{err_msg}")
+                f"Failed to get task results [{job_id}]: {err_msg}"
+            )
 
         self.set_results(job_id, data_index, results=results)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
@@ -354,10 +354,7 @@ class DriverHanyuan1(DriverBase):
             构建好的请求数据字典
         """
         # 基础请求数据
-        request_data = {
-            "data_type": data_type,
-            "timestamp": time.time()
-        }
+        request_data = {"data_type": data_type, "timestamp": time.time()}
 
         # 根据不同的 data_type 构建不同的请求数据
         if data_type == "gate_sequence":
@@ -386,7 +383,7 @@ class DriverHanyuan1(DriverBase):
                 "data_index": data_index,
                 "data": processed_data,
                 "shots": shots if shots is not None else 1,
-                "qubit_num": num_qubits if num_qubits is not None else 1
+                "qubit_num": num_qubits if num_qubits is not None else 1,
             })
 
         elif data_type == "qu_topo":
@@ -407,7 +404,7 @@ class DriverHanyuan1(DriverBase):
         num_qubits: int | None = 1,
         data: list[Any] | None = None,
         shots: int | None = 1,
-        data_index: int | None = 0
+        data_index: int | None = 0,
     ) -> tuple:
         """submit task
         支持多种 data_type 的任务提交
@@ -432,7 +429,7 @@ class DriverHanyuan1(DriverBase):
                 num_qubits=num_qubits,
                 data=data,
                 shots=shots,
-                data_index=data_index
+                data_index=data_index,
             )
 
             method_name = "submit_task"
@@ -465,7 +462,7 @@ class DriverHanyuan1(DriverBase):
         data_type: str,
         expect_task_status: list[str],
         job_id: str | None = None,
-        data_index: int | None = 0
+        data_index: int | None = 0,
     ) -> tuple:
         """Check task status
 
@@ -517,7 +514,7 @@ class DriverHanyuan1(DriverBase):
         self,
         data_type: str,
         job_id: str | None = None,
-        data_index: int | None = 0
+        data_index: int | None = 0,
     ) -> tuple:
         """Check task results
 
