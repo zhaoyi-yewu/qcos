@@ -78,7 +78,7 @@ class TranspilerQiskit(TranspilerBase):
     def init_transpiler(self):
         """Init transpiler"""
 
-    def parse(self, src_code_dict):
+    def parse(self, src_code_dict: dict):
         """Parse src_code_dict
 
         Args:

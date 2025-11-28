@@ -30,3 +30,7 @@ class MappingException(Exception):
 
 class TranspilerException(Exception):
     """Transpiler Exception"""
+
+
+class CircuitException(Exception):
+    """Circuit Exception"""

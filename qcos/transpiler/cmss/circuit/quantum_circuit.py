@@ -18,6 +18,11 @@
 from qcos.transpiler.cmss.common.gate_operation import (
     BaseOperation,
 )
+from qcos.transpiler.cmss.circuit.register import (
+    Register,
+    QuantumRegister,
+    ClassicalRegister,
+)
 
 
 class QuantumCircuit:
@@ -33,6 +38,9 @@ class QuantumCircuit:
         self._num_clbits = num_clbits
         # instructions by gate operations
         self._operations: list[BaseOperation] = []
+
+        self.qregs: list[QuantumRegister] = []
+        self.cregs: list[ClassicalRegister] = []
 
     def append(self, operation: BaseOperation):
         """
@@ -127,3 +135,24 @@ class QuantumCircuit:
             width (int): number of bits in the quantum circuit
         """
         return self._num_qubits + self._num_clbits
+
+    def add_register(self, *regs: Register):
+        """
+        add registers to the quantum circuit
+
+        Args:
+            *regs (Register|QuantumRegister|ClassicalRegister): registers
+            to be added
+        """
+        if not regs:
+            return
+
+        for reg in regs:
+            if isinstance(reg, QuantumRegister):
+                self.qregs.append(reg)
+                self._num_qubits += reg.size
+            elif isinstance(reg, ClassicalRegister):
+                self.cregs.append(reg)
+                self._num_clbits += reg.size
+            else:
+                raise TypeError("Invalid register type!")
