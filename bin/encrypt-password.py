@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------
 
 """
-Encrypt/decrypt passwd
+encrypt | decrypt passwd
 
 Prerequisite:
 pip3 install cryptography

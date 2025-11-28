@@ -23,12 +23,19 @@ import logging
 from aiohttp import web
 import socketio
 
+from qcos.common.library import Library
 
 logger = logging.getLogger(__name__)
 sio = socketio.AsyncServer(cors_allowed_origins="*")
 app = web.Application()
 sio.attach(app)
 _tasks = {}
+
+# UQC Server simulator
+uqc_listen_ip = "0.0.0.0"
+uqc_listen_port = 5001
+PID_DIR = "/var/run/qcos"
+PID_FILE = f"{PID_DIR}/driver-uqc-api-server.pid"
 
 
 def submit_task(data):
@@ -115,7 +122,7 @@ async def connect(sid):
     Args:
         sid: client sid
     """
-    print(f"client {sid} connect")
+    logger.info(f"client {sid} connect")
 
 
 @sio.event
@@ -125,7 +132,7 @@ async def disconnect(sid):
     Args:
         sid: client sid
     """
-    print(f"client {sid} disconnect")
+    logger.info(f"client {sid} disconnect")
 
 
 @sio.on("message", namespace="/ws")
@@ -137,7 +144,7 @@ async def message(sid, data):
         data: client data
     """
     response_data = {}
-    print(f"received from client {sid} ")
+    logger.info(f"received from client {sid} ")
     if data["Header"]["MsgType"] == "MsgTask":
         response = submit_task(data)
         response_data = {"MsgType": "MsgTaskAck", "TaskId": response}
@@ -151,8 +158,18 @@ async def message(sid, data):
 
 
 def main():
-    print("listen on 5001...")
-    web.run_app(app, host="0.0.0.0", port=5001)
+    # kill existing process
+    Library.kill_pid(PID_FILE)
+    Library.mkdir(PID_DIR)
+    Library.create_pid_file(PID_FILE)
+
+    bind_address = f"tcp://{uqc_listen_ip}:{uqc_listen_port}"
+    # start UQC API service
+    logger.info(f"UQC API Server simulator started on {bind_address}")
+    try:
+        web.run_app(app, host=uqc_listen_ip, port=uqc_listen_port)
+    except KeyboardInterrupt:
+        logger.info("\nServer is stopped")
 
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ from datetime import datetime
 from unittest.mock import Mock, patch, MagicMock, AsyncMock
 
 from qcos.common.constant import Constant
-from qcos.common.library import Library, _s
+from qcos.common.library import Library
 from qcos.drivers.driver_base import DriverBase
 from qcos.drivers.dummy.driver_dummy import DriverDummy
 from qcos.engine.job_engine import (
@@ -364,9 +364,9 @@ class TestJobEngine:
     ):
         job_id = "00000000-0000-4000-8000-000000000001"
         source_code_index = 0
-        key = _s(f"{job_id}-{source_code_index}")
+        src_code_index = f"{job_id}-{source_code_index}"
         simple_qubo_matrix = np.array([[1, 0.5], [0.5, 2]])
-        src_code_dict = {key: simple_qubo_matrix}
+        src_code_dict = {src_code_index: simple_qubo_matrix}
 
         job_info = {
             "data": {
@@ -432,9 +432,9 @@ class TestJobEngine:
     ):
         job_id = "00000000-0000-4000-8000-000000000001"
         source_code_index = 0
-        key = _s(f"{job_id}-{source_code_index}")
+        src_code_index = f"{job_id}-{source_code_index}"
         simple_qubo_matrix = np.array([[1, 0.5], [0.5, 2]])
-        src_code_dict = {key: simple_qubo_matrix}
+        src_code_dict = {src_code_index: simple_qubo_matrix}
         job_info = {
             "data": {
                 "job_id": job_id,
@@ -499,9 +499,9 @@ class TestJobEngine:
     ):
         job_id = "00000000-0000-4000-8000-000000000001"
         source_code_index = 0
-        key = _s(f"{job_id}-{source_code_index}")
+        src_code_index = f"{job_id}-{source_code_index}"
         simple_qubo_matrix = np.array([[1, 0.5], [0.5, 2]])
-        src_code_dict = {key: simple_qubo_matrix}
+        src_code_dict = {src_code_index: simple_qubo_matrix}
         job_info = {
             "data": {
                 "job_id": job_id,
@@ -553,14 +553,14 @@ class TestJobEngine:
     ):
         job_id = "00000000-0000-4000-8000-000000000001"
         source_code_index = 0
-        key = _s(f"{job_id}-{source_code_index}")
+        src_code_index = f"{job_id}-{source_code_index}"
         simple_qubo_matrix = np.array([
             [1, 0.5, 3, 4],
             [0.5, 2, 1, 3],
             [1, 0.5, 3, 4],
             [0.5, 2, 1, 3],
         ])
-        src_code_dict = {key: simple_qubo_matrix}
+        src_code_dict = {src_code_index: simple_qubo_matrix}
         job_info = {
             "data": {
                 "job_id": job_id,
