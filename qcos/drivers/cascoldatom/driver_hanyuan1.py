@@ -329,13 +329,13 @@ class DriverHanyuan1(DriverBase):
         return status_code, reason, text, result
 
     def _build_request_data(
-		self,
-		data_type: str,
+        self,
+        data_type: str,
         job_id: Optional[str] = None,
         num_qubits: Optional[int] = 1,
-		data: Optional[List[Any]] = None,
-		shots: Optional[int] = 1,
-		data_index: Optional[int] = 0,
+        data: Optional[List[Any]] = None,
+        shots: Optional[int] = 1,
+        data_index: Optional[int] = 0,
 	) -> Dict[str, Any]:
         """_build_request_data
         根据不同的 data_type 构建请求数据
