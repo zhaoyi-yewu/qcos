@@ -18,11 +18,12 @@
 import copy
 import requests
 import time
-from typing import Optional, List, Dict, Any
+from typing import Any
 
 from jsonrpcclient import request
 from loguru import logger
-from schema import Optional as SchemaOptional,Or
+#from schema import Optional as SchemaOptional, Or
+from schema import Optional, Or
 
 from qcos.common.constant import Constant, HttpMethod, HttpCode
 from qcos.common.library import Library
@@ -108,11 +109,11 @@ class DriverHanyuan1(DriverBase):
                     "operate_area": [str],
                     "coupler_map": {str: [str]},
                     "readout_error": {str: Or(float, int)},
-                    SchemaOptional("coupler_error"): {str: Or(float, int)},
-                    SchemaOptional("closest"): {str: str},
+                    Optional("coupler_error"): {str: Or(float, int)},
+                    Optional("closest"): {str: str},
                 },
-                SchemaOptional("decomposition_rule"): {
-                    str: {"gates": [list], SchemaOptional("params"): [str]}
+                Optional("decomposition_rule"): {
+                    str: {"gates": [list], Optional("params"): [str]}
                 },
             },
         }
@@ -331,12 +332,12 @@ class DriverHanyuan1(DriverBase):
     def _build_request_data(
         self,
         data_type: str,
-        job_id: Optional[str] = None,
-        num_qubits: Optional[int] = 1,
-        data: Optional[List[Any]] = None,
-        shots: Optional[int] = 1,
-        data_index: Optional[int] = 0,
-	) -> Dict[str, Any]:
+        job_id: str | None = None,
+        num_qubits: int | None = 1,
+        data: list[Any] | None = None,
+        shots: int | None = 1,
+        data_index: int | None = 0,
+    ) -> dict[str, Any]:
         """_build_request_data
         根据不同的 data_type 构建请求数据
         可扩展方法，方便后续添加新的任务类型
@@ -402,11 +403,11 @@ class DriverHanyuan1(DriverBase):
     def submit_task(
         self,
         data_type: str,
-        job_id: Optional[str] = None,
-        num_qubits: Optional[int] = 1,
-        data: Optional[List[Any]] = None,
-        shots: Optional[int] = 1,
-        data_index: Optional[int] = 0
+        job_id: str | None = None,
+        num_qubits: int | None = 1,
+        data: list[Any] | None = None,
+        shots: int | None = 1,
+        data_index: int | None = 0
     ) -> tuple:
         """submit task
         支持多种 data_type 的任务提交
@@ -462,9 +463,9 @@ class DriverHanyuan1(DriverBase):
     def check_task_status(
         self,
         data_type: str,
-        expect_task_status: List[str],
-        job_id: Optional[str] = None,
-        data_index: Optional[int] = 0
+        expect_task_status: list[str],
+        job_id: str | None = None,
+        data_index: int | None = 0
     ) -> tuple:
         """Check task status
 
@@ -515,8 +516,8 @@ class DriverHanyuan1(DriverBase):
     def get_task_results(
         self,
         data_type: str,
-        job_id: Optional[str] = None,
-        data_index: Optional[int] = 0
+        job_id: str | None = None,
+        data_index: int | None = 0
     ) -> tuple:
         """Check task results
 
