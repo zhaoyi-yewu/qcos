@@ -22,8 +22,6 @@ from typing import Any
 
 from jsonrpcclient import request
 from loguru import logger
-
-# from schema import Optional as SchemaOptional, Or
 from schema import Optional, Or
 
 from qcos.common.constant import Constant, HttpMethod, HttpCode
