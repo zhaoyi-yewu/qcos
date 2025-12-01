@@ -38,6 +38,7 @@ RUN \
 # install basic rpms
     yum install -y hostname openssh openssh-clients sshpass iputils iproute \
       telnet net-tools openssl util-linux vim findutils dos2unix wget \
+      latexmk texlive texlive-xetex \
       rpm-build make gcc rust cargo rsync \
       python3 python3-pip python3-sphinx python3-requests python3-devel && \
 # create symbolic link for python3

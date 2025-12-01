@@ -12,8 +12,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-# qcos cli shell
-# build rpm package: python3-qcosclient
+# QCOS documentations:  sphinix docs, api docs
+# build docs: ./build-docs.sh
+
 set -e
 
 BASE_DIR=$(dirname "$0")
@@ -21,18 +22,34 @@ BASE_DIR=$(readlink -f ${BASE_DIR})
 TOP_DIR=$(readlink -f ${BASE_DIR}/..)
 DOCS_DIR=${TOP_DIR}/docs
 
-cd ${DOCS_DIR}
+# 1. create sphinx docs
+SPHINX_DOCS_DIR=${DOCS_DIR}/sphinx
+cd ${SPHINX_DOCS_DIR}
+# create sphinx dist dir
+make clean
+rm -rf ./dist
+rm -rf ./source/api
+mkdir -p ./dist
+mkdir ./source/api
+# create sphinx api docs
+sphinx-apidoc -o ./source/api ../../
 # create sphinx docs
-make clean dirhtml html
+make html
 
+
+# 2. create openapi docs
+# create openapi dist dir
+OPENAPI_DOCS_DIR=${DOCS_DIR}/openapi-docs
+cd ${OPENAPI_DOCS_DIR}
+rm -rf ./dist
+mkdir -p ./dist
 # unpack js
-tar xzvf ${DOCS_DIR}/api-docs/js.tar.gz -C ${DOCS_DIR}/api-docs
-
-# create openapi docs
+tar xzvf ${OPENAPI_DOCS_DIR}/js.tar.gz -C ${OPENAPI_DOCS_DIR}/dist
+# make openapi docs
 ./make-openapi-docs.py
 
 # print results
 echo -e "\n======DOCS OUTPUT======"
-echo "Sphinx docs:  ${DOCS_DIR}/build/dirhtml/"
-echo "OpenAPI docs: ${DOCS_DIR}/api-docs/"
+echo "Sphinx docs:  ${SPHINX_DOCS_DIR}/dist/html/index.html"
+echo "OpenAPI docs: ${OPENAPI_DOCS_DIR}/dist/qcos-api-docs.html"
 

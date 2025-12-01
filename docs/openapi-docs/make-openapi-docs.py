@@ -8,9 +8,9 @@ import json
 import os
 import sys
 
-top_path = os.path.abspath(
-    os.path.split(os.path.realpath(__file__))[0] + "/..")
-sys.path.insert(0, top_path)
+current_dir = os.path.split(os.path.realpath(__file__))[0]
+top_dir = os.path.abspath(f"{current_dir}/../..")
+sys.path.insert(0, top_dir)
 from qcos.api.fastapi_server import app
 
 HTML_TEMPLATE = """<!DOCTYPE html>
@@ -40,7 +40,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 """
 
 if __name__ == "__main__":
-    file_path = "api-docs/qcos-api-docs.html"
+    output_dir = f"{current_dir}/dist"
+    os.makedirs(output_dir, mode=0o755, exist_ok=True)
+    file_path = f"{output_dir}/qcos-api-docs.html"
     with open(file_path, "w") as fd:
         print(HTML_TEMPLATE % json.dumps(app.openapi()), file=fd)
     print(f"Successfully created qcos api docs: {file_path}")
