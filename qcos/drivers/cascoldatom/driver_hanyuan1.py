@@ -147,6 +147,7 @@ class DriverHanyuan1(DriverBase):
         """
         data_type = self.data_type_qu_topo
         job_id = str(Library.create_uuid())
+        qpu_configs = {}
 
         success, err_msg = self.submit_task(job_id=job_id, data_type=data_type)
         if not success:
@@ -177,7 +178,8 @@ class DriverHanyuan1(DriverBase):
             raise ValueError(
                 f"Failed to get task results [{data_type}]: {err_msg}"
             )
-        return qu_configs
+        qpu_configs = {"qpu_configs": qu_configs}
+        return qpu_configs
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
         """Run job
