@@ -293,6 +293,8 @@ qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation external -
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
 qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
+2.1 中科酷原-汉原1 中性原子驱动, 模拟运行双量子比特门(dry-run)
+qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 --transpiler-options '{"enable_na_move": true}'' -f ./samples/qasm/2.0/rb.qasm
 3. 中科酷原-汉原1 中性原子驱动, 真实运行
 qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
 qcos-cli submit-job --code-type qasm2 --shots 10 --backend wy-hanyuan1 -f ./samples/qasm/2.0/simple-qasm.qasm

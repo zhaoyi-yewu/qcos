@@ -17,6 +17,7 @@
 
 import numpy as np
 
+from qcos.common.constant import Constant
 from qcos.transpiler.cmss.common.base_operation import OperationType
 from qcos.transpiler.cmss.common.gate_operation import GateOperation
 from qcos.transpiler.cmss.common.gate_operation import create_gate
@@ -83,6 +84,12 @@ class TestDecompose:
         measure q->c;
         """
 
+        cls.supp_basis_gates = [
+            Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
+            Constant.TWO_QUBIT_GATE_CX,
+        ]
+
     def test_decompose(self):
         tree = get_abs_tree(self.data)
         assert tree is not None
@@ -92,7 +99,7 @@ class TestDecompose:
         assert q_num == 6
         assert len(gates_list) == 21
 
-        decomposed_gates = decompose_gates(gates_list)
+        decomposed_gates = decompose_gates(gates_list, self.supp_basis_gates)
         assert len(decomposed_gates) == 85
         validate_gate_ir(decomposed_gates[0], "rx", [2], 1, False)
         validate_gate_ir(decomposed_gates[1], "ry", [2], 1, False)
@@ -113,7 +120,7 @@ class TestDecompose:
         assert q_num == 6
         assert len(gates_list) == 21
 
-        decomposed_gates = decompose_gates(gates_list)
+        decomposed_gates = decompose_gates(gates_list, self.supp_basis_gates)
         assert len(decomposed_gates) == 85
 
         opt_gates = optimize_gate(decomposed_gates)
@@ -140,7 +147,7 @@ class TestDecompose:
         opt_gates = optimize_gate(gate_list)
         assert len(opt_gates) == 3
 
-        decomposed_gates = decompose_gates(opt_gates)
+        decomposed_gates = decompose_gates(opt_gates, self.supp_basis_gates)
         assert len(decomposed_gates) == 3
 
         opt_gates = optimize_gate(decomposed_gates)
@@ -177,7 +184,7 @@ class TestDecompose:
         validate_gate_ir(opt_gates[0], "h", [0], 1, True)
         validate_non_gate_ir(opt_gates[1], "reset", [0], -3)
 
-        decomposed_gates = decompose_gates(opt_gates)
+        decomposed_gates = decompose_gates(opt_gates, self.supp_basis_gates)
         assert len(decomposed_gates) == 8
         validate_gate_ir(decomposed_gates[0], "ry", [0], 1, False)
         validate_gate_ir(decomposed_gates[1], "rx", [0], 1, False)
@@ -232,7 +239,7 @@ class TestDecompose:
         validate_non_gate_ir(opt_gates[3], "reset", [3], -3)
         validate_non_gate_ir(opt_gates[5], "sync", [0, 1, 2, 3, 4, 5], -1)
 
-        decomp_gates = decompose_gates(opt_gates)
+        decomp_gates = decompose_gates(opt_gates, self.supp_basis_gates)
         assert decomp_gates is not None
         assert len(decomp_gates) == 23
         validate_gate_ir(decomp_gates[0], "rx", [2], 1, False)
@@ -281,7 +288,7 @@ class TestDecompose:
         validate_gate_ir(opt_gates[0], "h", [0], 1, True)
         validate_non_gate_ir(opt_gates[1], "sync", [0], -1)
 
-        decomposed_gates = decompose_gates(opt_gates)
+        decomposed_gates = decompose_gates(opt_gates, self.supp_basis_gates)
         assert len(decomposed_gates) == 8
         validate_gate_ir(decomposed_gates[0], "ry", [0], 1, False)
         validate_gate_ir(decomposed_gates[1], "rx", [0], 1, False)
@@ -338,7 +345,7 @@ class TestDecompose:
         validate_non_gate_ir(opt_gates[3], "sync", [3], -1)
         validate_non_gate_ir(opt_gates[5], "sync", [0, 1, 2, 3, 4, 5], -1)
 
-        decomp_gates = decompose_gates(opt_gates)
+        decomp_gates = decompose_gates(opt_gates, self.supp_basis_gates)
         assert decomp_gates is not None
         assert len(decomp_gates) == 23
         validate_gate_ir(decomp_gates[0], "rx", [2], 1, False)

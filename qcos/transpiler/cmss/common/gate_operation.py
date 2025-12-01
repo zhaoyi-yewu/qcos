@@ -419,7 +419,10 @@ class CX(GateOperation):
         )
 
     def default_decompose(self):
-        return list([self])
+        gates = H(targets=[self.targets[1]]).decompose()
+        gates.append(CZ(self.targets))
+        gates += H(targets=[self.targets[1]]).decompose()
+        return gates
 
 
 class CY(GateOperation):

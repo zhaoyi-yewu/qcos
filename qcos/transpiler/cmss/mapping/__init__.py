@@ -15,5 +15,5 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from qcos.transpiler.cmss.mapping.na_mapping import NASingleRoute
+from qcos.transpiler.cmss.mapping.na_mapping import NASingleRoute, NARoute
 from qcos.transpiler.cmss.mapping.sc_mapping import SCRoute

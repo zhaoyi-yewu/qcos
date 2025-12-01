@@ -38,7 +38,9 @@ class TranspilerCmss(TranspilerBase):
     """Transpiler Class for CMSS."""
 
     def __init__(
-        self, optimization_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL
+        self,
+        optimization_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
+        enable_na_move: bool = False,
     ):
         super().__init__()
         self.total_qubits = 0
@@ -66,10 +68,14 @@ class TranspilerCmss(TranspilerBase):
             )
         self.transpiler_options = {
             # default optimization level
-            "optimization_level": optimization_level
+            "optimization_level": optimization_level,
+            "enable_na_move": enable_na_move,
         }
         # transpiler_options schema used in submit-job from user
-        self.transpiler_options_schema = {Optional("optimization_level"): int}
+        self.transpiler_options_schema = {
+            Optional("optimization_level"): int,
+            Optional("enable_na_move"): bool,
+        }
         # qpu_config
         self.qpu_config = None
 
@@ -85,7 +91,11 @@ class TranspilerCmss(TranspilerBase):
         :return mapping result dict
         """
         factory = MappingFactory()
-        mapper = factory.get_mapper_by_type(trans_cfg_inst.get_tech_type())
+
+        enable_na_move = self.transpiler_options.get("enable_na_move", False)
+        mapper = factory.get_mapper_by_type(
+            trans_cfg_inst.get_tech_type(), enable_na_move
+        )
         mapping_dict = {}
         if len(opt_result_dict) == 1:
             key, value = list(opt_result_dict.items())[0]
@@ -170,7 +180,16 @@ class TranspilerCmss(TranspilerBase):
         mapping_res, mapping_dict = self.mapping(qpu_cfg, opt_result_dict)
 
         # decompose gates
-        parsed_circuit = decompose_gates(mapping_res)
+        enable_na_move = self.transpiler_options.get("enable_na_move", False)
+
+        # support cz gate for NARoute
+        if enable_na_move:
+            supp_basis_gates = [
+                Constant.SINGLE_QUBIT_GATE_RX,
+                Constant.SINGLE_QUBIT_GATE_RY,
+                Constant.TWO_QUBIT_GATE_CZ,
+            ]
+        parsed_circuit = decompose_gates(mapping_res, supp_basis_gates)
 
         # optimize circuit
         basis_gate_list = optimize_gate(parsed_circuit, opt_level)

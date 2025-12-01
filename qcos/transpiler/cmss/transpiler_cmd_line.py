@@ -159,8 +159,15 @@ def main(
             logger.info(f"IR optimizing: {opt1_timer.elapsed:.4f}s")
 
             # decompose gate by rules
+            supp_basis_gates = [
+                Constant.SINGLE_QUBIT_GATE_RX,
+                Constant.SINGLE_QUBIT_GATE_RY,
+                Constant.TWO_QUBIT_GATE_CX,
+            ]
             with Timer() as decompose_timer:
-                transpiled_gates = decompose_gates(optimized_gates)
+                transpiled_gates = decompose_gates(
+                    optimized_gates, supp_basis_gates
+                )
             logger.info(f"gates decomposing: {decompose_timer.elapsed:.4f}s")
 
             # optimize the transpiled gates

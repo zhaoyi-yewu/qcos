@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------
 
 from qcos.common.constant import Constant
-from qcos.transpiler.cmss.mapping import NASingleRoute
+from qcos.transpiler.cmss.mapping import NASingleRoute, NARoute
 from qcos.transpiler.cmss.mapping import SCRoute
 from qcos.transpiler.common.errors import MappingException
 
@@ -30,15 +30,19 @@ class MappingFactory:
             Constant.TECH_TYPE_SUPERCONDUCTING: SCRoute(),
         }
 
-    def get_mapper_by_type(self, tech_type: str):
+    def get_mapper_by_type(self, tech_type: str, na_support_move: bool):
         """Get mapper by type.
 
         Args:
           tech_type (str): tech type
-
+          na_support_move(bool): Does NA support move and cz gate
         Returns:
             mapper
         """
+        # support two-qubit_gate mapping for NA
+        if tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM and na_support_move:
+            return NARoute()
+
         mapper = self._mapping.get(tech_type)
         if mapper:
             return mapper
