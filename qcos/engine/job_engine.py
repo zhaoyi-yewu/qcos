@@ -917,6 +917,7 @@ def run_qubo_code(
     job_id = job_info["data"]["job_id"]
     max_qubits = driver.get_max_qubits()
     enable_subqubo = driver.get_enable_subqubo()
+    enable_prec_reduce = driver.get_enable_prec_reduce()
     qubo_matrix = src_code_dict[f"{job_id}-{source_code_index}"]
     max_precision_value = 2 ** (Constant.MAX_QUBO_BIT_WIDTH - 1) - 1
     # Check if the matrix is valid
@@ -934,15 +935,31 @@ def run_qubo_code(
     success, err_msg = check_qubo_matrix_bit_width(
         np.array(qubo_matrix), Constant.MAX_QUBO_BIT_WIDTH
     )
-    if not success and err_msg:
-        return (
-            format_error_results(
-                driver, errors.JobEngineCheckWidthError, err_msg
-            ),
-            driver,
-            transpiler,
-            mapping_dict,
-        )
+    if not success:
+        if err_msg:
+            return (
+                format_error_results(
+                    driver, errors.JobEngineCheckWidthError, err_msg
+                ),
+                driver,
+                transpiler,
+                mapping_dict,
+            )
+        if not enable_prec_reduce:
+            err_msg = (
+                f"The element values in the QUBO matrix "
+                f"does not meet {Constant.MAX_QUBO_BIT_WIDT}-bit signed. "
+                f"Consider using enable_prec_reduce."
+            )
+            return (
+                format_error_results(
+                    driver, errors.JobEngineCheckWidthError, err_msg
+                ),
+                driver,
+                transpiler,
+                mapping_dict,
+            )
+
     ising_matrix = qubo_matrix_to_ising_matrix(np.array(qubo_matrix))
     scaled_ising_matrix = scale_to_integer_matrix(ising_matrix)
     # If the QUBO matrix is to be reduced in precision,

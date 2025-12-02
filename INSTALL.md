@@ -311,6 +311,9 @@ qcos-cli submit-job --code-type qubo --backend tiangong1000_v2 -f ./samples/qubo
 4.1 使用--driver-options '{"enable_subqubo": true}'开启subqubo功能（默认关闭）
 qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_subqubo": true}' -f ./samples/qubo/qubo_200X200.csv
 qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_subqubo": false}' -f ./samples/qubo/qubo_200X200.csv
+4.2 使用--driver-options '{"enable_prec_reduce": true}'开启降精度功能（默认关闭）
+qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_prec_reduce": true}' -f ./samples/qubo/qubo_200X200.csv
+qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_prec_reduce": false}' -f ./samples/qubo/qubo_200X200.csv
 
 5. 量旋科技, 真实运行
 qcos-cli submit-job --code-type qasm --shots 10 --backend spinq_rpc -f ./samples/qasm/2.0/simple-qasm.qasm

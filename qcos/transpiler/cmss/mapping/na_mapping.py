@@ -437,15 +437,16 @@ class NARoute(ABC):
 
     def overlap(self, nd1, nd2):
         """判断两个单比特节点包含的门列表是否满足nd2为nd1的后缀.
-            若nd2为nd1的后缀，则在执行nd1的所有单比特门时，可在适当位置将nd2的比特放入操作区，后续单比特门可一起执行.
-            如nd1比特为Q1，包含[H, X], nd2比特为Q2包含[X].
-                一般执行顺序为：PUT Q1; H Q1; X Q1; BACK Q1; PUT Q2; X Q2.
-                优化顺序：PUT Q1; H Q1; PUT Q2; X Q1 Q2.
 
         Args:
             nd1: 节点1
             nd2: 节点2
         """
+        # 若nd2为nd1的后缀，则在执行nd1的所有单比特门时，可在适当
+        # 位置将nd2的比特放入操作区，后续单比特门可一起执行。
+        # 如nd1比特为Q1，包含[H, X], nd2比特为Q2包含[X].
+        # 一般执行顺序为：PUT Q1; H Q1; X Q1; BACK Q1; PUT Q2; X Q2.
+        # 优化顺序：PUT Q1; H Q1; PUT Q2; X Q1 Q2.
         gt1 = self.dg.nodes[nd1]["gate"]
         gt2 = self.dg.nodes[nd2]["gate"]
         if len(gt1) < len(gt2):
