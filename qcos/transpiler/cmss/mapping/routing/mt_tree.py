@@ -66,7 +66,7 @@ depth_cx = 1
 
 
 class MCTree(DiGraph):
-    """蒙特卡洛树
+    """蒙特卡洛树.
 
     Args:
         AG: 硬件拓扑
@@ -81,10 +81,9 @@ class MCTree(DiGraph):
     """
 
     def __init__(self, AG, DG, **args):
-        """
-        swap_combination is a list of swaps to be considered
+        """swap_combination is a list of swaps to be considered
         T: ratio for node evaluation
-        node_count: index for newly added node
+        node_count: index for newly added node.
         """
         super().__init__()
         # check key words
@@ -156,8 +155,7 @@ class MCTree(DiGraph):
     def add_node_mcts(
         self, father_node, added_swap=None, remote_exe_node=None
     ):
-        """
-        visited_time: how many times this node has been visited
+        """visited_time: how many times this node has been visited
         added_swap: list like [(in1, in2),...]
         added_remote: remote CNOTs added
         swap_decay: deacy parameter for added SWAP, this is only uesful for
@@ -167,7 +165,7 @@ class MCTree(DiGraph):
         global_score: global score considering all its son nodes, the initial
                       value is its (local) score
         sim_score: simulation score
-        return: generated node number
+        return: generated node number.
         """
         if father_node is None:
             # root node
@@ -332,9 +330,8 @@ class MCTree(DiGraph):
             return self.nodes[node]["num_add_gates"]
 
     def add_depth(self, node):
-        """
-        Add depth information to a new node
-        This should be revoked after or at the end of the add_node method
+        """Add depth information to a new node
+        This should be revoked after or at the end of the add_node method.
 
         variables added:
             depth_phy_qubits -> a list in which the index corresponds to the
@@ -437,9 +434,7 @@ class MCTree(DiGraph):
         return added_node
 
     def expand_node_via_remote(self, node):
-        """
-        expand a node via reomte CNOTs
-        """
+        """Expand a node via reomte CNOTs."""
         # expand via remote cnot
         cir = self.nodes[node]["circuit"]
         front_nodes = cir.front_layer
@@ -464,15 +459,15 @@ class MCTree(DiGraph):
         return added_nodes
 
     def expansion(self, node):
-        """
-        expand a node via all non-trivival swaps and then do backpropogation
+        """Expand a node via all non-trivival swaps and then do
+        backpropagation.
         """
         if self.out_degree[node] != 0:
             raise ValueError("Expanded node already has son nodes.")
 
         if self.nodes[node]["num_remain_gates"] == 0:
             # we can't expand finished node
-            ## add selection count
+            # add selection count
             self.selec_count += 1
             return []
 
@@ -521,8 +516,9 @@ class MCTree(DiGraph):
         return added_nodes
 
     def get_son_attributes(self, node, args):
-        """get attributes and sons, represented in list args,
-        from all sons of node"""
+        """Get attributes and sons, represented in list args,
+        from all sons of node.
+        """
         sons = []
         num_attr = len(args)
         num_son = self.out_degree(node)
@@ -550,7 +546,7 @@ class MCTree(DiGraph):
         return sons, res
 
     def pick_best_son_size(self, node, method):
-        """this is a subfunction for selection section"""
+        """This is a subfunction for selection section."""
         if method[0] == "KS":
             # Kocsis and Szepesvári method
             C = method[1]  # this is the parameter for values calculating
@@ -599,7 +595,7 @@ class MCTree(DiGraph):
         raise ValueError(f"Unsupported method {method}")
 
     def pick_best_son_depth(self, node, method):
-        """this is a subfunction for selection section for depth opt."""
+        """This is a subfunction for selection section for depth opt."""
         if method[0] == "KS":
             # Kocsis and Szepesvári method from WIKI
             C = method[1]  # this is the parameter for values calculating
@@ -643,8 +639,7 @@ class MCTree(DiGraph):
         raise ValueError(f"Unsupported method {method}")
 
     def back_propagation(self, start_node, mode_BP=None):
-        """
-        反向传播，更新父节点的分数
+        """反向传播，更新父节点的分数
         renew a variable reversely
         start_node: is the node the the original value extracted from,
                     note that the first backpropagated node is its father node
@@ -655,7 +650,7 @@ class MCTree(DiGraph):
                 when going to a new node, we compare new_value (global score of
                 its son node)*args[0] + score (of current new node) with old
                 global score varible, if the former is larger than the latter,
-                then we update the global score of this new node
+                then we update the global score of this new node.
         """
         flag = True
         if mode_BP is None:
@@ -687,9 +682,7 @@ class MCTree(DiGraph):
         raise ValueError(f"Unsupported BP method {mode_BP}")
 
     def selection(self):
-        """
-        我们从根节点选择子节点到叶节点，然后扩展叶节点并反向传播扩展节点的最佳分数
-        """
+        """我们从根节点选择子节点到叶节点，然后扩展叶节点并反向传播扩展节点的最佳分数."""
         current_node = self.root_node
         search_depth = 0
         # proceed until find leaf node
@@ -705,7 +698,7 @@ class MCTree(DiGraph):
         return current_node, search_depth
 
     def delete_nodes(self, nodes):
-        """delete nodes and all its successors"""
+        """Delete nodes and all its successors."""
         for node in nodes:
             # delete
             T_succ = nx.dfs_tree(self, node)
@@ -713,7 +706,7 @@ class MCTree(DiGraph):
 
     def _delete_false_leaf(self, node):
         # check if no nodes opened because of all its sons have already existed
-        ## we call a node with no child after expansion a false leaf
+        # we call a node with no child after expansion a false leaf
         if node not in self.nodes:
             return
         current_node = node
@@ -771,9 +764,7 @@ class MCTree(DiGraph):
             raise ValueError("Fallback error!")
 
     def decision(self, mode_decision=None):
-        """
-        选择一个叶子节点，删除其父节点的所有其他叶子节点
-        """
+        """选择一个叶子节点，删除其父节点的所有其他叶子节点."""
         # self.nodes[self.root_node]['circuit'].print_front_layer_qubits()
         # self.print_son_attrs(self.root_node,
         #                     ['added_swap', 'local_score', 'global_score'])
@@ -819,15 +810,15 @@ class MCTree(DiGraph):
             # print()
         return self.root_node
 
-    def simultation(self, sim_node, mode_sim=None):
-        """
-        simulation and BP the simulation score
+    def simulation(self, sim_node, mode_sim=None):
+        """Simulation and BP the simulation score.
+
         Different modes for simulation
         mode_sim = ['name', arg_list]
             name:
 
                 fix_cx_num ->
-                do simultaion executing fixed number of CNOT gates.
+                do simulation executing fixed number of CNOT gates.
                 arg_list = [simulation_times, num_CX_gates]
         """
         if sim_node == self.root_node:

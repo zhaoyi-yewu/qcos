@@ -29,7 +29,7 @@ from qcos.drivers.driver_base import DriverBase
 
 
 class DriverSpinQCloudBase(DriverBase):
-    """量旋科技 核磁驱动 (Cloud版本)
+    """量旋科技 核磁驱动 (Cloud版本).
 
     SpinQ NMR driver (Cloud)
     https://cloud.spinq.cn
@@ -86,14 +86,14 @@ class DriverSpinQCloudBase(DriverBase):
         self.platform_name = None
 
     def init_driver(self):
-        """Init driver"""
+        """Init driver."""
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def close_driver(self):
-        """Close driver"""
+        """Close driver."""
 
     def validate_driver_configs(self, configs):
-        """Validate driver configs
+        """Validate driver configs.
 
         Args:
             configs: configs dictionary
@@ -126,15 +126,14 @@ class DriverSpinQCloudBase(DriverBase):
         return success, err_msg
 
     def fetch_configs(self):
-        """
-        Fetch configs
+        """Fetch configs.
 
         Returns:
             remote transpiler configs
         """
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
-        """Run job
+        """Run job.
 
         Args:
             job_id: job ID
@@ -223,7 +222,7 @@ class DriverSpinQCloudBase(DriverBase):
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def convert_results(self, results, shots):
-        """Convert results
+        """Convert results.
 
         Args:
              results (dict): spinq results
@@ -232,7 +231,6 @@ class DriverSpinQCloudBase(DriverBase):
         Returns:
             qcos results
         """
-
         converted_results = {}
         remaining = shots
 
@@ -250,7 +248,7 @@ class DriverSpinQCloudBase(DriverBase):
         return converted_results
 
     def cancel(self, job_id):
-        """Cancel running job in driver
+        """Cancel running job in driver.
 
         Args:
             job_id: job id

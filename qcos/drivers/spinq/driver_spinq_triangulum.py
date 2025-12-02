@@ -19,7 +19,7 @@ from qcos.drivers.spinq.driver_spinq_cloud_base import DriverSpinQCloudBase
 
 
 class DriverSpinQCloudTriangulum(DriverSpinQCloudBase):
-    """量旋科技 三角座 核磁驱动 (Cloud版本)
+    """量旋科技 三角座 核磁驱动 (Cloud版本).
 
     SpinQ triangulum NMR driver (Cloud)
     https://cloud.spinq.cn

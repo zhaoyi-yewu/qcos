@@ -62,5 +62,5 @@ if [ "${fix}" = false ]; then
   mypy qcos
 else
   echo "Fix code errors in dir: qcos (ruff)"
-  ruff check --preview --fix qcos
+  ruff check --preview --unsafe-fixes --fix qcos
 fi

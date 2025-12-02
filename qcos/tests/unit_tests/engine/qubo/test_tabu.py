@@ -23,10 +23,10 @@ from qcos.engine.qubo.tabu import QUBOSolution, TabuSearch
 
 
 class TestTabuSearch:
-    """Unit testing for QUBOSolution class and TabuSearch class"""
+    """Unit testing for QUBOSolution class and TabuSearch class."""
 
     def test_initialization(self):
-        """Test QUBOSolution initialization"""
+        """Test QUBOSolution initialization."""
         solution = np.array([1, 0, 1])
         energy = 5.0
         qubo_solution = QUBOSolution(solution=solution, energy=energy)
@@ -34,7 +34,7 @@ class TestTabuSearch:
         assert qubo_solution.energy == energy
 
     def test_calculate_energy(self):
-        """Test energy calculation"""
+        """Test energy calculation."""
         qubo_matrix = np.array([[1, 0.5, 0.3], [0.5, 2, 0.4], [0.3, 0.4, 3]])
 
         # Test with solution
@@ -50,7 +50,7 @@ class TestTabuSearch:
         assert energy_zero == 0.0
 
     def test_calculate_energy_edge_cases(self):
-        """Test energy calculation with edge cases"""
+        """Test energy calculation with edge cases."""
         # Zero matrix
         zero_qubo = np.zeros((2, 2))
         solution = np.array([1, 1])
@@ -64,7 +64,7 @@ class TestTabuSearch:
         assert energy == 3.0  # 1 * 1 + 2 * 1
 
     def setup_method(self):
-        """Setup test fixtures"""
+        """Setup test fixtures."""
         self.qubo_matrix = np.array([
             [1, 0.5, 0.3],
             [0.5, 2, 0.4],
@@ -73,7 +73,7 @@ class TestTabuSearch:
         self.init_solution = np.array([1, 0, 1])
 
     def test_tabu_initialization(self):
-        """Test TabuSearch initialization"""
+        """Test TabuSearch initialization."""
         # Test with custom initial solution
         tabu = TabuSearch(
             qubo=self.qubo_matrix, init_solution=self.init_solution
@@ -97,7 +97,7 @@ class TestTabuSearch:
         assert tabu.best_energy == pytest.approx(expected_energy)
 
     def test_initialization_random_solution(self):
-        """Test initialization with random solution"""
+        """Test initialization with random solution."""
         with patch("numpy.random.randint") as mock_randint:
             mock_randint.return_value = np.array([0, 1, 0])
             tabu = TabuSearch(qubo=self.qubo_matrix, init_solution=None)
@@ -105,7 +105,7 @@ class TestTabuSearch:
             assert np.array_equal(tabu.init_solution, np.array([0, 1, 0]))
 
     def test_determine_tabu_tenure(self):
-        """Test tabu tenure determination"""
+        """Test tabu tenure determination."""
         # Test different problem sizes
         test_cases = [
             (10, 10),  # size < 20
@@ -123,7 +123,7 @@ class TestTabuSearch:
             assert tabu.n_tabu == expected_tenure
 
     def test_update_tabu(self):
-        """Test tabu table update"""
+        """Test tabu table update."""
         tabu = TabuSearch(
             qubo=self.qubo_matrix, init_solution=self.init_solution
         )
@@ -141,7 +141,7 @@ class TestTabuSearch:
         assert tabu.tabu_tenure[2] == 3
 
     def test_update_impact(self):
-        """Test impact calculation"""
+        """Test impact calculation."""
         tabu = TabuSearch(
             qubo=self.qubo_matrix, init_solution=self.init_solution
         )
@@ -162,7 +162,7 @@ class TestTabuSearch:
             assert impact[i] == pytest.approx(expected_impact)
 
     def test_find_best_flip(self):
-        """Test finding best flip"""
+        """Test finding best flip."""
         tabu = TabuSearch(
             qubo=self.qubo_matrix, init_solution=self.init_solution
         )
@@ -185,7 +185,7 @@ class TestTabuSearch:
         assert best_index == 0
 
     def test_solve_basic(self):
-        """Test basic solve functionality"""
+        """Test basic solve functionality."""
         # Use a simple QUBO that's easy to solve
         simple_qubo = np.array([[1, 0], [0, 2]])
         init_solution = np.array([1, 1])
@@ -205,7 +205,7 @@ class TestTabuSearch:
         assert tabu.best_energy <= tabu.energy
 
     def test_solve_with_improvement(self):
-        """Test solve when improvement is found"""
+        """Test solve when improvement is found."""
         # QUBO where [0,0] is optimal (energy = 0)
         qubo = np.array([[1, 0.5], [0.5, 1]])
         init_solution = np.array([1, 1])  # Energy = 3

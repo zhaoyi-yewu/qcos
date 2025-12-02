@@ -36,99 +36,9 @@ from qcos.common.constant import Constant, HttpCode
 VERSION = "1.0.0"
 DESCRIPTION = "QCOS command line interface"
 
-"""
-# pylint: disable=line-too-long
-# noqa: E501
-QCOS commands:
-
-[Job commands]
-* Submit Job
-1. 测试用dummy驱动
-qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
-1.1 使用profiling进行模块性能测量
-qcos-cli submit-job --code-type qasm --shots 10 --profiling scheduling driver:parse driver:transpile driver:run --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
-1.2 使用callbacks进行回调
-qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
-1.3 指定job-id
-qcos-cli submit-job --job-id 00000000-0000-4000-8000-000000000001 --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
-1.4 指定job名称
-qcos-cli submit-job --job-name test-dummy --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
-1.5 单作业多代码执行 (线路串行模式)
-qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm ./samples/qasm/2.0/simple-qasm.qasm
-1.6 多作业并行执行 (线路聚合模式)
-qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation internal --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm ./samples/qasm/2.0/simple-qasm.qasm
-qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation external --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
-
-2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
-qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
-3. 中科酷原-汉原1 中性原子驱动, 真实运行
-qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
-4. 玻色量子-光量子伊辛机, 真实运行
-qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.json
-qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.csv
-qcos-cli submit-job --code-type qubo --backend tiangong100_v2 -f ./samples/qubo/simple-qubo.json
-qcos-cli submit-job --code-type qubo --backend tiangong100_v2 -f ./samples/qubo/simple-qubo.csv
-qcos-cli submit-job --code-type qubo --backend tiangong550_v2 -f ./samples/qubo/simple-qubo.json
-qcos-cli submit-job --code-type qubo --backend tiangong550_v2 -f ./samples/qubo/simple-qubo.csv
-qcos-cli submit-job --code-type qubo --backend tiangong1000_v2 -f ./samples/qubo/simple-qubo.json
-qcos-cli submit-job --code-type qubo --backend tiangong1000_v2 -f ./samples/qubo/simple-qubo.csv
-5. 量旋科技, 真实运行
-qcos-cli submit-job --code-type qasm --shots 10 --backend sping_rpc -f ./samples/qasm/2.0/simple-qasm.qasm
-6. 幺正量子, 真实运行
-qcos-cli submit-job --code-type qasm3 --shots 100 --backend uqc_matrix2 -f ./samples/qasm/3.0/2-qubit-sample.qasm
-
-* Get job status
-qcos-cli get-job-status 00000000-0000-4000-8000-000000000001
-
-* Get job results
-qcos-cli get-job-results 00000000-0000-4000-8000-000000000001
-
-* List all jobs
-qcos-cli list-jobs
-
-* Cancel job
-qcos-cli cancel-jobs 00000000-0000-4000-8000-000000000001
-qcos-cli cancel-jobs -y all
-
-* Delete job
-qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
-qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002
-qcos-cli delete-jobs -y all
-
-* Set job results (for callbacks or test purpose)
-qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}'
-** Set multi-results for multi-source-code job
-qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}' '{"code": -104, "message": "error test"}'
-
-[Version commands]
-* Get server version
-qcos-cli version
-
-[System commands]
-* Ping server
-qcos-cli ping 123
-
-* Show system information
-qcos-cli system-info
-
-[Driver commands]
-* List drivers
-qcos-cli list-drivers
-
-* Get driver details
-qcos-cli get-driver DriverDummy
-
-[Device commands]
-* List devices
-qcos-cli list-devices
-
-* Get device details
-qcos-cli get-device dummy
-"""
-
 
 class QcosShell(App):
-    """QCOS shell"""
+    """QCOS shell."""
 
     CMD_GROUP_DEFAULT = "Default"
     CMD_GROUP_DRIVER = "Driver"
@@ -157,8 +67,7 @@ class QcosShell(App):
         self.client = None
 
     def clean_up(self, cmd, result, err):
-        """Clean up after command execution"""
-
+        """Clean up after command execution."""
         super().clean_up(cmd, result, err)
         if hasattr(cmd, "extra_messages"):
             cmd.app.stdout.write(f"{cmd.extra_messages}\n")
@@ -335,7 +244,7 @@ class QcosShell(App):
 
 
 class HelpAction(argparse.Action):
-    """Print help message including sub-commands
+    """Print help message including sub-commands.
 
     Provide a custom action so the -h and --help options
     to the main app will print a list of the commands.
@@ -372,11 +281,11 @@ class HelpAction(argparse.Action):
 
 
 class CommandHelper:
-    """Command helper"""
+    """Command helper."""
 
     @staticmethod
     def handle_invalid_arguments(results):
-        """Handle invalid arguments
+        """Handle invalid arguments.
 
         Args:
             results: results
@@ -389,7 +298,7 @@ class CommandHelper:
 
     @staticmethod
     def check_results(resource, name, status_code, reason, jsonrpc_response):
-        """Check results
+        """Check results.
 
         Args:
             resource: resource
@@ -440,7 +349,7 @@ class CommandHelper:
     def get_table_list_data(
         list_dict_values, header_list, is_dict=False, ignore_header_list=None
     ):
-        """Get list of data for showing table in cli
+        """Get list of data for showing table in cli.
 
         Args:
             list_dict_values: list or dict of values
@@ -503,7 +412,7 @@ class CommandHelper:
 
     @staticmethod
     def get_table_data(values):
-        """Get data for showing table in cli
+        """Get data for showing table in cli.
 
         Args:
             values: values
@@ -528,12 +437,12 @@ class CommandHelper:
 
 # Version commands
 class Version(Command):
-    """Get server version"""
+    """Get server version."""
 
     group = QcosShell.CMD_GROUP_VERSION
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -545,7 +454,7 @@ class Version(Command):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -577,12 +486,12 @@ class Version(Command):
 
 # Driver commands
 class GetDrivers(Lister):
-    """Get driver list"""
+    """Get driver list."""
 
     group = QcosShell.CMD_GROUP_DRIVER
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -594,7 +503,7 @@ class GetDrivers(Lister):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -623,12 +532,12 @@ class GetDrivers(Lister):
 
 
 class GetDriver(ShowOne):
-    """Get driver info"""
+    """Get driver info."""
 
     group = QcosShell.CMD_GROUP_DRIVER
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -641,7 +550,7 @@ class GetDriver(ShowOne):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -661,12 +570,12 @@ class GetDriver(ShowOne):
 
 # Device commands
 class GetDevices(Lister):
-    """Get device list"""
+    """Get device list."""
 
     group = QcosShell.CMD_GROUP_DEVICE
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -678,7 +587,7 @@ class GetDevices(Lister):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -706,12 +615,12 @@ class GetDevices(Lister):
 
 
 class GetDevice(ShowOne):
-    """Get device info"""
+    """Get device info."""
 
     group = QcosShell.CMD_GROUP_DEVICE
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -724,7 +633,7 @@ class GetDevice(ShowOne):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -744,12 +653,12 @@ class GetDevice(ShowOne):
 
 # Transpiler commands
 class GetTranspilers(Lister):
-    """Get transpiler list"""
+    """Get transpiler list."""
 
     group = QcosShell.CMD_GROUP_TRANSPILER
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -761,7 +670,7 @@ class GetTranspilers(Lister):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -788,12 +697,12 @@ class GetTranspilers(Lister):
 
 
 class GetTranspiler(ShowOne):
-    """Get transpiler info"""
+    """Get transpiler info."""
 
     group = QcosShell.CMD_GROUP_TRANSPILER
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -808,7 +717,7 @@ class GetTranspiler(ShowOne):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -828,12 +737,12 @@ class GetTranspiler(ShowOne):
 
 # System commands
 class Ping(Command):
-    """Ping-pong to verify the availability of the system"""
+    """Ping-pong to verify the availability of the system."""
 
     group = QcosShell.CMD_GROUP_SYSTEM
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -848,7 +757,7 @@ class Ping(Command):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -864,12 +773,12 @@ class Ping(Command):
 
 
 class SystemInfo(ShowOne):
-    """Show system information"""
+    """Show system information."""
 
     group = QcosShell.CMD_GROUP_SYSTEM
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -881,7 +790,7 @@ class SystemInfo(ShowOne):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -899,7 +808,7 @@ class SystemInfo(ShowOne):
 
 # Job commands
 class SubmitJob(Command):
-    """Submit job"""
+    """Submit job."""
 
     group = QcosShell.CMD_GROUP_JOB
 
@@ -912,7 +821,7 @@ class SubmitJob(Command):
         return file_path
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -1031,7 +940,7 @@ class SubmitJob(Command):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -1221,12 +1130,12 @@ class SubmitJob(Command):
 
 
 class GetJobStatus(ShowOne):
-    """Get job status"""
+    """Get job status."""
 
     group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -1239,7 +1148,7 @@ class GetJobStatus(ShowOne):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -1267,12 +1176,12 @@ class GetJobStatus(ShowOne):
 
 
 class GetJobResults(ShowOne):
-    """Get job results"""
+    """Get job results."""
 
     group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -1285,7 +1194,7 @@ class GetJobResults(ShowOne):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -1323,12 +1232,12 @@ class GetJobResults(ShowOne):
 
 
 class GetJobs(Lister):
-    """Get jobs"""
+    """Get jobs."""
 
     group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -1340,7 +1249,7 @@ class GetJobs(Lister):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -1375,12 +1284,12 @@ class GetJobs(Lister):
 
 
 class CancelJobs(Command):
-    """Cancel jobs"""
+    """Cancel jobs."""
 
     group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -1401,7 +1310,7 @@ class CancelJobs(Command):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -1468,12 +1377,12 @@ class CancelJobs(Command):
 
 
 class DeleteJobs(Command):
-    """Delete jobs"""
+    """Delete jobs."""
 
     group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -1494,7 +1403,7 @@ class DeleteJobs(Command):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -1561,12 +1470,12 @@ class DeleteJobs(Command):
 
 
 class UpdateJob(Command):
-    """Update job"""
+    """Update job."""
 
     group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -1588,7 +1497,7 @@ class UpdateJob(Command):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -1634,12 +1543,12 @@ class UpdateJob(Command):
 
 
 class SetJobResults(Command):
-    """Set job results"""
+    """Set job results."""
 
     group = QcosShell.CMD_GROUP_JOB
 
     def get_parser(self, prog_name):
-        """Get parser for this command
+        """Get parser for this command.
 
         Args:
             prog_name: program name
@@ -1660,7 +1569,7 @@ class SetJobResults(Command):
         return parser
 
     def take_action(self, parsed_args):
-        """Take action for command line arguments
+        """Take action for command line arguments.
 
         Args:
             parsed_args: command line arguments
@@ -1722,7 +1631,7 @@ command_manager.add_command("list-transpilers", GetTranspilers)
 
 
 def set_debug_option(args):
-    """Set debug option"""
+    """Set debug option."""
     parser = argparse.ArgumentParser(description="", add_help=False)
     parser.add_argument(
         "--debug",
@@ -1774,7 +1683,7 @@ SOURCE_CODE_FILE_INFO = {
 
 
 def get_content_by_type(code_type, file_path):
-    """Get file content by file type
+    """Get file content by file type.
 
     Args:
         code_type: code type
@@ -1785,7 +1694,7 @@ def get_content_by_type(code_type, file_path):
     """
 
     def get_file_types():
-        """Get file types
+        """Get file types.
 
         Returns:
             file types
@@ -1830,10 +1739,10 @@ def get_content_by_type(code_type, file_path):
 
 # Application needs to be run with command line to parse.
 def main(argv=sys.argv[1:]):
-    """Main function
+    """Main function.
 
     Args:
-        argv: arguments (Default value = sys.argv[1:])
+        argv: arguments of cli
     """
     app = QcosShell(
         description=DESCRIPTION,

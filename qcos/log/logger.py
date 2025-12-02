@@ -27,7 +27,7 @@ from qcos.common.config import Config
 
 
 class ColouredFormatter(logging.Formatter):
-    """Coloured Formatter for logger module"""
+    """Coloured Formatter for logger module."""
 
     RESET = "\x1b[0m"
     WHITE = "\x1b[37m"
@@ -36,7 +36,7 @@ class ColouredFormatter(logging.Formatter):
     GREY = "\x1b[38m"
 
     def format(self, record, colour=False):
-        """Format log record"""
+        """Format log record."""
         message = super().format(record)
 
         if not colour:
@@ -70,7 +70,7 @@ class ColouredFormatter(logging.Formatter):
 
 
 class ColouredStreamHandler(logging.StreamHandler):
-    """Coloured Stream Handler for logger module"""
+    """Coloured Stream Handler for logger module."""
 
     def format(self, record, colour=False):
         if not isinstance(self.formatter, ColouredFormatter):
@@ -93,7 +93,7 @@ class ColouredStreamHandler(logging.StreamHandler):
 
 
 class LogFilter(logging.Filter):
-    """This filter some noise from the logs"""
+    """This filter some noise from the logs."""
 
     def filter(self, record):
         if (
@@ -111,7 +111,7 @@ class LogFilter(logging.Filter):
 
 
 class CompressedRotatingFileHandler(RotatingFileHandler):
-    """Custom rotating file handler with compression support"""
+    """Custom rotating file handler with compression support."""
 
     def doRollover(self):
         if self.stream:

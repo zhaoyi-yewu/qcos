@@ -19,7 +19,7 @@ from enum import Enum
 
 
 class OperationType(Enum):
-    """操作类型"""
+    """操作类型."""
 
     SINGLE_QUBIT_OPERATION = 1
     DOUBLE_QUBIT_OPERATION = 2
@@ -33,7 +33,7 @@ class OperationType(Enum):
 
 
 class BaseOperation:
-    """中间表示类基类"""
+    """中间表示类基类."""
 
     def __init__(
         self,
@@ -42,7 +42,7 @@ class BaseOperation:
         arg_value=None,
         operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
     ) -> None:
-        """Init BaseOperation
+        """Init BaseOperation.
 
         Args:
             name: 操作名称
@@ -65,8 +65,7 @@ class BaseOperation:
         )
 
     def to_openqasm(self, qubit_prefix: str = "q") -> str:
-        """
-        Convert the current operation into an OpenQASM statement.
+        """Convert the current operation into an OpenQASM statement.
 
         Examples:
             H               -> h q[0];

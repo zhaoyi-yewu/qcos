@@ -32,7 +32,7 @@ from qcos.transpiler.transpiler_base import TranspilerBase
 
 
 class TranspilerCmss(TranspilerBase):
-    """Transpiler Class for CMSS"""
+    """Transpiler Class for CMSS."""
 
     def __init__(
         self, optimization_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL
@@ -71,18 +71,15 @@ class TranspilerCmss(TranspilerBase):
         self.qpu_config = None
 
     def init_transpiler(self):
-        """Init transpiler"""
+        """Init transpiler."""
 
     def mapping(self, qpu_cfg, opt_result_dict):
-        """mapping
+        """Mapping.
 
         Args:
           qpu_cfg: qpu_cfg
           opt_result_dict: opt_result_dict
         :return mapping result dict
-
-        Returns:
-
         """
         factory = MappingFactory()
         mapper = factory.get_mapper_by_type(trans_cfg_inst.get_tech_type())
@@ -119,14 +116,11 @@ class TranspilerCmss(TranspilerBase):
             return mapping_res, mapping_dict
 
     def parse(self, src_code_dict):
-        """parse src_code_dict
+        """Parse src_code_dict.
 
         Args:
           src_code_dict: src_code_dict
         :return parse result
-
-        Returns:
-
         """
         # compile
         parse_result_dict = {}

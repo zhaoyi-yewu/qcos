@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+#!/bin/sh
 # ----------------------------------------------------------------------
 # Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
@@ -8,32 +7,31 @@
 # of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
-#     WITHOUT WARRANTIES OF ANY KIND,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# fix file permissions
+set -e
 
-from pydantic import BaseModel
+cwd=$(dirname "${BASH_SOURCE[0]}")
+top_dir=$(realpath ${cwd}/..)
 
+echo "Run code-linter ..."
+${top_dir}/cicd/code-linter.sh
+echo
 
-class GetVersionRequest(BaseModel):
-    """Get Version Request.
+echo "Run code-style ..."
+${top_dir}/cicd/code-formatter.sh
+echo
 
-    Pydantic Model for Get Version Request.
-    """
+echo "Run UT ..."
+${top_dir}/cicd/run-tests.sh -u
+echo
 
+echo "Run coverage ..."
+${top_dir}/cicd/run-tests.sh -c
 
-class GetVersionResponse(BaseModel):
-    """Get Version Response.
+echo "CICD pipeline completed successfully"
 
-    Pydantic Model for Get Version Response.
-    """
-
-    # version
-    version: str
-    api_version: str
-    supported_api_versions: list[dict]
-    platform_version: str
-    capabilities: dict

@@ -20,7 +20,7 @@ from qcos.transpiler.cmss.common.base_operation import OperationType
 
 
 class Move(BaseOperation):
-    """移动操作, 用于执行量子比特在存储区和操纵区之间的移动操作"""
+    """移动操作, 用于执行量子比特在存储区和操纵区之间的移动操作."""
 
     def __init__(
         self,

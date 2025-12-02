@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class DriverBase:
-    """Quantum Computer base driver"""
+    """Quantum Computer base driver."""
 
     # Data types
     DATA_TYPE_GATE_SEQUENCE = "gate_sequence"
@@ -130,7 +130,7 @@ class DriverBase:
         self.driver_options_schema = None
 
     def validate_driver(self):
-        """Validate driver"""
+        """Validate driver."""
         success = True
         err_msgs = []
         if self.enable_transpiler:
@@ -156,7 +156,7 @@ class DriverBase:
         return success, "\n".join(err_msgs)
 
     def validate_driver_configs(self, configs):
-        """Validate driver configs
+        """Validate driver configs.
 
         Args:
             configs: configs to validate
@@ -170,21 +170,21 @@ class DriverBase:
         )
 
     def init_driver(self):
-        """Init driver"""
+        """Init driver."""
         raise NotImplementedError(
             f"Driver: {self.__class__.__name__} "
             f"must implement method: init_driver"
         )
 
     def close_driver(self):
-        """Close driver"""
+        """Close driver."""
         raise NotImplementedError(
             f"Driver: {self.__class__.__name__} "
             f"must implement method: close_driver"
         )
 
     def get_driver_options_schema(self):
-        """Get driver options schema
+        """Get driver options schema.
 
         Returns:
             driver options schema
@@ -192,7 +192,7 @@ class DriverBase:
         return self.driver_options_schema
 
     def update_driver_options(self, driver_options):
-        """Update driver options
+        """Update driver options.
 
         Args:
             driver_options: new driver options
@@ -200,7 +200,7 @@ class DriverBase:
         self.driver_options.update(driver_options)
 
     def get_driver_info(self):
-        """Show driver info"""
+        """Show driver info."""
         show_list = [
             f"[{self.__class__.__name__}]",
             f"name: {self.name}",
@@ -216,7 +216,7 @@ class DriverBase:
         return "\n".join(show_list)
 
     def set_name(self, name):
-        """Set driver name
+        """Set driver name.
 
         Args:
             name: driver_name
@@ -224,7 +224,7 @@ class DriverBase:
         self.name = name
 
     def get_name(self):
-        """Get driver name
+        """Get driver name.
 
         Returns:
             driver name
@@ -232,7 +232,7 @@ class DriverBase:
         return self.name
 
     def set_alias_name(self, alias_name):
-        """Set driver alias name
+        """Set driver alias name.
 
         Args:
             alias_name: alias_name
@@ -240,7 +240,7 @@ class DriverBase:
         self.alias_name = alias_name
 
     def get_alias_name(self):
-        """Get driver alias name
+        """Get driver alias name.
 
         Returns:
             driver alias name
@@ -248,7 +248,7 @@ class DriverBase:
         return self.alias_name
 
     def get_description(self):
-        """Get driver description
+        """Get driver description.
 
         Returns:
             driver description
@@ -258,7 +258,7 @@ class DriverBase:
         return self.description
 
     def set_module_name(self, module_name):
-        """Set module name
+        """Set module name.
 
         Args:
             module_name: module name
@@ -266,7 +266,7 @@ class DriverBase:
         self._module_name = module_name
 
     def get_module_name(self):
-        """Get module name
+        """Get module name.
 
         Returns:
             module name
@@ -274,7 +274,7 @@ class DriverBase:
         return self._module_name
 
     def set_class_name(self, class_name):
-        """Set class name
+        """Set class name.
 
         Args:
             class_name: class name
@@ -282,7 +282,7 @@ class DriverBase:
         self._class_name = class_name
 
     def get_class_name(self):
-        """Get class name
+        """Get class name.
 
         Returns:
             class name
@@ -290,17 +290,17 @@ class DriverBase:
         return self._class_name
 
     def get_transpiler(self):
-        """Get transpiler"""
+        """Get transpiler."""
         if self.enable_transpiler:
             return self.transpiler
         return None
 
     def get_supported_code_types(self):
-        """Get supported code types"""
+        """Get supported code types."""
         return self.supported_code_types
 
     def get_supported_basis_gates(self):
-        """Get supported basis gates
+        """Get supported basis gates.
 
         Returns:
             list of supported basis gates
@@ -308,7 +308,7 @@ class DriverBase:
         return self.supported_basis_gates
 
     def get_supported_transpilers(self):
-        """Get supported transpilers
+        """Get supported transpilers.
 
         Returns:
             list of supported transpilers
@@ -316,11 +316,11 @@ class DriverBase:
         return self.supported_transpilers
 
     def get_tech_type(self):
-        """Get tech type"""
+        """Get tech type."""
         return self.tech_type
 
     def set_progress(self, progress):
-        """Set progress
+        """Set progress.
 
         Args:
             progress: progress percentage in integer between 0 and 100
@@ -328,7 +328,7 @@ class DriverBase:
         self.job_runtime_data["run_progress"] = progress
 
     def set_progress_by_task(self, task_name):
-        """Set progress by task name
+        """Set progress by task name.
 
         Args:
             task_name: task name
@@ -338,7 +338,7 @@ class DriverBase:
             self.job_runtime_data["run_progress"] = progress
 
     def get_progress(self):
-        """Get progress
+        """Get progress.
 
         Returns:
             progress percentage in integer between 0 and 100
@@ -346,7 +346,7 @@ class DriverBase:
         return self.job_runtime_data["run_progress"]
 
     def set_device_status(self, device_status):
-        """Set device status
+        """Set device status.
 
         Args:
             device_status: device status
@@ -354,7 +354,7 @@ class DriverBase:
         self.job_runtime_data["device_status"] = device_status
 
     def set_configs(self, configs):
-        """Set configs
+        """Set configs.
 
         Args:
             configs: configs to set
@@ -362,7 +362,7 @@ class DriverBase:
         self.job_runtime_data["configs"] = configs
 
     def get_configs(self):
-        """Get configs
+        """Get configs.
 
         Returns:
             configs
@@ -370,8 +370,7 @@ class DriverBase:
         return self.job_runtime_data["configs"]
 
     def fetch_configs(self):
-        """
-        Fetch configs
+        """Fetch configs.
 
         Returns:
             remote transpiler configs
@@ -389,7 +388,7 @@ class DriverBase:
         data_type=DATA_TYPE_GATE_SEQUENCE,
         shots=1,
     ):
-        """Run job
+        """Run job.
 
         Args:
             job_id: job ID
@@ -410,7 +409,7 @@ class DriverBase:
         data_type=DATA_TYPE_GATE_SEQUENCE,
         shots=1,
     ):
-        """Dry-run job
+        """Dry-run job.
 
         Args:
             job_id: job ID
@@ -442,8 +441,9 @@ class DriverBase:
         )
 
     def set_results(self, job_id, data_index, results):
-        """Set job results
-        Sample: results = {"00": 9, "11": 1}
+        """Set job results.
+
+        Sample: results = {"00": 9, "11": 1}.
 
         Args:
             job_id: job ID
@@ -455,7 +455,7 @@ class DriverBase:
         self.job_runtime_data["results"][job_id][data_index] = results
 
     def get_results(self, job_id=None, data_index=None):
-        """Get results
+        """Get results.
 
         Args:
             job_id: job ID (Default value = None)
@@ -478,7 +478,7 @@ class DriverBase:
         return self.job_runtime_data["results"]
 
     def get_default_data_type(self):
-        """Get default data type
+        """Get default data type.
 
         Returns:
             default data type
@@ -486,7 +486,7 @@ class DriverBase:
         return self.default_data_type
 
     def set_max_qubits(self, max_qubits):
-        """Set max qubits
+        """Set max qubits.
 
         Args:
             max_qubits: max qubits
@@ -494,7 +494,7 @@ class DriverBase:
         self.max_qubits = max_qubits
 
     def get_max_qubits(self):
-        """Get max qubits
+        """Get max qubits.
 
         Returns:
             max qubits
@@ -502,7 +502,7 @@ class DriverBase:
         return self.max_qubits
 
     def get_fake_results(self, num_qubits, shots, data):
-        """Get fake results
+        """Get fake results.
 
         Args:
             num_qubits: number of qubits

@@ -85,8 +85,7 @@ class TestMappingRouting:
         phy_gates: list[GateOperation],
         mapping: list[int],
     ):
-        """
-        Simulate the routing process to verify if the result is feasible.
+        """Simulate the routing process to verify if the result is feasible.
 
         Args:
             ir (list[GateOperation]): gates list of logic gates.
@@ -165,7 +164,7 @@ class TestMappingRouting:
         return True
 
     def run_test(self, qasm):
-        """run one qasm test case"""
+        """Run one qasm test case."""
         dg = DG()
         dg.from_qasm_string(qasm)
         ir = dg.origin_ir
@@ -216,7 +215,7 @@ class TestMappingRouting:
         )
 
     def run_tests(self, path: str):
-        """run all qasm test cases in directory.
+        """Run all qasm test cases in directory.
 
         Args:
             path (str): directory of qasm test cases.

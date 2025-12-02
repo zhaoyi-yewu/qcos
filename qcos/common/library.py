@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 
 class Library:
-    """Library"""
+    """Library."""
 
     @staticmethod
     def get_brief_description(description):
@@ -67,7 +67,7 @@ class Library:
 
     @staticmethod
     def update_dict(dictionary, new_kvs):
-        """Update a dictionary
+        """Update a dictionary.
 
         Args:
             dictionary: dictionary to be updated
@@ -83,7 +83,7 @@ class Library:
 
     @staticmethod
     def remove_duplicates(lst):
-        """Remove duplicates elements from a list
+        """Remove duplicates elements from a list.
 
         Args:
             lst: list
@@ -99,7 +99,7 @@ class Library:
 
     @staticmethod
     def kill_pid(pid_file):
-        """Kill existing process from pid file
+        """Kill existing process from pid file.
 
         Args:
             pid_file: pid file path
@@ -135,7 +135,7 @@ class Library:
 
     @staticmethod
     def create_file(file_path, file_content, mkdir=False, mode=None):
-        """Create file
+        """Create file.
 
         Args:
             file_path: file path
@@ -160,7 +160,7 @@ class Library:
 
     @staticmethod
     def create_pid_file(file_path):
-        """Crete pid file
+        """Crete pid file.
 
         Args:
             file_path: file path
@@ -170,7 +170,7 @@ class Library:
 
     @staticmethod
     def create_temp_file(file_content, dir=None, dir_mode=None):
-        """Create temp file
+        """Create temp file.
 
         Args:
             file_content: file content
@@ -198,7 +198,7 @@ class Library:
 
     @staticmethod
     def rm_file(file_path):
-        """remove file
+        """Remove file.
 
         Args:
             file_path: file path
@@ -215,7 +215,7 @@ class Library:
 
     @staticmethod
     def find_dirs(base_dir="/", pattern="*", recursive=False, excludes=[]):
-        """Find all dirs
+        """Find all dirs.
 
         Args:
             base_dir: base dir to search (Default value = "/")
@@ -247,7 +247,7 @@ class Library:
 
     @staticmethod
     def find_files(base_dir, pattern="*", recursive=False, exclusives=None):
-        """Find files under given dir
+        """Find files under given dir.
 
         Args:
             base_dir: base dir to search
@@ -282,7 +282,7 @@ class Library:
 
     @staticmethod
     def mkdir(dir_name, mode=None):
-        """Create dir
+        """Create dir.
 
         Args:
             dir_name: dir name
@@ -301,7 +301,7 @@ class Library:
 
     @staticmethod
     def mkdirs(dir, mode=None):
-        """Create dirs
+        """Create dirs.
 
         Args:
             dir: dir name
@@ -318,7 +318,7 @@ class Library:
 
     @staticmethod
     def rmdir(dir):
-        """Remove dir
+        """Remove dir.
 
         Args:
             dir: dir name
@@ -340,7 +340,7 @@ class Library:
         base_class=None,
         excluded_class=None,
     ):
-        """Import class from package dir
+        """Import class from package dir.
 
         Args:
             pkg_dir: package dir
@@ -377,7 +377,7 @@ class Library:
 
     @staticmethod
     def str_match(str, regex, ignore_case=False):
-        """Match string with regex
+        """Match string with regex.
 
         Args:
             str: string
@@ -397,7 +397,7 @@ class Library:
 
     @staticmethod
     def read_file(file_path, replace_pattern=None, customer_format=None):
-        """Read text file
+        """Read text file.
 
         Args:
             file_path: file path
@@ -428,7 +428,7 @@ class Library:
 
     @staticmethod
     def read_toml_file(file_path: str):
-        """Read toml file
+        """Read toml file.
 
         Args:
             file_path: toml file path
@@ -447,7 +447,7 @@ class Library:
 
     @staticmethod
     def create_toml(file_path: str, data: dict):
-        """Write dict to toml file
+        """Write dict to toml file.
 
         Args:
             file_path: file_path
@@ -465,7 +465,7 @@ class Library:
 
     @staticmethod
     def get_current_datetime():
-        """Get current datetime
+        """Get current datetime.
 
         Returns:
             datetime
@@ -487,7 +487,7 @@ class Library:
 
     @staticmethod
     def validate_values_enum(value, param_name, value_list, allow_none=False):
-        """Validate values for enum
+        """Validate values for enum.
 
         Args:
             value: value
@@ -510,7 +510,7 @@ class Library:
 
     @staticmethod
     def validate_values_uuid(value, param_name):
-        """Validate values for uuid
+        """Validate values for uuid.
 
         Args:
             value: value
@@ -539,7 +539,7 @@ class Library:
     def validate_values_range(
         value, param_name, min_value=None, max_value=None
     ):
-        """Validate values for int range
+        """Validate values for int range.
 
         Args:
             value: value
@@ -571,7 +571,7 @@ class Library:
     def validate_values_length(
         value, param_name, min_value=None, max_value=None, allow_none=False
     ):
-        """Validate values for int range
+        """Validate values for int range.
 
         Args:
             value: value
@@ -604,7 +604,7 @@ class Library:
 
     @staticmethod
     def validate_values_list(value, param_name, value_type, allow_none=False):
-        """Validate values for list
+        """Validate values for list.
 
         Args:
             value: value
@@ -642,7 +642,7 @@ class Library:
     def validate_schema(
         value, schema_obj, allow_none=False, ignore_extra_keys=False
     ):
-        """Validate schema values
+        """Validate schema values.
 
         Args:
             value: value to be validated
@@ -669,7 +669,7 @@ class Library:
 
     @staticmethod
     def validate_qubo_matrices(qubo_matrices):
-        """validate qubo matrices
+        """Validate qubo matrices.
 
         Args:
             qubo_matrices: qubo matrices
@@ -723,7 +723,7 @@ class Library:
         success_http_code=[200, 201],
         debug=False,
     ):
-        """Call http api
+        """Call http api.
 
         Args:
             url: api url
@@ -792,7 +792,7 @@ class Library:
         success_http_code=[200, 201],
         debug=False,
     ):
-        """Async call http api
+        """Async call http api.
 
         Args:
             url: api url
@@ -871,7 +871,7 @@ class Library:
 
     @staticmethod
     def is_valid_url(url, schemes):
-        """Check if url is valid
+        """Check if url is valid.
 
         Args:
             url: url to check
@@ -909,7 +909,7 @@ class Library:
 
     @staticmethod
     def loop_with_timeout(condition_check, timeout, interval, *args, **kwargs):
-        """Wait loop with timeout
+        """Wait loop with timeout.
 
         Args:
             condition_check: function to check condition
@@ -942,7 +942,7 @@ class Library:
 
     @staticmethod
     def get_nested_dict_value(dictionary, *keys, default=None):
-        """Get nested dict value
+        """Get nested dict value.
 
         Args:
             dictionary: dictionary to get value from
@@ -964,7 +964,7 @@ class Library:
 
     @staticmethod
     def run_callbacks(data, callbacks):
-        """Run callbacks for job
+        """Run callbacks for job.
 
         Args:
             data: data to send
@@ -998,7 +998,7 @@ class Library:
 
     @staticmethod
     async def async_run_callbacks(data, callbacks):
-        """Async run callbacks for job
+        """Async run callbacks for job.
 
         Args:
             data: data to send
@@ -1039,7 +1039,7 @@ class Library:
 
     @staticmethod
     def get_sorted_keys(sort_obj, sort_fields):
-        """Get sorted keys from sort_obj
+        """Get sorted keys from sort_obj.
 
         Args:
             sort_obj: object to be sorted
@@ -1086,7 +1086,7 @@ class Library:
 
     @staticmethod
     def generate_binary_combinations(bit_length, total_count):
-        """Generate binary-bits combinations
+        """Generate binary-bits combinations.
 
         Generate binary-bits combinations with given bit_length and assign
         random percentages
@@ -1146,7 +1146,7 @@ class Library:
 
     @staticmethod
     def md5_encrypt(text):
-        """Encrypt text using md5
+        """Encrypt text using md5.
 
         Args:
             text: Text to be encrypted
@@ -1165,7 +1165,7 @@ class Library:
 
     @staticmethod
     def encrypt_text(plaintext, encryption_prefix="++", fernet_key=""):
-        """Encrypt text
+        """Encrypt text.
 
         Args:
             plaintext: plain text
@@ -1189,7 +1189,7 @@ class Library:
 
     @staticmethod
     def decrypt_text(cipher_text, encryption_prefix="++", fernet_key=""):
-        """Decrypt text
+        """Decrypt text.
 
         Args:
             cipher_text: ciphered text
@@ -1223,8 +1223,7 @@ class Library:
         password_replace="*" * 8,
         keys_to_match=r"^(?:_.*|.*(password|secret|hidden).*)$",
     ):
-        """
-        Mask password
+        """Mask password.
 
         Args:
             configs: configs
@@ -1268,7 +1267,7 @@ class Library:
     def encrypt_virtual_instance_id(
         device_names_list, uuid_str, salt="", encode=False
     ):
-        """Encrypt virtual instance id
+        """Encrypt virtual instance id.
 
         Args:
             device_names_list: device name
@@ -1302,7 +1301,7 @@ class Library:
     def decrypt_virtual_instance_id(
         virtual_instance_id, salt="", encode=False
     ):
-        """Decrypt virtual instance id
+        """Decrypt virtual instance id.
 
         Args:
             virtual_instance_id: virtual instance id
@@ -1345,7 +1344,7 @@ class Library:
 
     @staticmethod
     async def job_callback(flow, flow_run, state, results=None):
-        """Job callback
+        """Job callback.
 
         Args:
             flow: flow
@@ -1439,7 +1438,7 @@ class Library:
 
 
 def _s(secret):
-    """secret text wrapper
+    """Secret text wrapper.
 
     Args:
         secret: secret text to be wrapped

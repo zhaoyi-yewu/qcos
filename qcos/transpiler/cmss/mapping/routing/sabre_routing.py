@@ -81,8 +81,7 @@ class SABRE:
         self.phy_exe_gates = []
 
     def execute(self, gates_list: list[GateOperation], initial_l2p=None):
-        """
-        Execute the SABRE mapping on the input circuit (IR).
+        """Execute the SABRE mapping on the input circuit (IR).
 
         Args:
             gates_list (list[GateOperation]): a list of gates.
@@ -204,8 +203,7 @@ class SABRE:
         self.phy_exe_gates = phy_exe_gates
 
     def get_qubit_num_from_ir(self, gates_list: list[GateOperation]) -> int:
-        """
-        Get the logic qubit number from the gates_list.
+        """Get the logic qubit number from the gates_list.
 
         Args:
             gates_list (list[GateOperation]): a list of gates.
@@ -220,9 +218,7 @@ class SABRE:
         return logic_qubit_num
 
     def cal_distance_matrix(self):
-        """
-        Calculate the distance matrix of the coupling graph.
-        """
+        """Calculate the distance matrix of the coupling graph."""
         dist = []
         phy_qubit_num = self.phy_qubit_num
 
@@ -245,9 +241,7 @@ class SABRE:
         self.dist = dist
 
     def can_execute(self, node: Node):
-        """
-        Whether the node can be executed in physical.
-        """
+        """Whether the node can be executed in physical."""
         if len(node.bits) == 1:
             return True
         elif len(node.bits) == 2:
@@ -258,9 +252,7 @@ class SABRE:
             raise ValueError("The number of node.bits is not 1 or 2")
 
     def obtain_swaps(self):
-        """
-        obtain all candidate swap gates.
-        """
+        """Obtain all candidate swap gates."""
         candidates = []
         phy_bits = set()
         # Only consider SWAPs related to the front layer
@@ -277,8 +269,7 @@ class SABRE:
         return candidates
 
     def get_temp_mapping(self, edge: tuple):
-        """
-        Generate a new logic to physical mapping with a swap.
+        """Generate a new logic to physical mapping with a swap.
 
         Args:
             edge (tuple): a tuple of (u,v), indicate a swap gate.
@@ -293,8 +284,7 @@ class SABRE:
         return new_mapping
 
     def phy_gate(self, logic_gate: GateOperation) -> GateOperation:
-        """
-        Mapping a logic gate to a phy gate with logic2phy.
+        """Mapping a logic gate to a phy gate with logic2phy.
 
         Args:
             logic_gate (GateOperation): a logic gate, with logic qubits in
@@ -310,8 +300,7 @@ class SABRE:
         return physical_gate
 
     def heuristic_cost(self, newl2p: list):
-        """
-        The heuristic_cost function, calculate the cost of the new mapping.
+        """The heuristic_cost function, calculate the cost of the new mapping.
 
         Args:
             newl2p (list): a new logic to physical mapping.

@@ -22,7 +22,7 @@ from qcos.transpiler.common.errors import MappingException
 
 
 class SCRouting(ABC):
-    """超导设备路由搜索类
+    """超导设备路由搜索类.
 
     负责执行基于蒙特卡罗树搜索的量子比特路由，插入SWAP门以满足硬件拓扑约束。
     """
@@ -31,21 +31,21 @@ class SCRouting(ABC):
         self.selec_times = 50  # MCT搜索选择次数
 
     def _layout_list_to_dict(self, layout_list):
-        """将布局列表转换为字典"""
+        """将布局列表转换为字典."""
         layout_dict = {}
         for i, v in enumerate(layout_list):
             layout_dict[i] = v
         return layout_dict
 
     def _layout_dict_reverse(self, layout_dict):
-        """反转布局字典"""
+        """反转布局字典."""
         layout_dict_r = {v: k for k, v in layout_dict.items()}
         return layout_dict_r
 
     def execute_routing(
         self, search_tree, ag, initial_layout, num_q_vir, measure_ops
     ):
-        """执行路由搜索，返回映射后的门列表
+        """执行路由搜索，返回映射后的门列表.
 
         Args:
             search_tree: MCTree 搜索树实例

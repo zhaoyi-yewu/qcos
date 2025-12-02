@@ -24,7 +24,7 @@ from qcos.common.library import Library
 
 
 class StLibrary:
-    """ST Library"""
+    """ST Library."""
 
     @staticmethod
     def submit_job(client, job_info, timeout=30, interval=5):

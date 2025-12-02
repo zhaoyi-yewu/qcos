@@ -32,24 +32,24 @@ from qcos.transpiler.cmss.mapping.utils.dg_swap_opt import (
 
 
 class TestSwapQubits:
-    """Test swap_qubits_ function"""
+    """Test swap_qubits_ function."""
 
     def test_swap_qubits_basic(self):
-        """Test basic swap functionality"""
+        """Test basic swap functionality."""
         qubits = [0, 1, 2, 3]
         swap_qubits = (1, 2)
         result = swap_qubits_(qubits, swap_qubits)
         assert result == [0, 2, 1, 3]
 
     def test_swap_qubits_no_match(self):
-        """Test swap when no qubits match"""
+        """Test swap when no qubits match."""
         qubits = [0, 1, 2, 3]
         swap_qubits = (4, 5)
         result = swap_qubits_(qubits, swap_qubits)
         assert result == [0, 1, 2, 3]
 
     def test_swap_qubits_first_match(self):
-        """Test swap when first qubit matches"""
+        """Test swap when first qubit matches."""
         qubits = [0, 1, 2]
         swap_qubits = (0, 2)
         result = swap_qubits_(qubits, swap_qubits)
@@ -57,10 +57,10 @@ class TestSwapQubits:
 
 
 class TestHybridization:
-    """Test hybridization functions"""
+    """Test hybridization functions."""
 
     def test_hybridization_basic(self):
-        """Test basic hybridization"""
+        """Test basic hybridization."""
         ag = nx.Graph()
         ag.add_edges_from([(0, 1), (1, 2)])
         dg_ori = DGSwap(ag)
@@ -84,7 +84,7 @@ class TestHybridization:
         assert isinstance(result, DGSwap)
 
     def test_hybridization2_basic(self):
-        """Test hybridization2 basic functionality"""
+        """Test hybridization2 basic functionality."""
         ag = nx.Graph()
         ag.add_edges_from([(0, 1), (1, 2)])
         dg_ori = DGSwap(ag)
@@ -101,7 +101,7 @@ class TestHybridization:
         assert isinstance(result, DGSwap)
 
     def test_hybridization3_basic(self):
-        """Test hybridization3 basic functionality"""
+        """Test hybridization3 basic functionality."""
         ag = nx.Graph()
         ag.add_edges_from([(0, 1), (1, 2)])
         dg_ori = DGSwap(ag)
@@ -118,7 +118,7 @@ class TestHybridization:
         assert isinstance(result, DGSwap)
 
     def test_hybridization4_basic(self):
-        """Test hybridization4 basic functionality"""
+        """Test hybridization4 basic functionality."""
         ag = nx.Graph()
         ag.add_edges_from([(0, 1), (1, 2)])
         dg_swap1 = DGSwap(ag)
@@ -138,16 +138,16 @@ class TestHybridization:
 
 
 class TestDGSwap:
-    """Test DGSwap class"""
+    """Test DGSwap class."""
 
     def create_test_ag(self):
-        """Create a test architecture graph"""
+        """Create a test architecture graph."""
         ag = nx.Graph()
         ag.add_edges_from([(0, 1), (1, 2), (2, 3)])
         return ag
 
     def test_init(self):
-        """Test DGSwap initialization"""
+        """Test DGSwap initialization."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         assert dg_swap.root is not None
@@ -157,13 +157,13 @@ class TestDGSwap:
         assert not dg_swap.exchange_log
 
     def test_init_with_cost_func(self):
-        """Test DGSwap initialization with cost_func"""
+        """Test DGSwap initialization with cost_func."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag, cost_func="depth_tie_break")
         assert dg_swap.cost_func == "depth_tie_break"
 
     def test_clear_attrs(self):
-        """Test clear_attrs method"""
+        """Test clear_attrs method."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         dg_swap.exchange_log = [(1, 2)]
@@ -173,14 +173,14 @@ class TestDGSwap:
         assert dg_swap.swap_nodes is None
 
     def test_depth_property(self):
-        """Test depth property"""
+        """Test depth property."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         depth = dg_swap.depth
         assert isinstance(depth, (int, float))
 
     def test_node_scores_property(self):
-        """Test node_scores property"""
+        """Test node_scores property."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         dg_swap.add_gate(("cx", (0, 1), []))
@@ -189,7 +189,7 @@ class TestDGSwap:
         assert isinstance(scores, dict)
 
     def test_node_scores_missing_depth(self):
-        """Test node_scores with missing depth attribute"""
+        """Test node_scores with missing depth attribute."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         dg_swap.add_gate(("cx", (0, 1), []))
@@ -198,14 +198,14 @@ class TestDGSwap:
         assert "Edge missing depth attribute" in str(exc_info.value)
 
     def test_cost_property_depth(self):
-        """Test cost property with depth"""
+        """Test cost property with depth."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag, cost_func="depth")
         cost = dg_swap.cost
         assert cost is not None
 
     def test_cost_property_depth_tie_break(self):
-        """Test cost property with depth_tie_break"""
+        """Test cost property with depth_tie_break."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag, cost_func="depth_tie_break")
         dg_swap.add_gate(("cx", (0, 1), []))
@@ -220,21 +220,21 @@ class TestDGSwap:
             pass
 
     def test_cost_property_none(self):
-        """Test cost property with invalid cost_func"""
+        """Test cost property with invalid cost_func."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag, cost_func="invalid")
         cost = dg_swap.cost
         assert cost is None
 
     def test_cost_depth_property(self):
-        """Test cost_depth property"""
+        """Test cost_depth property."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         cost = dg_swap.cost_depth
         assert isinstance(cost, (int, float))
 
     def test_cost_depth_tie_break_property(self):
-        """Test cost_depth_tie_break property"""
+        """Test cost_depth_tie_break property."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         dg_swap.add_gate(("cx", (0, 1), []))
@@ -250,7 +250,7 @@ class TestDGSwap:
             pass
 
     def test_depths_property(self):
-        """Test depths property"""
+        """Test depths property."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         dg_swap.add_gate(("cx", (0, 1), []))
@@ -265,7 +265,7 @@ class TestDGSwap:
             pass
 
     def test_get_score(self):
-        """Test get_score method"""
+        """Test get_score method."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         dg_swap.add_gate(("cx", (0, 1), []))
@@ -280,14 +280,14 @@ class TestDGSwap:
             pass
 
     def test_add_to_exchange_log(self):
-        """Test add_to_exchange_log method"""
+        """Test add_to_exchange_log method."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         dg_swap.add_to_exchange_log((1, 2))
         assert dg_swap.exchange_log == [(1, 2)]
 
     def test_add_depth_to_all_edges(self):
-        """Test add_depth_to_all_edges method"""
+        """Test add_depth_to_all_edges method."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         dg_swap.add_gate(("cx", (0, 1), []))
@@ -296,7 +296,7 @@ class TestDGSwap:
             assert "depth" in dg_swap.edges[edge]
 
     def test_add_depth_to_edge(self):
-        """Test add_depth_to_edge method"""
+        """Test add_depth_to_edge method."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         node = dg_swap.add_gate(("cx", (0, 1), []))
@@ -305,7 +305,7 @@ class TestDGSwap:
         assert "depth" in dg_swap.edges[edge]
 
     def test_add_depth_to_edge_multiple_gates(self):
-        """Test add_depth_to_edge with multiple gates"""
+        """Test add_depth_to_edge with multiple gates."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         node = dg_swap.add_gate(("cx", (0, 1), []))
@@ -316,7 +316,7 @@ class TestDGSwap:
         assert "Expected exactly one gate" in str(exc_info.value)
 
     def test_check_node_connectivity_single_qubit(self):
-        """Test check_node_connectivity with single qubit"""
+        """Test check_node_connectivity with single qubit."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         node = dg_swap.add_gate(("h", (0,), []))
@@ -324,7 +324,7 @@ class TestDGSwap:
         assert result is True
 
     def test_check_node_connectivity_two_qubits(self):
-        """Test check_node_connectivity with two qubits"""
+        """Test check_node_connectivity with two qubits."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         node = dg_swap.add_gate(("cx", (0, 1), []))
@@ -332,7 +332,7 @@ class TestDGSwap:
         assert result is True
 
     def test_check_node_connectivity_not_connected(self):
-        """Test check_node_connectivity with not connected qubits"""
+        """Test check_node_connectivity with not connected qubits."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         node = dg_swap.add_gate(("cx", (0, 3), []))
@@ -340,14 +340,14 @@ class TestDGSwap:
         assert result is False
 
     def test_exchangeable(self):
-        """Test exchangeable method"""
+        """Test exchangeable method."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         with pytest.raises(NotImplementedError):
             dg_swap.exchangeable(1, 2)
 
     def test_swap_to_cx(self):
-        """Test swap_to_cx method"""
+        """Test swap_to_cx method."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         node = dg_swap.add_gate(("swap", (0, 1), []))
@@ -357,7 +357,7 @@ class TestDGSwap:
         assert all(g[0] == "cx" for g in gates)
 
     def test_swap_to_cx_swap_uppercase(self):
-        """Test swap_to_cx with uppercase SWAP"""
+        """Test swap_to_cx with uppercase SWAP."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         node = dg_swap.add_gate(("SWAP", (0, 1), []))
@@ -367,7 +367,7 @@ class TestDGSwap:
         assert all(g[0] == "cx" for g in gates)
 
     def test_get_node_cx_list_cx(self):
-        """Test get_node_cx_list with cx gate"""
+        """Test get_node_cx_list with cx gate."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         node = dg_swap.add_gate(("cx", (0, 1), []))
@@ -375,7 +375,7 @@ class TestDGSwap:
         assert cx_list == [(0, 1)]
 
     def test_get_node_cx_list_swap(self):
-        """Test get_node_cx_list with swap gate"""
+        """Test get_node_cx_list with swap gate."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         node = dg_swap.add_gate(("swap", (0, 1), []))
@@ -385,7 +385,7 @@ class TestDGSwap:
         assert (1, 0) in cx_list
 
     def test_get_node_cx_list_unexpected_gate(self):
-        """Test get_node_cx_list with unexpected gate"""
+        """Test get_node_cx_list with unexpected gate."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         node = dg_swap.add_gate(("h", (0,), []))
@@ -394,7 +394,7 @@ class TestDGSwap:
         assert "Unexpected gate name" in str(exc_info.value)
 
     def test_qiskit_circuit(self):
-        """Test qiskit_circuit method"""
+        """Test qiskit_circuit method."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         dg_swap.add_gate(("cx", (0, 1), []))

@@ -23,7 +23,7 @@ from .constant import Constant, HttpMethod
 
 
 def is_valid_url(url, schemes):
-    """Check if url is valid
+    """Check if url is valid.
 
     Args:
         url: url to check

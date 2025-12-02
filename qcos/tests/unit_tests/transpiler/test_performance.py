@@ -61,7 +61,8 @@ class TestPerformance:
         validate_gate_ir(transpiled_gates[0], "rx", ["0"], 1, False)
         validate_gate_ir(transpiled_gates[99], "rx", ["99"], 1, False)
 
-        # 针对分解后的ir进行优化，主要是针对分解后可能存在的连续两个相同的旋转门
+        # 针对分解后的ir进行优化，
+        # 主要是针对分解后可能存在的连续两个相同的旋转门
         optimized_gates = optimize_gate(transpiled_gates)
         end = time.time()
         assert optimized_gates is not None

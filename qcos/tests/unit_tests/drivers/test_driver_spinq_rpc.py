@@ -158,7 +158,7 @@ class TestDriverSpinQRpc(unittest.TestCase):
         assert err_msg is not None
 
     def test_submit_task(self):
-        # 设置 available_num_qubits，因为 convert_gates 需要它来初始化 qubit_depth
+        # 设置 available_num_qubits，因为convert_gates需要它来初始化qubit_depth
         self.driver.available_num_qubits = 6
         h = H([0])
         cx = CX([1, 2])

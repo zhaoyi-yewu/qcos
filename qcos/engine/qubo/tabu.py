@@ -21,8 +21,7 @@ from dataclasses import dataclass
 
 @dataclass
 class QUBOSolution:
-    """
-    Solution information.
+    """Solution information.
 
     Attributes:
         solution (np.ndarray): n-sized solution composed of binary variables
@@ -37,8 +36,8 @@ class QUBOSolution:
     def calculate_energy(
         cls, qubo: np.ndarray, solution: np.ndarray | None = None
     ) -> float:
-        """
-        Calculate the energy from the QUBO-matrix & solution
+        """Calculate the energy from the QUBO-matrix & solution.
+
         Args:
             qubo (np.ndarray): n-by-n QUBO-matrix
             solution (np.ndarray): n-sized solution composed of
@@ -53,17 +52,16 @@ class QUBOSolution:
 
 
 class TabuSearch:
-    """tabu search algorithm"""
+    """tabu search algorithm."""
 
     def __init__(
         self,
         qubo: np.ndarray,
         init_solution: np.ndarray | None = None,
     ):
-        """
-        Args:
-            qubo(np.ndarray): qubo matrix
-            init_solution(list): initial solution
+        """Args:
+        qubo(np.ndarray): qubo matrix
+        init_solution(list): initial solution.
         """
         self.qubo = qubo
         self.size = self.qubo.shape[0]
@@ -85,8 +83,7 @@ class TabuSearch:
         self.best_energy = self.energy
 
     def update_tabu(self, index):
-        """
-        update tabu table
+        """Update tabu table.
 
         Args:
             index(int): index of the variable
@@ -100,16 +97,15 @@ class TabuSearch:
         self.tabu_tenure[self.tabu_tenure >= 1] -= 1
 
     def get_best_solution(self):
-        """
-        Obtain the optimal solution and Hamiltonian
+        """Obtain the optimal solution and Hamiltonian.
+
         Returns:
-            tuple: (best_solution, best_energy)
+            tuple: (best_solution, best_energy).
         """
         return self.best_solution, self.best_energy
 
     def update_impact(self):
-        """
-        Compute and update the flip cost vector for each bit.
+        """Compute and update the flip cost vector for each bit.
 
         Returns:
             np.ndarray: Change in objective value for
@@ -136,8 +132,7 @@ class TabuSearch:
         return impact
 
     def find_best_flip(self):
-        """
-        Looking for the best flip
+        """Looking for the best flip.
 
         Returns:
             int: index of the best flip
@@ -163,10 +158,10 @@ class TabuSearch:
         return j_star
 
     def solve(self):
-        """
-        Solve the problem
+        """Solve the problem.
+
         Returns:
-            np.ndarray: solution
+            np.ndarray: solution.
         """
         # iterations
         for _ in range(self.alpha):
@@ -186,8 +181,7 @@ class TabuSearch:
         return self.best_solution
 
     def determine_tabu_tenure(self):
-        """
-        Determine an appropriate tabu tenure based on problem size.
+        """Determine an appropriate tabu tenure based on problem size.
 
         Returns:
             int: Tabu tenure.

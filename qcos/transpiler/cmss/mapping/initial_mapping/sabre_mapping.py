@@ -24,8 +24,7 @@ from qcos.transpiler.cmss.mapping.routing.sabre_routing import SABRE
 def sabre_initial_mapping(
     gates_list: list[GateOperation], coupling_graph: Graph
 ):
-    """
-    Get the initial mapping.
+    """Get the initial mapping.
 
     Args:
         gates_list (list[GateOperation]): a list of gates.

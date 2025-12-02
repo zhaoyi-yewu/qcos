@@ -19,7 +19,7 @@ from loguru import logger
 
 
 class BPlusTreeNode:
-    """B+树节点基类"""
+    """B+树节点基类."""
 
     def __init__(self, is_leaf: bool = False):
         self.is_leaf = is_leaf
@@ -28,14 +28,14 @@ class BPlusTreeNode:
 
 
 class BPlusTreeInternalNode(BPlusTreeNode):
-    """B+树内部节点"""
+    """B+树内部节点."""
 
     def __init__(self):
         super().__init__(is_leaf=False)
         self.children: list[BPlusTreeNode] = []  # 子节点列表
 
     def insert_key_child(self, key: int, child: BPlusTreeNode):
-        """插入键值对和对应的子节点
+        """插入键值对和对应的子节点.
 
         Args:
             key: 键值
@@ -53,7 +53,7 @@ class BPlusTreeInternalNode(BPlusTreeNode):
         child.parent = self
 
     def split(self) -> tuple["BPlusTreeInternalNode", int]:
-        """分裂内部节点
+        """分裂内部节点.
 
         Returns:
             Tuple[BPlusTreeInternalNode, int]: (新节点, 提升的键值)
@@ -78,7 +78,7 @@ class BPlusTreeInternalNode(BPlusTreeNode):
 
 
 class BPlusTreeLeafNode(BPlusTreeNode):
-    """B+树叶子节点"""
+    """B+树叶子节点."""
 
     def __init__(self):
         super().__init__(is_leaf=True)
@@ -88,7 +88,7 @@ class BPlusTreeLeafNode(BPlusTreeNode):
         )
 
     def insert_key_value(self, key: int, value: list[int]):
-        """插入键值对
+        """插入键值对.
 
         Args:
             key: 键值（量子比特数量）
@@ -104,7 +104,7 @@ class BPlusTreeLeafNode(BPlusTreeNode):
         self.values.insert(insert_pos, value)
 
     def split(self) -> tuple["BPlusTreeLeafNode", int]:
-        """分裂叶子节点
+        """分裂叶子节点.
 
         Returns:
             Tuple[BPlusTreeLeafNode, int]: (新节点, 提升的键值)
@@ -129,14 +129,15 @@ class BPlusTreeLeafNode(BPlusTreeNode):
 
 
 class BPlusTree:
-    """B+树实现，用于快速查找量子比特候选区域
+    """B+树实现，用于快速查找量子比特候选区域.
 
-    在论文<A New Qubits Mapping Mechanism for Multiprogramming Quantum Computing>
+    在论文:
+    <A New Qubits Mapping Mechanism for Multiprogramming Quantum Computing>
     的基础上,使用B+树来存储和搜索可靠的映射区域
     """
 
     def __init__(self, order: int = 3):
-        """初始化B+树
+        """初始化B+树.
 
         Args:
             order: B+树的阶数，默认为3
@@ -148,7 +149,7 @@ class BPlusTree:
         self.min_keys = (order + 1) // 2  # 最小键值数量
 
     def insert(self, key: int, value: list[int]):
-        """插入键值对
+        """插入键值对.
 
         Args:
             key: 键值（量子比特数量）
@@ -166,7 +167,7 @@ class BPlusTree:
 
     def _find_leaf(self, key: int) -> BPlusTreeLeafNode:
         """找到应该插入键值的叶子节点
-        使用自上而下的搜索方式
+        使用自上而下的搜索方式.
 
         Args:
             key: 键值
@@ -197,7 +198,7 @@ class BPlusTree:
             raise RuntimeError("Expected leaf node but got internal node")
 
     def _split_leaf(self, leaf: BPlusTreeLeafNode):
-        """分裂叶子节点
+        """分裂叶子节点.
 
         Args:
             leaf: 要分裂的叶子节点
@@ -224,7 +225,7 @@ class BPlusTree:
                     self._split_internal(parent)
 
     def _split_internal(self, internal: BPlusTreeInternalNode):
-        """分裂内部节点
+        """分裂内部节点.
 
         Args:
             internal: 要分裂的内部节点
@@ -252,7 +253,7 @@ class BPlusTree:
 
     def search_candidates(self, min_qubits: int) -> list[list[int]]:
         """搜索满足最小量子比特数量要求的候选区域
-        使用自上而下的搜索方式
+        使用自上而下的搜索方式.
 
         Args:
             min_qubits: 最小量子比特数量
@@ -303,7 +304,7 @@ class BPlusTree:
     def get_all_candidates(
         self,
     ) -> list[tuple[int, list[int]]]:
-        """获取所有候选区域
+        """获取所有候选区域.
 
         Returns:
             List[Tuple[int, List[int]]]: (量子比特数量, 候选区域)的列表
@@ -331,12 +332,12 @@ class BPlusTree:
         return all_candidates
 
     def print_tree(self):
-        """打印B+树结构（用于调试）"""
+        """打印B+树结构（用于调试）."""
         logger.info("B+ Tree Structure:")
         self._print_node(self.root, 0)
 
     def _print_node(self, node: BPlusTreeNode, level: int):
-        """递归打印节点
+        """递归打印节点.
 
         Args:
             node: 节点
@@ -359,7 +360,7 @@ class BPlusTree:
 
 def build_bplus_tree_from_hierarchy(ht) -> BPlusTree:
     """从层次树构建B+树
-    层次树中的所有节点都是B+树中叶子节点对应的可选择区域
+    层次树中的所有节点都是B+树中叶子节点对应的可选择区域.
 
     Args:
         ht: 层次树对象
@@ -373,7 +374,7 @@ def build_bplus_tree_from_hierarchy(ht) -> BPlusTree:
     all_nodes = []
 
     def collect_nodes(node):
-        """递归收集所有节点"""
+        """递归收集所有节点."""
         if node is None:
             return
         # 只收集未被忽略且包含量子比特的节点
@@ -394,7 +395,7 @@ def build_bplus_tree_from_hierarchy(ht) -> BPlusTree:
 
 
 def get_block_bplus(ht, qnum: int) -> list[int] | None:
-    """使用B+树快速查找满足量子比特数量要求的候选区域
+    """使用B+树快速查找满足量子比特数量要求的候选区域.
 
     Args:
         ht: 层次树对象
@@ -459,7 +460,7 @@ def get_block_bplus(ht, qnum: int) -> list[int] | None:
 
 
 def _find_node_with_qubits(node, qubits: list[int]):
-    """递归查找包含指定量子比特的节点
+    """递归查找包含指定量子比特的节点.
 
     Args:
         node: 当前节点
@@ -493,7 +494,7 @@ def _find_node_with_qubits(node, qubits: list[int]):
 
 
 def _ignore_node(node):
-    """递归标记节点及其所有子节点为忽略状态
+    """递归标记节点及其所有子节点为忽略状态.
 
     Args:
         node: 要忽略的节点
@@ -507,7 +508,7 @@ def _ignore_node(node):
 
 def _remove_used_nodes(ht, used_qubits: list[int]):
     """从层次树中移除已使用的量子比特
-    使用与原始remove函数相同的逻辑，但确保已分配的量子比特从所有相关节点中删除
+    使用与原始remove函数相同的逻辑，但确保已分配的量子比特从所有相关节点中删除.
 
     Args:
         ht: 层次树对象
@@ -543,7 +544,7 @@ def _remove_used_nodes(ht, used_qubits: list[int]):
     # *：从层次树的其他节点中删除已使用的量子比特
     # 但只从包含已使用量子比特的节点中删除，不要从已经被标记为忽略的节点中删除
     def remove_qubits_from_other_nodes(node, used_qubits_set):
-        """递归从其他节点中删除已使用的量子比特，但保持层次树结构
+        """递归从其他节点中删除已使用的量子比特，但保持层次树结构.
 
         Args:
             node: 当前节点

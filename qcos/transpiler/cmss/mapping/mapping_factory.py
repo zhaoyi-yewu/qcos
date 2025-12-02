@@ -22,7 +22,7 @@ from qcos.transpiler.common.errors import MappingException
 
 
 class MappingFactory:
-    """Get Transpiler via Type"""
+    """Get Transpiler via Type."""
 
     def __init__(self):
         self._mapping = {
@@ -31,7 +31,7 @@ class MappingFactory:
         }
 
     def get_mapper_by_type(self, tech_type: str):
-        """Get mapper by type
+        """Get mapper by type.
 
         Args:
           tech_type (str): tech type
@@ -39,7 +39,6 @@ class MappingFactory:
         Returns:
             mapper
         """
-
         mapper = self._mapping.get(tech_type)
         if mapper:
             return mapper

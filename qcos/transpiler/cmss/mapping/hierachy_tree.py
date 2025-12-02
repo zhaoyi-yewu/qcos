@@ -20,7 +20,7 @@ import networkx as nx
 
 class Node:
     def __init__(self, qubits, left=None, right=None, ignore=False) -> None:
-        """搜索树节点，也称作社区，每个节点包含一组量子比特
+        """搜索树节点，也称作社区，每个节点包含一组量子比特.
 
         Args:
             qubits: 节点包含的量子比特
@@ -37,11 +37,12 @@ class Node:
 
 
 class HierarchyTree:
-    """基于CDAP构建搜索树
+    """基于CDAP构建搜索树.
 
     Args:
         qpu_config: 硬件配置，包含硬件拓扑信息
-        weight: 错误率所占权重，越高表示越看中门和测量的保真度，为0表示只关心耦合情况.
+        weight: 错误率所占权重，越高表示越看中门和测量的保真度，
+                0表示只关心耦合情况
         Defaults to 1.0.
     """
 
@@ -66,7 +67,7 @@ class HierarchyTree:
         self.all_qubits = qpu_config["qubits"]
 
     def construct(self):
-        """构建层次树，每次合并两个节点，直到最终只剩下一个节点"""
+        """构建层次树，每次合并两个节点，直到最终只剩下一个节点."""
         nodes = self.origin_node()
         while len(nodes) != 1:
             i, j = self.calc_merge_gain(nodes)
@@ -88,7 +89,7 @@ class HierarchyTree:
         self.root = nodes[0]
 
     def origin_node(self):
-        """初始叶节点，每个比特/位置为一个叶节点
+        """初始叶节点，每个比特/位置为一个叶节点.
 
         Returns: 节点
         """
@@ -104,7 +105,7 @@ class HierarchyTree:
         self.visit(node.right)
 
     def get_all_leaf(self):
-        """dfs获取所有的叶节点
+        """dfs获取所有的叶节点.
 
         Returns: 所有的叶节点
         """
@@ -123,7 +124,7 @@ class HierarchyTree:
         return leafs
 
     def average_fidelity(self, node):
-        """当前节点的平均保真度，主要为节点包含比特的测量保真度和两比特门保真度
+        """当前节点的平均保真度，主要为节点包含比特的测量保真度和两比特门保真度.
 
         Args:
             node: 节点
@@ -146,7 +147,7 @@ class HierarchyTree:
         return fidelity
 
     def calc_modularity(self, nodes):
-        """衡量当前划分的指标
+        """衡量当前划分的指标.
 
         Args:
             nodes: 当前划分下所有的节点
@@ -168,7 +169,7 @@ class HierarchyTree:
         return modularity
 
     def calc_eigenvector(self, node_a, node_b):
-        """计算两个节点间的平均两比特门保真度，以及平均测量保真度
+        """计算两个节点间的平均两比特门保真度，以及平均测量保真度.
 
         Args:
             node_a: 节点a
@@ -196,7 +197,7 @@ class HierarchyTree:
 
     def calc_merge_gain(self, nodes):
         """奖励函数，每次找奖励函数值最大的合并方案
-        F = Qmerge - Qori + w * EV
+        F = Qmerge - Qori + w * EV.
 
         Args:
             nodes: 当前划分下所有的节点

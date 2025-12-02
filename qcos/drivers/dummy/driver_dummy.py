@@ -28,7 +28,7 @@ from qcos.drivers.driver_base import DriverBase
 
 
 class DriverDummy(DriverBase):
-    """空载测试驱动
+    """空载测试驱动.
 
     Dummy neutral-atom driver for test purpose
     """
@@ -55,12 +55,12 @@ class DriverDummy(DriverBase):
         self.driver_options_schema = {Optional("sleep"): int}
 
     def init_driver(self):
-        """Init driver"""
+        """Init driver."""
         # pylint: disable=duplicate-code
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def validate_driver_configs(self, configs):
-        """Validate driver configs
+        """Validate driver configs.
 
         Args:
             configs: configs dictionary
@@ -107,18 +107,17 @@ class DriverDummy(DriverBase):
         return success, err_msg
 
     def close_driver(self):
-        """Close driver"""
+        """Close driver."""
 
     def fetch_configs(self):
-        """
-        Fetch configs
+        """Fetch configs.
 
         Returns:
             remote transpiler configs
         """
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
-        """Run job
+        """Run job.
 
         Args:
             job_id: job ID

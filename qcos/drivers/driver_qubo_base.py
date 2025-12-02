@@ -24,7 +24,7 @@ from qcos.drivers.driver_base import DriverBase
 
 
 class DriverQuboBase(DriverBase):
-    """QUBO驱动基类
+    """QUBO驱动基类.
 
     QUBO Base driver
     """
@@ -39,7 +39,7 @@ class DriverQuboBase(DriverBase):
         self.driver_options_schema = {Optional("enable_subqubo"): bool}
 
     def get_fake_results(self, num_qubits, shots, data):
-        """Get fake results
+        """Get fake results.
 
         Args:
             num_qubits: number of qubits
@@ -61,7 +61,7 @@ class DriverQuboBase(DriverBase):
         return results
 
     def get_enable_subqubo(self):
-        """Get enable_subqubo
+        """Get enable_subqubo.
 
         Returns:
             enable_subqubo

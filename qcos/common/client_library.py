@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 class ClientLibrary:
-    """Client library"""
+    """Client library."""
 
     @staticmethod
     def call_http_api(
@@ -52,7 +52,7 @@ class ClientLibrary:
         success_http_code=[200, 201],
         debug=False,
     ):
-        """Call http api
+        """Call http api.
 
         Args:
             url: api url
@@ -115,7 +115,7 @@ class ClientLibrary:
 
     @staticmethod
     def read_file(file_path, replace_pattern=None, customer_format=None):
-        """Read text file
+        """Read text file.
 
         Args:
             file_path: file path
@@ -148,7 +148,7 @@ class ClientLibrary:
     def validate_schema(
         value, schema_obj, allow_none=False, ignore_extra_keys=False
     ):
-        """Validate schema values
+        """Validate schema values.
 
         Args:
             value: value to be validated
@@ -175,7 +175,7 @@ class ClientLibrary:
 
     @staticmethod
     def validate_values_enum(value, param_name, value_list, allow_none=False):
-        """Validate values for enum
+        """Validate values for enum.
 
         Args:
             value: value
@@ -198,7 +198,7 @@ class ClientLibrary:
 
     @staticmethod
     def validate_values_uuid(value, param_name):
-        """Validate values for uuid
+        """Validate values for uuid.
 
         Args:
             value: value
@@ -227,7 +227,7 @@ class ClientLibrary:
     def validate_values_range(
         value, param_name, min_value=None, max_value=None
     ):
-        """Validate values for int range
+        """Validate values for int range.
 
         Args:
             value: value
@@ -259,7 +259,7 @@ class ClientLibrary:
     def validate_values_length(
         value, param_name, min_value=None, max_value=None, allow_none=False
     ):
-        """Validate values for int range
+        """Validate values for int range.
 
         Args:
             value: value

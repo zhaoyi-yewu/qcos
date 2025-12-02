@@ -21,7 +21,7 @@ from qcos.common.library import Library
 
 
 class Config:
-    """Config class"""
+    """Config class."""
 
     # General configs
     VERSION = "1.0.0"
@@ -95,7 +95,7 @@ class Config:
 
     @classmethod
     def parse_toml_file(cls, config_file, extra_config=False):
-        """Parse a TOML file
+        """Parse a TOML file.
 
         Args:
             config_file: config file
@@ -168,7 +168,7 @@ class Config:
 
     @classmethod
     def show_info(cls):
-        """Show class variables"""
+        """Show class variables."""
         configs = {}
         cls_vars = vars(cls)
         for k, v in cls_vars.items():

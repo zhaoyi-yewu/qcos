@@ -80,7 +80,7 @@ def main(
     config_file: str = "",
     output_file: str = "",
 ):
-    """qiskit-transpiler performance test"""
+    """qiskit-transpiler performance test."""
     success = False
     # input args check
     file_path = Path(input_file).resolve()

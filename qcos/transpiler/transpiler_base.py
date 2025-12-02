@@ -17,7 +17,7 @@
 
 
 class TranspilerBase:
-    """Transpiler Base Class
+    """Transpiler Base Class.
 
     All Transpiler classes are inherited from this class.
     """
@@ -47,14 +47,14 @@ class TranspilerBase:
         self.qpu_config = None
 
     def init_transpiler(self):
-        """Init transpiler"""
+        """Init transpiler."""
         raise NotImplementedError(
             f"Transpiler: {self.__class__.__name__} "
             f"must implement method: init_transpiler"
         )
 
     def get_transpiler_options_schema(self):
-        """Get transpiler options schema
+        """Get transpiler options schema.
 
         Returns:
             transpiler options schema
@@ -62,7 +62,7 @@ class TranspilerBase:
         return self.transpiler_options_schema
 
     def update_transpiler_options(self, transpiler_options):
-        """Update transpiler options
+        """Update transpiler options.
 
         Args:
             transpiler_options: new transpiler options
@@ -70,7 +70,7 @@ class TranspilerBase:
         self.transpiler_options.update(transpiler_options)
 
     def get_transpiler_options(self):
-        """Get transpiler options
+        """Get transpiler options.
 
         Returns:
             transpiler options
@@ -78,7 +78,7 @@ class TranspilerBase:
         return self.transpiler_options
 
     def get_transpiler_info(self):
-        """Get transpiler info"""
+        """Get transpiler info."""
         show_list = [
             f"[{self.__class__.__name__}]",
             f"transpiler_name: {self.name}",
@@ -90,7 +90,7 @@ class TranspilerBase:
         return "\n".join(show_list)
 
     def set_name(self, name):
-        """Set transpiler name
+        """Set transpiler name.
 
         Args:
             name: transpiler_name
@@ -98,7 +98,7 @@ class TranspilerBase:
         self.name = name
 
     def get_name(self):
-        """Get transpiler name
+        """Get transpiler name.
 
         Returns:
             transpiler name
@@ -106,7 +106,7 @@ class TranspilerBase:
         return self.name
 
     def get_alias_name(self):
-        """Get transpiler alias name
+        """Get transpiler alias name.
 
         Returns:
             transpiler alias name
@@ -114,7 +114,7 @@ class TranspilerBase:
         return self.alias_name
 
     def get_version(self):
-        """Get version
+        """Get version.
 
         Returns:
             version
@@ -122,7 +122,7 @@ class TranspilerBase:
         return self.version
 
     def set_module_name(self, module_name):
-        """Set module name
+        """Set module name.
 
         Args:
             module_name: module name
@@ -130,7 +130,7 @@ class TranspilerBase:
         self._module_name = module_name
 
     def get_module_name(self):
-        """Get module name
+        """Get module name.
 
         Returns:
             module name
@@ -138,7 +138,7 @@ class TranspilerBase:
         return self._module_name
 
     def set_class_name(self, class_name):
-        """Set class name
+        """Set class name.
 
         Args:
             class_name: class name
@@ -146,7 +146,7 @@ class TranspilerBase:
         self._class_name = class_name
 
     def get_class_name(self):
-        """Get class name
+        """Get class name.
 
         Returns:
             class name
@@ -154,7 +154,7 @@ class TranspilerBase:
         return self._class_name
 
     def get_supported_code_types(self):
-        """Get supported code types
+        """Get supported code types.
 
         Returns:
             supported code types
@@ -162,7 +162,7 @@ class TranspilerBase:
         return self.supported_code_types
 
     def parse(self, src_code_dict):
-        """Parse src code dict
+        """Parse src code dict.
 
         Args:
             src_code_dict: src code dict
@@ -176,7 +176,7 @@ class TranspilerBase:
         )
 
     def transpile(self, parse_result, supp_basis_gates: list):
-        """Transpile codes
+        """Transpile codes.
 
         Args:
             parse_result: parse result

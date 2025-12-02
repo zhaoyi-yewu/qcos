@@ -33,7 +33,7 @@ module_name = "SYSTEM"
 
 @system_api_v1.method()
 def ping(body: schemas.PingRequest) -> schemas.PongResponse:
-    """Ping-pong to verify the availability of the system
+    """Ping-pong to verify the availability of the system.
 
     Args:
         body(schemas.PingRequest): message
@@ -56,7 +56,7 @@ def system_info(
     body: schemas.SystemInfoRequest | None = None,
     auth_data: dict | None = Depends(auth),
 ) -> schemas.SystemInfoResponse:
-    """Get system info
+    """Get system info.
 
     Args:
         body(schemas.SystemInfoRequest): System Info Request

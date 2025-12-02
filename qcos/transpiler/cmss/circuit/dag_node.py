@@ -24,7 +24,7 @@ class DAGNode:
     __slots__ = ["_node_id"]
 
     def __init__(self, nid=-1):
-        """Create a node"""
+        """Create a node."""
         self._node_id = nid
 
     def __lt__(self, other):
@@ -45,7 +45,7 @@ class DAGOpNode(DAGNode):
     def __init__(
         self, op, qargs: Iterable[int] = (), cargs: Iterable[int] = ()
     ):
-        """Create an Gate node"""
+        """Create an Gate node."""
         super().__init__()
         self.op = op
         self.qargs = tuple(qargs)
@@ -54,16 +54,16 @@ class DAGOpNode(DAGNode):
 
     @property
     def name(self):
-        """Returns the Gate name corresponding to the op for this node"""
+        """Returns the Gate name corresponding to the op for this node."""
         return self.op.name
 
     @name.setter
     def name(self, new_name):
-        """Sets the Gate name corresponding to the op for this node"""
+        """Sets the Gate name corresponding to the op for this node."""
         self.op.name = new_name
 
     def __repr__(self):
-        """Returns a representation of the DAGOpNode"""
+        """Returns a representation of the DAGOpNode."""
         return (
             f"DAGOpNode(op={self.op}, qargs={self.qargs}, cargs={self.cargs})"
         )
@@ -75,13 +75,13 @@ class DAGInNode(DAGNode):
     __slots__ = ["wire", "sort_key"]
 
     def __init__(self, wire):
-        """Create an incoming node"""
+        """Create an incoming node."""
         super().__init__()
         self.wire = wire
         self.sort_key = str([])
 
     def __repr__(self):
-        """Returns a representation of the DAGInNode"""
+        """Returns a representation of the DAGInNode."""
         return f"DAGInNode(wire={self.wire})"
 
 
@@ -91,11 +91,11 @@ class DAGOutNode(DAGNode):
     __slots__ = ["wire", "sort_key"]
 
     def __init__(self, wire):
-        """Create an outgoing node"""
+        """Create an outgoing node."""
         super().__init__()
         self.wire = wire
         self.sort_key = str([])
 
     def __repr__(self):
-        """Returns a representation of the DAGOutNode"""
+        """Returns a representation of the DAGOutNode."""
         return f"DAGOutNode(wire={self.wire})"

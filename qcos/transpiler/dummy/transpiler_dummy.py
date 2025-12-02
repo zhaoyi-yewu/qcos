@@ -21,7 +21,7 @@ from qcos.transpiler.transpiler_base import TranspilerBase
 
 
 class TranspilerDummy(TranspilerBase):
-    """Transpiler Class for Dummy"""
+    """Transpiler Class for Dummy."""
 
     def __init__(self):
         super().__init__()
@@ -38,10 +38,10 @@ class TranspilerDummy(TranspilerBase):
         ]
 
     def init_transpiler(self):
-        """Init transpiler"""
+        """Init transpiler."""
 
     def parse(self, src_code_dict):
-        """Parse src_code_dict
+        """Parse src_code_dict.
 
         Args:
             src_code_dict: src_code_dict
@@ -51,7 +51,7 @@ class TranspilerDummy(TranspilerBase):
         """
 
     def transpile(self, parse_result, supp_basis_gates: list):
-        """Transpile codes
+        """Transpile codes.
 
         Args:
             parse_result: parse result

@@ -31,7 +31,7 @@ from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 
 class DG(DiGraph):
-    """Topology analysis and construction of a dependency graph"""
+    """Topology analysis and construction of a dependency graph."""
 
     def __init__(
         self,
@@ -49,7 +49,7 @@ class DG(DiGraph):
         return self.num_gate_1q + self.num_gate_2q
 
     def get_shared_qubits(self, node1: int, node2: int):
-        """Get qubits which exist in both node1 and node2
+        """Get qubits which exist in both node1 and node2.
 
         Args:
             node1 (int): id of node1
@@ -65,7 +65,7 @@ class DG(DiGraph):
         return qubits
 
     def add_line(self, node_in: int, node_out: int, qubits=None):
-        """Connect two nodes using provided qubits
+        """Connect two nodes using provided qubits.
 
         Args:
             node_in (int): id of node_in
@@ -109,9 +109,8 @@ class DG(DiGraph):
                 self.add_gate(gate)
 
     def add_gate(self, gate: tuple, add_edges=True):
-        """
-        Add a gate to the graph.
-        Attributes of a node: gates, num_gate_1q, num_gate_2q, qubits
+        """Add a gate to the graph.
+        Attributes of a node: gates, num_gate_1q, num_gate_2q, qubits.
 
         Args:
             gate (tuple): a tuple of (gate_name, (qubits), (parameters))
@@ -256,8 +255,7 @@ class DG(DiGraph):
         return new_node
 
     def cascade_node(self, node1: int, node2: int):
-        """
-        Combine two given nodes.
+        """Combine two given nodes.
         Here we only update one node (node_in) and delete the other (node_out)
         instead of creating one node and deleting both.
 
@@ -371,8 +369,7 @@ class DG(DiGraph):
         return measure_op
 
     def to_ir(self, add_barrier=False, decompose_swap=False):
-        """
-        Convert the DG to a ir.
+        """Convert the DG to a ir.
         If decompose_swap is set to True, we will decompose each SWAP
         into 3 CNOTs.
         """
@@ -424,7 +421,7 @@ class DG(DiGraph):
         return ir
 
     def draw(self):
-        """Draw DG graph"""
+        """Draw DG graph."""
         nx.draw(self, with_labels=1)
 
     def check_parallel(self, node1: int, node2: int):
@@ -446,8 +443,7 @@ class DG(DiGraph):
             return False
 
     def check_direct_dependency(self, node1: int, node2: int):
-        """
-        Check two nodes are directly dependent or not.
+        """Check two nodes are directly dependent or not.
         We say node2 directly depends on node1 if
             1) two nodes share at least one qubit;
             2) for each shared qubit, there can't be any nodes existing between
@@ -481,8 +477,7 @@ class DG(DiGraph):
         return True
 
     def check_absorbable(self, node1: int, node2: int):
-        """
-        check if node1 and node2 can be obsorbed to each other
+        """Check if node1 and node2 can be obsorbed to each other
         node1 and node2 are absorbable if all qubits in node1 or node2 exist in
         node2 or node1 and they are directly dependent to each other.
 

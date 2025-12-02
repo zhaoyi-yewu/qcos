@@ -29,7 +29,7 @@ from qcos.transpiler.cmss.common.reset import Reset
 
 
 class GateOperation(BaseOperation):
-    """中间表示类"""
+    """中间表示类."""
 
     def __init__(
         self,
@@ -39,7 +39,7 @@ class GateOperation(BaseOperation):
         operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
         hermitian=True,
     ) -> None:
-        """Init GateOperation
+        """Init GateOperation.
 
         Args:
             name: 操作名称
@@ -53,7 +53,7 @@ class GateOperation(BaseOperation):
         self.validate_params()
 
     def validate_params(self):
-        """Validate gate's params
+        """Validate gate's params.
 
         Operation type already indicated the number of qubits that gate needed.
         """
@@ -61,18 +61,20 @@ class GateOperation(BaseOperation):
             raise DecomposeException("invalid targets num")
 
     def decompose(self):
-        """门对应的分解规则，如无指定规则，则调用默认的分解方法
+        """门对应的分解规则，如无指定规则，则调用默认的分解方法.
 
         分解规则以字典的形式指定，配置在GlobalSetting的decomposition_rule中，
         其每个item的形式为
             gate_name: #门名称
             {
-                "param": [str] #形式化的门参数，数量与门实际所需一致，如无参数，该项可不填
+                "param": [str] #形式化的门参数，数量与门实际所需一致，
+                                如无参数，该项可不填
                 "gates": [based_gates] #指定的分解形式，以based_gates列表表示
             }
-        其中based_gates为一个三元组（name, targets, exps）,name表示门名称，targets为
-        作用比特下标列表(从0开始)，exps为参数对应的表达式，以字符串的形式表示，表达式中的操
-        作数可为param中定义的形式化参数以及常量，常量中π可用pi表示
+        其中based_gates为一个三元组（name, targets, exps）,
+        name表示门名称，targets为作用比特下标列表(从0开始),
+        exps为参数对应的表达式，以字符串的形式表示，
+        表达式中的操作数可为param中定义的形式化参数以及常量，常量中π可用pi表示
 
         举例如下：
         decomposition_rule = {
@@ -125,7 +127,7 @@ class GateOperation(BaseOperation):
             raise DecomposeException(str(e)) from e
 
     def default_decompose(self):
-        """默认的分解方法"""
+        """默认的分解方法."""
         raise DecomposeException("please specify the decomposition gates")
 
     def __repr__(self):
@@ -137,7 +139,7 @@ class GateOperation(BaseOperation):
 
 # 实例化门，需包含一个默认的分解方法
 class H(GateOperation):
-    """Hadamard门类, 将基态变为叠加态的量子逻辑门"""
+    """Hadamard门类, 将基态变为叠加态的量子逻辑门."""
 
     def __init__(self, targets=None, arg_value=None) -> None:
         super().__init__(Constant.SINGLE_QUBIT_GATE_H, targets, arg_value)
@@ -151,7 +153,7 @@ class H(GateOperation):
 
 
 class X(GateOperation):
-    """Pauli-X门类, 将量子态绕Bloch球X轴旋转角度π进行翻转"""
+    """Pauli-X门类, 将量子态绕Bloch球X轴旋转角度π进行翻转."""
 
     def __init__(self, targets=None, arg_value=None) -> None:
         super().__init__(Constant.SINGLE_QUBIT_GATE_X, targets, arg_value)
@@ -161,7 +163,7 @@ class X(GateOperation):
 
 
 class Y(GateOperation):
-    """Pauli-Y门类, 将量子态绕Bloch球Y轴旋转角度π进行翻转"""
+    """Pauli-Y门类, 将量子态绕Bloch球Y轴旋转角度π进行翻转."""
 
     def __init__(self, targets=None, arg_value=None) -> None:
         super().__init__(Constant.SINGLE_QUBIT_GATE_Y, targets, arg_value)
@@ -171,7 +173,7 @@ class Y(GateOperation):
 
 
 class Z(GateOperation):
-    """Pauli-Z门类, 将量子态绕Bloch球Z轴旋转角度π进行翻转"""
+    """Pauli-Z门类, 将量子态绕Bloch球Z轴旋转角度π进行翻转."""
 
     def __init__(self, targets=None, arg_value=None) -> None:
         super().__init__(Constant.SINGLE_QUBIT_GATE_Z, targets, arg_value)
@@ -185,7 +187,7 @@ class Z(GateOperation):
 
 
 class S(GateOperation):
-    """相位门类
+    """相位门类.
 
     对量子态的|1⟩分量施加一个相位变换，使得|1⟩变为i∣1⟩，而|0⟩分量保持不变
     S门在Bloch球中对应于绕Z轴旋转π/2的操作
@@ -206,7 +208,7 @@ class S(GateOperation):
 
 
 class SDG(GateOperation):
-    """反相位门类
+    """反相位门类.
 
     是S门的共轭转置，对量子态的|1⟩分量施加一个相位变换，使得|1⟩变为-i∣1⟩，而|0⟩分量保持不变。
     SDG门在Bloch球中对应于绕Z轴旋转-π/2的操作。
@@ -227,7 +229,7 @@ class SDG(GateOperation):
 
 
 class T(GateOperation):
-    """T门
+    """T门.
 
     用于实现较小的相位旋转。T门的作用是对量子态的|1⟩分量施加一个相位变换，
     使得|1⟩变为e^iπ/4∣1⟩，而|0⟩分量保持不变。
@@ -244,7 +246,7 @@ class T(GateOperation):
 
 
 class P(GateOperation):
-    """P门
+    """P门.
 
     P门是单量子比特的相位旋转门，用于在Bloch球上实现绕Z轴旋转λ角度的操作。
     它对量子态的 |1⟩ 分量施加一个相位因子 e^{iλ}，而 |0⟩ 分量保持不变。
@@ -260,7 +262,7 @@ class P(GateOperation):
 
 
 class TDG(GateOperation):
-    """TDG门
+    """TDG门.
 
     T门的共轭转置, 作用是对量子态的|1⟩分量施加一个相位变换，
     使得|1⟩变为e^-iπ/4∣1⟩，而|0⟩分量保持不变。
@@ -277,7 +279,7 @@ class TDG(GateOperation):
 
 
 class RX(GateOperation):
-    """绕X轴旋转门
+    """绕X轴旋转门.
 
     用来改变量子比特在X轴方向上的状态
     RX门在Bloch球中对应于绕X轴旋转一个指定的角度θ
@@ -293,7 +295,7 @@ class RX(GateOperation):
 
 
 class RY(GateOperation):
-    """绕Y轴旋转门
+    """绕Y轴旋转门.
 
     用来改变量子比特在Y轴方向上的状态
     RY门在Bloch球中对应于绕Y轴旋转一个指定的角度θ
@@ -309,7 +311,7 @@ class RY(GateOperation):
 
 
 class RZ(GateOperation):
-    """绕Z轴旋转门
+    """绕Z轴旋转门.
 
     用来改变量子比特在Z轴方向上的状态
     RZ门在Bloch球中对应于绕Z轴旋转一个指定的角度θ
@@ -325,7 +327,7 @@ class RZ(GateOperation):
 
 
 class SX(GateOperation):
-    """SX门（也称为 √X 门 或 square-root of NOT 门）
+    """SX门（也称为 √X 门 或 square-root of NOT 门）.
 
     Pauli-X 门（即量子NOT门）的一半旋转，
     它在Bloch球上对应于 绕 X 轴旋转 π/2 的操作。
@@ -349,7 +351,7 @@ class SX(GateOperation):
 
 class SXDG(GateOperation):
     """SXDG 门（也写作 √X† 或 SX⁻¹）是 SX 门的共轭转置（逆操作），
-    也称为 inverse square-root of X gate。
+    也称为 inverse square-root of X gate。.
 
     它在 Bloch 球上对应于 绕 X 轴旋转 -π/2 的操作。
     """
@@ -374,7 +376,7 @@ class SXDG(GateOperation):
 
 
 class CZ(GateOperation):
-    """受控Z门或Controlled-Z门
+    """受控Z门或Controlled-Z门.
 
     在控制量子比特为|1⟩时，对目标量子比特应用一个Z门（Pauli-Z门）
     将目标量子比特的相位翻转。
@@ -399,7 +401,7 @@ class CZ(GateOperation):
 
 
 class CX(GateOperation):
-    """受控非门或Controlled-X门
+    """受控非门或Controlled-X门.
 
     当控制位处于|1⟩状态时，将目标位翻转
     （即|0⟩变为|1⟩，|1⟩变为|0⟩）。如果控制位处于|0⟩状态，则目标位保持不变。
@@ -421,7 +423,7 @@ class CX(GateOperation):
 
 
 class CY(GateOperation):
-    """受控Y门或Controlled-Y门
+    """受控Y门或Controlled-Y门.
 
     在控制量子比特为|1⟩时，
     对目标量子比特应用一个Y门（Pauli-Y门）将目标量子比特绕Y轴旋转π角度。
@@ -447,7 +449,7 @@ class CY(GateOperation):
 
 
 class SWAP(GateOperation):
-    """交换门，交换两个量子比特。"""
+    """交换门，交换两个量子比特。."""
 
     def __init__(
         self,
@@ -468,7 +470,7 @@ class SWAP(GateOperation):
 
 
 class CH(GateOperation):
-    """受控Hadamard门，当控制量子比特为|1⟩时，对目标量子比特应用Hadamard门（H门）"""
+    """受控Hadamard门，当控制量子比特为|1⟩时，对目标量子比特应用Hadamard门（H门）."""
 
     def __init__(
         self,
@@ -497,7 +499,7 @@ class CH(GateOperation):
 
 
 class CRX(GateOperation):
-    """受控单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿X轴旋转θ角度"""
+    """受控单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿X轴旋转θ角度."""
 
     def __init__(
         self,
@@ -529,7 +531,7 @@ class CRX(GateOperation):
 
 
 class CRY(GateOperation):
-    """受控的单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿Y轴旋转θ角度"""
+    """受控的单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿Y轴旋转θ角度."""
 
     def __init__(
         self,
@@ -556,7 +558,7 @@ class CRY(GateOperation):
 
 
 class CRZ(GateOperation):
-    """受控的单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿Z轴旋转θ角度"""
+    """受控的单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿Z轴旋转θ角度."""
 
     def __init__(
         self,
@@ -585,7 +587,8 @@ class CRZ(GateOperation):
 class CU1(GateOperation):
     """CU1 门是一个 **受控相位旋转门**，是单量子比特 U1(λ) 门的受控版本。
     当控制量子比特为 |1⟩ 时，目标量子比特执行一个绕 Z 轴旋转角度 λ 的 U1 门；
-    当控制量子比特为 |0⟩ 时，不进行任何操作。"""
+    当控制量子比特为 |0⟩ 时，不进行任何操作。.
+    """
 
     def __init__(
         self,
@@ -618,12 +621,13 @@ class CU1(GateOperation):
 
 
 class CP(GateOperation):
-    """CP门（Controlled-Phase 门）
+    """CP门（Controlled-Phase 门）.
 
     CP 门（Controlled-Phase Gate）是一个 **受控相位旋转门**，
     对目标量子比特施加受控的 Z 轴旋转操作。
     当控制量子比特为 |1⟩ 时，目标量子比特执行绕 Z 轴旋转角度 λ 的相位门 P(λ)；
-    当控制量子比特为 |0⟩ 时，目标量子比特保持不变。"""
+    当控制量子比特为 |0⟩ 时，目标量子比特保持不变。
+    """
 
     def __init__(
         self,
@@ -656,11 +660,12 @@ class CP(GateOperation):
 
 
 class CU3(GateOperation):
-    """CU3门（受控U3门）
+    """CU3门（受控U3门）.
 
     CU3 门是一种两量子比特门，用于在控制比特为 |1⟩ 时，
     对目标比特施加 U3(θ, φ, λ) 操作；当控制比特为 |0⟩ 时，
-    目标比特保持不变。"""
+    目标比特保持不变。
+    """
 
     def __init__(
         self,
@@ -708,11 +713,12 @@ class CU3(GateOperation):
 
 
 class CSX(GateOperation):
-    """CSX门（受控SX门）
+    """CSX门（受控SX门）.
 
     CSX 门是一种两量子比特受控门，
     当控制比特处于 |1⟩ 状态时，对目标比特施加 SX 门（√X 门）；
-    当控制比特为 |0⟩ 时，目标比特保持不变。"""
+    当控制比特为 |0⟩ 时，目标比特保持不变。
+    """
 
     def __init__(
         self,
@@ -737,11 +743,12 @@ class CSX(GateOperation):
 
 
 class CU(GateOperation):
-    """CU门（受控U门）
+    """CU门（受控U门）.
 
     CU 门是一种通用的两量子比特受控门，
     当控制比特处于 |1⟩ 状态时，对目标比特施加一个任意的单量子比特酉变换 U；
-    当控制比特为 |0⟩ 时，目标比特保持不变。"""
+    当控制比特为 |0⟩ 时，目标比特保持不变。
+    """
 
     def __init__(
         self,
@@ -788,10 +795,11 @@ class CU(GateOperation):
 
 
 class RXX(GateOperation):
-    """RXX门（双量子比特 X-X 旋转门）
+    """RXX门（双量子比特 X-X 旋转门）.
 
     RXX 门是一种双量子比特旋转门，
-    用于在两个量子比特的 X 方向上进行相互耦合的旋转操作。"""
+    用于在两个量子比特的 X 方向上进行相互耦合的旋转操作。
+    """
 
     def __init__(
         self,
@@ -824,10 +832,11 @@ class RXX(GateOperation):
 
 
 class RZZ(GateOperation):
-    """RZZ门（双量子比特 Z-Z 旋转门）
+    """RZZ门（双量子比特 Z-Z 旋转门）.
 
     RZZ 门是一种双量子比特旋转门，
-    用于在两个量子比特的 Z 方向上进行相互耦合的旋转操作。"""
+    用于在两个量子比特的 Z 方向上进行相互耦合的旋转操作。
+    """
 
     def __init__(
         self,
@@ -852,7 +861,7 @@ class RZZ(GateOperation):
 
 
 class CCX(GateOperation):
-    """Toffoli门，如果两个控制量子比特都处于|1⟩状态，则对目标量子比特应用X门（Pauli-X门）"""
+    """Toffoli门，如果两个控制量子比特都处于|1⟩状态，则对目标量子比特应用X门（Pauli-X门）."""
 
     def __init__(
         self,
@@ -885,9 +894,10 @@ class CCX(GateOperation):
 
 
 class CSWAP(GateOperation):
-    """CSWAP 门（也称 Fredkin 门）是一种 三比特受控交换门，
+    """CSWAP 门（也称 Fredkin 门）是一种 三比特受控交换门，.
 
-    它根据第一个比特（控制比特）的状态，决定是否交换后两个比特（目标比特）的状态。"""
+    它根据第一个比特（控制比特）的状态，决定是否交换后两个比特（目标比特）的状态。
+    """
 
     def __init__(
         self,
@@ -912,12 +922,13 @@ class CSWAP(GateOperation):
 
 
 class RCCX(GateOperation):
-    """RCCX门（相对相位受控受控X门 / Relative-Phase Toffoli Gate）
+    """RCCX门（相对相位受控受控X门 / Relative-Phase Toffoli Gate）.
 
     RCCX 门是一种三量子比特逻辑门，
     是 Toffoli 门（CCX）的一个相对相位版本，
     即在实现相同控制逻辑的同时，引入了相位差，
-    从而在物理实现上更简洁、资源消耗更低。"""
+    从而在物理实现上更简洁、资源消耗更低。
+    """
 
     def __init__(
         self,
@@ -948,11 +959,12 @@ class RCCX(GateOperation):
 
 
 class RC3X(GateOperation):
-    """RC3X门（Relative-phase Toffoli 门）
+    """RC3X门（Relative-phase Toffoli 门）.
 
     RC3X 门是 Toffoli（CCX）门的相对相位版本，
     当两个控制量子比特均为 |1⟩ 时，对目标量子比特施加 X 操作，
-    但在部分叠加态上引入相对相位差。"""
+    但在部分叠加态上引入相对相位差。
+    """
 
     def __init__(
         self,
@@ -992,11 +1004,12 @@ class RC3X(GateOperation):
 
 
 class C3X(GateOperation):
-    """C3X门（三控制X门 / 三重受控非门）
+    """C3X门（三控制X门 / 三重受控非门）.
 
     C3X 门是多控制量子门的一种，具有三个控制量子比特和一个目标量子比特。
     当且仅当三个控制量子比特均为 |1⟩ 时，C3X 门对目标量子比特施加 X（非）操作；
-    否则，目标量子比特保持不变。"""
+    否则，目标量子比特保持不变。
+    """
 
     def __init__(
         self,
@@ -1049,12 +1062,13 @@ class C3X(GateOperation):
 
 
 class C3SQRTX(GateOperation):
-    """C3√X门（三控制√X门 / 三重受控平方根X门）
+    """C3√X门（三控制√X门 / 三重受控平方根X门）.
 
-    C3√X 门是具有三个控制量子比特的受控平方根X门（Controlled-Square-Root-of-X）。
+    C3√X门是具有三个控制量子比特的受控平方根X门（Controlled-Square-Root-of-X）
     当且仅当三个控制量子比特均处于 |1⟩ 状态时，
     它对目标量子比特施加 √X 操作（即 X 门的平方根）；
-    否则，目标量子比特保持不变。"""
+    否则，目标量子比特保持不变。
+    """
 
     def __init__(
         self,
@@ -1118,14 +1132,15 @@ class C3SQRTX(GateOperation):
 
 
 class C4X(GateOperation):
-    """C4X门（四控制X门 / 四重受控非门）
+    """C4X门（四控制X门 / 四重受控非门）.
 
     C4X 门是具有四个控制量子比特的多控制X门（Multi-Controlled X Gate），
     也称为四重受控非门（Four-Controlled-NOT Gate）。
 
     当且仅当四个控制量子比特全部处于 |1⟩ 状态时，
     C4X 门对目标量子比特施加 X 操作（即翻转其量子态：|0⟩ ↔ |1⟩）；
-    否则，目标量子比特保持不变。"""
+    否则，目标量子比特保持不变。
+    """
 
     def __init__(
         self,
@@ -1176,7 +1191,7 @@ class C4X(GateOperation):
 
 
 class U1(GateOperation):
-    """U1门，对应于绕Z轴的相位旋转，参数为λ"""
+    """U1门，对应于绕Z轴的相位旋转，参数为λ."""
 
     def __init__(self, targets=None, arg_value=None) -> None:
         super().__init__(
@@ -1188,7 +1203,7 @@ class U1(GateOperation):
 
 
 class U2(GateOperation):
-    """U2门，对应于 π/2 角度的极坐标旋转，参数为ϕ和λ"""
+    """U2门，对应于 π/2 角度的极坐标旋转，参数为ϕ和λ."""
 
     def __init__(self, targets=None, arg_value=None) -> None:
         super().__init__(
@@ -1205,7 +1220,7 @@ class U2(GateOperation):
 
 
 class U3(GateOperation):
-    """U3门，对应于任意角度的极坐标旋转，参数为θ、ϕ和λ"""
+    """U3门，对应于任意角度的极坐标旋转，参数为θ、ϕ和λ."""
 
     def __init__(self, targets=None, arg_value=None) -> None:
         super().__init__(
@@ -1229,7 +1244,7 @@ def create_gate(
     arg_value: list = [],
     allow_undefined: bool = False,
 ):
-    """Create gate object
+    """Create gate object.
 
     Args:
         name: name of gate

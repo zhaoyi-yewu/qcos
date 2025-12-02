@@ -31,7 +31,7 @@ from qcos.drivers.driver_base import DriverBase
 
 
 class DriverHanyuan1(DriverBase):
-    """中科酷原-汉原1 中性原子驱动
+    """中科酷原-汉原1 中性原子驱动.
 
     Cascoldatom Hanyuan1 driver
     CA-NAQC-20Q-A1
@@ -78,7 +78,7 @@ class DriverHanyuan1(DriverBase):
         }
 
     def init_driver(self):
-        """Init driver"""
+        """Init driver."""
         extra_configs = self.get_configs()
         ip_address = extra_configs.get(
             "ip_address", self.DEFAULT_CONTROL_SYSTEM_IP
@@ -88,7 +88,7 @@ class DriverHanyuan1(DriverBase):
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def validate_driver_configs(self, configs):
-        """Validate driver configs
+        """Validate driver configs.
 
         Args:
           configs: configs dictionary
@@ -136,11 +136,10 @@ class DriverHanyuan1(DriverBase):
         return success, err_msg
 
     def close_driver(self):
-        """Close driver"""
+        """Close driver."""
 
     def fetch_configs(self):
-        """
-        Fetch configs
+        """Fetch configs.
 
         Returns:
             remote transpiler configs
@@ -182,7 +181,7 @@ class DriverHanyuan1(DriverBase):
         return qpu_configs
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
-        """Run job
+        """Run job.
 
         Args:
             job_id: job ID
@@ -259,7 +258,7 @@ class DriverHanyuan1(DriverBase):
         logger.info(f"Cancel job: job_id: {job_id}")
 
     def init_base_url(self, ip_address: str, port: int):
-        """Init base url
+        """Init base url.
 
         Args:
             ip_address: server ip address
@@ -273,7 +272,7 @@ class DriverHanyuan1(DriverBase):
 
     @staticmethod
     def print_api_response(status_code, reason, text, result=None):
-        """Print API response
+        """Print API response.
 
         Args:
             status_code: status code
@@ -289,7 +288,7 @@ class DriverHanyuan1(DriverBase):
 
     @staticmethod
     def call_json_rpc(url, method_name, data=None, params=None):
-        """Call json rpc method
+        """Call json rpc method.
 
         Args:
             url: json rpc url
@@ -344,7 +343,8 @@ class DriverHanyuan1(DriverBase):
         shots: int | None = 1,
         data_index: int | None = 0,
     ) -> dict[str, Any]:
-        """_build_request_data
+        """_build_request_data.
+
         根据不同的 data_type 构建请求数据
         可扩展方法，方便后续添加新的任务类型
 
@@ -473,7 +473,7 @@ class DriverHanyuan1(DriverBase):
         expect_task_status: list[str],
         data_index: int | None = 0,
     ) -> tuple:
-        """Check task status
+        """Check task status.
 
         Args:
             job_id: job id
@@ -525,7 +525,7 @@ class DriverHanyuan1(DriverBase):
         data_type: str,
         data_index: int | None = 0,
     ) -> tuple:
-        """Check task results
+        """Check task results.
 
         Args:
             job_id: job id

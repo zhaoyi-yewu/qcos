@@ -17,8 +17,8 @@
 
 
 class DriverException(Exception):
-    """Driver base exception"""
+    """Driver base exception."""
 
 
 class DriverServiceUnavailable(DriverException):
-    """Driver exception: service unavailable"""
+    """Driver exception: service unavailable."""

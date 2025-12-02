@@ -22,9 +22,7 @@ from qcos.engine.qubo.tabu import QUBOSolution, TabuSearch
 
 
 class SubQUBOMultiSolution:
-    """
-    Implement subQUBO with multiple solution instances
-    """
+    """Implement subQUBO with multiple solution instances."""
 
     def __init__(
         self,
@@ -35,17 +33,16 @@ class SubQUBOMultiSolution:
         subqubo_size=100,
         max_converged_num=3,
     ) -> None:
-        """
-        Args:
-            N_I (int): Number of solutions in instance pool. Defaults to 20.
-            N_E (int): Number of extractions for subQUBO. Defaults to 5.
-            N_S (int): Number of solutions extracted from the instance pool.
-                       Defaults to 2.
-            qubo_matrix (np.ndarray): qubo matrix
-            subqubo_size (int): Number of qubits in subQUBO. Defaults to 50.
-            max_converged_num (int): Convergence after how many consecutive
-                                     times the optimal value is not updated.
-                                     Defaults to 2.
+        """Args:
+        N_I (int): Number of solutions in instance pool. Defaults to 20.
+        N_E (int): Number of extractions for subQUBO. Defaults to 5.
+        N_S (int): Number of solutions extracted from the instance pool.
+                   Defaults to 2.
+        qubo_matrix (np.ndarray): qubo matrix
+        subqubo_size (int): Number of qubits in subQUBO. Defaults to 50.
+        max_converged_num (int): Convergence after how many consecutive
+                                 times the optimal value is not updated.
+                                 Defaults to 2.
         """
         self.N_I = N_I
         self.N_E = N_E
@@ -58,8 +55,7 @@ class SubQUBOMultiSolution:
         self.pool = None
 
     def set_subqubo_size(self, subqubo_size):
-        """
-        Set subqubo size
+        """Set subqubo size.
 
         Args:
             subqubo_size (int): new_subqubo_size
@@ -67,8 +63,7 @@ class SubQUBOMultiSolution:
         self.subqubo_size = subqubo_size
 
     def set_qubo_matrix(self, qubo_matrix: np.ndarray):
-        """
-        Set QUBO matrix and convert to binary quadratic model.
+        """Set QUBO matrix and convert to binary quadratic model.
 
         Args:
             qubo_matrix (np.ndarray): n-by-n QUBO-matrix
@@ -76,8 +71,7 @@ class SubQUBOMultiSolution:
         self.qubo = qubo_matrix
 
     def get_max_converged_num(self):
-        """
-        Get max converged num
+        """Get max converged num.
 
         Returns:
             max_converged_num (int): converged num
@@ -87,12 +81,12 @@ class SubQUBOMultiSolution:
     def _extract_subqubo(
         self, tmp_solution, extracted_index, non_extracted_index
     ):
-        """
-        Extract subQUBO model
+        """Extract subQUBO model.
+
         Args:
             tmp_solution(np.ndarray): temporary solution in QUBO-matrix
             extracted_index(list): extracted index in QUBO-matrix
-            non_extracted_index (list): no extracted index in QUBO-matrix
+            non_extracted_index (list): no extracted index in QUBO-matrix.
 
         Returns:
             list(list): subQUBO matrix
@@ -118,8 +112,7 @@ class SubQUBOMultiSolution:
         return subqubo_mat
 
     def init_instance_pool(self):
-        """
-        Initialize the instance solutions pool include N_I solution
+        """Initialize the instance solutions pool include N_I solution.
 
         Returns:
             np.ndarray: solution pool
@@ -136,8 +129,7 @@ class SubQUBOMultiSolution:
         return pool
 
     def find_best_solution(self, pool):
-        """
-        Find the best solution
+        """Find the best solution.
 
         Returns:
             QUBOSolution: best solution
@@ -150,12 +142,12 @@ class SubQUBOMultiSolution:
         return best, ascending_order_idx
 
     def _optimize_solution(self, solution_i):
-        """
-        Optimize a single solution using TabuSearch
+        """Optimize a single solution using TabuSearch.
+
         Args:
             solution_i (QUBOSolution): solution to be optimized
         Returns:
-            QUBOSolution: optimized solution
+            QUBOSolution: optimized solution.
         """
         tmp_solution = solution_i.solution.setflags(write=False)
         tabu = TabuSearch(self.qubo, tmp_solution)
@@ -169,12 +161,12 @@ class SubQUBOMultiSolution:
         return solution_i
 
     def optimize_solution_pool(self, pool):
-        """
-        Optimize all solutions
+        """Optimize all solutions.
+
         Args:
             pool (list): list of solutions
         Returns:
-            list: list of optimized solutions
+            list: list of optimized solutions.
         """
         updated_pool = []
         for solution_i in pool:
@@ -183,8 +175,7 @@ class SubQUBOMultiSolution:
         return updated_pool
 
     def construct_subqubo(self, n_s_solutions_pool):
-        """
-        Construct subqubo matrix from N_S solutions pool
+        """Construct subqubo matrix from N_S solutions pool.
 
         Args:
             n_s_solutions_pool (list): N_S solutions pool
@@ -214,8 +205,7 @@ class SubQUBOMultiSolution:
         return subqubo, tmp_solution, extracted_index
 
     def merge_solution(self, tmp_solution, sub_solution, extracted_index):
-        """
-        Merge the sub solution into the tentative solution
+        """Merge the sub solution into the tentative solution.
 
         Args:
             tmp_solution (QUBOSolution): tmp solution
@@ -231,9 +221,9 @@ class SubQUBOMultiSolution:
         return QUBOSolution(solution_x, energy)
 
     def create_sub_solution_pools(self, solution_pool):
-        """
-        Create N_E sub-solution pools from the main solution pool,
+        """Create N_E sub-solution pools from the main solution pool,
         each formed by randomly selecting N_S solution instances.
+
         Args:
             solution_pool (list): solutions pool.
 
@@ -248,8 +238,7 @@ class SubQUBOMultiSolution:
         return n_e_pools
 
     def update_solution_pool(self, solution_pool, new_solutions):
-        """
-        Update the solution pool by replacing the worst solutions
+        """Update the solution pool by replacing the worst solutions
         with the best solution.
 
         Args:

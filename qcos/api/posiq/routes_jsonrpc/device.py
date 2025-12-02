@@ -31,7 +31,7 @@ module_name = "DEVICE"
 
 
 def _get_device_info(device_info, auth_data=None):
-    """Get device info
+    """Get device info.
 
     Args:
         device_info: device info
@@ -40,7 +40,6 @@ def _get_device_info(device_info, auth_data=None):
     Returns:
         device_info
     """
-
     # replace pwd in extra_configs to ********
     configs = Library.mask_password(device_info.configs)
     _device_info = {
@@ -66,7 +65,7 @@ def get_devices(
     body: schemas.GetDevicesRequest | None = None,
     auth_data: dict | None = Depends(auth),
 ) -> dict[str, schemas.GetDeviceResponse]:
-    """Get device dict request
+    """Get device dict request.
 
     Args:
         body(schemas.GetDevicesRequest): devices request
@@ -97,7 +96,7 @@ def get_device(
     body: schemas.GetDeviceRequest,
     auth_data: dict | None = Depends(auth),
 ) -> schemas.GetDeviceResponse:
-    """Get device info request
+    """Get device info request.
 
     Args:
         body(schemas.GetDeviceRequest): device name

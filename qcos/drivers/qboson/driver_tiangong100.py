@@ -30,7 +30,7 @@ from qcos.drivers.driver_qubo_base import DriverQuboBase
 
 
 class DriverTiangong100(DriverQuboBase):
-    """玻色量子-天工100 光量子伊辛机驱动
+    """玻色量子-天工100 光量子伊辛机驱动.
 
     Qboson Tiangong100 driver
     CQ-D-100
@@ -97,22 +97,27 @@ class DriverTiangong100(DriverQuboBase):
         }
 
     def init_driver(self):
-        """Init driver
+        """Init driver.
 
         注意:
         token有效期30天
         一般最长任务执行时间是10分钟
         用户认证
-        curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST -d '{"username":"username","pwd":"123"}' http://127.0.0.1:8088/kdev/terminal/login/
+        curl -i -H "Accept: application/json" \
+          -H "Content-Type: application/json" -X POST \
+          -d '{"username":"username","pwd":"123"}' \
+          http://127.0.0.1:8088/kdev/terminal/login/
+
         获取真机信息
-        curl -i -H "Accept: application/json" -H "Content-Type: application/json" -H "Authorization: JWT ${token}" http://127.0.0.1:8088/kdev/terminal/machine/
-        # pylint: disable=line-too-long
-        # noqa: E501
+        curl -i -H "Accept: application/json" \
+          -H "Content-Type: application/json" \
+          -H "Authorization: JWT ${token}" \
+          http://127.0.0.1:8088/kdev/terminal/machine/
         """
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def validate_driver_configs(self, configs):
-        """Validate driver configs
+        """Validate driver configs.
 
         Args:
             configs: configs dictionary
@@ -142,18 +147,17 @@ class DriverTiangong100(DriverQuboBase):
         return success, err_msg
 
     def close_driver(self):
-        """Close driver"""
+        """Close driver."""
 
     def fetch_configs(self):
-        """
-        Fetch configs
+        """Fetch configs.
 
         Returns:
             remote transpiler configs
         """
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
-        """Run job
+        """Run job.
 
         Args:
             job_id: job ID
@@ -292,7 +296,7 @@ class DriverTiangong100(DriverQuboBase):
         logger.info(f"Cancel job: job_id: {job_id}")
 
     def user_auth(self, username, password):
-        """User authorization
+        """User authorization.
 
         Args:
             username: username
@@ -328,7 +332,7 @@ class DriverTiangong100(DriverQuboBase):
         return success, "\n".join(err_msgs), token
 
     def check_device_status(self, device_id):
-        """Check device status
+        """Check device status.
 
         Args:
             device_id: device id
@@ -373,7 +377,7 @@ class DriverTiangong100(DriverQuboBase):
         return success, "\n".join(err_msgs), None
 
     def upload_file(self, job_id, data_index, data):
-        """Upload qubo matrix file
+        """Upload qubo matrix file.
 
         Args:
             job_id: job ID
@@ -440,7 +444,7 @@ class DriverTiangong100(DriverQuboBase):
         return success, "\n".join(err_msgs), file_info
 
     def submit_tasks(self, tasks_info):
-        """Submit tasks
+        """Submit tasks.
 
         Args:
             tasks_info: tasks info
@@ -473,7 +477,7 @@ class DriverTiangong100(DriverQuboBase):
         return success, "\n".join(err_msgs), None
 
     def get_task_id(self, task_name):
-        """Get task id by task name
+        """Get task id by task name.
 
         Args:
             task_name: task name
@@ -517,7 +521,7 @@ class DriverTiangong100(DriverQuboBase):
         return success, "\n".join(err_msgs), task_info
 
     def check_task_status(self, task_name, expect_task_status):
-        """Check task status meets requirements
+        """Check task status meets requirements.
 
         Args:
             task_name: task name
@@ -541,7 +545,7 @@ class DriverTiangong100(DriverQuboBase):
         return False, err_msg, None
 
     def get_task_results(self, task_id):
-        """Get task results
+        """Get task results.
 
         Args:
             task_id: task ID
@@ -579,7 +583,7 @@ class DriverTiangong100(DriverQuboBase):
         return success, "\n".join(err_msgs), results
 
     def delete_task(self, task_id):
-        """Delete task
+        """Delete task.
 
         Args:
             task_id: task ID

@@ -59,9 +59,7 @@ def main(
     tech_type: str = "",
     config_file: str = "",
 ):
-    """
-    cmss-transpiler performance test
-    """
+    """cmss-transpiler performance test."""
     success = False
     # input args check
     file_path = Path(input_file).resolve()

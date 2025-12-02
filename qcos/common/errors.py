@@ -18,14 +18,14 @@
 
 
 class BaseException(Exception):
-    """Base exception"""
+    """Base exception."""
 
     def __init__(self, message):
         super().__init__(message)
         self.message = str(message)
 
     def get_error_code(self):
-        """Get error code
+        """Get error code.
 
         Returns:
             error code
@@ -37,7 +37,7 @@ class BaseException(Exception):
 
 
 class GenericException(BaseException):
-    """Generic exception"""
+    """Generic exception."""
 
     module_name = "Generic"
     error_code = -10
@@ -45,7 +45,7 @@ class GenericException(BaseException):
 
 
 class InvalidArguments(BaseException):
-    """Invalid arguments"""
+    """Invalid arguments."""
 
     module_name = "Generic"
     error_code = -11
@@ -53,7 +53,7 @@ class InvalidArguments(BaseException):
 
 
 class NotFound(BaseException):
-    """Not Found"""
+    """Not Found."""
 
     module_name = "Generic"
     error_code = -12
@@ -61,7 +61,7 @@ class NotFound(BaseException):
 
 
 class WorkFlowError(BaseException):
-    """Work Flow Error"""
+    """Work Flow Error."""
 
     module_name = "Workflow"
     error_code = -13
@@ -69,7 +69,7 @@ class WorkFlowError(BaseException):
 
 
 class JobEngineDriverInitError(BaseException):
-    """Job Engine: Driver Init Error"""
+    """Job Engine: Driver Init Error."""
 
     module_name = "JobEngine"
     error_code = -100
@@ -77,7 +77,7 @@ class JobEngineDriverInitError(BaseException):
 
 
 class JobEngineTranspilerInitError(BaseException):
-    """Job Engine: Transpiler Init Error"""
+    """Job Engine: Transpiler Init Error."""
 
     module_name = "JobEngine"
     error_code = -101
@@ -85,7 +85,7 @@ class JobEngineTranspilerInitError(BaseException):
 
 
 class JobEngineParseError(BaseException):
-    """Job Engine: Parse Error"""
+    """Job Engine: Parse Error."""
 
     module_name = "JobEngine"
     error_code = -102
@@ -93,7 +93,7 @@ class JobEngineParseError(BaseException):
 
 
 class JobEngineTranspileError(BaseException):
-    """Job Engine: Transpile Error"""
+    """Job Engine: Transpile Error."""
 
     module_name = "JobEngine"
     error_code = -103
@@ -101,7 +101,7 @@ class JobEngineTranspileError(BaseException):
 
 
 class JobEngineDriverRunError(BaseException):
-    """Job Engine: Driver Run Error"""
+    """Job Engine: Driver Run Error."""
 
     module_name = "JobEngine"
     error_code = -104
@@ -109,7 +109,7 @@ class JobEngineDriverRunError(BaseException):
 
 
 class JobEngineCheckWidthError(BaseException):
-    """Job Engine: Check QUBO Matrix Bit Width Error"""
+    """Job Engine: Check QUBO Matrix Bit Width Error."""
 
     module_name = "JobEngine"
     error_code = -105
@@ -117,8 +117,10 @@ class JobEngineCheckWidthError(BaseException):
 
 
 class JobEnginePrecisionTooHighError(BaseException):
-    """Job Engine: Precision is too high, resulting in subqubo
-    with too few bits for processing"""
+    """Job Engine: Precision is too high.
+
+    resulting in subqubo with too few bits for processing.
+    """
 
     module_name = "JobEngine"
     error_code = -106
@@ -126,7 +128,7 @@ class JobEnginePrecisionTooHighError(BaseException):
 
 
 class JobEngineQubitLimitExceededError(BaseException):
-    """Job Engine: Device Qubit Limit Exceeded Error"""
+    """Job Engine: Device Qubit Limit Exceeded Error."""
 
     module_name = "JobEngine"
     error_code = -107
@@ -134,7 +136,7 @@ class JobEngineQubitLimitExceededError(BaseException):
 
 
 class JobEngineCheckMatrixError(BaseException):
-    """Job Engine: Check Matrix Error"""
+    """Job Engine: Check Matrix Error."""
 
     module_name = "JobEngine"
     error_code = -108

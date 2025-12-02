@@ -26,13 +26,13 @@ logger = logging.getLogger(__name__)
 
 
 class TranspilerManager:
-    """Transpiler manager"""
+    """Transpiler manager."""
 
     def __init__(self):
         self.transpilers = {}
 
     def load_transpilers(self):
-        """Scan and load transpilers"""
+        """Scan and load transpilers."""
         logger.info("Loading transpilers ...")
         base_module_name = "qcos.transpiler"
         base_dir = os.path.dirname(__file__)
@@ -61,7 +61,7 @@ class TranspilerManager:
                 class_instance.set_class_name(_class.__qualname__)
 
     def init_transpilers(self):
-        """Init transpilers"""
+        """Init transpilers."""
         for _, transpiler in self.transpilers.items():
             # Init transpiler
             transpiler.init_transpiler()
@@ -69,7 +69,7 @@ class TranspilerManager:
             logger.info(f"\n{transpiler.get_transpiler_info()}")
 
     def has_transpiler(self, transpiler_name):
-        """Has transpiler
+        """Has transpiler.
 
         Args:
             transpiler_name: transpiler name
@@ -80,7 +80,7 @@ class TranspilerManager:
         return transpiler_name in self.transpilers
 
     def get_transpiler(self, transpiler_name):
-        """Get transpiler
+        """Get transpiler.
 
         Args:
             transpiler_name: transpiler name
@@ -91,7 +91,7 @@ class TranspilerManager:
         return self.transpilers.get(transpiler_name, None)
 
     def get_transpilers(self):
-        """Get all transpilers
+        """Get all transpilers.
 
         Returns:
             dict of transpilers

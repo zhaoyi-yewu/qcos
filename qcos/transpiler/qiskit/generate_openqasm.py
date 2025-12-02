@@ -32,8 +32,7 @@ def generate_random_qasm(
     qasm_version: str = "3.0",
     output_file: str = "qasm_temp.qasm",
 ):
-    """
-    generate a random circuit with width and depth
+    """Generate a random circuit with width and depth.
 
     Args:
         width (int): number of qubits

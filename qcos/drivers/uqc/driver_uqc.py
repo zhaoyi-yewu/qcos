@@ -29,7 +29,7 @@ from qcos.drivers.driver_base import DriverBase
 
 
 class DriverUQCMatrix2(DriverBase):
-    """幺正量子 UQC-Matrix2 离子阱驱动
+    """幺正量子 UQC-Matrix2 离子阱驱动.
 
     UQC-Matrix2 driver
     """
@@ -70,7 +70,7 @@ class DriverUQCMatrix2(DriverBase):
         self._uqc = None
 
     def validate_driver_configs(self, configs):
-        """Validate driver configs
+        """Validate driver configs.
 
         Args:
             configs: configs dictionary
@@ -97,14 +97,14 @@ class DriverUQCMatrix2(DriverBase):
         return success, err_msg
 
     def init_driver(self):
-        """Init driver"""
+        """Init driver."""
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def close_driver(self):
-        """Close driver"""
+        """Close driver."""
 
     def fetch_configs(self):
-        """Fetch configs"""
+        """Fetch configs."""
         extra_configs = self.get_configs()
         self.token = extra_configs.get("password_token", "")
         self.uqc_host = extra_configs.get("uqc_host", "127.0.0.1")
@@ -128,7 +128,7 @@ class DriverUQCMatrix2(DriverBase):
         logger.info(f"Cancel job: job_id: {job_id}")
 
     def run(self, job_id, num_qubits, data, data_type, shots=100):
-        """Run job
+        """Run job.
 
         Args:
             job_id: job ID
@@ -204,7 +204,7 @@ class DriverUQCMatrix2(DriverBase):
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def check_task_status(self, task_id, expect_task_status):
-        """Check task status
+        """Check task status.
 
         Args:
             task_id: task id
@@ -224,7 +224,7 @@ class DriverUQCMatrix2(DriverBase):
         return False, err_msg, None
 
     def get_task_results(self, task_id):
-        """Get task results
+        """Get task results.
 
         Args:
             task_id: task id
@@ -238,7 +238,7 @@ class DriverUQCMatrix2(DriverBase):
         return True, resp_json
 
     def normalize_task_results(self, results, num_qubits, shots):
-        """Normalize task results
+        """Normalize task results.
 
         Args:
             results: task results
@@ -277,7 +277,7 @@ class DriverUQCMatrix2(DriverBase):
         return dict_result
 
     def convert_results(self, results, num_qubits):
-        """valid shots
+        """Valid shots.
 
         Args:
             results: task results
@@ -294,7 +294,7 @@ class DriverUQCMatrix2(DriverBase):
         return dict_result
 
     def is_valid_shots(self, shots):
-        """valid shots
+        """Valid shots.
 
         Args:
             shots: number of shots

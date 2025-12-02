@@ -43,7 +43,7 @@ module_name = "JOB"
 def submit_job(
     body: schemas.SubmitJobRequest, auth_data: dict | None = Depends(auth)
 ) -> schemas.SubmitJobResponse:
-    """Submit job
+    """Submit job.
 
     Args:
         body(schemas.SubmitJobRequest): job info
@@ -414,7 +414,7 @@ def submit_job(
 def get_job_status(
     body: schemas.GetJobStatusRequest, auth_data: dict | None = Depends(auth)
 ) -> schemas.GetJobStatusResponse:
-    """Get job status
+    """Get job status.
 
     Args:
         body(schemas.GetJobStatusRequest): job_id: job ID
@@ -475,7 +475,7 @@ def get_job_status(
 def get_job_results(
     body: schemas.GetJobResultsRequest, auth_data: dict | None = Depends(auth)
 ) -> schemas.GetJobResultsResponse:
-    """Get job results
+    """Get job results.
 
     Args:
         body(schemas.GetJobResultsRequest): job_id: job ID
@@ -537,7 +537,7 @@ def get_jobs(
     body: schemas.GetJobsRequest | None = None,
     auth_data: dict | None = Depends(auth),
 ) -> list[schemas.GetJobStatusResponse]:
-    """Get job list
+    """Get job list.
 
     Args:
         body(schemas.GetJobsRequest): job_id: job ID
@@ -588,7 +588,7 @@ def cancel_jobs(
     body: schemas.CancelJobsRequest,
     auth_data: dict | None = Depends(auth),
 ) -> list[schemas.CancelJobsResponse]:
-    """Cancel job
+    """Cancel job.
 
     Args:
         body(schemas.CancelJobsRequest): job_ids: job IDs
@@ -626,7 +626,7 @@ def delete_jobs(
     body: schemas.DeleteJobsRequest,
     auth_data: dict | None = Depends(auth),
 ) -> list[schemas.DeleteJobsResponse]:
-    """Delete job
+    """Delete job.
 
     Args:
         body(schemas.DeleteJobsRequest): job_ids: job IDs
@@ -664,7 +664,7 @@ def delete_jobs(
 def set_job_results(
     body: schemas.SetJobResultsRequest, auth_data: dict | None = Depends(auth)
 ) -> schemas.SetJobResultsResponse:
-    """Set job results for existing job
+    """Set job results for existing job.
 
     Args:
         body(schemas.SetJobResultsRequest): job_id: job ID
@@ -821,7 +821,7 @@ def set_job_results(
 def update_job(
     body: schemas.UpdateJobRequest, auth_data: dict | None = Depends(auth)
 ) -> schemas.UpdateJobResponse:
-    """Update job
+    """Update job.
 
     Args:
         body(schemas.UpdateJobsRequest): job info
@@ -906,7 +906,7 @@ def update_job(
 
 
 def merge_results(response_info, parameters, results=None):
-    """Merge results
+    """Merge results.
 
     Args:
         response_info: response info

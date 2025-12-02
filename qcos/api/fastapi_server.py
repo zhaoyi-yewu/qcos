@@ -41,7 +41,7 @@ app = jsonrpc.API()
 def patched_invalid_params_from_validation_error(
     exc: ValidationError | RequestValidationError,
 ) -> InvalidParams:
-    """Patched invalid_params_from_validation_error for fastapi_jsonrpc
+    """Patched invalid_params_from_validation_error for fastapi_jsonrpc.
 
     Args:
         exc (Exception): exception
@@ -49,7 +49,6 @@ def patched_invalid_params_from_validation_error(
     Returns:
       jsonrpc.InvalidParams, jsonrpc
     """
-
     errors = []
     details = []
     for err in exc.errors():
@@ -97,8 +96,7 @@ unicorn_exit_handler = UvicornServer.handle_exit
 
 
 def handle_exit(*args, **kwargs):
-    """Handle exit"""
-
+    """Handle exit."""
     app.state.exiting = True
     unicorn_exit_handler(*args, **kwargs)
 

@@ -24,8 +24,9 @@ from qcos.common.constant import Constant
 
 
 class SubmitJobRequest(BaseModel):
-    """Submit Job Request
-    Pydantic Model for Submit Job Request
+    """Submit Job Request.
+
+    Pydantic Model for Submit Job Request.
     """
 
     # Code types: qasm, qasm2, qasm3, qubo
@@ -65,8 +66,9 @@ class SubmitJobRequest(BaseModel):
 
 
 class SubmitJobResponse(BaseModel):
-    """Submit Job Response
-    Pydantic Model for Submit Job Response
+    """Submit Job Response.
+
+    Pydantic Model for Submit Job Response.
     """
 
     # Job ID
@@ -110,8 +112,9 @@ class SubmitJobResponse(BaseModel):
 
 
 class GetJobStatusRequest(BaseModel):
-    """Get Job Status Request
-    Pydantic Model for Get Job Status Request
+    """Get Job Status Request.
+
+    Pydantic Model for Get Job Status Request.
     """
 
     # Job ID
@@ -119,8 +122,9 @@ class GetJobStatusRequest(BaseModel):
 
 
 class GetJobStatusResponse(BaseModel):
-    """Get Job Status Response
-    Pydantic Model for Get Job Status Response
+    """Get Job Status Response.
+
+    Pydantic Model for Get Job Status Response.
     """
 
     # Job ID
@@ -156,8 +160,9 @@ class GetJobStatusResponse(BaseModel):
 
 
 class GetJobResultsRequest(BaseModel):
-    """Get Job Results Request
-    Pydantic Model for Get Job Results Request
+    """Get Job Results Request.
+
+    Pydantic Model for Get Job Results Request.
     """
 
     # Job ID
@@ -165,8 +170,9 @@ class GetJobResultsRequest(BaseModel):
 
 
 class GetJobResultsResponse(BaseModel):
-    """Get Job Results Response
-    Pydantic Model for Get Job Results Response
+    """Get Job Results Response.
+
+    Pydantic Model for Get Job Results Response.
     """
 
     # Job ID
@@ -208,14 +214,16 @@ class GetJobResultsResponse(BaseModel):
 
 
 class GetJobsRequest(BaseModel):
-    """Get Jobs Request
-    Pydantic Model for Get Jobs Request
+    """Get Jobs Request.
+
+    Pydantic Model for Get Jobs Request.
     """
 
 
 class CancelJobsRequest(BaseModel):
-    """Cancel Jobs Request
-    Pydantic Model for Cancel Jobs Request
+    """Cancel Jobs Request.
+
+    Pydantic Model for Cancel Jobs Request.
     """
 
     # Job IDs
@@ -223,8 +231,9 @@ class CancelJobsRequest(BaseModel):
 
 
 class CancelJobsResponse(BaseModel):
-    """Cancel Jobs Response
-    Pydantic Model for Cancel Jobs Response
+    """Cancel Jobs Response.
+
+    Pydantic Model for Cancel Jobs Response.
     """
 
     # Job ID
@@ -234,8 +243,9 @@ class CancelJobsResponse(BaseModel):
 
 
 class DeleteJobsRequest(BaseModel):
-    """Delete Jobs Request
-    Pydantic Model for Delete Jobs Request
+    """Delete Jobs Request.
+
+    Pydantic Model for Delete Jobs Request.
     """
 
     # Job IDs
@@ -243,8 +253,9 @@ class DeleteJobsRequest(BaseModel):
 
 
 class DeleteJobsResponse(BaseModel):
-    """Delete Jobs Response
-    Pydantic Model for Delete Jobs Response
+    """Delete Jobs Response.
+
+    Pydantic Model for Delete Jobs Response.
     """
 
     # Job ID
@@ -254,8 +265,9 @@ class DeleteJobsResponse(BaseModel):
 
 
 class SetJobResultsRequest(BaseModel):
-    """Set Job Results Request
-    Pydantic Model for Set Job Results Request
+    """Set Job Results Request.
+
+    Pydantic Model for Set Job Results Request.
     """
 
     # Job ID
@@ -267,8 +279,9 @@ class SetJobResultsRequest(BaseModel):
 
 
 class SetJobResultsResponse(BaseModel):
-    """Set Job Results Response
-    Pydantic Model for Set Job Results Response
+    """Set Job Results Response.
+
+    Pydantic Model for Set Job Results Response.
     """
 
     # Job ID
@@ -280,8 +293,9 @@ class SetJobResultsResponse(BaseModel):
 
 
 class UpdateJobRequest(BaseModel):
-    """Update Job Request
-    Pydantic Model for Update Job Request
+    """Update Job Request.
+
+    Pydantic Model for Update Job Request.
     """
 
     # Job ID
@@ -291,8 +305,9 @@ class UpdateJobRequest(BaseModel):
 
 
 class UpdateJobResponse(BaseModel):
-    """Update Job Response
-    Pydantic Model for Update Job Response
+    """Update Job Response.
+
+    Pydantic Model for Update Job Response.
     """
 
     # Job ID
