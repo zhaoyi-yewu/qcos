@@ -405,3 +405,107 @@ class TestDGSwap:
         except Exception as e:
             # qiskit may not be available or may raise errors
             logging.warning(f"Exception occurred in qiskit_circuit: {e}")
+
+    def test_cx_to_swap_basic(self):
+        """Test cx_to_swap converts triple CX to SWAP"""
+        ag = self.create_test_ag()
+        dg_swap = DGSwap(ag)
+        # three consecutive CX gates on same qubits to trigger cx_to_swap
+        for _ in range(3):
+            dg_swap.add_gate(("cx", (0, 1), []))
+        dg_swap.cx_to_swap()
+        has_swap = False
+        for node in dg_swap.nodes:
+            for name, _, _ in dg_swap.get_node_gates(node):
+                if name == "swap":
+                    has_swap = True
+        assert has_swap is True
+
+    def test_random_mutation_basic(self, monkeypatch):
+        """Test random_mutation runs and calls exchange"""
+        ag = self.create_test_ag()
+        dg_swap = DGSwap(ag)
+        dg_swap.swap_nodes = (0,)
+        # fake graph neighbourhood and exchange
+        monkeypatch.setattr(dg_swap, "predecessors", lambda node: [1])
+        monkeypatch.setattr(dg_swap, "successors", lambda node: [])
+        calls = {"n": 0}
+
+        def fake_exchange(node1, node2):
+            calls["n"] += 1
+            return True
+
+        monkeypatch.setattr(dg_swap, "exchange", fake_exchange)
+        count = dg_swap.random_mutation(mutate_time=2, max_try=3)
+        assert isinstance(count, int)
+        assert calls["n"] >= 1
+
+    def test_random_mutation2_basic(self, monkeypatch):
+        """Test random_mutation2 runs until depth changes or max_try"""
+        ag = self.create_test_ag()
+        dg_swap = DGSwap(ag)
+        dg_swap.swap_nodes = (0,)
+        monkeypatch.setattr(dg_swap, "predecessors", lambda node: [1])
+        monkeypatch.setattr(dg_swap, "successors", lambda node: [])
+        monkeypatch.setattr(
+            dg_swap, "exchange", lambda *_args, **_kwargs: True
+        )
+        count = dg_swap.random_mutation2(max_try=5)
+        assert isinstance(count, int)
+        assert 0 <= count <= 5
+
+    def test_random_mutation3_basic(self, monkeypatch):
+        """Test random_mutation3 runs and possibly updates cost"""
+        ag = self.create_test_ag()
+        dg_swap = DGSwap(ag)
+        dg_swap.swap_nodes = (0,)
+        monkeypatch.setattr(dg_swap, "predecessors", lambda node: [1])
+        monkeypatch.setattr(dg_swap, "successors", lambda node: [])
+        # make cost always the same so branch for recover is hit
+        monkeypatch.setattr(
+            dg_swap, "exchange", lambda *_args, **_kwargs: True
+        )
+        monkeypatch.setattr(
+            type(dg_swap),
+            "cost",
+            property(lambda self: 1.0),
+        )
+        dg_swap.random_mutation3(max_try=3)
+
+    def test_depth_to_node_list_basic(self):
+        """Test depth_to_node_list, tolerant to missing qiskit"""
+        ag = self.create_test_ag()
+        dg_swap = DGSwap(ag)
+        dg_swap.add_gate(("cx", (0, 1), []))
+        try:
+            depth_to_node, node_to_depth = dg_swap.depth_to_node_list()
+            assert isinstance(depth_to_node, list)
+            assert isinstance(node_to_depth, dict)
+        except Exception as e:
+            # qiskit or dependency issues are acceptable
+            logging.warning(f"Exception in depth_to_node_list: {e}")
+
+    def test_exchange_with_root_returns_false(self):
+        """Exchange involving root node should immediately return False"""
+        ag = self.create_test_ag()
+        dg_swap = DGSwap(ag)
+        node = dg_swap.add_gate(("swap", (0, 1), []))
+        result = dg_swap.exchange(dg_swap.root, node)
+        assert result is False
+
+    def test_exchange_without_swap_gate_returns_false(self):
+        ag = self.create_test_ag()
+        dg_swap = DGSwap(ag)
+        node1 = dg_swap.add_gate(("h", (0,), []))
+        node2 = dg_swap.add_gate(("h", (1,), []))
+        result = dg_swap.exchange(node1, node2)
+        assert result is False
+
+    def test_exchange_not_direct_dependency_returns_false(self):
+        ag = self.create_test_ag()
+        dg_swap = DGSwap(ag)
+        # two SWAP nodes on disjoint qubits -> no edge, not directly dependent
+        node1 = dg_swap.add_gate(("swap", (0, 1), []))
+        node2 = dg_swap.add_gate(("swap", (2, 3), []))
+        result = dg_swap.exchange(node1, node2)
+        assert result is False

@@ -22,7 +22,10 @@ from loguru import logger
 from qcos.common.constant import Constant
 from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from qcos.transpiler.cmss.compiler.parser import compile
-from qcos.transpiler.cmss.mapping.hierachy_tree import HierarchyTree, get_block
+from qcos.transpiler.cmss.mapping.aggregate.hierachy_tree import (
+    HierarchyTree,
+    get_block,
+)
 from qcos.transpiler.cmss.mapping.mapping_factory import MappingFactory
 from qcos.transpiler.cmss.mapping.sc_mapping import SCRoute
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate

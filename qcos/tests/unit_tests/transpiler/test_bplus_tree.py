@@ -17,7 +17,7 @@
 
 from unittest.mock import Mock, patch
 
-from qcos.transpiler.cmss.mapping.bplus_tree import (
+from qcos.transpiler.cmss.mapping.aggregate.bplus_tree import (
     BPlusTreeNode,
     BPlusTreeInternalNode,
     BPlusTreeLeafNode,
@@ -442,19 +442,19 @@ class TestBPlusTreeHelperFunctions:
         mock_ht.average_fidelity = mock_average_fidelity
 
         with patch(
-            "qcos.transpiler.cmss.mapping.bplus_tree."
+            "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
             "build_bplus_tree_from_hierarchy"
         ) as mock_build:
             mock_build.return_value = mock_bplus_tree
 
             with patch(
-                "qcos.transpiler.cmss.mapping.bplus_tree."
+                "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
                 "_find_node_with_qubits"
             ) as mock_find:
                 mock_find.return_value = Mock()
 
                 with patch(
-                    "qcos.transpiler.cmss.mapping.bplus_tree."
+                    "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
                     "_remove_used_nodes"
                 ):
                     result = get_block_bplus(mock_ht, 3)
@@ -475,7 +475,7 @@ class TestBPlusTreeHelperFunctions:
         mock_bplus_tree.search_candidates.return_value = []
 
         with patch(
-            "qcos.transpiler.cmss.mapping.bplus_tree."
+            "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
             "build_bplus_tree_from_hierarchy"
         ) as mock_build:
             mock_build.return_value = mock_bplus_tree
@@ -562,7 +562,8 @@ class TestBPlusTreeHelperFunctions:
         mock_ht.bplus_tree = None
 
         with patch(
-            "qcos.transpiler.cmss.mapping.bplus_tree._find_node_with_qubits"
+            "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
+            "_find_node_with_qubits"
         ) as mock_find:
             mock_target_node = Mock()
             mock_target_node.qubits = [1, 2, 3]
@@ -570,10 +571,11 @@ class TestBPlusTreeHelperFunctions:
             mock_find.return_value = mock_target_node
 
             with patch(
-                "qcos.transpiler.cmss.mapping.bplus_tree._ignore_node"
+                "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
+                "_ignore_node"
             ) as mock_ignore:
                 with patch(
-                    "qcos.transpiler.cmss.mapping.bplus_tree."
+                    "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
                     "build_bplus_tree_from_hierarchy"
                 ) as mock_build:
                     _remove_used_nodes(mock_ht, [1, 2, 3])
@@ -589,7 +591,8 @@ class TestBPlusTreeHelperFunctions:
         mock_ht.root = Mock()
 
         with patch(
-            "qcos.transpiler.cmss.mapping.bplus_tree._find_node_with_qubits"
+            "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
+            "_find_node_with_qubits"
         ) as mock_find:
             mock_find.return_value = None
 

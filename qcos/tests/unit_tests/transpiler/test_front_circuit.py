@@ -17,8 +17,12 @@
 
 import networkx as nx
 import numpy as np
+import pytest
 
-from qcos.transpiler.cmss.mapping.utils.front_circuit import FrontCircuit
+from qcos.transpiler.cmss.mapping.utils.front_circuit import (
+    FrontCircuit,
+    qubit_convert,
+)
 from qcos.transpiler.cmss.mapping.utils.dg import DG
 
 
@@ -468,3 +472,41 @@ class TestFrontCircuit:
         assert isinstance(swaps_phy, list)
         assert isinstance(h_scores, list)
         assert isinstance(h_scores_front, list)
+
+    def test_executable_two_qubit_not_connected(self):
+        """Test _executable returns False when qubits not connected"""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        # remove all edges so no two-qubit gate is executable
+        ag.remove_edges_from(list(ag.edges))
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        for node in dg.nodes:
+            qubits = dg.nodes[node].get("qubits", [])
+            if len(qubits) == 2:
+                assert front_cir._executable(node) is False
+                break
+
+    def test_execute_gate_remote_invalid_distance(self):
+        """Test execute_gate_remote raises when distance != 2"""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        # pick a two-qubit gate where distance is 1
+        for node in front_cir.front_layer:
+            qubits = dg.nodes[node].get("qubits", [])
+            if len(qubits) == 2:
+                with pytest.raises(ValueError):
+                    front_cir.execute_gate_remote(node)
+                break
+
+    def test_qubit_convert_noop(self):
+        """Test qubit_convert placeholder function can be called"""
+        # current implementation is a pass; just ensure it's callable
+        assert qubit_convert([0, 1, 2]) is None
