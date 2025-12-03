@@ -16,14 +16,13 @@
 # ----------------------------------------------------------------------
 
 import multiprocessing
-
 import pytest
 
 from qcos.common.constant import Constant
 from qcos.common.library import Library
 from qcos.tests.system_tests.common.library import StLibrary
 from qcos.tests.system_tests.conftest import GLOBAL_CONFIGS, SAMPLES
-from qcos.tests.system_tests.job.driver.uqc.uqc_api_server import main
+from .tiangong_api_server import main
 
 
 @pytest.mark.usefixtures("global_configs")
@@ -34,25 +33,27 @@ class TestJob:
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
-        cls.uqc_process = multiprocessing.Process(target=main, daemon=True)
-        cls.uqc_process.start()
+        cls.tiangong_process = multiprocessing.Process(
+            target=main, daemon=True
+        )
+        cls.tiangong_process.start()
 
     @classmethod
     def teardown_class(cls):
-        print("Stop UQC server")
-        cls.uqc_process.terminate()
+        print("Stop tiangong server")
+        cls.tiangong_process.terminate()
 
     def test_submit_job(self):
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
-            "job_name": "test_uqc_submit_job",
-            "source_code_list": [SAMPLES["2-qubit-sample.qasm"]],
-            "code_type": Constant.CODE_TYPE_QASM3,
+            "job_name": "test_tiangong_submit_job",
+            "source_code_list": [SAMPLES["simple-qubo.json"]],
+            "code_type": Constant.CODE_TYPE_QUBO,
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
-            "description": "description: test_uqc_submit_job",
-            "backend": "uqc_matrix2",
-            "shots": 100,
+            "description": "description: test_tiangong_submit_job",
+            "backend": "tiangong100",
+            "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": None,
             "driver_options": None,
             "transpiler": None,
