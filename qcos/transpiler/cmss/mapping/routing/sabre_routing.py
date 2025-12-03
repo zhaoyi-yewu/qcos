@@ -261,7 +261,7 @@ class SABRE:
             if len(node.bits) == 1:
                 continue
             # Extract logical qubits and map them to physical qubits
-            phy_bits = [self.cur_l2p[bit] for bit in node.bits]
+            phy_bits = phy_bits.union({self.cur_l2p[bit] for bit in node.bits})
 
         # Traverse all edges
         for edge in self.coupling_graph.edges():
