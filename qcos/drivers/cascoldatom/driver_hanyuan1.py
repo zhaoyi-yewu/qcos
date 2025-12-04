@@ -415,8 +415,8 @@ class DriverHanyuan1(DriverBase):
         shots: int | None = 1,
         data_index: int | None = 0,
     ) -> tuple:
-        """submit task
-        支持多种 data_type 的任务提交
+        """Submit task
+        支持多种 data_type 的任务提交.
 
         Args:
             job_id: job id
@@ -425,6 +425,7 @@ class DriverHanyuan1(DriverBase):
             data: gate list data (可选,某些任务类型不需要,默认None)
             shots: shots (可选,某些任务类型不需要)
             data_index: data index (可选)
+
         Returns:
             (success, err_msg)
         """

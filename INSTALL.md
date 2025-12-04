@@ -95,7 +95,7 @@ poetry build
 
 ### 2.3 安装
 ```shell
-pip3 install ./dist/qcos-1.0.0-py3-none-any.whl
+pip3 install --prefix=/usr ./output/dist/qcos-1.0.0-py3-none-any.whl
 
 # 创建服务运行需要用到的目录
 mkdir -p /var/qcos/db/; mkdir -p /var/qcos/storage
@@ -334,7 +334,8 @@ qcos-cli delete-jobs -y all
 
 * 设置作业结果 (回调或者测试用途)
 qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}'
-** 设置多作业结果, 针对多源代码的作业
+
+* 设置多作业结果, 针对多源代码的作业
 qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}' '{"code": -104, "message": "error test"}'
 
 [版本命令]

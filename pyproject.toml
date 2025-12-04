@@ -52,7 +52,7 @@ dependencies = [
     "click==8.1.8",
     "cliff==4.10.0",
     "cryptography==45.0.7",
-    "fastapi==0.115.12",
+    "fastapi==0.122.1",
     "fastapi-jsonrpc==3.4.1",
     "h11==0.16.0",
     "idna==3.10",
@@ -75,7 +75,7 @@ dependencies = [
     "rustworkx==0.16.0",
     "schema==0.7.7",
     "sniffio==1.3.1",
-    "starlette==0.46.2",
+    "starlette==0.50.0",
     "tomlkit==0.13.3",
     "typing-inspection==0.4.1",
     "typing_extensions==4.13.2",
@@ -100,7 +100,8 @@ dependencies = [
 [project.scripts]
 # Command line interface entrypoint scripts
 qcos-api = "qcos.api_server:main"
-qcos-compiler = "qcos.transpiler.cmss.transpiler_cmd_line:main"
+qcos-transpiler = "qcos.transpiler.cmss.transpiler_cmd_line:main"
+qiskit-transpiler = "qcos.transpiler.qiskit.transpiler_qiskit_cmd:main"
 
 [project.urls]
 "Homepage" = "https://gitee.com/OpenWuYue/qcos"
@@ -116,8 +117,8 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["*"]
-exclude = []
+include = ["qcos*"]
+exclude = ["bin*", "build*", "cicd*", "docs*", "qcos/tests*", "qcos/tests"]
 namespaces = true
 
 [tool.isort]

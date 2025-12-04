@@ -72,8 +72,7 @@ def subgraph_isomorphism_mapping(
 
 
 def topgraph_mapping(dependency_graph: DG, coupling_graph: nx.Graph):
-    """
-    Find the largest subcircuit that is isomorphic to the hardware topology.
+    """Find the largest subcircuit that is isomorphic to the hardware topology.
 
     And assign the remaining unallocated logical qubits sequentially.
 

@@ -28,6 +28,8 @@ if [ -n "${PIP_MIRROR}" ]; then
 else
   poetry source remove pip_mirror
 fi
+rm -rf ${TOP_DIR}/build
 poetry build -C ${TOP_DIR} -o ${OUTPUT_DIR}
 poetry source remove pip_mirror
 echo "Dist package dir: ${OUTPUT_DIR}"
+

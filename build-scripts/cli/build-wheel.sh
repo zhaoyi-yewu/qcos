@@ -43,10 +43,12 @@ if [ -n "${PIP_MIRROR}" ]; then
 else
   poetry source remove pip_mirror
 fi
+
 poetry -C ${CLI_SRC_DIR} build -o ${OUTPUT_DIR}
 poetry -C ${CLI_SRC_DIR} source remove pip_mirror
 echo "Dist package dir: ${OUTPUT_DIR}"
 
 # clean up
 rm -rf ${CLI_SRC_DIR}
-cd -
+cd - > /dev/null 2>&1
+
