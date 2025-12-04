@@ -81,7 +81,9 @@ class MCTree(DiGraph):
     """
 
     def __init__(self, AG, DG, **args):
-        """swap_combination is a list of swaps to be considered
+        """Initialize MCTree.
+
+        swap_combination is a list of swaps to be considered
         T: ratio for node evaluation
         node_count: index for newly added node.
         """
@@ -155,7 +157,9 @@ class MCTree(DiGraph):
     def add_node_mcts(
         self, father_node, added_swap=None, remote_exe_node=None
     ):
-        """visited_time: how many times this node has been visited
+        """Add a node to mct.
+
+        visited_time: how many times this node has been visited
         added_swap: list like [(in1, in2),...]
         added_remote: remote CNOTs added
         swap_decay: deacy parameter for added SWAP, this is only uesful for
@@ -330,7 +334,8 @@ class MCTree(DiGraph):
             return self.nodes[node]["num_add_gates"]
 
     def add_depth(self, node):
-        """Add depth information to a new node
+        """Add depth information to a new node.
+
         This should be revoked after or at the end of the add_node method.
 
         variables added:
@@ -459,9 +464,7 @@ class MCTree(DiGraph):
         return added_nodes
 
     def expansion(self, node):
-        """Expand a node via all non-trivival swaps and then do
-        backpropagation.
-        """
+        """Expand a node via all non-trivival swaps and do backpropagation."""
         if self.out_degree[node] != 0:
             raise ValueError("Expanded node already has son nodes.")
 
@@ -516,9 +519,7 @@ class MCTree(DiGraph):
         return added_nodes
 
     def get_son_attributes(self, node, args):
-        """Get attributes and sons, represented in list args,
-        from all sons of node.
-        """
+        """Get attributes and sons from all sons of node."""
         sons = []
         num_attr = len(args)
         num_son = self.out_degree(node)
@@ -639,7 +640,8 @@ class MCTree(DiGraph):
         raise ValueError(f"Unsupported method {method}")
 
     def back_propagation(self, start_node, mode_BP=None):
-        """反向传播，更新父节点的分数
+        """反向传播，更新父节点的分数.
+
         renew a variable reversely
         start_node: is the node the the original value extracted from,
                     note that the first backpropagated node is its father node

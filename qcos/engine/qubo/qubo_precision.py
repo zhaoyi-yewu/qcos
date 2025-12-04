@@ -26,8 +26,7 @@ from qcos.engine.qubo.tabu import QUBOSolution
 
 
 def find_matrix_gcd(matrix):
-    """Find the greatest common divisor (GCD) of
-    all non-zero elements in a matrix.
+    """Find the greatest common divisor (GCD) of all non-zero elements.
 
     Args:
         matrix: a 2D numpy array
@@ -87,7 +86,9 @@ def is_int_matrix(matrix, param_bit):
 
 
 def check_matrix(matrix):
-    """Check if the input 2D list is a square array (i.e., the number
+    """Check matrix is square array or not.
+
+    Check if the input 2D list is a square array (i.e., the number
     of rows and columns are equal).
 
     Args:
@@ -198,7 +199,9 @@ def ising_matrix_to_qubo_matrix(ising_matrix):
 
 
 def get_spins_num(mat, max_value):
-    """Obtain the number of spin variables after the matrix
+    """Get the number of spin variables.
+
+    Obtain the number of spin variables after the matrix
     is reduced in precision.
 
     Args:

@@ -28,8 +28,10 @@ from qcos.transpiler.cmss.mapping.utils.dg import DG
 
 class TestFrontCircuit:
     def create_test_ag(self):
-        """Create a test architecture graph with shortest_path and
-        shortest_length.
+        """Create a test architecture graph.
+
+        Creates a test architecture graph with shortest_path and
+        shortest_length attributes.
         """
         ag = nx.Graph()
         ag.add_edges_from([(0, 1), (1, 2), (2, 3), (3, 0)])
@@ -108,7 +110,8 @@ class TestFrontCircuit:
         assert front_cir.log_to_phy == map_list
 
     def test_assian_mapping_naive(self):
-        """Test assian_mapping_naive method
+        """Test assian_mapping_naive method.
+
         (note: typo in original method name).
         """
         ag = self.create_test_ag()
@@ -411,7 +414,8 @@ class TestFrontCircuit:
         assert actual_layers <= num_layer
 
     def test_print_methods(self):
-        """Test print methods
+        """Test print methods.
+
         (they don't return values, just verify they run).
         """
         ag = self.create_test_ag()
@@ -474,7 +478,7 @@ class TestFrontCircuit:
         assert isinstance(h_scores_front, list)
 
     def test_executable_two_qubit_not_connected(self):
-        """Test _executable returns False when qubits not connected"""
+        """Test _executable returns False when qubits not connected."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -491,7 +495,7 @@ class TestFrontCircuit:
                 break
 
     def test_execute_gate_remote_invalid_distance(self):
-        """Test execute_gate_remote raises when distance != 2"""
+        """Test execute_gate_remote raises when distance != 2."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -507,6 +511,6 @@ class TestFrontCircuit:
                 break
 
     def test_qubit_convert_noop(self):
-        """Test qubit_convert placeholder function can be called"""
+        """Test qubit_convert placeholder function can be called."""
         # current implementation is a pass; just ensure it's callable
         assert qubit_convert([0, 1, 2]) is None

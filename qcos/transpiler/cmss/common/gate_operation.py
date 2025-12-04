@@ -350,9 +350,9 @@ class SX(GateOperation):
 
 
 class SXDG(GateOperation):
-    """SXDG 门（也写作 √X† 或 SX⁻¹）是 SX 门的共轭转置（逆操作），
-    也称为 inverse square-root of X gate。.
+    """SXDG 门（也写作 √X† 或 SX⁻¹）.
 
+    SXDG 门是 SX 门的共轭转置（逆操作），也称为 inverse square-root of X gate.
     它在 Bloch 球上对应于 绕 X 轴旋转 -π/2 的操作。
     """
 
@@ -585,7 +585,9 @@ class CRZ(GateOperation):
 
 
 class CU1(GateOperation):
-    """CU1 门是一个 **受控相位旋转门**，是单量子比特 U1(λ) 门的受控版本。
+    """受控U1门.
+
+    CU1 门是一个 **受控相位旋转门**，是单量子比特 U1(λ) 门的受控版本。
     当控制量子比特为 |1⟩ 时，目标量子比特执行一个绕 Z 轴旋转角度 λ 的 U1 门；
     当控制量子比特为 |0⟩ 时，不进行任何操作。.
     """

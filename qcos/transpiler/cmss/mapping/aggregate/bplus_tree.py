@@ -166,7 +166,8 @@ class BPlusTree:
             self._split_leaf(leaf)
 
     def _find_leaf(self, key: int) -> BPlusTreeLeafNode:
-        """找到应该插入键值的叶子节点
+        """找到应该插入键值的叶子节点.
+
         使用自上而下的搜索方式.
 
         Args:
@@ -252,7 +253,8 @@ class BPlusTree:
                     self._split_internal(parent)
 
     def search_candidates(self, min_qubits: int) -> list[list[int]]:
-        """搜索满足最小量子比特数量要求的候选区域
+        """搜索满足最小量子比特数量要求的候选区域.
+
         使用自上而下的搜索方式.
 
         Args:
@@ -359,7 +361,8 @@ class BPlusTree:
 
 
 def build_bplus_tree_from_hierarchy(ht) -> BPlusTree:
-    """从层次树构建B+树
+    """从层次树构建B+树.
+
     层次树中的所有节点都是B+树中叶子节点对应的可选择区域.
 
     Args:
@@ -507,7 +510,8 @@ def _ignore_node(node):
 
 
 def _remove_used_nodes(ht, used_qubits: list[int]):
-    """从层次树中移除已使用的量子比特
+    """从层次树中移除已使用的量子比特.
+
     使用与原始remove函数相同的逻辑，但确保已分配的量子比特从所有相关节点中删除.
 
     Args:

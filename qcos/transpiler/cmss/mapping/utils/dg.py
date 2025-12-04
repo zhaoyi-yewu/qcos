@@ -110,6 +110,7 @@ class DG(DiGraph):
 
     def add_gate(self, gate: tuple, add_edges=True):
         """Add a gate to the graph.
+
         Attributes of a node: gates, num_gate_1q, num_gate_2q, qubits.
 
         Args:
@@ -256,6 +257,7 @@ class DG(DiGraph):
 
     def cascade_node(self, node1: int, node2: int):
         """Combine two given nodes.
+
         Here we only update one node (node_in) and delete the other (node_out)
         instead of creating one node and deleting both.
 
@@ -370,6 +372,7 @@ class DG(DiGraph):
 
     def to_ir(self, add_barrier=False, decompose_swap=False):
         """Convert the DG to a ir.
+
         If decompose_swap is set to True, we will decompose each SWAP
         into 3 CNOTs.
         """
@@ -444,6 +447,7 @@ class DG(DiGraph):
 
     def check_direct_dependency(self, node1: int, node2: int):
         """Check two nodes are directly dependent or not.
+
         We say node2 directly depends on node1 if
             1) two nodes share at least one qubit;
             2) for each shared qubit, there can't be any nodes existing between
@@ -477,7 +481,8 @@ class DG(DiGraph):
         return True
 
     def check_absorbable(self, node1: int, node2: int):
-        """Check if node1 and node2 can be obsorbed to each other
+        """Check if node1 and node2 can be obsorbed to each other.
+
         node1 and node2 are absorbable if all qubits in node1 or node2 exist in
         node2 or node1 and they are directly dependent to each other.
 

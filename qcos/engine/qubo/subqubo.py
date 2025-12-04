@@ -33,16 +33,18 @@ class SubQUBOMultiSolution:
         subqubo_size=100,
         max_converged_num=3,
     ) -> None:
-        """Args:
-        N_I (int): Number of solutions in instance pool. Defaults to 20.
-        N_E (int): Number of extractions for subQUBO. Defaults to 5.
-        N_S (int): Number of solutions extracted from the instance pool.
-                   Defaults to 2.
-        qubo_matrix (np.ndarray): qubo matrix
-        subqubo_size (int): Number of qubits in subQUBO. Defaults to 50.
-        max_converged_num (int): Convergence after how many consecutive
-                                 times the optimal value is not updated.
-                                 Defaults to 2.
+        """Initialize the SubQUBOMultiSolution.
+
+        Args:
+            N_I (int): Number of solutions in instance pool. Defaults to 20.
+            N_E (int): Number of extractions for subQUBO. Defaults to 5.
+            N_S (int): Number of solutions extracted from the instance pool.
+                    Defaults to 2.
+            qubo_matrix (np.ndarray): qubo matrix
+            subqubo_size (int): Number of qubits in subQUBO. Defaults to 50.
+            max_converged_num (int): Convergence after how many consecutive
+                                    times the optimal value is not updated.
+                                    Defaults to 2.
         """
         self.N_I = N_I
         self.N_E = N_E
@@ -221,7 +223,9 @@ class SubQUBOMultiSolution:
         return QUBOSolution(solution_x, energy)
 
     def create_sub_solution_pools(self, solution_pool):
-        """Create N_E sub-solution pools from the main solution pool,
+        """Create N_E sub-solution pools.
+
+        Create N_E sub-solution pools from the main solution pool,
         each formed by randomly selecting N_S solution instances.
 
         Args:
@@ -238,7 +242,9 @@ class SubQUBOMultiSolution:
         return n_e_pools
 
     def update_solution_pool(self, solution_pool, new_solutions):
-        """Update the solution pool by replacing the worst solutions
+        """Update the solution pool.
+
+        Update the solution pool by replacing the worst solutions
         with the best solution.
 
         Args:

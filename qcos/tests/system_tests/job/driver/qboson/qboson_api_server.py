@@ -35,7 +35,7 @@ task_id = str(Library.create_uuid(prefix=[0xF0]))
 
 
 def init_logging():
-    """init logging."""
+    """Init logging."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
@@ -44,7 +44,7 @@ def init_logging():
 
 
 async def auth_handler(request):
-    """user auth handler."""
+    """User auth handler."""
     logger.info("auth request received.")
     response_data = {
         "code": "0",
@@ -55,14 +55,14 @@ async def auth_handler(request):
 
 
 async def submit_handler(request):
-    """submit task handler."""
+    """Submit task handler."""
     logger.info("submit task request received.")
     response_data = {"code": "0", "msg": "", "data": {"task_id": task_id}}
     return web.json_response(response_data)
 
 
 async def get_status_handler(request):
-    """get task status handler."""
+    """Get task status handler."""
     logger.info("get task status request received.")
     response_data = {
         "code": "0",

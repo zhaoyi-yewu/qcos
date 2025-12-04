@@ -196,7 +196,8 @@ class HierarchyTree:
         return eigenvector
 
     def calc_merge_gain(self, nodes):
-        """奖励函数，每次找奖励函数值最大的合并方案
+        """奖励函数，每次找奖励函数值最大的合并方案.
+
         F = Qmerge - Qori + w * EV.
 
         Args:

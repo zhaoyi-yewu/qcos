@@ -45,8 +45,9 @@ class SABRE:
         weight: float = 0.5,
         decay: float = 0.001,
     ):
-        """SABRE mapping algorithm, ref: "Tackling the qubit mapping problem
-            for NISQ-era quantum devices".
+        """Initialize SABRE mapping algorithm.
+
+        ref: "Tackling the qubit mapping problem for NISQ-era quantum devices".
 
         Args:
             coupling_graph (Graph): The coupling graph of the quantum machine.

@@ -62,8 +62,19 @@ def swap_qubits_(qubits, swap_qubits):
 
 
 def hybridization(dg_swap1, dg_swap2, dg_ori, prob1=0.5):
-    """We choose the first prob1% gates in dg_swap1 and the last (1-prob1)%
+    """Hybridize two DG swaps.
+
+    We choose the first prob1% gates in dg_swap1 and the last (1-prob1)%
     gates in dg_swap2.
+
+    Args:
+        dg_swap1: First DG swap.
+        dg_swap2: Second DG swap.
+        dg_ori: Original DG.
+        prob1: Probability for choosing from dg_swap1.
+
+    Returns:
+        DGSwap: Hybridized DG swap.
     """
     dg_swap_new = copy.deepcopy(dg_ori)
     node_thre = int((len(dg_swap1.nodes) - len(dg_swap2.swap_nodes)) * prob1)
@@ -90,8 +101,19 @@ def hybridization(dg_swap1, dg_swap2, dg_ori, prob1=0.5):
 
 
 def hybridization2(dg_swap1, dg_swap2, dg_ori, prob1=0.5):
-    """For each exchange, we randomly accept (prob1%) in dg_swap1 or
+    """Hybridize two DG swaps randomly.
+
+    For each exchange, we randomly accept (prob1%) in dg_swap1 or
     [(1-prob1)%] that in dg_swap2.
+
+    Args:
+        dg_swap1: First DG swap.
+        dg_swap2: Second DG swap.
+        dg_ori: Original DG.
+        prob1: Probability for accepting from dg_swap1.
+
+    Returns:
+        DGSwap: Hybridized DG swap.
     """
     dg_swap_new = copy.deepcopy(dg_ori)
     exchange1, exchange2 = dg_swap1.exchange_log, dg_swap2.exchange_log
@@ -140,8 +162,18 @@ def hybridization3(dg_swap1, dg_swap2, dg_ori):
 
 
 def hybridization4(dg_swap1, dg_swap2, dg_ori):
-    """For each exchange, we use dg_swap1 and then try to exchange using
+    """Hybridize two DG swaps with depth checking.
+
+    For each exchange, we use dg_swap1 and then try to exchange using
     dg_swap2 one-by-one and accept only that reducing depth.
+
+    Args:
+        dg_swap1: First DG swap.
+        dg_swap2: Second DG swap.
+        dg_ori: Original DG.
+
+    Returns:
+        DGSwap: Hybridized DG swap.
     """
     dg_swap_new = copy.deepcopy(dg_swap1)
     exchange2 = dg_swap2.exchange_log.copy()
@@ -291,7 +323,8 @@ class DGSwap(DG):
         raise NotImplementedError()
 
     def random_mutation(self, mutate_time, max_try=None):
-        """Randomly choose mutate_time node pairs to do exchanging
+        """Randomly choose mutate_time node pairs to do exchanging.
+
         Return:
             The number of exchanges having been done.
         """
@@ -313,8 +346,9 @@ class DGSwap(DG):
         return count
 
     def random_mutation2(self, max_try=None):
-        """Randomly choose mutate_time node pairs to do exchanging until depth
-        is changed.
+        """Randomly choose mutate_time node pairs to do exchanging.
+
+        Continue until depth is changed.
 
         Return:
             The number of exchanges having been done.
@@ -338,9 +372,9 @@ class DGSwap(DG):
         return count
 
     def random_mutation3(self, max_try):
-        """Randomly choose mutate_time node pairs to do exchanging and accept
-        this exchange only if cost is decreased.
-        Try max_try times.
+        """Randomly choose mutate_time node pairs to do exchanging.
+
+        Accept this exchange only if cost is decreased. Try max_try times.
         """
         cost_current = self.cost
         count = 0

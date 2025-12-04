@@ -164,7 +164,7 @@ ignore = [
     # "D414",  # Section has no content ("Returns")
     # "D415",  # First line should end with a period, question mark, or exclamation point
     "D107",  # Missing docstring in public package
-    "D205",  # 1 blank line required between summary line and description
+    # "D205",  # 1 blank line required between summary line and description
 
     "E731",  # Do not assign a `lambda` expression, use a `def`
     "E741",  # Ambiguous variable name: `l`

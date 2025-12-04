@@ -415,7 +415,8 @@ class DriverHanyuan1(DriverBase):
         shots: int | None = 1,
         data_index: int | None = 0,
     ) -> tuple:
-        """Submit task
+        """Submit task.
+
         支持多种 data_type 的任务提交.
 
         Args:

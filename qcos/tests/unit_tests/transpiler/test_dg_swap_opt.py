@@ -407,7 +407,7 @@ class TestDGSwap:
             logging.warning(f"Exception occurred in qiskit_circuit: {e}")
 
     def test_cx_to_swap_basic(self):
-        """Test cx_to_swap converts triple CX to SWAP"""
+        """Test cx_to_swap converts triple CX to SWAP."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         # three consecutive CX gates on same qubits to trigger cx_to_swap
@@ -422,7 +422,7 @@ class TestDGSwap:
         assert has_swap is True
 
     def test_random_mutation_basic(self, monkeypatch):
-        """Test random_mutation runs and calls exchange"""
+        """Test random_mutation runs and calls exchange."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         dg_swap.swap_nodes = (0,)
@@ -441,7 +441,7 @@ class TestDGSwap:
         assert calls["n"] >= 1
 
     def test_random_mutation2_basic(self, monkeypatch):
-        """Test random_mutation2 runs until depth changes or max_try"""
+        """Test random_mutation2 runs until depth changes or max_try."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         dg_swap.swap_nodes = (0,)
@@ -455,7 +455,7 @@ class TestDGSwap:
         assert 0 <= count <= 5
 
     def test_random_mutation3_basic(self, monkeypatch):
-        """Test random_mutation3 runs and possibly updates cost"""
+        """Test random_mutation3 runs and possibly updates cost."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         dg_swap.swap_nodes = (0,)
@@ -473,7 +473,7 @@ class TestDGSwap:
         dg_swap.random_mutation3(max_try=3)
 
     def test_depth_to_node_list_basic(self):
-        """Test depth_to_node_list, tolerant to missing qiskit"""
+        """Test depth_to_node_list, tolerant to missing qiskit."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         dg_swap.add_gate(("cx", (0, 1), []))
@@ -486,7 +486,7 @@ class TestDGSwap:
             logging.warning(f"Exception in depth_to_node_list: {e}")
 
     def test_exchange_with_root_returns_false(self):
-        """Exchange involving root node should immediately return False"""
+        """Exchange involving root node should immediately return False."""
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
         node = dg_swap.add_gate(("swap", (0, 1), []))

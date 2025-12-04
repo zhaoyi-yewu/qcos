@@ -59,9 +59,11 @@ class TabuSearch:
         qubo: np.ndarray,
         init_solution: np.ndarray | None = None,
     ):
-        """Args:
-        qubo(np.ndarray): qubo matrix
-        init_solution(list): initial solution.
+        """Initialize tabu search algorithm.
+
+        Args:
+            qubo(np.ndarray): qubo matrix
+            init_solution(list): initial solution.
         """
         self.qubo = qubo
         self.size = self.qubo.shape[0]

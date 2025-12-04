@@ -122,7 +122,9 @@ class Register:
         return self._size
 
     def __getitem__(self, key: int | slice | list):
-        """Arg:
+        """Get qubits from the register.
+
+        Arg:
             key (int or slice or list): index of the bit to be retrieved.
 
         Returns:

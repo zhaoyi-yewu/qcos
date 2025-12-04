@@ -33,7 +33,8 @@ from qcos.transpiler.cmss.mapping.initial_mapping.sabre_mapping import (
 def get_initial_mapping(
     dependency_graph: DG, coupling_graph: Graph, method="naive"
 ):
-    """Get the initial mapping, providing 4 methods:
+    """Get the initial mapping, providing 4 methods.
+
         naive: directly mapping logical qubits to physical qubits in order.
         simulated_annealing: heuristic mapping, based on simulated annealing,
             ref: "Quantum Circuit Transformation Based on Simulated Annealing

@@ -1818,8 +1818,9 @@ class TestMCTree:
         assert cost == 0
 
     def test_init_no_swap_with_remain_nodes(self):
-        """Test MCTree initialization with no_swap objective
-        and remaining nodes.
+        """Test MCTree initialization.
+
+        Test MCTree initialization with no_swap objective and remaining nodes.
         """
         ag = self.create_test_ag()
         dg = self.create_test_dg()
@@ -1890,8 +1891,9 @@ class TestMCTree:
             assert result is not None
 
     def test_decision_fallback_trigger(self):
-        """Test decision triggers fallback when
-        fallback_count >= fallback_value.
+        """Test decision triggers fallback.
+
+        Test decision triggers fallback when fallback_count >= fallback_value.
         """
         ag = self.create_test_ag()
         dg = self.create_test_dg()
@@ -1942,8 +1944,9 @@ class TestMCTree:
         assert isinstance(result, list)
 
     def test_add_node_mcts_remote_node_local_score(self):
-        """Test add_node_mcts increments local_score
-        when remote_node is not None.
+        """Test add_node_mcts.
+
+        Test add_node_mcts increments local_score when remote_node is not None.
         """
         ag = self.create_test_ag()
         dg = self.create_test_dg()
