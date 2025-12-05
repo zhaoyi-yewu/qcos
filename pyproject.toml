@@ -60,6 +60,7 @@ dependencies = [
     "loguru==0.7.3",
     "matplotlib==3.9.2",
     "networkx==3.3",
+    "numexpr==2.14.1",
     "numpy==1.26.4",
     "pallets-sphinx-themes==2.3.0",
     "ply==3.11",
