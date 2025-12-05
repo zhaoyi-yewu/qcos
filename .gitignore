@@ -42,7 +42,7 @@ nosetests.xml
 symbols
 htmlcov
 
-# Doc temp files
+# Docs temp files
 docs/api-docs/js/
 
 # build temp files
