@@ -25,7 +25,7 @@ from qcos.transpiler.qiskit.transpiler_qiskit import TranspilerQiskit
 from qcos.transpiler.qiskit.transpiler_qiskit_cmd import (
     read_qasm_from_file,
     Timer,
-    main,
+    main_qiskit_transpiler as main,
 )
 
 timer = Timer()

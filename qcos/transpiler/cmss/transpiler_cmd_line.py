@@ -15,10 +15,12 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import sys
 import logging
 from pathlib import Path
 import time
 from datetime import datetime
+import argparse
 
 from qcos.common.config import Config
 from qcos.common.constant import Constant
@@ -52,7 +54,7 @@ class Timer:
         self.elapsed = self.end - self.start
 
 
-def main(
+def main_cmss_transpiler(
     input_file: str,
     output_file: str,
     opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
@@ -180,3 +182,75 @@ def main(
     )
     success = True
     return success
+
+
+def get_parse_args():
+    parser = argparse.ArgumentParser(description="cmss transpiler cli")
+    parser.add_argument(
+        "-i",
+        "--input-file",
+        dest="input_file",
+        type=str,
+        required=True,
+        help="Specify input file.",
+    )
+    parser.add_argument(
+        "-o",
+        "--opt-level",
+        dest="opt_level",
+        type=int,
+        default=1,
+        help="Input optimization level",
+    )
+    parser.add_argument(
+        "-t",
+        "--tech-type",
+        dest="tech_type",
+        type=str,
+        default="",
+        help="Input technology type.",
+    )
+    parser.add_argument(
+        "-c",
+        "--config-file",
+        dest="config_file",
+        type=str,
+        default="",
+        help="Input config file.",
+    )
+    parser.add_argument(
+        "-O",
+        "--output-file",
+        dest="output_file",
+        type=str,
+        default="",
+        help="Input output file.",
+    )
+    args = parser.parse_args()
+    cmss_args = {
+        "input_file": args.input_file,
+        "output_file": args.output_file,
+        "opt_level": args.opt_level,
+        "tech_type": args.tech_type,
+        "config_file": args.config_file,
+    }
+    return cmss_args
+
+
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv
+    else:
+        sys.argv.extend(argv)
+
+    # parse arguments
+    cmss_args = get_parse_args()
+    sys.exit(
+        main_cmss_transpiler(
+            cmss_args["input_file"],
+            cmss_args["output_file"],
+            cmss_args["opt_level"],
+            cmss_args["tech_type"],
+            cmss_args["config_file"],
+        )
+    )
