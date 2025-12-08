@@ -44,7 +44,7 @@ class Config:
     ENABLE_VIRT = False
     # [GLOBAL CONFIG] max jobs for virtual instance
     MAX_JOBS_PER_VIRTUAL_INSTANCE = 10
-    # salt for password/encryption
+    # salt for pwd/encryption
     PASSWORD_SALT = ""
 
     # [API_SERVER]

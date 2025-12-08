@@ -166,9 +166,14 @@ class DriverUQCMatrix2(DriverBase):
         # 3. Wait for task_status success
         logger.info("3. wait for task_status is success")
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
-        status = self.get_task_status(task_id)
-
-        if status != self.task_status_success:
+        success, _, _ = Library.loop_with_timeout(
+            self.check_task_status,
+            self.task_time_out,
+            5,
+            task_id,
+            expect_task_status=[self.task_status_success],
+        )
+        if not success:
             raise ValueError(f"Failed to get task results [{job_id}]")
 
         # 4. Get task results
@@ -179,7 +184,6 @@ class DriverUQCMatrix2(DriverBase):
             raise ValueError(f"failed to get task {task_id} result")
 
         # 5. Normalize results
-
         results = _results
         logger.info("5. normalize results")
         if self.backend_device_name == "qiskit-sim":
@@ -199,21 +203,25 @@ class DriverUQCMatrix2(DriverBase):
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
-    def get_task_status(self, task_id):
-        """Get task status
+    def check_task_status(self, task_id, expect_task_status):
+        """Check task status
 
         Args:
             task_id: task id
+            expect_task_status: expect task status
 
         Returns:
-            status
+            success or fail, err_msg, status
         """
-        while (status := self._uqc.get_task_status()) not in [
-            "SUCCESS",
-            "FAILURE",
-        ]:
-            logger.info(f"task_id: {task_id} status: {status}")
-        return status
+        status = self._uqc.get_task_status(task_id)
+        if status in expect_task_status:
+            return True, None, status
+        err_msg = (
+            "Task status is not in "
+            f"{', '.join(map(str, expect_task_status))}, "
+            f"and current status: {status}"
+        )
+        return False, err_msg, None
 
     def get_task_results(self, task_id):
         """Get task results
@@ -246,6 +254,7 @@ class DriverUQCMatrix2(DriverBase):
         signal = np.array([x[1] for x in results])
 
         baseline = np.median(signal)
+        baseline = min(baseline, 1)
         signal_calibrated = signal - baseline
 
         weight = np.abs(signal_calibrated)

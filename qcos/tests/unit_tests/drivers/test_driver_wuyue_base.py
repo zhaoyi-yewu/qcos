@@ -19,15 +19,15 @@ import json
 from unittest.mock import patch, MagicMock
 
 from qcos.common.constant import HttpCode
-from qcos.common.library import Library
+from qcos.common.library import Library, _s
 from qcos.drivers.driver_wuyue_base import DriverWuyueBase
 
 
 driver_wuyue_base = DriverWuyueBase()
 
 # ruff: noqa: S105
-driver_wuyue_base.password_secret = "test_password_secret"
-driver_wuyue_base.password_pri_key = (
+driver_wuyue_base.password_secret = _s("test_password_secret")
+driver_wuyue_base.password_pri_key = _s(
     "MIICeAIBADANBgkqhkiG9w0BAQEFAASCAmIwggJeAgEAAoGBAL+S1b9o7RbU0zhBdvV"
     "NijpIdCNMy3hx+G+H1rflVnhB0rE/4eNkTS5v3iDNMhhqBZKjAslyBcq6FQS55EgShH"
     "UeK4rXUPI8k0yfonxnemT/t7wI9nCgI9lb5HUffzj4B9RRlhmeqTuW8w9GEBoNQZxMD"
@@ -42,7 +42,7 @@ driver_wuyue_base.password_pri_key = (
     "Mz5cGvAYTLWuJxnPIchF/kCQQDYtMa3+Yys8GjTe6gvkd6rQ7b6X3pTW2em8KfirlWe"
     "VAZtYs/MxYJZcuFy26lFA+DtO7Rg2GzhIKkUrzvqvgkQ"
 )
-driver_wuyue_base.password_pub_key = (
+driver_wuyue_base.password_pub_key = _s(
     "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC/ktW/aO0W1NM4QXb1TYo6SHQjTMt"
     "4cfhvh9a35VZ4QdKxP+HjZE0ub94gzTIYagWSowLJcgXKuhUEueRIEoR1HiuK11DyPJ"
     "NMn6J8Z3pk/7e8CPZwoCPZW+R1H384+AfUUZYZnqk7lvMPRhAaDUGcTA+rAp9c4IVrJ"
@@ -183,10 +183,9 @@ class TestDriverWuyueBase:
         assert driver_wuyue_base.port == 12345
         assert driver_wuyue_base.client_id == "test_client_id"
         assert driver_wuyue_base.eng_code == "test_eng_code"
-        assert driver_wuyue_base.password_secret == "test_password_secret"
-        assert (
-            driver_wuyue_base.password_pub_key
-            == "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC/ktW/aO0W1NM4QXb1TYo6"
+        assert driver_wuyue_base.password_secret == _s("test_password_secret")
+        assert driver_wuyue_base.password_pub_key == _s(
+            "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC/ktW/aO0W1NM4QXb1TYo6"
             "SHQjTMt4cfhvh9a35VZ4QdKxP+HjZE0ub94gzTIYagWSowLJcgXKuhUEueRI"
             "EoR1HiuK11DyPJNMn6J8Z3pk/7e8CPZwoCPZW+R1H384+AfUUZYZnqk7lvMP"
             "RhAaDUGcTA+rAp9c4IVrJK2azYbI2wIDAQAB"
@@ -201,8 +200,8 @@ class TestDriverWuyueBase:
             "client_id": "test_client",
             # Missing eng_code
             "password_secret": "test_password_secret",
-            # Missing password_pub_key
-            # Missing password_pri_key
+            # Missing pwd_pub_key
+            # Missing pwd_pri_key
         }
 
         success, err_msg = driver_wuyue_base.validate_driver_configs(

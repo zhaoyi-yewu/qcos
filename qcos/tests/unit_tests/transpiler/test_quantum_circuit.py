@@ -25,6 +25,10 @@ from qcos.transpiler.cmss.transpiler_cmd_line import (
     read_qasm_from_file,
 )
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
+from qcos.transpiler.cmss.circuit.register import (
+    QuantumRegister,
+    ClassicalRegister,
+)
 
 
 @pytest.mark.usefixtures("global_configs")
@@ -79,3 +83,24 @@ class TestQuantumCircuit:
         assert depth == 2
         assert width == 4
         assert cir.num_qubits == 2
+
+    def test_quantum_circuit_register(self):
+        qc = QuantumCircuit()
+        qreg1 = QuantumRegister(size=2, name="qreg1")
+        creg1 = ClassicalRegister(size=2, name="creg1")
+
+        qc.add_register(qreg1)
+        qc.add_register(creg1)
+
+        assert len(qc.qregs) == 1
+        assert len(qc.cregs) == 1
+        assert qc.qregs[0].name == "qreg1"
+        assert qc.cregs[0].name == "creg1"
+        assert qc.num_qubits == 2
+        assert qc.num_clbits == 2
+
+        with pytest.raises(TypeError) as e:
+            qc.add_register("invalid_register")
+
+        err_msg = str(e.value)
+        assert err_msg == "Invalid register type!"

@@ -221,4 +221,4 @@ def sa_initial_mapping(
         t = alpha * t
         result.append(value_best)
 
-    return solution_best[: len(qubits_logic)]
+    return solution_best[: dependency_graph.num_q]

@@ -22,7 +22,7 @@ import uuid
 from datetime import datetime
 from unittest.mock import patch, Mock
 
-from qcos.common.library import Library
+from qcos.common.library import Library, _s
 from qcos.tests.unit_tests.task_manager.constant_for_test import (
     ConstantForTest,
 )
@@ -386,7 +386,7 @@ class TestLibrary:
         assert success is False
 
     def test_mask_password(self):
-        password_replace = "*" * 8
+        password_replace = _s("*" * 8)
         configs = {
             "test": "000000",
             "_param": "1a123456",

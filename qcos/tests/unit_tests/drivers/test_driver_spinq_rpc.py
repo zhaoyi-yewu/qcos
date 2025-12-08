@@ -20,6 +20,7 @@ import unittest
 import zerorpc
 from unittest.mock import patch, MagicMock
 
+from qcos.common.library import _s
 from qcos.drivers.spinq.driver_spinq_rpc import DriverSpinQRpc
 from qcos.transpiler.cmss.common.gate_operation import CX, H, RX, RY, RZ
 from qcos.transpiler.cmss.common.measure import Measure
@@ -44,7 +45,7 @@ coupling_list = [
     (5, 4),
 ]
 username = "username"
-password = ""
+passwd = _s("")
 num_qubits = 5
 chip_name = "chip_name"
 data = {"index": 0, "source_code": None, "transpile_results": []}
@@ -141,7 +142,7 @@ class TestDriverSpinQRpc(unittest.TestCase):
         self.mock_client.request_login.return_value = json.dumps(
             request_login_response
         )
-        success, err_msg, _results = self.driver.user_auth(username, password)
+        success, err_msg, _results = self.driver.user_auth(username, passwd)
         assert success is True
         assert err_msg is None
         assert _results == request_login_response
@@ -152,7 +153,7 @@ class TestDriverSpinQRpc(unittest.TestCase):
         )
         self.mock_client.client.close = None
         self.mock_client.client.connect = None
-        success, err_msg, _results = self.driver.user_auth(username, password)
+        success, err_msg, _results = self.driver.user_auth(username, passwd)
         assert success is False
         assert err_msg is not None
 

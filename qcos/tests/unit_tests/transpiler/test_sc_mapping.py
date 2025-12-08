@@ -158,7 +158,7 @@ class TestSCRoute:
     def test_prepare_data_with_measure(self):
         """Test prepare_data with measure operations"""
         route = SCRoute()
-        qbit_num = 4
+        qbit_num = 2
         gates = [
             CX(targets=[0, 1]),
             Measure(targets=[0]),
@@ -228,7 +228,7 @@ class TestSCRoute:
     def test_execute_with_order(self):
         """Test execute_with_order method"""
         route = SCRoute()
-        qbit_num = 4
+        qbit_num = 2
         gates = [CX(targets=[0, 1]), H(targets=[0])]
         qpu_config = self.create_test_qpu_config()
 

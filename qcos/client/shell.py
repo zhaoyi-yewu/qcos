@@ -156,6 +156,15 @@ class QcosShell(App):
         )
         self.client = None
 
+    def clean_up(self, cmd, result, err):
+        """Clean up after command execution"""
+
+        super().clean_up(cmd, result, err)
+        if hasattr(cmd, "extra_messages"):
+            cmd.app.stdout.write(f"{cmd.extra_messages}\n")
+        if err:
+            cmd.app.stderr.write(f"An error occurred: {err}\n")
+
     def initialize_app(self, argv):
         super().initialize_app(argv)
         api_server_ip = self.options.api_host
@@ -1357,8 +1366,9 @@ class GetJobs(Lister):
         table_values = CommandHelper.get_table_list_data(
             json_results, header_list, is_dict=False
         )
+
         if json_results:
-            print(f"Total jobs: {len(json_results)}")
+            self.extra_messages = f"Total jobs: {len(json_results)}\n"
         else:
             print("No jobs found")
         return table_values

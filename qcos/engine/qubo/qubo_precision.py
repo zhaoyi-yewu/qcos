@@ -324,18 +324,22 @@ def process_qubo_solution(job_results, last_idx, qubo_matrix):
     Returns:
         dict: new job_results
     """
-    flag = last_idx[-1]
     new_job_results = job_results.copy()
     qubo_solution = job_results["results"]["out_data"]
     for i in range(len(qubo_solution)):
         solution = qubo_solution[i]
-        solution_vector = np.array(solution["solutionVector"])[last_idx[-1]]
-        solution_vector = solution_vector ^ (1 - flag)
+        solutionvector = solution["solutionVector"]
+        flag = solutionvector[last_idx[-1]]
+        solution_vector = [solutionvector[i] for i in last_idx[:-1]]
+        solution_vector = np.array(solution_vector) ^ (1 - flag)
         qubo_value = QUBOSolution.calculate_energy(
             qubo=qubo_matrix, solution=solution_vector
         )
         new_job_results["results"]["out_data"][i]["quboValue"] = qubo_value
         new_job_results["results"]["out_data"][i]["solutionVector"] = (
-            solution_vector
+            solution_vector.tolist()
         )
+    new_job_results["results"]["out_data"] = sorted(
+        new_job_results["results"]["out_data"], key=lambda x: x["quboValue"]
+    )
     return new_job_results

@@ -20,7 +20,7 @@ from unittest.mock import patch
 
 import pytest
 
-from qcos.common.library import Library
+from qcos.common.library import Library, _s
 from qcos.drivers.qboson.driver_tiangong_base import DriverTiangongBase
 
 driver_tiangong_base = DriverTiangongBase()
@@ -31,7 +31,7 @@ data = {"index": 0, "source_code": "code", "transpile_results": []}
 data_type = driver_tiangong_base.DATA_TYPE_GATE_SEQUENCE
 shots = 1024
 user_id = "000000000000001"
-password_sdk_code = ""
+passwd_sdk_code = _s("")
 
 
 class TestDriverTiangongBase:
@@ -136,7 +136,7 @@ class TestDriverTiangongBase:
             "",
         ])
         success, err_msg, token = driver_tiangong_base.user_auth(
-            user_id, password_sdk_code
+            user_id, passwd_sdk_code
         )
         assert success is False
 
@@ -148,7 +148,7 @@ class TestDriverTiangongBase:
             "",
         ])
         success, err_msg, token = driver_tiangong_base.user_auth(
-            user_id, password_sdk_code
+            user_id, passwd_sdk_code
         )
         assert success is True
 

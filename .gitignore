@@ -44,6 +44,8 @@ htmlcov
 
 # Doc temp files
 docs/api-docs/js/
+docs/api-docs/dist/
+docs/sphinx/source/api/
 
 # build temp files
 build-scripts/.build-context/

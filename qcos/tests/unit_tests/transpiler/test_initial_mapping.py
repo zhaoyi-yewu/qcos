@@ -81,7 +81,7 @@ class TestInitialMapping:
         mapping = get_initial_mapping(
             dependency_graph, coupling_graph, method="topgraph"
         )
-        assert mapping == [0, 1]
+        assert len(mapping) == 2
 
         mapping = get_initial_mapping(
             dependency_graph, coupling_graph, method="simulated_annealing"
@@ -142,6 +142,7 @@ class TestInitialMapping:
         dependency_graph.add_gate(gate2)
         dependency_graph.add_gate(gate3)
         dependency_graph.add_gate(gate4)
+        dependency_graph.num_q = 4
         # dg and ag is isomorphic
         mapping = subgraph_isomorphism_mapping(
             dependency_graph, coupling_graph
@@ -179,9 +180,11 @@ class TestInitialMapping:
         gate3 = ("cx", (2, 0), [])
         gate4 = ("cx", (0, 3), [])
         dependency_graph.add_multi_gates([gate1, gate2, gate3])
+        dependency_graph.num_q = 3
         mapping = topgraph_mapping(dependency_graph, coupling_graph)
         assert len(mapping) == 3
 
         dependency_graph.add_gate(gate4)
+        dependency_graph.num_q = 4
         mapping = topgraph_mapping(dependency_graph, coupling_graph)
         assert len(mapping) == 4

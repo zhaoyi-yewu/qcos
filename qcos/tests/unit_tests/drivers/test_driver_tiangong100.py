@@ -19,13 +19,13 @@ from unittest.mock import patch
 
 import pytest
 
-from qcos.common.library import Library
+from qcos.common.library import Library, _s
 from qcos.drivers.qboson.driver_tiangong100 import DriverTiangong100
 
 driver_tiangong100 = DriverTiangong100()
 driver_tiangong100.base_url = ""
 username = "username"
-password = ""
+passwd = _s("")
 job_id = "00000000-0000-4000-8000-000000000001"
 task_id = "123456"
 num_qubits = 5
@@ -181,7 +181,7 @@ class TestDriverTiangong100:
             "",
         ])
         success, err_msg, token = driver_tiangong100.user_auth(
-            username, password
+            username, passwd
         )
         assert success is False
 
@@ -192,7 +192,7 @@ class TestDriverTiangong100:
             "",
         ])
         success, err_msg, token = driver_tiangong100.user_auth(
-            username, password
+            username, passwd
         )
         assert success is False
 

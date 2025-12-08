@@ -4,7 +4,7 @@ QCOS（Quantum Computing Operating System）是一款开源的通用量子计算
 
 # 一、架构总览
 
-![架构图](./docs/source/design/architecture.png)
+![架构图](./docs/sphinx/source/_static/architecture.png)
 
 # 二、功能特性
 

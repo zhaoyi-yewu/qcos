@@ -293,10 +293,10 @@ class TestQUBOPrecision:
 
             assert len(processed_results["results"]["out_data"]) == 2
             assert (
-                processed_results["results"]["out_data"][0]["quboValue"] == 1.0
+                processed_results["results"]["out_data"][0]["quboValue"] == 0.5
             )
             assert (
-                processed_results["results"]["out_data"][1]["quboValue"] == 0.5
+                processed_results["results"]["out_data"][1]["quboValue"] == 1.0
             )
 
     def test_edge_cases(self):

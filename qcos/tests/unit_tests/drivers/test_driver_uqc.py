@@ -91,17 +91,17 @@ class TestDriverUqc:
 
     @patch.object(DriverUQCMatrix2, "normalize_task_results")
     @patch.object(DriverUQCMatrix2, "get_task_results")
-    @patch.object(DriverUQCMatrix2, "get_task_status")
+    @patch.object(DriverUQCMatrix2, "check_task_status")
     @patch.object(UQC, "submit_task")
     def test_run(
         self,
         mock_submit_task,
-        mock_get_task_status,
+        mock_check_task_status,
         mock_get_task_results,
         mock_normalize_task_results,
     ):
         mock_submit_task.return_value = task_id
-        mock_get_task_status.return_value = "SUCCESS"
+        mock_check_task_status.return_value = True, None, "SUCCESS"
         mock_get_task_results.return_value = (
             True,
             [{"datasets": {"computational_basis_histogram": []}}],

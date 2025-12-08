@@ -18,6 +18,7 @@
 import copy
 import requests
 import time
+from typing import Any
 
 from jsonrpcclient import request
 from loguru import logger
@@ -44,6 +45,8 @@ class DriverHanyuan1(DriverBase):
     task_status_running = "running"
     task_status_completed = "completed"
     task_status_failed = "failed"
+    # extended data type
+    data_type_qu_topo = "qu_topo"
 
     def __init__(self):
         super().__init__()
@@ -56,6 +59,7 @@ class DriverHanyuan1(DriverBase):
         self.supported_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_RX,
             Constant.SINGLE_QUBIT_GATE_RY,
+            Constant.SINGLE_QUBIT_GATE_RZ,
         ]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_aggregation = True
@@ -75,6 +79,12 @@ class DriverHanyuan1(DriverBase):
 
     def init_driver(self):
         """Init driver"""
+        extra_configs = self.get_configs()
+        ip_address = extra_configs.get(
+            "ip_address", self.DEFAULT_CONTROL_SYSTEM_IP
+        )
+        port = extra_configs.get("port", self.DEFAULT_CONTROL_SYSTEM_PORT)
+        self.init_base_url(ip_address, port)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def validate_driver_configs(self, configs):
@@ -135,6 +145,41 @@ class DriverHanyuan1(DriverBase):
         Returns:
             remote transpiler configs
         """
+        data_type = self.data_type_qu_topo
+        job_id = str(Library.create_uuid())
+        qpu_configs = {}
+
+        success, err_msg = self.submit_task(job_id=job_id, data_type=data_type)
+        if not success:
+            raise ValueError(
+                f"Failed to fetch configs [{data_type}]: {err_msg}"
+            )
+
+        logger.info("wait for configs")
+        self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
+        success, err_msg, _ = Library.loop_with_timeout(
+            self.check_task_status,
+            600,
+            2,
+            job_id=job_id,
+            data_type=data_type,
+            expect_task_status=[self.task_status_completed],
+        )
+        if not success:
+            raise ValueError(
+                f"Failed to wait for configs [{data_type}]: {err_msg}"
+            )
+
+        success, err_msg, qu_configs = self.get_task_results(
+            job_id=job_id,
+            data_type=data_type,
+        )
+        if not success:
+            raise ValueError(
+                f"Failed to get task results [{data_type}]: {err_msg}"
+            )
+        qpu_configs = {"qpu_configs": qu_configs}
+        return qpu_configs
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
         """Run job
@@ -156,44 +201,44 @@ class DriverHanyuan1(DriverBase):
         self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_device_status(Device.DEVICE_STATUS_BUSY)
         gates_list = data["transpile_results"]
-        extra_configs = self.get_configs()
-        ip_address = extra_configs.get(
-            "ip_address", self.DEFAULT_CONTROL_SYSTEM_IP
-        )
-        port = extra_configs.get("port", self.DEFAULT_CONTROL_SYSTEM_PORT)
 
-        # 1. init task connection
-        logger.info("init task")
-        self.set_progress_by_task(self.TASK_STAGE_INIT)
-        self.init_task(ip_address, port)
-
-        # 2. submit task
+        # 1. submit task
         logger.info("submit task")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
         success, err_msg = self.submit_task(
-            job_id, num_qubits, gates_list, data_type, shots, data_index
+            job_id=job_id,
+            data_type=data_type,
+            num_qubits=num_qubits,
+            data=gates_list,
+            shots=shots,
+            data_index=data_index,
         )
         if not success:
             raise ValueError(f"Failed to submit task [{job_id}]: {err_msg}")
 
-        # 3. wait task results
+        # 2. wait task results
         logger.info("wait task status")
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
         success, err_msg, _ = Library.loop_with_timeout(
             self.check_task_status,
             1800,
             5,
-            job_id,
-            data_index,
+            job_id=job_id,
+            data_type=data_type,
             expect_task_status=[self.task_status_completed],
+            data_index=data_index,
         )
         if not success:
             raise ValueError(f"Failed to wait for task [{job_id}]: {err_msg}")
 
-        # 4. get task results
+        # 3. get task results
         logger.info("wait done")
         self.set_progress_by_task(self.TASK_STAGE_GET_RESULTS)
-        success, err_msg, results = self.get_task_results(job_id, data_index)
+        success, err_msg, results = self.get_task_results(
+            job_id=job_id,
+            data_type=data_type,
+            data_index=data_index,
+        )
         if not success:
             raise ValueError(
                 f"Failed to get task results [{job_id}]: {err_msg}"
@@ -213,8 +258,8 @@ class DriverHanyuan1(DriverBase):
         """
         logger.info(f"Cancel job: job_id: {job_id}")
 
-    def init_task(self, ip_address: str, port: int):
-        """Init task
+    def init_base_url(self, ip_address: str, port: int):
+        """Init base url
 
         Args:
             ip_address: server ip address
@@ -290,31 +335,43 @@ class DriverHanyuan1(DriverBase):
         DriverHanyuan1.print_api_response(status_code, reason, text, result)
         return status_code, reason, text, result
 
-    def submit_task(
+    def _build_request_data(
         self,
         job_id: str,
-        num_qubits: int,
-        data: list,
         data_type: str,
-        shots: int,
-        data_index: int,
-    ) -> tuple:
-        """Submit task
+        num_qubits: int | None = 1,
+        data: list[Any] | None = None,
+        shots: int | None = 1,
+        data_index: int | None = 0,
+    ) -> dict[str, Any]:
+        """_build_request_data
+        根据不同的 data_type 构建请求数据
+        可扩展方法，方便后续添加新的任务类型
 
         Args:
             job_id: job id
-            num_qubits: number of qubits
-            data: data
-            data_type: data type
-            shots: shots
-            data_index: data index
+            data_type: data type (gate_sequence, qu_topo, 或其他)
+            num_qubits: number of qubits (可选,默认1)
+            data: gate list data (可选,默认None)
+            shots: shots (可选,默认1)
+            data_index: data index (可选,默认0)
 
         Returns:
-            success, err_msgs
+            构建好的请求数据字典
         """
-        success = True
-        err_msgs = []
-        try:
+        # 基础请求数据
+        request_data = {
+            "job_id": job_id,
+            "data_type": data_type,
+            "timestamp": time.time(),
+        }
+
+        # 根据不同的 data_type 构建不同的请求数据
+        if data_type == "gate_sequence":
+            # gate_sequence 类型：需要完整的参数
+            if data is None:
+                raise ValueError("gate_sequence task requires data parameter")
+
             # process data format
             gate_list = (
                 data.get("basis_gate_list", data)
@@ -331,16 +388,58 @@ class DriverHanyuan1(DriverBase):
                 }
                 processed_data.append(gate_dict)
 
-            # construct request data
-            request_data = {
-                "job_id": job_id,
+            request_data.update({
                 "data_index": data_index,
                 "data": processed_data,
-                "data_type": data_type,
-                "shots": shots,
-                "qubit_num": num_qubits,
-                "timestamp": time.time(),
-            }
+                "shots": shots if shots is not None else 1,
+                "qubit_num": num_qubits if num_qubits is not None else 1,
+            })
+
+        elif data_type == "qu_topo":
+            # qu_topo 类型：只需要 data_type
+            # 不添加其他参数
+            pass
+
+        else:
+            # 其他未定义的任务类型：默认处理，待扩展
+            pass
+
+        return request_data
+
+    def submit_task(
+        self,
+        job_id: str,
+        data_type: str,
+        num_qubits: int | None = 1,
+        data: list[Any] | None = None,
+        shots: int | None = 1,
+        data_index: int | None = 0,
+    ) -> tuple:
+        """submit task
+        支持多种 data_type 的任务提交
+
+        Args:
+            job_id: job id
+            data_type: data type (gate_sequence, qu_topo, 或其他)
+            num_qubits: number of qubits (可选,某些任务类型不需要)
+            data: gate list data (可选,某些任务类型不需要,默认None)
+            shots: shots (可选,某些任务类型不需要)
+            data_index: data index (可选)
+        Returns:
+            (success, err_msg)
+        """
+        success = True
+        err_msgs = []
+        try:
+            # 根据 data_type 构建请求数据
+            request_data = self._build_request_data(
+                job_id=job_id,
+                data_type=data_type,
+                num_qubits=num_qubits,
+                data=data,
+                shots=shots,
+                data_index=data_index,
+            )
 
             method_name = "submit_task"
             status_code, reason, text, result = self.call_json_rpc(
@@ -368,14 +467,19 @@ class DriverHanyuan1(DriverBase):
         return success, "\n".join(err_msgs)
 
     def check_task_status(
-        self, job_id: str, data_index: int, expect_task_status: list
+        self,
+        job_id: str,
+        data_type: str,
+        expect_task_status: list[str],
+        data_index: int | None = 0,
     ) -> tuple:
         """Check task status
 
         Args:
             job_id: job id
-            data_index: data index
+            data_type: data type (gate_sequence, qu_topo, 或其他)
             expect_task_status: expect task status
+            data_index: data index (可选,默认0)
 
         Returns:
             bool: True if task status meets requirements, False otherwise
@@ -384,7 +488,11 @@ class DriverHanyuan1(DriverBase):
         """
         try:
             # construct request data
-            request_data = {"job_id": job_id, "data_index": data_index}
+            request_data = {
+                "job_id": job_id,
+                "data_type": data_type,
+                "data_index": data_index,
+            }
 
             method_name = "query_task_status"
             status_code, reason, text, result = self.call_json_rpc(
@@ -411,22 +519,34 @@ class DriverHanyuan1(DriverBase):
         except Exception as e:
             return False, str(e), None
 
-    def get_task_results(self, job_id: str, data_index: int):
+    def get_task_results(
+        self,
+        job_id: str,
+        data_type: str,
+        data_index: int | None = 0,
+    ) -> tuple:
         """Check task results
 
         Args:
             job_id: job id
-            data_index: data index
+            data_type: data type (gate_sequence, qu_topo, 或其他)
+            data_index: data index (可选,默认0)
 
         Returns:
-            task results
+            bool: True if task results meets requirements, False otherwise
+            str: error message
+            str: task results
         """
         success = True
         err_msgs = []
         results = None
 
         # construct request data
-        request_data = {"job_id": job_id, "data_index": data_index}
+        request_data = {
+            "job_id": job_id,
+            "data_type": data_type,
+            "data_index": data_index,
+        }
 
         method_name = "query_task_result"
         status_code, reason, text, result = self.call_json_rpc(
