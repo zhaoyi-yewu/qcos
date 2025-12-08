@@ -332,3 +332,28 @@ class DAGCircuit:
         for gate in ir.get_operations():
             dag_circuit.apply_operation_back(gate)
         return dag_circuit
+
+    def dag_to_ir(self):
+        """Convert DAG to QuantumCircuit.
+
+        Returns:
+            QuantumCircuit: QuantumCircuit corresponding to DAG.
+        """
+        ir = QuantumCircuit()
+        multi_graph = self.get_multi_graph()
+        all_node_ids = list(multi_graph.node_indexes())
+        gate_list = []
+        for node_id in all_node_ids:
+            node = multi_graph.get_node_data(node_id)
+            if isinstance(node, DAGOpNode):
+                gate_list.append(node.op)
+        ir.append_operations(gate_list)
+        return ir
+
+    def get_multi_graph(self):
+        """Get DAG Graph.
+
+        Returns:
+            rx.PyDAG: DAG Graph
+        """
+        return self._multi_graph
