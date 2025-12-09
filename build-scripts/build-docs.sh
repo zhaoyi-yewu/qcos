@@ -32,9 +32,15 @@ rm -rf ./source/api
 mkdir -p ./dist
 mkdir ./source/api
 # create sphinx api docs
-sphinx-apidoc -o ./source/api ../../
+sphinx-apidoc -H "QCOS API" -o ./source/api ../../
 # create sphinx docs
 make html
+# make singlehtml
+make latexpdf
+
+# copy pdf
+mkdir -p ./dist/pdf
+cp -rf ./dist/latex/qcos.pdf ./dist/pdf/qcos-full-doc.pdf
 
 
 # 2. create openapi docs
@@ -50,6 +56,8 @@ tar xzvf ${OPENAPI_DOCS_DIR}/js.tar.gz -C ${OPENAPI_DOCS_DIR}/dist
 
 # print results
 echo -e "\n======DOCS OUTPUT======"
-echo "Sphinx docs:  ${SPHINX_DOCS_DIR}/dist/html/index.html"
+echo "Sphinx docs (html) :  ${SPHINX_DOCS_DIR}/dist/html/index.html"
+echo "Sphinx docs (latex):  ${SPHINX_DOCS_DIR}/dist/latex/"
+echo "Sphinx docs (pdf)  :  ${SPHINX_DOCS_DIR}/dist/pdf/qcos.pdf"
 echo "OpenAPI docs: ${OPENAPI_DOCS_DIR}/dist/qcos-api-docs.html"
 

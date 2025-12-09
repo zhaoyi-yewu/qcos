@@ -32,20 +32,29 @@ RUN \
 # copy qcos dir
     cp -rf ${BUILD_CONTEXT}/requirements.txt /root/ && \
     cp -rf ${BUILD_CONTEXT}/requirements-test.txt /root/ && \
+    cp -rf ${BUILD_CONTEXT}/requirements-driver.txt /root/ && \
 # copy yum repos and create dirs
     if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then rm -rf /etc/yum.repos.d/*.repo; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi && \
     if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
 # install basic rpms
     yum install -y hostname openssh openssh-clients sshpass iputils iproute \
-      telnet net-tools openssl util-linux vim findutils dos2unix wget \
-      latexmk texlive texlive-xetex \
-      rpm-build make gcc rust cargo rsync \
+      telnet net-tools openssl util-linux vim findutils dos2unix wget gettext \
+      texlive-gnu-freefont latexmk texlive texlive-xetex texlive-xecjk \
+      texlive-ctex texlive-fncychap texlive-wrapfig texlive-capt-of \
+      texlive-framed texlive-upquote texlive-needspace texlive-tabulary \
+      texlive-lastpage texlive-tocloft texlive-supertabular  \
+      texlive-collection-langchinese \
+      rpm-build make cmake gcc gcc-g++ rust cargo rsync \
       python3 python3-pip python3-sphinx python3-requests python3-devel && \
+# update fonts
+    mktexlsr && \
+    fc-cache -fv  && \
 # create symbolic link for python3
     ln -sf /usr/bin/python3 /usr/bin/python && \
 # install python3 deps \
     pip3 install --no-cache-dir --upgrade poetry && \
     pip3 install --no-cache-dir --upgrade -r /root/requirements.txt -r /root/requirements-test.txt && \
+    pip3 install --no-cache-dir --upgrade -r /root/requirements-driver.txt && \
 # generate ssh keys
     rm -rf /root/.ssh/id_rsa && \
     ssh-keygen -t rsa -f /root/.ssh/id_rsa -q -N "" && \

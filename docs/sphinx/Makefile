@@ -28,22 +28,28 @@ clean:
 	-rm -rf $(BUILDDIR)/*
 
 html:
-	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/html
+	$(SPHINXBUILD) -b html -t html $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
 dirhtml:
-	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/dirhtml
+	$(SPHINXBUILD) -b dirhtml -t dirhtml $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/dirhtml
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/dirhtml."
 
 singlehtml:
-	$(SPHINXBUILD) -b singlehtml $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/singlehtml
+	$(SPHINXBUILD) -b singlehtml -t singlehtml $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/singlehtml
 	@echo
 	@echo "Build finished. The HTML page is in $(BUILDDIR)/singlehtml."
 
+chm:
+	$(SPHINXBUILD) -b htmlhelp -t chm $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/chm_src
+	@echo
+	@echo "Build finished. The CHM page is in $(BUILDDIR)/chm."
+
 latex:
-	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/latex
+	@rm -rf $(BUILDDIR)/latex
+	$(SPHINXBUILD) -b latex -t latex $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/latex
 	# cp texinputs/* $(BUILDDIR)/latex/
 	@echo
 	@echo "Build finished; the LaTeX files are in $(BUILDDIR)/latex."
@@ -51,18 +57,19 @@ latex:
           "(use \`make latexpdf' here to do that automatically)."
 
 latexpdf:
-	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/latex
+	@rm -rf $(BUILDDIR)/latex
+	$(SPHINXBUILD) -b latex -t latexpdf $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/latex
 	# cp texinputs/* $(BUILDDIR)/latex/
 	@echo "Running LaTeX files through pdflatex..."
 	make -C $(BUILDDIR)/latex all-pdf
 	@echo "pdflatex finished; the PDF files are in $(BUILDDIR)/latex."
 
 text:
-	$(SPHINXBUILD) -b text $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/text
+	$(SPHINXBUILD) -b text -t text $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/text
 	@echo
 	@echo "Build finished. The text files are in $(BUILDDIR)/text."
 
 man:
-	$(SPHINXBUILD) -b man $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/man
+	$(SPHINXBUILD) -b man -t man $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/man
 	@echo
 	@echo "Build finished. The manual pages are in $(BUILDDIR)/man."

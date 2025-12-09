@@ -2,11 +2,11 @@
 
 QCOS（Quantum Computing Operating System）是一款开源的通用量子计算操作系统，旨在为不同架构的量子计算机（如中性原子、相干伊辛机等）提供统一的软件支持，推动量子计算的生态发展。
 
-# 一、架构总览
+# 1. 架构总览
 
 ![架构图](./docs/sphinx/source/_static/architecture.png)
 
-# 二、功能特性
+# 2. 功能特性
 
 |      |                  功能                  |
 |:-----|:------------------------------------:|
@@ -17,15 +17,24 @@ QCOS（Quantum Computing Operating System）是一款开源的通用量子计算
 | 系统引擎 |       QASM解析、逻辑门分解、量子比特映射、编译优化       |
 | 驱动插件 |     dummy测试驱动、中科酷原中性原子、玻色光量子伊辛机等     |
 
-# 三、安装使用
+# 3. 安装使用
 
 官方已适配操作系统：BCLinux 21.10U4
 
-## 快速上手
+## 3.1 编译部署手册
+[编译部署（基于Docker，推荐）](docs/sphinx/source/deploy-guide/build-run-docker.rst)
 
-参考：[快速使用指南](INSTALL.md)
+[编译部署（基于K8s）](docs/sphinx/source/deploy-guide/build-run-k8s.rst)
 
-# 四、许可证
+[编译部署（基于wheel）](docs/sphinx/source/deploy-guide/build-run-wheel.rst)
+
+## 3.2 命令行手册
+[命令行手册](docs/sphinx/source/user-guide/cli.rst)
+
+## 3.3 文档构建手册
+[文档构建手册](docs/sphinx/source/deploy-guide/build-docs.rst)
+
+# 4. 许可证
 
 QCOS开源代码遵循[MulanPSL-2.0](LICENSE)开源协议。
 samples/qasm下的代码遵循 Apache-2.0开源协议。

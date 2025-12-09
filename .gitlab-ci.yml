@@ -1,7 +1,17 @@
 # stages
 stages:
+  - commit
   # Test
   - test
+
+# commit message
+commit:
+  stage: commit
+  tags:
+    - sonic-runner
+  script:
+    - python3 ./cicd/check-commit-message.py
+
 
 # code-linter
 code-linter:

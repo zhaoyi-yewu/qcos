@@ -674,7 +674,7 @@ class TestDGSwap:
             assert "depth" in dg_test.edges[edge]
             assert dg_test.edges[edge]["depth"] > 0
 
-    def test_check_node_connectivity_list_as_tuple(self):  # noqa: C0301
+    def test_check_node_connectivity_list_as_tuple(self):
         ag = self.create_test_ag()
         dg_swap = DGSwap(ag)
 
