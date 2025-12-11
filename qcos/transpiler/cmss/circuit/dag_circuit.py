@@ -24,6 +24,7 @@ from qcos.transpiler.cmss.circuit.dag_node import (
     DAGOpNode,
     DAGInNode,
     DAGOutNode,
+    DAGNode,
 )
 from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
@@ -309,12 +310,180 @@ class DAGCircuit:
         """
         return self._op_names.copy()
 
+    def replace_block_with_op(
+        self, node_block: list[DAGNode], op, cycle_check=True
+    ):
+        """Replace a block of nodes with a single node.
+
+        Args:
+            node_block (list[DAGNode]): A list of dag nodes that represents the
+                node block to be replaced
+            op (GateOperation): The operation to replace the block with.
+            cycle_check (bool, optional): check that replacing with a single
+                node would introduce a cycle. Defaults to True.
+
+        Returns:
+            DAGOpNode: The op node that replaces the block.
+        """
+        block_qargs = set()
+        block_ids = [x._node_id for x in node_block]
+
+        # If node block is empty return early
+        if not node_block:
+            raise ValueError("Can't replace an empty node_block")
+
+        for nd in node_block:
+            if isinstance(nd, DAGOpNode):
+                block_qargs |= set(nd.qargs)
+
+        new_node = DAGOpNode(op, block_qargs)
+
+        try:
+            new_node._node_id = self._multi_graph.contract_nodes(
+                block_ids, new_node, check_cycle=cycle_check
+            )
+        except rx.DAGWouldCycle as ex:
+            raise ValueError(
+                "Replacing the specified node block would introduce a cycle"
+            ) from ex
+
+        self._increment_op(op)
+
+        for nd in node_block:
+            if isinstance(nd, DAGOpNode):
+                self._decrement_op(nd.op)
+
+        return new_node
+
+    def substitute_node_with_dag(self, node: DAGOpNode, input_dag, wires=None):
+        """Replace one node with dag.
+
+        Args:
+            node (DAGOpNode): node to substitute.
+            input_dag (DAGCircuit): circuit that will substitute the node.
+            wires (list | dict): gives an order for qubits in the input
+                circuit. Defaults to None.
+
+        Returns:
+            dict: maps node IDs from input_dag to their new node in self.
+        """
+        if not isinstance(node, DAGOpNode):
+            raise ValueError(f"expected node DAGOpNode, got {type(node)}")
+
+        if isinstance(wires, dict):
+            wire_map = wires
+        else:
+            wires = input_dag.wires if wires is None else wires
+            node_wire_order = list(node.qargs)
+
+            if len(wires) != len(node_wire_order):
+                raise ValueError(
+                    f"bit mapping invalid: expected {len(node_wire_order)}, \
+                        got {len(wires)}"
+                )
+            wire_map = dict(zip(wires, node_wire_order))
+            if len(wire_map) != len(node_wire_order):
+                raise ValueError(
+                    "bit mapping invalid: some bits have duplicate entries"
+                )
+        for _, our_wire in wire_map.items():
+            if our_wire not in self.input_map:
+                raise ValueError(
+                    f"bit mapping invalid: {our_wire} is not in this DAG"
+                )
+
+        reverse_wire_map = {b: a for a, b in wire_map.items()}
+        in_dag = input_dag
+
+        # Add wire from pred to succ if no ops on mapped wire on in_dag
+        for in_dag_wire, self_wire in wire_map.items():
+            input_node = in_dag.input_map[in_dag_wire]
+            output_node = in_dag.output_map[in_dag_wire]
+            if in_dag._multi_graph.has_edge(
+                input_node._node_id, output_node._node_id
+            ):
+                pred = self._multi_graph.find_predecessors_by_edge(
+                    node._node_id, lambda edge, wire=self_wire: edge == wire
+                )[0]
+                succ = self._multi_graph.find_successors_by_edge(
+                    node._node_id, lambda edge, wire=self_wire: edge == wire
+                )[0]
+                self._multi_graph.add_edge(
+                    pred._node_id, succ._node_id, self_wire
+                )
+
+        # Exclude any nodes from in_dag that are not a DAGOpNode or are on
+        # bits outside the set specified by the wires kwarg
+        def filter_fn(node):
+            if not isinstance(node, DAGOpNode):
+                return False
+            for qarg in node.qargs:
+                if qarg not in wire_map:
+                    return False
+            return True
+
+        # Map edges into and out of node to the appropriate node from in_dag
+        def edge_map_fn(source, _target, self_wire):
+            wire = reverse_wire_map[self_wire]
+            # successor edge
+            if source == node._node_id:
+                wire_output_id = in_dag.output_map[wire]._node_id
+                out_index = in_dag._multi_graph.predecessor_indices(
+                    wire_output_id
+                )[0]
+                # Edge directly from input nodes to output nodes in in_dag are
+                # already handled prior to calling rustworkx. Don't map these
+                # edges in rustworkx.
+                if not isinstance(in_dag._multi_graph[out_index], DAGOpNode):
+                    return None
+            # predecessor edge
+            else:
+                wire_input_id = in_dag.input_map[wire]._node_id
+                out_index = in_dag._multi_graph.successor_indices(
+                    wire_input_id
+                )[0]
+                # Edge directly from input nodes to output nodes in in_dag are
+                # already handled prior to calling rustworkx. Don't map these
+                # edges in rustworkx.
+                if not isinstance(in_dag._multi_graph[out_index], DAGOpNode):
+                    return None
+            return out_index
+
+        # Adjust edge weights from in_dag
+        def edge_weight_map(wire):
+            return wire_map[wire]
+
+        node_map = self._multi_graph.substitute_node_with_subgraph(
+            node._node_id,
+            in_dag._multi_graph,
+            edge_map_fn,
+            filter_fn,
+            edge_weight_map,
+        )
+        self._decrement_op(node.op)
+
+        # Iterate over nodes of input_circuit and update wires in node objects
+        # migrated from in_dag
+        for old_node_index, new_node_index in node_map.items():
+            # update node attributes
+            old_node = in_dag._multi_graph[old_node_index]
+            m_op = old_node.op
+
+            m_qargs = [wire_map[x] for x in old_node.qargs]
+            m_cargs = [wire_map[x] for x in old_node.cargs]
+            new_node = DAGOpNode(m_op, qargs=m_qargs, cargs=m_cargs)
+            new_node._node_id = new_node_index
+            self._multi_graph[new_node_index] = new_node
+            self._increment_op(new_node.op)
+
+        return {k: self._multi_graph[v] for k, v in node_map.items()}
+
     @classmethod
-    def ir_to_dag(cls, ir: QuantumCircuit):
+    def ir_to_dag(cls, ir: list):
         """Convert IR to DAGCircuit.
 
         Args:
-            ir (QuantumCircuit): quantum circuit.
+            ir (list): gates list.
 
         Returns:
             DAGCircuit: DAGCircuit corresponding to IR.
@@ -323,23 +492,47 @@ class DAGCircuit:
 
         # count the number of qubits
         tmp_qubits = set()
-        for gate in ir.get_operations():
+        for gate in ir:
             tmp_qubits.update(gate.targets)
         num_qubits = max(int(x) for x in tmp_qubits) + 1
 
         dag_circuit.add_qubits(num_qubits)
         # Add gates to the DAG
-        for gate in ir.get_operations():
+        for gate in ir:
             dag_circuit.apply_operation_back(gate)
         return dag_circuit
 
-    def dag_to_ir(self):
+    @classmethod
+    def circuit_to_dag(cls, circ: QuantumCircuit):
+        """Convert QuantumCircuit to DAGCircuit.
+
+        Args:
+            circ (QuantumCircuit): quantum circuit.
+
+        Returns:
+            DAGCircuit: DAGCircuit corresponding to circuit.
+        """
+        dag_circuit = DAGCircuit()
+
+        # count the number of qubits
+        tmp_qubits = set()
+        for gate in circ.get_operations():
+            tmp_qubits.update(gate.targets)
+        num_qubits = max(int(x) for x in tmp_qubits) + 1
+
+        dag_circuit.add_qubits(num_qubits)
+        # Add gates to the DAG
+        for gate in circ.get_operations():
+            dag_circuit.apply_operation_back(gate)
+        return dag_circuit
+
+    def dag_to_circuit(self):
         """Convert DAG to QuantumCircuit.
 
         Returns:
             QuantumCircuit: QuantumCircuit corresponding to DAG.
         """
-        ir = QuantumCircuit()
+        circ = QuantumCircuit()
         multi_graph = self.get_multi_graph()
         all_node_ids = list(multi_graph.node_indexes())
         gate_list = []
@@ -347,8 +540,8 @@ class DAGCircuit:
             node = multi_graph.get_node_data(node_id)
             if isinstance(node, DAGOpNode):
                 gate_list.append(node.op)
-        ir.append_operations(gate_list)
-        return ir
+        circ.append_operations(gate_list)
+        return circ
 
     def get_multi_graph(self):
         """Get DAG Graph.
