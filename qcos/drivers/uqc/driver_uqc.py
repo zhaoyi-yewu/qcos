@@ -113,6 +113,7 @@ class DriverUQCMatrix2(DriverBase):
         try:
             uqc_config.SERVER_HOST = self.uqc_host
             uqc_config.SERVER_PORT = self.uqc_port
+            uqc_config.DEFAULT_TASKS_FILE_PATH = "/var/log/qcos/tasks.csv"
             self._uqc = uqc_client.UQC(self.token)
         except Exception as e:
             raise ValueError(f"UQC exception: {e}") from e
@@ -254,7 +255,7 @@ class DriverUQCMatrix2(DriverBase):
         signal = np.array([x[1] for x in results])
 
         baseline = np.median(signal)
-        baseline = min(baseline, 1)
+        baseline = min(baseline, 0)
         signal_calibrated = signal - baseline
 
         weight = np.abs(signal_calibrated)

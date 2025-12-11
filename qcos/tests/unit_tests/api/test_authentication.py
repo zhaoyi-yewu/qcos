@@ -27,7 +27,12 @@ class TestAuthentication:
     def test_auth(self, mock_config, mock_decrypt_virtual_instance_id):
         mock_config = Mock()
         mock_config.ENABLE_VIRT = True
-        mock_decrypt_virtual_instance_id.return_value = True, None, [], None
+        mock_decrypt_virtual_instance_id.return_value = (
+            True,
+            None,
+            ["dummy", "tiangong100"],
+            "f5840120bca448628cad4d990b29d673",
+        )
         auth_data = auth("test")
-        assert auth_data["device_names"] == []
-        assert auth_data["instance_id"] is None
+        assert auth_data["device_names"] == ["dummy", "tiangong100"]
+        assert auth_data["instance_id"] == "f5840120bca448628cad4d990b29d673"

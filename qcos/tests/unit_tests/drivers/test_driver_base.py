@@ -79,20 +79,20 @@ class TestDriverBase:
         assert driver_base.update_driver_options(self.driver_options) is None
 
     def test_set_name_and_get_name(self):
-        driver_base.set_name("no_name")
-        assert driver_base.get_name() == "no_name"
+        driver_base.set_name("dummy")
+        assert driver_base.get_name() == "dummy"
 
     def test_get_driver_info(self):
         driver_info = driver_base.get_driver_info()
         assert "Quantum Computer base driver" in driver_info
 
     def test_set_module_name_and_get_module_name(self):
-        driver_base.set_module_name("no_module_name")
-        assert driver_base.get_module_name() == "no_module_name"
+        driver_base.set_module_name("Library")
+        assert driver_base.get_module_name() == "Library"
 
     def test_set_class_name_and_get_class_name(self):
-        driver_base.set_class_name("no_class_name")
-        assert driver_base.get_class_name() == "no_class_name"
+        driver_base.set_class_name("Library")
+        assert driver_base.get_class_name() == "Library"
 
     def test_get_transpiler(self):
         driver_base.enable_transpiler = False

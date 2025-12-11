@@ -78,7 +78,7 @@ class TestDriverTiangong100:
 
         mock_loop_with_timeout.side_effect = [
             iter([True, "", ""]),
-            iter([False, "no", None]),
+            iter([False, "", ""]),
         ]
         with pytest.raises(ValueError) as context:
             driver_tiangong100.run(job_id, num_qubits, data, data_type)
@@ -86,7 +86,7 @@ class TestDriverTiangong100:
 
         mock_loop_with_timeout.side_effect = [
             iter([True, "", ""]),
-            iter([True, "no", None]),
+            iter([True, "", ""]),
             iter([False, "", ""]),
         ]
         with pytest.raises(ValueError) as context:
@@ -95,11 +95,11 @@ class TestDriverTiangong100:
 
         mock_loop_with_timeout.side_effect = [
             iter([True, "", ""]),
-            iter([True, "no", None]),
+            iter([True, "", ""]),
             iter([
                 True,
                 "",
-                {"creator": "", "id": "", "name": ""},
+                {"creator": "admin", "id": task_id, "name": username},
             ]),
             iter([False, "", ""]),
         ]
@@ -109,11 +109,11 @@ class TestDriverTiangong100:
 
         mock_loop_with_timeout.side_effect = [
             iter([True, "", ""]),
-            iter([True, "no", None]),
+            iter([True, "", ""]),
             iter([
                 True,
                 "",
-                {"creator": "", "id": "", "name": ""},
+                {"creator": "admin", "id": task_id, "name": username},
             ]),
             iter([True, "", ""]),
             iter([False, "", ""]),
@@ -124,32 +124,32 @@ class TestDriverTiangong100:
 
         mock_loop_with_timeout.side_effect = [
             iter([True, "", ""]),
-            iter([True, "no", None]),
+            iter([True, "", ""]),
             iter([
                 True,
                 "",
-                {"creator": "", "id": "", "name": ""},
+                {"creator": "admin", "id": task_id, "name": username},
             ]),
             iter([True, "", ""]),
             iter([True, "", ""]),
         ]
-        mock_get_task_id.return_value = iter([False, "", {"id": ""}])
+        mock_get_task_id.return_value = iter([False, "", {"id": task_id}])
         with pytest.raises(ValueError) as context:
             driver_tiangong100.run(job_id, num_qubits, data, data_type)
         assert "Failed to get task id " in str(context.value)
 
         mock_loop_with_timeout.side_effect = [
             iter([True, "", ""]),
-            iter([True, "no", None]),
+            iter([True, "", ""]),
             iter([
                 True,
                 "",
-                {"creator": "", "id": "", "name": ""},
+                {"creator": "admin", "id": task_id, "name": username},
             ]),
             iter([True, "", ""]),
             iter([True, "", ""]),
         ]
-        mock_get_task_id.return_value = iter([True, "", {"id": ""}])
+        mock_get_task_id.return_value = iter([True, "", {"id": task_id}])
         mock_get_task_results.return_value = iter([False, "", ""])
         with pytest.raises(ValueError) as context:
             driver_tiangong100.run(job_id, num_qubits, data, data_type)
@@ -157,16 +157,16 @@ class TestDriverTiangong100:
 
         mock_loop_with_timeout.side_effect = [
             iter([True, "", ""]),
-            iter([True, "no", None]),
+            iter([True, "", ""]),
             iter([
                 True,
                 "",
-                {"creator": "", "id": "", "name": ""},
+                {"creator": "admin", "id": task_id, "name": username},
             ]),
             iter([True, "", ""]),
             iter([True, "", ""]),
         ]
-        mock_get_task_id.return_value = iter([True, "", {"id": ""}])
+        mock_get_task_id.return_value = iter([True, "", {"id": task_id}])
         mock_get_task_results.return_value = iter([True, "", ""])
         assert (
             driver_tiangong100.run(job_id, num_qubits, data, data_type) is None
@@ -250,7 +250,7 @@ class TestDriverTiangong100:
 
     @patch.object(DriverTiangong100, "get_task_id")
     def test_check_task_status(self, mock_get_task_id):
-        mock_get_task_id.return_value = iter([True, "", {"name": ""}])
+        mock_get_task_id.return_value = iter([True, "", {"id": task_id}])
         success, _, _ = driver_tiangong100.check_task_status(job_id, [])
         assert success is False
 

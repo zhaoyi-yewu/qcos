@@ -31,10 +31,10 @@ class TestDeviceManager:
         assert device_manager.init_devices() is None
 
     def test_has_device(self):
-        assert device_manager.has_device("no_such_device") is False
+        assert device_manager.has_device("tiangong10000") is False
 
     def test_get_device(self):
-        assert device_manager.get_device("no_such_device") is None
+        assert device_manager.get_device("tiangong10000") is None
 
     def test_get_devices(self):
         assert device_manager.get_devices() is not None

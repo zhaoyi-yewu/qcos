@@ -42,7 +42,7 @@ class TestDriverQiskitQasmSim:
 
     @patch.object(AerBackend, "run")
     def test_run(self, mock_run):
-        mock_result_value = "模拟结果"
+        mock_result_value = {"00": 45, "11": 55}
         mock_result_obj = Mock()
         mock_result_obj.mock_run.return_value = mock_result_value
         assert driver_qasm_sim.run(job_id, num_qubits, data, data_type) is None

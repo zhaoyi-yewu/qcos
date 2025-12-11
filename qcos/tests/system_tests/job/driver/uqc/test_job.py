@@ -46,7 +46,7 @@ class TestJob:
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
             "job_name": "test_uqc_submit_job",
-            "source_code_list": [SAMPLES["2-qubit-sample.qasm"]],
+            "source_code_list": [SAMPLES["1-qubit-sample.qasm"]],
             "code_type": Constant.CODE_TYPE_QASM3,
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
