@@ -17,7 +17,7 @@
 
 
 class TranspilerCfg:
-    """Transpiler Config Class"""
+    """Transpiler Config Class."""
 
     def __init__(
         self,
@@ -34,11 +34,11 @@ class TranspilerCfg:
         self.driver_name = driver_name
 
     def get_decompose_rule(self):
-        """Get decompose rule"""
+        """Get decompose rule."""
         return self.decompose_rule
 
     def set_decompose_rule(self, decomp_rule):
-        """Set decompose rule
+        """Set decompose rule.
 
         Args:
           decomp_rule: decomposition rule
@@ -46,11 +46,11 @@ class TranspilerCfg:
         self.decompose_rule = decomp_rule
 
     def get_qpu_cfg(self):
-        """Get qpu cfg"""
+        """Get qpu cfg."""
         return self.qpu_cfg
 
     def set_qpu_cfg(self, qpu_cfg):
-        """Set qpu cfg
+        """Set qpu cfg.
 
         Args:
           qpu_cfg: qpu config
@@ -58,7 +58,7 @@ class TranspilerCfg:
         self.qpu_cfg = qpu_cfg
 
     def get_max_qubits(self):
-        """Get max qubits
+        """Get max qubits.
 
         Returns:
             max qubits
@@ -66,7 +66,7 @@ class TranspilerCfg:
         return self.max_qubits
 
     def set_max_qubits(self, max_qubits):
-        """Set qpu cfg
+        """Set qpu cfg.
 
         Args:
           max_qubits: max qubits
@@ -74,7 +74,7 @@ class TranspilerCfg:
         self.max_qubits = max_qubits
 
     def get_tech_type(self):
-        """Get tech type
+        """Get tech type.
 
         Returns:
             tech type
@@ -82,7 +82,7 @@ class TranspilerCfg:
         return self.tech_type
 
     def set_tech_type(self, tech_type):
-        """Set tech type
+        """Set tech type.
 
         Args:
           tech_type: tech type
@@ -90,7 +90,7 @@ class TranspilerCfg:
         self.tech_type = tech_type
 
     def get_driver_name(self):
-        """Get driver name
+        """Get driver name.
 
         Returns:
             driver name
@@ -98,7 +98,7 @@ class TranspilerCfg:
         return self.driver_name
 
     def set_driver_name(self, driver_name):
-        """Set driver name
+        """Set driver name.
 
         Args:
           driver_name: driver name

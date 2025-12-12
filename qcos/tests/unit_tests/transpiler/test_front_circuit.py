@@ -17,15 +17,22 @@
 
 import networkx as nx
 import numpy as np
+import pytest
 
-from qcos.transpiler.cmss.mapping.utils.front_circuit import FrontCircuit
+from qcos.transpiler.cmss.mapping.utils.front_circuit import (
+    FrontCircuit,
+    qubit_convert,
+)
 from qcos.transpiler.cmss.mapping.utils.dg import DG
 
 
 class TestFrontCircuit:
     def create_test_ag(self):
-        """Create a test architecture graph with shortest_path and
-        shortest_length"""
+        """Create a test architecture graph.
+
+        Creates a test architecture graph with shortest_path and
+        shortest_length attributes.
+        """
         ag = nx.Graph()
         ag.add_edges_from([(0, 1), (1, 2), (2, 3), (3, 0)])
 
@@ -36,7 +43,7 @@ class TestFrontCircuit:
         return ag
 
     def create_test_dg(self):
-        """Create a test dependency graph"""
+        """Create a test dependency graph."""
         dg = DG()
         dg.num_q = 4
         gate1 = ("cx", (0, 1), [])
@@ -48,7 +55,7 @@ class TestFrontCircuit:
         return dg
 
     def test_init(self):
-        """Test FrontCircuit initialization"""
+        """Test FrontCircuit initialization."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -64,7 +71,7 @@ class TestFrontCircuit:
         assert isinstance(front_cir.front_layer, list)
 
     def test_init_from_existing(self):
-        """Test FrontCircuit initialization from existing FrontCircuit"""
+        """Test FrontCircuit initialization from existing FrontCircuit."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -76,7 +83,7 @@ class TestFrontCircuit:
         assert front_cir2.phy_to_log == front_cir1.phy_to_log
 
     def test_hash(self):
-        """Test __hash__ method"""
+        """Test __hash__ method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -90,7 +97,7 @@ class TestFrontCircuit:
         assert isinstance(hash2, int)
 
     def test_assign_mapping_from_list(self):
-        """Test assign_mapping_from_list method"""
+        """Test assign_mapping_from_list method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -103,8 +110,10 @@ class TestFrontCircuit:
         assert front_cir.log_to_phy == map_list
 
     def test_assian_mapping_naive(self):
-        """Test assian_mapping_naive method
-        (note: typo in original method name)"""
+        """Test assian_mapping_naive method.
+
+        (note: typo in original method name).
+        """
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -115,7 +124,7 @@ class TestFrontCircuit:
         assert front_cir.log_to_phy == [0, 1, 2, 3]
 
     def test_swap(self):
-        """Test swap method"""
+        """Test swap method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -133,7 +142,7 @@ class TestFrontCircuit:
         )
 
     def test_copy(self):
-        """Test copy method"""
+        """Test copy method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -147,7 +156,7 @@ class TestFrontCircuit:
         assert front_cir2.phy_to_log == front_cir1.phy_to_log
 
     def test_swap_new(self):
-        """Test swap_new method"""
+        """Test swap_new method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -161,7 +170,7 @@ class TestFrontCircuit:
         assert new_cir != front_cir
 
     def test_executable_single_qubit(self):
-        """Test _executable method with single qubit gate"""
+        """Test _executable method with single qubit gate."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -176,7 +185,7 @@ class TestFrontCircuit:
                 break
 
     def test_executable_two_qubit_connected(self):
-        """Test _executable method with connected two qubit gate"""
+        """Test _executable method with connected two qubit gate."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -192,7 +201,7 @@ class TestFrontCircuit:
                 break
 
     def test_execute_front_layer(self):
-        """Test execute_front_layer method"""
+        """Test execute_front_layer method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -206,7 +215,7 @@ class TestFrontCircuit:
         assert front_cir.num_remain_nodes <= initial_remain
 
     def test_execute_gates(self):
-        """Test execute_gates method"""
+        """Test execute_gates method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -218,7 +227,7 @@ class TestFrontCircuit:
         assert isinstance(exe_gates, list)
 
     def test_execute_gate_index(self):
-        """Test execute_gate_index method"""
+        """Test execute_gate_index method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -232,7 +241,7 @@ class TestFrontCircuit:
             assert front_cir.num_remain_nodes == initial_remain - 1
 
     def test_execute_gate(self):
-        """Test execute_gate method"""
+        """Test execute_gate method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -247,7 +256,7 @@ class TestFrontCircuit:
             assert front_cir.num_remain_nodes == initial_remain - 1
 
     def test_execute_gate_remote(self):
-        """Test execute_gate_remote method"""
+        """Test execute_gate_remote method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -270,7 +279,7 @@ class TestFrontCircuit:
                     break
 
     def test_pertinent_swaps(self):
-        """Test pertinent_swaps method"""
+        """Test pertinent_swaps method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -288,7 +297,7 @@ class TestFrontCircuit:
         assert len(swaps_phy) == len(h_scores_front)
 
     def test_get_future_cx_fix_num(self):
-        """Test get_future_cx_fix_num method"""
+        """Test get_future_cx_fix_num method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -309,7 +318,7 @@ class TestFrontCircuit:
             assert front_cir.num_remain_nodes == initial_remain
 
     def test_get_future_cx_fix_num_with_single(self):
-        """Test get_future_cx_fix_num_with_single method"""
+        """Test get_future_cx_fix_num_with_single method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -334,7 +343,7 @@ class TestFrontCircuit:
             assert front_cir.num_remain_nodes == initial_remain
 
     def test_get_future_cx_fix_num2(self):
-        """Test get_future_cx_fix_num2 method"""
+        """Test get_future_cx_fix_num2 method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -353,7 +362,7 @@ class TestFrontCircuit:
             assert front_cir.num_remain_nodes == initial_remain
 
     def test_get_future_cx_fix_num3(self):
-        """Test get_future_cx_fix_num3 method"""
+        """Test get_future_cx_fix_num3 method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -371,7 +380,7 @@ class TestFrontCircuit:
             assert front_cir.num_remain_nodes == initial_remain
 
     def test_check_equal(self):
-        """Test check_equal method"""
+        """Test check_equal method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -387,7 +396,7 @@ class TestFrontCircuit:
         assert front_cir1.check_equal(front_cir2) is False
 
     def test_get_cir_matrix(self):
-        """Test get_cir_matrix method"""
+        """Test get_cir_matrix method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -405,8 +414,10 @@ class TestFrontCircuit:
         assert actual_layers <= num_layer
 
     def test_print_methods(self):
-        """Test print methods
-        (they don't return values, just verify they run)"""
+        """Test print methods.
+
+        (they don't return values, just verify they run).
+        """
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -424,7 +435,7 @@ class TestFrontCircuit:
             assert False, "Print methods should not raise exceptions"
 
     def test_swap_with_unmapped_qubits(self):
-        """Test swap method with unmapped qubits"""
+        """Test swap method with unmapped qubits."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -436,7 +447,7 @@ class TestFrontCircuit:
         assert isinstance(exe_gates, list)
 
     def test_execute_gates_empty_front_layer(self):
-        """Test execute_gates with empty front layer"""
+        """Test execute_gates with empty front layer."""
         ag = self.create_test_ag()
         dg = DG()
         dg.num_q = 4
@@ -450,7 +461,7 @@ class TestFrontCircuit:
         assert len(exe_gates) == 0
 
     def test_pertinent_swaps_empty_front_layer(self):
-        """Test pertinent_swaps with empty front layer"""
+        """Test pertinent_swaps with empty front layer."""
         ag = self.create_test_ag()
         dg = DG()
         dg.num_q = 4
@@ -465,3 +476,41 @@ class TestFrontCircuit:
         assert isinstance(swaps_phy, list)
         assert isinstance(h_scores, list)
         assert isinstance(h_scores_front, list)
+
+    def test_executable_two_qubit_not_connected(self):
+        """Test _executable returns False when qubits not connected."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        # remove all edges so no two-qubit gate is executable
+        ag.remove_edges_from(list(ag.edges))
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        for node in dg.nodes:
+            qubits = dg.nodes[node].get("qubits", [])
+            if len(qubits) == 2:
+                assert front_cir._executable(node) is False
+                break
+
+    def test_execute_gate_remote_invalid_distance(self):
+        """Test execute_gate_remote raises when distance != 2."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        # pick a two-qubit gate where distance is 1
+        for node in front_cir.front_layer:
+            qubits = dg.nodes[node].get("qubits", [])
+            if len(qubits) == 2:
+                with pytest.raises(ValueError):
+                    front_cir.execute_gate_remote(node)
+                break
+
+    def test_qubit_convert_noop(self):
+        """Test qubit_convert placeholder function can be called."""
+        # current implementation is a pass; just ensure it's callable
+        assert qubit_convert([0, 1, 2]) is None

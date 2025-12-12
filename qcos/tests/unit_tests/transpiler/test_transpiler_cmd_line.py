@@ -23,7 +23,7 @@ from qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 from qcos.transpiler.cmss.transpiler_cmd_line import (
     read_qasm_from_file,
     Timer,
-    main,
+    main_cmss_transpiler as main,
 )
 
 timer = Timer()

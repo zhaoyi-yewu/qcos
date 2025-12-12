@@ -48,11 +48,10 @@ logger = logging.getLogger(__name__)
 
 
 class TaskFlowManager(ABC):
-    """Task manager based on prefect framework"""
+    """Task manager based on prefect framework."""
 
     def __init__(self):
-        """Init TaskFlowManager"""
-
+        """Init TaskFlowManager."""
         self._client = None
         self._sync_client = None
         self.loop = None
@@ -65,7 +64,7 @@ class TaskFlowManager(ABC):
 
     @staticmethod
     def convert_to_qcos_state(state):
-        """Convert to qcos state
+        """Convert to qcos state.
 
         Args:
             state: prefect state
@@ -87,7 +86,7 @@ class TaskFlowManager(ABC):
 
     @staticmethod
     def convert_to_prefect_states(states):
-        """Convert qcos states to prefect states
+        """Convert qcos states to prefect states.
 
         Args:
             states: qcos states list
@@ -121,8 +120,7 @@ class TaskFlowManager(ABC):
         return prefect_states
 
     def start(self):
-        """Create work pools, queues and start workers"""
-
+        """Create work pools, queues and start workers."""
         self._client = get_client()
         self._sync_client = get_client(sync_client=True)
         self._console = Console(quiet=True)
@@ -135,7 +133,7 @@ class TaskFlowManager(ABC):
         self.loop.run_until_complete(self.process_aggregation_job())
 
     def set_driver_manager(self, driver_manager):
-        """Set driver manager
+        """Set driver manager.
 
         Args:
             driver_manager: driver manager
@@ -143,7 +141,7 @@ class TaskFlowManager(ABC):
         self.driver_manager = driver_manager
 
     def set_device_manager(self, device_manager):
-        """Set device manager
+        """Set device manager.
 
         Args:
             device_manager: device manager
@@ -151,7 +149,7 @@ class TaskFlowManager(ABC):
         self.device_manager = device_manager
 
     def check_connection(self):
-        """Check connection to prefect server"""
+        """Check connection to prefect server."""
 
         def is_connected():
             try:
@@ -167,8 +165,7 @@ class TaskFlowManager(ABC):
             raise TimeoutError("Connection to prefect server timeout")
 
     async def create_pools(self):
-        """Create all work pools, each policy has own work pools"""
-
+        """Create all work pools, each policy has own work pools."""
         create_workpools = [
             self.create_pool(pool_name)
             for pool_name in Constant.JOB_SCHED_POLICIES
@@ -176,12 +173,11 @@ class TaskFlowManager(ABC):
         return await asyncio.gather(*create_workpools)
 
     async def create_pool(self, pool_name):
-        """Create work pool by prefect client
+        """Create work pool by prefect client.
 
         Args:
             pool_name: work pool name, using policy name
         """
-
         pools = await self._client.read_work_pools()
         if not any(pool.name == pool_name for pool in pools):
             await self._client.create_work_pool(
@@ -193,11 +189,10 @@ class TaskFlowManager(ABC):
             )
 
     async def create_queues(self):
-        """Create all work queues under work pool
+        """Create all work queues under work pool.
 
         each priority has own work queue.
         """
-
         queues = await self._client.read_work_queues()
         for pool_name in Constant.JOB_SCHED_POLICIES:
             for priority in range(1, Constant.MAX_JOB_PRIORITY + 1):
@@ -211,10 +206,7 @@ class TaskFlowManager(ABC):
                     )
 
     async def start_workers(self):
-        """
-        Start all workers for work pool
-        """
-
+        """Start all workers for work pool."""
         # start worker
         for policy in range(len(Constant.JOB_SCHED_POLICIES)):
             pool_name = str(policy)
@@ -301,7 +293,7 @@ class TaskFlowManager(ABC):
         return deploy_id
 
     def run_task_flow(self, deployment_id, args: dict[str, Any], tags=None):
-        """Run flow
+        """Run flow.
 
         Args:
             deployment_id: deploy uuid
@@ -345,8 +337,7 @@ class TaskFlowManager(ABC):
         args: dict[str, Any],
         tags=None,
     ):
-        """
-        Run flow by prefect client
+        """Run flow by prefect client.
 
         Args:
             deployment_id: deploy uuid
@@ -379,7 +370,7 @@ class TaskFlowManager(ABC):
         return job_id
 
     def get_task_flow_result(self, job_id, tags=None):
-        """Get flow run state and result
+        """Get flow run state and result.
 
         Args:
             job_id: job uuid
@@ -397,7 +388,7 @@ class TaskFlowManager(ABC):
         return state, parameters, result, err_msg
 
     def delete_flow_artifacts(self, flow_run_id):
-        """Delete flow artifacts
+        """Delete flow artifacts.
 
         Args:
             flow_run_id: flow run id
@@ -411,7 +402,7 @@ class TaskFlowManager(ABC):
             self._sync_client.delete_artifact(artifact.id)
 
     def get_job_artifact(self, job_id):
-        """Get job artifact
+        """Get job artifact.
 
         Args:
             job_id: job id
@@ -423,7 +414,7 @@ class TaskFlowManager(ABC):
         return artifact
 
     def get_job_artifact_by_client(self, job_id):
-        """Get job artifact by client
+        """Get job artifact by client.
 
         Args:
             job_id: job id
@@ -445,7 +436,7 @@ class TaskFlowManager(ABC):
         return artifact
 
     def has_flow(self, job_id):
-        """Check if flow exists
+        """Check if flow exists.
 
         Args:
             job_id: job uuid
@@ -460,7 +451,7 @@ class TaskFlowManager(ABC):
         return exist
 
     def update_flow(self, job_id, name=None, parameters=None, variables=None):
-        """Update flow
+        """Update flow.
 
         Args:
             job_id: job uuid
@@ -498,7 +489,7 @@ class TaskFlowManager(ABC):
         )
 
     def get_task_flow_result_by_client(self, flow_run_id):
-        """Get flow run state and result by prefect client
+        """Get flow run state and result by prefect client.
 
         Args:
             flow_run_id: flow run uuid
@@ -553,7 +544,7 @@ class TaskFlowManager(ABC):
             return state.name, parameters, None, None
 
     def get_task_flow_list(self, tags=None):
-        """Get flow run list
+        """Get flow run list.
 
         Args:
             tags: prefect flow tags
@@ -628,6 +619,7 @@ class TaskFlowManager(ABC):
 
     def get_task_flow_run(self, job_id, tags=None):
         """Get flow run.
+
         Args:
             job_id: job id
             tags: prefect flow tags
@@ -769,7 +761,7 @@ class TaskFlowManager(ABC):
         return success_list
 
     def get_flow_runs_with_filters(self, states=None, tags=None):
-        """Get flow runs with filters
+        """Get flow runs with filters.
 
         Args:
             states: flow states
@@ -809,7 +801,7 @@ class TaskFlowManager(ABC):
         return flow_info
 
     def run_callbacks(self, data, callbacks):
-        """Run callbacks for job
+        """Run callbacks for job.
 
         Args:
             data: data to send
@@ -820,7 +812,7 @@ class TaskFlowManager(ABC):
         )
 
     async def process_aggregation_job(self):
-        """Process aggregation job"""
+        """Process aggregation job."""
 
         def _update_aggregation_job(parent_id):
             try:

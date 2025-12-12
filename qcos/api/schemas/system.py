@@ -19,8 +19,9 @@ from pydantic import BaseModel
 
 
 class PingRequest(BaseModel):
-    """Ping Request
-    Pydantic Model for Ping Request
+    """Ping Request.
+
+    Pydantic Model for Ping Request.
     """
 
     # message
@@ -28,8 +29,9 @@ class PingRequest(BaseModel):
 
 
 class PongResponse(BaseModel):
-    """Pong Response
-    Pydantic Model for Pong Response
+    """Pong Response.
+
+    Pydantic Model for Pong Response.
     """
 
     # message
@@ -37,14 +39,16 @@ class PongResponse(BaseModel):
 
 
 class SystemInfoRequest(BaseModel):
-    """System Info Request
-    Pydantic Model for System Info Request
+    """System Info Request.
+
+    Pydantic Model for System Info Request.
     """
 
 
 class SystemInfoResponse(BaseModel):
-    """System Info Response
-    Pydantic Model for System Info Response
+    """System Info Response.
+
+    Pydantic Model for System Info Response.
     """
 
     # message

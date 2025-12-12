@@ -34,13 +34,13 @@ class TestJob:
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
-        cls.rpc_process = multiprocessing.Process(target=main, daemon=True)
-        cls.rpc_process.start()
+        cls.uqc_process = multiprocessing.Process(target=main, daemon=True)
+        cls.uqc_process.start()
 
     @classmethod
     def teardown_class(cls):
         print("Stop UQC server")
-        cls.rpc_process.terminate()
+        cls.uqc_process.terminate()
 
     def test_submit_job(self):
         job_info = {

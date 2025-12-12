@@ -53,7 +53,7 @@ def init_logging():
 
 
 def load_config(path: str = "/etc/qcos/conf.d/spinq_rpc.toml"):
-    """从 TOML 配置文件加载配置"""
+    """从 TOML 配置文件加载配置."""
     global _config_data, _qubits_num, _coupling_list, _qpu_configs
 
     # find config file
@@ -100,7 +100,7 @@ def load_config(path: str = "/etc/qcos/conf.d/spinq_rpc.toml"):
 
     # convert "Q0", "Q1" into numerical index
     def qubit_name_to_index(name):
-        """convert "Q0" into numerical index: 0"""
+        """Convert "Q0" into numerical index: 0."""
         if isinstance(name, str) and name.startswith("Q"):
             try:
                 return int(name[1:])
@@ -125,7 +125,7 @@ def load_config(path: str = "/etc/qcos/conf.d/spinq_rpc.toml"):
 
 
 class TaskStatus(enum.Enum):
-    """Task status"""
+    """Task status."""
 
     finished = 0
     failed = 1
@@ -135,7 +135,7 @@ class TaskStatus(enum.Enum):
 
 
 def request_login(username, password):
-    """Request login
+    """Request login.
 
     Args:
         username: username
@@ -176,7 +176,7 @@ def request_login(username, password):
 
 
 def request_logout(username, session_id):
-    """Request logout
+    """Request logout.
 
     Args:
         username: username
@@ -190,7 +190,7 @@ def request_logout(username, session_id):
 
 
 def push_task(task_name, task_gates, measures, task_desc, shots, session_id):
-    """Push task
+    """Push task.
 
     Args:
         task_name: task name
@@ -228,7 +228,7 @@ def push_task(task_name, task_gates, measures, task_desc, shots, session_id):
 
 
 def get_task_status(task_id, session_id):
-    """Get task status
+    """Get task status.
 
     Args:
         task_id: task_id
@@ -237,7 +237,6 @@ def get_task_status(task_id, session_id):
     Returns:
         response
     """
-
     task_status = TaskStatus.finished.value
     response = task_status
     logger.info(
@@ -250,7 +249,7 @@ def get_task_status(task_id, session_id):
 
 
 def get_task_result(task_id, session_id):
-    """Get task result
+    """Get task result.
 
     Args:
         task_id: task_id

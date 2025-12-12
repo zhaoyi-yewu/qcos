@@ -23,9 +23,10 @@ class QasmConverter:
     """Convert a list of Operations into OpenQASM 2.0 or 3.0 code."""
 
     def __init__(self, circuit: QuantumCircuit):
-        """
+        """Initialize the QasmConverter.
+
         Args:
-            circuit: quantum circuit to be converted
+            circuit: quantum circuit to be converted.
         """
         self.operations = circuit.get_operations()
         qubit_num = circuit.num_qubits

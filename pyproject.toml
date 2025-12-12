@@ -52,7 +52,7 @@ dependencies = [
     "click==8.1.8",
     "cliff==4.10.0",
     "cryptography==45.0.7",
-    "fastapi==0.115.12",
+    "fastapi==0.122.1",
     "fastapi-jsonrpc==3.4.1",
     "h11==0.16.0",
     "idna==3.10",
@@ -60,6 +60,7 @@ dependencies = [
     "loguru==0.7.3",
     "matplotlib==3.9.2",
     "networkx==3.3",
+    "numexpr==2.14.1",
     "numpy==1.26.4",
     "pallets-sphinx-themes==2.3.0",
     "ply==3.11",
@@ -72,9 +73,10 @@ dependencies = [
     "qiskit==2.1.1",
     "qiskit_aer==0.17.1",
     "requests==2.32.5",
+    "rustworkx==0.16.0",
     "schema==0.7.7",
     "sniffio==1.3.1",
-    "starlette==0.46.2",
+    "starlette==0.50.0",
     "tomlkit==0.13.3",
     "typing-inspection==0.4.1",
     "typing_extensions==4.13.2",
@@ -91,6 +93,7 @@ dependencies = [
     "sphinx==8.1.3",
     "sphinx-rtd-theme==3.0.2",
     "sphinxcontrib-napoleon==0.7",
+    "tabulate==0.9.0",
     "tomli==2.2.1",
     "tox==4.8.0",
 ]
@@ -98,7 +101,8 @@ dependencies = [
 [project.scripts]
 # Command line interface entrypoint scripts
 qcos-api = "qcos.api_server:main"
-qcos-compiler = "qcos.transpiler.cmss.transpiler_cmd_line:main"
+qcos-transpiler = "qcos.transpiler.cmss.transpiler_cmd_line:main"
+qiskit-transpiler = "qcos.transpiler.qiskit.transpiler_qiskit_cmd:main"
 
 [project.urls]
 "Homepage" = "https://gitee.com/OpenWuYue/qcos"
@@ -114,8 +118,8 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["*"]
-exclude = []
+include = ["qcos*"]
+exclude = ["bin*", "build*", "cicd*", "docs*", "qcos/tests*", "qcos/tests"]
 namespaces = true
 
 [tool.isort]
@@ -150,14 +154,27 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "S", "U", "CPY001"]
+select = ["E", "F", "S", "U", "D", "CPY001"]
 ignore = [
+    "D100",  # Missing docstring in public module
+    "D101",  # Missing docstring in public class
+    "D102",  # Missing docstring in public method
+    "D103",  # Missing docstring in public function
+    "D104",  # Missing docstring in public package
+    "D105",  # Missing docstring in magic method
+    # "D414",  # Section has no content ("Returns")
+    # "D415",  # First line should end with a period, question mark, or exclamation point
+    "D107",  # Missing docstring in public package
+    # "D205",  # 1 blank line required between summary line and description
+
     "E731",  # Do not assign a `lambda` expression, use a `def`
     "E741",  # Ambiguous variable name: `l`
+
     "S104",  # Possible binding to all interfaces
     "S311",  # Standard pseudo-random generators are not suitable for
              # cryptographic purposes
     "S324",  # Probable use of insecure hash functions in `hashlib`: `md5`
+
     "UP009", # UTF-8 encoding declaration is unnecessary
     "UP031", # Use format specifiers instead of percent format
     "UP032", # Use f-string instead of `format` call
@@ -171,8 +188,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "qcos/tests/**/*.py" = ["S101"]
 "qcos/**/__init__.py" = ["F401"]
-"qcos/transpiler/cmss/compiler/parser.py" = ["F401"]
-"qcos/transpiler/cmss/compiler/visitor.py" = ["F401"]
+"qcos/transpiler/cmss/compiler/parser.py" = ["ALL"]
+"qcos/transpiler/cmss/compiler/tokrules.py" = ["ALL"]
+"qcos/transpiler/cmss/compiler/visitor.py" = ["ALL"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["qcos"]
@@ -182,6 +200,9 @@ lines-after-imports = 2
 [tool.ruff.lint.flake8-copyright]
 notice-rgx = "(?s)^#!/usr/bin/env python3.*?(coding: utf-8).*?(Copyright© 2024-2025 China Mobile \\(SuZhou\\)).*?(qcos is licensed under Mulan PSL v2).*"
 
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
@@ -190,6 +211,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 exclude = [
     "qcos/transpiler/cmss/compiler/parser.py",
+    "qcos/transpiler/cmss/compiler/tokrules.py",
     "qcos/transpiler/cmss/compiler/visitor.py",
 ]
 

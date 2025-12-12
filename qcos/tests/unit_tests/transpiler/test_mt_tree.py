@@ -26,10 +26,10 @@ from qcos.transpiler.cmss.mapping.utils.dg import DG
 
 
 class TestMCTree:
-    """Test MCTree class"""
+    """Test MCTree class."""
 
     def create_test_ag(self):
-        """Create a test architecture graph"""
+        """Create a test architecture graph."""
         ag = nx.Graph()
         ag.add_edges_from([(0, 1), (1, 2), (2, 3)])
         ag.shortest_path = dict(nx.shortest_path(ag))
@@ -37,7 +37,7 @@ class TestMCTree:
         return ag
 
     def create_test_dg(self):
-        """Create a test dependency graph"""
+        """Create a test dependency graph."""
         dg = DG()
         dg.num_q = 4
         dg.num_q_log = 4
@@ -46,7 +46,7 @@ class TestMCTree:
         return dg
 
     def test_init_basic(self):
-        """Test MCTree basic initialization"""
+        """Test MCTree basic initialization."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -68,7 +68,7 @@ class TestMCTree:
         assert mctree.init_node == mctree.root_node
 
     def test_init_with_depth_objective(self):
-        """Test MCTree initialization with depth objective"""
+        """Test MCTree initialization with depth objective."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -87,7 +87,7 @@ class TestMCTree:
         assert mctree.opt_depth is True
 
     def test_init_with_no_swap_objective(self):
-        """Test MCTree initialization with no_swap objective"""
+        """Test MCTree initialization with no_swap objective."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -106,7 +106,7 @@ class TestMCTree:
         assert mctree.opt_depth is False
 
     def test_init_invalid_objective(self):
-        """Test MCTree initialization with invalid objective"""
+        """Test MCTree initialization with invalid objective."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -124,7 +124,7 @@ class TestMCTree:
         assert "Unsupported objective" in str(exc_info.value)
 
     def test_init_missing_init_mapping(self):
-        """Test MCTree initialization without init_mapping"""
+        """Test MCTree initialization without init_mapping."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
 
@@ -140,7 +140,7 @@ class TestMCTree:
         assert "init_mapping is required" in str(exc_info.value)
 
     def test_init_unsupported_keyword(self):
-        """Test MCTree initialization with unsupported keyword"""
+        """Test MCTree initialization with unsupported keyword."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -159,7 +159,7 @@ class TestMCTree:
         assert "Unsupported keyword" in str(exc_info.value)
 
     def test_get_father(self):
-        """Test get_father method"""
+        """Test get_father method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -178,7 +178,7 @@ class TestMCTree:
         assert father is None
 
     def test_get_circuit(self):
-        """Test get_circuit method"""
+        """Test get_circuit method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -197,7 +197,7 @@ class TestMCTree:
         assert circuit is not None
 
     def test_get_num_exe_gates(self):
-        """Test get_num_exe_gates method"""
+        """Test get_num_exe_gates method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -217,7 +217,7 @@ class TestMCTree:
         assert num_gates >= 0
 
     def test_node_cost_from_father_none(self):
-        """Test node_cost_from_father with None father"""
+        """Test node_cost_from_father with None father."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -236,7 +236,7 @@ class TestMCTree:
         assert cost == 0
 
     def test_node_cost_from_father_with_swap(self):
-        """Test node_cost_from_father with added_swap"""
+        """Test node_cost_from_father with added_swap."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -255,7 +255,7 @@ class TestMCTree:
         assert isinstance(cost, (int, float))
 
     def test_node_cost_from_father_with_cxs(self):
-        """Test node_cost_from_father with added_cxs"""
+        """Test node_cost_from_father with added_cxs."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -276,7 +276,7 @@ class TestMCTree:
         assert isinstance(cost, (int, float))
 
     def test_node_cost_size(self):
-        """Test node_cost with size objective"""
+        """Test node_cost with size objective."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -295,7 +295,7 @@ class TestMCTree:
         assert isinstance(cost, (int, float))
 
     def test_node_cost_depth(self):
-        """Test node_cost with depth objective"""
+        """Test node_cost with depth objective."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -314,7 +314,7 @@ class TestMCTree:
         assert isinstance(cost, (int, float))
 
     def test_expand_node_via_swap(self):
-        """Test expand_node_via_swap method"""
+        """Test expand_node_via_swap method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -333,7 +333,7 @@ class TestMCTree:
         assert result is None or isinstance(result, int)
 
     def test_expansion_already_has_children(self):
-        """Test expansion when node already has children"""
+        """Test expansion when node already has children."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -356,7 +356,7 @@ class TestMCTree:
             assert "already has son nodes" in str(exc_info.value)
 
     def test_expansion_no_remain_gates(self):
-        """Test expansion when no remaining gates"""
+        """Test expansion when no remaining gates."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -377,7 +377,7 @@ class TestMCTree:
         assert not result
 
     def test_selection(self):
-        """Test selection method"""
+        """Test selection method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -398,7 +398,7 @@ class TestMCTree:
         assert depth >= 0
 
     def test_delete_nodes(self):
-        """Test delete_nodes method"""
+        """Test delete_nodes method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -421,7 +421,7 @@ class TestMCTree:
             assert len(mctree.nodes) < initial_count
 
     def test_delete_false_leaf(self):
-        """Test _delete_false_leaf method"""
+        """Test _delete_false_leaf method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -441,7 +441,7 @@ class TestMCTree:
         # Method returns None, no need to assert
 
     def test_get_swaps(self):
-        """Test get_swaps method"""
+        """Test get_swaps method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -460,7 +460,7 @@ class TestMCTree:
         assert isinstance(swaps, list)
 
     def test_get_swaps_multiple_successors(self):
-        """Test get_swaps with multiple successors"""
+        """Test get_swaps with multiple successors."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -484,7 +484,7 @@ class TestMCTree:
             assert "Multiple successors found" in str(exc_info.value)
 
     def test_to_dg(self):
-        """Test to_dg method"""
+        """Test to_dg method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -503,7 +503,7 @@ class TestMCTree:
         assert result_dg is not None
 
     def test_pick_best_son_size_decision(self):
-        """Test pick_best_son_size with decision method"""
+        """Test pick_best_son_size with decision method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -530,7 +530,7 @@ class TestMCTree:
             assert isinstance(score, (int, float))
 
     def test_pick_best_son_depth_decision(self):
-        """Test pick_best_son_depth with decision method"""
+        """Test pick_best_son_depth with decision method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -557,7 +557,7 @@ class TestMCTree:
             assert isinstance(score, (int, float))
 
     def test_back_propagation_unsupported_method(self):
-        """Test back_propagation with unsupported method"""
+        """Test back_propagation with unsupported method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -577,7 +577,7 @@ class TestMCTree:
         assert "Unsupported BP method" in str(exc_info.value)
 
     def test_decision(self):
-        """Test decision method"""
+        """Test decision method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -599,7 +599,7 @@ class TestMCTree:
             assert result is not None
 
     def test_decision_no_son(self):
-        """Test decision when no son nodes"""
+        """Test decision when no son nodes."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -620,7 +620,7 @@ class TestMCTree:
         assert result == mctree.root_node
 
     def test_pick_best_son_size_ks(self):
-        """Test pick_best_son_size with KS method"""
+        """Test pick_best_son_size with KS method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -648,7 +648,7 @@ class TestMCTree:
             assert isinstance(score, (int, float))
 
     def test_pick_best_son_depth_ks(self):
-        """Test pick_best_son_depth with KS method"""
+        """Test pick_best_son_depth with KS method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -676,7 +676,7 @@ class TestMCTree:
             assert isinstance(score, (int, float))
 
     def test_pick_best_son_size_unsupported_method(self):
-        """Test pick_best_son_size with unsupported method"""
+        """Test pick_best_son_size with unsupported method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -696,7 +696,7 @@ class TestMCTree:
         assert "Unsupported method" in str(exc_info.value)
 
     def test_pick_best_son_depth_unsupported_method(self):
-        """Test pick_best_son_depth with unsupported method"""
+        """Test pick_best_son_depth with unsupported method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -716,7 +716,7 @@ class TestMCTree:
         assert "Unsupported method" in str(exc_info.value)
 
     def test_back_propagation_globalscore(self):
-        """Test back_propagation with globalscore method"""
+        """Test back_propagation with globalscore method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -738,7 +738,7 @@ class TestMCTree:
             # Should not raise error
 
     def test_back_propagation_globalscore_depth(self):
-        """Test back_propagation with globalscore method for depth"""
+        """Test back_propagation with globalscore method for depth."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -760,7 +760,7 @@ class TestMCTree:
             # Should not raise error
 
     def test_add_node_mcts_with_swap(self):
-        """Test add_node_mcts with added_swap"""
+        """Test add_node_mcts with added_swap."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -779,7 +779,7 @@ class TestMCTree:
         assert result is None or isinstance(result, int)
 
     def test_add_node_mcts_existing_node_better(self):
-        """Test add_node_mcts when existing node is better"""
+        """Test add_node_mcts when existing node is better."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -806,7 +806,7 @@ class TestMCTree:
             assert node1 is not None
 
     def test_expand_node_via_remote(self):
-        """Test expand_node_via_remote method"""
+        """Test expand_node_via_remote method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -825,7 +825,7 @@ class TestMCTree:
         assert isinstance(result, list)
 
     def test_get_son_attributes_with_none_value(self):
-        """Test get_son_attributes with None value"""
+        """Test get_son_attributes with None value."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -850,7 +850,7 @@ class TestMCTree:
             assert "Value None" in str(exc_info.value)
 
     def test_decision_with_fallback(self):
-        """Test decision with fallback trigger"""
+        """Test decision with fallback trigger."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -877,7 +877,7 @@ class TestMCTree:
             assert result is not None
 
     def test_to_dg_with_swap(self):
-        """Test to_dg with swap gates"""
+        """Test to_dg with swap gates."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -899,7 +899,7 @@ class TestMCTree:
             assert result_dg is not None
 
     def test_to_dg_with_remote(self):
-        """Test to_dg with remote gates"""
+        """Test to_dg with remote gates."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -918,7 +918,7 @@ class TestMCTree:
         assert result_dg is not None
 
     def test_print_node_attrs(self):
-        """Test print_node_attrs method"""
+        """Test print_node_attrs method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -937,7 +937,7 @@ class TestMCTree:
         mctree.print_node_attrs(mctree.root_node, ["local_score"])
 
     def test_print_son_attrs(self):
-        """Test print_son_attrs method"""
+        """Test print_son_attrs method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -961,7 +961,7 @@ class TestMCTree:
             )
 
     def test_print_son_attrs_invalid_names_son(self):
-        """Test print_son_attrs with invalid names_son"""
+        """Test print_son_attrs with invalid names_son."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -981,7 +981,7 @@ class TestMCTree:
         assert "must be list or tuple" in str(exc_info.value)
 
     def test_print_son_attrs_invalid_names_father(self):
-        """Test print_son_attrs with invalid names_father"""
+        """Test print_son_attrs with invalid names_father."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1001,7 +1001,7 @@ class TestMCTree:
         assert "must be list or tuple" in str(exc_info.value)
 
     def test_init_with_mode_bp(self):
-        """Test MCTree initialization with mode_BP"""
+        """Test MCTree initialization with mode_BP."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1020,7 +1020,7 @@ class TestMCTree:
         assert mctree.mode_BP == ["globalscore", None]
 
     def test_init_with_mode_decision(self):
-        """Test MCTree initialization with mode_decision"""
+        """Test MCTree initialization with mode_decision."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1039,7 +1039,7 @@ class TestMCTree:
         assert mctree.mode_decision == ["global_score"]
 
     def test_add_node_mcts_with_remote(self):
-        """Test add_node_mcts with remote_exe_node"""
+        """Test add_node_mcts with remote_exe_node."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1061,7 +1061,7 @@ class TestMCTree:
         assert isinstance(remote_nodes, list)
 
     def test_add_node_mcts_with_remote_exe_node(self):
-        """Test add_node_mcts with remote_exe_node parameter"""
+        """Test add_node_mcts with remote_exe_node parameter."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1087,7 +1087,7 @@ class TestMCTree:
         )
 
     def test_add_node_mcts_existing_node_worse(self):
-        """Test add_node_mcts when new node is better than existing"""
+        """Test add_node_mcts when new node is better than existing."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1116,7 +1116,7 @@ class TestMCTree:
             assert node1 is not None
 
     def test_node_cost_from_father_depth_with_swap(self):
-        """Test node_cost_from_father with depth objective and swap"""
+        """Test node_cost_from_father with depth objective and swap."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1136,7 +1136,7 @@ class TestMCTree:
         assert cost >= 0
 
     def test_node_cost_from_father_depth_with_cxs(self):
-        """Test node_cost_from_father with depth objective and cxs"""
+        """Test node_cost_from_father with depth objective and cxs."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1158,7 +1158,7 @@ class TestMCTree:
         assert cost >= 0
 
     def test_node_cost_from_father_depth_none(self):
-        """Test node_cost_from_father with depth objective and None inputs"""
+        """Test node_cost_from_father with depth objective and None inputs."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1178,7 +1178,7 @@ class TestMCTree:
         assert isinstance(cost, (int, float))
 
     def test_add_depth_with_remote_cxs(self):
-        """Test add_depth with remote CNOTs"""
+        """Test add_depth with remote CNOTs."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1200,7 +1200,7 @@ class TestMCTree:
             assert len(remote_nodes) >= 0
 
     def test_expansion_with_pruning(self):
-        """Test expansion with pruning enabled"""
+        """Test expansion with pruning enabled."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1219,7 +1219,7 @@ class TestMCTree:
         assert isinstance(result, list)
 
     def test_expansion_with_score_layer_zero(self):
-        """Test expansion with score_layer=0"""
+        """Test expansion with score_layer=0."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1238,7 +1238,7 @@ class TestMCTree:
         assert isinstance(result, list)
 
     def test_expansion_no_children_after_expansion(self):
-        """Test expansion when no children are added"""
+        """Test expansion when no children are added."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1270,7 +1270,7 @@ class TestMCTree:
         ].pertinent_swaps = original_pertinent_swaps
 
     def test_back_propagation_full_path(self):
-        """Test back_propagation with full path to root"""
+        """Test back_propagation with full path to root."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1296,7 +1296,7 @@ class TestMCTree:
                 # Should propagate to parent nodes
 
     def test_back_propagation_stops_early(self):
-        """Test back_propagation stops when new_value <= old_value"""
+        """Test back_propagation stops when new_value <= old_value."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1321,7 +1321,7 @@ class TestMCTree:
             # Should stop early because new_value won't be > old_value
 
     def test_back_propagation_depth_full_path(self):
-        """Test back_propagation with depth objective and full path"""
+        """Test back_propagation with depth objective and full path."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1345,7 +1345,7 @@ class TestMCTree:
                 mctree.back_propagation(child2)
 
     def test_delete_false_leaf_multiple_levels(self):
-        """Test _delete_false_leaf with multiple levels"""
+        """Test _delete_false_leaf with multiple levels."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1372,7 +1372,7 @@ class TestMCTree:
             mctree._delete_false_leaf(child1)
 
     def test_fallback_basic(self):
-        """Test fallback method"""
+        """Test fallback method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1400,7 +1400,7 @@ class TestMCTree:
             pass
 
     def test_fallback_no_executable_vertex(self):
-        """Test fallback when no executable vertex found"""
+        """Test fallback when no executable vertex found."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1423,7 +1423,7 @@ class TestMCTree:
         assert "No executable vertex found" in str(exc_info.value)
 
     def test_to_dg_multiple_successors_error(self):
-        """Test to_dg with multiple successors error"""
+        """Test to_dg with multiple successors error."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1448,7 +1448,7 @@ class TestMCTree:
             assert "Multiple successors found" in str(exc_info.value)
 
     def test_get_num_exe_gates_with_remote(self):
-        """Test get_num_exe_gates with remote_node"""
+        """Test get_num_exe_gates with remote_node."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1471,7 +1471,7 @@ class TestMCTree:
             assert num_gates >= 0
 
     def test_add_node_mcts_without_hash(self):
-        """Test add_node_mcts without hash (use node_count)"""
+        """Test add_node_mcts without hash (use node_count)."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1490,7 +1490,7 @@ class TestMCTree:
         assert result is None or isinstance(result, int)
 
     def test_expansion_with_best_son_none(self):
-        """Test expansion when best_son is None"""
+        """Test expansion when best_son is None."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1515,7 +1515,7 @@ class TestMCTree:
         mctree.pick_best_son = original_pick
 
     def test_add_node_mcts_new_node_better_replacement(self):
-        """Test add_node_mcts when new node is better and replaces existing"""
+        """Test add_node_mcts when new node is better and replaces existing."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1548,7 +1548,7 @@ class TestMCTree:
             assert node1 is not None
 
     def test_add_depth_remote_cxs_with_single_gates(self):
-        """Test add_depth with remote CNOTs and single-qubit gates"""
+        """Test add_depth with remote CNOTs and single-qubit gates."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         # Add a single-qubit gate to DG
@@ -1571,7 +1571,7 @@ class TestMCTree:
         assert isinstance(remote_nodes, list)
 
     def test_expansion_with_swap_filtering(self):
-        """Test expansion with swap filtering based on scores"""
+        """Test expansion with swap filtering based on scores."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1591,7 +1591,7 @@ class TestMCTree:
         assert isinstance(result, list)
 
     def test_expansion_with_h_score_update(self):
-        """Test expansion with h_score update when score_layer > 0"""
+        """Test expansion with h_score update when score_layer > 0."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1617,7 +1617,7 @@ class TestMCTree:
                     )
 
     def test_back_propagation_reaches_root(self):
-        """Test back_propagation that reaches root node"""
+        """Test back_propagation that reaches root node."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1642,7 +1642,7 @@ class TestMCTree:
             # Should propagate to root
 
     def test_back_propagation_depth_with_depth_add(self):
-        """Test back_propagation with depth objective and depth_add updates"""
+        """Test back_propagation with depth objective and depth_add updates."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1664,7 +1664,7 @@ class TestMCTree:
             mctree.back_propagation(child)
 
     def test_delete_false_leaf_while_loop(self):
-        """Test _delete_false_leaf with while loop execution"""
+        """Test _delete_false_leaf with while loop execution."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1691,7 +1691,7 @@ class TestMCTree:
             mctree._delete_false_leaf(child)
 
     def test_fallback_with_deleted_node(self):
-        """Test fallback with deleted_node scenario"""
+        """Test fallback with deleted_node scenario."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1722,7 +1722,7 @@ class TestMCTree:
                     pass
 
     def test_fallback_path_construction(self):
-        """Test fallback path construction logic"""
+        """Test fallback path construction logic."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1755,7 +1755,7 @@ class TestMCTree:
             pass
 
     def test_to_dg_with_swap_gates(self):
-        """Test to_dg with actual swap gates in the path"""
+        """Test to_dg with actual swap gates in the path."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1779,7 +1779,7 @@ class TestMCTree:
             assert hasattr(result_dg, "swap_nodes")
 
     def test_init_with_default_select_mode(self):
-        """Test MCTree initialization with default select_mode"""
+        """Test MCTree initialization with default select_mode."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1798,7 +1798,7 @@ class TestMCTree:
         assert mctree.select_mode is not None
 
     def test_node_cost_from_father_size_return_zero(self):
-        """Test node_cost_from_father with size objective returning 0"""
+        """Test node_cost_from_father with size objective returning 0."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1818,8 +1818,10 @@ class TestMCTree:
         assert cost == 0
 
     def test_init_no_swap_with_remain_nodes(self):
-        """Test MCTree initialization with no_swap objective
-        and remaining nodes"""
+        """Test MCTree initialization.
+
+        Test MCTree initialization with no_swap objective and remaining nodes.
+        """
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         # Create a DG that will have remaining nodes
@@ -1841,7 +1843,7 @@ class TestMCTree:
         )
 
     def test_selection_visited_time_update(self):
-        """Test selection updates visited_time"""
+        """Test selection updates visited_time."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1866,7 +1868,7 @@ class TestMCTree:
                 assert mctree.nodes[node]["visited_time"] > initial_visit
 
     def test_decision_with_local_score_zero(self):
-        """Test decision when local_score is 0"""
+        """Test decision when local_score is 0."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1889,8 +1891,10 @@ class TestMCTree:
             assert result is not None
 
     def test_decision_fallback_trigger(self):
-        """Test decision triggers fallback when
-        fallback_count >= fallback_value"""
+        """Test decision triggers fallback.
+
+        Test decision triggers fallback when fallback_count >= fallback_value.
+        """
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -1919,7 +1923,7 @@ class TestMCTree:
             mctree.fallback = original_fallback
 
     def test_expand_node_via_remote_with_valid_node(self):
-        """Test expand_node_via_remote with valid remote node"""
+        """Test expand_node_via_remote with valid remote node."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         # Add a gate that requires distance 2
@@ -1940,8 +1944,10 @@ class TestMCTree:
         assert isinstance(result, list)
 
     def test_add_node_mcts_remote_node_local_score(self):
-        """Test add_node_mcts increments local_score
-        when remote_node is not None"""
+        """Test add_node_mcts.
+
+        Test add_node_mcts increments local_score when remote_node is not None.
+        """
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         dg.add_gate(("cx", (0, 2), []))
@@ -1965,7 +1971,7 @@ class TestMCTree:
             assert mctree.nodes[node]["local_score"] > 0
 
     def test_add_depth_executed_gates_processing(self):
-        """Test add_depth processes executed gates correctly"""
+        """Test add_depth processes executed gates correctly."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         dg.add_gate(("cx", (0, 1), []))
@@ -1990,7 +1996,7 @@ class TestMCTree:
             assert "depth_phy_qubits" in mctree.nodes[child]
 
     def test_expansion_full_workflow(self):
-        """Test expansion full workflow with all branches"""
+        """Test expansion full workflow with all branches."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2013,7 +2019,7 @@ class TestMCTree:
             pass
 
     def test_back_propagation_else_branch(self):
-        """Test back_propagation else branch (flag = False)"""
+        """Test back_propagation else branch (flag = False)."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2038,7 +2044,7 @@ class TestMCTree:
             # Should stop early (flag = False)
 
     def test_fallback_full_execution(self):
-        """Test fallback full execution path"""
+        """Test fallback full execution path."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         # Add gates that will create executable vertices
@@ -2068,7 +2074,7 @@ class TestMCTree:
                 pass
 
     def test_fallback_error_condition(self):
-        """Test fallback error when local_score is still 0 after fallback"""
+        """Test fallback error when local_score is still 0 after fallback."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2096,7 +2102,7 @@ class TestMCTree:
             pass
 
     def test_get_num_exe_gates_with_remote_node(self):
-        """Test get_num_exe_gates when remote_node is not None"""
+        """Test get_num_exe_gates when remote_node is not None."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         dg.add_gate(("cx", (0, 2), []))
@@ -2121,7 +2127,7 @@ class TestMCTree:
             assert num_gates > 0
 
     def test_add_depth_single_qubit_gates_in_remote(self):
-        """Test add_depth with single-qubit gates in remote execution"""
+        """Test add_depth with single-qubit gates in remote execution."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         # Add both 2-qubit and 1-qubit gates
@@ -2145,7 +2151,7 @@ class TestMCTree:
         assert isinstance(remote_nodes, list)
 
     def test_expand_node_via_remote_skip_non_2q_gates(self):
-        """Test expand_node_via_remote skips non-2q gates"""
+        """Test expand_node_via_remote skips non-2q gates."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         # Add a gate that is not 2-qubit
@@ -2167,7 +2173,7 @@ class TestMCTree:
         assert isinstance(result, list)
 
     def test_expansion_error_already_has_children(self):
-        """Test expansion raises error when node already has children"""
+        """Test expansion raises error when node already has children."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2191,7 +2197,7 @@ class TestMCTree:
             assert "already has son nodes" in str(exc_info.value)
 
     def test_expansion_with_back_propagation_call(self):
-        """Test expansion calls back_propagation when nodes are added"""
+        """Test expansion calls back_propagation when nodes are added."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2220,7 +2226,7 @@ class TestMCTree:
         mctree.back_propagation = original_bp
 
     def test_expansion_with_delete_false_leaf(self):
-        """Test expansion calls _delete_false_leaf when no children added"""
+        """Test expansion calls _delete_false_leaf when no children added."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2260,7 +2266,7 @@ class TestMCTree:
         ].pertinent_swaps = original_pertinent
 
     def test_decision_display_state(self):
-        """Test decision with display_state enabled"""
+        """Test decision with display_state enabled."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2284,7 +2290,7 @@ class TestMCTree:
             assert result is not None
 
     def test_simultation_root_node(self):
-        """Test simultation returns None for root node"""
+        """Test simultation returns None for root node."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2299,11 +2305,11 @@ class TestMCTree:
             init_mapping=init_mapping,
         )
 
-        result = mctree.simultation(mctree.root_node)
+        result = mctree.simulation(mctree.root_node)
         assert result is None
 
     def test_simultation_unsupported_method(self):
-        """Test simultation with unsupported method"""
+        """Test simultation with unsupported method."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2321,11 +2327,11 @@ class TestMCTree:
         child = mctree.add_node_mcts(mctree.root_node, added_swap=(0, 1))
         if child is not None:
             with pytest.raises(ValueError) as exc_info:
-                mctree.simultation(child, mode_sim=["unsupported"])
+                mctree.simulation(child, mode_sim=["unsupported"])
             assert "Unsupported simultation method" in str(exc_info.value)
 
     def test_to_dg_multiple_successors_at_init(self):
-        """Test to_dg raises error with multiple successors at init_node"""
+        """Test to_dg raises error with multiple successors at init_node."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2350,7 +2356,7 @@ class TestMCTree:
             assert "Multiple successors found" in str(exc_info.value)
 
     def test_add_node_mcts_replace_existing_better_node(self):
-        """Test add_node_mcts replaces existing node when new is better"""
+        """Test add_node_mcts replaces existing node when new is better."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2380,7 +2386,7 @@ class TestMCTree:
             assert node1 in mctree.nodes
 
     def test_add_node_mcts_keep_existing_better_node(self):
-        """Test add_node_mcts keeps existing node when old is better"""
+        """Test add_node_mcts keeps existing node when old is better."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2411,7 +2417,7 @@ class TestMCTree:
             assert node1 in mctree.nodes
 
     def test_add_depth_remote_single_qubit_gate(self):
-        """Test add_depth processes single-qubit gates in remote execution"""
+        """Test add_depth processes single-qubit gates in remote execution."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         # Add a 2-qubit gate and a 1-qubit gate in the same node
@@ -2435,7 +2441,7 @@ class TestMCTree:
         assert isinstance(remote_nodes, list)
 
     def test_expand_node_via_remote_continue_non_2q(self):
-        """Test expand_node_via_remote continues for non-2q gates"""
+        """Test expand_node_via_remote continues for non-2q gates."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         # Add a 1-qubit gate (not 2q)
@@ -2457,7 +2463,7 @@ class TestMCTree:
         assert isinstance(result, list)
 
     def test_expansion_swap_filtering_with_pruning(self):
-        """Test expansion filters swaps based on pruning threshold"""
+        """Test expansion filters swaps based on pruning threshold."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2477,7 +2483,7 @@ class TestMCTree:
         assert isinstance(result, list)
 
     def test_expansion_swap_filtering_skip_low_score(self):
-        """Test expansion skips swaps with low scores"""
+        """Test expansion skips swaps with low scores."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2509,7 +2515,7 @@ class TestMCTree:
         ].pertinent_swaps = original_pertinent
 
     def test_expansion_skip_none_node(self):
-        """Test expansion skips when add_node returns None"""
+        """Test expansion skips when add_node returns None."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2540,7 +2546,7 @@ class TestMCTree:
         mctree.expand_node_via_swap = original_expand
 
     def test_expansion_h_score_update_when_score_layer_nonzero(self):
-        """Test expansion updates h_score when score_layer > 0"""
+        """Test expansion updates h_score when score_layer > 0."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2569,7 +2575,7 @@ class TestMCTree:
                     )
 
     def test_expansion_skip_h_score_when_score_layer_zero(self):
-        """Test expansion skips h_score update when score_layer == 0"""
+        """Test expansion skips h_score update when score_layer == 0."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2589,7 +2595,7 @@ class TestMCTree:
         assert isinstance(result, list)
 
     def test_back_propagation_stops_when_new_value_not_greater(self):
-        """Test back_propagation stops when new_value <= old_value"""
+        """Test back_propagation stops when new_value <= old_value."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2617,7 +2623,7 @@ class TestMCTree:
             assert mctree.nodes[mctree.root_node]["global_score"] <= old_global
 
     def test_fallback_find_executable_vertex(self):
-        """Test fallback finds executable vertex correctly"""
+        """Test fallback finds executable vertex correctly."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         # Add gates that create executable vertices
@@ -2646,7 +2652,7 @@ class TestMCTree:
                 pass
 
     def test_fallback_path_construction_and_swaps(self):
-        """Test fallback constructs path and adds swaps"""
+        """Test fallback constructs path and adds swaps."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         dg.add_gate(("cx", (0, 2), []))  # Distance 2
@@ -2673,7 +2679,7 @@ class TestMCTree:
                 pass
 
     def test_fallback_error_when_local_score_still_zero(self):
-        """Test fallback raises error when local_score still 0 after swaps"""
+        """Test fallback raises error when local_score still 0 after swaps."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2699,7 +2705,7 @@ class TestMCTree:
             pass
 
     def test_decision_display_state_enabled(self):
-        """Test decision with display_state=1"""
+        """Test decision with display_state=1."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2723,7 +2729,7 @@ class TestMCTree:
             # display_state code (lines 736-738) would execute if enabled
 
     def test_simultation_fix_cx_num_size_objective(self):
-        """Test simultation with fix_cx_num mode and size objective"""
+        """Test simultation with fix_cx_num mode and size objective."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         # Add enough gates for simulation
@@ -2754,9 +2760,7 @@ class TestMCTree:
                 return_value=([(0, 1), (1, 2), (2, 3)], [(1, 2), (2, 3)])
             )
 
-            result = mctree.simultation(
-                child, mode_sim=["fix_cx_num", [10, 3]]
-            )
+            result = mctree.simulation(child, mode_sim=["fix_cx_num", [10, 3]])
             # Should return None for size objective (line 780)
             assert result is None
 
@@ -2765,7 +2769,7 @@ class TestMCTree:
             ].get_future_cx_fix_num = original_get_future
 
     def test_simultation_fix_cx_num_size_insufficient_gates(self):
-        """Test simultation returns None when insufficient gates"""
+        """Test simultation returns None when insufficient gates."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2790,9 +2794,7 @@ class TestMCTree:
                 return_value=([(0, 1)], [(1, 2)])  # Only 1 gate, need 3
             )
 
-            result = mctree.simultation(
-                child, mode_sim=["fix_cx_num", [10, 3]]
-            )
+            result = mctree.simulation(child, mode_sim=["fix_cx_num", [10, 3]])
             # Should return None (line 767-768)
             assert result is None
 
@@ -2801,7 +2803,7 @@ class TestMCTree:
             ].get_future_cx_fix_num = original_get_future
 
     def test_simultation_fix_cx_num_depth_objective(self):
-        """Test simultation with fix_cx_num mode and depth objective"""
+        """Test simultation with fix_cx_num mode and depth objective."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         for i in range(5):
@@ -2834,9 +2836,7 @@ class TestMCTree:
                 )
             )
 
-            result = mctree.simultation(
-                child, mode_sim=["fix_cx_num", [10, 3]]
-            )
+            result = mctree.simulation(child, mode_sim=["fix_cx_num", [10, 3]])
             # Should return True for depth objective (line 816)
             assert result is True
 
@@ -2845,7 +2845,7 @@ class TestMCTree:
             ].get_future_cx_fix_num_with_single = original_get_future
 
     def test_simultation_fix_cx_num_depth_insufficient_gates(self):
-        """Test simultation returns None for depth when insufficient gates"""
+        """Test simultation returns None for depth when insufficient gates."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         init_mapping = [0, 1, 2, 3]
@@ -2876,9 +2876,7 @@ class TestMCTree:
                 )
             )
 
-            result = mctree.simultation(
-                child, mode_sim=["fix_cx_num", [10, 3]]
-            )
+            result = mctree.simulation(child, mode_sim=["fix_cx_num", [10, 3]])
             # Should return None (line 794-795)
             assert result is None
 
@@ -2887,7 +2885,7 @@ class TestMCTree:
             ].get_future_cx_fix_num_with_single = original_get_future
 
     def test_simultation_back_propagation_when_score_improves(self):
-        """Test simultation calls back_propagation when score improves"""
+        """Test simultation calls back_propagation when score improves."""
         ag = self.create_test_ag()
         dg = self.create_test_dg()
         for i in range(5):
@@ -2922,7 +2920,7 @@ class TestMCTree:
             original_bp = mctree.back_propagation
             mctree.back_propagation = Mock()
 
-            mctree.simultation(child, mode_sim=["fix_cx_num", [10, 3]])
+            mctree.simulation(child, mode_sim=["fix_cx_num", [10, 3]])
             # back_propagation should be called if score improves
             # (line 777-779)
             # Note: may not always be called depending on

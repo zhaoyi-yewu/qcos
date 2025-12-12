@@ -17,6 +17,7 @@
 
 import time
 
+from qcos.common.constant import Constant
 from qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
@@ -52,8 +53,12 @@ class TestPerformance:
         assert len(optimized_ir) == 5000000
         validate_gate_ir(optimized_ir[0], "rx", ["0"], 1, False)
         validate_gate_ir(optimized_ir[99], "rx", ["99"], 1, False)
-
-        transpiled_gates = decompose_gates(optimized_ir)
+        supp_basis_gates = [
+            Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
+            Constant.TWO_QUBIT_GATE_CX,
+        ]
+        transpiled_gates = decompose_gates(optimized_ir, supp_basis_gates)
         decompose_end = time.time()
         print(f"decompose gates use {decompose_end - ir_end} seconds")
         assert transpiled_gates is not None
@@ -61,7 +66,8 @@ class TestPerformance:
         validate_gate_ir(transpiled_gates[0], "rx", ["0"], 1, False)
         validate_gate_ir(transpiled_gates[99], "rx", ["99"], 1, False)
 
-        # 针对分解后的ir进行优化，主要是针对分解后可能存在的连续两个相同的旋转门
+        # 针对分解后的ir进行优化，
+        # 主要是针对分解后可能存在的连续两个相同的旋转门
         optimized_gates = optimize_gate(transpiled_gates)
         end = time.time()
         assert optimized_gates is not None

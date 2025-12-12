@@ -17,6 +17,7 @@
 
 from qcos.transpiler.cmss.circuit.dag_node import DAGInNode, DAGOutNode
 from qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
+from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from qcos.transpiler.cmss.common.gate_operation import X, H, CCX, CX
 
@@ -41,6 +42,15 @@ class TestDAGCircuit:
         assert len(op_nodes) == 3
         assert len(dag.input_map) == 2
         assert len(dag.output_map) == 2
+
+    def test_dag_to_ir(self):
+        tree = get_abs_tree(self.data1)
+        cir = get_ir(tree)
+        dag = DAGCircuit.ir_to_dag(cir)
+        ir = dag.dag_to_ir()
+        assert ir is not None
+        assert isinstance(ir, QuantumCircuit)
+        assert ir._num_qubits == 2
 
     def test_add_qubits(self):
         dag = DAGCircuit()

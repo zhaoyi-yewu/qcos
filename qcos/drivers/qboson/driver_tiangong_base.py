@@ -29,7 +29,7 @@ from qcos.drivers.driver_qubo_base import DriverQuboBase
 
 
 class DriverTiangongBase(DriverQuboBase):
-    """玻色量子-天工光量子伊辛机驱动基类
+    """玻色量子-天工光量子伊辛机驱动基类.
 
     Qboson Tiangong driver Base
     """
@@ -67,11 +67,11 @@ class DriverTiangongBase(DriverQuboBase):
         }
 
     def init_driver(self):
-        """Init driver"""
+        """Init driver."""
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def validate_driver_configs(self, configs):
-        """Validate driver configs
+        """Validate driver configs.
 
         Args:
             configs: configs dictionary
@@ -102,18 +102,17 @@ class DriverTiangongBase(DriverQuboBase):
         return success, err_msg
 
     def close_driver(self):
-        """Close driver"""
+        """Close driver."""
 
     def fetch_configs(self):
-        """
-        Fetch configs
+        """Fetch configs.
 
         Returns:
             remote transpiler configs
         """
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
-        """Run job
+        """Run job.
 
         Args:
             job_id: job ID
@@ -208,7 +207,7 @@ class DriverTiangongBase(DriverQuboBase):
         logger.info(f"Cancel job: job_id: {job_id}")
 
     def user_auth(self, user_id, sdk_code):
-        """User authorization
+        """User authorization.
 
         Args:
             user_id: user_id
@@ -245,7 +244,7 @@ class DriverTiangongBase(DriverQuboBase):
         return success, "\n".join(err_msgs), token
 
     def submit_tasks(self, job_id, data_index, data):
-        """Submit tasks
+        """Submit tasks.
 
         Args:
             job_id: job ID
@@ -322,7 +321,7 @@ class DriverTiangongBase(DriverQuboBase):
         return success, "\n".join(err_msgs), task_id
 
     def check_task_status(self, task_id, expect_task_status):
-        """Check task status meets requirements
+        """Check task status meets requirements.
 
         Args:
             task_id: task id
@@ -350,7 +349,7 @@ class DriverTiangongBase(DriverQuboBase):
         return False, err_msg, None
 
     def get_task_realtime_result(self, task_id):
-        """Get task realtime result
+        """Get task realtime result.
 
         Args:
             task_id: task ID
@@ -399,7 +398,7 @@ class DriverTiangongBase(DriverQuboBase):
         return success, "\n".join(err_msgs), realtime_status
 
     def get_task_results(self, task_id):
-        """Get task results
+        """Get task results.
 
         Args:
             task_id: task id
@@ -407,7 +406,6 @@ class DriverTiangongBase(DriverQuboBase):
         Returns:
             success or fail, error message, task results
         """
-
         # Get task results
         success, err_msg, final_results = self.get_task_realtime_result(
             task_id

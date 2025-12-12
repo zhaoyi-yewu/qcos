@@ -34,8 +34,7 @@ from qcos.transpiler.cmss.common.measure import Measure
 
 
 def rpc_retry(max_retries=3, retry_interval=1):
-    """
-    rpc retry decorator
+    """Rpc retry decorator.
 
     Args:
         max_retries: max retries
@@ -79,7 +78,7 @@ def rpc_retry(max_retries=3, retry_interval=1):
 
 
 class DriverSpinQRpc(DriverBase):
-    """量旋科技 大熊座-S25 超导驱动 (RPC版本)
+    """量旋科技 大熊座-S25 超导驱动 (RPC版本).
 
     SpinQ SQC-S25 Superconducting driver (RPC)
     """
@@ -129,16 +128,16 @@ class DriverSpinQRpc(DriverBase):
         self._session_id = None
 
     def init_driver(self):
-        """Init driver"""
+        """Init driver."""
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def close_driver(self):
-        """Close driver"""
+        """Close driver."""
         if self._session_id:
             self.client_close(self._username, self._session_id)
 
     def validate_driver_configs(self, configs):
-        """Validate driver configs
+        """Validate driver configs.
 
         Args:
             configs: configs dictionary
@@ -180,7 +179,7 @@ class DriverSpinQRpc(DriverBase):
         return success, err_msg
 
     def update_qubit_depth(self, qubit_depth, targets):
-        """update qubit depth
+        """Update qubit depth.
 
         Args:
             qubit_depth: qubit depth
@@ -213,7 +212,7 @@ class DriverSpinQRpc(DriverBase):
         return curr_qubit_depth
 
     def convert_gate(self, gate, qubit_depth):
-        """Convert input qcos gate data to spinq gate data
+        """Convert input qcos gate data to spinq gate data.
 
         Args:
             gate: input data
@@ -249,7 +248,7 @@ class DriverSpinQRpc(DriverBase):
         return gate_info_dict
 
     def convert_gates(self, transpile_results, num_qubits):
-        """Convert input data to gates and measures
+        """Convert input data to gates and measures.
 
         Args:
             transpile_results (list): input data (sequence of basis gates)
@@ -284,7 +283,7 @@ class DriverSpinQRpc(DriverBase):
         return gates, measures
 
     def convert_results(self, results):
-        """Convert results
+        """Convert results.
 
         Args:
              results (dict): spinq results
@@ -296,8 +295,7 @@ class DriverSpinQRpc(DriverBase):
         return converted_results
 
     def fetch_configs(self):
-        """
-        Fetch configs
+        """Fetch configs.
 
         Returns:
             remote transpiler configs
@@ -330,7 +328,7 @@ class DriverSpinQRpc(DriverBase):
         return transpiler_configs
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
-        """Run job
+        """Run job.
 
         Args:
             job_id: job ID
@@ -406,7 +404,7 @@ class DriverSpinQRpc(DriverBase):
 
     @rpc_retry()
     def user_auth(self, username, password):
-        """User authorization
+        """User authorization.
 
         Args:
             username: username
@@ -426,7 +424,7 @@ class DriverSpinQRpc(DriverBase):
 
     @rpc_retry()
     def submit_task(self, task_info):
-        """Submit task
+        """Submit task.
 
         Args:
             task_info: task info
@@ -448,7 +446,7 @@ class DriverSpinQRpc(DriverBase):
         return False, f"Task submission failed, status: {status}", None
 
     def check_task_status(self, task_id, expect_task_status):
-        """Check task status meets requirements
+        """Check task status meets requirements.
 
         Args:
             task_id: task id
@@ -471,7 +469,7 @@ class DriverSpinQRpc(DriverBase):
 
     @rpc_retry()
     def get_task_status(self, task_id):
-        """Get task status
+        """Get task status.
 
         Args:
             task_id: task id
@@ -484,7 +482,7 @@ class DriverSpinQRpc(DriverBase):
 
     @rpc_retry()
     def get_task_results(self, task_id):
-        """Get task results
+        """Get task results.
 
         Args:
             task_id: task id
@@ -496,7 +494,7 @@ class DriverSpinQRpc(DriverBase):
         return True, None, response
 
     def client_close(self, username, session_id):
-        """Close client rpc
+        """Close client rpc.
 
         Args:
             username: username
@@ -510,7 +508,7 @@ class DriverSpinQRpc(DriverBase):
             self._client.close()
 
     def cancel(self, job_id):
-        """Cancel running job in driver
+        """Cancel running job in driver.
 
         Args:
             job_id: job id
@@ -519,7 +517,7 @@ class DriverSpinQRpc(DriverBase):
 
 
 class TaskStatus(enum.Enum):
-    """Task status"""
+    """Task status."""
 
     finished = 0
     failed = 1

@@ -45,11 +45,10 @@ LOG_FORMAT = "%(asctime)s %(process)d %(levelname)s [%(name)s] %(message)s"
 
 
 def _signal_handling():
-    """Signal handling"""
+    """Signal handling."""
 
     def signal_handler(signame, *args):
-        """Signal handler"""
-
+        """Signal handler."""
         try:
             if signame == "SIGHUP":
                 logger.info(f"Server has got signal {signame}, reloading...")
@@ -72,13 +71,13 @@ def _signal_handling():
 
 
 class Server:
-    """Server"""
+    """Server."""
 
     def __init__(self):
         self._stream_handlers = None
 
     def _parse_arguments(self, argv):
-        """Parse command line arguments and override local configuration
+        """Parse command line arguments and override local configuration.
 
         Args:
             argv: command line arguments
@@ -150,7 +149,7 @@ class Server:
 
     @staticmethod
     def _pid_lock(path):
-        """Write the file in a file on the system
+        """Write the file in a file on the system.
 
         Check if the process is not already running
 
@@ -185,8 +184,7 @@ class Server:
             sys.exit(1)
 
     def run(self, loop):
-        """Run the server"""
-
+        """Run the server."""
         self._parse_arguments(sys.argv[1:])
         logger.info(PROGRAM_VERSION)
         logger.info(Config.show_info())

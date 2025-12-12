@@ -26,9 +26,7 @@ from qcos.engine.qubo.tabu import QUBOSolution
 
 
 def find_matrix_gcd(matrix):
-    """
-    find the greatest common divisor (GCD) of
-    all non-zero elements in a matrix.
+    """Find the greatest common divisor (GCD) of all non-zero elements.
 
     Args:
         matrix: a 2D numpy array
@@ -43,12 +41,12 @@ def find_matrix_gcd(matrix):
 
 
 def scale_to_integer_matrix(matrix):
-    """
-    scale matrix to interger matrix
+    """Scale matrix to interger matrix.
+
     Args:
         matrix: a 2D numpy array
     Returns:
-        a scaled integer matrix
+        a scaled integer matrix.
     """
     arr = np.array(matrix, dtype=float)
     flat_arr = arr.flatten()
@@ -79,9 +77,7 @@ def scale_to_integer_matrix(matrix):
 
 
 def is_int_matrix(matrix, param_bit):
-    """
-    check matrix is int8
-    """
+    """Check matrix is int8."""
     return (
         np.all(np.equal(np.mod(matrix, 1), 0))
         and matrix.min() >= -(2 ** (param_bit - 1))
@@ -90,9 +86,10 @@ def is_int_matrix(matrix, param_bit):
 
 
 def check_matrix(matrix):
-    """
+    """Check matrix is square array or not.
+
     Check if the input 2D list is a square array (i.e., the number
-    of rows and columns are equal)
+    of rows and columns are equal).
 
     Args:
         matrix: list(list())
@@ -114,12 +111,13 @@ def check_matrix(matrix):
 
 
 def check_qubo_matrix_bit_width(qubo_matrix, param_bit):
-    """Check qubo matrix bit width
+    """Check qubo matrix bit width.
+
     Args:
         qubo_matrix(np.ndarray): qubo matrix to be checked
         param_bit(int): param bit width
     Returns:
-        success of failed (bool), error message list
+        success of failed (bool), error message list.
     """
     success = True
     err_msgs = []
@@ -144,9 +142,9 @@ def check_qubo_matrix_bit_width(qubo_matrix, param_bit):
 
 
 def qubo_matrix_to_ising_matrix(qubo_matrix):
-    """
-    Convert QUBO matrix to ising matrix
-    tip: Ising matrix is added a variable to the diagonal
+    """Convert QUBO matrix to ising matrix.
+
+    tip: Ising matrix is added a variable to the diagonal.
 
     Args:
         qubo_matrix (np.ndarray): qubo matrix
@@ -172,8 +170,7 @@ def qubo_matrix_to_ising_matrix(qubo_matrix):
 
 
 def ising_matrix_to_qubo_matrix(ising_matrix):
-    """
-    Convert ising matrix to QUBO matrix
+    """Convert ising matrix to QUBO matrix.
 
     Args:
         ising_matrix (np.ndarray): ising matrix
@@ -202,9 +199,10 @@ def ising_matrix_to_qubo_matrix(ising_matrix):
 
 
 def get_spins_num(mat, max_value):
-    """
+    """Get the number of spin variables.
+
     Obtain the number of spin variables after the matrix
-    is reduced in precision
+    is reduced in precision.
 
     Args:
         mat(np.ndarray): upper triangular matrix
@@ -255,8 +253,7 @@ def get_spins_num(mat, max_value):
 
 
 def precision_reduction(ising_matrix, param_bit):
-    """
-    Precision reduction algorithm
+    """Precision reduction algorithm.
 
     Args:
         ising_matrix (np.ndarray): ising matrix
@@ -313,8 +310,7 @@ def precision_reduction(ising_matrix, param_bit):
 
 
 def process_qubo_solution(job_results, last_idx, qubo_matrix):
-    """
-    Process qubo solution
+    """Process qubo solution.
 
     Args:
         job_results (dict): job_results returned by the driver

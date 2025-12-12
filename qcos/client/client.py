@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 class SSL:
-    """SSL configs"""
+    """SSL configs."""
 
     use_ssl = False
     cert_file = None
@@ -39,7 +39,7 @@ class SSL:
 
 
 class Client:
-    """QCOS client api"""
+    """QCOS client api."""
 
     verbose = False
     timeout = 30
@@ -79,7 +79,7 @@ class Client:
 
     @staticmethod
     def print_api_response(status_code, reason, text, result=None):
-        """Print API response
+        """Print API response.
 
         Args:
             status_code: status code
@@ -95,7 +95,7 @@ class Client:
 
     @staticmethod
     def call_json_rpc(url, method_name, data=None, params=None):
-        """Call json-rpc
+        """Call json-rpc.
 
         Args:
             url: json-rpc url
@@ -158,7 +158,7 @@ class Client:
 
     @staticmethod
     def parse_jsonrpc_response(jsonrpc_response):
-        """Parse json-rpc response
+        """Parse json-rpc response.
 
         Args:
             jsonrpc_response: json-rpc response
@@ -170,7 +170,7 @@ class Client:
 
     @staticmethod
     def handle_invalid_arguments(results):
-        """Handle invalid arguments
+        """Handle invalid arguments.
 
         Args:
           results: results
@@ -181,7 +181,7 @@ class Client:
 
     # [version]
     def version(self):
-        """Get all api versions and capabilities
+        """Get all api versions and capabilities.
 
         Returns:
             Version
@@ -196,7 +196,7 @@ class Client:
 
     # [Driver]
     def get_drivers(self):
-        """Get driver list
+        """Get driver list.
 
         Returns:
             Driver list message
@@ -210,7 +210,7 @@ class Client:
         return status_code, reason, text, result
 
     def get_driver(self, driver_name):
-        """Get driver info
+        """Get driver info.
 
         Args:
             driver_name: driver name
@@ -231,7 +231,7 @@ class Client:
 
     # [Device]
     def get_devices(self):
-        """Get device list
+        """Get device list.
 
         Returns:
             Device list message
@@ -245,7 +245,7 @@ class Client:
         return status_code, reason, text, result
 
     def get_device(self, device_name):
-        """Get device info
+        """Get device info.
 
         Args:
             device_name: device name
@@ -266,7 +266,7 @@ class Client:
 
     # [Transpiler]
     def get_transpilers(self):
-        """Get transpiler list
+        """Get transpiler list.
 
         Returns:
             Transpiler list message
@@ -280,7 +280,7 @@ class Client:
         return status_code, reason, text, result
 
     def get_transpiler(self, transpiler_name):
-        """Get transpiler info
+        """Get transpiler info.
 
         Args:
             transpiler_name: transpiler name
@@ -301,7 +301,7 @@ class Client:
 
     # [System]
     def ping(self, message):
-        """Ping-pong to verify the availability of the system
+        """Ping-pong to verify the availability of the system.
 
         Args:
             message: Ping message
@@ -319,7 +319,7 @@ class Client:
         return status_code, reason, text, result
 
     def system_info(self):
-        """Get system info
+        """Get system info.
 
         Returns:
             System info
@@ -353,7 +353,7 @@ class Client:
         callbacks=None,
         dry_run=False,
     ):
-        """Submit new job
+        """Submit new job.
 
         Args:
             source_code: source code
@@ -405,7 +405,7 @@ class Client:
         return status_code, reason, text, result
 
     def get_job_status(self, job_id):
-        """Get job status
+        """Get job status.
 
         Args:
             job_id: job ID
@@ -428,7 +428,7 @@ class Client:
         return status_code, reason, text, result
 
     def get_job_results(self, job_id):
-        """Get job results
+        """Get job results.
 
         Args:
             job_id: job ID
@@ -451,7 +451,7 @@ class Client:
         return status_code, reason, text, result
 
     def get_jobs(self):
-        """Get job status
+        """Get job status.
 
         Returns:
              job status
@@ -466,7 +466,7 @@ class Client:
         return status_code, reason, text, result
 
     def cancel_jobs(self, job_ids):
-        """Cancel jobs
+        """Cancel jobs.
 
         Args:
             job_ids: job IDs
@@ -490,7 +490,7 @@ class Client:
         return status_code, reason, text, result
 
     def delete_jobs(self, job_ids):
-        """Delete jobs
+        """Delete jobs.
 
         Args:
             job_ids: job IDs
@@ -514,7 +514,7 @@ class Client:
         return status_code, reason, text, result
 
     def set_job_results(self, job_id, new_results):
-        """Set job results
+        """Set job results.
 
         Args:
             job_id: job ID
@@ -540,7 +540,7 @@ class Client:
     def update_job(
         self, job_id=None, job_priority=Constant.DEFAULT_JOB_PRIORITY
     ):
-        """Update job
+        """Update job.
 
         Args:
             job_id: job uuid

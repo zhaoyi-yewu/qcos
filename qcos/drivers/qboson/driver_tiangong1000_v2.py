@@ -19,7 +19,7 @@ from qcos.drivers.qboson.driver_tiangong_base import DriverTiangongBase
 
 
 class DriverTiangong1000V2(DriverTiangongBase):
-    """玻色量子-天工1000光量子伊辛机驱动-V2
+    """玻色量子-天工1000光量子伊辛机驱动-V2.
 
     Qboson Tiangong 1000 driver - V2
     """

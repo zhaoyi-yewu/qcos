@@ -20,7 +20,7 @@ from qcos.transpiler.cmss.common.base_operation import OperationType
 
 
 class Sync(BaseOperation):
-    """同步操作，用于在量子电路中同步操作，确保某些操作在特定的时间点同时发生"""
+    """同步操作，用于在量子电路中同步操作，确保某些操作在特定的时间点同时发生."""
 
     def __init__(
         self,

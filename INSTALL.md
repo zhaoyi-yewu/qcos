@@ -47,14 +47,14 @@ vim .env
 <b>注意:</b> 设备配置文件必须位于/etc/qcos/conf.d下, 文件名需要和qcos.toml中DEVICE_LIST列出的设备名一致。 文件中section必须对应相关设备名, 比如dummy设备的配置需要放在section: [dummy]下
 
 ### 1.5 运行容器
-### 1.5.1 运行容器 (Docker)
+#### 1.5.1 运行容器 (Docker)
 ```shell
 # 基于docker容器运行
 cd build-scripts
 ./run-docker.sh
 ```
 
-### 1.5.2 运行容器 (K8s pod)
+#### 1.5.2 运行容器 (K8s pod)
 ```shell
 # 基于K8s pod运行:
 cd deploy-scripts/k8s
@@ -83,8 +83,25 @@ yum install -y python3 python3-pip python3-sphinx python3-requests
 pip3 install -r ./requirements.txt -r ./requirements-test.txt
 ```
 
-### 2.2 编译
-#### 2.2.1 基于poetry编译操作系统wheel包
+### 2.2 编辑.env配置文件
+```shell
+cd build-scripts
+cp ./env.template .env
+vim .env
+# .env配置文件说明
+# 1. DEV选项为False时表示编译出的镜像是生产环境镜像; True时表示编译出来的是开发环境镜像。开发环境会挂载(mount)宿主机源代码到容器中, 直接使用挂载的源代码运行, 方便开发者在宿主机上修改代码。而生产环境镜像中会集成源代码。
+# 2. 需要填写PREFECT_SERVER_API_HOST地址(一般填写为本机IP地址或者127.0.0.1)
+# 3. 如果本地可以访问外网, 无需填写YUM_MIRROR, PIP_MIRROR
+# 4. 如果本地无法访问外网, 需要保证局域网内有OpenEuler操作系统的YUM镜像源(YUM_MIRROR), 以及Python软件包镜像源(PIP_MIRROR)。
+# YUM_MIRROR地址格式示例: http://mirrors.cmecloud.cn
+# PIP_MIRROR地址格式示例: http://mirrors.cmecloud.cn/pip/simple
+# 5. DEBUG是内部开发使用的调试开关, 可以配成默认的False
+# 6. LOCAL_CICD是本地CICD的标记开关, 可以配成默认的False
+# 7. REGISTRY为Docker容器私有镜像仓库地址, 如果本机可以访问DockerHub, 则可以留空
+```
+
+### 2.3 编译安装
+#### 2.3.1 基于poetry编译操作系统wheel包
 ```shell
 # BCLinux/CentOS/OpenEuler环境下示例:
 cd build-scripts
@@ -93,9 +110,9 @@ cd build-scripts
 poetry build
 ```
 
-### 2.3 安装
+#### 2.3.2 安装
 ```shell
-pip3 install ./dist/qcos-1.0.0-py3-none-any.whl
+pip3 install --prefix=/usr ./output/dist/qcos-1.0.0-py3-none-any.whl
 
 # 创建服务运行需要用到的目录
 mkdir -p /var/qcos/db/; mkdir -p /var/qcos/storage
@@ -113,7 +130,7 @@ export PREFECT_API_DEFAULT_LIMIT=100000
 修改或添加DEVICE_LIST中的设备列表
 <b>注意:</b> 如果不创建该文件, 容器模式下会自动创建
 
-#### 1.4.2 创建和修改设备配置文件
+#### 2.4.2 创建和修改设备配置文件
 参照代码库中etc/qcos/conf.d/dummy.toml等, 创建和修改设备配置文件/etc/qcos/conf.d/dummy.toml等
 <b>注意:</b> 设备配置文件必须位于/etc/qcos/conf.d下, 文件名需要和qcos.toml中DEVICE_LIST列出的设备名一致。 文件中section必须对应相关设备名, 比如dummy设备的配置需要放在section: [dummy]下
 
@@ -293,6 +310,8 @@ qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation external -
 
 2. 中科酷原-汉原1 中性原子驱动, 模拟运行(dry-run)
 qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
+2.1 中科酷原-汉原1 中性原子驱动, 模拟运行双量子比特门(dry-run)
+qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 --transpiler-options '{"enable_na_move": true}'' -f ./samples/qasm/2.0/rb.qasm
 3. 中科酷原-汉原1 中性原子驱动, 真实运行
 qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
 qcos-cli submit-job --code-type qasm2 --shots 10 --backend wy-hanyuan1 -f ./samples/qasm/2.0/simple-qasm.qasm
@@ -309,6 +328,9 @@ qcos-cli submit-job --code-type qubo --backend tiangong1000_v2 -f ./samples/qubo
 4.1 使用--driver-options '{"enable_subqubo": true}'开启subqubo功能（默认关闭）
 qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_subqubo": true}' -f ./samples/qubo/qubo_200X200.csv
 qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_subqubo": false}' -f ./samples/qubo/qubo_200X200.csv
+4.2 使用--driver-options '{"enable_prec_reduce": true}'开启降精度功能（默认关闭）
+qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_prec_reduce": true}' -f ./samples/qubo/qubo_200X200.csv
+qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_prec_reduce": false}' -f ./samples/qubo/qubo_200X200.csv
 
 5. 量旋科技, 真实运行
 qcos-cli submit-job --code-type qasm --shots 10 --backend spinq_rpc -f ./samples/qasm/2.0/simple-qasm.qasm
@@ -334,7 +356,8 @@ qcos-cli delete-jobs -y all
 
 * 设置作业结果 (回调或者测试用途)
 qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}'
-** 设置多作业结果, 针对多源代码的作业
+
+* 设置多作业结果, 针对多源代码的作业
 qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}' '{"code": -104, "message": "error test"}'
 
 [版本命令]

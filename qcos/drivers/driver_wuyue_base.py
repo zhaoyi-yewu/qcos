@@ -33,7 +33,7 @@ from qcos.drivers.driver_base import DriverBase
 
 
 class DriverWuyueBase(DriverBase):
-    """Wuyue驱动基类
+    """Wuyue驱动基类.
 
     Wuyue Base driver
     """
@@ -82,11 +82,11 @@ class DriverWuyueBase(DriverBase):
         }
 
     def init_driver(self):
-        """Init driver"""
+        """Init driver."""
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def validate_driver_configs(self, configs):
-        """Validate driver configs
+        """Validate driver configs.
 
         Args:
             configs: configs dictionary
@@ -125,17 +125,17 @@ class DriverWuyueBase(DriverBase):
         return success, err_msg
 
     def close_driver(self):
-        """Close driver"""
+        """Close driver."""
 
     def fetch_configs(self):
-        """Fetch configs
+        """Fetch configs.
 
         Returns:
             remote transpiler configs
         """
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
-        """Run job
+        """Run job.
 
         Args:
             job_id: job ID
@@ -220,7 +220,7 @@ class DriverWuyueBase(DriverBase):
         logger.info(f"Cancel job: job_id: {job_id}")
 
     def format_item(self, item):
-        """format list item
+        """Format list item.
 
         Args:
             item: list item
@@ -233,7 +233,7 @@ class DriverWuyueBase(DriverBase):
         return str(item)
 
     def prepare_sign(self, data):
-        """prepare sign data
+        """Prepare sign data.
 
         Args:
             data: raw data
@@ -262,7 +262,7 @@ class DriverWuyueBase(DriverBase):
         return md5_hash.hexdigest()
 
     def encrypt_by_public_key(self, raw_data):
-        """encrypt by pub key
+        """Encrypt by pub key.
 
         Args:
             raw_data: raw_data
@@ -290,7 +290,7 @@ class DriverWuyueBase(DriverBase):
         return base64.b64encode(ciphertext).decode("utf-8")
 
     def decrypt_by_private_key(self, raw_data):
-        """decrypt_by_private_key
+        """decrypt_by_private_key.
 
         Args:
             raw_data: raw_data
@@ -313,7 +313,7 @@ class DriverWuyueBase(DriverBase):
         return json.loads(plaintext.decode("utf-8"))
 
     def prepare_submit_data(self, job_id, src_code, shots, data_index):
-        """Prepare submit data
+        """Prepare submit data.
 
         Args:
             job_id: job_id
@@ -342,7 +342,7 @@ class DriverWuyueBase(DriverBase):
         return encrypted_data
 
     def submit_tasks(self, task_data):
-        """Submit tasks
+        """Submit tasks.
 
         Args:
             task_data: task_data
@@ -381,7 +381,7 @@ class DriverWuyueBase(DriverBase):
         return success, "\n".join(err_msgs)
 
     def check_task_status(self, task_id, expect_task_status):
-        """Check task status meets requirements
+        """Check task status meets requirements.
 
         Args:
             task_id: task id
@@ -406,7 +406,7 @@ class DriverWuyueBase(DriverBase):
         return False, err_msg, task_status
 
     def prepare_query_task_data(self, task_id):
-        """prepare_query_task_data
+        """prepare_query_task_data.
 
         Args:
             task_id: task ID
@@ -424,7 +424,7 @@ class DriverWuyueBase(DriverBase):
         return self.encrypt_by_public_key(raw_data)
 
     def get_task_realtime_result(self, task_id):
-        """Get task realtime result
+        """Get task realtime result.
 
         Args:
             task_id: task ID
@@ -499,7 +499,7 @@ class DriverWuyueBase(DriverBase):
         return success, "\n".join(err_msgs), realtime_status
 
     def get_task_results(self, task_id):
-        """Get task results
+        """Get task results.
 
         Args:
             task_id: task id
@@ -507,7 +507,6 @@ class DriverWuyueBase(DriverBase):
         Returns:
             success or fail, error message, task results
         """
-
         # Get task results
         success, err_msg, final_results = self.get_task_realtime_result(
             task_id

@@ -31,11 +31,10 @@ logger = logging.getLogger(__name__)
 
 
 class TaskScheduler(ABC):
-    """Task scheduler"""
+    """Task scheduler."""
 
     def __init__(self):
-        """Init TaskScheduler"""
-
+        """Init TaskScheduler."""
         self._task_manager = TaskFlowManager()
         self._policy_factory = SchedulerPolicyHandlerFactory(
             self._task_manager
@@ -45,12 +44,11 @@ class TaskScheduler(ABC):
         self.device_manager = None
 
     def start_taskmanager(self):
-        """Start TaskManager"""
-
+        """Start TaskManager."""
         self._task_manager.start()
 
     def set_driver_manager(self, driver_manager):
-        """Set driver manager
+        """Set driver manager.
 
         Args:
             driver_manager: driver manager
@@ -59,7 +57,7 @@ class TaskScheduler(ABC):
         self._task_manager.set_driver_manager(driver_manager)
 
     def get_driver_manager(self):
-        """Get driver manager
+        """Get driver manager.
 
         Returns:
             driver manager
@@ -67,7 +65,7 @@ class TaskScheduler(ABC):
         return self.driver_manager
 
     def set_transpiler_manager(self, transpiler_manager):
-        """Set transpiler manager
+        """Set transpiler manager.
 
         Args:
             transpiler_manager: transpiler manager
@@ -75,7 +73,7 @@ class TaskScheduler(ABC):
         self.transpiler_manager = transpiler_manager
 
     def get_transpiler_manager(self):
-        """Get transpiler manager
+        """Get transpiler manager.
 
         Returns:
             transpiler manager
@@ -83,7 +81,7 @@ class TaskScheduler(ABC):
         return self.transpiler_manager
 
     def set_device_manager(self, device_manager):
-        """Set device manager
+        """Set device manager.
 
         Args:
             device_manager: device manager
@@ -92,7 +90,7 @@ class TaskScheduler(ABC):
         self._task_manager.set_device_manager(device_manager)
 
     def get_device_manager(self):
-        """Get device manager
+        """Get device manager.
 
         Returns:
             device manager
@@ -100,7 +98,7 @@ class TaskScheduler(ABC):
         return self.device_manager
 
     def add(self, policy_type, job_info, tags=None):
-        """Add job to scheduler
+        """Add job to scheduler.
 
         Add job to scheduler, scheduler will get policy handler by policy_type,
         use handler to execute it.
@@ -218,7 +216,7 @@ class TaskScheduler(ABC):
             raise errors.WorkFlowError(e)
 
     def get_result_by_id(self, job_id, tags=None):
-        """Get result by job id
+        """Get result by job id.
 
         Args:
             job_id: job id
@@ -251,7 +249,7 @@ class TaskScheduler(ABC):
             raise errors.WorkFlowError(e)
 
     def has_job(self, job_id):
-        """Check if flow exists
+        """Check if flow exists.
 
         Args:
             job_id: job id
@@ -262,7 +260,7 @@ class TaskScheduler(ABC):
         return self._task_manager.has_flow(job_id)
 
     def get_jobs(self, tags=None):
-        """Get job list
+        """Get job list.
 
         Args:
             tags: prefect flow tags
@@ -282,7 +280,7 @@ class TaskScheduler(ABC):
             raise errors.WorkFlowError(e)
 
     def delete_jobs(self, ids, tags=None):
-        """Delete jobs
+        """Delete jobs.
 
         Args:
             ids: job id list
@@ -291,14 +289,13 @@ class TaskScheduler(ABC):
         Returns:
             flow list
         """
-
         flow_list = self._task_manager.delete_task_flow_run(ids, tags=tags)
         for flow in flow_list:
             flow["job_status"] = self.get_job_status(flow["state"], None, None)
         return flow_list
 
     def cancel_jobs(self, ids, tags=None):
-        """Cancel jobs
+        """Cancel jobs.
 
         Args:
             ids: job id list
@@ -320,7 +317,7 @@ class TaskScheduler(ABC):
         variables=None,
         tags=None,
     ):
-        """Update job
+        """Update job.
 
         Args:
             job_id: job id
@@ -377,7 +374,7 @@ class TaskScheduler(ABC):
         return response_info, None
 
     def run_callbacks(self, data, callbacks):
-        """Run callbacks for job
+        """Run callbacks for job.
 
         Args:
             data: data to send
@@ -386,7 +383,7 @@ class TaskScheduler(ABC):
         return self._task_manager.run_callbacks(data, callbacks)
 
     def process_callbacks(self):
-        """Process unfinished callbacks"""
+        """Process unfinished callbacks."""
         flow_runs = self._task_manager.get_flow_runs_with_filters()
         for flow_run in flow_runs:
             # TODO (zhaoyi): improve callback when restart
@@ -398,7 +395,7 @@ class TaskScheduler(ABC):
 
     @staticmethod
     def get_job_status(job_status, flow_results, flow_parameters):
-        """Get job status by combining flow state and user defined task status
+        """Get job status by combining flow state and user defined task status.
 
         Args:
             job_status: job status
@@ -446,21 +443,21 @@ class TaskScheduler(ABC):
 
 
 class BaseSchedulerPolicy(ABC):
-    """Base Scheduler Policy"""
+    """Base Scheduler Policy."""
 
     def __init__(self, task_manager: TaskFlowManager):
         self._task_manager = task_manager
 
 
 class PriorityPolicy(BaseSchedulerPolicy):
-    """Priority Policy"""
+    """Priority Policy."""
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
         self._type = Constant.JOB_SCHED_POLICY_PRIORITY
 
     def exec_task(self, flow_info, job_info, tags=None):
-        """PriorityPolicy execute task
+        """PriorityPolicy execute task.
 
         Args:
             flow_info: flow info
@@ -484,7 +481,7 @@ class PriorityPolicy(BaseSchedulerPolicy):
         return job_run_id
 
     def calculate_priority(self, job_info):
-        """Calculate priority
+        """Calculate priority.
 
         Args:
             job_info: job info
@@ -496,14 +493,14 @@ class PriorityPolicy(BaseSchedulerPolicy):
 
 
 class TimePrecedencePolicy(BaseSchedulerPolicy):
-    """Time Precedence Policy"""
+    """Time Precedence Policy."""
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
         self._type = Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE
 
     def exec_task(self, flow_info, job_info, tags=None):
-        """TimePrecedencePolicy execute task
+        """TimePrecedencePolicy execute task.
 
         Args:
             flow_info: flow info
@@ -513,7 +510,6 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
         Returns:
             job uuid
         """
-
         priority = self.calculate_priority(job_info)
         job_deploy_id = self._task_manager.deploy_task_flow(
             flow_info["deploy_name"] + "_" + self._type,
@@ -528,7 +524,7 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
         return job_run_id
 
     def calculate_priority(self, job_info):
-        """Calculate priority
+        """Calculate priority.
 
         Args:
             job_info: job info
@@ -540,7 +536,7 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
 
 
 class PeriodicPolicy(BaseSchedulerPolicy):
-    """Periodic Policy"""
+    """Periodic Policy."""
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
@@ -552,7 +548,7 @@ class PeriodicPolicy(BaseSchedulerPolicy):
 
 
 class DependentPolicy(BaseSchedulerPolicy):
-    """Dependent Policy"""
+    """Dependent Policy."""
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
@@ -564,7 +560,7 @@ class DependentPolicy(BaseSchedulerPolicy):
 
 
 class BatchPolicy(BaseSchedulerPolicy):
-    """Batch Policy"""
+    """Batch Policy."""
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
@@ -576,7 +572,7 @@ class BatchPolicy(BaseSchedulerPolicy):
 
 
 class RealtimePolicy(BaseSchedulerPolicy):
-    """Realtime Policy"""
+    """Realtime Policy."""
 
     def __init__(self, task_manager: TaskFlowManager):
         super().__init__(task_manager)
@@ -588,7 +584,7 @@ class RealtimePolicy(BaseSchedulerPolicy):
 
 
 class SchedulerPolicyHandlerFactory(ABC):
-    """Scheduler Policy Handler Factory"""
+    """Scheduler Policy Handler Factory."""
 
     def __init__(self, task_manager):
         self._policy_mapping = {
@@ -603,7 +599,7 @@ class SchedulerPolicyHandlerFactory(ABC):
         }
 
     def get_policy_handler_by_name(self, name: str):
-        """Get policy handler by name
+        """Get policy handler by name.
 
         Args:
             name: policy name

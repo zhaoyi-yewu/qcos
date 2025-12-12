@@ -24,7 +24,7 @@ from qcos.drivers.driver_base import DriverBase
 
 
 class DriverQuboBase(DriverBase):
-    """QUBO驱动基类
+    """QUBO驱动基类.
 
     QUBO Base driver
     """
@@ -35,11 +35,17 @@ class DriverQuboBase(DriverBase):
         self.tech_type = Constant.TECH_TYPE_PHOTON
         self.default_data_type = DriverBase.DATA_TYPE_QUBO
         self.supported_code_types = [Constant.CODE_TYPE_QUBO]
-        self.driver_options = {"enable_subqubo": False}
-        self.driver_options_schema = {Optional("enable_subqubo"): bool}
+        self.driver_options = {
+            "enable_subqubo": False,
+            "enable_prec_reduce": False,
+        }
+        self.driver_options_schema = {
+            Optional("enable_subqubo"): bool,
+            Optional("enable_prec_reduce"): bool,
+        }
 
     def get_fake_results(self, num_qubits, shots, data):
-        """Get fake results
+        """Get fake results.
 
         Args:
             num_qubits: number of qubits
@@ -61,9 +67,17 @@ class DriverQuboBase(DriverBase):
         return results
 
     def get_enable_subqubo(self):
-        """Get enable_subqubo
+        """Get enable subqubo.
 
         Returns:
-            enable_subqubo
+            bool: enable subqubo
         """
         return self.driver_options["enable_subqubo"]
+
+    def get_enable_prec_reduce(self):
+        """Get enable precision reduction.
+
+        Returns:
+            bool: enable precision reduction
+        """
+        return self.driver_options["enable_prec_reduce"]

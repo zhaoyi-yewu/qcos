@@ -18,7 +18,7 @@
 
 
 class Constant:
-    """Constants"""
+    """Constants."""
 
     # QCOS server default IP and port
     DEFAULT_API_SERVER_LISTEN_IP = ""
@@ -341,7 +341,7 @@ class HttpHeaders:
 
 
 class HttpMethod:
-    """HTTP methods"""
+    """HTTP methods."""
 
     GET = "get"
     POST = "post"
@@ -351,7 +351,7 @@ class HttpMethod:
 
 
 class HttpCode:
-    """HTTP status codes"""
+    """HTTP status codes."""
 
     SUCCESS_OK = 200
     SUCCESS_CREATED = 201

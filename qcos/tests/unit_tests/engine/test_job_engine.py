@@ -378,6 +378,7 @@ class TestJobEngine:
         mock_driver = Mock()
         mock_driver.get_max_qubits.return_value = 5
         mock_driver.get_enable_subqubo.return_value = False
+        mock_driver.get_enable_prec_reduce.return_value = True
         mock_driver.get_name.return_value = "TestDevice"
         mock_transpiler = Mock()
         monitor_info = {"progress": 0}
@@ -445,6 +446,7 @@ class TestJobEngine:
         mock_driver = Mock()
         mock_driver.get_max_qubits.return_value = 5
         mock_driver.get_enable_subqubo.return_value = True
+        mock_driver.get_enable_prec_reduce.return_value = True
         mock_driver.get_name.return_value = "TestDevice"
         mock_transpiler = Mock()
         monitor_info = {"progress": 0}
@@ -512,8 +514,8 @@ class TestJobEngine:
         mock_driver = Mock()
         mock_driver.get_max_qubits.return_value = 2
         mock_driver.get_enable_subqubo.return_value = True
+        mock_driver.get_enable_prec_reduce.return_value = True
         mock_driver.get_name.return_value = "TestDevice"
-        mock_driver.get_enable_subqubo.return_value = True
         mock_transpiler = Mock()
         monitor_info = {"progress": 0}
         mock_check_bit_width.return_value = (True, "")

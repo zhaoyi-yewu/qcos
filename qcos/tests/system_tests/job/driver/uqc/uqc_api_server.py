@@ -39,7 +39,7 @@ PID_FILE = f"{PID_DIR}/driver-uqc-api-server.pid"
 
 
 def submit_task(data):
-    """Submit task
+    """Submit task.
 
     Args:
         data: task data
@@ -65,7 +65,7 @@ def submit_task(data):
 
 
 def get_task_status(task_id):
-    """Get task status
+    """Get task status.
 
     Args:
         task_id: task id
@@ -73,7 +73,6 @@ def get_task_status(task_id):
     Returns:
         task status
     """
-
     task_status = "SUCCESS"
     response = task_status
     logger.info(f"[get_task_status|request] task_id: {task_id}, ")
@@ -83,7 +82,7 @@ def get_task_status(task_id):
 
 
 def get_task_result(task_id):
-    """Get task result
+    """Get task result.
 
     Args:
         task_id: task id
@@ -117,7 +116,7 @@ def get_task_result(task_id):
 
 @sio.event
 async def connect(sid):
-    """Client connect
+    """Client connect.
 
     Args:
         sid: client sid
@@ -127,7 +126,7 @@ async def connect(sid):
 
 @sio.event
 async def disconnect(sid):
-    """Client disconnect
+    """Client disconnect.
 
     Args:
         sid: client sid
@@ -137,7 +136,7 @@ async def disconnect(sid):
 
 @sio.on("message", namespace="/ws")
 async def message(sid, data):
-    """Receive client message
+    """Receive client message.
 
     Args:
         sid: client sid

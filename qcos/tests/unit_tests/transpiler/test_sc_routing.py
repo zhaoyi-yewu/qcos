@@ -24,36 +24,36 @@ from qcos.transpiler.cmss.mapping.routing.sc_routing import SCRouting
 
 
 class TestSCRouting:
-    """Test SCRouting class"""
+    """Test SCRouting class."""
 
     def test_init(self):
-        """Test SCRouting initialization"""
+        """Test SCRouting initialization."""
         routing = SCRouting()
         assert routing.selec_times == 50
 
     def test_layout_list_to_dict(self):
-        """Test _layout_list_to_dict method"""
+        """Test _layout_list_to_dict method."""
         routing = SCRouting()
         layout_list = [0, 1, 2, 3]
         result = routing._layout_list_to_dict(layout_list)
         assert result == {0: 0, 1: 1, 2: 2, 3: 3}
 
     def test_layout_dict_reverse(self):
-        """Test _layout_dict_reverse method"""
+        """Test _layout_dict_reverse method."""
         routing = SCRouting()
         layout_dict = {0: 1, 1: 0, 2: 2}
         result = routing._layout_dict_reverse(layout_dict)
         assert result == {1: 0, 0: 1, 2: 2}
 
     def test_execute_routing_none_search_tree(self):
-        """Test execute_routing with None search_tree"""
+        """Test execute_routing with None search_tree."""
         routing = SCRouting()
         with pytest.raises(MappingException) as exc_info:
             routing.execute_routing(None, None, None, 0, [])
         assert "search_tree cannot be None" in str(exc_info.value)
 
     def test_execute_routing_none_ag(self):
-        """Test execute_routing with None ag"""
+        """Test execute_routing with None ag."""
         routing = SCRouting()
         mock_tree = Mock()
         with pytest.raises(MappingException) as exc_info:
@@ -61,7 +61,7 @@ class TestSCRouting:
         assert "ag cannot be None" in str(exc_info.value)
 
     def test_execute_routing_none_initial_layout(self):
-        """Test execute_routing with None initial_layout"""
+        """Test execute_routing with None initial_layout."""
         routing = SCRouting()
         mock_tree = Mock()
         mock_ag = Mock()
@@ -70,7 +70,7 @@ class TestSCRouting:
         assert "initial_layout cannot be None" in str(exc_info.value)
 
     def test_execute_routing_basic(self):
-        """Test execute_routing basic functionality"""
+        """Test execute_routing basic functionality."""
         routing = SCRouting()
         routing.selec_times = 1  # Reduce iterations for testing
 
@@ -104,7 +104,7 @@ class TestSCRouting:
         assert isinstance(result, list)
 
     def test_execute_routing_with_swaps(self):
-        """Test execute_routing with swaps"""
+        """Test execute_routing with swaps."""
         routing = SCRouting()
         routing.selec_times = 1
 
@@ -136,7 +136,7 @@ class TestSCRouting:
         assert isinstance(result, list)
 
     def test_execute_routing_with_measure_ops(self):
-        """Test execute_routing with measure operations"""
+        """Test execute_routing with measure operations."""
         routing = SCRouting()
         routing.selec_times = 1
 
@@ -171,7 +171,7 @@ class TestSCRouting:
         assert len(result) >= 1
 
     def test_execute_routing_swap_mapping_not_dict(self):
-        """Test execute_routing when swap_mapping is not a dict"""
+        """Test execute_routing when swap_mapping is not a dict."""
         routing = SCRouting()
         routing.selec_times = 1
 
@@ -207,7 +207,7 @@ class TestSCRouting:
         assert "swap_mapping should be a dict" in str(exc_info.value)
 
     def test_execute_routing_phy_q_not_in_swap_mapping(self):
-        """Test execute_routing when phy_q not in swap_mapping"""
+        """Test execute_routing when phy_q not in swap_mapping."""
         routing = SCRouting()
         routing.selec_times = 1
 
@@ -239,7 +239,7 @@ class TestSCRouting:
         assert isinstance(result, list)
 
     def test_execute_routing_num_q_vir_filtering(self):
-        """Test execute_routing filtering by num_q_vir"""
+        """Test execute_routing filtering by num_q_vir."""
         routing = SCRouting()
         routing.selec_times = 1
 

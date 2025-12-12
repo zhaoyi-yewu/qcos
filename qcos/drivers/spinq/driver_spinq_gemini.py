@@ -19,7 +19,7 @@ from qcos.drivers.spinq.driver_spinq_cloud_base import DriverSpinQCloudBase
 
 
 class DriverSpinQCloudGemini(DriverSpinQCloudBase):
-    """量旋科技 双子座 核磁驱动 (Cloud版本)
+    """量旋科技 双子座 核磁驱动 (Cloud版本).
 
     SpinQ gemini NMR driver (Cloud)
     https://cloud.spinq.cn

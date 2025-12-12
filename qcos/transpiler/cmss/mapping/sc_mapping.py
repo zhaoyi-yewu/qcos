@@ -31,7 +31,7 @@ from qcos.transpiler.cmss.mapping.routing.sc_routing import SCRouting
 
 
 class SCRoute(ABC):
-    """超导设备路由映射类
+    """超导设备路由映射类.
 
     实现逻辑量子比特到物理量子比特的映射，支持单比特门和两比特门的路由。
     """
@@ -53,7 +53,7 @@ class SCRoute(ABC):
         self.routing = SCRouting()  # 路由搜索实例
 
     def _layout_dict_to_list(self, layout_dict):
-        """将布局字典转换为列表"""
+        """将布局字典转换为列表."""
         if not isinstance(layout_dict, dict):
             raise MappingException(
                 f"layout_dict must be a dict, but got {type(layout_dict)}"
@@ -72,19 +72,19 @@ class SCRoute(ABC):
         return layout_list
 
     def _layout_list_to_dict(self, layout_list):
-        """将布局列表转换为字典"""
+        """将布局列表转换为字典."""
         layout_dict = {}
         for i, v in enumerate(layout_list):
             layout_dict[i] = v
         return layout_dict
 
     def _layout_dict_reverse(self, layout_dict):
-        """反转布局字典"""
+        """反转布局字典."""
         layout_dict_r = {v: k for k, v in layout_dict.items()}
         return layout_dict_r
 
     def _import_qpu_file(self, qpu_config, disable_qubits=[]):
-        """硬件参数解析，获取一个包含耦合列表的字典
+        """硬件参数解析，获取一个包含耦合列表的字典.
 
         Args:
             qpu_config: 硬件配置字典
@@ -133,7 +133,7 @@ class SCRoute(ABC):
         return qpu_config_dice
 
     def _convert_gate_targets_to_int(self, gates):
-        """确保门操作的目标索引为整数"""
+        """确保门操作的目标索引为整数."""
         if not gates:
             return
         for gate in gates:
@@ -144,7 +144,7 @@ class SCRoute(ABC):
     def prepare_data(
         self, qbit_num: int, gates: list[BaseOperation], qpu_configs: dict
     ):
-        """准备数据，包括构建AG、DG等
+        """准备数据，包括构建AG、DG等.
 
         Args:
             qbit_num: 比特数
@@ -244,7 +244,7 @@ class SCRoute(ABC):
         )
 
     def execute_with_order(self):
-        """执行映射，返回映射后的门列表
+        """执行映射，返回映射后的门列表.
 
         Returns:
             映射后的门列表(mapped_ir)

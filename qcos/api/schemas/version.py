@@ -19,14 +19,16 @@ from pydantic import BaseModel
 
 
 class GetVersionRequest(BaseModel):
-    """Get Version Request
-    Pydantic Model for Get Version Request
+    """Get Version Request.
+
+    Pydantic Model for Get Version Request.
     """
 
 
 class GetVersionResponse(BaseModel):
-    """Get Version Response
-    Pydantic Model for Get Version Response
+    """Get Version Response.
+
+    Pydantic Model for Get Version Response.
     """
 
     # version

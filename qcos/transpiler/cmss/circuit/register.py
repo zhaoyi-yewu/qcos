@@ -57,7 +57,6 @@ class Register:
             bits (list[int]): Optional. A list of bit to be used to
                populate the register.
         """
-
         if (size, bits) == (None, None) or (
             size is not None and bits is not None
         ):
@@ -123,7 +122,8 @@ class Register:
         return self._size
 
     def __getitem__(self, key: int | slice | list):
-        """
+        """Get qubits from the register.
+
         Arg:
             key (int or slice or list): index of the bit to be retrieved.
 
@@ -166,7 +166,7 @@ class Register:
             ) from err
 
     def __eq__(self, other):
-        """Two Registers are the same if they are of the same type
+        """Two Registers are the same if they are of the same type.
 
         Args:
             other (Register): other Register

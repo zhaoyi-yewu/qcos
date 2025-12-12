@@ -76,7 +76,7 @@ class SourceCodeInfo:
 
 @task(persist_result=False)
 def init_driver(driver_class_info, driver_options, device, job_info):
-    """Init driver from driver_class_info
+    """Init driver from driver_class_info.
 
     Args:
         driver_class_info: driver class info
@@ -87,7 +87,6 @@ def init_driver(driver_class_info, driver_options, device, job_info):
     Returns:
         driver
     """
-
     job_data = job_info["data"]
     try:
         driver_module = importlib.import_module(
@@ -155,7 +154,7 @@ def init_driver(driver_class_info, driver_options, device, job_info):
 
 @task(persist_result=False)
 def init_transpiler(transpiler_class_info, transpiler_options):
-    """Init transpiler instance
+    """Init transpiler instance.
 
     Args:
         transpiler_class_info: transpiler class info
@@ -164,7 +163,6 @@ def init_transpiler(transpiler_class_info, transpiler_options):
     Returns:
         transpiler
     """
-
     try:
         transpiler_module = importlib.import_module(
             transpiler_class_info["module_name"]
@@ -204,7 +202,7 @@ def task_monitor(monitor_info):
 
 @task(persist_result=False)
 def parse(src_code_dict, transpiler):
-    """Parse task
+    """Parse task.
 
     Args:
         src_code_dict: src_code_dict
@@ -223,7 +221,7 @@ def parse(src_code_dict, transpiler):
 
 @task(persist_result=False)
 def transpile(parsed_gates, driver, transpiler):
-    """Transpile task
+    """Transpile task.
 
     Args:
         parsed_gates: parsed gates
@@ -258,7 +256,7 @@ def transpile(parsed_gates, driver, transpiler):
 
 @task(persist_result=False)
 def driver_run(job_info, driver, num_qubits, data):
-    """Driver: run job
+    """Driver: run job.
 
     Args:
         job_info: job info
@@ -290,7 +288,7 @@ def driver_run(job_info, driver, num_qubits, data):
 
 
 def driver_cancel(job_id, driver):
-    """Driver: cancel job
+    """Driver: cancel job.
 
     Args:
         job_id: job id
@@ -307,7 +305,7 @@ def driver_cancel(job_id, driver):
 
 
 def register_signals(job_id, monitor):
-    """Register signal handlers
+    """Register signal handlers.
 
     Args:
         job_id: job id
@@ -332,7 +330,7 @@ def register_signals(job_id, monitor):
 
 
 def update_progress(artifact_id, progress):
-    """Update progress
+    """Update progress.
 
     Args:
         artifact_id: artifact id
@@ -342,7 +340,7 @@ def update_progress(artifact_id, progress):
 
 
 def create_src_code_info(job_data):
-    """Create src code info
+    """Create src code info.
 
     Args:
         job_data: job data
@@ -380,7 +378,7 @@ def create_src_code_info(job_data):
 
 
 def update_src_code_info(src_code_info, aggregation_info):
-    """Update src code info
+    """Update src code info.
 
     Args:
         src_code_info: src_code_info
@@ -409,7 +407,7 @@ def update_src_code_info(src_code_info, aggregation_info):
 
 
 def get_src_code_cnt(src_code_info: SourceCodeInfo):
-    """Get total src code count
+    """Get total src code count.
 
     Args:
         src_code_info: src_code_info
@@ -425,7 +423,7 @@ def get_src_code_cnt(src_code_info: SourceCodeInfo):
 
 
 def split_dict(orig_dict, split_len):
-    """Split dict
+    """Split dict.
 
     Args:
         orig_dict: orig_dict
@@ -446,7 +444,7 @@ def split_dict(orig_dict, split_len):
 
 
 def get_internal_aggregated_results(job_results, mapping_dict):
-    """Get internal aggregated results
+    """Get internal aggregated results.
 
     Args:
         job_results: job results
@@ -476,7 +474,7 @@ def get_internal_aggregated_results(job_results, mapping_dict):
 
 
 def get_external_aggregated_results(job_results, mapping_dict):
-    """Get external aggregated results
+    """Get external aggregated results.
 
     Args:
         job_results: job results
@@ -529,29 +527,31 @@ def get_external_aggregated_results(job_results, mapping_dict):
     on_cancellation=[Library.job_callback],
 )
 def job_flow(job_info):
-    """Job flow
+    """Job flow.
 
-    Detail of job flow:
-    Create task_monitor -> Handle Circuit-Aggregation ->
-    loop src_code_list ->
-    [
-        run_code ->
-            init_driver ->
-                driver.validate_driver_configs(device_configs)
-                driver.set_configs(device_configs)
-                driver.init_driver() ->
-                driver.fetch_configs() ->
-            init_transpiler ->
-            flow_parse ->
-                transpiler.parse() ->
-            flow_transpile ->
-                transpiler.transpile() ->
-            flow_run_driver ->
-                driver_run ->
-                    driver.run() / driver.dry_run() ->
-        get_results
-    ]
-    return job_results_list
+    .. code-block:: text
+
+        Detail of job flow:
+        Create task_monitor -> Handle Circuit-Aggregation ->
+        loop src_code_list ->
+        [
+            run_code ->
+                init_driver ->
+                    driver.validate_driver_configs(device_configs)
+                    driver.set_configs(device_configs)
+                    driver.init_driver() ->
+                    driver.fetch_configs() ->
+                init_transpiler ->
+                flow_parse ->
+                    transpiler.parse() ->
+                flow_transpile ->
+                    transpiler.transpile() ->
+                flow_run_driver ->
+                    driver_run ->
+                        driver.run() / driver.dry_run() ->
+            get_results
+        ]
+        return job_results_list
 
     Args:
         job_info: job info
@@ -684,7 +684,7 @@ def _run_code(
     transpiler,
     monitor_info,
 ):
-    """Flow: run
+    """Flow: run.
 
     Args:
         source_code_index: source code index
@@ -804,8 +804,7 @@ def run_code(
     transpiler,
     monitor_info,
 ):
-    """
-    Run code
+    """Run code.
 
     Args:
         source_code_index: source code index
@@ -900,8 +899,7 @@ def run_qubo_code(
     transpiler,
     monitor_info,
 ):
-    """
-    Run qubo code
+    """Run qubo code.
 
     Args:
         source_code_index: source code index
@@ -919,6 +917,7 @@ def run_qubo_code(
     job_id = job_info["data"]["job_id"]
     max_qubits = driver.get_max_qubits()
     enable_subqubo = driver.get_enable_subqubo()
+    enable_prec_reduce = driver.get_enable_prec_reduce()
     qubo_matrix = src_code_dict[f"{job_id}-{source_code_index}"]
     max_precision_value = 2 ** (Constant.MAX_QUBO_BIT_WIDTH - 1) - 1
     # Check if the matrix is valid
@@ -936,15 +935,31 @@ def run_qubo_code(
     success, err_msg = check_qubo_matrix_bit_width(
         np.array(qubo_matrix), Constant.MAX_QUBO_BIT_WIDTH
     )
-    if not success and err_msg:
-        return (
-            format_error_results(
-                driver, errors.JobEngineCheckWidthError, err_msg
-            ),
-            driver,
-            transpiler,
-            mapping_dict,
-        )
+    if not success:
+        if err_msg:
+            return (
+                format_error_results(
+                    driver, errors.JobEngineCheckWidthError, err_msg
+                ),
+                driver,
+                transpiler,
+                mapping_dict,
+            )
+        if not enable_prec_reduce:
+            err_msg = (
+                f"The element values in the QUBO matrix "
+                f"does not meet {Constant.MAX_QUBO_BIT_WIDT}-bit signed. "
+                f"Consider using enable_prec_reduce."
+            )
+            return (
+                format_error_results(
+                    driver, errors.JobEngineCheckWidthError, err_msg
+                ),
+                driver,
+                transpiler,
+                mapping_dict,
+            )
+
     ising_matrix = qubo_matrix_to_ising_matrix(np.array(qubo_matrix))
     scaled_ising_matrix = scale_to_integer_matrix(ising_matrix)
     # If the QUBO matrix is to be reduced in precision,
@@ -1143,7 +1158,7 @@ def run_subqubo_code(
 
 
 def flow_parse(src_code_dict, transpiler, profiling_types):
-    """Flow: parse
+    """Flow: parse.
 
     Args:
         src_code_dict: src_code_dict
@@ -1180,7 +1195,7 @@ def flow_parse(src_code_dict, transpiler, profiling_types):
 
 
 def flow_transpile(parsed_src_code, transpiler, driver, profiling_types):
-    """Flow: transpile
+    """Flow: transpile.
 
     Args:
         parsed_src_code: parsed_src_code
@@ -1221,7 +1236,7 @@ def flow_transpile(parsed_src_code, transpiler, driver, profiling_types):
 
 
 def flow_task_monitor(monitor_info):
-    """Flow: task monitor
+    """Flow: task monitor.
 
     Args:
         monitor_info: monitor info
@@ -1230,7 +1245,7 @@ def flow_task_monitor(monitor_info):
 
 
 def flow_run_driver(job_info, num_qubits, driver, data, profiling_types):
-    """Flow: run driver
+    """Flow: run driver.
 
     Args:
         job_info: job info
@@ -1275,7 +1290,7 @@ def flow_run_driver(job_info, num_qubits, driver, data, profiling_types):
 
 
 def format_run_results(driver, job_id, data_index):
-    """Format run results
+    """Format run results.
 
     Args:
         driver: driver
@@ -1320,7 +1335,7 @@ def format_run_results(driver, job_id, data_index):
 
 
 def format_error_results(driver, err_cls, err_msg):
-    """Format error results
+    """Format error results.
 
     Args:
         driver: driver
@@ -1357,7 +1372,7 @@ def format_error_results(driver, err_cls, err_msg):
 
 
 def run_job_callback(context, job_results_list):
-    """Run job_callback
+    """Run job_callback.
 
     Args:
         context: context

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class Device:
-    """Device"""
+    """Device."""
 
     # Device status
     DEVICE_STATUS_ONLINE = "online"
@@ -65,7 +65,7 @@ class Device:
         self.configs = {}
 
     def init_device(self):
-        """Init device
+        """Init device.
 
         Returns:
             success, err_msgs
@@ -75,7 +75,7 @@ class Device:
         return success, err_msg
 
     def get_name(self):
-        """Get device name
+        """Get device name.
 
         Returns:
             device name
@@ -83,7 +83,7 @@ class Device:
         return self.name
 
     def get_driver(self):
-        """Get device driver
+        """Get device driver.
 
         Returns:
             device driver
@@ -91,7 +91,7 @@ class Device:
         return self.driver
 
     def set_enable(self, enable):
-        """Set enable
+        """Set enable.
 
         Args:
             enable: enable or disable
@@ -99,7 +99,7 @@ class Device:
         self.enable = enable
 
     def get_enable(self):
-        """Get enable
+        """Get enable.
 
         Returns:
             enable or disable
@@ -107,7 +107,7 @@ class Device:
         return self.enable
 
     def set_status(self, status):
-        """Set device status
+        """Set device status.
 
         Args:
             status: device status
@@ -121,11 +121,11 @@ class Device:
         self.status = status
 
     def get_status(self):
-        """Get device status"""
+        """Get device status."""
         return self.status
 
     def set_alias_name(self, alias_name):
-        """Set device alias name
+        """Set device alias name.
 
         Args:
             alias_name: device alias name
@@ -133,7 +133,7 @@ class Device:
         self.alias_name = alias_name
 
     def get_alias_name(self):
-        """Get device alias name
+        """Get device alias name.
 
         Returns:
             device alias name
@@ -141,7 +141,7 @@ class Device:
         return self.alias_name
 
     def set_description(self, description):
-        """Set device description
+        """Set device description.
 
         Args:
             description: device description
@@ -149,7 +149,7 @@ class Device:
         self.description = description
 
     def get_description(self):
-        """Get device description
+        """Get device description.
 
         Returns:
             device description
@@ -157,7 +157,7 @@ class Device:
         return self.description
 
     def set_configs(self, configs):
-        """Set device configs
+        """Set device configs.
 
         Args:
             configs: device configs
@@ -165,7 +165,7 @@ class Device:
         self.configs = configs
 
     def get_configs(self, hide_password=False):
-        """Get device configs
+        """Get device configs.
 
         Args:
             hide_password: hide device password
@@ -179,7 +179,7 @@ class Device:
         return self.configs
 
     def get_device_info(self):
-        """Show device info"""
+        """Show device info."""
         show_list = [
             f"device_name: {self.name}",
             f"device_alias_name: {self.alias_name}",
@@ -194,7 +194,7 @@ class Device:
         return "\n".join(show_list)
 
     def set_max_qubits(self, max_qubits):
-        """Set device max qubits
+        """Set device max qubits.
 
         Args:
             max_qubits: device max qubits

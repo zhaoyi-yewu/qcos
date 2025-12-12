@@ -31,7 +31,7 @@ from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 
 class DG(DiGraph):
-    """Topology analysis and construction of a dependency graph"""
+    """Topology analysis and construction of a dependency graph."""
 
     def __init__(
         self,
@@ -49,7 +49,7 @@ class DG(DiGraph):
         return self.num_gate_1q + self.num_gate_2q
 
     def get_shared_qubits(self, node1: int, node2: int):
-        """Get qubits which exist in both node1 and node2
+        """Get qubits which exist in both node1 and node2.
 
         Args:
             node1 (int): id of node1
@@ -65,7 +65,7 @@ class DG(DiGraph):
         return qubits
 
     def add_line(self, node_in: int, node_out: int, qubits=None):
-        """Connect two nodes using provided qubits
+        """Connect two nodes using provided qubits.
 
         Args:
             node_in (int): id of node_in
@@ -108,13 +108,14 @@ class DG(DiGraph):
             else:
                 self.add_gate(gate)
 
-    def add_gate(self, gate: tuple, add_edges=True):
-        """
-        Add a gate to the graph.
-        Attributes of a node: gates, num_gate_1q, num_gate_2q, qubits
+    def add_gate(self, format_gate: tuple, gate=None, add_edges=True):
+        """Add a gate to the graph.
+
+        Attributes of a node: gates, num_gate_1q, num_gate_2q, qubits.
 
         Args:
-            gate (tuple): a tuple of (gate_name, (qubits), (parameters))
+            format_gate (tuple): a tuple of (gate_name, (qubits), (parameters))
+            gate(GateOperation): Gate Operation
             add_edges (bool, optional): wheater to add edges. Defaults to True.
 
         Returns:
@@ -124,8 +125,9 @@ class DG(DiGraph):
         node_new = self.node_count
         self.node_count += 1
         self.add_node(node_new)
-        self.nodes[node_new]["gates"] = [gate]
-        self.nodes[node_new]["qubits"] = list(gate[1])
+        self.nodes[node_new]["gate"] = [gate]
+        self.nodes[node_new]["gates"] = [format_gate]
+        self.nodes[node_new]["qubits"] = list(format_gate[1])
         (
             self.nodes[node_new]["num_gate_1q"],
             self.nodes[node_new]["num_gate_2q"],
@@ -133,17 +135,17 @@ class DG(DiGraph):
             0,
             0,
         )
-        if len(gate[1]) == 1:
+        if len(format_gate[1]) == 1:
             self.nodes[node_new]["num_gate_1q"] += 1
             self.num_gate_1q += 1
-        if len(gate[1]) == 2:
+        if len(format_gate[1]) == 2:
             self.nodes[node_new]["num_gate_2q"] += 1
             self.num_gate_2q += 1
-        if len(gate[1]) > 2:
+        if len(format_gate[1]) > 2:
             raise ValueError("more than 2 qubits")
         if add_edges:
             # add edges
-            for q in gate[1]:
+            for q in format_gate[1]:
                 node_parent = self.qubit_to_node[q]
                 if node_parent is not None:
                     self.add_line(node_parent, node_new, [q])
@@ -232,22 +234,23 @@ class DG(DiGraph):
     def set_edge_qubits(self, edge, qubits):
         self.edges[edge]["qubits"] = list(qubits)
 
-    def add_gate_absorb(self, gate: tuple):
+    def add_gate_absorb(self, format_gate: tuple, gate=None):
         """Add a gate and absorb is if possible.
 
         Args:
-            gate (tuple): a tuple of (gate_name, (qubits), (parameters))
+            format_gate (tuple): a tuple of (gate_name, (qubits), (parameters))
+            gate(GateOperation): Gate Operation
 
         Returns:
             int: id of new node
         """
         nodes_check = []
-        for q in gate[1]:
+        for q in format_gate[1]:
             node_father = self.qubit_to_node[q]
             if node_father not in nodes_check and node_father is not None:
                 nodes_check.append(node_father)
         # add node
-        new_node = self.add_gate(gate)
+        new_node = self.add_gate(format_gate, gate)
         # absorb
         for node_parent in nodes_check:
             if not self.check_absorbable(node_parent, new_node):
@@ -256,8 +259,8 @@ class DG(DiGraph):
         return new_node
 
     def cascade_node(self, node1: int, node2: int):
-        """
-        Combine two given nodes.
+        """Combine two given nodes.
+
         Here we only update one node (node_in) and delete the other (node_out)
         instead of creating one node and deleting both.
 
@@ -280,6 +283,7 @@ class DG(DiGraph):
                 # we accept two nodes are parallel
                 node_in, node_out = node1, node2
         # update attributes
+        self.nodes[node_in]["gate"].extend(self.nodes[node_out]["gate"])
         self.nodes[node_in]["gates"].extend(self.nodes[node_out]["gates"])
         for gate in self.nodes[node_out]["gates"]:
             if len(gate[1]) == 1:
@@ -362,17 +366,17 @@ class DG(DiGraph):
                 continue
             format_gate = (name, tuple(gate.targets), gate.arg_value)
             if absorb:
-                self.add_gate_absorb(format_gate)
+                self.add_gate_absorb(format_gate, gate)
             else:
-                self.add_gate(format_gate)
+                self.add_gate(format_gate, gate)
         self.origin_ir = circ.get_operations()
         if self.num_q is None:
             self.num_q = self.get_dg_num_q()
         return measure_op
 
     def to_ir(self, add_barrier=False, decompose_swap=False):
-        """
-        Convert the DG to a ir.
+        """Convert the DG to a ir.
+
         If decompose_swap is set to True, we will decompose each SWAP
         into 3 CNOTs.
         """
@@ -424,7 +428,7 @@ class DG(DiGraph):
         return ir
 
     def draw(self):
-        """Draw DG graph"""
+        """Draw DG graph."""
         nx.draw(self, with_labels=1)
 
     def check_parallel(self, node1: int, node2: int):
@@ -446,8 +450,8 @@ class DG(DiGraph):
             return False
 
     def check_direct_dependency(self, node1: int, node2: int):
-        """
-        Check two nodes are directly dependent or not.
+        """Check two nodes are directly dependent or not.
+
         We say node2 directly depends on node1 if
             1) two nodes share at least one qubit;
             2) for each shared qubit, there can't be any nodes existing between
@@ -481,8 +485,8 @@ class DG(DiGraph):
         return True
 
     def check_absorbable(self, node1: int, node2: int):
-        """
-        check if node1 and node2 can be obsorbed to each other
+        """Check if node1 and node2 can be obsorbed to each other.
+
         node1 and node2 are absorbable if all qubits in node1 or node2 exist in
         node2 or node1 and they are directly dependent to each other.
 

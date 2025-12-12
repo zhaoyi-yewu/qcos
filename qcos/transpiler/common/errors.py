@@ -17,20 +17,20 @@
 
 
 class DecomposeException(Exception):
-    """Decompose Exception"""
+    """Decompose Exception."""
 
 
 class OptException(Exception):
-    """Optimization Exception"""
+    """Optimization Exception."""
 
 
 class MappingException(Exception):
-    """Mapping Exception"""
+    """Mapping Exception."""
 
 
 class TranspilerException(Exception):
-    """Transpiler Exception"""
+    """Transpiler Exception."""
 
 
 class CircuitException(Exception):
-    """Circuit Exception"""
+    """Circuit Exception."""

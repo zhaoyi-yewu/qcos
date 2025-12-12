@@ -51,14 +51,14 @@ driver_wuyue_base.password_pub_key = _s(
 
 
 class TestDriverWuyueBase:
-    """Test suite for DriverWuyueBase class"""
+    """Test suite for DriverWuyueBase class."""
 
     @patch.object(DriverWuyueBase, "decrypt_by_private_key")
     @patch.object(Library, "call_http_api")
     def test_submit_tasks_success(
         self, mock_call_http_api, mock_decrypt_by_private_key
     ):
-        """Test submit_tasks with successful response"""
+        """Test submit_tasks with successful response."""
         mock_response = {"code": 1, "msg": "Success", "data": "encrypted_data"}
         mock_call_http_api.return_value = (
             HttpCode.SUCCESS_OK,
@@ -76,7 +76,7 @@ class TestDriverWuyueBase:
     def test_submit_tasks_failure(
         self, mock_call_http_api, mock_decrypt_by_private_key
     ):
-        """Test submit_tasks with failed response"""
+        """Test submit_tasks with failed response."""
         mock_response = {"code": 0, "msg": "Err", "data": "encrypted_data"}
         mock_call_http_api.return_value = (
             HttpCode.SUCCESS_OK,
@@ -92,7 +92,7 @@ class TestDriverWuyueBase:
 
     @patch.object(Library, "call_http_api")
     def test_submit_tasks_http_error(self, mock_call_http_api):
-        """Test submit_tasks with HTTP error"""
+        """Test submit_tasks with HTTP error."""
         mock_call_http_api.return_value = (
             HttpCode.TIMEOUT_ERROR,
             "Timeout",
@@ -105,7 +105,7 @@ class TestDriverWuyueBase:
         assert err_msg == "Timeout"
 
     def test_prepare_sign(self):
-        """Test prepare_sign method"""
+        """Test prepare_sign method."""
         test_data = {
             "key1": "value1",
             "key2": ["list1", "list2"],
@@ -117,7 +117,7 @@ class TestDriverWuyueBase:
         assert sign == "f72fa9e9e1ba2a17827baf279be2b63b"
 
     def test_decrypt_by_private_key(self):
-        """Test decrypt_by_private_key method"""
+        """Test decrypt_by_private_key method."""
         test_data = {"test": "data"}
         encrypted = driver_wuyue_base.encrypt_by_public_key(test_data)
 
@@ -125,7 +125,7 @@ class TestDriverWuyueBase:
         assert decrypted == test_data
 
     def test_prepare_submit_data(self):
-        """Test prepare_submit_data method"""
+        """Test prepare_submit_data method."""
         job_id = "test_job_id"
         src_code = "test_src_code"
         shots = 100
@@ -137,7 +137,7 @@ class TestDriverWuyueBase:
         assert len(submit_data) == 344
 
     def test_validate_driver_configs_invalid_port(self):
-        """Test validate_driver_configs with invalid port"""
+        """Test validate_driver_configs with invalid port."""
         test_configs = {
             "ip_address": "100.100.100.2",
             "port": "invalid port",
@@ -159,7 +159,7 @@ class TestDriverWuyueBase:
         assert err_msg is not None
 
     def test_validate_driver_configs_success(self):
-        """Test validate_driver_configs with valid configs"""
+        """Test validate_driver_configs with valid configs."""
         test_configs = {
             "ip_address": "100.100.100.2",
             "port": 12345,
@@ -193,7 +193,7 @@ class TestDriverWuyueBase:
         assert driver_wuyue_base.password_pri_key == ""
 
     def test_validate_driver_configs_missing_required_fields(self):
-        """Test validate_driver_configs with missing required fields"""
+        """Test validate_driver_configs with missing required fields."""
         test_configs = {
             "ip_address": "test_ip",
             # Missing port
@@ -219,7 +219,7 @@ class TestDriverWuyueBase:
         mock_loop_with_timeout,
         mock_decrypt_by_private_key,
     ):
-        """Test run method when task fails"""
+        """Test run method when task fails."""
         # Setup mock for submit_tasks
         mock_response = {"code": 1, "msg": "Success", "data": "encrypted_data"}
 
@@ -262,7 +262,7 @@ class TestDriverWuyueBase:
     @patch.object(Library, "loop_with_timeout")
     @patch.object(Library, "call_http_api")
     def test_run_http_error(self, mock_call_http_api, mock_loop_with_timeout):
-        """Test run method with HTTP error during submission"""
+        """Test run method with HTTP error during submission."""
         # Setup mock for submit_tasks to return HTTP error
         mock_call_http_api.return_value = (
             HttpCode.NOT_IMPLEMENTED_ERROR,
@@ -294,7 +294,7 @@ class TestDriverWuyueBase:
     def test_check_task_status_success(
         self, mock_call_http_api, mock_decrypt_by_private_key
     ):
-        """Test check_task_status with successful status check"""
+        """Test check_task_status with successful status check."""
         mock_response = {
             "code": 1,
             "msg": "Success",
@@ -324,7 +324,7 @@ class TestDriverWuyueBase:
     def test_check_task_status_failure(
         self, mock_call_http_api, mock_decrypt_by_private_key
     ):
-        """Test check_task_status with failed status check"""
+        """Test check_task_status with failed status check."""
         mock_response = {
             "code": 0,
             "msg": "Error",
@@ -349,7 +349,7 @@ class TestDriverWuyueBase:
     def test_get_task_results_success(
         self, mock_call_http_api, mock_decrypt_by_private_key
     ):
-        """Test get_task_results with successful result retrieval"""
+        """Test get_task_results with successful result retrieval."""
         test_result = {"00": 10, "01": 11, "10": 9, "11": 0}
         mock_response = {
             "code": 1,
@@ -381,7 +381,7 @@ class TestDriverWuyueBase:
 
     @patch.object(Library, "call_http_api")
     def test_get_task_results_http_error(self, mock_call_http_api):
-        """Test get_task_results with HTTP error"""
+        """Test get_task_results with HTTP error."""
         mock_call_http_api.return_value = (
             HttpCode.CONFLICT_ERROR,
             "conflict error",
@@ -401,23 +401,23 @@ class TestDriverWuyueBase:
         assert "conflict error" in exception_msg
 
     def test_init_driver(self):
-        """Test init_driver method"""
+        """Test init_driver method."""
         driver_wuyue_base.init_driver()
 
     def test_close_driver(self):
-        """Test close_driver method"""
+        """Test close_driver method."""
         driver_wuyue_base.close_driver()
 
     def test_fetch_cfg(self):
-        """Test fetch_configs method"""
+        """Test fetch_configs method."""
         driver_wuyue_base.fetch_configs()
 
     def test_cancel(self):
-        """Test cancel method"""
+        """Test cancel method."""
         driver_wuyue_base.cancel("123")
 
     def test_format_item(self):
-        """Test format_item method"""
+        """Test format_item method."""
         test_item = "test_string"
         result = driver_wuyue_base.format_item(test_item)
         assert result == '"test_string"'
@@ -427,8 +427,7 @@ class TestDriverWuyueBase:
         assert result == "123"
 
     def test_prepare_query_task_data(self):
-        """Test prepare_query_task_data method"""
-
+        """Test prepare_query_task_data method."""
         task_id = "test_task_id"
         driver_wuyue_base.client_id = "test_client_id"
         driver_wuyue_base.eng_code = "test_eng_code"
@@ -444,7 +443,7 @@ class TestDriverWuyueBase:
         mock_loop_with_timeout,
         mock_decrypt_by_private_key,
     ):
-        """Test run method with successful task execution"""
+        """Test run method with successful task execution."""
         # Setup mock for submit_tasks
         mock_response = {"code": 1, "msg": "Success", "data": "encrypted_data"}
 

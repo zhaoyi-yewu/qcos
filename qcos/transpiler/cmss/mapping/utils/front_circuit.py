@@ -23,32 +23,25 @@ def qubit_convert(q_list):
 
 
 class FrontCircuit:
-    """
-    根据硬件拓扑、量子线路拓扑、映射表等来获取当前可执行的线路、可交换的比特等
+    """根据硬件拓扑、量子线路拓扑、映射表等来获取当前可执行的线路、可交换的比特等.
+
     Args:
-        AG：硬件拓扑
-        DG：量子线路拓扑
-        num_q_log：逻辑比特数
-        num_q_phy：物理比特数
-        log_to_phy：逻辑比特到物理比特的映射表
-        phy_to_log：物理比特到逻辑比特的映射表
-        front_layer：量子线路拓扑中最前面一层的所有节点（门）
+        AG：硬件拓扑。
+        DG：量子线路拓扑。
+        num_q_log：逻辑比特数。
+        num_q_phy：物理比特数。
+        log_to_phy：逻辑比特到物理比特的映射表。
+        phy_to_log：物理比特到逻辑比特的映射表。
+        front_layer：量子线路拓扑中最前面一层的所有节点（门）。
     """
 
     def __init__(self, DG, AG, front_cir_from=None):
-        """
-        Parameters
-        ----------
-        map_list : TYPE
-            index: logical qubits
-            value: physical qubits
-        DG : TYPE
-            DESCRIPTION.
+        """Initialize FrontCircuit.
 
-        Returns
-        -------
-        None.
-
+        Args:
+            DG: Dependency graph of the circuit.
+            AG: Architecture graph of the quantum machine.
+            front_cir_from: Optional FrontCircuit to copy from.
         """
         self.DG = DG
         self.AG = AG
@@ -111,7 +104,7 @@ class FrontCircuit:
         return self.__hash
 
     def assign_mapping_from_list(self, map_list):
-        """here the indices in map_list represent logical qubits"""
+        """Here the indices in map_list represent logical qubits."""
         for q_log in range(self.num_q_log):
             q_phy = map_list[q_log]
             self.log_to_phy[q_log] = q_phy
@@ -124,7 +117,7 @@ class FrontCircuit:
         return self.assign_mapping_from_list(map_list)
 
     def swap(self, swap_phy):
-        """交换门插入，此时需要更新映射表"""
+        """交换门插入，此时需要更新映射表."""
         q_phy0, q_phy1 = swap_phy
         q_log0, q_log1 = self.phy_to_log[q_phy0], self.phy_to_log[q_phy1]
         # update mapping
@@ -141,14 +134,14 @@ class FrontCircuit:
         return FrontCircuit(self.DG, self.AG, self)
 
     def swap_new(self, swap_phy):
-        """use a SWAP to get a new FrontCircuit object"""
+        """Use a SWAP to get a new FrontCircuit object."""
         # new_cir = FrontCircuit(self.DG, self.AG, self)
         new_cir = self.copy()
         exe_gates = new_cir.swap(swap_phy)
         return new_cir, exe_gates
 
     def _executable(self, node):
-        """量子比特耦合性检查，判断在当前映射表下两个逻辑比特对应的物理比特是否可做两比特门"""
+        """量子比特耦合性检查，判断在当前映射表下两个逻辑比特对应的物理比特是否可做两比特门."""
         qubits = self.DG.nodes[node]["qubits"]
         if len(qubits) == 1:
             return True
@@ -160,16 +153,16 @@ class FrontCircuit:
         return False
 
     def execute_front_layer(self):
-        """
-        Execute all gates in the front layer regardless mapping
-        However, we won't executable the following possible executable gates'
+        """Execute all gates in the front layer regardless of mapping.
+
+        However, we won't execute the following possible executable gates.
         """
         layer = self.front_layer.copy()
         for node_dg in layer:
             self.execute_gate(node_dg)
 
     def execute_gates(self):
-        """find all executable gates and execute them"""
+        """Find all executable gates and execute them."""
         exe_gates = []
         i = 0
         max_i = len(self.front_layer) - 1
@@ -185,8 +178,11 @@ class FrontCircuit:
         return exe_gates
 
     def execute_gate_index(self, front_layer_i):
-        """We only execute specified gate and will not execute
-        its successors"""
+        """Execute specified gate without executing its successors.
+
+        Args:
+            front_layer_i: Index of the gate in the front layer.
+        """
         self.num_remain_nodes -= 1
         exe_node = self.front_layer.pop(front_layer_i)
         qubits = self.DG.nodes[exe_node]["qubits"]
@@ -195,8 +191,8 @@ class FrontCircuit:
         for q in qubits:
             self.first_gates[q] = -1
         # deal with the successors of executed node
-        ## here we assume the indices of nodes in DG follows the topological
-        ## order
+        # here we assume the indices of nodes in DG follows the topological
+        # order
         for node in nodes_next:
             for q in self.DG.nodes[node]["qubits"]:
                 if self.first_gates[q] == -1:
@@ -210,19 +206,24 @@ class FrontCircuit:
                 self.front_layer.append(node)
 
     def execute_gate(self, node_DG):
-        """We only execute specified gate and will not execute
-        its successors"""
+        """Execute specified gate without executing its successors.
+
+        Args:
+            node_DG: Node in the DG to be executed.
+        """
         front_layer_i = self.front_layer.index(node_DG)
         self.execute_gate_index(front_layer_i)
 
     def execute_gate_remote(self, node_DG):
-        """
-        Execute a gate (node in DG) with remote CNOT and then execute all its
-        successors
-        Return:
-            list: [(cx1), cx2, ...] physical CNOTs needed for the remote gates
+        """Execute a gate with remote CNOT and then execute all its successors.
+
+        Args:
+            node_DG: Node in DG to be executed with remote CNOT.
+
+        Returns:
+            list: [(cx1), cx2, ...] physical CNOTs needed for remote gates.
             list: [node1, node2, ...] newly executed nodes in DG excluding
-            the input node_DG
+                the input node_DG.
         """
         # construct remote CNOTs
         qubits_log = self.DG.nodes[node_DG]["qubits"]
@@ -246,17 +247,22 @@ class FrontCircuit:
         return remote_cxs, exe_nodes
 
     def pertinent_swaps(self, score_layer):
-        """
-        获取当前可插入的交换门（选择哪两个比特进行交换）
-        score_layer:
-            # of layers needed to be considered to provide a score
-            # for each SWAP
+        """Get available swap gates that can be inserted now.
+
+        Args:
+            score_layer: Number of layers to consider for scoring each SWAP.
+
+        Returns:
+            swaps_phy: List of swap gates.
+            h_scores: List of scores for each swap.
+            h_scores_front: List of front scores for each swap.
         """
         swaps_phy = []
         h_scores = []
         h_scores_front = []
         qubits_phy_node = [-1] * self.num_q_phy
-        # 交换只发生在当前层中剩余的所有门对应的比特中，先统计出所有可交换的比特
+        # 交换只发生在当前层中剩余的所有门对应的比特中，
+        # 先统计出所有可交换的比特
         for node in self.front_layer:
             q0, q1 = self.DG.nodes[node]["qubits"]
             q0_phy = self.log_to_phy[q0]
@@ -342,9 +348,14 @@ class FrontCircuit:
         print("lenght for cxs in front layer", length)
 
     def get_future_cx_fix_num(self, num_cx):
-        """
-        Get a specific number of unexecuted cx info
-        (the corresponding operand physical qubits)
+        """Get a specific number of unexecuted cx info.
+
+        Args:
+            num_cx: Number of CX gates to get.
+
+        Returns:
+            cx0: List of first operand physical qubits.
+            cx1: List of second operand physical qubits.
         """
         first_gates_back_up = self.first_gates.copy()
         front_layer_back_up = self.front_layer.copy()
@@ -370,10 +381,16 @@ class FrontCircuit:
         return cx0, cx1
 
     def get_future_cx_fix_num_with_single(self, num_cx):
-        """
-        sim_nodes is a list containing all nodes in DG to be simulated
-        single_gate: number of single qubit gates after operands
-        of each CX gate
+        """Get a specific number of unexecuted cx info with single gate info.
+
+        Args:
+            num_cx: Number of CX gates to get.
+
+        Returns:
+            cx0: List of first operand physical qubits.
+            cx1: List of second operand physical qubits.
+            single_gate0: Number of single qubit gates for first qubit.
+            single_gate1: Number of single qubit gates for second qubit.
         """
         first_gates_back_up = self.first_gates.copy()
         front_layer_back_up = self.front_layer.copy()
@@ -416,10 +433,14 @@ class FrontCircuit:
         return cx0, cx1, single_gate0, single_gate1
 
     def get_future_cx_fix_num2(self, num_cx):
-        """
-        Get a specific number of unexecuted cx info
-        (the corresponding operand physical qubits)
-        this mehtod obtain gates layer by layer
+        """Get a specific number of unexecuted cx info layer by layer.
+
+        Args:
+            num_cx: Number of CX gates to get.
+
+        Returns:
+            cx0: List of first operand physical qubits.
+            cx1: List of second operand physical qubits.
         """
         first_gates_back_up = self.first_gates.copy()
         front_layer_back_up = self.front_layer.copy()
@@ -441,11 +462,17 @@ class FrontCircuit:
         return cx0, cx1
 
     def get_future_cx_fix_num3(self, num_cx):
-        """
-        Get a specific number of unexecuted cx info
-        (the corresponding operand physical qubits)
-        this mehtod obtain gates layer by layer and
-        return tuples dividing gates according their layers
+        """Get a specific number of unexecuted cx info divided by layers.
+
+        This method obtains gates layer by layer and returns tuples dividing
+        gates according their layers.
+
+        Args:
+            num_cx: Number of CX gates to get.
+
+        Returns:
+            list: List of tuples where each tuple contains CX gates in one
+                layer.
         """
         first_gates_back_up = self.first_gates.copy()
         front_layer_back_up = self.front_layer.copy()
@@ -485,25 +512,14 @@ class FrontCircuit:
             return False
 
     def get_cir_matrix(self, num_layer):
-        """
-        create a numpy matrix to represent the circuit with
-        multi-layers containing only CNOT gates
-        input:
-            num_q_log -> total number of logical qubits. E.g., 4
-            CNOT_list -> list of CNOT contains tuples showing
-            input logical qubits
-                         for corresponding CNOT gates.
-                         E.g., [(0, 2), (3, 1), (2, 3) ...]
-            output:
-                [0 0 1 0
-                 0 0 0 1
-                 1 0 0 0
-                 0 1 0 0]
-                [0 0 0 0
-                 0 0 0 0
-                 0 0 0 1
-                 0 0 1 0]
-                ......
+        """Create a numpy matrix representing the circuit with CNOT gates.
+
+        Args:
+            num_layer: Number of layers.
+
+        Returns:
+            cir_map: Numpy matrix representing the circuit.
+            i: Actual number of layers filled.
         """
         cir_map = np.zeros([num_layer, self.num_q_phy, self.num_q_phy]).astype(
             np.float32

@@ -33,10 +33,10 @@ from qcos.engine.qubo.qubo_precision import (
 
 
 class TestQUBOPrecision:
-    """Unit testing for qubo precision"""
+    """Unit testing for qubo precision."""
 
     def test_find_matrix_gcd(self):
-        """Test finding GCD of matrix elements"""
+        """Test finding GCD of matrix elements."""
         # Test with positive integers
         matrix1 = np.array([[2, 4, 6], [8, 10, 12]])
         assert find_matrix_gcd(matrix1) == 2
@@ -54,7 +54,7 @@ class TestQUBOPrecision:
         assert find_matrix_gcd(matrix4) == 4
 
     def test_scale_to_integer_matrix(self):
-        """Test scaling matrix to integer matrix"""
+        """Test scaling matrix to integer matrix."""
         # Test with integer matrix
         int_matrix = np.array([[1, 2], [3, 4]])
         scaled = scale_to_integer_matrix(int_matrix)
@@ -72,7 +72,7 @@ class TestQUBOPrecision:
         assert np.array_equal(scaled, zero_matrix)
 
     def test_is_int_matrix(self):
-        """Test integer matrix validation"""
+        """Test integer matrix validation."""
         # Valid int8 matrix
         valid_int8 = np.array([[1, 2], [-128, 127]])
         assert is_int_matrix(valid_int8, 8)
@@ -86,7 +86,7 @@ class TestQUBOPrecision:
         assert not is_int_matrix(non_int, 8)
 
     def test_check_matrix(self):
-        """Test check_matrix"""
+        """Test check_matrix."""
         # Valid QUBO matrix
         valid_qubo = [[1, 0.5], [0.5, 2]]
         success, errors = check_matrix(valid_qubo)
@@ -109,7 +109,7 @@ class TestQUBOPrecision:
         assert "Abnormal matrix" in errors
 
     def test_check_qubo_matrix_bit_width(self):
-        """Test QUBO matrix bit width checking"""
+        """Test QUBO matrix bit width checking."""
         # Valid QUBO matrix
         valid_qubo = np.array([[1, 0.5], [0.5, 2]])
         success, errors = check_qubo_matrix_bit_width(valid_qubo, 8)
@@ -131,7 +131,7 @@ class TestQUBOPrecision:
             assert "Test error" in errors[0]
 
     def test_qubo_ising_matrix_conversion(self):
-        """Test conversion between QUBO and Ising matrix"""
+        """Test conversion between QUBO and Ising matrix."""
         # Test QUBO to Ising conversion
         qubo_matrix = np.array([[1, 0.5], [0.5, 2]])
         ising_matrix = qubo_matrix_to_ising_matrix(qubo_matrix)
@@ -152,7 +152,7 @@ class TestQUBOPrecision:
         assert np.array_equal(qubo_matrix, reconstructed_qubo)
 
     def test_qubo_ising_matrix_conversion_consistency(self):
-        """Test consistency of QUBO-Ising conversions"""
+        """Test consistency of QUBO-Ising conversions."""
         # Test with known values
         qubo_matrix = np.array([[2, -1], [-1, 3]])
 
@@ -164,7 +164,7 @@ class TestQUBOPrecision:
         assert np.array_equal(qubo_matrix, round_trip_qubo)
 
     def test_get_spins_num(self):
-        """Test spin variable calculation"""
+        """Test spin variable calculation."""
         matrix = np.array([[0, 10, 0], [10, 0, 20], [0, 20, 0]])
         max_value = 15
 
@@ -178,7 +178,7 @@ class TestQUBOPrecision:
         assert total_spins >= matrix.shape[0]
 
     def test_precision_reduction(self):
-        """Test precision reduction algorithm"""
+        """Test precision reduction algorithm."""
         ising_matrix = np.array([[0, 10, 5], [10, 0, 15], [5, 15, 0]])
         # don't need precision reduction
         param_bit = 8
@@ -218,7 +218,7 @@ class TestQUBOPrecision:
         assert np.array_equal(expect_ising_matrix, new_ising)
 
     def test_precision_reduction_edge_cases(self):
-        """Test precision reduction with edge cases"""
+        """Test precision reduction with edge cases."""
         # Zero matrix
         zero_matrix = np.zeros((3, 3))
         new_ising, last_idx, total_spins = precision_reduction(zero_matrix, 8)
@@ -233,7 +233,7 @@ class TestQUBOPrecision:
         assert np.array_equal(last_idx, np.array([0, 1, 2]))
 
     def test_process_qubo_solution(self):
-        """Test QUBO solution processing"""
+        """Test QUBO solution processing."""
         # Mock job results
         job_results = {
             "results": {
@@ -266,7 +266,7 @@ class TestQUBOPrecision:
             assert solution_data["quboValue"] == 2.5
 
     def test_process_qubo_solution_multiple_solutions(self):
-        """Test processing multiple QUBO solutions"""
+        """Test processing multiple QUBO solutions."""
         job_results = {
             "results": {
                 "out_data": [
@@ -300,7 +300,7 @@ class TestQUBOPrecision:
             )
 
     def test_edge_cases(self):
-        """Test various edge cases"""
+        """Test various edge cases."""
         # Empty matrix
         empty_matrix = np.array([]).reshape(0, 0)
         scaled = scale_to_integer_matrix(empty_matrix)

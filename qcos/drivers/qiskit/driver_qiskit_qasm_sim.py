@@ -24,7 +24,7 @@ from qcos.drivers.driver_base import DriverBase
 
 
 class DriverQiskitQasmSim(DriverBase):
-    """Qiskit Qasm 模拟器驱动"""
+    """Qiskit Qasm 模拟器驱动."""
 
     verbose = False
 
@@ -48,11 +48,11 @@ class DriverQiskitQasmSim(DriverBase):
         self._final_response = None
 
     def init_driver(self):
-        """Init driver"""
+        """Init driver."""
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def validate_driver_configs(self, configs):
-        """Validate driver configs
+        """Validate driver configs.
 
         Args:
             configs: configs dictionary
@@ -66,18 +66,17 @@ class DriverQiskitQasmSim(DriverBase):
         return success, err_msg
 
     def close_driver(self):
-        """Close driver"""
+        """Close driver."""
 
     def fetch_configs(self):
-        """
-        Fetch configs
+        """Fetch configs.
 
         Returns:
             remote transpiler configs
         """
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
-        """Run job
+        """Run job.
 
         Args:
             job_id: job ID

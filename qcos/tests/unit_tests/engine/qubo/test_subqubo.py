@@ -24,7 +24,7 @@ from qcos.engine.qubo import SubQUBOMultiSolution, QUBOSolution
 
 
 class TestSubQUBOMultiSolution:
-    """Unit testing for class SubQUBOMultiSolution"""
+    """Unit testing for class SubQUBOMultiSolution."""
 
     @classmethod
     def setup_class(cls):
@@ -52,7 +52,7 @@ class TestSubQUBOMultiSolution:
         )
 
     def test_initialization(self):
-        """Test class initialization"""
+        """Test class initialization."""
         # Testing default parameter initialization
         solver_default = SubQUBOMultiSolution()
         assert solver_default.N_I == 20
@@ -70,23 +70,23 @@ class TestSubQUBOMultiSolution:
         assert self.solver.max_converged_num == 2
 
     def test_set_subqubo_size(self):
-        """Test Settings subqubo size"""
+        """Test Settings subqubo size."""
         self.solver.set_subqubo_size(10)
         assert self.solver.subqubo_size == 10
 
     def test_set_qubo_matrix(self):
-        """Test Settings QUBO Matrix"""
+        """Test Settings QUBO Matrix."""
         new_qubo = np.array([[2, 0.1], [0.1, 1]])
         self.solver.set_qubo_matrix(new_qubo)
         assert np.array_equal(self.solver.qubo, new_qubo)
 
     def test_get_max_converged_num(self):
-        """Test to obtain the maximum number of iterations"""
+        """Test to obtain the maximum number of iterations."""
         result = self.solver.get_max_converged_num()
         assert result == 2
 
     def test_init_instance_pool(self):
-        """Test initialization instance pool"""
+        """Test initialization instance pool."""
         pool = self.solver.init_instance_pool()
 
         # Check pool size
@@ -103,7 +103,7 @@ class TestSubQUBOMultiSolution:
             )
 
     def test_find_best_solution(self):
-        """Testing to find the optimal solution"""
+        """Testing to find the optimal solution."""
         # Create test solution pool
         pool = [
             QUBOSolution(np.array([0, 0, 0]), energy=0.0),  # Optimal
@@ -121,7 +121,7 @@ class TestSubQUBOMultiSolution:
         assert np.array_equal(order_idx, [0, 2, 1])
 
     def test_optimize_solution(self):
-        """Test optimization of individual solutions"""
+        """Test optimization of individual solutions."""
         original_solution = QUBOSolution(
             solution=np.array([1, 1, 1]), energy=10.0
         )
@@ -130,7 +130,7 @@ class TestSubQUBOMultiSolution:
         assert optimized.energy <= 10
 
     def test_optimize_solution_pool(self):
-        """Test optimization solution pool"""
+        """Test optimization solution pool."""
         # Create a test solution pool
         pool = [
             QUBOSolution(np.array([1, 1, 1]), energy=10.0),
@@ -153,7 +153,7 @@ class TestSubQUBOMultiSolution:
             assert updated_pool[1].energy == 0.0
 
     def test_extract_subqubo(self):
-        """Test extraction of sub-QUBO"""
+        """Test extraction of sub-QUBO."""
         tmp_solution = QUBOSolution(np.array([1, 0, 1]), energy=4.3)
         extracted_index = [0, 2]  # Extract the 0th and 2nd variables
         non_extracted_index = [1]  # Do not extract the first variable
@@ -174,7 +174,7 @@ class TestSubQUBOMultiSolution:
         assert subqubo[0][0] == pytest.approx(expected_00)
 
     def test_construct_subqubo(self):
-        """Test building sub-QUBO"""
+        """Test building sub-QUBO."""
         # Create N_S solutions
         n_s_pool = [
             QUBOSolution(np.array([1, 0, 0]), energy=1.0),
@@ -194,7 +194,7 @@ class TestSubQUBOMultiSolution:
         assert len(subqubo) == self.solver.subqubo_size
 
     def test_merge_solution(self):
-        """Test merge solution"""
+        """Test merge solution."""
         tmp_solution = QUBOSolution(np.array([1, 1, 1]), energy=10.0)
         sub_solution = [0, 1]
         extracted_index = [0, 2]
@@ -211,7 +211,7 @@ class TestSubQUBOMultiSolution:
         )
 
     def test_create_sub_solution_pools(self):
-        """Test creating a sub-solution pool"""
+        """Test creating a sub-solution pool."""
         # Create the main solution pool
         main_pool = [
             QUBOSolution(np.array([1, 0, 0]), energy=1.0),
@@ -231,7 +231,7 @@ class TestSubQUBOMultiSolution:
             assert len(pool) == self.solver.N_S
 
     def test_update_solution_pool(self):
-        """Test update solution pool"""
+        """Test update solution pool."""
         # Initial solution pool
         solution_pool = [
             QUBOSolution(np.array([1, 1, 1]), energy=10.0),  # 最差
@@ -254,7 +254,7 @@ class TestSubQUBOMultiSolution:
         assert energies == sorted(energies)
 
     def test_update_solution_pool_overflow(self):
-        """Testing the overflow condition of the solution pool"""
+        """Testing the overflow condition of the solution pool."""
         # Create exactly N_I solutions
         solution_pool = [
             QUBOSolution(np.array([0, 0, 0]), energy=float(i))
@@ -281,7 +281,7 @@ class TestSubQUBOMultiSolution:
 
     @patch("numpy.random.randint")
     def test_deterministic_initialization(self, mock_randint):
-        """Test deterministic initialization"""
+        """Test deterministic initialization."""
         mock_randint.return_value = np.array([1, 0, 1])
 
         pool = self.solver.init_instance_pool()
@@ -291,14 +291,14 @@ class TestSubQUBOMultiSolution:
             assert np.array_equal(solution.solution, np.array([1, 0, 1]))
 
     def test_empty_solution_pool(self):
-        """Testing the situation of the empty solution pool"""
+        """Testing the situation of the empty solution pool."""
         empty_pool = []
 
         with pytest.raises(IndexError):
             self.solver.find_best_solution(empty_pool)
 
     def test_single_solution_pool(self):
-        """Test for the case with only one solution"""
+        """Test for the case with only one solution."""
         single_pool = [QUBOSolution(np.array([1, 0, 1]), energy=5.0)]
 
         best, order = self.solver.find_best_solution(single_pool)
@@ -307,7 +307,7 @@ class TestSubQUBOMultiSolution:
         assert np.array_equal(order, [0])
 
     def test_large_qubo_matrix(self):
-        """Testing large QUBO matrix"""
+        """Testing large QUBO matrix."""
         large_qubo = np.random.rand(10, 10)
         large_qubo = (large_qubo + large_qubo.T) / 2
 

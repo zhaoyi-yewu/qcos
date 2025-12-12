@@ -44,7 +44,7 @@ from qcos.transpiler.transpiler_base import TranspilerBase
 
 
 class TranspilerQiskit(TranspilerBase):
-    """Transpiler Class for Qiskit"""
+    """Transpiler Class for Qiskit."""
 
     def __init__(self, opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL):
         super().__init__()
@@ -76,10 +76,10 @@ class TranspilerQiskit(TranspilerBase):
         self.transpiler_options_schema = {Optional("optimization_level"): int}
 
     def init_transpiler(self):
-        """Init transpiler"""
+        """Init transpiler."""
 
     def parse(self, src_code_dict: dict):
-        """Parse src_code_dict
+        """Parse src_code_dict.
 
         Args:
             src_code_dict: src_code_dict
@@ -113,7 +113,7 @@ class TranspilerQiskit(TranspilerBase):
     def transpile(
         self, parse_result: qiskit.QuantumCircuit, supp_basis_gates: list
     ):
-        """Transpile codes
+        """Transpile codes.
 
         Args:
             parse_result(QuantumCircuit): parse result

@@ -17,7 +17,7 @@
 
 from unittest.mock import Mock, patch
 
-from qcos.transpiler.cmss.mapping.bplus_tree import (
+from qcos.transpiler.cmss.mapping.aggregate.bplus_tree import (
     BPlusTreeNode,
     BPlusTreeInternalNode,
     BPlusTreeLeafNode,
@@ -31,17 +31,17 @@ from qcos.transpiler.cmss.mapping.bplus_tree import (
 
 
 class TestBPlusTreeNode:
-    """测试B+树节点基类"""
+    """测试B+树节点基类."""
 
     def test_init_leaf_node(self):
-        """测试初始化叶子节点"""
+        """测试初始化叶子节点."""
         node = BPlusTreeNode(is_leaf=True)
         assert node.is_leaf is True
         assert not node.keys
         assert node.parent is None
 
     def test_init_internal_node(self):
-        """测试初始化内部节点"""
+        """测试初始化内部节点."""
         node = BPlusTreeNode(is_leaf=False)
         assert node.is_leaf is False
         assert not node.keys
@@ -49,10 +49,10 @@ class TestBPlusTreeNode:
 
 
 class TestBPlusTreeInternalNode:
-    """测试B+树内部节点"""
+    """测试B+树内部节点."""
 
     def test_init(self):
-        """测试内部节点初始化"""
+        """测试内部节点初始化."""
         node = BPlusTreeInternalNode()
         assert node.is_leaf is False
         assert not node.keys
@@ -60,7 +60,7 @@ class TestBPlusTreeInternalNode:
         assert node.parent is None
 
     def test_insert_key_child(self):
-        """测试插入键值对和子节点"""
+        """测试插入键值对和子节点."""
         node = BPlusTreeInternalNode()
 
         # 创建子节点
@@ -87,7 +87,7 @@ class TestBPlusTreeInternalNode:
         assert child3.parent == node
 
     def test_split(self):
-        """测试内部节点分裂"""
+        """测试内部节点分裂."""
         node = BPlusTreeInternalNode()
 
         # 创建子节点
@@ -121,10 +121,10 @@ class TestBPlusTreeInternalNode:
 
 
 class TestBPlusTreeLeafNode:
-    """测试B+树叶子节点"""
+    """测试B+树叶子节点."""
 
     def test_init(self):
-        """测试叶子节点初始化"""
+        """测试叶子节点初始化."""
         node = BPlusTreeLeafNode()
         assert node.is_leaf is True
         assert not node.keys
@@ -132,7 +132,7 @@ class TestBPlusTreeLeafNode:
         assert node.next_leaf is None
 
     def test_insert_key_value(self):
-        """测试插入键值对"""
+        """测试插入键值对."""
         node = BPlusTreeLeafNode()
 
         # 插入键值对
@@ -151,7 +151,7 @@ class TestBPlusTreeLeafNode:
         assert node.values == [[4, 5], [6, 7, 8], [1, 2, 3]]
 
     def test_split(self):
-        """测试叶子节点分裂"""
+        """测试叶子节点分裂."""
         node = BPlusTreeLeafNode()
 
         # 插入多个键值对
@@ -182,10 +182,10 @@ class TestBPlusTreeLeafNode:
 
 
 class TestBPlusTree:
-    """测试B+树主类"""
+    """测试B+树主类."""
 
     def test_init(self):
-        """测试B+树初始化"""
+        """测试B+树初始化."""
         tree = BPlusTree(order=3)
         assert tree.order == 3
         assert tree.min_keys == 2
@@ -193,13 +193,13 @@ class TestBPlusTree:
         assert tree.root.is_leaf is True
 
     def test_init_default_order(self):
-        """测试默认阶数初始化"""
+        """测试默认阶数初始化."""
         tree = BPlusTree()
         assert tree.order == 3
         assert tree.min_keys == 2
 
     def test_insert_single(self):
-        """测试插入单个键值对"""
+        """测试插入单个键值对."""
         tree = BPlusTree(order=3)
         tree.insert(5, [1, 2, 3])
 
@@ -208,7 +208,7 @@ class TestBPlusTree:
         assert tree.root.values == [[1, 2, 3]]
 
     def test_insert_multiple_no_split(self):
-        """测试插入多个键值对但不分裂"""
+        """测试插入多个键值对但不分裂."""
         tree = BPlusTree(order=5)
         tree.insert(3, [1, 2])
         tree.insert(1, [3, 4])
@@ -219,7 +219,7 @@ class TestBPlusTree:
         assert tree.root.values == [[3, 4], [1, 2], [5, 6]]
 
     def test_insert_leaf_split(self):
-        """测试叶子节点分裂"""
+        """测试叶子节点分裂."""
         tree = BPlusTree(order=3)
 
         # 插入4个键值对，触发分裂
@@ -243,7 +243,7 @@ class TestBPlusTree:
         assert right_child.keys == [3, 4]
 
     def test_find_leaf(self):
-        """测试查找叶子节点"""
+        """测试查找叶子节点."""
         tree = BPlusTree(order=3)
 
         # 插入数据
@@ -257,7 +257,7 @@ class TestBPlusTree:
         assert leaf.keys == [1, 3, 5]
 
     def test_search_candidates_leaf_root(self):
-        """测试在叶子根节点中搜索候选区域"""
+        """测试在叶子根节点中搜索候选区域."""
         tree = BPlusTree(order=3)
 
         # 插入数据
@@ -272,7 +272,7 @@ class TestBPlusTree:
         assert [7, 8, 9, 10, 11, 12] in candidates
 
     def test_search_candidates_no_match(self):
-        """测试搜索无匹配的候选区域"""
+        """测试搜索无匹配的候选区域."""
         tree = BPlusTree(order=3)
 
         # 插入数据
@@ -284,7 +284,7 @@ class TestBPlusTree:
         assert len(candidates) == 0
 
     def test_get_all_candidates(self):
-        """测试获取所有候选区域"""
+        """测试获取所有候选区域."""
         tree = BPlusTree(order=3)
 
         # 插入数据
@@ -303,7 +303,7 @@ class TestBPlusTree:
         assert 6 in keys
 
     def test_print_tree(self):
-        """测试打印树结构"""
+        """测试打印树结构."""
         tree = BPlusTree(order=3)
         tree.insert(1, [1])
         tree.insert(2, [2])
@@ -312,7 +312,7 @@ class TestBPlusTree:
         tree.print_tree()
 
     def test_complex_insertion_and_search(self):
-        """测试复杂的插入和搜索场景"""
+        """测试复杂的插入和搜索场景."""
         tree = BPlusTree(order=3)
 
         # 插入多个数据，触发多次分裂
@@ -328,7 +328,7 @@ class TestBPlusTree:
             assert len(candidate) >= 2
 
     def test_internal_node_split(self):
-        """测试内部节点分裂"""
+        """测试内部节点分裂."""
         tree = BPlusTree(order=3)
 
         # 插入足够多的数据以触发内部节点分裂
@@ -344,10 +344,10 @@ class TestBPlusTree:
 
 
 class TestBPlusTreeHelperFunctions:
-    """测试B+树辅助函数"""
+    """测试B+树辅助函数."""
 
     def test_build_bplus_tree_from_hierarchy(self):
-        """测试从层次树构建B+树"""
+        """测试从层次树构建B+树."""
         # 创建模拟的层次树
         mock_node1 = Mock()
         mock_node1.ignore = False
@@ -385,7 +385,7 @@ class TestBPlusTreeHelperFunctions:
         assert 7 in keys  # mock_root
 
     def test_build_bplus_tree_with_ignored_nodes(self):
-        """测试构建B+树时忽略被标记的节点"""
+        """测试构建B+树时忽略被标记的节点."""
         # 创建模拟的层次树，包含被忽略的节点
         mock_ignored_node = Mock()
         mock_ignored_node.ignore = True
@@ -423,7 +423,7 @@ class TestBPlusTreeHelperFunctions:
         assert 9 not in all_qubits
 
     def test_get_block_bplus_success(self):
-        """测试成功获取候选区域"""
+        """测试成功获取候选区域."""
         # 创建模拟的层次树
         mock_ht = Mock()
         mock_ht.bplus_tree = None
@@ -442,19 +442,19 @@ class TestBPlusTreeHelperFunctions:
         mock_ht.average_fidelity = mock_average_fidelity
 
         with patch(
-            "qcos.transpiler.cmss.mapping.bplus_tree."
+            "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
             "build_bplus_tree_from_hierarchy"
         ) as mock_build:
             mock_build.return_value = mock_bplus_tree
 
             with patch(
-                "qcos.transpiler.cmss.mapping.bplus_tree."
+                "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
                 "_find_node_with_qubits"
             ) as mock_find:
                 mock_find.return_value = Mock()
 
                 with patch(
-                    "qcos.transpiler.cmss.mapping.bplus_tree."
+                    "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
                     "_remove_used_nodes"
                 ):
                     result = get_block_bplus(mock_ht, 3)
@@ -467,7 +467,7 @@ class TestBPlusTreeHelperFunctions:
                     )
 
     def test_get_block_bplus_no_candidates(self):
-        """测试没有候选区域的情况"""
+        """测试没有候选区域的情况."""
         mock_ht = Mock()
         mock_ht.bplus_tree = None
 
@@ -475,7 +475,7 @@ class TestBPlusTreeHelperFunctions:
         mock_bplus_tree.search_candidates.return_value = []
 
         with patch(
-            "qcos.transpiler.cmss.mapping.bplus_tree."
+            "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
             "build_bplus_tree_from_hierarchy"
         ) as mock_build:
             mock_build.return_value = mock_bplus_tree
@@ -487,7 +487,7 @@ class TestBPlusTreeHelperFunctions:
             mock_build.assert_called_once_with(mock_ht)
 
     def test_find_node_with_qubits(self):
-        """测试查找包含指定量子比特的节点"""
+        """测试查找包含指定量子比特的节点."""
         # 创建模拟节点
         mock_node = Mock()
         mock_node.ignore = False
@@ -509,7 +509,7 @@ class TestBPlusTreeHelperFunctions:
         assert result is None
 
     def test_find_node_with_qubits_recursive(self):
-        """测试递归查找包含指定量子比特的节点"""
+        """测试递归查找包含指定量子比特的节点."""
         # 创建子节点
         mock_child = Mock()
         mock_child.ignore = False
@@ -529,7 +529,7 @@ class TestBPlusTreeHelperFunctions:
         assert result == mock_child
 
     def test_ignore_node(self):
-        """测试忽略节点"""
+        """测试忽略节点."""
         # 创建节点层次结构
         mock_child1 = Mock()
         mock_child1.ignore = False
@@ -555,14 +555,15 @@ class TestBPlusTreeHelperFunctions:
         assert mock_child2.ignore is True
 
     def test_remove_used_nodes(self):
-        """测试移除已使用的节点"""
+        """测试移除已使用的节点."""
         # 创建模拟的层次树
         mock_ht = Mock()
         mock_ht.root = Mock()
         mock_ht.bplus_tree = None
 
         with patch(
-            "qcos.transpiler.cmss.mapping.bplus_tree._find_node_with_qubits"
+            "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
+            "_find_node_with_qubits"
         ) as mock_find:
             mock_target_node = Mock()
             mock_target_node.qubits = [1, 2, 3]
@@ -570,10 +571,11 @@ class TestBPlusTreeHelperFunctions:
             mock_find.return_value = mock_target_node
 
             with patch(
-                "qcos.transpiler.cmss.mapping.bplus_tree._ignore_node"
+                "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
+                "_ignore_node"
             ) as mock_ignore:
                 with patch(
-                    "qcos.transpiler.cmss.mapping.bplus_tree."
+                    "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
                     "build_bplus_tree_from_hierarchy"
                 ) as mock_build:
                     _remove_used_nodes(mock_ht, [1, 2, 3])
@@ -584,12 +586,13 @@ class TestBPlusTreeHelperFunctions:
                     mock_build.assert_called_once_with(mock_ht)
 
     def test_remove_used_nodes_no_target(self):
-        """测试移除已使用节点时找不到目标节点"""
+        """测试移除已使用节点时找不到目标节点."""
         mock_ht = Mock()
         mock_ht.root = Mock()
 
         with patch(
-            "qcos.transpiler.cmss.mapping.bplus_tree._find_node_with_qubits"
+            "qcos.transpiler.cmss.mapping.aggregate.bplus_tree."
+            "_find_node_with_qubits"
         ) as mock_find:
             mock_find.return_value = None
 
@@ -600,22 +603,22 @@ class TestBPlusTreeHelperFunctions:
 
 
 class TestBPlusTreeEdgeCases:
-    """测试B+树边界情况"""
+    """测试B+树边界情况."""
 
     def test_empty_tree_search(self):
-        """测试空树搜索"""
+        """测试空树搜索."""
         tree = BPlusTree()
         candidates = tree.search_candidates(1)
         assert not candidates
 
     def test_empty_tree_get_all(self):
-        """测试空树获取所有候选区域"""
+        """测试空树获取所有候选区域."""
         tree = BPlusTree()
         all_candidates = tree.get_all_candidates()
         assert not all_candidates
 
     def test_single_node_tree(self):
-        """测试单节点树"""
+        """测试单节点树."""
         tree = BPlusTree()
         tree.insert(1, [1, 2])
 
@@ -624,7 +627,7 @@ class TestBPlusTreeEdgeCases:
         assert [1, 2] in candidates
 
     def test_duplicate_keys(self):
-        """测试重复键值"""
+        """测试重复键值."""
         tree = BPlusTree()
         tree.insert(1, [1, 2])
         tree.insert(1, [3, 4])  # 重复键值
@@ -634,7 +637,7 @@ class TestBPlusTreeEdgeCases:
         assert len(all_candidates) == 2
 
     def test_large_order_tree(self):
-        """测试大阶数B+树"""
+        """测试大阶数B+树."""
         tree = BPlusTree(order=10)
 
         # 插入多个数据
@@ -646,7 +649,7 @@ class TestBPlusTreeEdgeCases:
         assert len(candidates) > 0
 
     def test_find_leaf_with_internal_root(self):
-        """测试在内部根节点中查找叶子节点"""
+        """测试在内部根节点中查找叶子节点."""
         tree = BPlusTree(order=3)
 
         # 插入足够数据触发分裂
@@ -661,7 +664,7 @@ class TestBPlusTreeEdgeCases:
         assert isinstance(leaf, BPlusTreeLeafNode)
 
     def test_search_candidates_with_internal_root(self):
-        """测试在内部根节点中搜索候选区域"""
+        """测试在内部根节点中搜索候选区域."""
         tree = BPlusTree(order=3)
 
         # 插入数据触发分裂

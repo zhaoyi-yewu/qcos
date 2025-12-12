@@ -29,9 +29,7 @@ def cal_cost_matrix(
     shortest_length_G: dict,
     qubits_logic: tuple,
 ):
-    """
-    Estimate the cost of inserting swaps in the circuit under the current
-    mapping.
+    """Estimate the cost of inserting swaps under the current mapping.
 
     Args:
         cost_m (np.ndarray): cost of matrix.
@@ -117,7 +115,7 @@ def init_cost_matrix(
 
 
 def init_para():
-    """Initialize parameters for simulated annealing"""
+    """Initialize parameters for simulated annealing."""
     alpha = 0.95
     t = (1, 100)
     markovlen = 70

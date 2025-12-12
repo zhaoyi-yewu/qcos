@@ -20,7 +20,7 @@ from enum import Enum
 
 
 class Node:
-    """抽象语法树节点类"""
+    """抽象语法树节点类."""
 
     def __init__(
         self,
@@ -29,8 +29,7 @@ class Node:
         leaf: T.Any = None,
         pos=None,
     ):
-        """
-        初始化抽象语法树节点，设置节点类型以及节点信息
+        """初始化抽象语法树节点，设置节点类型以及节点信息.
 
         Args:
             node_type (str): 节点名
@@ -49,7 +48,7 @@ class Node:
 
 
 class RegType(Enum):
-    """寄存器变量类型，QREG为量子寄存器变量，CREG为经典寄存器变量"""
+    """寄存器变量类型，QREG为量子寄存器变量，CREG为经典寄存器变量."""
 
     QREG = 1
     CREG = 2

@@ -31,7 +31,7 @@ module_name = "VERSION"
 def version(
     body: schemas.GetVersionRequest,
 ) -> schemas.GetVersionResponse:
-    """Get server version
+    """Get server version.
 
     Args:
         body: schemas.GetVersionRequest:  (Default value = None)

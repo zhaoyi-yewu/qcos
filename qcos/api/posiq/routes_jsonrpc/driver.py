@@ -27,7 +27,7 @@ module_name = "DRIVER"
 
 
 def _get_driver_info(driver_info, transpiler):
-    """Get driver info
+    """Get driver info.
 
     Args:
         driver_info: driver_info
@@ -63,7 +63,7 @@ def _get_driver_info(driver_info, transpiler):
 def get_drivers(
     body: schemas.GetDriversRequest | None = None,
 ) -> dict[str, schemas.GetDriverResponse]:
-    """Get driver dict request
+    """Get driver dict request.
 
     Args:
         body(schemas.GetDriversRequest): message
@@ -89,7 +89,7 @@ def get_drivers(
 
 @driver_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
 def get_driver(body: schemas.GetDriverRequest) -> schemas.GetDriverResponse:
-    """Get driver info request
+    """Get driver info request.
 
     Args:
         body(schemas.GetDriverRequest): driver_name

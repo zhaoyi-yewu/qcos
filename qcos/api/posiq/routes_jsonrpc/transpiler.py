@@ -27,7 +27,7 @@ module_name = "TRANSPILER"
 
 
 def _get_transpiler_info(transpiler_info):
-    """Get transpiler info
+    """Get transpiler info.
 
     Args:
         transpiler_info: transpiler info
@@ -49,7 +49,7 @@ def _get_transpiler_info(transpiler_info):
 def get_transpilers(
     body: schemas.GetTranspilersRequest | None = None,
 ) -> dict[str, schemas.GetTranspilerResponse]:
-    """Get transpiler list request
+    """Get transpiler list request.
 
     Args:
         body(schemas.GetTranspilersRequest): message
@@ -75,7 +75,7 @@ def get_transpilers(
 def get_transpiler(
     body: schemas.GetTranspilerRequest,
 ) -> schemas.GetTranspilerResponse:
-    """Get transpiler info request
+    """Get transpiler info request.
 
     Args:
         body(schemas.GetTranspilerRequest): driver_name

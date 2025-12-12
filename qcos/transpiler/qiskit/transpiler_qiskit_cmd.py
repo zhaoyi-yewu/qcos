@@ -15,10 +15,12 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import sys
 import logging
 from pathlib import Path
 import time
 from datetime import datetime
+import argparse
 
 from qcos.common.config import Config
 from qcos.common.constant import Constant
@@ -73,14 +75,14 @@ class Timer:
         self.elapsed = self.end - self.start
 
 
-def main(
+def main_qiskit_transpiler(
     input_file: str,
     basis_gates: str = "",
     opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
     config_file: str = "",
     output_file: str = "",
 ):
-    """qiskit-transpiler performance test"""
+    """qiskit-transpiler performance test."""
     success = False
     # input args check
     file_path = Path(input_file).resolve()
@@ -170,3 +172,75 @@ def main(
     )
     success = True
     return success
+
+
+def get_parse_args():
+    parser = argparse.ArgumentParser(description="qiskit transpiler cli")
+    parser.add_argument(
+        "-i",
+        "--input-file",
+        dest="input_file",
+        type=str,
+        required=True,
+        help="Specify input file.",
+    )
+    parser.add_argument(
+        "-g",
+        "--gates-list",
+        dest="gates_list",
+        type=str,
+        default="",
+        help="Input basis gates.",
+    )
+    parser.add_argument(
+        "-o",
+        "--opt-level",
+        dest="opt_level",
+        type=int,
+        default=1,
+        help="Input optimization level.",
+    )
+    parser.add_argument(
+        "-c",
+        "--config-file",
+        dest="config_file",
+        type=str,
+        default="",
+        help="Input config file.",
+    )
+    parser.add_argument(
+        "-O",
+        "--output-file",
+        dest="output_file",
+        type=str,
+        default="",
+        help="Input output file.",
+    )
+    args = parser.parse_args()
+    qiskit_args = {
+        "input_file": args.input_file,
+        "basis_gates": args.gates_list,
+        "opt_level": args.opt_level,
+        "config_file": args.config_file,
+        "output_file": args.output_file,
+    }
+    return qiskit_args
+
+
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv
+    else:
+        sys.argv.extend(argv)
+
+    # parse arguments
+    qiskit_args = get_parse_args()
+    sys.exit(
+        main_qiskit_transpiler(
+            qiskit_args["input_file"],
+            qiskit_args["basis_gates"],
+            qiskit_args["opt_level"],
+            qiskit_args["config_file"],
+            qiskit_args["output_file"],
+        )
+    )

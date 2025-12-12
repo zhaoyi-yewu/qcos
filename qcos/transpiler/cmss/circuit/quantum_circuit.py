@@ -27,8 +27,7 @@ from qcos.transpiler.cmss.circuit.register import (
 
 class QuantumCircuit:
     def __init__(self, num_qubits: int = 0, num_clbits: int = 0):
-        """
-        Initialize QuantumCircuit object.
+        """Initialize QuantumCircuit object.
 
         Args:
             num_qubits (int): number of qubits in the circuit.
@@ -43,8 +42,7 @@ class QuantumCircuit:
         self.cregs: list[ClassicalRegister] = []
 
     def append(self, operation: BaseOperation):
-        """
-        Append a gate operation to the quantum circuit.
+        """Append a gate operation to the quantum circuit.
 
         Args:
             operation (BaseOperation): The gate operation to append.
@@ -60,8 +58,7 @@ class QuantumCircuit:
             raise TypeError("Invalid operation type!")
 
     def append_operations(self, operations: list[BaseOperation]):
-        """
-        Append multiple gate operations to the quantum circuit.
+        """Append multiple gate operations to the quantum circuit.
 
         Args:
             operations (list[BaseOperation]): The list of gate
@@ -104,8 +101,7 @@ class QuantumCircuit:
         self._num_clbits = num_clbits
 
     def depth(self):
-        """
-        calculate the depth of the quantum circuit
+        """Calculate the depth of the quantum circuit.
 
         Returns:
             depth (int): depth of the quantum circuit
@@ -128,8 +124,7 @@ class QuantumCircuit:
         return max(qubit_ops)
 
     def width(self):
-        """
-        calculate the width of the quantum circuit
+        """Calculate the width of the quantum circuit.
 
         Returns:
             width (int): number of bits in the quantum circuit
@@ -137,8 +132,7 @@ class QuantumCircuit:
         return self._num_qubits + self._num_clbits
 
     def add_register(self, *regs: Register):
-        """
-        add registers to the quantum circuit
+        """Add registers to the quantum circuit.
 
         Args:
             *regs (Register|QuantumRegister|ClassicalRegister): registers

@@ -29,8 +29,7 @@ from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 
 class DAGCircuit:
-    """
-    Quantum circuit as a directed acyclic graph.
+    """Quantum circuit as a directed acyclic graph.
 
     There are 3 types of nodes in the graph: inputs, outputs, and operations.
     The nodes are connected by directed edges that correspond to qubits.
@@ -65,14 +64,11 @@ class DAGCircuit:
 
     @property
     def node_counter(self):
-        """
-        Returns the number of nodes in the dag.
-        """
+        """Returns the number of nodes in the dag."""
         return len(self._multi_graph)
 
     def add_qubits(self, num_qubits):
-        """
-        Add qubit wires.
+        """Add qubit wires.
 
         Args:
             num_qubits (int): number of qubits
@@ -135,6 +131,7 @@ class DAGCircuit:
             op: the operation associated with the DAG node
             qargs: qubits that op will be applied to,
                 GateOperation has targets, so qargs can be None.
+
         Returns:
             DAGOpNode: the node for the op that was added to the dag
         """
@@ -173,8 +170,7 @@ class DAGCircuit:
         return len(self._wires)
 
     def topological_nodes(self, key=None):
-        """
-        Yield nodes in topological order.
+        """Yield nodes in topological order.
 
         Args:
             key (Callable): A callable which will take a DAGNode object and
@@ -197,8 +193,7 @@ class DAGCircuit:
         )
 
     def topological_op_nodes(self, key=None) -> Generator[DAGOpNode, Any, Any]:
-        """
-        Yield op nodes in topological order.
+        """Yield op nodes in topological order.
 
         Allowed to pass in specific key to break ties in top order
 
@@ -337,3 +332,28 @@ class DAGCircuit:
         for gate in ir.get_operations():
             dag_circuit.apply_operation_back(gate)
         return dag_circuit
+
+    def dag_to_ir(self):
+        """Convert DAG to QuantumCircuit.
+
+        Returns:
+            QuantumCircuit: QuantumCircuit corresponding to DAG.
+        """
+        ir = QuantumCircuit()
+        multi_graph = self.get_multi_graph()
+        all_node_ids = list(multi_graph.node_indexes())
+        gate_list = []
+        for node_id in all_node_ids:
+            node = multi_graph.get_node_data(node_id)
+            if isinstance(node, DAGOpNode):
+                gate_list.append(node.op)
+        ir.append_operations(gate_list)
+        return ir
+
+    def get_multi_graph(self):
+        """Get DAG Graph.
+
+        Returns:
+            rx.PyDAG: DAG Graph
+        """
+        return self._multi_graph

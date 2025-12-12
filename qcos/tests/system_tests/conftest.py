@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import json
 import os
 import pprint
 import pytest
@@ -78,7 +79,7 @@ def global_configs(request):
 
 
 def load_configs():
-    """Load configs"""
+    """Load configs."""
     samples_dir = GLOBAL_CONFIGS["samples_dir"]
     SAMPLES["simple-qasm.qasm"] = Library.read_file(
         f"{samples_dir}/qasm/2.0/simple-qasm.qasm"
@@ -88,4 +89,7 @@ def load_configs():
     )
     SAMPLES["2-qubit-sample.qasm"] = Library.read_file(
         f"{samples_dir}/qasm/3.0/2-qubit-sample.qasm"
+    )
+    SAMPLES["simple-qubo.json"] = json.loads(
+        Library.read_file(f"{samples_dir}/qubo/simple-qubo.json")
     )
