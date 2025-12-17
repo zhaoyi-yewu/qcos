@@ -19,6 +19,8 @@ from qcos.transpiler.cmss.optimizer.clifford_rz_optimization import (
     CliffordRzOptimization,
 )
 from qcos.transpiler.cmss.common.gate_operation import (
+    RZ,
+    X,
     H,
     CX,
     S,
@@ -66,3 +68,153 @@ class TestCliffordRzOptimization:
         dag = DAGCircuit.ir_to_dag(ir)
         ret = opt.reduce_hadamard_gates(dag)
         assert ret == 2
+
+    def test_cancel_single_qubit_gates(self):
+        opt = CliffordRzOptimization()
+        # test1
+        ir = [
+            RZ([1], arg_value=[0.1]),
+            RZ([1], arg_value=[0.1]),
+            H([1]),
+            CX([0, 1]),
+            H([1]),
+            RZ([1], arg_value=[0.1]),
+        ]
+        # q_0: ─────────────────────────────■──────────────────
+        #      ┌─────────┐┌─────────┐┌───┐┌─┴─┐┌───┐┌─────────┐
+        # q_1: ┤ Rz(0.1) ├┤ Rz(0.1) ├┤ H ├┤ X ├┤ H ├┤ Rz(0.1) ├
+        #      └─────────┘└─────────┘└───┘└───┘└───┘└─────────┘
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_single_qubit_gates(dag)
+        assert cnt == 2
+
+        # test2
+        ir = [
+            RZ([1], arg_value=[0.2]),
+            CX([0, 1]),
+            RZ([1], arg_value=[0.2]),
+            CX([0, 1]),
+            RZ([1], arg_value=[0.2]),
+        ]
+        # q_0: ─────────────■───────────────■─────────────
+        #      ┌─────────┐┌─┴─┐┌─────────┐┌─┴─┐┌─────────┐
+        # q_1: ┤ Rz(0.2) ├┤ X ├┤ Rz(0.2) ├┤ X ├┤ Rz(0.2) ├
+        #      └─────────┘└───┘└─────────┘└───┘└─────────┘
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_single_qubit_gates(dag)
+        assert cnt == 1
+
+        # test3
+        ir = [RZ([0], arg_value=[0.3]), CX([0, 1]), RZ([0], arg_value=[0.3])]
+        #      ┌─────────┐     ┌─────────┐
+        # q_0: ┤ Rz(0.3) ├──■──┤ Rz(0.3) ├
+        #      └─────────┘┌─┴─┐└─────────┘
+        # q_1: ───────────┤ X ├───────────
+        #                 └───┘
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_single_qubit_gates(dag)
+        assert cnt == 1
+
+        # test4
+        ir = [
+            RZ([0], arg_value=[0.1]),
+            CX([1, 0]),
+            CX([0, 2]),
+            CX([1, 0]),
+            RZ([0], arg_value=[0.1]),
+        ]
+        #      ┌─────────┐┌───┐     ┌───┐┌─────────┐
+        # q_0: ┤ Rz(0.1) ├┤ X ├──■──┤ X ├┤ Rz(0.1) ├
+        #      └─────────┘└─┬─┘  │  └─┬─┘└─────────┘
+        # q_1: ─────────────■────┼────■─────────────
+        #                      ┌─┴─┐
+        # q_2: ────────────────┤ X ├────────────────
+        #                      └───┘
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_single_qubit_gates(dag)
+        assert cnt == 1
+
+        # test5
+        ir = [
+            RZ([0], arg_value=[0.1]),
+            H([0]),
+            X([0]),
+            H([0]),
+            RZ([0], arg_value=[0.2]),
+        ]
+        #    ┌─────────┐┌───┐┌───┐┌───┐┌─────────┐
+        # q: ┤ Rz(0.1) ├┤ H ├┤ X ├┤ H ├┤ Rz(0.2) ├
+        #    └─────────┘└───┘└───┘└───┘└─────────┘
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_single_qubit_gates(dag)
+        assert cnt == 1
+
+        # test6
+        ir = [
+            RZ([1], arg_value=[0.1]),
+            # ---
+            CX([0, 1]),
+            RZ([1], arg_value=[0.2]),
+            CX([0, 1]),
+            # ---
+            H([1]),
+            CX([0, 1]),
+            H([1]),
+            # ---
+            RZ([1], arg_value=[0.2]),
+        ]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_single_qubit_gates(dag)
+        assert cnt == 1
+
+        # test7
+        ir = [
+            RZ([1], arg_value=[0.1]),
+            # ---
+            H([1]),
+            CX([0, 1]),
+            H([1]),
+            # ---
+            CX([0, 1]),
+            RZ([1], arg_value=[0.2]),
+            CX([0, 1]),
+            # ---
+            RZ([1], arg_value=[0.2]),
+        ]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_single_qubit_gates(dag)
+        assert cnt == 1
+
+        # test8
+        ir = [
+            RZ([1], arg_value=[0.1]),
+            # ---
+            CX([0, 1]),
+            RZ([1], arg_value=[0.2]),
+            CX([0, 1]),
+            # ---
+            CX([1, 2]),
+            # ---
+            RZ([1], arg_value=[0.2]),
+        ]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_single_qubit_gates(dag)
+        assert cnt == 1
+
+        # test9
+        ir = [
+            RZ([1], arg_value=[0.1]),
+            # ---
+            CX([0, 1]),
+            RZ([1], arg_value=[0.2]),
+            CX([0, 1]),
+            # ---
+            CX([2, 1]),
+            RZ([1], arg_value=[0.2]),
+            CX([2, 1]),
+            # ---
+            RZ([1], arg_value=[0.2]),
+        ]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_single_qubit_gates(dag)
+        assert cnt == 1
