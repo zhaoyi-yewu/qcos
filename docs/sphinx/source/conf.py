@@ -11,12 +11,8 @@ import sys
 
 from pallets_sphinx_themes import ProjectLink
 
-top_dir = os.path.abspath(
-    os.path.split(os.path.realpath(__file__))[0] + "/../..")
-sys.path.insert(0, top_dir)
-from qcos.api.fastapi_server import app
 
-project = '量子计算操作系统(QCOS)文档'
+project = '五岳量子计算操作系统(QCOS)文档'
 copyright = '2024-2025 中移（苏州）软件技术有限公司'
 author = 'Zhao Yi'
 release = '1.0.0'
