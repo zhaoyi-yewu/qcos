@@ -4,8 +4,8 @@ stages:
   # Test
   - test
 
-# commit message
-commit:
+# commit messages
+commit-messages:
   stage: commit
   tags:
     - sonic-runner
@@ -36,9 +36,13 @@ ut:
     - sonic-runner
   script:
     - ./cicd/run-tests.sh -u
+  artifacts:
+    when: always
+    reports:
+      junit: cicd/report.xml
 
-# coverage
-coverage:
+# code-coverage
+code-coverage:
   stage: test
   tags:
     - sonic-runner
