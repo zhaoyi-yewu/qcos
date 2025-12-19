@@ -33,7 +33,7 @@ class TestClient:
         cls.job_ids = ConstantForTest.job_ids
 
     def test_print_api_response(self):
-        assert client.print_api_response("200", "no", "no") is None
+        assert client.print_api_response("200", "OK", "no") is None
 
     @patch.object(Client, "print_api_response")
     def test_call_json_rpc(self, mock_print_api_response):

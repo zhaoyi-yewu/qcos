@@ -15,26 +15,17 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from qcos.common.config import Config
-from qcos.drivers.device_manager import DeviceManager
-from qcos.drivers.driver_manager import DriverManager
+import numpy as np
 
-device_manager = DeviceManager(Config(), DriverManager())
+from qcos.transpiler.cmss.circuit.operators.operator import Operator
+from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 
-class TestDeviceManager:
-    def test_load_devices(self):
-        device_manager.config.DEVICE_LIST = ["dummy"]
-        assert device_manager.load_devices() is None
+class TestOperators:
+    def test_operator(self):
+        op = Operator(np.eye(4))
+        assert op._data.shape == (4, 4)
 
-    def test_init_devices(self):
-        assert device_manager.init_devices() is None
-
-    def test_has_device(self):
-        assert device_manager.has_device("tiangong10000") is False
-
-    def test_get_device(self):
-        assert device_manager.get_device("tiangong10000") is None
-
-    def test_get_devices(self):
-        assert device_manager.get_devices() is not None
+        qc = QuantumCircuit(num_qubits=2, num_clbits=2)
+        op = Operator(qc)
+        assert op._data.shape == (4, 4)

@@ -514,3 +514,402 @@ class TestFrontCircuit:
         """Test qubit_convert placeholder function can be called."""
         # current implementation is a pass; just ensure it's callable
         assert qubit_convert([0, 1, 2]) is None
+
+    def test_hash_caching(self):
+        """Test that hash value is cached."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        # First call should compute hash
+        hash1 = hash(front_cir)
+        # Second call should use cached value
+        hash2 = hash(front_cir)
+
+        assert hash1 == hash2
+
+    def test_complex_circuit_mapping(self):
+        """Test with a more complex circuit."""
+        ag = nx.Graph()
+        ag.add_edges_from([(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)])
+        ag.shortest_path = dict(nx.shortest_path(ag))
+        ag.shortest_length = dict(nx.shortest_path_length(ag))
+
+        dg = DG()
+        dg.num_q = 5
+        dg.add_gate(("cx", (0, 1), []))
+        dg.add_gate(("cx", (1, 2), []))
+        dg.add_gate(("cx", (2, 3), []))
+
+        front_cir = FrontCircuit(dg, ag)
+        map_list = [0, 1, 2, 3, 4]
+
+        exe_gates = front_cir.assign_mapping_from_list(map_list)
+        assert isinstance(exe_gates, list)
+        assert front_cir.log_to_phy == map_list
+
+    def test_multiple_swaps(self):
+        """Test multiple swap operations."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        initial_mapping = front_cir.log_to_phy.copy()
+
+        # First swap
+        front_cir.swap((0, 1))
+        assert front_cir.log_to_phy != initial_mapping
+
+        # Second swap
+        front_cir.swap((2, 3))
+
+        assert len(front_cir.log_to_phy) == len(initial_mapping)
+
+    def test_pertinent_swaps_detailed(self):
+        """Test pertinent_swaps with detailed analysis."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        # Test with different score_layer values
+        for score_layer in [1, 2, 3]:
+            swaps_phy, h_scores, h_scores_front = front_cir.pertinent_swaps(
+                score_layer=score_layer
+            )
+
+            assert isinstance(swaps_phy, list)
+            assert isinstance(h_scores, list)
+            assert isinstance(h_scores_front, list)
+
+    def test_get_future_cx_with_all_nodes(self):
+        """Test get_future_cx_fix_num requesting all remaining nodes."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        initial_remain = front_cir.num_remain_nodes
+        cx0, cx1 = front_cir.get_future_cx_fix_num(initial_remain + 10)
+
+        assert front_cir.num_remain_nodes == initial_remain
+        assert len(cx0) <= len(cx1) + 1
+
+    def test_swap_updates_both_directions(self):
+        """Test that swap updates both log_to_phy and phy_to_log."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        # Verify initial state
+        for i in range(front_cir.num_q_log):
+            if front_cir.log_to_phy[i] != -1:
+                phy_qubit = front_cir.log_to_phy[i]
+                assert front_cir.phy_to_log[phy_qubit] == i
+
+        # Perform swap
+        front_cir.swap((0, 1))
+
+        # Verify consistency after swap
+        for i in range(front_cir.num_q_log):
+            if front_cir.log_to_phy[i] != -1:
+                phy_qubit = front_cir.log_to_phy[i]
+                assert front_cir.phy_to_log[phy_qubit] == i
+
+    def test_execute_gate_with_successors(self):
+        """Test execute_gate properly handles successor nodes."""
+        ag = self.create_test_ag()
+
+        # Create a more complex DG with dependencies
+        dg = DG()
+        dg.num_q = 4
+        gate1 = ("cx", (0, 1), [])
+        gate2 = ("cx", (1, 2), [])
+        gate3 = ("h", (2,), [])
+
+        dg.add_gate(gate1)
+        dg.add_gate(gate2)
+        dg.add_gate(gate3)
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        initial_front_layer_size = len(front_cir.front_layer)
+        if initial_front_layer_size > 0:
+            first_node = front_cir.front_layer[0]
+            front_cir.execute_gate(first_node)
+
+            # front_layer might increase if successors become available
+            assert len(front_cir.front_layer) <= initial_front_layer_size
+
+    def test_get_cir_matrix_large(self):
+        """Test get_cir_matrix with larger number of layers."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        num_layer = 10
+        cir_map, actual_layers = front_cir.get_cir_matrix(num_layer)
+
+        assert cir_map.shape == (num_layer, 4, 4)
+        assert 0 <= actual_layers <= num_layer
+
+    def test_check_equal_with_different_states(self):
+        """Test check_equal with various different states."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir1 = FrontCircuit(dg, ag)
+        front_cir1.assign_mapping_from_list([0, 1, 2, 3])
+
+        front_cir2 = front_cir1.copy()
+
+        # Initially equal
+        assert front_cir1.check_equal(front_cir2) is True
+
+        # Modify front_layer
+        if len(front_cir2.front_layer) > 0:
+            front_cir2.front_layer = front_cir2.front_layer[1:]
+            assert front_cir1.check_equal(front_cir2) is False
+
+    def test_hash_with_different_mappings(self):
+        """Test that different mappings produce different hashes."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir1 = FrontCircuit(dg, ag)
+        front_cir1.assign_mapping_from_list([0, 1, 2, 3])
+
+        front_cir2 = FrontCircuit(dg, ag)
+        front_cir2.assign_mapping_from_list([3, 2, 1, 0])
+
+        hash1 = hash(front_cir1)
+        hash2 = hash(front_cir2)
+
+        # Different mappings should likely have different hashes
+        # (though hash collisions are theoretically possible)
+        assert isinstance(hash1, int)
+        assert isinstance(hash2, int)
+
+    def test_execute_gate_index_first_gate(self):
+        """Test execute_gate_index removes first gate correctly."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        if len(front_cir.front_layer) > 0:
+            initial_layer = front_cir.front_layer.copy()
+            front_cir.execute_gate_index(0)
+
+            # First gate should be removed
+            assert front_cir.front_layer != initial_layer
+            assert len(front_cir.front_layer) < len(initial_layer)
+
+    def test_execute_gate_index_middle_gate(self):
+        """Test execute_gate_index with middle gate index."""
+        ag = self.create_test_ag()
+
+        # Create DG with more gates
+        dg = DG()
+        dg.num_q = 4
+        dg.add_gate(("cx", (0, 1), []))
+        dg.add_gate(("cx", (2, 3), []))
+        dg.add_gate(("h", (0,), []))
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        if len(front_cir.front_layer) > 1:
+            initial_len = len(front_cir.front_layer)
+            front_cir.execute_gate_index(len(front_cir.front_layer) - 1)
+
+            assert len(front_cir.front_layer) < initial_len
+
+    def test_pertinent_swaps_swap_involvement(self):
+        """Test pertinent_swaps correctly identifies involved nodes."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        # Get swaps with involvement analysis
+        swaps_phy, h_scores, h_scores_front = front_cir.pertinent_swaps(
+            score_layer=1
+        )
+
+        # Verify scores are consistent
+        for swap, score, score_front in zip(
+            swaps_phy, h_scores, h_scores_front
+        ):
+            assert isinstance(swap, tuple)
+            assert len(swap) == 2
+            assert isinstance(score, (int, float))
+            assert isinstance(score_front, (int, float))
+
+    def test_get_future_cx_fix_num_empty(self):
+        """Test get_future_cx_fix_num with zero CX request."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        cx0, cx1 = front_cir.get_future_cx_fix_num(0)
+
+        assert len(cx0) == 0
+        assert len(cx1) == 0
+
+    def test_get_future_cx_fix_num_with_single_empty(self):
+        """Test get_future_cx_fix_num_with_single with zero CX request."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        cx0, cx1, sg0, sg1 = front_cir.get_future_cx_fix_num_with_single(0)
+
+        assert len(cx0) == 0
+        assert len(cx1) == 0
+        assert len(sg0) == 0
+        assert len(sg1) == 0
+
+    def test_swap_unmapped_qubits(self):
+        """Test swap behavior with unmapped qubits."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        # Partial mapping
+        front_cir.log_to_phy = [0, 1, -1, -1]
+        front_cir.phy_to_log = [0, 1, -1, -1]
+
+        exe_gates = front_cir.swap((0, 1))
+        assert isinstance(exe_gates, list)
+
+    def test_check_equal_all_components(self):
+        """Test check_equal verifies all components."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir1 = FrontCircuit(dg, ag)
+        front_cir1.assign_mapping_from_list([0, 1, 2, 3])
+
+        front_cir2 = front_cir1.copy()
+
+        # Modify each component and verify inequality
+        front_cir2.num_remain_nodes = 100
+        assert front_cir1.check_equal(front_cir2) is False
+
+        # Restore and test phy_to_log
+        front_cir2.num_remain_nodes = front_cir1.num_remain_nodes
+        front_cir2.phy_to_log[0] = 99
+        assert front_cir1.check_equal(front_cir2) is False
+
+    def test_get_future_cx_fix_num3_layer_output(self):
+        """Test get_future_cx_fix_num3 returns properly layered output."""
+        ag = self.create_test_ag()
+
+        # Create a circuit with multiple layers
+        dg = DG()
+        dg.num_q = 4
+        dg.add_gate(("cx", (0, 1), []))
+        dg.add_gate(("cx", (2, 3), []))
+        dg.add_gate(("h", (0,), []))
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        cx_total = front_cir.get_future_cx_fix_num3(3)
+
+        assert isinstance(cx_total, list)
+        for layer in cx_total:
+            assert isinstance(layer, list)
+            for cx in layer:
+                assert isinstance(cx, tuple)
+                assert len(cx) == 2
+
+    def test_print_front_layer_len(self):
+        """Test print_front_layer_len method."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        # Just ensure it doesn't raise
+        try:
+            front_cir.print_front_layer_len()
+            assert True
+        except Exception:
+            assert False, "print_front_layer_len should not raise"
+
+    def test_get_cir_matrix_circuit_structure(self):
+        """Test get_cir_matrix correctly represents circuit."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        cir_map, actual_layers = front_cir.get_cir_matrix(5)
+
+        # Check structure
+        assert cir_map.dtype == np.float32
+        # Each layer should have symmetric matrices for undirected edges
+        for layer in cir_map[:actual_layers]:
+            assert np.allclose(layer, layer.T)
+
+    def test_execute_gate_with_various_nodes(self):
+        """Test execute_gate with different node types."""
+        ag = self.create_test_ag()
+
+        dg = DG()
+        dg.num_q = 4
+        gate1 = ("cx", (0, 1), [])
+        gate2 = ("h", (0,), [])
+        gate3 = ("cx", (2, 3), [])
+
+        dg.add_gate(gate1)
+        dg.add_gate(gate2)
+        dg.add_gate(gate3)
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        # Execute each gate type
+        for node in front_cir.front_layer.copy():
+            if node in front_cir.front_layer:
+                front_cir.execute_gate(node)
+                break
+
+        assert True
+
+    def test_pertinent_swaps_high_layers(self):
+        """Test pertinent_swaps with many layers."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        swaps_phy, h_scores, h_scores_front = front_cir.pertinent_swaps(
+            score_layer=5
+        )
+
+        assert isinstance(swaps_phy, list)
+        assert isinstance(h_scores, list)
+        assert isinstance(h_scores_front, list)

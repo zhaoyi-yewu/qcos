@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import argparse
+import json
 from argparse import Namespace
 from unittest.mock import patch, Mock
 
@@ -59,6 +60,38 @@ DESCRIPTION = "QCOS command line interface"
 VERSION = Config.VERSION
 command_manager = CommandManager("qcos")
 job_id = ConstantForTest.job_id
+response = {
+    "jsonrpc": "2.0",
+    "result": {
+        "job_id": "f02aa1a5-900b-44f1-99df-22d8087f5d9f",
+        "job_name": None,
+        "job_status": "QUEUED",
+        "job_priority": 5,
+        "description": None,
+        "backend": "uqc_matrix2",
+        "driver_options": None,
+        "transpiler": None,
+        "transpiler_options": None,
+        "circuit_aggregation": None,
+        "shots": 100,
+        "dry_run": False,
+        "progress": -1,
+        "creation_date": "2025-11-25T16:02:33.182619",
+        "end_date": None,
+    },
+    "id": 0,
+}
+header_list = [
+    "name",
+    "alias_name",
+    "version",
+    "tech_type",
+    "max_qubits",
+    "transpiler",
+    "description",
+]
+jsonrpc_response = json.dumps(response)
+
 
 shell = QcosShell(DESCRIPTION, VERSION, command_manager)
 shell.client = Client()
@@ -92,7 +125,7 @@ class TestQcosShell:
         mock_initialize_app.return_value = None
         mock_options = Mock()
         shell.options = mock_options
-        mock_options.api_host = "api_host"
+        mock_options.api_host = "127.0.0.1"
         mock_options.use_ssl = False
         assert shell.initialize_app([]) is None
 
@@ -100,8 +133,8 @@ class TestQcosShell:
 class TestCommandHelper:
     def test_handle_invalid_arguments(self):
         with pytest.raises(errors.InvalidArguments) as e:
-            helper.handle_invalid_arguments([False, "no"])
-        assert "no" in str(e)
+            helper.handle_invalid_arguments([False, "Invalid backend"])
+        assert "Invalid backend" in str(e)
 
     @patch.object(Client, "parse_jsonrpc_response")
     def test_check_results(self, mock_parse_jsonrpc_response):
@@ -110,52 +143,55 @@ class TestCommandHelper:
             Ok("result", "id"),
         ])
         helper.check_results(
-            "resource",
-            "Tzeentch",
+            QcosShell.CMD_GROUP_VERSION,
+            "version",
             HttpCode.SUCCESS_OK,
-            "reason",
-            '{"name": "Nurgle"}',
+            "OK",
+            jsonrpc_response,
         )
 
         mock_parse_jsonrpc_response.return_value = iter([
             False,
             Error(
-                114,
+                404,
                 "message",
                 {
                     "errors": [
-                        {"msg": "msg1", "loc": "loc1"},
-                        {"msg": "msg2", "loc": "loc2"},
+                        {"msg": "Not Found", "loc": "loc1"},
                     ],
-                    "details": "detail",
+                    "details": "",
                 },
                 "",
             ),
         ])
         with pytest.raises(errors.GenericException) as e:
             helper.check_results(
-                "resource",
-                "Tzeentch",
+                QcosShell.CMD_GROUP_VERSION,
+                "version",
                 HttpCode.SUCCESS_OK,
-                "reason",
-                '{"name": "Nurgle"}',
+                "OK",
+                jsonrpc_response,
             )
-        assert "114" in str(e)
+        assert "404" in str(e)
 
     def test_get_table_list_data(self):
         result = helper.get_table_list_data(
-            [{"key": "value"}, {"T": "Tzeentch"}],
-            ["Tzeentch", "Nurgle", "Khorne", "Slaanesh", "Emperor"],
+            [
+                {"key": "value"},
+            ],
+            header_list,
         )
         assert result is not None
 
     def test_get_table_data(self):
-        result = helper.get_table_data({"key": "value", "T": "Tzeentch"})
+        result = helper.get_table_data({
+            "key": "value",
+        })
         assert result is not None
 
     def test_get_content_by_type(self):
-        get_content_by_type(Constant.CODE_TYPE_QASM, "qcos")
-        success, _, _ = get_content_by_type("0111", "qcos")
+        get_content_by_type(Constant.CODE_TYPE_QASM, "\\qcos")
+        success, _, _ = get_content_by_type(Constant.CODE_TYPE_QASM, "\\qcos")
         assert success is False
 
     @patch("argparse.ArgumentParser.parse_known_args")
@@ -178,17 +214,17 @@ class TestVersion:
         mock_version.return_value = -1, None, None, None
         mock_check_results.return_value = {
             "capabilities": {
-                "job_types": ["1", "2", "3"],
+                "job_types": ["sample"],
                 "profiling": 1,
-                "tech_types": 2,
-                "drivers": 3,
-                "transpilers": 4,
-                "driver_transpiler_mappings": 5,
+                "tech_types": "ion_trap",
+                "drivers": "DriverUQCMatrix2",
+                "transpilers": {"cmss": "cmss"},
+                "driver_transpiler_mappings": None,
             },
-            "version": 2,
-            "api_version": 3,
-            "supported_api_versions": 4,
-            "platform_version": 5,
+            "version": "0.0.1",
+            "api_version": "0.1.0",
+            "supported_api_versions": "0.1.0",
+            "platform_version": "1.0.0",
         }
         assert version.take_action(mock_client) is None
 
@@ -351,17 +387,17 @@ class TestSubmitJob:
         mock_get_content_by_type.return_value = (True, "no", "qcos")
         mock_check_results.return_value = {
             "capabilities": {
-                "job_types": ["1", "2", "3"],
+                "job_types": ["sample"],
                 "profiling": 1,
-                "tech_types": 2,
-                "drivers": 3,
-                "transpilers": {"0111": 7},
-                "driver_transpiler_mappings": 5,
+                "tech_types": "ion_trap",
+                "drivers": "DriverUQCMatrix2",
+                "transpilers": {"cmss": "cmss"},
+                "driver_transpiler_mappings": None,
             },
-            "version": 2,
-            "api_version": 3,
-            "supported_api_versions": 4,
-            "platform_version": 5,
+            "version": "0.0.1",
+            "api_version": "0.1.0",
+            "supported_api_versions": "0.1.0",
+            "platform_version": "1.0.0",
         }
         mock_client = Mock(spec=Namespace)
         mock_client.job_name = "name"
@@ -374,16 +410,12 @@ class TestSubmitJob:
         mock_client.description = None
         mock_client.shots = Constant.DEFAULT_SHOTS
         mock_client.backend = Constant.DRIVER_DUMMY
-        mock_client.driver_options = (
-            '{"options": "options", "option": "option"}'
-        )
+        mock_client.driver_options = '{"options": "options"}'
         mock_client.transpiler = Constant.TRANSPILER_CMSS
-        mock_client.transpiler_options = (
-            '{"options": "options", "option": "option"}'
-        )
-        mock_client.profiling = ["1", "2"]
-        mock_client.callbacks = '{"options": "options", "option": "option"}'
-        mock_client.source_code_files = ["qcos", "os"]
+        mock_client.transpiler_options = '{"options": "options"}'
+        mock_client.profiling = [1]
+        mock_client.callbacks = '{"options": "options"}'
+        mock_client.source_code_files = ["/qcos"]
         mock_client.instance_id = "instance_id"
 
         assert submit_job.take_action(mock_client) is None
@@ -436,9 +468,7 @@ class TestGetJobResults:
         mock_handle_invalid_arguments,
         mock_get_table_data,
     ):
-        mock_check_results.return_value = {
-            "results": [{"k1": "v1", "k2": "v2"}, {"k3": "v3"}],
-        }
+        mock_check_results.return_value = response
         mock_get_job_results.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
         mock_get_table_data.return_value = None
@@ -484,9 +514,7 @@ class TestCancelJobs:
         mock_handle_invalid_arguments,
         mock_cancel_jobs,
     ):
-        mock_check_results.return_value = [
-            {"k1": "v1", "job_id": job_id},
-        ]
+        mock_check_results.return_value = [response["result"]]
         mock_get_jobs.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
         mock_cancel_jobs.return_value = (None, None, None, None)
@@ -516,9 +544,7 @@ class TestDeleteJobs:
         mock_handle_invalid_arguments,
         mock_delete_jobs,
     ):
-        mock_check_results.return_value = [
-            {"k1": "v1", "job_id": job_id},
-        ]
+        mock_check_results.return_value = [response["result"]]
         mock_get_jobs.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
         mock_delete_jobs.return_value = (None, None, None, None)
@@ -529,9 +555,7 @@ class TestDeleteJobs:
         delete_jobs.take_action(mock_client)
 
         mock_client.job_ids = "NO"
-        mock_check_results.return_value = [
-            {"k1": "v1", "job_id": job_id},
-        ]
+        mock_check_results.return_value = [response["result"]]
         assert delete_jobs.take_action(mock_client) is None
 
 
@@ -556,8 +580,7 @@ class TestSetJobResults:
         mock_client = Mock(spec=Namespace)
         mock_client.job_id = job_id
         mock_client.results = [
-            '{"options": "options","option": "option"}',
-            '{"options": "options","option": "option"}',
+            '{"options": "options"}',
         ]
         assert set_job_results.take_action(mock_client) is None
 
@@ -586,7 +609,7 @@ def test_set_debug_option():
 
 
 def test_get_content_by_type():
-    success, _, _ = get_content_by_type("no", "")
+    success, _, _ = get_content_by_type("qasm", "")
     assert success is False
 
 
@@ -605,7 +628,7 @@ class TestUpdateJob:
         mock_update_job,
     ):
         mock_handle_invalid_arguments.return_value = None
-        mock_check_results.return_value = {"job_id": job_id}
+        mock_check_results.return_value = response["result"]
         mock_update_job.return_value = iter([None, None, None, None])
         mock_client = Mock(spec=Namespace)
         mock_client.job_id = job_id

@@ -40,10 +40,10 @@ class TestDriverManager:
         assert obj.init_drivers() is None
 
     def test_has_driver(self):
-        assert obj.has_driver("driver_name") is False
+        assert obj.has_driver("tiangong10000") is False
 
     def test_get_driver(self):
-        assert obj.get_driver("driver_name") is None
+        assert obj.get_driver("tiangong10000") is None
 
     def test_get_drivers(self):
         assert obj.get_drivers() == obj.drivers

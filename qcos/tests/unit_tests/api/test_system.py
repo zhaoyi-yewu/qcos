@@ -44,7 +44,7 @@ class TestSystem:
                 {
                     "job_status": Constant.JOB_STATUS_RUNNING,
                     "id": self.job_id,
-                    "progress": 100,
+                    "progress": 50,
                 }
             ],
             None,

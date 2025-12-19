@@ -283,7 +283,7 @@ class TestJob:
 
         mock_client = Mock(spec=SetJobResultsRequest)
         mock_client.job_id = self.job_id
-        mock_client.results = {0: {"a": "a"}}
+        mock_client.results = {0: {"00": 100}}
         set_job_results(mock_client, None)
 
     @patch.object(TaskScheduler, "update_job")

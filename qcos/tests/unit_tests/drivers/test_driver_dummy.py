@@ -62,7 +62,7 @@ class TestDriverDummy:
 
     @patch.object(DriverBase, "get_fake_results")
     def test_run(self, mock_get_fake_results):
-        mock_get_fake_results.return_value = "fake"
+        mock_get_fake_results.return_value = {"00": 45, "11": 55}
         assert (
             driver_dummy.run(job_id, num_qubits, data_qasm, data_type) is None
         )

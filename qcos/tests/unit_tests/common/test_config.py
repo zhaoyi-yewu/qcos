@@ -29,22 +29,21 @@ class TestConfig:
     def test_parse_toml_file(self, mock_read_toml_file):
         mock_obj = Mock()
         mock_obj.unwrap.return_value = {
-            "1": {"1": "Alice", "2": 2},
-            "2": {"1": "Bob", "3": 3},
+            "result": {"shots": 100},
         }
         mock_read_toml_file.return_value = iter([True, "err_msg", mock_obj])
 
         mock_read_toml_file.return_value = iter([False, "err_msg", mock_obj])
         with pytest.raises(Exception) as context:
-            config.parse_toml_file("config.toml")
+            config.parse_toml_file("/config.toml")
         assert str(context.value) is not None
 
         mock_read_toml_file.return_value = iter([True, "err_msg", mock_obj])
-        config.parse_toml_file("config.toml", extra_config=True)
+        config.parse_toml_file("/config.toml", extra_config=True)
 
         mock_read_toml_file.return_value = iter([False, "err_msg", mock_obj])
         with pytest.raises(Exception) as context:
-            config.parse_toml_file("config.toml", extra_config=True)
+            config.parse_toml_file("/config.toml", extra_config=True)
         assert str(context.value) is not None
 
     def test_show_info(self):

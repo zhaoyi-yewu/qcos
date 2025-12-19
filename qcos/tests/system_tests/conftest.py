@@ -87,8 +87,8 @@ def load_configs():
     SAMPLES["simple-qasm-1-bit.qasm"] = Library.read_file(
         f"{samples_dir}/qasm/2.0/simple-qasm-1-bit.qasm"
     )
-    SAMPLES["2-qubit-sample.qasm"] = Library.read_file(
-        f"{samples_dir}/qasm/3.0/2-qubit-sample.qasm"
+    SAMPLES["1-qubit-sample.qasm"] = Library.read_file(
+        f"{samples_dir}/qasm/3.0/simple-qasm-1-bit.qasm"
     )
     SAMPLES["simple-qubo.json"] = json.loads(
         Library.read_file(f"{samples_dir}/qubo/simple-qubo.json")

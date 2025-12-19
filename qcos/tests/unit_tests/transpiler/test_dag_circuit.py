@@ -35,7 +35,7 @@ class TestDAGCircuit:
     def test_ir_to_dag(self):
         tree = get_abs_tree(self.data1)
         cir = get_ir(tree)
-        dag = DAGCircuit.ir_to_dag(cir)
+        dag = DAGCircuit.circuit_to_dag(cir)
         assert dag is not None
         assert isinstance(dag, DAGCircuit)
         op_nodes = dag.op_nodes()
@@ -46,8 +46,8 @@ class TestDAGCircuit:
     def test_dag_to_ir(self):
         tree = get_abs_tree(self.data1)
         cir = get_ir(tree)
-        dag = DAGCircuit.ir_to_dag(cir)
-        ir = dag.dag_to_ir()
+        dag = DAGCircuit.circuit_to_dag(cir)
+        ir = dag.dag_to_circuit()
         assert ir is not None
         assert isinstance(ir, QuantumCircuit)
         assert ir._num_qubits == 2
@@ -97,7 +97,7 @@ class TestDAGCircuit:
     def test_topological_nodes(self):
         tree = get_abs_tree(self.data1)
         ir = get_ir(tree)
-        dag = DAGCircuit.ir_to_dag(ir)
+        dag = DAGCircuit.circuit_to_dag(ir)
 
         nodes = list(dag.topological_nodes())
         op_nodes = list(dag.topological_op_nodes())
@@ -136,7 +136,7 @@ class TestDAGCircuit:
     def test_longest_path(self):
         tree = get_abs_tree(self.data1)
         ir = get_ir(tree)
-        dag = DAGCircuit.ir_to_dag(ir)
+        dag = DAGCircuit.circuit_to_dag(ir)
 
         node_path = dag.longest_path()
         name_path = []

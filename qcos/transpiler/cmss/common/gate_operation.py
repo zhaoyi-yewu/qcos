@@ -38,6 +38,7 @@ class GateOperation(BaseOperation):
         arg_value=None,
         operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
         hermitian=True,
+        validate=True,
     ) -> None:
         """Init GateOperation.
 
@@ -47,10 +48,12 @@ class GateOperation(BaseOperation):
             arg_value: 参数（旋转门所需）. Defaults to None.
             operation_type: 操作类型
             hermitian: 是否是厄米
+            validate: 是否校验参数. Defaults to True.
         """
         super().__init__(name, targets, arg_value, operation_type)
         self.hermitian = hermitian
-        self.validate_params()
+        if validate:
+            self.validate_params()
 
     def validate_params(self):
         """Validate gate's params.

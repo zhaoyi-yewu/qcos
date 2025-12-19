@@ -41,6 +41,20 @@ class QuantumCircuit:
         self.qregs: list[QuantumRegister] = []
         self.cregs: list[ClassicalRegister] = []
 
+    @classmethod
+    def from_ir(cls, ir: list[BaseOperation]):
+        """Create a quantum circuit from a list of gate operations.
+
+        Args:
+            ir (list[BaseOperation]): gate operations of ir.
+
+        Returns:
+            QuantumCircuit: a quantum circuit corresponding to the ir.
+        """
+        circ = QuantumCircuit()
+        circ.append_operations(ir)
+        return circ
+
     def append(self, operation: BaseOperation):
         """Append a gate operation to the quantum circuit.
 

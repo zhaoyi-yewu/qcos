@@ -49,26 +49,26 @@ class TestLibrary:
         assert new_list == lst
 
     def test_create_file(self):
-        test_file = "test1.txt"
-        success, _ = library.create_file(test_file, "123", mode=0o644)
+        test_file = "/test1.txt"
+        success, _ = library.create_file(test_file, "6908", mode=0o644)
         assert success is True
         library.rm_file(test_file)
 
     def test_create_pid_file(self):
-        test_file = "test.pid"
+        test_file = "/test.pid"
         library.create_pid_file(test_file)
         assert os.path.isfile(test_file)
         library.rm_file(test_file)
 
     def test_kill_pid(self):
-        test_file = "test.pid"
-        library.create_file(test_file, "99999999")
-        assert library.kill_pid("test.pid") is None
-        assert library.kill_pid("test.pid1") is None
+        test_file = "/test.pid"
+        library.create_file(test_file, "28336")
+        assert library.kill_pid("/test.pid") is None
+        assert library.kill_pid("/test.pid1") is None
         library.rm_file(test_file)
 
     def test_find_dirs(self):
-        dirs = library.find_dirs(base_dir="tests", recursive=True)
+        dirs = library.find_dirs(base_dir="/tests", recursive=True)
         assert not dirs
 
     def test_find_files(self):
@@ -85,15 +85,15 @@ class TestLibrary:
         )
 
     def test_mkdir_rmdir(self):
-        dir_name = "test-dir"
+        dir_name = "/test-dir"
         success = library.mkdir(dir_name)
         assert success is True
         success, _ = library.rmdir(dir_name)
         assert success is True
 
     def test_rm_file(self):
-        success, _ = library.rm_file("test.txt")
-        library.rm_file("no_such_dir")
+        success, _ = library.rm_file("/test.txt")
+        library.rm_file("/no_such_dir")
         assert success is True
 
     def test_import_classes(self):
@@ -101,10 +101,10 @@ class TestLibrary:
         assert not classes
 
     def test_str_match(self):
-        success = library.str_match("abc", "abc", ignore_case=True)
+        success = library.str_match("Library", "Library", ignore_case=True)
         assert success is True
 
-        success = library.str_match("abc", "abc")
+        success = library.str_match("Library", "Library")
         assert success is True
 
     def test_read_file(self):
@@ -139,12 +139,12 @@ class TestLibrary:
         library.rm_file(file_path)
 
     def test_read_toml_file(self):
-        success, _, _ = library.read_toml_file("test-toml.toml")
+        success, _, _ = library.read_toml_file("/test-toml.toml")
         assert success is False
 
     def test_write_to_toml(self):
-        data = {"a": "b", "c": "d"}
-        test_file = "test.toml"
+        data = {"host": "127.0.0.1", "port": "8080"}
+        test_file = "/test.toml"
         success, _ = library.create_toml(test_file, data)
         assert success is True
         library.rm_file(test_file)
@@ -157,72 +157,72 @@ class TestLibrary:
         assert isinstance(times, datetime)
 
     def test_validate_values_enum(self):
-        value = ["6", "7", "8", "9"]
-        success, _ = library.validate_values_enum("9", "test1", value)
+        value = ["qasm", "qubo"]
+        success, _ = library.validate_values_enum("qasm", "code_type", value)
         assert success is True
 
         success, _ = library.validate_values_enum(
-            None, "test1", value, allow_none=True
+            None, "code_type", value, allow_none=True
         )
         assert success is True
 
-        success, _ = library.validate_values_enum("13", "test1", value)
+        success, _ = library.validate_values_enum("qasm3", "code_type", value)
         assert success is False
 
     def test_validate_values_uuid(self):
         uuid_1 = ConstantForTest.job_id
-        success, _ = library.validate_values_uuid(uuid_1, "test1")
+        success, _ = library.validate_values_uuid(uuid_1, "job_id")
         assert success is True
 
-        success, _ = library.validate_values_uuid("9", "test2")
+        success, _ = library.validate_values_uuid("9", "job_id")
         assert success is False
 
     def test_validate_values_range(self):
-        success, _ = library.validate_values_range(9, "test1")
+        success, _ = library.validate_values_range(9, "job_priority")
         assert success is True
 
         success, _ = library.validate_values_range(
-            9, "test1", min_value=13, max_value=6
+            9, "job_priority", min_value=13, max_value=6
         )
         assert success is False
 
     def test_validate_values_length(self):
         success, _ = library.validate_values_length(
-            None, "test1", allow_none=True
+            None, "source_code", allow_none=True
         )
         assert success is True
 
         success, _ = library.validate_values_length(
-            "99", "test1", min_value=13, max_value=1
+            "99", "description", min_value=13, max_value=1
         )
         assert success is False
 
-        success, _ = library.validate_values_length("9", "test1")
+        success, _ = library.validate_values_length("9", "description")
         assert success is True
 
     def test_validate_values_list(self):
         value = "987613"
-        success, _ = library.validate_values_list(value, "test1", "chaos")
+        success, _ = library.validate_values_list(value, "result", bin)
         assert success is False
 
         value = [9, 8, 7, 6, 13]
-        success, _ = library.validate_values_list(value, "test1", str)
+        success, _ = library.validate_values_list(value, "result", str)
         assert success is False
 
         value = [False, False]
-        success, _ = library.validate_values_list(value, "test1", bool)
+        success, _ = library.validate_values_list(value, "result", bool)
         assert success is False
 
         success, _ = library.validate_values_list(
-            value, "test1", bool, allow_none=True
+            value, "result", bool, allow_none=True
         )
         assert success is True
 
     def test_validate_schema(self):
-        success, _ = library.validate_schema("9", "test1")
+        success, _ = library.validate_schema("9", "")
         assert success is False
 
-        success, _ = library.validate_schema(None, "test1", allow_none=True)
+        success, _ = library.validate_schema(None, "", allow_none=True)
         assert success is True
 
         success, _ = library.validate_schema("9", None)
@@ -254,16 +254,16 @@ class TestLibrary:
         assert success is False
 
     def test_is_valid_url(self):
-        success = library.is_valid_url("127.0.0.1", "test1")
+        success = library.is_valid_url("127.0.0.1", {"http", "https"})
         assert success is False
 
     def test_get_zip_content(self):
-        success, _, _ = library.get_zip_content("pid_file.zip")
+        success, _, _ = library.get_zip_content("/pid_file.zip")
         assert success is False
 
     def test_get_nested_dict_value(self):
-        dictionary = {"a": "b", "c": "d"}
-        keys = {"1": "1", "2": "2"}
+        dictionary = {"host": "127.0.0.1", "port": "8080"}
+        keys = {"url": "127.0.0.1:8080"}
         default = library.get_nested_dict_value(dictionary, keys)
         assert default is None
 

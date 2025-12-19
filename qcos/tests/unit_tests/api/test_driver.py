@@ -94,7 +94,7 @@ class TestDriver:
 
     @patch.object(DriverBase, "get_supported_code_types")
     def test__get_driver_info(self, mock_get_supported_code_types):
-        mock_get_supported_code_types.return_value = []
+        mock_get_supported_code_types.return_value = ["qasm"]
         mock_client = DriverBase()
         _driver_info = _get_driver_info(mock_client, None)
         assert _driver_info["name"] is None
