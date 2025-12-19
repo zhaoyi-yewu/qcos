@@ -15,8 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import sys
+from pathlib import Path
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, mock_open, MagicMock
 
 from qcos.common.constant import Constant
 from qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
@@ -26,6 +28,9 @@ from qcos.transpiler.qiskit.transpiler_qiskit_cmd import (
     read_qasm_from_file,
     Timer,
     main_qiskit_transpiler as main,
+    main as qiskit_main,
+    get_parse_args,
+    check_file_args,
 )
 
 timer = Timer()
@@ -109,3 +114,51 @@ class TestTranspilerQiskit:
             config_file=f"{self.etc_path}/topology/qiskit_marrakesh.toml",
         )
         assert res is True
+
+    @patch(
+        "qcos.transpiler.qiskit.transpiler_qiskit_cmd.main_qiskit_transpiler"
+    )
+    def test_qiskit_parse_args(self, mock_main_qiskit_transpiler):
+        sys.argv = [
+            "transpiler_qiskit_cmd.py",
+            "--input-file",
+            f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm",
+            "--gates-list",
+            "rx,ry,cx",
+        ]
+        qiskit_args = get_parse_args()
+        assert (
+            qiskit_args["input_file"]
+            == f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        )
+        assert qiskit_args["basis_gates"] == "rx,ry,cx"
+        assert qiskit_args["output_file"] == ""
+
+        mock_main_qiskit_transpiler.return_value = True
+        with patch("sys.exit") as mock_sys_exit:
+            qiskit_main(sys.argv)
+            mock_sys_exit.assert_called_with(mock_main_qiskit_transpiler())
+
+    def test_check_file_args(self):
+        input_file1 = f"{self.samples_dir}/qasm/2.0/simple-qasm1.qasm"
+        assert check_file_args(input_file1, "") is None
+
+        input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        output_file = "CHANGELOG"
+        output_file_path = Path(output_file).resolve()
+        mock_file = mock_open()
+        mock_file_handler = MagicMock()
+        with (
+            patch("builtins.open", mock_file),
+            patch("logging.FileHandler", return_value=mock_file_handler),
+            patch("logging.Logger.addHandler") as mock_add_handler,
+        ):
+            res = check_file_args(input_file, output_file)
+            mock_file.assert_called_once_with(
+                output_file_path, "w", encoding="utf-8"
+            )
+            mock_file().write.assert_called_once_with(
+                f"testing file: {input_file}\n"
+            )
+            mock_add_handler.assert_called_once_with(mock_file_handler)
+            assert res == Path(input_file).resolve()

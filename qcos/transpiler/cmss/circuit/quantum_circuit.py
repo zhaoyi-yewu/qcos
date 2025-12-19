@@ -26,12 +26,15 @@ from qcos.transpiler.cmss.circuit.register import (
 
 
 class QuantumCircuit:
-    def __init__(self, num_qubits: int = 0, num_clbits: int = 0):
+    def __init__(
+        self, num_qubits: int = 0, num_clbits: int = 0, global_phase: float = 0
+    ):
         """Initialize QuantumCircuit object.
 
         Args:
             num_qubits (int): number of qubits in the circuit.
             num_clbits (int): number of classical bits in the circuit.
+            global_phase (float): global phase of the circuit.
         """
         self._num_qubits = num_qubits
         self._num_clbits = num_clbits
@@ -40,6 +43,7 @@ class QuantumCircuit:
 
         self.qregs: list[QuantumRegister] = []
         self.cregs: list[ClassicalRegister] = []
+        self._global_phase: float = global_phase
 
     @classmethod
     def from_ir(cls, ir: list[BaseOperation]):
@@ -100,9 +104,18 @@ class QuantumCircuit:
     def num_clbits(self):
         return self._num_clbits
 
+    @property
+    def global_phase(self):
+        return self._global_phase
+
+    def set_global_phase(self, phase: float):
+        if not isinstance(phase, (int, float)):
+            raise TypeError("Input global_phase must be a number.")
+        self._global_phase = float(phase)
+
     def set_num_qubits(self, num_qubits: int):
         if not isinstance(num_qubits, int):
-            raise TypeError("num_qubits must be an integer")
+            raise TypeError("Input num_qubits must be an integer")
         if num_qubits < 0:
             raise ValueError("num_qubits must be non-negative")
         self._num_qubits = num_qubits

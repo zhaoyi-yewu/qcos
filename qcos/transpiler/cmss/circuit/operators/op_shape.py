@@ -15,10 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from numbers import Integral
 from functools import reduce
 from operator import mul
 from math import log2
-from numbers import Integral
 
 from qcos.transpiler.common.errors import CircuitException
 
@@ -280,7 +280,7 @@ class OpShape:
         num_qubits_l=None,
         num_qubits_r=None,
         num_qubits=None,
-    ):
+    ) -> "OpShape":
         """Maxtrix construction.
 
         Description:
