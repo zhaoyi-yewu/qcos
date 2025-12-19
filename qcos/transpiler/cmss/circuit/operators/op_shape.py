@@ -74,6 +74,71 @@ class OpShape:
         num = self._num_qargs_l if qargs is None else len(qargs)
         return num * (2,)
 
+    @property
+    def _dim_r(self):
+        """Return the total input dimension."""
+        if self._dims_r:
+            return reduce(mul, self._dims_r)
+        return 2**self._num_qargs_r
+
+    @property
+    def _dim_l(self):
+        """Return the total input dimension."""
+        if self._dims_l:
+            return reduce(mul, self._dims_l)
+        return 2**self._num_qargs_l
+
+    @property
+    def size(self):
+        """Return the combined dimensions of the object."""
+        return self._dim_l * self._dim_r
+
+    @property
+    def num_qubits(self):
+        """Get number of qubits.
+
+        Description:
+            Return number of qubits if shape is N-qubit.
+            If Shape is not N-qubit return None.
+        """
+        if self._dims_l or self._dims_r:
+            return None
+        if self._num_qargs_l:
+            if self._num_qargs_r and self._num_qargs_l != self._num_qargs_r:
+                return None
+            return self._num_qargs_l
+        return self._num_qargs_r
+
+    @property
+    def num_qargs(self):
+        """Return a tuple of the number of left and right wires."""
+        return self._num_qargs_l, self._num_qargs_r
+
+    @property
+    def shape(self):
+        """Return a tuple of the matrix shape."""
+        if self._num_qargs_l == self._num_qargs_r == 0:
+            # Scalar shape is op-like
+            return (1, 1)
+        if not self._num_qargs_r:
+            # Vector shape
+            return (self._dim_l,)
+        # Matrix shape
+        return self._dim_l, self._dim_r
+
+    @property
+    def tensor_shape(self):
+        """Return a tuple of the tensor shape."""
+        return tuple(reversed(self.dims_l())) + tuple(reversed(self.dims_r()))
+
+    @property
+    def is_square(self):
+        """Return True if the left and right dimensions are equal."""
+        return (
+            self._num_qargs_l == self._num_qargs_r
+            and self._dims_l == self._dims_r
+        )
+
     def compose(
         self, other: "OpShape", qargs: list | None = None, front: bool = False
     ):
