@@ -167,7 +167,7 @@ class DAGCircuit:
 
         self._multi_graph.insert_node_on_out_edges_multiple(
             node._node_id,
-            [self.output_map[int(bit)]._node_id for bit in qargs],
+            [self.input_map[int(bit)]._node_id for bit in qargs],
         )
         return node
 
@@ -591,11 +591,8 @@ class DAGCircuit:
             QuantumCircuit: QuantumCircuit corresponding to DAG.
         """
         circ = QuantumCircuit()
-        multi_graph = self.get_multi_graph()
-        all_node_ids = list(multi_graph.node_indexes())
         gate_list = []
-        for node_id in all_node_ids:
-            node = multi_graph.get_node_data(node_id)
+        for node in self.topological_op_nodes():
             if isinstance(node, DAGOpNode):
                 gate_list.append(node.op)
         circ.append_operations(gate_list)

@@ -115,7 +115,7 @@ class TestDAGCircuit:
         op4 = H([0])
         dag.apply_operation_front(op4)
         assert dag.size() == 4
-        assert dag.depth() == 2
+        assert dag.depth() == 3
         assert dag.width() == 3
 
     def test_topological_nodes(self):
@@ -248,7 +248,7 @@ class TestDAGCircuit:
         qubit = 0
         qubit_operations = list(dag.nodes_on_wire(wire=qubit, only_ops=True))
         assert isinstance(qubit_operations, list)
-        assert len(qubit_operations) == 1
+        assert len(qubit_operations) == 2
         assert isinstance(qubit_operations[0], DAGOpNode)
 
     def test_two_qubit_ops_to_dag(self):
@@ -295,4 +295,4 @@ class TestDAGCircuit:
             dest = edge[1]
             if isinstance(src, DAGOpNode) and isinstance(dest, DAGOpNode):
                 edge_list.append([node_dict[src], node_dict[dest]])
-        assert edge_list == [[3, 4]]
+        assert edge_list == [[0, 2], [1, 2], [3, 4], [2, 4]]
