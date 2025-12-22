@@ -110,55 +110,54 @@ class OptimizingTemplate:
         while len(queue) > 0:
             u, v = queue.popleft()
             for neighbors in ["predecessors", "successors"]:
-                u_nxt = list(getattr(template, neighbors)(u))
-                v_nxt = list(getattr(dag, neighbors)(v))
-                # the purpose of sort is to make the comparison between the
-                # same type and same qubits of gates
-                u_nxt.sort(
-                    key=lambda x: (
-                        x.name + str(x.qargs)
-                        if isinstance(x, DAGOpNode)
-                        else "None"
-                    )
-                )
-                v_nxt.sort(
-                    key=lambda x: (
-                        x.name + str(x.qargs)
-                        if isinstance(x, DAGOpNode)
-                        else "None"
-                    )
-                )
+                u_nxts = list(getattr(template, neighbors)(u))
+                v_nxts = list(getattr(dag, neighbors)(v))
+                # compare circuit bit by bit
+                for qubit in u.qargs:
+                    u_nxt = None
+                    v_nxt = None
+                    for node in u_nxts:
+                        if not isinstance(node, DAGOpNode):
+                            continue
+                        # next node must originate from current qubit
+                        if qubit in node.qargs:
+                            u_nxt = node
+                            if len(node.qargs) == 1:
+                                break
 
-                for i in range(len(u_nxt)):
-                    u_succ_ = u_nxt[i]
-                    v_succ_ = v_nxt[i]
-                    if not isinstance(u_succ_, DAGOpNode):
+                    if not isinstance(u_nxt, DAGOpNode):
                         continue
-                    if id(u_succ_) in mapping:
+
+                    for node in v_nxts:
+                        if not isinstance(node, DAGOpNode):
+                            continue
+                        # like above, but convert qubit location
+                        if qubit_mapping[qubit] in node.qargs:
+                            v_nxt = node
+                            if len(node.qargs) == 1:
+                                break
+
+                    if id(u_nxt) in mapping:
                         # conflict with the previously established mapping
-                        if id(mapping[id(u_succ_)]) != id(v_succ_):
+                        if id(mapping[id(u_nxt)]) != id(v_nxt):
                             return None
                         continue
 
                     if (
-                        not isinstance(v_succ_, DAGOpNode)
-                        or u_succ_.name != v_succ_.name
+                        not isinstance(v_nxt, DAGOpNode)
+                        or u_nxt.name != v_nxt.name
                     ):
                         return None
 
-                    # single qubit gate, must be in the same position
-                    if len(u_succ_.qargs) == 1:
-                        if qubit_mapping[u_succ_.qargs[0]] != v_succ_.qargs[0]:
-                            return None
-                    # two qubit gate, allocate mapping and check conflict
-                    for u_qubit, v_qubit in zip(u_succ_.qargs, v_succ_.qargs):
+                    # allocate mapping and check conflict
+                    for u_qubit, v_qubit in zip(u_nxt.qargs, v_nxt.qargs):
                         if u_qubit not in qubit_mapping.keys():
                             qubit_mapping[u_qubit] = v_qubit
                         if qubit_mapping[u_qubit] != v_qubit:
                             return None
 
-                    mapping[id(u_succ_)] = v_succ_
-                    queue.append((u_succ_, v_succ_))
+                    mapping[id(u_nxt)] = v_nxt
+                    queue.append((u_nxt, v_nxt))
 
         return mapping
 

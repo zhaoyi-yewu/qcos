@@ -218,3 +218,39 @@ class TestCliffordRzOptimization:
         dag = DAGCircuit.ir_to_dag(ir)
         cnt = opt.cancel_single_qubit_gates(dag)
         assert cnt == 1
+
+        # test10
+        ir = [
+            RZ([1], arg_value=[0.1]),
+            # ---
+            CX([0, 1]),
+            RZ([1], arg_value=[0.2]),
+            CX([0, 1]),
+            # ---
+            CX([0, 1]),
+            RZ([1], arg_value=[0.2]),
+            CX([0, 1]),
+            # ---
+            RZ([1], arg_value=[0.2]),
+        ]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_single_qubit_gates(dag)
+        assert cnt == 1
+
+        # test11
+        ir = [
+            RZ([2], arg_value=[0.1]),
+            # ---
+            CX([1, 2]),
+            RZ([2], arg_value=[0.2]),
+            CX([1, 2]),
+            # ---
+            CX([0, 2]),
+            RZ([2], arg_value=[0.2]),
+            CX([0, 2]),
+            # ---
+            RZ([2], arg_value=[0.2]),
+        ]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_single_qubit_gates(dag)
+        assert cnt == 1
