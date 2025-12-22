@@ -254,3 +254,109 @@ class TestCliffordRzOptimization:
         dag = DAGCircuit.ir_to_dag(ir)
         cnt = opt.cancel_single_qubit_gates(dag)
         assert cnt == 1
+
+    def test_cancel_two_qubit_gates(self):
+        opt = CliffordRzOptimization()
+        # test for control qubit template
+        # test1
+        ir = [CX([0, 1]), CX([0, 2]), CX([0, 1])]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_two_qubit_gates(dag)
+        assert cnt == 2
+
+        # test2
+        ir = [CX([0, 1]), RZ([0], arg_value=[0.1]), CX([0, 1])]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_two_qubit_gates(dag)
+        assert cnt == 2
+
+        # test for target qubit template
+        # test1
+        ir = [CX([0, 2]), CX([1, 2]), CX([0, 2])]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_two_qubit_gates(dag)
+        assert cnt == 2
+
+        # test2
+        ir = [CX([0, 1]), H([1]), CX([1, 2]), H([1]), CX([0, 1])]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_two_qubit_gates(dag)
+        assert cnt == 2
+
+        # test3
+        ir = [CX([0, 1]), X([1]), CX([0, 1])]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_two_qubit_gates(dag)
+        assert cnt == 2
+
+        # test for combine templates
+        # test1
+        ir = [
+            CX([0, 1]),
+            # ---template1
+            CX([0, 2]),
+            # ---end
+            CX([0, 1]),
+            CX([0, 1]),
+            # ---template2
+            H([1]),
+            CX([1, 2]),
+            H([1]),
+            # ---end
+            CX([0, 1]),
+        ]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_two_qubit_gates(dag)
+        assert cnt == 4
+
+        # test2
+        ir = [
+            CX([0, 1]),
+            # ---t1
+            RZ([0], arg_value=[0.1]),
+            # ---end
+            CX([0, 1]),
+            CX([0, 2]),
+            # ---t2
+            CX([1, 2]),
+            # ---end
+            CX([0, 2]),
+        ]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_two_qubit_gates(dag)
+        assert cnt == 4
+
+        # test3
+        ir = [
+            CX([0, 1]),
+            # ---
+            CX([0, 2]),
+            RZ([0], arg_value=[0.1]),
+            CX([0, 3]),
+            # ---
+            CX([0, 1]),
+        ]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_two_qubit_gates(dag)
+        assert cnt == 2
+
+        # test4
+        ir = [
+            CX([0, 1]),
+            # ---
+            RZ([0], arg_value=[0.1]),
+            RZ([0], arg_value=[0.1]),
+            RZ([0], arg_value=[0.1]),
+            # ---
+            CX([0, 1]),
+        ]
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.cancel_two_qubit_gates(dag)
+        assert cnt == 2
+
+
+if __name__ == "__main__":
+    test = TestCliffordRzOptimization()
+    test.test_reduce_hadamard_gates()
+    test.test_cancel_single_qubit_gates()
+    test.test_cancel_two_qubit_gates()

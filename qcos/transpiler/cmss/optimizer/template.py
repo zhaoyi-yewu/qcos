@@ -223,6 +223,32 @@ def generate_single_qubit_gate_templates() -> list[OptimizingTemplate]:
     return ret
 
 
+def generate_cnot_ctrl_templates() -> list[OptimizingTemplate]:
+    tpl_list = [[2, 0, [CX([0, 1])]], [1, 0, [RZ([0])]]]
+    ret = []
+    for n_qubit, anchor, tpl in tpl_list:
+        if not isinstance(tpl, list) or not isinstance(anchor, int):
+            raise ValueError("Template must be list, anchor must be int.")
+        tpl_dag = DAGCircuit.ir_to_dag(tpl)
+        ret.append(OptimizingTemplate(tpl_dag, anchor=anchor))
+    return ret
+
+
+def generate_cnot_targ_templates() -> list[OptimizingTemplate]:
+    tpl_list = [
+        [2, 1, [CX([0, 1])]],
+        [2, 0, [H([0]), CX([0, 1]), H([0])]],
+        [1, 0, [X([0])]],
+    ]
+    ret = []
+    for n_qubit, anchor, tpl in tpl_list:
+        if not isinstance(tpl, list) or not isinstance(anchor, int):
+            raise ValueError("Template must be list, anchor must be int.")
+        tpl_dag = DAGCircuit.ir_to_dag(tpl)
+        ret.append(OptimizingTemplate(tpl_dag, anchor=anchor))
+    return ret
+
+
 def search_template(graph: rx.PyDAG | DAGCircuit, template: rx.PyDAG):
     """Search template DAG in another DAG.
 
