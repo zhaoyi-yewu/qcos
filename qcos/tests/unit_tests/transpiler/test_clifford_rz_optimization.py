@@ -353,10 +353,3 @@ class TestCliffordRzOptimization:
         dag = DAGCircuit.ir_to_dag(ir)
         cnt = opt.cancel_two_qubit_gates(dag)
         assert cnt == 2
-
-
-if __name__ == "__main__":
-    test = TestCliffordRzOptimization()
-    test.test_reduce_hadamard_gates()
-    test.test_cancel_single_qubit_gates()
-    test.test_cancel_two_qubit_gates()
