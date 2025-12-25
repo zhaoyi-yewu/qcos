@@ -2930,3 +2930,173 @@ class TestMCTree:
             mctree.nodes[child][
                 "circuit"
             ].get_future_cx_fix_num = original_get_future
+
+    def test_sim_function_implementation(self):
+        """Test sim_function implementation details."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+        init_mapping = [0, 1, 2, 3]
+
+        mctree = MCTree(
+            ag,
+            dg,
+            objective="size",
+            score_layer=5,
+            use_prune=1,
+            use_hash=1,
+            init_mapping=init_mapping,
+        )
+
+        # Test _sim_function_size logic
+        # Case 1: Simple swap needed
+        # gate0: [0], gate1: [2] -> mapped to 0, 2. dist(0,2)=2.
+        # best swap should be (1, 2) or (0, 1) to reduce distance.
+        # AG: 0-1-2-3
+        gate0 = [0]
+        gate1 = [2]
+        mapping = [0, 1, 2, 3]
+        times_sim = 1
+
+        # We expect 1 swap to happen
+        num_swaps = mctree.sim_function(gate0, gate1, mapping, times_sim)
+        assert num_swaps == 1
+
+        # Case 2: Already connected
+        gate0 = [0]
+        gate1 = [1]
+        mapping = [0, 1, 2, 3]
+        times_sim = 1
+        num_swaps = mctree.sim_function(gate0, gate1, mapping, times_sim)
+        assert num_swaps == 0
+
+        # Test _sim_function_depth logic
+        single_gate0 = [0]
+        single_gate1 = [0]
+        depth_phy_qubits = [0, 0, 0, 0]
+        mapping = [0, 1, 2, 3]
+        times_sim = 1
+
+        res = mctree.sim_function(
+            gate0,
+            gate1,
+            single_gate0,
+            single_gate1,
+            depth_phy_qubits,
+            mapping,
+            times_sim,
+        )
+        assert len(res) == 3
+        assert res[1] == 0  # num_depth_swap
+        assert res[2] == 0  # num_swaps
+
+        # Test invalid args
+        with pytest.raises(ValueError, match="Invalid arguments"):
+            mctree.sim_function(gate0, gate1, mapping)
+
+    def test_sim_function_complex_scenarios(self):
+        """Test sim_function with more complex scenarios."""
+        # Create a star graph AG
+        # 0 - 1 - 2
+        #     |
+        #     3
+        ag = nx.Graph()
+        ag.add_edges_from([(0, 1), (1, 2), (1, 3)])
+        ag.shortest_path = dict(nx.shortest_path(ag))
+        ag.shortest_length = dict(nx.shortest_path_length(ag))
+
+        dg = self.create_test_dg()  # Dummy DG
+        init_mapping = [0, 1, 2, 3]
+
+        mctree = MCTree(
+            ag,
+            dg,
+            objective="size",
+            score_layer=5,
+            use_prune=1,
+            use_hash=1,
+            init_mapping=init_mapping,
+        )
+
+        # Scenario: Multiple gates
+        # Gate 1: (0, 2) -> dist 2 (needs swap)
+        # Gate 2: (0, 3) -> dist 2 (needs swap)
+        # Mapping: 0->0, 1->1, 2->2, 3->3
+        # Best swap should be (0, 1) which moves 0 to center (1).
+        # New mapping: 0->1, 1->0, 2->2, 3->3
+        # New dists: (1, 2)->1, (1, 3)->1. Both solved.
+
+        gate0 = [0, 0]
+        gate1 = [2, 3]
+        mapping = [0, 1, 2, 3]
+        times_sim = 5
+
+        num_swaps = mctree.sim_function(gate0, gate1, mapping, times_sim)
+        # Should be 1 swap to solve both if greedy works perfectly
+        assert num_swaps == 1
+
+    def test_simulation_integration_size(self):
+        """Test simulation method integration for size objective."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+        init_mapping = [0, 1, 2, 3]
+
+        mctree = MCTree(
+            ag,
+            dg,
+            objective="size",
+            score_layer=5,
+            use_prune=1,
+            use_hash=1,
+            init_mapping=init_mapping,
+        )
+
+        # Mock get_future_cx_fix_num to return something that needs swaps
+        # We need a child node to simulate on
+        child = mctree.add_node_mcts(mctree.root_node, added_swap=(0, 1))
+
+        # Mock circuit methods
+        mctree.nodes[child]["circuit"].get_future_cx_fix_num = Mock(
+            return_value=([0], [2])  # Needs swap on linear graph 0-1-2-3
+        )
+
+        # Mock back_propagation to check if it's called
+        mctree.back_propagation = Mock()
+
+        # Run simulation
+        # mode_sim = ["fix_cx_num", [times_sim, num_exe_cx]]
+        mctree.simulation(child, mode_sim=["fix_cx_num", [5, 1]])
+
+        # Should have called back_propagation because we found a solution
+        assert mctree.back_propagation.called
+
+    def test_simulation_integration_depth(self):
+        """Test simulation method integration for depth objective."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+        init_mapping = [0, 1, 2, 3]
+
+        mctree = MCTree(
+            ag,
+            dg,
+            objective="depth",
+            score_layer=5,
+            use_prune=1,
+            use_hash=1,
+            init_mapping=init_mapping,
+        )
+
+        child = mctree.add_node_mcts(mctree.root_node, added_swap=(0, 1))
+
+        # Mock circuit methods
+        mctree.nodes[child][
+            "circuit"
+        ].get_future_cx_fix_num_with_single = Mock(
+            return_value=([0], [2], [0], [0])
+        )
+        mctree.nodes[child]["depth_phy_qubits"] = [0, 0, 0, 0]
+
+        mctree.back_propagation = Mock()
+
+        mctree.simulation(child, mode_sim=["fix_cx_num", [5, 1]])
+
+        assert mctree.back_propagation.called

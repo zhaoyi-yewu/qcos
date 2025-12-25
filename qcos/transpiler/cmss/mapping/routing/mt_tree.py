@@ -812,6 +812,137 @@ class MCTree(DiGraph):
             # print()
         return self.root_node
 
+    # Simulation phase of the MCTS algorithm.
+    def sim_function(self, gate0, gate1, *args):
+        if len(args) == 2:
+            mapping, times_sim = args
+            return self._sim_function_size(gate0, gate1, mapping, times_sim)
+        elif len(args) == 5:
+            (
+                single_gate0,
+                single_gate1,
+                depth_phy_qubits,
+                mapping,
+                times_sim,
+            ) = args
+            return self._sim_function_depth(
+                gate0,
+                gate1,
+                single_gate0,
+                single_gate1,
+                depth_phy_qubits,
+                mapping,
+                times_sim,
+            )
+        else:
+            raise ValueError("Invalid arguments for sim_function")
+
+    # Simulation method targeting size.
+    def _sim_function_size(self, gate0, gate1, mapping, times_sim):
+        num_swaps = 0
+        current_gate_idx = 0
+        num_gates = len(gate0)
+        edges = list(self.AG.edges)
+
+        while current_gate_idx < num_gates and num_swaps < times_sim:
+            # Execute executable gates
+            while current_gate_idx < num_gates:
+                u = mapping[gate0[current_gate_idx]]
+                v = mapping[gate1[current_gate_idx]]
+                if self.shortest_length_AG[u][v] == 1:
+                    current_gate_idx += 1
+                else:
+                    break
+
+            if current_gate_idx >= num_gates:
+                break
+
+            # Greedy strategy: select SWAP reducing sum of distances
+            best_swap = None
+            min_dist_sum = float("inf")
+
+            current_locs0 = [mapping[g] for g in gate0[current_gate_idx:]]
+            current_locs1 = [mapping[g] for g in gate1[current_gate_idx:]]
+
+            current_dist_sum = 0
+            for u, v in zip(current_locs0, current_locs1):
+                current_dist_sum += self.shortest_length_AG[u][v]
+
+            min_dist_sum = current_dist_sum
+            found_better = False
+
+            for p, q in edges:
+                temp_dist_sum = current_dist_sum
+                affected = False
+
+                # Calculate new distance sum for this swap
+                for i in range(len(current_locs0)):
+                    u = current_locs0[i]
+                    v = current_locs1[i]
+
+                    if u != p and u != q and v != p and v != q:
+                        continue
+
+                    affected = True
+                    old_dist = self.shortest_length_AG[u][v]
+
+                    new_u = u
+                    if u == p:
+                        new_u = q
+                    elif u == q:
+                        new_u = p
+
+                    new_v = v
+                    if v == p:
+                        new_v = q
+                    elif v == q:
+                        new_v = p
+
+                    new_dist = self.shortest_length_AG[new_u][new_v]
+                    temp_dist_sum = temp_dist_sum - old_dist + new_dist
+
+                if affected and temp_dist_sum < min_dist_sum:
+                    min_dist_sum = temp_dist_sum
+                    best_swap = (p, q)
+                    found_better = True
+
+            if not found_better:
+                # Fallback: Swap on shortest path of the first gate
+                u = mapping[gate0[current_gate_idx]]
+                v = mapping[gate1[current_gate_idx]]
+                path = self.shortest_path_AG[u][v]
+                if len(path) > 1:
+                    best_swap = (u, path[1])
+                else:
+                    break
+
+            # Perform swap
+            p, q = best_swap
+            for i in range(len(mapping)):
+                if mapping[i] == p:
+                    mapping[i] = q
+                elif mapping[i] == q:
+                    mapping[i] = p
+
+            num_swaps += 1
+
+        return num_swaps
+
+    def _sim_function_depth(
+        self,
+        gate0,
+        gate1,
+        single_gate0,
+        single_gate1,
+        depth_phy_qubits,
+        mapping,
+        times_sim,
+    ):
+        num_swaps = self._sim_function_size(gate0, gate1, mapping, times_sim)
+        # Assuming sequential swaps for depth calculation in simulation
+        num_depth_swap = num_swaps
+        return None, num_depth_swap, num_swaps
+
     def simulation(self, sim_node, mode_sim=None):
         """Simulation and BP the simulation score.
 
