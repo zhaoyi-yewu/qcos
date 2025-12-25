@@ -15,7 +15,11 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from qcos.transpiler.cmss.circuit.dag_node import DAGInNode, DAGOutNode
+from qcos.transpiler.cmss.circuit.dag_node import (
+    DAGInNode,
+    DAGOutNode,
+    DAGOpNode,
+)
 from qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
 from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 from qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
@@ -73,6 +77,20 @@ class TestDAGCircuit:
         assert len(dag.output_map) == 1
         assert len(dag._multi_graph.nodes()) == 3
 
+    def test_apply_operation_front(self):
+        dag = DAGCircuit()
+        dag.add_qubits(1)
+        op = X([0])
+
+        assert len(dag.input_map) == 1
+        assert len(dag.output_map) == 1
+        assert len(dag._multi_graph.nodes()) == 2
+
+        dag.apply_operation_front(op)
+        assert len(dag.input_map) == 1
+        assert len(dag.output_map) == 1
+        assert len(dag._multi_graph.nodes()) == 3
+
     def test_size_depth_width(self):
         dag = DAGCircuit()
         dag.add_qubits(3)
@@ -92,6 +110,12 @@ class TestDAGCircuit:
         dag.apply_operation_back(op3)
         assert dag.size() == 3
         assert dag.depth() == 2
+        assert dag.width() == 3
+
+        op4 = H([0])
+        dag.apply_operation_front(op4)
+        assert dag.size() == 4
+        assert dag.depth() == 3
         assert dag.width() == 3
 
     def test_topological_nodes(self):
@@ -205,9 +229,70 @@ class TestDAGCircuit:
         op1 = H([0])
         op2 = H([1])
         op3 = CX([0, 1])
-        dag.apply_operation_back(op1)
-        dag.apply_operation_back(op2)
+        dag.apply_operation_front(op1)
+        dag.apply_operation_front(op2)
         dag.apply_operation_back(op3)
         counts = dag.count_ops()
         assert counts["h"] == 2
         assert counts["cx"] == 1
+
+    def test_nodes_on_wire(self):
+        dag = DAGCircuit()
+        dag.add_qubits(2)
+        op1 = H([0])
+        op2 = H([1])
+        op3 = CX([0, 1])
+        dag.apply_operation_front(op1)
+        dag.apply_operation_front(op2)
+        dag.apply_operation_back(op3)
+        qubit = 0
+        qubit_operations = list(dag.nodes_on_wire(wire=qubit, only_ops=True))
+        assert isinstance(qubit_operations, list)
+        assert len(qubit_operations) == 2
+        assert isinstance(qubit_operations[0], DAGOpNode)
+
+    def test_two_qubit_ops_to_dag(self):
+        dag = DAGCircuit()
+        dag.add_qubits(3)
+        op1 = H([0])
+        op2 = H([1])
+        op3 = H([2])
+        op4 = CX([0, 1])
+        op5 = CX([1, 2])
+        dag.apply_operation_front(op1)
+        dag.apply_operation_front(op2)
+        dag.apply_operation_front(op3)
+        dag.apply_operation_back(op4)
+        dag.apply_operation_back(op5)
+        new_dag = dag.two_qubit_ops_to_dag()
+        assert len(new_dag.input_map) == 3
+        assert len(new_dag.output_map) == 3
+        assert len(dag._multi_graph.nodes()) == 11
+        assert len(new_dag._multi_graph.nodes()) == 8
+        op6 = CX([0, 2])
+        dag.apply_operation_back(op6)
+        assert len(dag._multi_graph.nodes()) == 12
+        assert len(new_dag._multi_graph.nodes()) == 8
+
+    def test_edges(self):
+        dag = DAGCircuit()
+        dag.add_qubits(3)
+        op1 = H([0])
+        op2 = H([1])
+        op3 = H([2])
+        op4 = CX([0, 1])
+        op5 = CX([1, 2])
+        dag.apply_operation_front(op1)
+        dag.apply_operation_front(op2)
+        dag.apply_operation_front(op3)
+        dag.apply_operation_back(op4)
+        dag.apply_operation_back(op5)
+        topo_nodes = list(dag.topological_op_nodes())
+        node_dict = {node: idx for idx, node in enumerate(topo_nodes)}
+        edge_list = []
+        for edge in dag.edges():
+            src = edge[0]
+            dest = edge[1]
+            if isinstance(src, DAGOpNode) and isinstance(dest, DAGOpNode):
+                edge_list.append([node_dict[src], node_dict[dest]])
+        assert edge_list == [[0, 2], [1, 2], [3, 4], [2, 4]]

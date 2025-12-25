@@ -82,7 +82,7 @@ function run_pep8 {
 
 function run_unit_tests {
   echo "[Running unit tests]"
-  ${wrapper} "python3 -m pytest --disable-warnings -vv ${TOP_DIR}/qcos/tests/unit_tests"
+  ${wrapper} "python3 -m pytest --disable-warnings -vv --junitxml=${TOP_DIR}/cicd/report.xml ${TOP_DIR}/qcos/tests/unit_tests"
   unit_test_success=$?
   echo
 }

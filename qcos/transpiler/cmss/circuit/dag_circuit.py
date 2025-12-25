@@ -148,6 +148,29 @@ class DAGCircuit:
         )
         return node
 
+    def apply_operation_front(self, op, qargs=None, cargs=None) -> DAGOpNode:
+        """Apply an operation to the input of the circuit.
+
+        Args:
+            op: the operation associated with the DAG node
+            qargs: qubits that op will be applied to
+            cargs (tuple[Clbit]): cbits that op will be applied to
+
+        Returns:
+            DAGOpNode: the node for the op that was added to the dag
+        """
+        if qargs is None:
+            qargs = op.targets
+        node = DAGOpNode(op=op, qargs=qargs)
+        node._node_id = self._multi_graph.add_node(node)
+        self._increment_op(op)
+
+        self._multi_graph.insert_node_on_out_edges_multiple(
+            node._node_id,
+            [self.input_map[int(bit)]._node_id for bit in qargs],
+        )
+        return node
+
     def size(self):
         """Return the number of operations.
 
@@ -169,6 +192,41 @@ class DAGCircuit:
     def width(self):
         """Return the total number of qubits used by the circuit."""
         return len(self._wires)
+
+    def nodes_on_wire(self, wire, only_ops=False):
+        """Iterator for nodes that affect a given wire.
+
+        Args:
+            wire (Bit): the wire to be looked at.
+            only_ops (bool): True if only the ops nodes are wanted;
+                        otherwise, all nodes are returned.
+
+        Yield:
+            Iterator: the successive nodes on the given wire
+
+        Raises:
+            ValueError: if the given wire doesn't exist in the DAG
+        """
+        current_node = self.input_map.get(wire, None)
+        if not current_node:
+            raise ValueError(
+                f"The given wire {str(wire)} is not present in the circuit"
+            )
+
+        more_nodes = True
+        while more_nodes:
+            more_nodes = False
+            # allow user to just get ops on the wire - not input/output nodes
+            if isinstance(current_node, DAGOpNode) or not only_ops:
+                yield current_node
+
+            try:
+                current_node = self._multi_graph.find_adjacent_node_by_edge(
+                    current_node._node_id, lambda x: wire == x
+                )
+                more_nodes = True
+            except rx.NoSuitableNeighbors:
+                pass
 
     def topological_nodes(self, key=None):
         """Yield nodes in topological order.
@@ -533,11 +591,8 @@ class DAGCircuit:
             QuantumCircuit: QuantumCircuit corresponding to DAG.
         """
         circ = QuantumCircuit()
-        multi_graph = self.get_multi_graph()
-        all_node_ids = list(multi_graph.node_indexes())
         gate_list = []
-        for node_id in all_node_ids:
-            node = multi_graph.get_node_data(node_id)
+        for node in self.topological_op_nodes():
             if isinstance(node, DAGOpNode):
                 gate_list.append(node.op)
         circ.append_operations(gate_list)
@@ -550,3 +605,41 @@ class DAGCircuit:
             rx.PyDAG: DAG Graph
         """
         return self._multi_graph
+
+    def two_qubit_ops_to_dag(self):
+        """Convert two-qubit gates operations into a DAG.
+
+        Return:
+            DAGCircuit: Directed acyclic graph containing two-bit gates.
+        """
+        new_dag = DAGCircuit()
+        new_dag.add_qubits(len(self.qubits))
+        # Traverse DAG's two-qubit gates and add them to the new DAG
+        for node in self.two_qubit_ops():
+            new_dag.apply_operation_back(node.op)
+        return new_dag
+
+    def edges(self, nodes=None):
+        """Iterator for edge values and source and dest node.
+
+        Args:
+            nodes (DAGOpNode, DAGInNode, or DAGOutNode | list):
+                Either a list of nodes or a single input node.
+
+        Yield:
+            edge: the edge in the same format as out_edges the tuple
+                (source node, destination node, edge data).
+        """
+        if nodes is None:
+            nodes = self._multi_graph.nodes()
+
+        elif isinstance(nodes, (DAGOpNode, DAGInNode, DAGOutNode)):
+            nodes = [nodes]
+        for node in nodes:
+            raw_nodes = self._multi_graph.out_edges(node._node_id)
+            for source, dest, edge in raw_nodes:
+                yield (
+                    self._multi_graph[source],
+                    self._multi_graph[dest],
+                    edge,
+                )

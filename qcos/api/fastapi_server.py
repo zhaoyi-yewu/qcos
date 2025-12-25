@@ -101,4 +101,4 @@ def handle_exit(*args, **kwargs):
     unicorn_exit_handler(*args, **kwargs)
 
 
-UvicornServer.handle_exit = handle_exit  # type: ignore[method-assign]
+UvicornServer.handle_exit = handle_exit  # type: ignore

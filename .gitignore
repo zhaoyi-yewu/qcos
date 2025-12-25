@@ -36,6 +36,7 @@ latest-commit-id.txt
 cicd/.coverage
 cicd/coverage.xml
 cicd/coverage_html
+cicd/report.xml
 .tox
 .cache
 nosetests.xml

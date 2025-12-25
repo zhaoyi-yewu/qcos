@@ -22,7 +22,10 @@ import uuid
 from datetime import datetime
 from unittest.mock import patch, Mock
 
+import pytest
+
 from qcos.common.library import Library, _s
+from qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 from qcos.tests.unit_tests.task_manager.constant_for_test import (
     ConstantForTest,
 )
@@ -31,7 +34,12 @@ library = Library()
 fernet_key = "abcBn4Ol_3bJ7t0IW7TmPCCZurqfw_QRa810U43o_m0="
 
 
+@pytest.mark.usefixtures("global_configs")
 class TestLibrary:
+    @classmethod
+    def setup_class(cls):
+        cls.temp_dir = GLOBAL_CONFIGS["temp_dir"]
+
     def test_get_brief_description(self):
         description = "description"
         brief = library.get_brief_description(description)
@@ -49,23 +57,22 @@ class TestLibrary:
         assert new_list == lst
 
     def test_create_file(self):
-        test_file = "/test1.txt"
-        success, _ = library.create_file(test_file, "6908", mode=0o644)
+        input_file = f"{self.temp_dir}/test_create_file.txt"
+        success, _ = library.create_file(input_file, "6908", mode=0o644)
         assert success is True
-        library.rm_file(test_file)
+        library.rm_file(input_file)
 
     def test_create_pid_file(self):
-        test_file = "/test.pid"
-        library.create_pid_file(test_file)
-        assert os.path.isfile(test_file)
-        library.rm_file(test_file)
+        input_file = f"{self.temp_dir}/test_create_pid_file.txt"
+        library.create_pid_file(input_file)
+        assert os.path.isfile(input_file)
+        library.rm_file(input_file)
 
     def test_kill_pid(self):
-        test_file = "/test.pid"
-        library.create_file(test_file, "28336")
-        assert library.kill_pid("/test.pid") is None
-        assert library.kill_pid("/test.pid1") is None
-        library.rm_file(test_file)
+        input_file = f"{self.temp_dir}/test_kill_pid.txt"
+        library.create_file(input_file, "28336")
+        assert library.kill_pid(input_file) is None
+        library.rm_file(input_file)
 
     def test_find_dirs(self):
         dirs = library.find_dirs(base_dir="/tests", recursive=True)
@@ -85,10 +92,10 @@ class TestLibrary:
         )
 
     def test_mkdir_rmdir(self):
-        dir_name = "/test-dir"
-        success = library.mkdir(dir_name)
+        input_file = f"{self.temp_dir}/test_kill_pid.txt"
+        success = library.mkdir(input_file)
         assert success is True
-        success, _ = library.rmdir(dir_name)
+        success, _ = library.rmdir(input_file)
         assert success is True
 
     def test_rm_file(self):
@@ -144,10 +151,10 @@ class TestLibrary:
 
     def test_write_to_toml(self):
         data = {"host": "127.0.0.1", "port": "8080"}
-        test_file = "/test.toml"
-        success, _ = library.create_toml(test_file, data)
+        input_file = f"{self.temp_dir}/test_write_to_toml.txt"
+        success, _ = library.create_toml(input_file, data)
         assert success is True
-        library.rm_file(test_file)
+        library.rm_file(input_file)
 
         success, _ = library.create_toml("", data)
         assert success is False

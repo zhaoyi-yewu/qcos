@@ -113,7 +113,7 @@ class DriverUQCMatrix2(DriverBase):
         try:
             uqc_config.SERVER_HOST = self.uqc_host
             uqc_config.SERVER_PORT = self.uqc_port
-            uqc_config.DEFAULT_TASKS_FILE_PATH = "/var/log/qcos/tasks.csv"
+            uqc_config.DEFAULT_TASKS_FILE_PATH = "/dev/null"
             self._uqc = uqc_client.UQC(self.token)
         except Exception as e:
             raise ValueError(f"UQC exception: {e}") from e

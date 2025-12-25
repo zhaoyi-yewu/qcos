@@ -66,9 +66,9 @@ RUN \
     rm -rf /root/.ssh/id_rsa && \
     ssh-keygen -t rsa -f /root/.ssh/id_rsa -q -N "" && \
     ssh-keygen -A && \
-# copy config files \
+# copy config files
     cp ${BUILD_CONTEXT}/etc/qcos/qcos*.toml /etc/qcos-template/ && \
-# write build info \
+# write build info
     commit_id=$(cat "${BUILD_CONTEXT}/latest-commit-id.txt" 2>/dev/null || echo "") && \
     echo -e "QCOS build info\nversion: ${QCOS_IMAGE_VERSION}\ncommit id: ${commit_id}\nbuild time: ${build_date}\n" > /root/build-info.txt && \
 # cleanup build-context

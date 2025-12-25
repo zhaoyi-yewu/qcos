@@ -15,9 +15,13 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from collections import deque
+
 import rustworkx as rx
 
 from qcos.transpiler.cmss.common.gate_operation import (
+    X,
+    RZ,
     H,
     CX,
     S,
@@ -54,6 +58,108 @@ class OptimizingTemplate:
         self.replacement = replacement
         self.anchor = anchor
         self.weight = weight
+
+    def compare(self, dag: DAGCircuit, start_node: DAGOpNode, anchor: int):
+        """Compare template dag with circuit dag from start_node.
+
+        Args:
+            dag (DAGCircuit): the circuit to be compared.
+            start_node (DAGOpNode): the node to start compare in dag.
+            anchor (int): the anchor qubit in the circuit corresponding to
+                the template.anchor.
+
+        Returns:
+            dict: mapping from node in template to node in dag.
+        """
+        template = self.template
+        t_qubit = self.anchor
+        # start compare from t_node, start_node
+        t_node = list(template.successors(template.input_map[t_qubit]))[0]
+        node = start_node
+
+        # `qubit_mapping` is the bit mapping from the template to the DAG,
+        # The DAG can know the sequential relationship between two nodes,
+        # but it cannot determine the exact qubits on which they act.
+        # ┌─────────┐
+        # ┤ Rz(0.1) ├──■───  ─────────────■───
+        # └─────────┘┌─┴─┐   ┌─────────┐┌─┴─┐
+        # ───────────┤ X ├─  ┤ Rz(0.1) ├┤ X ├─
+        #            └───┘   └─────────┘└───┘
+        # For the two circuits mentioned above, they are the same from the DAG.
+        # However, by maintaining the `qubit_mapping`, during the compare
+        # process, it can be determined that the two circuits are not
+        # equivalent, thus terminating the comparison, whereas this cannot be
+        # determined solely from the DAG.
+        qubit_mapping = {t_qubit: anchor}
+
+        if node.name != t_node.name:
+            return None
+
+        for u_qubit, v_qubit in zip(t_node.qargs, node.qargs):
+            # unmapped qubits, allocate them
+            if u_qubit not in qubit_mapping.keys():
+                qubit_mapping[u_qubit] = v_qubit
+            # conflict with the previously established mapping, it indicates
+            # that the circuit and the template are not equivalent.
+            if qubit_mapping[u_qubit] != v_qubit:
+                return None
+
+        # the mapping from node in template to node in dag
+        mapping = {id(t_node): node}
+        queue = deque([(t_node, node)])
+        while len(queue) > 0:
+            u, v = queue.popleft()
+            for neighbors in ["predecessors", "successors"]:
+                u_nxts = list(getattr(template, neighbors)(u))
+                v_nxts = list(getattr(dag, neighbors)(v))
+                # compare circuit bit by bit
+                for qubit in u.qargs:
+                    u_nxt = None
+                    v_nxt = None
+                    for node in u_nxts:
+                        if not isinstance(node, DAGOpNode):
+                            continue
+                        # next node must originate from current qubit
+                        if qubit in node.qargs:
+                            u_nxt = node
+                            if len(node.qargs) == 1:
+                                break
+
+                    if not isinstance(u_nxt, DAGOpNode):
+                        continue
+
+                    for node in v_nxts:
+                        if not isinstance(node, DAGOpNode):
+                            continue
+                        # like above, but convert qubit location
+                        if qubit_mapping[qubit] in node.qargs:
+                            v_nxt = node
+                            if len(node.qargs) == 1:
+                                break
+
+                    if id(u_nxt) in mapping:
+                        # conflict with the previously established mapping
+                        if id(mapping[id(u_nxt)]) != id(v_nxt):
+                            return None
+                        continue
+
+                    if (
+                        not isinstance(v_nxt, DAGOpNode)
+                        or u_nxt.name != v_nxt.name
+                    ):
+                        return None
+
+                    # allocate mapping and check conflict
+                    for u_qubit, v_qubit in zip(u_nxt.qargs, v_nxt.qargs):
+                        if u_qubit not in qubit_mapping.keys():
+                            qubit_mapping[u_qubit] = v_qubit
+                        if qubit_mapping[u_qubit] != v_qubit:
+                            return None
+
+                    mapping[id(u_nxt)] = v_nxt
+                    queue.append((u_nxt, v_nxt))
+
+        return mapping
 
 
 def generate_hadamard_gate_templates() -> list[OptimizingTemplate]:
@@ -97,6 +203,49 @@ def generate_hadamard_gate_templates() -> list[OptimizingTemplate]:
         ret.append(
             OptimizingTemplate(tpl_dag_graph, rpl_dag_graph, weight=weight)
         )
+    return ret
+
+
+def generate_single_qubit_gate_templates() -> list[OptimizingTemplate]:
+    tpl_list = [
+        [2, 1, [H([1]), CX([0, 1]), H([1])]],
+        [2, 1, [CX([0, 1]), RZ([1]), CX([0, 1])]],
+        [2, 0, [CX([0, 1])]],
+        [3, 0, [CX([1, 0]), CX([0, 2]), CX([1, 0])]],
+        [1, 0, [H([0]), X([0]), H([0])]],
+    ]
+    ret = []
+    for n_qubit, anchor, tpl in tpl_list:
+        if not isinstance(tpl, list) or not isinstance(anchor, int):
+            raise ValueError("Template must be list, anchor must be int.")
+        tpl_dag = DAGCircuit.ir_to_dag(tpl)
+        ret.append(OptimizingTemplate(tpl_dag, anchor=anchor))
+    return ret
+
+
+def generate_cnot_ctrl_templates() -> list[OptimizingTemplate]:
+    tpl_list = [[2, 0, [CX([0, 1])]], [1, 0, [RZ([0])]]]
+    ret = []
+    for n_qubit, anchor, tpl in tpl_list:
+        if not isinstance(tpl, list) or not isinstance(anchor, int):
+            raise ValueError("Template must be list, anchor must be int.")
+        tpl_dag = DAGCircuit.ir_to_dag(tpl)
+        ret.append(OptimizingTemplate(tpl_dag, anchor=anchor))
+    return ret
+
+
+def generate_cnot_targ_templates() -> list[OptimizingTemplate]:
+    tpl_list = [
+        [2, 1, [CX([0, 1])]],
+        [2, 0, [H([0]), CX([0, 1]), H([0])]],
+        [1, 0, [X([0])]],
+    ]
+    ret = []
+    for n_qubit, anchor, tpl in tpl_list:
+        if not isinstance(tpl, list) or not isinstance(anchor, int):
+            raise ValueError("Template must be list, anchor must be int.")
+        tpl_dag = DAGCircuit.ir_to_dag(tpl)
+        ret.append(OptimizingTemplate(tpl_dag, anchor=anchor))
     return ret
 
 

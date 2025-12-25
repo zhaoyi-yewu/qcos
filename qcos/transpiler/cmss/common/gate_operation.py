@@ -16,11 +16,13 @@
 # ----------------------------------------------------------------------
 
 import numpy as np
+from math import sqrt, cos, sin, log2
+from cmath import exp
 
 from qcos.common.constant import Constant
 from qcos.transpiler.cmss.common.base_operation import BaseOperation
 from qcos.transpiler.cmss.common.base_operation import OperationType
-from qcos.transpiler.common.errors import DecomposeException
+from qcos.transpiler.common.errors import DecomposeException, CircuitException
 from qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from qcos.transpiler.cmss.common.measure import Measure
 from qcos.transpiler.cmss.common.move import Move
@@ -139,6 +141,112 @@ class GateOperation(BaseOperation):
             f"arg_value={self.arg_value})"
         )
 
+    @staticmethod
+    def with_gate_array(base_array, dtype=None):
+        """Return the complex matrix for the gate."""
+        array_inter = np.array(base_array, dtype=np.complex128)
+        array_inter.setflags(write=False)
+        return np.asarray(array_inter, dtype=dtype)
+
+    @staticmethod
+    def _compute_control_matrix(base_mat, num_ctrl_qubits, ctrl_state=None):
+        r"""Compute the controlled matrix of the input based matrix.
+
+        Expression: V_n^j(U_{2^m}) = (U_{2^m} \otimes
+            |j\rangle\!\langle j|) + (I_{2^m} \\otimes (I_{2^n} -
+            |j\rangle\!\langle j|))
+
+            where `|j\rangle \in \mathcal{H}^{2^n}` is the control state
+
+        Args:
+            base_mat (ndarray): unitary to be controlled
+            num_ctrl_qubits (int): number of controls for new unitary
+            ctrl_state (int or str or None): The control state in decimal or as
+                a bitstring (e.g. '111'). If None, use 2**num_ctrl_qubits-1.
+
+        Returns:
+            ndarray: controlled version of base matrix.
+
+        Raises:
+            CircuitException: unrecognized mode or invalid ctrl_state
+        """
+        num_target = int(log2(base_mat.shape[0]))
+        ctrl_dim = 2**num_ctrl_qubits
+        ctrl_grnd = np.repeat([[1], [0]], [1, ctrl_dim - 1])
+        if ctrl_state is None:
+            ctrl_state = ctrl_dim - 1
+        elif isinstance(ctrl_state, str):
+            ctrl_state = int(ctrl_state, 2)
+        if isinstance(ctrl_state, int):
+            if not 0 <= ctrl_state < ctrl_dim:
+                raise CircuitException(
+                    "Invalid control state value specified."
+                )
+        else:
+            raise CircuitException("Invalid control state type specified.")
+        ctrl_proj = np.diag(np.roll(ctrl_grnd, ctrl_state))
+        full_mat = np.kron(
+            np.eye(2**num_target), np.eye(ctrl_dim) - ctrl_proj
+        ) + np.kron(base_mat, ctrl_proj)
+        return full_mat
+
+    @staticmethod
+    def with_controlled_gate_array(
+        base_array, ctrl_state, num_ctrl_qubits, cached_states=None, dtype=None
+    ):
+        """Return the complex matrix.
+
+        Description:
+            If cached_states is not given, then all possible control states are
+            precomputed.  If it is given, it should be an iterable of integers,
+            and only these control states will be cached.
+        """
+        base = np.asarray(base_array, dtype=np.complex128)
+
+        def matrix_for_control_state(state):
+            out = np.asarray(
+                GateOperation._compute_control_matrix(
+                    base, num_ctrl_qubits, state
+                ),
+                dtype=np.complex128,
+            )
+            out.setflags(write=False)
+            return out
+
+        if cached_states is None:
+            nonwritables = [
+                matrix_for_control_state(state)
+                for state in range(2**num_ctrl_qubits)
+            ]
+            return np.asarray(nonwritables[ctrl_state], dtype=dtype)
+        else:
+            nonwritables = {
+                state: matrix_for_control_state(state)
+                for state in cached_states
+            }
+            if (out := nonwritables.get(ctrl_state)) is not None:
+                return np.asarray(out, dtype=dtype)
+            return np.asarray(
+                GateOperation._compute_control_matrix(
+                    base, num_ctrl_qubits, ctrl_state
+                ),
+                dtype=dtype,
+            )
+
+    def to_matrix(self):
+        """Return a Numpy.ndarray for the gate unitary matrix.
+
+        Returns:
+            np.ndarray: a matrix array of the gate.
+
+        Raises:
+            CircuitException: If a Gate subclass does not implement this method
+            an exception will be raised when this base class method is called.
+        """
+        if hasattr(self, "__array__"):
+            return self.__array__(dtype=complex)
+        raise CircuitException(f"to_matrix not defined for this {type(self)}")
+
 
 # 实例化门，需包含一个默认的分解方法
 class H(GateOperation):
@@ -154,6 +262,12 @@ class H(GateOperation):
         ]
         return gates
 
+    def __array__(self, dtype=None):
+        h_array = (
+            1 / sqrt(2) * np.array([[1, 1], [1, -1]], dtype=np.complex128)
+        )
+        return GateOperation.with_gate_array(h_array, dtype)
+
 
 class X(GateOperation):
     """Pauli-X门类, 将量子态绕Bloch球X轴旋转角度π进行翻转."""
@@ -164,6 +278,10 @@ class X(GateOperation):
     def default_decompose(self):
         return list([RX(targets=self.targets, arg_value=np.pi)])
 
+    def __array__(self, dtype=None):
+        x_array = [[0, 1], [1, 0]]
+        return GateOperation.with_gate_array(x_array, dtype)
+
 
 class Y(GateOperation):
     """Pauli-Y门类, 将量子态绕Bloch球Y轴旋转角度π进行翻转."""
@@ -173,6 +291,10 @@ class Y(GateOperation):
 
     def default_decompose(self):
         return list([RY(targets=self.targets, arg_value=np.pi)])
+
+    def __array__(self, dtype=None):
+        y_array = [[0, -1j], [1j, 0]]
+        return GateOperation.with_gate_array(y_array, dtype)
 
 
 class Z(GateOperation):
@@ -187,6 +309,10 @@ class Z(GateOperation):
             RX(targets=self.targets, arg_value=np.pi),
         ]
         return gates
+
+    def __array__(self, dtype=None):
+        z_array = [[1, 0], [0, -1]]
+        return GateOperation.with_gate_array(z_array, dtype)
 
 
 class S(GateOperation):
@@ -209,6 +335,10 @@ class S(GateOperation):
         ]
         return gates
 
+    def __array__(self, dtype=None):
+        s_array = np.array([[1, 0], [0, 1j]])
+        return GateOperation.with_gate_array(s_array, dtype)
+
 
 class SDG(GateOperation):
     """反相位门类.
@@ -230,6 +360,10 @@ class SDG(GateOperation):
         ]
         return gates
 
+    def __array__(self, dtype=None):
+        sdg_array = np.array([[1, 0], [0, -1j]])
+        return GateOperation.with_gate_array(sdg_array, dtype)
+
 
 class T(GateOperation):
     """T门.
@@ -247,6 +381,10 @@ class T(GateOperation):
     def default_decompose(self):
         return list([RZ(targets=self.targets, arg_value=np.pi / 4)])
 
+    def __array__(self, dtype=None):
+        t_array = np.array([[1, 0], [0, (1 + 1j) / sqrt(2)]])
+        return GateOperation.with_gate_array(t_array, dtype)
+
 
 class P(GateOperation):
     """P门.
@@ -262,6 +400,11 @@ class P(GateOperation):
 
     def default_decompose(self):
         return list([RZ(targets=self.targets, arg_value=self.arg_value)])
+
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the Phase gate."""
+        lam = float(self.arg_value[0])
+        return np.array([[1, 0], [0, exp(1j * lam)]], dtype=dtype)
 
 
 class TDG(GateOperation):
@@ -280,6 +423,10 @@ class TDG(GateOperation):
     def default_decompose(self):
         return list([RZ(targets=self.targets, arg_value=-np.pi / 4)])
 
+    def __array__(self, dtype=None):
+        t_array = np.array([[1, 0], [0, (1 - 1j) / sqrt(2)]])
+        return GateOperation.with_gate_array(t_array, dtype)
+
 
 class RX(GateOperation):
     """绕X轴旋转门.
@@ -295,6 +442,14 @@ class RX(GateOperation):
 
     def default_decompose(self):
         return list([self])
+
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the RX gate."""
+        rx_cos = cos(self.arg_value[0] / 2)
+        rx_sin = sin(self.arg_value[0] / 2)
+        return np.array(
+            [[rx_cos, -1j * rx_sin], [-1j * rx_sin, rx_cos]], dtype=dtype
+        )
 
 
 class RY(GateOperation):
@@ -312,6 +467,12 @@ class RY(GateOperation):
     def default_decompose(self):
         return list([self])
 
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the RY gate."""
+        ry_cos = cos(self.arg_value[0] / 2)
+        ry_sin = sin(self.arg_value[0] / 2)
+        return np.array([[ry_cos, -ry_sin], [ry_sin, ry_cos]], dtype=dtype)
+
 
 class RZ(GateOperation):
     """绕Z轴旋转门.
@@ -327,6 +488,11 @@ class RZ(GateOperation):
 
     def default_decompose(self):
         return list([self])
+
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the RY gate."""
+        ilam2 = 0.5j * float(self.arg_value[0])
+        return np.array([[exp(-ilam2), 0], [0, exp(ilam2)]], dtype=dtype)
 
 
 class SX(GateOperation):
@@ -350,6 +516,10 @@ class SX(GateOperation):
         gates += H(targets=self.targets).decompose()
         gates += SDG(targets=self.targets).decompose()
         return gates
+
+    def __array__(self, dtype=None):
+        sx_array = [[0.5 + 0.5j, 0.5 - 0.5j], [0.5 - 0.5j, 0.5 + 0.5j]]
+        return GateOperation.with_gate_array(sx_array, dtype)
 
 
 class SXDG(GateOperation):
@@ -377,6 +547,10 @@ class SXDG(GateOperation):
         gates += S(targets=self.targets).decompose()
         return gates
 
+    def __array__(self, dtype=None):
+        sdg_array = [[0.5 - 0.5j, 0.5 + 0.5j], [0.5 + 0.5j, 0.5 - 0.5j]]
+        return GateOperation.with_gate_array(sdg_array, dtype)
+
 
 class CZ(GateOperation):
     """受控Z门或Controlled-Z门.
@@ -402,6 +576,15 @@ class CZ(GateOperation):
         gates += H(targets=[self.targets[1]]).decompose()
         return gates
 
+    def __array__(self, dtype=None):
+        z_array = [[1, 0], [0, -1]]
+        return GateOperation.with_controlled_gate_array(
+            base_array=z_array,
+            ctrl_state=int("1", 2),
+            num_ctrl_qubits=1,
+            dtype=dtype,
+        )
+
 
 class CX(GateOperation):
     """受控非门或Controlled-X门.
@@ -426,6 +609,15 @@ class CX(GateOperation):
         gates.append(CZ(self.targets))
         gates += H(targets=[self.targets[1]]).decompose()
         return gates
+
+    def __array__(self, dtype=None):
+        x_array = [[0, 1], [1, 0]]
+        return GateOperation.with_controlled_gate_array(
+            base_array=x_array,
+            ctrl_state=int("1", 2),
+            num_ctrl_qubits=1,
+            dtype=dtype,
+        )
 
 
 class CY(GateOperation):
@@ -453,6 +645,15 @@ class CY(GateOperation):
         gates += S([self.targets[1]]).decompose()
         return gates
 
+    def __array__(self, dtype=None):
+        y_array = [[0, -1j], [1j, 0]]
+        return GateOperation.with_controlled_gate_array(
+            base_array=y_array,
+            ctrl_state=int("1", 2),
+            num_ctrl_qubits=1,
+            dtype=dtype,
+        )
+
 
 class SWAP(GateOperation):
     """交换门，交换两个量子比特。."""
@@ -473,6 +674,10 @@ class SWAP(GateOperation):
         gates.append(CX([self.targets[1], self.targets[0]]))
         gates.append(CX([self.targets[0], self.targets[1]]))
         return gates
+
+    def __array__(self, dtype=None):
+        swap_array = [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]]
+        return GateOperation.with_gate_array(swap_array, dtype)
 
 
 class CH(GateOperation):
@@ -502,6 +707,17 @@ class CH(GateOperation):
         gates += X([self.targets[1]]).decompose()
         gates += S([self.targets[0]]).decompose()
         return gates
+
+    def __array__(self, dtype=None):
+        h_array = (
+            1 / sqrt(2) * np.array([[1, 1], [1, -1]], dtype=np.complex128)
+        )
+        return GateOperation.with_controlled_gate_array(
+            base_array=h_array,
+            ctrl_state=int("1", 2),
+            num_ctrl_qubits=1,
+            dtype=dtype,
+        )
 
 
 class CRX(GateOperation):
@@ -535,6 +751,21 @@ class CRX(GateOperation):
         gates += H([self.targets[1]]).decompose()
         return gates
 
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the CRX gate."""
+        half_theta = float(self.arg_value[0]) / 2
+        crx_cos = cos(half_theta)
+        crx_isin = 1j * sin(half_theta)
+        return np.array(
+            [
+                [1, 0, 0, 0],
+                [0, crx_cos, 0, -crx_isin],
+                [0, 0, 1, 0],
+                [0, -crx_isin, 0, crx_cos],
+            ],
+            dtype=dtype,
+        )
+
 
 class CRY(GateOperation):
     """受控的单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿Y轴旋转θ角度."""
@@ -562,6 +793,21 @@ class CRY(GateOperation):
         ]
         return gates
 
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the CRY gate."""
+        half_theta = float(self.arg_value[0]) / 2
+        cry_cos = cos(half_theta)
+        cry_sin = sin(half_theta)
+        return np.array(
+            [
+                [1, 0, 0, 0],
+                [0, cry_cos, 0, -cry_sin],
+                [0, 0, 1, 0],
+                [0, cry_sin, 0, cry_cos],
+            ],
+            dtype=dtype,
+        )
+
 
 class CRZ(GateOperation):
     """受控的单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿Z轴旋转θ角度."""
@@ -588,6 +834,19 @@ class CRZ(GateOperation):
             RZ(targets=[self.targets[1]], arg_value=self.arg_value[0] / 2),
         ]
         return gates
+
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the CRZ gate."""
+        arg = 1j * float(self.arg_value[0]) / 2
+        return np.array(
+            [
+                [1, 0, 0, 0],
+                [0, exp(-arg), 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, exp(arg)],
+            ],
+            dtype=dtype,
+        )
 
 
 class CU1(GateOperation):
@@ -627,6 +886,14 @@ class CU1(GateOperation):
         ).decompose()
         return gates
 
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the CU1 gate."""
+        eith = exp(1j * float(self.arg_value[0]))
+        return np.array(
+            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, eith]],
+            dtype=dtype,
+        )
+
 
 class CP(GateOperation):
     """CP门（Controlled-Phase 门）.
@@ -665,6 +932,14 @@ class CP(GateOperation):
             targets=[self.targets[1]], arg_value=self.arg_value[0] / 2
         ).decompose()
         return gates
+
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the CPhase gate."""
+        eith = exp(1j * float(self.arg_value[0]))
+        return np.array(
+            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, eith]],
+            dtype=dtype,
+        )
 
 
 class CU3(GateOperation):
@@ -719,6 +994,22 @@ class CU3(GateOperation):
         ).decompose()
         return gates
 
+    def __array__(self, dtype=complex):
+        """Return a Numpy.ndarray for the CU3 gate."""
+        theta, phi, lam = self.arg_value
+        theta, phi, lam = float(theta), float(phi), float(lam)
+        u3_cos = cos(theta / 2)
+        u3_sin = sin(theta / 2)
+        return np.array(
+            [
+                [1, 0, 0, 0],
+                [0, u3_cos, 0, -exp(1j * lam) * u3_sin],
+                [0, 0, 1, 0],
+                [0, exp(1j * phi) * u3_sin, 0, exp(1j * (phi + lam)) * u3_cos],
+            ],
+            dtype=dtype,
+        )
+
 
 class CSX(GateOperation):
     """CSX门（受控SX门）.
@@ -748,6 +1039,15 @@ class CSX(GateOperation):
         gates += CU1(self.targets, [np.pi / 2]).decompose()
         gates += H([self.targets[1]]).decompose()
         return gates
+
+    def __array__(self, dtype=None):
+        sx_array = [[0.5 + 0.5j, 0.5 - 0.5j], [0.5 - 0.5j, 0.5 + 0.5j]]
+        return GateOperation.with_controlled_gate_array(
+            base_array=sx_array,
+            ctrl_state=int("1", 2),
+            num_ctrl_qubits=1,
+            dtype=dtype,
+        )
 
 
 class CU(GateOperation):
@@ -801,6 +1101,25 @@ class CU(GateOperation):
         ).decompose()
         return gates
 
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the CU gate."""
+        theta, phi, lam, gamma = (float(param) for param in self.arg_value)
+        cu_cos = cos(theta / 2)
+        cu_sin = sin(theta / 2)
+        cu_a = exp(1j * gamma) * cu_cos
+        cu_b = -exp(1j * (gamma + lam)) * cu_sin
+        cu_c = exp(1j * (gamma + phi)) * cu_sin
+        cu_d = exp(1j * (gamma + phi + lam)) * cu_cos
+        return np.array(
+            [
+                [1, 0, 0, 0],
+                [0, cu_a, 0, cu_b],
+                [0, 0, 1, 0],
+                [0, cu_c, 0, cu_d],
+            ],
+            dtype=dtype,
+        )
+
 
 class RXX(GateOperation):
     """RXX门（双量子比特 X-X 旋转门）.
@@ -838,6 +1157,21 @@ class RXX(GateOperation):
         ).decompose()
         return gates
 
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the RXX gate."""
+        theta2 = float(self.arg_value[0]) / 2
+        rxx_cos = cos(theta2)
+        rxx_isin = 1j * sin(theta2)
+        return np.array(
+            [
+                [rxx_cos, 0, 0, -rxx_isin],
+                [0, rxx_cos, -rxx_isin, 0],
+                [0, -rxx_isin, rxx_cos, 0],
+                [-rxx_isin, 0, 0, rxx_cos],
+            ],
+            dtype=dtype,
+        )
+
 
 class RZZ(GateOperation):
     """RZZ门（双量子比特 Z-Z 旋转门）.
@@ -866,6 +1200,19 @@ class RZZ(GateOperation):
         gates += U1([self.targets[1]], [self.arg_value[0]]).decompose()
         gates.append(CX(self.targets))
         return gates
+
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the RZZ gate."""
+        itheta2 = 1j * float(self.arg_value[0]) / 2
+        return np.array(
+            [
+                [exp(-itheta2), 0, 0, 0],
+                [0, exp(itheta2), 0, 0],
+                [0, 0, exp(itheta2), 0],
+                [0, 0, 0, exp(-itheta2)],
+            ],
+            dtype=dtype,
+        )
 
 
 class CCX(GateOperation):
@@ -900,6 +1247,16 @@ class CCX(GateOperation):
         gates.append(CX([self.targets[0], self.targets[1]]))
         return gates
 
+    def __array__(self, dtype=None):
+        x_array = [[0, 1], [1, 0]]
+        return GateOperation.with_controlled_gate_array(
+            base_array=x_array,
+            ctrl_state=int("11", 2),
+            num_ctrl_qubits=2,
+            cached_states=(3,),
+            dtype=dtype,
+        )
+
 
 class CSWAP(GateOperation):
     """CSWAP 门（也称 Fredkin 门）是一种 三比特受控交换门，.
@@ -927,6 +1284,15 @@ class CSWAP(GateOperation):
         gates += CCX(self.targets).decompose()
         gates.append(CX([self.targets[2], self.targets[1]]))
         return gates
+
+    def __array__(self, dtype=None):
+        swap_array = [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]]
+        return GateOperation.with_controlled_gate_array(
+            base_array=swap_array,
+            ctrl_state=int("1", 2),
+            num_ctrl_qubits=1,
+            dtype=dtype,
+        )
 
 
 class RCCX(GateOperation):
@@ -964,6 +1330,19 @@ class RCCX(GateOperation):
         gates += U1([self.targets[2]], [-np.pi / 4]).decompose()
         gates += U2([self.targets[2]], [0, np.pi]).decompose()
         return gates
+
+    def __array__(self, dtype=None):
+        init_array = [
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, -1j],
+            [0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, -1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 1j, 0, 0, 0, 0],
+        ]
+        return GateOperation.with_gate_array(init_array, dtype)
 
 
 class RC3X(GateOperation):
@@ -1009,6 +1388,27 @@ class RC3X(GateOperation):
         gates += U1([self.targets[3]], [-np.pi / 4]).decompose()
         gates += U2([self.targets[3]], [0, np.pi]).decompose()
         return gates
+
+    def __array__(self, dtype=None):
+        init_array = [
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1j, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1j, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+        ]
+        return GateOperation.with_gate_array(init_array, dtype)
 
 
 class C3X(GateOperation):
@@ -1067,6 +1467,16 @@ class C3X(GateOperation):
         gates.append(CX([self.targets[0], self.targets[3]]))
         gates += H([self.targets[3]]).decompose()
         return gates
+
+    def __array__(self, dtype=None):
+        x_array = [[0, 1], [1, 0]]
+        return GateOperation.with_controlled_gate_array(
+            base_array=x_array,
+            ctrl_state=int("111", 2),
+            num_ctrl_qubits=3,
+            cached_states=(7,),
+            dtype=dtype,
+        )
 
 
 class C3SQRTX(GateOperation):
@@ -1137,6 +1547,16 @@ class C3SQRTX(GateOperation):
         gates += H([self.targets[3]]).decompose()
 
         return gates
+
+    def __array__(self, dtype=None):
+        sx_array = [[0.5 + 0.5j, 0.5 - 0.5j], [0.5 - 0.5j, 0.5 + 0.5j]]
+        return GateOperation.with_controlled_gate_array(
+            sx_array,
+            ctrl_state=int("111", 2),
+            num_ctrl_qubits=3,
+            cached_states=(7,),
+            dtype=dtype,
+        )
 
 
 class C4X(GateOperation):
@@ -1209,6 +1629,11 @@ class U1(GateOperation):
     def default_decompose(self):
         return list([RZ(self.targets, self.arg_value)])
 
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the U1 gate."""
+        lam = float(self.arg_value[0])
+        return np.array([[1, 0], [0, np.exp(1j * lam)]], dtype=dtype)
+
 
 class U2(GateOperation):
     """U2门，对应于 π/2 角度的极坐标旋转，参数为ϕ和λ."""
@@ -1225,6 +1650,19 @@ class U2(GateOperation):
             RZ(self.targets, self.arg_value[1] - np.pi / 2),
         ]
         return gates[::-1]
+
+    def __array__(self, dtype=complex):
+        """Return a Numpy.ndarray for the U2 gate."""
+        isqrt2 = 1 / sqrt(2)
+        phi, lam = self.arg_value
+        phi, lam = float(phi), float(lam)
+        return np.array(
+            [
+                [isqrt2, -exp(1j * lam) * isqrt2],
+                [exp(1j * phi) * isqrt2, exp(1j * (phi + lam)) * isqrt2],
+            ],
+            dtype=dtype,
+        )
 
 
 class U3(GateOperation):
@@ -1244,6 +1682,20 @@ class U3(GateOperation):
             RZ(self.targets, self.arg_value[2]),
         ]
         return gates[::-1]
+
+    def __array__(self, dtype=complex):
+        """Return a Numpy.ndarray for the U3 gate."""
+        theta, phi, lam = self.arg_value
+        theta, phi, lam = float(theta), float(phi), float(lam)
+        u3_cos = cos(theta / 2)
+        u3_sin = sin(theta / 2)
+        return np.array(
+            [
+                [u3_cos, -exp(1j * lam) * u3_sin],
+                [exp(1j * phi) * u3_sin, exp(1j * (phi + lam)) * u3_cos],
+            ],
+            dtype=dtype,
+        )
 
 
 def create_gate(

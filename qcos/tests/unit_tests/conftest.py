@@ -16,6 +16,8 @@
 # ----------------------------------------------------------------------
 
 import os
+import tempfile
+
 import pytest
 from pathlib import Path
 
@@ -37,3 +39,7 @@ def global_configs():
     SAMPLES["simple-qasm.qasm"] = Library.read_file(
         f"{samples_dir}/qasm/2.0/simple-qasm.qasm"
     )
+    with tempfile.TemporaryDirectory(prefix="qcos_test_") as temp_dir:
+        os.makedirs(temp_dir, exist_ok=True)
+        GLOBAL_CONFIGS["temp_dir"] = temp_dir
+        yield temp_dir

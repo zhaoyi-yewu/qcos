@@ -1,14 +1,14 @@
-QCOS Changelog
+# QCOS Changelog
 
-Legend:
-+ Added feature
-* Improved/changed feature, compatible
-# Change that breaks existing interface
-- Bug fixed
-! Known issue / missing feature
-. Generic bullet
+All notable changes to this project will be documented in this file.
 
-v1.0.0 - Work In Progress
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased] - Work In Progress
+### Added
+
+## [1.0.0] - 2025-12-17
+### Added
 + 支持命令行 (qcos-cli)
 + 支持JSON-RPC API
 + 支持作业提交、查询、删除、取消
@@ -23,3 +23,7 @@ v1.0.0 - Work In Progress
 + 支持容器化部署, 具备一键编译/运行脚本
 + 支持配置全局最大作业数、最大排队+运行作业数限制
 + 支持日志轮转配置: 最大日志文件大小、日志文件保留数量
+
+### Changed
+### Fixed
+### Removed

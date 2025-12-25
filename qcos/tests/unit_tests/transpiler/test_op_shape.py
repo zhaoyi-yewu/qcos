@@ -30,6 +30,18 @@ class TestOpShape:
 
         assert op_shape.dims_r() == (2, 2)
         assert op_shape.dims_l() == (2, 2)
+        assert op_shape.size == 16
+        assert op_shape.num_qubits is None
+        assert op_shape.shape == (4, 4)
+        assert op_shape.tensor_shape == (2, 2, 2, 2)
+        assert op_shape.is_square is True
+
+        op_shape = OpShape(num_qargs_r=2, num_qargs_l=2)
+        assert op_shape.num_qubits == 2
+        op_shape = OpShape(num_qargs_r=2, num_qargs_l=3)
+        assert op_shape.num_qubits is None
+        op_shape = OpShape(num_qargs_r=2)
+        assert op_shape.num_qubits == 2
 
     def test_op_shape_compose(self):
         op_shape = OpShape()
@@ -55,6 +67,34 @@ class TestOpShape:
 
         err_msg = str(e.value)
         assert "Left and right compose dimensions don't match" in err_msg
+
+        op_shape = OpShape(
+            dims_l=(3, 2), dims_r=(3, 2), num_qargs_r=2, num_qargs_l=2
+        )
+        other_shape = OpShape(
+            dims_l=(2, 3), dims_r=(2, 3), num_qargs_r=2, num_qargs_l=2
+        )
+        ret = op_shape.compose(other_shape, front=True, qargs=[1, 0])
+        assert ret.dims_l() == (3, 2) and ret.dims_r() == (3, 2)
+        with pytest.raises(Exception) as e:
+            ret = op_shape.compose(other_shape, front=True, qargs=[0])
+        err_msg = str(e.value)
+        assert "Number of qargs does not match" in err_msg
+        with pytest.raises(Exception) as e:
+            ret = op_shape.compose(other_shape, front=True, qargs=[0, 1])
+        err_msg = str(e.value)
+        assert "Subsystem dimension do not match on specified qargs" in err_msg
+
+        ret = op_shape.compose(other_shape, front=False, qargs=[1, 0])
+        assert ret.dims_l() == (3, 2) and ret.dims_r() == (3, 2)
+        with pytest.raises(Exception) as e:
+            ret = op_shape.compose(other_shape, front=True, qargs=[0])
+        err_msg = str(e.value)
+        assert "Number of qargs does not match" in err_msg
+        with pytest.raises(Exception) as e:
+            ret = op_shape.compose(other_shape, front=True, qargs=[0, 1])
+        err_msg = str(e.value)
+        assert "Subsystem dimension do not match on specified qargs" in err_msg
 
     def test_op_shape_auto(self):
         # Initialize the shape

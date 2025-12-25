@@ -1,0 +1,14 @@
+/* _static/custom.css */
+
+/* 定义一个针对表格内部小字体的样式 */
+.table-code-small-font {
+    /* 缩小字体大小，例如到 80% */
+    font-size: 70%; 
+    /* 或者使用更小的绝对值，如 10pt */
+}
+
+/* 确保代码块 (div.highlight) 继承这个样式 */
+.table-code-small-font .highlight {
+    font-size: 1em; /* 保持相对大小，让上面的 80% 生效 */
+}
+

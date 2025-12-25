@@ -1,7 +1,17 @@
 # stages
 stages:
+  - commit
   # Test
   - test
+
+# commit messages
+commit-messages:
+  stage: commit
+  tags:
+    - sonic-runner
+  script:
+    - python3 ./cicd/check-commit-message.py
+
 
 # code-linter
 code-linter:
@@ -26,9 +36,13 @@ ut:
     - sonic-runner
   script:
     - ./cicd/run-tests.sh -u
+  artifacts:
+    when: always
+    reports:
+      junit: cicd/report.xml
 
-# coverage
-coverage:
+# code-coverage
+code-coverage:
   stage: test
   tags:
     - sonic-runner
