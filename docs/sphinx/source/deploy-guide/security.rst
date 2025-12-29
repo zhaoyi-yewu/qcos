@@ -63,7 +63,7 @@
       # 生成自签名证书（替换IP和DNS为实际值）
       ./make-ssl-cert.py --ip-list 127.0.0.1 --dns-list localhost
 
-   生成的SSL密钥和证书文件默认存放于``/etc/qcos/ssl/``目录下。
+   生成的SSL密钥和证书文件默认存放于``/etc/qcos/ssl``目录下。
 
 修改QCOS配置文件启用SSL
 ***************************

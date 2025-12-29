@@ -159,17 +159,12 @@ class MCTree(DiGraph):
     ):
         """Add a node to mct.
 
-        visited_time: how many times this node has been visited
-        added_swap: list like [(in1, in2),...]
-        added_remote: remote CNOTs added
-        swap_decay: deacy parameter for added SWAP, this is only uesful for
-                    modified globalscore BP mode
-        num_remain_gates: number of unexecuted CNOT gates in logical circuit
-        local_score: local score
-        global_score: global score considering all its son nodes, the initial
-                      value is its (local) score
-        sim_score: simulation score
-        return: generated node number.
+        Args:
+            father_node: how many times this node has been visited
+            added_swap: list like [(in1, in2),...]
+            remote_exe_node: remote CNOTs added
+
+        Returns: generated node number.
         """
         if father_node is None:
             # root node
@@ -643,16 +638,15 @@ class MCTree(DiGraph):
         """反向传播，更新父节点的分数.
 
         renew a variable reversely
-        start_node: is the node the the original value extracted from,
-                    note that the first backpropagated node is its father node
-        value: Propagated value
-        arg_name: the name (string) of this variable
-        mode(string):
-            'globalscore' ->
-                when going to a new node, we compare new_value (global score of
-                its son node)*args[0] + score (of current new node) with old
-                global score varible, if the former is larger than the latter,
-                then we update the global score of this new node.
+
+        Args:
+            start_node: is the node the the original value extracted from,
+                note that the first backpropagated node is its father node
+            mode_BP: when going to a new node, we compare new_value (global
+                score of its son node)*args[0] + score (of current new node)
+                with old global score varible, if the former is larger than
+                the latter, then we update the global score of this new node.
+                Defaults to None.
         """
         flag = True
         if mode_BP is None:
@@ -948,11 +942,6 @@ class MCTree(DiGraph):
 
         Different modes for simulation
         mode_sim = ['name', arg_list]
-            name:
-
-                fix_cx_num ->
-                do simulation executing fixed number of CNOT gates.
-                arg_list = [simulation_times, num_CX_gates]
         """
         if sim_node == self.root_node:
             return None

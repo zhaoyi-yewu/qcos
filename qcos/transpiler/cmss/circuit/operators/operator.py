@@ -293,9 +293,9 @@ class Operator:
         The final comparison is implemented using Numpy.allclose. See its
         documentation for additional information on tolerance parameters.
 
-        If ignore_phase is True both matrices will be multiplied by
-        exp(-1j * theta) where theta is the first nphase for a
-        first non-zero matrix element |a| * exp(1j * theta).
+        If ``ignore_phase`` is True both matrices will be multiplied by
+        ``exp(-1j * theta)`` where theta is the first nphase for a
+        first non-zero matrix element ``|a| * exp(1j * theta)``.
 
         Args:
             mat1 (matrix_like): a matrix

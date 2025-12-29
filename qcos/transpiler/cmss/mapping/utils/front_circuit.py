@@ -221,9 +221,9 @@ class FrontCircuit:
             node_DG: Node in DG to be executed with remote CNOT.
 
         Returns:
-            list: [(cx1), cx2, ...] physical CNOTs needed for remote gates.
-            list: [node1, node2, ...] newly executed nodes in DG excluding
-                the input node_DG.
+            tuple[list, list]: list1: [(cx1), cx2, ...] physical CNOTs needed
+                for remote gates. list2: [node1, node2, ...] newly executed
+                nodes in DG excluding the input node_DG.
         """
         # construct remote CNOTs
         qubits_log = self.DG.nodes[node_DG]["qubits"]

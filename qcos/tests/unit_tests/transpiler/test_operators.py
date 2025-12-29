@@ -1104,6 +1104,8 @@ class TestOperators:
         The Hadamard gate is equivalent to RY and RX gates with
         angles π and π/2, respectively.
 
+        example::
+
             global phase: π/2
             ┌───┐        ┌─────────┐┌───────┐
          q: ┤ H ├  ≡  q: ┤ Ry(π/2) ├┤ Rx(π) ├

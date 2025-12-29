@@ -455,9 +455,10 @@ class DG(DiGraph):
         We say node2 directly depends on node1 if
             1) two nodes share at least one qubit;
             2) for each shared qubit, there can't be any nodes existing between
-            the two nodes;
+               the two nodes;
             3) there can't be any path connecting node1 and node2 other than
-            the edge in 1)
+               the edge in 1)
+
         If two node are directly dependent, these nodes can be absorbed or
         cascaded. Note that currently we won't accept node1 and node2 are
         parallel, in that case, we will return False! One can use

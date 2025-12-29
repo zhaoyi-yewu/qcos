@@ -1738,12 +1738,10 @@ def get_content_by_type(code_type, file_path):
 
 
 # Application needs to be run with command line to parse.
-def main(argv=sys.argv[1:]):
-    """Main function.
-
-    Args:
-        argv: arguments of cli
-    """
+def main():
+    """Main function."""
+    # arguments of cli
+    argv = sys.argv[1:]
     app = QcosShell(
         description=DESCRIPTION,
         version=VERSION,

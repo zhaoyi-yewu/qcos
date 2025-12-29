@@ -33,7 +33,7 @@ from qcos.transpiler.cmss.mapping.utils.dg_swap_opt import (
 
 
 class TestSwapQubits:
-    """Test swap_qubits_ function."""
+    """Test `swap_qubits_` function."""
 
     def test_swap_qubits_basic(self):
         """Test basic swap functionality."""
@@ -612,7 +612,7 @@ class TestDGSwap:
         assert h_count == 1
 
     def test_swap_qubits_edge_cases(self):
-        """Test swap_qubits_ with edge cases."""
+        """Test `swap_qubits_` with edge cases."""
         # Single qubit
         result = swap_qubits_([0], (0, 1))
         assert result == [1]
@@ -820,7 +820,7 @@ class TestDGSwap:
         assert isinstance(count, int)
 
     def test_swap_qubits_single_element_match(self):
-        """Test swap_qubits_ with single element lists."""
+        """Test `swap_qubits_` with single element lists."""
         result = swap_qubits_([0], (0, 1))
         assert result == [1]
 
@@ -828,7 +828,7 @@ class TestDGSwap:
         assert result == [5]
 
     def test_swap_qubits_multiple_same_qubit(self):
-        """Test swap_qubits_ with repeated qubits."""
+        """Test `swap_qubits_` with repeated qubits."""
         result = swap_qubits_([0, 0, 1], (0, 1))
         assert result == [1, 1, 0]
 
