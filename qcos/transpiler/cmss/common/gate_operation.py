@@ -232,7 +232,7 @@ class GateOperation(BaseOperation):
                 dtype=dtype,
             )
 
-    def to_matrix(self):
+    def to_matrix(self) -> np.ndarray:
         """Return a Numpy.ndarray for the gate unitary matrix.
 
         Returns:
@@ -1615,6 +1615,16 @@ class C4X(GateOperation):
         ]).decompose()
 
         return gates
+
+    def __array__(self, dtype=None):
+        x_array = [[0, 1], [1, 0]]
+        return GateOperation.with_controlled_gate_array(
+            base_array=x_array,
+            ctrl_state=int("1111", 2),
+            num_ctrl_qubits=4,
+            cached_states=(15,),
+            dtype=dtype,
+        )
 
 
 class U1(GateOperation):

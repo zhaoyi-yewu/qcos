@@ -240,7 +240,7 @@ class Operator:
 
         for ins in obj.get_operations():
             qargs = ins.targets
-            if ins.name == "sync":
+            if ins.name in ["measure", "sync", "reset", "move"]:
                 continue
 
             mat = ins.to_matrix()

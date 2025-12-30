@@ -17,6 +17,7 @@
 
 import pytest
 import numpy as np
+import math as m
 
 from qcos.transpiler.cmss.common.gate_operation import (
     H,
@@ -999,6 +1000,18 @@ class TestOperators:
         )
         assert np.all(np.isclose(gate.to_matrix(), res_gate_mat))
 
+        # test C4X gate
+        gate = C4X(targets=[0, 1, 2, 3, 4])
+        gate_matrix = gate.to_matrix()
+        mat_shape = gate_matrix.shape
+        close1 = m.isclose(
+            gate_matrix[mat_shape[0] - 1][mat_shape[1] // 2 - 1], 1
+        )
+        close2 = m.isclose(
+            gate_matrix[mat_shape[0] // 2 - 1][mat_shape[1] - 1], 1
+        )
+        assert close1 and close2
+
         # test U1 gate
         gate = U1(targets=[0], arg_value=[1])
         res_gate_mat = np.asarray(
@@ -1028,14 +1041,6 @@ class TestOperators:
             dtype=complex,
         )
         assert np.all(np.isclose(gate.to_matrix(), res_gate_mat))
-
-        # test GateOperation
-        gate = C4X(targets=[0, 1, 2, 3, 4])
-        with pytest.raises(Exception) as e:
-            gate.to_matrix()
-
-        err_msg = str(e.value)
-        assert "to_matrix not defined for this" in err_msg
 
     def test_operator(self):
         op1 = Operator(np.eye(4))
