@@ -784,11 +784,11 @@ EquivalenceLibary: list[str] = [
 class ParamGate:
     """Represents a parameterized quantum gate.
 
-    Attributes:
-        name (str): The name of the gate (e.g., 'u3', 'cx').
-        qubits (list[str]): list of qubit identifiers this gate acts on.
-        params (list[str], optional):
-            list of parameter expressions for the gate.
+    This class contains:
+        - name (str): The name of the gate (e.g., 'u3', 'cx').
+        - qubits (list[str]): list of qubit identifiers this gate acts on.
+        - params (list[str], optional):
+          list of parameter expressions for the gate.
     """
 
     name: str

@@ -23,10 +23,10 @@ from dataclasses import dataclass
 class QUBOSolution:
     """Solution information.
 
-    Attributes:
-        solution (np.ndarray): n-sized solution composed of binary variables
-        energy (float): energy value obtained from QUBO(QuadraticProgram)
-                        of all term
+    This class contains:
+        - solution (np.ndarray): n-sized solution composed of binary variables
+        - energy (float): energy value obtained from QUBO(QuadraticProgram)
+          of all term
     """
 
     solution: np.ndarray
