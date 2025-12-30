@@ -87,6 +87,8 @@ class SCRouting(ABC):
         # 初始化swap映射为恒等映射
         swap_mapping = list(range(max(list(ag.nodes)) + 1))
 
+        logger.info(f"number of swaps: {len(swaps)}")
+        logger.info(f"swap scheme: {swaps}")
         # 应用每个SWAP操作
         for swap in swaps:
             t0, t1 = swap_mapping[swap[0]], swap_mapping[swap[1]]
@@ -131,6 +133,6 @@ class SCRouting(ABC):
         logger.info(
             f"routing completed，mapped_ir contains {len(mapped_ir)} gates"
         )
-        logger.info(f"final layout: {initial_layout}")
+        logger.info(f"final layout: {mapping_virtual_to_final}")
 
         return mapped_ir

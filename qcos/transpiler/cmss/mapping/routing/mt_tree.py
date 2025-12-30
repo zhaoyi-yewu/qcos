@@ -29,8 +29,9 @@ log_data = 0  # transcribe relevant data for figuring?
 
 """
 default select_mode specifies the mode for evaluation during selection
+Paper recommends c=20 for UCT formula(c is a preset parameter)
 """
-_select_mode_ = ["KS", 15]
+_select_mode_ = ["KS", 20]
 
 """
 mode for Back Propagation
@@ -55,11 +56,14 @@ MCTree_key_words = [
     "select_mode",
     "mode_BP",
     "mode_decision",
+    "mode_sim",
     "objective",
     "score_layer",
     "use_prune",
     "use_hash",
     "init_mapping",
+    "score_decay_rate_size",
+    "score_decay_rate_depth",
 ]
 
 depth_cx = 1
@@ -122,6 +126,20 @@ class MCTree(DiGraph):
             self.mode_decision = args["mode_decision"]
         else:
             self.mode_decision = _mode_decision.copy()
+        # Initialize simulation mode (used in simulation phase)
+        if "mode_sim" in args:
+            self.mode_sim = args["mode_sim"]
+        else:
+            self.mode_sim = _mode_sim.copy()
+        # Initialize score decay rates
+        if "score_decay_rate_size" in args:
+            self.score_decay_rate_size = args["score_decay_rate_size"]
+        else:
+            self.score_decay_rate_size = score_decay_rate_size
+        if "score_decay_rate_depth" in args:
+            self.score_decay_rate_depth = args["score_decay_rate_depth"]
+        else:
+            self.score_decay_rate_depth = score_decay_rate_depth
         if "init_mapping" in args:
             self.init_mapping = args["init_mapping"]
         else:
@@ -149,22 +167,45 @@ class MCTree(DiGraph):
         # init functions
         if self.objective == "depth":
             self.pick_best_son = self.pick_best_son_depth
-            self.decay = score_decay_rate_depth
+            self.decay = self.score_decay_rate_depth
         if self.objective == "size":
             self.pick_best_son = self.pick_best_son_size
-            self.decay = score_decay_rate_size
+            self.decay = self.score_decay_rate_size
 
     def add_node_mcts(
         self, father_node, added_swap=None, remote_exe_node=None
     ):
-        """Add a node to mct.
+        """Add a node to the Monte Carlo Tree.
+
+        Creates a new node in the MCTS tree. If father_node is None, creates
+        the root node with initial mapping. Otherwise, creates a child node
+        by applying either a SWAP operation or remote gate execution.
+
+        The new node stores the following attributes:
+            - visited_time: Number of times this node has been visited.
+            - local_score: Number of gates executed at this node.
+            - global_score: Cumulative score considering all descendant nodes.
+            - num_remain_gates: Number of unexecuted gates in logical circuit.
+            - added_swap: The SWAP operation applied (if any).
+            - added_remote: Remote CNOTs added (if any).
 
         Args:
-            father_node: how many times this node has been visited
-            added_swap: list like [(in1, in2),...]
-            remote_exe_node: remote CNOTs added
+            father_node: The parent node identifier. If None, creates the
+                root node.
+            added_swap: A tuple (q1, q2) representing the SWAP operation to
+                apply. Mutually exclusive with remote_exe_node.
+            remote_exe_node: The node for remote gate execution. Mutually
+                exclusive with added_swap.
 
-        Returns: generated node number.
+        Returns:
+            The generated node identifier, or None if the new node is not
+            better than an existing equivalent node.
+
+        Raises:
+            ValueError: If father_node is not None and neither added_swap nor
+                remote_exe_node is provided.
+            ValueError: If objective is "no_swap" and remaining gates exist
+                when creating root node.
         """
         if father_node is None:
             # root node
@@ -498,7 +539,10 @@ class MCTree(DiGraph):
             self.nodes[add_node]["h_score"] = h_score
             self.nodes[add_node]["global_score"] += h_score
             self.nodes[add_node]["local_score"] += h_score
-            # self.back_propagation(add_node)
+
+        # Simulation phase: simulate each newly expanded node (as per paper)
+        for add_node in added_nodes:
+            self.simulation(add_node)
 
         # BP
         # check if no nodes opened because of all its sons have already existed
@@ -562,9 +606,11 @@ class MCTree(DiGraph):
             if len(scores) != len(visit) or len(scores) != len(sons):
                 raise ValueError("Unbalanced result lengths (KS)")
 
-            sum_visit = max(np.sum(visit), 1)
-            # two methods for cal values, comment one and keep one
-            sqrt_term = np.sqrt(np.log(sum_visit) / (visit + 0.001))
+            # Use parent node visit count as per paper's UCT formula:
+            # RWD(s,s') + VAL(s') + c * sqrt(log(VISIT(s)) / VISIT(s'))
+            # To prevent division by 0 errors, add a very small number (0.001)
+            parent_visit = max(self.nodes[node]["visited_time"], 1)
+            sqrt_term = np.sqrt(np.log(parent_visit) / (visit + 0.001))
             values = scores + C * sqrt_term
 
             picked_index = np.argmax(values)
@@ -600,11 +646,12 @@ class MCTree(DiGraph):
             # pylint: disable=unbalanced-tuple-unpacking
             scores, visit, depths_add = res
             # pylint: enable=unbalanced-tuple-unpacking
-            scores = scores * np.power(score_decay_rate_depth, depths_add)
+            scores = scores * np.power(self.score_decay_rate_depth, depths_add)
 
-            sum_visit = max(np.sum(visit), 1)
-            # two methods for cal values, comment one and keep one
-            sqrt_term = np.sqrt(np.log(sum_visit) / (visit + 0.001))
+            # Use parent node visit count as per paper's UCT formula:
+            # RWD(s,s') + VAL(s') + c * sqrt(log(VISIT(s)) / VISIT(s'))
+            parent_visit = max(self.nodes[node]["visited_time"], 1)
+            sqrt_term = np.sqrt(np.log(parent_visit) / (visit + 0.001))
             values = scores + C * sqrt_term
 
             picked_index = np.argmax(values)
@@ -623,7 +670,7 @@ class MCTree(DiGraph):
             ):
                 if len(scores) != len(depths_add):
                     raise ValueError("Unbalanced scores vs depths_add")
-            scores = scores * np.power(score_decay_rate_depth, depths_add)
+            scores = scores * np.power(self.score_decay_rate_depth, depths_add)
             # if all son nodes' global score are 0
             # if np.max(scores) == 0 and np.min(scores) == 0:
             # print('WARNING: all scores of candidates are 0!')
@@ -635,18 +682,25 @@ class MCTree(DiGraph):
         raise ValueError(f"Unsupported method {method}")
 
     def back_propagation(self, start_node, mode_BP=None):
-        """反向传播，更新父节点的分数.
+        """Backpropagate scores from a node up to the root.
 
-        renew a variable reversely
+        Starting from the parent of start_node, propagates the global_score
+        upward through the tree. In 'globalscore' mode, applies a decay
+        factor at each step and updates parent nodes only if the new
+        computed score exceeds the existing value.
 
         Args:
-            start_node: is the node the the original value extracted from,
-                note that the first backpropagated node is its father node
-            mode_BP: when going to a new node, we compare new_value (global
-                score of its son node)*args[0] + score (of current new node)
-                with old global score varible, if the former is larger than
-                the latter, then we update the global score of this new node.
-                Defaults to None.
+            start_node: The node from which backpropagation originates.
+                The propagation starts from this node's parent, using
+                this node's global_score as the initial value.
+            mode_BP: The backpropagation mode. If None, uses the instance
+                default (self.mode_BP). Supported modes:
+                - 'globalscore': Updates global_score using decay factor.
+                  Formula: new_value = local_score + decay * child_score.
+                  Propagation stops when new_value <= old_value.
+
+        Raises:
+            ValueError: If mode_BP is not a supported mode.
         """
         flag = True
         if mode_BP is None:
@@ -831,96 +885,110 @@ class MCTree(DiGraph):
         else:
             raise ValueError("Invalid arguments for sim_function")
 
-    # Simulation method targeting size.
+    # Simulation method using Importance Factor (IF) sampling per paper.
     def _sim_function_size(self, gate0, gate1, mapping, times_sim):
-        num_swaps = 0
-        current_gate_idx = 0
+        """Simulation using Importance Factor based sampling as per paper.
+
+        For each simulation:
+        1. Check if current gate is executable, if yes execute and move on
+        2. For non-executable gates, calculate IF for each pertinent SWAP:
+           - IF = 1 if SWAP reduces the distance of the current gate
+           - IF = 0 otherwise
+        3. Sample a SWAP based on IF values (uniform if all IF=0)
+        4. Execute the sampled SWAP and repeat
+
+        Args:
+            gate0: List of first qubit physical indices for gates.
+            gate1: List of second qubit physical indices for gates.
+            mapping: Current logical to physical qubit mapping.
+            times_sim: Number of simulation iterations (N_sim in paper).
+
+        Returns:
+            min_num_swaps: Minimum number of SWAPs across all simulations.
+        """
         num_gates = len(gate0)
+        if num_gates == 0:
+            return 0
+
         edges = list(self.AG.edges)
+        min_num_swaps = float("inf")
 
-        while current_gate_idx < num_gates and num_swaps < times_sim:
-            # Execute executable gates
+        # Run times_sim simulations and take minimum (as per paper)
+        for _ in range(times_sim):
+            # Make a copy of mapping for this simulation
+            sim_mapping = list(mapping)
+            num_swaps = 0
+            current_gate_idx = 0
+
             while current_gate_idx < num_gates:
-                u = mapping[gate0[current_gate_idx]]
-                v = mapping[gate1[current_gate_idx]]
-                if self.shortest_length_AG[u][v] == 1:
-                    current_gate_idx += 1
-                else:
+                # Execute all executable gates
+                while current_gate_idx < num_gates:
+                    u = sim_mapping[gate0[current_gate_idx]]
+                    v = sim_mapping[gate1[current_gate_idx]]
+                    if self.shortest_length_AG[u][v] == 1:
+                        current_gate_idx += 1
+                    else:
+                        break
+
+                if current_gate_idx >= num_gates:
                     break
 
-            if current_gate_idx >= num_gates:
-                break
+                # Get current non-executable gate's physical qubits
+                u = sim_mapping[gate0[current_gate_idx]]
+                v = sim_mapping[gate1[current_gate_idx]]
+                old_dist = self.shortest_length_AG[u][v]
 
-            # Greedy strategy: select SWAP reducing sum of distances
-            best_swap = None
-            min_dist_sum = float("inf")
+                # Calculate Importance Factor for each pertinent SWAP
+                if_values = []
+                valid_swaps = []
 
-            current_locs0 = [mapping[g] for g in gate0[current_gate_idx:]]
-            current_locs1 = [mapping[g] for g in gate1[current_gate_idx:]]
+                for p, q in edges:
+                    # SWAP is pertinent if one of its qubits is involved
+                    # in the current front layer gate
+                    if p == u or p == v or q == u or q == v:
+                        # Calculate new positions after SWAP
+                        new_u = q if u == p else (p if u == q else u)
+                        new_v = q if v == p else (p if v == q else v)
+                        new_dist = self.shortest_length_AG[new_u][new_v]
 
-            current_dist_sum = 0
-            for u, v in zip(current_locs0, current_locs1):
-                current_dist_sum += self.shortest_length_AG[u][v]
+                        # IF = 1 if SWAP reduces distance, 0 otherwise
+                        if_value = 1 if new_dist < old_dist else 0
 
-            min_dist_sum = current_dist_sum
-            found_better = False
+                        if_values.append(if_value)
+                        valid_swaps.append((p, q))
 
-            for p, q in edges:
-                temp_dist_sum = current_dist_sum
-                affected = False
-
-                # Calculate new distance sum for this swap
-                for i in range(len(current_locs0)):
-                    u = current_locs0[i]
-                    v = current_locs1[i]
-
-                    if u != p and u != q and v != p and v != q:
-                        continue
-
-                    affected = True
-                    old_dist = self.shortest_length_AG[u][v]
-
-                    new_u = u
-                    if u == p:
-                        new_u = q
-                    elif u == q:
-                        new_u = p
-
-                    new_v = v
-                    if v == p:
-                        new_v = q
-                    elif v == q:
-                        new_v = p
-
-                    new_dist = self.shortest_length_AG[new_u][new_v]
-                    temp_dist_sum = temp_dist_sum - old_dist + new_dist
-
-                if affected and temp_dist_sum < min_dist_sum:
-                    min_dist_sum = temp_dist_sum
-                    best_swap = (p, q)
-                    found_better = True
-
-            if not found_better:
-                # Fallback: Swap on shortest path of the first gate
-                u = mapping[gate0[current_gate_idx]]
-                v = mapping[gate1[current_gate_idx]]
-                path = self.shortest_path_AG[u][v]
-                if len(path) > 1:
-                    best_swap = (u, path[1])
+                if len(valid_swaps) == 0:
+                    # No valid swaps found, use fallback on shortest path
+                    path = self.shortest_path_AG[u][v]
+                    if len(path) > 1:
+                        best_swap = (u, path[1])
+                    else:
+                        break
                 else:
-                    break
+                    # Sample based on IF values
+                    total_if = sum(if_values)
+                    if total_if == 0:
+                        # All IF values are 0, sample uniformly
+                        idx = np.random.randint(len(valid_swaps))
+                    else:
+                        # Sample proportionally to IF values
+                        probs = np.array(if_values, dtype=float) / total_if
+                        idx = np.random.choice(len(valid_swaps), p=probs)
+                    best_swap = valid_swaps[idx]
 
-            # Perform swap
-            p, q = best_swap
-            for i in range(len(mapping)):
-                if mapping[i] == p:
-                    mapping[i] = q
-                elif mapping[i] == q:
-                    mapping[i] = p
+                # Perform swap on simulation mapping
+                p, q = best_swap
+                for i in range(len(sim_mapping)):
+                    if sim_mapping[i] == p:
+                        sim_mapping[i] = q
+                    elif sim_mapping[i] == q:
+                        sim_mapping[i] = p
 
-            num_swaps += 1
+                num_swaps += 1
 
-        return num_swaps
+            min_num_swaps = min(min_num_swaps, num_swaps)
+
+        return min_num_swaps if min_num_swaps != float("inf") else 0
 
     def _sim_function_depth(
         self,
@@ -938,10 +1006,26 @@ class MCTree(DiGraph):
         return None, num_depth_swap, num_swaps
 
     def simulation(self, sim_node, mode_sim=None):
-        """Simulation and BP the simulation score.
+        """Run simulation and backpropagate the simulation score.
 
-        Different modes for simulation
-        mode_sim = ['name', arg_list]
+        Performs a lookahead simulation from the given node to estimate
+        future routing cost, then backpropagates the result if it improves
+        the node's global score.
+
+        Args:
+            sim_node: The node from which to run the simulation.
+                If this is the root node, returns None immediately.
+            mode_sim: The simulation mode as a list ['name', arg_list].
+                If None, uses the instance default (self.mode_sim).
+                Supported modes:
+                - 'fix_cx_num': Simulates execution of a fixed number of
+                  CNOT gates. arg_list = [simulation_times, num_CX_gates],
+                  where simulation_times is the number of simulation runs
+                  and num_CX_gates is the number of gates to simulate.
+
+        Returns:
+            None if sim_node is root or simulation cannot proceed.
+            True if simulation completed successfully (depth objective).
         """
         if sim_node == self.root_node:
             return None
