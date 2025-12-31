@@ -68,7 +68,6 @@ class MIPModel:
         self.nsubcircuit = nsubcircuit
         self.max_subcircuit_width = max_subcircuit_width
         self.max_cuts = max_cuts
-
         self.weight = [2] * nvertex
         for _, v in edges:
             self.weight[v] -= 1
@@ -113,7 +112,7 @@ class MIPModel:
             # original input qubits number of subcircuit
             self.subcircuit_counter[subcircuit]["original_input"] = (
                 pulp.LpVariable(
-                    "original_input_%d" % subcircuit,
+                    f"original_input_{str(subcircuit)}",
                     0,
                     self.max_subcircuit_width,
                     pulp.const.LpInteger,
@@ -122,7 +121,7 @@ class MIPModel:
 
             # new input qubits number of subcircuit
             self.subcircuit_counter[subcircuit]["rho"] = pulp.LpVariable(
-                "rho_%d" % subcircuit,
+                f"rho_{str(subcircuit)}",
                 0,
                 self.max_subcircuit_width,
                 pulp.const.LpInteger,
@@ -130,7 +129,7 @@ class MIPModel:
 
             # new output qubits number of subcircuit
             self.subcircuit_counter[subcircuit]["O"] = pulp.LpVariable(
-                "O_%d" % subcircuit,
+                f"O_{str(subcircuit)}",
                 0,
                 self.max_subcircuit_width,
                 pulp.const.LpInteger,
@@ -138,7 +137,7 @@ class MIPModel:
 
             # new measure qubit number of subcircuit
             self.subcircuit_counter[subcircuit]["d"] = pulp.LpVariable(
-                "d_%d" % subcircuit,
+                f"d_{str(subcircuit)}",
                 0.1,
                 self.max_subcircuit_width,
                 pulp.const.LpInteger,
@@ -150,16 +149,16 @@ class MIPModel:
                 # The edge is cut by the subcircuit, and the first vertex
                 # belongs to the subcircuit.
                 edge_var_downstream_vertex_var_product = pulp.LpVariable(
-                    "bin_edge_var_downstream_vertex_var_product_%d_%d"
-                    % (subcircuit, i),
+                    f"bin_edge_var_downstream_vertex_var_product_"
+                    f"{str(subcircuit)}_{str(i)}",
                     cat=pulp.const.LpBinary,
                 )
                 self.subcircuit_counter[subcircuit][
                     "rho_qubit_product"
                 ].append(edge_var_downstream_vertex_var_product)
                 edge_var_upstream_vertex_var_product = pulp.LpVariable(
-                    "bin_edge_var_upstream_vertex_var_product_%d_%d"
-                    % (subcircuit, i),
+                    f"bin_edge_var_upstream_vertex_var_product_"
+                    f"{str(subcircuit)}_{str(i)}",
                     cat=pulp.const.LpBinary,
                 )
                 self.subcircuit_counter[subcircuit]["O_qubit_product"].append(
@@ -182,7 +181,7 @@ class MIPModel:
                     for subcircuit in range(vertex + 1)
                 )
                 == 1,
-                "cons_symm_" + str(vertex),
+                f"cons_symm_{str(vertex)}",
             )
 
     def _add_constraints(self) -> None:
@@ -194,7 +193,7 @@ class MIPModel:
                     self.vertex_var[i][v] for i in range(self.nsubcircuit)
                 )
                 == 1,
-                "cons_vertex_" + str(v),
+                f"cons_vertex_{str(v)}",
             )
 
         for i in range(self.nsubcircuit):
@@ -251,29 +250,29 @@ class MIPModel:
                 for i in range(self.nvertex)
             )
             == 0,
-            "cons_subcircuit_input_%d" % subcircuit,
+            f"cons_subcircuit_input_{str(subcircuit)}",
         )
 
         for i in range(self.nedge):
             self.model += (
                 self.subcircuit_counter[subcircuit]["rho_qubit_product"][i]
                 <= self.edge_var[subcircuit][i],
-                "cons_edge_var_downstream_vertex_var_%d_%d_1"
-                % (subcircuit, i),
+                f"cons_edge_var_downstream_vertex_var_"
+                f"{str(subcircuit)}_{str(i)}_1",
             )
             self.model += (
                 self.subcircuit_counter[subcircuit]["rho_qubit_product"][i]
                 <= self.vertex_var[subcircuit][self.edges[i][-1]],
-                "cons_edge_var_downstream_vertex_var_%d_%d_2"
-                % (subcircuit, i),
+                f"cons_edge_var_downstream_vertex_var_"
+                f"{str(subcircuit)}_{str(i)}_2",
             )
             self.model += (
                 self.subcircuit_counter[subcircuit]["rho_qubit_product"][i]
                 >= self.edge_var[subcircuit][i]
                 + self.vertex_var[subcircuit][self.edges[i][-1]]
                 - 1,
-                "cons_edge_var_downstream_vertex_var_%d_%d_3"
-                % (subcircuit, i),
+                f"cons_edge_var_downstream_vertex_var_"
+                f"{str(subcircuit)}_{str(i)}_3",
             )
 
         # Calculate the number of additional input qubits for each subcircuit
@@ -283,26 +282,29 @@ class MIPModel:
                 self.subcircuit_counter[subcircuit]["rho_qubit_product"]
             )
             == 0,
-            "cons_subcircuit_rho_qubits_%d" % subcircuit,
+            f"cons_subcircuit_rho_qubits_{str(subcircuit)}",
         )
 
         for i in range(self.nedge):
             self.model += (
                 self.subcircuit_counter[subcircuit]["O_qubit_product"][i]
                 <= self.edge_var[subcircuit][i],
-                "cons_edge_var_upstream_vertex_var_%d_%d_1" % (subcircuit, i),
+                f"cons_edge_var_upstream_vertex_var_"
+                f"{str(subcircuit)}_{str(i)}_1",
             )
             self.model += (
                 self.subcircuit_counter[subcircuit]["O_qubit_product"][i]
                 <= self.vertex_var[subcircuit][self.edges[i][0]],
-                "cons_edge_var_upstream_vertex_var_%d_%d_2" % (subcircuit, i),
+                f"cons_edge_var_upstream_vertex_var_"
+                f"{str(subcircuit)}_{str(i)}_2",
             )
             self.model += (
                 self.subcircuit_counter[subcircuit]["O_qubit_product"][i]
                 >= self.edge_var[subcircuit][i]
                 + self.vertex_var[subcircuit][self.edges[i][0]]
                 - 1,
-                "cons_edge_var_upstream_vertex_var_%d_%d_3" % (subcircuit, i),
+                f"cons_edge_var_upstream_vertex_var_"
+                f"{str(subcircuit)}_{str(i)}_3",
             )
 
         # Calculate the number of additional output qubits for each subcircuit
@@ -312,14 +314,14 @@ class MIPModel:
                 self.subcircuit_counter[subcircuit]["O_qubit_product"]
             )
             == 0,
-            "cons_subcircuit_O_qubits_%d" % subcircuit,
+            f"cons_subcircuit_O_qubits_{str(subcircuit)}",
         )
         self.model += (
             self.subcircuit_counter[subcircuit]["d"]
             - self.subcircuit_counter[subcircuit]["original_input"]
             - self.subcircuit_counter[subcircuit]["rho"]
             == 0,
-            "cons_subcircuit_d_qubits_%d" % subcircuit,
+            f"cons_subcircuit_d_qubits_{str(subcircuit)}",
         )
 
     def _set_objective(self) -> None:
@@ -338,9 +340,9 @@ class MIPModel:
             cut_edges: list[tuple[int, int]] denoting cut edges
         """
         self.model.solve(pulp.PULP_CBC_CMD(msg=0))
-        if (
-            self.model.sol_status == pulp.const.LpSolutionIntegerFeasible
-            or self.model.sol_status == pulp.const.LpSolutionOptimal
+        if self.model.sol_status in (
+            pulp.const.LpSolutionIntegerFeasible,
+            pulp.const.LpSolutionOptimal,
         ):
             self.subcircuits = []
             self.optimal = (
