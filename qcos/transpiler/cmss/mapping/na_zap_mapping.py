@@ -86,7 +86,7 @@ class NA_ZAP_Route(ABC):
         if len(self.storage_area) < self.qbit_num:
             raise MappingException(
                 f"not enough qubits, need {self.qbit_num}, "
-                f"but only{len(self.operate_area)}"
+                f"but only {len(self.operate_area)}."
             )
         # Lists used for gate/qubit scheduling and final result
         self.gate_scheduling_list = []

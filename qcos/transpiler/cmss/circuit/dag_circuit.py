@@ -609,7 +609,7 @@ class DAGCircuit:
     def two_qubit_ops_to_dag(self):
         """Convert two-qubit gates operations into a DAG.
 
-        Return:
+        Returns:
             DAGCircuit: Directed acyclic graph containing two-bit gates.
         """
         new_dag = DAGCircuit()

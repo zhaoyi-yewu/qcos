@@ -69,7 +69,7 @@ class NASingleRoute(ABC):
         if len(self.storage_area) < self.qbit_num:
             raise MappingException(
                 f"not enough qubits, need {self.qbit_num}, "
-                f"but only{len(self.storage_area)}"
+                f"but only {len(self.storage_area)}."
             )
 
         err_dict = {}
@@ -91,7 +91,7 @@ class NASingleRoute(ABC):
         for gate in self.gates:
             if len(gate.targets) != 1:
                 raise MappingException(
-                    f"invalid targets num: {len(gate.targets)}"
+                    f"invalid targets num: {len(gate.targets)}, "
                     f"Gate {gate.name} must have exactly one target"
                 )
             gate.targets = [int(self.mapping[q][1:]) for q in gate.targets]
@@ -154,7 +154,7 @@ class NARoute(ABC):
         if len(self.storage_area) < self.qbit_num:
             raise MappingException(
                 f"not enough qubits, need {self.qbit_num}, "
-                f"but only{len(self.operate_area)}"
+                f"but only {len(self.operate_area)}."
             )
 
     def get_init_mapping(self):

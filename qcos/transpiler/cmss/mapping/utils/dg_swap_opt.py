@@ -325,7 +325,7 @@ class DGSwap(DG):
     def random_mutation(self, mutate_time, max_try=None):
         """Randomly choose mutate_time node pairs to do exchanging.
 
-        Return:
+        Returns:
             The number of exchanges having been done.
         """
         if max_try is None:
@@ -350,7 +350,7 @@ class DGSwap(DG):
 
         Continue until depth is changed.
 
-        Return:
+        Returns:
             The number of exchanges having been done.
         """
         depth_ori = self.depth

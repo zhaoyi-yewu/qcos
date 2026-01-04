@@ -15,9 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from qcos.transpiler.cmss.common.gate_operation import (
-    BaseOperation,
-)
+from qcos.transpiler.cmss.common.gate_operation import BaseOperation
 from qcos.transpiler.cmss.circuit.register import (
     Register,
     QuantumRegister,

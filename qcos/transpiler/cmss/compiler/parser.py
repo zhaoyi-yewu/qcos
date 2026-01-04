@@ -22,6 +22,8 @@ from qcos.transpiler.cmss.compiler.tokrules import tokens
 from qcos.transpiler.cmss.compiler.qtypes import Node
 from qcos.transpiler.cmss.compiler.visitor import Visitor
 
+from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+
 
 gate_params = []
 
@@ -624,7 +626,11 @@ def get_abs_tree(data):
     lexer = lex.lex(module=tokrules)
     lexer.input(data)
     parser = yacc.yacc(debug=False, write_tables=False)
-    return parser.parse(data)
+    try:
+        node = parser.parse(data)
+    except Exception as e:
+        raise SyntaxError(e) from e
+    return node
 
 
 def get_ir(abs_tree):
@@ -653,3 +659,48 @@ def compile(data):
     abs_tree = get_abs_tree(data)
     circuit = get_ir(abs_tree)
     return circuit.num_qubits, circuit.get_operations()
+
+
+class Parser:
+    """Parser class.
+
+    The Parser class is used to parse quantum circuit files or directly
+    provided quantum circuit objects.
+
+    It can convert quantum circuits into circuits containing only single-qubit
+    and two-qubit gates, and provides methods to export the circuit as a
+    string in OpenQASM 2 format.
+    """
+
+    def __init__(self, src_code):
+        """Initialize the Parser class
+
+        Args:
+            src_code (str): Represent qasm.
+        """
+        self.basis_gates = [
+            "h",
+            "x",
+            "y",
+            "z",
+            "cx",
+            "cz",
+            "rx",
+            "ry",
+            "rz",
+            "u3",
+            "s",
+            "sdg",
+            "t",
+            "tdg",
+        ]
+        if not src_code:
+            raise ValueError("The qasm parameter must be provided")
+
+        # Parsing OpenQASM
+        self.nqubits, self.ir = compile(src_code)
+        self.quantum_circuit = QuantumCircuit()
+        self.quantum_circuit.append_operations(self.ir)
+
+        # TODO: need transpile to basis gates
+        self.opt_circuit = self.ir
