@@ -75,20 +75,11 @@ class Timer:
         self.elapsed = self.end - self.start
 
 
-def main_qiskit_transpiler(
-    input_file: str,
-    basis_gates: str = "",
-    opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
-    config_file: str = "",
-    output_file: str = "",
-):
-    """qiskit-transpiler performance test."""
-    success = False
-    # input args check
+def check_file_args(input_file, output_file):
     file_path = Path(input_file).resolve()
     if not file_path.exists():
         logger.error(f"input file[{file_path}] not existed")
-        return success
+        return None
 
     if output_file != "":
         output_file_path = Path(output_file).resolve()
@@ -104,6 +95,23 @@ def main_qiskit_transpiler(
             f.write(f"testing file: {input_file}\n")
         file_handler = logging.FileHandler(output_file_path)
         logger.addHandler(file_handler)
+
+    return file_path
+
+
+def main_qiskit_transpiler(
+    input_file: str,
+    basis_gates: str = "",
+    opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
+    config_file: str = "",
+    output_file: str = "",
+):
+    """qiskit-transpiler performance test."""
+    success = False
+    # input args check
+    file_path = check_file_args(input_file, output_file)
+    if not file_path:
+        return success
 
     # load data from qasm file
     qasm_data = read_qasm_from_file(str(file_path))

@@ -17,6 +17,7 @@
 
 import pytest
 import numpy as np
+import math as m
 
 from qcos.transpiler.cmss.common.gate_operation import (
     H,
@@ -58,6 +59,7 @@ from qcos.transpiler.cmss.common.gate_operation import (
     U3,
     C4X,
 )
+from qcos.transpiler.cmss.common.sync import Sync
 from qcos.transpiler.cmss.circuit.operators.operator import Operator
 from qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
@@ -998,6 +1000,18 @@ class TestOperators:
         )
         assert np.all(np.isclose(gate.to_matrix(), res_gate_mat))
 
+        # test C4X gate
+        gate = C4X(targets=[0, 1, 2, 3, 4])
+        gate_matrix = gate.to_matrix()
+        mat_shape = gate_matrix.shape
+        close1 = m.isclose(
+            gate_matrix[mat_shape[0] - 1][mat_shape[1] // 2 - 1], 1
+        )
+        close2 = m.isclose(
+            gate_matrix[mat_shape[0] // 2 - 1][mat_shape[1] - 1], 1
+        )
+        assert close1 and close2
+
         # test U1 gate
         gate = U1(targets=[0], arg_value=[1])
         res_gate_mat = np.asarray(
@@ -1028,18 +1042,88 @@ class TestOperators:
         )
         assert np.all(np.isclose(gate.to_matrix(), res_gate_mat))
 
-        # test GateOperation
-        gate = C4X(targets=[0, 1, 2, 3, 4])
-        with pytest.raises(Exception) as e:
-            gate.to_matrix()
-
-        err_msg = str(e.value)
-        assert "to_matrix not defined for this" in err_msg
-
     def test_operator(self):
-        op = Operator(np.eye(4))
-        assert op._data.shape == (4, 4)
+        op1 = Operator(np.eye(4))
+        assert op1.data.shape == (4, 4)
 
         qc = QuantumCircuit(num_qubits=2, num_clbits=2)
-        op = Operator(qc)
-        assert op._data.shape == (4, 4)
+        op2 = Operator(qc)
+        assert op2.data.shape == (4, 4)
+
+        op3 = Operator._init_instruction(H([0]))
+        res_gate_mat = np.asarray(
+            [
+                [0.70710678 + 0.0j, 0.70710678 + 0.0j],
+                [0.70710678 + 0.0j, -0.70710678 + 0.0j],
+            ],
+            dtype=complex,
+        )
+        assert np.all(np.isclose(op3.data, res_gate_mat))
+
+    def test_operator_equiv(self):
+        qc1 = QuantumCircuit(num_qubits=1)
+        gate_list = [H([0]), Z([0]), H([0])]
+        qc1.append_operations(gate_list)
+        op1 = Operator(qc1)
+
+        qc2 = QuantumCircuit(num_qubits=1)
+        qc2.append(X([0]))
+        op2 = Operator(qc2)
+        assert op1.equiv(op2) is True
+        assert op1.equiv("invalid data") is False
+        assert op1.equiv(Operator(np.eye(3))) is False
+
+    def test_operator_dot(self):
+        op1 = Operator(np.eye(4))
+        op2 = Operator(np.eye(4))
+        op1.compose(op2, front=False)
+        assert op1.data.shape == (4, 4)
+        assert np.all(np.isclose(op1.data, np.eye(4)))
+
+        op1.compose(op2, front=True)
+        assert np.all(np.isclose(op1.data, np.eye(4)))
+
+    def test_operater_exception(self):
+        with pytest.raises(Exception) as e1:
+            Operator("invalid input")
+
+        err_msg = str(e1.value)
+        assert "Invalid input data format for Operator." in err_msg
+
+        with pytest.raises(Exception) as e2:
+            Operator(np.eye(2))._append_instruction("invalid instruction")
+
+        err_msg = str(e2.value)
+        assert "Input object isnot QuantumCircuit." in err_msg
+
+        sync = Sync([0])
+        qc = QuantumCircuit(num_qubits=2)
+        qc.append(sync)
+        op = Operator(np.eye(4))
+        op._append_instruction(qc)
+        assert op.data.shape == (4, 4)
+
+    def test_operator_global_phase(self):
+        """Test equivalence of operators with global phase.
+
+        The Hadamard gate is equivalent to RY and RX gates with
+        angles π and π/2, respectively.
+
+        example::
+
+            global phase: π/2
+            ┌───┐        ┌─────────┐┌───────┐
+         q: ┤ H ├  ≡  q: ┤ Ry(π/2) ├┤ Rx(π) ├
+            └───┘        └─────────┘└───────┘
+        """
+        qc1 = QuantumCircuit(num_qubits=1)
+        qc1.append(H([0]))
+        op1 = Operator(qc1)
+
+        qc2 = QuantumCircuit(num_qubits=1, global_phase=np.pi / 2)
+        qc2.append_operations([
+            RY(targets=[0], arg_value=[np.pi / 2]),
+            RX(targets=[0], arg_value=[np.pi]),
+        ])
+        op2 = Operator(qc2)
+        assert op1.equiv(op2) is True

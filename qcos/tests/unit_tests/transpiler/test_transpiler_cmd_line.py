@@ -15,8 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import sys
+from pathlib import Path
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 
 from qcos.common.constant import Constant
 from qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
@@ -24,6 +26,9 @@ from qcos.transpiler.cmss.transpiler_cmd_line import (
     read_qasm_from_file,
     Timer,
     main_cmss_transpiler as main,
+    main as cmss_main,
+    get_parse_args,
+    check_file_args,
 )
 
 timer = Timer()
@@ -119,3 +124,47 @@ class TestTranspilerCmdLine:
             config_file="",
         )
         assert res is True
+
+    @patch("qcos.transpiler.cmss.transpiler_cmd_line.main_cmss_transpiler")
+    def test_qiskit_parse_args(self, mock_main_cmss_transpiler):
+        sys.argv = [
+            "transpiler_cmd_line.py",
+            "--input-file",
+            f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm",
+        ]
+        cmss_args = get_parse_args()
+        assert (
+            cmss_args["input_file"]
+            == f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        )
+        assert cmss_args["output_file"] == ""
+        assert cmss_args["opt_level"] == Constant.DEFAULT_OPTIMIZATION_LEVEL
+
+        mock_main_cmss_transpiler.return_value = True
+        with patch("sys.exit") as mock_sys_exit:
+            cmss_main(sys.argv)
+            mock_sys_exit.assert_called_with(mock_main_cmss_transpiler())
+
+    def test_check_file_args(self):
+        input_file1 = f"{self.samples_dir}/qasm/2.0/simple-qasm1.qasm"
+        assert check_file_args(input_file1, "") is None
+
+        input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        output_file = "CHANGELOG"
+        output_file_path = Path(output_file).resolve()
+        mock_file = mock_open()
+        mock_file_handler = MagicMock()
+        with (
+            patch("builtins.open", mock_file),
+            patch("logging.FileHandler", return_value=mock_file_handler),
+            patch("logging.Logger.addHandler") as mock_add_handler,
+        ):
+            res = check_file_args(input_file, output_file)
+            mock_file.assert_called_once_with(
+                output_file_path, "w", encoding="utf-8"
+            )
+            mock_file().write.assert_called_once_with(
+                f"testing file: {input_file}\n"
+            )
+            mock_add_handler.assert_called_once_with(mock_file_handler)
+            assert res == Path(input_file).resolve()

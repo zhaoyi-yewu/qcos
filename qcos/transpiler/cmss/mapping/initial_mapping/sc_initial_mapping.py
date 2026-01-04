@@ -35,16 +35,16 @@ def get_initial_mapping(
 ):
     """Get the initial mapping, providing 4 methods.
 
-        naive: directly mapping logical qubits to physical qubits in order.
-        simulated_annealing: heuristic mapping, based on simulated annealing,
-            ref: "Quantum Circuit Transformation Based on Simulated Annealing
-            and Heuristic Search."
-        subgraph_isomorphism: Based on subgraph isomorphism, achieves precise
-            allocation of qubits (this method may not always yield a solution).
-        topgraph: Combines the above two methods. For the top part of the
-            circuit topology graph, subgraph isomorphism is used. ref "Qubit
-            Mapping Based on Subgraph Isomorphism and Filtered Depth-Limited
-            Search.".
+    - naive: directly mapping logical qubits to physical qubits in order.
+    - simulated_annealing: heuristic mapping, based on simulated annealing,
+      ref: "Quantum Circuit Transformation Based on Simulated Annealing
+      and Heuristic Search."
+    - subgraph_isomorphism: Based on subgraph isomorphism, achieves precise
+      allocation of qubits (this method may not always yield a solution).
+    - topgraph: Combines the above two methods. For the top part of the
+      circuit topology graph, subgraph isomorphism is used. ref "Qubit
+      Mapping Based on Subgraph Isomorphism and Filtered Depth-Limited
+      Search.".
 
     Args:
         dependency_graph (DG): dependency graph of the circuit

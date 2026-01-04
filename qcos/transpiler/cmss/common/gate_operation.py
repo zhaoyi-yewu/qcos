@@ -69,36 +69,35 @@ class GateOperation(BaseOperation):
         """门对应的分解规则，如无指定规则，则调用默认的分解方法.
 
         分解规则以字典的形式指定，配置在GlobalSetting的decomposition_rule中，
-        其每个item的形式为
+        其每个item的形式为::
+
             gate_name: #门名称
             {
                 "param": [str] #形式化的门参数，数量与门实际所需一致，
                                 如无参数，该项可不填
                 "gates": [based_gates] #指定的分解形式，以based_gates列表表示
             }
+
         其中based_gates为一个三元组（name, targets, exps）,
         name表示门名称，targets为作用比特下标列表(从0开始),
         exps为参数对应的表达式，以字符串的形式表示，
         表达式中的操作数可为param中定义的形式化参数以及常量，常量中π可用pi表示
 
-        举例如下：
-        decomposition_rule = {
-            "u3":{
-                "params": ["a", "b", "c"],
-                "gates":[
-                    ("rz", [0], ["c"]),
-                    ("rx", [0], ["pi/2"]),
-                    ("rz", [0], ["b+pi"]),
-                    ("rx", [0], ["pi/2"]),
-                    ("rz", [0], ["a+pi"]),
-                ]
+        示例::
+
+            decomposition_rule = {
+                "u3": {
+                    "params": ["a", "b", "c"],
+                    "gates": [
+                        ("rz", [0], ["c"]),
+                        ("rx", [0], ["pi/2"]),
+                        ("rz", [0], ["b+pi"]),
+                        ("rx", [0], ["pi/2"]),
+                        ("rz", [0], ["a+pi"]),
+                    ],
+                },
+                "h": {"gates": [("rx", [0], ["pi/2"])]},
             }
-            "h": {
-                "gates": [
-                    ("rx", [0], ["pi/2"])
-                ]
-            }
-        }
         """
         decompose_rule = trans_cfg_inst.get_decompose_rule()
         if decompose_rule is None:
@@ -233,7 +232,7 @@ class GateOperation(BaseOperation):
                 dtype=dtype,
             )
 
-    def to_matrix(self):
+    def to_matrix(self) -> np.ndarray:
         """Return a Numpy.ndarray for the gate unitary matrix.
 
         Returns:
@@ -318,7 +317,7 @@ class Z(GateOperation):
 class S(GateOperation):
     """相位门类.
 
-    对量子态的|1⟩分量施加一个相位变换，使得|1⟩变为i∣1⟩，而|0⟩分量保持不变
+    对量子态的`|1⟩`分量施加一个相位变换，使得`|1⟩`变为`i∣1⟩`，而`|0⟩`分量保持不变
     S门在Bloch球中对应于绕Z轴旋转π/2的操作
     """
 
@@ -343,7 +342,7 @@ class S(GateOperation):
 class SDG(GateOperation):
     """反相位门类.
 
-    是S门的共轭转置，对量子态的|1⟩分量施加一个相位变换，使得|1⟩变为-i∣1⟩，而|0⟩分量保持不变。
+    是S门的共轭转置，对量子态的`|1⟩`分量施加一个相位变换，使得`|1⟩`变为`-i∣1⟩`，而`|0⟩`分量保持不变。
     SDG门在Bloch球中对应于绕Z轴旋转-π/2的操作。
     """
 
@@ -368,8 +367,8 @@ class SDG(GateOperation):
 class T(GateOperation):
     """T门.
 
-    用于实现较小的相位旋转。T门的作用是对量子态的|1⟩分量施加一个相位变换，
-    使得|1⟩变为e^iπ/4∣1⟩，而|0⟩分量保持不变。
+    用于实现较小的相位旋转。T门的作用是对量子态的`|1⟩`分量施加一个相位变换，
+    使得`|1⟩`变为`e^iπ/4∣1⟩`，而`|0⟩`分量保持不变。
     T门在Bloch球中对应于绕Z轴旋转π/4的操作。
     """
 
@@ -390,7 +389,7 @@ class P(GateOperation):
     """P门.
 
     P门是单量子比特的相位旋转门，用于在Bloch球上实现绕Z轴旋转λ角度的操作。
-    它对量子态的 |1⟩ 分量施加一个相位因子 e^{iλ}，而 |0⟩ 分量保持不变。
+    它对量子态的`|1⟩`分量施加一个相位因子`e^{iλ}`，而`|0⟩`分量保持不变。
     """
 
     def __init__(self, targets=None, arg_value=None) -> None:
@@ -410,8 +409,8 @@ class P(GateOperation):
 class TDG(GateOperation):
     """TDG门.
 
-    T门的共轭转置, 作用是对量子态的|1⟩分量施加一个相位变换，
-    使得|1⟩变为e^-iπ/4∣1⟩，而|0⟩分量保持不变。
+    T门的共轭转置, 作用是对量子态的`|1⟩`分量施加一个相位变换，
+    使得`|1⟩`变为`e^-iπ/4∣1⟩`，而`|0⟩`分量保持不变。
     T门在Bloch球中对应于绕Z轴旋转-π/4的操作。
     """
 
@@ -555,9 +554,9 @@ class SXDG(GateOperation):
 class CZ(GateOperation):
     """受控Z门或Controlled-Z门.
 
-    在控制量子比特为|1⟩时，对目标量子比特应用一个Z门（Pauli-Z门）
+    在控制量子比特为`|1⟩`时，对目标量子比特应用一个Z门（Pauli-Z门）
     将目标量子比特的相位翻转。
-    CZ门在Bloch球中对应于绕Z轴旋转π角度, 仅当控制量子比特为|1⟩时。
+    CZ门在Bloch球中对应于绕Z轴旋转π角度, 仅当控制量子比特为`|1⟩`时。
     """
 
     def __init__(
@@ -589,8 +588,8 @@ class CZ(GateOperation):
 class CX(GateOperation):
     """受控非门或Controlled-X门.
 
-    当控制位处于|1⟩状态时，将目标位翻转
-    （即|0⟩变为|1⟩，|1⟩变为|0⟩）。如果控制位处于|0⟩状态，则目标位保持不变。
+    当控制位处于`|1⟩`状态时，将目标位翻转
+    （即`|0⟩`变为`|1⟩`，`|1⟩`变为`|0⟩`）。如果控制位处于`|0⟩`状态，则目标位保持不变。
     对应于经典比特的XOR（异或）操作
     """
 
@@ -623,9 +622,9 @@ class CX(GateOperation):
 class CY(GateOperation):
     """受控Y门或Controlled-Y门.
 
-    在控制量子比特为|1⟩时，
+    在控制量子比特为`|1⟩`时，
     对目标量子比特应用一个Y门（Pauli-Y门）将目标量子比特绕Y轴旋转π角度。
-    CY门在Bloch球中对应于绕Y轴旋转π角度, 仅当控制量子比特为|1⟩时。
+    CY门在Bloch球中对应于绕Y轴旋转π角度, 仅当控制量子比特为`|1⟩`时。
     """
 
     def __init__(
@@ -681,7 +680,7 @@ class SWAP(GateOperation):
 
 
 class CH(GateOperation):
-    """受控Hadamard门，当控制量子比特为|1⟩时，对目标量子比特应用Hadamard门（H门）."""
+    """受控Hadamard门，当控制量子比特为`|1⟩`时，对目标量子比特应用Hadamard门（H门）."""
 
     def __init__(
         self,
@@ -721,7 +720,7 @@ class CH(GateOperation):
 
 
 class CRX(GateOperation):
-    """受控单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿X轴旋转θ角度."""
+    """受控单量子比特旋转门，当控制量子比特为`|1⟩`时，对目标量子比特沿X轴旋转θ角度."""
 
     def __init__(
         self,
@@ -768,7 +767,7 @@ class CRX(GateOperation):
 
 
 class CRY(GateOperation):
-    """受控的单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿Y轴旋转θ角度."""
+    """受控的单量子比特旋转门，当控制量子比特为`|1⟩`时，对目标量子比特沿Y轴旋转θ角度."""
 
     def __init__(
         self,
@@ -810,7 +809,7 @@ class CRY(GateOperation):
 
 
 class CRZ(GateOperation):
-    """受控的单量子比特旋转门，当控制量子比特为|1⟩时，对目标量子比特沿Z轴旋转θ角度."""
+    """受控的单量子比特旋转门，当控制量子比特为`|1⟩`时，对目标量子比特沿Z轴旋转θ角度."""
 
     def __init__(
         self,
@@ -853,8 +852,8 @@ class CU1(GateOperation):
     """受控U1门.
 
     CU1 门是一个 **受控相位旋转门**，是单量子比特 U1(λ) 门的受控版本。
-    当控制量子比特为 |1⟩ 时，目标量子比特执行一个绕 Z 轴旋转角度 λ 的 U1 门；
-    当控制量子比特为 |0⟩ 时，不进行任何操作。.
+    当控制量子比特为`|1⟩`时，目标量子比特执行一个绕 Z 轴旋转角度 λ 的 U1 门；
+    当控制量子比特为`|0⟩`时，不进行任何操作。.
     """
 
     def __init__(
@@ -900,8 +899,8 @@ class CP(GateOperation):
 
     CP 门（Controlled-Phase Gate）是一个 **受控相位旋转门**，
     对目标量子比特施加受控的 Z 轴旋转操作。
-    当控制量子比特为 |1⟩ 时，目标量子比特执行绕 Z 轴旋转角度 λ 的相位门 P(λ)；
-    当控制量子比特为 |0⟩ 时，目标量子比特保持不变。
+    当控制量子比特为`|1⟩`时，目标量子比特执行绕 Z 轴旋转角度 λ 的相位门 P(λ)；
+    当控制量子比特为`|0⟩`时，目标量子比特保持不变。
     """
 
     def __init__(
@@ -945,8 +944,8 @@ class CP(GateOperation):
 class CU3(GateOperation):
     """CU3门（受控U3门）.
 
-    CU3 门是一种两量子比特门，用于在控制比特为 |1⟩ 时，
-    对目标比特施加 U3(θ, φ, λ) 操作；当控制比特为 |0⟩ 时，
+    CU3 门是一种两量子比特门，用于在控制比特为`|1⟩`时，
+    对目标比特施加 U3(θ, φ, λ) 操作；当控制比特为`|0⟩`时，
     目标比特保持不变。
     """
 
@@ -1015,8 +1014,8 @@ class CSX(GateOperation):
     """CSX门（受控SX门）.
 
     CSX 门是一种两量子比特受控门，
-    当控制比特处于 |1⟩ 状态时，对目标比特施加 SX 门（√X 门）；
-    当控制比特为 |0⟩ 时，目标比特保持不变。
+    当控制比特处于`|1⟩`状态时，对目标比特施加 SX 门（√X 门）；
+    当控制比特为`|0⟩`时，目标比特保持不变。
     """
 
     def __init__(
@@ -1054,8 +1053,8 @@ class CU(GateOperation):
     """CU门（受控U门）.
 
     CU 门是一种通用的两量子比特受控门，
-    当控制比特处于 |1⟩ 状态时，对目标比特施加一个任意的单量子比特酉变换 U；
-    当控制比特为 |0⟩ 时，目标比特保持不变。
+    当控制比特处于`|1⟩`状态时，对目标比特施加一个任意的单量子比特酉变换 U；
+    当控制比特为`|0⟩`时，目标比特保持不变。
     """
 
     def __init__(
@@ -1216,7 +1215,7 @@ class RZZ(GateOperation):
 
 
 class CCX(GateOperation):
-    """Toffoli门，如果两个控制量子比特都处于|1⟩状态，则对目标量子比特应用X门（Pauli-X门）."""
+    """Toffoli门，如果两个控制量子比特都处于`|1⟩`状态，则对目标量子比特应用X门（Pauli-X门）."""
 
     def __init__(
         self,
@@ -1349,7 +1348,7 @@ class RC3X(GateOperation):
     """RC3X门（Relative-phase Toffoli 门）.
 
     RC3X 门是 Toffoli（CCX）门的相对相位版本，
-    当两个控制量子比特均为 |1⟩ 时，对目标量子比特施加 X 操作，
+    当两个控制量子比特均为`|1⟩`时，对目标量子比特施加 X 操作，
     但在部分叠加态上引入相对相位差。
     """
 
@@ -1415,7 +1414,7 @@ class C3X(GateOperation):
     """C3X门（三控制X门 / 三重受控非门）.
 
     C3X 门是多控制量子门的一种，具有三个控制量子比特和一个目标量子比特。
-    当且仅当三个控制量子比特均为 |1⟩ 时，C3X 门对目标量子比特施加 X（非）操作；
+    当且仅当三个控制量子比特均为`|1⟩`时，C3X 门对目标量子比特施加 X（非）操作；
     否则，目标量子比特保持不变。
     """
 
@@ -1483,7 +1482,7 @@ class C3SQRTX(GateOperation):
     """C3√X门（三控制√X门 / 三重受控平方根X门）.
 
     C3√X门是具有三个控制量子比特的受控平方根X门（Controlled-Square-Root-of-X）
-    当且仅当三个控制量子比特均处于 |1⟩ 状态时，
+    当且仅当三个控制量子比特均处于 `|1⟩` 状态时，
     它对目标量子比特施加 √X 操作（即 X 门的平方根）；
     否则，目标量子比特保持不变。
     """
@@ -1565,8 +1564,8 @@ class C4X(GateOperation):
     C4X 门是具有四个控制量子比特的多控制X门（Multi-Controlled X Gate），
     也称为四重受控非门（Four-Controlled-NOT Gate）。
 
-    当且仅当四个控制量子比特全部处于 |1⟩ 状态时，
-    C4X 门对目标量子比特施加 X 操作（即翻转其量子态：|0⟩ ↔ |1⟩）；
+    当且仅当四个控制量子比特全部处于 `|1⟩` 状态时，
+    C4X 门对目标量子比特施加 X 操作（即翻转其量子态：`|0⟩` ↔ `|1⟩`）；
     否则，目标量子比特保持不变。
     """
 
@@ -1616,6 +1615,16 @@ class C4X(GateOperation):
         ]).decompose()
 
         return gates
+
+    def __array__(self, dtype=None):
+        x_array = [[0, 1], [1, 0]]
+        return GateOperation.with_controlled_gate_array(
+            base_array=x_array,
+            ctrl_state=int("1111", 2),
+            num_ctrl_qubits=4,
+            cached_states=(15,),
+            dtype=dtype,
+        )
 
 
 class U1(GateOperation):

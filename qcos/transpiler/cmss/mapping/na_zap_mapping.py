@@ -96,20 +96,21 @@ class NA_ZAP_Route(ABC):
     def scheduling(self):
         """ASAP scheduling (As-Soon-As-Possible) for the given gates IR.
 
-        Description:
-            This scheduler groups gates into time stages respecting device
-            constraints:
-                - single-qubit gates can be scheduled on their qubit's
-                earliest available time
-                - two-qubit gates need a pair of operate-area atoms (Rydberg
-                pair),and the number of parallel two-qubit gates per stage is
-                limited by the number of available operate-area coupler edges
+        This scheduler groups gates into time stages respecting device
+        constraints:
+
+        - single-qubit gates can be scheduled on their qubit's
+          earliest available time.
+        - two-qubit gates need a pair of operate-area atoms (Rydberg
+          pair),and the number of parallel two-qubit gates per stage is
+          limited by the number of available operate-area coupler edges
 
         It builds:
-            - self.gate_scheduling_list: list of gate-lists per stage
-            - self.qubit_scheduling_list: list of qubit-id lists per stage
-            - self.storage_area_oloc and self.operate_area_oloc placeholders
-            (filled later)
+
+        - self.gate_scheduling_list: list of gate-lists per stage
+        - self.qubit_scheduling_list: list of qubit-id lists per stage
+        - self.storage_area_oloc and self.operate_area_oloc placeholders
+          (filled later)
 
         Returns:
             list: list of measurement gate objects encountered (measure

@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import numpy as np
+
 from qcos.transpiler.cmss.optimizer.clifford_rz_optimization import (
     CliffordRzOptimization,
 )
@@ -354,9 +356,130 @@ class TestCliffordRzOptimization:
         cnt = opt.cancel_two_qubit_gates(dag)
         assert cnt == 2
 
+    def test_merge_rotations(self):
+        opt = CliffordRzOptimization()
+        ir = [
+            H([0]),
+            H([1]),
+            H([2]),
+            RZ([1], arg_value=[0.1]),
+            RZ([2], arg_value=[0.2]),
+            CX([1, 0]),
+            RZ([0], arg_value=[0.3]),
+            CX([1, 2]),
+            CX([0, 1]),
+            H([2]),
+            CX([1, 2]),
+            CX([0, 1]),
+            RZ([1], arg_value=[0.4]),
+            H([0]),
+            H([1]),
+        ]
+        #      ┌───┐           ┌───┐┌─────────┐                  ┌───┐
+        # q_0: ┤ H ├───────────┤ X ├┤ Rz(0.3) ├──■─────────■─────┤ H ├────────
+        #      ├───┤┌─────────┐└─┬─┘└─────────┘┌─┴─┐     ┌─┴─┐┌──┴───┴──┐┌───┐
+        # q_1: ┤ H ├┤ Rz(0.1) ├──■───────■─────┤ X ├──■──┤ X ├┤ Rz(0.4) ├┤ H ├
+        #      ├───┤├─────────┤        ┌─┴─┐   ├───┤┌─┴─┐└───┘└─────────┘└───┘
+        # q_2: ┤ H ├┤ Rz(0.2) ├────────┤ X ├───┤ H ├┤ X ├─────────────────────
+        #      └───┘└─────────┘        └───┘   └───┘└───┘
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.merge_rotations(dag)
+        # TODO: collect_blocks is different from former code
+        assert cnt == 0
 
-if __name__ == "__main__":
-    test = TestCliffordRzOptimization()
-    test.test_reduce_hadamard_gates()
-    test.test_cancel_single_qubit_gates()
-    test.test_cancel_two_qubit_gates()
+        ir = [
+            RZ([1], arg_value=[0.1]),
+            CX([0, 1]),
+            RZ([1], arg_value=[0.2]),
+            CX([0, 1]),
+            RZ([0], arg_value=[0.3]),
+            RZ([1], arg_value=[0.4]),
+            CX([1, 0]),
+        ]
+        #                                      ┌─────────┐┌───┐
+        # q_0: ─────────────■───────────────■──┤ Rz(0.3) ├┤ X ├
+        #      ┌─────────┐┌─┴─┐┌─────────┐┌─┴─┐├─────────┤└─┬─┘
+        # q_1: ┤ Rz(0.1) ├┤ X ├┤ Rz(0.2) ├┤ X ├┤ Rz(0.4) ├──■──
+        #      └─────────┘└───┘└─────────┘└───┘└─────────┘
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.merge_rotations(dag)
+        #                                      ┌─────────┐┌───┐
+        # q_0: ─────────────■───────────────■──┤ Rz(0.3) ├┤ X ├
+        #      ┌─────────┐┌─┴─┐┌─────────┐┌─┴─┐└─────────┘└─┬─┘
+        # q_1: ┤ Rz(0.5) ├┤ X ├┤ Rz(0.2) ├┤ X ├─────────────■──
+        #      └─────────┘└───┘└─────────┘└───┘
+        assert cnt == 1
+        rz_gates = []
+        for node in dag.op_nodes():
+            if node.name == "rz":
+                rz_gates.append(node)
+        assert np.isclose(rz_gates[0].op.arg_value[0], 0.5)
+        assert np.isclose(rz_gates[1].op.arg_value[0], 0.2)
+        assert np.isclose(rz_gates[2].op.arg_value[0], 0.3)
+
+        ir = [
+            RZ([1], arg_value=[0.1]),
+            X([1]),
+            CX([0, 1]),
+            RZ([1], arg_value=[0.2]),
+            CX([0, 1]),
+            RZ([0], arg_value=[0.3]),
+            RZ([1], arg_value=[0.4]),
+            CX([1, 0]),
+            RZ([0], arg_value=[0.5]),
+        ]
+        #                                           ┌─────────┐┌───┐┌─────────┐
+        # q_0: ──────────────────■───────────────■──┤ Rz(0.3) ├┤ X ├┤ Rz(0.5) ├
+        #      ┌─────────┐┌───┐┌─┴─┐┌─────────┐┌─┴─┐├─────────┤└─┬─┘└─────────┘
+        # q_1: ┤ Rz(0.1) ├┤ X ├┤ X ├┤ Rz(0.2) ├┤ X ├┤ Rz(0.4) ├──■─────────────
+        #      └─────────┘└───┘└───┘└─────────┘└───┘└─────────┘
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.merge_rotations(dag)
+        #                                            ┌─────────┐┌───┐
+        # q_0: ───────────────────■───────────────■──┤ Rz(0.3) ├┤ X ├
+        #      ┌──────────┐┌───┐┌─┴─┐┌─────────┐┌─┴─┐└─────────┘└─┬─┘
+        # q_1: ┤ Rz(-0.3) ├┤ X ├┤ X ├┤ Rz(0.7) ├┤ X ├─────────────■──
+        #      └──────────┘└───┘└───┘└─────────┘└───┘
+        assert cnt == 2
+        rz_gates = []
+        for node in dag.op_nodes():
+            if node.name == "rz":
+                rz_gates.append(node)
+        assert np.isclose(rz_gates[0].op.arg_value[0], -0.3)
+        assert np.isclose(rz_gates[1].op.arg_value[0], 0.7)
+        assert np.isclose(rz_gates[2].op.arg_value[0], 0.3)
+
+        ir = [
+            RZ([1], arg_value=[0.1]),
+            RZ([2], arg_value=[0.2]),
+            CX([1, 0]),
+            RZ([0], arg_value=[0.3]),
+            CX([1, 2]),
+            CX([0, 1]),
+            CX([0, 1]),
+            RZ([1], arg_value=[0.4]),
+        ]
+        #                 ┌───┐┌─────────┐
+        # q_0: ───────────┤ X ├┤ Rz(0.3) ├──■────■─────────────
+        #      ┌─────────┐└─┬─┘└─────────┘┌─┴─┐┌─┴─┐┌─────────┐
+        # q_1: ┤ Rz(0.1) ├──■───────■─────┤ X ├┤ X ├┤ Rz(0.4) ├
+        #      ├─────────┤        ┌─┴─┐   └───┘└───┘└─────────┘
+        # q_2: ┤ Rz(0.2) ├────────┤ X ├────────────────────────
+        #      └─────────┘        └───┘
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.merge_rotations(dag)
+        #                 ┌───┐┌─────────┐
+        # q_0: ───────────┤ X ├┤ Rz(0.3) ├──■────■──
+        #      ┌─────────┐└─┬─┘└─────────┘┌─┴─┐┌─┴─┐
+        # q_1: ┤ Rz(0.5) ├──■───────■─────┤ X ├┤ X ├
+        #      ├─────────┤        ┌─┴─┐   └───┘└───┘
+        # q_2: ┤ Rz(0.2) ├────────┤ X ├─────────────
+        #      └─────────┘        └───┘
+        assert cnt == 1
+        rz_gates = []
+        for node in dag.op_nodes():
+            if node.name == "rz":
+                rz_gates.append(node)
+        assert np.isclose(rz_gates[0].op.arg_value[0], 0.5)
+        assert np.isclose(rz_gates[1].op.arg_value[0], 0.2)
+        assert np.isclose(rz_gates[2].op.arg_value[0], 0.3)

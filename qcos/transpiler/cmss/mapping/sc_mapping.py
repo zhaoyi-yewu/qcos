@@ -232,15 +232,23 @@ class SCRoute(ABC):
         score_layer = 5
 
         init_map = self._layout_dict_to_list(self.initial_layout)
+        args = {
+            "objective": self.objective,
+            "select_mode": select_mode,
+            "score_layer": score_layer,
+            "use_prune": use_prune,
+            "use_hash": use_hash,
+            "init_mapping": init_map,
+            # simulation mode: ["fix_cx_num", [N_sim, G_sim]]
+            "mode_sim": ["fix_cx_num", [500, 30]],
+            # score decay rates
+            "score_decay_rate_size": 0.7,
+            "score_decay_rate_depth": 0.85,
+        }
         self.search_tree = MCTree(
             self.ag,
             self.dg,
-            objective=self.objective,
-            select_mode=select_mode,
-            score_layer=score_layer,
-            use_prune=use_prune,
-            use_hash=use_hash,
-            init_mapping=init_map,
+            **args,
         )
 
     def execute_with_order(self):

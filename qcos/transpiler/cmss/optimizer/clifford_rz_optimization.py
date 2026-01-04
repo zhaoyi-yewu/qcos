@@ -29,6 +29,9 @@ from qcos.transpiler.cmss.optimizer.template import (
 )
 from qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
 from qcos.transpiler.cmss.circuit.dag_node import DAGOutNode, DAGOpNode
+from qcos.transpiler.cmss.circuit.collect_blocks import (
+    BlockCollector,
+)
 
 
 class CliffordRzOptimization:
@@ -242,5 +245,92 @@ class CliffordRzOptimization:
                         break
                 if not mapping:
                     break
+
+        return cnt
+
+    def merge_rotations(self, dag: DAGCircuit):
+        """Optimize Rz gates using phase polynomials.
+
+        Args:
+            dag (DAGCircuit): dag to be optimized.
+
+        Returns:
+            int: the count of reduced Rz gates.
+        """
+        cnt = 0
+        block_collector = BlockCollector(dag)
+        blocks = block_collector.collect_all_matching_blocks(
+            lambda node: node.op.name in ["cx", "rz", "x"],
+        )
+        for block in blocks:
+            cnt += self.parse_cnot_rz_circuit(block, dag)
+        return cnt
+
+    def parse_cnot_rz_circuit(
+        self, node_list: list[DAGOpNode], dag: DAGCircuit
+    ):
+        """Optimize Rz gates using phase polynomials.
+
+        This function identifies phase polynomials in linear function
+        representation and merges Rz gates on the same linear functions.
+
+        Args:
+            node_list (list[DAGOpNode]): subcircuit of Rz, CX, X gates.
+            dag (DAGCircuit): dag to be optimized, including the subcircuit.
+
+        Returns:
+            int: the count of reduced Rz gates.
+        """
+        # phase polynomials, every item is a monomial and its phase
+        phases = {}
+        # first Rz gate of every monomial
+        first_rz = {}
+        # current linear function of every qubit
+        cur_phases = {}
+        # nodes to be removed
+        to_remove = []
+        # the count of reduced Rz gates
+        cnt = 0
+
+        for node in node_list:
+            # initialize linear function of every qubit
+            for qubit in node.qargs:
+                if qubit not in cur_phases:
+                    cur_phases[qubit] = 1 << (qubit + 1)
+
+            if node.name == "cx":
+                # update the linear function of target qubit
+                control, target = node.qargs[0], node.qargs[1]
+                cur_phases[target] = cur_phases[target] ^ cur_phases[control]
+            elif node.name == "x":
+                # flip the constant term of linear function
+                qubit = node.qargs[0]
+                cur_phases[qubit] = cur_phases[qubit] ^ 1
+            elif node.name == "rz":
+                # the monomial and sign of current qubit
+                qubit_phase = cur_phases[node.qargs[0]]
+                sign = -1 if qubit_phase & 1 else 1
+                mono = qubit_phase >> 1
+                # accumulate phase to phase polynomial
+                phases[mono] = sign * node.op.arg_value[0] + (
+                    phases[mono] if mono in phases else 0
+                )
+                if mono not in first_rz:
+                    first_rz[mono] = (node, sign)
+                else:
+                    # already have Rz gate with same monomial
+                    to_remove.append(node)
+
+        for mono, pack in first_rz.items():
+            node, sign = pack
+            if np.isclose(float(phases[mono]), 0):
+                dag.remove_op_node(node)
+                cnt += 1
+            else:
+                node.op.arg_value = [sign * phases[mono]]
+
+        for node in to_remove:
+            dag.remove_op_node(node)
+            cnt += 1
 
         return cnt

@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import numpy as np
 import pytest
 from pathlib import Path
 
@@ -62,7 +63,12 @@ class TestQuantumCircuit:
         gate3 = H([1])
         qc.set_num_qubits(2)
         qc.set_num_clbits(2)
-        assert qc.num_qubits == 2 and qc.num_clbits == 2
+        qc.set_global_phase(np.pi)
+        assert (
+            qc.num_qubits == 2
+            and qc.num_clbits == 2
+            and qc.global_phase == np.pi
+        )
 
         gates_list = [gate1, gate2, gate3]
         qc.append_operations(gates_list)
