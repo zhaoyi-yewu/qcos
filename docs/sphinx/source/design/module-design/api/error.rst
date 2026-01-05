@@ -11,9 +11,9 @@
 - jsonrpc api请求出错的返回
 
   .. container:: table-code-small-font
-  
+
      .. code-block:: json
-  
+
         {
           "jsonrpc": "2.0",
           "id": 1,
@@ -33,9 +33,9 @@
 - 作业已创建, 运行过程中发生的错误
 
   .. container:: table-code-small-font
-  
+
      .. code-block:: json
-  
+
         {
           "jsonrpc": "2.0",
           "result": {
@@ -76,7 +76,7 @@
      :header-rows: 1
      :align: left
      :class: longtable
-  
+
      * - 错误码
        - 消息
        - 描述
@@ -103,7 +103,7 @@
      :header-rows: 1
      :align: left
      :class: longtable
-  
+
      * - 错误码
        - 消息
        - 描述

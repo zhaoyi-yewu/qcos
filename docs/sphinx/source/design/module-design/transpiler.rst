@@ -70,7 +70,7 @@
 ********************
 
 .. code-block:: python
-   
+
    class TranspilerManager(object):
        """
        Transpiler manager

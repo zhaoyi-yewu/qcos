@@ -1,21 +1,27 @@
 # stages
 stages:
-  - commit
-  # Test
-  - test
+  # commit messages
+  - commit-check
+  # code check
+  - code-check
+  # docs check
+  - docs-check
+  # functional tests
+  - functional-tests
+  # system tests
+  - system-tests
 
 # commit messages
 commit-messages:
-  stage: commit
+  stage: commit-check
   tags:
     - sonic-runner
   script:
     - python3 ./cicd/check-commit-message.py
 
-
 # code-linter
 code-linter:
-  stage: test
+  stage: code-check
   tags:
     - sonic-runner
   script:
@@ -23,15 +29,31 @@ code-linter:
 
 # code-style
 code-style:
-  stage: test
+  stage: code-check
   tags:
     - sonic-runner
   script:
     - ./cicd/code-formatter.sh
 
+# docstring-check
+docstring-check:
+  stage: code-check
+  tags:
+    - sonic-runner
+  script:
+    - ./cicd/docstring-check.sh
+
+# docs-linter
+docs-linter:
+  stage: docs-check
+  tags:
+    - sonic-runner
+  script:
+    - ./cicd/docs-linter.sh
+
 # ut
 ut:
-  stage: test
+  stage: functional-tests
   tags:
     - sonic-runner
   script:
@@ -43,16 +65,24 @@ ut:
 
 # code-coverage
 code-coverage:
-  stage: test
+  stage: functional-tests
   tags:
     - sonic-runner
   script:
     - ./cicd/run-tests.sh -c
   coverage: '/^TOTAL\s+\S+\s+\S+\s+(\d+)%$/'
 
-# st
+# system tests
 #st:
-#  stage: test
+#  stage: system-tests
+#  tags:
+#    - sonic-runner
+#  script:
+#    - ./cicd/run-tests.sh -s
+
+# stress tests
+#stress:
+#  stage: system-tests
 #  tags:
 #    - sonic-runner
 #  script:

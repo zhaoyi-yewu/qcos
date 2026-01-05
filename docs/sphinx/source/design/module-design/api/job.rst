@@ -461,9 +461,9 @@
      成功示例
 
      .. container:: table-code-small-font
-     
+
         .. code-block:: json
-     
+
            {
              "job_id": "3a906c1f-a2b1-40f3-a713-18b3f123c334",
              "job_status": "COMPLETED",
@@ -483,13 +483,13 @@
                }
              ]
            }
-   
+
      失败示例
 
      .. container:: table-code-small-font
-     
+
         .. code-block:: json
-           
+
            {
              "job_id": "43ec40a4-2ea7-4336-befb-bba28e280d8a",
              "job_status": "FAILED",
@@ -509,7 +509,7 @@
                }
              ]
            }
-   
+
    - QASM返回值示例
 
      该qasm文件中量子比特数为2个, 所以所有量子比特的组合为: 00, 01, 10, 11, 重复实验次数(shots)为104
@@ -517,9 +517,9 @@
      results中{"00": 95, "11":9}表示104次实验测试中, 有95次测量结果为"00", 9次测量结果为"11", 0次测量结果为"01"和"10" (0次会被忽略掉)
 
      .. container:: table-code-small-font
-     
+
         .. code-block:: json
-     
+
            {
                "jsonrpc": "2.0",
                "result": {
@@ -582,7 +582,7 @@
                },
                "id": 1
            }
-   
+
    - QUBO返回值示例
 
      其中quboValue表示: qubo值，maxcutValue表示: 最大割，solutionVector表示: 解向量
@@ -592,9 +592,9 @@
      判断结果是否符合预期需要把结果代回实际问题看，这里只纯数学求解。
 
      .. container:: table-code-small-font
-     
+
         .. code-block:: json
-     
+
            {
              "jsonrpc":"2.0",
              "result":
@@ -639,13 +639,13 @@
                // results为列表, 按照source_code列表顺序进行返回
                "results": [
                  {
-           	       "metadata": {
+                   "metadata": {
                      "results_fetch_mode": "sync",
                      "status": "COMPLETED",
                      "end_date": "2025-08-05T11:26:18.318860"
                    },
                    "profiling": {},
-           	       "results": [
+                   "results": [
                      {
                        "result": 1,
                        "quboValue": -112.0,
@@ -698,8 +698,8 @@
                        "solutionVector": [1,0,1,0,1,1,1,1,0,1,0,1,0,1,0,1,1,0,1,0]
                      }
                    ]
-           	     }
-           	   ],
+                 }
+               ],
                "creation_date": "2025-08-05T11:26:01.980783",
                "end_date": "2025-08-05T11:26:18.318860"
              },

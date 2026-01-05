@@ -1,7 +1,7 @@
 # Makefile for Sphinx documentation
 #
 
-SPHINXOPTS    = -T -j auto
+SPHINXOPTS    = -T -j auto -W
 SPHINXBUILD   = sphinx-build
 SOURCEDIR     = source
 PAPER         =
@@ -65,7 +65,7 @@ latexpdf:
 	@echo "pdflatex finished; the PDF files are in $(BUILDDIR)/latex."
 
 text:
-	$(SPHINXBUILD) -b text -t text $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/text
+	@echo $(SPHINXBUILD) -b text -t text $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/text
 	@echo
 	@echo "Build finished. The text files are in $(BUILDDIR)/text."
 

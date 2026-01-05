@@ -215,5 +215,16 @@ exclude = [
     "qcos/transpiler/cmss/compiler/visitor.py",
 ]
 
+[tool.doc8]
+# ignore = ["D001"]
+paths = ["docs/sphinx/source/"]
+extension = [".rst"]
+max-line-length = 120
+ignore-path = [
+    "docs/sphinx/source/other-docs/code-of-conduct.rst",
+    "docs/sphinx/source/other-docs/compatibility.rst",
+    "docs/sphinx/source/other-docs/changelog.rst",
+]
+
 [tool.poetry.extras]
 docs = ["Sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon"]

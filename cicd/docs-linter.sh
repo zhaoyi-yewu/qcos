@@ -13,9 +13,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-# Python code linter
+# Python docs linter
 # Prerequisite:
-# pip3 install ruff mypy
+# pip3 install doc8 mdformat
 
 set -e
 
@@ -25,9 +25,9 @@ TOP_DIR=$(readlink -f ${BASE_DIR}/..)
 
 function usage {
   echo "Usage: $0 [OPTION] ..."
-  echo "Python code linter"
+  echo "Python docs linter (Markdown(md) / reStructuredText(rst) files)"
   echo ""
-  echo "  -f, --fix             Fix code errors"
+  echo "  -f, --fix             Fix docs errors (markdown file only)"
   echo "  -h, --help            Print this usage message"
   echo ""
 }
@@ -52,17 +52,24 @@ done
 
 # check and fix errors
 cd "${TOP_DIR}"
-echo "Code check start ..."
+echo "Docs linter start ..."
+
+MD_FILES=$(find ${TOP_DIR} -type f -name "*.md" -not -path "*/.pytest_cache/*")
+RST_FILES=$(find ${TOP_DIR} -type f -name "*.rst")
 if [ "${fix}" = false ]; then
-  if command -v pylint > /dev/null 2>&1; then
-    echo "Checking dir: qcos (pylint)"
-    pylint qcos
-  fi
-  echo "Checking dir: qcos (ruff)"
-  ruff check --preview qcos
-  echo "Checking dir: qcos (mypy)"
-  mypy qcos
+  echo "Checking MD (Markdown) files:"
+  for file in ${MD_FILES}; do
+    if ! mdformat --check "${file}" &>/dev/null; then
+      echo "Format error in markdown file: ${file}, diff:"
+      mdformat - < "${file}" | diff -u "${file}" -
+    fi
+  done
+
+  echo "Checking RST (reStructuredText) files:"
+  doc8
 else
-  echo "Fixing code errors in dir: qcos (ruff)"
-  ruff check --preview --unsafe-fixes --fix qcos
+  echo "Fixing format of MD (markdown) files:"
+  for file in ${MD_FILES}; do
+    mdformat "${file}"
+  done
 fi

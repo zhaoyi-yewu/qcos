@@ -57,6 +57,6 @@ if [ "${fix}" = false ]; then
   echo "Check dir: qcos (ruff)"
   ruff format --preview --check --diff qcos
 else
-  echo "Check and format code in dir: qcos (ruff)"
+  echo "Fixing code format in dir: qcos (ruff)"
   ruff format --preview qcos
 fi

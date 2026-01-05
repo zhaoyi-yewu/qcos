@@ -13,34 +13,22 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-# run cicd
+# Python docstring check
+# Prerequisite:
+# pip3 install Sphinx
 
 set -e
 
-cwd=$(dirname "${BASH_SOURCE[0]}")
-top_dir=$(realpath ${cwd}/..)
+BASE_DIR=$(dirname "$0")
+BASE_DIR=$(readlink -f ${BASE_DIR})
+TOP_DIR=$(readlink -f ${BASE_DIR}/..)
+DOCS_DIR=${TOP_DIR}/docs
 
-echo "Run code-linter ..."
-${top_dir}/cicd/code-linter.sh
-echo
+SPHINX_DOCS_DIR=${DOCS_DIR}/sphinx
+cd ${SPHINX_DOCS_DIR}
 
-echo "Run code-style ..."
-${top_dir}/cicd/code-formatter.sh
-echo
+# create sphinx dist dir
+make clean
+rm -rf ./dist
+make text
 
-echo "Run docstring check ..."
-${top_dir}/cicd/docstring-check.sh
-echo
-
-echo "Run docs-linter ..."
-${top_dir}/cicd/docs-linter.sh
-echo
-
-echo "Run UT ..."
-${top_dir}/cicd/run-tests.sh -u
-echo
-
-echo "Run coverage ..."
-${top_dir}/cicd/run-tests.sh -c
-
-echo "CICD pipeline completed successfully"

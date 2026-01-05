@@ -51,16 +51,17 @@
 
 创建和修改全局配置文件
 ***************************
-参照代码库中etc/qcos/qcos.toml, 创建和修改全局配置文件/etc/qcos/qcos.toml  
-修改或添加DEVICE_LIST中的设备列表  
+参照代码库中etc/qcos/qcos.toml, 创建和修改全局配置文件/etc/qcos/qcos.toml
+修改或添加DEVICE_LIST中的设备列表
 
 **注意**: 如果不创建该文件, 容器模式下会自动创建
 
 创建和修改设备配置文件
 ***************************
-参照代码库中etc/qcos/conf.d/dummy.toml等, 创建和修改设备配置文件/etc/qcos/conf.d/dummy.toml等  
+参照代码库中etc/qcos/conf.d/dummy.toml等, 创建和修改设备配置文件/etc/qcos/conf.d/dummy.toml等
 
-**注意**: 设备配置文件必须位于/etc/qcos/conf.d下, 文件名需要和qcos.toml中DEVICE_LIST列出的设备名一致。 文件中section必须对应相关设备名, 比如dummy设备的配置需要放在section: [dummy]下
+**注意**: 设备配置文件必须位于/etc/qcos/conf.d下, 文件名需要和qcos.toml中DEVICE_LIST列出的设备名一致。
+文件中section必须对应相关设备名, 比如dummy设备的配置需要放在section: [dummy]下
 
 运行容器 (基于Docker)
 ---------------------------
