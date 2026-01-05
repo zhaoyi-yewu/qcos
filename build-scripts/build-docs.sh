@@ -30,7 +30,7 @@ make clean
 rm -rf ./dist
 rm -rf ./source/api
 mkdir -p ./dist
-mkdir ./source/api
+mkdir -p ./source/api
 # create sphinx api docs
 sphinx-apidoc -H "QCOS API" -f -o ./source/api ${TOP_DIR}/qcos
 # create sphinx docs

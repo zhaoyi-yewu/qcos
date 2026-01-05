@@ -36,7 +36,7 @@
       driver = "DriverDummy"
       password = "++gAAAAABo9gU4yf6G9lQQoNpH1LkBSYDsRYs1qNBln_Sf2N5OQP2siY65uaLCoz8-NYFWCfHDj8pCyxHSs4ltSKsdv-yz9muSAQ=="
 
-密码日志屏蔽规则
+日志中的密码屏蔽规则
 *********************
    QCOS会自动屏蔽日志中驱动配置文件的密码字段，只需保证密码字段名包含“password”字符串即可，例如：
 
@@ -60,8 +60,13 @@
       # 进入qcos容器
       docker exec -it qcos bash
       cd bin
-      # 生成自签名证书（替换IP和DNS为实际值）
+      # 生成自签名证书
+      # * 替换IP和DNS为实际值
+      # * 可以只填IP或者只填DNS，IP和DNS也可以填多个值
+      ./make-ssl-cert.py --ip-list 127.0.0.1
+      ./make-ssl-cert.py --dns-list localhost
       ./make-ssl-cert.py --ip-list 127.0.0.1 --dns-list localhost
+      ./make-ssl-cert.py --ip-list 127.0.0.1 192.168.0.1 --dns-list localhost test.com
 
    生成的SSL密钥和证书文件默认存放于``/etc/qcos/ssl``目录下。
 

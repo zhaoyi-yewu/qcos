@@ -34,4 +34,5 @@ services:
         max-file: "10"
     volumes:
       - /etc/hosts:/etc/hosts
+      - /var/run:/var/run
       - ${QCOS_LOCAL_SRC_DIR}:/root/qcos-project

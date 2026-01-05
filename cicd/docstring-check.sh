@@ -29,4 +29,7 @@ cd ${SPHINX_DOCS_DIR}
 
 # create sphinx dist dir
 make clean
+mkdir -p ./source/api
+# create sphinx api docs
+sphinx-apidoc -H "QCOS API" -f -o ./source/api ${TOP_DIR}/qcos
 SPHINX_FAIL_ON_WARNING="-W -q" make man

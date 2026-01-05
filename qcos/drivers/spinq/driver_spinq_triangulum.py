@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from qcos.common.constant import Constant
 from qcos.drivers.spinq.driver_spinq_cloud_base import DriverSpinQCloudBase
 
 
@@ -30,5 +31,6 @@ class DriverSpinQCloudTriangulum(DriverSpinQCloudBase):
         self.version = "0.0.1"
         self.alias_name = "量旋科技 三角座 核磁量子计算机驱动"
         self.description = "量旋科技 三角座 核磁量子计算机驱动"
+        self.tech_type = Constant.TECH_TYPE_NMR
         self.max_qubits = 3
         self.platform_name = "triangulum_vp"

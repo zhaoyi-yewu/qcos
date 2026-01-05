@@ -105,7 +105,7 @@ class DriverSpinQRpc(DriverBase):
         ]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_aggregation = True
-        self.max_qubits = 57  # 根据配置文件更新为 57 个量子比特
+        self.max_qubits = 57
         self.default_data_type = DriverBase.DATA_TYPE_GATE_SEQUENCE
 
         # task stages and percentages
