@@ -29,6 +29,4 @@ cd ${SPHINX_DOCS_DIR}
 
 # create sphinx dist dir
 make clean
-rm -rf ./dist
-make text
-
+SPHINX_FAIL_ON_WARNING="-W -q" make man

@@ -221,8 +221,8 @@ paths = ["docs/sphinx/source/"]
 extension = [".rst"]
 max-line-length = 120
 ignore-path = [
+    "docs/sphinx/source/user-guide/compatibility.rst",
     "docs/sphinx/source/other-docs/code-of-conduct.rst",
-    "docs/sphinx/source/other-docs/compatibility.rst",
     "docs/sphinx/source/other-docs/changelog.rst",
 ]
 

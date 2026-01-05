@@ -32,7 +32,7 @@ rm -rf ./source/api
 mkdir -p ./dist
 mkdir ./source/api
 # create sphinx api docs
-sphinx-apidoc -H "QCOS API" -o ./source/api ../../
+sphinx-apidoc -H "QCOS API" -f -o ./source/api ${TOP_DIR}/qcos
 # create sphinx docs
 make html
 # make singlehtml

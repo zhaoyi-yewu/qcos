@@ -26,6 +26,18 @@ exclude_patterns = ["_build"]
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
+##
+# skip spinq module
+autodoc_mock_imports = ["spinqit"]
+def skip_spinq_module(app, what, name, obj, skip, options):
+    if "driver_spinq_cloud_base" in name:
+        return True
+    return skip
+
+def setup(app):
+    app.connect('autodoc-skip-member', skip_spinq_module)
+##
+
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.extlinks",

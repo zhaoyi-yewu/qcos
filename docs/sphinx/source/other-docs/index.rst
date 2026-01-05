@@ -7,7 +7,7 @@
    :maxdepth: 2
 
    changelog
-   compatibility
+   faq/index.rst
    license
    code-of-conduct
    cla

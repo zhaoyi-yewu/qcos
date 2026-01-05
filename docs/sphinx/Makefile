@@ -1,7 +1,7 @@
 # Makefile for Sphinx documentation
 #
 
-SPHINXOPTS    = -T -j auto -W
+SPHINXOPTS    = -T -j auto $(SPHINX_FAIL_ON_WARNING)
 SPHINXBUILD   = sphinx-build
 SOURCEDIR     = source
 PAPER         =

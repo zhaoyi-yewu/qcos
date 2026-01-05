@@ -7,5 +7,5 @@
    :maxdepth: 2
 
    deploy-guide/index.rst
+   compatibility
    cli
-   faq/index.rst
