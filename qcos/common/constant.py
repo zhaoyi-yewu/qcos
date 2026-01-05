@@ -331,6 +331,10 @@ class Constant:
     MAX_QUBO_BIT_WIDTH = 8
     MAX_QUBO_QUBITS = 2000
 
+    # Circuit cutting
+    MAX_CIRCUIT_CUT = 100
+    MAX_RERURSIVE_DEPTH = 100
+
 
 class HttpHeaders:
     # headers
