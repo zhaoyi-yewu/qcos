@@ -28,6 +28,9 @@ from wy_qcos.transpiler.cmss.mapping.init_mapping.sc_initial_mapping import (
     get_initial_mapping,
 )
 from wy_qcos.transpiler.cmss.mapping.routing.sc_routing import SCRouting
+from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing_wrapper import (
+    SABRERouting,
+)
 
 
 class SCRoute(ABC):
@@ -35,6 +38,30 @@ class SCRoute(ABC):
 
     实现逻辑量子比特到物理量子比特的映射，支持单比特门和两比特门的路由。
     """
+
+    # 默认 sc_mapping 配置参数
+    DEFAULT_SC_MAPPING_OPTIONS = {
+        # 路由算法: "mct" (蒙特卡罗树搜索) 或 "sabre" (SABRE算法)
+        "routing_algorithm": "mct",
+        # 选择模式: ["KS", K值] 或其他模式
+        "select_mode": ["KS", 15],
+        # 是否启用剪枝
+        "use_prune": 1,
+        # 是否启用哈希
+        "use_hash": 1,
+        # 评分层数
+        "score_layer": 5,
+        # 模拟模式: ["fix_cx_num", [N_sim, G_sim]]
+        "mode_sim": ["fix_cx_num", [500, 30]],
+        # 大小评分衰减率
+        "score_decay_rate_size": 0.7,
+        # 深度评分衰减率
+        "score_decay_rate_depth": 0.85,
+        # SABRE算法参数
+        "sabre_extention_size": 20,
+        "sabre_weight": 0.5,
+        "sabre_decay": 0.001,
+    }
 
     def __init__(self):
         self.qpu_config = None
@@ -50,7 +77,53 @@ class SCRoute(ABC):
         self.search_tree = None
         self.method_init_mapping = "topgraph"
         self.objective = "size"
-        self.routing = SCRouting()  # 路由搜索实例
+        self.routing = None  # 路由搜索实例，将在prepare_data中根据参数创建
+        # sc_mapping 配置选项
+        self.sc_mapping_options = self.DEFAULT_SC_MAPPING_OPTIONS.copy()
+
+    def set_sc_mapping_options(self, options: dict):
+        """设置 sc_mapping 配置选项.
+
+        Args:
+            options: sc_mapping 配置选项字典
+        """
+        if options:
+            self.sc_mapping_options.update(options)
+
+    def _create_routing(self):
+        """根据配置选项创建路由算法实例."""
+        routing_algorithm = self.sc_mapping_options.get(
+            "routing_algorithm",
+            self.DEFAULT_SC_MAPPING_OPTIONS["routing_algorithm"],
+        )
+
+        if routing_algorithm in ("mct", "sc"):
+            # 使用蒙特卡罗树搜索算法（默认）
+            self.routing = SCRouting()
+        elif routing_algorithm == "sabre":
+            # 使用SABRE算法
+            extention_size = self.sc_mapping_options.get(
+                "sabre_extention_size",
+                self.DEFAULT_SC_MAPPING_OPTIONS["sabre_extention_size"],
+            )
+            weight = self.sc_mapping_options.get(
+                "sabre_weight",
+                self.DEFAULT_SC_MAPPING_OPTIONS["sabre_weight"],
+            )
+            decay = self.sc_mapping_options.get(
+                "sabre_decay",
+                self.DEFAULT_SC_MAPPING_OPTIONS["sabre_decay"],
+            )
+            self.routing = SABRERouting(
+                extention_size=extention_size,
+                weight=weight,
+                decay=decay,
+            )
+        else:
+            raise MappingException(
+                f"Unsupported routing algorithm: {routing_algorithm}. "
+                f"Supported algorithms: 'mct', 'sc', 'sabre'"
+            )
 
     def _layout_dict_to_list(self, layout_dict):
         """将布局字典转换为列表."""
@@ -225,31 +298,61 @@ class SCRoute(ABC):
         logger.info(f"init_map: {init_map}")
         self.initial_layout = self._layout_list_to_dict(init_map)
 
-        # 初始化搜索树
-        select_mode = ["KS", 15]
-        use_prune = 1
-        use_hash = 1
-        score_layer = 5
-
-        init_map = self._layout_dict_to_list(self.initial_layout)
-        args = {
-            "objective": self.objective,
-            "select_mode": select_mode,
-            "score_layer": score_layer,
-            "use_prune": use_prune,
-            "use_hash": use_hash,
-            "init_mapping": init_map,
-            # simulation mode: ["fix_cx_num", [N_sim, G_sim]]
-            "mode_sim": ["fix_cx_num", [500, 30]],
-            # score decay rates
-            "score_decay_rate_size": 0.7,
-            "score_decay_rate_depth": 0.85,
-        }
-        self.search_tree = MCTree(
-            self.ag,
-            self.dg,
-            **args,
+        # 初始化搜索树，从 sc_mapping_options 获取配置
+        opts = self.sc_mapping_options
+        select_mode = opts.get(
+            "select_mode", self.DEFAULT_SC_MAPPING_OPTIONS["select_mode"]
         )
+        use_prune = opts.get(
+            "use_prune", self.DEFAULT_SC_MAPPING_OPTIONS["use_prune"]
+        )
+        use_hash = opts.get(
+            "use_hash", self.DEFAULT_SC_MAPPING_OPTIONS["use_hash"]
+        )
+        score_layer = opts.get(
+            "score_layer", self.DEFAULT_SC_MAPPING_OPTIONS["score_layer"]
+        )
+        mode_sim = opts.get(
+            "mode_sim", self.DEFAULT_SC_MAPPING_OPTIONS["mode_sim"]
+        )
+        score_decay_rate_size = opts.get(
+            "score_decay_rate_size",
+            self.DEFAULT_SC_MAPPING_OPTIONS["score_decay_rate_size"],
+        )
+        score_decay_rate_depth = opts.get(
+            "score_decay_rate_depth",
+            self.DEFAULT_SC_MAPPING_OPTIONS["score_decay_rate_depth"],
+        )
+
+        # 根据配置创建路由算法实例
+        self._create_routing()
+
+        # 对于SABRE算法，不需要创建MCTree
+        routing_algorithm = self.sc_mapping_options.get(
+            "routing_algorithm",
+            self.DEFAULT_SC_MAPPING_OPTIONS["routing_algorithm"],
+        )
+        if routing_algorithm in ("mct", "sc"):
+            init_map = self._layout_dict_to_list(self.initial_layout)
+            args = {
+                "objective": self.objective,
+                "select_mode": select_mode,
+                "score_layer": score_layer,
+                "use_prune": use_prune,
+                "use_hash": use_hash,
+                "init_mapping": init_map,
+                "mode_sim": mode_sim,
+                "score_decay_rate_size": score_decay_rate_size,
+                "score_decay_rate_depth": score_decay_rate_depth,
+            }
+            self.search_tree = MCTree(
+                self.ag,
+                self.dg,
+                **args,
+            )
+        else:
+            # SABRE算法不需要search_tree
+            self.search_tree = None
 
     def execute_with_order(self):
         """执行映射，返回映射后的门列表.
@@ -257,17 +360,40 @@ class SCRoute(ABC):
         Returns:
             映射后的门列表(mapped_ir)
         """
-        if self.search_tree is None:
+        if self.routing is None:
             raise MappingException(
                 "prepare_data must be called before execute_with_order"
             )
 
-        # 使用SCRouting执行路由搜索
-        mapped_ir = self.routing.execute_routing(
-            search_tree=self.search_tree,
-            ag=self.ag,
-            initial_layout=self.initial_layout,
-            num_q_vir=self.num_q_vir,
-            measure_ops=self.measure_ops,
+        routing_algorithm = self.sc_mapping_options.get(
+            "routing_algorithm",
+            self.DEFAULT_SC_MAPPING_OPTIONS["routing_algorithm"],
         )
+
+        # 对于MCT算法，需要search_tree
+        if routing_algorithm in ("mct", "sc"):
+            if self.search_tree is None:
+                raise MappingException(
+                    "search_tree must be initialized for MCT routing algorithm"
+                )
+            # 使用SCRouting执行路由搜索
+            mapped_ir = self.routing.execute_routing(
+                search_tree=self.search_tree,
+                ag=self.ag,
+                initial_layout=self.initial_layout,
+                num_q_vir=self.num_q_vir,
+                measure_ops=self.measure_ops,
+            )
+        else:
+            # 对于SABRE算法，传递dg参数
+            # self.routing 在 else 分支中一定是 SABRERouting 实例
+            # pylint: disable-next=unexpected-keyword-arg
+            mapped_ir = self.routing.execute_routing(
+                search_tree=self.search_tree,
+                ag=self.ag,
+                initial_layout=self.initial_layout,
+                num_q_vir=self.num_q_vir,
+                measure_ops=self.measure_ops,
+                dg=self.dg,
+            )
         return mapped_ir

@@ -15,8 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from schema import Optional
-
+from schema import And, Optional, Or
 from loguru import logger
 
 from wy_qcos.common.constant import Constant
@@ -32,6 +31,35 @@ from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 from wy_qcos.transpiler.common.errors import TranspilerException
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.transpiler_base import TranspilerBase
+
+
+# sc_mapping 配置选项的 schema
+SC_MAPPING_OPTIONS_SCHEMA = {
+    # 路由算法: "mct", "sc" 或 "sabre"
+    Optional("routing_algorithm"): Or("mct", "sc", "sabre"),
+    # 选择模式: ["KS", K值] 或其他模式
+    Optional("select_mode"): And(list, lambda x: len(x) == 2),
+    # 是否启用剪枝 (0 或 1)
+    Optional("use_prune"): Or(0, 1),
+    # 是否启用哈希 (0 或 1)
+    Optional("use_hash"): Or(0, 1),
+    # 评分层数
+    Optional("score_layer"): And(int, lambda x: x > 0),
+    # 模拟模式: ["fix_cx_num", [N_sim, G_sim]]
+    Optional("mode_sim"): And(list, lambda x: len(x) == 2),
+    # 大小评分衰减率 (0-1 之间)
+    Optional("score_decay_rate_size"): And(
+        Or(int, float), lambda x: 0 <= x <= 1
+    ),
+    # 深度评分衰减率 (0-1 之间)
+    Optional("score_decay_rate_depth"): And(
+        Or(int, float), lambda x: 0 <= x <= 1
+    ),
+    # SABRE算法参数
+    Optional("sabre_extention_size"): And(int, lambda x: x > 0),
+    Optional("sabre_weight"): And(Or(int, float), lambda x: 0 <= x <= 1),
+    Optional("sabre_decay"): And(Or(int, float), lambda x: 0 <= x <= 1),
+}
 
 
 class TranspilerCmss(TranspilerBase):
@@ -70,11 +98,14 @@ class TranspilerCmss(TranspilerBase):
             # default optimization level
             "optimization_level": optimization_level,
             "enable_na_move": enable_na_move,
+            # sc_mapping options
+            "sc_mapping_options": {},
         }
         # transpiler_options schema used in submit-job from user
         self.transpiler_options_schema = {
             Optional("optimization_level"): int,
             Optional("enable_na_move"): bool,
+            Optional("sc_mapping_options"): SC_MAPPING_OPTIONS_SCHEMA,
         }
         # qpu_config
         self.qpu_config = None
@@ -93,9 +124,17 @@ class TranspilerCmss(TranspilerBase):
         factory = MappingFactory()
 
         enable_na_move = self.transpiler_options.get("enable_na_move", False)
+        sc_mapping_options = self.transpiler_options.get(
+            "sc_mapping_options", {}
+        )
         mapper = factory.get_mapper_by_type(
             trans_cfg_inst.get_tech_type(), enable_na_move
         )
+
+        # set sc_mapping_options
+        if isinstance(mapper, SCRoute) and sc_mapping_options:
+            mapper.set_sc_mapping_options(sc_mapping_options)
+
         mapping_dict = {}
         if len(opt_result_dict) == 1:
             key, value = list(opt_result_dict.items())[0]

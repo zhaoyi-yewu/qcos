@@ -38,7 +38,8 @@ class TestSCRoute:
         assert route.initial_layout is None
         assert route.method_init_mapping == "topgraph"
         assert route.objective == "size"
-        assert route.routing is not None
+        # routing is initialized as None and will be created in prepare_data
+        assert route.routing is None
 
     def test_layout_dict_to_list(self):
         """Test _layout_dict_to_list method."""
@@ -154,6 +155,8 @@ class TestSCRoute:
         assert route.ag is not None
         assert route.dg is not None
         assert route.initial_layout is not None
+        # routing should be created after prepare_data
+        assert route.routing is not None
 
     def test_prepare_data_with_measure(self):
         """Test prepare_data with measure operations."""
