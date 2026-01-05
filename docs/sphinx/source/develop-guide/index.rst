@@ -6,7 +6,7 @@
 .. toctree::
    :maxdepth: 2
 
-   develop-enviroment
+   develop-environment
    develop-guide
    code-commit
    run-test

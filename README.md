@@ -22,17 +22,17 @@
 官方已适配操作系统：BCLinux 21.10U4
 
 ## 3.1 编译部署手册
-[编译部署（基于Docker，推荐）](docs/sphinx/source/deploy-guide/build-run-docker.rst)
+[编译部署（基于Docker，推荐）](docs/sphinx/source/user-guide/deploy-guide/build-run-docker.rst)
 
-[编译部署（基于K8s）](docs/sphinx/source/deploy-guide/build-run-k8s.rst)
+[编译部署（基于K8s）](docs/sphinx/source/user-guide/deploy-guide/build-run-k8s.rst)
 
-[编译部署（基于wheel）](docs/sphinx/source/deploy-guide/build-run-wheel.rst)
+[编译部署（基于wheel）](docs/sphinx/source/user-guide/deploy-guide/build-run-wheel.rst)
 
 ## 3.2 命令行手册
 [命令行手册](docs/sphinx/source/user-guide/cli.rst)
 
 ## 3.3 文档构建手册
-[文档构建手册](docs/sphinx/source/deploy-guide/build-docs.rst)
+[文档构建手册](docs/sphinx/source/user-guide/deploy-guide/build-docs.rst)
 
 # 4. 许可证
 

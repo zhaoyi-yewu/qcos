@@ -1,24 +1,7 @@
 量子计算操作系统(QCOS)文档
 ================================
 
-欢迎使用量子计算操作系统（QCOS，全称为: `Quantum Computing Operating System`）的官方文档，包含《设计文档》、《部署指导》、《开发指南》、《用户指导》和《API文档》等核心内容。
-
-.. toctree::
-   :maxdepth: 3
-
-   design/index
-
-.. toctree::
-   :maxdepth: 2
-
-
-   deploy-guide/index
-
-
-.. toctree::
-   :maxdepth: 2
-
-   develop-guide/index
+欢迎使用量子计算操作系统（QCOS，全称为: `Quantum Computing Operating System`）的官方文档，包含《用户手册》、《部署指导》、《设计文档》、《开发指南》和《API文档》等核心内容。
 
 
 .. toctree::
@@ -28,9 +11,15 @@
 
 
 .. toctree::
+   :maxdepth: 3
+
+   design/index
+
+
+.. toctree::
    :maxdepth: 2
 
-   faq/index
+   develop-guide/index
 
 
 .. toctree::
