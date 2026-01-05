@@ -27,13 +27,13 @@ MR/PR须填写 “功能说明”
 
 .. code-block:: shell
 
-    ./cicd/code-format.sh
+    ./cicd/code-formatter.sh
 
 注意 如果格式检查失败，可以手动改代码修复格式问题，也可以通过下列命令尝试自动修复：
 
 .. code-block:: shell
 
-    ./cicd/code-format.sh -f
+    ./cicd/code-formatter.sh -f
 
 
 本地执行代码静态检查

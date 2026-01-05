@@ -18,27 +18,38 @@
 """
 Release version script
 
+Prerequisite:
+yum install -y git
+pip3 install bump-my-version semver
+
+# bump version name
+./release-version.py -n 1.0.1
+
 # bump version part. version part: major, minor, patch
 ./release-version.py -p patch
 
-# bump version name
-./release-version.py -n 1.0.2
-
 # dry-run
-./release-version.py -d -p patch
+./release-version.py -d -n 1.0.1
 
-# don't commit
-./release-version.py -nc -p patch
+# don't commit in bump-to-version script
+./release-version.py -nc -n 1.0.1
 
-# don't tag
-./release-version.py -nt -p patch
+# don't create tag in bump-to-version script
+./release-version.py -nt -n 1.0.1
+
+# specify master branch, develop branch, release branch
+./release-version.py -n 1.0.1 --master-branch master --develop-branch develop --release-branch release-v1.0.1
+
+
 """
 
 import os
 import pathlib
+import re
 import semver
 import subprocess
 import sys
+import tempfile
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
@@ -137,6 +148,20 @@ def get_release_notes(changelog_path):
     if not release_notes:
         raise ReleaseException(f"Can't find any release notes")
 
+    # Check if release notes is updated
+    ignored_keywords = ["-", " ", "#", "##", "###",
+                        "无", "新增功能", "变更功能", "修复问题", "移除内容"]
+    is_updated = False
+    for line in release_notes.split("\n"):
+        if is_updated:
+            break
+        for token in line.split():
+            if token not in ignored_keywords:
+                is_updated = True
+                break
+    if not is_updated:
+        raise ReleaseException(f"Please update release notes")
+
     return release_notes
 
 
@@ -187,10 +212,28 @@ def bump_version(bump_version_part, bump_version_name,
     release_notes = release_notes.replace("## ", "")
     env_vars["RELEASE_NOTES"] = f"\n\n{release_notes}"
     results = run_command(";".join(cmds), cwd=top_dir, env=env_vars)
+    return results
+
+
+def is_git_repo_clean():
+    """Check git repo is clean.
+
+    Returns:
+        bool: True if git repo is clean, False otherwise
+    """
+
+    cmds = ["git status --porcelain --untracked-files=no"]
+    results = run_command(";".join(cmds))
     ret_code = results.returncode
     if ret_code != 0:
-        raise ReleaseException(results.stderr)
-    print(results.stdout)
+        err_msg = (f"Failed to check if git repo is clean. "
+                   f"Reason: {results.stderr}")
+        raise ReleaseException(err_msg)
+    status_output = results.stdout.strip()
+    if not status_output:
+        return True
+    else:
+        return False
 
 
 def main(argv=None):
@@ -235,6 +278,29 @@ USAGE
                             dest="no_tag",
                             action="store_true",
                             help="create tag in git")
+        parser.add_argument("--git-remote",
+                           dest="git_remote",
+                           default="origin",
+                           help="git remote name. Default: origin")
+        parser.add_argument("--master-branch",
+                           dest="master_branch",
+                           default="master",
+                           help="master branch name. Default: master")
+        parser.add_argument("--develop-branch",
+                           dest="develop_branch",
+                           default="develop",
+                           help="develop branch name. Default: develop")
+        parser.add_argument("--release-branch",
+                           dest="release_branch",
+                           help="release branch name")
+        parser.add_argument("--skip-tests",
+                            dest="skip_tests",
+                            action="store_true",
+                            help="skip CICD test scripts: cicd/run-cicd.sh")
+        parser.add_argument("--skip-push",
+                            dest="skip_push",
+                            action="store_true",
+                            help="skip pushing commits or tags")
         parser.add_argument("-V", "--verbose",
                             dest="verbose",
                             action="store_true",
@@ -250,24 +316,141 @@ USAGE
         bump_version_name = args.bump_version_name
         no_commit = args.no_commit
         no_tag = args.no_tag
+        git_remote = args.git_remote
+        master_branch = args.master_branch
+        develop_branch = args.develop_branch
+        release_branch = args.release_branch
+        skip_tests = args.skip_tests
+        skip_push = args.skip_push
         verbose = args.verbose
         dry_run = args.dry_run
 
-        # get release notes
-        changelog_path = f"{top_dir}/CHANGELOG.md"
-        print(f"Get release notes from: {changelog_path}")
-        release_notes = get_release_notes(changelog_path)
+        # check git repo is clean
+        if is_git_repo_clean():
+            print("* Git repo is clean")
+        else:
+            err_msg = "Git repo is not clean"
+            raise ReleaseException(err_msg)
 
-        # bump version
+        # checkout develop branch
+        print(f"* Checkout develop branch: {develop_branch}")
+        cmds = [f"git checkout {develop_branch}"]
+        results = run_command(";".join(cmds), cwd=top_dir)
+        ret_code = results.returncode
+        if ret_code != 0:
+            err_msg = (f"Failed to checkout develop branch: {develop_branch}. "
+                       f"Reason: {results.stderr}")
+            raise ReleaseException(err_msg)
+
+        # get bump version using dry-run
+        print(f"* Get bump version using dry-run")
+        _bump_version_name = bump_version_name
         bump_version_str = bump_version_part
         if bump_version_name:
             bump_version_str = bump_version_name
-        print(f"Bump version to: {bump_version_str}")
-        bump_version(bump_version_part, bump_version_name,
-                     release_notes, no_commit=no_commit, no_tag=no_tag,
-                     verbose=verbose, dry_run=dry_run, top_dir=top_dir)
+        else:
+            result = bump_version(bump_version_part, bump_version_part,
+                                  "", no_commit=False, no_tag=False,
+                                  verbose=verbose, dry_run=True, top_dir=top_dir)
+            ret_code = results.returncode
+            if ret_code != 0:
+                err_msg = (
+                    f"Failed to get new version. "
+                    f"Reason: {results.stderr}")
+                raise ReleaseException(err_msg)
+            version_pattern = re.compile(r"New version:\s+(\d+\.\d+\.\d+)")
+            match = version_pattern.search(result.stdout)
+            if not match:
+                err_msg = (
+                    f"Failed to match new version. "
+                    f"Reason: {results.stderr}")
+                raise ReleaseException(err_msg)
+            _bump_version_name = match.group(1)
+        print(f"  bump version is: {_bump_version_name}")
 
-        print("Successfully released version")
+        # create new release branch
+        if not release_branch:
+            release_branch = f"release/{_bump_version_name}"
+        print(f"* Create new release branch: {release_branch}")
+        cmds = [f"git checkout -b {release_branch}"]
+        results = run_command(";".join(cmds), cwd=top_dir)
+        ret_code = results.returncode
+        if ret_code != 0:
+            err_msg = (f"Failed to create release branch: {release_branch}. "
+                       f"Reason: {results.stderr}")
+            raise ReleaseException(err_msg)
+
+        # get release notes
+        changelog_path = f"{top_dir}/CHANGELOG.md"
+        print(f"* Get release notes from: {changelog_path}")
+        release_notes = get_release_notes(changelog_path)
+
+        # bump version
+        print(f"* Bump version to: {bump_version_str}")
+        results = bump_version(bump_version_part, bump_version_name,
+                               release_notes, no_commit=no_commit,
+                               no_tag=no_tag, verbose=verbose,
+                               dry_run=dry_run, top_dir=top_dir)
+        print(f"  bump version results: {results.stdout}")
+        ret_code = results.returncode
+        if ret_code != 0:
+            err_msg = f"Failed to bump version. Reason: {results.stderr}"
+            raise ReleaseException(err_msg)
+
+        # run CICD tests
+        if skip_tests:
+            print(f"* Skipped CICD tests")
+        else:
+            print(f"* Run CICD tests")
+            cmds = [f"{top_dir}/cicd/run-cicd.sh"]
+            results = run_command(";".join(cmds), capture_output=False,
+                                  cwd=top_dir)
+            ret_code = results.returncode
+            if ret_code != 0:
+                err_msg = (
+                    f"Failed to run CICD scripts: {';'.join(cmds)}. "
+                    f"Reason: {results.stderr}")
+                raise ReleaseException(err_msg)
+
+        # check git repo is clean
+        if is_git_repo_clean():
+            print("* Git repo is clean")
+        else:
+            err_msg = "Git repo is not clean"
+            raise ReleaseException(err_msg)
+
+        # push commits and tag to master branch, and merge to branch develop
+        tag_name = f"v{_bump_version_name}"
+        if skip_push:
+            print(f"* Skipped pushing commits or tags")
+        else:
+            print(f"* Push commits and tags")
+            cmds = [
+                # push release branch and tags
+                f"git push {git_remote} {release_branch}",
+                f"git push {git_remote} {tag_name}",
+                # merge to master branch
+                f"git checkout {master_branch}",
+                f"git pull {git_remote} {master_branch}",
+                f"git merge --no-ff {release_branch}",
+                # push to master branch
+                f"git push {git_remote} {master_branch}",
+                # merge back to develop branch
+                f"git checkout {develop_branch}",
+                f"git pull {git_remote} {develop_branch}",
+                f"git merge --no-ff {release_branch}",
+            ]
+            print("  Running push commands:")
+            print(f"  {';'.join(cmds)}")
+            results = run_command(";".join(cmds), cwd=top_dir)
+            ret_code = results.returncode
+            if ret_code != 0:
+                err_msg = (
+                    f"Failed to pushing commits or tags. "
+                    f"Reason: {results.stderr}")
+                raise ReleaseException(err_msg)
+
+        print(f"\nSuccessfully released version: v{_bump_version_name}")
         return 0
 
     except KeyboardInterrupt:

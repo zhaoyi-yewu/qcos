@@ -12,7 +12,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-# fix file permissions
+
+# run cicd
+
 set -e
 
 cwd=$(dirname "${BASH_SOURCE[0]}")
