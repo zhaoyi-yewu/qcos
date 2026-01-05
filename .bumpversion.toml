@@ -27,11 +27,6 @@ search = "version = \"{current_version}\""
 replace = "version = \"{new_version}\""
 
 [[tool.bumpversion.files]]
-filename = "setup.py"
-search = "version=\"{current_version}\""
-replace = "version=\"{new_version}\""
-
-[[tool.bumpversion.files]]
 filename = "src/wy_qcos/common/qcos_version.py"
 search = "VERSION = \"{current_version}\""
 replace = "VERSION = \"{new_version}\""
@@ -46,11 +41,6 @@ replace = "VERSION = \"{new_version}\""
 filename = "build-scripts/cli/pyproject.toml"
 search = "version = \"{current_version}\""
 replace = "version = \"{new_version}\""
-
-[[tool.bumpversion.files]]
-filename = "build-scripts/cli/setup.py"
-search = "version=\"{current_version}\""
-replace = "version=\"{new_version}\""
 
 # QCOS Docker version
 [[tool.bumpversion.files]]

@@ -25,7 +25,7 @@ develop切release分支 → 修改并提交版本号 → 全量测试（单元/�
      git pull origin develop
      git checkout -b release/v1.0.1
 
-- 对项目中多个配置文件中的版本号变量进行修改, 版本号需符合语义化版本(SemVer)规范。 可参考.bumpversion.cfg中的配置文件，找到需要修改的版本号变量和文件位置
+- 对项目中多个配置文件中的版本号变量进行修改, 版本号需符合语义化版本(SemVer)规范。 可参考.bumpversion.toml中的配置文件，找到需要修改的版本号变量和文件位置
 - 更新CHANGELOG.md中的新版本变更日志信息
 - 提交版本变量和日志变更信息的修改, 提交信息可以是: Bump version: v1.0.0 -> v1.0.1
 - 进行发布前最后的测试

@@ -64,11 +64,8 @@ def get_files(base_dirs, dest_dir_prefix="", exclude=[]):
     return data_files
 
 
+# Include package data
 setup(
-    name="wy-qcos",
-    version="1.0.0",
-    author="Zhao Yi",
-    author_email="zhaoyi_yewu@cmss.chinamobile.com",
     packages=find_packages(where="src"),
     include_package_data=True,
     data_files=get_files(["etc/qcos", "samples"],
