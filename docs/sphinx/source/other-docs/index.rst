@@ -8,4 +8,5 @@
 
    changelog
    license
+   code-of-conduct
    cla

@@ -26,10 +26,10 @@ gitee网站上申请账户
 
 https://gitee.com
 
-进入QCOS项目并Fork代码仓库
+Fork QCOS代码仓库
 ---------------------------
 
-进入下列项目网址,并按右上角的Fork按钮
+使用自己的gitee账户登陆，进入下列QCOS项目网址，并按右上角的Fork按钮进行“分支拷贝”
 https://gitee.com/OpenWuYue/
 
 签署贡献者许可协议(CLA)

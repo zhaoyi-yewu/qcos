@@ -96,6 +96,10 @@ latex_elements = {
         \usepackage{tocloft}
         \usepackage{eso-pic}
 
+       % ========== Set TOC ==========
+        \setcounter{tocdepth}{3}
+        \setcounter{secnumdepth}{3}
+
         % ========== Convert contensname/indexname/listfigurename/listtablename to Chinese ==========
         % === 关键修改：在文档开始时重定义 ===
         % 使用 \AtBeginDocument 确保命令在所有宏包加载完毕后执行
