@@ -42,7 +42,6 @@ make latexpdf
 mkdir -p ./dist/pdf
 cp -rf ./dist/latex/qcos.pdf ./dist/pdf/qcos-full-doc.pdf
 
-
 # 2. create openapi docs
 # create openapi dist dir
 OPENAPI_DOCS_DIR=${DOCS_DIR}/openapi-docs

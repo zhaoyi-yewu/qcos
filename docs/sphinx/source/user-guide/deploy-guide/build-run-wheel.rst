@@ -22,7 +22,7 @@
 
   .. code-block:: shell
 
-     pip3 install -r ./requirements.txt -r ./requirements-test.txt
+     pip3 install -r ./requirements/requirements.txt -r ./requirements/requirements-test.txt
 
 编辑.env配置文件
 --------------------

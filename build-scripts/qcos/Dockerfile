@@ -37,9 +37,9 @@ RUN \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-cli.py /usr/bin/qcos-cli && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-api.py /usr/bin/qcos-api && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-transpiler.py /usr/bin/qcos-transpiler && \
-    cp -rf ${BUILD_CONTEXT}/requirements.txt /root/ && \
-    cp -rf ${BUILD_CONTEXT}/requirements-driver.txt /root/ && \
-    cp -rf ${BUILD_CONTEXT}/requirements-test.txt /root/ && \
+    cp -rf ${BUILD_CONTEXT}/requirements/requirements.txt /root/ && \
+    cp -rf ${BUILD_CONTEXT}/requirements/requirements-test.txt /root/ && \
+    cp -rf ${BUILD_CONTEXT}/requirements/requirements-driver.txt /root/ && \
     cp -rf ${BUILD_CONTEXT}/samples /root/ && \
 # config system
     /bin/cp ${BUILD_CONTEXT}/build-scripts/qcos/entrypoint.sh / && \
