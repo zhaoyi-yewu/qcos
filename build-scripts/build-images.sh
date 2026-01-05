@@ -70,7 +70,7 @@ function build_cli {
 
   docker-compose -f docker-compose-sandbox.yaml up -d
 
-  # build qcos-cli rpm file
+  # build qcos-cli wheel package
   docker exec ${SANDBOX_CONTAINER_NAME} sh -c "
   export QCOS_CLI_VERSION=${QCOS_CLI_VERSION} &&
   export QCOS_CLI_DIST=${QCOS_CLI_DIST} &&
@@ -78,7 +78,7 @@ function build_cli {
   ./build-wheel.sh
   "
 
-  # copy rpm to BUILD_CONTEXT
+  # copy wheel package to BUILD_CONTEXT
   cp -f ${QCOS_CLI_WHEEL_PATH} ${BUILD_CONTEXT}/pkg/
 
   # build docker image: qcos-cli
