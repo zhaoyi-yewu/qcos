@@ -20,6 +20,7 @@ import pytest
 
 from qcos.common.config import Config
 from qcos.common.constant import HttpCode
+from qcos.common.qcos_version import QcosVersion
 from qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 
 
@@ -38,5 +39,5 @@ class TestVersion:
         assert status_code == HttpCode.SUCCESS_OK
         json_results = json.loads(text)
         result = json_results["result"]
-        assert result["version"] == Config.VERSION
+        assert result["version"] == QcosVersion.VERSION
         assert result["api_version"] == Config.API_VERSION_V1

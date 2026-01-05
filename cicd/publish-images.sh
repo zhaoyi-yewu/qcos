@@ -16,8 +16,10 @@
 set -e
 
 # set configs
-docker_registry="cicdcsy.harbor.cmss.com:18080/wuyue-platform/qcos/"
+docker_registry=${PUBLISH_DOCKER_REGISTRY:-"cicdcsy.harbor.cmss.com:18080/wuyue-platform/qcos/"}
+# source_qcos_image need to be modified
 source_qcos_image=qcos:2025-06-01
+# source_qcos_cli_image need to be modified
 source_qcos_cli_image=qcos-cli:2025-06-01
 source_prefect_image=prefecthq/prefect:3.3.3-python3.13
 

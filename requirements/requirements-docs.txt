@@ -1,2 +1,2 @@
 # for docs only
-
+pallets-sphinx-themes==2.3.0

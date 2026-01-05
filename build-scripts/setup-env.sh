@@ -24,6 +24,7 @@ if ! [ -f "${env_file}" ]; then
     echo "Error: can't find config file: '${env_file}'"
     exit 1
 fi
+source ${cwd}/version
 source ${env_file}
 
 # local variables

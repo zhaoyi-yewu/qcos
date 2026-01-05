@@ -19,8 +19,8 @@ import copy
 import networkx as nx
 import numpy as np
 
-from qcos.transpiler.cmss.mapping.utils.dg import DG
-from qcos.transpiler.cmss.mapping.utils.front_circuit import FrontCircuit
+from wy_qcos.transpiler.cmss.mapping.utils.dg import DG
+from wy_qcos.transpiler.cmss.mapping.utils.front_circuit import FrontCircuit
 
 
 gate_depth = {

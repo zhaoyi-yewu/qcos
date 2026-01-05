@@ -20,13 +20,13 @@ import os
 import sys
 import traceback
 
-from qcos.common.config import Config
 from qcos.common.library import Library
+from qcos.common.qcos_version import QcosVersion
 from qcos.server import Server
 from qcos.task_manager import scheduler
 
 __all__ = []
-__version__ = Config.VERSION
+__version__ = QcosVersion.VERSION
 
 
 def daemonize():

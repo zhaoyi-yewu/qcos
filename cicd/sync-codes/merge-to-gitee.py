@@ -28,9 +28,9 @@ cd WuYue
 git init
 git remote add origin ssh://git@gitlab.cmss.com:2223/OCRI/WuYueOs.git
 git remote add gitee git@gitee.com:OpenWuYue/qcos.git
-git checkout --orphan gitee
-git pull origin gitee --allow-unrelated-histories
-git branch --set-upstream-to=origin/gitee gitee
+git checkout --orphan dev_gitee
+git pull origin dev_gitee --allow-unrelated-histories
+git branch --set-upstream-to=origin/gitee dev_gitee
 
 git checkout --orphan temp
 git rm -rf .
@@ -70,7 +70,7 @@ gitee_remote_branch = "develop"
 gitee_local_branch = "gitee-develop"
 
 cmss_remote = "origin"
-cmss_local_branch = "gitee"
+cmss_local_branch = "dev_gitee"
 cmss_local_merge_branch = "gitee-merge"
 
 gitee_branch_file = "/tmp/gitee_local_branch_commits"

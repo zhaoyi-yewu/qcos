@@ -29,6 +29,7 @@ from qcos.api.fastapi_server import app
 from qcos.common import errors
 from qcos.common.config import Config
 from qcos.common.library import Library
+from qcos.common.qcos_version import QcosVersion
 from qcos.drivers.device_manager import DeviceManager
 from qcos.drivers.driver_manager import DriverManager
 from qcos.log.logger import init_logger
@@ -39,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 PROGRAM_NAME = Config.PROGRAM_NAME
 PROGRAM_AUTHOR = Config.PROGRAM_AUTHOR
-PROGRAM_VERSION = f"{PROGRAM_NAME} - v{Config.VERSION} ({PROGRAM_AUTHOR})"
+PROGRAM_VERSION = f"{PROGRAM_NAME} - v{QcosVersion.VERSION} ({PROGRAM_AUTHOR})"
 LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_FORMAT = "%(asctime)s %(process)d %(levelname)s [%(name)s] %(message)s"
 

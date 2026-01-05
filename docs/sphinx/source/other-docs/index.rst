@@ -7,6 +7,7 @@
    :maxdepth: 2
 
    changelog
+   compatibility
    license
    code-of-conduct
    cla

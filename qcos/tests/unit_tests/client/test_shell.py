@@ -50,14 +50,14 @@ from qcos.client.shell import (
     UpdateJob,
 )
 from qcos.common import errors
-from qcos.common.config import Config
+from qcos.common.qcos_version import QcosVersion
 from qcos.common.constant import HttpCode, Constant
 from qcos.tests.unit_tests.task_manager.constant_for_test import (
     ConstantForTest,
 )
 
 DESCRIPTION = "QCOS command line interface"
-VERSION = Config.VERSION
+VERSION = QcosVersion.VERSION
 command_manager = CommandManager("qcos")
 job_id = ConstantForTest.job_id
 response = {

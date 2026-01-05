@@ -4,7 +4,9 @@
 
 ## [未发布] - 开发中
 ### 新增功能
-- 无
+- 增加部分文档: 贡献者公约、代码贡献指南等等
+- requirements*.txt文件统一放入requirements目录
+- 增加bumpversion版本发布脚本
 
 ### 变更功能
 - 无

@@ -106,8 +106,8 @@ qiskit-transpiler = "qcos.transpiler.qiskit.transpiler_qiskit_cmd:main"
 
 [project.urls]
 "Homepage" = "https://gitee.com/OpenWuYue/qcos"
-"Documentation" = "https://gitee.com/OpenWuYue/qcos/blob/develop/INSTALL.md"
-"Changelog" = "https://gitee.com/OpenWuYue/qcos/blob/develop/CHANGELOG"
+"Documentation" = "https://gitee.com/OpenWuYue/qcos/blob/develop/docs/sphinx/source/index.rst"
+"Changelog" = "https://gitee.com/OpenWuYue/qcos/blob/develop/CHANGELOG.md"
 "Issue Tracker" = "https://gitee.com/OpenWuYue/qcos/issues"
 "Source" = "https://gitee.com/OpenWuYue/qcos"
 

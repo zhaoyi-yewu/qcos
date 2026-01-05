@@ -15,7 +15,10 @@
 
 set -e
 
-source ./setup-env.sh
+BASE_DIR=$(dirname "$0")
+BASE_DIR=$(readlink -f ${BASE_DIR})
+TOP_DIR=$(readlink -f ${BASE_DIR}/..)
+source ${TOP_DIR}/build-scripts/setup-env.sh
 
 # local variables
 BUILD_CONTEXT=${abs_cwd}/.build-context

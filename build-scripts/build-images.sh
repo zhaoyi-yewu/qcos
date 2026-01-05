@@ -15,7 +15,11 @@
 
 set -e
 
-source ./setup-build-context.sh
+BASE_DIR=$(dirname "$0")
+BASE_DIR=$(readlink -f ${BASE_DIR})
+TOP_DIR=$(readlink -f ${BASE_DIR}/..)
+source ${TOP_DIR}/build-scripts/setup-build-context.sh
+
 SANDBOX_TOP_DIR=/root/qcos-project
 
 OUTPUT_QCOS_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-amd64-${QCOS_IMAGE_VERSION}.tar.xz
@@ -125,4 +129,5 @@ function build_image {
 }
 
 mkdir -p ${OUTPUT_IMAGE_DIR}
+cd ${TOP_DIR}/build-scripts
 build_image

@@ -10,3 +10,4 @@
    develop-guide
    code-commit
    run-test
+   release

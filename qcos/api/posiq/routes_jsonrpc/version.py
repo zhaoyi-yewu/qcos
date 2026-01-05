@@ -21,6 +21,7 @@ from qcos.api import schemas
 from qcos.api.posiq.routes_jsonrpc.routes import base_api
 from qcos.common.config import Config
 from qcos.common.constant import Constant
+from qcos.common.qcos_version import QcosVersion
 from qcos.task_manager import scheduler
 
 logger = logging.getLogger(__name__)
@@ -76,7 +77,7 @@ def version(
     }
 
     _response_info = {
-        "version": Config.VERSION,
+        "version": QcosVersion.VERSION,
         "api_version": Config.API_VERSION_V1,
         "supported_api_versions": [
             {"version": Config.API_VERSION_V1, "status": "CURRENT"}

@@ -22,8 +22,8 @@ from qcos.api.posiq.routes_jsonrpc.driver import (
     get_driver,
     _get_driver_info,
 )
-from qcos.common.config import Config
 from qcos.common.constant import Constant
+from qcos.common.qcos_version import QcosVersion
 from qcos.drivers.driver_base import DriverBase
 from qcos.drivers.driver_manager import DriverManager
 from qcos.drivers.dummy.driver_dummy import DriverDummy
@@ -48,7 +48,7 @@ response_info = {
     "supported_transpilers": [Constant.TRANSPILER_CMSS],
     "tech_type": Constant.TECH_TYPE_NEUTRAL_ATOM,
     "transpiler": Constant.TRANSPILER_CMSS,
-    "version": Config.VERSION,
+    "version": QcosVersion.VERSION,
 }
 
 

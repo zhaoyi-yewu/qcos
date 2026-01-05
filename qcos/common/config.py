@@ -18,19 +18,21 @@
 from qcos.common import errors
 from qcos.common.constant import Constant
 from qcos.common.library import Library
+from qcos.common.qcos_version import QcosVersion
 
 
 class Config:
     """Config class."""
 
     # General configs
-    VERSION = "1.0.0"
     DAEMON = False
     API_VERSION_V1 = "v1"
     API_VERSION = API_VERSION_V1
     PROGRAM_NAME = "WuYue-QCOS"
     PROGRAM_AUTHOR = "CMSS"
-    PLATFORM_VERSION = f"五岳量子计算操作系统(QCOS) v{VERSION}"
+    PLATFORM_NAME = "五岳量子计算操作系统(QCOS)"
+    PLATFORM_VERSION = f"{PLATFORM_NAME} v{QcosVersion.VERSION}"
+    COPYRIGHT = "2024-2025 中移（苏州）软件技术有限公司"
 
     # [DEFAULT]
     DEBUG = False
