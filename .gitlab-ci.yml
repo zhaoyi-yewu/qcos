@@ -19,6 +19,14 @@ commit-messages:
   script:
     - python3 ./cicd/check-commit-message.py
 
+# files check
+check-files:
+  stage: commit-check
+  tags:
+    - sonic-runner
+  script:
+    - ./cicd/check-files.sh
+
 # code-linter
 code-linter:
   stage: code-check
