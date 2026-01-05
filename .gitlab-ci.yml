@@ -72,6 +72,22 @@ code-coverage:
     - ./cicd/run-tests.sh -c
   coverage: '/^TOTAL\s+\S+\s+\S+\s+(\d+)%$/'
 
+# ut (qcos_client)
+ut-qcos-client:
+  stage: functional-tests
+  tags:
+    - sonic-runner
+  script:
+    - ./cicd/run-tests.sh -j
+
+# code-coverage (qcos_client)
+code-coverage-qcos-client:
+  stage: functional-tests
+  tags:
+    - sonic-runner
+  script:
+    - ./cicd/run-tests.sh -e
+
 # system tests
 #st:
 #  stage: system-tests

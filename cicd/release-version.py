@@ -49,7 +49,6 @@ import re
 import semver
 import subprocess
 import sys
-import tempfile
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 

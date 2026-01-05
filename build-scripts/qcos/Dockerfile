@@ -32,15 +32,11 @@ WORKDIR /root
 RUN \
 # copy qcos dir
     build_date=`date` && \
-    mkdir -p /root/qcos-project && \
-    if [ "${DEV,,}" = "false" ]; then cp -rf ${BUILD_CONTEXT}/qcos /root/qcos-project/; fi && \
+    mkdir -p /root/qcos-project /tmp/requirements && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-cli.py /usr/bin/qcos-cli && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-api.py /usr/bin/qcos-api && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-transpiler.py /usr/bin/qcos-transpiler && \
-    cp -rf ${BUILD_CONTEXT}/requirements/requirements.txt /root/ && \
-    cp -rf ${BUILD_CONTEXT}/requirements/requirements-test.txt /root/ && \
-    cp -rf ${BUILD_CONTEXT}/requirements/requirements-driver.txt /root/ && \
-    cp -rf ${BUILD_CONTEXT}/samples /root/ && \
+    cp -rf ${BUILD_CONTEXT}/requirements/requirements*.txt /tmp/requirements/ && \
 # config system
     /bin/cp ${BUILD_CONTEXT}/build-scripts/qcos/entrypoint.sh / && \
     chmod +x /entrypoint.sh && \
@@ -60,14 +56,24 @@ RUN \
 # create symbolic link for python3
     ln -sf /usr/bin/python3 /usr/bin/python && \
 # install python3 deps
-    pip3 install --no-cache-dir --upgrade -r /root/requirements.txt -r /root/requirements-test.txt && \
-    pip3 install --no-cache-dir --upgrade -r /root/requirements-driver.txt && \
+    pip3 install --no-cache-dir --upgrade -r /tmp/requirements/requirements.txt -r /tmp/requirements/requirements-test.txt && \
+    pip3 install --no-cache-dir --upgrade -r /tmp/requirements/requirements-driver.txt && \
+    if [ "${DEV,,}" = "false" ]; then \
+      # install qcos wheel package in production mode \
+      pip3 install ${BUILD_CONTEXT}/pkg/wy_qcos-*.whl ${BUILD_CONTEXT}/pkg/wy_qcos_client-*.whl;  \
+      mkdir -p /root/qcos-project/src/ ; \
+      cp -rf /usr/local/lib/python3.11/site-packages/wy_qcos /root/qcos-project/src/ ; \
+      cp -rf /usr/local/share/wy_qcos/etc/qcos/* /etc/qcos-template/ ; \
+      cp -rf /usr/local/share/wy_qcos_client/samples /root/ ; \
+    else \
+      # install qcos resource files in dev mode
+      cp -rf ${BUILD_CONTEXT}/etc/qcos/* /etc/qcos-template/ ; \
+      cp -rf ${BUILD_CONTEXT}/samples /root/ ; \
+    fi && \
 # generate ssh keys
     rm -rf /root/.ssh/id_rsa && \
     ssh-keygen -t rsa -f /root/.ssh/id_rsa -q -N "" && \
     ssh-keygen -A && \
-# copy config files
-    cp ${BUILD_CONTEXT}/etc/qcos/qcos*.toml /etc/qcos-template/ && \
 # write build info
     commit_id=$(cat "${BUILD_CONTEXT}/latest-commit-id.txt" 2>/dev/null || echo "") && \
     echo -e "QCOS build info\nversion: ${QCOS_IMAGE_VERSION}\ncommit id: ${commit_id}\nbuild time: ${build_date}\n" > /root/build-info.txt && \

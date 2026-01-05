@@ -44,10 +44,10 @@
    # 6. LOCAL_CICD是本地CICD的标记开关, 可以配成默认的False
    # 7. REGISTRY为Docker容器私有镜像仓库地址, 如果本机可以访问DockerHub, 则可以留空
 
-编译安装
-------------
+编译安装QCOS软件包
+--------------------
 
-基于poetry编译操作系统wheel包
+基于poetry编译操作系统QCOS wheel包
 ************************************
 在build-scripts目录下执行编译脚本或直接使用poetry构建：
 
@@ -59,14 +59,15 @@
    # 或直接使用poetry命令
    poetry build
 
-安装wheel包
+安装QCOS wheel包
 ******************
 执行pip3命令安装编译好的wheel包，并配置服务运行所需的目录和环境变量：
 
 .. code-block:: shell
 
    # 安装wheel包
-   pip3 install --prefix=/usr ./output/dist/qcos-1.0.0-py3-none-any.whl
+   cd build-scripts
+   pip3 install --prefix=/usr ./output/dist/wy_qcos-1.0.0-py3-none-any.whl
 
    # 创建服务运行所需目录
    mkdir -p /var/qcos/db/; mkdir -p /var/qcos/storage
@@ -77,6 +78,31 @@
    export PREFECT_API_URL="http://127.0.0.1:4200/api"
    export PREFECT_LOCAL_STORAGE_PATH="/var/qcos/storage"
    export PREFECT_API_DEFAULT_LIMIT=100000
+
+编译安装QCOS Client命令行软件包
+--------------------------------
+
+基于poetry编译操作系统QCOS Client wheel包
+******************************************
+在build-scripts/cli目录下执行编译脚本或直接使用poetry构建：
+
+.. code-block:: shell
+
+   # BCLinux/CentOS/OpenEuler环境下示例:
+   cd build-scripts/cli
+   ./build-wheel.sh
+   # 或直接使用poetry命令
+   poetry build
+
+安装QCOS Client wheel包
+****************************
+执行pip3命令安装编译好的wheel包，并配置服务运行所需的目录和环境变量：
+
+.. code-block:: shell
+
+   # 安装wheel包
+   cd build-scripts/cli
+   pip3 install --prefix=/usr ./output/dist/wy_qcos_client-1.0.0-py3-none-any.whl
 
 修改配置文件
 ----------------
@@ -95,7 +121,7 @@
 **注意**: 设备配置文件必须位于/etc/qcos/conf.d下, 文件名需要和qcos.toml中
 DEVICE_LIST列出的设备名一致。 文件中section必须对应相关设备名, 比如dummy设备的配置需要放在section: [dummy]下
 
-运行服务
+运行QCOS服务
 ------------
 依次启动Prefect服务和QCOS服务：
 

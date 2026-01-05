@@ -21,6 +21,7 @@ TOP_DIR=$(readlink -f ${BASE_DIR}/..)
 source ${TOP_DIR}/build-scripts/setup-build-context.sh
 
 SANDBOX_TOP_DIR=/root/qcos-project
+TEMP_PKG_DIR=/tmp/qcos-pkgs
 
 OUTPUT_QCOS_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-amd64-${QCOS_IMAGE_VERSION}.tar.xz
 OUTPUT_QCOS_CLI_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-cli-amd64-${QCOS_IMAGE_VERSION}.tar.xz
@@ -64,10 +65,11 @@ fi
 
 function build_cli {
   echo "Creating QCOS sandbox ..."
-  OUTPUT_PKG_DIR=${top_dir}/build-scripts/output
+  OUTPUT_PKG_DIR=${top_dir}/build-scripts/cli/output
   WHEEL_PKG_DIST_DIR=${OUTPUT_PKG_DIR}/dist
-  QCOS_CLI_WHEEL_PATH=${WHEEL_PKG_DIST_DIR}/qcos_cli-${QCOS_CLI_VERSION}-py3-none-any.whl
+  QCOS_CLI_WHEEL_PATH=${WHEEL_PKG_DIST_DIR}/wy_qcos_client-${QCOS_CLI_VERSION}-py3-none-any.whl
 
+  # run sandbox
   docker-compose -f docker-compose-sandbox.yaml up -d
 
   # build qcos-cli wheel package
@@ -78,9 +80,11 @@ function build_cli {
   ./build-wheel.sh
   "
 
-  # copy wheel package to BUILD_CONTEXT
-  cp -f ${QCOS_CLI_WHEEL_PATH} ${BUILD_CONTEXT}/pkg/
+  # copy wheel package to TEMP_PKG_DIR
+  cp -f ${QCOS_CLI_WHEEL_PATH} ${TEMP_PKG_DIR}
+}
 
+function build_cli_image {
   # build docker image: qcos-cli
   DOCKER_BUILDKIT=0 docker build -f ./cli/Dockerfile --no-cache --rm --network host \
     --build-arg CONTAINER_BASE_IMAGE=${CONTAINER_BASE_IMAGE} \
@@ -94,6 +98,24 @@ function build_cli {
 }
 
 function build_qcos {
+  OUTPUT_PKG_DIR=${top_dir}/build-scripts/output
+  WHEEL_PKG_DIST_DIR=${OUTPUT_PKG_DIR}/dist
+  QCOS_WHEEL_PATH=${WHEEL_PKG_DIST_DIR}/wy_qcos-${QCOS_VERSION}-py3-none-any.whl
+
+  # run sandbox
+  docker-compose -f docker-compose-sandbox.yaml up -d
+
+  # build qcos-cli wheel package
+  docker exec ${SANDBOX_CONTAINER_NAME} sh -c "
+  cd ${SANDBOX_TOP_DIR}/build-scripts &&
+  ./build-wheel.sh
+  "
+
+  # copy wheel package to TEMP_PKG_DIR
+  cp -f ${QCOS_WHEEL_PATH} ${TEMP_PKG_DIR}
+}
+
+function build_qcos_image {
   # build docker image: qcos
   DOCKER_BUILDKIT=0 docker build -f ./qcos/Dockerfile --no-cache --rm --network host \
     --build-arg CONTAINER_BASE_IMAGE=${CONTAINER_BASE_IMAGE} \
@@ -107,15 +129,29 @@ function build_qcos {
 }
 
 function build_image {
+  rm -rf ${TEMP_PKG_DIR}
+  mkdir -p ${TEMP_PKG_DIR}
+
   if [ "${all}" = true ];then
     cli=true
     qcos=true
   fi
   if [ "${cli}" = true ];then
-    build_cli
+    if [ "${DEV,,}" = false ]; then
+      build_cli
+      cp -f ${TEMP_PKG_DIR}/* ${BUILD_CONTEXT}/pkg/
+    fi
+    build_cli_image
   fi
+
   if [ "${qcos}" = true ];then
-    build_qcos
+    if [ "${DEV,,}" = false ]; then
+      build_cli
+      build_qcos
+      cp -f ${TEMP_PKG_DIR}/* ${BUILD_CONTEXT}/pkg/
+      rm -rf ${TEMP_PKG_DIR}
+    fi
+    build_qcos_image
   fi
 
   # print info of exported images

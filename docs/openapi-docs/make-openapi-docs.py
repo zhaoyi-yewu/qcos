@@ -9,11 +9,11 @@ import os
 import sys
 
 current_dir = os.path.split(os.path.realpath(__file__))[0]
-top_dir = os.path.abspath(f"{current_dir}/../..")
+top_dir = os.path.abspath(f"{current_dir}/../../src")
 sys.path.insert(0, top_dir)
-from qcos.api.fastapi_server import app
-from qcos.common.config import Config
-from qcos.common.qcos_version import QcosVersion
+from wy_qcos.api.fastapi_server import app
+from wy_qcos.common.config import Config
+from wy_qcos.common.qcos_version import QcosVersion
 
 HTML_TEMPLATE = f"""<!DOCTYPE html>
 <html>

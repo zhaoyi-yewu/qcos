@@ -26,7 +26,7 @@ services:
     environment:
       DEBUG: ${DEBUG}
       TZ: Asia/Shanghai
-      PYTHONPATH: /root/qcos-project
+      PYTHONPATH: /root/qcos-project/src
     logging:
       driver: "json-file"
       options:

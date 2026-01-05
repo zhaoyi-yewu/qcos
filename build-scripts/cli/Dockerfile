@@ -34,7 +34,6 @@ RUN \
     build_date=`date` && \
     if [ "${DEV,,}" != "false" ]; then mkdir -p /root/qcos-project; fi && \
     if [ "${DEV,,}" != "false" ]; then cp -rf ${BUILD_CONTEXT}/bin/qcos-cli.py /usr/bin/qcos-cli; fi && \
-    cp -rf ${BUILD_CONTEXT}/samples /root/ && \
 # config system
     /bin/cp ${BUILD_CONTEXT}/build-scripts/cli/entrypoint.sh / && \
     chmod +x /entrypoint.sh && \
@@ -45,7 +44,14 @@ RUN \
     yum install -y hostname openssh openssh-clients sshpass iputils iproute \
       telnet net-tools openssl util-linux vim findutils \
       python3 python3-pip python3-requests python3-devel && \
-    if [ "${DEV,,}" = "false" ]; then pip3 install ${BUILD_CONTEXT}/pkg/qcos_cli-1.0.0-py3-none-any.whl; fi && \
+    if [ "${DEV,,}" = "false" ]; then \
+      # install qcos wheel package in production mode
+      pip3 install ${BUILD_CONTEXT}/pkg/wy_qcos_client-*.whl;  \
+      cp -rf /usr/local/share/wy_qcos_client/samples /root/ ; \
+    else \
+      # install qcos resource files in dev mode
+      cp -rf ${BUILD_CONTEXT}/samples /root/ ; \
+    fi && \
 # create symbolic link for python3
     ln -sf /usr/bin/python3 /usr/bin/python && \
 # install python3 deps

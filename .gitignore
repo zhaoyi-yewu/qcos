@@ -32,11 +32,18 @@ pip-log.txt
 latest-commit-id.txt
 *.log
 
-# Unit test / coverage reports
+# Unit test / coverage reports (QCOS)
 cicd/.coverage
 cicd/coverage.xml
 cicd/coverage_html
 cicd/report.xml
+
+# Unit test / coverage reports (QCOS CLIENT)
+cicd/.client_coverage
+cicd/client-coverage.xml
+cicd/client_coverage_html
+cicd/client-report.xml
+
 .tox
 .cache
 nosetests.xml

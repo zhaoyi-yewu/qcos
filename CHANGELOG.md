@@ -12,7 +12,7 @@
 
 ### 变更功能
 
-- 无
+- 由于PYPI包名冲突，修改模块包名qcos->wy_qcos，qcos.client->wy_qcos_client，并挪到src目录
 
 ### 修复问题
 

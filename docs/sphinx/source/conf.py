@@ -10,10 +10,10 @@ import os
 import sys
 
 current_dir = os.path.split(os.path.realpath(__file__))[0]
-top_dir = os.path.abspath(f"{current_dir}/../../..")
+top_dir = os.path.abspath(f"{current_dir}/../../../src")
 sys.path.insert(0, top_dir)
-from qcos.common.config import Config
-from qcos.common.qcos_version import QcosVersion
+from wy_qcos.common.config import Config
+from wy_qcos.common.qcos_version import QcosVersion
 
 project = f"{Config.PLATFORM_NAME}文档"
 copyright = f"{Config.COPYRIGHT}"
@@ -21,7 +21,9 @@ author = "Zhao Yi"
 version = QcosVersion.VERSION
 release = QcosVersion.VERSION
 
-exclude_patterns = ["_build"]
+exclude_patterns = [
+    "_build"
+]
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

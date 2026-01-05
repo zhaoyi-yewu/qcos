@@ -54,9 +54,9 @@ done
 cd "${TOP_DIR}"
 echo "Code format start ..."
 if [ "${fix}" = false ]; then
-  echo "Check dir: qcos (ruff)"
-  ruff format --preview --check --diff qcos
+  echo "Check dir: src (ruff)"
+  ruff format --preview --check --diff src
 else
-  echo "Fixing code format in dir: qcos (ruff)"
-  ruff format --preview qcos
+  echo "Fixing code format in dir: src (ruff)"
+  ruff format --preview src
 fi

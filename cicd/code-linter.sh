@@ -55,14 +55,14 @@ cd "${TOP_DIR}"
 echo "Code check start ..."
 if [ "${fix}" = false ]; then
   if command -v pylint > /dev/null 2>&1; then
-    echo "Checking dir: qcos (pylint)"
-    pylint qcos
+    echo "Checking dir: src (pylint)"
+    pylint src
   fi
-  echo "Checking dir: qcos (ruff)"
-  ruff check --preview qcos
-  echo "Checking dir: qcos (mypy)"
-  mypy qcos
+  echo "Checking dir: src (ruff)"
+  ruff check --preview src
+  echo "Checking dir: src (mypy)"
+  mypy src
 else
-  echo "Fixing code errors in dir: qcos (ruff)"
-  ruff check --preview --unsafe-fixes --fix qcos
+  echo "Fixing code errors in dir: src (ruff)"
+  ruff check --preview --unsafe-fixes --fix src
 fi

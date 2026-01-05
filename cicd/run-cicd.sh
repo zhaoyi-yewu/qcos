@@ -20,12 +20,12 @@ set -e
 cwd=$(dirname "${BASH_SOURCE[0]}")
 top_dir=$(realpath ${cwd}/..)
 
-echo "Run code-linter ..."
-${top_dir}/cicd/code-linter.sh
-echo
-
 echo "Run code-style ..."
 ${top_dir}/cicd/code-formatter.sh
+echo
+
+echo "Run code-linter ..."
+${top_dir}/cicd/code-linter.sh
 echo
 
 echo "Run docstring check ..."
@@ -36,11 +36,18 @@ echo "Run docs-linter ..."
 ${top_dir}/cicd/docs-linter.sh
 echo
 
-echo "Run UT ..."
+echo "Run UT (QCOS) ..."
 ${top_dir}/cicd/run-tests.sh -u
 echo
 
-echo "Run coverage ..."
+echo "Run coverage (QCOS) ..."
 ${top_dir}/cicd/run-tests.sh -c
+
+echo "Run UT (QCOS CLIENT) ..."
+${top_dir}/cicd/run-tests.sh -j
+echo
+
+echo "Run coverage (QCOS CLIENT) ..."
+${top_dir}/cicd/run-tests.sh -e
 
 echo "CICD pipeline completed successfully"

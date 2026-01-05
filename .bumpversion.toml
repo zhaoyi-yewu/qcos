@@ -21,12 +21,24 @@ pre_commit_hooks = []
 post_commit_hooks = []
 
 [[tool.bumpversion.files]]
+# QCOS version
 filename = "pyproject.toml"
 search = "version = \"{current_version}\""
 replace = "version = \"{new_version}\""
 
 [[tool.bumpversion.files]]
-filename = "qcos/common/qcos_version.py"
+filename = "setup.py"
+search = "version=\"{current_version}\""
+replace = "version=\"{new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "src/wy_qcos/common/qcos_version.py"
+search = "VERSION = \"{current_version}\""
+replace = "VERSION = \"{new_version}\""
+
+# QCOS Client version
+[[tool.bumpversion.files]]
+filename = "src/wy_qcos_client/qcos_version.py"
 search = "VERSION = \"{current_version}\""
 replace = "VERSION = \"{new_version}\""
 
@@ -36,10 +48,17 @@ search = "version = \"{current_version}\""
 replace = "version = \"{new_version}\""
 
 [[tool.bumpversion.files]]
+filename = "build-scripts/cli/setup.py"
+search = "version=\"{current_version}\""
+replace = "version=\"{new_version}\""
+
+# QCOS Docker version
+[[tool.bumpversion.files]]
 filename = "build-scripts/version"
 search = "QCOS_VERSION={current_version}"
 replace = "QCOS_VERSION={new_version}"
 
+# Changelog version
 [[tool.bumpversion.files]]
 filename = "CHANGELOG.md"
 search = "## [未发布] - 开发中"
