@@ -32,7 +32,7 @@ WORKDIR /root
 RUN \
 # copy qcos dir
     build_date=`date` && \
-    mkdir -p /root/qcos-project /tmp/requirements && \
+    mkdir -p /tmp/requirements && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-cli.py /usr/bin/qcos-cli && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-api.py /usr/bin/qcos-api && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-transpiler.py /usr/bin/qcos-transpiler && \
@@ -61,12 +61,11 @@ RUN \
     if [ "${DEV,,}" = "false" ]; then \
       # install qcos wheel package in production mode \
       pip3 install ${BUILD_CONTEXT}/pkg/wy_qcos-*.whl ${BUILD_CONTEXT}/pkg/wy_qcos_client-*.whl;  \
-      mkdir -p /root/qcos-project/src/ ; \
-      cp -rf /usr/local/lib/python3.11/site-packages/wy_qcos /root/qcos-project/src/ ; \
       cp -rf /usr/local/share/wy_qcos/etc/qcos/* /etc/qcos-template/ ; \
       cp -rf /usr/local/share/wy_qcos_client/samples /root/ ; \
     else \
-      # install qcos resource files in dev mode
+      # install qcos resource files in dev mode \
+      mkdir -p /root/qcos-project ; \
       cp -rf ${BUILD_CONTEXT}/etc/qcos/* /etc/qcos-template/ ; \
       cp -rf ${BUILD_CONTEXT}/samples /root/ ; \
     fi && \

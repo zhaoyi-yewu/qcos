@@ -20,6 +20,10 @@ set -e
 cwd=$(dirname "${BASH_SOURCE[0]}")
 top_dir=$(realpath ${cwd}/..)
 
+echo "Run check-files ..."
+${top_dir}/cicd/check-files.sh
+echo
+
 echo "Run code-style ..."
 ${top_dir}/cicd/code-formatter.sh
 echo
@@ -28,7 +32,7 @@ echo "Run code-linter ..."
 ${top_dir}/cicd/code-linter.sh
 echo
 
-echo "Run docstring check ..."
+echo "Run docstring-check ..."
 ${top_dir}/cicd/docstring-check.sh
 echo
 
