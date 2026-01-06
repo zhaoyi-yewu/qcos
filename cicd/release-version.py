@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -14,7 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-
+ 
 """
 Release version script
 
@@ -39,8 +39,6 @@ pip3 install bump-my-version semver
 
 # specify master branch, develop branch, release branch
 ./release-version.py -n 1.0.1 --master-branch master --develop-branch develop --release-branch release-v1.0.1
-
-
 """
 
 import os

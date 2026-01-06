@@ -78,7 +78,7 @@ code-coverage:
     - sonic-runner
   script:
     - ./cicd/run-tests.sh -c
-  coverage: '/^TOTAL\s+\S+\s+\S+\s+(\d+)%$/'
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)/'
 
 # ut (qcos_client)
 ut-qcos-client:
