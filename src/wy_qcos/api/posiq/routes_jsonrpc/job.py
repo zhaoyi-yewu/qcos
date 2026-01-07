@@ -363,12 +363,12 @@ def submit_job(
     res = {}
     err = None
     try:
-        tags = None
+        device_name = device.get_name()
+        tags = [f"{device_name}"]
         if auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
-            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
+            tags.extend([f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"])
         res, err = scheduler.add(
-            Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
             body,
             tags=tags,
         )
@@ -837,11 +837,11 @@ def update_job(
 
     job_id = body.job_id
 
+    tags = None
+    if auth_data is not None:
+        virtual_instance_id = auth_data["instance_id"]
+        tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
     try:
-        tags = None
-        if auth_data is not None:
-            virtual_instance_id = auth_data["instance_id"]
-            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         response, err = scheduler.get_result_by_id(job_id, tags)
     except errors.NotFound:
         # check if job exists
@@ -862,10 +862,6 @@ def update_job(
 
     # update job
     try:
-        tags = None
-        if auth_data is not None:
-            virtual_instance_id = auth_data["instance_id"]
-            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         job, err = scheduler.update_job(
             job_id=job_id,
             parameters=parameters,

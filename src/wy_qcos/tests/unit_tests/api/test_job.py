@@ -126,7 +126,6 @@ class TestJob:
         mock_client.job_id = None
         mock_client.job_name = Constant.AGGREGATION_TYPE_NONE
         mock_client.job_type = Constant.JOB_TYPE_SAMPLING
-        mock_client.job_sched_policy = Constant.DEFAULT_JOB_SCHED_POLICY
         mock_client.job_priority = Constant.DEFAULT_JOB_PRIORITY
         mock_client.description = Constant.AGGREGATION_TYPE_NONE
         mock_client.shots = Constant.DEFAULT_SHOTS

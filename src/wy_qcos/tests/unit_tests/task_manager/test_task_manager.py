@@ -21,11 +21,17 @@ import unittest
 from unittest import mock
 from unittest.mock import patch, Mock, AsyncMock
 
+from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant, HttpCode
+from wy_qcos.drivers.device_manager import DeviceManager
+from wy_qcos.drivers.driver_manager import DriverManager
 from wy_qcos.task_manager.task_manager import TaskFlowManager
 from wy_qcos.tests.unit_tests.task_manager.constant_for_test import (
     ConstantForTest,
 )
+
+driver_manager = DriverManager()
+device_manager = DeviceManager(Config, driver_manager)
 
 
 class TestTaskFlowManager(unittest.TestCase):
@@ -70,6 +76,7 @@ class TestTaskFlowManager(unittest.TestCase):
     def test_create_pools(self):
         mock_client = AsyncMock()
         self.task_manager._client = mock_client
+        self.task_manager.set_device_manager(device_manager)
         results = asyncio.run(self.task_manager.create_pools())
         assert results is not None
 
@@ -86,6 +93,7 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_client.read_work_queues.return_value = []
         mock_client.create_work_queue.return_value = []
         self.task_manager._client = mock_client
+        self.task_manager.set_device_manager(device_manager)
         results = asyncio.run(self.task_manager.create_queues())
         assert results is None
 
@@ -93,6 +101,7 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_client = AsyncMock()
         mock_client.read_workers_for_work_pool.return_value = []
         self.task_manager._client = mock_client
+        self.task_manager.set_device_manager(device_manager)
         results = asyncio.run(self.task_manager.start_workers())
         assert results is None
 

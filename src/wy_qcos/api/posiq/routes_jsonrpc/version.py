@@ -68,7 +68,6 @@ def version(
 
     capabilities = {
         "job_types": Constant.JOB_TYPES,
-        "job_sched_policy": Constant.JOB_SCHED_POLICIES,
         "drivers": driver_name_mapping,
         "transpilers": transpiler_name_mappings,
         "tech_types": Constant.TECH_TYPE_INFO,

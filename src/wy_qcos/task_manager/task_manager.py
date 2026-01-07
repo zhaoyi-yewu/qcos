@@ -40,6 +40,7 @@ from prefect.states import State
 from prefect.workers import ProcessWorker
 from rich.console import Console
 
+from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant, HttpCode
 from wy_qcos.common.library import Library
 from wy_qcos.engine.job_engine import job_flow
@@ -70,7 +71,7 @@ class TaskFlowManager(ABC):
             state: prefect state
 
         Returns:
-            qcos state
+            qcos state.
         """
         _state = state.upper()
         if _state == Constant.PREFECT_STATE_CRASHED:
@@ -92,7 +93,7 @@ class TaskFlowManager(ABC):
             states: qcos states list
 
         Returns:
-            prefect states list
+            prefect states list.
         """
         prefect_states = []
         for state in states:
@@ -165,10 +166,10 @@ class TaskFlowManager(ABC):
             raise TimeoutError("Connection to prefect server timeout")
 
     async def create_pools(self):
-        """Create all work pools, each policy has own work pools."""
+        """Create all work pools, each device has own work pools."""
+        device_names = self.device_manager.get_devices().keys()
         create_workpools = [
-            self.create_pool(pool_name)
-            for pool_name in Constant.JOB_SCHED_POLICIES
+            self.create_pool(pool_name) for pool_name in device_names
         ]
         return await asyncio.gather(*create_workpools)
 
@@ -176,7 +177,7 @@ class TaskFlowManager(ABC):
         """Create work pool by prefect client.
 
         Args:
-            pool_name: work pool name, using policy name
+            pool_name: work pool name, using device name
         """
         pools = await self._client.read_work_pools()
         if not any(pool.name == pool_name for pool in pools):
@@ -194,7 +195,8 @@ class TaskFlowManager(ABC):
         each priority has own work queue.
         """
         queues = await self._client.read_work_queues()
-        for pool_name in Constant.JOB_SCHED_POLICIES:
+        device_names = self.device_manager.get_devices().keys()
+        for pool_name in device_names:
             for priority in range(1, Constant.MAX_JOB_PRIORITY + 1):
                 queue_name = f"{pool_name}_{priority}"
                 if not any(queue.name == queue_name for queue in queues):
@@ -208,20 +210,18 @@ class TaskFlowManager(ABC):
     async def start_workers(self):
         """Start all workers for work pool."""
         # start worker
-        for policy in range(len(Constant.JOB_SCHED_POLICIES)):
-            pool_name = str(policy)
+        device_names = self.device_manager.get_devices().keys()
+        for pool_name in device_names:
             worker_thread = threading.Thread(
-                target=self.start_work, args=(pool_name), daemon=True
+                target=self.start_work, args=(pool_name,), daemon=True
             )
             worker_thread.start()
 
         # wait for all workers are online
-        all_worker_status = {
-            workpool: False for workpool in Constant.JOB_SCHED_POLICIES
-        }
+        all_worker_status = {workpool: False for workpool in device_names}
         time = 0
-        for policy in Constant.JOB_SCHED_POLICIES:
-            workers = await self._client.read_workers_for_work_pool(policy)
+        for workpool in device_names:
+            workers = await self._client.read_workers_for_work_pool(workpool)
             work_status = [
                 worker.status == WorkerStatus.ONLINE for worker in workers
             ]
@@ -229,7 +229,7 @@ class TaskFlowManager(ABC):
                 all(work_status)
                 and len(work_status) == Constant.MAX_JOB_WORKER
             ):
-                all_worker_status[policy] = True
+                all_worker_status[workpool] = True
             if all_worker_status.values():
                 self.worker_status = True
                 break
@@ -245,7 +245,6 @@ class TaskFlowManager(ABC):
         Args:
             pool_name: work pool name
         """
-        pool_name = Constant.JOB_SCHED_POLICIES[int(pool_name)]
         worker = ProcessWorker(
             work_pool_name=pool_name,
             limit=Constant.DEFAULT_POOL_CONCURRENCY,
@@ -259,7 +258,7 @@ class TaskFlowManager(ABC):
     def deploy_task_flow(
         self,
         deploy_name: str,
-        policy_type: str,
+        pool_name: str,
         priority: int,
         deploy_flow,
         path: str,
@@ -268,7 +267,7 @@ class TaskFlowManager(ABC):
 
         Args:
             deploy_name: deploy name
-            policy_type: policy type
+            pool_name: work pool name
             priority: priority
             deploy_flow: deploy flow function
             path: py path where the flow function relative to current path
@@ -277,7 +276,7 @@ class TaskFlowManager(ABC):
             deploy uuid
         """
         # TODO(jidalong) deal exception
-        queue_name = f"{policy_type}_{priority}"
+        queue_name = f"{pool_name}_{priority}"
         # registry deploy
         flow_name = deploy_flow.__name__
         deploy_id = deploy_flow.from_source(
@@ -285,7 +284,7 @@ class TaskFlowManager(ABC):
             entrypoint=path + ":" + flow_name,
         ).deploy(
             name=deploy_name,
-            work_pool_name=policy_type,
+            work_pool_name=pool_name,
             work_queue_name=queue_name,
             print_next_steps=False,
             ignore_warnings=True,
@@ -316,7 +315,7 @@ class TaskFlowManager(ABC):
             name_filter = FlowRunFilterName(any_=[str(job_id)])
             flow_run_filter_kwargs["name"] = name_filter
 
-        if tags is not None:
+        if Config.ENABLE_VIRT and tags is not None:
             tags_filter = FlowRunFilterTags(all_=tags)
             flow_run_filter_kwargs["tags"] = tags_filter
         # create flow run filter with flow_run_filter_kwargs
@@ -624,7 +623,7 @@ class TaskFlowManager(ABC):
             job_id: job id
             tags: prefect flow tags
         Returns:
-            flow run
+            flow run.
         """
         flow_run_id = self.get_flow_run_id_by_job_id(job_id, tags)
         flow_run = None
@@ -647,7 +646,7 @@ class TaskFlowManager(ABC):
             tags: prefect flow tags
 
         Returns:
-            success list
+            success list.
         """
         flow_run_ids = []
         for job_id in job_ids:
@@ -665,7 +664,7 @@ class TaskFlowManager(ABC):
             flow_run_ids: flow run uuid list
 
         Returns:
-            success_list
+            success_list.
         """
         success_list = []
         for flow_run_id, job_id in flow_run_ids:
@@ -703,7 +702,7 @@ class TaskFlowManager(ABC):
             tags: prefect flow tags
 
         Returns:
-            success list
+            success list.
         """
         flow_run_ids = []
         for job_id in job_ids:
@@ -721,7 +720,7 @@ class TaskFlowManager(ABC):
             flow_run_ids: flow run uuid list
 
         Returns:
-            success list
+            success list.
         """
         success_list = []
         try:
@@ -768,7 +767,7 @@ class TaskFlowManager(ABC):
             tags: prefect flow tags
 
         Returns:
-            flow runs
+            flow runs.
         """
         # init filter dict
         flow_run_filter_kwargs = {}
@@ -779,7 +778,7 @@ class TaskFlowManager(ABC):
             flow_run_filter_kwargs["state"] = state_filter
 
         # assign tags_filter if tags is not None
-        if tags is not None:
+        if Config.ENABLE_VIRT and tags is not None:
             tags_filter = FlowRunFilterTags(all_=tags)
             flow_run_filter_kwargs["tags"] = tags_filter
 
@@ -805,7 +804,7 @@ class TaskFlowManager(ABC):
 
         Args:
             data: data to send
-            callbacks: callbacks
+            callbacks: callbacks.
         """
         return self.loop.run_until_complete(
             Library.async_run_callbacks(data, callbacks)
