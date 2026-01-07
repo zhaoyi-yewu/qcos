@@ -17,7 +17,7 @@ python:
       extra_requirements:
         - docs
     
-    - requirements: ./requirements.txt
+    - requirements: ./requirements/requirements-docs.txt
 
 formats:
   - pdf

@@ -29,7 +29,7 @@ import sys
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
-from qcos.common.library import Library
+from wy_qcos.common.library import Library
 
 
 def main(argv=None):

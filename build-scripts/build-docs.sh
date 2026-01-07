@@ -30,9 +30,9 @@ make clean
 rm -rf ./dist
 rm -rf ./source/api
 mkdir -p ./dist
-mkdir ./source/api
+mkdir -p ./source/api
 # create sphinx api docs
-sphinx-apidoc -H "QCOS API" -o ./source/api ../../
+sphinx-apidoc -H "QCOS API" -f -o ./source/api ${TOP_DIR}/src
 # create sphinx docs
 make html
 # make singlehtml
@@ -40,8 +40,7 @@ make latexpdf
 
 # copy pdf
 mkdir -p ./dist/pdf
-cp -rf ./dist/latex/qcos.pdf ./dist/pdf/qcos-full-doc.pdf
-
+cp -rf ./dist/latex/qcos.pdf ./dist/pdf/qcos-full-docs.pdf
 
 # 2. create openapi docs
 # create openapi dist dir
@@ -56,8 +55,8 @@ tar xzvf ${OPENAPI_DOCS_DIR}/js.tar.gz -C ${OPENAPI_DOCS_DIR}/dist
 
 # print results
 echo -e "\n======DOCS OUTPUT======"
-echo "Sphinx docs (html) :  ${SPHINX_DOCS_DIR}/dist/html/index.html"
-echo "Sphinx docs (latex):  ${SPHINX_DOCS_DIR}/dist/latex/"
-echo "Sphinx docs (pdf)  :  ${SPHINX_DOCS_DIR}/dist/pdf/qcos.pdf"
-echo "OpenAPI docs: ${OPENAPI_DOCS_DIR}/dist/qcos-api-docs.html"
+echo "Sphinx docs (html) : ${SPHINX_DOCS_DIR}/dist/html/index.html"
+echo "Sphinx docs (latex): ${SPHINX_DOCS_DIR}/dist/latex/"
+echo "Sphinx docs (pdf)  : ${SPHINX_DOCS_DIR}/dist/pdf/qcos-full-docs.pdf"
+echo "OpenAPI docs (html): ${OPENAPI_DOCS_DIR}/dist/qcos-api-docs.html"
 

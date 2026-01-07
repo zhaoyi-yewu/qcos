@@ -1,6 +1,6 @@
 #!/bin/sh
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -14,6 +14,32 @@
 # ----------------------------------------------------------------------
 
 export PS1="(${QCOS_CONTAINER_NAME})[$(pwd)]$ "
+
+wait_for_url=""
+function usage {
+    echo "Usage: $0 [OPTION] ..."
+    echo "Entrypoint of QCOS container"
+    echo ""
+    echo "  -w, --wait-for  Wait for url is ready"
+    echo "  -h, --help      Print this usage message"
+    echo ""
+}
+
+opts=$(getopt -o w:h --long wait-for:,help -- "$@")
+if [[ $? -ne 0 ]]; then
+  exit 1
+fi
+
+eval set -- "$opts"
+
+while true; do
+  case "$1" in
+    -h | --help )     usage ; exit 0;    shift ;;
+    -w | --wait-for ) wait_for_url="$2"; shift 2 ;;
+    -- ) shift; break ;;
+    * )         break ;;
+  esac
+done
 
 # Create QCOS config file
 qcos_config_file_path=/etc/qcos/qcos.toml
@@ -98,6 +124,16 @@ else
   cp -f ${qcos_template_st_config_file_path} ${qcos_st_config_file_path}
 fi
 echo "Prefect API URL: ${PREFECT_API_URL}"
+
+# wait optional url is ready
+if [ -n "${wait_for_url}" ]; then
+  echo "Wait for url: ${wait_for_url}"
+  until wget -q --spider ${wait_for_url}
+  do echo "waiting for url ..."
+    sleep 2
+  done
+  echo "url: ${wait_for_url} is ready"
+fi
 
 # run QCOS
 /usr/bin/qcos-api --config-file ${qcos_config_file_path} --config-dir ${qcos_extra_config_file_dir}

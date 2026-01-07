@@ -15,7 +15,10 @@
 
 set -e
 
-source ./setup-env.sh
+BASE_DIR=$(dirname "$0")
+BASE_DIR=$(readlink -f ${BASE_DIR})
+TOP_DIR=$(readlink -f ${BASE_DIR}/..)
+source ${TOP_DIR}/build-scripts/setup-env.sh
 
 # local variables
 BUILD_CONTEXT=${abs_cwd}/.build-context
@@ -87,10 +90,11 @@ git_commit_id=$(git rev-parse HEAD 2>/dev/null || echo "")
 echo ${git_commit_id} > ${top_dir}/latest-commit-id.txt
 
 # copy dirs/files to build-context
-files=("latest-commit-id.txt" "qcos" "etc" "requirements.txt" \
-       "requirements-test.txt" "build-scripts/qcos/entrypoint.sh" \
+files=("latest-commit-id.txt" "src" "etc" \
+       "requirements" \
+       "build-scripts/cli/requirements.txt" \
+       "build-scripts/qcos/entrypoint.sh" \
        "build-scripts/cli/entrypoint.sh" "bin/qcos-api.py" "bin/qcos-cli.py" \
-       "build-scripts/cli/requirements.txt" "requirements-driver.txt" \
        "bin/qcos-transpiler.py" \
        "samples/")
 for file_path in "${files[@]}"; do

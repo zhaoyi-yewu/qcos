@@ -30,9 +30,7 @@ WORKDIR /root
 
 RUN \
 # copy qcos dir
-    cp -rf ${BUILD_CONTEXT}/requirements.txt /root/ && \
-    cp -rf ${BUILD_CONTEXT}/requirements-test.txt /root/ && \
-    cp -rf ${BUILD_CONTEXT}/requirements-driver.txt /root/ && \
+    cp -rf ${BUILD_CONTEXT}/requirements/*.txt /root/ && \
 # copy yum repos and create dirs
     if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then rm -rf /etc/yum.repos.d/*.repo; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi && \
     if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
@@ -54,6 +52,7 @@ RUN \
 # install python3 deps \
     pip3 install --no-cache-dir --upgrade poetry && \
     pip3 install --no-cache-dir --upgrade -r /root/requirements.txt -r /root/requirements-test.txt && \
+    pip3 install --no-cache-dir --upgrade -r /root/requirements-sandbox.txt -r /root/requirements-docs.txt && \
     pip3 install --no-cache-dir --upgrade -r /root/requirements-driver.txt && \
 # generate ssh keys
     rm -rf /root/.ssh/id_rsa && \

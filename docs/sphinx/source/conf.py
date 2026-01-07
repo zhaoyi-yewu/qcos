@@ -9,18 +9,40 @@
 import os
 import sys
 
-from pallets_sphinx_themes import ProjectLink
+current_dir = os.path.split(os.path.realpath(__file__))[0]
+top_dir = os.path.abspath(f"{current_dir}/../../../src")
+sys.path.insert(0, top_dir)
+from wy_qcos.common.config import Config
+from wy_qcos.common.qcos_version import QcosVersion
 
+project = f"{Config.PLATFORM_NAME}文档"
+copyright = f"{Config.COPYRIGHT}"
+author = "Zhao Yi"
+version = QcosVersion.VERSION
+release = QcosVersion.VERSION
 
-project = '五岳量子计算操作系统(QCOS)文档'
-copyright = '2024-2025 中移（苏州）软件技术有限公司'
-author = 'Zhao Yi'
-release = '1.0.0'
-
-exclude_patterns = ['_build']
+exclude_patterns = [
+    "_build"
+]
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
+
+##
+# skip spinq module
+autodoc_mock_imports = ["spinqit"]
+
+
+def skip_spinq_module(app, what, name, obj, skip, options):
+    if "driver_spinq_cloud_base" in name:
+        return True
+    return skip
+
+
+def setup(app):
+    app.connect('autodoc-skip-member', skip_spinq_module)
+##
+
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -31,8 +53,8 @@ extensions = [
 ]
 
 source_suffix = {
-    '.rst': 'restructuredtext',
-    '.md': 'markdown',
+    ".rst": "restructuredtext",
+    ".md": "markdown",
 }
 
 myst_enable_extensions = [
@@ -49,21 +71,24 @@ numfig = False
 html_secnumber_depth = 0
 toc_object_entries = False
 html_use_smartypants = False
-html_permalinks = False  # 禁用锚点编号
+html_permalinks = False
 html_permalinks_icon = ""
 
-language = 'zh_CN'
+language = "zh_CN"
 
 # latex config
 latex_engine = "xelatex"
-latex_use_xindy = False 
+latex_use_xindy = False
 latex_domain_indices = False
 latex_use_modindex = False
+latex_documents = [
+    ("index", "qcos.tex", f"{project}", f"{author}", "manual")
+]
 latex_elements = {
-    'papersize': 'a4paper',
-    'pointsize': '10pt',
-    'fncychap': '',
-    'fontpkg': '''
+    "papersize": "a4paper",
+    "pointsize": "10pt",
+    "fncychap": "",
+    "fontpkg": """
         \setmainfont{FreeSerif}[
         UprightFont    = *,
         ItalicFont     = *Italic,
@@ -82,8 +107,8 @@ latex_elements = {
         BoldFont       = *Bold,
         BoldItalicFont = *BoldOblique,
         ]
-    ''',
-    'preamble': r'''
+    """,
+    "preamble": r"""
         % ========== Import header & footer dependency packages ==========
         \usepackage{fancyhdr}  % Core package: Customize header and footer
         \usepackage{fancyvrb}  % Load: fancyvrb
@@ -95,6 +120,10 @@ latex_elements = {
         \usepackage{ctex}
         \usepackage{tocloft}
         \usepackage{eso-pic}
+
+       % ========== Set TOC ==========
+        \setcounter{tocdepth}{3}
+        \setcounter{secnumdepth}{3}
 
         % ========== Convert contensname/indexname/listfigurename/listtablename to Chinese ==========
         % === 关键修改：在文档开始时重定义 ===
@@ -152,7 +181,6 @@ latex_elements = {
         % ========== Header Configuration ========== 
         \fancyhead[L]{\textbf{量子计算操作系统(QCOS)文档}}  % Left header: Document name (bold)
         \fancyhead[C]{\textit{\thesection\ 节标题}}       % Center header: Current section (italic)
-        \fancyhead[R]{\textcolor{blue}{QCOS v1.0.0}}     % Right header: Version number (blue)
 
         % ========== Footer Configuration ========== 
         \fancyfoot[L]{\textcolor{gray}{文档生成时间：\today}} % Left footer: Generation date (gray)
@@ -221,13 +249,13 @@ latex_elements = {
         
         % 调用水印命令，应用到每一页背景
         % \AddToShipoutPicture*{\watermarktext}  % 是否打开水印
-    ''',
+    """,
  }
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
+html_theme = "alabaster"
 html_sidebars = {
     "**": [
         "about.html",
@@ -240,18 +268,18 @@ html_sidebars = {
 html_theme_options = {
     "description": "QCOS是一款开源的通用量子计算操作系统",
     "fixed_sidebar": True,
-    'show_related': False,
-    'show_relbars': True,
+    "show_related": False,
+    "show_relbars": True,
     # "github_user": "",
     # "github_repo": "",
     # "github_banner": True,
 }
-html_static_path = ['_static']
+html_static_path = ["_static"]
 # TODO (zhaoyi): to be replaced
 # html_favicon = "_static/qcos-icon.svg"
 # html_logo = "_static/qcos-logo.png"
 html_css_files = [
-    'custom.css',
+    "custom.css",
 ]
 html_title = "QCOS Documentation"
 html_show_sourcelink = False

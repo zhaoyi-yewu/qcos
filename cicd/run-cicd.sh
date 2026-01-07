@@ -1,6 +1,6 @@
 #!/bin/sh
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -12,26 +12,46 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-# fix file permissions
+
+# run cicd
+
 set -e
 
 cwd=$(dirname "${BASH_SOURCE[0]}")
 top_dir=$(realpath ${cwd}/..)
 
-echo "Run code-linter ..."
-${top_dir}/cicd/code-linter.sh
+echo "Run check-files ..."
+${top_dir}/cicd/check-files.sh
 echo
 
 echo "Run code-style ..."
 ${top_dir}/cicd/code-formatter.sh
 echo
 
-echo "Run UT ..."
+echo "Run code-linter ..."
+${top_dir}/cicd/code-linter.sh
+echo
+
+echo "Run docstring-check ..."
+${top_dir}/cicd/docstring-check.sh
+echo
+
+echo "Run docs-linter ..."
+${top_dir}/cicd/docs-linter.sh
+echo
+
+echo "Run UT (QCOS) ..."
 ${top_dir}/cicd/run-tests.sh -u
 echo
 
-echo "Run coverage ..."
+echo "Run coverage (QCOS) ..."
 ${top_dir}/cicd/run-tests.sh -c
 
-echo "CICD pipeline completed successfully"
+echo "Run UT (QCOS CLIENT) ..."
+${top_dir}/cicd/run-tests.sh -j
+echo
 
+echo "Run coverage (QCOS CLIENT) ..."
+${top_dir}/cicd/run-tests.sh -e
+
+echo "CICD pipeline completed successfully"

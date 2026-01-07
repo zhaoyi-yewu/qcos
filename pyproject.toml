@@ -3,12 +3,12 @@ build-backend = "setuptools.build_meta"
 requires = ["setuptools>=61.0", "wheel>=0.37.1"]
 
 [project]
-name = "qcos"
+name = "wy-qcos"
 version = "1.0.0"
 description = "QCOS (Quantum Computing Operating System)"
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
-license = {file = "LICENSE"}
+requires-python = ">=3.11,<3.14"
+license = { file = "LICENSE" }
 authors = [
     {name = "Zhao Yi", email = "zhaoyi_yewu@cmss.chinamobile.com"},
     {name = "Ji Dalong", email = "jidalong_yewu@cmss.chinamobile.com"},
@@ -29,7 +29,6 @@ keywords = ["qcos", "quantum", "operating", "system"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
-    "License :: OSI Approved :: Mulan Permissive Software License v2 (MulanPSL-2.0)",
     "Natural Language :: English",
     "Operating System :: POSIX",
     "Operating System :: POSIX :: Linux",
@@ -53,7 +52,7 @@ dependencies = [
     "cliff==4.10.0",
     "cryptography==45.0.7",
     "fastapi==0.122.1",
-    "fastapi-jsonrpc==3.4.1",
+    "fastapi-jsonrpc==3.4.2",
     "h11==0.16.0",
     "idna==3.10",
     "jsonrpcclient==4.0.3",
@@ -66,6 +65,7 @@ dependencies = [
     "ply==3.11",
     "poetry==2.1.3",
     "prefect==3.3.3; sys_platform == 'linux'",
+    "pulp==3.2.2",
     "pydantic==2.11.5",
     "pydantic_core==2.33.2",
     "pytest==8.4.1",
@@ -100,14 +100,14 @@ dependencies = [
 
 [project.scripts]
 # Command line interface entrypoint scripts
-qcos-api = "qcos.api_server:main"
-qcos-transpiler = "qcos.transpiler.cmss.transpiler_cmd_line:main"
-qiskit-transpiler = "qcos.transpiler.qiskit.transpiler_qiskit_cmd:main"
+qcos-api = "wy_qcos.api_server:main"
+qcos-transpiler = "wy_qcos.transpiler.cmss.transpiler_cmd_line:main"
+qiskit-transpiler = "wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd:main"
 
 [project.urls]
 "Homepage" = "https://gitee.com/OpenWuYue/qcos"
-"Documentation" = "https://gitee.com/OpenWuYue/qcos/blob/develop/INSTALL.md"
-"Changelog" = "https://gitee.com/OpenWuYue/qcos/blob/develop/CHANGELOG"
+"Documentation" = "https://gitee.com/OpenWuYue/qcos/blob/develop/docs/sphinx/source/index.rst"
+"Changelog" = "https://gitee.com/OpenWuYue/qcos/blob/develop/CHANGELOG.md"
 "Issue Tracker" = "https://gitee.com/OpenWuYue/qcos/issues"
 "Source" = "https://gitee.com/OpenWuYue/qcos"
 
@@ -117,15 +117,14 @@ qiskit-transpiler = "qcos.transpiler.qiskit.transpiler_qiskit_cmd:main"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["qcos*"]
-exclude = ["bin*", "build*", "cicd*", "docs*", "qcos/tests*", "qcos/tests"]
-namespaces = true
+where = ["src"]
+include = ["wy_qcos*"]
+exclude = ["wy_qcos.tests*", "wy_qcos_client*"]
 
 [tool.isort]
 profile = "black"
 force_grid_wrap = "2"
-known_first_party = "qcos"
+known_first_party = "wy_qcos"
 
 [tool.mypy]
 incremental = true
@@ -138,7 +137,7 @@ check_untyped_defs = false
 disable_error_code = "import-untyped,var-annotated,import-not-found"
 # honor excludes by not following there through imports
 follow_imports = "silent"
-files = "qcos"
+files = "src"
 # NOTE: Gradually enable type checking for each package.
 # Finally, when the whole repo is migrated this option can be deleted
 # and rules applied to the whole repo.
@@ -186,19 +185,20 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"qcos/tests/**/*.py" = ["S101"]
-"qcos/**/__init__.py" = ["F401"]
-"qcos/transpiler/cmss/compiler/parser.py" = ["ALL"]
-"qcos/transpiler/cmss/compiler/tokrules.py" = ["ALL"]
-"qcos/transpiler/cmss/compiler/visitor.py" = ["ALL"]
+"src/wy_qcos/tests/**/*.py" = ["S101"]
+"src/wy_qcos_client/tests/**/*.py" = ["S101"]
+"src/**/__init__.py" = ["F401"]
+"src/wy_qcos/transpiler/cmss/compiler/parser.py" = ["ALL"]
+"src/wy_qcos/transpiler/cmss/compiler/tokrules.py" = ["ALL"]
+"src/wy_qcos/transpiler/cmss/compiler/visitor.py" = ["ALL"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["qcos"]
+known-first-party = ["wy_qcos"]
 known-third-party = ["requests", "pandas", "numpy"]
 lines-after-imports = 2
 
 [tool.ruff.lint.flake8-copyright]
-notice-rgx = "(?s)^#!/usr/bin/env python3.*?(coding: utf-8).*?(Copyright© 2024-2025 China Mobile \\(SuZhou\\)).*?(qcos is licensed under Mulan PSL v2).*"
+notice-rgx = "(?s)^#!/usr/bin/env python3.*?(coding: utf-8).*?(Copyright© 2024-20\\d{2} China Mobile \\(SuZhou\\)).*?(qcos is licensed under Mulan PSL v2).*"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -210,9 +210,20 @@ docstring-code-format = true
 skip-magic-trailing-comma = false
 line-ending = "auto"
 exclude = [
-    "qcos/transpiler/cmss/compiler/parser.py",
-    "qcos/transpiler/cmss/compiler/tokrules.py",
-    "qcos/transpiler/cmss/compiler/visitor.py",
+    "src/wy_qcos/transpiler/cmss/compiler/parser.py",
+    "src/wy_qcos/transpiler/cmss/compiler/tokrules.py",
+    "src/wy_qcos/transpiler/cmss/compiler/visitor.py",
+]
+
+[tool.doc8]
+# ignore = ["D001"]
+paths = ["docs/sphinx/source/"]
+extension = [".rst"]
+max-line-length = 120
+ignore-path = [
+    "docs/sphinx/source/user-guide/compatibility.rst",
+    "docs/sphinx/source/other-docs/code-of-conduct.rst",
+    "docs/sphinx/source/other-docs/changelog.rst",
 ]
 
 [tool.poetry.extras]

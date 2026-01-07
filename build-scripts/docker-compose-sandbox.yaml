@@ -26,7 +26,7 @@ services:
     environment:
       DEBUG: ${DEBUG}
       TZ: Asia/Shanghai
-      PYTHONPATH: /root/qcos-project
+      PYTHONPATH: /root/qcos-project/src
     logging:
       driver: "json-file"
       options:
@@ -34,4 +34,5 @@ services:
         max-file: "10"
     volumes:
       - /etc/hosts:/etc/hosts
+      - /var/run:/var/run
       - ${QCOS_LOCAL_SRC_DIR}:/root/qcos-project

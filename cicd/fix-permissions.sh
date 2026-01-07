@@ -18,7 +18,7 @@ set -e
 cwd=$(dirname "${BASH_SOURCE[0]}")
 top_dir=$(realpath ${cwd}/..)
 
-# fix file permissions for dir: qcos
-qcos_dir=${top_dir}/qcos
+# fix file permissions for dir: src
+qcos_dir=${top_dir}/src
 find ${qcos_dir} -type f ! -name "*.pyc*" -exec dos2unix {} \;
 find ${qcos_dir} -type f ! -name "*.pyc*" -exec chmod 644 -R {} \;

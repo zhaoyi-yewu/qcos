@@ -5,7 +5,8 @@
 
 作业管理和Prefect
 --------------------
-作业管理中利用到了工作流编排管理库: Prefect。 Prefect的核心理念是将工作流视为代码，通过Python语言来定义任务和流程，使得工作流具有高度的可读性、可维护性和可扩展型，能够清松地构建、调度和监控复杂的工作流。而量子作业较为复杂，特别适合使用工作流来进行编排管理。
+作业管理中利用到了工作流编排管理库: Prefect。 Prefect的核心理念是将工作流视为代码，通过Python语言来定义任务和流程，
+使得工作流具有高度的可读性、可维护性和可扩展型，能够清松地构建、调度和监控复杂的工作流。而量子作业较为复杂，特别适合使用工作流来进行编排管理。
 
 .. figure:: ../../_static/design/module-design/job-architecture.png
    :align: center
@@ -19,5 +20,6 @@
 
 作业结束回调机制
 --------------------
-作业提交时，支持设置可选的callback列表，callback信息中包括: name, type, method, timeout, retries, headers, url等。该功能能够在作业结束时，主动发送http api请求到指定位置进行返回值的回调通知。
+作业提交时，支持设置可选的callback列表，callback信息中包括: name, type, method, timeout, retries, headers, url等。
+该功能能够在作业结束时，主动发送http api请求到指定位置进行返回值的回调通知。
 如果作业因各种原因导致没有成功回调，支持在qcos服务重启时根据作业中metadata字段中的callback_success失败信息进行重新回调。

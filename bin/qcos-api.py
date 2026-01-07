@@ -17,7 +17,7 @@
 
 import sys
 
-from qcos.api_server import main
+from wy_qcos.api_server import main
 
 
 if __name__ == "__main__":

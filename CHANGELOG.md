@@ -1,29 +1,56 @@
-# QCOS Changelog
+# QCOS 变更日志
 
-All notable changes to this project will be documented in this file.
+本文件记录该项目所有显著变更。
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [未发布] - 开发中
 
-## [Unreleased] - Work In Progress
-### Added
+### 新增功能
+
+- 增加部分文档: 贡献者公约、代码贡献指南等等
+- requirements\*.txt文件统一放入requirements目录
+- 增加bumpversion版本发布脚本
+
+### 变更功能
+
+- 由于PYPI包名冲突，修改模块包名qcos->wy_qcos，qcos.client->wy_qcos_client，并挪到src目录
+
+### 修复问题
+
+- 无
+
+### 移除内容
+
+- 无
 
 ## [1.0.0] - 2025-12-17
-### Added
-+ 支持命令行 (qcos-cli)
-+ 支持JSON-RPC API
-+ 支持作业提交、查询、删除、取消
-+ 支持排队中的作业修改优先级
-+ 支持用户提交作业时选择转译器, 可选择: 五岳转译器(cmss)、Qiskit转译器(qiskit)
-+ 五岳转译器(cmss)支持QASM解析、逻辑门分解、量子比特映射、编译优化
-+ 支持用户提交作业时选择后端驱动, 可选择: 测试驱动、中科酷原中性原子、玻色光量子伊辛机驱动等等
-+ 支持多设备并行操作能力
-+ 支持设备独立配置文件和查询能力
-+ 支持作业运行各阶段性能评估数据获取(profiling)
-+ 支持UT/ST
-+ 支持容器化部署, 具备一键编译/运行脚本
-+ 支持配置全局最大作业数、最大排队+运行作业数限制
-+ 支持日志轮转配置: 最大日志文件大小、日志文件保留数量
 
-### Changed
-### Fixed
-### Removed
+### 新增功能
+
+- 支持 JSON-RPC API 接口
+- 支持作业全生命周期管理：提交、查询、删除、取消
+- 支持修改排队中作业的优先级
+- 作业提交时支持选择转译器，可选类型：
+  - 五岳转译器（cmss）
+  - Qiskit 转译器（qiskit）
+- 五岳转译器（cmss）支持功能：QASM 解析、逻辑门分解、量子比特映射、编译优化
+- 作业提交时支持选择后端驱动，可选类型：测试驱动、中科酷原中性原子驱动、玻色光量子伊辛机驱动等
+- 支持多设备并行操作能力
+- 支持设备独立配置文件管理及查询功能
+- 支持获取作业运行各阶段性能评估数据（Profiling）
+- 支持单元测试（UT）和系统测试（ST）
+- 提供命令行工具（qcos-cli）
+- 支持容器化部署，配套一键编译/运行脚本
+- 支持配置全局最大作业数限制、最大排队+运行作业数限制
+- 支持日志轮转配置：可设置最大日志文件大小、日志文件保留数量
+
+### 变更功能
+
+- 无
+
+### 修复问题
+
+- 无
+
+### 移除内容
+
+- 无

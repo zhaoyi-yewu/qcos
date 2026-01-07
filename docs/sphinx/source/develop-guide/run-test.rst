@@ -16,31 +16,94 @@
    ./run-sandbox.sh
    docker exec -it qcos-sandbox bash
 
-单元测试 (UT)
+代码/文档一键自动化检查
 ------------------------
-在qcos-sandbox容器内执行以下命令运行单元测试：
+
+代码/文档一键自动化检查脚本
 
 .. code-block:: shell
 
-   cd ./cicd
-   ./run-tests.sh -u
+   # 在qcos-sandbox容器内执行以下命令：
+   ./cicd/run-cicd.sh
 
-覆盖率测试 (Coverage)
+
+
+代码问题单项检查
 ------------------------
-在qcos-sandbox容器内执行以下命令运行覆盖率测试：
+
+如果不使用代码/文档一键自动化检查脚本, 也可以逐个单项进行检查
+在qcos-sandbox容器内执行以下命令：
+
+代码格式检查
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
 
-   cd ./cicd
-   ./run-tests.sh -c
+   ./cicd/code-formatter.sh
 
-覆盖率报告查看
-*********************
-在qcos-sandbox容器内可通过以下方式查看覆盖率报告：
+注意 如果格式检查失败，可以手动改代码修复格式问题，也可以通过下列命令尝试自动修复：
 
 .. code-block:: shell
 
-   cd ./cicd
+   ./cicd/code-formatter.sh -f
+
+
+代码静态检查
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   ./cicd/code-linter.sh
+
+注意 如果代码静态检查失败，可以手动改代码修复问题，也可以通过下列命令尝试自动修复：
+
+.. code-block:: shell
+
+   ./cicd/code-linter.sh -f
+
+代码docstring检查
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   ./cicd/docstring-check.sh
+
+文档代码(markdown/rst)静态检查
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   ./cicd/docs-linter.sh
+
+注意 如果文档代码静态检查失败，可以手动改代码修复问题，也可以通过下列命令尝试自动修复：
+
+.. code-block:: shell
+
+   ./cicd/docs-linter.sh -f
+
+执行单元测试(UT)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 1. QCOS单元测试
+   ./cicd/run-tests.sh -u
+
+   # 2. QCOS CLIENT单元测试
+   ./cicd/run-tests.sh -j
+
+执行覆盖率测试(Coverage)，确保覆盖率不低于：80%
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 1. QCOS代码覆盖率测试
+   ./cicd/run-tests.sh -c
+
+   # 2. QCOS CLIENT代码覆盖率测试
+   ./cicd/run-tests.sh -e
+
+   # 在qcos-sandbox容器内可通过以下方式查看覆盖率报告：
    # 方式1：使用浏览器打开HTML报告（需容器内有浏览器或映射端口到宿主机）
    # 浏览器访问 ./coverage_html/index.html
 
@@ -50,9 +113,8 @@
    # 方式3：命令行通过links工具查看HTML报告（可选，需安装links）
    links ./coverage_html/index.html
 
-系统测试 (ST)
---------------------
-在qcos-sandbox容器内执行系统测试前，需确保QCOS服务已正常启动，并配置测试参数：
+执行系统测试(ST) [可选]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
 
@@ -62,38 +124,3 @@
    # 2. 运行系统测试
    cd ./cicd
    ./run-tests.sh -s
-
-代码格式检查 (ruff format)
----------------------------------
-在qcos-sandbox容器内执行代码格式检查：
-
-.. code-block:: shell
-
-   # 方式1：直接使用ruff命令检查
-   cd /path/to/project/root  # 进入项目根目录
-   ruff format --preview --check --diff qcos
-
-   # 方式2：使用脚本检查
-   ./cicd/code-formatter.sh
-
-   # 自动修复代码格式问题（可选）
-   # 方式1：直接使用ruff命令修复
-   ruff format --preview qcos
-
-   # 方式2：使用脚本修复
-   ./cicd/code-formatter.sh -f
-
-代码静态分析lint (pylint+ruff+mypy)
------------------------------------------
-在qcos-sandbox容器内执行代码静态分析：
-
-.. code-block:: shell
-
-   # 方式1：分别执行各工具命令
-   cd /root/qcos-project  # 进入项目根目录
-   # pylint qcos  # 可选
-   ruff check --preview qcos
-   mypy qcos
-
-   # 方式2：使用脚本执行所有静态分析
-   ./cicd/code-linter.sh

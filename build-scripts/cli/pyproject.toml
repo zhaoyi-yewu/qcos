@@ -3,12 +3,12 @@ build-backend = "setuptools.build_meta"
 requires = ["setuptools>=61.0", "wheel>=0.37.1"]
 
 [project]
-name = "qcos-cli"
+name = "wy-qcos-client"
 version = "1.0.0"
 description = "QCOS CLI"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 authors = [
     {name = "Zhao Yi", email = "zhaoyi_yewu@cmss.chinamobile.com"},
     {name = "Ji Dalong", email = "jidalong_yewu@cmss.chinamobile.com"},
@@ -22,7 +22,6 @@ keywords = ["qcos", "quantum", "operating", "system"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
-    "License :: OSI Approved :: Mulan Permissive Software License v2 (MulanPSL-2.0)",
     "Natural Language :: English",
     "Operating System :: POSIX",
     "Operating System :: POSIX :: Linux",
@@ -47,12 +46,12 @@ dependencies = [
 
 [project.scripts]
 # Command line interface entrypoint scripts
-qcos-cli = "qcos.client.shell:main"
+qcos-cli = "wy_qcos_client.shell:main"
 
 [project.urls]
 "Homepage" = "https://gitee.com/OpenWuYue/qcos"
-"Documentation" = "https://gitee.com/OpenWuYue/qcos/blob/develop/INSTALL.md"
-"Changelog" = "https://gitee.com/OpenWuYue/qcos/blob/develop/CHANGELOG"
+"Documentation" = "https://gitee.com/OpenWuYue/qcos/blob/develop/docs/sphinx/source/index.rst"
+"Changelog" = "https://gitee.com/OpenWuYue/qcos/blob/develop/CHANGELOG.md"
 "Issue Tracker" = "https://gitee.com/OpenWuYue/qcos/issues"
 "Source" = "https://gitee.com/OpenWuYue/qcos"
 
@@ -62,15 +61,14 @@ qcos-cli = "qcos.client.shell:main"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["*"]
-exclude = []
-namespaces = true
+where = ["../../src"]
+include = ["wy_qcos_client*"]
+exclude = ["wy_qcos_client.tests*"]
 
 [tool.isort]
 profile = "black"
 force_grid_wrap = "2"
-known_first_party = "qcos"
+known_first_party = "wy_qcos_client"
 
 [tool.mypy]
 incremental = true
@@ -118,8 +116,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"qcos/tests/**/*.py" = ["S101"]
-"qcos/**/__init__.py" = ["F401"]
+"src/wu_qcos_client/tests/**/*.py" = ["S101"]
+"src/wu_qcos_client/**/__init__.py" = ["F401"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["qcos"]

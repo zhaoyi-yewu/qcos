@@ -37,29 +37,29 @@
         - openssl证书配置文件: etc/ssl/openssl.conf
    * - samples
      - qasm2.0、qasm3.0、qubo等输入示例文件
-   * - qcos/api
+   * - src/wy_qcos/api
      - 北向API接口定义和实现
-   * - qcos/api/posiq
+   * - src/wy_qcos/api/posiq
      - 北向JSON-RPC接口，主要是fast-api框架相关的资源定义
-   * - qcos/api/schemas
+   * - src/wy_qcos/api/schemas
      - 北向接口中各资源和参数的数据模板、数据结构定义
-   * - qcos/client
-     - QCOS命令行和客户端实现
-   * - qcos/common
+   * - src/wy_qcos/common
      - 公共定义。包括：配置、常量定义、错误码定义、通用库等
-   * - qcos/drivers
+   * - src/wy_qcos/drivers
      - 驱动实现。包括：厂商驱动、模拟器驱动、测试驱动等
-   * - qcos/engine
+   * - src/wy_qcos/engine
      - 量子工作引擎，包括：量子QASM/QUBO代码解析、转译、驱动调用、回调、聚合、性能评估等等
-   * - qcos/log
+   * - src/wy_qcos/log
      - 日志配置模块
-   * - qcos/task_manager
+   * - src/wy_qcos/task_manager
      - 任务管理和调度
-   * - qcos/tests
+   * - src/wy_qcos/tests
      - 单元测试、系统测试和性能测试用例
-   * - qcos/transpiler
+   * - src/wy_qcos/transpiler
      - 量子转译器插件实现
-   * - qcos/user
+   * - src/wy_qcos/user
      - 用户管理和权限管理
-   * - qcos/libs
+   * - src/wy_qcos/libs
      - 第三方库
+   * - src/wy_qcos_client
+     - QCOS命令行和客户端实现

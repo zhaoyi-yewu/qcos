@@ -44,7 +44,7 @@ gitee_remote = "gitee"
 gitee_remote_branch = "develop"
 gitee_local_branch = "gitee-develop"
 cmss_remote = "origin"
-cmss_local_branch = "gitee"
+cmss_local_branch = "dev_gitee"
 
 
 class MergeException(Exception):

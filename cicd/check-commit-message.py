@@ -60,7 +60,7 @@ def main():
     print("Checking commit messages")
     # get first line of commit messages
     first_line = get_commit_messages()
-    print(f"First line of commit message: {first_line}")
+    print(f"Commit message summary: {first_line}")
 
     if not first_line:
         sys.stderr.write("ERROR: empty line of commit message\n")
@@ -73,10 +73,10 @@ def main():
 
     # check if is english
     if not is_english_string(first_line):
-        sys.stderr.write("ERROR: First line of commit message includes non-English " \
+        sys.stderr.write("ERROR: Commit message summary includes non-English " \
             "characters, which is not allowed. Only English letters are allowed\n")
         sys.exit(1)
-    print("[SUCCESS] Commit messages checking")
+    print("[SUCCESS]")
 
 if __name__ == "__main__":
     main()

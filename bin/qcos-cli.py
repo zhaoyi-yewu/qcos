@@ -17,8 +17,7 @@
 
 import sys
 
-
-from qcos.client.shell import main
+from wy_qcos_client.shell import main
 
 
 if __name__ == "__main__":

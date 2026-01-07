@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
+from unittest.mock import patch, Mock
+import pytest
+
+from wy_qcos.common.config import Config
+from wy_qcos.common.library import Library
+
+config = Config()
+
+
+class TestConfig:
+    @patch.object(Library, "read_toml_file")
+    def test_parse_toml_file(self, mock_read_toml_file):
+        mock_obj = Mock()
+        mock_obj.unwrap.return_value = {
+            "result": {"shots": 100},
+        }
+        mock_read_toml_file.return_value = iter([True, "err_msg", mock_obj])
+
+        mock_read_toml_file.return_value = iter([False, "err_msg", mock_obj])
+        with pytest.raises(Exception) as context:
+            config.parse_toml_file("/config.toml")
+        assert str(context.value) is not None
+
+        mock_read_toml_file.return_value = iter([True, "err_msg", mock_obj])
+        config.parse_toml_file("/config.toml", extra_config=True)
+
+        mock_read_toml_file.return_value = iter([False, "err_msg", mock_obj])
+        with pytest.raises(Exception) as context:
+            config.parse_toml_file("/config.toml", extra_config=True)
+        assert str(context.value) is not None
+
+    def test_show_info(self):
+        assert config.show_info() is not None
