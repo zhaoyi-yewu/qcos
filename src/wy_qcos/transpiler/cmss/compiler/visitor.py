@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -59,6 +59,7 @@ class Visitor:
             "sdg": (1, 0),
             "t": (1, 0),
             "tdg": (1, 0),
+            "r": (1, 2),
             "rx": (1, 1),
             "ry": (1, 1),
             "rz": (1, 1),

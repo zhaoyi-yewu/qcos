@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -78,6 +78,7 @@ class Constant:
     SINGLE_QUBIT_GATE_T = "t"
     SINGLE_QUBIT_GATE_P = "p"
     SINGLE_QUBIT_GATE_U = "u"
+    SINGLE_QUBIT_GATE_R = "r"
     SINGLE_QUBIT_GATE_RX = "rx"
     SINGLE_QUBIT_GATE_RY = "ry"
     SINGLE_QUBIT_GATE_RZ = "rz"
@@ -98,6 +99,7 @@ class Constant:
         SINGLE_QUBIT_GATE_T,
         SINGLE_QUBIT_GATE_P,
         SINGLE_QUBIT_GATE_U,
+        SINGLE_QUBIT_GATE_R,
         SINGLE_QUBIT_GATE_RX,
         SINGLE_QUBIT_GATE_RY,
         SINGLE_QUBIT_GATE_RZ,

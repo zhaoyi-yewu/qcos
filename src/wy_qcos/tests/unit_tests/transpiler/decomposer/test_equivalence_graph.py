@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -17,7 +17,9 @@
 
 from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
     EquivalenceRule,
+    EquivalenceGraph,
 )
+from wy_qcos.transpiler.cmss.common.base_operation import BaseOperation
 
 
 class TestEquivalenceRule:
@@ -2393,3 +2395,99 @@ class TestEquivalenceRule:
             assert g.name == name
             assert g.qubits == qubits
             assert g.params == params
+
+
+class TestEquivalenceGraph:
+    def test_no_decomposition_needed(self):
+        g = EquivalenceGraph()
+        source = [
+            BaseOperation("rx"),
+            BaseOperation("ry"),
+            BaseOperation("rz"),
+            BaseOperation("cx"),
+        ]
+        target = ["rx", "ry", "rz", "cx"]
+
+        rules = g.get_optimal_decomposition_rule_dictionary(source, target)
+        assert not rules
+
+    def test_h_gates(self):
+        g = EquivalenceGraph()
+        source = [
+            BaseOperation("h"),
+        ]
+        target = ["rx", "ry", "rz", "cx"]
+
+        rules = g.get_optimal_decomposition_rule_dictionary(source, target)
+
+        for gate in source:
+            assert gate.name in rules
+
+    def test_single_qubit_gates(self):
+        g = EquivalenceGraph()
+        target = ["rx", "ry", "rz", "cx"]
+
+        single_qubit_gates = [
+            "h",
+            "x",
+            "y",
+            "z",
+            "s",
+            "p",
+            "sdg",
+            "t",
+            "tdg",
+            "sx",
+            "sxdg",
+            "u1",
+            "u2",
+            "u3",
+            "u",
+        ]
+        for gate_name in single_qubit_gates:
+            source = [BaseOperation(gate_name)]
+            rules = g.get_optimal_decomposition_rule_dictionary(source, target)
+            assert gate_name in rules
+
+    def test_two_qubits_gates(self):
+        g = EquivalenceGraph()
+        target = ["rx", "ry", "rz", "cx"]
+
+        two_qubit_gates = [
+            "cy",
+            "cz",
+            "ch",
+            "swap",
+            "crx",
+            "cry",
+            "crz",
+            "cu1",
+            "cp",
+            "cu3",
+            "csx",
+            "cu",
+            "rxx",
+            "rzz",
+        ]
+        for gate_name in two_qubit_gates:
+            source = [BaseOperation(gate_name)]
+            rules = g.get_optimal_decomposition_rule_dictionary(source, target)
+            assert gate_name in rules
+
+    def test_three_or_more_qubits_gates(self):
+        g = EquivalenceGraph()
+        target = ["rx", "ry", "rz", "cx"]
+
+        three_or_more_qubit_gates = [
+            "ccx",
+            "cswap",
+            "rccx",
+            "rc3x",
+            "c3x",
+            "c3sqrtx",
+            "c4x",
+        ]
+        for gate_name in three_or_more_qubit_gates:
+            source = [BaseOperation(gate_name)]
+            rules = g.get_optimal_decomposition_rule_dictionary(source, target)
+            assert gate_name in rules

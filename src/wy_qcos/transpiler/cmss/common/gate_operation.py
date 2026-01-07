@@ -407,6 +407,40 @@ class P(GateOperation):
         return np.array([[1, 0], [0, exp(1j * lam)]], dtype=dtype)
 
 
+class R(GateOperation):
+    """R门（XY平面旋转门）.
+
+    R(θ, φ) = exp[-i θ/2 (cosφ X + sinφ Y)]
+    表示绕 Bloch 球 XY 平面中、与 X 轴夹角为 φ 的轴旋转 θ。
+    """
+
+    def __init__(self, targets=None, arg_value=None) -> None:
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_R, targets, arg_value, hermitian=False
+        )
+
+    def default_decompose(self):
+        theta, phi = self.arg_value
+        return list([
+            RZ(targets=self.targets, arg_value=phi),
+            RX(targets=self.targets, arg_value=theta),
+            RZ(targets=self.targets, arg_value=-phi),
+        ])
+
+    def __array__(self, dtype=None):
+        theta, phi = self.arg_value
+
+        c = np.cos(theta / 2)
+        s = np.sin(theta / 2)
+
+        r_array = np.array([
+            [c, -1j * np.exp(-1j * phi) * s],
+            [-1j * np.exp(1j * phi) * s, c],
+        ])
+
+        return GateOperation.with_gate_array(r_array, dtype)
+
+
 class TDG(GateOperation):
     """TDG门.
 
@@ -1733,6 +1767,8 @@ def create_gate(
         return Y(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_Z:
         return Z(targets, arg_value)
+    elif name == Constant.SINGLE_QUBIT_GATE_R:
+        return R(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_RX:
         return RX(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_RY:

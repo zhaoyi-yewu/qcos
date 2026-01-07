@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import heapq
 from dataclasses import dataclass
 
 from wy_qcos.transpiler.cmss.common.base_operation import BaseOperation
@@ -777,6 +778,86 @@ EquivalenceLibary: list[str] = [
     # q: ┤ H ├  ≡  q: ┤ R(π/2,π/2) ├┤ R(π,0) ├
     #    └───┘        └────────────┘└────────┘
     "h() q0 -> r(pi/2, pi/2) q0 | r(pi, 0) q0",
+    # below are some added rules
+    (
+        "rc3x() q0,q1,q2,q3 -> "
+        "u2(0,pi) q3 | "
+        "u1(pi/4) q3 | "
+        "cx() q2,q3 | "
+        "u1(-pi/4) q3 | "
+        "u2(0,pi) q3 | "
+        "cx() q0,q3 | "
+        "u1(pi/4) q3 | "
+        "cx() q1,q3 | "
+        "u1(-pi/4) q3 | "
+        "cx() q0,q3 | "
+        "u1(pi/4) q3 | "
+        "cx() q1,q3 | "
+        "u1(-pi/4) q3 | "
+        "u2(0,pi) q3 | "
+        "u1(pi/4) q3 | "
+        "cx() q2,q3 | "
+        "u1(-pi/4) q3 | "
+        "u2(0,pi) q3"
+    ),
+    (
+        "c3x() q0,q1,q2,q3 -> "
+        "h() q3 | "
+        "p(pi/8) q0 | "
+        "p(pi/8) q1 | "
+        "p(pi/8) q2 | "
+        "p(pi/8) q3 | "
+        "cx() q0,q1 | "
+        "p(-pi/8) q1 | "
+        "cx() q0,q1 | "
+        "cx() q1,q2 | "
+        "p(-pi/8) q2 | "
+        "cx() q0,q2 | "
+        "p(pi/8) q2 | "
+        "cx() q1,q2 | "
+        "p(-pi/8) q2 | "
+        "cx() q0,q2 | "
+        "cx() q2,q3 | "
+        "p(-pi/8) q3 | "
+        "cx() q1,q3 | "
+        "p(pi/8) q3 | "
+        "cx() q2,q3 | "
+        "p(-pi/8) q3 | "
+        "cx() q0,q3 | "
+        "p(pi/8) q3 | "
+        "cx() q2,q3 | "
+        "p(-pi/8) q3 | "
+        "cx() q1,q3 | "
+        "p(pi/8) q3 | "
+        "cx() q2,q3 | "
+        "p(-pi/8) q3 | "
+        "cx() q0,q3 | "
+        "h() q3"
+    ),
+    (
+        "c3sqrtx() q0,q1,q2,q3 -> "
+        "h() q3 | cu1(pi/8) q0,q3 | h() q3 | "
+        "cx() q0,q1 | "
+        "h() q3 | cu1(-pi/8) q1,q3 | h() q3 | "
+        "cx() q0,q1 | "
+        "h() q3 | cu1(pi/8) q1,q3 | h() q3 | "
+        "cx() q1,q2 | "
+        "h() q3 | cu1(-pi/8) q2,q3 | h() q3 | "
+        "cx() q0,q2 | "
+        "h() q3 | cu1(pi/8) q2,q3 | h() q3 | "
+        "cx() q1,q2 | "
+        "h() q3 | cu1(-pi/8) q2,q3 | h() q3 | "
+        "cx() q0,q2 | "
+        "h() q3 | cu1(pi/8) q2,q3 | h() q3"
+    ),
+    (
+        "c4x() q0,q1,q2,q3,q4 -> "
+        "h() q4 | cu1(pi/2) q3,q4 | h() q4 | "
+        "c3x() q0,q1,q2,q3 | "
+        "h() q4 | cu1(-pi/2) q3,q4 | h() q4 | "
+        "c3x() q0,q1,q2,q3 | "
+        "c3sqrtx() q0,q1,q2,q4"
+    ),
 ]
 
 
@@ -871,6 +952,14 @@ class EquivalenceRule:
         return ParamGate(name=name, params=params, qubits=qubits)
 
 
+@dataclass(frozen=True)
+class RuleEdge:
+    src: str  # gate name
+    dst: str  # gate name
+    rule: EquivalenceRule
+    kind: str  # "require" | "produce"
+
+
 class EquivalenceGraph:
     """Graph of equivalence rules for quantum gate decomposition.
 
@@ -881,7 +970,24 @@ class EquivalenceGraph:
 
     def __init__(self) -> None:
         """Initializes an empty EquivalenceGraph."""
-        self.rules: list[EquivalenceRule] = []
+        self.rules: list[EquivalenceRule] = [
+            EquivalenceRule(rule) for rule in EquivalenceLibary
+        ]
+
+        # target_gate → list of rules
+        self.forward_index = {}  # str -> list[EquivalenceRule]
+
+        # source_gate → list of rules whose target contains this source
+        self.reverse_index = {}  # str -> list[EquivalenceRule]
+
+        for r in self.rules:
+            self.forward_index.setdefault(r.target.name, []).append(r)
+            for src in r.sources:
+                self.reverse_index.setdefault(src.name, []).append(r)
+
+    def _rule_cost(self, rule: EquivalenceRule) -> float:
+        """Cost = number of gates in decomposition."""
+        return float(len(rule.sources))
 
     def get_optimal_decomposition_rule_dictionary(
         self, source: list[BaseOperation], target: list[str]
@@ -900,5 +1006,131 @@ class EquivalenceGraph:
             dict[str, EquivalenceRule]: A mapping from operation name to
             equivalence rule.
         """
-        # TODO: Implement optimization logic for decomposition
+        visited_gates: set[str] = set()
+        left_source_gates: set[str] = set(
+            x.name for x in source if x.name not in target
+        )
+        cost_map: dict[str, float] = {}
+        optimal_rules: dict[str, EquivalenceRule] = {}
+        priority_queue = []
+        counter = 0
+        for gate_name in target:
+            heapq.heappush(priority_queue, (0.0, counter, gate_name))
+            counter += 1
+            visited_gates.add(gate_name)
+            cost_map[gate_name] = 0.0
+
+        while priority_queue:
+            cost, _, gate_name = heapq.heappop(priority_queue)
+            left_source_gates.discard(gate_name)
+            if not left_source_gates:
+                return optimal_rules
+            # this gate has optimal rules
+            if cost_map.get(gate_name, float("inf")) < cost:
+                continue
+
+            # this gate has no reverse rules
+            if gate_name not in self.reverse_index:
+                continue
+
+            for rule in self.reverse_index[gate_name]:
+                rule_cost = self._rule_cost(rule)
+                if all(s.name in visited_gates for s in rule.sources):
+                    new_cost = (
+                        sum(cost_map[s.name] for s in rule.sources) + rule_cost
+                    )
+                    if (
+                        rule.target.name not in cost_map
+                        or cost_map[rule.target.name] > new_cost
+                    ):
+                        heapq.heappush(
+                            priority_queue,
+                            (new_cost, counter, rule.target.name),
+                        )
+                        counter += 1
+                        visited_gates.add(rule.target.name)
+                        cost_map[rule.target.name] = new_cost
+                        optimal_rules[rule.target.name] = rule
+
         return {}
+
+    def rule_edges(self) -> list[RuleEdge]:
+        """Return all edges in the equivalence rule graph.
+
+        Each edge represents a transformation relationship derived from a rule.
+        An edge goes from a source gate to a target gate and carries the rule
+        that produces the target from the source.
+
+        Returns:
+            list[RuleEdge]: A list of RuleEdge objects representing all
+            producer edges in the equivalence rule graph.
+        """
+        edges: list[RuleEdge] = []
+
+        for rule in self.rules:
+            target = rule.target.name
+
+            for src in rule.sources:
+                edges.append(
+                    RuleEdge(
+                        src=src.name,
+                        dst=target,
+                        rule=rule,
+                        kind="produce",
+                    )
+                )
+
+        return edges
+
+    def to_dot(self) -> str:
+        """Generate a Graphviz DOT representation of the rule graph.
+
+        This visualization shows:
+
+        - Gate nodes as ellipses.
+        - Rule nodes as boxes.
+        - Directed edges from source gates to rule nodes,
+          and from rule nodes to target gates.
+
+        Returns:
+            str: A DOT-format string that can be rendered by Graphviz to
+            visualize the equivalence rule graph.
+        """
+        lines = [
+            "digraph EquivalenceRuleGraph {",
+            "  rankdir=LR;",
+            "  node [fontname=Helvetica];",
+        ]
+
+        # Gate nodes
+        gate_names = set()
+        for r in self.rules:
+            gate_names.add(r.target.name)
+            for s in r.sources:
+                gate_names.add(s.name)
+
+        for g in gate_names:
+            lines.append(
+                f'  "{g}" [shape=ellipse, style=filled, fillcolor=lightblue];'
+            )
+
+        # Rule nodes
+        rule_ids = {}
+        for idx, r in enumerate(self.rules):
+            rule_ids[r] = f"rule_{idx}"
+            label = f"{r.target.name} <- " + ",".join(
+                s.name for s in r.sources
+            )
+            lines.append(f'  "{rule_ids[r]}" [shape=box, label="{label}"];')
+
+        # Edges
+        for r in self.rules:
+            rule_node = rule_ids[r]
+
+            for s in r.sources:
+                lines.append(f'  "{s.name}" -> "{rule_node}";')
+
+            lines.append(f'  "{rule_node}" -> "{r.target.name}";')
+
+        lines.append("}")
+        return "\n".join(lines)
