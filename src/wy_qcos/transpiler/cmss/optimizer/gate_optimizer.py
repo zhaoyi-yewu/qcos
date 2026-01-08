@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,12 +15,33 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from typing import Any
 import numpy as np
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
+from wy_qcos.transpiler.cmss.common.gate_operation import (
+    create_gate,
+    H,
+    CX,
+    S,
+    SDG,
+    X,
+    Y,
+    Z,
+    SWAP,
+    T,
+    TDG,
+    CZ,
+)
 from wy_qcos.transpiler.cmss.common.move import Move
 from wy_qcos.transpiler.cmss.common.reset import Reset
+from wy_qcos.transpiler.cmss.optimizer.inverse_cancellation import (
+    InverseCancellation,
+)
+from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
+from wy_qcos.transpiler.cmss.optimizer.clifford_rz_optimization import (
+    CliffordRzOptimization,
+)
 
 
 def pass_hermitian(ir: list):
@@ -200,3 +221,80 @@ def optimize_gate(
         do_pass(optimize_gates)
 
     return optimize_gates
+
+
+def do_optimize_pass(dag: DAGCircuit, pass_list: list):
+    """Iteratively apply optimization passes.
+
+    Iteratively apply a sequence of optimization passes to a DAGCircuit
+    until no further reduction in circuit size is observed.
+
+    Args:
+        dag (DAGCircuit): The DAGCircuit to be optimized.
+        pass_list (list): A list of optimization passes.
+    """
+    while True:
+        init_size = dag.size()
+        for pass_ in pass_list:
+            pass_.run(dag)
+        new_size = dag.size()
+        if new_size >= init_size:
+            break
+
+
+def optimize(
+    ir: list,
+    opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
+    verbose=False,
+):
+    """Optimize the input ir.
+
+    Args:
+        ir (list): the ir to be optimized.
+        opt_level (int, optional): optimization level. Defaults to 1.
+        verbose (bool, optional): whether print optimization information.
+            Defaults to False.
+
+    Returns:
+        list: optimized ir.
+    """
+    if opt_level == 0:
+        return ir
+    elif opt_level > 3 or opt_level < 0:
+        raise ValueError(f"Optimization level {opt_level} is not supported.")
+
+    dag = DAGCircuit.ir_to_dag(ir)
+
+    inverse_optimizer = InverseCancellation([
+        H(),
+        CX(),
+        (S(), SDG()),
+        (T(), TDG()),
+        X(),
+        Y(),
+        Z(),
+        SWAP(),
+        CZ(),
+    ])
+    commutative_optimizer = CliffordRzOptimization(verbose=verbose)
+
+    # The passes in the current optimization levels are not the final versions.
+    # For example, in the future, single-qubit synthesis optimization will be
+    # added to Level 1 and Level 2, and two-qubit gate synthesis optimization
+    # will be added to Level 3.
+    _opt: list[Any] = []
+    if opt_level == 1:
+        _opt = [inverse_optimizer]
+    elif opt_level == 2:
+        _opt = [inverse_optimizer, commutative_optimizer]
+    elif opt_level == 3:
+        _opt = [inverse_optimizer, commutative_optimizer]
+    else:
+        raise ValueError(f"Optimization level {opt_level} is not supported.")
+
+    do_optimize_pass(dag, _opt)
+
+    ir = []
+    for node in dag.topological_op_nodes():
+        ir.append(node.op)
+    return ir

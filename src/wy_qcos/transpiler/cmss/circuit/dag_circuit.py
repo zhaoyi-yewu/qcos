@@ -111,6 +111,13 @@ class DAGCircuit:
             old_op (GateOperation): decrease old_op count.
             new_op (GateOperation): increase new_op count.
         """
+        phase_gates = ["s", "sdg", "t", "tdg", "z"]
+        if not (old_op.name == "rz" and new_op.name in phase_gates) and not (
+            new_op.name == "rz" and old_op.name in phase_gates
+        ):
+            raise ValueError(
+                f"can not convert {old_op.name} to {new_op.name}."
+            )
         if self._op_names.get(old_op.name, 0) > 0:
             self._decrement_op(old_op)
             self._increment_op(new_op)
@@ -354,6 +361,20 @@ class DAGCircuit:
     def is_predecessor(self, node, node_pred):
         """Checks if a second node is in the predecessors of node."""
         return self._multi_graph.has_edge(node_pred._node_id, node._node_id)
+
+    def ancestors(self, node):
+        """Returns set of the ancestors of a node."""
+        return {
+            self._multi_graph[x]
+            for x in rx.ancestors(self._multi_graph, node._node_id)
+        }
+
+    def descendants(self, node):
+        """Returns set of the descendants of a node."""
+        return {
+            self._multi_graph[x]
+            for x in rx.descendants(self._multi_graph, node._node_id)
+        }
 
     def remove_op_node(self, node):
         """Remove an operation node n.

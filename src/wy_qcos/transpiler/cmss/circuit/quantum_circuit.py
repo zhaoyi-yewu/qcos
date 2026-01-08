@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -46,16 +46,20 @@ class QuantumCircuit:
         self._global_phase: float = global_phase
 
     @classmethod
-    def from_ir(cls, ir: list[BaseOperation]):
+    def from_ir(cls, ir: list[BaseOperation], num_qubits: int = 0):
         """Create a quantum circuit from a list of gate operations.
 
         Args:
             ir (list[BaseOperation]): gate operations of ir.
+            num_qubits (int): number of qubits in the circuit.
 
         Returns:
             QuantumCircuit: a quantum circuit corresponding to the ir.
         """
-        circ = QuantumCircuit()
+        if num_qubits > 0:
+            circ = QuantumCircuit(num_qubits)
+        else:
+            circ = QuantumCircuit()
         circ.append_operations(ir)
         return circ
 

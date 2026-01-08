@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 import numpy as np
 
 from wy_qcos.transpiler.cmss.optimizer.clifford_rz_optimization import (
@@ -27,8 +28,13 @@ from wy_qcos.transpiler.cmss.common.gate_operation import (
     CX,
     S,
     SDG,
+    T,
+    Z,
 )
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
+from wy_qcos.transpiler.cmss.circuit.utils import random_circuit, is_equal
+from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize
 
 
 class TestCliffordRzOptimization:
@@ -483,3 +489,86 @@ class TestCliffordRzOptimization:
         assert np.isclose(rz_gates[0].op.arg_value[0], 0.5)
         assert np.isclose(rz_gates[1].op.arg_value[0], 0.2)
         assert np.isclose(rz_gates[2].op.arg_value[0], 0.3)
+
+    def test_parameterize(self):
+        opt = CliffordRzOptimization()
+        ir = [S(targets=[0]), S(targets=[0])]
+        dag = DAGCircuit.ir_to_dag(ir)
+        opt.parameterize_all(dag)
+        nodes = dag.op_nodes()
+        assert nodes[0].name == "rz"
+        assert nodes[1].name == "rz"
+        counts = dag.count_ops()
+        assert counts.get("rz", 0) == 2
+        assert counts.get("s", 0) == 0
+
+        opt.deparameterize_all(dag)
+        nodes = dag.op_nodes()
+        assert nodes[0].name == "s"
+        assert nodes[1].name == "s"
+        counts = dag.count_ops()
+        assert counts.get("rz", 0) == 0
+        assert counts.get("s", 0) == 2
+
+    def test_optimize(self):
+        opt = CliffordRzOptimization()
+        ir = [
+            H([0]),
+            H([1]),
+            CX([0, 1]),
+            H([0]),
+            H([1]),
+            S([0]),
+            CX([1, 0]),
+            CX([0, 2]),
+            CX([1, 0]),
+            S([0]),
+        ]
+        dag = DAGCircuit.ir_to_dag(ir)
+        dag = opt.run(dag)
+        counts = dag.count_ops()
+        assert len(counts) == 2
+        assert counts["cx"] == 2
+        assert counts["z"] == 1
+
+        ir = [T([0]), CX([0, 1]), T([0]), CX([1, 2]), X([2]), CX([1, 2])]
+        dag = DAGCircuit.ir_to_dag(ir)
+        dag = opt.run(dag)
+        counts = dag.count_ops()
+        assert len(counts) == 3
+        assert counts["s"] == 1
+        assert counts["cx"] == 1
+        assert counts["x"] == 1
+
+        ir = [
+            Z([0]),
+            CX([0, 1]),
+            Z([0]),
+        ]
+        dag = DAGCircuit.ir_to_dag(ir)
+        dag = opt.run(dag)
+        counts = dag.count_ops()
+        assert len(counts) == 1
+        assert counts["cx"] == 1
+
+    def test_random_optimize(self):
+        num_qubits = 5
+        num_gates = 50
+        loop_count = 10
+        opt_level = 2
+
+        for _ in range(loop_count):
+            ir = random_circuit(num_qubits, num_gates)
+            # initial ir
+            init_ir = copy.deepcopy(ir)
+            init_circ = QuantumCircuit.from_ir(init_ir, num_qubits)
+            # after optimized
+            opt_ir = optimize(ir, opt_level)
+            opt_circ = QuantumCircuit.from_ir(opt_ir, num_qubits)
+            res = is_equal(init_circ, opt_circ)
+            if not res:
+                # print error test cases
+                print(ir)
+                print(opt_ir)
+                print("========")
+            assert res
