@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -25,6 +25,7 @@ from wy_qcos.transpiler.cmss.mapping.aggregate.hierachy_tree import (
     HierarchyTree,
     get_block,
 )
+from wy_qcos.transpiler.cmss.mapping.empty_mapping import EmptyRoute
 from wy_qcos.transpiler.cmss.mapping.mapping_factory import MappingFactory
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import SCRoute
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
@@ -130,6 +131,12 @@ class TranspilerCmss(TranspilerBase):
         mapper = factory.get_mapper_by_type(
             trans_cfg_inst.get_tech_type(), enable_na_move
         )
+        if isinstance(mapper, EmptyRoute):
+            mapping_dict = {}
+            key, value = list(opt_result_dict.items())[0]
+            mapping_dict[key] = value[0]
+            mapping_res = value[1]
+            return mapping_res, mapping_dict
 
         # set sc_mapping_options
         if isinstance(mapper, SCRoute) and sc_mapping_options:

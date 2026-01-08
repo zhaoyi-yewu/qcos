@@ -10,6 +10,7 @@
 - 增加bumpversion版本号更新脚本: cicd/release-version.py
 - 增加版本发布脚本: cicd/publish.py
 - 增加部分文档: 贡献者公约、代码贡献指南等等
+- 新增qutip模拟器驱动
 
 ### 变更功能
 
