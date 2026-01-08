@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -34,7 +34,7 @@ class Constant:
     CODE_TYPE_QASM2 = "qasm2"
     CODE_TYPE_QASM3 = "qasm3"
     CODE_TYPE_QUBO = "qubo"
-    CODE_TYPES_FORMAT_TEXT = [CODE_TYPE_QASM, CODE_TYPE_QASM2, CODE_TYPE_QASM3]
+    CODE_TYPES_ALL_QASM = [CODE_TYPE_QASM, CODE_TYPE_QASM2, CODE_TYPE_QASM3]
     CODE_TYPES = [
         CODE_TYPE_QASM,
         CODE_TYPE_QASM2,

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -52,7 +52,10 @@ class DriverDummy(DriverBase):
         self.max_qubits = 10
         # pylint: disable=duplicate-code
         self.extra_configs = {}
-        self.driver_options_schema = {Optional("sleep"): int}
+        self.driver_options_schema = {
+            Optional("sleep"): int,
+            Optional("enable_wirecut"): bool,
+        }
 
     def init_driver(self):
         """Init driver."""

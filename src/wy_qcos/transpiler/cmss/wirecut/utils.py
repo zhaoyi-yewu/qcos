@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -72,6 +72,7 @@ def generate_config_circuits_for_one_subcircuit(
             meas=meas,
         )
         # Convert the quantum circuit to an OpenQASM 2.0 format string
+        modified_circuit.measure_all()
         converter = QasmConverter(modified_circuit)
         qasm_str = converter.to_qasm2()
         subcircuits_for_execute[instance_config] = qasm_str

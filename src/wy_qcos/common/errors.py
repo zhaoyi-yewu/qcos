@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -141,3 +141,19 @@ class JobEngineCheckMatrixError(BaseException):
     module_name = "JobEngine"
     error_code = -108
     err_type = "Check Matrix Error"
+
+
+class JobEngineCircuitCuttingError(BaseException):
+    """Job Engine: Circuit Cutting Error."""
+
+    module_name = "JobEngine"
+    error_code = -109
+    err_type = "Circuit Cutting Error"
+
+
+class JobEngineReconProbError(BaseException):
+    """Job Engine: Reconstruct Probability Error."""
+
+    module_name = "JobEngine"
+    error_code = -110
+    err_type = "Reconstruct Probability Error"

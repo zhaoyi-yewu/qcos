@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -17,6 +17,8 @@
 
 import logging
 import tempfile
+
+from schema import Optional
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
@@ -125,9 +127,9 @@ class DriverBase:
         # default data type in run()
         self.default_data_type = DriverBase.DATA_TYPE_GATE_SEQUENCE
         # driver_options
-        self.driver_options = {}
+        self.driver_options = {"enable_wirecut": False}
         # driver_options schema
-        self.driver_options_schema = None
+        self.driver_options_schema = {Optional("enable_wirecut"): bool}
 
     def validate_driver(self):
         """Validate driver."""
@@ -525,3 +527,19 @@ class DriverBase:
                 num_qubits = max_qubits
             bit_length = num_qubits
         return Library.generate_binary_combinations(bit_length, shots)
+
+    def get_enable_wirecut(self):
+        """Get enable wirecut.
+
+        Returns:
+            bool: enable wirecut
+        """
+        return self.driver_options["enable_wirecut"]
+
+    def get_driver_options(self):
+        """Get driver options.
+
+        Returns:
+            dict: driver options
+        """
+        return self.driver_options

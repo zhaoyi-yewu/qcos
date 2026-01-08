@@ -23,6 +23,7 @@ from wy_qcos.transpiler.cmss.circuit.register import (
     QuantumRegister,
     ClassicalRegister,
 )
+from wy_qcos.transpiler.cmss.common.measure import Measure
 
 
 class QuantumCircuit:
@@ -181,3 +182,22 @@ class QuantumCircuit:
                 self._num_clbits += reg.size
             else:
                 raise TypeError("Invalid register type!")
+
+    def measure(self, qubits: list):
+        """Measure quantum bits.
+
+        Args:
+            qubits: qubit(s) to measure.
+        """
+        for qubit in qubits:
+            self.append(Measure(targets=[qubit]))
+
+    def measure_all(self):
+        """Adds measurement to all qubits.
+
+        By default, adds new classical bits in a :obj:`.ClassicalRegister`
+        to store these measurements.
+
+        """
+        qubits = list(range(self._num_qubits))
+        self.measure(qubits)

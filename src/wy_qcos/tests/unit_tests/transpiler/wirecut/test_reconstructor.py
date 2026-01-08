@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -53,7 +53,8 @@ class TestReconstructor(unittest.TestCase):
         }
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.reconstructor.Reconstructor.reconstruct"
+        "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+        "Reconstructor.reconstruct"
     )
     def test_reconstructor_init(self, mock_reconstruct):
         """Testing Reconstructor initialization."""
@@ -68,7 +69,8 @@ class TestReconstructor(unittest.TestCase):
         mock_reconstruct.assert_called_once()
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.reconstructor.Reconstructor.reconstruct"
+        "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+        "Reconstructor.reconstruct"
     )
     def test_init_data(self, mock_reconstruct):
         """Testing the init_data method."""
@@ -84,7 +86,8 @@ class TestReconstructor(unittest.TestCase):
         assert reconstructor.num_qubits == 4
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.reconstructor.Reconstructor.reconstruct"
+        "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+        "Reconstructor.reconstruct"
     )
     def test_get_measure_config_length(self, mock_reconstruct):
         """Test the get_measure_config_length method."""
@@ -117,7 +120,8 @@ class TestReconstructor(unittest.TestCase):
             assert isinstance(result, np.ndarray)
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.reconstructor.Reconstructor.reconstruct"
+        "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+        "Reconstructor.reconstruct"
     )
     def test_compute_tensor_product_for_bases(self, mock_reconstruct):
         """Test the compute_tensor_product_for_bases method."""
@@ -146,7 +150,8 @@ class TestReconstructor(unittest.TestCase):
             assert isinstance(result, np.ndarray)
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.reconstructor.Reconstructor.reconstruct"
+        "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+        "Reconstructor.reconstruct"
     )
     def test_normalize_probability(self, mock_reconstruct):
         """Test normalize_probability method."""
@@ -205,7 +210,8 @@ class TestReconstructor(unittest.TestCase):
                     ("I", "X"),
                 )
                 with patch(
-                    "wy_qcos.transpiler.cmss.wirecut.reconstructor.tensor_product"
+                    "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+                    "tensor_product"
                 ) as mock_tensor_product:
                     mock_tensor_product.return_value = np.array([
                         0.1,

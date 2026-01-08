@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -138,6 +138,34 @@ class TestJob:
         )
         assert isinstance(
             profiling_results[Constant.PROFILING_TYPE_DRIVER_RUN], float
+        )
+        StLibrary.delete_job(self.client, job_info["job_id"])
+        assert (
+            job_results["result"]["job_status"]
+            == Constant.JOB_STATUS_COMPLETED
+        )
+
+    def test_submit_job_wirecut(self):
+        job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_submit_job",
+            "source_code_list": [SAMPLES["15_35.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_submit_job",
+            "backend": Constant.DRIVER_DUMMY,
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": {"enable_wirecut": True},
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "transpiler_options": {"enable_na_move": True},
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": True,
+        }
+        job_results = StLibrary.submit_job(
+            self.client, job_info, self.timeout, self.interval
         )
         StLibrary.delete_job(self.client, job_info["job_id"])
         assert (

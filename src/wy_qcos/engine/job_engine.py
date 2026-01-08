@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -50,6 +50,12 @@ from wy_qcos.engine.qubo import (
     process_qubo_solution,
 )
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
+from wy_qcos.transpiler.cmss.compiler.parser import compile
+from wy_qcos.transpiler.cmss.wirecut.cut_wire import (
+    generate_all_variant_subcircuits_for_execute,
+    reconstruct_probability_distribution_wire_cut,
+)
+
 
 # Config Loguru
 # pylint: disable=duplicate-code
@@ -879,8 +885,8 @@ def run_code(
             None,
             monitor_info,
         )
-    else:
-        job_results, driver, transpiler, mapping_dict = _run_code(
+    elif code_type in Constant.CODE_TYPES_ALL_QASM:
+        job_results, driver, transpiler, mapping_dict = run_circuit_code(
             source_code_index,
             src_code_dict,
             job_info,
@@ -948,7 +954,7 @@ def run_qubo_code(
         if not enable_prec_reduce:
             err_msg = (
                 f"The element values in the QUBO matrix "
-                f"does not meet {Constant.MAX_QUBO_BIT_WIDT}-bit signed. "
+                f"does not meet {Constant.MAX_QUBO_BIT_WIDTH}-bit signed. "
                 f"Consider using enable_prec_reduce."
             )
             return (
@@ -1155,6 +1161,214 @@ def run_subqubo_code(
         solution["solutionVector"] = solution_pool[i].solution.tolist()
         job_results["results"]["out_data"].append(solution)
     return job_results, driver, transpiler, mapping_dict
+
+
+def run_circuit_code(
+    source_code_index,
+    src_code_dict,
+    job_info,
+    driver,
+    transpiler,
+    monitor_info,
+):
+    """Run circuit code.
+
+    Args:
+        source_code_index: source code index
+        src_code_dict: src code dictionary
+        job_info: job info
+        driver: driver
+        transpiler: transpiler
+        monitor_info: monitor info
+
+    Returns:
+        job results
+    """
+    job_results = {}
+    job_id = job_info["data"]["job_id"]
+    max_qubits = driver.get_max_qubits()
+    enable_wirecut = driver.get_enable_wirecut()
+    logger.info(f"driver max qubits: {max_qubits}")
+    src_code = src_code_dict[f"{job_id}-{source_code_index}"]
+    num_qubits, _ = compile(src_code)
+    if num_qubits > max_qubits:
+        if not enable_wirecut:
+            driver_name = driver.get_name()
+            err_msg = (
+                f"The current circuit is {num_qubits}-bit, exceeding Device "
+                f"{driver_name}'s {max_qubits}-bit limit. Consider using "
+                f"enable_wirecut option in --driver-options."
+            )
+            return (
+                format_error_results(
+                    driver, errors.JobEngineQubitLimitExceededError, err_msg
+                ),
+                driver,
+                transpiler,
+                None,
+            )
+        job_results, driver, transpiler, mapping_dict = (
+            run_circuit_cutting_code(
+                source_code_index,
+                src_code_dict,
+                job_info,
+                driver,
+                transpiler,
+                monitor_info,
+            )
+        )
+    else:
+        job_results, driver, transpiler, mapping_dict = _run_code(
+            source_code_index,
+            src_code_dict,
+            job_info,
+            driver,
+            transpiler,
+            monitor_info,
+        )
+    return job_results, driver, transpiler, mapping_dict
+
+
+def run_circuit_cutting_code(
+    source_code_index,
+    src_code_dict,
+    job_info,
+    driver,
+    transpiler,
+    monitor_info,
+):
+    """Run circuit cutting code.
+
+    Args:
+        source_code_index: source code index
+        src_code_dict: src code dictionary
+        job_info: job info
+        driver: driver
+        transpiler: transpiler
+        monitor_info: monitor info
+
+    Returns:
+        job results
+    """
+    job_id = job_info["data"]["job_id"]
+    src_code = src_code_dict[f"{job_id}-{source_code_index}"]
+    max_qubits = driver.get_max_qubits()
+    num_qubits, _ = compile(src_code)
+    is_complete_reconstruction = True
+    # Step 1: Generate all subcircuits
+    try:
+        _, subcircuits, cut_wire = (
+            generate_all_variant_subcircuits_for_execute(
+                max_subcircuit_width=max_qubits,
+                qasm=src_code,
+                max_memory=2 ** (num_qubits),
+                is_complete_reconstruction=is_complete_reconstruction,
+            )
+        )
+    except Exception as e:
+        err_msg = f"Generate all variant subcircuits failed: {str(e)}"
+        return (
+            format_error_results(
+                driver, errors.JobEngineCircuitCuttingError, err_msg
+            ),
+            driver,
+            transpiler,
+            None,
+        )
+    # Step 2: Execute all subcircuits
+    sub_results = []
+    for i in range(len(subcircuits)):
+        src_sub_code_dict = {}
+        sub_source_code_index = f"{str(source_code_index)}-{str(i)}"
+        src_sub_code_dict[job_id + sub_source_code_index] = subcircuits[i]
+        job_results, driver, transpiler, mapping_dict = _run_code(
+            sub_source_code_index,
+            src_sub_code_dict,
+            job_info,
+            driver,
+            transpiler,
+            monitor_info,
+        )
+        if job_results["metadata"]["status"] != "COMPLETED":
+            return job_results, driver, transpiler, mapping_dict
+        if (
+            job_results["metadata"]["status"] == "COMPLETED"
+            and job_results["results"] is not None
+        ):
+            sub_result = counts_to_probs(job_results["results"])
+            sub_results.append(sub_result)
+    # Step 3: Reconstruct probability distribution
+    try:
+        prob, _ = reconstruct_probability_distribution_wire_cut(
+            cut_wire,
+            sub_results,
+            is_complete_reconstruction=is_complete_reconstruction,
+        )
+    except Exception as e:
+        err_msg = (
+            f"Reconstruct subcircuits probability distribution "
+            f"failed: {str(e)}"
+        )
+        return (
+            format_error_results(
+                driver, errors.JobEngineReconProbError, err_msg
+            ),
+            driver,
+            transpiler,
+            mapping_dict,
+        )
+    job_results["num_qubits"] = num_qubits
+    job_results["results"] = probs_to_dict(prob)
+    return job_results, driver, transpiler, mapping_dict
+
+
+def counts_to_probs(count_dict):
+    """Convert the quantum state count dictionary into a probability array.
+
+    Args:
+        count_dict (dict[str, int]): quantum state count dictionary.
+
+    Returns:
+        np.ndarray: Probability array sorted in binary order.
+    """
+    if not count_dict:
+        return []
+    first_key = next(iter(count_dict))
+    n = len(first_key)
+    total_states = 2**n
+    probs = np.zeros(total_states)
+    total_counts = sum(count_dict.values())
+    if total_counts == 0:
+        return probs
+    for binary_str, count in count_dict.items():
+        idx = int(binary_str, 2)
+        probs[idx] = count / total_counts
+    return probs
+
+
+def probs_to_dict(prob_array):
+    """Generic probability array to dictionary function.
+
+    Args:
+        prob_array (list): Probability list
+
+    Returns:
+        dict: Probability dictionary
+    """
+    if prob_array is None or len(prob_array) == 0:
+        return {}
+    n = len(prob_array)
+    bits = 0
+    while (1 << bits) < n:
+        bits += 1
+    if (1 << bits) != n:
+        bits = max(bits, (n - 1).bit_length())
+    result = {}
+    for i, prob in enumerate(prob_array):
+        if abs(prob) > 1e-12:
+            binary_str = format(i, f"0{bits}b")
+            result[binary_str] = float(prob)
+    return result
 
 
 def flow_parse(src_code_dict, transpiler, profiling_types):

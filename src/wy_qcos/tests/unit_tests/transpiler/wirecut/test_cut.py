@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -41,7 +41,8 @@ class TestCut(unittest.TestCase):
         assert self.cut.dag is not None
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.cut.Cut._initialize_gate_depth_encodings"
+        "wy_qcos.transpiler.cmss.wirecut.cut.Cut."
+        "_initialize_gate_depth_encodings"
     )
     @patch(
         "wy_qcos.transpiler.cmss.wirecut.cut.Cut._assign_qubits_to_subcircuits"

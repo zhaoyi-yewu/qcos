@@ -55,6 +55,9 @@
    qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
    qcos-cli submit-job --code-type qasm2 --shots 10 --backend wy-hanyuan1 -f ./samples/qasm/2.0/simple-qasm.qasm
 
+   # 4. 电路切割开启 （--driver-options '{"enable_wirecut":true}'）
+   qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 --transpiler-options '{"enable_na_move": true}' --driver-options '{"enable_wirecut":true}' --dry-run -f ./samples/qasm/2.0/wirecut/12_30.qasm
+
 - 玻色量子-光量子伊辛机
 
 .. code-block:: shell
