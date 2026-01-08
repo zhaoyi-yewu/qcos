@@ -56,8 +56,117 @@
 - C++/Rust替代。由于python是解释型语言，因此同样的代码逻辑，python要比C++耗时。因此预计将耗时较长的痛点逻辑(如IR的生成)用C++实现，达到编译优化的目的。
 - PYPY优化。 通过PYPY代替传统的CPython解析器, 进行JIT编译，来提升性能
 
-转译管理器初始化
-********************
+**量子比特映射和路由**
+
+本模块负责将逻辑量子比特映射到物理量子比特，并执行路由以满足硬件拓扑约束。对于超导设备（如spinq_rpc后端），系统支持两种路由算法：MCTS（蒙特卡罗树搜索）和SABRE。
+
+路由算法选择
+--------------------
+系统通过 ``routing_algorithm`` 参数来选择使用的路由算法：
+
+- ``"mct"`` 或 ``"sc"``: 使用蒙特卡罗树搜索算法（默认）
+- ``"sabre"``: 使用SABRE算法
+
+MCTS路由算法参数
+--------------------
+MCTS（Monte Carlo Tree Search）算法基于蒙特卡罗树搜索，通过树搜索策略找到最优的SWAP门插入方案。
+
+.. list-table:: MCTS路由算法参数说明
+   :widths: 20 30 50
+   :header-rows: 1
+   :align: left
+
+   * - 参数名
+     - 类型
+     - 说明
+   * - **routing_algorithm**
+     - str
+     - 路由算法名称，设置为 ``"mct"`` 或 ``"sc"`` 以使用MCTS算法。默认值: ``"mct"``
+   * - **selec_times**
+     - int
+     - MCT搜索选择次数，控制每次决策前的搜索深度。值越大，搜索越充分，但耗时越长。默认值: ``50``
+   * - **select_mode**
+     - list
+     - 选择策略，格式为 ``["KS", K值]``，其中K值控制选择策略的强度。默认值: ``["KS", 15]``
+   * - **use_prune**
+     - int
+     - 是否启用剪枝优化。``1`` 表示启用，``0`` 表示禁用。启用剪枝可以减少搜索空间，提高效率。默认值: ``1``
+   * - **use_hash**
+     - int
+     - 是否启用哈希优化。``1`` 表示启用，``0`` 表示禁用。启用哈希可以避免重复搜索相同状态。默认值: ``1``
+   * - **score_layer**
+     - int
+     - 评分层数，控制评分计算的深度。值越大，评分越准确，但计算开销越大。默认值: ``5``
+   * - **mode_sim**
+     - list
+     - 模拟模式，格式为 ``["fix_cx_num", [N_sim, G_sim]]``，其中 ``N_sim`` 是模拟次数，``G_sim`` 是模拟门数。默认值: ``["fix_cx_num", [500, 30]]``
+   * - **score_decay_rate_size**
+     - float
+     - 大小评分衰减率，用于优化线路大小（门数量）。取值范围: ``0.0`` 到 ``1.0``。值越小，衰减越快。默认值: ``0.7``
+   * - **score_decay_rate_depth**
+     - float
+     - 深度评分衰减率，用于优化线路深度。取值范围: ``0.0`` 到 ``1.0``。值越小，衰减越快。默认值: ``0.85``
+   * - **objective**
+     - str
+     - 优化目标，可选值: ``"size"``（优化门数量）或 ``"depth"``（优化线路深度）。默认值: ``"size"``
+
+SABRE路由算法参数
+--------------------
+SABRE（Stochastic Allocation of Blocks for Routing and Execution）算法是一种启发式路由算法，通过前瞻策略和成本函数来优化SWAP门插入。
+
+.. list-table:: SABRE路由算法参数说明
+   :widths: 20 30 50
+   :header-rows: 1
+   :align: left
+
+   * - 参数名
+     - 类型
+     - 说明
+   * - **routing_algorithm**
+     - str
+     - 路由算法名称，设置为 ``"sabre"`` 以使用SABRE算法
+   * - **sabre_extention_size**
+     - int
+     - 扩展集大小，用于前瞻策略。值越大，前瞻越远，但计算开销越大。默认值: ``20``
+   * - **sabre_weight**
+     - float
+     - 用于组合基本和扩展启发式成本的权重参数。取值范围: ``0.0`` 到 ``1.0``。``0.0`` 表示只考虑基本成本，``1.0`` 表示只考虑扩展成本。默认值: ``0.5``
+   * - **sabre_decay**
+     - float
+     - 用于减少频繁交换量子比特影响的衰减因子。取值范围: ``0.0`` 到 ``1.0``。值越大，对频繁交换的惩罚越大。默认值: ``0.001``
+
+参数配置示例
+--------------------
+以下示例展示了如何配置路由算法参数：
+
+使用MCTS算法（默认配置）:
+
+.. code-block:: python
+
+   sc_mapping_options = {
+       "routing_algorithm": "mct",
+       "select_mode": ["KS", 15],
+       "use_prune": 1,
+       "use_hash": 1,
+       "score_layer": 5,
+       "mode_sim": ["fix_cx_num", [500, 30]],
+       "score_decay_rate_size": 0.7,
+       "score_decay_rate_depth": 0.85,
+       "objective": "size"
+   }
+
+使用SABRE算法:
+
+.. code-block:: python
+
+   sc_mapping_options = {
+       "routing_algorithm": "sabre",
+       "sabre_extention_size": 20,
+       "sabre_weight": 0.5,
+       "sabre_decay": 0.001
+   }
+
+**转译管理器初始化**
 
 .. code-block:: text
 
@@ -66,8 +175,7 @@
    transpiler_manager.load_transpilers()  # 加载转译器
    transpiler_manager.init_transpilers()  # 初始化转译器
 
-转译器初始化
-********************
+**转译器初始化**
 
 .. code-block:: python
 
@@ -91,8 +199,7 @@
                tanspiler.init_transpiler()
 
 
-量子计算机/测控转译器示例
-****************************
+**量子计算机/测控转译器示例**
 
 .. code-block:: python
 
