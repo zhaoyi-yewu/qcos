@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -27,6 +27,7 @@ from wy_qcos.transpiler.cmss.circuit.dag_node import (
     DAGNode,
 )
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
 
 
 class DAGCircuit:
@@ -102,6 +103,19 @@ class DAGCircuit:
             )
         else:
             raise ValueError(f"duplicate wire {wire}")
+
+    def rename_op(self, old_op: GateOperation, new_op: GateOperation):
+        """Convert between Rz and T,Z,S gates.
+
+        Args:
+            old_op (GateOperation): decrease old_op count.
+            new_op (GateOperation): increase new_op count.
+        """
+        if self._op_names.get(old_op.name, 0) > 0:
+            self._decrement_op(old_op)
+            self._increment_op(new_op)
+        else:
+            raise ValueError(f"no {old_op.name} in the dag.")
 
     def _increment_op(self, op):
         """Increase the count of a given operation.
@@ -358,6 +372,25 @@ class DAGCircuit:
             condition=lambda edge1, edge2: edge1 == edge2,
         )
         self._decrement_op(node.op)
+
+    def collect_runs(self, namelist):
+        """Return a set of runs of "op" nodes with the given names.
+
+        For example, "... h q[0]; cx q[0],q[1]; cx q[0],q[1]; h q[1]; .."
+        would produce the tuple of cx nodes as an element of the set returned
+        from a call to collect_runs(["cx"]). If instead the cx nodes were
+        "cx q[0],q[1]; cx q[1],q[0];", the method would still return the
+        pair in a tuple. The namelist can contain names that are not
+        in the circuit's basis.
+
+        Nodes must have only one successor to continue the run.
+        """
+
+        def filter_fn(node):
+            return isinstance(node, DAGOpNode) and node.op.name in namelist
+
+        group_list = rx.collect_runs(self._multi_graph, filter_fn)
+        return {tuple(x) for x in group_list}
 
     def count_ops(self):
         """Count the occurrences of operation names.
