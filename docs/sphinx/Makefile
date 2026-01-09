@@ -52,7 +52,6 @@ chm:
 latex:
 	@rm -rf $(BUILDDIR)/latex
 	$(SPHINXBUILD) -b latex -t latex $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/latex
-	# cp texinputs/* $(BUILDDIR)/latex/
 	@echo
 	@echo "Build finished; the LaTeX files are in $(BUILDDIR)/latex."
 	@echo "Run \`make' in that directory to run these through (pdf)latex" \
@@ -61,7 +60,6 @@ latex:
 latexpdf:
 	@rm -rf $(BUILDDIR)/latex
 	$(SPHINXBUILD) -b latex -t latexpdf $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/latex
-	# cp texinputs/* $(BUILDDIR)/latex/
 	@echo "Running LaTeX files through pdflatex..."
 	make -C $(BUILDDIR)/latex all-pdf
 	@echo "pdflatex finished; the PDF files are in $(BUILDDIR)/latex."

@@ -23,6 +23,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 import os
+import shutil
 import sys
 
 from sphinx.ext import apidoc
@@ -43,9 +44,24 @@ author = "Zhao Yi"
 version = QcosVersion.VERSION
 release = QcosVersion.VERSION
 file_name = "qcos-full-docs"
+sphinx_api_dir = f"{top_dir}/docs/sphinx/source/api"
 
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.extlinks",
+    "sphinx.ext.graphviz",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.napoleon",
+    "sphinx_rtd_theme",
+    "myst_parser",
+    "docxbuilder",
+    # "sphinxcontrib.mermaid",
+    # "sphinxcontrib.plantuml",
+]
 exclude_patterns = [
-    "_build"
+    "_build",
+    "_template"
 ]
 
 # -- General configuration ---------------------------------------------------
@@ -65,25 +81,22 @@ def skip_spinq_module(app, what, name, obj, skip, options):
 def run_apidoc(app):
     """Run apidoc."""
 
-    apidoc.main(["-H", "QCOS API文档", "-f", "-o", f"{top_dir}/docs/sphinx/source/api", f"{src_dir}"])
+    apidoc.main(["-H", "QCOS API文档", "-f", "-o", sphinx_api_dir, f"{src_dir}"])
 
 
 def setup(app):
     """Setup app."""
     app.connect("autodoc-skip-member", skip_spinq_module)
-    app.connect("builder-inited", run_apidoc)
+    if "html" in app.tags or "singlehtml" in app.tags:
+        extensions.append("sphinxcontrib.jquery")
+        app.connect("builder-inited", run_apidoc)
+    else:
+        shutil.rmtree(
+            f"{top_dir}/docs/sphinx/source/api/",
+            ignore_errors=True,
+            onerror=None
+        )
 
-
-extensions = [
-    "sphinx.ext.autodoc",
-    "sphinx.ext.extlinks",
-    "sphinx.ext.intersphinx",
-    "sphinx.ext.napoleon",
-    "sphinx_rtd_theme",
-    "sphinxcontrib.jquery",
-    "myst_parser",
-    "docxbuilder",
-]
 
 source_suffix = {
     ".rst": "restructuredtext",
@@ -106,6 +119,9 @@ toc_object_entries = False
 html_use_smartypants = False
 html_permalinks = False
 html_permalinks_icon = ""
+
+mermaid_cmd = "mmdc"
+mermaid_output_format = "png"
 
 language = "zh_CN"
 
@@ -292,7 +308,8 @@ docx_documents = [
         "subject": subject,
     }, True),
 ]
-# docx_style = ""
+docx_style = "_template/docx/docxbuilder-style.docx"
+docx_coverpage = True
 docx_pagebreak_before_section = 1
 
 
@@ -310,7 +327,6 @@ html_sidebars = {
     ]
 }
 html_theme_options_rtd = {
-    "display_version": True,
     "navigation_depth": 4,
     "collapse_navigation": True,
     "sticky_navigation": True,
