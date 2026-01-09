@@ -1192,12 +1192,13 @@ class Visitor:
                 else:
                     value = self.find_val_in_symbol_table(arg.leaf, pos)
             else:
-                if arg.leaf.isdigit():
+                try:
                     value = int(arg.leaf)
-                elif self.is_float_regex(arg.leaf):
-                    value = float(arg.leaf)
-                else:
-                    value = None
+                except ValueError:
+                    try:
+                        value = float(arg.leaf)
+                    except ValueError:
+                        value = None
             if value is None:
                 raise NameError(
                     f"in line {pos}, variable {value} "

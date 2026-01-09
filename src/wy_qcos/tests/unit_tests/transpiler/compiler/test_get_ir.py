@@ -260,3 +260,19 @@ class TestGetIr:
         validate_gate_ir(gates_list[14], "c3sqrtx", [0, 1, 2, 3], 4, False)
         validate_gate_ir(gates_list[15], "c4x", [0, 1, 2, 3, 4], 5, False)
         validate_gate_ir(gates_list[16], "u3", [1], 1, False)
+
+    def test_for_digits(self):
+        data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q1[2];
+        creg c1[2];
+        u3(1.5705854245991118,-3.1667235621803993,-1.58730875641222e-05) q1[0];
+        """
+        tree = get_abs_tree(data)
+        assert tree is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
+        assert q_num == 2
+        assert len(gates_list) == 1
+        validate_gate_ir(gates_list[0], "u3", [0], 1, False)
