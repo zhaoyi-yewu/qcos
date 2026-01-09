@@ -45,7 +45,7 @@
               "CODE1",
               "CODE2"
             ],
-            // results是列表, 和source_code代码对应, 每段souce_code代码对应一个result
+            // results是列表, 和source_code代码对应, 每段source_code代码对应一个result
             // result内容是不一样的, 只要有一个results是failed, 则整个job状态为failed
             "results": [
               {

@@ -1,6 +1,9 @@
 # for docs only
 doc8==2.0.0
+docutils==0.21.2
+docxbuilder==1.2.0
 linkify-it-py==2.0.3
 mdformat==1.0.0
 myst-parser==4.0.1
 pallets-sphinx-themes==2.3.0
+sphinxcontrib-jquery==4.1

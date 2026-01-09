@@ -1,6 +1,6 @@
 #!/bin/bash
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -31,16 +31,19 @@ rm -rf ./dist
 rm -rf ./source/api
 mkdir -p ./dist
 mkdir -p ./source/api
-# create sphinx api docs
-sphinx-apidoc -H "QCOS API" -f -o ./source/api ${TOP_DIR}/src
-# create sphinx docs
-make html
-# make singlehtml
-make latexpdf
 
+# create sphinx docs
+# make singlehtml
+make html
+
+# make pdf
+make latexpdf
 # copy pdf
 mkdir -p ./dist/pdf
 cp -rf ./dist/latex/qcos.pdf ./dist/pdf/qcos-full-docs.pdf
+
+# make docx
+make docx
 
 # 2. create openapi docs
 # create openapi dist dir
@@ -58,5 +61,6 @@ echo -e "\n======DOCS OUTPUT======"
 echo "Sphinx docs (html) : ${SPHINX_DOCS_DIR}/dist/html/index.html"
 echo "Sphinx docs (latex): ${SPHINX_DOCS_DIR}/dist/latex/"
 echo "Sphinx docs (pdf)  : ${SPHINX_DOCS_DIR}/dist/pdf/qcos-full-docs.pdf"
+echo "Sphinx docs (docx) : ${SPHINX_DOCS_DIR}/dist/docx/qcos-full-docs.docx"
 echo "OpenAPI docs (html): ${OPENAPI_DOCS_DIR}/dist/qcos-api-docs.html"
 

@@ -34,5 +34,9 @@ services:
         max-file: "10"
     volumes:
       - /etc/hosts:/etc/hosts
-      - /var/run:/var/run
+      - /etc/qcos:/etc/qcos
+      - /var/log/qcos:/var/log/qcos
+      - /var/run/qcos:/var/run/qcos
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/qcos:/var/qcos
       - ${QCOS_LOCAL_SRC_DIR}:/root/qcos-project

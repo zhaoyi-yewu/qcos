@@ -11,3 +11,4 @@
    code-commit
    run-test
    release
+   publish

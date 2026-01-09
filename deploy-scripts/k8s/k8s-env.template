@@ -55,7 +55,7 @@ export QCOS_IMAGE_VERSION=2025-06-01
 export QCOS_CLI_IMAGE_NAME=qcos-cli
 export QCOS_CLI_IMAGE_VERSION=2025-06-01
 export PREFECT_IMAGE_NAME=prefecthq/prefect
-export PREFECT_IMAGE_VERSION=3.3.3-python3.13
+export PREFECT_IMAGE_VERSION=3.6.9-python3.13
 
 # others
 export DEBUG=False

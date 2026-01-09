@@ -21,21 +21,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
+      - name: Install poetry
+        run: pipx install poetry
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Build release distributions
         run: |
           # NOTE: put your own distribution build steps here.
-          python -m pip install build
-          python -m build
+          cp ./build-scripts/env.template ./build-scripts/.env
       - name: Upload distributions
         uses: actions/upload-artifact@v4
         with:
           name: release-dists
-          path: dist/
+          path: build-scripts/output/dist/
 
   pypi-publish:
     runs-on: ubuntu-latest
@@ -61,10 +60,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-dists
-          path: dist/
+          path: build-scripts/output/dist/
 
       - name: Publish release distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: dist/
+          packages-dir: build-scripts/output/dist/
 
