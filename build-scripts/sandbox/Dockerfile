@@ -54,11 +54,15 @@ RUN \
     fc-cache -fv  && \
 # create symbolic link for python3
     ln -sf /usr/bin/python3 /usr/bin/python && \
-# install python3 deps \
+# install python3 deps
     pip3 install --no-cache-dir --upgrade poetry && \
     pip3 install --no-cache-dir --upgrade -r /root/requirements.txt -r /root/requirements-test.txt && \
     pip3 install --no-cache-dir --upgrade -r /root/requirements-sandbox.txt -r /root/requirements-docs.txt && \
     pip3 install --no-cache-dir --upgrade -r /root/requirements-driver.txt && \
+# install npm deps
+    registry_url=""
+    if [ -f "${NPM_MIRROR}" ]; then registry_url="--registry=${NPM_MIRROR}"; fi && \
+    npm install ${registry_url} -g @mermaid-js/mermaid-cli && \
 # generate ssh keys
     rm -rf /root/.ssh/id_rsa && \
     ssh-keygen -t rsa -f /root/.ssh/id_rsa -q -N "" && \

@@ -56,7 +56,7 @@ extensions = [
     "sphinx_rtd_theme",
     "myst_parser",
     "docxbuilder",
-    # "sphinxcontrib.mermaid",
+    "sphinxcontrib.mermaid",
     # "sphinxcontrib.plantuml",
 ]
 exclude_patterns = [

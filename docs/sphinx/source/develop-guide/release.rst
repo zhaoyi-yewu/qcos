@@ -88,8 +88,9 @@ develop切release分支 → 修改并提交版本号 → 全量测试（单元/�
     # 手动升级版本号名称
     ./cicd/release-version.py -n 1.0.1
     或者
-    # 自动升级版本号, 需要指定是对major、minor、patch版本进行自动版本号+1升级
-    ./cicd/release-version.py -p [major | minor | patch]
+    # 自动升级版本号, 需要指定是对major、minor、patch、num版本进行自动版本号+1升级
+    # 默认会先从预发布版本号alpha.1开始，通过stage命令，会逐步从alpha、beta、rc、stable版本进行升级
+    ./cicd/release-version.py -p [major | minor | patch | num | stage]
 
     # 完整示例 (社区正式版本)
     ./cicd/release-version.py -n 1.0.1
@@ -100,7 +101,21 @@ develop切release分支 → 修改并提交版本号 → 全量测试（单元/�
     ./cicd/release-version.py -n 1.0.1-alpha.1
     ./cicd/release-version.py -n 1.0.1-beta.1
     ./cicd/release-version.py -n 1.0.1-rc.1
+    ./cicd/release-version.py -p patch
+    ./cicd/release-version.py -p num
+    ./cicd/release-version.py -p stage
 
+    # 预发布版本和正式版本之间的命令和版本号迁移关系
+    | 当前版本 | 执行命令 | 目标版本 | 说明 |
+    +================+==============================+================+==========================+
+    | 1.0.0 | release-version.sh -p patch | 1.0.1-alpha.1 | 开启新的 patch 开发周期 |
+    +----------------+------------------------------+----------------+--------------------------+
+    | 1.0.1-alpha.1 | release-version.sh -p num | 1.0.1-alpha.2 | 增加 alpha 修订号 |
+    +----------------+------------------------------+----------------+--------------------------+
+    | 1.0.1-alpha.2 | release-version.sh -p stage | 1.0.1-beta.1 | 推进到 beta 阶段 |
+    +----------------+------------------------------+----------------+--------------------------+
+    | 1.0.1-beta.1 | release-version.sh -p stage | 1.0.1-rc.1 | 推进到 rc 阶段 |
+    +----------------+------------------------------+----------------+--------------------------+
 
     # 完整示例 (内部)
     ./cicd/release-version.py -n 1.0.1 --master-branch master --develop-branch dev_gitee --release-branch release_BC-QSE_V1.0.1_20251219 --skip-push
