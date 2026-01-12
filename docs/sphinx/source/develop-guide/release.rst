@@ -91,8 +91,16 @@ develop切release分支 → 修改并提交版本号 → 全量测试（单元/�
     # 自动升级版本号, 需要指定是对major、minor、patch版本进行自动版本号+1升级
     ./cicd/release-version.py -p [major | minor | patch]
 
-    # 完整示例 (社区)
+    # 完整示例 (社区正式版本)
     ./cicd/release-version.py -n 1.0.1
+    或者
+    ./cicd/release-version.py -p patch
+
+    # 完整示例 (社区预发布版本)
+    ./cicd/release-version.py -n 1.0.1-alpha.1
+    ./cicd/release-version.py -n 1.0.1-beta.1
+    ./cicd/release-version.py -n 1.0.1-rc.1
+
 
     # 完整示例 (内部)
     ./cicd/release-version.py -n 1.0.1 --master-branch master --develop-branch dev_gitee --release-branch release_BC-QSE_V1.0.1_20251219 --skip-push

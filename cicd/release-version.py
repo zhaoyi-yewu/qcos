@@ -24,6 +24,9 @@ pip3 install bump-my-version semver
 
 # bump version name
 ./release-version.py -n 1.0.1
+./release-version.py -n 1.0.1-alpha.1
+./release-version.py -n 1.0.1-beta.1
+./release-version.py -n 1.0.1-rc.1
 
 # bump version part. version part: major, minor, patch
 ./release-version.py -p patch
@@ -208,6 +211,7 @@ def bump_version(bump_version_part, bump_version_name,
     release_notes = release_notes.replace("### ", "")
     release_notes = release_notes.replace("## ", "")
     env_vars["RELEASE_NOTES"] = f"\n\n{release_notes}"
+    print(f"bump version cmd:\n{';'.join(cmds)}")
     results = run_command(";".join(cmds), cwd=top_dir, env=env_vars)
     return results
 
@@ -263,7 +267,8 @@ USAGE
                            type=str,
                            choices=["major", "minor", "patch"],
                            dest="bump_version_part",
-                           help="bump version part. [major | minor | patch]")
+                           help="bump version part. "
+                                "[major | minor | patch]")
         group.add_argument("-n",  "--bump-version-name",
                            dest="bump_version_name",
                            help="bump version name")
@@ -367,7 +372,7 @@ USAGE
 
         # create new release branch
         if not release_branch:
-            release_branch = f"release/{_bump_version_name}"
+            release_branch = f"release/v{_bump_version_name}"
         print(f"* Create new release branch: {release_branch}")
         cmds = [f"git checkout -b {release_branch}"]
         results = run_command(";".join(cmds), cwd=top_dir)
@@ -446,6 +451,15 @@ USAGE
                     f"Failed to pushing commits or tags. "
                     f"Reason: {results.stderr}")
                 raise ReleaseException(err_msg)
+
+        cmds = [f"git checkout {develop_branch}"]
+        results = run_command(";".join(cmds), cwd=top_dir)
+        ret_code = results.returncode
+        if ret_code != 0:
+            err_msg = (
+                f"Failed to checkout develop branch: {develop_branch}. "
+                f"Reason: {results.stderr}")
+            raise ReleaseException(err_msg)
 
         print(f"\nSuccessfully released version: v{_bump_version_name}")
         return 0
