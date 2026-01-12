@@ -55,6 +55,7 @@ class DriverDummy(DriverBase):
         self.driver_options_schema = {
             Optional("sleep"): int,
             Optional("enable_wirecut"): bool,
+            Optional("max_qubits"): int,
         }
 
     def init_driver(self):
@@ -164,3 +165,14 @@ class DriverDummy(DriverBase):
             job_id: job ID
         """
         logger.info(f"Cancel job: job_id: {job_id}")
+
+    def update_driver_options(self, driver_options):
+        """Update driver options.
+
+        Args:
+            driver_options: new driver options
+        """
+        self.driver_options.update(driver_options)
+        max_qubits_value = self.driver_options.get("max_qubits")
+        if max_qubits_value is not None:
+            self.set_max_qubits(max_qubits_value)

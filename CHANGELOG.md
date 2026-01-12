@@ -13,6 +13,7 @@
 ### 变更功能
 
 - 由于PYPI包名冲突，修改模块包名qcos->wy_qcos，qcos.client->wy_qcos_client，并挪到src目录
+- 量子任务的执行方式由串行执行更改为并行执行
 
 ### 修复问题
 

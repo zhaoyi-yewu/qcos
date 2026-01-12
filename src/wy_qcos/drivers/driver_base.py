@@ -127,7 +127,10 @@ class DriverBase:
         # default data type in run()
         self.default_data_type = DriverBase.DATA_TYPE_GATE_SEQUENCE
         # driver_options
-        self.driver_options = {"enable_wirecut": False}
+        self.driver_options = {
+            "max_qubits": 10,
+            "enable_wirecut": False,
+        }
         # driver_options schema
         self.driver_options_schema = {Optional("enable_wirecut"): bool}
 

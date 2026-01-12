@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -43,6 +43,13 @@ data_qasm = {
 
 
 class TestDriverDummy:
+    @classmethod
+    def setup_class(cls):
+        cls.driver_options = {
+            "driver_options": "driver_options",
+            "max_qubits": 20,
+        }
+
     def test_init_driver(self):
         assert driver_dummy.init_driver() is None
 
@@ -69,3 +76,8 @@ class TestDriverDummy:
 
     def test_cancel(self):
         assert driver_dummy.cancel(job_id) is None
+
+    def test_update_driver_options(self):
+        driver_dummy.update_driver_options(self.driver_options)
+        max_qubits = driver_dummy.get_max_qubits()
+        assert max_qubits == 20
