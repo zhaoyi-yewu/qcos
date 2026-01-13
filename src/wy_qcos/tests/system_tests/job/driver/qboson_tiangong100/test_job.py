@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -17,6 +17,7 @@
 
 import multiprocessing
 import pytest
+import time
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
@@ -65,6 +66,47 @@ class TestJob:
         job_results = StLibrary.submit_job(
             self.client, job_info, self.timeout, self.interval
         )
+        StLibrary.delete_job(self.client, job_info["job_id"])
+        assert (
+            job_results["result"]["job_status"]
+            == Constant.JOB_STATUS_COMPLETED
+        )
+
+    def test_submit_job_enable_subqubo(self):
+        job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_qboson_submit_job",
+            "source_code_list": [SAMPLES["qubo_200X200.json"]],
+            "code_type": Constant.CODE_TYPE_QUBO,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_qboson_submit_job",
+            "backend": "tiangong100",
+            "shots": 100,
+            "circuit_aggregation": None,
+            "driver_options": {"enable_subqubo": True},
+            "transpiler": None,
+            "transpiler_options": None,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+        }
+        job_results = StLibrary.submit_job(
+            self.client, job_info, self.timeout, self.interval
+        )
+        assert job_results["result"]["job_status"] in [
+            Constant.JOB_STATUS_QUEUED,
+            Constant.JOB_STATUS_RUNNING,
+            Constant.JOB_STATUS_COMPLETED,
+        ]
+        while job_results["result"]["job_status"] in [
+            Constant.JOB_STATUS_QUEUED,
+            Constant.JOB_STATUS_RUNNING,
+        ]:
+            job_results = StLibrary.get_job_results(
+                self.client, job_info["job_id"]
+            )
+            time.sleep(self.interval)
         StLibrary.delete_job(self.client, job_info["job_id"])
         assert (
             job_results["result"]["job_status"]
