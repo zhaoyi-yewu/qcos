@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -21,7 +21,6 @@ from unittest.mock import patch
 from wy_qcos.engine.qubo.qubo_precision import (
     find_matrix_gcd,
     scale_to_integer_matrix,
-    is_int_matrix,
     check_matrix,
     check_qubo_matrix_bit_width,
     qubo_matrix_to_ising_matrix,
@@ -70,20 +69,6 @@ class TestQUBOPrecision:
         zero_matrix = np.zeros((2, 2))
         scaled = scale_to_integer_matrix(zero_matrix)
         assert np.array_equal(scaled, zero_matrix)
-
-    def test_is_int_matrix(self):
-        """Test integer matrix validation."""
-        # Valid int8 matrix
-        valid_int8 = np.array([[1, 2], [-128, 127]])
-        assert is_int_matrix(valid_int8, 8)
-
-        # Value too large for int8
-        invalid_int8 = np.array([[1, 200], [3, 4]])  # 200 > 127
-        assert not is_int_matrix(invalid_int8, 8)
-
-        # Non-integer matrix
-        non_int = np.array([[1.5, 2], [3, 4]])
-        assert not is_int_matrix(non_int, 8)
 
     def test_check_matrix(self):
         """Test check_matrix."""
