@@ -52,6 +52,13 @@ def validate_ir_equals(source, result):
     assert source_op.equiv(result_op) is True
 
 
+def validate_gates_in_targets(final_gates, targets):
+    for gate in final_gates:
+        if gate.name not in targets:
+            assert False, f"{gate.name} is not in targets"
+    assert True
+
+
 def read_qasm_from_file(file_path):
     try:
         with open(file_path, encoding="utf-8") as file:

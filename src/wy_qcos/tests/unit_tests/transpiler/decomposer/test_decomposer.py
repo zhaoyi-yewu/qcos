@@ -22,6 +22,7 @@ from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
 from wy_qcos.tests.unit_tests.transpiler.comm import (
     validate_gate_ir,
     validate_ir_equals,
+    validate_gates_in_targets,
 )
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 
@@ -839,7 +840,7 @@ class TestDecomposer:
 
         validate_ir_equals(source, result)
 
-    def test_decompose(self):
+    def test_decompose_simple_qasm(self):
         data = """
         OPENQASM 2.0;
         include "qelib1.inc";
@@ -883,16 +884,86 @@ class TestDecomposer:
         d = Decomposer()
         target = ["rx", "ry", "rz", "cx", "sync", "measure"]
         decomposed_gates = d.decompose(gates_list, target)
+        validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
         target = ["rx", "ry", "cx", "sync", "measure"]
         decomposed_gates = d.decompose(gates_list, target)
+        validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
+        # hanyuan quantum instructions set
         target = ["rx", "ry", "cz", "sync", "measure"]
         decomposed_gates = d.decompose(gates_list, target)
+        validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
+        # Spinq quantum instructions set
+        target = [
+            "h",
+            "i",
+            "x",
+            "y",
+            "z",
+            "rx",
+            "ry",
+            "rz",
+            "p",
+            "s",
+            "t",
+            "tdg",
+            "u",
+            "cx",
+            "cy",
+            "cz",
+            "swap",
+            "ccx",
+            "ccz",
+            "sync",
+            "measure",
+        ]
+        decomposed_gates = d.decompose(gates_list, target)
+        validate_gates_in_targets(decomposed_gates, target)
+        validate_ir_equals(gates_list, decomposed_gates)
+
+        # Uqc quantum instructions set
+        target = ["rx", "ry", "rzz", "sync", "measure"]
+        decomposed_gates = d.decompose(gates_list, target)
+        validate_gates_in_targets(decomposed_gates, target)
+        validate_ir_equals(gates_list, decomposed_gates)
+
+        # Ibmq quantum instructions set
         target = ["rz", "sx", "x", "cx", "sync", "measure"]
         decomposed_gates = d.decompose(gates_list, target)
+        validate_gates_in_targets(decomposed_gates, target)
+        validate_ir_equals(gates_list, decomposed_gates)
+
+        # Ionq quantum instructions set
+        target = ["rxx", "rx", "ry", "rz", "sync", "measure"]
+        decomposed_gates = d.decompose(gates_list, target)
+        validate_gates_in_targets(decomposed_gates, target)
+        validate_ir_equals(gates_list, decomposed_gates)
+
+        # Nam quantum instructions set
+        target = ["cx", "h", "rz", "sync", "measure"]
+        decomposed_gates = d.decompose(gates_list, target)
+        validate_gates_in_targets(decomposed_gates, target)
+        validate_ir_equals(gates_list, decomposed_gates)
+
+        # Origin quantum instructions set
+        target = ["cz", "u3", "sync", "measure"]
+        decomposed_gates = d.decompose(gates_list, target)
+        validate_gates_in_targets(decomposed_gates, target)
+        validate_ir_equals(gates_list, decomposed_gates)
+
+        # Quafu quantum instructions set
+        target = ["cx", "rx", "ry", "rz", "h", "sync", "measure"]
+        decomposed_gates = d.decompose(gates_list, target)
+        validate_gates_in_targets(decomposed_gates, target)
+        validate_ir_equals(gates_list, decomposed_gates)
+
+        # USTC quantum instructions set
+        target = ["cx", "rx", "ry", "rz", "h", "x", "sync", "measure"]
+        decomposed_gates = d.decompose(gates_list, target)
+        validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)

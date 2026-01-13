@@ -18,7 +18,6 @@
 import numpy as np
 import re
 from typing import Any
-from warnings import warn
 from loguru import logger
 
 from wy_qcos.transpiler.cmss.compiler.qtypes import Node, RegType
@@ -286,7 +285,9 @@ class Visitor:
             if gate_id in self.gate:
                 # allow redefinition of built-in gates
                 if gate_id in self.built_in_gates:
-                    warn(f"in line {s.pos}, {gate_id} is a built-in gate")
+                    logger.warning(
+                        f"in line {s.pos}, {gate_id} is a built-in gate"
+                    )
                 else:
                     raise SyntaxError(f"in line {s.pos}, {gate_id} redefined")
             self.gate[gate_id] = (len(s.leaf[1]), len(s.leaf[2]))
