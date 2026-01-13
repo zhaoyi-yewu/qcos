@@ -18,7 +18,7 @@
 import numpy as np
 import re
 from typing import Any
-
+from warnings import warn
 from loguru import logger
 
 from wy_qcos.transpiler.cmss.compiler.qtypes import Node, RegType
@@ -39,6 +39,7 @@ class Visitor:
         :ivar c_var: 经典变量字典，记录每个变量对应的数组长度
         :ivar c_map: 经典变量字典，记录每个变量对应物理比特的起始下标
         :ivar c_cnt: 经典变量总数
+        :ivar built_in_gate: 内置门字典
         :ivar gate: 所有可用门字典，记录门作用比特数和所需参数个数
         :ivar defined_gate: 用户自定义门字典
         :ivar symbol_table: 符号表, openqasm3.0专用
@@ -49,6 +50,49 @@ class Visitor:
         self.c_var = {}
         self.c_map = {}
         self.c_cnt = 0
+        self.built_in_gates = {
+            "h",
+            "x",
+            "y",
+            "z",
+            "s",
+            "p",
+            "sdg",
+            "t",
+            "tdg",
+            "r",
+            "rx",
+            "ry",
+            "rz",
+            "sx",
+            "sxdg",
+            "cx",
+            "cy",
+            "cz",
+            "ch",
+            "swap",
+            "crx",
+            "cry",
+            "crz",
+            "cu1",
+            "cp",
+            "cu3",
+            "csx",
+            "cu",
+            "rxx",
+            "rzz",
+            "ccx",
+            "cswap",
+            "rccx",
+            "rc3x",
+            "c3x",
+            "c3sqrtx",
+            "c4x",
+            "u1",
+            "u2",
+            "u3",
+            "u",
+        }
         self.gate = {
             "h": (1, 0),
             "x": (1, 0),
@@ -240,7 +284,11 @@ class Visitor:
         elif s.type == "def_gate":
             gate_id = s.leaf[0]
             if gate_id in self.gate:
-                raise SyntaxError(f"in line {s.pos}, {gate_id} redefined")
+                # allow redefinition of built-in gates
+                if gate_id in self.built_in_gates:
+                    warn(f"in line {s.pos}, {gate_id} is a built-in gate")
+                else:
+                    raise SyntaxError(f"in line {s.pos}, {gate_id} redefined")
             self.gate[gate_id] = (len(s.leaf[1]), len(s.leaf[2]))
             self.defined_gate[gate_id] = {
                 "gate_q": s.leaf[1],
