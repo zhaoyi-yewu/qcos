@@ -57,7 +57,7 @@ extensions = [
     "myst_parser",
     "docxbuilder",
     "sphinxcontrib.mermaid",
-    # "sphinxcontrib.plantuml",
+    "sphinxcontrib.plantuml",
 ]
 exclude_patterns = [
     "_build",
@@ -120,12 +120,21 @@ html_use_smartypants = False
 html_permalinks = False
 html_permalinks_icon = ""
 
+# mermaid configs
 mermaid_cmd = "mmdc"
 mermaid_output_format = "png"
+mermaid_params = [
+    "--puppeteerConfigFile", f"{current_dir}/puppeteer-config.json",
+]
+os.environ["PUPPETEER_PRODUCT"] = "firefox"
+os.environ["PUPPETEER_EXECUTABLE_PATH"] = "/usr/bin/firefox"
 
-language = "zh_CN"
+# plantuml configs
+plantuml = "java -Djava.awt.headless=true -jar /usr/local/lib/node_modules/plantuml/vendor/plantuml.jar"
+plantuml_output_format = "svg"  # default: png
 
 # latex config
+language = "zh_CN"
 latex_engine = "xelatex"
 latex_use_xindy = False
 latex_domain_indices = False

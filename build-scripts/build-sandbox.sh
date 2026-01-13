@@ -1,6 +1,6 @@
 #!/bin/sh
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -27,4 +27,5 @@ DOCKER_BUILDKIT=0 docker build -f ./sandbox/Dockerfile --no-cache --rm --network
   --build-arg CONTAINER_NAME=${SANDBOX_CONTAINER_NAME} \
   --build-arg SANDBOX_IMAGE_VERSION=${SANDBOX_IMAGE_VERSION} \
   --build-arg DEV=${DEV} \
+  --build-arg NPM_MIRROR=${NPM_MIRROR} \
   -t ${SANDBOX_IMAGE_NAME}:${SANDBOX_IMAGE_VERSION} .

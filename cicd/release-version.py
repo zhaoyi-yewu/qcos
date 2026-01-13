@@ -28,8 +28,10 @@ pip3 install bump-my-version semver
 ./release-version.py -n 1.0.1-beta.1
 ./release-version.py -n 1.0.1-rc.1
 
-# bump version part. version part: major, minor, patch
+# bump version part. version part: major, minor, patch, num, stage
 ./release-version.py -p patch
+./release-version.py -p num
+./release-version.py -p stage
 
 # dry-run
 ./release-version.py -d -n 1.0.1
