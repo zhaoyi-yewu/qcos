@@ -16,6 +16,8 @@
 # ----------------------------------------------------------------------
 
 from collections import deque
+from collections.abc import Callable
+import copy
 
 import rustworkx as rx
 
@@ -42,6 +44,7 @@ class OptimizingTemplate:
         replacement: DAGCircuit | None = None,
         anchor: int = 0,
         weight: int = 1,
+        param_transform: Callable | None = None,
     ):
         """Data structure for OptimizingTemplate.
 
@@ -53,11 +56,14 @@ class OptimizingTemplate:
             replacement (DAGCircuit): replacement circuit
             anchor (int): starting qubit of comparison with template.
             weight (int): reduced gate count.
+            param_transform (Callable): a function to process the parameter
+                transformation in equivalence pass, like `XRy(θ)X -> Ry(-θ)`.
         """
         self.template = template
         self.replacement = replacement
         self.anchor = anchor
         self.weight = weight
+        self.param_transform = param_transform
 
     def compare(self, dag: DAGCircuit, start_node: DAGOpNode, anchor: int):
         """Compare template dag with circuit dag from start_node.
@@ -305,15 +311,26 @@ def replace_all(dag: DAGCircuit, template: OptimizingTemplate):
             and replace it with template.replacement.
 
     Returns:
-        int: the number of reduced H gates.
+        int: the number of reduced gates.
     """
     cnt = 0
     for node in dag.topological_op_nodes():
-        mapping = template.compare(dag, node, template.anchor)
+        mapping = template.compare(dag, node, node.qargs[0])
         if mapping:
             nodes = mapping.values()
             tmp_op = GateOperation(name="tmp")
             tmp_node = dag.replace_block_with_op(nodes, tmp_op)
-            dag.substitute_node_with_dag(tmp_node, template.replacement)
+            replacement = copy.deepcopy(template.replacement)
+            # special case, symmetric template
+            if template.weight == 4:
+                start_compare_qubit = node.qargs[0]
+                if tmp_node.qargs[1] == start_compare_qubit:
+                    tmp_node.qargs = tmp_node.qargs[::-1]
+            ret = dag.substitute_node_with_dag(tmp_node, replacement)
+            # the qubits in op needs to be updated
+            for new_node in ret.values():
+                new_node.op.targets = list(new_node.qargs)
+            if template.param_transform is not None:
+                template.param_transform(template, mapping, ret)
             cnt += template.weight
     return cnt

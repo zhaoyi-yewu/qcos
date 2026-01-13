@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -17,7 +17,10 @@
 
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import pass_merge_theta
-from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
+from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import (
+    optimize_gate,
+    optimize,
+)
 from wy_qcos.tests.unit_tests.transpiler.comm import validate_gate_ir
 
 
@@ -84,3 +87,17 @@ class TestGateOptimizer:
         validate_gate_ir(gates_list[0], "h", [0], 1, True)
         validate_gate_ir(gates_list[1], "cx", [0, 1], 2, True)
         assert pass_merge_theta(gates_list) is False
+
+    def test_optimize(self):
+        tree = get_abs_tree(self.data)
+        assert tree is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
+        assert q_num == 5
+        assert len(gates_list) == 18
+        opt_gates = optimize(gates_list)
+        print(opt_gates)
+        assert len(opt_gates) == 3
+        validate_gate_ir(opt_gates[0], "ry", [0], 1, False)
+        validate_gate_ir(opt_gates[1], "z", [0], 1, True)
+        validate_gate_ir(opt_gates[2], "ry", [3], 1, False)

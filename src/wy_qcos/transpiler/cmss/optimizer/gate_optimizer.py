@@ -32,6 +32,7 @@ from wy_qcos.transpiler.cmss.common.gate_operation import (
     T,
     TDG,
     CZ,
+    CCX,
 )
 from wy_qcos.transpiler.cmss.common.move import Move
 from wy_qcos.transpiler.cmss.common.reset import Reset
@@ -41,6 +42,12 @@ from wy_qcos.transpiler.cmss.optimizer.inverse_cancellation import (
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
 from wy_qcos.transpiler.cmss.optimizer.clifford_rz_optimization import (
     CliffordRzOptimization,
+)
+from wy_qcos.transpiler.cmss.optimizer.subcircuit_rewrite import (
+    EquivalencePass,
+)
+from wy_qcos.transpiler.cmss.optimizer.adjacent_optimization import (
+    AdjacentPhaseOptPass,
 )
 
 
@@ -275,7 +282,10 @@ def optimize(
         Z(),
         SWAP(),
         CZ(),
+        CCX(),
     ])
+    equivalence_optimizer = EquivalencePass()
+    adjacent_phase_optimizer = AdjacentPhaseOptPass()
     commutative_optimizer = CliffordRzOptimization(verbose=verbose)
 
     # The passes in the current optimization levels are not the final versions.
@@ -284,11 +294,25 @@ def optimize(
     # will be added to Level 3.
     _opt: list[Any] = []
     if opt_level == 1:
-        _opt = [inverse_optimizer]
+        _opt = [
+            inverse_optimizer,
+            adjacent_phase_optimizer,
+            equivalence_optimizer,
+        ]
     elif opt_level == 2:
-        _opt = [inverse_optimizer, commutative_optimizer]
+        _opt = [
+            inverse_optimizer,
+            adjacent_phase_optimizer,
+            equivalence_optimizer,
+            commutative_optimizer,
+        ]
     elif opt_level == 3:
-        _opt = [inverse_optimizer, commutative_optimizer]
+        _opt = [
+            inverse_optimizer,
+            adjacent_phase_optimizer,
+            equivalence_optimizer,
+            commutative_optimizer,
+        ]
     else:
         raise ValueError(f"Optimization level {opt_level} is not supported.")
 
