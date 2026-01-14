@@ -1,0 +1,61 @@
+@startuml
+left to right direction
+skinparam backgroundColor #FFFFFF
+
+skinparam rectangle {
+    BackgroundColor #F8F8FF
+    BorderColor #333
+    BorderThickness 1.5
+    FontSize 12
+}
+
+skinparam queue {
+    BackgroundColor #FFF
+    BorderColor #333
+}
+
+skinparam actor {
+    BorderColor #333
+}
+
+rectangle "qcos" as QCOS {
+    together {
+        rectangle "命令行" as CLI {
+        }
+
+        rectangle "北向接口posiq" as POSIQ{
+        }
+
+        rectangle "scheduler" as SCHED {
+            rectangle "task-manager" {
+                rectangle "prefect-client" as PREFECT_CLIENT
+            }
+        }
+    }
+    CLI --> POSIQ
+    POSIQ --> PREFECT_CLIENT
+    PREFECT_CLIENT --> POSIQ
+    POSIQ --> CLI
+}
+
+rectangle "prefect-server" as PREFECT_SERVER {
+    rectangle "workpool-dummy" {
+        queue "queue:\n优先级1" as Q1
+        queue "queue:\n优先级2" as Q2
+        queue "queue:\n优先级n" as Qn
+
+        actor "worker" as WORKER
+
+        Q1 --> WORKER
+        Q2 --> WORKER
+        Qn --> WORKER
+    }
+    rectangle "workpool-tiangong100"
+    rectangle "workpool-hanyuan1"
+    rectangle "workpool-spinq_rpc"
+    rectangle "..."
+}
+
+PREFECT_CLIENT --> PREFECT_SERVER
+PREFECT_SERVER --> PREFECT_CLIENT
+@enduml
