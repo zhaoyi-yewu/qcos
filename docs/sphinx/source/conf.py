@@ -34,6 +34,8 @@ src_dir = os.path.abspath(f"{top_dir}/src")
 sys.path.insert(0, src_dir)
 from wy_qcos.common.config import Config
 from wy_qcos.common.qcos_version import QcosVersion
+on_rtd = os.environ.get("READTHEDOCS") == "True"
+
 
 project = f"{Config.PLATFORM_NAME}"
 title = "QCOS Documentation"
@@ -78,7 +80,7 @@ def skip_spinq_module(app, what, name, obj, skip, options):
     return skip
 
 
-def run_apidoc(app):
+def run_apidoc():
     """Run apidoc."""
 
     apidoc.main(["-H", "QCOS API文档", "-f", "-o", sphinx_api_dir, f"{src_dir}"])
@@ -86,16 +88,22 @@ def run_apidoc(app):
 
 def setup(app):
     """Setup app."""
+
+    def check_builder(app):
+        builder_name = app.builder.name
+        print(f"Builder name: {builder_name}")
+        if "html" in builder_name:
+            extensions.append("sphinxcontrib.jquery")
+            run_apidoc()
+        else:
+            shutil.rmtree(
+                f"{top_dir}/docs/sphinx/source/api/",
+                ignore_errors=True,
+                onerror=None
+            )
+
     app.connect("autodoc-skip-member", skip_spinq_module)
-    if "html" in app.tags or "singlehtml" in app.tags:
-        extensions.append("sphinxcontrib.jquery")
-        app.connect("builder-inited", run_apidoc)
-    else:
-        shutil.rmtree(
-            f"{top_dir}/docs/sphinx/source/api/",
-            ignore_errors=True,
-            onerror=None
-        )
+    app.connect("builder-inited", check_builder)
 
 
 source_suffix = {
@@ -131,6 +139,8 @@ os.environ["PUPPETEER_EXECUTABLE_PATH"] = "/usr/bin/firefox"
 
 # plantuml configs
 plantuml = "java -Djava.awt.headless=true -jar /usr/local/lib/node_modules/plantuml/vendor/plantuml.jar"
+if on_rtd:
+    plantuml = "plantuml"
 plantuml_output_format = "svg"  # default: png
 
 # latex config
@@ -145,6 +155,7 @@ latex_documents = [
 latex_elements = {
     "papersize": "a4paper",
     "pointsize": "10pt",
+    "figure_align": "H",
     "fncychap": "",
     "fontpkg": """
         \setmainfont{FreeSerif}[

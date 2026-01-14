@@ -6,6 +6,10 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.11"
+  apt_packages:
+    - graphviz
+    - openjdk-17-jre
+    - plantuml
 
 sphinx:
   configuration: docs/sphinx/source/conf.py
@@ -21,5 +25,5 @@ python:
 
 formats:
   - pdf
+  - htmlzip
 #   - epub
-
