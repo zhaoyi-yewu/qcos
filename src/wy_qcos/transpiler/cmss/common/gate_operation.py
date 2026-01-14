@@ -1742,6 +1742,39 @@ class U3(GateOperation):
         )
 
 
+class U(GateOperation):
+    """U门，对应于任意角度的极坐标旋转，参数为θ、ϕ和λ."""
+
+    def __init__(self, targets=None, arg_value=None) -> None:
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_U, targets, arg_value, hermitian=False
+        )
+
+    def default_decompose(self):
+        gates = [
+            RZ(self.targets, self.arg_value[1] + np.pi * 3),
+            RX(self.targets, np.pi / 2),
+            RZ(self.targets, self.arg_value[0] + np.pi),
+            RX(self.targets, np.pi / 2),
+            RZ(self.targets, self.arg_value[2]),
+        ]
+        return gates[::-1]
+
+    def __array__(self, dtype=complex):
+        """Return a Numpy.ndarray for the U3 gate."""
+        theta, phi, lam = self.arg_value
+        theta, phi, lam = float(theta), float(phi), float(lam)
+        u3_cos = cos(theta / 2)
+        u3_sin = sin(theta / 2)
+        return np.array(
+            [
+                [u3_cos, -exp(1j * lam) * u3_sin],
+                [exp(1j * phi) * u3_sin, exp(1j * (phi + lam)) * u3_cos],
+            ],
+            dtype=dtype,
+        )
+
+
 def create_gate(
     name: str,
     targets: list = [],
@@ -1785,13 +1818,19 @@ def create_gate(
         return T(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_P:
         return P(targets, arg_value)
-    elif name == Constant.SINGLE_QUBIT_GATE_U:
-        return U3(targets, arg_value)
+    elif name in (
+        Constant.SINGLE_QUBIT_GATE_U,
+        Constant.SINGLE_QUBIT_GATE_U_UPPERCASE,
+    ):
+        return U(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_SDG:
         return SDG(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_TDG:
         return TDG(targets, arg_value)
-    elif name == Constant.TWO_QUBIT_GATE_CX:
+    elif name in (
+        Constant.TWO_QUBIT_GATE_CX,
+        Constant.TWO_QUBIT_GATE_CX_UPPERCASE,
+    ):
         return CX(targets, arg_value)
     elif name == Constant.TWO_QUBIT_GATE_CY:
         return CY(targets, arg_value)

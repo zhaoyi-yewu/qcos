@@ -78,6 +78,7 @@ class Constant:
     SINGLE_QUBIT_GATE_T = "t"
     SINGLE_QUBIT_GATE_P = "p"
     SINGLE_QUBIT_GATE_U = "u"
+    SINGLE_QUBIT_GATE_U_UPPERCASE = "U"
     SINGLE_QUBIT_GATE_R = "r"
     SINGLE_QUBIT_GATE_RX = "rx"
     SINGLE_QUBIT_GATE_RY = "ry"
@@ -99,6 +100,7 @@ class Constant:
         SINGLE_QUBIT_GATE_T,
         SINGLE_QUBIT_GATE_P,
         SINGLE_QUBIT_GATE_U,
+        SINGLE_QUBIT_GATE_U_UPPERCASE,
         SINGLE_QUBIT_GATE_R,
         SINGLE_QUBIT_GATE_RX,
         SINGLE_QUBIT_GATE_RY,
@@ -117,6 +119,7 @@ class Constant:
     TWO_QUBIT_GATE_CRY = "cry"
     TWO_QUBIT_GATE_CRZ = "crz"
     TWO_QUBIT_GATE_CX = "cx"
+    TWO_QUBIT_GATE_CX_UPPERCASE = "CX"
     TWO_QUBIT_GATE_CY = "cy"
     TWO_QUBIT_GATE_CZ = "cz"
     TWO_QUBIT_GATE_SWAP = "swap"
@@ -133,6 +136,7 @@ class Constant:
         TWO_QUBIT_GATE_CRY,
         TWO_QUBIT_GATE_CRZ,
         TWO_QUBIT_GATE_CX,
+        TWO_QUBIT_GATE_CX_UPPERCASE,
         TWO_QUBIT_GATE_CY,
         TWO_QUBIT_GATE_CZ,
         TWO_QUBIT_GATE_SWAP,

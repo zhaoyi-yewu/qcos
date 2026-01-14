@@ -66,6 +66,7 @@ class Visitor:
             "sx",
             "sxdg",
             "cx",
+            "CX",
             "cy",
             "cz",
             "ch",
@@ -91,6 +92,7 @@ class Visitor:
             "u2",
             "u3",
             "u",
+            "U",
         }
         self.gate = {
             "h": (1, 0),
@@ -109,6 +111,7 @@ class Visitor:
             "sx": (1, 0),
             "sxdg": (1, 0),
             "cx": (2, 0),
+            "CX": (2, 0),
             "cy": (2, 0),
             "cz": (2, 0),
             "ch": (2, 0),
@@ -134,6 +137,7 @@ class Visitor:
             "u2": (1, 2),
             "u3": (1, 3),
             "u": (1, 3),
+            "U": (1, 3),
         }
         self.defined_gate = {}
         self.now_gate = ""
