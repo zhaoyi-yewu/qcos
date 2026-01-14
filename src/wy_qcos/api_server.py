@@ -23,7 +23,6 @@ import traceback
 from wy_qcos.common.library import Library
 from wy_qcos.common.qcos_version import QcosVersion
 from wy_qcos.server import Server
-from wy_qcos.task_manager import scheduler
 
 __all__ = []
 __version__ = QcosVersion.VERSION
@@ -74,7 +73,6 @@ def main():
         daemonize()
     try:
         loop = asyncio.get_event_loop()
-        scheduler.start_taskmanager()
         Server().run(loop)
     except Exception as e:
         print(f"{e}\n{traceback.format_exc()}")

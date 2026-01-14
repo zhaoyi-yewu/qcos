@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -18,6 +18,7 @@
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.cmss.mapping import NASingleRoute, NARoute
 from wy_qcos.transpiler.cmss.mapping import SCRoute
+from wy_qcos.transpiler.cmss.mapping.empty_mapping import EmptyRoute
 from wy_qcos.transpiler.common.errors import MappingException
 
 
@@ -28,6 +29,7 @@ class MappingFactory:
         self._mapping = {
             Constant.TECH_TYPE_NEUTRAL_ATOM: NASingleRoute(),
             Constant.TECH_TYPE_SUPERCONDUCTING: SCRoute(),
+            Constant.TECH_TYPE_GENERIC_SIMULATOR: EmptyRoute(),
         }
 
     def get_mapper_by_type(self, tech_type: str, na_support_move: bool):

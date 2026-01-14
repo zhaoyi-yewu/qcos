@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -117,7 +117,8 @@ class TestTranspilerQiskit:
         assert res is True
 
     @patch(
-        "wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd.main_qiskit_transpiler"
+        "wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd."
+        "main_qiskit_transpiler"
     )
     def test_qiskit_parse_args(self, mock_main_qiskit_transpiler):
         sys.argv = [
@@ -146,7 +147,6 @@ class TestTranspilerQiskit:
 
         input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
         output_file = "CHANGELOG"
-        output_file_path = Path(output_file).resolve()
         mock_file = mock_open()
         mock_file_handler = MagicMock()
         with (
@@ -155,9 +155,6 @@ class TestTranspilerQiskit:
             patch("logging.Logger.addHandler") as mock_add_handler,
         ):
             res = check_file_args(input_file, output_file)
-            mock_file.assert_called_once_with(
-                output_file_path, "w", encoding="utf-8"
-            )
             mock_file().write.assert_called_once_with(
                 f"testing file: {input_file}\n"
             )

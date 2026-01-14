@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -23,6 +23,7 @@ from wy_qcos.transpiler.cmss.circuit.register import (
     QuantumRegister,
     ClassicalRegister,
 )
+from wy_qcos.transpiler.cmss.common.measure import Measure
 
 
 class QuantumCircuit:
@@ -46,16 +47,20 @@ class QuantumCircuit:
         self._global_phase: float = global_phase
 
     @classmethod
-    def from_ir(cls, ir: list[BaseOperation]):
+    def from_ir(cls, ir: list[BaseOperation], num_qubits: int = 0):
         """Create a quantum circuit from a list of gate operations.
 
         Args:
             ir (list[BaseOperation]): gate operations of ir.
+            num_qubits (int): number of qubits in the circuit.
 
         Returns:
             QuantumCircuit: a quantum circuit corresponding to the ir.
         """
-        circ = QuantumCircuit()
+        if num_qubits > 0:
+            circ = QuantumCircuit(num_qubits)
+        else:
+            circ = QuantumCircuit()
         circ.append_operations(ir)
         return circ
 
@@ -177,3 +182,22 @@ class QuantumCircuit:
                 self._num_clbits += reg.size
             else:
                 raise TypeError("Invalid register type!")
+
+    def measure(self, qubits: list):
+        """Measure quantum bits.
+
+        Args:
+            qubits: qubit(s) to measure.
+        """
+        for qubit in qubits:
+            self.append(Measure(targets=[qubit]))
+
+    def measure_all(self):
+        """Adds measurement to all qubits.
+
+        By default, adds new classical bits in a :obj:`.ClassicalRegister`
+        to store these measurements.
+
+        """
+        qubits = list(range(self._num_qubits))
+        self.measure(qubits)

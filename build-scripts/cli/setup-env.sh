@@ -1,6 +1,6 @@
 #!/bin/sh
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -19,9 +19,10 @@ BASE_DIR=$(dirname "${BASH_SOURCE[0]}")
 BASE_DIR=$(readlink -f ${BASE_DIR})
 TOP_DIR=$(readlink -f ${BASE_DIR}/../..)
 BUILD_SCRIPTS_DIR=${TOP_DIR}/build-scripts
-OUTPUT_DIR=${BUILD_SCRIPTS_DIR}/output/dist
+OUTPUT_DIR=${BUILD_SCRIPTS_DIR}/cli/output/dist
 
 env_file=${BUILD_SCRIPTS_DIR}/.env
+
 if ! [ -f "${env_file}" ]; then
     echo "Error: can't find config file: '${env_file}'"
     exit 1

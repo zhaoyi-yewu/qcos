@@ -1,6 +1,6 @@
 #!/bin/sh
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -29,8 +29,4 @@ cd ${SPHINX_DOCS_DIR}
 
 # create sphinx dist dir
 make clean
-rm -rf ./source/api
-mkdir -p ./source/api
-# create sphinx api docs
-sphinx-apidoc -H "QCOS API" -f -o ./source/api ${TOP_DIR}/src
-SPHINX_FAIL_ON_WARNING="-W -q" make man
+SPHINX_FAIL_ON_WARNING="-W -q" make html

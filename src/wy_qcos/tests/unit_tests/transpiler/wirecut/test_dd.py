@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -65,7 +65,8 @@ class TestDD(unittest.TestCase):
         self.max_depths = 3
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.dd.parse_results_from_hardware_service"
+        "wy_qcos.transpiler.cmss.wirecut.dd."
+        "parse_results_from_hardware_service"
     )
     @patch("wy_qcos.transpiler.cmss.wirecut.dd.asign_probability")
     def test_dd_init(self, mock_asign_probability, mock_parse_results):
@@ -96,7 +97,8 @@ class TestDD(unittest.TestCase):
         assert isinstance(dd.subcircuit_entry_probs, dict)
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.dd.parse_results_from_hardware_service"
+        "wy_qcos.transpiler.cmss.wirecut.dd."
+        "parse_results_from_hardware_service"
     )
     @patch("wy_qcos.transpiler.cmss.wirecut.dd.asign_probability")
     def test_init_data(self, mock_asign_probability, mock_parse_results):
@@ -117,7 +119,8 @@ class TestDD(unittest.TestCase):
         assert isinstance(dd.subcircuit_entry_probs, dict)
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.dd.parse_results_from_hardware_service"
+        "wy_qcos.transpiler.cmss.wirecut.dd."
+        "parse_results_from_hardware_service"
     )
     @patch("wy_qcos.transpiler.cmss.wirecut.dd.asign_probability")
     def test_distribute_load(self, mock_asign_probability, mock_parse_results):
@@ -142,7 +145,8 @@ class TestDD(unittest.TestCase):
             assert loads[idx] <= capacities[idx]
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.dd.parse_results_from_hardware_service"
+        "wy_qcos.transpiler.cmss.wirecut.dd."
+        "parse_results_from_hardware_service"
     )
     @patch("wy_qcos.transpiler.cmss.wirecut.dd.asign_probability")
     def test_assign_probabilities(
@@ -198,7 +202,8 @@ class TestDD(unittest.TestCase):
         np.testing.assert_almost_equal(result[0], 1.0)
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.dd.parse_results_from_hardware_service"
+        "wy_qcos.transpiler.cmss.wirecut.dd."
+        "parse_results_from_hardware_service"
     )
     @patch("wy_qcos.transpiler.cmss.wirecut.dd.asign_probability")
     @patch("wy_qcos.transpiler.cmss.wirecut.dd.Reconstructor")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -308,16 +308,12 @@ def replace_all(dag: DAGCircuit, template: OptimizingTemplate):
         int: the number of reduced H gates.
     """
     cnt = 0
-    while True:
-        # the template(rx.PyDAG) to search
-        tpl_graph = template.template._multi_graph
-        ret_mapping, nodes = search_template(dag, tpl_graph)
-        # already replaced all
-        if len(ret_mapping) == 0:
-            break
-        # tmp operation, will be replaced with template.replacement
-        tmp_op = GateOperation(name="tmp", validate=False)
-        tmp_node = dag.replace_block_with_op(nodes, tmp_op)
-        dag.substitute_node_with_dag(tmp_node, template.replacement)
-        cnt += template.weight
+    for node in dag.topological_op_nodes():
+        mapping = template.compare(dag, node, template.anchor)
+        if mapping:
+            nodes = mapping.values()
+            tmp_op = GateOperation(name="tmp")
+            tmp_node = dag.replace_block_with_op(nodes, tmp_op)
+            dag.substitute_node_with_dag(tmp_node, template.replacement)
+            cnt += template.weight
     return cnt

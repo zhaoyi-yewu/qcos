@@ -250,6 +250,7 @@ class Server:
             scheduler.set_driver_manager(driver_manager)
             scheduler.set_transpiler_manager(transpiler_manager)
             scheduler.set_device_manager(device_manager)
+            scheduler.start_taskmanager()
 
             # run any unfinished callbacks
             logger.info("Processing unfinished callbacks ...")

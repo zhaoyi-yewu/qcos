@@ -11,7 +11,7 @@
    driver
    transpiler
    instruction-set
-   circuit-aggregation
+   aggregation-cutting
    user
    virtualization
    api/index.rst

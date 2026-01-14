@@ -1,6 +1,6 @@
 #!/bin/bash
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -16,18 +16,15 @@
 
 set -e
 
-source ./setup-env.sh
-
 BASE_DIR=$(dirname "$0")
 BASE_DIR=$(readlink -f ${BASE_DIR})
 TOP_DIR=$(readlink -f ${BASE_DIR}/../..)
 SRC_DIR=${BASE_DIR}
-OUTPUT_DIR=${BASE_DIR}/output/dist
+
+source ${BASE_DIR}/setup-env.sh
 
 if [ -n "${PIP_MIRROR}" ]; then
-  poetry source add --priority=primary pip_mirror "${PIP_MIRROR}"
-else
-  poetry source remove pip_mirror
+  poetry source -C ${SRC_DIR} add --priority=primary pip_mirror "${PIP_MIRROR}"
 fi
 
 # clean env
@@ -35,7 +32,9 @@ rm -rf ${TOP_DIR}/build
 rm -rf ${TOP_DIR}/src/wy_qcos_client*.egg-info
 
 # build
-poetry -C ${SRC_DIR} build -o ${OUTPUT_DIR}
-poetry source remove pip_mirror
+poetry build -C ${SRC_DIR} -o ${OUTPUT_DIR}
+if [ -n "${PIP_MIRROR}" ]; then
+  poetry source -C ${SRC_DIR} remove pip_mirror
+fi
 echo "Dist package dir: ${OUTPUT_DIR}"
 

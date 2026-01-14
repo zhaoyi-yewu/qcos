@@ -8,6 +8,7 @@
 
    introduction
    features
+   roadmap
    architecture
    project-structure
    module-design/index.rst

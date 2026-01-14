@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -18,6 +18,7 @@
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.circuit.register import QuantumRegister
+from wy_qcos.transpiler.cmss.common.measure import Measure
 
 
 class Cut:
@@ -119,6 +120,8 @@ class Cut:
                 self.dag.nodes_on_wire(wire=qubit, only_ops=True)
             )
             for _, op in enumerate(qubit_operations):
+                if isinstance(op.op, Measure):
+                    continue
                 gate_encoding = gate_encoding_map[op]
                 closest_sc_idx = -1
                 closest_distance = float("inf")
@@ -205,7 +208,7 @@ class Cut:
             gate_str (str): String representation of the door
 
         Returns:
-            parsed_qubits: 包含(量子比特名称, 门索引)的列表
+            List: Contains (quantum bit name, gate index)
         """
         parsed_qubits = []
         for q_arg in gate_str.split(" "):
@@ -230,9 +233,13 @@ class Cut:
             list: Generated subcircuit list
         """
         qubit_position_tracker = {qubit: 0 for qubit in path_mapping}
-        circuit_list = [QuantumCircuit(size) for size in subcircuit_widths]
+        circuit_list = [
+            QuantumCircuit(size, size) for size in subcircuit_widths
+        ]
         # Process operation nodes in topological order
         for operation_node in dag.topological_op_nodes():
+            if isinstance(operation_node.op, Measure):
+                continue
             containing_subcircuits = [
                 sc_idx
                 for sc_idx in subcircuit_operations.keys()

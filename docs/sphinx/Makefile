@@ -1,7 +1,7 @@
 # Makefile for Sphinx documentation
 #
 
-SPHINXOPTS    = -T -j auto $(SPHINX_FAIL_ON_WARNING)
+SPHINXOPTS    = -T $(SPHINX_FAIL_ON_WARNING)
 SPHINXBUILD   = sphinx-build
 SOURCEDIR     = source
 PAPER         =
@@ -12,15 +12,17 @@ PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS)
 
-.PHONY: help clean html dirhtml singlehtml dist-html latex latexpdf text man
+.PHONY: help clean html dirhtml singlehtml dist-html latex latexpdf docx text man
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
 	@echo "  html       to make standalone HTML files"
 	@echo "  dirhtml    to make HTML files named index.html in directories"
 	@echo "  singlehtml to make a single large HTML file"
+	@echo "  chm        to make chm file"
 	@echo "  latex      to make LaTeX files, you can set PAPER=a4 or PAPER=letter"
 	@echo "  latexpdf   to make LaTeX files and run them through pdflatex"
+	@echo "  docx       to make docx files through docxbuilder"
 	@echo "  text       to make text files"
 	@echo "  man        to make manual pages"
 
@@ -45,12 +47,11 @@ singlehtml:
 chm:
 	$(SPHINXBUILD) -b htmlhelp -t chm $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/chm_src
 	@echo
-	@echo "Build finished. The CHM page is in $(BUILDDIR)/chm."
+	@echo "Build finished. The CHM file is in $(BUILDDIR)/chm."
 
 latex:
 	@rm -rf $(BUILDDIR)/latex
 	$(SPHINXBUILD) -b latex -t latex $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/latex
-	# cp texinputs/* $(BUILDDIR)/latex/
 	@echo
 	@echo "Build finished; the LaTeX files are in $(BUILDDIR)/latex."
 	@echo "Run \`make' in that directory to run these through (pdf)latex" \
@@ -59,10 +60,15 @@ latex:
 latexpdf:
 	@rm -rf $(BUILDDIR)/latex
 	$(SPHINXBUILD) -b latex -t latexpdf $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/latex
-	# cp texinputs/* $(BUILDDIR)/latex/
 	@echo "Running LaTeX files through pdflatex..."
 	make -C $(BUILDDIR)/latex all-pdf
 	@echo "pdflatex finished; the PDF files are in $(BUILDDIR)/latex."
+
+docx:
+	@rm -rf $(BUILDDIR)/docx
+	$(SPHINXBUILD) -b docx -t docx $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/docx
+	@echo
+	@echo "Build finished. The docx file is in $(BUILDDIR)/docx."
 
 text:
 	@echo $(SPHINXBUILD) -b text -t text $(ALLSPHINXOPTS) ${SOURCEDIR} $(BUILDDIR)/text

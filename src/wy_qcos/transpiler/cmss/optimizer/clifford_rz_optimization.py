@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 from functools import cached_property
+import time
 
 import numpy as np
 
@@ -28,16 +29,86 @@ from wy_qcos.transpiler.cmss.optimizer.template import (
     generate_cnot_targ_templates,
 )
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
-from wy_qcos.transpiler.cmss.circuit.dag_node import DAGOutNode, DAGOpNode
+from wy_qcos.transpiler.cmss.circuit.dag_node import DAGOpNode
 from wy_qcos.transpiler.cmss.circuit.collect_blocks import (
     BlockCollector,
 )
+from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
 
 
 class CliffordRzOptimization:
-    def __init__(self, level="light", verbose=False) -> None:
-        self.level = level
+    _optimize_sub_method = {
+        1: "reduce_hadamard_gates",
+        2: "cancel_single_qubit_gates",
+        3: "cancel_two_qubit_gates",
+        4: "merge_rotations",
+    }
+    _optimize_routine = [1, 3, 2, 3, 1, 2, 4, 3, 2]
+
+    para_rule = {
+        "s": np.pi / 2,
+        "t": np.pi / 4,
+        "sdg": -np.pi / 2,
+        "tdg": -np.pi / 4,
+        "z": np.pi,
+    }
+
+    depara_rule = {
+        0: ["id"],
+        1: ["t"],
+        2: ["s"],
+        3: ["s", "t"],
+        4: ["z"],
+        5: ["z", "t"],
+        6: ["sdg"],
+        7: ["tdg"],
+    }
+
+    def __init__(self, verbose=False) -> None:
         self.verbose = verbose
+
+    def parameterize_all(self, dag: DAGCircuit):
+        """Convert all T/Tdg/S/Sdg/Z into Rz gates.
+
+        Args:
+            dag (DAGCircuit): DAG of the circuit
+        """
+        for node in dag.topological_op_nodes():
+            if node.name in ["s", "t", "sdg", "tdg", "z"]:
+                old_op = node.op
+                new_op = create_gate(
+                    "rz",
+                    targets=node.op.targets,
+                    arg_value=[self.para_rule[node.name]],
+                )
+                dag.rename_op(old_op, new_op)
+                node.op = new_op
+                node.name = "rz"
+
+    def deparameterize_all(self, dag: DAGCircuit):
+        """Convert all Rz gates into T/Tdg/S/Sdg/Z.
+
+        Args:
+            dag (DAGCircuit): DAG of the circuit
+        """
+        for node in dag.topological_op_nodes():
+            if node.name == "rz":
+                times = np.mod(node.op.arg_value[0], 2 * np.pi) / (np.pi / 4)
+                if not np.isclose(round(times), times, rtol=0):
+                    continue
+                g_list = self.depara_rule[round(times) % 8]
+                if len(g_list) > 1:
+                    continue
+                if g_list[0] == "id":
+                    dag.remove_op_node(node)
+                    continue
+                old_op = node.op
+                new_op = create_gate(
+                    g_list[0], targets=node.op.targets, arg_value=[]
+                )
+                dag.rename_op(old_op, new_op)
+                node.op = new_op
+                node.name = g_list[0]
 
     @cached_property
     def hadamard_templates(self) -> list[OptimizingTemplate]:
@@ -74,6 +145,65 @@ class CliffordRzOptimization:
             cnt += replace_all(dag, template)
         return cnt
 
+    def get_next_node_on_specific_qubit(
+        self, dag: DAGCircuit, cur_node: DAGOpNode, qubit: int
+    ):
+        """Get the next node on a specific qubit.
+
+        We need the direct successor of a node along a specific qubit. However,
+        `DAGCircuit.successors` returns all topological successors regardless
+        of qubits. Therefore, we determine whether two nodes are directly
+        adjacent on a given qubit by analyzing the predecessors of the
+        candidate successor node.
+
+        Args:
+            dag (DAGCircuit): the dag containing the cur_node.
+            cur_node (DAGOpNode): the current node.
+            qubit (int): get the next node on this qubit.
+
+        Returns:
+            DAGOpNode: the next node.
+        """
+        if qubit not in cur_node.qargs:
+            raise ValueError(f"{qubit} is not in qargs of {cur_node.name}.")
+        next_nodes = list(dag.successors(cur_node))
+        if len(next_nodes) == 0:
+            return None
+        if len(next_nodes) == 1:
+            return next_nodes[0]
+
+        for nxt in next_nodes:
+            if isinstance(nxt, DAGOpNode):
+                qubits_of_nxt = set(nxt.qargs)
+            else:
+                qubits_of_nxt = {nxt.wire}
+            # the predecessors of `nxt` node
+            pre_nodes_of_nxt = list(dag.predecessors(nxt))
+            for pre_ in pre_nodes_of_nxt:
+                if pre_ is cur_node:
+                    continue
+                # only precess the node between `cur_node` and `nxt`
+                if pre_ in dag.ancestors(cur_node):
+                    continue
+
+                # the qubits of `pre_`
+                if isinstance(pre_, DAGOpNode):
+                    qargs = pre_.qargs
+                else:
+                    # DAGInNode or DAGOutNode
+                    qargs = (pre_.wire,)
+
+                for qubit_ in qargs:
+                    if qubit_ in qubits_of_nxt:
+                        # lies between `cur_node` and `nxt`, cause the
+                        # operations to be non-adjacent on the `qubit_`
+                        qubits_of_nxt.remove(qubit_)
+            # if the specific `qubit` is still in `qubits_of_nxt`, indicates
+            # that the cur_node is adjacent with nxt on the qubit
+            if qubit in qubits_of_nxt:
+                return nxt
+        return None
+
     def cancel_single_qubit_gates(self, dag: DAGCircuit):
         """Merge Rz gates using commutation rules.
 
@@ -95,24 +225,14 @@ class CliffordRzOptimization:
                 continue
 
             c_node = node
+            qubit_idx = node.qargs[0]
             while True:
                 # next node
-                n_node: DAGOpNode = list(dag.successors(c_node))[0]
-                if isinstance(n_node, DAGOutNode):
+                n_node = self.get_next_node_on_specific_qubit(
+                    dag, c_node, qubit_idx
+                )
+                if not isinstance(n_node, DAGOpNode):
                     break
-                # cx gate has multiple next nodes, we choose the one has the
-                # same qargs with rz node, because the commutation rule will
-                # not change the qargs
-                if len(c_node.qargs) == 2:
-                    successors = list(dag.successors(c_node))
-                    for node_ in successors:
-                        if isinstance(node_, DAGOutNode):
-                            continue
-                        if node_.qargs == node.qargs:
-                            n_node = node_
-                            break
-                        if node.qargs[0] in node_.qargs:
-                            n_node = node_
 
                 if n_node.name == "rz":
                     n_node.op.arg_value[0] += node.op.arg_value[0]
@@ -158,32 +278,17 @@ class CliffordRzOptimization:
             c_ctrl_node, c_ctrl_qubit = node, node.qargs[0]
             c_targ_node, c_targ_qubit = node, node.qargs[1]
             while True:
-                ctrl_successors = list(dag.successors(c_ctrl_node))
-                targ_successors = list(dag.successors(c_targ_node))
-                n_ctrl_node = None
-                n_targ_node = None
-                # next node from control qubit
-                for node_ in ctrl_successors:
-                    if not isinstance(node_, DAGOpNode):
-                        continue
-                    if c_ctrl_qubit in node_.qargs:
-                        n_ctrl_node = node_
-                        # 1-qubit gate is closer to current node
-                        if len(node_.qargs) == 1:
-                            break
-                if n_ctrl_node is None:
+                # next node
+                n_ctrl_node = self.get_next_node_on_specific_qubit(
+                    dag, c_ctrl_node, c_ctrl_qubit
+                )
+                if not isinstance(n_ctrl_node, DAGOpNode):
                     break
-                # next node from target qubit
-                for node_ in targ_successors:
-                    if not isinstance(node_, DAGOpNode):
-                        continue
-                    if c_targ_qubit in node_.qargs:
-                        n_targ_node = node_
-                        if len(node_.qargs) == 1:
-                            break
-                if n_targ_node is None:
+                n_targ_node = self.get_next_node_on_specific_qubit(
+                    dag, c_targ_node, c_targ_qubit
+                )
+                if not isinstance(n_targ_node, DAGOpNode):
                     break
-
                 # adjacent cx
                 if (
                     id(n_ctrl_node) == id(n_targ_node)
@@ -334,3 +439,59 @@ class CliffordRzOptimization:
             cnt += 1
 
         return cnt
+
+    def run(self, dag: DAGCircuit):
+        """Optimize circuit with commutation rules.
+
+        Args:
+            dag (DAGCircuit): dag to be optimized.
+
+        Returns:
+            DAGCircuit: optimized dag.
+        """
+        routine = self._optimize_routine
+        init_size = dag.size()
+        self.parameterize_all(dag)
+
+        gate_reduced_cnt = 0
+        round_cnt = 0
+        total_time = 0.0
+
+        # optimize
+        while True:
+            round_cnt += 1
+            if self.verbose:
+                print(f"ROUND #{round_cnt}:")
+
+            cnt = 0
+            for step in routine:
+                start_time = time.time()
+                cur_cnt = getattr(self, self._optimize_sub_method[step])(dag)
+                end_time = time.time()
+
+                cnt += cur_cnt
+                step_time = end_time - start_time
+                total_time += step_time
+
+                if self.verbose:
+                    print(
+                        f"\t{self._optimize_sub_method[step]}: {cur_cnt} "
+                        f"gates reduced, cost {np.round(step_time, 3)} s"
+                    )
+            if cnt == 0:
+                break
+
+            gate_reduced_cnt += cnt
+
+        self.deparameterize_all(dag)
+        res_size = dag.size()
+
+        if self.verbose:
+            print(
+                f"initially {init_size} gates, "
+                f"reduced {gate_reduced_cnt} gates, "
+                f"remain {res_size} gates, "
+                f"cost {np.round(total_time, 3)} s "
+            )
+
+        return dag

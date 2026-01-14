@@ -1,6 +1,6 @@
 #!/bin/sh
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -54,8 +54,12 @@ done
 cd "${TOP_DIR}"
 echo "Docs linter start ..."
 
-MD_FILES=$(find ${TOP_DIR} -type f -name "*.md" -not -path "*/.pytest_cache/*")
-RST_FILES=$(find ${TOP_DIR} -type f -name "*.rst")
+MD_FILES=$(find ${TOP_DIR} \
+  -not -path "*/build-scripts/*" \
+  -not -path "*/samples/*" \
+  -not -path "*/.pytest_cache/*" \
+  -type f -name "*.md" \
+)
 if [ "${fix}" = false ]; then
   echo "Checking MD (Markdown) files:"
   for file in ${MD_FILES}; do
@@ -66,6 +70,7 @@ if [ "${fix}" = false ]; then
   done
 
   echo "Checking RST (reStructuredText) files:"
+  # doc8 configs are included in pyproject.toml
   doc8
 else
   echo "Fixing format of MD (markdown) files:"

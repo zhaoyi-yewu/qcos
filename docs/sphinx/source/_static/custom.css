@@ -1,5 +1,17 @@
 /* _static/custom.css */
 
+/* 移除最大宽度限制，让内容填满屏幕 */
+.wy-nav-content {
+    max-width: none !important;
+}
+
+/* 或者设置为一个更大的固定值，例如 1200px */
+/*
+.wy-nav-content {
+    max-width: 1200px !important;
+}
+*/
+
 /* 定义一个针对表格内部小字体的样式 */
 .table-code-small-font {
     /* 缩小字体大小，例如到 80% */

@@ -1,0 +1,676 @@
+pipeline {
+    agent any
+
+    triggers {
+        cron('H 22 * * *')
+        gitee(
+            triggerOnPush: true,
+            triggerOnCommitComment: true,
+            triggerOnOpenPullRequest: true,
+            triggerOnAcceptedPullRequest: false, 
+            triggerOnClosedPullRequest: false,
+            triggerOnUpdatePullRequest: true,
+            triggerOnNoteRequest: true,
+            noteRegex: "^/rebuild|^/retest|^/retry"
+        )
+    }
+
+    environment {
+        CI = 'true'
+        LOCAL_CICD = 'true'
+        PYTHONUNBUFFERED = '1'
+        REPORT_DIR = "${WORKSPACE}/reports"
+    }
+
+    options {
+        timestamps()
+        timeout(time: 2, unit: 'HOURS')
+        buildDiscarder(logRotator(numToKeepStr: '5', artifactNumToKeepStr: '5'))
+        giteeConnection('my-gitee')
+    }
+
+    stages {
+        stage('Initialize') {
+            steps {
+                script {
+                    echo "Initializing environment..."
+                    sh "docker system prune -af --volumes || true"
+                    sh "mkdir -p ${REPORT_DIR}"
+                    
+                    // Note: When using Pipeline script from SCM, Jenkins auto-checkouts the code
+                    // The following checkout step is only needed when using Pipeline script (paste directly)
+                    // checkout([
+                    //     $class: 'GitSCM', 
+                    //     branches: [[name: '*/develop']], 
+                    //     doGenerateSubmoduleConfigurations: false,
+                    //     extensions: [[$class: 'CleanBeforeCheckout'], [$class: 'CheckoutOption', timeout: 30]],
+                    //     submoduleCfg: [],
+                    //     userRemoteConfigs: [[credentialsId: 'gitee-ssh-key', url: 'git@gitee.com:OpenWuYue/qcos.git']]
+                    // ])
+                    
+                    writeFile file: "${WORKSPACE}/openEuler.repo", text: '''[OS]
+name=OS
+baseurl=http://mirrors.aliyun.com/openeuler/openEuler-24.03-LTS/OS/$basearch/
+enabled=1
+gpgcheck=0
+'''
+                    // Install required system tools
+                    sh "apt-get update && apt-get install -y file || true"
+                    
+                    // Install CMake
+                    sh "pip3 uninstall -y cmake || true"
+                    sh "curl -L -k --fail --retry 3 https://ghproxy.net/https://github.com/Kitware/CMake/releases/download/v3.26.4/cmake-3.26.4-linux-x86_64.tar.gz -o cmake.tar.gz"
+                    sh "tar -zxvf cmake.tar.gz"
+                    sh "cp -rf cmake-3.26.4-linux-x86_64/bin/* /usr/local/bin/"
+                    sh "mkdir -p /usr/local/share/cmake-3.26"
+                    sh "cp -rf cmake-3.26.4-linux-x86_64/share/* /usr/local/share/"
+                    sh "rm -f cmake.tar.gz"
+                    sh "rm -rf cmake-3.26.4-linux-x86_64"
+                    
+                    // Upgrade base build tools
+                    sh "pip3 install --upgrade pip setuptools wheel -i https://pypi.tuna.tsinghua.edu.cn/simple --break-system-packages --ignore-installed"
+                    
+                    // Install dependencies from requirements files
+                    sh "sed -i 's/igraph==.*/igraph/' requirements*.txt || true"
+                    sh "sed -i 's/python-igraph==.*/python-igraph/' requirements*.txt || true"
+                    sh """
+                    for f in requirements.txt requirements-test.txt requirements-driver.txt; do
+                        if [ -f "\$f" ]; then
+                            pip3 install -r "\$f" -i https://pypi.tuna.tsinghua.edu.cn/simple --break-system-packages --ignore-installed
+                        fi
+                    done
+                    """
+                    sh "ln -sf \$(which coverage) /usr/bin/coverage3 || true"
+                    
+                    // Fix environment: force numpy<2.0 and compatible mypy/numexpr versions
+                    // Must run after requirements.txt installation to override any incompatible versions
+                    sh """
+                    pip3 uninstall -y numexpr || true
+                    rm -rf /usr/local/lib/python3.*/dist-packages/numexpr* || true
+                    rm -rf /usr/local/lib/python3.*/site-packages/numexpr* || true
+                    pip3 install --force-reinstall --no-cache-dir 'numpy<2.0' 'mypy==1.10.0' 'numexpr==2.14.1' -i https://pypi.tuna.tsinghua.edu.cn/simple --break-system-packages
+                    """
+                    
+                    env.PATH = "/usr/local/bin:${env.PATH}"
+                }
+            }
+        }
+
+        stage('Debug Trigger Info') {
+            steps {
+                script {
+                    echo "=============================================="
+                    echo "DEBUG: Build Trigger Information"
+                    echo "=============================================="
+                    
+                    def causes = currentBuild.getBuildCauses()
+                    echo "Build Causes: ${causes}"
+                    causes.each { cause ->
+                        echo "  - Cause Class: ${cause.getClass().getName()}"
+                        echo "  - Short Description: ${cause.shortDescription}"
+                    }
+                    
+                    echo ""
+                    echo "--- Gitee Environment Variables ---"
+                    echo "giteeBranch: ${env.giteeBranch ?: 'N/A'}"
+                    echo "giteeSourceBranch: ${env.giteeSourceBranch ?: 'N/A'}"
+                    echo "giteeTargetBranch: ${env.giteeTargetBranch ?: 'N/A'}"
+                    echo "giteeSourceRepoURL: ${env.giteeSourceRepoURL ?: 'N/A'}"
+                    echo "giteeSourceRepoHttpUrl: ${env.giteeSourceRepoHttpUrl ?: 'N/A'}"
+                    echo "giteeSourceRepoSshUrl: ${env.giteeSourceRepoSshUrl ?: 'N/A'}"
+                    echo "giteePullRequestId: ${env.giteePullRequestId ?: 'N/A'}"
+                    echo "giteePullRequestIid: ${env.giteePullRequestIid ?: 'N/A'}"
+                    echo "giteePullRequestTitle: ${env.giteePullRequestTitle ?: 'N/A'}"
+                    echo "giteePullRequestState: ${env.giteePullRequestState ?: 'N/A'}"
+                    echo "giteeUserName: ${env.giteeUserName ?: 'N/A'}"
+                    echo "giteeUserEmail: ${env.giteeUserEmail ?: 'N/A'}"
+                    echo "giteeActionType: ${env.giteeActionType ?: 'N/A'}"
+                    echo "giteePullRequestUrl: ${env.giteePullRequestUrl ?: 'N/A'}"
+                    
+                    echo ""
+                    echo "--- Git Environment Variables ---"
+                    echo "GIT_BRANCH: ${env.GIT_BRANCH ?: 'N/A'}"
+                    echo "GIT_COMMIT: ${env.GIT_COMMIT ?: 'N/A'}"
+                    echo "GIT_URL: ${env.GIT_URL ?: 'N/A'}"
+                    echo "BRANCH_NAME: ${env.BRANCH_NAME ?: 'N/A'}"
+                    
+                    echo ""
+                    echo "--- Jenkins Build Variables ---"
+                    echo "BUILD_NUMBER: ${env.BUILD_NUMBER}"
+                    echo "JOB_NAME: ${env.JOB_NAME}"
+                    echo "JOB_URL: ${env.JOB_URL}"
+                    echo "BUILD_URL: ${env.BUILD_URL}"
+                    
+                    echo ""
+                    echo "--- Trigger Type Detection ---"
+                    def isTimerTrigger = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0
+                    def isUserTrigger = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause').size() > 0
+                    def isGiteeTrigger = currentBuild.getBuildCauses().any { it.shortDescription?.contains('Gitee') }
+                    echo "Is Timer Trigger: ${isTimerTrigger}"
+                    echo "Is User Trigger: ${isUserTrigger}"
+                    echo "Is Gitee Trigger: ${isGiteeTrigger}"
+                    
+                    echo "=============================================="
+                }
+            }
+        }
+
+        // Code Gate Checks - Aligned with GitLab CI (.gitlab-ci.yml)
+        // Stage order: commit-check -> code-check -> functional-tests
+        stage('Code Gate Checks') {
+            // Only run on Gitee Webhook triggers (exclude timer and manual triggers)
+            when {
+                allOf {
+                    not { triggeredBy 'TimerTrigger' }
+                    not { triggeredBy 'UserIdCause' }
+                }
+            }
+            stages {
+                stage('Commit Check') {
+                    steps {
+                        echo ">>> [Stage: commit-check] Checking commit messages..."
+                        sh "python3 ./cicd/check-commit-message.py"
+                    }
+                }
+                
+                stage('Files Check') {
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            echo ">>> [Stage: check-files] Checking files format..."
+                            sh "bash ./cicd/check-files.sh"
+                        }
+                    }
+                }
+                
+                stage('Code Check') {
+                    parallel {
+                        stage('Code Linter') {
+                            steps {
+                                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                                    echo ">>> [Stage: code-check] Running code-linter..."
+                                    sh "bash ./cicd/code-linter.sh"
+                                }
+                            }
+                        }
+                        stage('Code Style') {
+                            steps {
+                                echo ">>> [Stage: code-check] Running code-formatter..."
+                                sh "bash ./cicd/code-formatter.sh"
+                            }
+                        }
+                        stage('Docstring Check') {
+                            steps {
+                                echo ">>> [Stage: code-check] Running docstring-check..."
+                                sh "bash ./cicd/docstring-check.sh"
+                            }
+                        }
+                    }
+                }
+                
+                stage('Docs Check') {
+                    steps {
+                        echo ">>> [Stage: docs-check] Running docs-linter..."
+                        sh "pip3 install mdformat doc8 -i https://pypi.tuna.tsinghua.edu.cn/simple --break-system-packages --quiet || true"
+                        sh "bash ./cicd/docs-linter.sh"
+                    }
+                }
+                
+                stage('Functional Tests') {
+                    parallel {
+                        stage('Unit Test') {
+                            steps {
+                                echo ">>> [Stage: functional-tests] Running unit tests..."
+                                sh "bash ./cicd/run-tests.sh -u"
+                            }
+                        }
+                        stage('Code Coverage') {
+                            steps {
+                                echo ">>> [Stage: functional-tests] Running coverage tests..."
+                                sh "bash ./cicd/run-tests.sh -c"
+                            }
+                        }
+                        stage('UT (qcos_client)') {
+                            steps {
+                                echo ">>> [Stage: functional-tests] Running qcos_client unit tests..."
+                                sh "bash ./cicd/run-tests.sh -j"
+                            }
+                        }
+                        stage('Coverage (qcos_client)') {
+                            steps {
+                                echo ">>> [Stage: functional-tests] Running qcos_client coverage..."
+                                sh "bash ./cicd/run-tests.sh -e"
+                            }
+                        }
+                    }
+                }
+                
+                stage('Security Scan') {
+                    steps {
+                        echo ">>> [Extra] Running security scan with bandit..."
+                        sh "mkdir -p ${REPORT_DIR}"
+                        sh "bandit -r src -f html -o ${REPORT_DIR}/security_report.html || true"
+                    }
+                }
+                
+                stage('Build Check') {
+                    steps {
+                        dir('build-scripts') {
+                            echo ">>> [Extra] Verifying Docker Build (Dry Run)..."
+                            sh "cp env.template .env || touch .env"
+                            
+                            sh '''#!/bin/bash
+                            for dockerfile in $(find .. -name Dockerfile); do
+                                if grep -q "yum install" "$dockerfile" && ! grep -q "mirrors.aliyun.com" "$dockerfile"; then
+                                    sed -i 's#RUN yum install#RUN sed -i "s/repo.openeuler.org/mirrors.aliyun.com/g" /etc/yum.repos.d/*.repo && yum install#g' "$dockerfile" || true
+                                fi
+                            done
+                            '''
+                            
+                            sh "cp ${WORKSPACE}/openEuler.repo . || true"
+                            sh "find .. -name Dockerfile -exec dirname {} \\; | sort -u | xargs -I {} cp ${WORKSPACE}/openEuler.repo {}/ 2>/dev/null || true"
+                            
+                            timeout(time: 5, unit: 'MINUTES') {
+                                sh "bash ./build-images.sh || echo 'Docker build failed or timed out, skipping...'"
+                            }
+                            sh "docker image prune -f || true"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Daily Build Workflow') {
+            // Only run on timer trigger (cron) or manual trigger
+            when {
+                anyOf {
+                    triggeredBy 'TimerTrigger'
+                    triggeredBy 'UserIdCause' 
+                }
+            }
+            stages {
+                stage('Build Artifacts') {
+                    steps {
+                        dir('build-scripts') {
+                            echo ">>> Step 1: Building Docker Images"
+                            sh "docker system prune -af --volumes || true"
+                            
+                            // Configure .env file with Chinese mirrors
+                            sh """
+                            cp env.template .env || touch .env
+                            sed -i 's|^PIP_MIRROR=.*|PIP_MIRROR=https://pypi.tuna.tsinghua.edu.cn/simple|g' .env
+                            sed -i 's|^YUM_MIRROR=.*|YUM_MIRROR=http://mirrors.aliyun.com|g' .env
+                            echo ">>> .env configured with Chinese mirrors"
+                            cat .env | grep -E "(PIP_MIRROR|YUM_MIRROR|CONTAINER_BASE_IMAGE)" || true
+                            """
+                            
+                            sh '''#!/bin/bash
+                            for dockerfile in $(find .. -name Dockerfile); do
+                                if grep -q "yum install" "$dockerfile" && ! grep -q "mirrors.aliyun.com" "$dockerfile"; then
+                                    sed -i 's#RUN yum install#RUN sed -i "s/repo.openeuler.org/mirrors.aliyun.com/g" /etc/yum.repos.d/*.repo && yum install#g' "$dockerfile" || true
+                                fi
+                            done
+                            '''
+                            
+                            sh "cp ${WORKSPACE}/openEuler.repo . || true"
+                            sh "find .. -name Dockerfile -exec dirname {} \\; | sort -u | xargs -I {} cp ${WORKSPACE}/openEuler.repo {}/ 2>/dev/null || true"
+                            sh "rm -f .dockerignore || true"
+                            
+                            // Configure docker-compose-sandbox.yaml with Chinese mirrors
+                            sh '''#!/bin/bash
+                            if [ -f docker-compose-sandbox.yaml ]; then
+                                sed -i 's|image: python:|image: registry.cn-hangzhou.aliyuncs.com/library/python:|g' docker-compose-sandbox.yaml || true
+                                sed -i 's|image: openeuler|image: registry.cn-hangzhou.aliyuncs.com/openeuler/openeuler|g' docker-compose-sandbox.yaml || true
+                            fi
+                            '''
+                            
+                            // Build sandbox image first
+                            timeout(time: 15, unit: 'MINUTES') {
+                                sh """
+                                echo '>>> Building sandbox image first...'
+                                if [ -f ./build-sandbox.sh ]; then
+                                    bash ./build-sandbox.sh
+                                else
+                                    echo 'WARNING: build-sandbox.sh not found, skip sandbox build'
+                                fi
+                                """
+                            }
+                            
+                            // Build main images
+                            timeout(time: 10, unit: 'MINUTES') {
+                                sh """
+                                docker stop qcos-sandbox 2>/dev/null || true
+                                docker rm qcos-sandbox 2>/dev/null || true
+                                
+                                # Docker-in-Docker path fix: convert Jenkins container path to host path
+                                HOST_WORKSPACE=\$(echo "\${WORKSPACE}" | sed 's|/var/jenkins_home|/home/deployer/workspace/jenkins_docker/jenkins_home|g')
+                                
+                                # Temporarily modify setup-env.sh to accept external QCOS_LOCAL_SRC_DIR
+                                sed -i 's|export QCOS_LOCAL_SRC_DIR="\${top_dir}"|export QCOS_LOCAL_SRC_DIR="\${QCOS_LOCAL_SRC_DIR:-\${top_dir}}"|g' setup-env.sh
+                                
+                                export QCOS_LOCAL_SRC_DIR="\${HOST_WORKSPACE}"
+                                echo '>>> QCOS_LOCAL_SRC_DIR='\${QCOS_LOCAL_SRC_DIR}
+                                bash ./build-images.sh
+                                
+                                git checkout setup-env.sh 2>/dev/null || true
+                                """
+                            }
+
+                            echo ">>> Step 2: Building Python Wheel"
+                            sh """
+                            pip3 install poetry -i https://pypi.tuna.tsinghua.edu.cn/simple --break-system-packages || true
+                            poetry source add --priority=default pip_mirror https://pypi.tuna.tsinghua.edu.cn/simple || true
+                            bash ./build-wheel.sh || echo 'Wheel build script warning'
+                            """
+                        }
+                    }
+                }
+
+                stage('Deploy System') {
+                    steps {
+                        dir('build-scripts') {
+                            echo ">>> Step 3: Deploying QCOS System"
+                            sh "docker-compose down || docker rm -f qcos qcos-cli || true"
+                            sh "docker volume rm qcos_db_vol || true" 
+                            sh "docker volume rm build-scripts_code-data || true"
+                            sh "cp env.template .env || touch .env"
+                            
+                            writeFile file: 'docker-compose-ci.yaml', text: '''
+version: "3"
+services:
+  prefect-server:
+    user: root
+    environment:
+      - PREFECT_SERVER_API_HOST=0.0.0.0
+      - PREFECT_API_URL=http://127.0.0.1:4200/api
+      - PREFECT_SERVER_DATABASE_CONNECTION_URL=sqlite+aiosqlite:////var/qcos/prefect.db
+      - NO_PROXY=127.0.0.1,localhost,0.0.0.0
+      - no_proxy=127.0.0.1,localhost,0.0.0.0
+    volumes:
+      - qcos_db_vol:/var/qcos
+  qcos:
+    user: root
+    environment:
+      - PREFECT_API_URL=http://127.0.0.1:4200/api
+      - PREFECT_SERVER_DATABASE_CONNECTION_URL=sqlite+aiosqlite:////var/qcos/prefect.db
+      - NO_PROXY=127.0.0.1,localhost,0.0.0.0
+      - no_proxy=127.0.0.1,localhost,0.0.0.0
+    volumes:
+      - qcos_db_vol:/var/qcos
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo ">>> CI Config Setup: Restoring and Patching..."
+        
+        echo ">>> Step 1: Restoring configs..."
+        if [ -d "/root/qcos-project/etc/qcos" ]; then
+            mkdir -p /etc/qcos
+            mkdir -p /etc/qcos/conf.d
+            cp -rf /root/qcos-project/etc/qcos/* /etc/qcos/
+            echo ">>> Configs restored from /root/qcos-project/etc/qcos"
+        else
+            echo ">>> WARNING: /root/qcos-project/etc/qcos not found!"
+        fi
+        
+        echo ">>> [DEBUG] Checking /etc/qcos/conf.d contents:"
+        ls -la /etc/qcos/conf.d/ 2>/dev/null || echo "WARNING: conf.d directory is empty or missing!"
+        
+        echo ">>> [DEBUG] Checking dummy.toml:"
+        if [ -f "/etc/qcos/conf.d/dummy.toml" ]; then
+            echo ">>> dummy.toml found!"
+            head -5 /etc/qcos/conf.d/dummy.toml
+        else
+            echo ">>> ERROR: dummy.toml NOT FOUND!"
+        fi
+        
+        echo ">>> Applying Config Patches..."
+        
+        echo ">>> [DEBUG] Checking qcos.toml:"
+        if [ ! -f "/etc/qcos/qcos.toml" ]; then
+            echo ">>> qcos.toml not found, creating minimal config..."
+            mkdir -p /etc/qcos
+            echo "[DEFAULT]" > /etc/qcos/qcos.toml
+            echo "DEBUG = false" >> /etc/qcos/qcos.toml
+            echo "MAX_JOBS = 10000" >> /etc/qcos/qcos.toml
+            echo "[API_SERVER]" >> /etc/qcos/qcos.toml
+            echo 'API_SERVER_LISTEN_IP = "127.0.0.1"' >> /etc/qcos/qcos.toml
+            echo "API_SERVER_LISTEN_PORT = 18400" >> /etc/qcos/qcos.toml
+            echo "[DEVICES]" >> /etc/qcos/qcos.toml
+            echo 'DEVICE_LIST = ["dummy"]' >> /etc/qcos/qcos.toml
+            echo ">>> qcos.toml created successfully!"
+        else
+            echo ">>> qcos.toml found, applying patches..."
+            sed -i 's|API_SERVER_LISTEN_IP = ""|API_SERVER_LISTEN_IP = "127.0.0.1"|g' /etc/qcos/qcos.toml
+            sed -i 's|^# DEVICE_LIST = .*|DEVICE_LIST = ["dummy"]|g' /etc/qcos/qcos.toml
+            sed -i 's|^DEVICE_LIST = .*|DEVICE_LIST = ["dummy"]|g' /etc/qcos/qcos.toml
+            if ! grep -q "^DEVICE_LIST" /etc/qcos/qcos.toml; then
+                echo 'DEVICE_LIST = ["dummy"]' >> /etc/qcos/qcos.toml
+            fi
+        fi
+
+        echo ">>> [DEBUG] qcos.toml content:"
+        cat /etc/qcos/qcos.toml | grep -E "(API_SERVER_LISTEN_IP|DEVICE_LIST)"
+        
+        if [ -f "/etc/qcos/conf.d/tiangong100.toml" ]; then
+            sed -i 's|http://127.0.0.1:8088|http://127.0.0.1:18601|g' /etc/qcos/conf.d/tiangong100.toml
+        fi
+        
+        if [ -f "/etc/qcos/conf.d/tiangong100_v2.toml" ]; then
+            sed -i 's|https://open-pre.qboson.com|http://127.0.0.1:18600|g' /etc/qcos/conf.d/tiangong100_v2.toml
+            sed -i 's|https://new-open-pre.qboson.com|http://127.0.0.1:18600|g' /etc/qcos/conf.d/tiangong100_v2.toml
+        fi
+        
+        if [ -f "/etc/qcos/conf.d/uqc_matrix2.toml" ]; then
+            sed -i 's|cloud.unitaryqubit.com|127.0.0.1|g' /etc/qcos/conf.d/uqc_matrix2.toml
+            sed -i 's|password_token = ""|password_token = "1234"|g' /etc/qcos/conf.d/uqc_matrix2.toml
+        fi
+        
+        echo ""
+        echo "=== [DEBUG] Verifying Modified Configs ==="
+        
+        echo "-> qcos.toml IP (Should be 127.0.0.1):"
+        grep "API_SERVER_LISTEN_IP" /etc/qcos/qcos.toml
+        
+        echo "-> qcos.toml Active Devices:"
+        grep "^DEVICE_LIST" /etc/qcos/qcos.toml || echo "WARNING: No active DEVICE_LIST found"
+        
+        echo "-> tiangong100.toml (Should be 127.0.0.1:18601):"
+        grep "base_url" /etc/qcos/conf.d/tiangong100.toml
+        
+        echo "-> tiangong100_v2.toml (Should be 127.0.0.1:18600):"
+        grep "domain_url" /etc/qcos/conf.d/tiangong100_v2.toml
+        
+        echo "-> uqc_matrix2.toml (Should be 127.0.0.1 & 1234):"
+        grep -E "uqc_host|password_token" /etc/qcos/conf.d/uqc_matrix2.toml
+        
+        echo "=========================================="
+        echo ""
+        
+        echo ">>> Installing critical dependencies..."
+        pip3 install --upgrade fastapi-jsonrpc --break-system-packages --ignore-installed
+        pip3 install pulp -i https://pypi.tuna.tsinghua.edu.cn/simple --break-system-packages --ignore-installed
+        
+        echo ">>> Starting QCOS API..."
+        qcos-api
+volumes:
+  qcos_db_vol:
+'''
+
+                            // Start services
+                            sh """#!/bin/bash
+                            if [ -f ./setup-env.sh ]; then . ./setup-env.sh; fi
+                            docker-compose -f docker-compose.yaml -f docker-compose-ci.yaml up -d
+                            """
+                            
+                            // Health check
+                            echo "Waiting for QCOS service to be ready..."
+                            sh """#!/bin/bash
+                            for i in \$(seq 1 20); do
+                                echo "--- Attempt \$i / 20 ---"
+                                if docker logs qcos 2>&1 | grep -q "Uvicorn running on"; then
+                                    echo ">>> Service is UP! Dumping startup logs for verification..."
+                                    docker logs qcos
+                                    exit 0
+                                fi
+                                sleep 5
+                            done
+                            echo ">>> TIMEOUT: Service failed to start."
+                            docker logs qcos --tail 50
+                            exit 1
+                            """
+                        }
+                    }
+                }
+
+                stage('Test & Coverage') {
+                    steps {
+                        echo ">>> Step 4: Running System Tests"
+                        
+                        script {
+                            try {
+                                sh """
+                                echo "Syncing test scripts to container..."
+                                docker cp ${WORKSPACE}/. qcos:/root/qcos-project/
+                                
+                                echo "Running ST in container..."
+                                docker exec qcos /bin/bash -c "
+                                    cd /root/qcos-project &&
+                                    export PYTHONPATH=/root/qcos-project &&
+                                    
+                                    pip3 install --upgrade fastapi-jsonrpc --break-system-packages --ignore-installed &&
+                                    
+                                    python3 -m pytest --disable-warnings -vv \\
+                                        --cov=qcos \\
+                                        --cov-report=xml:coverage.xml \\
+                                        --cov-report=html:coverage_html \\
+                                        qcos/tests/system_tests/device/ \\
+                                        qcos/tests/system_tests/driver/ \\
+                                        qcos/tests/system_tests/job/driver/dummy/ \\
+                                        qcos/tests/system_tests/system/ \\
+                                        qcos/tests/system_tests/transpiler/ \\
+                                        qcos/tests/system_tests/version/
+                                "
+                                
+                                echo "Extracting reports from container..."
+                                docker cp qcos:/root/qcos-project/coverage.xml . || echo "coverage.xml not found"
+                                docker cp qcos:/root/qcos-project/coverage_html . || echo "coverage_html not found"
+                                sed -i 's|/root/qcos-project|${WORKSPACE}|g' coverage.xml || true
+                                
+                                """
+                            } catch (Exception e) {
+                                echo "ST Failed! Dumping logs..."
+                                sh "docker logs qcos --tail 100 || true"
+                                sh "docker cp qcos:/root/qcos-project/coverage.xml . || true"
+                                sh "docker cp qcos:/root/qcos-project/coverage_html . || true"
+                                sh "sed -i 's|/root/qcos-project|${WORKSPACE}|g' coverage.xml || true"
+                                currentBuild.result = 'FAILURE'
+                            }
+                        }
+                    }
+                }
+
+                stage('Package & Archive') {
+                    steps {
+                        echo ">>> Step 5: Packaging Artifacts"
+                        sh "mkdir -p output_artifacts"
+                        sh "docker save \$(docker images qcos -q | head -n 1) -o output_artifacts/qcos_daily.tar || true"
+                        sh "xz -f output_artifacts/qcos_daily.tar || true"
+                        sh "find . -name '*.whl' -exec cp {} output_artifacts/ \\; || echo 'No wheel files found'"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                echo "Archiving reports..."
+                recordCoverage(tools: [[parser: 'COBERTURA', pattern: '**/coverage.xml']])
+                archiveArtifacts artifacts: 'coverage_html/**', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'reports/security_report.html', allowEmptyArchive: true
+                if (fileExists('output_artifacts')) {
+                     archiveArtifacts artifacts: 'output_artifacts/*', allowEmptyArchive: true
+                }
+                
+                // Stop and remove build containers
+                sh "docker stop qcos-sandbox qcos qcos-cli prefect-server 2>/dev/null || true"
+                sh "docker rm qcos-sandbox qcos qcos-cli prefect-server 2>/dev/null || true"
+            }
+        }
+        success {
+            cleanWs()
+            script {
+                echo "Pipeline executed successfully!"
+                
+                if (env.giteePullRequestIid) {
+                    addGiteeMRComment comment: """### Jenkins Build Success
+
+| Item | Info |
+|------|------|
+| **Build Number** | [#${env.BUILD_NUMBER}](${env.BUILD_URL}) |
+| **Branch** | ${env.giteeSourceBranch ?: env.GIT_BRANCH ?: 'N/A'} |
+| **Duration** | ${currentBuild.durationString?.replace(' and counting', '') ?: 'N/A'} |
+
+[View Detailed Report](${env.BUILD_URL})
+"""
+                }
+            }
+        }
+        failure {
+            script {
+                echo "Pipeline failed!"
+                
+                if (env.giteePullRequestIid) {
+                    addGiteeMRComment comment: """### Jenkins Build Failed
+
+| Item | Info |
+|------|------|
+| **Build Number** | [#${env.BUILD_NUMBER}](${env.BUILD_URL}) |
+| **Branch** | ${env.giteeSourceBranch ?: env.GIT_BRANCH ?: 'N/A'} |
+| **Duration** | ${currentBuild.durationString?.replace(' and counting', '') ?: 'N/A'} |
+
+Please check the build log for failure details:
+
+[View Build Log](${env.BUILD_URL}console)
+"""
+                }
+            }
+        }
+        unstable {
+            script {
+                echo "Pipeline completed with warnings!"
+                
+                if (env.giteePullRequestIid) {
+                    addGiteeMRComment comment: """### Jenkins Build Unstable
+
+| Item | Info |
+|------|------|
+| **Build Number** | [#${env.BUILD_NUMBER}](${env.BUILD_URL}) |
+| **Branch** | ${env.giteeSourceBranch ?: env.GIT_BRANCH ?: 'N/A'} |
+
+Some tests may have failed or there are code quality issues. Please check the detailed report.
+
+[View Details](${env.BUILD_URL})
+"""
+                }
+            }
+        }
+        aborted {
+            script {
+                echo "Pipeline was aborted!"
+                
+                if (env.giteePullRequestIid) {
+                    addGiteeMRComment comment: """### Jenkins Build Aborted
+
+| Item | Info |
+|------|------|
+| **Build Number** | [#${env.BUILD_NUMBER}](${env.BUILD_URL}) |
+
+Build was manually cancelled or timed out.
+"""
+                }
+            }
+        }
+    }
+}

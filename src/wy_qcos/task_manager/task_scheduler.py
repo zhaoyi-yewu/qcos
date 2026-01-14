@@ -36,9 +36,7 @@ class TaskScheduler(ABC):
     def __init__(self):
         """Init TaskScheduler."""
         self._task_manager = TaskFlowManager()
-        self._policy_factory = SchedulerPolicyHandlerFactory(
-            self._task_manager
-        )
+        self._policy_handler = TimePrecedencePolicy(self._task_manager)
         self.driver_manager = None
         self.transpiler_manager = None
         self.device_manager = None
@@ -97,14 +95,10 @@ class TaskScheduler(ABC):
         """
         return self.device_manager
 
-    def add(self, policy_type, job_info, tags=None):
+    def add(self, job_info, tags=None):
         """Add job to scheduler.
 
-        Add job to scheduler, scheduler will get policy handler by policy_type,
-        use handler to execute it.
-
         Args:
-            policy_type: scheduler policy type
             job_info: job info
             tags: prefect flow tags
 
@@ -191,9 +185,6 @@ class TaskScheduler(ABC):
         # execute task
         try:
             flow_info = self._task_manager.get_flow_info_by_backend(backend)
-            policy_handler = self._policy_factory.get_policy_handler_by_name(
-                policy_type
-            )
             job_json_info = {}
             job_json_info["data"] = job_info.model_dump()
             job_json_info["driver"] = {
@@ -206,7 +197,7 @@ class TaskScheduler(ABC):
             }
             job_json_info["device"] = {"configs": device.get_configs()}
 
-            job_id = policy_handler.exec_task(
+            job_id = self._policy_handler.exec_task(
                 flow_info, job_json_info, tags=tags
             )
             res = {"job_id": job_id}
@@ -356,13 +347,11 @@ class TaskScheduler(ABC):
                 flow_info = self._task_manager.get_flow_info_by_backend(
                     backend
                 )
-                policy_handler = (
-                    self._policy_factory.get_policy_handler_by_name(
-                        Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE,
-                    )
-                )
-                job_id = policy_handler.exec_task(
-                    flow_info, job_json_info, None
+                device = self.device_manager.get_device(backend)
+                device_name = device.get_name()
+                tags = [f"{device_name}"]
+                job_id = self._policy_handler.exec_task(
+                    flow_info, job_json_info, tags
                 )
             except errors.WorkFlowError as e:
                 logger.error(f"Prefect execute update flow error: {str(e)}")
@@ -442,62 +431,11 @@ class TaskScheduler(ABC):
         return final_job_status
 
 
-class BaseSchedulerPolicy(ABC):
-    """Base Scheduler Policy."""
-
-    def __init__(self, task_manager: TaskFlowManager):
-        self._task_manager = task_manager
-
-
-class PriorityPolicy(BaseSchedulerPolicy):
-    """Priority Policy."""
-
-    def __init__(self, task_manager: TaskFlowManager):
-        super().__init__(task_manager)
-        self._type = Constant.JOB_SCHED_POLICY_PRIORITY
-
-    def exec_task(self, flow_info, job_info, tags=None):
-        """PriorityPolicy execute task.
-
-        Args:
-            flow_info: flow info
-            job_info: job info
-            tags: prefect flow tags
-
-        Returns:
-            job uuid
-        """
-        priority = self.calculate_priority(job_info)
-        job_deploy_id = self._task_manager.deploy_task_flow(
-            flow_info["deploy_name"] + "_" + self._type,
-            self._type,
-            priority,
-            flow_info["deploy_flow_func"],
-            flow_info["deploy_flow_path"],
-        )
-        job_run_id = self._task_manager.run_task_flow(
-            job_deploy_id, {"job_info": job_info}, tags=tags
-        )
-        return job_run_id
-
-    def calculate_priority(self, job_info):
-        """Calculate priority.
-
-        Args:
-            job_info: job info
-
-        Returns:
-            job priority
-        """
-        return job_info["data"]["job_priority"]
-
-
-class TimePrecedencePolicy(BaseSchedulerPolicy):
+class TimePrecedencePolicy(ABC):
     """Time Precedence Policy."""
 
     def __init__(self, task_manager: TaskFlowManager):
-        super().__init__(task_manager)
-        self._type = Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE
+        self._task_manager = task_manager
 
     def exec_task(self, flow_info, job_info, tags=None):
         """TimePrecedencePolicy execute task.
@@ -511,9 +449,13 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
             job uuid
         """
         priority = self.calculate_priority(job_info)
+        pool_name = None
+        if tags is not None:
+            pool_name = tags[0]
+
         job_deploy_id = self._task_manager.deploy_task_flow(
-            flow_info["deploy_name"] + "_" + self._type,
-            self._type,
+            flow_info["deploy_name"],
+            pool_name,
             priority,
             flow_info["deploy_flow_func"],
             flow_info["deploy_flow_path"],
@@ -533,82 +475,3 @@ class TimePrecedencePolicy(BaseSchedulerPolicy):
             job priority
         """
         return job_info["data"]["job_priority"]
-
-
-class PeriodicPolicy(BaseSchedulerPolicy):
-    """Periodic Policy."""
-
-    def __init__(self, task_manager: TaskFlowManager):
-        super().__init__(task_manager)
-        self._type = Constant.JOB_SCHED_POLICY_PERIODIC
-
-    # TODO(jidalong) PeriodicPolicy
-    def exec_task(self):
-        return
-
-
-class DependentPolicy(BaseSchedulerPolicy):
-    """Dependent Policy."""
-
-    def __init__(self, task_manager: TaskFlowManager):
-        super().__init__(task_manager)
-        self._type = Constant.JOB_SCHED_POLICY_DEPENDENT
-
-    # TODO(jidalong) DependentPolicy
-    def exec_task(self):
-        return
-
-
-class BatchPolicy(BaseSchedulerPolicy):
-    """Batch Policy."""
-
-    def __init__(self, task_manager: TaskFlowManager):
-        super().__init__(task_manager)
-        self._type = Constant.JOB_SCHED_POLICY_BATCH
-
-    # TODO(jidalong) BatchPolicy
-    def exec_task(self):
-        return
-
-
-class RealtimePolicy(BaseSchedulerPolicy):
-    """Realtime Policy."""
-
-    def __init__(self, task_manager: TaskFlowManager):
-        super().__init__(task_manager)
-        self._type = Constant.JOB_SCHED_POLICY_REALTIME
-
-    # TODO(jidalong) RealtimePolicy
-    def exec_task(self):
-        return
-
-
-class SchedulerPolicyHandlerFactory(ABC):
-    """Scheduler Policy Handler Factory."""
-
-    def __init__(self, task_manager):
-        self._policy_mapping = {
-            Constant.JOB_SCHED_POLICY_PRIORITY: PriorityPolicy(task_manager),
-            Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE: TimePrecedencePolicy(
-                task_manager
-            ),
-            Constant.JOB_SCHED_POLICY_PERIODIC: PeriodicPolicy(task_manager),
-            Constant.JOB_SCHED_POLICY_DEPENDENT: DependentPolicy(task_manager),
-            Constant.JOB_SCHED_POLICY_BATCH: BatchPolicy(task_manager),
-            Constant.JOB_SCHED_POLICY_REALTIME: RealtimePolicy(task_manager),
-        }
-
-    def get_policy_handler_by_name(self, name: str):
-        """Get policy handler by name.
-
-        Args:
-            name: policy name
-
-        Returns:
-            policy handler
-        """
-        policy_handler = self._policy_mapping.get(name)
-        if policy_handler:
-            return policy_handler
-        else:
-            raise ValueError(f"{name} is not a valid policy type")

@@ -24,9 +24,14 @@ pip3 install bump-my-version semver
 
 # bump version name
 ./release-version.py -n 1.0.1
+./release-version.py -n 1.0.1-alpha.1
+./release-version.py -n 1.0.1-beta.1
+./release-version.py -n 1.0.1-rc.1
 
-# bump version part. version part: major, minor, patch
+# bump version part. version part: major, minor, patch, num, stage
 ./release-version.py -p patch
+./release-version.py -p num
+./release-version.py -p stage
 
 # dry-run
 ./release-version.py -d -n 1.0.1
@@ -38,7 +43,8 @@ pip3 install bump-my-version semver
 ./release-version.py -nt -n 1.0.1
 
 # specify master branch, develop branch, release branch
-./release-version.py -n 1.0.1 --master-branch master --develop-branch develop --release-branch release-v1.0.1
+./release-version.py -n 1.0.1 --master-branch master --develop-branch develop \
+  --release-branch release-v1.0.1
 """
 
 import os
@@ -182,9 +188,7 @@ def bump_version(bump_version_part, bump_version_name,
         top_dir: top dir
     """
 
-    # get environment variables
-    env_vars = dict(os.environ)
-
+    # set new-version
     bump_cmd_part = ""
     if bump_version_part:
         bump_cmd_part = f"{bump_version_part}"
@@ -192,6 +196,7 @@ def bump_version(bump_version_part, bump_version_name,
         semver.Version.parse(bump_version_name)
         bump_cmd_part = f"--new-version {bump_version_name}"
 
+    # set command arguments
     bump_cmd_args_list = []
     if no_commit:
         bump_cmd_args_list.append("--no-commit")
@@ -203,12 +208,16 @@ def bump_version(bump_version_part, bump_version_name,
         bump_cmd_args_list.append("--dry-run")
     bump_cmd_args = " ".join(bump_cmd_args_list)
 
+    # set release notes
+    _release_notes = release_notes.replace("### ", "")
+    _release_notes = _release_notes.replace("## ", "")
+    bump_tag_message = f"--tag-message \"Release Notes\n\n{_release_notes}\""
+
     # run bump-my-version command
-    cmds = [f"bump-my-version bump {bump_cmd_args} {bump_cmd_part}"]
-    release_notes = release_notes.replace("### ", "")
-    release_notes = release_notes.replace("## ", "")
-    env_vars["RELEASE_NOTES"] = f"\n\n{release_notes}"
-    results = run_command(";".join(cmds), cwd=top_dir, env=env_vars)
+    cmds = [f"bump-my-version bump {bump_cmd_args} {bump_cmd_part} "
+            f"{bump_tag_message}"]
+    print(f"bump version cmd:\n{';'.join(cmds)}")
+    results = run_command(";".join(cmds), cwd=top_dir)
     return results
 
 
@@ -261,9 +270,10 @@ USAGE
         group = parser.add_mutually_exclusive_group(required=True)
         group.add_argument("-p", "--bump-version-part",
                            type=str,
-                           choices=["major", "minor", "patch"],
+                           choices=["major", "minor", "patch", "num", "stage"],
                            dest="bump_version_part",
-                           help="bump version part. [major | minor | patch]")
+                           help="bump version part. "
+                                "[major | minor | patch | num | stage]")
         group.add_argument("-n",  "--bump-version-name",
                            dest="bump_version_name",
                            help="bump version name")
@@ -290,6 +300,10 @@ USAGE
         parser.add_argument("--release-branch",
                            dest="release_branch",
                            help="release branch name")
+        parser.add_argument("--release-notes",
+                           dest="release_notes",
+                           default=None,
+                           help="release notes")
         parser.add_argument("--skip-tests",
                             dest="skip_tests",
                             action="store_true",
@@ -317,6 +331,7 @@ USAGE
         master_branch = args.master_branch
         develop_branch = args.develop_branch
         release_branch = args.release_branch
+        release_notes = args.release_notes
         skip_tests = args.skip_tests
         skip_push = args.skip_push
         verbose = args.verbose
@@ -348,14 +363,16 @@ USAGE
         else:
             result = bump_version(bump_version_part, bump_version_part,
                                   "", no_commit=False, no_tag=False,
-                                  verbose=verbose, dry_run=True, top_dir=top_dir)
+                                  verbose=True, dry_run=True, top_dir=top_dir)
             ret_code = results.returncode
             if ret_code != 0:
                 err_msg = (
                     f"Failed to get new version. "
                     f"Reason: {results.stderr}")
                 raise ReleaseException(err_msg)
-            version_pattern = re.compile(r"New version:\s+(\d+\.\d+\.\d+)")
+            version_pattern  = re.compile(
+                r"New version will be '"
+                r"(\d+\.\d+\.\d+(?:-(?:alpha|beta|rc|stable)\.\d+)?)'")
             match = version_pattern.search(result.stdout)
             if not match:
                 err_msg = (
@@ -367,7 +384,7 @@ USAGE
 
         # create new release branch
         if not release_branch:
-            release_branch = f"release/{_bump_version_name}"
+            release_branch = f"release/v{_bump_version_name}"
         print(f"* Create new release branch: {release_branch}")
         cmds = [f"git checkout -b {release_branch}"]
         results = run_command(";".join(cmds), cwd=top_dir)
@@ -378,9 +395,15 @@ USAGE
             raise ReleaseException(err_msg)
 
         # get release notes
-        changelog_path = f"{top_dir}/CHANGELOG.md"
-        print(f"* Get release notes from: {changelog_path}")
-        release_notes = get_release_notes(changelog_path)
+        if release_notes:
+            release_notes_dict = {
+                "version": _bump_version_name
+            }
+            release_notes = release_notes.format(**release_notes_dict)
+        else:
+            changelog_path = f"{top_dir}/CHANGELOG.md"
+            print(f"* Get release notes from: {changelog_path}")
+            release_notes = get_release_notes(changelog_path)
 
         # bump version
         print(f"* Bump version to: {bump_version_str}")
@@ -418,34 +441,47 @@ USAGE
 
         # push commits and tag to master branch, and merge to branch develop
         tag_name = f"v{_bump_version_name}"
+        merge_cmds = [
+            # merge back to develop branch
+            f"git checkout {develop_branch}",
+            f"git pull {git_remote} {develop_branch}",
+            f"git merge --no-ff {release_branch}",
+            # merge to master branch
+            f"git checkout {master_branch}",
+            f"git pull {git_remote} {master_branch}",
+            f"git merge --no-ff {release_branch}",
+        ]
+        push_cmds = []
         if skip_push:
             print(f"* Skipped pushing commits or tags")
         else:
             print(f"* Push commits and tags")
-            cmds = [
+            push_cmds = [
                 # push release branch and tags
                 f"git push {git_remote} {release_branch}",
                 f"git push {git_remote} {tag_name}",
-                # merge to master branch
-                f"git checkout {master_branch}",
-                f"git pull {git_remote} {master_branch}",
-                f"git merge --no-ff {release_branch}",
                 # push to master branch
                 f"git push {git_remote} {master_branch}",
-                # merge back to develop branch
-                f"git checkout {develop_branch}",
-                f"git pull {git_remote} {develop_branch}",
-                f"git merge --no-ff {release_branch}",
             ]
-            print("  Running push commands:")
-            print(f"  {';'.join(cmds)}")
-            results = run_command(";".join(cmds), cwd=top_dir)
-            ret_code = results.returncode
-            if ret_code != 0:
-                err_msg = (
-                    f"Failed to pushing commits or tags. "
-                    f"Reason: {results.stderr}")
-                raise ReleaseException(err_msg)
+        cmds = merge_cmds + push_cmds
+        print("  Running push commands:")
+        print(f"  {';'.join(cmds)}")
+        results = run_command(";".join(cmds), cwd=top_dir)
+        ret_code = results.returncode
+        if ret_code != 0:
+            err_msg = (
+                f"Failed to pushing commits or tags. "
+                f"Reason: {results.stderr}")
+            raise ReleaseException(err_msg)
+
+        cmds = [f"git checkout {develop_branch}"]
+        results = run_command(";".join(cmds), cwd=top_dir)
+        ret_code = results.returncode
+        if ret_code != 0:
+            err_msg = (
+                f"Failed to checkout develop branch: {develop_branch}. "
+                f"Reason: {results.stderr}")
+            raise ReleaseException(err_msg)
 
         print(f"\nSuccessfully released version: v{_bump_version_name}")
         return 0

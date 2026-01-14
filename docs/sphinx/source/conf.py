@@ -1,3 +1,19 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -7,22 +23,45 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 import os
+import shutil
 import sys
 
+from sphinx.ext import apidoc
+
 current_dir = os.path.split(os.path.realpath(__file__))[0]
-top_dir = os.path.abspath(f"{current_dir}/../../../src")
-sys.path.insert(0, top_dir)
+top_dir = os.path.abspath(f"{current_dir}/../../..")
+src_dir = os.path.abspath(f"{top_dir}/src")
+sys.path.insert(0, src_dir)
 from wy_qcos.common.config import Config
 from wy_qcos.common.qcos_version import QcosVersion
 
-project = f"{Config.PLATFORM_NAME}文档"
+project = f"{Config.PLATFORM_NAME}"
+title = "QCOS Documentation"
+subject = "文档"
+description_zh = "QCOS是一款开源的通用量子计算操作系统"
 copyright = f"{Config.COPYRIGHT}"
 author = "Zhao Yi"
 version = QcosVersion.VERSION
 release = QcosVersion.VERSION
+file_name = "qcos-full-docs"
+sphinx_api_dir = f"{top_dir}/docs/sphinx/source/api"
 
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.extlinks",
+    "sphinx.ext.graphviz",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.napoleon",
+    "sphinx_rtd_theme",
+    "myst_parser",
+    "docxbuilder",
+    "sphinxcontrib.mermaid",
+    "sphinxcontrib.plantuml",
+]
 exclude_patterns = [
-    "_build"
+    "_build",
+    "_template"
 ]
 
 # -- General configuration ---------------------------------------------------
@@ -39,18 +78,25 @@ def skip_spinq_module(app, what, name, obj, skip, options):
     return skip
 
 
+def run_apidoc(app):
+    """Run apidoc."""
+
+    apidoc.main(["-H", "QCOS API文档", "-f", "-o", sphinx_api_dir, f"{src_dir}"])
+
+
 def setup(app):
-    app.connect('autodoc-skip-member', skip_spinq_module)
-##
+    """Setup app."""
+    app.connect("autodoc-skip-member", skip_spinq_module)
+    if "html" in app.tags or "singlehtml" in app.tags:
+        extensions.append("sphinxcontrib.jquery")
+        app.connect("builder-inited", run_apidoc)
+    else:
+        shutil.rmtree(
+            f"{top_dir}/docs/sphinx/source/api/",
+            ignore_errors=True,
+            onerror=None
+        )
 
-
-extensions = [
-    "sphinx.ext.autodoc",
-    "sphinx.ext.extlinks",
-    "sphinx.ext.intersphinx",
-    "sphinx.ext.napoleon",
-    "myst_parser",
-]
 
 source_suffix = {
     ".rst": "restructuredtext",
@@ -74,15 +120,27 @@ html_use_smartypants = False
 html_permalinks = False
 html_permalinks_icon = ""
 
-language = "zh_CN"
+# mermaid configs
+mermaid_cmd = "mmdc"
+mermaid_output_format = "png"
+mermaid_params = [
+    "--puppeteerConfigFile", f"{current_dir}/puppeteer-config.json",
+]
+os.environ["PUPPETEER_PRODUCT"] = "firefox"
+os.environ["PUPPETEER_EXECUTABLE_PATH"] = "/usr/bin/firefox"
+
+# plantuml configs
+plantuml = "java -Djava.awt.headless=true -jar /usr/local/lib/node_modules/plantuml/vendor/plantuml.jar"
+plantuml_output_format = "svg"  # default: png
 
 # latex config
+language = "zh_CN"
 latex_engine = "xelatex"
 latex_use_xindy = False
 latex_domain_indices = False
 latex_use_modindex = False
 latex_documents = [
-    ("index", "qcos.tex", f"{project}", f"{author}", "manual")
+    ("index", "qcos.tex", f"{project}{subject}", f"{author}", "manual")
 ]
 latex_elements = {
     "papersize": "a4paper",
@@ -250,12 +308,24 @@ latex_elements = {
         % 调用水印命令，应用到每一页背景
         % \AddToShipoutPicture*{\watermarktext}  % 是否打开水印
     """,
- }
+}
+
+docx_documents = [
+    ("index", f"{file_name}.docx", {
+        "title": project,
+        "creator": author,
+        "subject": subject,
+    }, True),
+]
+docx_style = "_template/docx/docxbuilder-style.docx"
+docx_coverpage = True
+docx_pagebreak_before_section = 1
+
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "alabaster"
+html_theme = "sphinx_rtd_theme"  # alternative: "alabaster"
 html_sidebars = {
     "**": [
         "about.html",
@@ -265,15 +335,19 @@ html_sidebars = {
         # "donate.html",
     ]
 }
-html_theme_options = {
-    "description": "QCOS是一款开源的通用量子计算操作系统",
+html_theme_options_rtd = {
+    "navigation_depth": 4,
+    "collapse_navigation": True,
+    "sticky_navigation": True,
+    "titles_only": False,
+}
+html_theme_options_alabaster = {
+    "description": description_zh,
     "fixed_sidebar": True,
     "show_related": False,
     "show_relbars": True,
-    # "github_user": "",
-    # "github_repo": "",
-    # "github_banner": True,
 }
+html_theme_options = html_theme_options_rtd
 html_static_path = ["_static"]
 # TODO (zhaoyi): to be replaced
 # html_favicon = "_static/qcos-icon.svg"
@@ -281,7 +355,7 @@ html_static_path = ["_static"]
 html_css_files = [
     "custom.css",
 ]
-html_title = "QCOS Documentation"
+html_title = title
 html_show_sourcelink = False
 gettext_uuid = True
 gettext_compact = False

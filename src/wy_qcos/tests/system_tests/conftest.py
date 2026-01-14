@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -89,6 +89,9 @@ def load_configs():
     )
     SAMPLES["1-qubit-sample.qasm"] = Library.read_file(
         f"{samples_dir}/qasm/3.0/simple-qasm-1-bit.qasm"
+    )
+    SAMPLES["15_35.qasm"] = Library.read_file(
+        f"{samples_dir}/qasm/2.0/wirecut/15_35.qasm"
     )
     SAMPLES["simple-qubo.json"] = json.loads(
         Library.read_file(f"{samples_dir}/qubo/simple-qubo.json")

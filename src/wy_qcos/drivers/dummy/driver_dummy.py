@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -52,7 +52,11 @@ class DriverDummy(DriverBase):
         self.max_qubits = 10
         # pylint: disable=duplicate-code
         self.extra_configs = {}
-        self.driver_options_schema = {Optional("sleep"): int}
+        self.driver_options_schema = {
+            Optional("sleep"): int,
+            Optional("enable_wirecut"): bool,
+            Optional("max_qubits"): int,
+        }
 
     def init_driver(self):
         """Init driver."""
@@ -161,3 +165,14 @@ class DriverDummy(DriverBase):
             job_id: job ID
         """
         logger.info(f"Cancel job: job_id: {job_id}")
+
+    def update_driver_options(self, driver_options):
+        """Update driver options.
+
+        Args:
+            driver_options: new driver options
+        """
+        self.driver_options.update(driver_options)
+        max_qubits_value = self.driver_options.get("max_qubits")
+        if max_qubits_value is not None:
+            self.set_max_qubits(max_qubits_value)

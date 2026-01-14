@@ -1,0 +1,25 @@
+{
+  "product": "firefox",
+  "protocol": "webDriverBiDi",
+  "defaultViewport": {
+    "width": 1200,
+    "height": 800
+  },
+  "timeout": 600000,
+  "args": [
+    "--headless",
+    "--no-remote",
+    "--disable-setuid-sandbox",
+    "--disable-gpu",
+    "--disable-software-rasterizer",
+    "--disable-dev-shm-usage",
+    "--single-process",
+    "--profile /tmp/firefox-profile"
+  ],
+  "env": {
+    "MOZ_HEADLESS": "1",
+    "MOZ_WEBRENDER": "0",
+    "MOZ_ACCEL_DIAGNOSTICS": "0",
+    "GALLIUM_DRIVER": "llvmpipe"
+  }
+}

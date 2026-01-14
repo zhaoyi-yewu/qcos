@@ -57,7 +57,7 @@ class Device:
         self.status = self.DEVICE_STATUS_OFFLINE
         # qubits
         self.max_qubits = driver.get_max_qubits()
-        # qubits
+        # tech_type
         self.tech_type = driver.get_tech_type()
         # progress
         self.progress = 0

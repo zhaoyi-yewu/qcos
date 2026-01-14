@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -76,15 +76,6 @@ def scale_to_integer_matrix(matrix):
     return scaled_ising_matrix
 
 
-def is_int_matrix(matrix, param_bit):
-    """Check matrix is int8."""
-    return (
-        np.all(np.equal(np.mod(matrix, 1), 0))
-        and matrix.min() >= -(2 ** (param_bit - 1))
-        and matrix.max() <= 2 ** (param_bit - 1) - 1
-    )
-
-
 def check_matrix(matrix):
     """Check matrix is square array or not.
 
@@ -126,10 +117,45 @@ def check_qubo_matrix_bit_width(qubo_matrix, param_bit):
         # 1. change qubo matrix to ising matrix
         ising_matrix = qubo_matrix_to_ising_matrix(qubo_matrix)
         # 2. scale the ising matrix and check bit width
-        scaled_ising_matrix = scale_to_integer_matrix(ising_matrix)
-        if not is_int_matrix(scaled_ising_matrix, param_bit):
+        bit_width = param_bit - 1
+        if not np.any(ising_matrix):
+            return np.inf, np.inf
+        abs_matrix = np.abs(ising_matrix)
+        threshold = 1e-10
+        non_zero_elements = abs_matrix[
+            np.where(np.abs(abs_matrix) > threshold)
+        ]
+        normalization_factor = np.min(non_zero_elements)
+        normalized_matrix = ising_matrix / normalization_factor
+        abs_normalized_matrix = np.abs(normalized_matrix)
+        scaling_factor_upper_limit = (
+            int(np.floor(2**bit_width / abs_normalized_matrix.max())) + 1
+        )
+        precision = np.inf
+        for i in range(1, scaling_factor_upper_limit):
+            scaled_normalized_matrix = ising_matrix * i / normalization_factor
+            if np.array_equal(
+                np.around(scaled_normalized_matrix, decimals=0),
+                np.around(scaled_normalized_matrix, decimals=8),
+            ):
+                for j in range(1, bit_width + 1):
+                    upper_bound = 2**j
+                    if (
+                        np.around(scaled_normalized_matrix.max())
+                        == upper_bound
+                    ):
+                        continue
+                    if (
+                        i
+                        < int(
+                            np.floor(upper_bound / abs_normalized_matrix.max())
+                        )
+                        + 1
+                    ):
+                        precision = j + 1
+        if precision > param_bit:
             success = False
-            logger.info(
+            logger.warning(
                 f"The element values in the QUBO matrix "
                 f"does not meet {param_bit}-bit signed."
             )

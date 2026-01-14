@@ -6,17 +6,22 @@
 
 ### 新增功能
 
+- 升级prefect镜像到3.6.9版本
+- 增加bumpversion版本号更新脚本: cicd/release-version.py
+- 增加版本发布脚本: cicd/publish.py
 - 增加部分文档: 贡献者公约、代码贡献指南等等
-- requirements\*.txt文件统一放入requirements目录
-- 增加bumpversion版本发布脚本
+- 新增qutip模拟器驱动
 
 ### 变更功能
 
 - 由于PYPI包名冲突，修改模块包名qcos->wy_qcos，qcos.client->wy_qcos_client，并挪到src目录
+- 量子任务的执行方式由串行执行更改为并行执行
+- requirements\*.txt文件统一放入requirements目录
+- 更换html文档主题从alabaster改为sphinx_rtd_theme
 
 ### 修复问题
 
-- 无
+- 修复在没有配置PIP_MIRROR时的wheel包编译报错问题
 
 ### 移除内容
 

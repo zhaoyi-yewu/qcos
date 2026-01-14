@@ -19,23 +19,20 @@ import pytest
 from types import SimpleNamespace
 from unittest.mock import patch, Mock
 
+from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
+from wy_qcos.drivers.device_manager import DeviceManager
+from wy_qcos.drivers.driver_manager import DriverManager
 from wy_qcos.task_manager.task_manager import TaskFlowManager
-from wy_qcos.task_manager.task_scheduler import (
-    TaskScheduler,
-    PriorityPolicy,
-    SchedulerPolicyHandlerFactory,
-    RealtimePolicy,
-    BatchPolicy,
-    DependentPolicy,
-    PeriodicPolicy,
-)
+from wy_qcos.task_manager.task_scheduler import TaskScheduler
 from wy_qcos.task_manager.task_scheduler import TimePrecedencePolicy
 from wy_qcos.tests.unit_tests.task_manager.constant_for_test import (
     ConstantForTest,
 )
 
 task = TaskScheduler()
+driver_manager = DriverManager()
+device_manager = DeviceManager(Config, driver_manager)
 
 
 class TestTaskScheduler:
@@ -44,15 +41,14 @@ class TestTaskScheduler:
         mock_start.return_value = None
         assert task.start_taskmanager() is None
 
-    @patch.object(TaskFlowManager, "set_driver_manager")
-    def test_set_driver_manager(self, mock_set_driver_manager):
-        mock_set_driver_manager.return_value = None
-        driver_manager = None
+    def test_set_driver_manager(self):
+        mock_loop = Mock()
+        mock_loop.run_until_complete.return_value = "Mocked task done"
         assert task.set_driver_manager(driver_manager) is None
 
     def test_get_driver_manager(self):
         driver_manager = task.get_driver_manager()
-        assert driver_manager is None
+        assert driver_manager is not None
 
     def test_set_transpiler_manager(self):
         transpiler_manager = None
@@ -65,12 +61,11 @@ class TestTaskScheduler:
     @patch.object(TaskFlowManager, "set_device_manager")
     def test_set_device_manager(self, mock_set_device_manager):
         mock_set_device_manager.return_value = None
-        device_manager = None
         assert task.set_device_manager(device_manager) is None
 
     def test_get_device_manager(self):
         device_manager = task.get_device_manager()
-        assert device_manager is None
+        assert device_manager is not None
 
     @patch.object(TaskScheduler, "has_job")
     def test_add(self, mock_has_job):
@@ -81,7 +76,7 @@ class TestTaskScheduler:
         job_info = SimpleNamespace(**job_info)
 
         with pytest.raises(Exception) as context:
-            task.add(Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE, job_info, None)
+            task.add(job_info, None)
         assert str(context.value) is not None
 
     @patch.object(TaskFlowManager, "get_job_artifact")
@@ -144,10 +139,8 @@ class TestTaskScheduler:
     @patch.object(TaskFlowManager, "get_task_flow_run")
     @patch.object(TaskFlowManager, "delete_task_flow_run")
     @patch.object(TaskFlowManager, "get_flow_info_by_backend")
-    @patch.object(SchedulerPolicyHandlerFactory, "get_policy_handler_by_name")
     def test_update_job(
         self,
-        mock_get_policy_handler_by_name,
         mock_get_flow_info_by_backend,
         mock_delete_task_flow_run,
         mock_get_task_flow_run,
@@ -171,16 +164,26 @@ class TestTaskScheduler:
         mock_delete_task_flow_run.return_value = [
             {"job_status": 111, "state": 222},
         ]
+        mock_deploy_flow = Mock()
+        mock_deploy_flow.__name__ = "test_deploy_flow"
+
         mock_get_flow_info_by_backend.return_value = {
-            "deploy_name": "tiangong100"
+            "deploy_name": "tiangong100",
+            "deploy_flow_func": mock_deploy_flow,
+            "deploy_flow_path": "../engine/job_engine.py",
         }
+        mock_device = Mock()
+        mock_device.get_name.return_value = "tiangong100"
+        mock_device_manager = Mock()
+        mock_device_manager.get_device.return_value = mock_device
+        task.set_device_manager(mock_device_manager)
+
         mock_policy_handler = Mock()
-        mock_get_policy_handler_by_name.return_value = mock_policy_handler
         mock_policy_handler.exec_task.return_value = "mock_job_id_123"
+        mock_loop = Mock()
+        mock_loop.run_until_complete.return_value = "Mocked task done"
+        task._policy_handler = mock_policy_handler
         task.update_job(ConstantForTest.job_id, parameters={"job_priority": 1})
-        mock_get_policy_handler_by_name.assert_called_once_with(
-            Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE
-        )
         mock_policy_handler.exec_task.assert_called_once()
 
     @patch.object(TaskFlowManager, "run_callbacks")
@@ -241,34 +244,7 @@ class TestTaskScheduler:
 
 
 task_manager = TaskFlowManager()
-priority_policy = PriorityPolicy(task_manager)
 time_precedence_policy = TimePrecedencePolicy(task_manager)
-periodic_policy = PeriodicPolicy(task_manager)
-dependent_policy = DependentPolicy(task_manager)
-batch_policy = BatchPolicy(task_manager)
-realtime_policy = RealtimePolicy(task_manager)
-factory = SchedulerPolicyHandlerFactory(task_manager)
-
-
-class TestPriorityPolicy:
-    @patch.object(TaskFlowManager, "deploy_task_flow")
-    @patch.object(TaskFlowManager, "run_task_flow")
-    def test_exec_task(self, mock_run_task_flow, mock_deploy_task_flow):
-        mock_deploy_task_flow.return_value = 114
-        mock_run_task_flow.return_value = 514
-
-        result = priority_policy.exec_task(
-            ConstantForTest.flow_info,
-            ConstantForTest.args["job_info"],
-            None,
-        )
-        assert result == 514
-
-    def test_calculate_priority(self):
-        job_info = priority_policy.calculate_priority(
-            ConstantForTest.args["job_info"]
-        )
-        assert job_info == 1
 
 
 class TestTimePrecedencePolicy:
@@ -290,31 +266,3 @@ class TestTimePrecedencePolicy:
             ConstantForTest.args["job_info"]
         )
         assert job_info == 1
-
-
-class TestPeriodicPolicy:
-    def test_exec_task(self):
-        assert periodic_policy.exec_task() is None
-
-
-class TestDependentPolicy:
-    def test_exec_task(self):
-        assert dependent_policy.exec_task() is None
-
-
-class TestBatchPolicy:
-    def test_exec_task(self):
-        assert batch_policy.exec_task() is None
-
-
-class TestRealtimePolicy:
-    def test_exec_task(self):
-        assert realtime_policy.exec_task() is None
-
-
-class TestSchedulerPolicyHandlerFactory:
-    def test_get_policy_handler_by_name(self):
-        policy_handler = factory.get_policy_handler_by_name(
-            Constant.JOB_SCHED_POLICY_TIME_PRECEDENCE
-        )
-        assert policy_handler is not None

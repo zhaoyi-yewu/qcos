@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -86,46 +86,84 @@ class RuleApplier:
         target: list[str],
         rule_dict: dict[str, EquivalenceRule],
     ) -> list[BaseOperation]:
-        """Recursively decomposes a quantum circuit using equivalence rules.
+        """Recursively decompose a quantum circuit using equivalence rules.
 
-        Each gate in `circuit` is repeatedly decomposed using the rules in
-        `rule_dict` until it becomes a target gate. Gates already belonging
-        to the target set are not decomposed further.
+        Each gate in the input circuit is recursively decomposed using the
+        provided equivalence rules until it becomes a target gate. Results of
+        gate decompositions are memoized to avoid repeated work and improve
+        performance.
 
         Args:
-            circuit: A list of `BaseOperation` objects representing the
-                original quantum circuit to decompose.
-            target: A list of str representing the allowed target gate types.
-                Only gates matching the names of these operations will appear
-                in the final output.
-            rule_dict: A dictionary mapping gate names to their
-                corresponding `EquivalenceRule` decomposition rules.
+            circuit: A list of ``BaseOperation`` objects representing the
+                original quantum circuit.
+            target: A list of gate names that are considered target (basis)
+                gates. Gates whose ``name`` is in this list will not be
+                decomposed further.
+            rule_dict: A mapping from gate names to their corresponding
+                ``EquivalenceRule`` objects used for decomposition.
 
         Returns:
-            A list of `BaseOperation` objects representing the fully
-            decomposed circuit.
+            A list of ``BaseOperation`` objects representing the fully
+            decomposed circuit, containing only target gates.
 
         Raises:
-            KeyError: If a gate that is not in the target set has no
-                corresponding rule in `rule_dict`.
+            KeyError: If a gate is not in the target set and no decomposition
+                rule is found for it in ``rule_dict``.
         """
         target_gate_names = set(target)
 
-        def _decompose_gate(gate: BaseOperation) -> list[BaseOperation]:
-            """Recursively decomposes a single gate.
+        # Cache mapping gate signatures to their fully decomposed results.
+        decompose_cache: dict[tuple, list[BaseOperation]] = {}
+
+        def _gate_signature(gate: BaseOperation) -> tuple:
+            """Generate a hashable signature for a gate.
+
+            The signature uniquely identifies a gate by its type, targets,
+            and parameters, and is used as a cache key for memoization.
 
             Args:
-                gate: The gate to decompose.
+                gate: The gate for which to generate a signature.
 
             Returns:
-                A list of `BaseOperation` objects representing the fully
-                decomposed form of the gate.
+                A tuple that uniquely represents the gate.
             """
-            # If the gate is already in the target basis, keep it.
-            if gate.name in target_gate_names:
-                return [gate]
+            return (
+                gate.name,
+                tuple(gate.targets),
+                tuple(gate.arg_value) if gate.arg_value is not None else None,
+            )
 
-            # If the gate cannot be decomposed, that's an error.
+        def _decompose_gate(gate: BaseOperation) -> list[BaseOperation]:
+            """Recursively decompose a single gate into target gates.
+
+            This function uses memoization to avoid recomputing the
+            decomposition of identical gates.
+
+            Args:
+                gate: The ``BaseOperation`` to decompose.
+
+            Returns:
+                A list of ``BaseOperation`` objects representing the fully
+                decomposed form of the input gate.
+
+            Raises:
+                KeyError: If the gate cannot be decomposed because no
+                    corresponding rule exists.
+            """
+            signature = _gate_signature(gate)
+
+            # Return cached result if available.
+            if signature in decompose_cache:
+                return list(decompose_cache[signature])
+
+            result: list[BaseOperation] = []
+            # Gate is already in the target basis.
+            if gate.name in target_gate_names:
+                result = [gate]
+                decompose_cache[signature] = result
+                return list(result)
+
+            # No rule available for decomposition.
             if gate.name not in rule_dict:
                 raise KeyError(
                     f"No decomposition rule available for gate: {gate.name!r}"
@@ -133,15 +171,16 @@ class RuleApplier:
 
             rule = rule_dict[gate.name]
 
-            # Apply the rule to obtain intermediate gates.
+            # Apply the equivalence rule once.
             expanded_ops = self.apply_one_rule(gate, rule)
 
-            # Recursively decompose each generated gate.
-            results: list[BaseOperation] = []
+            # Recursively decompose generated operations.
             for op in expanded_ops:
-                results.extend(_decompose_gate(op))
+                result.extend(_decompose_gate(op))
 
-            return results
+            # Cache the fully decomposed result.
+            decompose_cache[signature] = result
+            return list(result)
 
         decomposed_circuit: list[BaseOperation] = []
         for gate in circuit:

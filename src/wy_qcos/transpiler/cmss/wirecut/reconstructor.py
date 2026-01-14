@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -140,7 +140,6 @@ class Reconstructor:
         Returns:
             Tensor product result of the current basis combination.
         """
-        print(f"conn_bases: {conn_bases}\n, connections: {connections}")
         topo_subcircuits.assign_bases_to_connections(
             conn_bases=conn_bases, connections=connections
         )
