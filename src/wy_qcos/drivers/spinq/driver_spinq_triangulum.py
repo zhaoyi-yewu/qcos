@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -16,13 +16,13 @@
 # ----------------------------------------------------------------------
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.drivers.spinq.driver_spinq_cloud_base import DriverSpinQCloudBase
+from wy_qcos.drivers.spinq.driver_spinq_nmr import DriverSpinQNmr
 
 
-class DriverSpinQCloudTriangulum(DriverSpinQCloudBase):
-    """量旋科技 三角座 核磁驱动 (Cloud版本).
+class DriverSpinQTriangulum(DriverSpinQNmr):
+    """量旋科技 三角座 核磁驱动.
 
-    SpinQ triangulum NMR driver (Cloud)
+    SpinQ triangulum NMR driver
     https://cloud.spinq.cn
     """
 
