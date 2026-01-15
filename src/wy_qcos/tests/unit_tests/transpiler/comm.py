@@ -16,6 +16,8 @@
 # ----------------------------------------------------------------------
 
 from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
+from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.transpiler.cmss.circuit.operators.operator import Operator
 
 
 def validate_gate_ir(
@@ -37,6 +39,15 @@ def validate_non_gate_ir(
     assert actual.name == name
     assert actual.targets == targets
     assert actual.operation_type == q_type
+
+
+def validate_ir_equals(source, result):
+    source_qc = QuantumCircuit.from_ir(source)
+    source_op = Operator(source_qc)
+
+    result_qc = QuantumCircuit.from_ir(result)
+    result_op = Operator(result_qc)
+    assert source_op.equiv(result_op) is True
 
 
 def read_qasm_from_file(file_path):
