@@ -15,6 +15,7 @@ idna==3.10
 jsonrpcclient==4.0.3
 loguru==0.7.3
 matplotlib==3.9.2
+mqt.qcec==3.3.0
 networkx==3.3
 numexpr==2.14.1
 numpy==1.26.4

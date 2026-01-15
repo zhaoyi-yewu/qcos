@@ -61,6 +61,7 @@ dependencies = [
     "jsonrpcclient==4.0.3",
     "loguru==0.7.3",
     "matplotlib==3.9.2",
+    "mqt.qcec==3.3.0",
     "networkx==3.3",
     "numexpr==2.14.1",
     "numpy==1.26.4",
@@ -111,7 +112,7 @@ qiskit-transpiler = "wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd:main"
 
 [project.urls]
 "Homepage" = "https://gitee.com/OpenWuYue/qcos"
-"Documentation" = "https://gitee.com/OpenWuYue/qcos/blob/develop/docs/sphinx/source/index.rst"
+"Documentation" = "https://qcos.readthedocs.io"
 "Changelog" = "https://gitee.com/OpenWuYue/qcos/blob/develop/CHANGELOG.md"
 "Issue Tracker" = "https://gitee.com/OpenWuYue/qcos/issues"
 "Source" = "https://gitee.com/OpenWuYue/qcos"

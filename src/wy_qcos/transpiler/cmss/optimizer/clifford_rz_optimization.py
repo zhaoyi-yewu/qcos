@@ -33,7 +33,6 @@ from wy_qcos.transpiler.cmss.circuit.dag_node import DAGOpNode
 from wy_qcos.transpiler.cmss.circuit.collect_blocks import (
     BlockCollector,
 )
-from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
 
 
 class CliffordRzOptimization:
@@ -45,70 +44,8 @@ class CliffordRzOptimization:
     }
     _optimize_routine = [1, 3, 2, 3, 1, 2, 4, 3, 2]
 
-    para_rule = {
-        "s": np.pi / 2,
-        "t": np.pi / 4,
-        "sdg": -np.pi / 2,
-        "tdg": -np.pi / 4,
-        "z": np.pi,
-    }
-
-    depara_rule = {
-        0: ["id"],
-        1: ["t"],
-        2: ["s"],
-        3: ["s", "t"],
-        4: ["z"],
-        5: ["z", "t"],
-        6: ["sdg"],
-        7: ["tdg"],
-    }
-
     def __init__(self, verbose=False) -> None:
         self.verbose = verbose
-
-    def parameterize_all(self, dag: DAGCircuit):
-        """Convert all T/Tdg/S/Sdg/Z into Rz gates.
-
-        Args:
-            dag (DAGCircuit): DAG of the circuit
-        """
-        for node in dag.topological_op_nodes():
-            if node.name in ["s", "t", "sdg", "tdg", "z"]:
-                old_op = node.op
-                new_op = create_gate(
-                    "rz",
-                    targets=node.op.targets,
-                    arg_value=[self.para_rule[node.name]],
-                )
-                dag.rename_op(old_op, new_op)
-                node.op = new_op
-                node.name = "rz"
-
-    def deparameterize_all(self, dag: DAGCircuit):
-        """Convert all Rz gates into T/Tdg/S/Sdg/Z.
-
-        Args:
-            dag (DAGCircuit): DAG of the circuit
-        """
-        for node in dag.topological_op_nodes():
-            if node.name == "rz":
-                times = np.mod(node.op.arg_value[0], 2 * np.pi) / (np.pi / 4)
-                if not np.isclose(round(times), times, rtol=0):
-                    continue
-                g_list = self.depara_rule[round(times) % 8]
-                if len(g_list) > 1:
-                    continue
-                if g_list[0] == "id":
-                    dag.remove_op_node(node)
-                    continue
-                old_op = node.op
-                new_op = create_gate(
-                    g_list[0], targets=node.op.targets, arg_value=[]
-                )
-                dag.rename_op(old_op, new_op)
-                node.op = new_op
-                node.name = g_list[0]
 
     @cached_property
     def hadamard_templates(self) -> list[OptimizingTemplate]:
@@ -451,7 +388,7 @@ class CliffordRzOptimization:
         """
         routine = self._optimize_routine
         init_size = dag.size()
-        self.parameterize_all(dag)
+        dag.parameterize_all()
 
         gate_reduced_cnt = 0
         round_cnt = 0
@@ -483,7 +420,7 @@ class CliffordRzOptimization:
 
             gate_reduced_cnt += cnt
 
-        self.deparameterize_all(dag)
+        dag.deparameterize_all()
         res_size = dag.size()
 
         if self.verbose:

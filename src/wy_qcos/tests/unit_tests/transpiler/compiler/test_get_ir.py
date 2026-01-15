@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -14,6 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+import pytest
 
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.tests.unit_tests.transpiler.comm import validate_gate_ir
@@ -260,3 +261,64 @@ class TestGetIr:
         validate_gate_ir(gates_list[14], "c3sqrtx", [0, 1, 2, 3], 4, False)
         validate_gate_ir(gates_list[15], "c4x", [0, 1, 2, 3, 4], 5, False)
         validate_gate_ir(gates_list[16], "u3", [1], 1, False)
+
+    def test_for_digits(self):
+        data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q1[2];
+        creg c1[2];
+        u3(1.5705854245991118,-3.1667235621803993,-1.58730875641222e-05) q1[0];
+        """
+        tree = get_abs_tree(data)
+        assert tree is not None
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
+        assert q_num == 2
+        assert len(gates_list) == 1
+        validate_gate_ir(gates_list[0], "u3", [0], 1, False)
+
+    def test_for_redefine_builtin_gate_legal(self):
+        data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+
+        gate sx a { sdg a; h a; sdg a; }
+
+        qreg q1[1];
+        creg c1[1];
+        sx q1[0];
+        """
+        tree = get_abs_tree(data)
+        assert tree is not None
+
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
+
+        assert q_num == 1
+        assert len(gates_list) == 3
+        validate_gate_ir(gates_list[0], "sdg", [0], 1, False)
+        validate_gate_ir(gates_list[1], "h", [0], 1, True)
+        validate_gate_ir(gates_list[2], "sdg", [0], 1, False)
+
+    def test_for_redefine_user_gate(self):
+        data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+
+        gate mygate a {
+            x a;
+        }
+
+        gate mygate b {
+            y b;
+        }
+
+        qreg q1[1];
+        mygate q1[0];
+        """
+        with pytest.raises(SyntaxError) as context:
+            tree = get_abs_tree(data)
+            get_ir(tree)
+
+        assert f"in line {9}, {'mygate'} redefined" in str(context.value)

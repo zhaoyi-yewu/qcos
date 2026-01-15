@@ -19,6 +19,7 @@ from collections import OrderedDict
 from collections.abc import Generator
 from typing import Any
 import rustworkx as rx
+import numpy as np
 
 from wy_qcos.transpiler.cmss.circuit.dag_node import (
     DAGOpNode,
@@ -28,6 +29,7 @@ from wy_qcos.transpiler.cmss.circuit.dag_node import (
 )
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
+from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
 
 
 class DAGCircuit:
@@ -123,6 +125,59 @@ class DAGCircuit:
             self._increment_op(new_op)
         else:
             raise ValueError(f"no {old_op.name} in the dag.")
+
+    def parameterize_all(self):
+        """Convert all T/Tdg/S/Sdg/Z into Rz gates."""
+        para_rule = {
+            "s": np.pi / 2,
+            "t": np.pi / 4,
+            "sdg": -np.pi / 2,
+            "tdg": -np.pi / 4,
+            "z": np.pi,
+        }
+
+        for node in self.topological_op_nodes():
+            if node.name in ["s", "t", "sdg", "tdg", "z"]:
+                old_op = node.op
+                new_op = create_gate(
+                    "rz",
+                    targets=node.op.targets,
+                    arg_value=[para_rule[node.name]],
+                )
+                self.rename_op(old_op, new_op)
+                node.op = new_op
+                node.name = "rz"
+
+    def deparameterize_all(self):
+        """Convert all Rz gates into T/Tdg/S/Sdg/Z."""
+        depara_rule = {
+            0: ["id"],
+            1: ["t"],
+            2: ["s"],
+            3: ["s", "t"],
+            4: ["z"],
+            5: ["z", "t"],
+            6: ["sdg"],
+            7: ["tdg"],
+        }
+        for node in self.topological_op_nodes():
+            if node.name == "rz":
+                times = np.mod(node.op.arg_value[0], 2 * np.pi) / (np.pi / 4)
+                if not np.isclose(round(times), times, rtol=0):
+                    continue
+                g_list = depara_rule[round(times) % 8]
+                if len(g_list) > 1:
+                    continue
+                if g_list[0] == "id":
+                    self.remove_op_node(node)
+                    continue
+                old_op = node.op
+                new_op = create_gate(
+                    g_list[0], targets=node.op.targets, arg_value=[]
+                )
+                self.rename_op(old_op, new_op)
+                node.op = new_op
+                node.name = g_list[0]
 
     def _increment_op(self, op):
         """Increase the count of a given operation.
@@ -638,13 +693,19 @@ class DAGCircuit:
             dag_circuit.apply_operation_back(gate)
         return dag_circuit
 
-    def dag_to_circuit(self):
+    def dag_to_circuit(self, num_qubits: int = 0):
         """Convert DAG to QuantumCircuit.
+
+        Args:
+            num_qubits (int): number of qubits in the circuit.
 
         Returns:
             QuantumCircuit: QuantumCircuit corresponding to DAG.
         """
-        circ = QuantumCircuit()
+        if num_qubits > 0:
+            circ = QuantumCircuit(num_qubits)
+        else:
+            circ = QuantumCircuit()
         gate_list = []
         for node in self.topological_op_nodes():
             if isinstance(node, DAGOpNode):

@@ -19,7 +19,7 @@ import networkx as nx
 import pytest
 from unittest.mock import Mock
 
-from wy_qcos.transpiler.cmss.mapping.routing.mt_tree import (
+from wy_qcos.transpiler.cmss.mapping.routing.mcts_routing import (
     MCTree,
 )
 from wy_qcos.transpiler.cmss.mapping.utils.dg import DG

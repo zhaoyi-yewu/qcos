@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -20,41 +20,41 @@ import pytest
 from unittest.mock import Mock
 
 from wy_qcos.transpiler.common.errors import MappingException
-from wy_qcos.transpiler.cmss.mapping.routing.sc_routing import SCRouting
+from wy_qcos.transpiler.cmss.mapping.routing.mcts_routing import MCTSRouting
 
 
-class TestSCRouting:
-    """Test SCRouting class."""
+class TestMCTSRouting:
+    """Test MCTSRouting class (formerly SCRouting)."""
 
     def test_init(self):
-        """Test SCRouting initialization."""
-        routing = SCRouting()
+        """Test MCTSRouting initialization."""
+        routing = MCTSRouting()
         assert routing.selec_times == 50
 
     def test_layout_list_to_dict(self):
         """Test _layout_list_to_dict method."""
-        routing = SCRouting()
+        routing = MCTSRouting()
         layout_list = [0, 1, 2, 3]
         result = routing._layout_list_to_dict(layout_list)
         assert result == {0: 0, 1: 1, 2: 2, 3: 3}
 
     def test_layout_dict_reverse(self):
         """Test _layout_dict_reverse method."""
-        routing = SCRouting()
+        routing = MCTSRouting()
         layout_dict = {0: 1, 1: 0, 2: 2}
         result = routing._layout_dict_reverse(layout_dict)
         assert result == {1: 0, 0: 1, 2: 2}
 
     def test_execute_routing_none_search_tree(self):
         """Test execute_routing with None search_tree."""
-        routing = SCRouting()
+        routing = MCTSRouting()
         with pytest.raises(MappingException) as exc_info:
             routing.execute_routing(None, None, None, 0, [])
         assert "search_tree cannot be None" in str(exc_info.value)
 
     def test_execute_routing_none_ag(self):
         """Test execute_routing with None ag."""
-        routing = SCRouting()
+        routing = MCTSRouting()
         mock_tree = Mock()
         with pytest.raises(MappingException) as exc_info:
             routing.execute_routing(mock_tree, None, None, 0, [])
@@ -62,7 +62,7 @@ class TestSCRouting:
 
     def test_execute_routing_none_initial_layout(self):
         """Test execute_routing with None initial_layout."""
-        routing = SCRouting()
+        routing = MCTSRouting()
         mock_tree = Mock()
         mock_ag = Mock()
         with pytest.raises(MappingException) as exc_info:
@@ -71,7 +71,7 @@ class TestSCRouting:
 
     def test_execute_routing_basic(self):
         """Test execute_routing basic functionality."""
-        routing = SCRouting()
+        routing = MCTSRouting()
         routing.selec_times = 1  # Reduce iterations for testing
 
         # Create mock search_tree
@@ -105,7 +105,7 @@ class TestSCRouting:
 
     def test_execute_routing_with_swaps(self):
         """Test execute_routing with swaps."""
-        routing = SCRouting()
+        routing = MCTSRouting()
         routing.selec_times = 1
 
         # Create mock search_tree
@@ -137,7 +137,7 @@ class TestSCRouting:
 
     def test_execute_routing_with_measure_ops(self):
         """Test execute_routing with measure operations."""
-        routing = SCRouting()
+        routing = MCTSRouting()
         routing.selec_times = 1
 
         # Create mock search_tree
@@ -172,7 +172,7 @@ class TestSCRouting:
 
     def test_execute_routing_swap_mapping_not_dict(self):
         """Test execute_routing when swap_mapping is not a dict."""
-        routing = SCRouting()
+        routing = MCTSRouting()
         routing.selec_times = 1
 
         # Create mock search_tree
@@ -208,7 +208,7 @@ class TestSCRouting:
 
     def test_execute_routing_phy_q_not_in_swap_mapping(self):
         """Test execute_routing when phy_q not in swap_mapping."""
-        routing = SCRouting()
+        routing = MCTSRouting()
         routing.selec_times = 1
 
         # Create mock search_tree
@@ -240,7 +240,7 @@ class TestSCRouting:
 
     def test_execute_routing_num_q_vir_filtering(self):
         """Test execute_routing filtering by num_q_vir."""
-        routing = SCRouting()
+        routing = MCTSRouting()
         routing.selec_times = 1
 
         # Create mock search_tree

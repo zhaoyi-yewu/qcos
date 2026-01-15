@@ -50,11 +50,30 @@ class TestDecomposer:
 
     @staticmethod
     def load_samples():
-        base_dir = Path(__file__).resolve().parent.parents[3]
-        qasm_dir = base_dir / "samples" / "qasm" / "2.0" / "benchpress"
+        base_dir = Path(__file__).resolve().parents[4]
+        qasm_dir = (
+            base_dir / "samples" / "qasm" / "benchpress" / "qasmbench-small"
+        )
+        print(f"Loading samples from {qasm_dir}")
         samples = {}
-        for file in qasm_dir.glob("*.qasm"):
-            samples[file.name] = file.read_text(encoding="utf-8")
+
+        # some samples can not be parsed
+        ignore_set = set([
+            "bb84_n8/bb84_n8.qasm",
+            "bb84_n8/bb84_n8_transpiled.qasm",
+            "error_correctiond3_n5/error_correctiond3_n5.qasm",
+            "error_correctiond3_n5/error_correctiond3_n5_transpiled.qasm",
+            "ipea_n2/ipea_n2.qasm",
+            "ipea_n2/ipea_n2_transpiled.qasm",
+            "shor_n5/shor_n5.qasm",
+            "shor_n5/shor_n5_transpiled.qasm",
+        ])
+        for file in qasm_dir.rglob("*.qasm"):
+            rel_path = file.relative_to(qasm_dir).as_posix()
+            if rel_path in ignore_set:
+                continue
+
+            samples[rel_path] = file.read_text(encoding="utf-8")
 
         return samples
 

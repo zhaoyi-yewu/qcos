@@ -49,7 +49,7 @@ RUN \
       texlive-lastpage texlive-tocloft texlive-supertabular \
       texlive-collection-langchinese google-noto-sans-sc-fonts \
       docker rpm-build make cmake gcc gcc-g++ rust cargo rsync \
-      npm firefox java \
+      npm firefox java graphviz \
       python3 python3-pip python3-sphinx python3-requests python3-devel && \
 # update fonts
     mktexlsr && \
