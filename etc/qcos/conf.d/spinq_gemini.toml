@@ -18,7 +18,6 @@ username = "spinq_visitor_002"
 signature = ""
 
 [spinq_gemini.transpiler.qpu_configs]
-
 qubits = 2
 coupler_map.CX1_2 = ["Q1", "Q2"]
 coupler_map.CX2_1 = ["Q2", "Q1"]

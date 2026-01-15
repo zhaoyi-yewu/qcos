@@ -38,7 +38,7 @@ on_rtd = os.environ.get("READTHEDOCS") == "True"
 
 
 project = f"{Config.PLATFORM_NAME}"
-title = "QCOS Documentation"
+title = f"{Config.PLATFORM_NAME}文档"
 subject = "文档"
 description_zh = "QCOS是一款开源的通用量子计算操作系统"
 copyright = f"{Config.COPYRIGHT}"
@@ -70,13 +70,15 @@ exclude_patterns = [
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 ##
-# skip spinq module
+# skip module
 autodoc_mock_imports = ["spinqit"]
 
 
-def skip_spinq_module(app, what, name, obj, skip, options):
-    if "driver_spinq_cloud_base" in name:
-        return True
+def skip_modules(app, what, name, obj, skip, options):
+    skip_module_list = ["driver_spinq_cloud_base"]
+    for skip_module in skip_module_list:
+        if skip_module in name:
+            return True
     return skip
 
 
@@ -102,7 +104,7 @@ def setup(app):
                 onerror=None
             )
 
-    app.connect("autodoc-skip-member", skip_spinq_module)
+    app.connect("autodoc-skip-member", skip_modules)
     app.connect("builder-inited", check_builder)
 
 

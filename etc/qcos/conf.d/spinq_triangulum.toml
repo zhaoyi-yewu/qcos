@@ -18,7 +18,6 @@ username = "spinq_visitor_002"
 signature = ""
 
 [spinq_triangulum.transpiler.qpu_configs]
-
 qubits = 3
 coupler_map.CX1_2 = ["Q1", "Q2"]
 coupler_map.CX1_3 = ["Q1", "Q3"]
@@ -26,4 +25,3 @@ coupler_map.CX2_1 = ["Q2", "Q1"]
 coupler_map.CX2_3 = ["Q2", "Q3"]
 coupler_map.CX3_1 = ["Q3", "Q1"]
 coupler_map.CX3_2 = ["Q3", "Q2"]
-

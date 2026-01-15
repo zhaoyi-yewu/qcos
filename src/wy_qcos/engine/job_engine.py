@@ -57,16 +57,17 @@ from wy_qcos.transpiler.cmss.wirecut.cut_wire import (
 )
 
 
-# Config Loguru
-# pylint: disable=duplicate-code
-logger.add(
-    Config.PREFECT_LOG_FILE,
-    level="DEBUG" if Config.DEBUG else "INFO",
-    rotation=f"{Config.LOG_ROTATE_MAX_SIZE_MB} MB",
-    compression="gz" if Config.LOG_ROTATE_COMPRESSION else None,
-    retention=Config.LOG_ROTATE_BACKUP_COUNT,
-    format=Constant.PREFECT_JOB_LOG_FORMAT,
-)
+def init_logger():
+    # Config Loguru
+    # pylint: disable=duplicate-code
+    logger.add(
+        Config.PREFECT_LOG_FILE,
+        level="DEBUG" if Config.DEBUG else "INFO",
+        rotation=f"{Config.LOG_ROTATE_MAX_SIZE_MB} MB",
+        compression="gz" if Config.LOG_ROTATE_COMPRESSION else None,
+        retention=Config.LOG_ROTATE_BACKUP_COUNT,
+        format=Constant.PREFECT_JOB_LOG_FORMAT,
+    )
 
 
 class AggregationInput(RunInput):
@@ -577,6 +578,9 @@ def job_flow(job_info):
         "source_code_count": 0,
         "progress": -1,
     }
+
+    # init logger
+    init_logger()
     logger.info(
         f"Processing work flow: job_engine. "
         f"job_id: {job_id}, job_info: {job_info}"
