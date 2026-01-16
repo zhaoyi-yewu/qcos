@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -22,9 +22,9 @@ from unittest.mock import patch, MagicMock, mock_open
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
+from wy_qcos.transpiler.common.utils import Timer
 from wy_qcos.transpiler.cmss.transpiler_cmd_line import (
     read_qasm_from_file,
-    Timer,
     main_cmss_transpiler as main,
     main as cmss_main,
     get_parse_args,
@@ -166,5 +166,5 @@ class TestTranspilerCmdLine:
             mock_file().write.assert_called_once_with(
                 f"testing file: {input_file}\n"
             )
-            mock_add_handler.assert_called_once_with(mock_file_handler)
+            mock_add_handler.assert_called_with(mock_file_handler)
             assert res == Path(input_file).resolve()

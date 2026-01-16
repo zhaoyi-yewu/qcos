@@ -16,8 +16,8 @@
 # ----------------------------------------------------------------------
 
 from schema import Optional
-from loguru import logger
 
+from wy_qcos.transpiler.common.utils import Timer, logger
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from wy_qcos.transpiler.cmss.compiler.parser import compile
@@ -31,7 +31,9 @@ from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     SCRoute,
     SC_MAPPING_OPTIONS_SCHEMA,
 )
-from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
+from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import (
+    optimize,
+)
 from wy_qcos.transpiler.common.errors import TranspilerException
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.transpiler_base import TranspilerBase
@@ -122,7 +124,7 @@ class TranspilerCmss(TranspilerBase):
             mapping_dict[key] = value[0]
             mapper.prepare_data(value[0], value[1], qpu_cfg)
             mapping_res = mapper.execute_with_order()
-            logger.info(f"after mapping: {mapping_res}")
+            logger.debug(f"after mapping: {mapping_res}")
             return mapping_res, mapping_dict
         else:
             ht = HierarchyTree(qpu_cfg)
@@ -160,7 +162,7 @@ class TranspilerCmss(TranspilerBase):
         self.total_qubits = 0
         if isinstance(src_code_dict, dict):
             for key, value in src_code_dict.items():
-                logger.info(f"source_code:\n{value}")
+                logger.debug(f"source_code:\n{value}")
                 num_qubits, parse_result = compile(value)
                 if self.total_qubits + num_qubits > trans_cfg_inst.max_qubits:
                     # TODO (xudong): need to remove the remained task item.
@@ -193,11 +195,17 @@ class TranspilerCmss(TranspilerBase):
         opt_level = self.transpiler_options.get(
             "optimization_level", Constant.DEFAULT_OPTIMIZATION_LEVEL
         )
-        for key, value in parse_result.items():
-            opt_result = optimize_gate(value[1], opt_level)
-            opt_result_dict[key] = (value[0], opt_result)
+        with Timer() as optimize1_timer:
+            for key, value in parse_result.items():
+                opt_result = optimize(value[1], opt_level)
+                opt_result_dict[key] = (value[0], opt_result)
+        logger.info(
+            f"tranpiler(optimize firstly): {optimize1_timer.elapsed:.4f}s\n"
+        )
 
-        mapping_res, mapping_dict = self.mapping(qpu_cfg, opt_result_dict)
+        with Timer() as mapping_timer:
+            mapping_res, mapping_dict = self.mapping(qpu_cfg, opt_result_dict)
+        logger.info(f"tranpiler(mapping): {mapping_timer.elapsed:.4f}s\n")
 
         # decompose gates
         enable_na_move = self.transpiler_options.get("enable_na_move", False)
@@ -209,9 +217,17 @@ class TranspilerCmss(TranspilerBase):
                 Constant.SINGLE_QUBIT_GATE_RY,
                 Constant.TWO_QUBIT_GATE_CZ,
             ]
-        parsed_circuit = decompose_gates(mapping_res, supp_basis_gates)
+        with Timer() as decompose_timer:
+            parsed_circuit = decompose_gates(mapping_res, supp_basis_gates)
+        logger.info(
+            f"tranpiler(decompose_gates): {decompose_timer.elapsed:.4f}s\n"
+        )
 
         # optimize circuit
-        basis_gate_list = optimize_gate(parsed_circuit, opt_level)
+        with Timer() as optimize2_timer:
+            basis_gate_list = optimize(parsed_circuit, opt_level)
         logger.debug(f"final basis_gate_list: {basis_gate_list}")
+        logger.info(
+            f"tranpiler(optimize secondly): {optimize2_timer.elapsed:.4f}s\n"
+        )
         return basis_gate_list, mapping_dict

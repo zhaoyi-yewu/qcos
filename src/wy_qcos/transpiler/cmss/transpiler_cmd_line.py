@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 import sys
-import logging
 from pathlib import Path
 import time
 from datetime import datetime
@@ -26,13 +25,11 @@ from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
+from wy_qcos.transpiler.common.utils import logger, init_logging
 from wy_qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 
 def read_qasm_from_file(file_path):
@@ -72,8 +69,7 @@ def check_file_args(input_file, output_file):
         # create output file
         with open(output_file_path, "w", encoding="utf-8") as f:
             f.write(f"testing file: {input_file}\n")
-        file_handler = logging.FileHandler(output_file_path)
-        logger.addHandler(file_handler)
+        init_logging(logfile=output_file_path)
 
     return file_path
 
@@ -87,7 +83,7 @@ def main_cmss_transpiler(
 ):
     """cmss-transpiler performance test."""
     success = False
-    # input args check
+    # input args check and init logger
     file_path = check_file_args(input_file, output_file)
     if not file_path:
         return success

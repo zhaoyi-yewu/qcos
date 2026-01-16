@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -30,6 +30,7 @@ from wy_qcos.transpiler.cmss.circuit.register import (
     QuantumRegister,
     ClassicalRegister,
 )
+from wy_qcos.transpiler.common.errors import CircuitException
 
 
 @pytest.mark.usefixtures("global_configs")
@@ -40,6 +41,18 @@ class TestQuantumCircuit:
         assert qc.num_qubits == 2
         assert qc.num_clbits == 2
         assert len(qc.get_operations()) == 0
+
+        with pytest.raises(CircuitException) as e:
+            qc = QuantumCircuit(num_qubits="2", num_clbits="2")
+
+        err_msg = str(e.value)
+        assert err_msg == "num_qubits and num_clbits must be integers."
+
+        with pytest.raises(CircuitException) as e:
+            qc = QuantumCircuit(num_qubits=-1, num_clbits=-1)
+
+        err_msg = str(e.value)
+        assert err_msg == "Number of qubits and clbits must be non-negative."
 
     def test_quantum_circuit_append(self):
         qc = QuantumCircuit(num_qubits=2, num_clbits=2)
@@ -89,6 +102,7 @@ class TestQuantumCircuit:
         assert depth == 2
         assert width == 4
         assert cir.num_qubits == 2
+        assert cir.size() == 4
 
     def test_quantum_circuit_register(self):
         qc = QuantumCircuit()
