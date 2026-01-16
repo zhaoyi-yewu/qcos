@@ -45,6 +45,7 @@
                    // 作业类型: estimation [可选]
                    "job_type": "",
                    // 作业调度优先级1-10 [可选]
+                   // 最高优先级：1， 最低优先级：10
                    "job_priority": 10,
                    // 次数
                    "shots": 1,
@@ -79,6 +80,7 @@
                  //          COMPLETED,CANCELLING,CANCELLED,DELETED
                  "job_status": "QUEUED",
                  // 作业调度优先级1-10
+                 // 最高优先级：1， 最低优先级：10
                  "job_priority": 10,
                  // 代码类型: qasm, qasm2, qasm3,qubo
                  "code_type": "qasm",
@@ -145,6 +147,7 @@
                  //          COMPLETED,CANCELLING,CANCELLED,DELETED
                  "job_status": "QUEUED",
                  // 作业调度优先级1-10
+                 // 最高优先级：1， 最低优先级：10
                  "job_priority": 10,
                  // 作业描述
                  "description": "description",
@@ -197,6 +200,7 @@
                  //          COMPLETED,CANCELLING,CANCELLED,DELETED
                  "job_status": "QUEUED",
                  // 作业调度优先级1-10
+                 // 最高优先级：1， 最低优先级：10
                  "job_priority": 10,
                  // 代码类型: qasm, qasm2, qasm3,qubo
                  "code_type": "qasm",
@@ -258,7 +262,7 @@
                  // 作业状态: UNKNOWN,QUEUED,RUNNING,FAILED,
                  //          COMPLETED,CANCELLING,CANCELLED,DELETED
                  "job_status": "QUEUED",
-                 "job_priority": 100,
+                 "job_priority": 10,
                  "backend": "dummy",
                  "transpiler": "cmss",
                  "shots": 2,
@@ -400,6 +404,7 @@
                  "body": {
                    "job_id": "00000000-0000-4000-8000-000000000001",
                    // 作业调度优先级1-10 [可选]
+                   // 最高优先级：1， 最低优先级：10
                    "job_priority": 10,
                  }
                }
@@ -419,7 +424,9 @@
                  // 作业状态: UNKNOWN,QUEUED,RUNNING,FAILED,
                  //          COMPLETED,CANCELLING,CANCELLED,DELETED
                  "job_status": "QUEUED",
-                 "job_priority": 10,  // 作业调度优先级1-10
+                 // 作业调度优先级1-10
+                 // 最高优先级：1， 最低优先级：10
+                 "job_priority": 10,
                  // 代码类型: qasm, qasm2, qasm3,qubo
                  "code_type": "qasm",
                  "source_code": ["源代码"],

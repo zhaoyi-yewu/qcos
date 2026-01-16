@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -27,7 +27,7 @@ class StLibrary:
     """ST Library."""
 
     @staticmethod
-    def submit_job(client, job_info, timeout=30, interval=5):
+    def submit_job(client, job_info):
         job_id = job_info["job_id"]
         job_name = job_info["job_name"]
         source_code_list = job_info["source_code_list"]
@@ -81,19 +81,21 @@ class StLibrary:
         assert result["callbacks"] == callbacks
         assert result["dry_run"] == dry_run
 
+    @staticmethod
+    def wait_and_get_job_result(client, job_info, timeout=30, interval=5):
         # wait for job status to COMPLETED
         success, err_msg, _ = Library.loop_with_timeout(
             StLibrary.get_job_status,
             timeout,
             interval,
             client,
-            job_id,
+            job_info["job_id"],
         )
         # wait for additional time for job to finish resource cleanup
         time.sleep(5)
 
         # check results
-        job_result = StLibrary.get_job_results(client, job_id)
+        job_result = StLibrary.get_job_results(client, job_info["job_id"])
 
         return job_result
 

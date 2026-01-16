@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import pytest
+import time
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
@@ -45,7 +46,7 @@ class TestJob:
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
             "description": "description: test_submit_job",
-            "backend": Constant.DRIVER_DUMMY,
+            "backend": Constant.DEVICE_DUMMY,
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": None,
             "driver_options": None,
@@ -55,7 +56,8 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        job_results = StLibrary.submit_job(
+        StLibrary.submit_job(self.client, job_info)
+        job_results = StLibrary.wait_and_get_job_result(
             self.client, job_info, self.timeout, self.interval
         )
         StLibrary.delete_job(self.client, job_info["job_id"])
@@ -67,13 +69,13 @@ class TestJob:
     def test_submit_job_dry_run(self):
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
-            "job_name": "test_submit_job",
+            "job_name": "test_submit_job_dry_run",
             "source_code_list": [SAMPLES["simple-qasm.qasm"]],
             "code_type": Constant.CODE_TYPE_QASM,
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
-            "description": "description: test_submit_job",
-            "backend": Constant.DRIVER_DUMMY,
+            "description": "description: test_submit_job_dry_run",
+            "backend": Constant.DEVICE_DUMMY,
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": None,
             "driver_options": None,
@@ -83,7 +85,8 @@ class TestJob:
             "callbacks": None,
             "dry_run": True,
         }
-        job_results = StLibrary.submit_job(
+        StLibrary.submit_job(self.client, job_info)
+        job_results = StLibrary.wait_and_get_job_result(
             self.client, job_info, self.timeout, self.interval
         )
         StLibrary.delete_job(self.client, job_info["job_id"])
@@ -95,13 +98,13 @@ class TestJob:
     def test_submit_job_profiling(self):
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
-            "job_name": "test_submit_job",
+            "job_name": "test_submit_job_profiling",
             "source_code_list": [SAMPLES["simple-qasm.qasm"]],
             "code_type": Constant.CODE_TYPE_QASM,
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
-            "description": "description: test_submit_job",
-            "backend": Constant.DRIVER_DUMMY,
+            "description": "description: test_submit_job_profiling",
+            "backend": Constant.DEVICE_DUMMY,
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": None,
             "driver_options": None,
@@ -117,7 +120,8 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        job_results = StLibrary.submit_job(
+        StLibrary.submit_job(self.client, job_info)
+        job_results = StLibrary.wait_and_get_job_result(
             self.client, job_info, self.timeout, self.interval
         )
         profiling_results = job_results["result"]["results"][0].get(
@@ -148,13 +152,13 @@ class TestJob:
     def test_submit_job_wirecut(self):
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
-            "job_name": "test_submit_job",
+            "job_name": "test_submit_job_wirecut",
             "source_code_list": [SAMPLES["15_35.qasm"]],
             "code_type": Constant.CODE_TYPE_QASM,
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
-            "description": "description: test_submit_job",
-            "backend": Constant.DRIVER_DUMMY,
+            "description": "description: test_submit_job_wirecut",
+            "backend": Constant.DEVICE_DUMMY,
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": None,
             "driver_options": {"enable_wirecut": True},
@@ -164,11 +168,259 @@ class TestJob:
             "callbacks": None,
             "dry_run": True,
         }
-        job_results = StLibrary.submit_job(
+        StLibrary.submit_job(self.client, job_info)
+        job_results = StLibrary.wait_and_get_job_result(
             self.client, job_info, self.timeout, self.interval
         )
         StLibrary.delete_job(self.client, job_info["job_id"])
         assert (
             job_results["result"]["job_status"]
+            == Constant.JOB_STATUS_COMPLETED
+        )
+
+    def test_submit_two_same_priority_jobs(self):
+        first_job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_submit_two_same_priority_jobs_1",
+            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_submit_two_same_priority_jobs_1",
+            "backend": Constant.DEVICE_DUMMY,
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "transpiler_options": None,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+        }
+        StLibrary.submit_job(self.client, first_job_info)
+
+        second_job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_submit_two_same_priority_jobs_2",
+            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_submit_two_same_priority_jobs_2",
+            "backend": Constant.DEVICE_DUMMY,
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "transpiler_options": None,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+        }
+        StLibrary.submit_job(self.client, second_job_info)
+
+        result, err_msg, _ = StLibrary.get_job_status(
+            self.client, first_job_info["job_id"]
+        )
+        assert result is False
+        assert "QUEUED" in err_msg
+        result, err_msg, _ = StLibrary.get_job_status(
+            self.client, second_job_info["job_id"]
+        )
+        assert result is False
+        assert "QUEUED" in err_msg
+
+        time.sleep(20)
+        result, err_msg, _ = StLibrary.get_job_status(
+            self.client, first_job_info["job_id"]
+        )
+        assert result is True
+        result, err_msg, _ = StLibrary.get_job_status(
+            self.client, second_job_info["job_id"]
+        )
+        assert result is False
+        assert "QUEUED" in err_msg
+
+        time.sleep(5)
+        first_job_results = StLibrary.wait_and_get_job_result(
+            self.client, first_job_info, self.timeout, self.interval
+        )
+        StLibrary.delete_job(self.client, first_job_info["job_id"])
+        assert (
+            first_job_results["result"]["job_status"]
+            == Constant.JOB_STATUS_COMPLETED
+        )
+
+        second_job_results = StLibrary.wait_and_get_job_result(
+            self.client, second_job_info, self.timeout, self.interval
+        )
+        StLibrary.delete_job(self.client, second_job_info["job_id"])
+        assert (
+            second_job_results["result"]["job_status"]
+            == Constant.JOB_STATUS_COMPLETED
+        )
+
+    def test_submit_two_different_priority_jobs(self):
+        first_job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_submit_two_different_priority_jobs_1",
+            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.MAX_JOB_PRIORITY,
+            "description": "description: submit_two_different_priority_jobs_1",
+            "backend": Constant.DEVICE_DUMMY,
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "transpiler_options": None,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+        }
+        StLibrary.submit_job(self.client, first_job_info)
+
+        second_job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "submit_two_diff_priority_jobs_2",
+            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: submit_two_diff_priority_jobs_2",
+            "backend": Constant.DEVICE_DUMMY,
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "transpiler_options": None,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+        }
+        StLibrary.submit_job(self.client, second_job_info)
+
+        result, err_msg, _ = StLibrary.get_job_status(
+            self.client, first_job_info["job_id"]
+        )
+        assert result is False
+        assert "QUEUED" in err_msg
+        result, err_msg, _ = StLibrary.get_job_status(
+            self.client, second_job_info["job_id"]
+        )
+        assert result is False
+        assert "QUEUED" in err_msg
+
+        time.sleep(10)
+        result, err_msg, _ = StLibrary.get_job_status(
+            self.client, first_job_info["job_id"]
+        )
+        assert result is False
+        assert "QUEUED" in err_msg
+        result, err_msg, _ = StLibrary.get_job_status(
+            self.client, second_job_info["job_id"]
+        )
+        assert result is True
+
+        time.sleep(5)
+        first_job_results = StLibrary.wait_and_get_job_result(
+            self.client, first_job_info, self.timeout, self.interval
+        )
+        StLibrary.delete_job(self.client, first_job_info["job_id"])
+        assert (
+            first_job_results["result"]["job_status"]
+            == Constant.JOB_STATUS_COMPLETED
+        )
+
+        second_job_results = StLibrary.wait_and_get_job_result(
+            self.client, second_job_info, self.timeout, self.interval
+        )
+        StLibrary.delete_job(self.client, second_job_info["job_id"])
+        assert (
+            second_job_results["result"]["job_status"]
+            == Constant.JOB_STATUS_COMPLETED
+        )
+
+    def test_submit_two_different_device_jobs(self):
+        first_job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_submit_two_diff_device_jobs_1",
+            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_submit_two_diff_device_jobs_1",
+            "backend": Constant.DEVICE_DUMMY,
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": {"sleep": 30},
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "transpiler_options": None,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+        }
+        StLibrary.submit_job(self.client, first_job_info)
+
+        second_job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_submit_two_diff_device_jobs_2",
+            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_submit_two_diff_device_jobs_2",
+            "backend": Constant.DEVICE_DUMMY + "1",
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": {"sleep": 30},
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "transpiler_options": None,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+        }
+        StLibrary.submit_job(self.client, second_job_info)
+
+        result, err_msg, _ = StLibrary.get_job_status(
+            self.client, first_job_info["job_id"]
+        )
+        assert result is False
+        assert "QUEUED" in err_msg
+        result, err_msg, _ = StLibrary.get_job_status(
+            self.client, second_job_info["job_id"]
+        )
+        assert result is False
+        assert "QUEUED" in err_msg
+
+        time.sleep(20)
+        result, err_msg, _ = StLibrary.get_job_status(
+            self.client, first_job_info["job_id"]
+        )
+        assert result is False
+        assert "RUNNING" in err_msg
+        result, err_msg, _ = StLibrary.get_job_status(
+            self.client, second_job_info["job_id"]
+        )
+        assert result is False
+        assert "RUNNING" in err_msg
+
+        time.sleep(5)
+        first_job_results = StLibrary.wait_and_get_job_result(
+            self.client, first_job_info, self.timeout, self.interval
+        )
+        StLibrary.delete_job(self.client, first_job_info["job_id"])
+        assert (
+            first_job_results["result"]["job_status"]
+            == Constant.JOB_STATUS_COMPLETED
+        )
+
+        second_job_results = StLibrary.wait_and_get_job_result(
+            self.client, second_job_info, self.timeout, self.interval
+        )
+        StLibrary.delete_job(self.client, second_job_info["job_id"])
+        assert (
+            second_job_results["result"]["job_status"]
             == Constant.JOB_STATUS_COMPLETED
         )

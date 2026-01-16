@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -60,7 +60,8 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        job_results = StLibrary.submit_job(
+        StLibrary.submit_job(self.client, job_info)
+        job_results = StLibrary.wait_and_get_job_result(
             self.client, job_info, self.timeout, self.interval
         )
         StLibrary.delete_job(self.client, job_info["job_id"])
