@@ -425,6 +425,8 @@ class Visitor:
                     f"in line {s.pos}, value {val} "
                     f"if always larger than creg {reg}"
                 )
+        elif s.type == "empty":
+            return
         else:
             # self.visitUop(s)
             self.visit_uop_v3(s)

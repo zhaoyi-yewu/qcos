@@ -343,3 +343,23 @@ class TestGetIr:
         assert len(gates_list) == 2
         validate_gate_ir(gates_list[0], "u", [0], 1, False)
         validate_gate_ir(gates_list[1], "cx", [0, 1], 2, True)
+
+    def test_for_define_empty_gate(self):
+        data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+
+        gate mygate q {  }
+
+        qreg q[2];
+        creg c[2];
+        u(-pi/4,0,-pi/2) q[0];
+        mygate q[0];
+        """
+        tree = get_abs_tree(data)
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
+
+        assert q_num == 2
+        assert len(gates_list) == 1
+        validate_gate_ir(gates_list[0], "u", [0], 1, False)
