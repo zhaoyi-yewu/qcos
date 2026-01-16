@@ -19,7 +19,7 @@ from schema import Optional
 
 from wy_qcos.transpiler.common.utils import Timer, logger
 from wy_qcos.common.constant import Constant
-from wy_qcos.transpiler.cmss.compiler.decomposer import decompose_gates
+from wy_qcos.transpiler.cmss.decomposer.decomposer import Decomposer
 from wy_qcos.transpiler.cmss.compiler.parser import compile
 from wy_qcos.transpiler.cmss.mapping.aggregate.hierachy_tree import (
     HierarchyTree,
@@ -218,7 +218,10 @@ class TranspilerCmss(TranspilerBase):
                 Constant.TWO_QUBIT_GATE_CZ,
             ]
         with Timer() as decompose_timer:
-            parsed_circuit = decompose_gates(mapping_res, supp_basis_gates)
+            decomposer = Decomposer()
+            parsed_circuit = decomposer.decompose(
+                mapping_res, supp_basis_gates
+            )
         logger.info(
             f"tranpiler(decompose_gates): {decompose_timer.elapsed:.4f}s\n"
         )
