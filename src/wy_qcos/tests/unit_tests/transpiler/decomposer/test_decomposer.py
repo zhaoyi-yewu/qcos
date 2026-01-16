@@ -1014,3 +1014,25 @@ class TestDecomposer:
         decomposed_gates = d.decompose(gates_list, target)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
+
+    def test_simple_qasm_file(self):
+        samples_dir = GLOBAL_CONFIGS["samples_dir"]
+        file_path = f"{samples_dir}/qasm/2.0/simple-qasm.qasm"
+        qasm_data = read_qasm_from_file(file_path)
+
+        tree = get_abs_tree(qasm_data)
+        assert tree is not None
+        cir = get_ir(tree)
+        _, gates_list = cir.num_qubits, cir.get_operations()
+        d = Decomposer()
+
+        # Spinq quantum instructions set
+        target = [
+            "rx",
+            "ry",
+            "cz",
+        ]
+
+        decomposed_gates = d.decompose(gates_list, target)
+        validate_gates_in_targets(decomposed_gates, target)
+        validate_ir_equals(gates_list, decomposed_gates)
