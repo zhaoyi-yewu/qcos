@@ -22,7 +22,7 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.tests.system_tests.common.library import StLibrary
 from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS, SAMPLES
-from .spinq_api_server import main
+from .spinq_rpc_api_server import main
 
 
 @pytest.mark.usefixtures("global_configs")

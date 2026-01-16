@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.drivers.spinq.driver_spinq_nmr import DriverSpinQNmr
+from wy_qcos.drivers.spinq.spinq_nmr.driver_spinq_nmr import DriverSpinQNmr
 
 
 class DriverSpinQTriangulum(DriverSpinQNmr):

@@ -18,6 +18,7 @@
 - 量子任务的执行方式由串行执行更改为并行执行
 - requirements\*.txt文件统一放入requirements目录
 - 更换html文档主题从alabaster改为sphinx_rtd_theme
+- 修改量旋核磁驱动，使用cmss转译器
 
 ### 修复问题
 
