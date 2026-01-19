@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -55,11 +55,12 @@ def get_commit_messages():
             sys.exit(1)
 
 
-def get_commit_messages_summary(count=1):
+def get_commit_messages_summary(count=None, start_from_merge=True):
     """Get the last n commit message summaries.
 
     Args:
         count (int): Number of commits
+        start_from_merge: Start from last merge commit
 
     Returns:
         commit message list
@@ -67,8 +68,25 @@ def get_commit_messages_summary(count=1):
     # use git command to get the last n commit message summaries
     commit_message_list = []
     try:
+        last_merge_commit_id = None
+        if start_from_merge:
+            result = subprocess.run(
+                ["git", "rev-list", "--merges", "-n", "1", "HEAD"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            msg = result.stdout.strip()
+            if msg:
+                last_merge_commit_id = msg
+
+        cmds = ["git", "log", "--pretty=format:%h %s"]
+        if count:
+            cmds.append(f"-{count}")
+        if last_merge_commit_id:
+            cmds.append(f"{last_merge_commit_id}..HEAD")
         result = subprocess.run(
-            ['git', 'log', f'-{count}', '--pretty=format:%h %s'],
+            cmds,
             capture_output=True,
             text=True,
             check=True
@@ -118,7 +136,7 @@ def main():
         sys.exit(1)
 
     # check duplicated commit messages
-    commit_message_list = get_commit_messages_summary(count=10)
+    commit_message_list = get_commit_messages_summary(start_from_merge=True)
     last_commit_summary = None
     last_commit_hash = None
     for commit_hash, commit_summary in commit_message_list:
