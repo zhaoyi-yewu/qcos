@@ -55,3 +55,4 @@ jobs:
           chmod +x ./build-scripts/build-images.sh
           ./build-scripts/build-images.sh -q
           docker tag qcos:${{ steps.meta.outputs.tags }} ${{ secrets.DOCKERHUB_USERNAME }}/qcos:${{ steps.meta.outputs.tags }}
+          docker tag qcos:${{ steps.meta.outputs.tags }} ${{ secrets.DOCKERHUB_USERNAME }}/qcos:latest
