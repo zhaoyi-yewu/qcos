@@ -1,0 +1,56 @@
+@startuml
+' 统一全局字体，确保中文正常显示
+skinparam defaultFontName "Noto Sans CJK SC"
+skinparam dpi 300
+
+' 设置布局方向：基类在上，子类水平排列在下方
+top to bottom direction
+
+' define base class
+class DriverBase {
+  - name
+  - transpiler
+  - tech_type
+  - supported_basis_gates
+  - supported_transpilers
+  - enable_circuit_aggregation
+  - max_qubits
+  + init_driver()
+  + validate_driver_configs()
+  + fetch_configs()
+  + run()
+  + cancel()
+  + close_driver()
+}
+
+' define driver classes
+class DriverDummy {
+  - name
+  - transpiler
+  - tech_type
+  - supported_basis_gates
+  - max_qubits
+  + run()
+}
+DriverDummy --|> DriverBase : Extends
+
+class DriverHanyuan1 {
+  - name
+  - transpiler
+  - tech_type
+  - supported_basis_gates
+  - max_qubits
+  + run()
+}
+DriverHanyuan1 --|> DriverBase : Extends
+
+class DriverSpinQGemini {
+  - name
+  - transpiler
+  - tech_type
+  - supported_basis_gates
+  - max_qubits
+  + run()
+}
+DriverSpinQGemini --|> DriverBase : Extends
+@enduml

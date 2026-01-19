@@ -3,7 +3,6 @@
 
 驱动管理器会在软件初始化时，搜索源代码的qcos/drivers目录，找到所有继承自DriverBase的厂商驱动类，并进行初始化。
 
-
 驱动管理器初始化
 -------------------------
 
@@ -13,6 +12,19 @@
    driver_manager = DriverManager()
    driver_manager.load_drivers()  # 加载驱动
    driver_manager.init_drivers()  # 初始化驱动
+
+驱动类关系
+--------------------
+
+操作系统内置多个驱动，比如：空载测试驱动（DriverDummy）、中科酷原-汉原1驱动（DriverHanyuan1）、
+量旋科技双子座核磁驱动（DriverSpinQGemini）、等等。
+这些驱动和驱动基类（DriverBase）关系如下：
+
+.. plantuml:: ../../_static/design/module-design/driver-class-er.puml
+   :caption: 驱动类关系图
+   :alt: 驱动类关系图
+   :width: 800
+   :align: center
 
 驱动初始化
 -------------------------

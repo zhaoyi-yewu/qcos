@@ -41,8 +41,14 @@
    qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation internal --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm ./samples/qasm/2.0/simple-qasm.qasm
    qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation external --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
 
+   # 设置 等待时长sleep (调试用)
+   qcos-cli submit-job --code-type qasm --shots 10 --backend dummy --driver-options '{"sleep": 30}' -f ./samples/qasm/2.0/simple-qasm.qasm
+
    # 设置 max_qubits
    qcos-cli submit-job --code-type qasm --shots 10 --backend dummy --driver-options '{"max_qubits": 20}' -f ./samples/qasm/2.0/simple-qasm.qasm
+
+   # 设置任务优先级。取值范围1~10，默认优先级为5，最高优先级为1，最低优先级为10
+   qcos-cli submit-job --code-type qasm --shots 10 --backend dummy  --job-priority 5 -f ./samples/qasm/2.0/simple-qasm.qasm
 
 - 中科酷原-汉原1 中性原子驱动
 

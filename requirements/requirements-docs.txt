@@ -1,5 +1,6 @@
 # for docs only
 alabaster==1.0.0
+autodoc-pydantic==2.2.0
 doc8==2.0.0
 docutils==0.21.2
 docxbuilder==1.2.0

@@ -1,0 +1,57 @@
+@startuml
+' 统一全局字体，确保中文正常显示
+skinparam defaultFontName "Noto Sans CJK SC"
+skinparam dpi 300
+
+' 样式配置（保持原图风格）
+skinparam sequence {
+    ActorStyle stickman
+    LifeLineBorderColor black
+    MessageAlign center
+}
+
+' 定义参与角色（与原图一致）
+actor 用户
+participant posiq
+participant 调度器
+participant "工作流管理组件" as Workflow
+participant 驱动
+participant 设备
+
+' 图表标题
+title QUBO分解方案设计
+
+' 1. 提交量子任务
+用户 -> posiq: 提交量子任务
+posiq -> 调度器: 转发至调度器
+调度器 -> Workflow: 提交至工作流队列
+
+' 2. 小QUBO矩阵处理分支
+Workflow -> 驱动: 如果是小QUBO矩阵, 提交任务至驱动层
+驱动 -> 设备: 提交QUBO至真机
+设备 --> 驱动: 返回求解结果
+驱动 --> Workflow: 返回求解结果
+
+' 3. 大QUBO矩阵处理分支
+Workflow -> Workflow: 如果是大QUBO, 进行QUBO分解,\n构建subQUBO任务。
+Workflow -> 驱动: 提交subQUBO任务至驱动
+驱动 -> 设备: 提交subQUBO至真机
+设备 --> 驱动: 返回subQUBO求解结果
+驱动 --> Workflow: 返回subQUBO求解结果
+
+Workflow -> Workflow: 判断结果是否收敛, 如果收敛就保存结果
+Workflow -> Workflow: 如果收敛就继续分解, 提交subQUBO任务至驱动,\n并重复上述步骤直至收敛。
+Workflow -> 驱动: 【循环】提交subQUBO任务（未收敛时）
+驱动 -> 设备: 【循环】提交subQUBO（未收敛时）
+设备 --> 驱动: 【循环】返回subQUBO结果（未收敛时）
+驱动 --> Workflow: 【循环】返回subQUBO结果（未收敛时）
+
+' 4. 结果获取流程
+用户 -> posiq: 结果获取请求
+posiq -> 调度器: 转发至调度器
+调度器 -> Workflow: 获取结果
+Workflow --> 调度器: 返回结果
+调度器 --> posiq: 返回结果
+posiq --> 用户: 返回结果
+
+@enduml

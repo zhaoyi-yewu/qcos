@@ -38,7 +38,7 @@ on_rtd = os.environ.get("READTHEDOCS") == "True"
 
 
 project = f"{Config.PLATFORM_NAME}"
-title = "QCOS Documentation"
+title = f"{Config.PLATFORM_NAME}文档"
 subject = "文档"
 description_zh = "QCOS是一款开源的通用量子计算操作系统"
 copyright = f"{Config.COPYRIGHT}"
@@ -58,6 +58,7 @@ extensions = [
     "sphinx_rtd_theme",
     "myst_parser",
     "docxbuilder",
+    'sphinxcontrib.autodoc_pydantic',
     "sphinxcontrib.mermaid",
     "sphinxcontrib.plantuml",
 ]
@@ -70,13 +71,15 @@ exclude_patterns = [
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 ##
-# skip spinq module
+# skip module
 autodoc_mock_imports = ["spinqit"]
 
 
-def skip_spinq_module(app, what, name, obj, skip, options):
-    if "driver_spinq_cloud_base" in name:
-        return True
+def skip_modules(app, what, name, obj, skip, options):
+    skip_module_list = ["driver_spinq_cloud_base"]
+    for skip_module in skip_module_list:
+        if skip_module in name:
+            return True
     return skip
 
 
@@ -102,7 +105,7 @@ def setup(app):
                 onerror=None
             )
 
-    app.connect("autodoc-skip-member", skip_spinq_module)
+    app.connect("autodoc-skip-member", skip_modules)
     app.connect("builder-inited", check_builder)
 
 
@@ -120,6 +123,8 @@ myst_enable_extensions = [
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
 autodoc_preserve_defaults = True
+autodoc_pydantic_model_show_json = True
+autodoc_pydantic_field_list_validators = True
 
 numfig = False
 html_secnumber_depth = 0
@@ -138,7 +143,7 @@ os.environ["PUPPETEER_PRODUCT"] = "firefox"
 os.environ["PUPPETEER_EXECUTABLE_PATH"] = "/usr/bin/firefox"
 
 # plantuml configs
-plantuml = "java -Djava.awt.headless=true -jar /usr/local/lib/node_modules/plantuml/vendor/plantuml.jar"
+plantuml = "java -Dfile.encoding=UTF-8 -Djava.awt.headless=true -jar /usr/local/lib/node_modules/plantuml/vendor/plantuml.jar -charset UTF-8"
 if on_rtd:
     plantuml = "plantuml"
 plantuml_output_format = "svg"  # default: png

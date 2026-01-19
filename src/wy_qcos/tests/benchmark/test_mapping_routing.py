@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -21,7 +21,7 @@ from pathlib import Path
 from networkx import Graph
 from tabulate import tabulate
 
-from wy_qcos.tests.system_tests.job.driver.spinq.spinq_api_server import (
+from ..system_tests.job.driver.spinq.spinq_rpc.spinq_rpc_api_server import (
     load_config,
 )
 from wy_qcos.transpiler.cmss.mapping.init_mapping.sc_initial_mapping import (

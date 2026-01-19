@@ -8,7 +8,7 @@
 作业管理中利用到了工作流编排管理库: Prefect。 Prefect的核心理念是将工作流视为代码，通过Python语言来定义任务和流程，
 使得工作流具有高度的可读性、可维护性和可扩展型，能够轻松地构建、调度和监控复杂的工作流。而量子作业较为复杂，特别适合使用工作流来进行编排管理。
 
-.. plantuml:: ../../_static/design/module-design/jobs_arch.plantuml
+.. plantuml:: ../../_static/design/module-design/jobs-arch.puml
    :caption: 作业管理和调度架构图
    :alt: 作业管理和调度架构图
    :width: 800

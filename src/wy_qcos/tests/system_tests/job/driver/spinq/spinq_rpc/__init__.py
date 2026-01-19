@@ -14,28 +14,3 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-
-from pydantic import BaseModel, Field
-
-
-class GetVersionRequest(BaseModel):
-    """Get Version Request.
-
-    Pydantic Model for Get Version Request.
-    """
-
-
-class GetVersionResponse(BaseModel):
-    """Get Version Response.
-
-    Pydantic Model for Get Version Response.
-    """
-
-    # version
-    version: str = Field(..., description="version")
-    api_version: str = Field(..., description="api version")
-    supported_api_versions: list[dict] = Field(
-        ..., description="supported api versions"
-    )
-    platform_version: str = Field(..., description="platform version")
-    capabilities: dict = Field(..., description="capabilities")

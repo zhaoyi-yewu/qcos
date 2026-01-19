@@ -260,7 +260,7 @@ class TestGetIr:
         validate_gate_ir(gates_list[13], "c3x", [0, 1, 2, 3], 4, False)
         validate_gate_ir(gates_list[14], "c3sqrtx", [0, 1, 2, 3], 4, False)
         validate_gate_ir(gates_list[15], "c4x", [0, 1, 2, 3, 4], 5, False)
-        validate_gate_ir(gates_list[16], "u3", [1], 1, False)
+        validate_gate_ir(gates_list[16], "u", [1], 1, False)
 
     def test_for_digits(self):
         data = """
@@ -322,3 +322,44 @@ class TestGetIr:
             get_ir(tree)
 
         assert f"in line {9}, {'mygate'} redefined" in str(context.value)
+
+    def test_for_uppercase_gate(self):
+        data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+
+        gate u(theta,phi,lambda) q { U(theta,phi,lambda) q; }
+
+        qreg q[2];
+        creg c[2];
+        u(-pi/4,0,-pi/2) q[0];
+        CX q[0], q[1];
+        """
+        tree = get_abs_tree(data)
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
+
+        assert q_num == 2
+        assert len(gates_list) == 2
+        validate_gate_ir(gates_list[0], "u", [0], 1, False)
+        validate_gate_ir(gates_list[1], "cx", [0, 1], 2, True)
+
+    def test_for_define_empty_gate(self):
+        data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+
+        gate mygate q {  }
+
+        qreg q[2];
+        creg c[2];
+        u(-pi/4,0,-pi/2) q[0];
+        mygate q[0];
+        """
+        tree = get_abs_tree(data)
+        cir = get_ir(tree)
+        q_num, gates_list = cir.num_qubits, cir.get_operations()
+
+        assert q_num == 2
+        assert len(gates_list) == 1
+        validate_gate_ir(gates_list[0], "u", [0], 1, False)

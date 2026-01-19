@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -361,7 +361,8 @@ class Client:
             job_id: job uuid
             job_name: job name
             job_type: job type
-            job_priority: job priority
+            job_priority: job priority. Values: 1-10, Default: 5.
+                          Higest priority: 1, Lowest Priority: 10
             description: job description
             shots: shots
             backend: backend name
@@ -543,7 +544,8 @@ class Client:
 
         Args:
             job_id: job uuid
-            job_priority: job priority
+            job_priority: job priority. Values: 1-10, Default: 5.
+                          Higest priority: 1, Lowest Priority: 10
 
         Returns:
             update_job result

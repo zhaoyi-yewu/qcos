@@ -1,18 +1,27 @@
 [spinq_triangulum]
 alias_name = "量旋科技-三角座核磁量子计算机"
-driver = "DriverSpinQCloudTriangulum"
+driver = "DriverSpinQTriangulum"
 description = "量旋科技-三角座核磁量子计算机"
 # [Optional] max qubits of device
 # device_max_qubits = 100
 
 # [Optional] remote host
-# remote_host = "cloud.spinq.cn"
+remote_host = "cloud.spinq.cn"
 
 # [Optional] remote port
-# remote_port = 6060
+remote_port = 6060
 
 # [Required] user name
-username = "user"
+username = "spinq_visitor_002"
 
 # [Required] key file content
-password_key = ""
+signature = ""
+
+[spinq_triangulum.transpiler.qpu_configs]
+qubits = 3
+coupler_map.CX1_2 = ["Q1", "Q2"]
+coupler_map.CX1_3 = ["Q1", "Q3"]
+coupler_map.CX2_1 = ["Q2", "Q1"]
+coupler_map.CX2_3 = ["Q2", "Q3"]
+coupler_map.CX3_1 = ["Q3", "Q1"]
+coupler_map.CX3_2 = ["Q3", "Q2"]

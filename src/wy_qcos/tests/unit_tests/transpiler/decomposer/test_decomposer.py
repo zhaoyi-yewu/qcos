@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
 import numpy as np
 
 from wy_qcos.transpiler.cmss.decomposer.decomposer import Decomposer
@@ -25,8 +26,11 @@ from wy_qcos.tests.unit_tests.transpiler.comm import (
     validate_gates_in_targets,
 )
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
+from wy_qcos.tests.unit_tests.transpiler.comm import read_qasm_from_file
+from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 
 
+@pytest.mark.usefixtures("global_configs")
 class TestDecomposer:
     def test_decompose_basis_only(self):
         d = Decomposer()
@@ -964,6 +968,49 @@ class TestDecomposer:
 
         # USTC quantum instructions set
         target = ["cx", "rx", "ry", "rz", "h", "x", "sync", "measure"]
+        decomposed_gates = d.decompose(gates_list, target)
+        validate_gates_in_targets(decomposed_gates, target)
+        validate_ir_equals(gates_list, decomposed_gates)
+
+    def test_basis_change_n3_qasm_file(self):
+        samples_dir = GLOBAL_CONFIGS["samples_dir"]
+        file_path = (
+            f"{samples_dir}/qasm/benchpress/qasmbench-small/"
+            f"basis_change_n3/basis_change_n3.qasm"
+        )
+        qasm_data = read_qasm_from_file(file_path)
+
+        tree = get_abs_tree(qasm_data)
+        assert tree is not None
+        cir = get_ir(tree)
+        _, gates_list = cir.num_qubits, cir.get_operations()
+        d = Decomposer()
+
+        # Spinq quantum instructions set
+        target = [
+            "h",
+            "i",
+            "x",
+            "y",
+            "z",
+            "rx",
+            "ry",
+            "rz",
+            "p",
+            "s",
+            "t",
+            "tdg",
+            "u",
+            "cx",
+            "cy",
+            "cz",
+            "swap",
+            "ccx",
+            "ccz",
+            "sync",
+            "measure",
+        ]
+
         decomposed_gates = d.decompose(gates_list, target)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)

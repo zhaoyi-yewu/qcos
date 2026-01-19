@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -21,7 +21,7 @@ import zerorpc
 from unittest.mock import patch, MagicMock
 
 from wy_qcos.common.library import _s
-from wy_qcos.drivers.spinq.driver_spinq_rpc import DriverSpinQRpc
+from wy_qcos.drivers.spinq.spinq_rpc.driver_spinq_rpc import DriverSpinQRpc
 from wy_qcos.transpiler.cmss.common.gate_operation import CX, H, RX, RY, RZ
 from wy_qcos.transpiler.cmss.common.measure import Measure
 

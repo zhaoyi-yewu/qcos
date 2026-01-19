@@ -23,7 +23,7 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.tests.system_tests.common.library import StLibrary
 from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS, SAMPLES
-from wy_qcos.tests.system_tests.job.driver.qboson.qboson_api_server import main
+from .spinq_nmr_api_server import main
 
 
 @pytest.mark.usefixtures("global_configs")
@@ -34,34 +34,34 @@ class TestJob:
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
-        cls.rpc_process = multiprocessing.Process(target=main, daemon=True)
-        cls.rpc_process.start()
+        cls.nmr_process = multiprocessing.Process(target=main, daemon=True)
+        cls.nmr_process.start()
 
     @classmethod
     def teardown_class(cls):
-        cls.rpc_process.terminate()
+        print("Stop NMR server")
+        cls.nmr_process.terminate()
 
     def test_submit_job(self):
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
-            "job_name": "test_qboson_submit_job",
-            "source_code_list": [SAMPLES["simple-qubo.json"]],
-            "code_type": Constant.CODE_TYPE_QUBO,
+            "job_name": "test_nmr_submit_job",
+            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM,
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
-            "description": "description: test_qboson_submit_job",
-            "backend": "tiangong100_v2",
+            "description": "description: test_nmr_submit_job",
+            "backend": "spinq_triangulum",
             "shots": 100,
             "circuit_aggregation": None,
             "driver_options": None,
-            "transpiler": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
             "transpiler_options": None,
             "profiling": None,
             "callbacks": None,
             "dry_run": False,
         }
-        StLibrary.submit_job(self.client, job_info)
-        job_results = StLibrary.wait_and_get_job_result(
+        job_results = StLibrary.submit_job(
             self.client, job_info, self.timeout, self.interval
         )
         StLibrary.delete_job(self.client, job_info["job_id"])

@@ -1,0 +1,39 @@
+@startuml
+' 统一全局字体，确保中文正常显示
+skinparam defaultFontName "Noto Sans CJK SC"
+skinparam dpi 300
+
+skinparam rectangle {
+    roundedCorner 0
+    shadow false
+}
+
+rectangle "gate.py" as Gate
+rectangle "decompose.py" as Decompose
+rectangle "qtype.py" as Qtype
+rectangle "visitor.py" as Visitor
+rectangle "tokerule.py" as Tokerule
+rectangle "optimizer.py" as Optimizer
+rectangle "compiler.py" as Compiler
+rectangle "mapper.py" as Mapper
+rectangle "transpiler.py" as Transpiler
+rectangle "外部调用者" as Caller
+
+Decompose --> Gate
+Optimizer --> Gate
+Visitor --> Gate
+
+Visitor --> Qtype
+Compiler --> Visitor
+Compiler --> Qtype
+Compiler --> Tokerule
+Mapper --> Tokerule
+
+Transpiler --> Decompose
+Transpiler --> Optimizer
+Transpiler --> Compiler
+Transpiler --> Mapper
+
+Caller --> Transpiler
+
+@enduml

@@ -21,6 +21,16 @@
 - 注释规范（函数需写Google风格的docstring、复杂逻辑加行注释、驱动类需标注适配设备型号）
 - 文件版权声明：使用Mulan PSL v2许可的文件头，可参考同类文件的文件头
 
+文档规范
+------------------
+
+- 部署、设计等文档放在docs/sphinx/source/下的对应目录中，以reStructuredText(rst)格式书写
+- 文档中涉及到的流程图、时序图、架构图等UML图片，尽量以PlantUML语法书写
+
+  - PlantUML文件(.puml)可以放在目录docs/sphinx/source/_static/下的对应目录中，然后在rst文件中引用
+  - PlantUML语法可以参考：https://plantuml.com/zh/activity-diagram-beta
+  - PlantUML在线预览：https://www.plantuml.com/plantuml/uml/ ，也可在PyCharm/VSCode等IDE中安装PlantUML相关插件来进行图片生成预览
+
 接口开发规范
 ------------------
 

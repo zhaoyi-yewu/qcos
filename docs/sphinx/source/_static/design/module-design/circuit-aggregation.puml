@@ -1,0 +1,43 @@
+@startuml
+' 统一全局字体，确保中文正常显示
+skinparam defaultFontName "Noto Sans CJK SC"
+skinparam dpi 300
+
+' 使用活动图语法，自动生成流程箭头（垂直向下）
+' 风格设置保持简洁、黑白为主
+skinparam backgroundcolor #FFFFFF
+skinparam defaultTextAlignment center
+skinparam ArrowColor #000000
+skinparam activity {
+  BorderColor #000000
+  BackgroundColor #FFFFFF
+  CornerRadius 5
+}
+
+start
+
+:传入量子门线路数据;
+
+if (判断输入数据类型) then (字典类型)
+  :字典类型;
+  :循环遍历字典;
+  :解析openqasm, 得到抽象语法树;
+  :得到解析结果;
+  :构造HierarchyTree;
+  repeat :循环遍历解析结果, 直至解析完成;
+  backward: 量子块为空;
+  repeat while (从HierarchyTree中得到量子块)
+else (tuple类型)
+  :tuple类型;
+  :解析openqasm, 得到抽象语法树;
+  :得到解析结果;
+  :获取QPU CONFIG;
+  :构建拓扑, 并初始映射;
+endif
+
+' 两个分支的流程在此汇合，继续向下流动
+:构建拓扑, 并初始映射;
+:聚合完成;
+
+stop
+@enduml

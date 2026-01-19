@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -1032,7 +1032,7 @@ class SubmitJob(Command):
             )
         )
 
-        # Validate argument: job_priority
+        # Validate argument: description
         CommandHelper.handle_invalid_arguments(
             ClientLibrary.validate_values_length(
                 description,

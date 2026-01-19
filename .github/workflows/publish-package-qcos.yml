@@ -6,11 +6,10 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Upload QCOS client package
+name: Publish QCOS package
 
 on:
-  release:
-    types: [published]
+  push:
     tags:
       - "v*"
 
@@ -32,12 +31,12 @@ jobs:
         run: |
           # NOTE: put your own distribution build steps here.
           cp ./build-scripts/env.template ./build-scripts/.env
-          ./build-scripts/cli/build-wheel.sh
+          ./build-scripts/build-wheel.sh
       - name: Upload distributions
         uses: actions/upload-artifact@v4
         with:
           name: release-dists
-          path: build-scripts/cli/output/dist/
+          path: build-scripts/output/dist/
 
   pypi-publish:
     runs-on: ubuntu-latest
@@ -52,7 +51,7 @@ jobs:
     environment:
       name: pypi
       # OPTIONAL: uncomment and update to include your PyPI project URL in the deployment status:
-      url: https://pypi.org/p/wy_qcos_client
+      url: https://pypi.org/p/wy_qcos
       #
       # ALTERNATIVE: if your GitHub Release name is the PyPI project version string
       # ALTERNATIVE: exactly, uncomment the following line instead:
@@ -63,10 +62,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-dists
-          path: build-scripts/cli/output/dist/
+          path: build-scripts/output/dist/
 
       - name: Publish release distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: build-scripts/cli/output/dist/
+          packages-dir: build-scripts/output/dist/
 

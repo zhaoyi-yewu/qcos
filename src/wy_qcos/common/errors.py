@@ -157,3 +157,11 @@ class JobEngineReconProbError(BaseException):
     module_name = "JobEngine"
     error_code = -110
     err_type = "Reconstruct Probability Error"
+
+
+class JobEngineCompileError(BaseException):
+    """Job Engine: Compile Error."""
+
+    module_name = "JobEngine"
+    error_code = -111
+    err_type = "Compile Error"
