@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,7 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class GetVersionRequest(BaseModel):
@@ -32,8 +32,10 @@ class GetVersionResponse(BaseModel):
     """
 
     # version
-    version: str
-    api_version: str
-    supported_api_versions: list[dict]
-    platform_version: str
-    capabilities: dict
+    version: str = Field(..., description="version")
+    api_version: str = Field(..., description="api version")
+    supported_api_versions: list[dict] = Field(
+        ..., description="supported api versions"
+    )
+    platform_version: str = Field(..., description="platform version")
+    capabilities: dict = Field(..., description="capabilities")

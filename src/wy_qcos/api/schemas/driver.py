@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------
 
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class GetDriversRequest(BaseModel):
@@ -33,7 +33,7 @@ class GetDriverRequest(BaseModel):
     """
 
     # driver name
-    name: str
+    name: str = Field(description="Driver name")
 
 
 class GetDriverResponse(BaseModel):
@@ -43,28 +43,34 @@ class GetDriverResponse(BaseModel):
     """
 
     # driver name
-    name: str
+    name: str = Field(description="Driver name")
     # driver alias name
-    alias_name: str | None = None
+    alias_name: str | None = Field(
+        default=None, description="Driver alias name"
+    )
     # driver version
-    version: str
+    version: str = Field(description="Driver version")
     # driver description
-    description: str
+    description: str = Field(description="Driver description")
     # tech_type
-    tech_type: str
+    tech_type: str = Field(description="Technology type")
     # max_qubits
-    max_qubits: int
+    max_qubits: int = Field(description="Maximum number of qubits")
     # enable transpiler
-    enable_transpiler: bool
+    enable_transpiler: bool = Field(description="Enable transpiler")
     # transpiler
-    transpiler: str | None
+    transpiler: str | None = Field(default=None, description="Transpiler")
     # supported transpilers
-    supported_transpilers: list
+    supported_transpilers: list = Field(description="Supported transpilers")
     # enable circuit aggregation
-    enable_circuit_aggregation: bool
+    enable_circuit_aggregation: bool = Field(
+        description="Enable circuit aggregation"
+    )
     # supported code types
-    supported_code_types: list
+    supported_code_types: list = Field(description="Supported code types")
     # supported basis gates
-    supported_basis_gates: list | None
+    supported_basis_gates: list | None = Field(
+        default=None, description="Supported basis gates"
+    )
     # results fetch mode
-    results_fetch_mode: str
+    results_fetch_mode: str = Field(description="Results fetch mode")

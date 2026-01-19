@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,7 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class GetTranspilersRequest(BaseModel):
@@ -32,7 +32,7 @@ class GetTranspilerRequest(BaseModel):
     """
 
     # transpiler name
-    name: str
+    name: str = Field(..., description="transpiler name")
 
 
 class GetTranspilerResponse(BaseModel):
@@ -42,16 +42,22 @@ class GetTranspilerResponse(BaseModel):
     """
 
     # transpiler name
-    name: str
+    name: str = Field(..., description="transpiler name")
     # transpiler alias name
-    alias_name: str | None = None
+    alias_name: str | None = Field(None, description="transpiler alias name")
     # version
-    version: str | None = None
+    version: str | None = Field(None, description="version")
     # enable this transpiler or not
-    enable: bool = True
+    enable: bool = Field(True, description="enable this transpiler or not")
     # supported code types
-    supported_code_types: list = []
+    supported_code_types: list = Field(
+        default_factory=list, description="supported code types"
+    )
     # transpiler_options
-    transpiler_options: dict | None = None
+    transpiler_options: dict | None = Field(
+        None, description="transpiler_options"
+    )
     # transpiler_options schema
-    transpiler_options_schema: dict | None = None
+    transpiler_options_schema: dict | None = Field(
+        None, description="transpiler_options schema"
+    )

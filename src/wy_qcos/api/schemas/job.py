@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -18,7 +18,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from wy_qcos.common.constant import Constant
 
@@ -30,39 +30,60 @@ class SubmitJobRequest(BaseModel):
     """
 
     # Code types: qasm, qasm2, qasm3, qubo
-    code_type: str = Constant.CODE_TYPE_QASM
+    code_type: str = Field(
+        default=Constant.CODE_TYPE_QASM,
+        description="Code types: qasm, qasm2, qasm3, qubo",
+    )
     # Source code list
-    source_code: list = []
+    source_code: list = Field(default=[], description="Source code list")
     # description
-    description: str | None = None
+    description: str | None = Field(
+        default=None, description="Job description"
+    )
     # device name
-    backend: str = Constant.DRIVER_DUMMY
+    backend: str = Field(
+        default=Constant.DRIVER_DUMMY, description="Backend device name"
+    )
     # Driver options
-    driver_options: dict | None = None
+    driver_options: dict | None = Field(
+        default=None, description="Driver options"
+    )
     # Transpiler
-    transpiler: str | None = None
+    transpiler: str | None = Field(default=None, description="Transpiler")
     # Transpiler options
-    transpiler_options: dict | None = None
+    transpiler_options: dict | None = Field(
+        default=None, description="Transpiler options"
+    )
     # Circuit aggregation: internal multi
-    circuit_aggregation: str | None = None
+    circuit_aggregation: str | None = Field(
+        default=None, description="Circuit aggregation: internal, multi"
+    )
     # Job ID
-    job_id: UUID | None = None
+    job_id: UUID | None = Field(default=None, description="Job ID")
     # Job name
-    job_name: str | None = None
+    job_name: str | None = Field(default=None, description="Job name")
     # Job type
-    job_type: str = Constant.JOB_TYPE_SAMPLING
+    job_type: str = Field(
+        default=Constant.JOB_TYPE_SAMPLING, description="Job type"
+    )
     # Job priority
-    job_priority: int = Constant.DEFAULT_JOB_PRIORITY
+    job_priority: int = Field(
+        default=Constant.DEFAULT_JOB_PRIORITY,
+        description="Job priority. Values: 1-10, Default: 5. "
+        "Higest priority: 1, Lowest Priority: 10",
+    )
     # Profiling
-    profiling: list | None = None
+    profiling: list | None = Field(default=None, description="Profiling")
     # Shots
-    shots: int = Constant.DEFAULT_SHOTS
+    shots: int = Field(default=Constant.DEFAULT_SHOTS, description="Shots")
     # Callbacks
-    callbacks: list | None = None
+    callbacks: list | None = Field(default=None, description="Callbacks")
     # Dry-run
-    dry_run: bool = False
+    dry_run: bool = Field(default=False, description="Dry-run flag")
     # Creation date
-    creation_date: datetime | None = None
+    creation_date: datetime | None = Field(
+        default=None, description="Creation date"
+    )
 
 
 class SubmitJobResponse(BaseModel):
@@ -72,43 +93,53 @@ class SubmitJobResponse(BaseModel):
     """
 
     # Job ID
-    job_id: UUID
+    job_id: UUID = Field(description="Job ID")
     # Job name
-    job_name: str | None = None
+    job_name: str | None = Field(default=None, description="Job name")
     # Job type
-    job_type: str
+    job_type: str = Field(description="Job type")
     # Job status
-    job_status: str
+    job_status: str = Field(description="Job status")
     # Job priority
-    job_priority: int
+    job_priority: int = Field(
+        default=Constant.DEFAULT_JOB_PRIORITY,
+        description="Job priority. Values: 1-10, Default: 5. "
+        "Higest priority: 1, Lowest Priority: 10",
+    )
     # Code type
-    code_type: str
+    code_type: str = Field(description="Code type")
     # Source code list
-    source_code: list
+    source_code: list = Field(description="Source code list")
     # Description
-    description: str | None = None
+    description: str | None = Field(default=None, description="Description")
     # Backend device name
-    backend: str
+    backend: str = Field(description="Backend device name")
     # Driver options
-    driver_options: dict | None = None
+    driver_options: dict | None = Field(
+        default=None, description="Driver options"
+    )
     # Transpiler
-    transpiler: str | None = None
+    transpiler: str | None = Field(default=None, description="Transpiler")
     # Transpiler options
-    transpiler_options: dict | None = None
+    transpiler_options: dict | None = Field(
+        default=None, description="Transpiler options"
+    )
     # Circuit aggregation: internal, multi
-    circuit_aggregation: str | None = None
+    circuit_aggregation: str | None = Field(
+        default=None, description="Circuit aggregation: internal, multi"
+    )
     # Shots
-    shots: int
+    shots: int = Field(description="Shots")
     # Profiling
-    profiling: list | None = None
+    profiling: list | None = Field(default=None, description="Profiling")
     # Dry-run
-    dry_run: bool
+    dry_run: bool = Field(description="Dry-run flag")
     # Callbacks
-    callbacks: list | None = None
+    callbacks: list | None = Field(default=None, description="Callbacks")
     # Creation date
-    creation_date: datetime
+    creation_date: datetime = Field(description="Creation date")
     # End date
-    end_date: datetime | None = None
+    end_date: datetime | None = Field(default=None, description="End date")
 
 
 class GetJobStatusRequest(BaseModel):
@@ -118,7 +149,7 @@ class GetJobStatusRequest(BaseModel):
     """
 
     # Job ID
-    job_id: UUID
+    job_id: UUID = Field(description="Job ID")
 
 
 class GetJobStatusResponse(BaseModel):
@@ -128,35 +159,45 @@ class GetJobStatusResponse(BaseModel):
     """
 
     # Job ID
-    job_id: UUID
+    job_id: UUID = Field(description="Job ID")
     # Job name
-    job_name: str | None = None
+    job_name: str | None = Field(default=None, description="Job name")
     # Job status
-    job_status: str
+    job_status: str = Field(description="Job status")
     # Job priority
-    job_priority: int
+    job_priority: int = Field(
+        default=Constant.DEFAULT_JOB_PRIORITY,
+        description="Job priority. Values: 1-10, Default: 5. "
+        "Higest priority: 1, Lowest Priority: 10",
+    )
     # Description
-    description: str | None = None
+    description: str | None = Field(default=None, description="Description")
     # Backend device name
-    backend: str
+    backend: str = Field(description="Backend device name")
     # Driver options
-    driver_options: dict | None = None
+    driver_options: dict | None = Field(
+        default=None, description="Driver options"
+    )
     # Transpiler
-    transpiler: str | None = None
+    transpiler: str | None = Field(default=None, description="Transpiler")
     # Transpiler options
-    transpiler_options: dict | None = None
+    transpiler_options: dict | None = Field(
+        default=None, description="Transpiler options"
+    )
     # Circuit aggregation: internal, multi
-    circuit_aggregation: str | None = None
+    circuit_aggregation: str | None = Field(
+        default=None, description="Circuit aggregation: internal, multi"
+    )
     # Shots
-    shots: int
+    shots: int = Field(description="Shots")
     # Dry-run
-    dry_run: bool
+    dry_run: bool = Field(description="Dry-run flag")
     # Progress
-    progress: int | None = -1
+    progress: int | None = Field(default=-1, description="Progress")
     # Creation date
-    creation_date: datetime
+    creation_date: datetime = Field(description="Creation date")
     # End date
-    end_date: datetime | None = None
+    end_date: datetime | None = Field(default=None, description="End date")
 
 
 class GetJobResultsRequest(BaseModel):
@@ -166,7 +207,7 @@ class GetJobResultsRequest(BaseModel):
     """
 
     # Job ID
-    job_id: UUID
+    job_id: UUID = Field(description="Job ID")
 
 
 class GetJobResultsResponse(BaseModel):
@@ -176,41 +217,53 @@ class GetJobResultsResponse(BaseModel):
     """
 
     # Job ID
-    job_id: UUID
+    job_id: UUID = Field(description="Job ID")
     # Job name
-    job_name: str | None = None
+    job_name: str | None = Field(default=None, description="Job name")
     # Job status
-    job_status: str
+    job_status: str = Field(description="Job status")
     # Job priority
-    job_priority: int
+    job_priority: int = Field(
+        default=Constant.DEFAULT_JOB_PRIORITY,
+        description="Job priority. Values: 1-10, Default: 5. "
+        "Higest priority: 1, Lowest Priority: 10",
+    )
     # Code type
-    code_type: str
+    code_type: str = Field(description="Code type")
     # Description
-    description: str | None = None
+    description: str | None = Field(default=None, description="Description")
     # Source code list
-    source_code: list
+    source_code: list = Field(description="Source code list")
     # Backend device name
-    backend: str
+    backend: str = Field(description="Backend device name")
     # Driver options
-    driver_options: dict | None = None
+    driver_options: dict | None = Field(
+        default=None, description="Driver options"
+    )
     # Transpiler
-    transpiler: str | None = None
+    transpiler: str | None = Field(default=None, description="Transpiler")
     # Transpiler options
-    transpiler_options: dict | None = None
+    transpiler_options: dict | None = Field(
+        default=None, description="Transpiler options"
+    )
     # Circuit aggregation: internal, multi
-    circuit_aggregation: str | None = None
+    circuit_aggregation: str | None = Field(
+        default=None, description="Circuit aggregation: internal, multi"
+    )
     # Shots
-    shots: int
+    shots: int = Field(description="Shots")
     # Dry-run
-    dry_run: bool
+    dry_run: bool = Field(description="Dry-run flag")
     # Progress
-    progress: int | None = -1
+    progress: int | None = Field(default=-1, description="Progress")
     # Results
-    results: str | int | list | dict | None = None
+    results: str | int | list | dict | None = Field(
+        default=None, description="Results"
+    )
     # Creation date
-    creation_date: datetime
+    creation_date: datetime = Field(description="Creation date")
     # End date
-    end_date: datetime | None = None
+    end_date: datetime | None = Field(default=None, description="End date")
 
 
 class GetJobsRequest(BaseModel):
@@ -227,7 +280,7 @@ class CancelJobsRequest(BaseModel):
     """
 
     # Job IDs
-    job_ids: list[UUID]
+    job_ids: list[UUID] = Field(description="Job IDs to cancel")
 
 
 class CancelJobsResponse(BaseModel):
@@ -237,9 +290,9 @@ class CancelJobsResponse(BaseModel):
     """
 
     # Job ID
-    job_id: UUID
+    job_id: UUID = Field(description="Job ID")
     # Job status
-    job_status: str
+    job_status: str = Field(description="Job status")
 
 
 class DeleteJobsRequest(BaseModel):
@@ -249,7 +302,7 @@ class DeleteJobsRequest(BaseModel):
     """
 
     # Job IDs
-    job_ids: list[UUID]
+    job_ids: list[UUID] = Field(description="Job IDs to delete")
 
 
 class DeleteJobsResponse(BaseModel):
@@ -259,9 +312,9 @@ class DeleteJobsResponse(BaseModel):
     """
 
     # Job ID
-    job_id: UUID
+    job_id: UUID = Field(description="Job ID")
     # Job status
-    job_status: str
+    job_status: str = Field(description="Job status")
 
 
 class SetJobResultsRequest(BaseModel):
@@ -271,11 +324,13 @@ class SetJobResultsRequest(BaseModel):
     """
 
     # Job ID
-    job_id: UUID
+    job_id: UUID = Field(description="Job ID")
     # Results
-    results: list
+    results: list = Field(description="Job results")
     # Errors
-    errors: str | int | list | dict | None = None
+    errors: str | int | list | dict | None = Field(
+        default=None, description="Errors"
+    )
 
 
 class SetJobResultsResponse(BaseModel):
@@ -285,11 +340,11 @@ class SetJobResultsResponse(BaseModel):
     """
 
     # Job ID
-    job_id: UUID
+    job_id: UUID = Field(description="Job ID")
     # QC driver name
-    backend: str
+    backend: str = Field(description="Backend device name")
     # Job status
-    job_status: str
+    job_status: str = Field(description="Job status")
 
 
 class UpdateJobRequest(BaseModel):
@@ -299,9 +354,13 @@ class UpdateJobRequest(BaseModel):
     """
 
     # Job ID
-    job_id: UUID
+    job_id: UUID = Field(description="Job ID")
     # Job priority
-    job_priority: int | None = None
+    job_priority: int | None = Field(
+        default=None,
+        description="Job priority. Values: 1-10, Default: 5. "
+        "Higest priority: 1, Lowest Priority: 10",
+    )
 
 
 class UpdateJobResponse(BaseModel):
@@ -311,40 +370,50 @@ class UpdateJobResponse(BaseModel):
     """
 
     # Job ID
-    job_id: UUID
+    job_id: UUID = Field(description="Job ID")
     # Job name
-    job_name: str | None = None
+    job_name: str | None = Field(default=None, description="Job name")
     # Job type
-    job_type: str
+    job_type: str = Field(description="Job type")
     # Job status
-    job_status: str
+    job_status: str = Field(description="Job status")
     # Job priority
-    job_priority: int
+    job_priority: int = Field(
+        default=Constant.DEFAULT_JOB_PRIORITY,
+        description="Job priority. Values: 1-10, Default: 5. "
+        "Higest priority: 1, Lowest Priority: 10",
+    )
     # Code type
-    code_type: str
+    code_type: str = Field(description="Code type")
     # Source code list
-    source_code: list
+    source_code: list = Field(description="Source code list")
     # Description
-    description: str | None = None
+    description: str | None = Field(default=None, description="Description")
     # Backend device name
-    backend: str
+    backend: str = Field(description="Backend device name")
     # Driver options
-    driver_options: dict | None = None
+    driver_options: dict | None = Field(
+        default=None, description="Driver options"
+    )
     # Transpiler
-    transpiler: str | None = None
+    transpiler: str | None = Field(default=None, description="Transpiler")
     # Transpiler options
-    transpiler_options: dict | None = None
+    transpiler_options: dict | None = Field(
+        default=None, description="Transpiler options"
+    )
     # Circuit aggregation: internal, multi
-    circuit_aggregation: str | None = None
+    circuit_aggregation: str | None = Field(
+        default=None, description="Circuit aggregation: internal, multi"
+    )
     # Shots
-    shots: int
+    shots: int = Field(description="Shots")
     # Profiling
-    profiling: list | None = None
+    profiling: list | None = Field(default=None, description="Profiling")
     # Dry-run
-    dry_run: bool
+    dry_run: bool = Field(description="Dry-run flag")
     # Callbacks
-    callbacks: list | None = None
+    callbacks: list | None = Field(default=None, description="Callbacks")
     # Creation date
-    creation_date: datetime
+    creation_date: datetime = Field(description="Creation date")
     # End date
-    end_date: datetime | None = None
+    end_date: datetime | None = Field(default=None, description="End date")

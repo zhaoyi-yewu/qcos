@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,7 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PingRequest(BaseModel):
@@ -25,7 +25,7 @@ class PingRequest(BaseModel):
     """
 
     # message
-    message: str | None = None
+    message: str | None = Field(None, description="Ping message")
 
 
 class PongResponse(BaseModel):
@@ -35,7 +35,7 @@ class PongResponse(BaseModel):
     """
 
     # message
-    message: str | None = None
+    message: str | None = Field(None, description="Pong message")
 
 
 class SystemInfoRequest(BaseModel):
@@ -51,5 +51,7 @@ class SystemInfoResponse(BaseModel):
     Pydantic Model for System Info Response.
     """
 
-    # message
-    total_jobs_count: int
+    # total jobs count
+    total_jobs_count: int = Field(
+        ..., description="Total number of jobs in the system"
+    )
