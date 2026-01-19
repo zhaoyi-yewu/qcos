@@ -11,7 +11,7 @@
 .. plantuml:: ../../_static/design/module-design/jobs-arch.puml
    :caption: 作业管理和调度架构图
    :alt: 作业管理和调度架构图
-   :width: 800
+   :width: 80%
    :align: center
 
 - qcos启动后task-manager组件会初始化prefect server，启动针对不同驱动的work-pool，每个work-pool内置10个queue并共享一个worker

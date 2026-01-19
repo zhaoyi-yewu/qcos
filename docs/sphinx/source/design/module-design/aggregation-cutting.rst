@@ -29,7 +29,7 @@
 .. plantuml:: ../../_static/design/module-design/circuit-aggregation.puml
    :caption: 量子线路聚合流程图
    :alt: 量子线路聚合流程图
-   :width: 800
+   :width: 80%
    :align: center
 
 量子线路拆分
@@ -55,7 +55,7 @@
 .. plantuml:: ../../_static/design/module-design/circuit-cutting.puml
    :caption: 电路切割时序图
    :alt: 电路切割时序图
-   :width: 800
+   :width: 80%
    :align: center
 
 QUBO分解
@@ -84,5 +84,5 @@ QUBO分解时序图：
 .. plantuml:: ../../_static/design/module-design/qubo-cutting.puml
    :caption: QUBO分解时序图
    :alt: QUBO分解时序图
-   :width: 800
+   :width: 80%
    :align: center
