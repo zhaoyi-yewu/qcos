@@ -792,13 +792,10 @@ class TestJobEngine:
         "wy_qcos.engine.job_engine."
         "reconstruct_probability_distribution_wire_cut"
     )
-    @patch("wy_qcos.engine.job_engine.compile")
     def test_run_circuit_cutting_code_success(
-        self, mock_compile, mock_reconstruct, mock_run_code, mock_generate_subs
+        self, mock_reconstruct, mock_run_code, mock_generate_subs
     ):
         """Test successful circuit cutting execution."""
-        # Mock compile
-        mock_compile.return_value = (2, None)  # 2 qubits
         mock_driver = Mock()
         mock_driver.get_max_qubits.return_value = 2
         mock_driver.get_name.return_value = "TestDevice"
@@ -838,11 +835,13 @@ class TestJobEngine:
         # Mock probability reconstruction
         reconstructed_probs = np.array([0.45, 0.0, 0.0, 0.55])
         mock_reconstruct.return_value = (reconstructed_probs, {})
+        num_qubits = 2
 
         # Run the function
         results, driver, transpiler, _ = run_circuit_cutting_code(
             source_code_index,
             src_code_dict,
+            num_qubits,
             job_info,
             mock_driver,
             mock_transpiler,
@@ -857,7 +856,6 @@ class TestJobEngine:
         assert transpiler == mock_transpiler
 
         # Verify calls
-        mock_compile.assert_called_once_with("value")
         mock_generate_subs.assert_called_once()
         assert mock_run_code.call_count == 2
         mock_reconstruct.assert_called_once()
@@ -867,13 +865,10 @@ class TestJobEngine:
         "generate_all_variant_subcircuits_for_execute"
     )
     @patch("wy_qcos.engine.job_engine._run_code")
-    @patch("wy_qcos.engine.job_engine.compile")
     def test_run_circuit_cutting_code_subcircuit_failed(
-        self, mock_compile, mock_run_code, mock_generate_subs
+        self, mock_run_code, mock_generate_subs
     ):
         """Test circuit cutting when a subcircuit execution fails."""
-        # Mock compile
-        mock_compile.return_value = (6, None)
         mock_driver = Mock()
         mock_driver.get_max_qubits.return_value = 2
         mock_driver.get_name.return_value = "TestDevice"
@@ -912,11 +907,13 @@ class TestJobEngine:
             mock_transpiler,
             {},
         )
+        num_qubits = 2
 
         # Run the function
         results, _, _, _ = run_circuit_cutting_code(
             source_code_index,
             src_code_dict,
+            num_qubits,
             job_info,
             mock_driver,
             mock_transpiler,

@@ -1194,7 +1194,18 @@ def run_circuit_code(
     enable_wirecut = driver.get_enable_wirecut()
     logger.info(f"driver max qubits: {max_qubits}")
     src_code = src_code_dict[f"{job_id}-{source_code_index}"]
-    num_qubits, _ = compile(src_code)
+    try:
+        num_qubits, _ = compile(src_code)
+    except Exception as e:
+        err_msg = f"Src code: {src_code} compile failed: {str(e)}"
+        return (
+            format_error_results(
+                driver, errors.JobEngineCompileError, err_msg
+            ),
+            driver,
+            transpiler,
+            None,
+        )
     if num_qubits > max_qubits:
         if not enable_wirecut:
             driver_name = driver.get_name()
@@ -1215,6 +1226,7 @@ def run_circuit_code(
             run_circuit_cutting_code(
                 source_code_index,
                 src_code_dict,
+                num_qubits,
                 job_info,
                 driver,
                 transpiler,
@@ -1236,6 +1248,7 @@ def run_circuit_code(
 def run_circuit_cutting_code(
     source_code_index,
     src_code_dict,
+    num_qubits,
     job_info,
     driver,
     transpiler,
@@ -1246,6 +1259,7 @@ def run_circuit_cutting_code(
     Args:
         source_code_index: source code index
         src_code_dict: src code dictionary
+        num_qubits: number of qubits
         job_info: job info
         driver: driver
         transpiler: transpiler
@@ -1257,8 +1271,7 @@ def run_circuit_cutting_code(
     job_id = job_info["data"]["job_id"]
     src_code = src_code_dict[f"{job_id}-{source_code_index}"]
     max_qubits = driver.get_max_qubits()
-    num_qubits, _ = compile(src_code)
-    is_complete_reconstruction = True
+    is_complete_reconstruction = False
     # Step 1: Generate all subcircuits
     try:
         _, subcircuits, cut_wire = (

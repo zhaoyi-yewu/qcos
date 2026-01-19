@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -176,11 +176,12 @@ class DriverWuyueBase(DriverBase):
         # 4. Wait for task_status is completed or failed
         logger.info("4. wait for task_status=completed")
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
+        task_id = f"{job_id}-{data_index}"
         success, err_msg, results = Library.loop_with_timeout(
             self.check_task_status,
             3600,
             5,
-            job_id,
+            task_id,
             expect_task_status=[
                 self.task_status_completed,
                 self.task_status_failed,
@@ -198,7 +199,7 @@ class DriverWuyueBase(DriverBase):
         # 5. Get task final result
         logger.info("5. get task results")
         self.set_progress_by_task(self.TASK_STAGE_GET_RESULTS)
-        success, err_msg, results = self.get_task_results(job_id)
+        success, err_msg, results = self.get_task_results(task_id)
         if not success:
             raise ValueError(
                 f"Failed to get task results [{job_id}]: {err_msg}"
@@ -326,11 +327,12 @@ class DriverWuyueBase(DriverBase):
         """
         encrypted_data = None
         create_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        name = f"{job_id}_{data_index}"
+        task_id = f"{job_id}-{data_index}"
+        name = task_id
         raw_data = {
             "clientId": self.client_id,
             "engCode": self.eng_code,
-            "taskId": job_id,
+            "taskId": task_id,
             "name": name,
             "examNum": shots,
             "createTime": create_time,
