@@ -10,7 +10,6 @@ name: Publish QCOS client package
 
 on:
   push:
-    branches: ["master"]
     tags:
       - "v*"
 

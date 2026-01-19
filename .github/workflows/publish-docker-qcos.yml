@@ -10,7 +10,6 @@ name: Publish QCOS docker image
 
 on:
   push:
-    branches: ["master"]
     tags:
       - "v*"
 

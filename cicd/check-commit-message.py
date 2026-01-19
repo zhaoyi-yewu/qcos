@@ -92,6 +92,8 @@ def get_commit_messages_summary(count=None, start_from_merge=True):
             check=True
         )
         msg = result.stdout.strip()
+        if not msg:
+            return commit_message_list
         _commit_message_list = msg.split('\n')
         for line in _commit_message_list:
             commit_message_list.append(tuple(line.split(" ", maxsplit=1)))
