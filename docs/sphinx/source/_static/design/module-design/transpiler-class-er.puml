@@ -1,4 +1,8 @@
 @startuml
+' 统一全局字体，确保中文正常显示
+skinparam defaultFontName "Noto Sans CJK SC"
+skinparam dpi 300
+
 ' 设置布局方向：基类在上，子类水平排列在下方
 top to bottom direction
 

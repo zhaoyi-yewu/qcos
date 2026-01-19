@@ -16,7 +16,7 @@
 驱动类关系
 --------------------
 
-操作系统内置多个驱动，比如：空载驱动（DriverDummy）、中科酷原-汉原1驱动（DriverHanyuan1）、
+操作系统内置多个驱动，比如：空载测试驱动（DriverDummy）、中科酷原-汉原1驱动（DriverHanyuan1）、
 量旋科技双子座核磁驱动（DriverSpinQGemini）、等等。
 这些驱动和驱动基类（DriverBase）关系如下：
 

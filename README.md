@@ -21,7 +21,7 @@
 
 官方已适配操作系统：BCLinux 21.10U4
 
-ReadTheDocs在线文档: [https://qcos.readthedocs.io](https://qcos.readthedocs.io)
+**ReadTheDocs在线文档:** [https://qcos.readthedocs.io](https://qcos.readthedocs.io)
 
 ## 3.1 编译部署手册
 

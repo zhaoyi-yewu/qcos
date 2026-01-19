@@ -41,6 +41,9 @@
    qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation internal --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm ./samples/qasm/2.0/simple-qasm.qasm
    qcos-cli submit-job --code-type qasm --shots 10 --circuit-aggregation external --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
 
+   # 设置 等待时长sleep (调试用)
+   qcos-cli submit-job --code-type qasm --shots 10 --backend dummy --driver-options '{"sleep": 30}' -f ./samples/qasm/2.0/simple-qasm.qasm
+
    # 设置 max_qubits
    qcos-cli submit-job --code-type qasm --shots 10 --backend dummy --driver-options '{"max_qubits": 20}' -f ./samples/qasm/2.0/simple-qasm.qasm
 

@@ -1,29 +1,35 @@
 @startuml
+' 统一全局字体，确保中文正常显示
+skinparam defaultFontName "Noto Sans CJK SC"
+skinparam dpi 300
+
 skinparam rectangle {
-    roundedCorner 0
-    shadow false
+    BackgroundColor White
+    BorderColor Black
+    BorderThickness 1
+    RoundCorner 0
+    Shadowing false
 }
 
 rectangle "转译模块" {
-    ' 第一排：3个模块（横向排列）
+    ' 第一排
     rectangle "OpenQASM 语义解析" as S1
     rectangle "基础门分解" as S2
     rectangle "逻辑比特映射" as S3
 
-    ' 第二排：3个模块（横向排列）
+    ' 第二排
     rectangle "基础门优化" as S4
     rectangle "逻辑门优化" as S5
     rectangle "量子线路聚合" as S6
 
-    ' 第一排内部横向连接（保证同一排横向排列）
+    ' 布局控制：同排横向连接
     S1 -[hidden]right- S2
     S2 -[hidden]right- S3
 
-    ' 第二排内部横向连接（保证同一排横向排列）
     S4 -[hidden]right- S5
     S5 -[hidden]right- S6
 
-    ' 两排之间纵向连接（保证S4在S1下方、S5在S2下方、S6在S3下方，形成2排布局）
+    ' 布局控制：跨排纵向对齐
     S1 -[hidden]down- S4
     S2 -[hidden]down- S5
     S3 -[hidden]down- S6

@@ -58,6 +58,7 @@ extensions = [
     "sphinx_rtd_theme",
     "myst_parser",
     "docxbuilder",
+    'sphinxcontrib.autodoc_pydantic',
     "sphinxcontrib.mermaid",
     "sphinxcontrib.plantuml",
 ]
@@ -122,6 +123,8 @@ myst_enable_extensions = [
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
 autodoc_preserve_defaults = True
+autodoc_pydantic_model_show_json = True
+autodoc_pydantic_field_list_validators = True
 
 numfig = False
 html_secnumber_depth = 0
@@ -140,7 +143,7 @@ os.environ["PUPPETEER_PRODUCT"] = "firefox"
 os.environ["PUPPETEER_EXECUTABLE_PATH"] = "/usr/bin/firefox"
 
 # plantuml configs
-plantuml = "java -Djava.awt.headless=true -jar /usr/local/lib/node_modules/plantuml/vendor/plantuml.jar"
+plantuml = "java -Dfile.encoding=UTF-8 -Djava.awt.headless=true -jar /usr/local/lib/node_modules/plantuml/vendor/plantuml.jar -charset UTF-8"
 if on_rtd:
     plantuml = "plantuml"
 plantuml_output_format = "svg"  # default: png
