@@ -1,0 +1,33 @@
+@startuml
+' 设置布局方向：基类在上，子类水平排列在下方
+top to bottom direction
+
+' define base class
+class TranspilerBase {
+  - name
+  + parse()
+  + transpile()
+}
+
+' define transpiler classes
+class TranspilerCmss {
+  - name
+  + parse()
+  + transpile()
+}
+TranspilerCmss --|> TranspilerBase : Extends
+
+class TranspilerQiskit {
+  - name
+  + parse()
+  + transpile()
+}
+TranspilerQiskit --|> TranspilerBase : Extends
+
+class TranspilerDummy {
+  - name
+  + parse()
+  + transpile()
+}
+TranspilerDummy --|> TranspilerBase : Extends
+@enduml

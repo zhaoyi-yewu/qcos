@@ -3,28 +3,31 @@
 
 本模块的功能是将传入的openqasm指令转义成底层硬件支持的基础门列表。
 
-.. figure:: ../../_static/design/module-design/transpiler-plugins.png
+.. plantuml:: ../../_static/design/module-design/transpiler-plugins.puml
+   :caption: 转译器模块架构图
+   :alt: 转译器模块架构图
+   :width: 800
    :align: center
-
-   转译器模块架构图
 
 插件式转译器
 --------------------
 本模块内置三个转译器插件：五岳量子转译器、Qiskit转译器和Dummy转译器。并且本模块可扩展性较好，支持用户在提交作业时, 动态配置转译器。
 
-.. figure:: ../../_static/design/module-design/transpiler-class-er.png
+.. plantuml:: ../../_static/design/module-design/transpiler-class-er.puml
+   :caption: 插件式转译器类关系图
+   :alt: 插件式转译器类关系图
+   :width: 800
    :align: center
-
-   插件式转译器类关系图
 
 五岳转译器
 --------------------
 如下图所示，模块的入口为transpiler.py。整个模块由3个子功能组成：
 
-.. figure:: ../../_static/design/module-design/cmss-transpiler-module.png
+.. plantuml:: ../../_static/design/module-design/cmss-transpiler-module.puml
+   :caption: 五岳转译器调用关系图
+   :alt: 五岳转译器调用关系图
+   :width: 800
    :align: center
-
-   五岳转译器调用关系图
 
 - compiler: 负责将传入的openqasm指令转换成硬件支持的基础门。
 - mapper: 负责逻辑量子比特和物理量子比特的映射。
@@ -168,7 +171,7 @@ SABRE（Stochastic Allocation of Blocks for Routing and Execution）算法是一
 
 **转译管理器初始化**
 
-.. code-block:: text
+.. code-block:: python
 
    # init transpilers
    transpiler_manager = TranspilerManager()

@@ -1,0 +1,40 @@
+@startuml
+skinparam sequence {
+    ActorStyle stickman
+    LifeLineBorderColor black
+    MessageAlign center
+}
+
+actor 用户
+participant posiq
+participant 调度器
+participant "工作流管理组件" as Workflow
+participant 驱动
+participant 设备
+
+title 电路切割方案设计
+
+用户 -> posiq: 提交量子任务
+posiq -> 调度器: 转发至调度器
+调度器 -> Workflow: 提交至工作流队列
+
+Workflow -> 驱动: 如果是小电路, 提交任务至驱动层
+驱动 -> 设备: 提交电路至设备
+设备 --> 驱动: 返回求解结果
+驱动 --> Workflow: 返回求解结果
+
+Workflow -> Workflow: 如果是大电路, 进行电路分解,\n构建子电路任务。
+Workflow -> 驱动: 提交子电路任务至驱动
+驱动 -> 设备: 提交子电路至真机
+设备 --> 驱动: 返回子电路求解结果
+驱动 --> Workflow: 返回子电路求解结果
+Workflow -> Workflow: 结果概率分布重构, 整合求解结果
+
+用户 -> posiq: 结果获取请求
+posiq -> 调度器: 转发至调度器
+调度器 -> Workflow: 获取结果
+Workflow --> 调度器: 返回结果
+调度器 --> posiq: 返回结果
+posiq --> 用户: 返回结果
+
+@enduml

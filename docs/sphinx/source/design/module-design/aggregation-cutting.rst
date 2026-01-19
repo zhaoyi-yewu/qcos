@@ -9,7 +9,7 @@
 
 (1)关键数据结构
 
-.. code-block:: shell
+.. code-block:: python
 
     class SourceCodeInfo:
         aggregation_type: Optional[str] = None
@@ -26,7 +26,10 @@
 
 (2)总体流程图
 
-.. figure:: ../../_static/design/module-design/circuit-aggregation.png
+.. plantuml:: ../../_static/design/module-design/circuit-aggregation.puml
+   :caption: 量子线路聚合流程图
+   :alt: 量子线路聚合流程图
+   :width: 800
    :align: center
 
 量子线路拆分
@@ -49,7 +52,10 @@
 
 电路切割时序图：
 
-.. figure:: ../../_static/design/module-design/circuit-cutting.png
+.. plantuml:: ../../_static/design/module-design/circuit-cutting.puml
+   :caption: 电路切割时序图
+   :alt: 电路切割时序图
+   :width: 800
    :align: center
 
 QUBO分解
@@ -75,5 +81,8 @@ QUBO拆分（也称QUBO分解）目的是解决伊辛机受限于量子比特数
 
 QUBO分解时序图：
 
-.. figure:: ../../_static/design/module-design/qubo-cutting.png
+.. plantuml:: ../../_static/design/module-design/qubo-cutting.puml
+   :caption: QUBO分解时序图
+   :alt: QUBO分解时序图
+   :width: 800
    :align: center
