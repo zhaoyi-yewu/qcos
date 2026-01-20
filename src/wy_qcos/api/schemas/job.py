@@ -70,7 +70,7 @@ class SubmitJobRequest(BaseModel):
     job_priority: int = Field(
         default=Constant.DEFAULT_JOB_PRIORITY,
         description="Job priority. Values: 1-10, Default: 5. "
-        "Higest priority: 1, Lowest Priority: 10",
+        "Highest priority: 1, Lowest Priority: 10",
     )
     # Profiling
     profiling: list | None = Field(default=None, description="Profiling")
@@ -104,7 +104,7 @@ class SubmitJobResponse(BaseModel):
     job_priority: int = Field(
         default=Constant.DEFAULT_JOB_PRIORITY,
         description="Job priority. Values: 1-10, Default: 5. "
-        "Higest priority: 1, Lowest Priority: 10",
+        "Highest priority: 1, Lowest Priority: 10",
     )
     # Code type
     code_type: str = Field(description="Code type")
@@ -168,7 +168,7 @@ class GetJobStatusResponse(BaseModel):
     job_priority: int = Field(
         default=Constant.DEFAULT_JOB_PRIORITY,
         description="Job priority. Values: 1-10, Default: 5. "
-        "Higest priority: 1, Lowest Priority: 10",
+        "Highest priority: 1, Lowest Priority: 10",
     )
     # Description
     description: str | None = Field(default=None, description="Description")
@@ -226,7 +226,7 @@ class GetJobResultsResponse(BaseModel):
     job_priority: int = Field(
         default=Constant.DEFAULT_JOB_PRIORITY,
         description="Job priority. Values: 1-10, Default: 5. "
-        "Higest priority: 1, Lowest Priority: 10",
+        "Highest priority: 1, Lowest Priority: 10",
     )
     # Code type
     code_type: str = Field(description="Code type")
@@ -359,7 +359,7 @@ class UpdateJobRequest(BaseModel):
     job_priority: int | None = Field(
         default=None,
         description="Job priority. Values: 1-10, Default: 5. "
-        "Higest priority: 1, Lowest Priority: 10",
+        "Highest priority: 1, Lowest Priority: 10",
     )
 
 
@@ -381,7 +381,7 @@ class UpdateJobResponse(BaseModel):
     job_priority: int = Field(
         default=Constant.DEFAULT_JOB_PRIORITY,
         description="Job priority. Values: 1-10, Default: 5. "
-        "Higest priority: 1, Lowest Priority: 10",
+        "Highest priority: 1, Lowest Priority: 10",
     )
     # Code type
     code_type: str = Field(description="Code type")

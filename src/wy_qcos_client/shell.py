@@ -868,7 +868,8 @@ class SubmitJob(Command):
             dest="job_priority",
             type=int,
             default=f"{Constant.DEFAULT_JOB_PRIORITY}",
-            help="Set job priority",
+            help="Set job priority. Values: 1-10, Default: 5. "
+            "Highest priority: 1, Lowest Priority: 10",
         )
         parser.add_argument(
             "--description",
@@ -1493,7 +1494,8 @@ class UpdateJob(Command):
             dest="job_priority",
             type=int,
             default=f"{Constant.DEFAULT_JOB_PRIORITY}",
-            help="Set job priority",
+            help="Set job priority. Values: 1-10, Default: 5. "
+            "Highest priority: 1, Lowest Priority: 10",
         )
         return parser
 

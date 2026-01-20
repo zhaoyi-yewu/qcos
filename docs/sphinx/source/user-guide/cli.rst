@@ -9,11 +9,65 @@
 
 作业命令
 -------------
+
 作业命令包含作业提交、状态查询、结果获取、取消及删除等操作，是qcos-cli的核心功能模块。
 
 提交作业
 ***************
-提交作业支持不同后端驱动、参数配置及执行模式，以下为典型场景示例：
+
+提交作业支持不同后端驱动、参数配置及执行模式
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 作业提交
+   usage: qcos-cli submit-job [-h] [--code-type {qasm,qasm2,qasm3,qubo}] [--job-id JOB_ID]
+                              [--circuit-aggregation {None,internal,external}] [-n JOB_NAME] [--job-type {sampling,estimation}]
+                              [--job-priority JOB_PRIORITY] [--description DESCRIPTION] [--shots SHOTS] [--backend BACKEND]
+                              [--driver-options DRIVER_OPTIONS] [--transpiler TRANSPILER] [--transpiler-options TRANSPILER_OPTIONS]
+                              [--profiling [{all,code,scheduling,driver:parse,driver:transpile,driver:run} ...]] [--callbacks CALLBACKS] [-D]
+                              -f SOURCE_CODE_FILES [SOURCE_CODE_FILES ...]
+
+   Submit job.
+
+   options:
+     -h, --help            show this help message and exit
+     --code-type {qasm,qasm2,qasm3,qubo}
+                           Code Types: qasm,qasm2,qasm3,qubo
+     --job-id JOB_ID
+                           Job uuid
+     --circuit-aggregation {None,internal,external}
+                           Circuit aggregation: None,internal,external
+     -n JOB_NAME, --job-name JOB_NAME
+                           Job name
+     --job-type {sampling,estimation}
+                           Job type: sampling,estimation
+     --job-priority JOB_PRIORITY
+                           Set job priority. Values: 1-10, Default: 5. Highest priority: 1, Lowest Priority: 10
+     --description DESCRIPTION
+                           Set job description
+     --shots SHOTS
+                           Shots
+     --backend BACKEND
+                           Set backend device name. eg: dummy
+     --driver-options DRIVER_OPTIONS
+                           Set driver options
+     --transpiler TRANSPILER
+                           Set transpiler name. eg. cmss
+     --transpiler-options TRANSPILER_OPTIONS
+                           Set transpiler options
+     --profiling [{all,code,scheduling,driver:parse,driver:transpile,driver:run} ...]
+                           Profiling types: all,code,scheduling,driver:parse,driver:transpile,driver:run
+     --callbacks CALLBACKS
+                           Callbacks list
+     -D, --dry-run         Dry run
+     -f SOURCE_CODE_FILES [SOURCE_CODE_FILES ...], --source-code-file SOURCE_CODE_FILES [SOURCE_CODE_FILES ...]
+                           Source code file, files can be specified multiple times
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
 
 - dummy驱动 (测试用)
 
@@ -103,8 +157,67 @@
    # 幺正量子 真实运行
    qcos-cli submit-job --code-type qasm3 --shots 100 --backend uqc_matrix2 -f ./samples/qasm/3.0/simple-qasm-1-bit.qasm
 
-作业状态与结果查询
+查询作业
 *************************
+
+查询作业的列表、状态和结果
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 查询作业列表
+   usage: qcos-cli list-job [-h] [-f {csv,json,table,value,yaml}] [-c COLUMN] [--quote {all,minimal,none,nonnumeric}] [--noindent]
+                            [--max-width <integer>] [--fit-width] [--print-empty] [--sort-column SORT_COLUMN] [--sort-ascending | --sort-descending]
+
+   Get jobs.
+
+   options:
+     -h, --help            show this help message and exit
+
+   output formatters:
+     output formatter options
+
+     -f {csv,json,table,value,yaml}, --format {csv,json,table,value,yaml}
+                           the output format, defaults to table
+     -c COLUMN, --column COLUMN
+                           specify the column(s) to include, can be repeated to show multiple columns
+     --sort-column SORT_COLUMN
+                           specify the column(s) to sort the data (columns specified first have a priority, non-existing columns are ignored), can be repeated
+     --sort-ascending      sort the column(s) in ascending order
+     --sort-descending     sort the column(s) in descending order
+
+.. code-block:: shell
+
+   # 查看作业状态
+   usage: qcos-cli get-job-status [-h] [-f {json,shell,table,value,yaml}] [-c COLUMN] [--noindent] [--prefix PREFIX]
+                                  [--max-width <integer>] [--fit-width] [--print-empty]
+                                  job_id
+
+   Get job status.
+
+   positional arguments:
+     job_id        Job ID
+
+.. code-block:: shell
+
+   # 查看作业结果
+   usage: qcos-cli get-job-results [-h] [-f {json,shell,table,value,yaml}] [-c COLUMN] [--noindent] [--prefix PREFIX]
+                                   [--max-width <integer>] [--fit-width] [--print-empty]
+                                   job_id
+
+   Get job results.
+
+   positional arguments:
+     job_id        Job ID
+
+   options:
+     -h, --help            show this help message and exit
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
+
 .. code-block:: shell
 
    # 获取作业状态
@@ -116,9 +229,44 @@
    # 获取所有作业列表
    qcos-cli list-jobs
 
-作业取消与删除
+作业删除和取消
 *************************
+
+作业的删除和取消
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
 .. code-block:: shell
+
+   # 删除作业
+   usage: qcos-cli delete-jobs [-h] [-y] job_ids
+
+   Delete jobs.
+
+   positional arguments:
+     job_ids  Job IDs
+
+   options:
+     -h, --help       show this help message and exit
+     -y, --yes        Answer yes for all question
+
+.. code-block:: shell
+
+   # 取消作业
+   usage: qcos-cli cancel-jobs [-h] [-y] job_ids
+
+   Cancel jobs.
+
+   positional arguments:
+     job_ids  Job IDs
+
+   options:
+     -h, --help       show this help message and exit
+     -y, --yes        Answer yes for all question
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
 
    # 取消作业
    qcos-cli cancel-jobs 00000000-0000-4000-8000-000000000001
@@ -131,6 +279,30 @@
 
 作业结果设置（回调）
 ******************************
+
+异步回调设置作业结果
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 设置作业结果
+   usage: qcos-cli set-job-results [-h] --results RESULTS [RESULTS ...] job_id
+
+   Set job results.
+
+   positional arguments:
+     job_id        Job ID
+
+   options:
+     -h, --help            show this help message and exit
+     --results RESULTS [RESULTS ...]
+                           Job Results
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
+
 .. code-block:: shell
 
    # 设置单个作业结果
@@ -141,6 +313,25 @@
 
 版本命令
 -------------
+
+查询当前服务端的软件版本、API版本、支持的设备和能力清单
+
+*命令行参数*
+***************
+
+.. code-block:: shell
+
+   # 查询服务端版本
+   usage: qcos-cli version [-h]
+
+   Get server version.
+
+   options:
+     -h, --help  show this help message and exit
+
+*典型场景示例*
+***************
+
 .. code-block:: shell
 
    # 请求服务端版本
@@ -148,6 +339,39 @@
 
 系统命令
 -------------
+
+系统相关命令
+
+*命令行参数*
+***************
+
+.. code-block:: shell
+
+   # 系统服务连通性测试
+   usage: qcos-cli ping [-h] message
+
+   Ping-pong to verify the availability of the system.
+
+   positional arguments:
+     message  Message to send
+
+   options:
+     -h, --help       show this help message and exit
+
+.. code-block:: shell
+
+   # 系统运行信息
+   usage: qcos-cli system-info [-h] [-f {json,shell,table,value,yaml}] [-c COLUMN] [--noindent] [--prefix PREFIX]
+                               [--max-width <integer>] [--fit-width] [--print-empty]
+
+   Show system information.
+
+   options:
+     -h, --help            show this help message and exit
+
+*典型场景示例*
+***************
+
 .. code-block:: shell
 
    # ping命令（测试服务连通性）
@@ -158,7 +382,41 @@
 
 驱动命令
 -------------
+
+驱动相关的查询命令
+
+*命令行参数*
+***************
+
 .. code-block:: shell
+
+   # 查询驱动信息列表
+   usage: qcos-cli list-drivers [-h] [-f {csv,json,table,value,yaml}] [-c COLUMN] [--quote {all,minimal,none,nonnumeric}] [--noindent]
+                                [--max-width <integer>] [--fit-width] [--print-empty] [--sort-column SORT_COLUMN]
+                                [--sort-ascending | --sort-descending]
+
+   Get driver list.
+
+   options:
+     -h, --help            show this help message and exit
+
+.. code-block:: shell
+
+   # 查询驱动信息详情
+   usage: qcos-cli get-driver [-h] [-f {json,shell,table,value,yaml}] [-c COLUMN] [--noindent] [--prefix PREFIX]
+                              [--max-width <integer>] [--fit-width] [--print-empty]
+                              driver_name
+
+   Get driver info.
+
+   positional arguments:
+     driver_name   Driver name
+
+   options:
+     -h, --help            show this help message and exit
+
+*典型场景示例*
+***************
 
    # 获取所有驱动信息列表
    qcos-cli list-drivers
@@ -168,7 +426,86 @@
 
 设备命令
 -------------
+
+设备相关查询和配置命令
+
+*命令行参数*
+***************
+
 .. code-block:: shell
+
+   # 查询设备信息列表
+   usage: qcos-cli list-devices [-h] [-f {csv,json,table,value,yaml}] [-c COLUMN] [--quote {all,minimal,none,nonnumeric}] [--noindent]
+                                [--max-width <integer>] [--fit-width] [--print-empty] [--sort-column SORT_COLUMN]
+                                [--sort-ascending | --sort-descending]
+
+   Get device list.
+
+   options:
+     -h, --help            show this help message and exit
+
+.. code-block:: shell
+
+   # 查询设备信息详情
+   usage: qcos-cli get-device [-h] [-f {json,shell,table,value,yaml}] [-c COLUMN] [--noindent] [--prefix PREFIX]
+                              [--max-width <integer>] [--fit-width] [--print-empty]
+                              device_name
+
+   Get device info.
+
+   positional arguments:
+     device_name   Device name
+
+   options:
+     -h, --help            show this help message and exit
+
+*典型场景示例*
+***************
+
+   # 获取所有设备信息列表
+   qcos-cli list-devices
+
+   # 获取设备信息详情
+   qcos-cli get-device dummy
+
+转译器命令
+-------------
+
+转译器相关查询和配置命令
+
+*命令行参数*
+***************
+
+.. code-block:: shell
+
+   # 查询转译器信息列表
+   usage: qcos-cli list-transpilers [-h] [-f {csv,json,table,value,yaml}] [-c COLUMN] [--quote {all,minimal,none,nonnumeric}] [--noindent]
+                                    [--max-width <integer>] [--fit-width] [--print-empty] [--sort-column SORT_COLUMN]
+                                    [--sort-ascending | --sort-descending]
+
+   Get transpiler list.
+
+   options:
+     -h, --help            show this help message and exit
+
+.. code-block:: shell
+
+   # 查询转译器信息详情
+   usage: qcos-cli get-transpiler [-h] [-f {json,shell,table,value,yaml}] [-c COLUMN] [--noindent] [--prefix PREFIX]
+                                  [--max-width <integer>] [--fit-width] [--print-empty]
+                                  transpiler_name
+
+   Get transpiler info.
+
+   positional arguments:
+     transpiler_name
+                           Transpiler name
+
+   options:
+     -h, --help            show this help message and exit
+
+*典型场景示例*
+***************
 
    # 获取所有设备信息列表
    qcos-cli list-devices
