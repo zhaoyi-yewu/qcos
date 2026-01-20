@@ -68,6 +68,8 @@ def pass_hermitian(ir: list):
             break
         if ir[-1].targets != ir[-2].targets:
             break
+        if ir[-1].name in {"sync", "measure", "reset", "move"}:
+            break
         if ir[-1].hermitian:
             ir.pop(-1)
             ir.pop(-1)
