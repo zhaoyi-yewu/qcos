@@ -222,7 +222,7 @@ class TestJobEngine:
         mock_flow_transpile.return_value = ({}, 466)
         with pytest.raises(ValueError) as e:
             _run_code(
-                [1, 2, 3], {}, {"data": {}}, DriverBase(), TranspilerBase(), {}
+                [1, 2, 3], {}, {"data": {}}, DriverBase(), TranspilerBase()
             )
         assert str(e.value) == "unexpected transpile_results or num_qubits"
 
@@ -235,9 +235,7 @@ class TestJobEngine:
             {"results": "v", "metadata": "m"},
             233,
         ])
-        _run_code(
-            [1, 2, 3], {}, {"data": {}}, DriverBase(), TranspilerBase(), {}
-        )
+        _run_code([1, 2, 3], {}, {"data": {}}, DriverBase(), TranspilerBase())
 
     # test run_code for qasm
     @patch("wy_qcos.engine.job_engine.init_driver.submit")
@@ -386,7 +384,6 @@ class TestJobEngine:
         mock_driver.get_enable_prec_reduce.return_value = True
         mock_driver.get_name.return_value = "TestDevice"
         mock_transpiler = Mock()
-        monitor_info = {"progress": 0}
         mock_check_bit_width.return_value = (True, "")
         mock_check_matrix.return_value = (True, "")
         mock_ising_matrix.return_value = np.array([[0, 1], [1, 0]])
@@ -411,7 +408,6 @@ class TestJobEngine:
             job_info,
             mock_driver,
             mock_transpiler,
-            monitor_info,
         )
         assert results == processed_results
         assert driver == mock_driver
@@ -454,7 +450,6 @@ class TestJobEngine:
         mock_driver.get_enable_prec_reduce.return_value = True
         mock_driver.get_name.return_value = "TestDevice"
         mock_transpiler = Mock()
-        monitor_info = {"progress": 0}
         mock_check_bit_width.return_value = (True, "")
         mock_check_matrix.return_value = (True, "")
         mock_ising_matrix.return_value = np.array([[0, 1], [1, 0]])
@@ -479,7 +474,6 @@ class TestJobEngine:
             job_info,
             mock_driver,
             mock_transpiler,
-            monitor_info,
         )
         assert results == processed_results
         assert driver == mock_driver
@@ -522,7 +516,6 @@ class TestJobEngine:
         mock_driver.get_enable_prec_reduce.return_value = True
         mock_driver.get_name.return_value = "TestDevice"
         mock_transpiler = Mock()
-        monitor_info = {"progress": 0}
         mock_check_bit_width.return_value = (True, "")
         mock_check_matrix.return_value = (True, "")
         mock_ising_matrix.return_value = np.array([[0, 1], [1, 0]])
@@ -543,7 +536,6 @@ class TestJobEngine:
             job_info,
             mock_driver,
             mock_transpiler,
-            monitor_info,
         )
         assert results == expected_results
         assert driver == mock_driver
@@ -579,7 +571,6 @@ class TestJobEngine:
         mock_driver.get_max_qubits.return_value = 2
         mock_driver.get_name.return_value = "TestDevice"
         mock_transpiler = Mock()
-        monitor_info = {"progress": 0}
         max_qubits = 2
         total_spins_num = 5
         sub_job_result = {
@@ -599,7 +590,6 @@ class TestJobEngine:
             job_info,
             mock_driver,
             mock_transpiler,
-            monitor_info,
         )
         assert results == sub_job_result
         assert driver == mock_driver
@@ -720,7 +710,6 @@ class TestJobEngine:
             job_info,
             mock_driver,
             mock_transpiler,
-            None,
         )
 
         # Verify
@@ -773,7 +762,6 @@ class TestJobEngine:
             job_info,
             mock_driver,
             mock_transpiler,
-            None,
         )
 
         # Verify
@@ -845,7 +833,6 @@ class TestJobEngine:
             job_info,
             mock_driver,
             mock_transpiler,
-            None,
         )
 
         # Verify
@@ -917,7 +904,6 @@ class TestJobEngine:
             job_info,
             mock_driver,
             mock_transpiler,
-            None,
         )
 
         # Verify

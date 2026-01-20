@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -49,7 +49,7 @@ class CutWire:
         self,
         max_subcircuit_width,
         qasm,
-        max_memory,
+        max_memory: int = Constant.DD_MAX_MEMORY,
         max_depth: int = Constant.MAX_RERURSIVE_DEPTH,
         is_complete_reconstruction: bool = True,
         max_cuts: int = Constant.MAX_CIRCUIT_CUT,
@@ -137,7 +137,7 @@ class CutWire:
 def generate_all_variant_subcircuits_for_execute(
     max_subcircuit_width,
     qasm,
-    max_memory,
+    max_memory: int = Constant.DD_MAX_MEMORY,
     max_depth: int = Constant.MAX_RERURSIVE_DEPTH,
     is_complete_reconstruction: bool = True,
     max_cuts: int = Constant.MAX_CIRCUIT_CUT,

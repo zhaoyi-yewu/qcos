@@ -92,9 +92,7 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        job_results = StLibrary.submit_job(
-            self.client, job_info, self.timeout, self.interval
-        )
+        job_results = StLibrary.submit_job(self.client, job_info)
         assert job_results["result"]["job_status"] in [
             Constant.JOB_STATUS_QUEUED,
             Constant.JOB_STATUS_RUNNING,

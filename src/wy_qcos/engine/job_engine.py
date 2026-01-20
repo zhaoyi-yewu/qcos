@@ -692,7 +692,6 @@ def _run_code(
     job_info,
     driver,
     transpiler,
-    monitor_info,
 ):
     """Flow: run.
 
@@ -702,7 +701,6 @@ def _run_code(
         job_info: job info
         driver: driver
         transpiler: transpiler
-        monitor_info: monitor info
 
     Returns:
         job results
@@ -887,7 +885,6 @@ def run_code(
             job_info,
             driver,
             None,
-            monitor_info,
         )
     elif code_type in Constant.CODE_TYPES_ALL_QASM:
         job_results, driver, transpiler, mapping_dict = run_circuit_code(
@@ -896,7 +893,6 @@ def run_code(
             job_info,
             driver,
             transpiler,
-            monitor_info,
         )
     return job_results, driver, transpiler, mapping_dict
 
@@ -907,7 +903,6 @@ def run_qubo_code(
     job_info,
     driver,
     transpiler,
-    monitor_info,
 ):
     """Run qubo code.
 
@@ -917,7 +912,6 @@ def run_qubo_code(
         job_info: job info
         driver: driver
         transpiler: transpiler
-        monitor_info: monitor info
 
     Returns:
         job results
@@ -1003,7 +997,6 @@ def run_qubo_code(
             job_info,
             driver,
             transpiler,
-            monitor_info,
         )
     # No need to subqubo and precision reduction
     elif total_spins_num == len(qubo_matrix) + 1:
@@ -1013,7 +1006,6 @@ def run_qubo_code(
             job_info,
             driver,
             None,
-            monitor_info,
         )
     # No need subqubo, but need precision reduction
     else:
@@ -1030,7 +1022,6 @@ def run_qubo_code(
             job_info,
             driver,
             None,
-            monitor_info,
         )
         if job_results["results"]:
             job_results = process_qubo_solution(
@@ -1049,7 +1040,6 @@ def run_subqubo_code(
     job_info,
     driver,
     transpiler,
-    monitor_info,
 ):
     job_results = {}
     mapping_dict = None
@@ -1130,7 +1120,6 @@ def run_subqubo_code(
                 job_info,
                 driver,
                 transpiler,
-                monitor_info,
             )
             if sub_job_results["results"]:
                 subqubo_solution = (
@@ -1173,7 +1162,6 @@ def run_circuit_code(
     job_info,
     driver,
     transpiler,
-    monitor_info,
 ):
     """Run circuit code.
 
@@ -1183,7 +1171,6 @@ def run_circuit_code(
         job_info: job info
         driver: driver
         transpiler: transpiler
-        monitor_info: monitor info
 
     Returns:
         job results
@@ -1230,7 +1217,6 @@ def run_circuit_code(
                 job_info,
                 driver,
                 transpiler,
-                monitor_info,
             )
         )
     else:
@@ -1240,7 +1226,6 @@ def run_circuit_code(
             job_info,
             driver,
             transpiler,
-            monitor_info,
         )
     return job_results, driver, transpiler, mapping_dict
 
@@ -1252,7 +1237,6 @@ def run_circuit_cutting_code(
     job_info,
     driver,
     transpiler,
-    monitor_info,
 ):
     """Run circuit cutting code.
 
@@ -1263,7 +1247,6 @@ def run_circuit_cutting_code(
         job_info: job info
         driver: driver
         transpiler: transpiler
-        monitor_info: monitor info
 
     Returns:
         job results
@@ -1271,14 +1254,16 @@ def run_circuit_cutting_code(
     job_id = job_info["data"]["job_id"]
     src_code = src_code_dict[f"{job_id}-{source_code_index}"]
     max_qubits = driver.get_max_qubits()
-    is_complete_reconstruction = False
+    is_complete_reconstruction = True
+    if num_qubits > Constant.COMPLETE_RECONSTRUCTION_THRESHOLD:
+        is_complete_reconstruction = False
     # Step 1: Generate all subcircuits
     try:
         _, subcircuits, cut_wire = (
             generate_all_variant_subcircuits_for_execute(
                 max_subcircuit_width=max_qubits,
                 qasm=src_code,
-                max_memory=2 ** (num_qubits),
+                max_memory=Constant.DD_MAX_MEMORY,
                 is_complete_reconstruction=is_complete_reconstruction,
             )
         )
@@ -1304,7 +1289,6 @@ def run_circuit_cutting_code(
             job_info,
             driver,
             transpiler,
-            monitor_info,
         )
         if job_results["metadata"]["status"] != "COMPLETED":
             return job_results, driver, transpiler, mapping_dict

@@ -331,6 +331,12 @@ class Constant:
     MAX_CIRCUIT_CUT = 100
     MAX_RERURSIVE_DEPTH = 100
 
+    # Complete reconstruction bit threshold
+    COMPLETE_RECONSTRUCTION_THRESHOLD = 32
+
+    # Max memory for dynamic definition
+    DD_MAX_MEMORY = 1024
+
 
 class HttpHeaders:
     # headers

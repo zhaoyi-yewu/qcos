@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -48,6 +48,7 @@ from schema import Schema
 from urllib.parse import urlparse
 
 from .constant import HttpCode, HttpHeaders, HttpMethod, Constant
+from wy_qcos.transpiler.cmss.compiler.parser import compile
 
 logger = logging.getLogger(__name__)
 
@@ -699,10 +700,33 @@ class Library:
                 return False, f"The {i + 1}-th matrix is not square matrix"
             elif matrix_shape[0] > Constant.MAX_QUBO_QUBITS:
                 return False, (
-                    f"The {i + 1}-th Matrix has {matrix_shape[0]} "
+                    f"The matrix with index {i} has {matrix_shape[0]} "
                     f"qubits, exceeding the maximum limit of "
                     f"{Constant.MAX_QUBO_QUBITS}"
                 )
+        return True, None
+
+    @staticmethod
+    def validate_qasms(qasm_list):
+        """Validate qasms.
+
+        Args:
+            qasm_list (List(str)): List of qasms
+
+        Returns:
+            success of failed (bool), error message
+        """
+        if not qasm_list:
+            return False, "qasm list cannot be an empty list"
+
+        for i in range(len(qasm_list)):
+            try:
+                compile(qasm_list[i])
+            except Exception as e:
+                err_msg = (
+                    f"Source code with index {i} compile failed: {str(e)}"
+                )
+                return False, err_msg
         return True, None
 
     @staticmethod
@@ -738,7 +762,7 @@ class Library:
             verify_ssl: if verify ssl certificate (Default value = False)
             retries: times to retry if failed (Default value = 1)
             timeout: timeout in seconds (Default value = 10)
-            success_http_code: success http status (Default value = [200)
+            success_http_code: success http status (Default value = 200)
             debug: enable or disable debug (Default value = False)
         """
         request_func = None
