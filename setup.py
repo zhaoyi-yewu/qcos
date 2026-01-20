@@ -15,17 +15,20 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import re
 from pathlib import Path
 from setuptools import setup, find_packages
 
 
-def get_files(base_dirs, dest_dir_prefix="", exclude=[]):
+def get_files(base_dirs, dest_dir_prefix="",
+              exclude_files=[], exclude_dirs=[]):
     """Get files from base_dirs.
 
     Args:
         base_dirs: base dir list
         dest_dir_prefix: dest dir prefix
-        exclude: exclude files
+        exclude_files: exclude files
+        exclude_dirs: exclude dirs
 
     Returns:
         files tuple list
@@ -44,8 +47,14 @@ def get_files(base_dirs, dest_dir_prefix="", exclude=[]):
         for file_path in _base_dir.glob("*"):
             if file_path.is_dir():
                 continue
-            if file_path.is_file() and file_path.name not in exclude:
-                file_list.append(str(file_path))
+
+            if file_path.is_file():
+                is_match_exclude_file = False
+                for exclude_file in exclude_files:
+                    if re.match(exclude_file, str(file_path)):
+                        is_match_exclude_file = True
+                if not is_match_exclude_file:
+                    file_list.append(str(file_path))
         if file_list:
             target_dir = f"{dest_dir_prefix}{_base_dir}".replace("../", "")
             data_files.append((target_dir, file_list))
@@ -56,9 +65,20 @@ def get_files(base_dirs, dest_dir_prefix="", exclude=[]):
                 continue
             target_dir = f"{dest_dir_prefix}{dir_path}".replace("../", "")
             file_list = []
+            is_match_exclude_dir = False
+            for exclude_dir in exclude_dirs:
+                if re.match(exclude_dir, str(dir_path)):
+                    is_match_exclude_dir = True
+            if is_match_exclude_dir:
+                continue
             for file_path in dir_path.glob("*"):
-                if file_path.is_file() and file_path.name not in exclude:
-                    file_list.append(str(file_path))
+                if file_path.is_file():
+                    is_match_exclude_file = False
+                    for exclude_file in exclude_files:
+                        if re.match(exclude_file, str(file_path)):
+                            is_match_exclude_file = True
+                    if not is_match_exclude_file:
+                        file_list.append(str(file_path))
             if file_list:
                 data_files.append((target_dir, file_list))
     return data_files
@@ -69,5 +89,6 @@ setup(
     packages=find_packages(where="src"),
     include_package_data=True,
     data_files=get_files(["etc/qcos", "samples"],
-                         dest_dir_prefix="share/wy_qcos/")
+                         dest_dir_prefix="share/wy_qcos/",
+                         exclude_dirs=["samples/qasm/benchpress"])  # too large
 )
