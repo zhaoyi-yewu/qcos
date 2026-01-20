@@ -106,7 +106,7 @@ develop切release分支 → 修改并提交版本号 → 全量测试（单元/�
     ./cicd/release-version.py -p stage
 
     # 完整示例 (内部)
-    ./cicd/release-version.py -n 1.0.1 --master-branch master --develop-branch dev_gitee --release-branch release_BC-QSE_V1.0.1_20251219 --skip-push
+    ./cicd/release-version.py -n 1.0.1 --master-branch master --develop-branch dev_gitee --release-branch release_BC-QSE_V1.0.1_20251219
 
 
 预发布版本和正式版本之间的命令和版本号迁移关系

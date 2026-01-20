@@ -25,33 +25,38 @@ import subprocess
 import sys
 
 
+MANDATORY_KEYWORDS = ["Code Source From:", "Jira:", "市场项目编号"]
+
+
 def get_commit_messages():
     """Get commit messages."""
     # check gitlab ci env variables
-    if 'CI_COMMIT_MESSAGE' in os.environ:
-        msg = os.environ['CI_COMMIT_MESSAGE'].strip()
+    if "CI_COMMIT_MESSAGE" in os.environ:
+        msg = os.environ["CI_COMMIT_MESSAGE"].strip()
         # get first line of commit message from env variable
-        first_line = msg.split('\n')[0].strip()
+        first_line = msg.split("\n")[0].strip()
         return first_line
     else:
         # use git command to get first line of commit message
         try:
             result = subprocess.run(
-                ['git', 'log', '-1', '--pretty=%B'],
+                ["git", "log", "-1", "--pretty=%B"],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
             msg = result.stdout.strip()
-            first_line = msg.split('\n')[0].strip()
+            first_line = msg.split("\n")[0].strip()
             return first_line
         except subprocess.CalledProcessError as e:
-            sys.stderr.write(f"ERROR: Failed to run git command: {e}",
-                             file=sys.stderr)
+            sys.stderr.write(
+                f"ERROR: Failed to run git command: {e}", file=sys.stderr
+            )
             sys.exit(1)
         except FileNotFoundError:
-            sys.stderr.write("ERROR: Failed to find git command",
-                             file=sys.stderr)
+            sys.stderr.write(
+                "ERROR: Failed to find git command", file=sys.stderr
+            )
             sys.exit(1)
 
 
@@ -74,7 +79,7 @@ def get_commit_messages_summary(count=None, start_from_merge=True):
                 ["git", "rev-list", "--merges", "-n", "1", "HEAD"],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
             msg = result.stdout.strip()
             if msg:
@@ -86,31 +91,28 @@ def get_commit_messages_summary(count=None, start_from_merge=True):
         if last_merge_commit_id:
             cmds.append(f"{last_merge_commit_id}..HEAD")
         result = subprocess.run(
-            cmds,
-            capture_output=True,
-            text=True,
-            check=True
+            cmds, capture_output=True, text=True, check=True
         )
         msg = result.stdout.strip()
         if not msg:
             return commit_message_list
-        _commit_message_list = msg.split('\n')
+        _commit_message_list = msg.split("\n")
         for line in _commit_message_list:
             commit_message_list.append(tuple(line.split(" ", maxsplit=1)))
     except subprocess.CalledProcessError as e:
-        sys.stderr.write(f"ERROR: Failed to run git command: {e}",
-                         file=sys.stderr)
+        sys.stderr.write(
+            f"ERROR: Failed to run git command: {e}", file=sys.stderr
+        )
         sys.exit(1)
     except FileNotFoundError:
-        sys.stderr.write("ERROR: Failed to find git command",
-                         file=sys.stderr)
+        sys.stderr.write("ERROR: Failed to find git command", file=sys.stderr)
         sys.exit(1)
     return commit_message_list
 
 
 def is_english_string(s):
     """Check if is english."""
-    ascii_pattern = re.compile(r'^[\x20-\x7E]+$')
+    ascii_pattern = re.compile(r"^[\x20-\x7E]+$")
     return ascii_pattern.match(s) is not None
 
 
@@ -127,15 +129,32 @@ def main():
     # check leading characters
     if first_line != first_line.lstrip():
         sys.stderr.write(
-            "ERROR: Leading characters of commit message cannot be blank\n")
+            "ERROR: Leading characters of commit message cannot be blank\n"
+        )
         sys.exit(1)
 
     # check if is english
     if not is_english_string(first_line):
-        sys.stderr.write("ERROR: Commit message summary includes "
-                         "non-English characters, which is not allowed. "
-                         "Only English letters are allowed\n")
+        sys.stderr.write(
+            "ERROR: Commit message summary includes "
+            "non-English characters, which is not allowed. "
+            "Only English letters are allowed\n"
+        )
         sys.exit(1)
+
+    # check MANDATORY_KEYWORDS should not im commit message summary
+    commit_message_list = get_commit_messages_summary(start_from_merge=True)
+    for commit_hash, commit_summary in commit_message_list:
+        commit_summary = commit_summary.strip()
+        for keyword in MANDATORY_KEYWORDS:
+            if keyword.lower() in commit_summary.lower():
+                sys.stderr.write(
+                    "ERROR: keywords: '"
+                    f"{', '.join(MANDATORY_KEYWORDS)}' "
+                    "should not appear in commit message summary "
+                    f"(hash: {commit_hash})\n"
+                )
+                sys.exit(1)
 
     # check duplicated commit messages
     commit_message_list = get_commit_messages_summary(start_from_merge=True)
@@ -144,10 +163,12 @@ def main():
     for commit_hash, commit_summary in commit_message_list:
         commit_summary = commit_summary.strip()
         if commit_summary == last_commit_summary:
-            sys.stderr.write("ERROR: commit message summary "
-                             f"(hash: {last_commit_hash}) is identical "
-                             f"to another commit (hash: {commit_hash}). "
-                             "Please squash them into one commit\n")
+            sys.stderr.write(
+                "ERROR: commit message summary "
+                f"(hash: {last_commit_hash}) is identical "
+                f"to another commit (hash: {commit_hash}). "
+                "Please squash them into one commit\n"
+            )
             sys.exit(1)
         if not last_commit_summary:
             last_commit_summary = commit_summary

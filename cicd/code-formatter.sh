@@ -1,6 +1,6 @@
 #!/bin/sh
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -28,11 +28,13 @@ function usage {
   echo "Python code formatter"
   echo ""
   echo "  -f, --fix             Format codes"
+  echo "  -d, --dir             Target dir"
   echo "  -h, --help            Print this usage message"
   echo ""
 }
 
-opts=$(getopt -o fh --long fix,help -- "$@")
+target_dir="${TOP_DIR}/src"
+opts=$(getopt -o fd:h --long fix,dir:,help -- "$@")
 if [[ $? -ne 0 ]]; then
   exit 1
 fi
@@ -44,6 +46,7 @@ fix=false
 while true; do
   case "$1" in
     -h | --help ) usage ; exit 0; shift ;;
+    -d | --dir )  target_dir="$2"; shift 2;;
     -f | --fix )  fix=true;   shift ;;
     -- ) shift; break ;;
     * )         break ;;
@@ -51,12 +54,11 @@ while true; do
 done
 
 # check and format codes
-cd "${TOP_DIR}"
 echo "Code format start ..."
 if [ "${fix}" = false ]; then
-  echo "Check dir: src (ruff)"
-  ruff format --preview --check --diff src
+  echo "Check dir: ${target_dir} (ruff)"
+  ruff format --preview --check --diff ${target_dir}
 else
-  echo "Fixing code format in dir: src (ruff)"
-  ruff format --preview src
+  echo "Fixing code format in dir: ${target_dir} (ruff)"
+  ruff format --preview ${target_dir}
 fi

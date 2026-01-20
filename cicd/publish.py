@@ -50,13 +50,13 @@ def get_config_value(file_path, key):
         str: config value
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
-                if not line or line.startswith(('#', ';')):
+                if not line or line.startswith(("#", ";")):
                     continue
-                if '=' in line:
-                    key, value = line.split('=', 1)
+                if "=" in line:
+                    key, value = line.split("=", 1)
                     key = key.strip()
                     value = value.strip()
                     if key == key:
@@ -70,8 +70,15 @@ def get_config_value(file_path, key):
         return None
 
 
-def run_command(command, shell=True, check=True, capture_output=True,
-                text=True, cwd=None, env=None):
+def run_command(
+    command,
+    shell=True,
+    check=True,
+    capture_output=True,
+    text=True,
+    cwd=None,
+    env=None,
+):
     """Run command.
 
     Args:
@@ -98,9 +105,9 @@ def run_command(command, shell=True, check=True, capture_output=True,
         )
         return results
     except subprocess.CalledProcessError as e:
-        err_msgs = (f"Command failed: {command}\n"
-                    f"Error output:\n"
-                    f"{e.stdout}\n{e.stderr}")
+        err_msgs = (
+            f"Command failed: {command}\nError output:\n{e.stdout}\n{e.stderr}"
+        )
         raise PublishException(err_msgs)
 
 
@@ -122,13 +129,12 @@ def publish_packages(qcos_version, repository="testpypi", dry_run=False):
     action = "check" if dry_run else "upload"
     cmds = [
         # upload wy-qcos packages
-        f"twine {action} {repository_args} " \
-        f"{qcos_dist_dir}/wy_qcos-{qcos_version}-py3*.whl " \
+        f"twine {action} {repository_args} "
+        f"{qcos_dist_dir}/wy_qcos-{qcos_version}-py3*.whl "
         f"{qcos_dist_dir}/wy_qcos-{qcos_version}.tar.gz",
-
         # upload wy-qcos-client packages
-        f"twine {action} {repository_args} " \
-        f"{qcos_client_dist_dir}/wy_qcos_client-{qcos_version}-py3*.whl " \
+        f"twine {action} {repository_args} "
+        f"{qcos_client_dist_dir}/wy_qcos_client-{qcos_version}-py3*.whl "
         f"{qcos_client_dist_dir}/wy_qcos_client-{qcos_version}.tar.gz",
     ]
     results = run_command(";".join(cmds))
@@ -180,7 +186,7 @@ def publish_images(qcos_version, docker_registry=None, dry_run=False):
     print(f"target images: {target_images}")
 
     cmds = []
-    for (image, target_image) in target_images:
+    for image, target_image in target_images:
         if image != target_image:
             # remove existing target docker image
             cmds.append(f"docker rmi -f {target_image}")
@@ -206,7 +212,7 @@ def publish_images(qcos_version, docker_registry=None, dry_run=False):
 
 
 def main(argv=None):
-    '''main'''
+    """main"""
 
     if argv is None:
         argv = sys.argv
@@ -214,55 +220,57 @@ def main(argv=None):
         sys.argv.extend(argv)
 
     program_shortdesc = __doc__.strip()
-    program_license = f'''{program_shortdesc}
+    program_license = f"""{program_shortdesc}
 
 USAGE
-'''
+"""
 
     try:
         # config parser
         parser = ArgumentParser(
             description=program_license,
-            formatter_class=RawDescriptionHelpFormatter
+            formatter_class=RawDescriptionHelpFormatter,
         )
 
         subparsers = parser.add_subparsers(
             dest="command",
             required=True,
-            help="Subcommand to execute (packages/docs/images)"
+            help="Subcommand to execute (packages/docs/images)",
         )
 
         # create sub-command: wheels
         parser_wheels = subparsers.add_parser(
-            "packages",
-            help="Publish Python packages")
+            "packages", help="Publish Python packages"
+        )
         parser_wheels.add_argument(
             "--dry-run",
             action="store_true",
-            help="Run checks before publishing packages"
+            help="Run checks before publishing packages",
         )
 
         # create sub-command: docs
-        parser_docs = subparsers.add_parser("docs",
-                                            help="Publish documentation")
+        parser_docs = subparsers.add_parser(
+            "docs", help="Publish documentation"
+        )
         parser_docs.add_argument(
             "--dry-run",
             action="store_true",
-            help="Run checks before pbefore publishing docs"
+            help="Run checks before pbefore publishing docs",
         )
 
         # create sub-command: images
-        parser_images = subparsers.add_parser("images",
-                                              help="Publish docker images")
+        parser_images = subparsers.add_parser(
+            "images", help="Publish docker images"
+        )
         parser_images.add_argument(
             "--dry-run",
             action="store_true",
-            help="Run pre-publish checks before publishing images"
+            help="Run pre-publish checks before publishing images",
         )
         parser_images.add_argument(
             "--docker-registry",
             dest="docker_registry",
-            help="Run checks before pbefore publishing images"
+            help="Run checks before pbefore publishing images",
         )
 
         # parse arguments
@@ -273,7 +281,8 @@ USAGE
         qcos_version = get_config_value(config_file, "QCOS_VERSION")
         if not qcos_version:
             raise PublishException(
-                "Error: QCOS_VERSION not set in config file: {config_file}")
+                "Error: QCOS_VERSION not set in config file: {config_file}"
+            )
 
         # execute sub-commands
         if args.command == "packages":
@@ -284,9 +293,11 @@ USAGE
             publish_docs(dry_run=args.dry_run)
         elif args.command == "images":
             # publish images
-            publish_images(qcos_version,
-                           docker_registry=args.docker_registry,
-                           dry_run=args.dry_run)
+            publish_images(
+                qcos_version,
+                docker_registry=args.docker_registry,
+                dry_run=args.dry_run,
+            )
 
         return 0
     except KeyboardInterrupt:
