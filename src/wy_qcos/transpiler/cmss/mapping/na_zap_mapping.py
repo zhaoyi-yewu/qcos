@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -225,19 +225,30 @@ class NA_ZAP_Route(ABC):
                     # 1) storage -> operate
                     # 2) operate -> storage
                     # 3) operate -> operate
-
-                    pre_na_id = int(pre_stage[qid][1:])
-                    pre_coordinate = (int(pre_na_id / 20), pre_na_id % 20)
-
-                    na_id = int(stage[qid][1:])
-                    coordinate = (int(na_id / 20), na_id % 20)
-
-                    cost += abs(pre_coordinate[0] - coordinate[0]) + abs(
-                        pre_coordinate[1] - coordinate[1]
-                    )
+                    cost += self.get_steps(pre_stage[qid], stage[qid])
 
             pre_stage = stage
         return cost
+
+    def get_steps(self, posa, posb):
+        """Calculate the movement cost for given neutral atoms pos.
+
+        Args:
+            posa (str): neutral atoms a position.
+            posb (str): neutral atoms b position.
+
+        Returns:
+            int: (pos_a, pos_b) a pair of neutral atoms node movement cost.
+        """
+        pre_na_id = int(posa[1:])
+        pre_coordinate = (int(pre_na_id / 20), pre_na_id % 20)
+
+        na_id = int(posb[1:])
+        coordinate = (int(na_id / 20), na_id % 20)
+
+        return abs(pre_coordinate[0] - coordinate[0]) + abs(
+            pre_coordinate[1] - coordinate[1]
+        )
 
     def find_ryd_pos(self, stage):
         """Find an unused Rydberg (operate-area) atom pair for a given stage.
@@ -501,13 +512,19 @@ class NA_ZAP_Route(ABC):
         Returns:
             list[dict]: new mapping plan (deep copy) proposed by random update.
         """
-        new_mapping = deepcopy(mapping)
+        self.movement = []
 
         # Choose a random stage index to update
         idx = random.randint(0, len(self.gate_scheduling_list) - 1)
-        stage = new_mapping[idx]
+        stage = mapping[idx]
         # Choose a random logical qubit id
         qid = random.randint(0, self.qbit_num - 1)
+
+        current_cost = 0
+        new_cost = 0
+        delta_cost = 0
+        affect_qubit_id = []
+        affect_qubit_id.append(qid)
 
         if stage[qid] in self.operate_area:
             # If the qubit is in operate area, randomly choose update action
@@ -516,8 +533,21 @@ class NA_ZAP_Route(ABC):
                 # Swap with a neighbor operate position
                 neighbor = list(self.ag.neighbors(stage[qid]))
                 neighbor_id = self.operate_area_oloc[idx][neighbor[0]]
+                affect_qubit_id.append(neighbor_id)
+                current_cost = self.get_affect_cost(
+                    affect_qubit_id, idx, mapping
+                )
+
+                # Record the positions of neutral atoms before changes
+                self.movement.append((idx, qid, stage[qid]))
+                self.movement.append((idx, neighbor_id, neighbor[0]))
+
+                # Update neutral atoms position
                 stage[neighbor_id] = stage[qid]
                 stage[qid] = neighbor[0]
+
+                new_cost = self.get_affect_cost(affect_qubit_id, idx, mapping)
+
             else:
                 # Swap with another Rydberg pair in operate area
                 edge = random.choice(list(self.ag.edges()))
@@ -530,17 +560,42 @@ class NA_ZAP_Route(ABC):
                     # If the target Rydberg pair is free, move into this pai
                     neighbor = list(self.ag.neighbors(stage[qid]))
                     neighbor_id = self.operate_area_oloc[idx][neighbor[0]]
+                    affect_qubit_id.append(neighbor_id)
+                    current_cost = self.get_affect_cost(
+                        affect_qubit_id, idx, mapping
+                    )
+
+                    # Record the positions of neutral atoms before changes
+                    self.movement.append((idx, qid, stage[qid]))
+                    self.movement.append((idx, neighbor_id, neighbor[0]))
+
+                    # Update neutral atoms position
                     stage[qid] = node_a
                     stage[neighbor_id] = node_b
+                    new_cost = self.get_affect_cost(
+                        affect_qubit_id, idx, mapping
+                    )
                 else:
                     # If the pair is used, swap positions across the two pairs
                     neighbor = list(self.ag.neighbors(stage[qid]))
                     neighbor_id = self.operate_area_oloc[idx][neighbor[0]]
-
+                    affect_qubit_id.append(neighbor_id)
                     # Identify logical qubits currently occupying the target
                     # pair
                     swap_id_a = self.operate_area_oloc[idx][node_a]
                     swap_id_b = self.operate_area_oloc[idx][node_b]
+                    affect_qubit_id.append(swap_id_a)
+                    affect_qubit_id.append(swap_id_b)
+
+                    current_cost = self.get_affect_cost(
+                        affect_qubit_id, idx, mapping
+                    )
+
+                    # Record the positions of neutral atoms before changes
+                    self.movement.append((idx, qid, stage[qid]))
+                    self.movement.append((idx, neighbor_id, neighbor[0]))
+                    self.movement.append((idx, swap_id_a, node_a))
+                    self.movement.append((idx, swap_id_b, node_b))
 
                     # Swap the two Rydberg pairs' occupants
                     stage[swap_id_a] = stage[qid]
@@ -548,6 +603,10 @@ class NA_ZAP_Route(ABC):
 
                     stage[qid] = node_a
                     stage[neighbor_id] = node_b
+
+                    new_cost = self.get_affect_cost(
+                        affect_qubit_id, idx, mapping
+                    )
 
         else:
             # Qubit is in storage area: randomly choose a storage position
@@ -557,15 +616,63 @@ class NA_ZAP_Route(ABC):
                 # If the chosen storage location already has an atom,
                 # swap positions
                 tmp_id = self.storage_area_oloc[idx][up_local]
+                affect_qubit_id.append(tmp_id)
 
+                current_cost = self.get_affect_cost(
+                    affect_qubit_id, idx, mapping
+                )
+
+                # Record the positions of neutral atoms before changes
+                self.movement.append((idx, qid, stage[qid]))
+                self.movement.append((idx, tmp_id, up_local))
+
+                # make movement
                 stage[tmp_id] = stage[qid]
                 stage[qid] = up_local
 
+                new_cost = self.get_affect_cost(affect_qubit_id, idx, mapping)
             else:
+                current_cost = self.get_affect_cost(
+                    affect_qubit_id, idx, mapping
+                )
+
+                # Record the positions of neutral atoms before changes
+                self.movement.append((idx, qid, stage[qid]))
+
                 # Move the atom to the free storage location
                 stage[qid] = up_local
 
-        return new_mapping
+                new_cost = self.get_affect_cost(affect_qubit_id, idx, mapping)
+
+        delta_cost = new_cost - current_cost
+
+        return delta_cost
+
+    def get_affect_cost(self, affect_qubit_id, idx, mapping):
+        """Get cost for update mapping affected atom cost.
+
+        Args:
+            affect_qubit_id(list): update mapping affected atom list.
+            idx:int : update mapping stage id.
+            mapping (list[dict]): mapping plan across stages to update
+            occupancy from.
+        """
+        pre_stage = None
+        cost = 0
+        stage = mapping[idx]
+        last_stage = mapping[idx + 1]
+        if idx > 0:
+            pre_stage = mapping[idx - 1]
+
+        for qid in affect_qubit_id:
+            if pre_stage is not None:
+                cost += self.get_steps(
+                    pre_stage[qid], stage[qid]
+                ) + self.get_steps(stage[qid], last_stage[qid])
+            else:
+                cost += self.get_steps(stage[qid], last_stage[qid])
+
+        return cost
 
     def update_storage_and_operate_area_oloc(self, mapping):
         """Update  storage and operate areas oloc if a new mapping is accepted.
@@ -658,32 +765,51 @@ class NA_ZAP_Route(ABC):
         while t > t2[0]:
             for _ in np.arange(markovlen):
                 # Propose a new mapping
-                new_maping = self.update_mapping(cur_mapping)
-                # Evaluate new mapping cost
-                new_cost = self.get_cost(new_maping)
+                delta_cost = self.update_mapping(cur_mapping)
 
                 # Accept if cost improved
-                if new_cost <= cur_cost:
+                if delta_cost <= 0:
                     # update solution
-                    cur_cost = new_cost
-                    cur_mapping = deepcopy(new_maping)
+                    cur_cost += delta_cost
+
                     # Update occupancy tables to reflect accepted mapping
                     self.update_storage_and_operate_area_oloc(cur_mapping)
+
                     # Update best solution if improved
-                    if new_cost < best_cost:
-                        best_cost = new_cost
-                        best_mapping = deepcopy(new_maping)
+                    if cur_cost < best_cost:
+                        best_cost = cur_cost
+                        best_mapping = deepcopy(cur_mapping)
                 else:
                     # accept the solution with a certain probability
-                    if np.random.rand() < np.exp(-(new_cost - cur_cost) * 8):
-                        cur_cost = new_cost
-                        cur_mapping = deepcopy(new_maping)
+                    if np.random.rand() < np.exp(-(delta_cost) * 2):
+                        cur_cost += delta_cost
                         self.update_storage_and_operate_area_oloc(cur_mapping)
+                    else:
+                        # Keep the original mapping
+                        self.recover(cur_mapping)
             # Cool down
             t = alpha * t
         result = self.validate_mapping(best_mapping)
 
         return result
+
+    def recover(self, mapping):
+        """Recover the mapping result in SA update_mapping.
+
+        Description:
+            Restore the mapping scheme based on the recorded original positions
+            of neutral atoms
+
+        Args:
+            mapping (list[dict]): mapping to recover.
+        """
+        stage_id = self.movement[0][0]
+        satge = mapping[stage_id]
+
+        for i in range(len(self.movement)):
+            qid = self.movement[i][1]
+            idx = self.movement[i][2]
+            satge[qid] = idx
 
     def validate_mapping(self, mapping):
         """Validate the final mapping and remove redundant moves.
