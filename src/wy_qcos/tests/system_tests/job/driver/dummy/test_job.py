@@ -190,7 +190,7 @@ class TestJob:
             "backend": Constant.DEVICE_DUMMY,
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": None,
-            "driver_options": None,
+            "driver_options": {"sleep": 30},
             "transpiler": Constant.TRANSPILER_CMSS,
             "transpiler_options": None,
             "profiling": None,
@@ -234,7 +234,8 @@ class TestJob:
         result, err_msg, _ = StLibrary.get_job_status(
             self.client, first_job_info["job_id"]
         )
-        assert result is True
+        assert result is False
+        assert "RUNNING" in err_msg
         result, err_msg, _ = StLibrary.get_job_status(
             self.client, second_job_info["job_id"]
         )
@@ -371,7 +372,7 @@ class TestJob:
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
             "description": "description: test_submit_two_diff_device_jobs_2",
-            "backend": Constant.DEVICE_DUMMY + "1",
+            "backend": "qutip_sim",
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": None,
             "driver_options": {"sleep": 30},
