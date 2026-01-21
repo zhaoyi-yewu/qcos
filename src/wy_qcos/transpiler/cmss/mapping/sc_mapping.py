@@ -17,7 +17,6 @@
 
 from abc import ABC
 import networkx as nx
-from loguru import logger
 from schema import And, Optional, Or
 
 from wy_qcos.transpiler.cmss.common.gate_operation import BaseOperation
@@ -31,6 +30,7 @@ from wy_qcos.transpiler.cmss.mapping.init_mapping.sc_initial_mapping import (
 from wy_qcos.transpiler.cmss.mapping.routing.sc_routing import (
     SCRoutingFactory,
 )
+from wy_qcos.transpiler.common.utils import Timer, logger
 
 # 默认 sc_mapping 配置参数
 DEFAULT_SC_MAPPING_OPTIONS = {
@@ -324,8 +324,13 @@ class SCRoute(ABC):
         )
         self.ag.shortest_length_weight = self.ag.shortest_length
         self.ag.shortest_path = nx.shortest_path(
-            self.ag, source=None, target=None, weight=None, method="dijkstra"
+            self.ag,
+            source=None,
+            target=None,
+            weight=None,
+            method="dijkstra",
         )
+
         # 生成依赖图(DG)
         self.dg = DG()
         self.dg.num_q = qbit_num
@@ -349,11 +354,16 @@ class SCRoute(ABC):
         # 合并measure操作
         self.measure_ops.extend(measure_ops)
         self.num_q_vir = self.dg.num_q
+
         # 初始映射
-        init_map = get_initial_mapping(
-            self.dg, self.ag, self.method_init_mapping
-        )
+        with Timer() as initial_mapping_timer:
+            init_map = get_initial_mapping(
+                self.dg, self.ag, self.method_init_mapping
+            )
         logger.info(f"init_map: {init_map}")
+        logger.info(
+            f"sc_mapping(init_mapping): {initial_mapping_timer.elapsed:.4f}s"
+        )
         self.initial_layout = self._layout_list_to_dict(init_map)
 
         # 初始化搜索树，从 sc_mapping_options 获取配置

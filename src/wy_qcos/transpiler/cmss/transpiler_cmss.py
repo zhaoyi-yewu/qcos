@@ -122,9 +122,18 @@ class TranspilerCmss(TranspilerBase):
         if len(opt_result_dict) == 1:
             key, value = list(opt_result_dict.items())[0]
             mapping_dict[key] = value[0]
-            mapper.prepare_data(value[0], value[1], qpu_cfg)
-            mapping_res = mapper.execute_with_order()
+            with Timer() as mapping_pre_timer:
+                mapper.prepare_data(value[0], value[1], qpu_cfg)
+            logger.info(
+                f"mapping(prepare_data): {mapping_pre_timer.elapsed:.4f}s\n"
+            )
+            with Timer() as mapping_exec_timer:
+                mapping_res = mapper.execute_with_order()
             logger.debug(f"after mapping: {mapping_res}")
+            logger.info(
+                "mapping(execute_with_order): "
+                f"{mapping_exec_timer.elapsed:.4f}s\n"
+            )
             return mapping_res, mapping_dict
         else:
             ht = HierarchyTree(qpu_cfg)
@@ -150,8 +159,18 @@ class TranspilerCmss(TranspilerBase):
                     qpu_cfg["storage_area"] = [
                         qpu_cfg["closest"][o] for o in blk
                     ]
-                mapper.prepare_data(value[0], value[1], qpu_cfg)
-                mapping_res += mapper.execute_with_order()
+                with Timer() as mapping_pre_timer:
+                    mapper.prepare_data(value[0], value[1], qpu_cfg)
+                logger.info(
+                    "mapping(prepare_data): "
+                    f"{mapping_pre_timer.elapsed:.4f}s\n"
+                )
+                with Timer() as mapping_exec_timer:
+                    mapping_res += mapper.execute_with_order()
+                logger.info(
+                    "mapping(execute_with_order): "
+                    f"{mapping_exec_timer.elapsed:.4f}s\n"
+                )
             return mapping_res, mapping_dict
 
     def parse(self, src_code_dict):
@@ -210,6 +229,7 @@ class TranspilerCmss(TranspilerBase):
                 opt_result_dict[key] = (value[0], opt_result)
         logger.info(
             f"tranpiler(optimize firstly): {optimize1_timer.elapsed:.4f}s\n"
+            f"number of gates: {len(opt_result)}\n"
         )
 
         # decompose gates
@@ -232,6 +252,7 @@ class TranspilerCmss(TranspilerBase):
                 dp_circuit_dict[key] = (value[0], decomposer_circuit)
         logger.info(
             f"tranpiler(decompose_gates): {decompose_timer.elapsed:.4f}s\n"
+            f"number of gates: {len(decomposer_circuit)}\n"
         )
         # secondly optimize
         with Timer() as optimize2_timer:
@@ -240,17 +261,22 @@ class TranspilerCmss(TranspilerBase):
                 opt_result_dict[key] = (value[0], opt_result)
         logger.info(
             f"tranpiler(optimize secondly): {optimize2_timer.elapsed:.4f}s\n"
+            f"number of gates: {len(opt_result)}\n"
         )
 
         with Timer() as mapping_timer:
             mapping_res, mapping_dict = self.mapping(qpu_cfg, opt_result_dict)
-        logger.info(f"tranpiler(mapping): {mapping_timer.elapsed:.4f}s\n")
+        logger.info(
+            f"tranpiler(mapping): {mapping_timer.elapsed:.4f}s\n"
+            f"number of gates: {len(mapping_res)}\n"
+        )
 
         # thirdly optimize
         with Timer() as optimize3_timer:
             basis_gate_list = optimize(mapping_res, opt_level)
         logger.debug(f"final basis_gate_list: {basis_gate_list}")
         logger.info(
-            f"tranpiler(optimize secondly): {optimize3_timer.elapsed:.4f}s\n"
+            f"tranpiler(optimize thirdly): {optimize3_timer.elapsed:.4f}s\n"
+            f"number of gates: {len(basis_gate_list)}\n"
         )
         return basis_gate_list, mapping_dict

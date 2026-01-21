@@ -146,8 +146,9 @@ class TestTranspilerCmdLine:
             mock_sys_exit.assert_called_with(mock_main_cmss_transpiler())
 
     def test_check_file_args(self):
-        input_file1 = f"{self.samples_dir}/qasm/2.0/simple-qasm1.qasm"
-        assert check_file_args(input_file1, "") is None
+        input_file1 = f"{self.samples_dir}/qasm/2.0/simple-qasm-2.qasm"
+        input_file, output_file = check_file_args(input_file1, "")
+        assert input_file is None and output_file is None
 
         input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
         output_file = "CHANGELOG"
@@ -159,7 +160,7 @@ class TestTranspilerCmdLine:
             patch("logging.FileHandler", return_value=mock_file_handler),
             patch("logging.Logger.addHandler") as mock_add_handler,
         ):
-            res = check_file_args(input_file, output_file)
+            res, _ = check_file_args(input_file, output_file)
             mock_file.assert_called_once_with(
                 output_file_path, "w", encoding="utf-8"
             )
