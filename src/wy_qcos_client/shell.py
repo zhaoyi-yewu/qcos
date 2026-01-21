@@ -72,8 +72,6 @@ class QcosShell(App):
         super().clean_up(cmd, result, err)
         if hasattr(cmd, "extra_messages"):
             cmd.app.stdout.write(f"{cmd.extra_messages}\n")
-        if err:
-            cmd.app.stderr.write(f"An error occurred: {err}\n")
 
     def initialize_app(self, argv):
         super().initialize_app(argv)
@@ -1486,9 +1484,7 @@ class UpdateJob(Command):
             parser
         """
         parser = super().get_parser(prog_name)
-        parser.add_argument(
-            "--job-id", dest="job_id", type=str, help="Job uuid"
-        )
+        parser.add_argument(dest="job_id", type=str, help="Job uuid")
         parser.add_argument(
             "--job-priority",
             dest="job_priority",

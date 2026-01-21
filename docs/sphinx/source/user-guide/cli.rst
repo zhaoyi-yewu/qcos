@@ -10,7 +10,7 @@
 作业命令
 -------------
 
-作业命令包含作业提交、状态查询、结果获取、取消及删除等操作，是qcos-cli的核心功能模块。
+作业命令包含作业提交、作业更新、状态查询、结果获取、取消及删除等操作，是qcos-cli的核心功能模块。
 
 提交作业
 ***************
@@ -104,6 +104,9 @@
    # 设置任务优先级。取值范围1~10，默认优先级为5，最高优先级为1，最低优先级为10
    qcos-cli submit-job --code-type qasm --shots 10 --backend dummy  --job-priority 5 -f ./samples/qasm/2.0/simple-qasm.qasm
 
+   # 开启电路切割
+   qcos-cli submit-job --code-type qasm --shots 10 --backend dummy --transpiler-options '{"enable_na_move": true}' --driver-options '{"enable_wirecut":true}' -f ./samples/qasm/2.0/wirecut/12_30.qasm
+
 - qutip驱动 (测试用)
 
 .. code-block:: shell
@@ -126,7 +129,7 @@
    qcos-cli submit-job --code-type qasm2 --shots 10 --backend wy-hanyuan1 -f ./samples/qasm/2.0/simple-qasm.qasm
 
    # 4. 电路切割开启 （--driver-options '{"enable_wirecut":true}'）
-   qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 --transpiler-options '{"enable_na_move": true}' --driver-options '{"enable_wirecut":true}' --dry-run -f ./samples/qasm/2.0/wirecut/12_30.qasm
+   qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 --transpiler-options '{"enable_na_move": true}' --driver-options '{"enable_wirecut":true}' -f ./samples/qasm/2.0/wirecut/12_30.qasm
 
 - 玻色量子-光量子伊辛机
 
@@ -144,11 +147,9 @@
 
    # 开启subqubo功能（默认关闭）
    qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_subqubo": true}' -f ./samples/qubo/qubo_200X200.csv
-   qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_subqubo": false}' -f ./samples/qubo/qubo_200X200.csv
 
    # 开启降精度功能（默认关闭）
    qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_prec_reduce": true}' -f ./samples/qubo/qubo_200X200.csv
-   qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_prec_reduce": false}' -f ./samples/qubo/qubo_200X200.csv
 
 - 量旋科技
 
@@ -163,6 +164,38 @@
 
    # 幺正量子 真实运行
    qcos-cli submit-job --code-type qasm3 --shots 100 --backend uqc_matrix2 -f ./samples/qasm/3.0/simple-qasm-1-bit.qasm
+
+更新作业
+***************
+
+更新作业支持对排队中任务修改优先级
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 作业更新
+   usage: qcos-cli update-job [-h] [--job-priority JOB_PRIORITY] job_id
+
+   Update job.
+
+   positional arguments:
+     job_id        Job uuid
+
+   options:
+     -h, --help            show this help message and exit
+     --job-priority JOB_PRIORITY
+                           Set job priority. Values: 1-10, Default: 5. Highest priority: 1, Lowest Priority: 10
+
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   qcos-cli update-job --job-priority 3 00000000-0000-4000-8000-000000000001
+
 
 查询作业
 *************************
