@@ -104,6 +104,13 @@
    # 设置任务优先级。取值范围1~10，默认优先级为5，最高优先级为1，最低优先级为10
    qcos-cli submit-job --code-type qasm --shots 10 --backend dummy  --job-priority 5 -f ./samples/qasm/2.0/simple-qasm.qasm
 
+- qutip驱动 (测试用)
+
+.. code-block:: shell
+
+   # 基础提交
+   qcos-cli submit-job --code-type qasm --shots 10 --backend qutip_sim -f ./samples/qasm/2.0/simple-qasm.qasm
+
 - 中科酷原-汉原1 中性原子驱动
 
 .. code-block:: shell
