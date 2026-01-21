@@ -187,6 +187,9 @@ class SCRoute(ABC):
     def _import_qpu_file(self, qpu_config, disable_qubits=[]):
         """硬件参数解析，获取一个包含耦合列表的字典.
 
+        如果 qpu_config 中包含 "current_block"，则只保留两端点都在
+        current_block 内的边，从而将 mapping 限制在指定的物理比特子集内。
+
         Args:
             qpu_config: 硬件配置字典
             disable_qubits: 不可用比特列表. Defaults to [].
@@ -200,6 +203,29 @@ class SCRoute(ABC):
             raise MappingException(
                 f"coupler_map must be a dict, but got {type(coupler_map)}"
             )
+
+        # 获取 current_block，如果存在则限制物理比特范围
+        current_block = qpu_config.get("current_block")
+        logger.info(f"current_block: {current_block}")
+        if current_block is not None:
+            # 将 current_block 转换为 set，并统一转换为整数
+            # 因为后续 q1, q2 是整数，需要类型一致才能正确比较
+            current_block_set = set()
+            for item in current_block:
+                if isinstance(item, str) and len(item) > 1:
+                    # 处理 'Q17' 格式，提取数字部分
+                    current_block_set.add(int(item[1:]))
+                elif isinstance(item, (int, float)):
+                    current_block_set.add(int(item))
+                else:
+                    current_block_set.add(item)
+            logger.info(
+                f"Limiting mapping to current_block: "
+                f"{sorted(current_block_set)}"
+            )
+        else:
+            current_block_set = None
+
         # 如果是字典，遍历values
         for value in coupler_map.values():
             # value可能是元组、列表或其他结构
@@ -229,6 +255,10 @@ class SCRoute(ABC):
                 continue
             if Q1 in disable_qubits or Q2 in disable_qubits:
                 continue
+            # 如果指定了 current_block，则只保留两端点都在 block 内的边
+            if current_block_set is not None:
+                if q1 not in current_block_set or q2 not in current_block_set:
+                    continue
             adjacency_list.append([q1, q2])
         qpu_config_dice["adjacency_list"] = adjacency_list
         return qpu_config_dice

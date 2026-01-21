@@ -141,7 +141,11 @@ class TranspilerCmss(TranspilerBase):
                     self.total_qubits -= value[0]
                     continue
                 mapping_dict[key] = value[0]
-                if not isinstance(mapper, SCRoute):
+                if isinstance(mapper, SCRoute):
+                    logger.info(f"set current_block to {blk}")
+                    # For SC, set current_block to limit the mapping range
+                    qpu_cfg["current_block"] = blk
+                else:
                     qpu_cfg["operate_area"] = blk
                     qpu_cfg["storage_area"] = [
                         qpu_cfg["closest"][o] for o in blk
