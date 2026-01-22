@@ -30,6 +30,7 @@
 | 五岳-中科酷原-汉原1 中性原子驱动 | DriverWuyueHanyuan1 | 0.0.1 | 中性原子 | 100 | | 五岳-中科酷原-汉原1 中性原子驱动 (云平台版) |
 | Qiskit Aer 模拟器驱动 | DriverQiskitAerSim | 0.0.1 | 通用模拟器 | 30 | qiskit | Qiskit Aer 模拟器驱动 |
 | Qiskit Qasm 模拟器驱动 | DriverQiskitQasmSim | 0.0.1 | 通用模拟器 | 30 | qiskit | Qiskit Qasm 模拟器驱动 |
+| Qutip 模拟器驱动 | DriverQutipSim | 0.0.1 | 通用模拟器 | 10 | cmss | Qutip 模拟器驱动 |
 
 上表也可以通过QCOS系统命令行查看：
 
