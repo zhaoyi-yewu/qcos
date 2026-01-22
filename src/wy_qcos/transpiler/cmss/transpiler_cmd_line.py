@@ -129,6 +129,7 @@ def main_cmss_transpiler(
                 expected_basis_gates = [
                     Constant.SINGLE_QUBIT_GATE_RX,
                     Constant.SINGLE_QUBIT_GATE_RY,
+                    Constant.TWO_QUBIT_GATE_CZ,
                 ]
             elif tech_type == Constant.TECH_TYPE_SUPERCONDUCTING:
                 qpu_config = Config.EXTRA_CONFIGS["spinq_rpc"]["transpiler"][
@@ -172,7 +173,7 @@ def main_cmss_transpiler(
 
             # optimize the transpiled gates
             with Timer() as tranpile_timer:
-                _, _ = transpiler.transpile(parse_result, expected_basis_gates)
+                _ = transpiler.transpile(parse_result, expected_basis_gates)
             logger.info(f"cmss tranpiler: {tranpile_timer.elapsed:.4f}s\n")
         else:
             # generate abs tree

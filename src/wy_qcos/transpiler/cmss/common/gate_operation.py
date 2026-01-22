@@ -15,10 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import copy
 import numpy as np
 from math import sqrt, cos, sin, log2
 from cmath import exp
+from copy import deepcopy
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.cmss.common.base_operation import BaseOperation
@@ -120,7 +120,7 @@ class GateOperation(BaseOperation):
             params["pi"] = np.pi
             decomposed_gates = custom_gate.get("gates", [])
             if len(decomposed_gates) == 0:
-                return list([self])
+                return deepcopy(list([self]))
             gates = []
             for name, qids, arg_value in decomposed_gates:
                 qubits = [self.targets[qid] for qid in qids]
@@ -133,7 +133,7 @@ class GateOperation(BaseOperation):
             raise DecomposeException(str(e)) from e
 
     def decompose_to_1q2q(self):
-        return copy.deepcopy([self])
+        return deepcopy([self])
 
     def default_decompose(self):
         """默认的分解方法."""
@@ -479,7 +479,7 @@ class RX(GateOperation):
         )
 
     def default_decompose(self):
-        return list([self])
+        return deepcopy(list([self]))
 
     def __array__(self, dtype=None):
         """Return a Numpy.ndarray for the RX gate."""
@@ -503,7 +503,7 @@ class RY(GateOperation):
         )
 
     def default_decompose(self):
-        return list([self])
+        return deepcopy(list([self]))
 
     def __array__(self, dtype=None):
         """Return a Numpy.ndarray for the RY gate."""
@@ -525,7 +525,7 @@ class RZ(GateOperation):
         )
 
     def default_decompose(self):
-        return list([self])
+        return deepcopy(list([self]))
 
     def __array__(self, dtype=None):
         """Return a Numpy.ndarray for the RY gate."""

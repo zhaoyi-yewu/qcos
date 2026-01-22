@@ -15,7 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import copy
+from copy import deepcopy
+
 from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
 
 
@@ -37,7 +38,7 @@ def decompose_gates(ir: list, supp_basis_gates: list):
         ):
             gates += gate.decompose()
         else:
-            gates += [gate]
+            gates += deepcopy([gate])
     return gates
 
 
@@ -47,5 +48,5 @@ def decompose_gates_to_1q2q(ir: list):
         if isinstance(gate, GateOperation):
             gates += gate.decompose_to_1q2q()
         else:
-            gates += copy.deepcopy([gate])
+            gates += deepcopy([gate])
     return gates
