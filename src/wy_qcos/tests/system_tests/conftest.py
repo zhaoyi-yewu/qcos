@@ -74,8 +74,6 @@ def global_configs(request):
     # print configs for debug purpose when test fails
     print("\nGLOBAL_CONFIGS:")
     pprint.PrettyPrinter().pprint(GLOBAL_CONFIGS)
-    print("\nSamples:")
-    pprint.PrettyPrinter().pprint(SAMPLES)
 
 
 def load_configs():

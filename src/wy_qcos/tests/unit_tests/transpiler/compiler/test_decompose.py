@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -21,12 +21,20 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.cmss.common.base_operation import OperationType
 from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
 from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
-from wy_qcos.transpiler.cmss.compiler.decomposer import decompose_gates
+from wy_qcos.transpiler.cmss.compiler.decomposer import (
+    decompose_gates,
+    decompose_gates_to_1q2q,
+)
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
-from wy_qcos.tests.unit_tests.transpiler.comm import validate_gate_ir
-from wy_qcos.tests.unit_tests.transpiler.comm import validate_non_gate_ir
+from wy_qcos.tests.unit_tests.transpiler.comm import (
+    validate_gate_ir,
+    validate_non_gate_ir,
+    validate_ir_equals,
+    validate_no_shared_reference_or_raise,
+    validate_only_1q_2q_gates,
+)
 
 
 def validate_gate(actual: GateOperation, name: str, targets: list, arg: list):
@@ -598,3 +606,73 @@ class TestDecompose:
             create_gate("rx", [0, 1], [1, 2, 3])
         except Exception as e:
             print(f"Exception: {e}")
+
+    def test_x_decompose_to_1q2q(self):
+        x = create_gate("x", [0])
+        decomposed_gates = x.decompose_to_1q2q()
+        assert len(decomposed_gates) == 1
+        validate_gate_ir(decomposed_gates[0], "x", [0], 1, True)
+        validate_only_1q_2q_gates(decomposed_gates)
+        validate_ir_equals([x], decomposed_gates)
+        validate_no_shared_reference_or_raise([x], decomposed_gates)
+
+    def test_ccx_decompose_to_1q2q(self):
+        ccx = create_gate("ccx", [0, 1, 2])
+        decomposed_gates = ccx.decompose_to_1q2q()
+        validate_only_1q_2q_gates(decomposed_gates)
+        validate_ir_equals([ccx], decomposed_gates)
+        validate_no_shared_reference_or_raise([ccx], decomposed_gates)
+
+    def test_cswap_decompose_to_1q2q(self):
+        cswap = create_gate("cswap", [0, 1, 2])
+        decomposed_gates = cswap.decompose_to_1q2q()
+        validate_only_1q_2q_gates(decomposed_gates)
+        validate_ir_equals([cswap], decomposed_gates)
+        validate_no_shared_reference_or_raise([cswap], decomposed_gates)
+
+    def test_rccx_decompose_to_1q2q(self):
+        rccx = create_gate("rccx", [0, 1, 2])
+        decomposed_gates = rccx.decompose_to_1q2q()
+        validate_only_1q_2q_gates(decomposed_gates)
+        validate_ir_equals([rccx], decomposed_gates)
+        validate_no_shared_reference_or_raise([rccx], decomposed_gates)
+
+    def test_rc3x_decompose_to_1q2q(self):
+        rc3x = create_gate("rc3x", [0, 1, 2, 3])
+        decomposed_gates = rc3x.decompose_to_1q2q()
+        validate_only_1q_2q_gates(decomposed_gates)
+        validate_ir_equals([rc3x], decomposed_gates)
+        validate_no_shared_reference_or_raise([rc3x], decomposed_gates)
+
+    def test_c3x_decompose_to_1q2q(self):
+        c3x = create_gate("c3x", [0, 1, 2, 3])
+        decomposed_gates = c3x.decompose_to_1q2q()
+        validate_only_1q_2q_gates(decomposed_gates)
+        validate_ir_equals([c3x], decomposed_gates)
+        validate_no_shared_reference_or_raise([c3x], decomposed_gates)
+
+    def test_c3sqrtx_decompose_to_1q2q(self):
+        c3sqrtx = create_gate("c3sqrtx", [0, 1, 2, 3])
+        decomposed_gates = c3sqrtx.decompose_to_1q2q()
+        validate_only_1q_2q_gates(decomposed_gates)
+        validate_ir_equals([c3sqrtx], decomposed_gates)
+        validate_no_shared_reference_or_raise([c3sqrtx], decomposed_gates)
+
+    def test_c4x_decompose_to_1q2q(self):
+        c4x = create_gate("c4x", [0, 1, 2, 3, 4])
+        decomposed_gates = c4x.decompose_to_1q2q()
+        validate_only_1q_2q_gates(decomposed_gates)
+        validate_ir_equals([c4x], decomposed_gates)
+        validate_no_shared_reference_or_raise([c4x], decomposed_gates)
+
+    def test_decompose_to_1q2q(self):
+        tree = get_abs_tree(self.data)
+        assert tree is not None
+
+        cir = get_ir(tree)
+        _, gates_list = cir.num_qubits, cir.get_operations()
+
+        decomposed_gates = decompose_gates_to_1q2q(gates_list)
+        validate_only_1q_2q_gates(decomposed_gates)
+        validate_ir_equals(gates_list, decomposed_gates)
+        validate_no_shared_reference_or_raise(gates_list, decomposed_gates)

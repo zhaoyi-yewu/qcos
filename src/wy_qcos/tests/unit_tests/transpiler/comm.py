@@ -15,7 +15,11 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
+from wy_qcos.transpiler.cmss.common.gate_operation import (
+    GateOperation,
+    BaseOperation,
+)
+from wy_qcos.transpiler.cmss.common.base_operation import OperationType
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
 from wy_qcos.transpiler.cmss.circuit.utils import is_equal
@@ -103,3 +107,55 @@ def validate_optimize_result(
         raise ValueError("input should be QuantumCircuit.")
     # validate
     assert is_equal(circ1, circ2)
+
+
+def validate_no_shared_reference_or_raise(list_a: list, list_b: list) -> None:
+    """Verifies that no object is referenced more than once.
+
+    Raises a ValueError with a descriptive message if a duplicated or shared
+    object reference is found.
+
+    Args:
+        list_a: The first list of objects.
+        list_b: The second list of objects.
+
+    Raises:
+        ValueError: If a duplicated or shared object reference is detected.
+    """
+    seen_ids = {}
+
+    for index, obj in enumerate(list_a):
+        obj_id = id(obj)
+        if obj_id in seen_ids:
+            raise ValueError(
+                f"Duplicate object reference in list_a: "
+                f"{seen_ids[obj_id]} and list_a[{index}]"
+            )
+        seen_ids[obj_id] = f"list_a[{index}]"
+
+    for index, obj in enumerate(list_b):
+        obj_id = id(obj)
+        if obj_id in seen_ids:
+            raise ValueError(
+                f"Shared object reference between lists: "
+                f"{seen_ids[obj_id]} and list_b[{index}]"
+            )
+        seen_ids[obj_id] = f"list_b[{index}]"
+
+
+def validate_only_1q_2q_gates(gates: list[BaseOperation]) -> None:
+    """Verifies that all gates act on one or two qubits only.
+
+    Args:
+        gates: A list of gate operations.
+
+    Raises:
+        ValueError: If any gate acts on more than two qubits.
+    """
+    for gate in gates:
+        if isinstance(gate, GateOperation):
+            if gate.operation_type not in {
+                OperationType.SINGLE_QUBIT_OPERATION.value,
+                OperationType.DOUBLE_QUBIT_OPERATION.value,
+            }:
+                assert False
