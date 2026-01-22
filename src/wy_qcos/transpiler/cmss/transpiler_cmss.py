@@ -154,8 +154,10 @@ class TranspilerCmss(TranspilerBase):
         """Parse src_code_dict.
 
         Args:
-          src_code_dict: src_code_dict
-        :return parse result
+          src_code_dict(dict): src_code_dict
+
+        Returns:
+            parse result(QuantumCircuit): quantum circuit parsed by cmss
         """
         # compile
         parse_result_dict = {}
@@ -191,10 +193,13 @@ class TranspilerCmss(TranspilerBase):
             logger.error(err_msg)
             raise ValueError(err_msg)
 
-        opt_result_dict = {}
+        # optimize gates list
         opt_level = self.transpiler_options.get(
             "optimization_level", Constant.DEFAULT_OPTIMIZATION_LEVEL
         )
+        # parse dict, key: job_id, value: (num_qubits, circuit)
+        # firstly optimize
+        opt_result_dict = {}
         with Timer() as optimize1_timer:
             for key, value in parse_result.items():
                 opt_result = optimize(value[1], opt_level)
@@ -203,13 +208,8 @@ class TranspilerCmss(TranspilerBase):
             f"tranpiler(optimize firstly): {optimize1_timer.elapsed:.4f}s\n"
         )
 
-        with Timer() as mapping_timer:
-            mapping_res, mapping_dict = self.mapping(qpu_cfg, opt_result_dict)
-        logger.info(f"tranpiler(mapping): {mapping_timer.elapsed:.4f}s\n")
-
         # decompose gates
         enable_na_move = self.transpiler_options.get("enable_na_move", False)
-
         # support cz gate for NARoute
         if enable_na_move:
             supp_basis_gates = [
@@ -217,20 +217,36 @@ class TranspilerCmss(TranspilerBase):
                 Constant.SINGLE_QUBIT_GATE_RY,
                 Constant.TWO_QUBIT_GATE_CZ,
             ]
+        dp_circuit_dict = {}
+
         with Timer() as decompose_timer:
-            decomposer = Decomposer()
-            parsed_circuit = decomposer.decompose(
-                mapping_res, supp_basis_gates
-            )
+            for key, value in opt_result_dict.items():
+                decomposer = Decomposer()
+                decomposer_circuit = decomposer.decompose(
+                    value[1], supp_basis_gates
+                )
+                dp_circuit_dict[key] = (value[0], decomposer_circuit)
         logger.info(
             f"tranpiler(decompose_gates): {decompose_timer.elapsed:.4f}s\n"
         )
-
-        # optimize circuit
+        # secondly optimize
         with Timer() as optimize2_timer:
-            basis_gate_list = optimize(parsed_circuit, opt_level)
-        logger.debug(f"final basis_gate_list: {basis_gate_list}")
+            for key, value in dp_circuit_dict.items():
+                opt_result = optimize(value[1], opt_level)
+                opt_result_dict[key] = (value[0], opt_result)
         logger.info(
             f"tranpiler(optimize secondly): {optimize2_timer.elapsed:.4f}s\n"
+        )
+
+        with Timer() as mapping_timer:
+            mapping_res, mapping_dict = self.mapping(qpu_cfg, opt_result_dict)
+        logger.info(f"tranpiler(mapping): {mapping_timer.elapsed:.4f}s\n")
+
+        # thirdly optimize
+        with Timer() as optimize3_timer:
+            basis_gate_list = optimize(mapping_res, opt_level)
+        logger.debug(f"final basis_gate_list: {basis_gate_list}")
+        logger.info(
+            f"tranpiler(optimize secondly): {optimize3_timer.elapsed:.4f}s\n"
         )
         return basis_gate_list, mapping_dict
