@@ -161,7 +161,7 @@ class TestJob:
             "backend": Constant.DEVICE_DUMMY,
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": None,
-            "driver_options": {"enable_wirecut": True},
+            "driver_options": {"enable_wirecut": True, "max_qubits": 6},
             "transpiler": Constant.TRANSPILER_CMSS,
             "transpiler_options": {"enable_na_move": True},
             "profiling": None,

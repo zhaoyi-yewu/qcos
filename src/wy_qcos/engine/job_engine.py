@@ -1255,15 +1255,17 @@ def run_circuit_cutting_code(
     src_code = src_code_dict[f"{job_id}-{source_code_index}"]
     max_qubits = driver.get_max_qubits()
     is_complete_reconstruction = True
+    max_memory = 2 ** (num_qubits)
     if num_qubits > Constant.COMPLETE_RECONSTRUCTION_THRESHOLD:
         is_complete_reconstruction = False
+        max_memory = Constant.DD_MAX_MEMORY
     # Step 1: Generate all subcircuits
     try:
         _, subcircuits, cut_wire = (
             generate_all_variant_subcircuits_for_execute(
                 max_subcircuit_width=max_qubits,
                 qasm=src_code,
-                max_memory=Constant.DD_MAX_MEMORY,
+                max_memory=max_memory,
                 is_complete_reconstruction=is_complete_reconstruction,
             )
         )
