@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -19,8 +19,7 @@ from networkx import Graph
 
 from wy_qcos.transpiler.cmss.mapping.utils.dg import DG
 from wy_qcos.transpiler.cmss.mapping.init_mapping.simulated_annealing import (
-    init_cost_matrix,
-    sa_initial_mapping,
+    SimulatedAnnealingMapping,
 )
 
 
@@ -36,7 +35,8 @@ class TestSAMapping:
         dependency_graph.add_multi_gates([gate1, gate2, gate3])
         assert dependency_graph.get_dg_num_q() == 3
 
-        mapping = sa_initial_mapping(dependency_graph, coupling_graph)
+        sa_mapping = SimulatedAnnealingMapping()
+        mapping = sa_mapping.run(dependency_graph, coupling_graph)
         assert mapping is not None
         assert len(mapping) == 3
 
@@ -50,7 +50,8 @@ class TestSAMapping:
         gate3 = ("cx", (2, 0), [])
         dependency_graph.add_multi_gates([gate1, gate2, gate3])
         assert dependency_graph.get_dg_num_q() == 3
-        cost_matrix, qubits = init_cost_matrix(
+        sa_mapping = SimulatedAnnealingMapping()
+        cost_matrix, qubits = sa_mapping.init_cost_matrix(
             dependency_graph, coupling_graph, add_weight=True
         )
         assert qubits == {0, 1, 2}

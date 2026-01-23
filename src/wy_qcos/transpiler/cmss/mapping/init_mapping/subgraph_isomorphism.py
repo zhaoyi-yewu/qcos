@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -20,7 +20,7 @@ import rustworkx as rx
 
 from wy_qcos.transpiler.cmss.mapping.utils.dg import DG
 from wy_qcos.transpiler.cmss.mapping.init_mapping.simulated_annealing import (
-    sa_initial_mapping,
+    SimulatedAnnealingMapping,
 )
 
 
@@ -86,6 +86,17 @@ def topgraph_mapping(dependency_graph: DG, coupling_graph: nx.Graph):
     # the graph of circuit is isomorphic to the hardware
     log_to_phy = subgraph_isomorphism_mapping(dependency_graph, coupling_graph)
     if log_to_phy is not None:
+        # handle remaining unallocated qubits that only have 1-qubit gates
+        none_num = log_to_phy.count(None)
+        if none_num > 0:
+            phy_qubits = list(coupling_graph.nodes)
+            remain_phy = [q for q in phy_qubits if q not in log_to_phy]
+            idx_remain = 0
+            for logic, phy in enumerate(log_to_phy):
+                if phy is not None:
+                    continue
+                log_to_phy[logic] = remain_phy[idx_remain]
+                idx_remain += 1
         return log_to_phy
 
     # all cnot gates
@@ -109,9 +120,8 @@ def topgraph_mapping(dependency_graph: DG, coupling_graph: nx.Graph):
             log_to_phy[q_log] = q_phy
 
     # use simulated annealing to assign the remaining unallocated qubits
-    log_to_phy = sa_initial_mapping(
-        dependency_graph, coupling_graph, log_to_phy
-    )
+    sa_mapping = SimulatedAnnealingMapping()
+    log_to_phy = sa_mapping.run(dependency_graph, coupling_graph, log_to_phy)
     return log_to_phy
 
 
@@ -154,10 +164,12 @@ def topgraph_search(
             q2_idx = all_nodes.index(q2)
             top_graph.add_edge(q1_idx, q2_idx, None)
 
-        if rx.graph_is_subgraph_isomorphic(coupling_graph, top_graph):
+        if rx.graph_is_subgraph_isomorphic(
+            coupling_graph, top_graph, call_limit=100000
+        ):
             # find an isomorphism
             vf2 = rx.graph_vf2_mapping(
-                coupling_graph, top_graph, subgraph=True
+                coupling_graph, top_graph, subgraph=True, call_limit=100000
             )
             mapping = next(vf2)
             best_idx = mid

@@ -208,7 +208,7 @@ class TestSCRoute:
     def test_prepare_data_non_int_adjacency(self):
         """Test prepare_data with non-int adjacency."""
         route = SCRoute()
-        qbit_num = 4
+        qbit_num = 2
         gates = [CX(targets=[0, 1])]
         qpu_config = {
             "coupler_map": {
