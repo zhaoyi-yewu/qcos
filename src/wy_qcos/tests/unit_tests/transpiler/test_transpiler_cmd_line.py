@@ -71,7 +71,30 @@ class TestTranspilerCmdLine:
         )
         assert res is True
 
-    def test_cmss_transpiler_tech_na(self):
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
+    )
+    def test_cmss_transpiler_tech_na(self, mock_get_mapper):
+        from wy_qcos.transpiler.cmss.mapping import NARoute
+        import types
+
+        # Create a real mapper instance
+        mapper = NARoute()
+        # Mock execute_with_order to return (mapped_ir, final_layout)
+        original_execute = mapper.execute_with_order
+
+        def mock_execute_with_order(self_ref):
+            result = original_execute()
+            # If result is a list, wrap it in a tuple with empty dict
+            if isinstance(result, list):
+                return result, {}
+            return result
+
+        mapper.execute_with_order = types.MethodType(
+            mock_execute_with_order, mapper
+        )
+        mock_get_mapper.return_value = mapper
+
         qasm_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
         output_file = ""
         opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL

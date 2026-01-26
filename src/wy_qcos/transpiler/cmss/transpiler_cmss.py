@@ -109,16 +109,18 @@ class TranspilerCmss(TranspilerBase):
         )
         if isinstance(mapper, EmptyRoute):
             mapping_dict = {}
+            final_layout_dict = {}
             key, value = list(opt_result_dict.items())[0]
             mapping_dict[key] = value[0]
             mapping_res = value[1]
-            return mapping_res, mapping_dict
+            return mapping_res, mapping_dict, final_layout_dict
 
         # set sc_mapping_options
         if isinstance(mapper, SCRoute) and sc_mapping_options:
             mapper.set_sc_mapping_options(sc_mapping_options)
 
         mapping_dict = {}
+        final_layout_dict = {}
         if len(opt_result_dict) == 1:
             key, value = list(opt_result_dict.items())[0]
             mapping_dict[key] = value[0]
@@ -128,13 +130,15 @@ class TranspilerCmss(TranspilerBase):
                 f"mapping(prepare_data): {mapping_pre_timer.elapsed:.4f}s\n"
             )
             with Timer() as mapping_exec_timer:
-                mapping_res = mapper.execute_with_order()
+                mapping_res, final_layout = mapper.execute_with_order()
+
+            final_layout_dict[key] = final_layout
             logger.debug(f"after mapping: {mapping_res}")
             logger.info(
                 "mapping(execute_with_order): "
                 f"{mapping_exec_timer.elapsed:.4f}s\n"
             )
-            return mapping_res, mapping_dict
+            return mapping_res, mapping_dict, final_layout_dict
         else:
             ht = HierarchyTree(qpu_cfg)
             ht.construct()
@@ -159,19 +163,13 @@ class TranspilerCmss(TranspilerBase):
                     qpu_cfg["storage_area"] = [
                         qpu_cfg["closest"][o] for o in blk
                     ]
-                with Timer() as mapping_pre_timer:
-                    mapper.prepare_data(value[0], value[1], qpu_cfg)
-                logger.info(
-                    "mapping(prepare_data): "
-                    f"{mapping_pre_timer.elapsed:.4f}s\n"
-                )
-                with Timer() as mapping_exec_timer:
-                    mapping_res += mapper.execute_with_order()
-                logger.info(
-                    "mapping(execute_with_order): "
-                    f"{mapping_exec_timer.elapsed:.4f}s\n"
-                )
-            return mapping_res, mapping_dict
+
+                mapper.prepare_data(value[0], value[1], qpu_cfg)
+                mapping_result, final_layout = mapper.execute_with_order()
+                mapping_res += mapping_result
+                final_layout_dict[key] = final_layout
+
+            return mapping_res, mapping_dict, final_layout_dict
 
     def parse(self, src_code_dict):
         """Parse src_code_dict.
@@ -265,7 +263,9 @@ class TranspilerCmss(TranspilerBase):
         )
 
         with Timer() as mapping_timer:
-            mapping_res, mapping_dict = self.mapping(qpu_cfg, opt_result_dict)
+            mapping_res, mapping_dict, _ = self.mapping(
+                qpu_cfg, opt_result_dict
+            )
         logger.info(
             f"tranpiler(mapping): {mapping_timer.elapsed:.4f}s\n"
             f"number of gates: {len(mapping_res)}\n"

@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 import networkx as nx
 import numpy as np
+import time
 from networkx import DiGraph
 from abc import ABC
 from loguru import logger
@@ -53,7 +54,7 @@ mode for decision
 _mode_decision = ["global_score"]
 
 """mode for simulation"""
-_mode_sim = ["fix_cx_num", [500, 30]]
+_mode_sim = ["fix_cx_num", [50, 10]]
 
 MCTree_key_words = [
     "select_mode",
@@ -1183,7 +1184,7 @@ class MCTSRouting(ABC):
     """
 
     def __init__(self):
-        self.selec_times = 50  # MCT搜索选择次数
+        self.selec_times = 5  # MCT搜索选择次数
 
     def _layout_list_to_dict(self, layout_list):
         """将布局列表转换为字典."""
@@ -1220,6 +1221,8 @@ class MCTSRouting(ABC):
             raise MappingException("initial_layout cannot be None")
 
         # MCT搜索过程
+        logger.info("MCTS search process start")
+        start = time.time()
         while search_tree.nodes[search_tree.root_node]["num_remain_gates"] > 0:
             while search_tree.selec_count < self.selec_times:
                 # selection: 选择一个节点进行扩展
@@ -1228,6 +1231,9 @@ class MCTSRouting(ABC):
                 search_tree.expansion(exp_node)
             # decision: 做出决策，选择最优路径
             search_tree.decision()
+
+        end = time.time()
+        logger.info(f"MCTS search process time: {end - start}")
 
         # 生成映射后的依赖图
         dg_qct = search_tree.to_dg()
@@ -1290,4 +1296,4 @@ class MCTSRouting(ABC):
         )
         logger.info(f"final layout: {mapping_virtual_to_final}")
 
-        return mapped_ir
+        return mapped_ir, mapping_virtual_to_final

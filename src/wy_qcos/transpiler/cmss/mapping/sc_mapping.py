@@ -18,6 +18,7 @@
 from abc import ABC
 import networkx as nx
 from schema import And, Optional, Or
+import time
 
 from wy_qcos.transpiler.cmss.common.gate_operation import BaseOperation
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
@@ -30,7 +31,7 @@ from wy_qcos.transpiler.cmss.mapping.init_mapping.sc_initial_mapping import (
 from wy_qcos.transpiler.cmss.mapping.routing.sc_routing import (
     SCRoutingFactory,
 )
-from wy_qcos.transpiler.common.utils import Timer, logger
+from wy_qcos.transpiler.common.utils import logger
 
 # 默认 sc_mapping 配置参数
 DEFAULT_SC_MAPPING_OPTIONS = {
@@ -45,7 +46,7 @@ DEFAULT_SC_MAPPING_OPTIONS = {
     # 评分层数
     "score_layer": 5,
     # 模拟模式: ["fix_cx_num", [N_sim, G_sim]]
-    "mode_sim": ["fix_cx_num", [500, 30]],
+    "mode_sim": ["fix_cx_num", [50, 10]],
     # 大小评分衰减率
     "score_decay_rate_size": 0.7,
     # 深度评分衰减率
@@ -356,14 +357,13 @@ class SCRoute(ABC):
         self.num_q_vir = self.dg.num_q
 
         # 初始映射
-        with Timer() as initial_mapping_timer:
-            init_map = get_initial_mapping(
-                self.dg, self.ag, self.method_init_mapping
-            )
-        logger.info(f"init_map: {init_map}")
-        logger.info(
-            f"sc_mapping(init_mapping): {initial_mapping_timer.elapsed:.4f}s"
+        start = time.time()
+        init_map = get_initial_mapping(
+            self.dg, self.ag, self.method_init_mapping
         )
+        end = time.time()
+        logger.info(f"get_initial_mapping time: {end - start}")
+        logger.info(f"init_map: {init_map}")
         self.initial_layout = self._layout_list_to_dict(init_map)
 
         # 初始化搜索树，从 sc_mapping_options 获取配置
@@ -441,18 +441,23 @@ class SCRoute(ABC):
                     "search_tree must be initialized for MCT routing algorithm"
                 )
             # 使用SCRouting执行路由搜索
-            mapped_ir = self.routing.execute_routing(
+            logger.info("MCTS routing start")
+            start = time.time()
+            mapped_ir, final_layout = self.routing.execute_routing(
                 search_tree=self.search_tree,
                 ag=self.ag,
                 initial_layout=self.initial_layout,
                 num_q_vir=self.num_q_vir,
                 measure_ops=self.measure_ops,
             )
+            logger.info(f"mapped_ir: {mapped_ir}")
+            end = time.time()
+            logger.info(f"MCTS routing time: {end - start}")
         else:
             # 对于SABRE算法，传递dg参数
             # self.routing 在 else 分支中一定是 SABRERouting 实例
             # pylint: disable-next=unexpected-keyword-arg
-            mapped_ir = self.routing.execute_routing(
+            mapped_ir, final_layout = self.routing.execute_routing(
                 search_tree=self.search_tree,
                 ag=self.ag,
                 initial_layout=self.initial_layout,
@@ -460,4 +465,5 @@ class SCRoute(ABC):
                 measure_ops=self.measure_ops,
                 dg=self.dg,
             )
-        return mapped_ir
+            logger.info(f"mapped_ir: {mapped_ir}")
+        return mapped_ir, final_layout

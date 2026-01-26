@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -237,11 +237,17 @@ class TestSCRoute:
 
         route.prepare_data(qbit_num, gates, qpu_config)
 
-        # Mock routing.execute_routing
-        route.routing.execute_routing = Mock(return_value=[])
+        # Mock routing.execute_routing to return tuple
+        # (mapped_ir, final_layout)
+        route.routing.execute_routing = Mock(return_value=([], {0: 0, 1: 1}))
 
         result = route.execute_with_order()
-        assert isinstance(result, list)
+        # SCRoute.execute_with_order() 返回 (mapped_ir, final_layout)
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        mapped_ir, final_layout = result
+        assert isinstance(mapped_ir, list)
+        assert isinstance(final_layout, dict)
         route.routing.execute_routing.assert_called_once()
 
     def test_execute_with_order_no_prepare(self):
