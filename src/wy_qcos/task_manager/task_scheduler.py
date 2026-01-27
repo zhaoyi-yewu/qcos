@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -36,7 +36,7 @@ class TaskScheduler(ABC):
     def __init__(self):
         """Init TaskScheduler."""
         self._task_manager = TaskFlowManager()
-        self._policy_handler = TimePrecedencePolicy(self._task_manager)
+        self._policy_handler = PrioritySchedulingPolicy(self._task_manager)
         self.driver_manager = None
         self.transpiler_manager = None
         self.device_manager = None
@@ -431,14 +431,14 @@ class TaskScheduler(ABC):
         return final_job_status
 
 
-class TimePrecedencePolicy(ABC):
-    """Time Precedence Policy."""
+class PrioritySchedulingPolicy(ABC):
+    """Priority Scheduling Policy."""
 
     def __init__(self, task_manager: TaskFlowManager):
         self._task_manager = task_manager
 
     def exec_task(self, flow_info, job_info, tags=None):
-        """TimePrecedencePolicy execute task.
+        """execute task.
 
         Args:
             flow_info: flow info

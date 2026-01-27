@@ -95,16 +95,6 @@ class Constant:
         JOB_STATUS_DELETED,
     ]
 
-    # Job scheduling policy
-    JOB_SCHED_POLICY_PRIORITY = "priority"
-    JOB_SCHED_POLICY_TIME_PRECEDENCE = "time_precedence"
-    JOB_SCHED_POLICY_PERIODIC = "periodic"
-    JOB_SCHED_POLICY_DEPENDENT = "dependent"
-    JOB_SCHED_POLICY_BATCH = "batch"
-    JOB_SCHED_POLICY_REALTIME = "realtime"
-    DEFAULT_JOB_SCHED_POLICY = JOB_SCHED_POLICY_TIME_PRECEDENCE
-    JOB_SCHED_POLICIES = [JOB_SCHED_POLICY_TIME_PRECEDENCE]
-
     # Shots
     DEFAULT_SHOTS = 1
     MIN_SHOTS = 1
