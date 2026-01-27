@@ -614,7 +614,7 @@ class TestTranspilerNaZapMapping:
         mapping_dict[key] = value[0]
         na.prepare_data(value[0], value[1], qpu_cfg)
 
-        res = na.execute_with_order()
+        res, _ = na.execute_with_order()
 
         assert res[0].name == "x"
         assert res[-1].name == "measure"

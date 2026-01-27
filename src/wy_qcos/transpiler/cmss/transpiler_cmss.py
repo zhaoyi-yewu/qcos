@@ -96,7 +96,7 @@ class TranspilerCmss(TranspilerBase):
         Args:
           qpu_cfg: qpu_cfg
           opt_result_dict: opt_result_dict
-        :return mapping result dict
+        :return mapping result, dict, final_layout_dict
         """
         factory = MappingFactory()
 

@@ -925,4 +925,4 @@ class NA_ZAP_Route(ABC):
 
         res = self.routing_asap(mapping, measure_op)
 
-        return res
+        return res, None
