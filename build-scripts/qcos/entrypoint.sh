@@ -69,7 +69,7 @@ MAX_JOBS_PER_VIRTUAL_INSTANCE = ${MAX_JOBS_PER_VIRTUAL_INSTANCE:-10}
 # enable virtualization
 ENABLE_VIRT = ${ENABLE_VIRT:-false}
 # salt for password/encryption
-PASSWORD_SALT = ${PASSWORD_SALT:-abcd}
+PASSWORD_SALT = ${PASSWORD_SALT:-123456}
 
 [API_SERVER]
 # API workers
@@ -111,7 +111,7 @@ USE_SSL = false
 
 [DEVICES]
 # DEVICE_LIST example:
-# DEVICE_LIST = ["dummy", "hanyuan1", "wy-hanyuan1", "tiangong100", "tiangong100_v2", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "qiskit_aer_sim", "qiskit_qasm_sim", "uqc_matrix2"]
+# DEVICE_LIST = ["dummy", "hanyuan1", "wy-hanyuan1", "tiangong100", "tiangong100_v2", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim"]
 DEVICE_LIST = [${DEVICE_LIST:-\"dummy\"}]
 EOM
 fi
@@ -135,6 +135,8 @@ if [ -n "${wait_for_url}" ]; then
   echo "url: ${wait_for_url} is ready"
 fi
 
-# run QCOS
+# run QCOS under venv
+source /var/lib/qcos/venv/default/bin/activate
 /usr/bin/qcos-api --config-file ${qcos_config_file_path} --config-dir ${qcos_extra_config_file_dir}
+deactivate
 sleep infinity

@@ -13,7 +13,7 @@ diverse architectures \
 NMR, etc.) and drive the ecological development of quantum computing. \
 """
 readme = "README.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11,<3.13"
 license = { file = "LICENSE" }
 authors = [
     {name = "Zhao Yi", email = "zhaoyi_yewu@cmss.chinamobile.com"},

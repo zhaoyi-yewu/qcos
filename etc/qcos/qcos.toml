@@ -13,7 +13,7 @@ ENABLE_VIRT = false
 # [GLOBAL CONFIG] max jobs for virtual instance
 MAX_JOBS_PER_VIRTUAL_INSTANCE = 10
 # salt for password/encryption
-PASSWORD_SALT = "1234"
+PASSWORD_SALT = "123456"
 
 [API_SERVER]
 # API workers
