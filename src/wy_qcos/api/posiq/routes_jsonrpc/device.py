@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -123,4 +123,146 @@ def get_device(
         )
     _response_info = _get_device_info(device_info, auth_data)
     response_info = schemas.GetDeviceResponse.model_validate(_response_info)
+    return response_info
+
+
+@device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
+def calibrate(
+    body: schemas.CalibrateDeviceRequest,
+    auth_data: dict | None = Depends(auth),
+):
+    """Calibrate device.
+
+    Args:
+        body(schemas.CalibrateDeviceRequest): device name, cal_cmd
+        auth_data: auth data
+    """
+    func_name = "calibrate"
+    logger.info(f"Call {func_name}: {body}")
+
+    device_name = body.device_name
+    device_manager = scheduler.get_device_manager()
+    device = device_manager.get_device(device_name)
+    if auth_data is not None:
+        if device_name not in auth_data["device_names"]:
+            device = None
+    if not device:
+        jsonrpc_errors.handle_error_not_found(
+            module_name,
+            func_name,
+            (False, f"Device: '{device_name}' is not found"),
+        )
+    driver = device.get_driver()
+    driver.calibrate(body.cal_cmd, body.options)
+    device.set_status(device.DEVICE_STATUS_CALIBRATING)
+
+
+@device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
+def get_device_state(
+    body: schemas.DeviceProperitiesRequest,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.DeviceProperitiesResponse:
+    """Get device properities request.
+
+    Args:
+        body(schemas.DeviceProperitiesRequest): device name
+        auth_data: auth data
+
+    Returns:
+        Get device properities response
+    """
+    func_name = "get_device_state"
+    logger.info(f"Call {func_name}: {body}")
+
+    device_name = body.device_name
+    device_manager = scheduler.get_device_manager()
+    device = device_manager.get_device(device_name)
+    if auth_data is not None:
+        if device_name not in auth_data["device_names"]:
+            device = None
+    if not device:
+        jsonrpc_errors.handle_error_not_found(
+            module_name,
+            func_name,
+            (False, f"Device: '{device_name}' is not found"),
+        )
+    driver = device.get_driver()
+    _response_info = driver.get_device_state()
+    response_info = schemas.DeviceProperitiesResponse.model_validate(
+        _response_info
+    )
+    return response_info
+
+
+@device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
+def set_device_options(
+    body: schemas.SetDeviceOptionsRequest,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.SetDeviceOptionsResponse:
+    """Set device Options request.
+
+    Args:
+        body(schemas.SetDeviceOptionsRequest): device name
+        auth_data: auth data
+
+    Returns:
+        Set device Options response
+    """
+    func_name = "set_device_options"
+    logger.info(f"Call {func_name}: {body}")
+
+    device_name = body.device_name
+    device_manager = scheduler.get_device_manager()
+    device = device_manager.get_device(device_name)
+    if auth_data is not None:
+        if device_name not in auth_data["device_names"]:
+            device = None
+    if not device:
+        jsonrpc_errors.handle_error_not_found(
+            module_name,
+            func_name,
+            (False, f"Device: '{device_name}' is not found"),
+        )
+    driver = device.get_driver()
+    _response_info = driver.set_device_options(body.device_options)
+    response_info = schemas.SetDeviceOptionsResponse.model_validate(
+        _response_info
+    )
+    return response_info
+
+
+@device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
+def enable_and_disable_qubit(
+    body: schemas.EnableAndDisableQubitRequest,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.EnableAndDisableQubitResponse:
+    """Enable and Disable Qubit request.
+
+    Args:
+        body(schemas.EnableAndDisableQubitRequest): device name
+        auth_data: auth data
+
+    Returns:
+        Enable and Disable Qubit response
+    """
+    func_name = "enable_and_disable_qubit"
+    logger.info(f"Call {func_name}: {body}")
+
+    device_name = body.device_name
+    device_manager = scheduler.get_device_manager()
+    device = device_manager.get_device(device_name)
+    if auth_data is not None:
+        if device_name not in auth_data["device_names"]:
+            device = None
+    if not device:
+        jsonrpc_errors.handle_error_not_found(
+            module_name,
+            func_name,
+            (False, f"Device: '{device_name}' is not found"),
+        )
+    driver = device.get_driver()
+    _response_info = driver.enable_and_disable_qubit(body.qubits)
+    response_info = schemas.EnableAndDisableQubitResponse.model_validate(
+        _response_info
+    )
     return response_info

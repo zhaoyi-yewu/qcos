@@ -546,3 +546,39 @@ class DriverBase:
             dict: driver options
         """
         return self.driver_options
+
+    def get_device_state(self):
+        """Get device prop.
+
+        Returns:
+            dict: device prop
+        """
+        device_prop = None
+        return device_prop
+
+    def calibrate(self, cal_cmd, options):
+        """Calibrate device.
+
+        Args:
+            cal_cmd: calibration cmd
+            options: calibration options
+        """
+        logger.info(f"Start to calibrate, calibrate type: {cal_cmd}")
+
+    def set_device_options(self, device_options):
+        """Set Device options.
+
+        Args:
+            device_options: Device options
+        """
+        results = None
+        return results
+
+    def enable_and_disable_qubit(self, qubits):
+        """Enable and Disable Qubit.
+
+        Args:
+            qubits: qubits
+        """
+        results = None
+        return results

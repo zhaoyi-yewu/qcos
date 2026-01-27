@@ -63,3 +63,97 @@ class GetDeviceResponse(BaseModel):
     configs: dict | None = Field(
         default=None, description="Device configurations"
     )
+
+
+class DeviceProperitiesRequest(BaseModel):
+    """Calibrate Device.
+
+    Pydantic Model for Get Device Properities.
+    """
+
+    # device name
+    device_name: str = Field(description="Device name")
+
+
+class DeviceProperitiesResponse(BaseModel):
+    """Get Device Properitie Response.
+
+    Pydantic Model for Get Device Properitie Response.
+    """
+
+    # device status, true for online and false for offline
+    device_status: str | None = Field(
+        default=None, description="Device Status"
+    )
+    # single qubit properities
+    single_qubit_prop: dict | None = Field(
+        default=None, description="Single qubit properities"
+    )
+    # double qubit properities
+    double_qubit_prop: dict | None = Field(
+        default=None, description="Double qubit properities"
+    )
+    # tupo_configs
+    tupo_configs: dict | None = Field(
+        default=None, description="Tupo configurations"
+    )
+
+
+class CalibrateDeviceRequest(BaseModel):
+    """Get Device Properities.
+
+    Pydantic Model for Get Device Properities.
+    """
+
+    # device name
+    device_name: str = Field(description="Device name")
+    # calibrate cmd
+    cal_cmd: bool = Field(description="Calibrate cmd")
+    # calibrate options
+    options: dict | None = Field(default=None, description="Calibrate Options")
+
+
+class SetDeviceOptionsRequest(BaseModel):
+    """Set Device Options.
+
+    Pydantic Model for Set Device Options.
+    """
+
+    # device name
+    device_name: str = Field(description="Device name")
+    # set options
+    device_options: dict | None = Field(
+        default=None, description="Device Options"
+    )
+
+
+class SetDeviceOptionsResponse(BaseModel):
+    """Set Device Options Response.
+
+    Pydantic Model for Set Device Options Response.
+    """
+
+    # results
+    results: dict = Field(description="Results")
+
+
+class EnableAndDisableQubitRequest(BaseModel):
+    """Enable and Disable Qubit.
+
+    Pydantic Model for Enable and Disable Qubit.
+    """
+
+    # device name
+    device_name: str = Field(description="Device name")
+    # qubits
+    qubits: dict = Field(description="Qubits")
+
+
+class EnableAndDisableQubitResponse(BaseModel):
+    """Enable and Disable Qubit Response.
+
+    Pydantic Model for Enable and Disable Qubit Response.
+    """
+
+    # results
+    results: dict = Field(description="Results")
