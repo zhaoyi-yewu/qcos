@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 from functools import cached_property
-import time
 
 import numpy as np
 
@@ -33,6 +32,7 @@ from wy_qcos.transpiler.cmss.circuit.dag_node import DAGOpNode
 from wy_qcos.transpiler.cmss.circuit.collect_blocks import (
     BlockCollector,
 )
+from wy_qcos.transpiler.common.utils import Timer, logger
 
 
 class CliffordRzOptimization:
@@ -42,7 +42,7 @@ class CliffordRzOptimization:
         3: "cancel_two_qubit_gates",
         4: "merge_rotations",
     }
-    _optimize_routine = [1, 3, 2, 3, 1, 2, 4, 3, 2]
+    _optimize_routine = [1, 2, 3, 4]
 
     def __init__(self, verbose=False) -> None:
         self.verbose = verbose
@@ -120,7 +120,7 @@ class CliffordRzOptimization:
                 if pre_ is cur_node:
                     continue
                 # only precess the node between `cur_node` and `nxt`
-                if pre_ in dag.ancestors(cur_node):
+                if pre_._node_id < cur_node._node_id:
                     continue
 
                 # the qubits of `pre_`
@@ -156,7 +156,7 @@ class CliffordRzOptimization:
                 continue
 
             # erase the gate if degree == 0
-            if np.isclose(float(node.op.arg_value[0]), 0):
+            if abs(float(node.op.arg_value[0])) <= 1e-8:
                 dag.remove_op_node(node)
                 cnt += 1
                 continue
@@ -208,7 +208,7 @@ class CliffordRzOptimization:
             if node.name != "cx":
                 continue
             # the node has been deleted before
-            if node not in dag.nodes():
+            if node.flag == -1:
                 continue
 
             # current node
@@ -391,32 +391,22 @@ class CliffordRzOptimization:
         dag.parameterize_all()
 
         gate_reduced_cnt = 0
-        round_cnt = 0
         total_time = 0.0
 
         # optimize
-        while True:
-            round_cnt += 1
-            if self.verbose:
-                print(f"ROUND #{round_cnt}:")
-
-            cnt = 0
-            for step in routine:
-                start_time = time.time()
+        cnt = 0
+        for step in routine:
+            with Timer() as step_timer:
                 cur_cnt = getattr(self, self._optimize_sub_method[step])(dag)
-                end_time = time.time()
 
-                cnt += cur_cnt
-                step_time = end_time - start_time
-                total_time += step_time
+            cnt += cur_cnt
+            total_time += step_timer.elapsed
 
-                if self.verbose:
-                    print(
-                        f"\t{self._optimize_sub_method[step]}: {cur_cnt} "
-                        f"gates reduced, cost {np.round(step_time, 3)} s"
-                    )
-            if cnt == 0:
-                break
+            if self.verbose:
+                logger.info(
+                    f"\t{self._optimize_sub_method[step]}: {cur_cnt} "
+                    f"gates reduced, cost {np.round(step_timer.elapsed, 3)} s"
+                )
 
             gate_reduced_cnt += cnt
 
@@ -424,7 +414,7 @@ class CliffordRzOptimization:
         res_size = dag.size()
 
         if self.verbose:
-            print(
+            logger.info(
                 f"initially {init_size} gates, "
                 f"reduced {gate_reduced_cnt} gates, "
                 f"remain {res_size} gates, "

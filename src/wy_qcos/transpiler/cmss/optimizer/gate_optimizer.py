@@ -299,14 +299,12 @@ def optimize(
         _opt = [
             inverse_optimizer,
             adjacent_phase_optimizer,
-            equivalence_optimizer,
         ]
     elif opt_level == 2:
         _opt = [
             inverse_optimizer,
             adjacent_phase_optimizer,
             equivalence_optimizer,
-            commutative_optimizer,
         ]
     elif opt_level == 3:
         _opt = [

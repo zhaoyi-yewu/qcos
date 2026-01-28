@@ -163,7 +163,7 @@ class DAGCircuit:
         for node in self.topological_op_nodes():
             if node.name == "rz":
                 times = np.mod(node.op.arg_value[0], 2 * np.pi) / (np.pi / 4)
-                if not np.isclose(round(times), times, rtol=0):
+                if abs(times - int(round(times))) > 1e-8:
                     continue
                 g_list = depara_rule[round(times) % 8]
                 if len(g_list) > 1:
@@ -448,6 +448,7 @@ class DAGCircuit:
             condition=lambda edge1, edge2: edge1 == edge2,
         )
         self._decrement_op(node.op)
+        node.flag = -1
 
     def collect_runs(self, namelist):
         """Return a set of runs of "op" nodes with the given names.
