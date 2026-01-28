@@ -44,7 +44,7 @@ def init_logging(level=logging.INFO, logfile=None):
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
-    logging.basicConfig(level=level)
+    logger.setLevel(level)
     logger.propagate = False
 
 

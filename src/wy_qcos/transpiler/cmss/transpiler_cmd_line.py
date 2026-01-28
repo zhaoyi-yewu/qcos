@@ -17,12 +17,12 @@
 
 import sys
 from pathlib import Path
-import time
 from datetime import datetime
 import argparse
 
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
+from wy_qcos.transpiler.common.utils import Timer
 from wy_qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.common.utils import logger, init_logging
@@ -39,16 +39,6 @@ def read_qasm_from_file(file_path):
     except Exception as e:
         logger.error(f"read file error: {e}")
         return None
-
-
-class Timer:
-    def __enter__(self):
-        self.start = time.time()
-        return self
-
-    def __exit__(self, *args):
-        self.end = time.time()
-        self.elapsed = self.end - self.start
 
 
 def check_file_args(input_file, output_file):
@@ -80,7 +70,7 @@ def check_file_args(input_file, output_file):
         # create output file
         with open(output_file_path, "w", encoding="utf-8") as f:
             f.write(f"testing file: {input_file}\n")
-        init_logging(logfile=output_file_path)
+    init_logging(logfile=output_file_path)
 
     return file_path, output_file_path
 
@@ -173,7 +163,7 @@ def main_cmss_transpiler(
 
             # optimize the transpiled gates
             with Timer() as tranpile_timer:
-                _ = transpiler.transpile(parse_result, expected_basis_gates)
+                _, _ = transpiler.transpile(parse_result, expected_basis_gates)
             logger.info(f"cmss tranpiler: {tranpile_timer.elapsed:.4f}s\n")
         else:
             # generate abs tree

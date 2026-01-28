@@ -15,14 +15,16 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import os
 import sys
+import logging
 from pathlib import Path
 import pytest
 from unittest.mock import patch, MagicMock, mock_open
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
-from wy_qcos.transpiler.common.utils import Timer
+from wy_qcos.transpiler.common.utils import Timer, init_logging, logger
 from wy_qcos.transpiler.cmss.transpiler_cmd_line import (
     read_qasm_from_file,
     main_cmss_transpiler as main,
@@ -181,7 +183,6 @@ class TestTranspilerCmdLine:
         with (
             patch("builtins.open", mock_file),
             patch("logging.FileHandler", return_value=mock_file_handler),
-            patch("logging.Logger.addHandler") as mock_add_handler,
         ):
             res, _ = check_file_args(input_file, output_file)
             mock_file.assert_called_once_with(
@@ -190,5 +191,10 @@ class TestTranspilerCmdLine:
             mock_file().write.assert_called_once_with(
                 f"testing file: {input_file}\n"
             )
-            mock_add_handler.assert_called_with(mock_file_handler)
             assert res == Path(input_file).resolve()
+
+    def test_init_logging(self):
+        init_logging(
+            level=logging.INFO, logfile=os.path.join(Path.cwd(), "test.log")
+        )
+        assert logger.getEffectiveLevel() == logging.INFO

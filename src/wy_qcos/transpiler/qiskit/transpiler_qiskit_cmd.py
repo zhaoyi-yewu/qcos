@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -18,12 +18,12 @@
 import sys
 import logging
 from pathlib import Path
-import time
 from datetime import datetime
 import argparse
 
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
+from wy_qcos.transpiler.common.utils import Timer
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.qiskit.transpiler_qiskit import TranspilerQiskit
 
@@ -63,16 +63,6 @@ def read_qasm_from_file(file_path):
     except Exception as e:
         logger.error(f"read file error: {e}")
         return None
-
-
-class Timer:
-    def __enter__(self):
-        self.start = time.time()
-        return self
-
-    def __exit__(self, *args):
-        self.end = time.time()
-        self.elapsed = self.end - self.start
 
 
 def check_file_args(input_file, output_file):

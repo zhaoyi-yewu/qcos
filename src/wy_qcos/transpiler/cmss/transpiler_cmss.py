@@ -244,7 +244,9 @@ class TranspilerCmss(TranspilerBase):
         )
 
         with Timer() as mapping_timer:
-            mapping_res, _, _ = self.mapping(qpu_cfg, dp_result_dict)
+            mapping_res, mapping_dict, _ = self.mapping(
+                qpu_cfg, dp_result_dict
+            )
         logger.info(
             f"tranpiler(mapping): {mapping_timer.elapsed:.4f}s\n"
             f"number of gates: {len(mapping_res)}\n"
@@ -279,4 +281,4 @@ class TranspilerCmss(TranspilerBase):
             f"tranpiler(optimize secondly): {optimize2_timer.elapsed:.4f}s\n"
             f"number of gates: {len(basis_gate_list)}\n"
         )
-        return basis_gate_list
+        return basis_gate_list, mapping_dict
