@@ -65,7 +65,7 @@ ut:
   tags:
     - sonic-runner
   script:
-    - ./cicd/run-tests.sh -u
+    - ./cicd/run-tests.sh -u all
   artifacts:
     when: always
     reports:
@@ -77,7 +77,7 @@ code-coverage:
   tags:
     - sonic-runner
   script:
-    - ./cicd/run-tests.sh -c
+    - ./cicd/run-tests.sh -c all
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)/'
 
 # ut (qcos_client)
@@ -86,7 +86,7 @@ ut-qcos-client:
   tags:
     - sonic-runner
   script:
-    - ./cicd/run-tests.sh -j
+    - ./cicd/run-tests.sh -j all
 
 # code-coverage (qcos_client)
 code-coverage-qcos-client:
@@ -94,7 +94,7 @@ code-coverage-qcos-client:
   tags:
     - sonic-runner
   script:
-    - ./cicd/run-tests.sh -e
+    - ./cicd/run-tests.sh -e all
 
 # system tests
 #st:
@@ -102,7 +102,7 @@ code-coverage-qcos-client:
 #  tags:
 #    - sonic-runner
 #  script:
-#    - ./cicd/run-tests.sh -s
+#    - ./cicd/run-tests.sh -s all
 
 # stress tests
 #stress:
@@ -110,4 +110,4 @@ code-coverage-qcos-client:
 #  tags:
 #    - sonic-runner
 #  script:
-#    - ./cicd/run-tests.sh -s
+#    - ./cicd/run-tests.sh -s all

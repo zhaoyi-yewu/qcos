@@ -64,12 +64,16 @@ DEBUG = ${_DEBUG,,}
 MAX_JOBS = ${MAX_JOBS:-10000}
 # [GLOBAL CONFIG] max queued+running jobs
 MAX_QUEUED_JOBS = ${MAX_QUEUED_JOBS:-1000}
-# [GLOBAL CONFIG] max jobs for virtual instance
-MAX_JOBS_PER_VIRTUAL_INSTANCE = ${MAX_JOBS_PER_VIRTUAL_INSTANCE:-10}
+# [GLOBAL CONFIG] default venv base dir
+# VENV_DIR = "/var/lib/qcos/venv"
+
+[VIRT]
 # enable virtualization
 ENABLE_VIRT = ${ENABLE_VIRT:-false}
+# [GLOBAL CONFIG] max jobs for virtual instance
+MAX_JOBS_PER_VIRTUAL_INSTANCE = ${MAX_JOBS_PER_VIRTUAL_INSTANCE:-10}
 # salt for password/encryption
-PASSWORD_SALT = ${PASSWORD_SALT:-123456}
+PASSWORD_SALT = "${PASSWORD_SALT:-123456}"
 
 [API_SERVER]
 # API workers

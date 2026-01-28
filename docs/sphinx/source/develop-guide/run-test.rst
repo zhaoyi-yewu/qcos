@@ -87,10 +87,10 @@
 .. code-block:: shell
 
    # 1. QCOS单元测试
-   ./cicd/run-tests.sh -u
+   ./cicd/run-tests.sh -u all
 
    # 2. QCOS CLIENT单元测试
-   ./cicd/run-tests.sh -j
+   ./cicd/run-tests.sh -j all
 
 执行覆盖率测试(Coverage)，确保覆盖率不低于：80%
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -98,10 +98,10 @@
 .. code-block:: shell
 
    # 1. QCOS代码覆盖率测试
-   ./cicd/run-tests.sh -c
+   ./cicd/run-tests.sh -c all
 
    # 2. QCOS CLIENT代码覆盖率测试
-   ./cicd/run-tests.sh -e
+   ./cicd/run-tests.sh -e all
 
    # 在qcos-sandbox容器内可通过以下方式查看覆盖率报告：
    # 方式1：使用浏览器打开HTML报告（需容器内有浏览器或映射端口到宿主机）
@@ -123,4 +123,4 @@
 
    # 2. 运行系统测试
    cd ./cicd
-   ./run-tests.sh -s
+   ./run-tests.sh -s all

@@ -6,6 +6,8 @@ DEBUG = false
 MAX_JOBS = 10000
 # [GLOBAL CONFIG] max queued+running jobs
 MAX_QUEUED_JOBS = 1000
+# [GLOBAL CONFIG] default venv base dir
+# VENV_DIR = "/var/lib/qcos/venv"
 
 [VIRT]
 # enable virtualization

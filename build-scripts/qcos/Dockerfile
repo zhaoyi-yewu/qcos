@@ -143,6 +143,8 @@ RUN \
 # write build info
     commit_id=$(cat "${BUILD_CONTEXT}/latest-commit-id.txt" 2>/dev/null || echo "") && \
     echo -e "QCOS build info\nversion: ${QCOS_IMAGE_VERSION}\ncommit id: ${commit_id}\nbuild time: ${build_date}\n" > /root/build-info.txt && \
+# config bash
+    echo "source /var/lib/qcos/venv/default/bin/activate" >> /root/.bashrc && \
 # cleanup build-context
     yum clean all && \
     if [ -n "${PYTHON_SRC_MIRROR}" ]; then \

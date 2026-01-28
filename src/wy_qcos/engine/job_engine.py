@@ -25,6 +25,7 @@ import sys
 import time
 from typing import Any
 
+from loguru import logger
 from prefect import flow, task, pause_flow_run
 from prefect.artifacts import (
     create_progress_artifact,
@@ -32,7 +33,6 @@ from prefect.artifacts import (
 )
 from prefect.context import get_run_context
 from prefect.input import RunInput
-from loguru import logger
 
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
@@ -95,13 +95,28 @@ def init_driver(driver_class_info, driver_options, device, job_info):
         driver
     """
     job_data = job_info["data"]
+    orig_sys_path = copy.deepcopy(sys.path)
+
     try:
+        # import isolated driver package path
+        package_path = driver_class_info["package_path"]
+        if package_path:
+            sys.path.insert(0, package_path)
+
+        # load driver module
         driver_module = importlib.import_module(
             driver_class_info["module_name"]
         )
+
+        # restore original sys.path
+        if package_path:
+            sys.path = copy.deepcopy(orig_sys_path)
+
+        # initialize driver class
         driver_class = getattr(driver_module, driver_class_info["class_name"])
         driver = driver_class()
         device_configs = device.get("configs", None)
+
         # update driver options
         if driver_options:
             driver.update_driver_options(driver_options)

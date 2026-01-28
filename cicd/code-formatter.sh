@@ -28,7 +28,7 @@ function usage {
   echo "Python code formatter"
   echo ""
   echo "  -f, --fix             Format codes"
-  echo "  -d, --dir             Target dir"
+  echo "  -d, --dir DIR         Target dir"
   echo "  -h, --help            Print this usage message"
   echo ""
 }

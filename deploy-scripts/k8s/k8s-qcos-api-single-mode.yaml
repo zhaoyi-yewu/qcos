@@ -195,6 +195,10 @@ spec:
           value: "sqlite+aiosqlite:///var/qcos/db/prefect.db"
         - name: PREFECT_LOCAL_STORAGE_PATH
           value: "/var/qcos/storage"
+        - name: PREFECT_WORKER_QUERY_SECONDS
+          value: "1"
+        - name: PREFECT_WORKER_PREFETCH_SECONDS
+          value: "0"
         - name: QCOS_SERVER_IP
           value: "${QCOS_SERVER_IP}"
         - name: QCOS_SERVER_PORT

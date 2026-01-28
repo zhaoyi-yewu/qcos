@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -18,7 +18,6 @@
 from wy_qcos.common import errors
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
-from wy_qcos.common.qcos_version import QcosVersion
 
 
 class Config:
@@ -26,13 +25,6 @@ class Config:
 
     # General configs
     DAEMON = False
-    API_VERSION_V1 = "v1"
-    API_VERSION = API_VERSION_V1
-    PROGRAM_NAME = "WuYue-QCOS"
-    PROGRAM_AUTHOR = "CMSS"
-    PLATFORM_NAME = "五岳量子计算操作系统(QCOS)"
-    PLATFORM_VERSION = f"{PLATFORM_NAME} v{QcosVersion.VERSION}"
-    COPYRIGHT = "2024-2026 中移（苏州）软件技术有限公司"
 
     # [DEFAULT]
     DEBUG = False
@@ -40,6 +32,8 @@ class Config:
     MAX_JOBS = 10000
     # [GLOBAL CONFIG] max queued+running jobs
     MAX_QUEUED_JOBS = 1000
+    # [GLOBAL CONFIG] default venv base dir
+    VENV_DIR = "/var/lib/qcos/venv"
 
     # [VIRT]
     # enable virtualization

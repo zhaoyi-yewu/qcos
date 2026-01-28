@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,7 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 from fastapi.exceptions import RequestValidationError
@@ -23,7 +23,6 @@ from pydantic_core import ValidationError
 
 from wy_qcos.api.fastapi_server import (
     patched_invalid_params_from_validation_error,
-    handle_exit,
 )
 
 
@@ -37,8 +36,3 @@ class TestFastApiServer:
         with pytest.raises(ValidationError) as e:
             patched_invalid_params_from_validation_error(mock_client)
         assert "errors" in str(e)
-
-    @patch("wy_qcos.api.fastapi_server.unicorn_exit_handler")
-    def test_handle_exit(self, mock_unicorn_exit_handler):
-        mock_unicorn_exit_handler.return_value = None
-        assert handle_exit((), {}) is None

@@ -1,6 +1,6 @@
 #!/bin/sh
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -53,6 +53,9 @@ done
 # check and fix errors
 cd "${TOP_DIR}"
 echo "Code check start ..."
+if [ -f "/var/lib/qcos/venv/default/bin/activate" ]; then
+  source /var/lib/qcos/venv/default/bin/activate
+fi
 if [ "${fix}" = false ]; then
   if command -v pylint > /dev/null 2>&1; then
     echo "Checking dir: src (pylint)"

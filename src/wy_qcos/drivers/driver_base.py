@@ -82,6 +82,8 @@ class DriverBase:
         self.description = None
         # module name
         self._module_name = None
+        # package path
+        self._package_path = None
         # class name
         self._class_name = None
         # enable transpiler or not
@@ -277,6 +279,22 @@ class DriverBase:
             module name
         """
         return self._module_name
+
+    def set_package_path(self, package_path):
+        """Set package path.
+
+        Args:
+            package_path: package path
+        """
+        self._package_path = package_path
+
+    def get_package_path(self):
+        """Get package path.
+
+        Returns:
+            package path
+        """
+        return self._package_path
 
     def set_class_name(self, class_name):
         """Set class name.

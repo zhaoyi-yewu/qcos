@@ -31,7 +31,9 @@ WORKDIR /root
 
 RUN \
 # copy qcos dir
-    cp -rf ${BUILD_CONTEXT}/requirements/*.txt /root/ && \
+    source ${BUILD_CONTEXT}/build-scripts/.env && \
+    mkdir -p /tmp/requirements && \
+    cp -rf ${BUILD_CONTEXT}/requirements/requirements*.txt /tmp/requirements/ && \
 # copy yum repos and create dirs
     if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then rm -rf /etc/yum.repos.d/*.repo; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi && \
     if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
@@ -56,16 +58,28 @@ RUN \
     fc-cache -fv  && \
 # create symbolic link for python3
     ln -sf /usr/bin/python3 /usr/bin/python && \
+# install requirements for default python3
+    ln -s /usr/bin/python3.11 /usr/bin/python3.11-qcos ; \
+    ln -s /usr/bin/python3.11-qcos /usr/bin/python3-qcos ; \
+    ln -s /usr/bin/python3-qcos /usr/bin/python-qcos ; \
+    ln -s /usr/bin/pip3.11 /usr/bin/pip3.11-qcos ; \
+    ln -s /usr/bin/pip3.11-qcos /usr/bin/pip3-qcos ; \
+    ln -s /usr/bin/pip3-qcos /usr/bin/pip-qcos ; \
+    ln -s /usr/bin/pydoc3.11 /usr/bin/pydoc3-qcos ; \
+    ln -s /usr/bin/python3.11-config /usr/bin/python3.11-config-qcos ; \
+    ln -s /usr/bin/python3.11-config-qcos /usr/bin/python3-config-qcos ; \
+    pip3 install --no-cache-dir -r /tmp/requirements/requirements.txt -r /tmp/requirements/requirements-test.txt && \
+    pip3 install --no-cache-dir -r /tmp/requirements/requirements-sandbox.txt -r /tmp/requirements/requirements-docs.txt && \
 # install python3 deps
-    pip3 install --no-cache-dir --upgrade poetry && \
-    pip3 install --no-cache-dir --upgrade -r /root/requirements.txt -r /root/requirements-test.txt && \
-    pip3 install --no-cache-dir --upgrade -r /root/requirements-sandbox.txt -r /root/requirements-docs.txt && \
-    pip3 install --no-cache-dir --upgrade -r /root/requirements-driver.txt && \
+    VENV_PATH=/var/lib/qcos/venv && \
+    python3 ${BUILD_CONTEXT}/requirements/install-venvs.py --venv-dir ${VENV_PATH} && \
 # install npm deps
     registry_url="" && \
     npm_cmd_args="" && \
     if [ -n "${NPM_MIRROR}" ]; then registry_url="--registry=${NPM_MIRROR}"; fi && \
     PUPPETEER_SKIP_DOWNLOAD=true npm install ${npm_cmd_args} ${registry_url} -g @mermaid-js/mermaid-cli plantuml && \
+# config bash
+    echo "source /var/lib/qcos/venv/default/bin/activate" >> /root/.bashrc && \
 # generate ssh keys
     rm -rf /root/.ssh/id_rsa && \
     ssh-keygen -t rsa -f /root/.ssh/id_rsa -q -N "" && \

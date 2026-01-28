@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -38,7 +38,7 @@ class TranspilerManager:
         base_dir = os.path.dirname(__file__)
         module_dirs = Library.find_dirs(base_dir=base_dir, recursive=True)
         for pkg_dir in module_dirs:
-            classes = Library.import_classes(
+            classes, _ = Library.import_classes(
                 pkg_dir,
                 base_module_name=base_module_name,
                 base_dir=base_dir,

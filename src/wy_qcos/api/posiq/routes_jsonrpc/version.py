@@ -19,7 +19,6 @@ import logging
 
 from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc.routes import base_api
-from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.qcos_version import QcosVersion
 from wy_qcos.task_manager import scheduler
@@ -78,11 +77,11 @@ def version(
 
     _response_info = {
         "version": QcosVersion.VERSION,
-        "api_version": Config.API_VERSION_V1,
+        "api_version": Constant.API_VERSION_V1,
         "supported_api_versions": [
-            {"version": Config.API_VERSION_V1, "status": "CURRENT"}
+            {"version": Constant.API_VERSION_V1, "status": "CURRENT"}
         ],
-        "platform_version": Config.PLATFORM_VERSION,
+        "platform_version": Constant.PLATFORM_VERSION,
         "capabilities": capabilities,
     }
     response_info = schemas.GetVersionResponse.model_validate(_response_info)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -158,6 +158,8 @@ class SABRE:
                     phy_exe_gates.append(self.phy_gate(node.gate))
                     # the single qubit gate attached to the node
                     for gate in node.attach:
+                        if not isinstance(gate, Node):
+                            raise ValueError("The attached gate is not a Node")
                         phy_exe_gates.append(self.phy_gate(gate.gate))
             if len(exe_gate_list) != 0:
                 for node in exe_gate_list:

@@ -41,17 +41,17 @@ ${top_dir}/cicd/docs-linter.sh
 echo
 
 echo "Run UT (QCOS) ..."
-${top_dir}/cicd/run-tests.sh -u
+${top_dir}/cicd/run-tests.sh -u all
 echo
 
 echo "Run coverage (QCOS) ..."
-${top_dir}/cicd/run-tests.sh -c
+${top_dir}/cicd/run-tests.sh -c all
 
 echo "Run UT (QCOS CLIENT) ..."
-${top_dir}/cicd/run-tests.sh -j
+${top_dir}/cicd/run-tests.sh -j all
 echo
 
 echo "Run coverage (QCOS CLIENT) ..."
-${top_dir}/cicd/run-tests.sh -e
+${top_dir}/cicd/run-tests.sh -e all
 
 echo "CICD pipeline completed successfully"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -92,13 +92,27 @@ app.bind_entrypoint(system_api_v1)
 # Monkey Patch uvicorn signal handler to detect the app is shutting down
 app.state.exiting = False
 app.state.timing = False
-unicorn_exit_handler = UvicornServer.handle_exit
 
 
-def handle_exit(*args, **kwargs):
-    """Handle exit."""
-    app.state.exiting = True
-    unicorn_exit_handler(*args, **kwargs)
+class QcosUvicornServer(UvicornServer):
+    """QCOS Uvicorn Server."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        logger.info("QcosUvicornServer initialized")
 
-UvicornServer.handle_exit = handle_exit  # type: ignore
+    def handle_exit(self, sig: int, frame) -> None:
+        """Handle exit signal.
+
+        Args:
+            sig: signal
+            frame: frame
+        """
+        logger.info(f"QcosUvicornServer received signal {sig}")
+        app.state.exiting = True
+
+        try:
+            super().handle_exit(sig, frame)
+        except Exception as e:
+            logger.error(f"Error in QcosUvicornServer.handle_exit: {e}")
+            raise

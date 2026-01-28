@@ -1,5 +1,4 @@
-# Driver dependents environment
-
+# Driver running environments
 default:
   deps_filepath: ./requirements-qcos.txt
   envs:

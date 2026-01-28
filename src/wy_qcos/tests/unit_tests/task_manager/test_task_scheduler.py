@@ -138,10 +138,8 @@ class TestTaskScheduler:
     @patch.object(TaskFlowManager, "update_flow")
     @patch.object(TaskFlowManager, "get_task_flow_run")
     @patch.object(TaskFlowManager, "delete_task_flow_run")
-    @patch.object(TaskFlowManager, "get_flow_info_by_backend")
     def test_update_job(
         self,
-        mock_get_flow_info_by_backend,
         mock_delete_task_flow_run,
         mock_get_task_flow_run,
         mock_update_flow,
@@ -167,11 +165,6 @@ class TestTaskScheduler:
         mock_deploy_flow = Mock()
         mock_deploy_flow.__name__ = "test_deploy_flow"
 
-        mock_get_flow_info_by_backend.return_value = {
-            "deploy_name": "tiangong100",
-            "deploy_flow_func": mock_deploy_flow,
-            "deploy_flow_path": "../engine/job_engine.py",
-        }
         mock_device = Mock()
         mock_device.get_name.return_value = "tiangong100"
         mock_device_manager = Mock()
@@ -248,14 +241,12 @@ priority_scheduling_policy = PrioritySchedulingPolicy(task_manager)
 
 
 class TestPrioritySchedulingPolicy:
-    @patch.object(TaskFlowManager, "deploy_task_flow")
     @patch.object(TaskFlowManager, "run_task_flow")
-    def test_exec_task(self, mock_run_task_flow, mock_deploy_task_flow):
-        mock_deploy_task_flow.return_value = 114
+    def test_exec_task(self, mock_run_task_flow):
         mock_run_task_flow.return_value = 514
 
         result = priority_scheduling_policy.exec_task(
-            ConstantForTest.flow_info,
+            ConstantForTest.deployment,
             ConstantForTest.args["job_info"],
             None,
         )

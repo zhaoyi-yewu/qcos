@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -104,8 +104,9 @@ class TestLibrary:
         assert success is True
 
     def test_import_classes(self):
-        classes = library.import_classes("logger")
+        classes, venv_dirs = library.import_classes("logger")
         assert not classes
+        assert not venv_dirs
 
     def test_str_match(self):
         success = library.str_match("Library", "Library", ignore_case=True)

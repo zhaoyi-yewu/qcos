@@ -18,8 +18,7 @@
 import json
 import pytest
 
-from wy_qcos.common.config import Config
-from wy_qcos.common.constant import HttpCode
+from wy_qcos.common.constant import Constant, HttpCode
 from wy_qcos.common.qcos_version import QcosVersion
 from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 
@@ -40,7 +39,7 @@ class TestVersion:
         json_results = json.loads(text)
         result = json_results["result"]
         assert result["version"] == QcosVersion.VERSION
-        assert result["api_version"] == Config.API_VERSION_V1
+        assert result["api_version"] == Constant.API_VERSION_V1
         assert not result["capabilities"]["drivers"]["DriverDummy"][
             "driver_options"
         ]["enable_wirecut"]

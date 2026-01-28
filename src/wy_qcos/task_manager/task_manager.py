@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -60,6 +60,7 @@ class TaskFlowManager(ABC):
         self.worker_status = False
         self.driver_manager = None
         self.device_manager = None
+        self.deployments = {}
         self.parent_aggregation_jobs = []
         self.aggregation_jobs = {}
 
@@ -120,6 +121,26 @@ class TaskFlowManager(ABC):
             prefect_states.append(new_state)
         return prefect_states
 
+    def generate_deployment_configs(self, device_names):
+        """Generate deployment configs.
+
+        Args:
+            device_names: device names
+
+        Returns:
+            deployment configs
+        """
+        deployment_configs = {}
+        for device_name in device_names:
+            python_bin = "python3"
+            deployment_configs[device_name] = {
+                "python_bin": python_bin,
+                "path": "../engine/job_engine.py",
+                "flow_name": job_flow.__name__,
+                "command": f"{python_bin} -m prefect.engine",
+            }
+        return deployment_configs
+
     def start(self):
         """Create work pools, queues and start workers."""
         self._client = get_client()
@@ -128,8 +149,17 @@ class TaskFlowManager(ABC):
         self.loop = asyncio.new_event_loop()
 
         self.check_connection()
-        self.loop.run_until_complete(self.create_pools())
-        self.loop.run_until_complete(self.create_queues())
+        device_names = self.device_manager.get_devices().keys()
+        self.loop.run_until_complete(
+            self.create_pools(pool_names=device_names)
+        )
+        self.loop.run_until_complete(
+            self.create_queues(queue_names=device_names)
+        )
+        deployment_configs = self.generate_deployment_configs(device_names)
+        self.deployments = self.loop.run_until_complete(
+            self.create_deployments(deployment_configs)
+        )
         self.loop.run_until_complete(self.start_workers())
         self.loop.run_until_complete(self.process_aggregation_job())
 
@@ -165,11 +195,14 @@ class TaskFlowManager(ABC):
         if not success:
             raise TimeoutError("Connection to prefect server timeout")
 
-    async def create_pools(self):
-        """Create all work pools, each device has own work pools."""
-        device_names = self.device_manager.get_devices().keys()
+    async def create_pools(self, pool_names):
+        """Create all work pools, each device has own work pools.
+
+        Args:
+            pool_names: pool names
+        """
         create_workpools = [
-            self.create_pool(pool_name) for pool_name in device_names
+            self.create_pool(pool_name) for pool_name in pool_names
         ]
         return await asyncio.gather(*create_workpools)
 
@@ -189,14 +222,16 @@ class TaskFlowManager(ABC):
                 )
             )
 
-    async def create_queues(self):
+    async def create_queues(self, queue_names):
         """Create all work queues under work pool.
 
         each priority has own work queue.
+
+        Args:
+            queue_names: queue names
         """
         queues = await self._client.read_work_queues()
-        device_names = self.device_manager.get_devices().keys()
-        for pool_name in device_names:
+        for pool_name in queue_names:
             for priority in range(1, Constant.MAX_JOB_PRIORITY + 1):
                 queue_name = f"{pool_name}_{priority}"
                 if not any(queue.name == queue_name for queue in queues):
@@ -206,6 +241,43 @@ class TaskFlowManager(ABC):
                         priority=priority,
                         concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY,
                     )
+
+    async def create_deployments(self, deployment_configs):
+        """Create deployment by prefect client.
+
+        Args:
+            deployment_configs: deployment configs
+        """
+        deployments = {}
+        for deployment_name, deployment_config in deployment_configs.items():
+            flow_name = deployment_config["flow_name"]
+            path = deployment_config["path"]
+            pool_name = deployment_name
+            default_priority = Constant.DEFAULT_JOB_PRIORITY
+            queue_name = f"{pool_name}_{default_priority}"
+            command = deployment_config["command"]
+            flow = await job_flow.from_source(
+                source=Path(__file__).parent,
+                entrypoint=f"{path}:{flow_name}",
+            )
+            deploy_id = await flow.deploy(
+                name=deployment_name,
+                work_pool_name=pool_name,
+                work_queue_name=queue_name,
+                job_variables={"command": command},
+                ignore_warnings=True,
+                print_next_steps=False,
+            )
+            deployments[deployment_name] = {"deploy_id": str(deploy_id)}
+        return deployments
+
+    def get_deployment(self, deployment_name):
+        """Get deployment.
+
+        Args:
+            deployment_name: deployment name
+        """
+        return self.deployments.get(deployment_name, None)
 
     async def start_workers(self):
         """Start all workers for work pool."""
@@ -255,55 +327,28 @@ class TaskFlowManager(ABC):
         )
         asyncio.run(worker.start(printer=self._console.print))
 
-    def deploy_task_flow(
+    def run_task_flow(
         self,
-        deploy_name: str,
-        pool_name: str,
-        priority: int,
-        deploy_flow,
-        path: str,
+        deployment_id,
+        args: dict[str, Any],
+        tags=None,
+        work_queue_name=None,
     ):
-        """Deploy flow by prefect client.
-
-        Args:
-            deploy_name: deploy name
-            pool_name: work pool name
-            priority: priority
-            deploy_flow: deploy flow function
-            path: py path where the flow function relative to current path
-
-        Returns:
-            deploy uuid
-        """
-        # TODO(jidalong) deal exception
-        queue_name = f"{pool_name}_{priority}"
-        # registry deploy
-        flow_name = deploy_flow.__name__
-        deploy_id = deploy_flow.from_source(
-            source=Path(__file__).parent,
-            entrypoint=path + ":" + flow_name,
-        ).deploy(
-            name=deploy_name,
-            work_pool_name=pool_name,
-            work_queue_name=queue_name,
-            print_next_steps=False,
-            ignore_warnings=True,
-        )
-        return deploy_id
-
-    def run_task_flow(self, deployment_id, args: dict[str, Any], tags=None):
         """Run flow.
 
         Args:
             deployment_id: deploy uuid
             args: flow function args in dict
             tags: prefect flow tags
+            work_queue_name: work queue name
 
         Returns:
             flow run uuid
         """
         flow_run_id = self.loop.run_until_complete(
-            self.run_task_flow_by_client(deployment_id, args, tags=tags)
+            self.run_task_flow_by_client(
+                deployment_id, args, tags=tags, work_queue_name=work_queue_name
+            )
         )
 
         return flow_run_id
@@ -335,6 +380,7 @@ class TaskFlowManager(ABC):
         deployment_id,
         args: dict[str, Any],
         tags=None,
+        work_queue_name=None,
     ):
         """Run flow by prefect client.
 
@@ -342,6 +388,7 @@ class TaskFlowManager(ABC):
             deployment_id: deploy uuid
             args: flow function args in dict
             tags: prefect flow tags
+            work_queue_name: work queue name
 
         Returns:
             job_id: job uuid
@@ -362,6 +409,7 @@ class TaskFlowManager(ABC):
         await self._client.create_flow_run_from_deployment(
             name=str(job_id),
             deployment_id=deployment_id,
+            work_queue_name=work_queue_name,
             parameters=args,
             tags=prefect_tags,
         )
@@ -790,14 +838,6 @@ class TaskFlowManager(ABC):
             flow_run_filter=flow_run_filter
         )
         return flow_runs
-
-    def get_flow_info_by_backend(self, backend):
-        flow_info = {
-            "deploy_name": backend,
-            "deploy_flow_func": job_flow,
-            "deploy_flow_path": "../engine/job_engine.py",
-        }
-        return flow_info
 
     def run_callbacks(self, data, callbacks):
         """Run callbacks for job.

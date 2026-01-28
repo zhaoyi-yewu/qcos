@@ -25,6 +25,7 @@
 import os
 import shutil
 import sys
+import types
 
 from sphinx.ext import apidoc
 
@@ -32,16 +33,16 @@ current_dir = os.path.split(os.path.realpath(__file__))[0]
 top_dir = os.path.abspath(f"{current_dir}/../../..")
 src_dir = os.path.abspath(f"{top_dir}/src")
 sys.path.insert(0, src_dir)
-from wy_qcos.common.config import Config
+from wy_qcos.common.constant import Constant
 from wy_qcos.common.qcos_version import QcosVersion
 on_rtd = os.environ.get("READTHEDOCS") == "True"
 
 
-project = f"{Config.PLATFORM_NAME}"
-title = f"{Config.PLATFORM_NAME}文档"
+project = f"{Constant.PLATFORM_NAME}"
+title = f"{Constant.PLATFORM_NAME}文档"
 subject = "文档"
 description_zh = "QCOS是一款开源的通用量子计算操作系统"
-copyright = f"{Config.COPYRIGHT}"
+copyright = f"{Constant.COPYRIGHT}"
 author = "Zhao Yi"
 version = QcosVersion.VERSION
 release = QcosVersion.VERSION
@@ -64,7 +65,7 @@ extensions = [
 ]
 exclude_patterns = [
     "_build",
-    "_template"
+    "_template",
 ]
 
 # -- General configuration ---------------------------------------------------
@@ -72,14 +73,45 @@ exclude_patterns = [
 
 ##
 # skip module
-autodoc_mock_imports = ["spinqit"]
+autodoc_mock_imports = [
+    "aiohttp",
+    # "fastapi",  # required for autodoc
+    "fastapi_jsonrpc",
+    "loguru",
+    "mqt",
+    "networkx",
+    # "numpy",  # required for autodoc
+    "numexpr",
+    "ply",
+    "prefect",
+    "pulp",
+    "qiskit",
+    "qiskit_aer",
+    "qutip",
+    # "rustworkx",  # required for autodoc
+    "uvicorn",
+    "zerorpc",
+    "zmp",
+    "wy_qcos.drivers.casoldatom",
+    "wy_qcos.drivers.qboson",
+    "wy_qcos.drivers.qiskit",
+    "wy_qcos.drivers.qutip",
+    "wy_qcos.drivers.spinq",
+    "wy_qcos.drivers.uqc",
+    "wy_qcos.tests",
+]
+suppress_warnings = [
+    "autodoc",
+]
 
 
 def skip_modules(app, what, name, obj, skip, options):
-    skip_module_list = ["driver_spinq_cloud_base"]
-    for skip_module in skip_module_list:
-        if skip_module in name:
-            return True
+    skip_module_list = []
+    if what == "module" and isinstance(obj, types.ModuleType):
+        for skip_module in skip_module_list:
+            module_name = obj.__name__
+            if skip_module in module_name:
+                return True
     return skip
 
 
