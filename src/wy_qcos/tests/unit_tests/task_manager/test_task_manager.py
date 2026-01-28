@@ -85,7 +85,7 @@ class TestTaskFlowManager(unittest.TestCase):
         self.task_manager._client = mock_client
         mock_client.read_work_pools.return_value = []
         mock_client.create_work_pool.return_value = []
-        results = asyncio.run(self.task_manager.create_pool("1"))
+        results = asyncio.run(self.task_manager.create_pool("1", 1))
         assert results is None
 
     def test_create_queues(self):

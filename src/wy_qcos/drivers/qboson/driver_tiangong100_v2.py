@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -29,3 +29,13 @@ class DriverTiangong100V2(DriverTiangongBase):
         self.alias_name = "玻色量子-天工100光量子伊辛机驱动-V2"
         self.description = "玻色量子-天工100光量子伊辛机驱动-V2"
         self.max_qubits = 100
+
+    def fetch_running_info(self):
+        """Fetch running info.
+
+        Returns:
+            remote device running info
+        """
+        # TODO(jidalong) mock data currently
+        device_running_info = {"status": "online"}
+        return device_running_info

@@ -600,3 +600,14 @@ class DriverBase:
         """
         results = None
         return results
+
+    def fetch_running_info(self):
+        """Fetch running info.
+
+        Returns:
+            remote device running info
+        """
+        raise NotImplementedError(
+            f"Driver: {self.__class__.__name__} "
+            f"must implement method: fetch_running_info"
+        )

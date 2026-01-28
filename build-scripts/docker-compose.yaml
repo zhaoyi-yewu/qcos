@@ -35,6 +35,11 @@ services:
       - /var/qcos:/var/qcos
       - /etc/qcos/prefect:/root/.prefect
       - code-data:/root/qcos-project/src/wy_qcos
+  redis:
+    image: ${REGISTRY}${REDIS_IMAGE_NAME}:${REDIS_IMAGE_VERSION}
+    container_name: redis
+    restart: always
+    network_mode: "host"
   qcos:
     container_name: qcos
     image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
@@ -44,6 +49,7 @@ services:
     stdin_open: True
     depends_on:
       - prefect-server
+      - redis
     tty: True
     working_dir: /root
     environment:
@@ -59,6 +65,8 @@ services:
       PREFECT_API_URL: ${PREFECT_API_URL}
       PREFECT_SERVER_DATABASE_CONNECTION_URL: ${PREFECT_SERVER_DATABASE_CONNECTION_URL}
       PREFECT_LOCAL_STORAGE_PATH: ${PREFECT_LOCAL_STORAGE_PATH}
+      REDIS_SERVER_IP: ${REDIS_SERVER_IP}
+      REDIS_SERVER_PORT: ${REDIS_SERVER_PORT}
     command: "-w http://${PREFECT_SERVER_API_HOST:-127.0.0.1}:${PREFECT_SERVER_PORT}/api"
     logging:
       driver: "json-file"

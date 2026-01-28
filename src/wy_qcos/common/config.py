@@ -51,6 +51,12 @@ class Config:
     # API server listen port
     API_SERVER_LISTEN_PORT = Constant.DEFAULT_API_SERVER_LISTEN_PORT
 
+    # [REDIS]
+    # REDIS server ip
+    REDIS_SERVER_IP = Constant.DEFAULT_REDIS_SERVER_IP
+    # REDIS server port
+    REDIS_SERVER_PORT = Constant.DEFAULT_REDIS_SERVER_PORT
+
     # [LOG]
     # api log file
     API_LOG_FILE = "/var/log/qcos/qcos-api.log"
@@ -99,6 +105,7 @@ class Config:
         "DEFAULT",
         "VIRT",
         "API_SERVER",
+        "REDIS",
         "LOG",
         "SSL",
         "PREFECT",

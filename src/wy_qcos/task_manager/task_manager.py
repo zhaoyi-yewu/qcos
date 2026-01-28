@@ -45,6 +45,7 @@ from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant, HttpCode
 from wy_qcos.common.library import Library
 from wy_qcos.engine.job_engine import job_flow
+from wy_qcos.engine.device_engine import device_monitor_flow
 
 logger = logging.getLogger(__name__)
 
@@ -130,13 +131,24 @@ class TaskFlowManager(ABC):
         Returns:
             deployment configs
         """
+        default_priority = Constant.DEFAULT_JOB_PRIORITY
         deployment_configs = {}
         for device_name in device_names:
             python_bin = "python3"
             deployment_configs[device_name] = {
                 "python_bin": python_bin,
+                "pool_name": device_name,
+                "queue_name": f"{device_name}_{default_priority}",
                 "path": "../engine/job_engine.py",
                 "flow_name": job_flow.__name__,
+                "command": f"{python_bin} -m prefect.engine",
+            }
+            deployment_configs[f"{device_name}_monitor"] = {
+                "python_bin": python_bin,
+                "pool_name": "device_monitor",
+                "queue_name": "default",
+                "path": "../engine/device_engine.py",
+                "flow_name": device_monitor_flow.__name__,
                 "command": f"{python_bin} -m prefect.engine",
             }
         return deployment_configs
@@ -167,6 +179,42 @@ class TaskFlowManager(ABC):
             self.start_workers()
             self.loop.run_until_complete(self.wait_workers())
             self.loop.run_until_complete(self.process_aggregation_job())
+            self.start_device_monitor()
+
+    def start_device_monitor(self):
+        """Start device monitor by prefect."""
+        devices = self.device_manager.get_devices().values()
+
+        for device in devices:
+            # registry deploy
+            deploy_id = ""
+            deploy = self.deployments.get(f"{device.get_name()}_monitor")
+            if deploy:
+                deploy_id = deploy.get("deploy_id")
+            # create flow run by deploy
+            device_monitor_info = {}
+            driver = device.get_driver()
+            driver_module_name = driver.get_module_name()
+            driver_class_name = driver.get_class_name()
+            driver_package_path = driver.get_package_path()
+            device_monitor_info["driver"] = {
+                "module_name": driver_module_name,
+                "class_name": driver_class_name,
+                "package_path": driver_package_path,
+            }
+            device_monitor_info["device"] = {"configs": device.get_configs()}
+            device_monitor_info["name"] = device.get_name()
+            device_monitor_info["redis"] = {
+                "ip": self.device_manager.config.REDIS_SERVER_IP,
+                "port": self.device_manager.config.REDIS_SERVER_PORT,
+            }
+
+            args = {"device_monitor_info": device_monitor_info}
+            self._sync_client.create_flow_run_from_deployment(
+                name=str(device.get_name()),
+                deployment_id=deploy_id,
+                parameters=args,
+            )
 
     def set_driver_manager(self, driver_manager):
         """Set driver manager.
@@ -211,15 +259,18 @@ class TaskFlowManager(ABC):
             pool_names: pool names
         """
         create_workpools = [
-            self.create_pool(pool_name) for pool_name in pool_names
+            self.create_pool(pool_name, Constant.DEFAULT_POOL_CONCURRENCY)
+            for pool_name in pool_names
         ]
+        create_workpools.append(self.create_pool("device_monitor"))
         return await asyncio.gather(*create_workpools)
 
-    async def create_pool(self, pool_name):
+    async def create_pool(self, pool_name, concurrency_limit=None):
         """Create work pool by prefect client.
 
         Args:
             pool_name: work pool name, using device name
+            concurrency_limit: concurrency limit
         """
         pools = await self._client.read_work_pools()
         if not any(pool.name == pool_name for pool in pools):
@@ -227,7 +278,7 @@ class TaskFlowManager(ABC):
                 work_pool=WorkPoolCreate(
                     name=pool_name,
                     type=Constant.DEFAULT_JOB_POOL_TYPE,
-                    concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY,
+                    concurrency_limit=concurrency_limit,
                 )
             )
 
@@ -261,9 +312,8 @@ class TaskFlowManager(ABC):
         for deployment_name, deployment_config in deployment_configs.items():
             flow_name = deployment_config["flow_name"]
             path = deployment_config["path"]
-            pool_name = deployment_name
-            default_priority = Constant.DEFAULT_JOB_PRIORITY
-            queue_name = f"{pool_name}_{default_priority}"
+            pool_name = deployment_config["pool_name"]
+            queue_name = deployment_config["queue_name"]
             command = deployment_config["command"]
             flow = await job_flow.from_source(
                 source=Path(__file__).parent,
@@ -308,10 +358,38 @@ class TaskFlowManager(ABC):
             )
             p.daemon = True
             p.start()
+            device_monitor_process = multiprocessing.Process(
+                target=self.start_device_monitor_work,
+                args=(process_name,),
+                name=process_name,
+            )
+            device_monitor_process.daemon = True
+            device_monitor_process.start()
             logger.info(
                 f"Started Prefect Worker process: {process_name} "
                 f"for pool: {pool_name}"
             )
+
+    @staticmethod
+    def start_device_monitor_work(process_name):
+        """Start device monitor worker by prefect client.
+
+        Args:
+            process_name: process name
+        """
+        # get prefect configs
+        prefect_configs = TaskFlowManager.get_prefect_configs()
+
+        # start process worker
+        with prefect_settings.temporary_settings(updates=prefect_configs):
+            worker = ProcessWorker(
+                name=process_name,
+                work_pool_name="device_monitor",
+            )
+            setproctitle.setproctitle(
+                f"[prefect] {process_name}_device_monitor"
+            )
+            asyncio.run(worker.start())
 
     @staticmethod
     def get_prefect_configs():
@@ -368,7 +446,7 @@ class TaskFlowManager(ABC):
 
         # wait for all workers are online
         all_worker_status = {workpool: False for workpool in pool_names}
-        time = 0
+        elapsed_time = 0
         for workpool in pool_names:
             workers = await self._client.read_workers_for_work_pool(workpool)
             work_status = [
@@ -383,10 +461,26 @@ class TaskFlowManager(ABC):
                 self.worker_status = True
                 break
             sleep(Constant.DEFAULT_JOB_INTERVAL)
-            time += Constant.DEFAULT_JOB_INTERVAL
+            elapsed_time += Constant.DEFAULT_JOB_INTERVAL
             # timeout
-            if time > Constant.DEFAULT_JOB_TIMEOUT:
+            if elapsed_time > Constant.DEFAULT_JOB_TIMEOUT:
                 raise TimeoutError("Workers start timeout")
+
+        elapsed_time = 0
+        while True:
+            workers = await self._client.read_workers_for_work_pool(
+                "device_monitor",
+            )
+            work_status = [
+                worker.status == WorkerStatus.ONLINE for worker in workers
+            ]
+            if work_status.count(True) == len(device_names):
+                break
+            sleep(Constant.DEFAULT_JOB_INTERVAL)
+            elapsed_time += Constant.DEFAULT_JOB_INTERVAL
+            # timeout
+            if elapsed_time > Constant.DEFAULT_JOB_TIMEOUT:
+                raise TimeoutError("Workers for device monitor start timeout")
 
     def run_task_flow(
         self,

@@ -176,3 +176,13 @@ class DriverDummy(DriverBase):
         max_qubits_value = self.driver_options.get("max_qubits")
         if max_qubits_value is not None:
             self.set_max_qubits(max_qubits_value)
+
+    def fetch_running_info(self):
+        """Fetch running info.
+
+        Returns:
+            remote device running info
+        """
+        # TODO(jidalong) mock data currently
+        device_running_info = {"status": "online"}
+        return device_running_info

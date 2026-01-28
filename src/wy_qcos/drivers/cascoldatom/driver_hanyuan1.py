@@ -570,3 +570,14 @@ class DriverHanyuan1(DriverBase):
                 err_msgs.append(err_m)
 
         return success, "\n".join(err_msgs), results
+
+    def fetch_running_info(self):
+        """Fetch running info.
+
+        Returns:
+            remote device running info
+        """
+        # TODO(jidalong) mock data currently
+        device_running_info = {"status": "online"}
+
+        return device_running_info

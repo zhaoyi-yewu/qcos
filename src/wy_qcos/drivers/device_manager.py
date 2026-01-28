@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,8 +15,11 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import json
 import logging
+import threading
 
+import redis
 from schema import Optional
 
 from wy_qcos.common.library import Library
@@ -39,6 +42,11 @@ class DeviceManager:
             Optional("description"): str,
             Optional("device_max_qubits"): int,
         }
+        self.redis_instance = redis.Redis(
+            host=config.REDIS_SERVER_IP,
+            port=config.REDIS_SERVER_PORT,
+            decode_responses=True,
+        )
 
     def load_devices(self):
         """Scan and load drivers."""
@@ -114,6 +122,13 @@ class DeviceManager:
                 )
                 device.set_enable(False)
                 device.set_status(device.DEVICE_STATUS_OFFLINE)
+                # Start subscribe device info by redis
+            thread = threading.Thread(
+                target=self.subscribe_device_info,
+                args=(self.redis_instance, device),
+            )
+            thread.daemon = True
+            thread.start()
             # Show driver info
             logger.info(f"\n{device.get_device_info()}")
 
@@ -146,3 +161,13 @@ class DeviceManager:
             dict of device instances
         """
         return self.devices
+
+    def subscribe_device_info(self, redis_instance, device):
+        """Subscribe device info by redis."""
+        pubsub = redis_instance.pubsub()
+        pubsub.subscribe(device.name)
+        for message in pubsub.listen():
+            if message["type"] == "message":
+                device_info = json.loads(message["data"])
+                status = device_info["status"]
+                device.set_status(status)

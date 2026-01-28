@@ -256,3 +256,13 @@ class DriverQutipSim(DriverBase):
             job_id: job ID
         """
         logger.info(f"Cancel job: job_id: {job_id}")
+
+    def fetch_running_info(self):
+        """Fetch running info.
+
+        Returns:
+            remote device running info
+        """
+        # TODO(jidalong) mock data currently
+        device_running_info = {"status": "online"}
+        return device_running_info

@@ -427,3 +427,14 @@ class DriverSpinQNmr(DriverBase):
                 converted_result[bin_str[2:].zfill(num_qubits)] = value
 
         return converted_result
+
+    def fetch_running_info(self):
+        """Fetch running info.
+
+        Returns:
+            remote device running info
+        """
+        # TODO(jidalong) mock data currently
+        device_running_info = {"status": "online"}
+
+        return device_running_info
