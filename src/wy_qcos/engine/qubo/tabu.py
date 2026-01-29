@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -63,15 +63,17 @@ class TabuSearch:
 
         Args:
             qubo(np.ndarray): qubo matrix
-            init_solution(list): initial solution.
+            init_solution(np.ndarray): initial solution.
         """
         self.qubo = qubo
-        self.size = self.qubo.shape[0]
+        self.size: int = self.qubo.shape[0]
         if init_solution is None:
-            self.init_solution = np.random.randint(0, 2, self.size)
+            self.init_solution = np.array(
+                np.random.randint(0, 2, size=self.size), dtype=np.int8
+            )
         else:
             self.init_solution = init_solution
-        self.sol = self.init_solution
+        self.sol: np.ndarray = self.init_solution.copy()
         self.energy = QUBOSolution.calculate_energy(self.qubo, self.sol)
         # The ratio when calculating the maximum number
         # of iterations based on size
@@ -81,7 +83,7 @@ class TabuSearch:
         self.alpha = int(self.alpha_factor * self.size)
         self.impact = self.update_impact()
         self.tabu_tenure = np.zeros(self.size, dtype=np.uint8)
-        self.best_solution = self.init_solution
+        self.best_solution = self.init_solution.copy()
         self.best_energy = self.energy
 
     def update_tabu(self, index):
