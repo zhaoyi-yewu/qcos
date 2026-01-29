@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -14,6 +14,8 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+from pathlib import Path
 
 from wy_qcos.transpiler.cmss.common.base_operation import BaseOperation
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
@@ -101,7 +103,7 @@ class QasmConverter:
         else:
             return op.to_openqasm("q")
 
-    def save(self, path: str, version: str = "2.0"):
+    def save(self, path: str | Path, version: str = "2.0"):
         """Save the generated QASM code to a .qasm file."""
         if version.startswith("2"):
             text = self.to_qasm2()

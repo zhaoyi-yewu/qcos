@@ -171,9 +171,11 @@ class TestTranspilerCmdLine:
             mock_sys_exit.assert_called_with(mock_main_cmss_transpiler())
 
     def test_check_file_args(self):
-        input_file1 = f"{self.samples_dir}/qasm/2.0/simple-qasm-2.qasm"
-        input_file, output_file = check_file_args(input_file1, "")
-        assert input_file is None and output_file is None
+        with pytest.raises(FileNotFoundError) as e:
+            input_file1 = f"{self.samples_dir}/qasm/2.0/simple-qasm-2.qasm"
+            _, _ = check_file_args(input_file1, "")
+        err_msg = str(e.value)
+        assert "Input file not existed!" in err_msg
 
         input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
         output_file = "CHANGELOG"
@@ -189,7 +191,7 @@ class TestTranspilerCmdLine:
                 output_file_path, "w", encoding="utf-8"
             )
             mock_file().write.assert_called_once_with(
-                f"testing file: {input_file}\n"
+                f"testing file: {input_file}.\n"
             )
             assert res == Path(input_file).resolve()
 

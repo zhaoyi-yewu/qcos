@@ -16,7 +16,9 @@
 # ----------------------------------------------------------------------
 
 import copy
+import pytest
 import numpy as np
+from unittest.mock import patch
 
 from wy_qcos.transpiler.cmss.optimizer.clifford_rz_optimization import (
     CliffordRzOptimization,
@@ -31,8 +33,10 @@ from wy_qcos.transpiler.cmss.common.gate_operation import (
     T,
     Z,
 )
+from wy_qcos.common.constant import Constant
+from wy_qcos.transpiler.common.errors import CircuitException
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
-from wy_qcos.transpiler.cmss.circuit.utils import random_circuit, is_equal
+from wy_qcos.transpiler.cmss.circuit.utils import RandomCircuitGen, is_equal
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize
 from wy_qcos.tests.unit_tests.transpiler.comm import validate_optimize_result
@@ -638,14 +642,16 @@ class TestCliffordRzOptimization:
         assert counts["cx"] == 1
         validate_optimize_result(init_ir, dag)
 
-    def test_random_optimize(self):
+    def test_random_optimize_by_gates(self):
         num_qubits = 5
         num_gates = 100
         loop_count = 10
         opt_level = 2
 
+        # generate random circuit with gates
         for _ in range(loop_count):
-            ir = random_circuit(num_qubits, num_gates)
+            rcg = RandomCircuitGen()
+            ir = rcg.random_circuit_with_gates(num_qubits, num_gates)
             # initial ir
             init_ir = copy.deepcopy(ir)
             init_circ = QuantumCircuit.from_ir(init_ir, num_qubits)
@@ -659,3 +665,85 @@ class TestCliffordRzOptimization:
                 logger.info(opt_ir)
                 logger.info("========")
             assert res
+
+        with pytest.raises(CircuitException) as e:
+            ir = rcg.random_circuit_with_gates(
+                num_qubits=2, num_gates=1, outfile="CHANGELOG.md"
+            )
+        err_msg = str(e.value)
+        assert "Output file has existed." in err_msg
+
+    def test_random_optimize_by_depth(self):
+        # generate random circuit with depth
+        rcg = RandomCircuitGen()
+        ir = rcg.random_circuit_with_depth(
+            num_qubits=10, depth=20, max_operands=4, measure=True, reset=True
+        )
+        assert rcg.num_qubits == 10 and rcg.depth == 20
+        normal_gates = []
+        normal_gates.extend(Constant.SINGLE_QUBIT_GATE_LIST)
+        normal_gates.extend(Constant.TWO_QUBIT_GATE_LIST)
+        normal_gates.extend(Constant.THREE_QUBIT_GATE_LIST)
+        normal_gates.extend(Constant.FOUR_QUBIT_GATE_LIST)
+        normal_gates.append(Constant.SINGLE_QUBIT_GATE_RESET)
+        normal_gates.append("measure")
+        flag = True
+        measure_flag = False
+        reset_flag = False
+        for gate in ir:
+            if gate.name not in normal_gates:
+                flag = False
+                break
+
+            if gate.name == "measure":
+                measure_flag = True
+            if gate.name == "reset":
+                reset_flag = True
+
+        assert flag is True
+        assert measure_flag is True
+        assert reset_flag is True
+
+        ir = rcg.random_circuit_with_depth(
+            num_qubits=10, depth=20, max_operands=2, gate_type=0
+        )
+        assert rcg.num_qubits == 10 and rcg.depth == 20
+
+        ir = rcg.random_circuit_with_depth(num_qubits=0, depth=0)
+        assert len(ir) == 0
+
+        with pytest.raises(CircuitException) as e:
+            ir = rcg.random_circuit_with_depth(
+                num_qubits=2, depth=1, outfile="CHANGELOG.md"
+            )
+        err_msg = str(e.value)
+        assert "Output file has existed." in err_msg
+
+        with pytest.raises(CircuitException) as e:
+            ir = rcg.random_circuit_with_depth(
+                num_qubits=10, depth=10, max_operands=0
+            )
+        err_msg = str(e.value)
+        assert "Invalid max_operands" in err_msg
+
+        with pytest.raises(CircuitException) as e:
+            ir = rcg.random_circuit_with_depth(
+                num_qubits=10, depth=10, max_operands=2, gate_type=2
+            )
+        err_msg = str(e.value)
+        assert "Invalid gate_type" in err_msg
+
+    @patch("wy_qcos.transpiler.cmss.circuit.utils.QasmConverter")
+    def test_random_circuit_save(self, mock_qasm_converter):
+        mock_instance_gates = mock_qasm_converter.return_value
+        mock_instance_gates.save.return_value = None
+        rcg = RandomCircuitGen()
+        ir = rcg.random_circuit_with_gates(
+            num_qubits=1, num_gates=1, outfile="output.log"
+        )
+        assert isinstance(ir, list)
+
+        ir = rcg.random_circuit_with_depth(
+            num_qubits=1, depth=1, outfile="output.log"
+        )
+        assert isinstance(ir, list)

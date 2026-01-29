@@ -54,14 +54,13 @@ def check_file_args(input_file, output_file):
     """
     file_path = Path(input_file).resolve()
     if not file_path.exists():
-        logger.error(f"input file[{file_path}] not existed")
-        return None, None
+        raise FileNotFoundError(f"Input file not existed! file: {file_path}.")
 
     output_file_path = None
     if output_file != "":
         output_file_path = Path(output_file).resolve()
         if output_file_path.exists():
-            logger.info(f"output file[{output_file_path}] has existed")
+            logger.info(f"output file has existed! file: {output_file_path}.")
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_file_path = output_file_path.with_stem(
                 f"{output_file_path.stem}_{timestamp}"
@@ -69,7 +68,7 @@ def check_file_args(input_file, output_file):
 
         # create output file
         with open(output_file_path, "w", encoding="utf-8") as f:
-            f.write(f"testing file: {input_file}\n")
+            f.write(f"testing file: {input_file}.\n")
     init_logging(logfile=output_file_path)
 
     return file_path, output_file_path
