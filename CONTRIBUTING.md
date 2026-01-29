@@ -10,6 +10,6 @@ QCOS项目欢迎任何人提交issue 和 Pull Requests 贡献代码， 在您创
 
 ## [测试和CICD](docs/sphinx/source/develop-guide/run-test.rst)
 
-## [许可证](docs/sphinx/source/other-docs/license.rst)
+## [许可证](LICENSE)
 
-## [贡献者公约](docs/sphinx/source/other-docs/code-of-conduct.rst)
+## [贡献者公约](CODE_OF_CONDUCT.md)

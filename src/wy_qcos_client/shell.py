@@ -72,8 +72,6 @@ class QcosShell(App):
         super().clean_up(cmd, result, err)
         if hasattr(cmd, "extra_messages"):
             cmd.app.stdout.write(f"{cmd.extra_messages}\n")
-        if err:
-            cmd.app.stderr.write(f"An error occurred: {err}\n")
 
     def initialize_app(self, argv):
         super().initialize_app(argv)
@@ -868,7 +866,8 @@ class SubmitJob(Command):
             dest="job_priority",
             type=int,
             default=f"{Constant.DEFAULT_JOB_PRIORITY}",
-            help="Set job priority",
+            help="Set job priority. Values: 1-10, Default: 5. "
+            "Highest priority: 1, Lowest Priority: 10",
         )
         parser.add_argument(
             "--description",
@@ -1485,15 +1484,14 @@ class UpdateJob(Command):
             parser
         """
         parser = super().get_parser(prog_name)
-        parser.add_argument(
-            "--job-id", dest="job_id", type=str, help="Job uuid"
-        )
+        parser.add_argument(dest="job_id", type=str, help="Job uuid")
         parser.add_argument(
             "--job-priority",
             dest="job_priority",
             type=int,
             default=f"{Constant.DEFAULT_JOB_PRIORITY}",
-            help="Set job priority",
+            help="Set job priority. Values: 1-10, Default: 5. "
+            "Highest priority: 1, Lowest Priority: 10",
         )
         return parser
 

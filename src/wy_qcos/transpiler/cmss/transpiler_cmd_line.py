@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 import sys
-import logging
 from pathlib import Path
 import time
 from datetime import datetime
@@ -26,13 +25,11 @@ from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
+from wy_qcos.transpiler.common.utils import logger, init_logging
 from wy_qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 
 def read_qasm_from_file(file_path):
@@ -55,11 +52,22 @@ class Timer:
 
 
 def check_file_args(input_file, output_file):
+    """Check whether the input file and output file exist.
+
+    Args:
+        input_file(str): The input file path.
+        output_file(str): The output file path.
+
+    Returns:
+        file_path(Path): The resolved input file path.
+        output_file_path(Path): The resolved output file path.
+    """
     file_path = Path(input_file).resolve()
     if not file_path.exists():
         logger.error(f"input file[{file_path}] not existed")
-        return None
+        return None, None
 
+    output_file_path = None
     if output_file != "":
         output_file_path = Path(output_file).resolve()
         if output_file_path.exists():
@@ -72,10 +80,9 @@ def check_file_args(input_file, output_file):
         # create output file
         with open(output_file_path, "w", encoding="utf-8") as f:
             f.write(f"testing file: {input_file}\n")
-        file_handler = logging.FileHandler(output_file_path)
-        logger.addHandler(file_handler)
+        init_logging(logfile=output_file_path)
 
-    return file_path
+    return file_path, output_file_path
 
 
 def main_cmss_transpiler(
@@ -87,8 +94,8 @@ def main_cmss_transpiler(
 ):
     """cmss-transpiler performance test."""
     success = False
-    # input args check
-    file_path = check_file_args(input_file, output_file)
+    # input args check and init logger
+    file_path, output_file_path = check_file_args(input_file, output_file)
     if not file_path:
         return success
 
@@ -99,7 +106,6 @@ def main_cmss_transpiler(
         return success
 
     # performace testing
-    logger.info("start qiskit performace testing...")
     with Timer() as total_timer:
         if tech_type != "":
             # parse the config file of qpu
@@ -117,10 +123,13 @@ def main_cmss_transpiler(
                 trans_cfg_inst.set_tech_type(tech_type)
                 trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
 
-                transpiler = TranspilerCmss(optimization_level=opt_level)
+                transpiler = TranspilerCmss(
+                    optimization_level=opt_level, enable_na_move=True
+                )
                 expected_basis_gates = [
                     Constant.SINGLE_QUBIT_GATE_RX,
                     Constant.SINGLE_QUBIT_GATE_RY,
+                    Constant.TWO_QUBIT_GATE_CZ,
                 ]
             elif tech_type == Constant.TECH_TYPE_SUPERCONDUCTING:
                 qpu_config = Config.EXTRA_CONFIGS["spinq_rpc"]["transpiler"][
@@ -143,11 +152,28 @@ def main_cmss_transpiler(
             with Timer() as ast_timer:
                 src_code_info = {"000": qasm_data}
                 parse_result = transpiler.parse(src_code_info)
+
+            if output_file_path:
+                with open(output_file_path, "a", encoding="utf-8") as f:
+                    width = parse_result["000"][0]
+                    gates_list = parse_result["000"][1]
+                    circuit = QuantumCircuit(num_qubits=width)
+                    circuit.append_operations(gates_list)
+                    depth = circuit.depth()
+                    size = circuit.size()
+                    f.write(
+                        f"circuit: width={width}, depth={depth}, "
+                        f"gates={size}\n"
+                        f"optimization level: {opt_level}\n"
+                        f"technology type: {tech_type}\n"
+                    )
+
+            logger.info("start qiskit performace testing...")
             logger.info(f"parse openqasm: {ast_timer.elapsed:.4f}s")
 
             # optimize the transpiled gates
             with Timer() as tranpile_timer:
-                _, _ = transpiler.transpile(parse_result, expected_basis_gates)
+                _ = transpiler.transpile(parse_result, expected_basis_gates)
             logger.info(f"cmss tranpiler: {tranpile_timer.elapsed:.4f}s\n")
         else:
             # generate abs tree

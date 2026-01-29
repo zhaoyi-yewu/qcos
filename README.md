@@ -25,25 +25,21 @@
 
 ## 3.1 编译部署手册
 
-[编译部署（基于Docker，推荐）](docs/sphinx/source/user-guide/deploy-guide/build-run-docker.rst)
+[编译部署（基于Docker，推荐）](https://qcos.readthedocs.io/zh-cn/latest/user-guide/deploy-guide/build-run-docker.html)
 
-[编译部署（基于K8s）](docs/sphinx/source/user-guide/deploy-guide/build-run-k8s.rst)
+[编译部署（基于K8s）](https://qcos.readthedocs.io/zh-cn/latest/user-guide/deploy-guide/build-run-k8s.html)
 
-[编译部署（基于wheel）](docs/sphinx/source/user-guide/deploy-guide/build-run-wheel.rst)
+[编译部署（基于wheel）](https://qcos.readthedocs.io/zh-cn/latest/user-guide/deploy-guide/build-run-wheel.html)
 
 ## 3.2 命令行手册
 
-[命令行手册](docs/sphinx/source/user-guide/cli.rst)
-
-## 3.3 文档构建手册
-
-[文档构建手册](docs/sphinx/source/user-guide/deploy-guide/build-docs.rst)
+[命令行手册](https://qcos.readthedocs.io/zh-cn/latest/user-guide/cli.html)
 
 # 4. 兼容性
 
-[兼容性说明](COMPATIBILITY.md)
+[兼容性说明](https://qcos.readthedocs.io/zh-cn/latest/user-guide/compatibility.html)
 
 # 5. 许可证
 
-QCOS开源代码遵循[MulanPSL-2.0](LICENSE)开源协议。
+QCOS开源代码遵循[MulanPSL-2.0](https://qcos.readthedocs.io/zh-cn/latest/other-docs/license.html)开源协议。
 samples/qasm下的代码遵循 Apache-2.0开源协议。

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -22,9 +22,9 @@ from unittest.mock import patch, MagicMock, mock_open
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
+from wy_qcos.transpiler.common.utils import Timer
 from wy_qcos.transpiler.cmss.transpiler_cmd_line import (
     read_qasm_from_file,
-    Timer,
     main_cmss_transpiler as main,
     main as cmss_main,
     get_parse_args,
@@ -71,7 +71,30 @@ class TestTranspilerCmdLine:
         )
         assert res is True
 
-    def test_cmss_transpiler_tech_na(self):
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
+    )
+    def test_cmss_transpiler_tech_na(self, mock_get_mapper):
+        from wy_qcos.transpiler.cmss.mapping import NARoute
+        import types
+
+        # Create a real mapper instance
+        mapper = NARoute()
+        # Mock execute_with_order to return (mapped_ir, final_layout)
+        original_execute = mapper.execute_with_order
+
+        def mock_execute_with_order(self_ref):
+            result = original_execute()
+            # If result is a list, wrap it in a tuple with empty dict
+            if isinstance(result, list):
+                return result, {}
+            return result
+
+        mapper.execute_with_order = types.MethodType(
+            mock_execute_with_order, mapper
+        )
+        mock_get_mapper.return_value = mapper
+
         qasm_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
         output_file = ""
         opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
@@ -146,8 +169,9 @@ class TestTranspilerCmdLine:
             mock_sys_exit.assert_called_with(mock_main_cmss_transpiler())
 
     def test_check_file_args(self):
-        input_file1 = f"{self.samples_dir}/qasm/2.0/simple-qasm1.qasm"
-        assert check_file_args(input_file1, "") is None
+        input_file1 = f"{self.samples_dir}/qasm/2.0/simple-qasm-2.qasm"
+        input_file, output_file = check_file_args(input_file1, "")
+        assert input_file is None and output_file is None
 
         input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
         output_file = "CHANGELOG"
@@ -159,12 +183,12 @@ class TestTranspilerCmdLine:
             patch("logging.FileHandler", return_value=mock_file_handler),
             patch("logging.Logger.addHandler") as mock_add_handler,
         ):
-            res = check_file_args(input_file, output_file)
+            res, _ = check_file_args(input_file, output_file)
             mock_file.assert_called_once_with(
                 output_file_path, "w", encoding="utf-8"
             )
             mock_file().write.assert_called_once_with(
                 f"testing file: {input_file}\n"
             )
-            mock_add_handler.assert_called_once_with(mock_file_handler)
+            mock_add_handler.assert_called_with(mock_file_handler)
             assert res == Path(input_file).resolve()

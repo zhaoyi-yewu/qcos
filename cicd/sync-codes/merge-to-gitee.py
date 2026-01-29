@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -20,7 +20,7 @@ Merge local git branch to remote branch
 
 Prerequisite:
 yum install -y git
-pip3 install git git-filter-repo
+pip3 install git-filter-repo GitPython
 
 1. Initialize git repo (Init only once, no need to run in the next time)
 mkdir WuYue
@@ -57,13 +57,14 @@ git push ${gitee_remote} ${cmss_local_merge_branch}:${gitee_remote_branch}
 eg. git push gitee gitee-merge:develop
 """
 
-import os
+import hashlib
 import re
 import subprocess
 import sys
 from collections import OrderedDict
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from git import Repo
 
 gitee_remote = "gitee"
 gitee_remote_branch = "develop"
@@ -73,35 +74,13 @@ cmss_remote = "origin"
 cmss_local_branch = "dev_gitee"
 cmss_local_merge_branch = "gitee-merge"
 
-gitee_branch_file = "/tmp/gitee_local_branch_commits"
-cmss_branch_file = "/tmp/cmss_local_branch_commits"
-
 
 class MergeException(Exception):
-    """Merge Exception"""
-
-
-def remove_temp_files():
-    """Remove temp files"""
-    print("Deleting temp files ...")
-    temp_files = [
-        cmss_branch_file,
-        f"{cmss_branch_file}_hash",
-        f"{cmss_branch_file}_unique",
-        gitee_branch_file,
-        f"{gitee_branch_file}_hash",
-        f"{gitee_branch_file}_unique",
-    ]
-    for file in temp_files:
-        if os.path.exists(file):
-            try:
-                os.remove(file)
-            except MergeException as e:
-                (print(f"Warning: Failed to remove {file}: {e}"))
+    """Merge Exception."""
 
 
 def run_command(command, check=True, capture_output=True, text=True):
-    """Run command
+    """Run command.
 
     Args:
         command: command
@@ -128,7 +107,8 @@ def run_command(command, check=True, capture_output=True, text=True):
 
 
 def pull_branches():
-    """Pull branches"""
+    """Pull branches."""
+
     cmd = f"git branch -D {cmss_local_merge_branch}"
     results = run_command(cmd)
     ret_code = results.returncode
@@ -173,40 +153,80 @@ def pull_branches():
         raise MergeException(results.stderr)
 
 
-def to_dict(commits_list):
-    """To dictionary format
+def get_commits_dict(branch_name, since_str=None, repo_path="."):
+    """Get git commits dict.
 
     Args:
-        commits_list: commit list
+        branch_name (str): branch name
+        since_str (str): since_str
+        repo_path (str): repo path
 
     Returns:
-        commits in dict format
+        commit dict
     """
+
     commits_dict = OrderedDict()
-    for commits_str in commits_list:
-        if "]" in commits_str:
-            commits_tokens = commits_str.split("]")
-            date_messages = commits_tokens[1].strip()
-            commits_dict[date_messages] = commits_str
+
+    # init git repo object
+    repo = Repo(repo_path)
+
+    # fill options: no_merges, topo_order
+    options = {
+        "no_merges": True,
+        "topo_order": True,
+    }
+
+    # fill options: since
+    if since_str:
+        options["since"] = since_str
+
+    # list all commit logs
+    for commit in repo.iter_commits(branch_name, **options):
+        # get commit info
+        commit_hash = commit.hexsha  # %H (Commit Hash)
+        tree_hash = commit.tree.hexsha  # %T (Tree Hash)
+        author_datetime = commit.authored_datetime
+        commit_summary = commit.summary  # %s (Subject/Message)
+
+        # calculate commit content hash
+        parent = commit.parents[0] if commit.parents else None
+        diffs = commit.diff(parent, create_patch=True)
+        full_diff_text = b""
+        for d in diffs:
+            full_diff_text += d.diff  # data type is bytes
+        content_hash = hashlib.md5(full_diff_text).hexdigest()
+
+        # store commit info
+        if (
+            content_hash
+            and commit_hash
+            and tree_hash
+            and author_datetime
+            and commit_summary
+        ):
+            commits_dict[content_hash] = {
+                "commit_hash": commit_hash,
+                "content_hash": content_hash,
+                "tree_hash": tree_hash,
+                "author_datetime": author_datetime,
+                "commit_summary": commit_summary,
+            }
     return commits_dict
 
 
 def diff_branches(start_since):
-    """Find differences between branches
+    """Find differences between branches.
 
     Args:
         start_since: start since
     """
     # get branches: cmss and gitee commits
-    cmss_commits = format_commit(cmss_local_branch, start_since)
-    gitee_commits = format_commit(gitee_local_branch, start_since)
-    cmss_commits_list = cmss_commits.split("\n")
-    gitee_commits_list = gitee_commits.split("\n")
-    cmss_commits_dict = to_dict(cmss_commits_list)
-    gitee_commits_dict = to_dict(gitee_commits_list)
+    cmss_commits_dict = get_commits_dict(cmss_local_branch, start_since)
+    gitee_commits_dict = get_commits_dict(gitee_local_branch, start_since)
 
     cmss_keys = set(cmss_commits_dict.keys())
     gitee_keys = set(gitee_commits_dict.keys())
+
     only_in_cmss = [k for k in cmss_keys if k not in gitee_keys]
     only_in_gitee = [k for k in gitee_keys if k not in cmss_keys]
 
@@ -217,9 +237,12 @@ def diff_branches(start_since):
     )
     print("========================================")
     if only_in_cmss:
-        for k, message in cmss_commits_dict.items():
+        for k, commit_info in cmss_commits_dict.items():
             if k in only_in_cmss:
-                print(message)
+                print(
+                    f"[{commit_info['commit_hash']}] "
+                    f"{commit_info['commit_summary']}"
+                )
     else:
         print("No")
     print("")
@@ -231,43 +254,19 @@ def diff_branches(start_since):
     )
     print("========================================")
     if only_in_gitee:
-        for k, message in gitee_commits_dict.items():
+        for k, commit_info in gitee_commits_dict.items():
             if k in only_in_gitee:
-                print(message)
+                print(
+                    f"[{commit_info['commit_hash']}] "
+                    f"{commit_info['commit_summary']}"
+                )
     else:
         print("No")
     print("")
 
 
-def format_commit(local_branch, start_since):
-    """Format commit
-
-    Args:
-        local_branch: local branch name
-        start_since: start date
-
-    Returns:
-        formatted commits
-    """
-    since_str = ""
-    if start_since:
-        since_str = f'--since="{start_since}"'
-    cmds = [
-        f"""git log --no-merges --topo-order --pretty=format:'%H %at %ad %s' \
-        --date=format:'%Y-%m-%d %H:%M:%S' {local_branch} {since_str} | \
-        cut -d' ' -f1,3- |
-        awk '{{hash=$1; $1=""; printf "[%s] %s \\n", hash, substr($0,2)}}'
-        """
-    ]
-    results = run_command(";".join(cmds))
-    ret_code = results.returncode
-    if ret_code != 0:
-        raise MergeException(results.stderr)
-    return results.stdout
-
-
 def merge_branches(commit_id):
-    """Merge branches
+    """Merge branches.
 
     Args:
         commit_id: commit id

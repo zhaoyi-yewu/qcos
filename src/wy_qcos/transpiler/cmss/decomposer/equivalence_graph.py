@@ -1006,6 +1006,12 @@ class EquivalenceGraph:
             dict[str, EquivalenceRule]: A mapping from operation name to
             equivalence rule.
         """
+        EXCLUDED_GATES = {"measure", "reset", "sync", "move"}
+
+        for gate in EXCLUDED_GATES:
+            if gate not in target:
+                target.append(gate)
+
         visited_gates: set[str] = set()
         left_source_gates: set[str] = set(
             x.name for x in source if x.name not in target

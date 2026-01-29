@@ -6,7 +6,7 @@
 .. plantuml:: ../../_static/design/module-design/transpiler-plugins.puml
    :caption: 转译器模块架构图
    :alt: 转译器模块架构图
-   :width: 800
+   :width: 50%
    :align: center
 
 插件式转译器
@@ -16,7 +16,7 @@
 .. plantuml:: ../../_static/design/module-design/transpiler-class-er.puml
    :caption: 插件式转译器类关系图
    :alt: 插件式转译器类关系图
-   :width: 800
+   :width: 50%
    :align: center
 
 五岳转译器
@@ -26,7 +26,7 @@
 .. plantuml:: ../../_static/design/module-design/cmss-transpiler-module.puml
    :caption: 五岳转译器调用关系图
    :alt: 五岳转译器调用关系图
-   :width: 800
+   :width: 50%
    :align: center
 
 - compiler: 负责将传入的openqasm指令转换成硬件支持的基础门。

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 import pytest
 
+from copy import deepcopy
 from wy_qcos.common.constant import Constant
 from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 
@@ -394,7 +395,8 @@ class TestTranspilerNaZapMapping:
         init_mapping = na.get_init_mapping_and_placing(mapping)
 
         # update mapping 1 times
-        up_mapping_1 = na.update_mapping(init_mapping)
+        up_mapping_1 = deepcopy(init_mapping)
+        _ = na.update_mapping(up_mapping_1)
 
         for id in range(na.qbit_num):
             assert up_mapping_1[0][id] in na.storage_area
@@ -423,7 +425,8 @@ class TestTranspilerNaZapMapping:
         assert init_mapping[4][3] in na.operate_area
 
         # update mapping 2 times
-        up_mapping_2 = na.update_mapping(init_mapping)
+        up_mapping_2 = deepcopy(init_mapping)
+        _ = na.update_mapping(up_mapping_2)
 
         for id in range(na.qbit_num):
             assert up_mapping_2[0][id] in na.storage_area
@@ -452,7 +455,8 @@ class TestTranspilerNaZapMapping:
         assert up_mapping_2[4][3] in na.operate_area
 
         # update mapping 3 times
-        up_mapping_3 = na.update_mapping(init_mapping)
+        up_mapping_3 = deepcopy(init_mapping)
+        _ = na.update_mapping(up_mapping_3)
 
         assert up_mapping_3[1][0] in na.operate_area
         assert up_mapping_3[1][1] in na.operate_area
@@ -464,7 +468,8 @@ class TestTranspilerNaZapMapping:
         assert up_mapping_3[2][2] in na.operate_area
         assert up_mapping_3
         # update mapping 4 times
-        up_mapping_4 = na.update_mapping(init_mapping)
+        up_mapping_4 = deepcopy(init_mapping)
+        _ = na.update_mapping(up_mapping_4)
 
         assert up_mapping_4[3][0] in na.operate_area
         assert up_mapping_4[3][1] in na.operate_area
@@ -478,7 +483,8 @@ class TestTranspilerNaZapMapping:
 
         # update mapping 20 times
         for _ in range(20):
-            _ = na.update_mapping(init_mapping)
+            up_mapping = deepcopy(init_mapping)
+            _ = na.update_mapping(up_mapping)
 
     def test_update_storage_and_operate_area_oloc(self):
         src_code_info = {"000": self.task3_data}
@@ -506,12 +512,12 @@ class TestTranspilerNaZapMapping:
         init_mapping = na.get_init_mapping_and_placing(mapping)
 
         # update mapping 1 times
-        up_mapping_1 = na.update_mapping(init_mapping)
+        _ = na.update_mapping(init_mapping)
 
-        na.update_storage_and_operate_area_oloc(up_mapping_1)
+        na.update_storage_and_operate_area_oloc(init_mapping)
 
-        assert na.storage_area_oloc[0][up_mapping_1[0][0]] == 0
-        assert na.operate_area_oloc[-1][up_mapping_1[-1][0]] == 0
+        assert na.storage_area_oloc[0][init_mapping[0][0]] == 0
+        assert na.operate_area_oloc[-1][init_mapping[-1][0]] == 0
 
     def test_init_para(self):
         src_code_info = {"000": self.task3_data}
@@ -608,7 +614,7 @@ class TestTranspilerNaZapMapping:
         mapping_dict[key] = value[0]
         na.prepare_data(value[0], value[1], qpu_cfg)
 
-        res = na.execute_with_order()
+        res, _ = na.execute_with_order()
 
         assert res[0].name == "x"
         assert res[-1].name == "measure"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -218,7 +218,7 @@ class TestTranspilerNaMapping:
         key, value = list(opt_result_dict.items())[0]
         mapping_dict[key] = value[0]
         na.prepare_data(value[0], value[1], qpu_cfg)
-        mapping_res = na.execute_with_order()
+        mapping_res, _ = na.execute_with_order()
 
         assert len(na.mapping) == na.qbit_num
         assert mapping_res is not None
@@ -262,7 +262,7 @@ class TestTranspilerNaMapping:
         key, value = list(opt_result_dict.items())[0]
         mapping_dict[key] = value[0]
         na.prepare_data(value[0], value[1], qpu_cfg)
-        order_mapping_res = na.execute_with_order()
+        order_mapping_res, _ = na.execute_with_order()
 
         assert len(na.mapping) == na.qbit_num
         assert order_mapping_res is not None
@@ -330,7 +330,7 @@ class TestTranspilerNaMapping:
         key, value = list(opt_result_dict.items())[0]
         mapping_dict[key] = value[0]
         na.prepare_data(value[0], value[1], qpu_cfg)
-        mapping_res = na.execute_with_order()
+        mapping_res, _ = na.execute_with_order()
 
         assert len(na.mapping) == na.qbit_num
         assert mapping_res is not None

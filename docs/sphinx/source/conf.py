@@ -147,6 +147,7 @@ plantuml = "java -Dfile.encoding=UTF-8 -Djava.awt.headless=true -jar /usr/local/
 if on_rtd:
     plantuml = "plantuml"
 plantuml_output_format = "svg"  # default: png
+plantuml_latex_output_format = "pdf"
 
 # latex config
 language = "zh_CN"

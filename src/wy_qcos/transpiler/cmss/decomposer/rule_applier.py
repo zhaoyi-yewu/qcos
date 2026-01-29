@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 import math
+import copy
 import numexpr
 
 from wy_qcos.transpiler.cmss.common.base_operation import BaseOperation
@@ -154,14 +155,14 @@ class RuleApplier:
 
             # Return cached result if available.
             if signature in decompose_cache:
-                return list(decompose_cache[signature])
+                return copy.deepcopy(list(decompose_cache[signature]))
 
             result: list[BaseOperation] = []
             # Gate is already in the target basis.
             if gate.name in target_gate_names:
                 result = [gate]
                 decompose_cache[signature] = result
-                return list(result)
+                return copy.deepcopy(list(result))
 
             # No rule available for decomposition.
             if gate.name not in rule_dict:
@@ -180,7 +181,7 @@ class RuleApplier:
 
             # Cache the fully decomposed result.
             decompose_cache[signature] = result
-            return list(result)
+            return copy.deepcopy(list(result))
 
         decomposed_circuit: list[BaseOperation] = []
         for gate in circuit:

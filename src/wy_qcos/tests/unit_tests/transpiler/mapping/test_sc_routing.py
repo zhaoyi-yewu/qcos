@@ -29,7 +29,7 @@ class TestMCTSRouting:
     def test_init(self):
         """Test MCTSRouting initialization."""
         routing = MCTSRouting()
-        assert routing.selec_times == 50
+        assert routing.selec_times == 5
 
     def test_layout_list_to_dict(self):
         """Test _layout_list_to_dict method."""
@@ -101,7 +101,11 @@ class TestMCTSRouting:
         result = routing.execute_routing(
             mock_tree, ag, initial_layout, 2, measure_ops
         )
-        assert isinstance(result, list)
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        mapped_ir, final_layout = result
+        assert isinstance(mapped_ir, list)
+        assert isinstance(final_layout, dict)
 
     def test_execute_routing_with_swaps(self):
         """Test execute_routing with swaps."""
@@ -133,7 +137,11 @@ class TestMCTSRouting:
         result = routing.execute_routing(
             mock_tree, ag, initial_layout, 2, measure_ops
         )
-        assert isinstance(result, list)
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        mapped_ir, final_layout = result
+        assert isinstance(mapped_ir, list)
+        assert isinstance(final_layout, dict)
 
     def test_execute_routing_with_measure_ops(self):
         """Test execute_routing with measure operations."""
@@ -167,8 +175,12 @@ class TestMCTSRouting:
         result = routing.execute_routing(
             mock_tree, ag, initial_layout, 2, measure_ops
         )
-        assert isinstance(result, list)
-        assert len(result) >= 1
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        mapped_ir, final_layout = result
+        assert isinstance(mapped_ir, list)
+        assert isinstance(final_layout, dict)
+        assert len(mapped_ir) >= 1
 
     def test_execute_routing_swap_mapping_not_dict(self):
         """Test execute_routing when swap_mapping is not a dict."""
@@ -236,7 +248,11 @@ class TestMCTSRouting:
         result = routing.execute_routing(
             mock_tree, ag, initial_layout, 2, measure_ops
         )
-        assert isinstance(result, list)
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        mapped_ir, final_layout = result
+        assert isinstance(mapped_ir, list)
+        assert isinstance(final_layout, dict)
 
     def test_execute_routing_num_q_vir_filtering(self):
         """Test execute_routing filtering by num_q_vir."""
@@ -268,5 +284,9 @@ class TestMCTSRouting:
         result = routing.execute_routing(
             mock_tree, ag, initial_layout, 2, measure_ops
         )
-        assert isinstance(result, list)
-        assert 5 not in initial_layout
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        mapped_ir, final_layout = result
+        assert isinstance(mapped_ir, list)
+        assert isinstance(final_layout, dict)
+        assert 5 not in final_layout

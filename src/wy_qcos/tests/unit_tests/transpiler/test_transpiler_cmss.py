@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 import pytest
+from unittest.mock import patch
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
@@ -82,7 +83,30 @@ class TestTranspilerCmss:
         trans_cfg_inst.set_tech_type(Constant.TECH_TYPE_NEUTRAL_ATOM)
         trans_cfg_inst.set_max_qubits(6)
 
-    def test_transpiler_cmss(self):
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
+    )
+    def test_transpiler_cmss(self, mock_get_mapper):
+        from wy_qcos.transpiler.cmss.mapping import NASingleRoute
+        import types
+
+        # Create a real mapper instance
+        mapper = NASingleRoute()
+        # Mock execute_with_order to return (mapped_ir, final_layout)
+        original_execute = mapper.execute_with_order
+
+        def mock_execute_with_order(self_ref):
+            result = original_execute()
+            # If result is a list, wrap it in a tuple with empty dict
+            if isinstance(result, list):
+                return result, {}
+            return result
+
+        mapper.execute_with_order = types.MethodType(
+            mock_execute_with_order, mapper
+        )
+        mock_get_mapper.return_value = mapper
+
         transpiler = TranspilerCmss()
         expected_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_RX,
@@ -90,14 +114,37 @@ class TestTranspilerCmss:
         ]
         src_code_info = {"000": self.simple_data}
         parse_result = transpiler.parse(src_code_info)
-        basis_gate_list, _ = transpiler.transpile(
+        basis_gate_list = transpiler.transpile(
             parse_result, expected_basis_gates
         )
         assert len(basis_gate_list) == 2
         validate_gate_ir(basis_gate_list[0], "rx", [27], 1, False)
         validate_non_gate_ir(basis_gate_list[1], "measure", [27], 0)
 
-    def test_transpiler_aggregation_succ(self):
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
+    )
+    def test_transpiler_aggregation_succ(self, mock_get_mapper):
+        from wy_qcos.transpiler.cmss.mapping import NASingleRoute
+        import types
+
+        # Create a real mapper instance
+        mapper = NASingleRoute()
+        # Mock execute_with_order to return (mapped_ir, final_layout)
+        original_execute = mapper.execute_with_order
+
+        def mock_execute_with_order(self_ref):
+            result = original_execute()
+            # If result is a list, wrap it in a tuple with empty dict
+            if isinstance(result, list):
+                return result, {}
+            return result
+
+        mapper.execute_with_order = types.MethodType(
+            mock_execute_with_order, mapper
+        )
+        mock_get_mapper.return_value = mapper
+
         transpiler = TranspilerCmss()
         expected_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_RX,
@@ -111,15 +158,38 @@ class TestTranspilerCmss:
             "444": self.simple_data,
         }
         parse_result = transpiler.parse(src_code_info)
-        basis_gate_list, _ = transpiler.transpile(
+        basis_gate_list = transpiler.transpile(
             parse_result, expected_basis_gates
         )
         assert len(basis_gate_list) == 10
 
-    def test_transpiler_aggregation_partly_succ(self):
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
+    )
+    def test_transpiler_aggregation_partly_succ(self, mock_get_mapper):
+        from wy_qcos.transpiler.cmss.mapping import NASingleRoute
+        import types
+
         qasm_data = SAMPLES["simple-qasm.qasm"]
         if qasm_data is None:
             return
+
+        # Create a real mapper instance
+        mapper = NASingleRoute()
+        # Mock execute_with_order to return (mapped_ir, final_layout)
+        original_execute = mapper.execute_with_order
+
+        def mock_execute_with_order(self_ref):
+            result = original_execute()
+            # If result is a list, wrap it in a tuple with empty dict
+            if isinstance(result, list):
+                return result, {}
+            return result
+
+        mapper.execute_with_order = types.MethodType(
+            mock_execute_with_order, mapper
+        )
+        mock_get_mapper.return_value = mapper
 
         transpiler = TranspilerCmss()
         expected_basis_gates = [
@@ -132,7 +202,7 @@ class TestTranspilerCmss:
             "222": qasm_data,
         }
         parse_result = transpiler.parse(src_code_info)
-        basis_gate_list, _ = transpiler.transpile(
+        basis_gate_list = transpiler.transpile(
             parse_result, expected_basis_gates
         )
         assert len(basis_gate_list) == 8

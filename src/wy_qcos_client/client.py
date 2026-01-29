@@ -362,7 +362,7 @@ class Client:
             job_name: job name
             job_type: job type
             job_priority: job priority. Values: 1-10, Default: 5.
-                          Higest priority: 1, Lowest Priority: 10
+                          Highest priority: 1, Lowest Priority: 10
             description: job description
             shots: shots
             backend: backend name
@@ -545,7 +545,7 @@ class Client:
         Args:
             job_id: job uuid
             job_priority: job priority. Values: 1-10, Default: 5.
-                          Higest priority: 1, Lowest Priority: 10
+                          Highest priority: 1, Lowest Priority: 10
 
         Returns:
             update_job result

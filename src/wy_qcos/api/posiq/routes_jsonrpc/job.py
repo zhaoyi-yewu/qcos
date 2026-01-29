@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -112,13 +112,18 @@ def submit_job(
             func_name,
             Library.validate_qubo_matrices(source_code),
         )
-    else:
+    elif code_type in Constant.CODE_TYPES_ALL_QASM:
         jsonrpc_errors.handle_error_bad_requests(
             module_name,
             func_name,
             Library.validate_schema(
                 source_code, args_schema.SOURCE_CODE_TEXT_SCHEMA
             ),
+        )
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            Library.validate_qasms(source_code),
         )
 
     # Validate: source_code by circuit_aggregation

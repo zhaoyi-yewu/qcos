@@ -5,7 +5,13 @@ requires = ["setuptools>=61.0", "wheel>=0.37.1"]
 [project]
 name = "wy-qcos"
 version = "1.0.1"
-description = "QCOS (Quantum Computing Operating System)"
+description = """WuYue QCOS (Quantum Computing Operating System), \
+is an open-source, general-purpose Quantum Computing Operating System \
+designed to provide unified software support for quantum computers of \
+diverse architectures \
+(e.g., SuperConducting, Neutral Atom, Ion Trap, Coherent Ising Machine, \
+NMR, etc.) and drive the ecological development of quantum computing. \
+"""
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 license = { file = "LICENSE" }

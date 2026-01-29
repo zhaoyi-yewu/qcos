@@ -21,7 +21,10 @@ from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import (
     optimize_gate,
     optimize,
 )
-from wy_qcos.tests.unit_tests.transpiler.comm import validate_gate_ir
+from wy_qcos.tests.unit_tests.transpiler.comm import (
+    validate_gate_ir,
+    validate_non_gate_ir,
+)
 
 
 class TestGateOptimizer:
@@ -101,3 +104,30 @@ class TestGateOptimizer:
         validate_gate_ir(opt_gates[0], "ry", [0], 1, False)
         validate_gate_ir(opt_gates[1], "z", [0], 1, True)
         validate_gate_ir(opt_gates[2], "ry", [3], 1, False)
+
+    def test_optimizer_with_multi_barrier(self):
+        simple_data = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[6];
+        creg c[6];
+        ccx q[0], q[1], q[4];
+        barrier q;
+        barrier q;
+        measure q[1] -> c[1];
+        """
+
+        tree = get_abs_tree(simple_data)
+        assert tree is not None
+
+        cir = get_ir(tree)
+        gates_list = cir.get_operations()
+
+        validate_gate_ir(gates_list[0], "ccx", [0, 1, 4], 3, True)
+        validate_non_gate_ir(gates_list[1], "sync", [0, 1, 2, 3, 4, 5], -1)
+        validate_non_gate_ir(gates_list[2], "sync", [0, 1, 2, 3, 4, 5], -1)
+
+        opt_gates = optimize_gate(gates_list)
+        validate_gate_ir(opt_gates[0], "ccx", [0, 1, 4], 3, True)
+        validate_non_gate_ir(opt_gates[1], "sync", [0, 1, 2, 3, 4, 5], -1)
+        validate_non_gate_ir(opt_gates[2], "sync", [0, 1, 2, 3, 4, 5], -1)

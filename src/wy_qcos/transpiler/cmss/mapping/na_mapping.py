@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -106,7 +106,7 @@ class NASingleRoute(ABC):
         for value in gates_on_qubit.values():
             gates += value
         gates += measure
-        return gates
+        return gates, None
 
 
 class NARoute(ABC):
@@ -607,7 +607,7 @@ class NARoute(ABC):
                     int(operator_list[q][1:]) for q in gate.targets
                 ]
 
-        return self.res
+        return self.res, None
 
     def execute_with_opt(self):
         """按拓扑序执行门，进行简单的优化."""

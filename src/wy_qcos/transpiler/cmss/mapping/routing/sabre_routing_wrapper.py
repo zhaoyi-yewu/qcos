@@ -167,4 +167,4 @@ class SABRERouting(ABC):
         )
         logger.info(f"final layout: {mapping_virtual_to_final}")
 
-        return mapped_ir
+        return mapped_ir, mapping_virtual_to_final

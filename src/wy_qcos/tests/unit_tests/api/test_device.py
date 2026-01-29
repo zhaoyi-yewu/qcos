@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -17,13 +17,26 @@
 
 from unittest.mock import Mock, patch
 
-from wy_qcos.api.posiq.routes_jsonrpc.device import get_devices, get_device
-from wy_qcos.api.schemas import GetDeviceRequest
+from wy_qcos.api.posiq.routes_jsonrpc.device import (
+    get_devices,
+    get_device_state,
+    calibrate,
+    set_device_options,
+    enable_and_disable_qubit,
+)
+from wy_qcos.api.schemas import (
+    GetDeviceRequest,
+    DeviceProperitiesRequest,
+    CalibrateDeviceRequest,
+    SetDeviceOptionsRequest,
+    EnableAndDisableQubitRequest,
+)
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.drivers.device import Device
 from wy_qcos.drivers.device_manager import DeviceManager
 from wy_qcos.drivers.driver_manager import DriverManager
+from wy_qcos.drivers.driver_base import DriverBase
 from wy_qcos.drivers.dummy.driver_dummy import DriverDummy
 from wy_qcos.task_manager import TaskScheduler
 
@@ -45,14 +58,180 @@ class TestDevice:
         response_info = get_devices(mock_client, None)
         assert not response_info
 
-    @patch.object(DeviceManager, "get_device")
+    @patch.object(DriverBase, "get_device_state")
     @patch.object(TaskScheduler, "get_device_manager")
-    def test_get_device(self, mock_get_device_manager, mock_get_device):
-        mock_get_device.return_value = Device(self.dummy, DriverDummy())
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(Device, "get_driver")
+    def test_get_device_state(
+        self,
+        mock_get_driver,
+        mock_get_device,
+        mock_get_device_manager,
+        mock_get_device_state,
+    ):
+        mock_get_driver.return_value = DriverDummy()
+        mock_get_device.return_value = Device("dummy", DriverDummy())
         mock_get_device_manager.return_value = DeviceManager(
             Config(), DriverManager()
         )
-        mock_client = Mock(spec=GetDeviceRequest)
-        mock_client.name = self.dummy
-        response_info = get_device(mock_client, None)
-        assert response_info.name == self.dummy
+        mock_client = Mock(spec=DeviceProperitiesRequest)
+        mock_client.device_name = self.dummy
+        mock_get_device_state.return_value = {
+            "device_status": "online",
+            "single_qubit_prop": {
+                "qubit1": {
+                    "single_qubit_gate_fidelity": 0.999,
+                    "qubit_frequency": 5.018,
+                    "readout_frequency": 6.8295,
+                    "single_qubit_gate_duration": 30.0,
+                    "T1": 28.994326898773733,
+                    "T2": 5.690175203450656,
+                    "readout_fidelity_state0": 0.9705333333333334,
+                    "readout_fidelity_state1": 0.8440000000000001,
+                }
+            },
+            "double_qubit_prop": None,
+            "tupo_configs": None,
+        }
+        response_info = get_device_state(mock_client, None)
+        assert response_info.device_status == "online"
+        assert response_info.double_qubit_prop is None
+        assert response_info.tupo_configs is None
+        assert response_info.single_qubit_prop is not None
+        assert len(response_info.single_qubit_prop) == 1
+        assert (
+            response_info.single_qubit_prop["qubit1"][
+                "single_qubit_gate_fidelity"
+            ]
+            == 0.999
+        )
+        assert (
+            response_info.single_qubit_prop["qubit1"]["qubit_frequency"]
+            == 5.018
+        )
+        assert (
+            response_info.single_qubit_prop["qubit1"]["readout_frequency"]
+            == 6.8295
+        )
+        assert (
+            response_info.single_qubit_prop["qubit1"][
+                "single_qubit_gate_duration"
+            ]
+            == 30.0
+        )
+        assert (
+            response_info.single_qubit_prop["qubit1"]["T1"]
+            == 28.994326898773733
+        )
+        assert (
+            response_info.single_qubit_prop["qubit1"]["T2"]
+            == 5.690175203450656
+        )
+        assert (
+            response_info.single_qubit_prop["qubit1"][
+                "readout_fidelity_state0"
+            ]
+            == 0.9705333333333334
+        )
+        assert (
+            response_info.single_qubit_prop["qubit1"][
+                "readout_fidelity_state1"
+            ]
+            == 0.8440000000000001
+        )
+
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(Device, "get_driver")
+    def test_calibrate(
+        self, mock_get_driver, mock_get_device, mock_get_device_manager
+    ):
+        mock_get_driver.return_value = DriverDummy()
+        mock_get_device.return_value = Device("dummy", DriverDummy())
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        mock_client = Mock(spec=CalibrateDeviceRequest)
+        mock_client.device_name = self.dummy
+        mock_client.cal_cmd = True
+        mock_client.options = {
+            "init_freq": 5.018,
+            "step": 0.001,
+            "machine_type": "superconducting",
+            "scan_param": "qubit_frequency",
+            "scan_shots": 100,
+        }
+        response_info = calibrate(mock_client, None)
+        assert response_info is None
+
+    @patch.object(DriverBase, "set_device_options")
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(Device, "get_driver")
+    def test_set_device_options(
+        self,
+        mock_get_driver,
+        mock_get_device,
+        mock_get_device_manager,
+        mock_set_device_options,
+    ):
+        mock_get_driver.return_value = DriverDummy()
+        mock_get_device.return_value = Device("dummy", DriverDummy())
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        mock_client = Mock(spec=SetDeviceOptionsRequest)
+        mock_client.device_name = self.dummy
+        mock_client.device_options = {
+            "sleep": 300,
+            "shot_gap": 1000,
+            "readout_threshold": 0.8,
+        }
+        mock_set_device_options.return_value = {
+            "results": {
+                "sleep": True,
+                "shot_gap": True,
+                "readout_threshold": False,
+            }
+        }
+        response_info = set_device_options(mock_client, None)
+        assert response_info is not None
+        assert response_info.results["sleep"] is True
+        assert response_info.results["shot_gap"] is True
+        assert response_info.results["readout_threshold"] is False
+
+    @patch.object(DriverBase, "enable_and_disable_qubit")
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(Device, "get_driver")
+    def test_enable_and_disable_qubit(
+        self,
+        mock_get_driver,
+        mock_get_device,
+        mock_get_device_manager,
+        mock_enable_and_disable_qubit,
+    ):
+        mock_get_driver.return_value = DriverDummy()
+        mock_get_device.return_value = Device("dummy", DriverDummy())
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        mock_client = Mock(spec=EnableAndDisableQubitRequest)
+        mock_client.device_name = self.dummy
+        mock_client.qubits = {
+            "qubit1": True,
+            "qubit2": False,
+            "qubit1_qubit2": False,
+        }
+        mock_enable_and_disable_qubit.return_value = {
+            "results": {
+                "qubit1": True,
+                "qubit2": True,
+                "qubit1_qubit2": True,
+            }
+        }
+        response_info = enable_and_disable_qubit(mock_client, None)
+        assert response_info is not None
+        assert response_info.results["qubit1"] is True
+        assert response_info.results["qubit2"] is True
+        assert response_info.results["qubit1_qubit2"] is True

@@ -18,6 +18,7 @@
 import numpy as np
 from math import sqrt, cos, sin, log2
 from cmath import exp
+from copy import deepcopy
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.cmss.common.base_operation import BaseOperation
@@ -119,7 +120,7 @@ class GateOperation(BaseOperation):
             params["pi"] = np.pi
             decomposed_gates = custom_gate.get("gates", [])
             if len(decomposed_gates) == 0:
-                return list([self])
+                return deepcopy(list([self]))
             gates = []
             for name, qids, arg_value in decomposed_gates:
                 qubits = [self.targets[qid] for qid in qids]
@@ -130,6 +131,9 @@ class GateOperation(BaseOperation):
 
         except Exception as e:
             raise DecomposeException(str(e)) from e
+
+    def decompose_to_1q2q(self):
+        return deepcopy([self])
 
     def default_decompose(self):
         """默认的分解方法."""
@@ -475,7 +479,7 @@ class RX(GateOperation):
         )
 
     def default_decompose(self):
-        return list([self])
+        return deepcopy(list([self]))
 
     def __array__(self, dtype=None):
         """Return a Numpy.ndarray for the RX gate."""
@@ -499,7 +503,7 @@ class RY(GateOperation):
         )
 
     def default_decompose(self):
-        return list([self])
+        return deepcopy(list([self]))
 
     def __array__(self, dtype=None):
         """Return a Numpy.ndarray for the RY gate."""
@@ -521,7 +525,7 @@ class RZ(GateOperation):
         )
 
     def default_decompose(self):
-        return list([self])
+        return deepcopy(list([self]))
 
     def __array__(self, dtype=None):
         """Return a Numpy.ndarray for the RY gate."""
@@ -1281,6 +1285,25 @@ class CCX(GateOperation):
         gates.append(CX([self.targets[0], self.targets[1]]))
         return gates
 
+    def decompose_to_1q2q(self):
+        gates = []
+        gates.append(H([self.targets[2]]))
+        gates.append(CX([self.targets[1], self.targets[2]]))
+        gates.append(TDG([self.targets[2]]))
+        gates.append(CX([self.targets[0], self.targets[2]]))
+        gates.append(T([self.targets[2]]))
+        gates.append(CX([self.targets[1], self.targets[2]]))
+        gates.append(TDG([self.targets[2]]))
+        gates.append(CX([self.targets[0], self.targets[2]]))
+        gates.append(T([self.targets[2]]))
+        gates.append(T([self.targets[1]]))
+        gates.append(H([self.targets[2]]))
+        gates.append(CX([self.targets[0], self.targets[1]]))
+        gates.append(T([self.targets[0]]))
+        gates.append(TDG([self.targets[1]]))
+        gates.append(CX([self.targets[0], self.targets[1]]))
+        return gates
+
     def __array__(self, dtype=None):
         x_array = [[0, 1], [1, 0]]
         return GateOperation.with_controlled_gate_array(
@@ -1316,6 +1339,13 @@ class CSWAP(GateOperation):
         gates = []
         gates.append(CX([self.targets[2], self.targets[1]]))
         gates += CCX(self.targets).decompose()
+        gates.append(CX([self.targets[2], self.targets[1]]))
+        return gates
+
+    def decompose_to_1q2q(self):
+        gates = []
+        gates.append(CX([self.targets[2], self.targets[1]]))
+        gates += CCX(self.targets).decompose_to_1q2q()
         gates.append(CX([self.targets[2], self.targets[1]]))
         return gates
 
@@ -1363,6 +1393,19 @@ class RCCX(GateOperation):
         gates.append(CX([self.targets[1], self.targets[2]]))
         gates += U1([self.targets[2]], [-np.pi / 4]).decompose()
         gates += U2([self.targets[2]], [0, np.pi]).decompose()
+        return gates
+
+    def decompose_to_1q2q(self):
+        gates = []
+        gates.append(U2([self.targets[2]], [0, np.pi]))
+        gates.append(U1([self.targets[2]], [np.pi / 4]))
+        gates.append(CX([self.targets[1], self.targets[2]]))
+        gates.append(U1([self.targets[2]], [-np.pi / 4]))
+        gates.append(CX([self.targets[0], self.targets[2]]))
+        gates.append(U1([self.targets[2]], [np.pi / 4]))
+        gates.append(CX([self.targets[1], self.targets[2]]))
+        gates.append(U1([self.targets[2]], [-np.pi / 4]))
+        gates.append(U2([self.targets[2]], [0, np.pi]))
         return gates
 
     def __array__(self, dtype=None):
@@ -1421,6 +1464,28 @@ class RC3X(GateOperation):
         gates.append(CX([self.targets[2], self.targets[3]]))
         gates += U1([self.targets[3]], [-np.pi / 4]).decompose()
         gates += U2([self.targets[3]], [0, np.pi]).decompose()
+        return gates
+
+    def decompose_to_1q2q(self):
+        gates = []
+        gates.append(U2([self.targets[3]], [0, np.pi]))
+        gates.append(U1([self.targets[3]], [np.pi / 4]))
+        gates.append(CX([self.targets[2], self.targets[3]]))
+        gates.append(U1([self.targets[3]], [-np.pi / 4]))
+        gates.append(U2([self.targets[3]], [0, np.pi]))
+        gates.append(CX([self.targets[0], self.targets[3]]))
+        gates.append(U1([self.targets[3]], [np.pi / 4]))
+        gates.append(CX([self.targets[1], self.targets[3]]))
+        gates.append(U1([self.targets[3]], [-np.pi / 4]))
+        gates.append(CX([self.targets[0], self.targets[3]]))
+        gates.append(U1([self.targets[3]], [np.pi / 4]))
+        gates.append(CX([self.targets[1], self.targets[3]]))
+        gates.append(U1([self.targets[3]], [-np.pi / 4]))
+        gates.append(U2([self.targets[3]], [0, np.pi]))
+        gates.append(U1([self.targets[3]], [np.pi / 4]))
+        gates.append(CX([self.targets[2], self.targets[3]]))
+        gates.append(U1([self.targets[3]], [-np.pi / 4]))
+        gates.append(U2([self.targets[3]], [0, np.pi]))
         return gates
 
     def __array__(self, dtype=None):
@@ -1500,6 +1565,41 @@ class C3X(GateOperation):
         gates += P([self.targets[3]], [-np.pi / 8]).decompose()
         gates.append(CX([self.targets[0], self.targets[3]]))
         gates += H([self.targets[3]]).decompose()
+        return gates
+
+    def decompose_to_1q2q(self):
+        gates = []
+        gates.append(H([self.targets[3]]))
+        gates.append(P([self.targets[0]], [np.pi / 8]))
+        gates.append(P([self.targets[1]], [np.pi / 8]))
+        gates.append(P([self.targets[2]], [np.pi / 8]))
+        gates.append(P([self.targets[3]], [np.pi / 8]))
+        gates.append(CX([self.targets[0], self.targets[1]]))
+        gates.append(P([self.targets[1]], [-np.pi / 8]))
+        gates.append(CX([self.targets[0], self.targets[1]]))
+        gates.append(CX([self.targets[1], self.targets[2]]))
+        gates.append(P([self.targets[2]], [-np.pi / 8]))
+        gates.append(CX([self.targets[0], self.targets[2]]))
+        gates.append(P([self.targets[2]], [np.pi / 8]))
+        gates.append(CX([self.targets[1], self.targets[2]]))
+        gates.append(P([self.targets[2]], [-np.pi / 8]))
+        gates.append(CX([self.targets[0], self.targets[2]]))
+        gates.append(CX([self.targets[2], self.targets[3]]))
+        gates.append(P([self.targets[3]], [-np.pi / 8]))
+        gates.append(CX([self.targets[1], self.targets[3]]))
+        gates.append(P([self.targets[3]], [np.pi / 8]))
+        gates.append(CX([self.targets[2], self.targets[3]]))
+        gates.append(P([self.targets[3]], [-np.pi / 8]))
+        gates.append(CX([self.targets[0], self.targets[3]]))
+        gates.append(P([self.targets[3]], [np.pi / 8]))
+        gates.append(CX([self.targets[2], self.targets[3]]))
+        gates.append(P([self.targets[3]], [-np.pi / 8]))
+        gates.append(CX([self.targets[1], self.targets[3]]))
+        gates.append(P([self.targets[3]], [np.pi / 8]))
+        gates.append(CX([self.targets[2], self.targets[3]]))
+        gates.append(P([self.targets[3]], [-np.pi / 8]))
+        gates.append(CX([self.targets[0], self.targets[3]]))
+        gates.append(H([self.targets[3]]))
         return gates
 
     def __array__(self, dtype=None):
@@ -1582,6 +1682,38 @@ class C3SQRTX(GateOperation):
 
         return gates
 
+    def decompose_to_1q2q(self):
+        gates = []
+        gates.append(H([self.targets[3]]))
+        gates.append(CU1([self.targets[0], self.targets[3]], [np.pi / 8]))
+        gates.append(H([self.targets[3]]))
+        gates.append(CX([self.targets[0], self.targets[1]]))
+        gates.append(H([self.targets[3]]))
+        gates.append(CU1([self.targets[1], self.targets[3]], [-np.pi / 8]))
+        gates.append(H([self.targets[3]]))
+        gates.append(CX([self.targets[0], self.targets[1]]))
+        gates.append(H([self.targets[3]]))
+        gates.append(CU1([self.targets[1], self.targets[3]], [np.pi / 8]))
+        gates.append(H([self.targets[3]]))
+        gates.append(CX([self.targets[1], self.targets[2]]))
+        gates.append(H([self.targets[3]]))
+        gates.append(CU1([self.targets[2], self.targets[3]], [-np.pi / 8]))
+        gates.append(H([self.targets[3]]))
+        gates.append(CX([self.targets[0], self.targets[2]]))
+        gates.append(H([self.targets[3]]))
+        gates.append(CU1([self.targets[2], self.targets[3]], [np.pi / 8]))
+        gates.append(H([self.targets[3]]))
+        gates.append(CX([self.targets[1], self.targets[2]]))
+        gates.append(H([self.targets[3]]))
+        gates.append(CU1([self.targets[2], self.targets[3]], [-np.pi / 8]))
+        gates.append(H([self.targets[3]]))
+        gates.append(CX([self.targets[0], self.targets[2]]))
+        gates.append(H([self.targets[3]]))
+        gates.append(CU1([self.targets[2], self.targets[3]], [np.pi / 8]))
+        gates.append(H([self.targets[3]]))
+
+        return gates
+
     def __array__(self, dtype=None):
         sx_array = [[0.5 + 0.5j, 0.5 - 0.5j], [0.5 - 0.5j, 0.5 + 0.5j]]
         return GateOperation.with_controlled_gate_array(
@@ -1648,6 +1780,35 @@ class C4X(GateOperation):
             self.targets[2],
             self.targets[4],
         ]).decompose()
+
+        return gates
+
+    def decompose_to_1q2q(self):
+        gates = []
+        gates.append(H([self.targets[4]]))
+        gates.append(CU1([self.targets[3], self.targets[4]], [np.pi / 2]))
+        gates.append(H([self.targets[4]]))
+        gates += C3X([
+            self.targets[0],
+            self.targets[1],
+            self.targets[2],
+            self.targets[3],
+        ]).decompose_to_1q2q()
+        gates.append(H([self.targets[4]]))
+        gates.append(CU1([self.targets[3], self.targets[4]], [-np.pi / 2]))
+        gates.append(H([self.targets[4]]))
+        gates += C3X([
+            self.targets[0],
+            self.targets[1],
+            self.targets[2],
+            self.targets[3],
+        ]).decompose_to_1q2q()
+        gates += C3SQRTX([
+            self.targets[0],
+            self.targets[1],
+            self.targets[2],
+            self.targets[4],
+        ]).decompose_to_1q2q()
 
         return gates
 

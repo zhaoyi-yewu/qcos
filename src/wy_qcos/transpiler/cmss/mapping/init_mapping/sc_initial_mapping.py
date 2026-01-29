@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -23,7 +23,7 @@ from wy_qcos.transpiler.cmss.mapping.init_mapping.subgraph_isomorphism import (
     topgraph_mapping,
 )
 from wy_qcos.transpiler.cmss.mapping.init_mapping.simulated_annealing import (
-    sa_initial_mapping,
+    SimulatedAnnealingMapping,
 )
 from wy_qcos.transpiler.cmss.mapping.init_mapping.sabre_mapping import (
     sabre_initial_mapping,
@@ -62,7 +62,8 @@ def get_initial_mapping(
     if method == "naive":
         return list(range(dependency_graph.get_dg_num_q()))
     elif method == "simulated_annealing":
-        return sa_initial_mapping(dependency_graph, coupling_graph)
+        sa_mapping = SimulatedAnnealingMapping()
+        return sa_mapping.run(dependency_graph, coupling_graph)
     elif method == "subgraph_isomorphism":
         return subgraph_isomorphism_mapping(dependency_graph, coupling_graph)
     elif method == "topgraph":

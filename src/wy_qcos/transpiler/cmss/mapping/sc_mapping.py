@@ -17,8 +17,8 @@
 
 from abc import ABC
 import networkx as nx
-from loguru import logger
 from schema import And, Optional, Or
+import time
 
 from wy_qcos.transpiler.cmss.common.gate_operation import BaseOperation
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
@@ -31,6 +31,7 @@ from wy_qcos.transpiler.cmss.mapping.init_mapping.sc_initial_mapping import (
 from wy_qcos.transpiler.cmss.mapping.routing.sc_routing import (
     SCRoutingFactory,
 )
+from wy_qcos.transpiler.common.utils import logger
 
 # 默认 sc_mapping 配置参数
 DEFAULT_SC_MAPPING_OPTIONS = {
@@ -45,7 +46,7 @@ DEFAULT_SC_MAPPING_OPTIONS = {
     # 评分层数
     "score_layer": 5,
     # 模拟模式: ["fix_cx_num", [N_sim, G_sim]]
-    "mode_sim": ["fix_cx_num", [500, 30]],
+    "mode_sim": ["fix_cx_num", [50, 10]],
     # 大小评分衰减率
     "score_decay_rate_size": 0.7,
     # 深度评分衰减率
@@ -187,6 +188,9 @@ class SCRoute(ABC):
     def _import_qpu_file(self, qpu_config, disable_qubits=[]):
         """硬件参数解析，获取一个包含耦合列表的字典.
 
+        如果 qpu_config 中包含 "current_block"，则只保留两端点都在
+        current_block 内的边，从而将 mapping 限制在指定的物理比特子集内。
+
         Args:
             qpu_config: 硬件配置字典
             disable_qubits: 不可用比特列表. Defaults to [].
@@ -200,6 +204,29 @@ class SCRoute(ABC):
             raise MappingException(
                 f"coupler_map must be a dict, but got {type(coupler_map)}"
             )
+
+        # 获取 current_block，如果存在则限制物理比特范围
+        current_block = qpu_config.get("current_block")
+        logger.info(f"current_block: {current_block}")
+        if current_block is not None:
+            # 将 current_block 转换为 set，并统一转换为整数
+            # 因为后续 q1, q2 是整数，需要类型一致才能正确比较
+            current_block_set = set()
+            for item in current_block:
+                if isinstance(item, str) and len(item) > 1:
+                    # 处理 'Q17' 格式，提取数字部分
+                    current_block_set.add(int(item[1:]))
+                elif isinstance(item, (int, float)):
+                    current_block_set.add(int(item))
+                else:
+                    current_block_set.add(item)
+            logger.info(
+                f"Limiting mapping to current_block: "
+                f"{sorted(current_block_set)}"
+            )
+        else:
+            current_block_set = None
+
         # 如果是字典，遍历values
         for value in coupler_map.values():
             # value可能是元组、列表或其他结构
@@ -229,6 +256,10 @@ class SCRoute(ABC):
                 continue
             if Q1 in disable_qubits or Q2 in disable_qubits:
                 continue
+            # 如果指定了 current_block，则只保留两端点都在 block 内的边
+            if current_block_set is not None:
+                if q1 not in current_block_set or q2 not in current_block_set:
+                    continue
             adjacency_list.append([q1, q2])
         qpu_config_dice["adjacency_list"] = adjacency_list
         return qpu_config_dice
@@ -294,8 +325,13 @@ class SCRoute(ABC):
         )
         self.ag.shortest_length_weight = self.ag.shortest_length
         self.ag.shortest_path = nx.shortest_path(
-            self.ag, source=None, target=None, weight=None, method="dijkstra"
+            self.ag,
+            source=None,
+            target=None,
+            weight=None,
+            method="dijkstra",
         )
+
         # 生成依赖图(DG)
         self.dg = DG()
         self.dg.num_q = qbit_num
@@ -319,10 +355,14 @@ class SCRoute(ABC):
         # 合并measure操作
         self.measure_ops.extend(measure_ops)
         self.num_q_vir = self.dg.num_q
+
         # 初始映射
+        start = time.time()
         init_map = get_initial_mapping(
             self.dg, self.ag, self.method_init_mapping
         )
+        end = time.time()
+        logger.info(f"get_initial_mapping time: {end - start}")
         logger.info(f"init_map: {init_map}")
         self.initial_layout = self._layout_list_to_dict(init_map)
 
@@ -401,18 +441,23 @@ class SCRoute(ABC):
                     "search_tree must be initialized for MCT routing algorithm"
                 )
             # 使用SCRouting执行路由搜索
-            mapped_ir = self.routing.execute_routing(
+            logger.info("MCTS routing start")
+            start = time.time()
+            mapped_ir, final_layout = self.routing.execute_routing(
                 search_tree=self.search_tree,
                 ag=self.ag,
                 initial_layout=self.initial_layout,
                 num_q_vir=self.num_q_vir,
                 measure_ops=self.measure_ops,
             )
+            logger.info(f"mapped_ir: {mapped_ir}")
+            end = time.time()
+            logger.info(f"MCTS routing time: {end - start}")
         else:
             # 对于SABRE算法，传递dg参数
             # self.routing 在 else 分支中一定是 SABRERouting 实例
             # pylint: disable-next=unexpected-keyword-arg
-            mapped_ir = self.routing.execute_routing(
+            mapped_ir, final_layout = self.routing.execute_routing(
                 search_tree=self.search_tree,
                 ag=self.ag,
                 initial_layout=self.initial_layout,
@@ -420,4 +465,5 @@ class SCRoute(ABC):
                 measure_ops=self.measure_ops,
                 dg=self.dg,
             )
-        return mapped_ir
+            logger.info(f"mapped_ir: {mapped_ir}")
+        return mapped_ir, final_layout

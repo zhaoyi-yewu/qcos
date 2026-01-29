@@ -23,7 +23,7 @@
 .. plantuml:: ../../_static/design/module-design/driver-class-er.puml
    :caption: 驱动类关系图
    :alt: 驱动类关系图
-   :width: 800
+   :width: 50%
    :align: center
 
 驱动初始化

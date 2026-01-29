@@ -24,6 +24,7 @@ from wy_qcos.transpiler.cmss.circuit.register import (
     ClassicalRegister,
 )
 from wy_qcos.transpiler.cmss.common.measure import Measure
+from wy_qcos.transpiler.common.errors import CircuitException
 
 
 class QuantumCircuit:
@@ -37,6 +38,14 @@ class QuantumCircuit:
             num_clbits (int): number of classical bits in the circuit.
             global_phase (float): global phase of the circuit.
         """
+        if not isinstance(num_qubits, int) or not isinstance(num_clbits, int):
+            raise CircuitException(
+                "num_qubits and num_clbits must be integers."
+            )
+        elif num_qubits < 0 or num_clbits < 0:
+            raise CircuitException(
+                "Number of qubits and clbits must be non-negative."
+            )
         self._num_qubits = num_qubits
         self._num_clbits = num_clbits
         # instructions by gate operations
@@ -132,7 +141,7 @@ class QuantumCircuit:
             raise ValueError("num_clbits must be non-negative")
         self._num_clbits = num_clbits
 
-    def depth(self):
+    def depth(self) -> int:
         """Calculate the depth of the quantum circuit.
 
         Returns:
@@ -155,13 +164,21 @@ class QuantumCircuit:
 
         return max(qubit_ops)
 
-    def width(self):
+    def width(self) -> int:
         """Calculate the width of the quantum circuit.
 
         Returns:
             width (int): number of bits in the quantum circuit
         """
         return self._num_qubits + self._num_clbits
+
+    def size(self):
+        """Returns total number of operations in circuit.
+
+        Returns:
+            int: Total number of gate operations.
+        """
+        return len(self._operations)
 
     def add_register(self, *regs: Register):
         """Add registers to the quantum circuit.
