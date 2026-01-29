@@ -440,7 +440,7 @@ class SCRoute(ABC):
                 raise MappingException(
                     "search_tree must be initialized for MCT routing algorithm"
                 )
-            # 使用SCRouting执行路由搜索
+            # 使用MCTSRouting执行路由搜索
             logger.info("MCTS routing start")
             start = time.time()
             mapped_ir, final_layout = self.routing.execute_routing(
