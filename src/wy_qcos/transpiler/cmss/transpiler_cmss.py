@@ -97,7 +97,8 @@ class TranspilerCmss(TranspilerBase):
         Args:
           qpu_cfg: qpu_cfg
           opt_result_dict: opt_result_dict
-        :return mapping result, dict, final_layout_dict
+        Return:
+        mapping result, dict, init_layout_dict, final_layout_dict
         """
         factory = MappingFactory()
 
@@ -122,6 +123,7 @@ class TranspilerCmss(TranspilerBase):
 
         mapping_dict = {}
         final_layout_dict = {}
+        init_layout_dict = {}
         if len(opt_result_dict) == 1:
             key, value = list(opt_result_dict.items())[0]
             mapping_dict[key] = value[0]
@@ -134,12 +136,18 @@ class TranspilerCmss(TranspilerBase):
                 mapping_res, final_layout = mapper.execute_with_order()
 
             final_layout_dict[key] = final_layout
+            init_layout_dict[key] = mapper.initial_layout
             logger.debug(f"after mapping: {mapping_res}")
             logger.info(
                 "mapping(execute_with_order): "
                 f"{mapping_exec_timer.elapsed:.4f}s\n"
             )
-            return mapping_res, mapping_dict, final_layout_dict
+            return (
+                mapping_res,
+                mapping_dict,
+                init_layout_dict,
+                final_layout_dict,
+            )
         else:
             ht = HierarchyTree(qpu_cfg)
             ht.construct()
@@ -169,8 +177,14 @@ class TranspilerCmss(TranspilerBase):
                 mapping_result, final_layout = mapper.execute_with_order()
                 mapping_res += mapping_result
                 final_layout_dict[key] = final_layout
+                init_layout_dict[key] = mapper.initial_layout
 
-            return mapping_res, mapping_dict, final_layout_dict
+            return (
+                mapping_res,
+                mapping_dict,
+                init_layout_dict,
+                final_layout_dict,
+            )
 
     def parse(self, src_code_dict):
         """Parse src_code_dict.
@@ -244,7 +258,7 @@ class TranspilerCmss(TranspilerBase):
         )
 
         with Timer() as mapping_timer:
-            mapping_res, mapping_dict, _ = self.mapping(
+            mapping_res, mapping_dict, _, _ = self.mapping(
                 qpu_cfg, dp_result_dict
             )
         logger.info(

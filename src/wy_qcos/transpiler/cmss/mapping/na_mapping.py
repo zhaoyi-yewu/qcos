@@ -37,6 +37,7 @@ class NASingleRoute(ABC):
         self.operate_area = None
         self.storage_area = None
         self.qpu_config = None
+        self.initial_layout = None
 
     def prepare_data(self, qbit_num, gates, qpu_configs):
         """配置qpu_config、gates、qbit_num，量子比特映射.
@@ -121,6 +122,7 @@ class NARoute(ABC):
         self.operate_area = None
         self.storage_area = None
         self.qpu_config = None
+        self.initial_layout = None
 
     def prepare_data(self, qbit_num, gates, qpu_configs):
         """配置qpu_config、gates、qbit_num，量子比特映射.
