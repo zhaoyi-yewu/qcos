@@ -120,9 +120,9 @@ class TestTaskFlowManager(unittest.TestCase):
         self.task_manager.deployments = asyncio.run(
             self.task_manager.create_deployments(deployment_configs)
         )
-        # verify job_flow.from_source is caled
+        # verify job_flow.from_source is called
         assert mock_job_flow.from_source.called
-        # verify flow.deploy is caled
+        # verify flow.deploy is called
         assert mock_flow.deploy.called
         # verify deployments is not None
         assert self.task_manager.deployments is not None
@@ -131,13 +131,30 @@ class TestTaskFlowManager(unittest.TestCase):
         deployment = self.task_manager.get_deployment(device_name)
         assert deployment is not None
 
-    def test_start_workers(self):
-        mock_client = AsyncMock()
-        mock_client.read_workers_for_work_pool.return_value = []
-        self.task_manager._client = mock_client
-        self.task_manager.set_device_manager(device_manager)
-        results = asyncio.run(self.task_manager.start_workers())
-        assert results is None
+    @patch("multiprocessing.Process")
+    def test_start_workers(self, mock_process_class):
+        # mock processes
+        mock_process = Mock()
+        mock_process.pid = 12345
+        mock_process.is_alive.return_value = True
+        mock_process_class.return_value = mock_process
+
+        # mock devices
+        mock_device_manager = Mock()
+        mock_devices = {
+            "dummy": {},
+            "qutip_sim": {},
+        }
+        mock_device_manager.get_devices.return_value = mock_devices
+        self.task_manager.set_device_manager(mock_device_manager)
+
+        # start workers
+        self.task_manager.start_workers()
+
+        # verify results
+        assert mock_process.daemon is True
+        mock_process.start.assert_called()
+        mock_process.start.call_count == len(mock_devices)
 
     def test_run_task_flow(self):
         mock_client = Mock()

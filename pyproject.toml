@@ -126,11 +126,6 @@ qiskit-transpiler = "wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd:main"
 
 [tool.poetry.dependencies]
 
-[[tool.poetry.source]]
-name = "pip_mirror"
-url = "http://mirrors.bclinux.org/bigcloud/bc-uns/bc-uns/pip/2.7/simple"
-priority = "primary"
-
 [tool.setuptools]
 include-package-data = true
 

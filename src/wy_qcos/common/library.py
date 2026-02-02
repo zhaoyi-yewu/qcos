@@ -30,6 +30,7 @@ import math
 import numpy as np
 import os
 import pkgutil
+import psutil
 import random
 import re
 import requests
@@ -334,6 +335,60 @@ class Library:
         except Exception as e:
             return False, f"failed to remove dir: {dir}. {e}"
         return True, None
+
+    @staticmethod
+    def get_processes(match_regex):
+        """Get processes.
+
+        Args:
+            match_regex: regex to match
+        """
+        processes = []
+        for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+            try:
+                cmdline = " ".join(proc.info["cmdline"] or [])
+                if Library.str_match(cmdline, match_regex):
+                    processes.append(proc)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        return processes
+
+    @staticmethod
+    def kill(process_list, force: bool = False):
+        """Kill processes.
+
+        Args:
+            process_list: processes
+            force: force to kill
+
+        Returns:
+            pids that are killed successfully, pids that are failed to kill
+        """
+        success_pids = []
+        failed_pids = []
+
+        for proc in process_list:
+            pid = proc.pid
+            try:
+                if force:
+                    # force to kill
+                    proc.kill()
+                else:
+                    # terminate processes gracefully
+                    proc.terminate()
+                # wait process to exit
+                gone, alive = psutil.wait_procs([proc], timeout=5)
+                if not alive:
+                    success_pids.append(pid)
+                else:
+                    # failed to terminate processes gracefully, force to kill
+                    proc.kill()
+                    psutil.wait_procs([proc], timeout=2)
+                    success_pids.append(pid)
+            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                failed_pids.append((pid, str(e)))
+
+        return success_pids, failed_pids
 
     @staticmethod
     def get_venv_dirs(venv_base_dir, default_venv_dir="default"):

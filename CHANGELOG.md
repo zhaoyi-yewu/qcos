@@ -16,6 +16,8 @@
 
 - 改进deployment的创建方式，启动qcos时直接根据设备名创建，而不是作业执行时创建
 - requirements目录中的各驱动相关requirements-DRIVER.txt挪到requirements/drivers目录下
+- 启动驱动的prefect worker从线程改为进程
+- prefect worker查询作业时间(PREFECT_WORKER_QUERY_SECONDS)从15秒改为1秒，大幅降低提交作业后等待的时间
 
 ### 修复问题
 

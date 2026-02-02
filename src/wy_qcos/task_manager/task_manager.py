@@ -163,6 +163,7 @@ class TaskFlowManager(ABC):
             self.deployments = self.loop.run_until_complete(
                 self.create_deployments(deployment_configs)
             )
+            self.kill_workers()
             self.start_workers()
             self.loop.run_until_complete(self.wait_workers())
             self.loop.run_until_complete(self.process_aggregation_job())
@@ -287,6 +288,12 @@ class TaskFlowManager(ABC):
         """
         return self.deployments.get(deployment_name, None)
 
+    def kill_workers(self):
+        """Kill workers."""
+        match_regex = r"\[prefect\]"
+        process_list = Library.get_processes(match_regex)
+        Library.kill(process_list)
+
     def start_workers(self):
         """Start workers using multiprocessing."""
         device_names = self.device_manager.get_devices().keys()
@@ -351,7 +358,7 @@ class TaskFlowManager(ABC):
                 ],
                 limit=concurrency_limit,
             )
-            setproctitle.setproctitle(process_name)
+            setproctitle.setproctitle(f"[prefect] {process_name}")
             asyncio.run(worker.start())
 
     async def wait_workers(self):
