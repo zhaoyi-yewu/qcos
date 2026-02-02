@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
+
 from wy_qcos.transpiler.cmss.common.gate_operation import (
     X,
     H,
@@ -68,3 +70,11 @@ class TestSubcircuitRewrite:
         assert len(nodes) == 1
         assert nodes[0].op.arg_value == [-0.1]
         validate_optimize_result(ir, dag)
+
+        ir = [H([0]), X([0]), H([0]), X([1]), RY([1], [0.1]), X([1])]
+        dag = DAGCircuit.ir_to_dag(ir)
+        opt = EquivalencePass()
+        cnt = opt.run(copy.deepcopy(dag), basis_gates=["h", "x", "z"])
+        assert cnt == 2
+        cnt = opt.run(copy.deepcopy(dag), basis_gates=["ry", "x"])
+        assert cnt == 2

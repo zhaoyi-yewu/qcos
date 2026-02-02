@@ -126,7 +126,7 @@ class DAGCircuit:
         else:
             raise ValueError(f"no {old_op.name} in the dag.")
 
-    def parameterize_all(self):
+    def parameterize_all_rz(self):
         """Convert all T/Tdg/S/Sdg/Z into Rz gates."""
         para_rule = {
             "s": np.pi / 2,
@@ -148,7 +148,7 @@ class DAGCircuit:
                 node.op = new_op
                 node.name = "rz"
 
-    def deparameterize_all(self):
+    def deparameterize_all_rz(self):
         """Convert all Rz gates into T/Tdg/S/Sdg/Z."""
         depara_rule = {
             0: ["id"],

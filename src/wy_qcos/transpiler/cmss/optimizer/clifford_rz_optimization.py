@@ -26,6 +26,7 @@ from wy_qcos.transpiler.cmss.optimizer.template import (
     generate_single_qubit_gate_templates,
     generate_cnot_ctrl_templates,
     generate_cnot_targ_templates,
+    filter_templates_by_basis,
 )
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
 from wy_qcos.transpiler.cmss.circuit.dag_node import DAGOpNode
@@ -68,17 +69,31 @@ class CliffordRzOptimization:
     def cnot_targ_template(self):
         return generate_cnot_targ_templates()
 
-    def reduce_hadamard_gates(self, dag: DAGCircuit) -> int:
+    def reduce_hadamard_gates(
+        self, dag: DAGCircuit, basis_gates: set | None = None
+    ) -> int:
         """Hadamard gate reduction algorithm.
 
         Args:
             dag (DAGCircuit): the DAG to be optimized.
+            basis_gates (set, optional): basis gates after decompose.
 
         Returns:
             int: the count of reduced H gates.
         """
+        op_counts = dag.count_ops()
+        if op_counts.get("h", 0) <= 1:
+            return 0
+
         cnt = 0
-        for template in self.hadamard_templates:
+        if basis_gates is not None:
+            templates = filter_templates_by_basis(
+                self.hadamard_templates, basis_gates
+            )
+        else:
+            templates = self.hadamard_templates
+
+        for template in templates:
             cnt += replace_all(dag, template)
         return cnt
 
@@ -141,15 +156,33 @@ class CliffordRzOptimization:
                 return nxt
         return None
 
-    def cancel_single_qubit_gates(self, dag: DAGCircuit):
+    def cancel_single_qubit_gates(
+        self, dag: DAGCircuit, basis_gates: set | None = None
+    ):
         """Merge Rz gates using commutation rules.
 
         Args:
             dag (DAGCircuit): the DAG to be optimized.
+            basis_gates (set, optional): basis gates after decompose.
 
         Returns:
             int: the count of reduced Rz gates.
         """
+        op_counts = dag.count_ops()
+        if op_counts.get("rz", 0) <= 1:
+            return 0
+
+        if basis_gates is not None:
+            basis_gates = basis_gates.intersection(op_counts.keys())
+            templates = filter_templates_by_basis(
+                self.single_qubit_gate_templates, basis_gates
+            )
+        else:
+            templates = self.single_qubit_gate_templates
+
+        if len(templates) == 0:
+            return 0
+
         cnt = 0
         for node in list(dag.topological_op_nodes()):
             if node.name != "rz":
@@ -179,7 +212,7 @@ class CliffordRzOptimization:
 
                 # template matching
                 mapping = None
-                for template in self.single_qubit_gate_templates:
+                for template in templates:
                     mapping = template.compare(dag, n_node, node.qargs[0])
                     if mapping:
                         out_node = template.template.output_map[
@@ -194,15 +227,37 @@ class CliffordRzOptimization:
                     break
         return cnt
 
-    def cancel_two_qubit_gates(self, dag: DAGCircuit):
+    def cancel_two_qubit_gates(
+        self, dag: DAGCircuit, basis_gates: set | None = None
+    ):
         """Merge cx gates using commutation rules.
 
         Args:
             dag (DAGCircuit): the DAG to be optimized.
+            basis_gates (set, optional): basis gates after decompose.
 
         Returns:
             int: the count of reduced Rz gates.
         """
+        op_counts = dag.count_ops()
+        if op_counts.get("cx", 0) <= 1:
+            return 0
+
+        if basis_gates is not None:
+            basis_gates = basis_gates.intersection(op_counts.keys())
+            cnot_ctrl_templates = filter_templates_by_basis(
+                self.cnot_ctrl_template, basis_gates
+            )
+            cnot_targ_templates = filter_templates_by_basis(
+                self.cnot_targ_template, basis_gates
+            )
+        else:
+            cnot_ctrl_templates = self.cnot_ctrl_template
+            cnot_targ_templates = self.cnot_targ_template
+
+        if len(cnot_ctrl_templates) == 0 and len(cnot_targ_templates) == 0:
+            return 0
+
         cnt = 0
         for node in list(dag.topological_op_nodes()):
             if node.name != "cx":
@@ -239,7 +294,7 @@ class CliffordRzOptimization:
 
                 # template matching from control qubit
                 mapping = None
-                for template in self.cnot_ctrl_template:
+                for template in cnot_ctrl_templates:
                     mapping = template.compare(dag, n_ctrl_node, c_ctrl_qubit)
                     if mapping:
                         # target qubit can not be in the template
@@ -264,7 +319,7 @@ class CliffordRzOptimization:
                     continue
 
                 # template matching from target qubit
-                for template in self.cnot_targ_template:
+                for template in cnot_targ_templates:
                     mapping = template.compare(dag, n_targ_node, c_targ_qubit)
                     if mapping:
                         # control qubit can not be in the template
@@ -290,19 +345,30 @@ class CliffordRzOptimization:
 
         return cnt
 
-    def merge_rotations(self, dag: DAGCircuit):
+    def merge_rotations(self, dag: DAGCircuit, basis_gates: set | None = None):
         """Optimize Rz gates using phase polynomials.
 
         Args:
             dag (DAGCircuit): dag to be optimized.
+            basis_gates (set, optional): basis gates after decompose.
 
         Returns:
             int: the count of reduced Rz gates.
         """
+        op_counts = dag.count_ops()
+        if op_counts.get("rz", 0) <= 1:
+            return 0
+
+        collect_gates = {"cx", "rz", "x"}
+        if basis_gates is not None:
+            collect_gates = collect_gates.intersection(basis_gates)
+        if len(collect_gates) <= 1:
+            return 0
+
         cnt = 0
         block_collector = BlockCollector(dag)
         blocks = block_collector.collect_all_matching_blocks(
-            lambda node: node.op.name in ["cx", "rz", "x"],
+            lambda node: node.op.name in collect_gates,
         )
         for block in blocks:
             cnt += self.parse_cnot_rz_circuit(block, dag)
@@ -377,18 +443,23 @@ class CliffordRzOptimization:
 
         return cnt
 
-    def run(self, dag: DAGCircuit):
+    def run(self, dag: DAGCircuit, basis_gates: set | None = None):
         """Optimize circuit with commutation rules.
 
         Args:
             dag (DAGCircuit): dag to be optimized.
+            basis_gates (set, optional): basis gates after decompose.
 
         Returns:
             DAGCircuit: optimized dag.
         """
         routine = self._optimize_routine
         init_size = dag.size()
-        dag.parameterize_all()
+
+        op_counts = dag.count_ops()
+        rz_phase_gates = {"s", "sdg", "t", "tdg", "z"}
+        if rz_phase_gates.intersection(op_counts.keys()):
+            dag.parameterize_all_rz()
 
         gate_reduced_cnt = 0
         total_time = 0.0
@@ -397,7 +468,9 @@ class CliffordRzOptimization:
         cnt = 0
         for step in routine:
             with Timer() as step_timer:
-                cur_cnt = getattr(self, self._optimize_sub_method[step])(dag)
+                cur_cnt = getattr(self, self._optimize_sub_method[step])(
+                    dag, basis_gates
+                )
 
             cnt += cur_cnt
             total_time += step_timer.elapsed
@@ -410,7 +483,11 @@ class CliffordRzOptimization:
 
             gate_reduced_cnt += cnt
 
-        dag.deparameterize_all()
+        op_counts = dag.count_ops()
+        if op_counts.get("rz", 0) > 0:
+            if basis_gates is None or rz_phase_gates.issubset(basis_gates):
+                dag.deparameterize_all_rz()
+
         res_size = dag.size()
 
         if self.verbose:

@@ -107,3 +107,22 @@ class TestAdjacentOptimization:
         assert nodes[3].op.name == "cry"
         assert np.isclose(nodes[3].op.arg_value[0], 0.3)
         validate_optimize_result(init_ir, dag)
+
+        # test with basis_gates
+        ir = [
+            RX([0], [0.1]),
+            RX([0], [0.2]),
+            S([1]),
+            S([1]),
+            U1([0], [0.1]),
+            U1([0], [0.1]),
+        ]
+        init_ir = copy.deepcopy(ir)
+        dag = DAGCircuit.ir_to_dag(ir)
+        cnt = opt.run(copy.deepcopy(dag), basis_gates=["rx", "u1"])
+        assert cnt == 2
+        validate_optimize_result(init_ir, dag)
+
+        cnt = opt.run(copy.deepcopy(dag), basis_gates=["rx", "u1", "rz"])
+        assert cnt == 3
+        validate_optimize_result(init_ir, dag)

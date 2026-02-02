@@ -224,7 +224,7 @@ class TranspilerCmss(TranspilerBase):
         opt_result_dict = {}
         with Timer() as optimize1_timer:
             for key, value in parse_result.items():
-                opt_result = optimize(value[1], opt_level)
+                opt_result = optimize(value[1], opt_level=1)
                 opt_result_dict[key] = (value[0], opt_result)
         logger.info(
             f"tranpiler(optimize firstly): {optimize1_timer.elapsed:.4f}s\n"
@@ -275,7 +275,11 @@ class TranspilerCmss(TranspilerBase):
 
         # secondly optimize
         with Timer() as optimize2_timer:
-            basis_gate_list = optimize(decomposer_circuit, opt_level)
+            basis_gate_list = optimize(
+                decomposer_circuit,
+                opt_level,
+                basis_gates=set(supp_basis_gates),
+            )
         logger.debug(f"final basis_gate_list: {basis_gate_list}")
         logger.info(
             f"tranpiler(optimize secondly): {optimize2_timer.elapsed:.4f}s\n"
