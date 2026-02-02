@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -14,6 +14,8 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ---------------------------------------------------------------------
+
+import pytest
 
 from unittest.mock import patch, Mock
 
@@ -40,6 +42,7 @@ class TestDriverQiskitQasmSim:
     def test_close_driver(self):
         assert driver_qasm_sim.close_driver() is None
 
+    @pytest.mark.smoke
     @patch.object(AerBackend, "run")
     def test_run(self, mock_run):
         mock_result_value = {"00": 45, "11": 55}

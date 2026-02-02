@@ -40,6 +40,7 @@ class TestLibrary:
     def setup_class(cls):
         cls.temp_dir = GLOBAL_CONFIGS["temp_dir"]
 
+    @pytest.mark.smoke
     def test_get_brief_description(self):
         description = "description"
         brief = library.get_brief_description(description)

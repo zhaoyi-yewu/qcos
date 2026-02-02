@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
+
 from unittest.mock import Mock, patch
 
 from wy_qcos.api.posiq.routes_jsonrpc.device import (
@@ -46,6 +48,7 @@ class TestDevice:
     def setup_class(cls):
         cls.dummy = Constant.TRANSPILER_DUMMY
 
+    @pytest.mark.smoke
     @patch.object(DeviceManager, "get_devices")
     @patch.object(TaskScheduler, "get_device_manager")
     def test_get_devices(self, mock_get_device_manager, mock_get_devices):

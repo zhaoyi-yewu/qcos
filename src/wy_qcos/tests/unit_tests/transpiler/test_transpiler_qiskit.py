@@ -61,6 +61,7 @@ class TestTranspilerQiskit:
     def test_read_qasm_from_file(self):
         read_qasm_from_file("None")
 
+    @pytest.mark.smoke
     def test_transpiler_qiskit(self):
         expected_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_RX,

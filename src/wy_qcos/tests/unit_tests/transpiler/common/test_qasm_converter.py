@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -16,12 +16,14 @@
 # ----------------------------------------------------------------------
 
 import os
+import pytest
 
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.transpiler.cmss.common.qasm_converter import QasmConverter
 
 
 class TestQasmConverter:
+    @pytest.mark.smoke
     def test_single_qubit_gates(self):
         openqasm2_header = """OPENQASM 2.0;
 include "qelib1.inc";

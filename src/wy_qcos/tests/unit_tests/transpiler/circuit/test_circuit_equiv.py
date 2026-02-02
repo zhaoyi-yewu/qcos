@@ -24,6 +24,7 @@ from wy_qcos.transpiler.cmss.circuit.circuit_equiv import CircuitEquivChecker
 
 
 class TestCircuitEquvChecker:
+    @pytest.mark.smoke
     def test_circuit_equiv(self):
         qc1 = QuantumCircuit(num_qubits=2)
         gates_list = [X([0]), CX([0, 1]), H([1])]

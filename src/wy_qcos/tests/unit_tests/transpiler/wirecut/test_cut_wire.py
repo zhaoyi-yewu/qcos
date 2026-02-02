@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import os
+import pytest
 import unittest
 import numpy as np
 
@@ -57,6 +58,7 @@ class TestCutWire(unittest.TestCase):
             if os.path.exists(log_file):
                 os.unlink(log_file)
 
+    @pytest.mark.smoke
     @patch(
         "wy_qcos.transpiler.cmss.wirecut.cut_wire.open",
         side_effect=lambda *args, **kwargs: MagicMock(),

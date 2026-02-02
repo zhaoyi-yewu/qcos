@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ---------------------------------------------------------------------
 
+import pytest
+
 from unittest.mock import patch
 
 from wy_qcos.common.library import Library
@@ -26,6 +28,7 @@ obj = DriverManager()
 
 
 class TestDriverManager:
+    @pytest.mark.smoke
     @patch.object(Library, "import_classes")
     @patch("wy_qcos.drivers.driver_manager.Config")
     def test_load_drivers(self, mock_config, mock_import_classes):

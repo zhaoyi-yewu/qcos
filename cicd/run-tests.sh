@@ -58,6 +58,7 @@ client_unit_test_success=-1
 client_coverage_success=-1
 system_test_success=-1
 wrapper="sh -c"
+pytest_ini="${TOP_DIR}/src/wy_qcos/tests/pytest.ini"
 
 while true; do
   case "$1" in
@@ -94,10 +95,20 @@ function run_unit_tests {
   echo "[Running unit tests (QCOS)]"
   args=$*
   test_case="${TOP_DIR}/src/wy_qcos/tests/unit_tests"
-  if [ "${args,,}" != "all" ]; then
+  local pytest_mark=""
+  local junit_report="--junitxml=${TOP_DIR}/cicd/report.xml"
+  if [ "${args,,}" = "smoke" ]; then
+    pytest_mark="-m 'smoke'"
+  elif [ "${args,,}" = "slow" ]; then
+    pytest_mark="-m 'slow'"
+  elif [ "${args,,}" = "default" ]; then
+    pytest_mark="-m 'not smoke and not slow'"
+  elif [ "${args,,}" = "all" ]; then
+    pytest_mark=""
+  else
     test_case=${args}
   fi
-  ${wrapper} "python3 -m pytest --disable-warnings -vv --junitxml=${TOP_DIR}/cicd/report.xml ${test_case}"
+  ${wrapper} "python3 -m pytest -c ${pytest_ini} ${pytest_mark} ${junit_report} ${test_case}"
   unit_test_success=$?
   echo
 }
@@ -106,10 +117,20 @@ function run_client_unit_tests {
   echo "[Running unit tests (QCOS CLIENT)]"
   args=$*
   test_case="${TOP_DIR}/src/wy_qcos_client/tests/unit_tests"
-  if [ "${args,,}" != "all" ]; then
+  local pytest_mark=""
+  local junit_report="--junitxml=${TOP_DIR}/cicd/report.xml"
+  if [ "${args,,}" = "smoke" ]; then
+    pytest_mark="-m 'smoke'"
+  elif [ "${args,,}" = "slow" ]; then
+    pytest_mark="-m 'slow'"
+  elif [ "${args,,}" = "default" ]; then
+    pytest_mark="-m 'not smoke and not slow'"
+  elif [ "${args,,}" = "all" ]; then
+    pytest_mark=""
+  else
     test_case=${args}
   fi
-  ${wrapper} "python3 -m pytest --disable-warnings -vv --junitxml=${TOP_DIR}/cicd/client-report.xml ${test_case}"
+  ${wrapper} "python3 -m pytest -c ${pytest_ini} ${pytest_mark} ${junit_report} ${test_case}"
   client_unit_test_success=$?
   echo
 }
@@ -123,7 +144,7 @@ function run_coverage {
     test_case=${args}
   fi
   ${wrapper} "rm -rf ${BASE_DIR}/coverage ${BASE_DIR}/coverage.xml"
-  ${wrapper} "coverage3 run --data-file=${BASE_DIR}/.coverage --omit='*/site-packages/*' -m pytest --disable-warnings -vv ${test_case}"
+  ${wrapper} "coverage3 run --data-file=${BASE_DIR}/.coverage --omit='*/site-packages/*' -m pytest -c ${pytest_ini} ${test_case}"
   ${wrapper} "coverage3 xml --data-file=${BASE_DIR}/.coverage -o ${BASE_DIR}/coverage.xml"
   ${wrapper} "coverage3 report --data-file=${BASE_DIR}/.coverage --include='${TOP_DIR}/src/wy_qcos/*' --omit='${TOP_DIR}/src/wy_qcos/tests/*' -m --fail-under=$min_fail_rate"
   coverage_success=$?
@@ -140,7 +161,7 @@ function run_client_coverage {
     test_case=${args}
   fi
   ${wrapper} "rm -rf ${BASE_DIR}/coverage ${BASE_DIR}/client-coverage.xml"
-  ${wrapper} "coverage3 run --data-file=${BASE_DIR}/.client_coverage --omit='*/site-packages/*' -m pytest --disable-warnings -vv ${test_case}"
+  ${wrapper} "coverage3 run --data-file=${BASE_DIR}/.client_coverage --omit='*/site-packages/*' -m pytest -c ${pytest_ini} ${test_case}"
   ${wrapper} "coverage3 xml --data-file=${BASE_DIR}/.client_coverage -o ${BASE_DIR}/client-coverage.xml"
   ${wrapper} "coverage3 report --data-file=${BASE_DIR}/.client_coverage --include='${TOP_DIR}/src/wy_qcos_client/*' --omit='${TOP_DIR}/src/wy_qcos_client/tests/*' -m --fail-under=$min_fail_rate"
   client_coverage_success=$?
@@ -152,10 +173,19 @@ function run_system_tests {
   echo "[Running system tests]"
   args=$*
   test_case="${TOP_DIR}/src/wy_qcos/tests/system_tests"
-  if [ "${args,,}" != "all" ]; then
+  local pytest_mark=""
+  if [ "${args,,}" = "smoke" ]; then
+    pytest_mark="-m 'smoke'"
+  elif [ "${args,,}" = "slow" ]; then
+    pytest_mark="-m 'slow'"
+  elif [ "${args,,}" = "default" ]; then
+    pytest_mark="-m 'not smoke and not slow'"
+  elif [ "${args,,}" = "all" ]; then
+    pytest_mark=""
+  else
     test_case=${args}
   fi
-  ${wrapper} "python3 -m pytest --disable-warnings -vv ${test_case}"
+  ${wrapper} "python3 -m pytest -c ${pytest_ini} ${pytest_mark} ${test_case}"
   system_test_success=$?
   echo
 }

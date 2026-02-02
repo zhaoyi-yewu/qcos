@@ -79,6 +79,7 @@ class TestTaskScheduler:
             task.add(job_info, None)
         assert str(context.value) is not None
 
+    @pytest.mark.smoke
     @patch.object(TaskFlowManager, "get_job_artifact")
     @patch.object(TaskScheduler, "get_job_status")
     @patch.object(TaskFlowManager, "convert_to_qcos_state")

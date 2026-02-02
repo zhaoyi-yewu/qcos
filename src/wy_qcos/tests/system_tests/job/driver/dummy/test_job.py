@@ -37,6 +37,7 @@ class TestJob:
     def teardown_class(cls):
         pass
 
+    @pytest.mark.smoke
     def test_submit_job(self):
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),

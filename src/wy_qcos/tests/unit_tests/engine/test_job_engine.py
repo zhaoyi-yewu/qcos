@@ -212,6 +212,7 @@ class TestJobEngine:
         assert update_progress("id", "progress") is None
 
     # test _run_code
+    @pytest.mark.smoke
     @patch("wy_qcos.engine.job_engine.flow_run_driver")
     @patch("wy_qcos.engine.job_engine.flow_transpile")
     @patch("wy_qcos.engine.job_engine.flow_parse")

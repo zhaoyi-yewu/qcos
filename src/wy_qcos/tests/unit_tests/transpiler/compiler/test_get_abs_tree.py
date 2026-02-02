@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -14,6 +14,8 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+import pytest
 
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree
 from wy_qcos.transpiler.cmss.compiler.qtypes import Node
@@ -58,6 +60,7 @@ class TestGetAbsTree:
         measure q[1] -> c[1];
         """
 
+    @pytest.mark.smoke
     def test_get_abs_tree(self):
         tree = get_abs_tree(self.data)
         assert tree is not None

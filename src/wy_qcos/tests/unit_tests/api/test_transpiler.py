@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
 from unittest.mock import Mock, patch
 
 from wy_qcos.api.posiq.routes_jsonrpc.transpiler import (
@@ -40,6 +41,7 @@ response_info = {
 
 
 class TestTranspiler:
+    @pytest.mark.smoke
     @patch.object(TranspilerManager, "get_transpilers")
     @patch.object(TaskScheduler, "get_transpiler_manager")
     def test_get_transpilers(

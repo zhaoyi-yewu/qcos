@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import json
+import pytest
 import unittest
 import zerorpc
 from unittest.mock import patch, MagicMock
@@ -113,6 +114,7 @@ class TestDriverSpinQRpc(unittest.TestCase):
         success, err_msg = self.driver.validate_driver_configs(configs)
         assert success is False
 
+    @pytest.mark.smoke
     @patch.object(DriverSpinQRpc, "submit_task")
     @patch.object(DriverSpinQRpc, "check_task_status")
     @patch.object(DriverSpinQRpc, "get_task_results")

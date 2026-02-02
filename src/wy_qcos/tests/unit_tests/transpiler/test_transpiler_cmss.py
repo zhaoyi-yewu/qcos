@@ -83,6 +83,7 @@ class TestTranspilerCmss:
         trans_cfg_inst.set_tech_type(Constant.TECH_TYPE_NEUTRAL_ATOM)
         trans_cfg_inst.set_max_qubits(6)
 
+    @pytest.mark.smoke
     @patch(
         "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
     )

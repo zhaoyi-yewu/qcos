@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
 import time
 
 from wy_qcos.common.constant import Constant
@@ -26,6 +27,7 @@ from wy_qcos.tests.unit_tests.transpiler.comm import validate_gate_ir
 
 
 class TestPerformance:
+    @pytest.mark.smoke
     def test_compile_performance(self):
         file_path = "../../../samples/qasm/3.0/benchmark/100bits_50000d.qasm"
         qasm_data = read_qasm_from_file(file_path)

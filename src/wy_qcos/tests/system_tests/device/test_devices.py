@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -35,10 +35,12 @@ class TestDevice:
     def teardown_class(cls):
         pass
 
+    @pytest.mark.smoke
     def test_get_devices(self):
         devices = StLibrary.get_devices(self.client)
         assert isinstance(devices, dict)
 
+    @pytest.mark.smoke
     def test_get_device(self):
         device_name = "dummy"
         device = StLibrary.get_device(self.client, device_name)

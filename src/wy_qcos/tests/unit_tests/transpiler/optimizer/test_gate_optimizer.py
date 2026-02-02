@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
+
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import pass_merge_theta
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import (
@@ -67,6 +69,7 @@ class TestGateOptimizer:
         if (c==1) x q[1];
         """
 
+    @pytest.mark.smoke
     def test_pass_optimize_gate(self):
         tree = get_abs_tree(self.data)
         assert tree is not None
