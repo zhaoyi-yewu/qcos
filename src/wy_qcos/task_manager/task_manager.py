@@ -16,14 +16,16 @@
 # ----------------------------------------------------------------------
 
 import asyncio
-import threading
 import logging
+import multiprocessing
+import setproctitle
+import threading
 from abc import ABC
 from time import sleep
 from pathlib import Path
 from typing import Any
 
-from prefect import get_client
+from prefect import get_client, settings as prefect_settings
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.objects import WorkerStatus, StateType
 from prefect.client.schemas.filters import (
@@ -38,7 +40,6 @@ from prefect.client.schemas.filters import (
 from prefect.exceptions import ObjectNotFound
 from prefect.states import State
 from prefect.workers import ProcessWorker
-from rich.console import Console
 
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant, HttpCode
@@ -56,7 +57,6 @@ class TaskFlowManager(ABC):
         self._client = None
         self._sync_client = None
         self.loop = None
-        self._console = None
         self.worker_status = False
         self.driver_manager = None
         self.device_manager = None
@@ -143,25 +143,29 @@ class TaskFlowManager(ABC):
 
     def start(self):
         """Create work pools, queues and start workers."""
-        self._client = get_client()
-        self._sync_client = get_client(sync_client=True)
-        self._console = Console(quiet=True)
-        self.loop = asyncio.new_event_loop()
+        prefect_configs = TaskFlowManager.get_prefect_configs()
+        with prefect_settings.temporary_settings(updates=prefect_configs):
+            self._client = get_client()
+            self._sync_client = get_client(sync_client=True)
+            self.loop = asyncio.new_event_loop()
 
-        self.check_connection()
-        device_names = self.device_manager.get_devices().keys()
-        self.loop.run_until_complete(
-            self.create_pools(pool_names=device_names)
-        )
-        self.loop.run_until_complete(
-            self.create_queues(queue_names=device_names)
-        )
-        deployment_configs = self.generate_deployment_configs(device_names)
-        self.deployments = self.loop.run_until_complete(
-            self.create_deployments(deployment_configs)
-        )
-        self.loop.run_until_complete(self.start_workers())
-        self.loop.run_until_complete(self.process_aggregation_job())
+            self.check_connection()
+            device_names = self.device_manager.get_devices().keys()
+
+            # create resources
+            self.loop.run_until_complete(
+                self.create_pools(pool_names=device_names)
+            )
+            self.loop.run_until_complete(
+                self.create_queues(queue_names=device_names)
+            )
+            deployment_configs = self.generate_deployment_configs(device_names)
+            self.deployments = self.loop.run_until_complete(
+                self.create_deployments(deployment_configs)
+            )
+            self.start_workers()
+            self.loop.run_until_complete(self.wait_workers())
+            self.loop.run_until_complete(self.process_aggregation_job())
 
     def set_driver_manager(self, driver_manager):
         """Set driver manager.
@@ -184,6 +188,10 @@ class TaskFlowManager(ABC):
 
         def is_connected():
             try:
+                print(
+                    f"Check connection to prefect api: "
+                    f"{Config.PREFECT_API_URL} ... "
+                )
                 hello = self._sync_client.hello()
                 if hello and hello.status_code == HttpCode.SUCCESS_OK:
                     return True, None, None
@@ -279,20 +287,82 @@ class TaskFlowManager(ABC):
         """
         return self.deployments.get(deployment_name, None)
 
-    async def start_workers(self):
-        """Start all workers for work pool."""
-        # start worker
+    def start_workers(self):
+        """Start workers using multiprocessing."""
         device_names = self.device_manager.get_devices().keys()
-        for pool_name in device_names:
-            worker_thread = threading.Thread(
-                target=self.start_work, args=(pool_name,), daemon=True
+        pool_names = device_names
+        for pool_name in pool_names:
+            process_name = f"process-{pool_name}"
+            concurrency_limit = Constant.DEFAULT_POOL_CONCURRENCY
+            p = multiprocessing.Process(
+                target=self.start_work,
+                args=(process_name, pool_name, concurrency_limit),
+                name=process_name,
             )
-            worker_thread.start()
+            p.daemon = True
+            p.start()
+            logger.info(
+                f"Started Prefect Worker process: {process_name} "
+                f"for pool: {pool_name}"
+            )
+
+    @staticmethod
+    def get_prefect_configs():
+        """Set prefect configs."""
+        prefect_configs = {}
+        settings = [
+            "PREFECT_SERVER_DATABASE_CONNECTION_URL",
+            "PREFECT_API_URL",
+            "PREFECT_WORKER_HEARTBEAT_SECONDS",
+            "PREFECT_WORKER_QUERY_SECONDS",
+            "PREFECT_WORKER_PREFETCH_SECONDS",
+            "PREFECT_LOCAL_STORAGE_PATH",
+            "PREFECT_LOGGING_LEVEL",
+        ]
+
+        for setting in settings:
+            prefect_configs[getattr(prefect_settings, setting)] = getattr(
+                Config, setting
+            )
+        prefect_settings.PREFECT_WORKER_ENABLE_CANCELLATION = True
+
+        return prefect_configs
+
+    @staticmethod
+    def start_work(process_name, pool_name, concurrency_limit):
+        """Start worker by prefect client.
+
+        Args:
+            process_name: process name
+            pool_name: work pool name
+            concurrency_limit: max num of jobs running at the same time
+        """
+        # get prefect configs
+        prefect_configs = TaskFlowManager.get_prefect_configs()
+
+        # start process worker
+        with prefect_settings.temporary_settings(updates=prefect_configs):
+            worker = ProcessWorker(
+                name=process_name,
+                work_pool_name=pool_name,
+                work_queues=[
+                    f"{pool_name}_{str(i)}"
+                    for i in range(1, Constant.MAX_JOB_PRIORITY + 1)
+                ],
+                limit=concurrency_limit,
+            )
+            setproctitle.setproctitle(process_name)
+            asyncio.run(worker.start())
+
+    async def wait_workers(self):
+        """Start all workers for work pool."""
+        device_names = self.device_manager.get_devices().keys()
+        pool_names = device_names
 
         # wait for all workers are online
-        all_worker_status = {workpool: False for workpool in device_names}
+        all_worker_status = {workpool: False for workpool in pool_names}
         time = 0
-        for workpool in device_names:
+        for workpool in pool_names:
             workers = await self._client.read_workers_for_work_pool(workpool)
             work_status = [
                 worker.status == WorkerStatus.ONLINE for worker in workers
@@ -310,22 +380,6 @@ class TaskFlowManager(ABC):
             # timeout
             if time > Constant.DEFAULT_JOB_TIMEOUT:
                 raise TimeoutError("Workers start timeout")
-
-    def start_work(self, pool_name):
-        """Start worker by prefect client.
-
-        Args:
-            pool_name: work pool name
-        """
-        worker = ProcessWorker(
-            work_pool_name=pool_name,
-            limit=Constant.DEFAULT_POOL_CONCURRENCY,
-            work_queues=[
-                f"{pool_name}_{str(i)}"
-                for i in range(1, Constant.MAX_JOB_PRIORITY + 1)
-            ],
-        )
-        asyncio.run(worker.start(printer=self._console.print))
 
     def run_task_flow(
         self,

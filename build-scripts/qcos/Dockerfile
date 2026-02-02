@@ -66,7 +66,7 @@ RUN \
 # make python symbolic link
     ln -sf /usr/bin/python3 /usr/bin/python && \
 # install requirements for default python3
-    pip3 install --no-cache-dir -r /tmp/requirements/requirements.txt && \
+    pip3 install --no-cache-dir -r /tmp/requirements/requirements.txt -r /tmp/requirements/requirements-test.txt && \
 # compile python3 if required
     if [ -n "${PYTHON_SRC_MIRROR}" ]; then \
       python_build_dir="/tmp/python-build" ; \
@@ -124,12 +124,13 @@ RUN \
     ${PYTHONBIN} ${BUILD_CONTEXT}/requirements/install-venvs.py --venv-dir ${VENV_PATH} && \
 # create symbolic link for python3
     if [ "${DEV,,}" = "false" ]; then \
-      # install qcos wheel package in production mode
-      source ${VENV_PATH}/default/bin/activate ; \
+      # install qcos wheel package in production mode \
+      DEFAULT_VENV_PATH=${VENV_PATH}/default ; \
+      source ${DEFAULT_VENV_PATH}/bin/activate ; \
       pip3 install --no-cache-dir ${BUILD_CONTEXT}/pkg/wy_qcos-*.whl ${BUILD_CONTEXT}/pkg/wy_qcos_client-*.whl;  \
       deactivate ; \
-      cp -rf /usr/local/share/wy_qcos/etc/qcos/* /etc/qcos-template/ ; \
-      cp -rf /usr/local/share/wy_qcos_client/samples /root/ ; \
+      cp -rf ${DEFAULT_VENV_PATH}/share/wy_qcos/etc/qcos/* /etc/qcos-template/ ; \
+      cp -rf ${DEFAULT_VENV_PATH}/share/wy_qcos_client/samples /root/ ; \
     else \
       # install qcos resource files in dev mode
       mkdir -p /root/qcos-project ; \

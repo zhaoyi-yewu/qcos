@@ -83,6 +83,15 @@ API_SERVER_LISTEN_IP = "${API_SERVER_LISTEN_IP:-}"
 # API server listen port
 API_SERVER_LISTEN_PORT = ${API_SERVER_LISTEN_PORT:-18400}
 
+[PREFECT]
+PREFECT_API_URL = "${PREFECT_API_URL:-http://127.0.0.1:4200/api}"
+PREFECT_SERVER_DATABASE_CONNECTION_URL = "${PREFECT_SERVER_DATABASE_CONNECTION_URL:-sqlite+aiosqlite:///var/qcos/db/prefect.db}"
+PREFECT_LOCAL_STORAGE_PATH = "${PREFECT_LOCAL_STORAGE_PATH:-/var/qcos/storage}"
+PREFECT_WORKER_QUERY_SECONDS = ${PREFECT_WORKER_QUERY_SECONDS:-1}
+PREFECT_WORKER_PREFETCH_SECONDS = ${PREFECT_WORKER_PREFETCH_SECONDS:-1}
+PREFECT_WORKER_HEARTBEAT_SECONDS = ${PREFECT_WORKER_HEARTBEAT_SECONDS:-30}
+PREFECT_LOGGING_LEVEL = "${PREFECT_LOGGING_LEVEL:-INFO}"
+
 [LOG]
 # api log file
 API_LOG_FILE = "${API_LOG_FILE:-/var/log/qcos/qcos-api.log}"
@@ -116,7 +125,7 @@ USE_SSL = false
 [DEVICES]
 # DEVICE_LIST example:
 # DEVICE_LIST = ["dummy", "hanyuan1", "wy-hanyuan1", "tiangong100", "tiangong100_v2", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim"]
-DEVICE_LIST = [${DEVICE_LIST:-\"dummy\"}]
+DEVICE_LIST = [${DEVICE_LIST:-\"dummy\", \"qutip_sim\"}]
 EOM
 fi
 

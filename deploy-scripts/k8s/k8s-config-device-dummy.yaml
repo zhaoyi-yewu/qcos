@@ -49,6 +49,15 @@ data:
     # API server listen port
     API_SERVER_LISTEN_PORT = ${QCOS_API_SERVER_PORT}
 
+    [PREFECT]
+    PREFECT_SERVER_DATABASE_CONNECTION_URL = "sqlite+aiosqlite:///var/qcos/db/prefect.db"
+    PREFECT_API_URL = ${PREFECT_API_URL}
+    PREFECT_WORKER_QUERY_SECONDS = 30
+    PREFECT_WORKER_PREFETCH_SECONDS = 1
+    PREFECT_WORKER_HEARTBEAT_SECONDS = 30
+    PREFECT_LOCAL_STORAGE_PATH = "/var/qcos/storage"
+    PREFECT_LOGGING_LEVEL = "INFO"
+    
     [LOG]
     # api log file
     API_LOG_FILE = "/var/log/qcos/qcos-api.log"

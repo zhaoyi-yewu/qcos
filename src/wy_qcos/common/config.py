@@ -83,8 +83,27 @@ class Config:
     # [DEVICES]
     DEVICE_LIST = []
 
+    # [PREFECT]
+    PREFECT_SERVER_DATABASE_CONNECTION_URL = (
+        "sqlite+aiosqlite:///var/qcos/db/prefect.db"
+    )
+    PREFECT_API_URL = "http://127.0.0.1:4200/api"
+    PREFECT_WORKER_QUERY_SECONDS = 30
+    PREFECT_WORKER_PREFETCH_SECONDS = 1
+    PREFECT_WORKER_HEARTBEAT_SECONDS = 30
+    PREFECT_LOCAL_STORAGE_PATH = "/var/qcos/storage"
+    PREFECT_LOGGING_LEVEL = "INFO"
+
     # valid sections
-    VALID_SECTIONS = ["DEFAULT", "VIRT", "API_SERVER", "LOG", "SSL", "DEVICES"]
+    VALID_SECTIONS = [
+        "DEFAULT",
+        "VIRT",
+        "API_SERVER",
+        "LOG",
+        "SSL",
+        "PREFECT",
+        "DEVICES",
+    ]
 
     # extra configs from .toml files
     EXTRA_CONFIGS = {}
