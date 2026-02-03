@@ -56,6 +56,7 @@ class RandomCircuitGen:
         reset: bool = False,
         seed: None | int = None,
         gate_type: int = 1,
+        density: float = 0.05,
         outfile: None | str = None,
     ):
         """Generate random circuit of arbitrary size and form.
@@ -70,6 +71,9 @@ class RandomCircuitGen:
             seed (int, optional): random seed. Defaults to None.
             gate_type (int): type of gates. 0 for random gates,
             1 for Clifford + T.
+            density (float): the number of qubits that would be used to filled
+            with gates, representing density of gates in the circuit.
+            Defaults to 0.3.
             outfile (str, optional): output file path. Defaults to None.
 
         Returns:
@@ -86,9 +90,12 @@ class RandomCircuitGen:
             raise CircuitException(
                 f"Invalid gate_type. gate_type must be 0 or 1: {gate_type}."
             )
+        if density <= 0 or density > 1:
+            raise CircuitException(
+                f"Invalid density, density must be in (0, 1]: {density}."
+            )
 
         self.num_qubits = num_qubits
-        self.depth = depth
         max_operands = (
             max_operands if num_qubits > max_operands else num_qubits
         )
@@ -182,7 +189,6 @@ class RandomCircuitGen:
                 ("num_params", np.int64),
             ],
         )
-        gates_1q_arr = np.array(gates_1q, dtype=gates_arr.dtype)
 
         qc = QuantumCircuit(num_qubits)
 
@@ -194,11 +200,14 @@ class RandomCircuitGen:
             seed = np.random.randint(0, np.iinfo(np.int32).max)
         rng = np.random.default_rng(seed)
 
-        qubits = [i for i in range(num_qubits)]
+        # list of qubits
+        all_qubits = [i for i in range(num_qubits)]
+        used_num = max(max_operands, int(num_qubits * density))
+        used_qubits = random.sample(all_qubits, k=used_num)
         # Apply arbitrary random operations in layers across all qubits.
         for _ in range(depth):
             # Select num_qubits gates randomly.
-            gate_specs = rng.choice(gates_arr, size=len(qubits))
+            gate_specs = rng.choice(gates_arr, size=len(used_qubits))
             # Get the cumulative number of qubits used by each gate.
             cumulative_qubits = np.cumsum(
                 gate_specs["num_qubits"], dtype=np.int64
@@ -210,15 +219,9 @@ class RandomCircuitGen:
             # Then get the lack of qubits for the last gate and
             # the total qubits.
             max_index = np.searchsorted(
-                cumulative_qubits, num_qubits, side="right"
+                cumulative_qubits, used_num, side="right"
             )
             gate_specs = gate_specs[:max_index]
-            slack = num_qubits - cumulative_qubits[max_index - 1]
-            if slack:
-                gate_specs = np.hstack((
-                    gate_specs,
-                    rng.choice(gates_1q_arr, size=slack),
-                ))
 
             # qubits list
             q_indices = np.empty(len(gate_specs) + 1, dtype=np.int64)
@@ -228,7 +231,7 @@ class RandomCircuitGen:
             np.cumsum(gate_specs["num_qubits"], out=q_indices[1:])
             np.cumsum(gate_specs["num_params"], out=p_indices[1:])
             parameters = rng.uniform(0, 2 * np.pi, size=p_indices[-1])
-            rng.shuffle(qubits)
+            rng.shuffle(used_qubits)
 
             for gate, q_start, q_end, p_start, p_end in zip(
                 gate_specs["class"],
@@ -237,18 +240,22 @@ class RandomCircuitGen:
                 p_indices[:-1],
                 p_indices[1:],
             ):
-                targets = qubits[q_start:q_end]
+                targets = used_qubits[q_start:q_end]
                 arg_value = parameters[p_start:p_end]
                 qc.append(
                     create_gate(
-                        name=gate, targets=targets, arg_value=arg_value
+                        name=gate,
+                        targets=targets,
+                        arg_value=arg_value.tolist(),
                     )
                 )
 
         if measure:
-            mea_qubits = [i for i in range(len(qubits))]
-            qc.append(Measure(targets=mea_qubits, arg_value=[]))
+            mea_qubits = [i for i in range(num_qubits)]
+            for qubit in mea_qubits:
+                qc.append(Measure(targets=[qubit], arg_value=[]))
         self.qc = qc
+        self.depth = qc.depth()
         self.size = qc.size()
 
         if outfile is not None:

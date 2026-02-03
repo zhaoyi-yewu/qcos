@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -90,7 +90,7 @@ class BaseOperation:
             )
 
         # Build the argument part (e.g., rx(1.57))
-        if self.arg_value:
+        if isinstance(self.arg_value, list) and len(self.arg_value) > 0:
             arg_str = "(" + ", ".join(map(str, self.arg_value)) + ")"
         else:
             arg_str = ""
