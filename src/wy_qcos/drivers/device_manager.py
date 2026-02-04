@@ -167,7 +167,6 @@ class DeviceManager:
         pubsub = redis_instance.pubsub()
         pubsub.subscribe(device.name)
         for message in pubsub.listen():
-            if message["type"] == "message":
-                device_info = json.loads(message["data"])
-                status = device_info["status"]
-                device.set_status(status)
+            if message.get("type") == "message":
+                device_running_info = json.loads(message.get("data"))
+                device.set_device_running_info(device_running_info)

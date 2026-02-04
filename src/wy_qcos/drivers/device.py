@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -63,6 +63,8 @@ class Device:
         self.progress = 0
         # configs
         self.configs = {}
+        # device running info
+        self.device_running_info = {}
 
     def init_device(self):
         """Init device.
@@ -177,6 +179,19 @@ class Device:
             return Library.mask_password(self.configs)
 
         return self.configs
+
+    def set_device_running_info(self, device_running_info):
+        """Set device running info.
+
+        Args:
+            device_running_info: device running info
+        """
+        self.device_running_info = device_running_info
+
+        device_status = device_running_info.get("status")
+        if device_status:
+            self.set_status(device_status)
+        return
 
     def get_device_info(self):
         """Show device info."""
