@@ -18,6 +18,8 @@
 import asyncio
 import logging
 import multiprocessing
+import os
+
 import setproctitle
 import threading
 from abc import ABC
@@ -133,8 +135,38 @@ class TaskFlowManager(ABC):
         """
         default_priority = Constant.DEFAULT_JOB_PRIORITY
         deployment_configs = {}
+        devices = self.device_manager.get_devices()
+        default_python_bin = "python3"
+        python_bin = default_python_bin
+        default_python_path = os.environ.get("PYTHONPATH", None)
+        default_venv_dir = f"{Config.VENV_DIR}/default"
+        default_venv_python_path = (
+            f"{default_venv_dir}/lib/python3.11/site-packages/"
+        )
         for device_name in device_names:
-            python_bin = "python3"
+            python_paths = []
+            device = devices.get(device_name, None)
+            if device:
+                driver_name = device.get_driver().get_name()
+                _python_bin = f"{Config.VENV_DIR}/{driver_name}/bin/python3"
+                if Library.is_file(_python_bin):
+                    python_bin = _python_bin
+                    venv_python_path = (
+                        f"{Config.VENV_DIR}/{driver_name}/"
+                        "lib/python3.11/site-packages/"
+                    )
+                    python_paths.append(venv_python_path)
+                else:
+                    _python_bin = f"{default_venv_dir}/bin/python3"
+                    if Library.is_file(_python_bin):
+                        python_bin = _python_bin
+            # add default venv python path
+            if default_venv_python_path not in python_paths:
+                python_paths.append(default_venv_python_path)
+            # add default python path
+            if default_python_path and default_python_path not in python_paths:
+                python_paths.append(default_python_path)
+            python_path_env = {"PYTHONPATH": ":".join(python_paths)}
             deployment_configs[device_name] = {
                 "python_bin": python_bin,
                 "pool_name": device_name,
@@ -142,6 +174,7 @@ class TaskFlowManager(ABC):
                 "path": "../engine/job_engine.py",
                 "flow_name": job_flow.__name__,
                 "command": f"{python_bin} -m prefect.engine",
+                "env": python_path_env,
             }
             deployment_configs[f"{device_name}_monitor"] = {
                 "python_bin": python_bin,
@@ -150,6 +183,7 @@ class TaskFlowManager(ABC):
                 "path": "../engine/device_engine.py",
                 "flow_name": device_monitor_flow.__name__,
                 "command": f"{python_bin} -m prefect.engine",
+                "env": python_path_env,
             }
         return deployment_configs
 
@@ -179,42 +213,7 @@ class TaskFlowManager(ABC):
             self.start_workers()
             self.loop.run_until_complete(self.wait_workers())
             self.loop.run_until_complete(self.process_aggregation_job())
-            self.start_device_monitor()
-
-    def start_device_monitor(self):
-        """Start device monitor by prefect."""
-        devices = self.device_manager.get_devices().values()
-
-        for device in devices:
-            # registry deploy
-            deploy_id = ""
-            deploy = self.deployments.get(f"{device.get_name()}_monitor")
-            if deploy:
-                deploy_id = deploy.get("deploy_id")
-            # create flow run by deploy
-            device_monitor_info = {}
-            driver = device.get_driver()
-            driver_module_name = driver.get_module_name()
-            driver_class_name = driver.get_class_name()
-            driver_package_path = driver.get_package_path()
-            device_monitor_info["driver"] = {
-                "module_name": driver_module_name,
-                "class_name": driver_class_name,
-                "package_path": driver_package_path,
-            }
-            device_monitor_info["device"] = {"configs": device.get_configs()}
-            device_monitor_info["name"] = device.get_name()
-            device_monitor_info["redis"] = {
-                "ip": self.device_manager.config.REDIS_SERVER_IP,
-                "port": self.device_manager.config.REDIS_SERVER_PORT,
-            }
-
-            args = {"device_monitor_info": device_monitor_info}
-            self._sync_client.create_flow_run_from_deployment(
-                name=str(device.get_name()),
-                deployment_id=deploy_id,
-                parameters=args,
-            )
+            self.run_device_monitor()
 
     def set_driver_manager(self, driver_manager):
         """Set driver manager.
@@ -315,6 +314,7 @@ class TaskFlowManager(ABC):
             pool_name = deployment_config["pool_name"]
             queue_name = deployment_config["queue_name"]
             command = deployment_config["command"]
+            env = deployment_config["env"]
             flow = await job_flow.from_source(
                 source=Path(__file__).parent,
                 entrypoint=f"{path}:{flow_name}",
@@ -327,7 +327,10 @@ class TaskFlowManager(ABC):
                 ignore_warnings=True,
                 print_next_steps=False,
             )
-            deployments[deployment_name] = {"deploy_id": str(deploy_id)}
+            deployments[deployment_name] = {
+                "deploy_id": str(deploy_id),
+                "env": env,
+            }
         return deployments
 
     def get_deployment(self, deployment_name):
@@ -347,17 +350,28 @@ class TaskFlowManager(ABC):
     def start_workers(self):
         """Start workers using multiprocessing."""
         device_names = self.device_manager.get_devices().keys()
-        pool_names = device_names
-        for pool_name in pool_names:
+        for device_name in device_names:
+            pool_name = device_name
+            deployment_name = device_name
             process_name = f"process-{pool_name}"
             concurrency_limit = Constant.DEFAULT_POOL_CONCURRENCY
-            p = multiprocessing.Process(
+            deployment = self.get_deployment(deployment_name)
+            if deployment:
+                env = deployment["env"]
+                pythonpath = env.get("PYTHONPATH", None)
+                if pythonpath:
+                    os.environ["PYTHONPATH"] = pythonpath
+
+            # start job worker process
+            job_worker_process = multiprocessing.Process(
                 target=self.start_work,
                 args=(process_name, pool_name, concurrency_limit),
                 name=process_name,
             )
-            p.daemon = True
-            p.start()
+            job_worker_process.daemon = True
+            job_worker_process.start()
+
+            # start device monitor process
             device_monitor_process = multiprocessing.Process(
                 target=self.start_device_monitor_work,
                 args=(process_name,),
@@ -370,26 +384,40 @@ class TaskFlowManager(ABC):
                 f"for pool: {pool_name}"
             )
 
-    @staticmethod
-    def start_device_monitor_work(process_name):
-        """Start device monitor worker by prefect client.
+    def run_device_monitor(self):
+        """Run device monitor by prefect."""
+        devices = self.device_manager.get_devices().values()
 
-        Args:
-            process_name: process name
-        """
-        # get prefect configs
-        prefect_configs = TaskFlowManager.get_prefect_configs()
+        for device in devices:
+            # registry deploy
+            deploy_id = ""
+            deployment = self.deployments.get(f"{device.get_name()}_monitor")
+            if deployment:
+                deploy_id = deployment.get("deploy_id")
+            # create flow run by deploy
+            device_monitor_info = {}
+            driver = device.get_driver()
+            driver_module_name = driver.get_module_name()
+            driver_class_name = driver.get_class_name()
+            driver_package_paths = driver.get_package_paths()
+            device_monitor_info["driver"] = {
+                "module_name": driver_module_name,
+                "class_name": driver_class_name,
+                "package_paths": driver_package_paths,
+            }
+            device_monitor_info["device"] = {"configs": device.get_configs()}
+            device_monitor_info["name"] = device.get_name()
+            device_monitor_info["redis"] = {
+                "ip": self.device_manager.config.REDIS_SERVER_IP,
+                "port": self.device_manager.config.REDIS_SERVER_PORT,
+            }
 
-        # start process worker
-        with prefect_settings.temporary_settings(updates=prefect_configs):
-            worker = ProcessWorker(
-                name=process_name,
-                work_pool_name="device_monitor",
+            args = {"device_monitor_info": device_monitor_info}
+            self._sync_client.create_flow_run_from_deployment(
+                name=str(device.get_name()),
+                deployment_id=deploy_id,
+                parameters=args,
             )
-            setproctitle.setproctitle(
-                f"[prefect] {process_name}_device_monitor"
-            )
-            asyncio.run(worker.start())
 
     @staticmethod
     def get_prefect_configs():
@@ -437,6 +465,27 @@ class TaskFlowManager(ABC):
                 limit=concurrency_limit,
             )
             setproctitle.setproctitle(f"[prefect] {process_name}")
+            asyncio.run(worker.start())
+
+    @staticmethod
+    def start_device_monitor_work(process_name):
+        """Start device monitor worker by prefect client.
+
+        Args:
+            process_name: process name
+        """
+        # get prefect configs
+        prefect_configs = TaskFlowManager.get_prefect_configs()
+
+        # start process worker
+        with prefect_settings.temporary_settings(updates=prefect_configs):
+            worker = ProcessWorker(
+                name=process_name,
+                work_pool_name="device_monitor",
+            )
+            setproctitle.setproctitle(
+                f"[prefect] {process_name}_device_monitor"
+            )
             asyncio.run(worker.start())
 
     async def wait_workers(self):

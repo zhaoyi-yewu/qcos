@@ -102,8 +102,17 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_client = AsyncMock()
         self.task_manager._client = mock_client
 
-        device_name = "test_device"
+        device_name = "dummy"
         device_names = [device_name]
+        # mock devices
+        mock_device_manager = Mock()
+        mock_devices = {
+            "dummy": {},
+            "qutip_sim": {},
+        }
+        mock_device_manager.get_devices.return_value = mock_devices
+        self.task_manager.set_device_manager(mock_device_manager)
+
         mock_job_flow.__name__ = "test_flow"
         deployment_configs = self.task_manager.generate_deployment_configs(
             device_names

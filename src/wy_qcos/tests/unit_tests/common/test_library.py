@@ -69,6 +69,15 @@ class TestLibrary:
         assert os.path.isfile(input_file)
         library.rm_file(input_file)
 
+    def test_is_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_path = os.path.join(temp_dir, "test_file.txt")
+            with open(file_path, "w") as f:
+                f.write("test content")
+
+            print(file_path)
+            assert Library.is_file(file_path) is True
+
     def test_kill_pid(self):
         input_file = f"{self.temp_dir}/test_kill_pid.txt"
         library.create_file(input_file, "28336")

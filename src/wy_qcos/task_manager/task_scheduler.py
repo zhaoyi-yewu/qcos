@@ -172,7 +172,7 @@ class TaskScheduler(ABC):
         driver = device.get_driver()
         driver_module_name = driver.get_module_name()
         driver_class_name = driver.get_class_name()
-        driver_package_path = driver.get_package_path()
+        driver_package_paths = driver.get_package_paths()
 
         # get transpiler options
         transpiler_module_name = None
@@ -192,7 +192,7 @@ class TaskScheduler(ABC):
             job_json_info["driver"] = {
                 "module_name": driver_module_name,
                 "class_name": driver_class_name,
-                "package_path": driver_package_path,
+                "package_paths": driver_package_paths,
             }
             job_json_info["transpiler"] = {
                 "module_name": transpiler_module_name,

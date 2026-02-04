@@ -96,22 +96,11 @@ def init_driver(
     Returns:
         driver
     """
-    orig_sys_path = copy.deepcopy(sys.path)
-
     try:
-        # import isolated driver package path
-        package_path = driver_class_info["package_path"]
-        if package_path:
-            sys.path.insert(0, package_path)
-
         # load driver module
         driver_module = importlib.import_module(
             driver_class_info["module_name"]
         )
-
-        # restore original sys.path
-        if package_path:
-            sys.path = copy.deepcopy(orig_sys_path)
 
         # initialize driver class
         driver_class = getattr(driver_module, driver_class_info["class_name"])

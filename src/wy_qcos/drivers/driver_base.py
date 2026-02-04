@@ -82,8 +82,8 @@ class DriverBase:
         self.description = None
         # module name
         self._module_name = None
-        # package path
-        self._package_path = None
+        # package path list
+        self._package_paths = None
         # class name
         self._class_name = None
         # enable transpiler or not
@@ -280,21 +280,21 @@ class DriverBase:
         """
         return self._module_name
 
-    def set_package_path(self, package_path):
-        """Set package path.
+    def set_package_paths(self, package_paths: list):
+        """Set package paths.
 
         Args:
-            package_path: package path
+            package_paths: package path list
         """
-        self._package_path = package_path
+        self._package_paths = package_paths
 
-    def get_package_path(self):
-        """Get package path.
+    def get_package_paths(self):
+        """Get package paths.
 
         Returns:
-            package path
+            package path list
         """
-        return self._package_path
+        return self._package_paths
 
     def set_class_name(self, class_name):
         """Set class name.

@@ -72,10 +72,14 @@ class DriverManager:
                 class_instance.set_module_name(_class.__module__)
                 class_instance.set_class_name(_class.__qualname__)
                 venv_info = venv_dirs.get(class_name, None)
-                venv_package_dir = None
+                default_venv_info = venv_dirs.get("default", None)
+                venv_package_dirs = []
                 if venv_info:
-                    venv_package_dir = venv_info["site_packages"]
-                class_instance.set_package_path(venv_package_dir)
+                    if default_venv_info:
+                        venv_package_dirs.append(
+                            default_venv_info["site_packages"]
+                        )
+                class_instance.set_package_paths(venv_package_dirs)
 
     def init_drivers(self):
         """Init drivers."""

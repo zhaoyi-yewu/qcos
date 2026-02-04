@@ -201,6 +201,15 @@ class Library:
         return tf
 
     @staticmethod
+    def is_file(file_path):
+        """Is file.
+
+        Args:
+            file_path: file path
+        """
+        return os.path.isfile(file_path)
+
+    @staticmethod
     def rm_file(file_path):
         """Remove file.
 
