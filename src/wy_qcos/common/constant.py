@@ -44,6 +44,7 @@ class Constant:
     # REDIS server default IP and port
     DEFAULT_REDIS_SERVER_IP = "127.0.0.1"
     DEFAULT_REDIS_SERVER_PORT = 6379
+    DEVICE_RUNNING_INFO_REDIS_CHANNEL_SUFFIX = "/device_running_info"
 
     # Security
     DEFAULT_FERNET_KEY = "qevBn4Ol_3bJ7t0IW7TmPCCZurqfw_QRa810U43o_m0="
@@ -207,6 +208,7 @@ class Constant:
 
     # Devices
     DEVICE_DUMMY = "dummy"
+    DEVICE_MONITOR_PREFIX = "device_monitor_"
 
     # Transpiler
     TRANSPILER_CMSS = "cmss"

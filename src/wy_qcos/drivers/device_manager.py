@@ -24,7 +24,7 @@ from schema import Optional
 
 from wy_qcos.common.library import Library
 from wy_qcos.drivers.device import Device
-
+from wy_qcos.common.constant import Constant
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,7 @@ class DeviceManager:
             port=config.REDIS_SERVER_PORT,
             decode_responses=True,
         )
+        self.check_redis_connection()
 
     def load_devices(self):
         """Scan and load drivers."""
@@ -109,6 +110,25 @@ class DeviceManager:
                     f"reason: device config file is not found"
                 )
 
+    def check_redis_connection(self):
+        """Check connection to redis."""
+
+        def is_connected():
+            try:
+                logger.info(
+                    f"Check connection to redis: "
+                    f"{self.config.REDIS_SERVER_IP}:"
+                    f"{self.config.REDIS_SERVER_PORT} ... "
+                )
+                self.redis_instance.ping()
+                return True, None, None
+            except Exception as e:
+                return False, str(e), None
+
+        success, err_msg, _ = Library.loop_with_timeout(is_connected, 60, 5)
+        if not success:
+            raise TimeoutError("Connection to redis timeout")
+
     def init_devices(self):
         """Init devices."""
         for device_name, device in self.devices.items():
@@ -165,7 +185,10 @@ class DeviceManager:
     def subscribe_device_info(self, redis_instance, device):
         """Subscribe device info by redis."""
         pubsub = redis_instance.pubsub()
-        pubsub.subscribe(device.name)
+        channel_name = (
+            device.name + Constant.DEVICE_RUNNING_INFO_REDIS_CHANNEL_SUFFIX
+        )
+        pubsub.subscribe(channel_name)
         for message in pubsub.listen():
             if message.get("type") == "message":
                 device_running_info = json.loads(message.get("data"))

@@ -105,6 +105,8 @@ class DriverBase:
         self.supported_basis_gates = None
         # supported transpilers
         self.supported_transpilers = []
+        # enable device monitor
+        self.enable_device_monitor = True
 
         # task stage to track progress
         # task stages and percentages
@@ -219,6 +221,7 @@ class DriverBase:
             f"enable_circuit_aggregation: {self.enable_circuit_aggregation}",
             f"results_fetch_mode: {self.results_fetch_mode}",
             f"max_qubits: {self.max_qubits}",
+            f"enable_device_monitor: {self.enable_device_monitor}",
         ]
         return "\n".join(show_list)
 

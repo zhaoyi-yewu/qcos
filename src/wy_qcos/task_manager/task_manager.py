@@ -38,6 +38,8 @@ from prefect.client.schemas.filters import (
     FlowRunFilterName,
     FlowRunFilterState,
     FlowRunFilterTags,
+    FlowFilter,
+    FlowFilterName,
 )
 from prefect.exceptions import ObjectNotFound
 from prefect.states import State
@@ -176,15 +178,18 @@ class TaskFlowManager(ABC):
                 "command": f"{python_bin} -m prefect.engine",
                 "env": python_path_env,
             }
-            deployment_configs[f"{device_name}_monitor"] = {
-                "python_bin": python_bin,
-                "pool_name": "device_monitor",
-                "queue_name": "default",
-                "path": "../engine/device_engine.py",
-                "flow_name": device_monitor_flow.__name__,
-                "command": f"{python_bin} -m prefect.engine",
-                "env": python_path_env,
-            }
+            device = self.device_manager.get_devices().get(device_name)
+            enable_device_monitor = device.get_driver().enable_device_monitor
+            if enable_device_monitor:
+                deployment_configs[f"{device_name}_monitor"] = {
+                    "python_bin": python_bin,
+                    "pool_name": f"{device_name}_monitor",
+                    "queue_name": "default",
+                    "path": "../engine/device_engine.py",
+                    "flow_name": device_monitor_flow.__name__,
+                    "command": f"{python_bin} -m prefect.engine",
+                    "env": python_path_env,
+                }
         return deployment_configs
 
     def start(self):
@@ -197,14 +202,25 @@ class TaskFlowManager(ABC):
 
             self.check_connection()
             device_names = self.device_manager.get_devices().keys()
+            monitor_devices = [
+                device.get_name() + "_monitor"
+                for device in self.device_manager.get_devices().values()
+                if device.get_driver().enable_device_monitor
+            ]
 
             # create resources
             self.loop.run_until_complete(
                 self.create_pools(pool_names=device_names)
             )
             self.loop.run_until_complete(
+                self.create_pools(pool_names=monitor_devices)
+            )
+            self.loop.run_until_complete(
                 self.create_queues(queue_names=device_names)
             )
+            # delete old monitor flow
+            self.delete_task_flow_by_name("device-monitor-flow")
+
             deployment_configs = self.generate_deployment_configs(device_names)
             self.deployments = self.loop.run_until_complete(
                 self.create_deployments(deployment_configs)
@@ -370,19 +386,25 @@ class TaskFlowManager(ABC):
             )
             job_worker_process.daemon = True
             job_worker_process.start()
-
-            # start device monitor process
-            device_monitor_process = multiprocessing.Process(
-                target=self.start_device_monitor_work,
-                args=(process_name,),
-                name=process_name,
-            )
-            device_monitor_process.daemon = True
-            device_monitor_process.start()
             logger.info(
                 f"Started Prefect Worker process: {process_name} "
                 f"for pool: {pool_name}"
             )
+            # start device monitor process
+            device = self.device_manager.get_devices().get(pool_name)
+            enable_device_monitor = device.get_driver().enable_device_monitor
+            if enable_device_monitor:
+                device_monitor_process = multiprocessing.Process(
+                    target=self.start_device_monitor_work,
+                    args=(process_name, pool_name, concurrency_limit),
+                    name=process_name,
+                )
+                device_monitor_process.daemon = True
+                device_monitor_process.start()
+                logger.info(
+                    f"Started Prefect Worker process: {process_name}_monitor"
+                    f"for pool: {pool_name}_monitor"
+                )
 
     def run_device_monitor(self):
         """Run device monitor by prefect."""
@@ -390,34 +412,36 @@ class TaskFlowManager(ABC):
 
         for device in devices:
             # registry deploy
-            deploy_id = ""
             deployment = self.deployments.get(f"{device.get_name()}_monitor")
             if deployment:
                 deploy_id = deployment.get("deploy_id")
-            # create flow run by deploy
-            device_monitor_info = {}
-            driver = device.get_driver()
-            driver_module_name = driver.get_module_name()
-            driver_class_name = driver.get_class_name()
-            driver_package_paths = driver.get_package_paths()
-            device_monitor_info["driver"] = {
-                "module_name": driver_module_name,
-                "class_name": driver_class_name,
-                "package_paths": driver_package_paths,
-            }
-            device_monitor_info["device"] = {"configs": device.get_configs()}
-            device_monitor_info["name"] = device.get_name()
-            device_monitor_info["redis"] = {
-                "ip": self.device_manager.config.REDIS_SERVER_IP,
-                "port": self.device_manager.config.REDIS_SERVER_PORT,
-            }
+                # create flow run by deploy
+                device_monitor_info = {}
+                driver = device.get_driver()
+                driver_module_name = driver.get_module_name()
+                driver_class_name = driver.get_class_name()
+                driver_package_paths = driver.get_package_paths()
+                device_monitor_info["driver"] = {
+                    "module_name": driver_module_name,
+                    "class_name": driver_class_name,
+                    "package_paths": driver_package_paths,
+                }
+                device_monitor_info["device"] = {
+                    "configs": device.get_configs()
+                }
+                device_monitor_info["name"] = device.get_name()
+                device_monitor_info["redis"] = {
+                    "ip": self.device_manager.config.REDIS_SERVER_IP,
+                    "port": self.device_manager.config.REDIS_SERVER_PORT,
+                }
 
-            args = {"device_monitor_info": device_monitor_info}
-            self._sync_client.create_flow_run_from_deployment(
-                name=str(device.get_name()),
-                deployment_id=deploy_id,
-                parameters=args,
-            )
+                args = {"device_monitor_info": device_monitor_info}
+                self._sync_client.create_flow_run_from_deployment(
+                    name=Constant.DEVICE_MONITOR_PREFIX
+                    + str(device.get_name()),
+                    deployment_id=deploy_id,
+                    parameters=args,
+                )
 
     @staticmethod
     def get_prefect_configs():
@@ -468,11 +492,13 @@ class TaskFlowManager(ABC):
             asyncio.run(worker.start())
 
     @staticmethod
-    def start_device_monitor_work(process_name):
+    def start_device_monitor_work(process_name, pool_name, concurrency_limit):
         """Start device monitor worker by prefect client.
 
         Args:
             process_name: process name
+            pool_name: work pool name
+            concurrency_limit: max num of jobs running at the same time
         """
         # get prefect configs
         prefect_configs = TaskFlowManager.get_prefect_configs()
@@ -480,8 +506,9 @@ class TaskFlowManager(ABC):
         # start process worker
         with prefect_settings.temporary_settings(updates=prefect_configs):
             worker = ProcessWorker(
-                name=process_name,
-                work_pool_name="device_monitor",
+                name=process_name + "_monitor",
+                work_pool_name=pool_name + "_monitor",
+                limit=concurrency_limit,
             )
             setproctitle.setproctitle(
                 f"[prefect] {process_name}_device_monitor"
@@ -516,14 +543,25 @@ class TaskFlowManager(ABC):
                 raise TimeoutError("Workers start timeout")
 
         elapsed_time = 0
+        monitor_devices = [
+            device.get_name() + "_monitor"
+            for device in self.device_manager.get_devices().values()
+            if device.get_driver().enable_device_monitor
+        ]
+        all_worker_status = {workpool: False for workpool in monitor_devices}
+
         while True:
-            workers = await self._client.read_workers_for_work_pool(
-                "device_monitor",
-            )
-            work_status = [
-                worker.status == WorkerStatus.ONLINE for worker in workers
-            ]
-            if work_status.count(True) == len(device_names):
+            for workpool in monitor_devices:
+                workers = await self._client.read_workers_for_work_pool(
+                    workpool,
+                )
+                work_status = [
+                    worker.status == WorkerStatus.ONLINE for worker in workers
+                ]
+                if work_status.count(True) == 1:
+                    all_worker_status[workpool] = True
+
+            if all(all_worker_status.values()):
                 break
             sleep(Constant.DEFAULT_JOB_INTERVAL)
             elapsed_time += Constant.DEFAULT_JOB_INTERVAL
@@ -847,6 +885,8 @@ class TaskFlowManager(ABC):
         )
         for flow_run in sorted_flows:
             id = flow_run.name
+            if id.startswith(Constant.DEVICE_MONITOR_PREFIX):
+                continue
             is_uuid, _ = Library.validate_values_uuid(id, "job_id")
             if not is_uuid:
                 logger.error(f"wrong: {id}")
@@ -1010,6 +1050,36 @@ class TaskFlowManager(ABC):
             logger.error(f"Prefect execute flow error: {str(e)}")
 
         return success_list
+
+    def delete_task_flow_by_name(self, flow_name):
+        """Delete flow .
+
+        Args:
+            flow_name: flow name
+
+        Returns:
+            success flow_id.
+        """
+        try:
+            flow_filter_kwargs = {}
+            name_filter = FlowFilterName(any_=[flow_name])
+            flow_filter_kwargs["name"] = name_filter
+            flow_filter = FlowFilter(**flow_filter_kwargs)
+
+            # get flow with flow_filter
+            flows = self._sync_client.read_flows(flow_filter=flow_filter)
+            flow_id = flows[0].id
+            # delete flow
+            self._sync_client.delete_flow(flow_id)
+            return flow_id
+        except ObjectNotFound:
+            logger.error(
+                f"Prefect execute error: can't find flow: {flow_name}"
+            )
+            return None
+        except Exception as e:
+            logger.error(f"Prefect execute error: {str(e)}")
+            return None
 
     def get_flow_runs_with_filters(self, states=None, tags=None):
         """Get flow runs with filters.

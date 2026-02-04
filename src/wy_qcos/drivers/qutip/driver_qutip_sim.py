@@ -53,6 +53,7 @@ class DriverQutipSim(DriverBase):
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_aggregation = True
         self.max_qubits = 10
+        self.enable_device_monitor = False
         self.driver_options_schema = {
             Optional("sleep"): int,
             Optional("max_qubits"): int,
@@ -256,13 +257,3 @@ class DriverQutipSim(DriverBase):
             job_id: job ID
         """
         logger.info(f"Cancel job: job_id: {job_id}")
-
-    def fetch_running_info(self):
-        """Fetch running info.
-
-        Returns:
-            remote device running info
-        """
-        # TODO(jidalong) mock data currently
-        device_running_info = {"status": "online"}
-        return device_running_info

@@ -50,6 +50,7 @@ class DriverDummy(DriverBase):
         self.default_results_type = self.DATA_TYPE_GATE_SEQUENCE
         self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
         self.max_qubits = 10
+        self.enable_device_monitor = False
         # pylint: disable=duplicate-code
         self.extra_configs = {}
         self.driver_options_schema = {
@@ -176,13 +177,3 @@ class DriverDummy(DriverBase):
         max_qubits_value = self.driver_options.get("max_qubits")
         if max_qubits_value is not None:
             self.set_max_qubits(max_qubits_value)
-
-    def fetch_running_info(self):
-        """Fetch running info.
-
-        Returns:
-            remote device running info
-        """
-        # TODO(jidalong) mock data currently
-        device_running_info = {"status": "online"}
-        return device_running_info

@@ -45,6 +45,7 @@ class DriverQiskitQasmSim(DriverBase):
         self.supported_transpilers = [Constant.TRANSPILER_QISKIT]
         self.enable_circuit_aggregation = True
         self.max_qubits = 30
+        self.enable_device_monitor = False
         self._final_response = None
 
     def init_driver(self):
@@ -111,13 +112,3 @@ class DriverQiskitQasmSim(DriverBase):
             job_id: job ID
         """
         logger.info(f"Cancel job: job_id: {job_id}")
-
-    def fetch_running_info(self):
-        """Fetch running info.
-
-        Returns:
-            remote device running info
-        """
-        # TODO(jidalong) mock data currently
-        device_running_info = {"status": "online"}
-        return device_running_info

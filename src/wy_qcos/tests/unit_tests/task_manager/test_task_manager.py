@@ -106,13 +106,20 @@ class TestTaskFlowManager(unittest.TestCase):
         device_names = [device_name]
         # mock devices
         mock_device_manager = Mock()
+        mock_dummy_device = Mock()
+        mock_qutip_sim_device = Mock()
+        mock_dummy_driver = Mock()
+        mock_qutip_sim_driver = Mock()
         mock_devices = {
-            "dummy": {},
-            "qutip_sim": {},
+            "dummy": mock_dummy_device,
+            "qutip_sim": mock_qutip_sim_device,
         }
         mock_device_manager.get_devices.return_value = mock_devices
         self.task_manager.set_device_manager(mock_device_manager)
-
+        mock_dummy_driver.get_name.return_name = "dummy"
+        mock_qutip_sim_driver.get_name.return_name = "qutip_sim"
+        mock_dummy_device.get_driver.return_value = mock_dummy_driver
+        mock_qutip_sim_device.get_driver.return_value = mock_qutip_sim_driver
         mock_job_flow.__name__ = "test_flow"
         deployment_configs = self.task_manager.generate_deployment_configs(
             device_names
@@ -150,13 +157,20 @@ class TestTaskFlowManager(unittest.TestCase):
 
         # mock devices
         mock_device_manager = Mock()
+        mock_dummy_device = Mock()
+        mock_qutip_sim_device = Mock()
+        mock_dummy_driver = Mock()
+        mock_qutip_sim_driver = Mock()
         mock_devices = {
-            "dummy": {},
-            "qutip_sim": {},
+            "dummy": mock_dummy_device,
+            "qutip_sim": mock_qutip_sim_device,
         }
         mock_device_manager.get_devices.return_value = mock_devices
         self.task_manager.set_device_manager(mock_device_manager)
-
+        mock_dummy_driver.get_name.return_name = "dummy"
+        mock_qutip_sim_driver.get_name.return_name = "qutip_sim"
+        mock_dummy_device.get_driver.return_value = mock_dummy_driver
+        mock_qutip_sim_device.get_driver.return_value = mock_qutip_sim_driver
         # start workers
         self.task_manager.start_workers()
 

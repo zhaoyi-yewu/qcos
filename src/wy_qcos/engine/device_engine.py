@@ -86,6 +86,9 @@ def device_monitor_flow(device_monitor_info):
         device_info_json = json.dumps(device_info)
 
         # publish device info by redis
-        redis_instance.publish(device_name, device_info_json)
+        channel_name = (
+            device_name + Constant.DEVICE_RUNNING_INFO_REDIS_CHANNEL_SUFFIX
+        )
+        redis_instance.publish(channel_name, device_info_json)
 
         time.sleep(Constant.DEFAULT_DEVICE_MONITOR_INTERVAL)
