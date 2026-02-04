@@ -565,15 +565,6 @@ class DriverBase:
         """
         return self.driver_options
 
-    def get_device_state(self):
-        """Get device prop.
-
-        Returns:
-            dict: device prop
-        """
-        device_prop = None
-        return device_prop
-
     def calibrate(self, cal_cmd, options):
         """Calibrate device.
 

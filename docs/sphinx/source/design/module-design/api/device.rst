@@ -28,6 +28,7 @@
                "params": {
                  "body": {
                    "name": "dummy",
+                   "detail": true,
                  }
                }
              }
@@ -52,7 +53,23 @@
                      "decomposition_rule": {
                      }
                    }
-                 }
+                 },
+                 "details": {
+                   "single_qubit_prop": {
+                     "qubit1": {
+                       "single_qubit_gate_fidelity": 0.999,
+                       "qubit_frequency": 5.018,
+                       "readout_frequency": 6.8295,
+                       "single_qubit_gate_duration": 30.0,
+                       "T1": 28.994326898773733,
+                       "T2": 5.690175203450656,
+                       "readout_fidelity_state0": 0.9705333333333334,
+                       "readout_fidelity_state1": 0.8440000000000001,
+                     }
+                   },
+                   "double_qubit_prop": null,
+                   "tupo_configs": null,
+                 },
                },
                // 有错误时会出现, 具体格式参照<错误返回>
                "error": {}
@@ -97,7 +114,8 @@
                        "decomposition_rule": {
                        }
                      }
-                   }
+                   },
+                   "details": null
                  }
                },
                // 有错误时会出现, 具体格式参照<错误返回>
@@ -132,52 +150,6 @@
                }
              }
      - -
-
-   * - **获取量子比特参数**
-     - **get_device_state**
-
-       URI: /v1/device/get_device_state
-     - .. container:: table-code-small-font
-
-          .. code-block:: json
-
-             {
-               "jsonrpc": "2.0",
-               "id": 1,
-               "method": "get_device_state",
-               "params": {
-                 "body": {
-                   "device_name": "dummy"
-                 }
-               }
-             }
-     - .. container:: table-code-small-font
-
-          .. code-block:: json
-
-             {
-               "jsonrpc": "2.0",
-               "result": {
-                  "device_status": "online",
-                  "single_qubit_prop": {
-                    "qubit1": {
-                      "single_qubit_gate_fidelity": 0.999,
-                      "qubit_frequency": 5.018,
-                      "readout_frequency": 6.8295,
-                      "single_qubit_gate_duration": 30.0,
-                      "T1": 28.994326898773733,
-                      "T2": 5.690175203450656,
-                      "readout_fidelity_state0": 0.9705333333333334,
-                      "readout_fidelity_state1": 0.8440000000000001,
-                    }
-                  },
-                  "double_qubit_prop": null,
-                  "tupo_configs": null,
-               },
-               // 有错误时会出现, 具体格式参照<错误返回>
-               "error":
-               "id": 1
-             }
 
    * - **设置设备选项**
      - **set_device_options**

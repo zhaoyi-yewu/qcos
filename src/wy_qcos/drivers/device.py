@@ -65,6 +65,8 @@ class Device:
         self.configs = {}
         # device running info
         self.device_running_info = {}
+        # device details info
+        self.details = {}
 
     def init_device(self):
         """Init device.
