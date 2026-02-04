@@ -42,11 +42,9 @@ spec:
         imagePullPolicy: IfNotPresent
         command: [
           'sh', '-c',
-          'mkdir -p /root/qcos-project/src; mkdir -p /var/qcos/db/; mkdir -p /var/qcos/storage'
+          'mkdir -p /var/qcos/db/; mkdir -p /var/qcos/storage'
         ]
         volumeMounts:
-        - name: code-data
-          mountPath: /root/qcos-project/src/
         - name: database-dir
           mountPath: /var/qcos
       containers:
@@ -96,14 +94,9 @@ spec:
           timeoutSeconds: 10
           successThreshold: 1
         volumeMounts:
-        - name: code-data
-          mountPath: /root/qcos-project/src
         - name: database-dir
           mountPath: /var/qcos
       volumes:
-      - name: code-data
-        persistentVolumeClaim:
-          claimName: ${K8S_CODE_DATA_PVC}
       - name: database-dir
         persistentVolumeClaim:
           claimName: ${K8S_DATABASE_PVC}
@@ -131,6 +124,74 @@ spec:
   - port: ${PREFECT_SERVER_PORT}
     targetPort: 4200
 ---
+# Deploy redis
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: ${QCOS_NAMESPACE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      hostNetwork: false
+      restartPolicy: Always
+      containers:
+      - name: redis
+        image: ${REGISTRY}${REDIS_IMAGE_NAME}:${REDIS_IMAGE_VERSION}
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: TZ
+          value: "Asia/Shanghai"
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "2Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+        livenessProbe:
+          exec:
+            command: ["redis-cli", "ping"]
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command: ["redis-cli", "ping"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+#      nodeSelector:
+#        redis: enabled
+#      affinity:
+#        podAntiAffinity:
+#          requiredDuringSchedulingIgnoredDuringExecution:
+#          - labelSelector:
+#              matchLabels:
+#                app: redis
+#            topologyKey: "kubernetes.io/hostname"
+---
+# redis service (ClusterIP)
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: ${QCOS_NAMESPACE}
+spec:
+  selector:
+    app: redis
+  type: ClusterIP
+  ports:
+  - port: ${REDIS_SERVER_PORT}
+    targetPort: 6379
+---
 # Deploy qcos
 apiVersion: apps/v1
 kind: Deployment
@@ -156,16 +217,13 @@ spec:
       restartPolicy: Always
       initContainers:
       - name: wait-prefect-server
-        # copy qcos engine code and wait prefect server
+        # wait prefect server
         image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
         imagePullPolicy: Always
         command: [
           'sh', '-c',
-          'rm -rf /mnt/shared/wy_qcos; cp -rf /usr/local/lib/python3.11/site-packages/wy_qcos /mnt/shared/; echo "prefect-server: http://prefect-server.${QCOS_NAMESPACE}:${PREFECT_SERVER_PORT}/api"; until wget -q --spider http://prefect-server.${QCOS_NAMESPACE}:${PREFECT_SERVER_PORT}/api; do echo "waiting for prefect-server ..."; sleep 2; done; echo "prefect-server is ready"'
+          'echo "prefect-server: http://prefect-server.${QCOS_NAMESPACE}:${PREFECT_SERVER_PORT}/api"; until wget -q --spider http://prefect-server.${QCOS_NAMESPACE}:${PREFECT_SERVER_PORT}/api; do echo "waiting for prefect-server ..."; sleep 2; done; echo "prefect-server is ready"'
         ]
-        volumeMounts:
-          - name: code-data
-            mountPath: /mnt/shared
       containers:
       - name: ${QCOS_CONTAINER_NAME}
         image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
@@ -201,6 +259,10 @@ spec:
           value: "${QCOS_SERVER_PORT}"
         - name: QCOS_VIRTUAL_INSTANCE_ID
           value: "${QCOS_ADMIN_VIRTUAL_INSTANCE_ID}"
+        - name: REDIS_SERVER_IP
+          value: "${REDIS_SERVER_IP}"
+        - name: REDIS_SERVER_PORT
+          value: "${REDIS_SERVER_PORT}"
         resources:
           requests:
             cpu: "1000m"
@@ -223,8 +285,6 @@ spec:
           timeoutSeconds: 10
           successThreshold: 1
         volumeMounts:
-        - name: code-data
-          mountPath: /root/qcos-project
         - name: qcos-config
           mountPath: /etc/qcos/qcos.toml
           subPath: qcos.toml
@@ -232,9 +292,6 @@ spec:
           mountPath: /etc/qcos/conf.d/${QCOS_DEVICE_NAME}.toml
           subPath: ${QCOS_DEVICE_NAME}.toml
       volumes:
-      - name: code-data
-        persistentVolumeClaim:
-          claimName: ${K8S_CODE_DATA_PVC}
       - name: qcos-config
         configMap:
           name: qcos-config

@@ -58,6 +58,12 @@ data:
     PREFECT_LOCAL_STORAGE_PATH = "/var/qcos/storage"
     PREFECT_LOGGING_LEVEL = "INFO"
     
+    [REDIS]
+    # redis server ip
+    REDIS_SERVER_IP = ${REDIS_SERVER_IP}
+    # redis server port
+    REDIS_SERVER_PORT = ${REDIS_SERVER_PORT}
+
     [LOG]
     # api log file
     API_LOG_FILE = "/var/log/qcos/qcos-api.log"

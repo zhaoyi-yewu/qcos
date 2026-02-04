@@ -34,7 +34,6 @@ services:
       - /var/log/qcos:/var/log/qcos
       - /var/qcos:/var/qcos
       - /etc/qcos/prefect:/root/.prefect
-      - ${QCOS_LOCAL_SRC_DIR}:/root/qcos-project
   redis:
     image: ${REGISTRY}${REDIS_IMAGE_NAME}:${REDIS_IMAGE_VERSION}
     container_name: redis
