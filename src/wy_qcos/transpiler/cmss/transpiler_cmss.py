@@ -95,10 +95,13 @@ class TranspilerCmss(TranspilerBase):
         """Mapping.
 
         Args:
-          qpu_cfg: qpu_cfg
-          opt_result_dict: opt_result_dict
+            qpu_cfg: qpu_cfg
+            opt_result_dict: opt_result_dict
         Return:
-        mapping result, dict, init_layout_dict, final_layout_dict
+            mapping_res: mapping result.
+            mapping_dict; mapping dict.
+            init_layout_dict: initial layout dict.
+            final_layout_dict: final layout dict.
         """
         factory = MappingFactory()
 
@@ -115,7 +118,7 @@ class TranspilerCmss(TranspilerBase):
             key, value = list(opt_result_dict.items())[0]
             mapping_dict[key] = value[0]
             mapping_res = value[1]
-            return mapping_res, mapping_dict, final_layout_dict
+            return mapping_res, mapping_dict, {}, final_layout_dict
 
         # set sc_mapping_options
         if isinstance(mapper, SCRoute) and sc_mapping_options:

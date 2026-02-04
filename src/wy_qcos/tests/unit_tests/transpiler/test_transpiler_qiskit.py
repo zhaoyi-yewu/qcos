@@ -143,21 +143,26 @@ class TestTranspilerQiskit:
             mock_sys_exit.assert_called_with(mock_main_qiskit_transpiler())
 
     def test_check_file_args(self):
-        input_file1 = f"{self.samples_dir}/qasm/2.0/simple-qasm1.qasm"
-        assert check_file_args(input_file1, "") is None
+        with pytest.raises(FileNotFoundError) as e:
+            input_file1 = f"{self.samples_dir}/qasm/2.0/simple-qasm-2.qasm"
+            _, _ = check_file_args(input_file1, "")
+        err_msg = str(e.value)
+        assert "Input file not existed!" in err_msg
 
         input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
         output_file = "CHANGELOG"
+        output_file_path = Path(output_file).resolve()
         mock_file = mock_open()
         mock_file_handler = MagicMock()
         with (
             patch("builtins.open", mock_file),
             patch("logging.FileHandler", return_value=mock_file_handler),
-            patch("logging.Logger.addHandler") as mock_add_handler,
         ):
             res = check_file_args(input_file, output_file)
-            mock_file().write.assert_called_once_with(
-                f"testing file: {input_file}\n"
+            mock_file.assert_called_once_with(
+                output_file_path, "w", encoding="utf-8"
             )
-            mock_add_handler.assert_called_once_with(mock_file_handler)
+            mock_file().write.assert_called_once_with(
+                f"testing file: {input_file}.\n"
+            )
             assert res == Path(input_file).resolve()

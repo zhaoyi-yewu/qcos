@@ -111,7 +111,6 @@ class RandomCircuitGen:
                 (Constant.SINGLE_QUBIT_GATE_T, 1, 0),
                 (Constant.SINGLE_QUBIT_GATE_P, 1, 1),
                 (Constant.SINGLE_QUBIT_GATE_U, 1, 3),
-                (Constant.SINGLE_QUBIT_GATE_R, 1, 2),
                 (Constant.SINGLE_QUBIT_GATE_RX, 1, 1),
                 (Constant.SINGLE_QUBIT_GATE_RY, 1, 1),
                 (Constant.SINGLE_QUBIT_GATE_RZ, 1, 1),
