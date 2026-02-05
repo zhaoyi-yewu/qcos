@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -18,7 +18,11 @@
 import pytest
 from unittest.mock import Mock
 
-from wy_qcos.transpiler.cmss.mapping.utils.estimate import SCEstimate
+from wy_qcos.transpiler.cmss.mapping.utils.estimate import (
+    SCEstimate,
+    NAEstimate,
+)
+from wy_qcos.transpiler.cmss.common.move import Move
 
 
 class TestSCEstimate:
@@ -333,3 +337,71 @@ class TestSCEstimate:
         expected_fidelity = 0.995 * 0.98 * 0.995 * 0.995
         result = estimator.estimate_fidelity()
         assert pytest.approx(result, rel=1e-5) == expected_fidelity
+
+
+class TestNAEstimate:
+    """NAEstimate 类的单元测试."""
+
+    def test_set_circuit(self):
+        """测试设置电路."""
+        estimator = NAEstimate()
+        circuit = []
+        estimator.set_circuit(circuit)
+        assert estimator.circuit == circuit
+
+    def test_estimate_time_with_moves_and_multi_qubit(self):
+        """测试含移动与两比特门的时间估计路径."""
+        estimator = NAEstimate(
+            single_gate_duration=6,
+            multi_gate_duration=2,
+            move_duration=1000,
+        )
+
+        gate1 = Mock()
+        gate1.type = 1
+        gate1.targets = [0]
+
+        gate2 = Mock()
+        gate2.type = 2
+        gate2.targets = [0, 1]
+
+        gate3 = Mock()
+        gate3.type = 2
+        gate3.targets = [2, 3]
+
+        move = Move(targets=[0])
+
+        gate4 = Mock()
+        gate4.type = 2
+        gate4.targets = [2, 3]
+
+        estimator.set_circuit([gate1, gate2, gate3, move, gate4])
+
+        # gate1: +6, gate2: +2, gate3: +0 (non-overlap), move: +1000,
+        # gate4: +2 (after move reset)
+        assert estimator.estimate_time() == 1010
+
+    def test_estimate_fidelity_with_move(self):
+        """测试含移动操作的保真度估计."""
+        estimator = NAEstimate(
+            single_gate_fidelity=0.99,
+            multi_gate_fidelity=0.98,
+            mov_fidelity=0.97,
+        )
+
+        gate1 = Mock()
+        gate1.type = 1
+        gate1.targets = [0, 1]
+
+        gate2 = Mock()
+        gate2.type = 2
+        gate2.targets = [0, 1]
+
+        move = Move(targets=[0])
+
+        estimator.set_circuit([gate1, gate2, move])
+
+        expected = (0.99 * 0.99) * 0.98 * 0.97
+        assert (
+            pytest.approx(estimator.estimate_fidelity(), rel=1e-6) == expected
+        )

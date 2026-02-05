@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -913,3 +913,187 @@ class TestFrontCircuit:
         assert isinstance(swaps_phy, list)
         assert isinstance(h_scores, list)
         assert isinstance(h_scores_front, list)
+
+    def test_init_raises_when_num_q_too_small(self):
+        """Test __init__ raises when num_q_log is too small."""
+        ag = self.create_test_ag()
+        dg = DG()
+        dg.num_q = 1
+        dg.add_gate(("cx", (0, 1), []))
+
+        with pytest.raises(IndexError):
+            FrontCircuit(dg, ag)
+
+    def test_execute_gate_remote_distance_two(self):
+        """Test execute_gate_remote with distance 2 qubits."""
+        ag = self.create_test_ag()
+        dg = DG()
+        dg.num_q = 3
+        dg.add_gate(("cx", (0, 2), []))
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2])
+
+        node = front_cir.front_layer[0]
+        remote_cxs, exe_nodes = front_cir.execute_gate_remote(node)
+
+        assert len(remote_cxs) == 4
+        assert isinstance(exe_nodes, list)
+
+    def test_get_future_cx_fix_num_empty_front_layer_raises(self):
+        """Test get_future_cx_fix_num raises on empty front layer."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        front_cir.front_layer = []
+        front_cir.num_remain_nodes = 1
+
+        with pytest.raises(RuntimeError):
+            front_cir.get_future_cx_fix_num(1)
+
+    def test_get_future_cx_fix_num_negative_raises(self):
+        """Test get_future_cx_fix_num raises when num_cx is negative."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.assign_mapping_from_list([0, 1, 2, 3])
+
+        with pytest.raises(ValueError):
+            front_cir.get_future_cx_fix_num(-1)
+
+    def test_get_future_cx_fix_num_with_single_two_qubit(self):
+        """Test get_future_cx_fix_num_with_single handles two-qubit gates."""
+        ag = self.create_test_ag()
+        dg = DG()
+        dg.num_q = 2
+        dg.add_gate(("cx", (0, 1), []))
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.log_to_phy = [0, 1]
+        front_cir.phy_to_log = [0, 1, -1, -1]
+
+        cx0, cx1, sg0, sg1 = front_cir.get_future_cx_fix_num_with_single(1)
+
+        assert cx0 == [0]
+        assert cx1 == [1]
+        assert sg0 == [0]
+        assert sg1 == [0]
+
+    def test_executable_unmapped_qubits_returns_false(self):
+        """Test _executable returns False when qubits are unmapped."""
+        ag = self.create_test_ag()
+        dg = self.create_test_dg()
+
+        front_cir = FrontCircuit(dg, ag)
+
+        for node in dg.nodes:
+            if len(dg.nodes[node]["qubits"]) == 2:
+                assert front_cir._executable(node) is False
+                break
+
+    def test_execute_gates_non_executable_keeps_front_layer(self):
+        """Test execute_gates with non-executable two-qubit gate."""
+        ag = self.create_test_ag()
+        ag.remove_edges_from(list(ag.edges))
+        dg = DG()
+        dg.num_q = 2
+        dg.add_gate(("cx", (0, 1), []))
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.log_to_phy = [0, 1]
+        front_cir.phy_to_log = [0, 1, -1, -1]
+
+        initial_front_layer = front_cir.front_layer.copy()
+        exe_gates = front_cir.execute_gates()
+
+        assert exe_gates == []
+        assert front_cir.front_layer == initial_front_layer
+
+    def test_execute_gate_index_appends_successor(self):
+        """Test execute_gate_index appends successor when ready."""
+        ag = self.create_test_ag()
+        dg = DG()
+        dg.num_q = 1
+        dg.add_gate(("h", (0,), []))
+        dg.add_gate(("h", (0,), []))
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.log_to_phy = [0]
+        front_cir.phy_to_log = [0, -1, -1, -1]
+
+        first_node = front_cir.front_layer[0]
+        front_cir.execute_gate_index(0)
+
+        assert first_node not in front_cir.front_layer
+        assert len(front_cir.front_layer) == 1
+
+    def test_pertinent_swaps_scores_with_successors(self):
+        """Test pertinent_swaps updates scores and traverses successors."""
+        ag = self.create_test_ag()
+        dg = DG()
+        dg.num_q = 3
+        dg.add_gate(("cx", (0, 1), []))
+        dg.add_gate(("cx", (1, 2), []))
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.log_to_phy = [0, 1, 2]
+        front_cir.phy_to_log = [0, 1, 2, -1]
+
+        swaps_phy, h_scores, h_scores_front = front_cir.pertinent_swaps(
+            score_layer=1
+        )
+
+        assert len(swaps_phy) == len(h_scores)
+        assert len(h_scores) == len(h_scores_front)
+
+    def test_get_future_cx_fix_num2_multiple_nodes(self):
+        """Test get_future_cx_fix_num2 with multiple front-layer nodes."""
+        ag = self.create_test_ag()
+        dg = DG()
+        dg.num_q = 4
+        dg.add_gate(("cx", (0, 1), []))
+        dg.add_gate(("cx", (2, 3), []))
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.log_to_phy = [0, 1, 2, 3]
+        front_cir.phy_to_log = [0, 1, 2, 3]
+
+        cx0, cx1 = front_cir.get_future_cx_fix_num2(2)
+
+        assert len(cx0) == 2
+        assert len(cx1) == 2
+
+    def test_get_future_cx_fix_num3_reorders_pairs(self):
+        """Test get_future_cx_fix_num3 reorders pair when cx0 > cx1."""
+        ag = self.create_test_ag()
+        dg = DG()
+        dg.num_q = 2
+        dg.add_gate(("cx", (0, 1), []))
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.log_to_phy = [1, 0]
+        front_cir.phy_to_log = [1, 0, -1, -1]
+
+        cx_total = front_cir.get_future_cx_fix_num3(1)
+
+        assert cx_total == [[(0, 1)]]
+
+    def test_get_cir_matrix_empty_front_layer(self):
+        """Test get_cir_matrix when there is no front layer."""
+        ag = self.create_test_ag()
+        dg = DG()
+        dg.num_q = 2
+
+        front_cir = FrontCircuit(dg, ag)
+        front_cir.log_to_phy = [0, 1]
+        front_cir.phy_to_log = [0, 1, -1, -1]
+        front_cir.front_layer = []
+
+        cir_map, actual_layers = front_cir.get_cir_matrix(3)
+
+        assert actual_layers == 0
+        assert cir_map.shape == (3, front_cir.num_q_phy, front_cir.num_q_phy)

@@ -21,6 +21,10 @@ from unittest.mock import Mock
 
 from wy_qcos.transpiler.common.errors import MappingException
 from wy_qcos.transpiler.cmss.mapping.routing.mcts_routing import MCTSRouting
+from wy_qcos.transpiler.cmss.mapping.routing.sc_routing import SCRoutingFactory
+from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing_wrapper import (
+    SABRERouting,
+)
 
 
 class TestMCTSRouting:
@@ -290,3 +294,40 @@ class TestMCTSRouting:
         assert isinstance(mapped_ir, list)
         assert isinstance(final_layout, dict)
         assert 5 not in final_layout
+
+
+class TestSCRoutingFactory:
+    """Test SCRoutingFactory routing selection."""
+
+    def test_factory_default_mct(self):
+        routing = SCRoutingFactory.create_routing()
+        assert isinstance(routing, MCTSRouting)
+
+    def test_factory_mct_with_selec_times(self):
+        routing = SCRoutingFactory.create_routing("mct", selec_times=7)
+        assert isinstance(routing, MCTSRouting)
+        assert routing.selec_times == 7
+
+    def test_factory_sc_alias(self):
+        routing = SCRoutingFactory.create_routing("sc")
+        assert isinstance(routing, MCTSRouting)
+
+    def test_factory_sabre_defaults(self):
+        routing = SCRoutingFactory.create_routing("sabre")
+        assert isinstance(routing, SABRERouting)
+        assert routing.extention_size == 20
+        assert routing.weight == 0.5
+        assert routing.decay == 0.001
+
+    def test_factory_sabre_custom(self):
+        routing = SCRoutingFactory.create_routing(
+            "sabre", extention_size=10, weight=0.7, decay=0.02
+        )
+        assert isinstance(routing, SABRERouting)
+        assert routing.extention_size == 10
+        assert routing.weight == 0.7
+        assert routing.decay == 0.02
+
+    def test_factory_invalid_algorithm(self):
+        with pytest.raises(MappingException):
+            SCRoutingFactory.create_routing("invalid")
