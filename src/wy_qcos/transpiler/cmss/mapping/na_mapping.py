@@ -17,12 +17,12 @@
 
 from abc import ABC
 import networkx as nx
+import rustworkx as rx
 from copy import deepcopy
+from collections import defaultdict
 
 from wy_qcos.transpiler.cmss.common.move import Move
-from wy_qcos.transpiler.cmss.mapping.utils.dg import DG
 from wy_qcos.transpiler.common.errors import MappingException
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 
 class NASingleRoute(ABC):
@@ -159,6 +159,79 @@ class NARoute(ABC):
                 f"but only {len(self.operate_area)}."
             )
 
+    def get_rx_dag(self):
+        """Build a dependency graph (DAG) for IR using the rustworkx.
+
+        Returns:
+            dg (rx.PyDiGraph): The DAG object with node attributes
+            measure_op (list): List of measurement operation gates
+            node_indices (dict): Mapping dictionary from original gate indices
+            to rustworkx node i
+        """
+        dg = rx.PyDiGraph()
+        measure_op = []
+
+        pre_nodes = defaultdict(lambda: -1)
+        node_indices = {}
+
+        for idx, gate in enumerate(self.gates):
+            if gate.name in ("sync", "measure"):
+                if gate.name == "measure":
+                    measure_op.append(gate)
+                continue
+
+            if len(gate.targets) == 1:
+                # single qubit gate
+                qubit = gate.targets[0]
+                if pre_nodes[qubit] == -1:
+                    # gate first append on this qubit
+                    node_idx = dg.add_node({
+                        "gate": [gate],
+                        "qubits": gate.targets,
+                        "type": "single",
+                        "original_idx": idx,
+                    })
+                    pre_nodes[qubit] = node_idx
+                    node_indices[idx] = node_idx
+                else:
+                    prev_node_idx = pre_nodes[qubit]
+                    prev_data = dg.get_node_data(prev_node_idx)
+                    # If pre_node is a single-bit gate, then merge them.
+                    if (
+                        prev_data["type"] == "single"
+                        and len(prev_data["qubits"]) == 1
+                        and prev_data["qubits"][0] == qubit
+                    ):
+                        # Merge: Add the current gate to pre_node's gate list
+                        prev_data["gate"].append(gate)
+                    else:
+                        # Create a new node and add edges
+                        node_idx = dg.add_node({
+                            "gate": [gate],
+                            "qubits": gate.targets,
+                            "type": "single",
+                            "original_idx": idx,
+                        })
+                        dg.add_edge(prev_node_idx, node_idx, None)
+                        pre_nodes[qubit] = node_idx
+                        node_indices[idx] = node_idx
+            else:
+                # two-qubit gate
+                node_idx = dg.add_node({
+                    "gate": gate,
+                    "qubits": gate.targets,
+                    "type": "multi",
+                    "original_idx": idx,
+                })
+                node_indices[idx] = node_idx
+
+                for qid in gate.targets:
+                    if pre_nodes[qid] != -1 and pre_nodes[qid] != node_idx:
+                        dg.add_edge(pre_nodes[qid], node_idx, None)
+                    pre_nodes[qid] = node_idx
+
+        return dg, measure_op, node_indices
+
     def get_init_mapping(self):
         """比特初始映射及映射表构建.
 
@@ -171,13 +244,10 @@ class NARoute(ABC):
         locked：锁定的量子比特（这些比特不能再移动位置）
         res：最终映射后的指令集列表
         """
-        self.dg = DG()
-        circ = QuantumCircuit()
-        circ.append_operations(self.gates)
-        self.measure = self.dg.from_ir(circ)
+        self.dg, self.measure, self.node_indices = self.get_rx_dag()
 
         self.pre_node = None
-        self.dg_opt = deepcopy(self.dg)
+        self.dg_opt = self.dg.copy()
         err_dict = {}
         for k, v in self.qpu_config["readout_error"].items():
             if k in self.storage_area:
@@ -193,9 +263,9 @@ class NARoute(ABC):
     def get_front_layer(self):
         """获取当前可执行的节点，节点可执行的条件是入度为0."""
         front_layer = set()
-        for node in self.dg_opt.nodes():
-            if self.dg_opt.in_degree[node] == 0:
-                front_layer.add(node)
+        for node_index in self.dg_opt.node_indices():
+            if self.dg_opt.in_degree(node_index) == 0:
+                front_layer.add(node_index)
         return front_layer
 
     def find_pos(self, dis):
@@ -266,7 +336,7 @@ class NARoute(ABC):
         """
         all_q = set()
         for node in nodes:
-            qubits = self.dg.nodes[node]["qubits"]
+            qubits = node["qubits"]
             for q in qubits:
                 all_q.add(q)
         ohas = self.ohas.copy()
@@ -386,15 +456,16 @@ class NARoute(ABC):
         remain = self.mov_multi_nodes(nodes)
         for node in remain:
             # 不能执行的两比特门，对应比特需要放回存储区
-            for q in self.dg.nodes[node]["qubits"]:
+            for q in node["qubits"]:
                 if self.oloc[q] != -1:
                     self.back(self.oloc[q])
         for node in nodes:
             if node in remain:
                 continue
             self.pre_node = node
-            self.res += self.dg.nodes[node]["gate"]
-            self.dg_opt.remove_node(node)
+            self.res.append(node["gate"])
+            idx = node["original_idx"]
+            self.dg_opt.remove_node(self.node_indices[idx])
 
     def mov_multi_nodes(self, nodes):
         """两比特门执行前，将比特先放置在操作区合适的位置.
@@ -407,7 +478,7 @@ class NARoute(ABC):
         remain = []
         for node in nodes:
             # 每个两比特门判断当前两个比特的位置是否符合要求
-            qubits = self.dg.nodes[node]["qubits"]
+            qubits = node["qubits"]
             p1, p2 = self.oloc[qubits[0]], self.oloc[qubits[1]]
             if p1 != -1 and p2 != -1:
                 # 均在操作区
@@ -434,8 +505,9 @@ class NARoute(ABC):
         """
         # 无论原子在哪一个区域直接执行
 
-        self.res += self.dg.nodes[node]["gate"]
-        self.dg_opt.remove_node(node)
+        self.res += node["gate"]
+        idx = node["original_idx"]
+        self.dg_opt.remove_node(self.node_indices[idx])
 
     def overlap(self, nd1, nd2):
         """判断两个单比特节点包含的门列表是否满足nd2为nd1的后缀.
@@ -553,9 +625,9 @@ class NARoute(ABC):
         comm = 0
         execute_node = None
         for node in self.front_layer:
-            qubits = self.dg.nodes[node]["qubits"]
+            qubits = self.dg.get_node_data(node)["qubits"]
             # 如果为单比特门，优先选择比特已在操作区，且可执行的门的列表最长
-            if len(self.dg.nodes[node]["qubits"]) == 1:
+            if len(self.dg.get_node_data(node)["qubits"]) == 1:
                 if comm > 1:
                     continue
                 if qubits[0] not in self.ohas and comm == 1:
@@ -566,8 +638,8 @@ class NARoute(ABC):
 
                 # pylint: disable=invalid-sequence-index
                 if execute_node is not None and len(
-                    self.dg.nodes[execute_node]["qubits"]
-                ) >= len(self.dg.nodes[node]["qubits"]):
+                    self.dg.get_node_data(execute_node)["qubits"]
+                ) >= len(self.dg.get_node_data(node)["qubits"]):
                     continue
                 execute_node = node
             else:
@@ -586,7 +658,7 @@ class NARoute(ABC):
         self.get_init_mapping()
 
         for node in self.dg.nodes():
-            if len(self.dg.nodes[node]["qubits"]) == 1:
+            if len(node["qubits"]) == 1:
                 self.execute_single_node(node)
             else:
                 self.execute_multi_nodes([node])
@@ -594,7 +666,7 @@ class NARoute(ABC):
         self.res += self.measure
 
         # 遍历比特门，将逻辑量子比特映射到物理量子比特.
-        operator_list = deepcopy(self.mapping)
+        operator_list = self.mapping
         for gate in self.res:
             if gate.name == "move":
                 pid = gate.arg_value[1]
@@ -621,7 +693,7 @@ class NARoute(ABC):
             # 若前一个执行的为单比特节点，
             # 可从当前可执行节点中找所有的单比特节点，进行overlap优化.
             if self.pre_node is not None and (
-                len(self.dg.nodes[self.pre_node]["qubits"]) == 1
+                len(self.pre_node["qubits"]) == 1
             ):
                 self.execute_single_node_opt()
                 self.front_layer = self.get_front_layer()
@@ -629,9 +701,11 @@ class NARoute(ABC):
             if self.front_layer:
                 i, node = self.get_max_common()
                 if i == 1:
-                    self.execute_single_node(node)
+                    self.execute_single_node(self.dg.get_node_data(node))
                 else:
-                    self.execute_multi_nodes(node)
+                    self.execute_multi_nodes([
+                        self.dg.get_node_data(i) for i in node
+                    ])
 
             self.front_layer = self.get_front_layer()
             t += 1

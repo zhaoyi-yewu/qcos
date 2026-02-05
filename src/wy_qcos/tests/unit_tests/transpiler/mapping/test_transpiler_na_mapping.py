@@ -266,7 +266,7 @@ class TestTranspilerNaMapping:
 
         assert len(na.mapping) == na.qbit_num
         assert order_mapping_res is not None
-        assert order_mapping_res[0].name == "move"
+        assert order_mapping_res[0].name == "x"
         assert order_mapping_res[-1].name == "measure"
 
     def test_2_qubit_gate_na_mapping_opt(self):
@@ -288,7 +288,7 @@ class TestTranspilerNaMapping:
         opt_mapping_res = na.execute_with_opt()
         assert len(na.mapping) == na.qbit_num
         assert opt_mapping_res is not None
-        assert opt_mapping_res[0].name == "move"
+        assert opt_mapping_res[0].name == "x"
         assert opt_mapping_res[-1].name == "measure"
 
     def test_add_put(self):
@@ -334,5 +334,5 @@ class TestTranspilerNaMapping:
 
         assert len(na.mapping) == na.qbit_num
         assert mapping_res is not None
-        assert mapping_res[0].name == "move"
+        assert mapping_res[0].name == "h"
         assert mapping_res[-1].name == "measure"
