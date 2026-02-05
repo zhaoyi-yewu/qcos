@@ -277,7 +277,6 @@ class TaskFlowManager(ABC):
             self.create_pool(pool_name, Constant.DEFAULT_POOL_CONCURRENCY)
             for pool_name in pool_names
         ]
-        create_workpools.append(self.create_pool("device_monitor"))
         return await asyncio.gather(*create_workpools)
 
     async def create_pool(self, pool_name, concurrency_limit=None):
@@ -1068,15 +1067,12 @@ class TaskFlowManager(ABC):
 
             # get flow with flow_filter
             flows = self._sync_client.read_flows(flow_filter=flow_filter)
+            if len(flows) == 0:
+                return None
             flow_id = flows[0].id
             # delete flow
             self._sync_client.delete_flow(flow_id)
             return flow_id
-        except ObjectNotFound:
-            logger.error(
-                f"Prefect execute error: can't find flow: {flow_name}"
-            )
-            return None
         except Exception as e:
             logger.error(f"Prefect execute error: {str(e)}")
             return None

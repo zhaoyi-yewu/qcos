@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import pytest
+from unittest.mock import Mock
 
 from wy_qcos.common.config import Config
 from wy_qcos.drivers.device_manager import DeviceManager
@@ -31,6 +32,10 @@ class TestDeviceManager:
         assert device_manager.load_devices() is None
 
     def test_init_devices(self):
+        redis_instance = Mock()
+        redis_ping = Mock()
+        redis_instance.ping.return_value = redis_ping
+        device_manager.redis_instance = redis_instance
         assert device_manager.init_devices() is None
 
     def test_has_device(self):

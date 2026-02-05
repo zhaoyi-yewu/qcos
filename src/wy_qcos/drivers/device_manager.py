@@ -47,7 +47,6 @@ class DeviceManager:
             port=config.REDIS_SERVER_PORT,
             decode_responses=True,
         )
-        self.check_redis_connection()
 
     def load_devices(self):
         """Scan and load drivers."""
@@ -115,7 +114,7 @@ class DeviceManager:
 
         def is_connected():
             try:
-                logger.info(
+                print(
                     f"Check connection to redis: "
                     f"{self.config.REDIS_SERVER_IP}:"
                     f"{self.config.REDIS_SERVER_PORT} ... "
@@ -131,6 +130,7 @@ class DeviceManager:
 
     def init_devices(self):
         """Init devices."""
+        self.check_redis_connection()
         for device_name, device in self.devices.items():
             device.set_status(device.DEVICE_STATUS_ONLINE)
             # Init driver
