@@ -161,7 +161,6 @@ class TestDevice:
         )
         mock_client = Mock(spec=CalibrateDeviceRequest)
         mock_client.device_name = self.dummy
-        mock_client.cal_cmd = True
         mock_client.options = {
             "init_freq": 5.018,
             "step": 0.001,

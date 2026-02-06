@@ -154,8 +154,10 @@ class StLibrary:
         return devices
 
     @staticmethod
-    def get_device(client, device_name):
-        status_code, reason, text, response = client.get_device(device_name)
+    def get_device(client, device_name, details=False):
+        status_code, reason, text, response = client.get_device(
+            device_name, details
+        )
         assert status_code == HttpCode.SUCCESS_OK
         result = json.loads(text)
         error = result.get("error", {})
@@ -163,6 +165,39 @@ class StLibrary:
         assert error_code == 0
         device = result["result"]
         return device
+
+    @staticmethod
+    def calibrate(client, device_name, options=None):
+        status_code, reason, text, response = client.calibrate(
+            device_name, options
+        )
+        assert status_code == HttpCode.SUCCESS_OK
+        result = json.loads(text)
+        error = result.get("error", {})
+        error_code = error.get("code", 0)
+        return error_code
+
+    @staticmethod
+    def set_device_options(client, device_name, device_options):
+        status_code, reason, text, response = client.set_device_options(
+            device_name, device_options
+        )
+        assert status_code == HttpCode.SUCCESS_OK
+        result = json.loads(text)
+        error = result.get("error", {})
+        error_code = error.get("code", 0)
+        return error_code
+
+    @staticmethod
+    def enable_and_disable_qubit(client, device_name, qubits):
+        status_code, reason, text, response = client.enable_and_disable_qubit(
+            device_name, qubits
+        )
+        assert status_code == HttpCode.SUCCESS_OK
+        result = json.loads(text)
+        error = result.get("error", {})
+        error_code = error.get("code", 0)
+        return error_code
 
     @staticmethod
     def get_drivers(client):

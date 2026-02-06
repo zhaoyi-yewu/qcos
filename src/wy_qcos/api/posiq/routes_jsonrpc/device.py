@@ -30,12 +30,13 @@ logger = logging.getLogger(__name__)
 module_name = "DEVICE"
 
 
-def _get_device_info(device, auth_data=None):
+def _get_device_info(device, auth_data=None, details=False):
     """Get device info.
 
     Args:
         device: device
         auth_data: authentication data
+        details: need detail information or not
 
     Returns:
         device_info
@@ -58,6 +59,9 @@ def _get_device_info(device, auth_data=None):
         # only admin user can access to config info
         # remove config info in device_info for non-admin user
         _device_info.pop("configs")
+    if details is False:
+        _device_info.pop("details")
+
     return _device_info
 
 
@@ -122,7 +126,7 @@ def get_device(
             func_name,
             (False, f"Device: '{device_name}' is not found"),
         )
-    _response_info = _get_device_info(device, auth_data)
+    _response_info = _get_device_info(device, auth_data, body.details)
     response_info = schemas.GetDeviceResponse.model_validate(_response_info)
     return response_info
 
@@ -135,7 +139,7 @@ def calibrate(
     """Calibrate device.
 
     Args:
-        body(schemas.CalibrateDeviceRequest): device name, cal_cmd
+        body(schemas.CalibrateDeviceRequest): device name
         auth_data: auth data
     """
     func_name = "calibrate"
@@ -154,7 +158,7 @@ def calibrate(
             (False, f"Device: '{device_name}' is not found"),
         )
     driver = device.get_driver()
-    driver.calibrate(body.cal_cmd, body.options)
+    driver.calibrate(body.options)
     device.set_status(device.DEVICE_STATUS_CALIBRATING)
 
 
