@@ -51,7 +51,6 @@ from schema import Schema
 from urllib.parse import urlparse
 
 from .constant import HttpCode, HttpHeaders, HttpMethod, Constant
-from wy_qcos.transpiler.cmss.compiler.parser import compile
 
 logger = logging.getLogger(__name__)
 
@@ -855,29 +854,6 @@ class Library:
                     f"qubits, exceeding the maximum limit of "
                     f"{Constant.MAX_QUBO_QUBITS}"
                 )
-        return True, None
-
-    @staticmethod
-    def validate_qasms(qasm_list):
-        """Validate qasms.
-
-        Args:
-            qasm_list (List(str)): List of qasms
-
-        Returns:
-            success of failed (bool), error message
-        """
-        if not qasm_list:
-            return False, "qasm list cannot be an empty list"
-
-        for i in range(len(qasm_list)):
-            try:
-                compile(qasm_list[i])
-            except Exception as e:
-                err_msg = (
-                    f"Source code with index {i} compile failed: {str(e)}"
-                )
-                return False, err_msg
         return True, None
 
     @staticmethod
