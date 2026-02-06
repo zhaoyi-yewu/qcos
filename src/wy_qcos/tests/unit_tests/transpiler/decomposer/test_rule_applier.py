@@ -21,12 +21,21 @@ import pytest
 from wy_qcos.transpiler.cmss.decomposer.rule_applier import RuleApplier
 from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
     EquivalenceRule,
+    EquivalenceGraph,
 )
-from wy_qcos.tests.unit_tests.transpiler.comm import validate_gate_ir
 from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
+from wy_qcos.tests.unit_tests.transpiler.comm import (
+    validate_gate_ir,
+)
 
 
 class TestRuleApplier:
+    @classmethod
+    def setup_class(cls):
+        """Initialize shared test resources."""
+        cls.graph = EquivalenceGraph()
+        cls.applier = RuleApplier()
+
     @pytest.mark.smoke
     def test_apply_one_rule(self):
         # test rx equivalence rule

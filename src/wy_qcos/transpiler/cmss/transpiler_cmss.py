@@ -266,6 +266,18 @@ class TranspilerCmss(TranspilerBase):
             f"number of gates: {len(decomposed_gates)}\n"
         )
 
+        decomposer = Decomposer()
+        decompose_rules_dict = {}
+        with Timer() as decompose_ruler_timer:
+            decompose_rules_dict, _ = decomposer.get_decompose_rules(
+                dp_result_dict,
+                supp_basis_gates,
+            )
+        logger.info(
+            "tranpiler(get decompose rules): "
+            f"{decompose_ruler_timer.elapsed:.4f}s\n"
+        )
+
         with Timer() as mapping_timer:
             mapping_res, mapping_dict, _, _ = self.mapping(
                 qpu_cfg, dp_result_dict
@@ -285,14 +297,13 @@ class TranspilerCmss(TranspilerBase):
                 Constant.TWO_QUBIT_GATE_CZ,
             ]
 
-        with Timer() as decompose2_timer:
-            decomposer = Decomposer()
-            decomposer_circuit = decomposer.decompose(
-                mapping_res, supp_basis_gates
+        with Timer() as applier_timer:
+            decomposer_circuit = decomposer.apply_decompose_rules(
+                mapping_res, decompose_rules_dict
             )
         logger.info(
-            "tranpiler(decomposing secondly): "
-            f"{decompose2_timer.elapsed:.4f}s\n"
+            "tranpiler(applier_timer): "
+            f"{applier_timer.elapsed:.4f}s\n"
             f"number of gates: {len(decomposer_circuit)}\n"
         )
 

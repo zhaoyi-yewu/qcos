@@ -29,6 +29,10 @@ import time
 from pathlib import Path
 
 from wy_qcos.transpiler.cmss.decomposer.decomposer import Decomposer
+from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
+    EquivalenceGraph,
+)
+from wy_qcos.transpiler.cmss.decomposer.rule_applier import RuleApplier
 from wy_qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.tests.common.qasm_file_reader import QasmFileReader
@@ -41,6 +45,40 @@ class DecomposerBenchmark:
     Its sole purpose is to measure and compare the performance
     characteristics of different decomposition strategies.
     """
+
+    @staticmethod
+    def benchmark_new_equivalence_graph_decomposer(
+        operations, target_gate_set: list
+    ):
+        """Benchmark the equivalence-graph-based decomposer.
+
+        This decomposer performs gate rewriting based on equivalence
+        relations and graph traversal, which typically trades higher
+        preprocessing cost for better decomposition quality.
+
+        Args:
+            operations: Quantum operations extracted from the circuit IR.
+            target_gate_set: Target hardware-supported gate set.
+
+        Returns:
+            Decomposed quantum operations.
+        """
+        graph = EquivalenceGraph()
+        applier = RuleApplier()
+
+        # Measure pure decomposition time (excluding parsing)
+        start = time.perf_counter()
+        rule_dict, _ = graph.build_full_decomposition_table(
+            operations,
+            target_gate_set,
+        )
+        decomposed_gates = applier.apply_with_decomposition_table(
+            operations, rule_dict
+        )
+        elapsed = time.perf_counter() - start
+
+        print(f"[new Equivalence Graph Decomposer] time={elapsed:.6f}s")
+        return decomposed_gates
 
     @staticmethod
     def benchmark_equivalence_graph_decomposer(
@@ -66,7 +104,7 @@ class DecomposerBenchmark:
         result = decomposer.decompose(operations, target_gate_set)
         elapsed = time.perf_counter() - start
 
-        print(f"[Equivalence Graph Decomposer] time={elapsed:.6f}s\n")
+        print(f"[Equivalence Graph Decomposer] time={elapsed:.6f}s")
         return result
 
     @staticmethod
@@ -129,6 +167,10 @@ class DecomposerBenchmark:
 
                 # Step 4: equivalence-graph-based decomposition
                 DecomposerBenchmark.benchmark_equivalence_graph_decomposer(
+                    operations, target_gate_set
+                )
+
+                DecomposerBenchmark.benchmark_new_equivalence_graph_decomposer(
                     operations, target_gate_set
                 )
 
