@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -101,7 +101,7 @@ class TestTabuSearch:
         with patch("numpy.random.randint") as mock_randint:
             mock_randint.return_value = np.array([0, 1, 0])
             tabu = TabuSearch(qubo=self.qubo_matrix, init_solution=None)
-            mock_randint.assert_called_once_with(0, 2, 3)
+            mock_randint.assert_called_once_with(0, 2, size=3)
             assert np.array_equal(tabu.init_solution, np.array([0, 1, 0]))
 
     def test_determine_tabu_tenure(self):

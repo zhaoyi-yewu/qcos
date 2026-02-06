@@ -15,18 +15,19 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
+
 from unittest.mock import Mock, patch
 
 from wy_qcos.api.posiq.routes_jsonrpc.device import (
-    get_devices,
-    get_device_state,
     calibrate,
-    set_device_options,
     enable_and_disable_qubit,
+    get_device,
+    get_devices,
+    set_device_options,
 )
 from wy_qcos.api.schemas import (
     GetDeviceRequest,
-    DeviceProperitiesRequest,
     CalibrateDeviceRequest,
     SetDeviceOptionsRequest,
     EnableAndDisableQubitRequest,
@@ -46,6 +47,7 @@ class TestDevice:
     def setup_class(cls):
         cls.dummy = Constant.TRANSPILER_DUMMY
 
+    @pytest.mark.smoke
     @patch.object(DeviceManager, "get_devices")
     @patch.object(TaskScheduler, "get_device_manager")
     def test_get_devices(self, mock_get_device_manager, mock_get_devices):
@@ -55,29 +57,23 @@ class TestDevice:
         )
         mock_client = Mock(spec=GetDeviceRequest)
         mock_client.name = self.dummy
+        mock_client.details = False
         response_info = get_devices(mock_client, None)
         assert not response_info
 
-    @patch.object(DriverBase, "get_device_state")
     @patch.object(TaskScheduler, "get_device_manager")
     @patch.object(DeviceManager, "get_device")
     @patch.object(Device, "get_driver")
-    def test_get_device_state(
+    def test_get_device(
         self,
         mock_get_driver,
         mock_get_device,
         mock_get_device_manager,
-        mock_get_device_state,
     ):
         mock_get_driver.return_value = DriverDummy()
-        mock_get_device.return_value = Device("dummy", DriverDummy())
-        mock_get_device_manager.return_value = DeviceManager(
-            Config(), DriverManager()
-        )
-        mock_client = Mock(spec=DeviceProperitiesRequest)
-        mock_client.device_name = self.dummy
-        mock_get_device_state.return_value = {
-            "device_status": "online",
+        device = Device("dummy", DriverDummy())
+        device.status = "online"
+        device.details = {
             "single_qubit_prop": {
                 "qubit1": {
                     "single_qubit_gate_fidelity": 0.999,
@@ -93,48 +89,60 @@ class TestDevice:
             "double_qubit_prop": None,
             "tupo_configs": None,
         }
-        response_info = get_device_state(mock_client, None)
-        assert response_info.device_status == "online"
-        assert response_info.double_qubit_prop is None
-        assert response_info.tupo_configs is None
-        assert response_info.single_qubit_prop is not None
-        assert len(response_info.single_qubit_prop) == 1
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        mock_client = Mock(spec=GetDeviceRequest)
+        mock_client.name = self.dummy
+        mock_client.details = True
+
+        response_info = get_device(mock_client, None)
+        assert response_info.status == "online"
+        assert response_info.details["double_qubit_prop"] is None
+        assert response_info.details["tupo_configs"] is None
+        assert response_info.details["single_qubit_prop"] is not None
+        assert len(response_info.details["single_qubit_prop"]) == 1
         assert (
-            response_info.single_qubit_prop["qubit1"][
+            response_info.details["single_qubit_prop"]["qubit1"][
                 "single_qubit_gate_fidelity"
             ]
             == 0.999
         )
         assert (
-            response_info.single_qubit_prop["qubit1"]["qubit_frequency"]
+            response_info.details["single_qubit_prop"]["qubit1"][
+                "qubit_frequency"
+            ]
             == 5.018
         )
         assert (
-            response_info.single_qubit_prop["qubit1"]["readout_frequency"]
+            response_info.details["single_qubit_prop"]["qubit1"][
+                "readout_frequency"
+            ]
             == 6.8295
         )
         assert (
-            response_info.single_qubit_prop["qubit1"][
+            response_info.details["single_qubit_prop"]["qubit1"][
                 "single_qubit_gate_duration"
             ]
             == 30.0
         )
         assert (
-            response_info.single_qubit_prop["qubit1"]["T1"]
+            response_info.details["single_qubit_prop"]["qubit1"]["T1"]
             == 28.994326898773733
         )
         assert (
-            response_info.single_qubit_prop["qubit1"]["T2"]
+            response_info.details["single_qubit_prop"]["qubit1"]["T2"]
             == 5.690175203450656
         )
         assert (
-            response_info.single_qubit_prop["qubit1"][
+            response_info.details["single_qubit_prop"]["qubit1"][
                 "readout_fidelity_state0"
             ]
             == 0.9705333333333334
         )
         assert (
-            response_info.single_qubit_prop["qubit1"][
+            response_info.details["single_qubit_prop"]["qubit1"][
                 "readout_fidelity_state1"
             ]
             == 0.8440000000000001

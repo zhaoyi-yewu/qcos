@@ -1,0 +1,20 @@
+# Driver running environments
+default:
+  deps_filepath: ./requirements-qcos.txt
+  envs:
+    - "python3-qcos"
+
+DriverQutipSim:
+  deps_filepath: ./drivers/requirements-qutip.txt
+  envs:
+    - "python3-qcos"
+
+DriverSpinQRpc:
+  deps_filepath: ./drivers/requirements-spinq-rpc.txt
+  envs:
+    - "python3-qcos"
+
+DriverUQCMatrix2:
+  deps_filepath: ./drivers/requirements-uqc.txt
+  envs:
+    - "python3-qcos"

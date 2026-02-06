@@ -30,28 +30,29 @@ logger = logging.getLogger(__name__)
 module_name = "DEVICE"
 
 
-def _get_device_info(device_info, auth_data=None):
+def _get_device_info(device, auth_data=None):
     """Get device info.
 
     Args:
-        device_info: device info
+        device: device
         auth_data: authentication data
 
     Returns:
         device_info
     """
     # replace pwd in extra_configs to ********
-    configs = Library.mask_password(device_info.configs)
+    configs = Library.mask_password(device.configs)
     _device_info = {
-        "name": device_info.name,
-        "alias_name": device_info.alias_name,
-        "description": device_info.description,
-        "driver_name": device_info.driver.get_name(),
-        "enable": device_info.enable,
-        "status": device_info.status,
-        "tech_type": device_info.tech_type,
-        "max_qubits": device_info.max_qubits,
+        "name": device.name,
+        "alias_name": device.alias_name,
+        "description": device.description,
+        "driver_name": device.driver.get_name(),
+        "enable": device.enable,
+        "status": device.status,
+        "tech_type": device.tech_type,
+        "max_qubits": device.max_qubits,
         "configs": configs,
+        "details": device.details,
     }
     if auth_data is not None:
         # only admin user can access to config info
@@ -80,11 +81,11 @@ def get_devices(
     device_manager = scheduler.get_device_manager()
     devices = device_manager.get_devices()
     response_info = {}
-    for device_name, device_info in sorted(devices.items()):
+    for device_name, device in sorted(devices.items()):
         if auth_data is not None:
             if device_name not in auth_data["device_names"]:
                 continue
-        _response_info = _get_device_info(device_info, auth_data)
+        _response_info = _get_device_info(device, auth_data)
         response_info[device_name] = schemas.GetDeviceResponse.model_validate(
             _response_info
         )
@@ -111,17 +112,17 @@ def get_device(
     device_name = body.name
 
     device_manager = scheduler.get_device_manager()
-    device_info = device_manager.get_device(device_name)
+    device = device_manager.get_device(device_name)
     if auth_data is not None:
         if device_name not in auth_data["device_names"]:
-            device_info = None
-    if not device_info:
+            device = None
+    if not device:
         jsonrpc_errors.handle_error_not_found(
             module_name,
             func_name,
             (False, f"Device: '{device_name}' is not found"),
         )
-    _response_info = _get_device_info(device_info, auth_data)
+    _response_info = _get_device_info(device, auth_data)
     response_info = schemas.GetDeviceResponse.model_validate(_response_info)
     return response_info
 
@@ -155,43 +156,6 @@ def calibrate(
     driver = device.get_driver()
     driver.calibrate(body.cal_cmd, body.options)
     device.set_status(device.DEVICE_STATUS_CALIBRATING)
-
-
-@device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
-def get_device_state(
-    body: schemas.DeviceProperitiesRequest,
-    auth_data: dict | None = Depends(auth),
-) -> schemas.DeviceProperitiesResponse:
-    """Get device properities request.
-
-    Args:
-        body(schemas.DeviceProperitiesRequest): device name
-        auth_data: auth data
-
-    Returns:
-        Get device properities response
-    """
-    func_name = "get_device_state"
-    logger.info(f"Call {func_name}: {body}")
-
-    device_name = body.device_name
-    device_manager = scheduler.get_device_manager()
-    device = device_manager.get_device(device_name)
-    if auth_data is not None:
-        if device_name not in auth_data["device_names"]:
-            device = None
-    if not device:
-        jsonrpc_errors.handle_error_not_found(
-            module_name,
-            func_name,
-            (False, f"Device: '{device_name}' is not found"),
-        )
-    driver = device.get_driver()
-    _response_info = driver.get_device_state()
-    response_info = schemas.DeviceProperitiesResponse.model_validate(
-        _response_info
-    )
-    return response_info
 
 
 @device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])

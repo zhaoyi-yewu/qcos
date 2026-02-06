@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -40,7 +40,7 @@ class DAGNode:
 class DAGOpNode(DAGNode):
     """Object to represent an Gate at a node in the DAGCircuit."""
 
-    __slots__ = ["op", "qargs", "cargs", "sort_key"]
+    __slots__ = ["op", "qargs", "cargs", "sort_key", "flag"]
 
     def __init__(
         self, op, qargs: Iterable[int] = (), cargs: Iterable[int] = ()
@@ -51,6 +51,7 @@ class DAGOpNode(DAGNode):
         self.qargs = tuple(qargs)
         self.cargs = tuple(cargs)
         self.sort_key = str(self.qargs)
+        self.flag = 0
 
     @property
     def name(self):

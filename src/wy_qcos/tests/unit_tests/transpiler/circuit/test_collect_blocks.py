@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
+
 from wy_qcos.transpiler.cmss.circuit.collect_blocks import (
     BlockCollector,
     BlockSplitter,
@@ -25,6 +27,7 @@ from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 
 class TestCollectBlocks:
+    @pytest.mark.smoke
     def test_collect_gates_from_dagcircuit_1(self):
         """Test collecting CX gates from DAGCircuits."""
         ir = [CX([0, 1]), CX([0, 2]), Z([0]), CX([0, 3]), CX([0, 4])]

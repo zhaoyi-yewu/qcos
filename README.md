@@ -1,5 +1,11 @@
 # 五岳量子计算操作系统（QCOS）介绍
 
+[![Documentation Status](https://app.readthedocs.org/projects/qcos/badge/?version=latest)](https://qcos.readthedocs.io/zh-cn/latest/)
+[![PyPI - Version](https://img.shields.io/pypi/v/wy-qcos)](https://pypi.org/project/wy-qcos)
+[![PyPI - Wheel](https://img.shields.io/pypi/wheel/wy-qcos)](https://pypi.org/project/wy-qcos)
+[![Downloads](https://pepy.tech/badge/wy-qcos)](https://pepy.tech/project/wy-qcos)
+[![codecov](https://codecov.io/github/zhaoyi-yewu/qcos/coverage.svg?branch=develop)](https://codecov.io/github/zhaoyi-yewu/qcos)
+
 五岳量子计算操作系统：QCOS（Quantum Computing Operating System）是一款开源的通用量子计算操作系统，旨在为不同架构的量子计算机（如：超导、中性原子、离子阱、相干伊辛机等）提供统一的软件支持，推动量子计算的生态发展。
 
 # 1. 架构总览

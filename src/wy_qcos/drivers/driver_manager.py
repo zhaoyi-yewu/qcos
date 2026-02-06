@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -18,6 +18,7 @@
 import logging
 import os
 
+from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.drivers.device import Device
@@ -41,13 +42,23 @@ class DriverManager:
         module_dirs = Library.find_dirs(
             base_dir=base_dir, recursive=True, excludes=["*__pycache__"]
         )
+
+        # get drivers from devices
+        venv_base_dir = Config.VENV_DIR
+        expect_drivers = set()
+        for device_name, device in Config.EXTRA_CONFIGS.items():
+            driver_name = device["driver"]
+            expect_drivers.add(driver_name)
+
+        # load driver classes
         for pkg_dir in module_dirs:
-            classes = Library.import_classes(
+            classes, venv_dirs = Library.import_classes(
                 pkg_dir,
                 base_module_name=base_module_name,
                 base_dir=base_dir,
                 base_class=DriverBase,
                 excluded_class="Base$",
+                venv_base_dir=venv_base_dir,
             )
             for (
                 class_name,
@@ -60,6 +71,15 @@ class DriverManager:
                 Constant.DRIVERS.add(name)
                 class_instance.set_module_name(_class.__module__)
                 class_instance.set_class_name(_class.__qualname__)
+                venv_info = venv_dirs.get(class_name, None)
+                default_venv_info = venv_dirs.get("default", None)
+                venv_package_dirs = []
+                if venv_info:
+                    if default_venv_info:
+                        venv_package_dirs.append(
+                            default_venv_info["site_packages"]
+                        )
+                class_instance.set_package_paths(venv_package_dirs)
 
     def init_drivers(self):
         """Init drivers."""

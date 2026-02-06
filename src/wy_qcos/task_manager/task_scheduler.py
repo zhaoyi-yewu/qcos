@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -36,7 +36,7 @@ class TaskScheduler(ABC):
     def __init__(self):
         """Init TaskScheduler."""
         self._task_manager = TaskFlowManager()
-        self._policy_handler = TimePrecedencePolicy(self._task_manager)
+        self._policy_handler = PrioritySchedulingPolicy(self._task_manager)
         self.driver_manager = None
         self.transpiler_manager = None
         self.device_manager = None
@@ -172,6 +172,7 @@ class TaskScheduler(ABC):
         driver = device.get_driver()
         driver_module_name = driver.get_module_name()
         driver_class_name = driver.get_class_name()
+        driver_package_paths = driver.get_package_paths()
 
         # get transpiler options
         transpiler_module_name = None
@@ -184,12 +185,14 @@ class TaskScheduler(ABC):
 
         # execute task
         try:
-            flow_info = self._task_manager.get_flow_info_by_backend(backend)
+            deployment_name = backend
+            deployment = self._task_manager.get_deployment(deployment_name)
             job_json_info = {}
             job_json_info["data"] = job_info.model_dump()
             job_json_info["driver"] = {
                 "module_name": driver_module_name,
                 "class_name": driver_class_name,
+                "package_paths": driver_package_paths,
             }
             job_json_info["transpiler"] = {
                 "module_name": transpiler_module_name,
@@ -198,7 +201,7 @@ class TaskScheduler(ABC):
             job_json_info["device"] = {"configs": device.get_configs()}
 
             job_id = self._policy_handler.exec_task(
-                flow_info, job_json_info, tags=tags
+                deployment, job_json_info, tags=tags
             )
             res = {"job_id": job_id}
             return res, None
@@ -344,14 +347,18 @@ class TaskScheduler(ABC):
             job_json_info["data"]["job_priority"] = job_priority
             backend = job_json_info["data"]["backend"]
             try:
+                deployment_name = backend
+                deployment = self._task_manager.get_deployment(deployment_name)
+                """
                 flow_info = self._task_manager.get_flow_info_by_backend(
                     backend
                 )
+                """
                 device = self.device_manager.get_device(backend)
                 device_name = device.get_name()
                 tags = [f"{device_name}"]
                 job_id = self._policy_handler.exec_task(
-                    flow_info, job_json_info, tags
+                    deployment, job_json_info, tags
                 )
             except errors.WorkFlowError as e:
                 logger.error(f"Prefect execute update flow error: {str(e)}")
@@ -431,17 +438,17 @@ class TaskScheduler(ABC):
         return final_job_status
 
 
-class TimePrecedencePolicy(ABC):
-    """Time Precedence Policy."""
+class PrioritySchedulingPolicy(ABC):
+    """Priority Scheduling Policy."""
 
     def __init__(self, task_manager: TaskFlowManager):
         self._task_manager = task_manager
 
-    def exec_task(self, flow_info, job_info, tags=None):
-        """TimePrecedencePolicy execute task.
+    def exec_task(self, deployment, job_info, tags=None):
+        """Execute task.
 
         Args:
-            flow_info: flow info
+            deployment: deployment info
             job_info: job info
             tags: prefect flow tags
 
@@ -453,15 +460,13 @@ class TimePrecedencePolicy(ABC):
         if tags is not None:
             pool_name = tags[0]
 
-        job_deploy_id = self._task_manager.deploy_task_flow(
-            flow_info["deploy_name"],
-            pool_name,
-            priority,
-            flow_info["deploy_flow_func"],
-            flow_info["deploy_flow_path"],
-        )
+        deployment_id = deployment["deploy_id"]
+        work_queue_name = f"{pool_name}_{priority}"
         job_run_id = self._task_manager.run_task_flow(
-            job_deploy_id, {"job_info": job_info}, tags=tags
+            deployment_id,
+            {"job_info": job_info},
+            tags=tags,
+            work_queue_name=work_queue_name,
         )
         return job_run_id
 

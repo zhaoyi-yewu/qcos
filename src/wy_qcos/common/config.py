@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -18,7 +18,6 @@
 from wy_qcos.common import errors
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
-from wy_qcos.common.qcos_version import QcosVersion
 
 
 class Config:
@@ -26,13 +25,6 @@ class Config:
 
     # General configs
     DAEMON = False
-    API_VERSION_V1 = "v1"
-    API_VERSION = API_VERSION_V1
-    PROGRAM_NAME = "WuYue-QCOS"
-    PROGRAM_AUTHOR = "CMSS"
-    PLATFORM_NAME = "五岳量子计算操作系统(QCOS)"
-    PLATFORM_VERSION = f"{PLATFORM_NAME} v{QcosVersion.VERSION}"
-    COPYRIGHT = "2024-2026 中移（苏州）软件技术有限公司"
 
     # [DEFAULT]
     DEBUG = False
@@ -40,6 +32,8 @@ class Config:
     MAX_JOBS = 10000
     # [GLOBAL CONFIG] max queued+running jobs
     MAX_QUEUED_JOBS = 1000
+    # [GLOBAL CONFIG] default venv base dir
+    VENV_DIR = "/var/lib/qcos/venv"
 
     # [VIRT]
     # enable virtualization
@@ -56,6 +50,12 @@ class Config:
     API_SERVER_LISTEN_IP = Constant.DEFAULT_API_SERVER_LISTEN_IP
     # API server listen port
     API_SERVER_LISTEN_PORT = Constant.DEFAULT_API_SERVER_LISTEN_PORT
+
+    # [REDIS]
+    # REDIS server ip
+    REDIS_SERVER_IP = Constant.DEFAULT_REDIS_SERVER_IP
+    # REDIS server port
+    REDIS_SERVER_PORT = Constant.DEFAULT_REDIS_SERVER_PORT
 
     # [LOG]
     # api log file
@@ -89,8 +89,28 @@ class Config:
     # [DEVICES]
     DEVICE_LIST = []
 
+    # [PREFECT]
+    PREFECT_SERVER_DATABASE_CONNECTION_URL = (
+        "sqlite+aiosqlite:///var/qcos/db/prefect.db"
+    )
+    PREFECT_API_URL = "http://127.0.0.1:4200/api"
+    PREFECT_WORKER_QUERY_SECONDS = 30
+    PREFECT_WORKER_PREFETCH_SECONDS = 1
+    PREFECT_WORKER_HEARTBEAT_SECONDS = 30
+    PREFECT_LOCAL_STORAGE_PATH = "/var/qcos/storage"
+    PREFECT_LOGGING_LEVEL = "INFO"
+
     # valid sections
-    VALID_SECTIONS = ["DEFAULT", "VIRT", "API_SERVER", "LOG", "SSL", "DEVICES"]
+    VALID_SECTIONS = [
+        "DEFAULT",
+        "VIRT",
+        "API_SERVER",
+        "REDIS",
+        "LOG",
+        "SSL",
+        "PREFECT",
+        "DEVICES",
+    ]
 
     # extra configs from .toml files
     EXTRA_CONFIGS = {}

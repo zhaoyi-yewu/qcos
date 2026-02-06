@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -39,6 +39,7 @@ class TestTranspilers:
         transpilers = StLibrary.get_transpilers(self.client)
         assert isinstance(transpilers, dict)
 
+    @pytest.mark.smoke
     def test_get_transpiler(self):
         transpiler_name = Constant.TRANSPILER_CMSS
         transpiler = StLibrary.get_transpiler(self.client, transpiler_name)

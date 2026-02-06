@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
+
 from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
     EquivalenceRule,
     EquivalenceGraph,
@@ -23,6 +25,7 @@ from wy_qcos.transpiler.cmss.common.base_operation import BaseOperation
 
 
 class TestEquivalenceRule:
+    @pytest.mark.smoke
     def test_h_equivalence_u2(self):
         dsl = "h() q0 -> u2(0, pi) q0"
         rule = EquivalenceRule(dsl)

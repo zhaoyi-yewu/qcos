@@ -21,6 +21,7 @@ from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
 from wy_qcos.transpiler.cmss.optimizer.template import (
     OptimizingTemplate,
     replace_all,
+    filter_templates_by_basis,
 )
 from wy_qcos.transpiler.cmss.common.gate_operation import (
     X,
@@ -105,14 +106,27 @@ class EquivalencePass:
             cnt += replace_all(dag, template)
         return cnt
 
-    def run(self, dag: DAGCircuit):
+    def run(self, dag: DAGCircuit, basis_gates: set | None = None):
         """Optimize the dag with equivalence templates.
 
         Args:
             dag (DAGCircuit): dag to be optimized.
+            basis_gates (set, optional): basis gates after decompose.
 
         Returns:
             int: the number of reduced gates.
         """
-        templates = self.get_equivalence_circuits
+        if basis_gates is not None:
+            templates = filter_templates_by_basis(
+                self.get_equivalence_circuits,
+                basis_gates,
+                ignore_replacement=False,
+            )
+        else:
+            templates = filter_templates_by_basis(
+                self.get_equivalence_circuits,
+                dag.count_ops().keys(),
+                ignore_replacement=True,
+            )
+
         return self.replace_equivalence_circuits(dag, templates)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -25,9 +25,10 @@ import signal
 import sys
 import uvicorn
 
-from wy_qcos.api.fastapi_server import app
+from wy_qcos.api.fastapi_server import app, QcosUvicornServer
 from wy_qcos.common import errors
 from wy_qcos.common.config import Config
+from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.common.qcos_version import QcosVersion
 from wy_qcos.drivers.device_manager import DeviceManager
@@ -38,8 +39,8 @@ from wy_qcos.transpiler.transpiler_manager import TranspilerManager
 
 logger = logging.getLogger(__name__)
 
-PROGRAM_NAME = Config.PROGRAM_NAME
-PROGRAM_AUTHOR = Config.PROGRAM_AUTHOR
+PROGRAM_NAME = Constant.PROGRAM_NAME
+PROGRAM_AUTHOR = Constant.PROGRAM_AUTHOR
 PROGRAM_VERSION = f"{PROGRAM_NAME} - v{QcosVersion.VERSION} ({PROGRAM_AUTHOR})"
 LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_FORMAT = "%(asctime)s %(process)d %(levelname)s [%(name)s] %(message)s"
@@ -228,7 +229,7 @@ class Server:
                 uvicorn_logger.propagate = False
 
             # init uvicorn server
-            server = uvicorn.Server(config)
+            server = QcosUvicornServer(config)
 
             # init plugin and drivers
             # init and load drivers

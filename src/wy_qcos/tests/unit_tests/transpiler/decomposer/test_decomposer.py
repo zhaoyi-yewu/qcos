@@ -32,6 +32,7 @@ from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 
 @pytest.mark.usefixtures("global_configs")
 class TestDecomposer:
+    @pytest.mark.smoke
     def test_decompose_basis_only(self):
         d = Decomposer()
         source = [

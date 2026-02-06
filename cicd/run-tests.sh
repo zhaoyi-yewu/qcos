@@ -1,6 +1,6 @@
 #!/bin/bash
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -24,17 +24,17 @@ function usage {
     echo "Usage: $0 [OPTION] ..."
     echo "Run QCOS's test suite(s)"
     echo ""
-    echo "  -p, --pep8            Run PEP8 coding style check"
-    echo "  -u, --unit-test       Run unit tests (QCOS)"
-    echo "  -c, --coverage        Run unit tests and generate code coverage report (QCOS)"
-    echo "  -j, --client-unit-test   Run unit tests (QCOS CLIENT)"
-    echo "  -e, --client-coverage    Run unit tests and generate code coverage report (QCOS CLIENT)"
-    echo "  -s, --system-test     Run system tests"
-    echo "  -h, --help            Print this usage message"
+    echo "  -p, --pep8                             Run PEP8 coding style check"
+    echo "  -u, --unit-test [all/TEST_CASE]        Run unit tests (QCOS)"
+    echo "  -c, --coverage  [all/TEST_CASE]        Run unit tests and generate code coverage report (QCOS)"
+    echo "  -j, --client-unit-test [all/TEST_CASE] Run unit tests (QCOS CLIENT)"
+    echo "  -e, --client-coverage [all/TEST_CASE]  Run unit tests and generate code coverage report (QCOS CLIENT)"
+    echo "  -s, --system-test [all/TEST_CASE]      Run system tests"
+    echo "  -h, --help                             Print this usage message"
     echo ""
 }
 
-opts=$(getopt -o fpucjesh --long pep8,unit-test,coverage,client-unit-test,client-coverage,system-test,help -- "$@")
+opts=$(getopt -o pu:c:j:e:s:h --long pep8,unit-test:,coverage:,client-unit-test:,client-coverage:,system-test:,help -- "$@")
 if [[ $? -ne 0 ]]; then
   exit 1
 fi
@@ -46,11 +46,11 @@ LANGUAGE=en_US:en
 LC_ALL=C
 
 pep8=false
-unit_test=false
-coverage=false
-client_unit_test=false
-client_coverage=false
-system_test=false
+unit_test=""
+coverage=""
+client_unit_test=""
+client_coverage=""
+system_test=""
 pep8_success=-1
 unit_test_success=-1
 coverage_success=-1
@@ -58,25 +58,26 @@ client_unit_test_success=-1
 client_coverage_success=-1
 system_test_success=-1
 wrapper="sh -c"
+pytest_ini="${TOP_DIR}/src/wy_qcos/tests/pytest.ini"
 
 while true; do
   case "$1" in
     -h | --help )        usage ; exit 0; shift ;;
     -p | --pep8 )        pep8=true;      shift ;;
-    -u | --unit-test )   unit_test=true; shift ;;
-    -c | --coverage )    coverage=true;  shift ;;
-    -j | --client-unit-test ) client_unit_test=true; shift ;;
-    -e | --client-coverage )  client_coverage=true;  shift ;;
-    -s | --system-test ) system_test=true;  shift ;;
+    -u | --unit-test )   unit_test="$2"; shift 2;;
+    -c | --coverage )    coverage="$2";  shift 2;;
+    -j | --client-unit-test ) client_unit_test="$2"; shift 2;;
+    -e | --client-coverage )  client_coverage="$2";  shift 2;;
+    -s | --system-test ) system_test="$2"; shift 2;;
     -- ) shift; break ;;
     * )         break ;;
   esac
 done
 
 # check user input options
-if [ "$pep8" = false ] && [ "$unit_test" = false ] && [ "$coverage" = false ] \
-  && [ "$client_unit_test" = false ] && [ "$client_coverage" = false ] \
-  && [ "$system_test" = false ]; then
+if [ "$pep8" = false ] && [ -e "$unit_test" ] && [ -e "$coverage" ] \
+  && [ -e "$client_unit_test" ] && [ -e "$client_coverage" ] \
+  && [ -e "$system_test" ]; then
   echo -e "Error: Invalid arguments\n"
   usage
   exit 1
@@ -92,14 +93,44 @@ function run_pep8 {
 
 function run_unit_tests {
   echo "[Running unit tests (QCOS)]"
-  ${wrapper} "python3 -m pytest --disable-warnings -vv --junitxml=${TOP_DIR}/cicd/report.xml ${TOP_DIR}/src/wy_qcos/tests/unit_tests"
+  args=$*
+  test_case="${TOP_DIR}/src/wy_qcos/tests/unit_tests"
+  local pytest_mark=""
+  local junit_report="--junitxml=${TOP_DIR}/cicd/report.xml"
+  if [ "${args,,}" = "smoke" ]; then
+    pytest_mark="-m 'smoke'"
+  elif [ "${args,,}" = "slow" ]; then
+    pytest_mark="-m 'slow'"
+  elif [ "${args,,}" = "default" ]; then
+    pytest_mark="-m 'not smoke and not slow'"
+  elif [ "${args,,}" = "all" ]; then
+    pytest_mark=""
+  else
+    test_case=${args}
+  fi
+  ${wrapper} "python3 -m pytest -c ${pytest_ini} ${pytest_mark} ${junit_report} ${test_case}"
   unit_test_success=$?
   echo
 }
 
 function run_client_unit_tests {
   echo "[Running unit tests (QCOS CLIENT)]"
-  ${wrapper} "python3 -m pytest --disable-warnings -vv --junitxml=${TOP_DIR}/cicd/client-report.xml ${TOP_DIR}/src/wy_qcos_client/tests/unit_tests"
+  args=$*
+  test_case="${TOP_DIR}/src/wy_qcos_client/tests/unit_tests"
+  local pytest_mark=""
+  local junit_report="--junitxml=${TOP_DIR}/cicd/report.xml"
+  if [ "${args,,}" = "smoke" ]; then
+    pytest_mark="-m 'smoke'"
+  elif [ "${args,,}" = "slow" ]; then
+    pytest_mark="-m 'slow'"
+  elif [ "${args,,}" = "default" ]; then
+    pytest_mark="-m 'not smoke and not slow'"
+  elif [ "${args,,}" = "all" ]; then
+    pytest_mark=""
+  else
+    test_case=${args}
+  fi
+  ${wrapper} "python3 -m pytest -c ${pytest_ini} ${pytest_mark} ${junit_report} ${test_case}"
   client_unit_test_success=$?
   echo
 }
@@ -107,8 +138,13 @@ function run_client_unit_tests {
 function run_coverage {
   min_fail_rate=80
   echo "[Running code coverage test (QCOS)]"
+  args=$*
+  test_case="${TOP_DIR}/src/wy_qcos/tests/unit_tests"
+  if [ "${args,,}" != "all" ]; then
+    test_case=${args}
+  fi
   ${wrapper} "rm -rf ${BASE_DIR}/coverage ${BASE_DIR}/coverage.xml"
-  ${wrapper} "coverage3 run --data-file=${BASE_DIR}/.coverage --omit='*/site-packages/*' -m pytest --disable-warnings -vv ${TOP_DIR}/src/wy_qcos/tests/unit_tests"
+  ${wrapper} "coverage3 run --data-file=${BASE_DIR}/.coverage --omit='*/site-packages/*' -m pytest -c ${pytest_ini} ${test_case}"
   ${wrapper} "coverage3 xml --data-file=${BASE_DIR}/.coverage -o ${BASE_DIR}/coverage.xml"
   ${wrapper} "coverage3 report --data-file=${BASE_DIR}/.coverage --include='${TOP_DIR}/src/wy_qcos/*' --omit='${TOP_DIR}/src/wy_qcos/tests/*' -m --fail-under=$min_fail_rate"
   coverage_success=$?
@@ -119,8 +155,13 @@ function run_coverage {
 function run_client_coverage {
   min_fail_rate=80
   echo "[Running code coverage test (QCOS CLIENT)]"
+  args=$*
+  test_case="${TOP_DIR}/src/wy_qcos_client/tests/unit_tests"
+  if [ "${args,,}" != "all" ]; then
+    test_case=${args}
+  fi
   ${wrapper} "rm -rf ${BASE_DIR}/coverage ${BASE_DIR}/client-coverage.xml"
-  ${wrapper} "coverage3 run --data-file=${BASE_DIR}/.client_coverage --omit='*/site-packages/*' -m pytest --disable-warnings -vv ${TOP_DIR}/src/wy_qcos_client/tests/unit_tests"
+  ${wrapper} "coverage3 run --data-file=${BASE_DIR}/.client_coverage --omit='*/site-packages/*' -m pytest -c ${pytest_ini} ${test_case}"
   ${wrapper} "coverage3 xml --data-file=${BASE_DIR}/.client_coverage -o ${BASE_DIR}/client-coverage.xml"
   ${wrapper} "coverage3 report --data-file=${BASE_DIR}/.client_coverage --include='${TOP_DIR}/src/wy_qcos_client/*' --omit='${TOP_DIR}/src/wy_qcos_client/tests/*' -m --fail-under=$min_fail_rate"
   client_coverage_success=$?
@@ -130,7 +171,21 @@ function run_client_coverage {
 
 function run_system_tests {
   echo "[Running system tests]"
-  ${wrapper} "python3 -m pytest --disable-warnings -vv ${TOP_DIR}/src/wy_qcos/tests/system_tests"
+  args=$*
+  test_case="${TOP_DIR}/src/wy_qcos/tests/system_tests"
+  local pytest_mark=""
+  if [ "${args,,}" = "smoke" ]; then
+    pytest_mark="-m 'smoke'"
+  elif [ "${args,,}" = "slow" ]; then
+    pytest_mark="-m 'slow'"
+  elif [ "${args,,}" = "default" ]; then
+    pytest_mark="-m 'not smoke and not slow'"
+  elif [ "${args,,}" = "all" ]; then
+    pytest_mark=""
+  else
+    test_case=${args}
+  fi
+  ${wrapper} "python3 -m pytest -c ${pytest_ini} ${pytest_mark} ${test_case}"
   system_test_success=$?
   echo
 }
@@ -139,20 +194,20 @@ function run_tests {
   if [ "$pep8" = true ]; then
     run_pep8
   fi
-  if [ "$unit_test" = true ]; then
-    run_unit_tests
+  if [ -n "$unit_test" ]; then
+    run_unit_tests $unit_test
   fi
-  if [ "$coverage" = true ]; then
-    run_coverage
+  if [ -n "$coverage" ]; then
+    run_coverage $coverage
   fi
-  if [ "$client_unit_test" = true ]; then
-    run_client_unit_tests
+  if [ -n "$client_unit_test" ]; then
+    run_client_unit_tests $client_unit_test
   fi
-  if [ "$client_coverage" = true ]; then
-    run_client_coverage
+  if [ -n "$client_coverage" ]; then
+    run_client_coverage $client_coverage
   fi
-  if [ "$system_test" = true ]; then
-    run_system_tests
+  if [ -n "$system_test" ]; then
+    run_system_tests $system_test
   fi
 }
 
@@ -215,5 +270,9 @@ function print_report {
   fi
 }
 
+# active venv if default venv exists
+if [ -f "/var/lib/qcos/venv/default/bin/activate" ]; then
+  source /var/lib/qcos/venv/default/bin/activate
+fi
 run_tests
 print_report

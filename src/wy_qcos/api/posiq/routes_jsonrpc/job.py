@@ -120,11 +120,6 @@ def submit_job(
                 source_code, args_schema.SOURCE_CODE_TEXT_SCHEMA
             ),
         )
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            Library.validate_qasms(source_code),
-        )
 
     # Validate: source_code by circuit_aggregation
     if (

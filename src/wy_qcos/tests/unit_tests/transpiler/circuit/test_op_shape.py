@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -21,6 +21,7 @@ from wy_qcos.transpiler.cmss.circuit.operators.op_shape import OpShape
 
 
 class TestOpShape:
+    @pytest.mark.smoke
     def test_op_shape(self):
         op_shape = OpShape(
             dims_l=(2, 2), dims_r=(2, 2), num_qargs_r=2, num_qargs_l=2

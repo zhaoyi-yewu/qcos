@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -43,6 +43,7 @@ class DriverQiskitAerSim(DriverBase):
         self.supported_transpilers = [Constant.TRANSPILER_QISKIT]
         self.enable_circuit_aggregation = True
         self.max_qubits = 30
+        self.enable_device_monitor = False
         self._final_response = None
 
     def init_driver(self):

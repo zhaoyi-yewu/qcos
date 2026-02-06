@@ -30,10 +30,12 @@ import math
 import numpy as np
 import os
 import pkgutil
+import psutil
 import random
 import re
 import requests
 import signal
+import sys
 import tempfile
 import time
 import tomlkit
@@ -41,6 +43,7 @@ import uuid
 import zipfile
 
 from aiohttp import ClientTimeout, ClientError
+from collections import OrderedDict
 from cryptography.fernet import Fernet
 from datetime import datetime
 from http import HTTPStatus
@@ -48,7 +51,6 @@ from schema import Schema
 from urllib.parse import urlparse
 
 from .constant import HttpCode, HttpHeaders, HttpMethod, Constant
-from wy_qcos.transpiler.cmss.compiler.parser import compile
 
 logger = logging.getLogger(__name__)
 
@@ -198,6 +200,15 @@ class Library:
         return tf
 
     @staticmethod
+    def is_file(file_path):
+        """Is file.
+
+        Args:
+            file_path: file path
+        """
+        return os.path.isfile(file_path)
+
+    @staticmethod
     def rm_file(file_path):
         """Remove file.
 
@@ -334,12 +345,136 @@ class Library:
         return True, None
 
     @staticmethod
+    def get_processes(match_regex):
+        """Get processes.
+
+        Args:
+            match_regex: regex to match
+        """
+        processes = []
+        for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+            try:
+                cmdline = " ".join(proc.info["cmdline"] or [])
+                if Library.str_match(cmdline, match_regex):
+                    processes.append(proc)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        return processes
+
+    @staticmethod
+    def kill(process_list, force: bool = False):
+        """Kill processes.
+
+        Args:
+            process_list: processes
+            force: force to kill
+
+        Returns:
+            pids that are killed successfully, pids that are failed to kill
+        """
+        success_pids = []
+        failed_pids = []
+
+        for proc in process_list:
+            pid = proc.pid
+            try:
+                if force:
+                    # force to kill
+                    proc.kill()
+                else:
+                    # terminate processes gracefully
+                    proc.terminate()
+                # wait process to exit
+                gone, alive = psutil.wait_procs([proc], timeout=5)
+                if not alive:
+                    success_pids.append(pid)
+                else:
+                    # failed to terminate processes gracefully, force to kill
+                    proc.kill()
+                    psutil.wait_procs([proc], timeout=2)
+                    success_pids.append(pid)
+            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                failed_pids.append((pid, str(e)))
+
+        return success_pids, failed_pids
+
+    @staticmethod
+    def get_venv_dirs(venv_base_dir, default_venv_dir="default"):
+        """Get venv dirs.
+
+        Args:
+            venv_base_dir: base directory to search for virtual environments
+            default_venv_dir: default venv dir name
+
+        Returns:
+            list: list of venv directory paths that contain activate file
+        """
+        venv_dirs = OrderedDict()
+
+        # check if venv base dir exists
+        if not os.path.exists(venv_base_dir):
+            return venv_dirs
+
+        # check if venv_base_dir is dir
+        if not os.path.isdir(venv_base_dir):
+            return venv_dirs
+
+        try:
+            for _dir in os.listdir(venv_base_dir):
+                driver_name = _dir
+                driver_dir = os.path.join(venv_base_dir, _dir)
+                driver_bin_dir = os.path.join(driver_dir, "bin")
+                if os.path.isdir(driver_bin_dir):
+                    for root, dirs, files in os.walk(driver_bin_dir):
+                        if "activate" in files:
+                            if driver_dir not in venv_dirs:
+                                venv_dirs[driver_name] = {}
+                            venv_dirs[driver_name]["driver_dir"] = driver_dir
+                            break
+                driver_lib_dir = os.path.join(driver_dir, "lib")
+                if os.path.isdir(driver_lib_dir):
+                    for root, dirs, files in os.walk(driver_lib_dir):
+                        for _dir in dirs:
+                            if "site-packages" != _dir:
+                                continue
+                            if driver_dir not in venv_dirs:
+                                venv_dirs[driver_name] = {}
+                            site_packages_dir = os.path.join(root, _dir)
+                            venv_dirs[driver_name]["site_packages"] = (
+                                site_packages_dir
+                            )
+                            break
+        except (OSError, PermissionError) as e:
+            logger.error(f"Error scanning venv directories: {e}")
+
+        if default_venv_dir and default_venv_dir in venv_dirs:
+            # reorder venv_dirs
+            default_venv_info = venv_dirs.pop(default_venv_dir)
+            venv_dirs[default_venv_dir] = default_venv_info
+
+        return venv_dirs
+
+    @staticmethod
+    def set_venv_path(venv_base_dir):
+        """Set venv path.
+
+        Args:
+            venv_base_dir: venv base dir
+        """
+        venv_dirs = Library.get_venv_dirs(venv_base_dir)
+        for venv_name, venv_dir_info in venv_dirs.items():
+            venv_site_packages_dir = venv_dir_info["site_packages"]
+            if os.path.isdir(venv_site_packages_dir):
+                sys.path.insert(0, venv_site_packages_dir)
+
+    @staticmethod
     def import_classes(
         pkg_dir,
         base_module_name="drivers",
         base_dir=None,
         base_class=None,
         excluded_class=None,
+        venv_base_dir=None,
     ):
         """Import class from package dir.
 
@@ -349,11 +484,23 @@ class Library:
             base_dir: base dir (Default value = None)
             base_class: base class (Default value = None)
             excluded_class: excluded class (Default value = None)
+            venv_base_dir: venv base dir
 
         Returns:
-            class dict
+            class dict, venv_dirs
         """
         classes = {}
+        venv_dirs = {}
+
+        if venv_base_dir:
+            # get venv dirs and set sys.path
+            venv_dirs = Library.get_venv_dirs(venv_base_dir)
+            orig_sys_path = copy.deepcopy(sys.path)
+            for venv_name, venv_dir_info in venv_dirs.items():
+                venv_site_packages_dir = venv_dir_info["site_packages"]
+                if os.path.isdir(venv_site_packages_dir):
+                    sys.path.insert(0, venv_site_packages_dir)
+
         for module_loader, name, is_pkg in pkgutil.iter_modules([pkg_dir]):
             module_path = module_loader.path.replace(base_dir, "")
             module_name = (
@@ -374,7 +521,10 @@ class Library:
                 logger.error(
                     f"Failed to import module: {module_name}. Reason: {e}"
                 )
-        return classes
+        if venv_base_dir:
+            sys.path = copy.deepcopy(orig_sys_path)
+
+        return classes, venv_dirs
 
     @staticmethod
     def str_match(str, regex, ignore_case=False):
@@ -704,29 +854,6 @@ class Library:
                     f"qubits, exceeding the maximum limit of "
                     f"{Constant.MAX_QUBO_QUBITS}"
                 )
-        return True, None
-
-    @staticmethod
-    def validate_qasms(qasm_list):
-        """Validate qasms.
-
-        Args:
-            qasm_list (List(str)): List of qasms
-
-        Returns:
-            success of failed (bool), error message
-        """
-        if not qasm_list:
-            return False, "qasm list cannot be an empty list"
-
-        for i in range(len(qasm_list)):
-            try:
-                compile(qasm_list[i])
-            except Exception as e:
-                err_msg = (
-                    f"Source code with index {i} compile failed: {str(e)}"
-                )
-                return False, err_msg
         return True, None
 
     @staticmethod

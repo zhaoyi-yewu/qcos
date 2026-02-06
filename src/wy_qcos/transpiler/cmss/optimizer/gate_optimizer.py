@@ -232,7 +232,9 @@ def optimize_gate(
     return optimize_gates
 
 
-def do_optimize_pass(dag: DAGCircuit, pass_list: list):
+def do_optimize_pass(
+    dag: DAGCircuit, pass_list: list, basis_gates: set | None = None
+):
     """Iteratively apply optimization passes.
 
     Iteratively apply a sequence of optimization passes to a DAGCircuit
@@ -241,11 +243,12 @@ def do_optimize_pass(dag: DAGCircuit, pass_list: list):
     Args:
         dag (DAGCircuit): The DAGCircuit to be optimized.
         pass_list (list): A list of optimization passes.
+        basis_gates (set, optional): basis gates after decompose.
     """
     while True:
         init_size = dag.size()
         for pass_ in pass_list:
-            pass_.run(dag)
+            pass_.run(dag, basis_gates)
         new_size = dag.size()
         if new_size >= init_size:
             break
@@ -255,6 +258,7 @@ def optimize(
     ir: list,
     opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
     verbose=False,
+    basis_gates: set | None = None,
 ):
     """Optimize the input ir.
 
@@ -263,6 +267,7 @@ def optimize(
         opt_level (int, optional): optimization level. Defaults to 1.
         verbose (bool, optional): whether print optimization information.
             Defaults to False.
+        basis_gates (set, optional): basis gates after decompose.
 
     Returns:
         list: optimized ir.
@@ -299,14 +304,12 @@ def optimize(
         _opt = [
             inverse_optimizer,
             adjacent_phase_optimizer,
-            equivalence_optimizer,
         ]
     elif opt_level == 2:
         _opt = [
             inverse_optimizer,
             adjacent_phase_optimizer,
             equivalence_optimizer,
-            commutative_optimizer,
         ]
     elif opt_level == 3:
         _opt = [
@@ -318,7 +321,9 @@ def optimize(
     else:
         raise ValueError(f"Optimization level {opt_level} is not supported.")
 
-    do_optimize_pass(dag, _opt)
+    if basis_gates is not None and not isinstance(basis_gates, set):
+        basis_gates = set(basis_gates)
+    do_optimize_pass(dag, _opt, basis_gates)
 
     ir = []
     for node in dag.topological_op_nodes():

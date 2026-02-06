@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,6 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
+from unittest.mock import Mock
+
 from wy_qcos.common.config import Config
 from wy_qcos.drivers.device_manager import DeviceManager
 from wy_qcos.drivers.driver_manager import DriverManager
@@ -23,11 +26,16 @@ device_manager = DeviceManager(Config(), DriverManager())
 
 
 class TestDeviceManager:
+    @pytest.mark.smoke
     def test_load_devices(self):
         device_manager.config.DEVICE_LIST = ["dummy"]
         assert device_manager.load_devices() is None
 
     def test_init_devices(self):
+        redis_instance = Mock()
+        redis_ping = Mock()
+        redis_instance.ping.return_value = redis_ping
+        device_manager.redis_instance = redis_instance
         assert device_manager.init_devices() is None
 
     def test_has_device(self):

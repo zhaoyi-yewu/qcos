@@ -66,7 +66,3 @@ class SCRoutingFactory:
                 f"Unsupported routing algorithm: {routing_algorithm}. "
                 f"Supported algorithms: 'mct', 'sc', 'sabre'"
             )
-
-
-# 为了向后兼容，保留 SCRouting 作为 MCTSRouting 的别名
-SCRouting: type[MCTSRouting] = MCTSRouting

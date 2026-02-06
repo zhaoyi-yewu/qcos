@@ -82,6 +82,8 @@ class DriverBase:
         self.description = None
         # module name
         self._module_name = None
+        # package path list
+        self._package_paths = None
         # class name
         self._class_name = None
         # enable transpiler or not
@@ -103,6 +105,8 @@ class DriverBase:
         self.supported_basis_gates = None
         # supported transpilers
         self.supported_transpilers = []
+        # enable device monitor
+        self.enable_device_monitor = True
 
         # task stage to track progress
         # task stages and percentages
@@ -217,6 +221,7 @@ class DriverBase:
             f"enable_circuit_aggregation: {self.enable_circuit_aggregation}",
             f"results_fetch_mode: {self.results_fetch_mode}",
             f"max_qubits: {self.max_qubits}",
+            f"enable_device_monitor: {self.enable_device_monitor}",
         ]
         return "\n".join(show_list)
 
@@ -277,6 +282,22 @@ class DriverBase:
             module name
         """
         return self._module_name
+
+    def set_package_paths(self, package_paths: list):
+        """Set package paths.
+
+        Args:
+            package_paths: package path list
+        """
+        self._package_paths = package_paths
+
+    def get_package_paths(self):
+        """Get package paths.
+
+        Returns:
+            package path list
+        """
+        return self._package_paths
 
     def set_class_name(self, class_name):
         """Set class name.
@@ -547,15 +568,6 @@ class DriverBase:
         """
         return self.driver_options
 
-    def get_device_state(self):
-        """Get device prop.
-
-        Returns:
-            dict: device prop
-        """
-        device_prop = None
-        return device_prop
-
     def calibrate(self, cal_cmd, options):
         """Calibrate device.
 
@@ -582,3 +594,14 @@ class DriverBase:
         """
         results = None
         return results
+
+    def fetch_running_info(self):
+        """Fetch running info.
+
+        Returns:
+            remote device running info
+        """
+        raise NotImplementedError(
+            f"Driver: {self.__class__.__name__} "
+            f"must implement method: fetch_running_info"
+        )

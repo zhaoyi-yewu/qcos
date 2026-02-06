@@ -1,6 +1,6 @@
 #!/bin/sh
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -90,7 +90,9 @@ git_commit_id=$(git rev-parse HEAD 2>/dev/null || echo "")
 echo ${git_commit_id} > ${top_dir}/latest-commit-id.txt
 
 # copy dirs/files to build-context
-files=("latest-commit-id.txt" "src" "etc" \
+exclude_pattern=".venv-driver"
+files=("build-scripts/.env" \
+       "latest-commit-id.txt" "src" "etc" \
        "requirements" \
        "build-scripts/cli/requirements.txt" \
        "build-scripts/qcos/entrypoint.sh" \
@@ -105,5 +107,5 @@ for file_path in "${files[@]}"; do
     dst=${BUILD_CONTEXT}/${file_path}
     mkdir -p $(dirname ${dst})
   fi
-  rsync -r --delete ${src} ${dst}
+  rsync -r --exclude=${exclude_pattern} --delete ${src} ${dst}
 done

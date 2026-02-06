@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -14,6 +14,8 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+import pytest
 
 from wy_qcos.drivers.device import Device
 from wy_qcos.drivers.dummy.driver_dummy import DriverDummy
@@ -31,6 +33,7 @@ class TestDevice:
         name = device.get_name()
         assert name == "dummy"
 
+    @pytest.mark.smoke
     def test_get_driver(self):
         driver = device.get_driver()
         assert isinstance(driver, DriverDummy)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -14,7 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
 import math
+import pytest
 
 from wy_qcos.transpiler.cmss.decomposer.rule_applier import RuleApplier
 from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
@@ -25,6 +27,7 @@ from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
 
 
 class TestRuleApplier:
+    @pytest.mark.smoke
     def test_apply_one_rule(self):
         # test rx equivalence rule
         rx_rule = EquivalenceRule(

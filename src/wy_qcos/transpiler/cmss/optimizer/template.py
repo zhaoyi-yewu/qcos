@@ -334,3 +334,30 @@ def replace_all(dag: DAGCircuit, template: OptimizingTemplate):
                 template.param_transform(template, mapping, ret)
             cnt += template.weight
     return cnt
+
+
+def filter_templates_by_basis(
+    templates: list[OptimizingTemplate],
+    basis_gates: set,
+    ignore_replacement: bool = True,
+):
+    """Filter templates by basis gates.
+
+    Args:
+        templates (list[OptimizingTemplate]): templates to be filtered.
+        basis_gates (set): basis gates after decompose.
+        ignore_replacement (bool): If true, just filter templates only by
+            `template.template`.
+
+    Returns:
+        list: filtered templates.
+    """
+    filtered_templates = []
+    for template in list(templates):
+        gate_names = set()
+        gate_names.update(template.template.count_ops().keys())
+        if template.replacement is not None and not ignore_replacement:
+            gate_names.update(template.replacement.count_ops().keys())
+        if gate_names.issubset(basis_gates):
+            filtered_templates.append(template)
+    return filtered_templates

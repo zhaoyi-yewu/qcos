@@ -23,20 +23,32 @@ class AdjacentPhaseOptPass:
     """Merge adjacent phase gates."""
 
     def __init__(self) -> None:
-        pass
+        # gate to be optimized
+        self.phase_gates = {"rx", "ry", "rz", "crx", "cry", "crz", "u1"}
 
-    def run(self, dag: DAGCircuit):
+    def run(self, dag: DAGCircuit, basis_gates: set | None = None):
         """Optimize the dag by merging adjacent phase gates.
 
         Args:
             dag (DAGCircuit): dag to be optimized.
+            basis_gates (set, optional): basis gates after decompose.
 
         Returns:
             int: the number of reduced gates.
         """
         cnt = 0
-        phase_gates = ["rx", "ry", "rz", "crx", "cry", "crz", "u1"]
-        dag.parameterize_all()
+        rz_phase_gates = {"s", "sdg", "t", "tdg", "z"}
+        op_counts = dag.count_ops()
+        phase_gates = self.phase_gates.intersection(op_counts.keys())
+        if rz_phase_gates.intersection(op_counts.keys()):
+            phase_gates.add("rz")
+
+        if basis_gates is not None:
+            phase_gates = phase_gates.intersection(basis_gates)
+
+        if rz_phase_gates.intersection(op_counts.keys()):
+            dag.parameterize_all_rz()
+
         for node in dag.topological_op_nodes():
             if node.name not in phase_gates:
                 continue
@@ -51,5 +63,8 @@ class AdjacentPhaseOptPass:
                 dag.remove_op_node(node)
                 cnt += 1
 
-        dag.deparameterize_all()
+        op_counts = dag.count_ops()
+        if op_counts.get("rz", 0) > 0:
+            if basis_gates is None or rz_phase_gates.issubset(basis_gates):
+                dag.deparameterize_all_rz()
         return cnt

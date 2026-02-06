@@ -83,6 +83,7 @@ class TestTranspilerCmss:
         trans_cfg_inst.set_tech_type(Constant.TECH_TYPE_NEUTRAL_ATOM)
         trans_cfg_inst.set_max_qubits(6)
 
+    @pytest.mark.smoke
     @patch(
         "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
     )
@@ -114,7 +115,7 @@ class TestTranspilerCmss:
         ]
         src_code_info = {"000": self.simple_data}
         parse_result = transpiler.parse(src_code_info)
-        basis_gate_list = transpiler.transpile(
+        basis_gate_list, _ = transpiler.transpile(
             parse_result, expected_basis_gates
         )
         assert len(basis_gate_list) == 2
@@ -158,7 +159,7 @@ class TestTranspilerCmss:
             "444": self.simple_data,
         }
         parse_result = transpiler.parse(src_code_info)
-        basis_gate_list = transpiler.transpile(
+        basis_gate_list, _ = transpiler.transpile(
             parse_result, expected_basis_gates
         )
         assert len(basis_gate_list) == 10
@@ -202,7 +203,7 @@ class TestTranspilerCmss:
             "222": qasm_data,
         }
         parse_result = transpiler.parse(src_code_info)
-        basis_gate_list = transpiler.transpile(
+        basis_gate_list, _ = transpiler.transpile(
             parse_result, expected_basis_gates
         )
         assert len(basis_gate_list) == 8

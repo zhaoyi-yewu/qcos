@@ -34,7 +34,11 @@ services:
       - /var/log/qcos:/var/log/qcos
       - /var/qcos:/var/qcos
       - /etc/qcos/prefect:/root/.prefect
-      - ${QCOS_LOCAL_SRC_DIR}:/root/qcos-project
+  redis:
+    image: ${REGISTRY}${REDIS_IMAGE_NAME}:${REDIS_IMAGE_VERSION}
+    container_name: redis
+    restart: always
+    network_mode: "host"
   qcos-dev:
     container_name: qcos-dev
     image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
@@ -45,6 +49,7 @@ services:
     tty: True
     depends_on:
       - prefect-server
+      - redis
     working_dir: /root/qcos-project
     environment:
       DEBUG: ${DEBUG}
@@ -56,13 +61,11 @@ services:
       QCOS_SERVER_IP: ${QCOS_SERVER_IP}
       QCOS_SERVER_PORT: ${QCOS_SERVER_PORT}
       QCOS_VIRTUAL_INSTANCE_ID: ${QCOS_VIRTUAL_INSTANCE_ID}
-      PREFECT_SERVER_DATABASE_CONNECTION_URL: "sqlite+aiosqlite:///var/qcos/db/prefect.db"
       PREFECT_API_URL: ${PREFECT_API_URL}
-      PREFECT_LOCAL_STORAGE_PATH: /var/qcos/storage
-      PREFECT_LOGGING_ENABLED: ${PREFECT_LOGGING_ENABLED:-true}
-      PREFECT_LOGGING_LEVEL: ${PREFECT_LOGGING_LEVEL:-INFO}
-      PREFECT_LOGGING_ROOT_LEVEL: INFO
-      PREFECT_LOGGING_ROOT_HANDLERS: ${PREFECT_LOGGING_ROOT_HANDLERS:-[]}
+      PREFECT_SERVER_DATABASE_CONNECTION_URL: ${PREFECT_SERVER_DATABASE_CONNECTION_URL}
+      PREFECT_LOCAL_STORAGE_PATH: ${PREFECT_LOCAL_STORAGE_PATH}
+      REDIS_SERVER_IP: ${REDIS_SERVER_IP}
+      REDIS_SERVER_PORT: ${REDIS_SERVER_PORT}
       PYTHONPATH: /root/qcos-project/src
     command: "-w http://${PREFECT_SERVER_API_HOST:-127.0.0.1}:${PREFECT_SERVER_PORT}/api"
     logging:

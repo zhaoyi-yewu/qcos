@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -360,7 +360,7 @@ class DG(DiGraph):
         measure_op = []
         for gate in circ.get_operations():
             name = gate.name
-            if name in ("barrier", "measure"):
+            if name in ("sync", "barrier", "measure"):
                 if name == "measure":
                     measure_op.append(gate)
                 continue

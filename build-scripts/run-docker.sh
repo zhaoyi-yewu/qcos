@@ -1,6 +1,6 @@
 #!/bin/sh
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -28,7 +28,7 @@ rm -rf /etc/qcos/prefect/profiles.toml
 
 if [ "${DEV,,}" = "false" ]; then
   docker-compose -f docker-compose.yaml down
-  docker volume rm build-scripts_code-data
+  docker volume rm -f build-scripts_code-data
   docker-compose -f docker-compose.yaml up -d
   echo "Run QCOS bash: docker exec -it qcos bash"
 else

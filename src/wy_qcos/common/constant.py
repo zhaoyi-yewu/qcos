@@ -14,11 +14,23 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-# Don't import any libraries
+
+# Don't import any other libraries
+from wy_qcos.common.qcos_version import QcosVersion
 
 
 class Constant:
     """Constants."""
+
+    PROGRAM_NAME = "WuYue-QCOS"
+    PROGRAM_AUTHOR = "CMSS"
+    PLATFORM_NAME = "五岳量子计算操作系统(QCOS)"
+    PLATFORM_VERSION = f"{PLATFORM_NAME} v{QcosVersion.VERSION}"
+    COPYRIGHT = "2024-2026 中移（苏州）软件技术有限公司"
+
+    # API version
+    API_VERSION_V1 = "v1"
+    API_VERSION = API_VERSION_V1
 
     # QCOS server default IP and port
     DEFAULT_API_SERVER_LISTEN_IP = ""
@@ -29,12 +41,21 @@ class Constant:
     DEFAULT_QCOS_SERVER_IP = "127.0.0.1"
     DEFAULT_QCOS_SERVER_PORT = 18400
 
+    # REDIS server default IP and port
+    DEFAULT_REDIS_SERVER_IP = "127.0.0.1"
+    DEFAULT_REDIS_SERVER_PORT = 6379
+    DEVICE_RUNNING_INFO_REDIS_CHANNEL_SUFFIX = "/device_running_info"
+
     # Security
     DEFAULT_FERNET_KEY = "qevBn4Ol_3bJ7t0IW7TmPCCZurqfw_QRa810U43o_m0="
     ENCRYPTION_PREFIX = "++"
 
     # Flow limit
     FLOW_LIMIT = 100000
+
+    # Python bin
+    PYTHON_BIN = "python3"
+    PYPY_BIN = "pypy"
 
     # Code types
     CODE_TYPE_QASM = "qasm"
@@ -187,6 +208,7 @@ class Constant:
 
     # Devices
     DEVICE_DUMMY = "dummy"
+    DEVICE_MONITOR_PREFIX = "device_monitor_"
 
     # Transpiler
     TRANSPILER_CMSS = "cmss"
@@ -266,6 +288,11 @@ class Constant:
     DEFAULT_POOL_CONCURRENCY = 1
     DEFAULT_JOB_TIMEOUT = 300
     DEFAULT_JOB_INTERVAL = 5
+
+    # device engine property
+    DEFAULT_DEVICE_MONITOR_RETRIES = 1000
+    DEFAULT_DEVICE_MONITOR_RETRY_INTERVAL = 5
+    DEFAULT_DEVICE_MONITOR_INTERVAL = 5
 
     # Job status
     JOB_STATUS_UNKNOWN = "UNKNOWN"

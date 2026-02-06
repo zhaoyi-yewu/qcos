@@ -35,6 +35,7 @@ from wy_qcos.transpiler.common.errors import CircuitException
 
 @pytest.mark.usefixtures("global_configs")
 class TestQuantumCircuit:
+    @pytest.mark.smoke
     def test_quantum_circuit_init(self):
         qc = QuantumCircuit(num_qubits=2, num_clbits=2)
 

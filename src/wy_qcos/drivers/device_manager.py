@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,13 +15,16 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import json
 import logging
+import threading
 
+import redis
 from schema import Optional
 
 from wy_qcos.common.library import Library
 from wy_qcos.drivers.device import Device
-
+from wy_qcos.common.constant import Constant
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +42,11 @@ class DeviceManager:
             Optional("description"): str,
             Optional("device_max_qubits"): int,
         }
+        self.redis_instance = redis.Redis(
+            host=config.REDIS_SERVER_IP,
+            port=config.REDIS_SERVER_PORT,
+            decode_responses=True,
+        )
 
     def load_devices(self):
         """Scan and load drivers."""
@@ -101,8 +109,28 @@ class DeviceManager:
                     f"reason: device config file is not found"
                 )
 
+    def check_redis_connection(self):
+        """Check connection to redis."""
+
+        def is_connected():
+            try:
+                print(
+                    f"Check connection to redis: "
+                    f"{self.config.REDIS_SERVER_IP}:"
+                    f"{self.config.REDIS_SERVER_PORT} ... "
+                )
+                self.redis_instance.ping()
+                return True, None, None
+            except Exception as e:
+                return False, str(e), None
+
+        success, err_msg, _ = Library.loop_with_timeout(is_connected, 60, 5)
+        if not success:
+            raise TimeoutError("Connection to redis timeout")
+
     def init_devices(self):
         """Init devices."""
+        self.check_redis_connection()
         for device_name, device in self.devices.items():
             device.set_status(device.DEVICE_STATUS_ONLINE)
             # Init driver
@@ -114,6 +142,13 @@ class DeviceManager:
                 )
                 device.set_enable(False)
                 device.set_status(device.DEVICE_STATUS_OFFLINE)
+                # Start subscribe device info by redis
+            thread = threading.Thread(
+                target=self.subscribe_device_info,
+                args=(self.redis_instance, device),
+            )
+            thread.daemon = True
+            thread.start()
             # Show driver info
             logger.info(f"\n{device.get_device_info()}")
 
@@ -146,3 +181,15 @@ class DeviceManager:
             dict of device instances
         """
         return self.devices
+
+    def subscribe_device_info(self, redis_instance, device):
+        """Subscribe device info by redis."""
+        pubsub = redis_instance.pubsub()
+        channel_name = (
+            device.name + Constant.DEVICE_RUNNING_INFO_REDIS_CHANNEL_SUFFIX
+        )
+        pubsub.subscribe(channel_name)
+        for message in pubsub.listen():
+            if message.get("type") == "message":
+                device_running_info = json.loads(message.get("data"))
+                device.set_device_running_info(device_running_info)

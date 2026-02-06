@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -34,6 +34,7 @@ class TestSampleQasm:
     def teardown_class(cls):
         pass
 
+    @pytest.mark.smoke
     def test_adder_qasm(self):
         file_path = f"{self.samples_dir}/qasm/2.0/adder.qasm"
         qasm_data = read_qasm_from_file(file_path)

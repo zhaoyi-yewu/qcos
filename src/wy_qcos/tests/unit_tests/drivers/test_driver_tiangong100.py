@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -46,6 +46,7 @@ class TestDriverTiangong100:
     def test_close_driver(self):
         assert driver_tiangong100.close_driver() is None
 
+    @pytest.mark.smoke
     @patch.object(DriverTiangong100, "get_task_results")
     @patch.object(DriverTiangong100, "get_task_id")
     @patch.object(Library, "loop_with_timeout")

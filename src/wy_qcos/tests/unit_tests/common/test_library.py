@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -40,6 +40,7 @@ class TestLibrary:
     def setup_class(cls):
         cls.temp_dir = GLOBAL_CONFIGS["temp_dir"]
 
+    @pytest.mark.smoke
     def test_get_brief_description(self):
         description = "description"
         brief = library.get_brief_description(description)
@@ -67,6 +68,15 @@ class TestLibrary:
         library.create_pid_file(input_file)
         assert os.path.isfile(input_file)
         library.rm_file(input_file)
+
+    def test_is_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_path = os.path.join(temp_dir, "test_file.txt")
+            with open(file_path, "w") as f:
+                f.write("test content")
+
+            print(file_path)
+            assert Library.is_file(file_path) is True
 
     def test_kill_pid(self):
         input_file = f"{self.temp_dir}/test_kill_pid.txt"
@@ -104,8 +114,9 @@ class TestLibrary:
         assert success is True
 
     def test_import_classes(self):
-        classes = library.import_classes("logger")
+        classes, venv_dirs = library.import_classes("logger")
         assert not classes
+        assert not venv_dirs
 
     def test_str_match(self):
         success = library.str_match("Library", "Library", ignore_case=True)

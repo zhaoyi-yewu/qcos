@@ -25,6 +25,7 @@ import sys
 import time
 from typing import Any
 
+from loguru import logger
 from prefect import flow, task, pause_flow_run
 from prefect.artifacts import (
     create_progress_artifact,
@@ -32,7 +33,6 @@ from prefect.artifacts import (
 )
 from prefect.context import get_run_context
 from prefect.input import RunInput
-from loguru import logger
 
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
@@ -82,7 +82,9 @@ class SourceCodeInfo:
 
 
 @task(persist_result=False)
-def init_driver(driver_class_info, driver_options, device, job_info):
+def init_driver(
+    driver_class_info, driver_options=None, device=None, job_info=None
+):
     """Init driver from driver_class_info.
 
     Args:
@@ -94,14 +96,17 @@ def init_driver(driver_class_info, driver_options, device, job_info):
     Returns:
         driver
     """
-    job_data = job_info["data"]
     try:
+        # load driver module
         driver_module = importlib.import_module(
             driver_class_info["module_name"]
         )
+
+        # initialize driver class
         driver_class = getattr(driver_module, driver_class_info["class_name"])
         driver = driver_class()
         device_configs = device.get("configs", None)
+
         # update driver options
         if driver_options:
             driver.update_driver_options(driver_options)
@@ -119,40 +124,44 @@ def init_driver(driver_class_info, driver_options, device, job_info):
         # init driver
         driver.init_driver()
 
-        # init job
-        remote_transpiler_configs = None
-        if not job_data.get("dry_run", False):
-            remote_transpiler_configs = driver.fetch_configs()
+        if job_info:
+            # init job
+            job_data = job_info["data"]
+            remote_transpiler_configs = None
+            if not job_data.get("dry_run", False):
+                remote_transpiler_configs = driver.fetch_configs()
 
-        # copy cfgs to transpiler cfg inst
-        if driver.enable_transpiler:
-            static_transpiler_configs = device_configs.get("transpiler", None)
-            trans_cfg_inst.set_max_qubits(driver.get_max_qubits())
-            trans_cfg_inst.set_tech_type(driver.tech_type)
-            trans_cfg_inst.set_driver_name(driver.get_name())
+            # copy cfgs to transpiler cfg inst
+            if driver.enable_transpiler:
+                static_transpiler_configs = device_configs.get(
+                    "transpiler", None
+                )
+                trans_cfg_inst.set_max_qubits(driver.get_max_qubits())
+                trans_cfg_inst.set_tech_type(driver.tech_type)
+                trans_cfg_inst.set_driver_name(driver.get_name())
 
-            # config qpu_config/decomposition_rule from config file
-            if static_transpiler_configs:
-                qpu_configs = static_transpiler_configs.get(
-                    "qpu_configs", None
-                )
-                decomposition_rule = static_transpiler_configs.get(
-                    "decomposition_rule", None
-                )
-                trans_cfg_inst.set_qpu_cfg(qpu_configs)
-                trans_cfg_inst.set_decompose_rule(decomposition_rule)
+                # config qpu_config/decomposition_rule from config file
+                if static_transpiler_configs:
+                    qpu_configs = static_transpiler_configs.get(
+                        "qpu_configs", None
+                    )
+                    decomposition_rule = static_transpiler_configs.get(
+                        "decomposition_rule", None
+                    )
+                    trans_cfg_inst.set_qpu_cfg(qpu_configs)
+                    trans_cfg_inst.set_decompose_rule(decomposition_rule)
 
-            # config qpu_config/decomposition_rule dynamically
-            # override static_transpiler_configs if necessary
-            if remote_transpiler_configs:
-                qpu_configs = remote_transpiler_configs.get(
-                    "qpu_configs", None
-                )
-                decomposition_rule = remote_transpiler_configs.get(
-                    "decomposition_rule", None
-                )
-                trans_cfg_inst.set_qpu_cfg(qpu_configs)
-                trans_cfg_inst.set_decompose_rule(decomposition_rule)
+                # config qpu_config/decomposition_rule dynamically
+                # override static_transpiler_configs if necessary
+                if remote_transpiler_configs:
+                    qpu_configs = remote_transpiler_configs.get(
+                        "qpu_configs", None
+                    )
+                    decomposition_rule = remote_transpiler_configs.get(
+                        "decomposition_rule", None
+                    )
+                    trans_cfg_inst.set_qpu_cfg(qpu_configs)
+                    trans_cfg_inst.set_decompose_rule(decomposition_rule)
 
         return {"driver": driver, "error": None}
     except Exception as e:

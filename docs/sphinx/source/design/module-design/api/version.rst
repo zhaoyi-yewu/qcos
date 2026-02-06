@@ -54,9 +54,6 @@
                      "sampling",
                      "estimation"
                    ],
-                   "job_sched_policy": [
-                     "time_precedence"
-                   ],
                    "drivers": {
                      "DriverHanyuan1": {
                        "enable_transpiler": true,

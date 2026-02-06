@@ -20,8 +20,6 @@ from .device import (
     GetDevicesRequest,
     GetDeviceRequest,
     GetDeviceResponse,
-    DeviceProperitiesRequest,
-    DeviceProperitiesResponse,
     CalibrateDeviceRequest,
     SetDeviceOptionsRequest,
     SetDeviceOptionsResponse,

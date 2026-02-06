@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -26,15 +26,15 @@ from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
 class Node:
     def __init__(self, gate: GateOperation):
         # The GateOperation corresponding to the current node
-        self.gate = gate
-        self.bits = gate.targets
+        self.gate: GateOperation = gate
+        self.bits: list[int] = gate.targets
         # successor nodes of the current gate
         self.edges = []
         # A series of single-qubit gates following a two-qubit gate,
         # which can be executed together with this node
-        self.attach = []
+        self.attach: list[Node] = []
         # number of predecessor nodes not yet executed
-        self.pre_number = 0
+        self.pre_number: int = 0
 
 
 class SABRE:
@@ -72,7 +72,7 @@ class SABRE:
         # distance matrix between physical qubits
         self.dist = []
         # front layer of DAG: nodes that can be executed now
-        self.front_layer = []
+        self.front_layer: list[Node] = []
         # calculate the distance matrix
         self.cal_distance_matrix()
 
@@ -157,8 +157,10 @@ class SABRE:
                     exe_gate_list.append(node)
                     phy_exe_gates.append(self.phy_gate(node.gate))
                     # the single qubit gate attached to the node
-                    for gate in node.attach:
-                        phy_exe_gates.append(self.phy_gate(gate.gate))
+                    for gate_node in node.attach:
+                        if not isinstance(gate_node, Node):
+                            raise ValueError("The attached gate is not a Node")
+                        phy_exe_gates.append(self.phy_gate(gate_node.gate))
             if len(exe_gate_list) != 0:
                 for node in exe_gate_list:
                     self.front_layer.remove(node)

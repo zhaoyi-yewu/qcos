@@ -220,25 +220,25 @@ gpgcheck=0
                         stage('Unit Test') {
                             steps {
                                 echo ">>> [Stage: functional-tests] Running unit tests..."
-                                sh "bash ./cicd/run-tests.sh -u"
+                                sh "bash ./cicd/run-tests.sh -u all"
                             }
                         }
                         stage('Code Coverage') {
                             steps {
                                 echo ">>> [Stage: functional-tests] Running coverage tests..."
-                                sh "bash ./cicd/run-tests.sh -c"
+                                sh "bash ./cicd/run-tests.sh -c all"
                             }
                         }
                         stage('UT (qcos_client)') {
                             steps {
                                 echo ">>> [Stage: functional-tests] Running qcos_client unit tests..."
-                                sh "bash ./cicd/run-tests.sh -j"
+                                sh "bash ./cicd/run-tests.sh -j all"
                             }
                         }
                         stage('Coverage (qcos_client)') {
                             steps {
                                 echo ">>> [Stage: functional-tests] Running qcos_client coverage..."
-                                sh "bash ./cicd/run-tests.sh -e"
+                                sh "bash ./cicd/run-tests.sh -e all"
                             }
                         }
                     }

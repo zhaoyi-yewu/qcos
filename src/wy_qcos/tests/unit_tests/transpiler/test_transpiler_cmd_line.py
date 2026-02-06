@@ -15,14 +15,16 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import os
 import sys
+import logging
 from pathlib import Path
 import pytest
 from unittest.mock import patch, MagicMock, mock_open
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
-from wy_qcos.transpiler.common.utils import Timer
+from wy_qcos.transpiler.common.utils import Timer, init_logging, logger
 from wy_qcos.transpiler.cmss.transpiler_cmd_line import (
     read_qasm_from_file,
     main_cmss_transpiler as main,
@@ -169,9 +171,11 @@ class TestTranspilerCmdLine:
             mock_sys_exit.assert_called_with(mock_main_cmss_transpiler())
 
     def test_check_file_args(self):
-        input_file1 = f"{self.samples_dir}/qasm/2.0/simple-qasm-2.qasm"
-        input_file, output_file = check_file_args(input_file1, "")
-        assert input_file is None and output_file is None
+        with pytest.raises(FileNotFoundError) as e:
+            input_file1 = f"{self.samples_dir}/qasm/2.0/simple-qasm-2.qasm"
+            _, _ = check_file_args(input_file1, "")
+        err_msg = str(e.value)
+        assert "Input file not existed!" in err_msg
 
         input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
         output_file = "CHANGELOG"
@@ -181,14 +185,18 @@ class TestTranspilerCmdLine:
         with (
             patch("builtins.open", mock_file),
             patch("logging.FileHandler", return_value=mock_file_handler),
-            patch("logging.Logger.addHandler") as mock_add_handler,
         ):
             res, _ = check_file_args(input_file, output_file)
             mock_file.assert_called_once_with(
                 output_file_path, "w", encoding="utf-8"
             )
             mock_file().write.assert_called_once_with(
-                f"testing file: {input_file}\n"
+                f"testing file: {input_file}.\n"
             )
-            mock_add_handler.assert_called_with(mock_file_handler)
             assert res == Path(input_file).resolve()
+
+    def test_init_logging(self):
+        init_logging(
+            level=logging.INFO, logfile=os.path.join(Path.cwd(), "test.log")
+        )
+        assert logger.getEffectiveLevel() == logging.INFO

@@ -44,6 +44,7 @@ class TestJob:
         print("Stop tiangong server")
         cls.tiangong_process.terminate()
 
+    @pytest.mark.smoke
     def test_submit_job(self):
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),

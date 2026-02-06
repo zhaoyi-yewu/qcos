@@ -185,7 +185,8 @@ def get_commits_dict(branch_name, since_str=None, repo_path="."):
         # get commit info
         commit_hash = commit.hexsha  # %H (Commit Hash)
         tree_hash = commit.tree.hexsha  # %T (Tree Hash)
-        author_datetime = commit.authored_datetime
+        committed_datetime = commit.committed_datetime
+        authored_datetime = commit.authored_datetime
         commit_summary = commit.summary  # %s (Subject/Message)
 
         # calculate commit content hash
@@ -201,14 +202,16 @@ def get_commits_dict(branch_name, since_str=None, repo_path="."):
             content_hash
             and commit_hash
             and tree_hash
-            and author_datetime
+            and committed_datetime
+            and authored_datetime
             and commit_summary
         ):
             commits_dict[content_hash] = {
                 "commit_hash": commit_hash,
                 "content_hash": content_hash,
                 "tree_hash": tree_hash,
-                "author_datetime": author_datetime,
+                "committed_datetime": committed_datetime,
+                "authored_datetime": authored_datetime,
                 "commit_summary": commit_summary,
             }
     return commits_dict
@@ -241,6 +244,8 @@ def diff_branches(start_since):
             if k in only_in_cmss:
                 print(
                     f"[{commit_info['commit_hash']}] "
+                    f"cd: {str(commit_info['committed_datetime'])} "
+                    f"ad: {str(commit_info['authored_datetime'])} "
                     f"{commit_info['commit_summary']}"
                 )
     else:
@@ -258,6 +263,8 @@ def diff_branches(start_since):
             if k in only_in_gitee:
                 print(
                     f"[{commit_info['commit_hash']}] "
+                    f"cd: {str(commit_info['committed_datetime'])} "
+                    f"ad: {str(commit_info['authored_datetime'])} "
                     f"{commit_info['commit_summary']}"
                 )
     else:

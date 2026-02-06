@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -16,6 +16,8 @@
 # ----------------------------------------------------------------------
 
 import json
+import pytest
+
 from unittest.mock import patch, MagicMock
 
 from wy_qcos.common.constant import HttpCode
@@ -53,6 +55,7 @@ driver_wuyue_base.password_pub_key = _s(
 class TestDriverWuyueBase:
     """Test suite for DriverWuyueBase class."""
 
+    @pytest.mark.smoke
     @patch.object(DriverWuyueBase, "decrypt_by_private_key")
     @patch.object(Library, "call_http_api")
     def test_submit_tasks_success(

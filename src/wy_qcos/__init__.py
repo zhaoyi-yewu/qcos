@@ -14,10 +14,3 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-
-from wy_qcos.transpiler.cmss.mapping.routing.sc_routing import SCRouting
-from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing_wrapper import (
-    SABRERouting,
-)
-
-__all__ = ["SCRouting", "SABRERouting"]

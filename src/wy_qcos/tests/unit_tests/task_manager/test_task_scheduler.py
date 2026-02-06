@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -25,7 +25,7 @@ from wy_qcos.drivers.device_manager import DeviceManager
 from wy_qcos.drivers.driver_manager import DriverManager
 from wy_qcos.task_manager.task_manager import TaskFlowManager
 from wy_qcos.task_manager.task_scheduler import TaskScheduler
-from wy_qcos.task_manager.task_scheduler import TimePrecedencePolicy
+from wy_qcos.task_manager.task_scheduler import PrioritySchedulingPolicy
 from wy_qcos.tests.unit_tests.task_manager.constant_for_test import (
     ConstantForTest,
 )
@@ -79,6 +79,7 @@ class TestTaskScheduler:
             task.add(job_info, None)
         assert str(context.value) is not None
 
+    @pytest.mark.smoke
     @patch.object(TaskFlowManager, "get_job_artifact")
     @patch.object(TaskScheduler, "get_job_status")
     @patch.object(TaskFlowManager, "convert_to_qcos_state")
@@ -138,10 +139,8 @@ class TestTaskScheduler:
     @patch.object(TaskFlowManager, "update_flow")
     @patch.object(TaskFlowManager, "get_task_flow_run")
     @patch.object(TaskFlowManager, "delete_task_flow_run")
-    @patch.object(TaskFlowManager, "get_flow_info_by_backend")
     def test_update_job(
         self,
-        mock_get_flow_info_by_backend,
         mock_delete_task_flow_run,
         mock_get_task_flow_run,
         mock_update_flow,
@@ -167,11 +166,6 @@ class TestTaskScheduler:
         mock_deploy_flow = Mock()
         mock_deploy_flow.__name__ = "test_deploy_flow"
 
-        mock_get_flow_info_by_backend.return_value = {
-            "deploy_name": "tiangong100",
-            "deploy_flow_func": mock_deploy_flow,
-            "deploy_flow_path": "../engine/job_engine.py",
-        }
         mock_device = Mock()
         mock_device.get_name.return_value = "tiangong100"
         mock_device_manager = Mock()
@@ -244,25 +238,23 @@ class TestTaskScheduler:
 
 
 task_manager = TaskFlowManager()
-time_precedence_policy = TimePrecedencePolicy(task_manager)
+priority_scheduling_policy = PrioritySchedulingPolicy(task_manager)
 
 
-class TestTimePrecedencePolicy:
-    @patch.object(TaskFlowManager, "deploy_task_flow")
+class TestPrioritySchedulingPolicy:
     @patch.object(TaskFlowManager, "run_task_flow")
-    def test_exec_task(self, mock_run_task_flow, mock_deploy_task_flow):
-        mock_deploy_task_flow.return_value = 114
+    def test_exec_task(self, mock_run_task_flow):
         mock_run_task_flow.return_value = 514
 
-        result = time_precedence_policy.exec_task(
-            ConstantForTest.flow_info,
+        result = priority_scheduling_policy.exec_task(
+            ConstantForTest.deployment,
             ConstantForTest.args["job_info"],
             None,
         )
         assert result == 514
 
     def test_calculate_priority(self):
-        job_info = time_precedence_policy.calculate_priority(
+        job_info = priority_scheduling_policy.calculate_priority(
             ConstantForTest.args["job_info"]
         )
         assert job_info == 1

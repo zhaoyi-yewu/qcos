@@ -8,6 +8,7 @@
 
    jobs
    job-engine
+   device-engine
    driver
    transpiler
    instruction-set

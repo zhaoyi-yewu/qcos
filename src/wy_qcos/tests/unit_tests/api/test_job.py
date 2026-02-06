@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,11 +15,11 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
 from datetime import datetime
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
-import pytest
 
 from wy_qcos.api.posiq.routes_jsonrpc.errors import BadRequestError
 from wy_qcos.api.posiq.routes_jsonrpc.job import (
@@ -84,6 +84,7 @@ class TestJob:
         cls.job_id = ConstantForTest.job_id
         cls.job_ids = ConstantForTest.job_ids
 
+    @pytest.mark.smoke
     @patch.object(Library, "validate_schema")
     @patch.object(TaskScheduler, "add")
     @patch.object(TranspilerManager, "get_transpiler")
@@ -195,6 +196,7 @@ class TestJob:
         mock_merge_results.return_value = response_info
         get_job_status(mock_client, None)
 
+    @pytest.mark.smoke
     @patch("wy_qcos.api.posiq.routes_jsonrpc.job.merge_results")
     @patch.object(TaskScheduler, "get_result_by_id")
     @patch.object(TaskScheduler, "has_job")

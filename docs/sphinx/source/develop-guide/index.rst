@@ -9,6 +9,6 @@
    develop-environment
    develop-guide
    code-commit
-   run-test
+   run-tests
    release
    publish

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ---------------------------------------------------------------------
 
+import pytest
+
 from unittest.mock import patch
 
 from wy_qcos.common.library import Library
@@ -26,9 +28,16 @@ obj = DriverManager()
 
 
 class TestDriverManager:
+    @pytest.mark.smoke
     @patch.object(Library, "import_classes")
-    def test_load_drivers(self, mock_import_classes):
-        mock_import_classes.return_value = {"class": DriverDummy}
+    @patch("wy_qcos.drivers.driver_manager.Config")
+    def test_load_drivers(self, mock_config, mock_import_classes):
+        mock_config.EXTRA_CONFIGS = {
+            "device1": {"driver": "DriverDummyDriver"},
+            "device2": {"driver": "DriverDummyDriver"},
+        }
+
+        mock_import_classes.return_value = {"class": DriverDummy}, {}
         assert obj.load_drivers() is None
 
     @patch.object(DriverBase, "validate_driver")

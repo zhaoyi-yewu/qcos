@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -339,7 +339,7 @@ class DriverHanyuan1(DriverBase):
         job_id: str,
         data_type: str,
         num_qubits: int | None = 1,
-        data: list[Any] | None = None,
+        data: dict | list[Any] | None = None,
         shots: int | None = 1,
         data_index: int | None = 0,
     ) -> dict[str, Any]:
@@ -570,3 +570,14 @@ class DriverHanyuan1(DriverBase):
                 err_msgs.append(err_m)
 
         return success, "\n".join(err_msgs), results
+
+    def fetch_running_info(self):
+        """Fetch running info.
+
+        Returns:
+            remote device running info
+        """
+        # TODO(jidalong) mock data currently
+        device_running_info = {"status": "online"}
+
+        return device_running_info

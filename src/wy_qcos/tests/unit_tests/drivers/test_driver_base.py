@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -34,6 +34,7 @@ class TestDriverBase:
     def setup_class(cls):
         cls.driver_options = {"driver_options": "driver_options"}
 
+    @pytest.mark.smoke
     def test_validate_driver(self):
         driver_base.enable_transpiler = True
         driver_base.supported_code_types = True

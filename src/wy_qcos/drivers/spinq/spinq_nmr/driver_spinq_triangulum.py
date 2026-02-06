@@ -34,3 +34,13 @@ class DriverSpinQTriangulum(DriverSpinQNmr):
         self.tech_type = Constant.TECH_TYPE_NMR
         self.max_qubits = 3
         self.platform_name = "triangulum_vp"
+
+    def fetch_running_info(self):
+        """Fetch running info.
+
+        Returns:
+            remote device running info
+        """
+        # TODO(jidalong) mock data currently
+        device_running_info = {"status": "online"}
+        return device_running_info

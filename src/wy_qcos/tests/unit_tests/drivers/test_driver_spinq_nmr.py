@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import json
+import pytest
 from unittest.mock import patch
 
 from wy_qcos.common.library import Library
@@ -119,6 +120,7 @@ class TestDriverSpinQNmr:
         mock_user_auth.return_value = True, None, task_codes
         assert spinq_nmr.fetch_configs() is None
 
+    @pytest.mark.smoke
     @patch.object(DriverSpinQNmr, "convert_results")
     @patch.object(Library, "loop_with_timeout")
     @patch.object(DriverSpinQNmr, "submit_task")

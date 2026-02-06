@@ -33,6 +33,8 @@ class GetDeviceRequest(BaseModel):
 
     # device name
     name: str = Field(description="Device name")
+    # details
+    details: bool = Field(description="Details info needed or not")
 
 
 class GetDeviceResponse(BaseModel):
@@ -63,40 +65,8 @@ class GetDeviceResponse(BaseModel):
     configs: dict | None = Field(
         default=None, description="Device configurations"
     )
-
-
-class DeviceProperitiesRequest(BaseModel):
-    """Calibrate Device.
-
-    Pydantic Model for Get Device Properities.
-    """
-
-    # device name
-    device_name: str = Field(description="Device name")
-
-
-class DeviceProperitiesResponse(BaseModel):
-    """Get Device Properitie Response.
-
-    Pydantic Model for Get Device Properitie Response.
-    """
-
-    # device status, true for online and false for offline
-    device_status: str | None = Field(
-        default=None, description="Device Status"
-    )
-    # single qubit properities
-    single_qubit_prop: dict | None = Field(
-        default=None, description="Single qubit properities"
-    )
-    # double qubit properities
-    double_qubit_prop: dict | None = Field(
-        default=None, description="Double qubit properities"
-    )
-    # tupo_configs
-    tupo_configs: dict | None = Field(
-        default=None, description="Tupo configurations"
-    )
+    # details info
+    details: dict | None = Field(default=None, description="Details info")
 
 
 class CalibrateDeviceRequest(BaseModel):

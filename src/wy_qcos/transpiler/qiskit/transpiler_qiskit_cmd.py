@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -16,20 +16,16 @@
 # ----------------------------------------------------------------------
 
 import sys
-import logging
 from pathlib import Path
-import time
 from datetime import datetime
 import argparse
 
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
+from wy_qcos.transpiler.common.utils import Timer, logger, init_logging
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.qiskit.transpiler_qiskit import TranspilerQiskit
 
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 legal_basis_gates = [
     "x",
@@ -65,26 +61,16 @@ def read_qasm_from_file(file_path):
         return None
 
 
-class Timer:
-    def __enter__(self):
-        self.start = time.time()
-        return self
-
-    def __exit__(self, *args):
-        self.end = time.time()
-        self.elapsed = self.end - self.start
-
-
 def check_file_args(input_file, output_file):
     file_path = Path(input_file).resolve()
     if not file_path.exists():
-        logger.error(f"input file[{file_path}] not existed")
-        return None
+        raise FileNotFoundError(f"Input file not existed! file: {file_path}.")
 
+    output_file_path = None
     if output_file != "":
         output_file_path = Path(output_file).resolve()
         if output_file_path.exists():
-            logger.info(f"output file[{output_file_path}] has existed")
+            logger.info(f"output file has existed! file: {output_file_path}.")
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_file_path = output_file_path.with_stem(
                 f"{output_file_path.stem}_{timestamp}"
@@ -92,9 +78,8 @@ def check_file_args(input_file, output_file):
 
         # create output file
         with open(output_file_path, "w", encoding="utf-8") as f:
-            f.write(f"testing file: {input_file}\n")
-        file_handler = logging.FileHandler(output_file_path)
-        logger.addHandler(file_handler)
+            f.write(f"testing file: {input_file}.\n")
+    init_logging(logfile=output_file_path)
 
     return file_path
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -102,6 +102,7 @@ class TestSubQUBOMultiSolution:
                 self.qubo_matrix, solution.solution
             )
 
+    @pytest.mark.smoke
     def test_find_best_solution(self):
         """Testing to find the optimal solution."""
         # Create test solution pool

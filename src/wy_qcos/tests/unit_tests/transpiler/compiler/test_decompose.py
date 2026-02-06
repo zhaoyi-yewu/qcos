@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import numpy as np
+import pytest
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.cmss.common.base_operation import OperationType
@@ -98,6 +99,7 @@ class TestDecompose:
             Constant.TWO_QUBIT_GATE_CX,
         ]
 
+    @pytest.mark.smoke
     def test_decompose(self):
         tree = get_abs_tree(self.data)
         assert tree is not None

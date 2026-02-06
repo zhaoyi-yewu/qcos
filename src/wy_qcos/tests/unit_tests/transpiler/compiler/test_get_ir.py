@@ -58,6 +58,7 @@ class TestGetIr:
         measure q[1] -> c[1];
         """
 
+    @pytest.mark.smoke
     def test_get_ir(self):
         tree = get_abs_tree(self.data)
         assert tree is not None

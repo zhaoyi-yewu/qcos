@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
 from unittest.mock import Mock, patch
 
 from wy_qcos.api.posiq.routes_jsonrpc.driver import (
@@ -57,6 +58,7 @@ class TestDriver:
     def setup_class(cls):
         cls.dummy = Constant.TRANSPILER_DUMMY
 
+    @pytest.mark.smoke
     @patch.object(DriverManager, "get_drivers")
     @patch.object(TaskScheduler, "get_driver_manager")
     def test_get_drivers(self, mock_get_driver_manager, mock_get_drivers):
@@ -67,6 +69,7 @@ class TestDriver:
         response = get_drivers(mock_client)
         assert not response
 
+    @pytest.mark.smoke
     @patch("wy_qcos.api.posiq.routes_jsonrpc.driver._get_driver_info")
     @patch.object(TranspilerManager, "get_transpiler")
     @patch.object(TaskScheduler, "get_transpiler_manager")

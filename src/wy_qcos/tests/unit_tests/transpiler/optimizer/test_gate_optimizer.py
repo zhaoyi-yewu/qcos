@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
+
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import pass_merge_theta
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import (
@@ -67,6 +69,7 @@ class TestGateOptimizer:
         if (c==1) x q[1];
         """
 
+    @pytest.mark.smoke
     def test_pass_optimize_gate(self):
         tree = get_abs_tree(self.data)
         assert tree is not None
@@ -98,8 +101,7 @@ class TestGateOptimizer:
         q_num, gates_list = cir.num_qubits, cir.get_operations()
         assert q_num == 5
         assert len(gates_list) == 18
-        opt_gates = optimize(gates_list)
-        print(opt_gates)
+        opt_gates = optimize(gates_list, opt_level=2)
         assert len(opt_gates) == 3
         validate_gate_ir(opt_gates[0], "ry", [0], 1, False)
         validate_gate_ir(opt_gates[1], "z", [0], 1, True)

@@ -39,72 +39,73 @@ class TestInverseCancellation:
         optimizer = InverseCancellation([H()])
         ir = [H([0]), H([0]), H([1]), H([1]), H([1])]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
         assert counts["h"] == 1
 
         ir = [H([0]), H([1])]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
         assert counts.get("h", 0) == 2
 
     def test_self_inverse_cx(self):
         optimizer = InverseCancellation([CX()])
         ir = [CX([0, 1]), CX([0, 1])]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
         assert counts.get("cx", 0) == 0
 
         ir = [CX([0, 1]), CX([0, 1]), CX([0, 1])]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
         assert counts.get("cx", 0) == 1
 
         ir = [CX([0, 1]), CX([1, 0])]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
         assert counts.get("cx", 0) == 2
 
     def test_self_inverse_cx_h(self):
         optimizer = InverseCancellation([H(), CX()])
         ir = [H([0]), H([0]), H([1]), CX([0, 1]), CX([0, 1]), H([1])]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
         assert counts.get("cx", 0) == 0
-        assert counts.get("h", 0) == 2
+        # the both results are right, it depends process which one firstly
+        assert counts.get("h", 0) in (0, 2)
 
     def test_inverse_s_sdg(self):
         optimizer = InverseCancellation([(S(), SDG())])
         ir = [S([0]), SDG([0])]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
         assert counts.get("s", 0) == 0
         assert counts.get("sdg", 0) == 0
 
         ir = [SDG([0]), S([0])]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
         assert counts.get("s", 0) == 0
         assert counts.get("sdg", 0) == 0
 
         ir = [S([0]), SDG([1])]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
         assert counts.get("s", 0) == 1
         assert counts.get("sdg", 0) == 1
 
         ir = [S([0]), H([0]), SDG([0])]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
         assert counts.get("s", 0) == 1
         assert counts.get("sdg", 0) == 1
         assert counts.get("h", 0) == 1
@@ -113,16 +114,16 @@ class TestInverseCancellation:
         optimizer = InverseCancellation([(T(), TDG())])
         ir = [T([0]), TDG([0])]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
 
         assert counts.get("t", 0) == 0
         assert counts.get("tdg", 0) == 0
 
         ir = [TDG([0]), T([0])]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
 
         assert counts.get("t", 0) == 0
         assert counts.get("tdg", 0) == 0
@@ -139,8 +140,8 @@ class TestInverseCancellation:
             Z([2]),
         ]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
 
         assert counts.get("x", 0) == 0
         assert counts.get("y", 0) == 0
@@ -154,20 +155,20 @@ class TestInverseCancellation:
             SWAP([0, 1]),
         ]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
         assert counts.get("swap", 0) == 1
 
     def test_self_inverse_cz(self):
         optimizer = InverseCancellation([CZ()])
         ir = [CZ([0, 1]), CZ([0, 1])]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
         assert counts.get("cz", 0) == 0
 
         ir = [CZ([0, 1]), CZ([1, 0])]
         dag = DAGCircuit.ir_to_dag(ir)
-        new_dag = optimizer.run(dag)
-        counts = new_dag.count_ops()
+        optimizer.run(dag)
+        counts = dag.count_ops()
         assert counts.get("cz", 0) == 2

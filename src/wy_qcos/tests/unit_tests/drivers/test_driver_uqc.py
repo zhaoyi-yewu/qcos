@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
 from unittest.mock import patch, Mock
 
 from uqc_client import UQC
@@ -89,6 +90,7 @@ class TestDriverUqc:
     def test_cancel(self):
         assert driver_uqc.cancel("1") is None
 
+    @pytest.mark.smoke
     @patch.object(DriverUQCMatrix2, "normalize_task_results")
     @patch.object(DriverUQCMatrix2, "get_task_results")
     @patch.object(DriverUQCMatrix2, "check_task_status")

@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
 from unittest.mock import patch
 
 from wy_qcos.common.library import Library
@@ -67,6 +68,7 @@ class TestDriverDummy:
     def test_close_driver(self):
         assert driver_dummy.close_driver() is None
 
+    @pytest.mark.smoke
     @patch.object(DriverBase, "get_fake_results")
     def test_run(self, mock_get_fake_results):
         mock_get_fake_results.return_value = {"00": 45, "11": 55}

@@ -6,6 +6,8 @@ DEBUG = false
 MAX_JOBS = 10000
 # [GLOBAL CONFIG] max queued+running jobs
 MAX_QUEUED_JOBS = 1000
+# [GLOBAL CONFIG] default venv base dir
+# VENV_DIR = "/var/lib/qcos/venv"
 
 [VIRT]
 # enable virtualization
@@ -13,7 +15,7 @@ ENABLE_VIRT = false
 # [GLOBAL CONFIG] max jobs for virtual instance
 MAX_JOBS_PER_VIRTUAL_INSTANCE = 10
 # salt for password/encryption
-PASSWORD_SALT = "1234"
+PASSWORD_SALT = "123456"
 
 [API_SERVER]
 # API workers
@@ -25,6 +27,21 @@ API_WORKERS = 8
 API_SERVER_LISTEN_IP = ""
 # API server listen port
 API_SERVER_LISTEN_PORT = 18400
+
+[PREFECT]
+PREFECT_SERVER_DATABASE_CONNECTION_URL = "sqlite+aiosqlite:///var/qcos/db/prefect.db"
+PREFECT_API_URL = "http://127.0.0.1:4200/api"
+PREFECT_WORKER_QUERY_SECONDS = 1
+PREFECT_WORKER_PREFETCH_SECONDS = 1
+PREFECT_WORKER_HEARTBEAT_SECONDS = 30
+PREFECT_LOCAL_STORAGE_PATH = "/var/qcos/storage"
+PREFECT_LOGGING_LEVEL = "INFO"
+
+[REDIS]
+# redis server ip
+REDIS_SERVER_IP = "127.0.0.1"
+# redis server port
+REDIS_SERVER_PORT = "6379"
 
 [LOG]
 # api log file
@@ -59,4 +76,4 @@ USE_SSL = false
 [DEVICES]
 # DEVICE_LIST example:
 # DEVICE_LIST = ["dummy", "hanyuan1", "wy-hanyuan1", "tiangong100", "tiangong100_v2", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim"]
-DEVICE_LIST = ["dummy"]
+DEVICE_LIST = ["dummy", "qutip_sim"]

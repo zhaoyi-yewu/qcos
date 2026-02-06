@@ -64,12 +64,16 @@ DEBUG = ${_DEBUG,,}
 MAX_JOBS = ${MAX_JOBS:-10000}
 # [GLOBAL CONFIG] max queued+running jobs
 MAX_QUEUED_JOBS = ${MAX_QUEUED_JOBS:-1000}
-# [GLOBAL CONFIG] max jobs for virtual instance
-MAX_JOBS_PER_VIRTUAL_INSTANCE = ${MAX_JOBS_PER_VIRTUAL_INSTANCE:-10}
+# [GLOBAL CONFIG] default venv base dir
+# VENV_DIR = "/var/lib/qcos/venv"
+
+[VIRT]
 # enable virtualization
 ENABLE_VIRT = ${ENABLE_VIRT:-false}
+# [GLOBAL CONFIG] max jobs for virtual instance
+MAX_JOBS_PER_VIRTUAL_INSTANCE = ${MAX_JOBS_PER_VIRTUAL_INSTANCE:-10}
 # salt for password/encryption
-PASSWORD_SALT = ${PASSWORD_SALT:-abcd}
+PASSWORD_SALT = "${PASSWORD_SALT:-123456}"
 
 [API_SERVER]
 # API workers
@@ -78,6 +82,21 @@ API_WORKERS = ${API_WORKERS:-8}
 API_SERVER_LISTEN_IP = "${API_SERVER_LISTEN_IP:-}"
 # API server listen port
 API_SERVER_LISTEN_PORT = ${API_SERVER_LISTEN_PORT:-18400}
+
+[PREFECT]
+PREFECT_API_URL = "${PREFECT_API_URL:-http://127.0.0.1:4200/api}"
+PREFECT_SERVER_DATABASE_CONNECTION_URL = "${PREFECT_SERVER_DATABASE_CONNECTION_URL:-sqlite+aiosqlite:///var/qcos/db/prefect.db}"
+PREFECT_LOCAL_STORAGE_PATH = "${PREFECT_LOCAL_STORAGE_PATH:-/var/qcos/storage}"
+PREFECT_WORKER_QUERY_SECONDS = ${PREFECT_WORKER_QUERY_SECONDS:-1}
+PREFECT_WORKER_PREFETCH_SECONDS = ${PREFECT_WORKER_PREFETCH_SECONDS:-1}
+PREFECT_WORKER_HEARTBEAT_SECONDS = ${PREFECT_WORKER_HEARTBEAT_SECONDS:-30}
+PREFECT_LOGGING_LEVEL = "${PREFECT_LOGGING_LEVEL:-INFO}"
+
+[REDIS]
+# redis server ip
+REDIS_SERVER_IP = "${REDIS_SERVER_IP:-127.0.0.1}"
+# redis server port
+REDIS_SERVER_PORT = ${REDIS_SERVER_PORT:-6379}
 
 [LOG]
 # api log file
@@ -111,8 +130,8 @@ USE_SSL = false
 
 [DEVICES]
 # DEVICE_LIST example:
-# DEVICE_LIST = ["dummy", "hanyuan1", "wy-hanyuan1", "tiangong100", "tiangong100_v2", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "qiskit_aer_sim", "qiskit_qasm_sim", "uqc_matrix2"]
-DEVICE_LIST = [${DEVICE_LIST:-\"dummy\"}]
+# DEVICE_LIST = ["dummy", "hanyuan1", "wy-hanyuan1", "tiangong100", "tiangong100_v2", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim"]
+DEVICE_LIST = [${DEVICE_LIST:-\"dummy\", \"qutip_sim\"}]
 EOM
 fi
 
@@ -135,6 +154,8 @@ if [ -n "${wait_for_url}" ]; then
   echo "url: ${wait_for_url} is ready"
 fi
 
-# run QCOS
+# run QCOS under venv
+source /var/lib/qcos/venv/default/bin/activate
 /usr/bin/qcos-api --config-file ${qcos_config_file_path} --config-dir ${qcos_extra_config_file_dir}
+deactivate
 sleep infinity

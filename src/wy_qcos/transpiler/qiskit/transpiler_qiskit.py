@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -89,7 +89,7 @@ class TranspilerQiskit(TranspilerBase):
         """
         if isinstance(src_code_dict, dict) and len(src_code_dict) == 1:
             source_code: str = next(iter(src_code_dict.values()))
-            logger.info(f"source_code:\n{source_code}")
+            logger.debug(f"source_code:\n{source_code}")
             if "OPENQASM 3.0" in source_code:
                 parse_result = qiskit.qasm3.loads(source_code)
             elif "OPENQASM 2.0" in source_code:
