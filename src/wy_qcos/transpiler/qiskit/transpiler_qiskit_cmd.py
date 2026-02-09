@@ -17,6 +17,7 @@
 
 import sys
 from pathlib import Path
+import time
 from datetime import datetime
 import argparse
 
@@ -59,6 +60,16 @@ def read_qasm_from_file(file_path):
     except Exception as e:
         logger.error(f"read file error: {e}")
         return None
+
+
+class Timer:
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, *args):
+        self.end = time.time()
+        self.elapsed = self.end - self.start
 
 
 def check_file_args(input_file, output_file):
@@ -130,7 +141,7 @@ def main_qiskit_transpiler(
             raise ValueError(f"config file[{config_file}] not existed!")
 
         qpu_config = {}
-        Config.parse_toml_file(config_file, extra_config=True)
+        Config.load_config_file(config_file, extra_config=True)
         qpu_config = Config.EXTRA_CONFIGS["qiskit_marrakesh"]["transpiler"][
             "qpu_configs"
         ]

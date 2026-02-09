@@ -468,6 +468,49 @@ class Library:
                 sys.path.insert(0, venv_site_packages_dir)
 
     @staticmethod
+    def get_driver_venv(driver_name, venv_dir, add_default_env=True):
+        """Get driver venv.
+
+        Args:
+            driver_name: driver name
+            venv_dir: venv dir
+            add_default_env: if add default env
+
+        Returns:
+            python_bin, python_path_env
+        """
+        python_paths = []
+        default_python_bin = "python3"
+        python_bin = default_python_bin
+        default_python_path = os.environ.get("PYTHONPATH", None)
+        default_venv_dir = f"{venv_dir}/default"
+        default_venv_python_path = (
+            f"{default_venv_dir}/lib/python3.11/site-packages/"
+        )
+
+        _python_bin = f"{venv_dir}/{driver_name}/bin/python3"
+        if Library.is_file(_python_bin):
+            python_bin = _python_bin
+            venv_python_path = (
+                f"{venv_dir}/{driver_name}/lib/python3.11/site-packages/"
+            )
+            python_paths.append(venv_python_path)
+        else:
+            _python_bin = f"{default_venv_dir}/bin/python3"
+            if Library.is_file(_python_bin):
+                python_bin = _python_bin
+
+        if add_default_env:
+            # add default venv python path
+            if default_venv_python_path not in python_paths:
+                python_paths.append(default_venv_python_path)
+            # add default python path
+            if default_python_path and default_python_path not in python_paths:
+                python_paths.append(default_python_path)
+        python_path_env = {"PYTHONPATH": ":".join(python_paths)}
+        return python_bin, python_path_env
+
+    @staticmethod
     def import_classes(
         pkg_dir,
         base_module_name="drivers",
@@ -475,6 +518,7 @@ class Library:
         base_class=None,
         excluded_class=None,
         venv_base_dir=None,
+        venv_loader=None,
     ):
         """Import class from package dir.
 
@@ -485,6 +529,7 @@ class Library:
             base_class: base class (Default value = None)
             excluded_class: excluded class (Default value = None)
             venv_base_dir: venv base dir
+            venv_loader: venv loader
 
         Returns:
             class dict, venv_dirs
@@ -492,20 +537,27 @@ class Library:
         classes = {}
         venv_dirs = {}
 
-        if venv_base_dir:
-            # get venv dirs and set sys.path
-            venv_dirs = Library.get_venv_dirs(venv_base_dir)
+        if venv_loader:
+            # set sys.path
             orig_sys_path = copy.deepcopy(sys.path)
-            for venv_name, venv_dir_info in venv_dirs.items():
-                venv_site_packages_dir = venv_dir_info["site_packages"]
-                if os.path.isdir(venv_site_packages_dir):
-                    sys.path.insert(0, venv_site_packages_dir)
 
         for module_loader, name, is_pkg in pkgutil.iter_modules([pkg_dir]):
             module_path = module_loader.path.replace(base_dir, "")
             module_name = (
                 f"{base_module_name}{module_path.replace('/', '.')}.{name}"
             )
+
+            if venv_loader:
+                sys.path = copy.deepcopy(orig_sys_path)
+                skip, python_bin, python_path = venv_loader(
+                    name, venv_base_dir
+                )
+                if skip:
+                    continue
+                if python_path and ":" in python_path:
+                    for site_packages_dir in python_path.split(":")[::-1]:
+                        sys.path.insert(0, site_packages_dir)
+
             try:
                 module = importlib.import_module(module_name)
                 for _, obj in inspect.getmembers(module):

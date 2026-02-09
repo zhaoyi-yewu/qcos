@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -35,15 +35,15 @@ class TestConfig:
 
         mock_read_toml_file.return_value = iter([False, "err_msg", mock_obj])
         with pytest.raises(Exception) as context:
-            config.parse_toml_file("/config.toml")
+            config.load_config_file("/config.toml")
         assert str(context.value) is not None
 
         mock_read_toml_file.return_value = iter([True, "err_msg", mock_obj])
-        config.parse_toml_file("/config.toml", extra_config=True)
+        config.load_config_file("/config.toml", extra_config=True)
 
         mock_read_toml_file.return_value = iter([False, "err_msg", mock_obj])
         with pytest.raises(Exception) as context:
-            config.parse_toml_file("/config.toml", extra_config=True)
+            config.load_config_file("/config.toml", extra_config=True)
         assert str(context.value) is not None
 
     def test_show_info(self):

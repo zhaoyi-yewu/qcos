@@ -140,35 +140,16 @@ class TaskFlowManager(ABC):
         devices = self.device_manager.get_devices()
         default_python_bin = "python3"
         python_bin = default_python_bin
-        default_python_path = os.environ.get("PYTHONPATH", None)
-        default_venv_dir = f"{Config.VENV_DIR}/default"
-        default_venv_python_path = (
-            f"{default_venv_dir}/lib/python3.11/site-packages/"
-        )
+        os.environ.get("PYTHONPATH", None)
         for device_name in device_names:
-            python_paths = []
+            driver_name = None
             device = devices.get(device_name, None)
             if device:
                 driver_name = device.get_driver().get_name()
-                _python_bin = f"{Config.VENV_DIR}/{driver_name}/bin/python3"
-                if Library.is_file(_python_bin):
-                    python_bin = _python_bin
-                    venv_python_path = (
-                        f"{Config.VENV_DIR}/{driver_name}/"
-                        "lib/python3.11/site-packages/"
-                    )
-                    python_paths.append(venv_python_path)
-                else:
-                    _python_bin = f"{default_venv_dir}/bin/python3"
-                    if Library.is_file(_python_bin):
-                        python_bin = _python_bin
-            # add default venv python path
-            if default_venv_python_path not in python_paths:
-                python_paths.append(default_venv_python_path)
-            # add default python path
-            if default_python_path and default_python_path not in python_paths:
-                python_paths.append(default_python_path)
-            python_path_env = {"PYTHONPATH": ":".join(python_paths)}
+            python_bin, python_path_env = Library.get_driver_venv(
+                driver_name, Config.VENV_DIR, add_default_env=True
+            )
+
             deployment_configs[device_name] = {
                 "python_bin": python_bin,
                 "pool_name": device_name,

@@ -103,7 +103,7 @@ def main_cmss_transpiler(
                 raise ValueError(f"config file[{config_file}] not existed!")
 
             qpu_config = {}
-            Config.parse_toml_file(config_file, extra_config=True)
+            Config.load_config_file(config_file, extra_config=True)
             if tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM:
                 qpu_config = Config.EXTRA_CONFIGS["hanyuan1"]["transpiler"][
                     "qpu_configs"

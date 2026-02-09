@@ -15,6 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from collections import OrderedDict
+from pathlib import Path
+
 from wy_qcos.common import errors
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
@@ -115,9 +118,12 @@ class Config:
     # extra configs from .toml files
     EXTRA_CONFIGS = {}
 
+    # driver env configs
+    _DRIVER_ENV_CONFIGS = {}
+
     @classmethod
-    def parse_toml_file(cls, config_file, extra_config=False):
-        """Parse a TOML file.
+    def load_config_file(cls, config_file, extra_config=False):
+        """Parse a config file.
 
         Args:
             config_file: config file
@@ -179,6 +185,59 @@ class Config:
                         )
 
     @classmethod
+    def load_driver_env_file(cls, config_file):
+        """Load and validate driver env configuration file.
+
+        Args:
+            config_file: config file path
+        """
+        driver_deps_file_path = Path(config_file).parent
+        _configs = {}
+        configs = {}
+        success, err_msg, _configs = Library.read_toml_file(config_file)
+        if not success:
+            cls._DRIVER_ENV_CONFIGS = configs
+
+        # sort dict
+        # dicts contain key: "copy_from" will put at the end of configs
+        non_copy_items = []
+        copy_items = []
+        for key, value in _configs.items():
+            if isinstance(value, dict) and "copy_from" in value:
+                copy_from_value = value["copy_from"]
+                if copy_from_value not in _configs:
+                    raise Exception(
+                        f"Invalid copy_from: {copy_from_value} in [{key}]"
+                    )
+                ref_driver_name = copy_from_value
+                ref_driver = _configs[ref_driver_name]
+                if "copy_from" in ref_driver:
+                    raise Exception(
+                        f"Invalid copy_from: {ref_driver_name} in [{key}]. "
+                        f"Can't reference the driver: {ref_driver_name}"
+                    )
+                copy_items.append((key, value))
+            else:
+                non_copy_items.append((key, value))
+        sorted_items = non_copy_items + copy_items
+        configs = OrderedDict(sorted_items)
+        for driver_class, driver_info in configs.items():
+            if "copy_from" in driver_info:
+                continue
+            if "deps_filepath" not in driver_info:
+                raise Exception(
+                    f"[{driver_class}] ‘deps_filepath’ must be specified"
+                )
+            if "envs" not in driver_info:
+                raise Exception(f"[{driver_class}] ‘envs’ must be specified")
+            deps_filepath = driver_info["deps_filepath"]
+            deps_abs_filepath = (
+                driver_deps_file_path / deps_filepath
+            ).resolve()
+            driver_info["deps_filepath"] = str(deps_abs_filepath)
+        cls._DRIVER_ENV_CONFIGS = configs
+
+    @classmethod
     def validate(cls):
         # remove duplicated devices
         cls.DEVICE_LIST = Library.remove_duplicates(cls.DEVICE_LIST)
@@ -189,13 +248,36 @@ class Config:
             raise errors.GenericException("Device list must be list of str")
 
     @classmethod
+    def get_extra_configs(cls):
+        """Get extra configs.
+
+        Returns:
+            extra configs
+        """
+        return cls.EXTRA_CONFIGS
+
+    @classmethod
+    def get_driver_env_configs(cls):
+        """Get driver env configs.
+
+        Returns:
+            driver env configs
+        """
+        return cls._DRIVER_ENV_CONFIGS
+
+    @classmethod
     def show_info(cls):
         """Show class variables."""
         configs = {}
         cls_vars = vars(cls)
         for k, v in cls_vars.items():
-            if not k.startswith("__") and not isinstance(v, classmethod):
-                configs[k] = v
+            if (
+                k.startswith("__")
+                or k.startswith("_")
+                or isinstance(v, classmethod)
+            ):
+                continue
+            configs[k] = v
         configs = Library.mask_password(configs)
         outputs = ["[Configs]"]
         for k, v in configs.items():

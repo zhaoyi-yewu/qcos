@@ -96,11 +96,10 @@ def init_driver(
     Returns:
         driver
     """
+    driver_module_name = driver_class_info["module_name"]
     try:
         # load driver module
-        driver_module = importlib.import_module(
-            driver_class_info["module_name"]
-        )
+        driver_module = importlib.import_module(driver_module_name)
 
         # initialize driver class
         driver_class = getattr(driver_module, driver_class_info["class_name"])
@@ -1594,6 +1593,7 @@ def format_error_results(driver, err_cls, err_msg):
         "code": err.get_error_code(),
         "message": err.get_err_msgs(),
     }
+    logger.error(f"{driver}: {err}")
     return job_results
 
 
