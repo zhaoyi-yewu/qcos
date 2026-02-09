@@ -308,21 +308,31 @@ class TestTaskFlowManager(unittest.TestCase):
         results = self.task_manager.get_task_flow_run(1)
         assert results is not None
 
+    @patch.object(TaskFlowManager, "delete_task_flow_run_by_client")
     @patch.object(TaskFlowManager, "get_flow_run_id_by_job_id")
-    def test_delete_task_flow_run(self, mock_get_flow_run_id_by_job_id):
-        mock_get_flow_run_id_by_job_id.return_value = ["1", "2", "3"]
+    def test_delete_task_flow_run(
+        self,
+        mock_get_flow_run_id_by_job_id,
+        mock_delete,
+    ):
+        mock_get_flow_run_id_by_job_id.return_value = ConstantForTest.job_id
         mock_run = Mock()
         mock_client = Mock()
+        mock_delete.return_value = ConstantForTest.job_id
         mock_client.delete_task_flow_run_by_client.return_value = mock_run
         self.task_manager.loop = mock_client
         success_list = self.task_manager.delete_task_flow_run(
             ConstantForTest.job_ids, None
         )
-        assert not success_list
+        assert success_list
 
     def test_delete_task_flow_run_by_client(self):
         mock_client = Mock()
         self.task_manager._sync_client = mock_client
+        mock_server = Mock()
+        mock_server.state = Mock()
+        mock_server.state.name = "running"
+        mock_client.read_flow_run.return_value = mock_server
         results = self.task_manager.delete_task_flow_run_by_client(
             ConstantForTest.flow_run_ids
         )
@@ -372,7 +382,14 @@ class TestTaskFlowManager(unittest.TestCase):
         assert len(prefect_states) == 9
 
     def test_cancel_task_flow_run_by_client(self):
+        mock_client = Mock()
+        self.task_manager._sync_client = mock_client
+        mock_server = Mock()
+        mock_server.state = Mock()
+        mock_server.state.name = "run"
+        mock_client.read_flow_run.return_value = mock_server
+        mock_client.set_flow_run_state.return_value = Mock()
         success_list = self.task_manager.cancel_task_flow_run_by_client(
-            ConstantForTest.job_ids
+            ConstantForTest.flow_run_ids
         )
         assert not success_list
