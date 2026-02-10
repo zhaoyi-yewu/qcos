@@ -103,9 +103,10 @@ def main_cmss_transpiler(
                 raise ValueError(f"config file[{config_file}] not existed!")
 
             qpu_config = {}
+            extra_configs = Config.get_extra_configs()
             Config.load_config_file(config_file, extra_config=True)
             if tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM:
-                qpu_config = Config.EXTRA_CONFIGS["hanyuan1"]["transpiler"][
+                qpu_config = extra_configs["hanyuan1"]["transpiler"][
                     "qpu_configs"
                 ]
                 trans_cfg_inst.set_qpu_cfg(qpu_config)
@@ -121,7 +122,7 @@ def main_cmss_transpiler(
                     Constant.TWO_QUBIT_GATE_CZ,
                 ]
             elif tech_type == Constant.TECH_TYPE_SUPERCONDUCTING:
-                qpu_config = Config.EXTRA_CONFIGS["spinq_rpc"]["transpiler"][
+                qpu_config = extra_configs["spinq_rpc"]["transpiler"][
                     "qpu_configs"
                 ]
                 trans_cfg_inst.set_qpu_cfg(qpu_config)

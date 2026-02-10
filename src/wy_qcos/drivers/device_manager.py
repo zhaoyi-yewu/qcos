@@ -54,7 +54,8 @@ class DeviceManager:
         devices = self.config.DEVICE_LIST
         for device_name in devices:
             logger.info(f"Loading device: {device_name}")
-            device_configs = self.config.EXTRA_CONFIGS.get(device_name)
+            extra_configs = self.config.get_extra_configs()
+            device_configs = extra_configs.get(device_name)
             if device_configs:
                 _success, err_msgs = Library.validate_schema(
                     device_configs,

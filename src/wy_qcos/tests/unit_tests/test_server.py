@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,20 +15,35 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from argparse import ArgumentParser
 from unittest.mock import patch, Mock
 
+from wy_qcos.common.config import Config
 from wy_qcos.server import Server
 
 server = Server()
 
 
 class TestServer:
+    @patch("wy_qcos.server.init_logger")
+    @patch("wy_qcos.server.Config.load_driver_env_file")
     @patch("wy_qcos.server.argparse.ArgumentParser")
-    @patch.object(ArgumentParser, "parse_args")
-    def test__parse_arguments(self, mock_parse_args, mock_argument_parser):
+    def test_parse_arguments(
+        self,
+        mock_argument_parser,
+        mock_load_driver_env_file,
+        mock_init_logger,
+    ):
+        mock_init_logger.return_value = None
+        mock_parser = Mock()
+        mock_argument_parser.return_value = mock_parser
+
         mock_args = Mock()
-        mock_parse_args.return_value = mock_args
-        mock_args.config_file = False
-        mock_args.config_dir = False
+        mock_args.config_file = None
+        mock_args.config_dir = None
+        mock_parser.parse_args.return_value = mock_args
+        Config.VEN_DIR = "/invalid_venv_dir"
+
         server._parse_arguments(None)
+        mock_load_driver_env_file.assert_called_once_with(
+            f"{Config.VENV_DIR}/venv-configs.toml"
+        )

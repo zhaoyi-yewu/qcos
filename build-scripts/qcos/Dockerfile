@@ -29,7 +29,7 @@ MAINTAINER Zhao Yi <zhaoyi_yewu@cmss.chinamobile.com>
 COPY ./.build-context/ ${BUILD_CONTEXT}
 WORKDIR /root
 
-RUN \
+RUN set -e && \
 # init vars
     PYTHONBIN=/usr/bin/python3 \
     PIPBIN=/usr/bin/pip3 \

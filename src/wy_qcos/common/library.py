@@ -468,6 +468,27 @@ class Library:
                 sys.path.insert(0, venv_site_packages_dir)
 
     @staticmethod
+    def set_driver_venv_path(driver_name, venv_base_dir):
+        """Set driver venv path.
+
+        Args:
+            driver_name: driver name
+            venv_base_dir: venv base dir
+
+        Returns:
+            original sys.path
+        """
+        sys_path = copy.deepcopy(sys.path)
+        _, python_path_env = Library.get_driver_venv(
+            driver_name, venv_base_dir
+        )
+        python_path = python_path_env["PYTHONPATH"]
+        if python_path and ":" in python_path:
+            for site_packages_dir in python_path.split(":")[::-1]:
+                sys.path.insert(0, site_packages_dir)
+        return sys_path
+
+    @staticmethod
     def get_driver_venv(driver_name, venv_dir, add_default_env=True):
         """Get driver venv.
 

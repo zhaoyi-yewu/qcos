@@ -24,13 +24,15 @@ function usage {
     echo "Usage: $0 [OPTION] ..."
     echo "Run QCOS's test suite(s)"
     echo ""
-    echo "  -p, --pep8                             Run PEP8 coding style check"
-    echo "  -u, --unit-test [all/TEST_CASE]        Run unit tests (QCOS)"
-    echo "  -c, --coverage  [all/TEST_CASE]        Run unit tests and generate code coverage report (QCOS)"
-    echo "  -j, --client-unit-test [all/TEST_CASE] Run unit tests (QCOS CLIENT)"
-    echo "  -e, --client-coverage [all/TEST_CASE]  Run unit tests and generate code coverage report (QCOS CLIENT)"
-    echo "  -s, --system-test [all/TEST_CASE]      Run system tests"
-    echo "  -h, --help                             Print this usage message"
+    echo "  -p, --pep8                        Run PEP8 coding style check"
+    echo "  -u, --unit-test TEST_CASES        Run unit tests (QCOS)"
+    echo "  -c, --coverage  TEST_CASES        Run unit tests and generate code coverage report (QCOS)"
+    echo "  -j, --client-unit-test TEST_CASES Run unit tests (QCOS CLIENT)"
+    echo "  -e, --client-coverage TEST_CASES  Run unit tests and generate code coverage report (QCOS CLIENT)"
+    echo "  -s, --system-test TEST_CASES      Run system tests"
+    echo "  -h, --help                        Print this usage message"
+    echo ""
+    echo "  TEST_CASES: [all/default/smoke/slow/TEST_CASE]"
     echo ""
 }
 
@@ -75,9 +77,9 @@ while true; do
 done
 
 # check user input options
-if [ "$pep8" = false ] && [ -e "$unit_test" ] && [ -e "$coverage" ] \
-  && [ -e "$client_unit_test" ] && [ -e "$client_coverage" ] \
-  && [ -e "$system_test" ]; then
+if [ "$pep8" = false ] && [ -z "$unit_test" ] && [ -z "$coverage" ] \
+  && [ -z "$client_unit_test" ] && [ -z "$client_coverage" ] \
+  && [ -z "$system_test" ]; then
   echo -e "Error: Invalid arguments\n"
   usage
   exit 1

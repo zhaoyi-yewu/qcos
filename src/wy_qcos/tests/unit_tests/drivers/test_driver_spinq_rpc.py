@@ -15,6 +15,15 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+# ruff: noqa: E402
+# load driver venv
+import sys
+
+from wy_qcos.common.config import Config
+from wy_qcos.common.library import Library
+
+org_path = Library.set_driver_venv_path("DriverSpinQRpc", Config.VENV_DIR)
+
 import json
 import pytest
 import unittest
@@ -25,7 +34,6 @@ from wy_qcos.common.library import _s
 from wy_qcos.drivers.spinq.spinq_rpc.driver_spinq_rpc import DriverSpinQRpc
 from wy_qcos.transpiler.cmss.common.gate_operation import CX, H, RX, RY, RZ
 from wy_qcos.transpiler.cmss.common.measure import Measure
-
 
 job_id = "00000000-0000-4000-8000-000000000001"
 task_id = "123456"
@@ -70,6 +78,10 @@ class TestDriverSpinQRpc(unittest.TestCase):
         self.driver.max_retries = 3
         self.mock_client = MagicMock()
         self.driver._client = self.mock_client
+
+    @classmethod
+    def teardown_class(cls):
+        sys.path = org_path
 
     def test_init_driver(self):
         assert self.driver.init_driver() is None

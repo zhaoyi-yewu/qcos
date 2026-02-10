@@ -116,7 +116,7 @@ class Config:
     ]
 
     # extra configs from .toml files
-    EXTRA_CONFIGS = {}
+    _EXTRA_CONFIGS = {}
 
     # driver env configs
     _DRIVER_ENV_CONFIGS = {}
@@ -156,9 +156,9 @@ class Config:
             for section, options in config_values.items():
                 for option in options.items():
                     key, value = option
-                    if section not in cls.EXTRA_CONFIGS:
-                        cls.EXTRA_CONFIGS[section] = {}
-                    cls.EXTRA_CONFIGS[section][key] = decrypt_value(
+                    if section not in cls._EXTRA_CONFIGS:
+                        cls._EXTRA_CONFIGS[section] = {}
+                    cls._EXTRA_CONFIGS[section][key] = decrypt_value(
                         value, f"{section}:{key}"
                     )
         else:
@@ -178,9 +178,9 @@ class Config:
                 else:
                     for option in options.items():
                         key, value = option
-                        if section not in cls.EXTRA_CONFIGS:
-                            cls.EXTRA_CONFIGS[section] = {}
-                        cls.EXTRA_CONFIGS[section][key] = decrypt_value(
+                        if section not in cls._EXTRA_CONFIGS:
+                            cls._EXTRA_CONFIGS[section] = {}
+                        cls._EXTRA_CONFIGS[section][key] = decrypt_value(
                             value, f"{section}:{key}"
                         )
 
@@ -254,7 +254,7 @@ class Config:
         Returns:
             extra configs
         """
-        return cls.EXTRA_CONFIGS
+        return cls._EXTRA_CONFIGS
 
     @classmethod
     def get_driver_env_configs(cls):

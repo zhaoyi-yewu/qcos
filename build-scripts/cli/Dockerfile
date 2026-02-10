@@ -29,7 +29,7 @@ MAINTAINER Zhao Yi <zhaoyi_yewu@cmss.chinamobile.com>
 COPY ./.build-context/ ${BUILD_CONTEXT}
 WORKDIR /root
 
-RUN \
+RUN set -e && \
 # copy qcos dir
     build_date=`date` && \
     if [ "${DEV,,}" != "false" ]; then mkdir -p /root/qcos-project; fi && \

@@ -15,6 +15,15 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+# ruff: noqa: E402
+# load driver venv
+import sys
+
+from wy_qcos.common.config import Config
+from wy_qcos.common.library import Library
+
+org_path = Library.set_driver_venv_path("DriverUQCMatrix2", Config.VENV_DIR)
+
 import pytest
 from unittest.mock import patch, Mock
 
@@ -73,6 +82,10 @@ result_simulator = {"0x0": 45, "0x3": 55}
 
 
 class TestDriverUqc:
+    @classmethod
+    def teardown_class(cls):
+        sys.path = org_path
+
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs(self, mock_validate_schema):
         mock_validate_schema.return_value = True, None

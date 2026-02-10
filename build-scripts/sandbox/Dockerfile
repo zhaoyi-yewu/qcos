@@ -29,7 +29,7 @@ MAINTAINER Zhao Yi <zhaoyi_yewu@cmss.chinamobile.com>
 ADD ./.build-context/ ${BUILD_CONTEXT}
 WORKDIR /root
 
-RUN \
+RUN set -e && \
 # copy qcos dir
     source ${BUILD_CONTEXT}/build-scripts/.env && \
     mkdir -p /tmp/requirements && \

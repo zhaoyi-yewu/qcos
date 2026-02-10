@@ -15,7 +15,15 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+# ruff: noqa: E402
+# load driver venv
 import sys
+
+from wy_qcos.common.config import Config
+from wy_qcos.common.library import Library
+
+org_path = Library.set_driver_venv_path("DriverQiskitQasmSim", Config.VENV_DIR)
+
 from pathlib import Path
 import pytest
 from unittest.mock import patch, mock_open, MagicMock
@@ -57,6 +65,10 @@ class TestTranspilerQiskit:
         rx(1) q[0];
         measure q->c;
         """
+
+    @classmethod
+    def teardown_class(cls):
+        sys.path = org_path
 
     def test_read_qasm_from_file(self):
         read_qasm_from_file("None")
