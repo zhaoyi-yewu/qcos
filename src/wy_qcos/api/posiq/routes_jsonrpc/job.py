@@ -228,9 +228,9 @@ def submit_job(
         jsonrpc_errors.handle_error_conflict(
             module_name, func_name, (False, "device is disabled")
         )
-    elif device_status in [
-        device.DEVICE_STATUS_OFFLINE,
-        device.DEVICE_STATUS_UNKNOWN,
+    elif device_status not in [
+        device.DEVICE_STATUS_ONLINE,
+        device.DEVICE_STATUS_BUSY,
     ]:
         jsonrpc_errors.handle_error_conflict(
             module_name,
