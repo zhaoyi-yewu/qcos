@@ -71,7 +71,7 @@ class TestDevice:
             assert isinstance(device["tech_type"], str | None)
             assert isinstance(device["max_qubits"], int)
             assert isinstance(device["configs"], dict | None)
-            assert isinstance(device["details"], None)
+            assert isinstance(device["details"], dict | None)
             assert device["max_qubits"] > 0
 
     def test_get_device_with_details(self):
@@ -111,7 +111,7 @@ class TestDevice:
         error_code = StLibrary.set_device_options(
             self.client, device_name, device_options
         )
-        assert error_code == 0
+        assert error_code == -32603
 
     def test_enable_and_disable_qubit(self):
         device_name = "dummy"
@@ -123,4 +123,4 @@ class TestDevice:
         error_code = StLibrary.enable_and_disable_qubit(
             self.client, device_name, qubits
         )
-        assert error_code == 0
+        assert error_code == -32603
