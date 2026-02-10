@@ -8,6 +8,10 @@ description = "中科酷原-汉原1(hanyuan1)"
 ip_address = "127.0.0.1"
 port = 18402
 callback_baseurl = "http://127.0.0.1"
+zmq_ip_address = "127.0.0.1"
+zmq_port = 18403
+use_zmq = true
+zmq_pool_size = 60
 
 [hanyuan1.transpiler.qpu_configs]
 qubits = 6
