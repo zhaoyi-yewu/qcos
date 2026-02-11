@@ -19,9 +19,6 @@ import heapq
 import re
 from dataclasses import dataclass
 
-from wy_qcos.transpiler.cmss.common.base_operation import BaseOperation
-
-
 EquivalenceLibary: list[str] = [
     # reference from qiskit
     # https://github.com/wshanks/qiskit-terra/blob/main/qiskit/circuit/library/standard_gates/equivalence_library.py
@@ -993,7 +990,7 @@ class EquivalenceGraph:
         return float(len(rule.sources))
 
     def get_optimal_decomposition_rule_dictionary(
-        self, source: list[BaseOperation], target: list[str]
+        self, source: list[str], target: list[str]
     ) -> dict[str, EquivalenceRule]:
         """Generate optimal decomposition rules.
 
@@ -1001,8 +998,7 @@ class EquivalenceGraph:
         source and target operations.
 
         Args:
-            source (list[BaseOperation]): List of source operations to be
-                decomposed.
+            source (list[str]): List of source gate names to be decomposed.
             target (list[str]): List of target operations to achieve.
 
         Returns:
@@ -1016,13 +1012,13 @@ class EquivalenceGraph:
                 target.append(gate)
 
         visited_gates: set[str] = set()
-        left_source_gates: set[str] = set(
-            x.name for x in source if x.name not in target
-        )
+        left_source_gates: set[str] = set(x for x in source if x not in target)
+
         cost_map: dict[str, float] = {}
         optimal_rules: dict[str, EquivalenceRule] = {}
         priority_queue = []
         counter = 0
+
         for gate_name in target:
             heapq.heappush(priority_queue, (0.0, counter, gate_name))
             counter += 1
@@ -1269,7 +1265,7 @@ class EquivalenceGraph:
 
     def build_full_decomposition_table(
         self,
-        source_ops: list[BaseOperation],
+        source: list[str],
         target: list[str],
     ) -> tuple[
         dict[ParamGate, list[ParamGate]],
@@ -1278,18 +1274,18 @@ class EquivalenceGraph:
         """Build full decomposition table for all non-target gates.
 
         Args:
-            source_ops: Available source operations.
-            target: Target gate name set.
+            source: Source gate names that may require decomposition.
+            target: Target gate name set (basis gates).
 
         Returns:
-            Mapping:
-                ParamGate template -> fully expanded ParamGate sequence
+            tuple[dict[ParamGate, list[ParamGate]], dict[str, int]]:
+                Decomposition table and gate expansion count map.
 
         Raises:
             ValueError: If decomposition rule missing.
         """
         rule_map = self.get_optimal_decomposition_rule_dictionary(
-            source_ops,
+            source,
             target,
         )
 
@@ -1299,13 +1295,13 @@ class EquivalenceGraph:
         table: dict[ParamGate, list[ParamGate]] = {}
         count_map: dict[str, int] = {}
 
-        for op in source_ops:
-            if op.name in target_set:
+        for name in source:
+            if name in target_set:
                 continue
 
-            rule = rule_map.get(op.name)
+            rule = rule_map.get(name)
             if rule is None:
-                raise ValueError(f"No rule for gate {op.name}")
+                raise ValueError(f"No rule for gate {name}")
 
             template_gate = rule.target
 

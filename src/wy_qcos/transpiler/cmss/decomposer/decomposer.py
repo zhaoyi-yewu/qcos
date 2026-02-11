@@ -58,8 +58,9 @@ class Decomposer:
         graph = Decomposer._graph
         if graph is None:
             raise RuntimeError("EquivalenceGraph was not initialized.")
+        gate_name_list = list({op.name for op in source})
         rule_dict = graph.get_optimal_decomposition_rule_dictionary(
-            source,
+            gate_name_list,
             target,
         )
         decomposed_circuit = self.applier.apply_path(source, target, rule_dict)
@@ -67,41 +68,47 @@ class Decomposer:
 
     def get_decompose_rules(
         self,
-        qasm_dict: dict[str, tuple[str, list[BaseOperation]]],
+        source: list[str],
         target: list[str],
     ) -> tuple[
         dict[ParamGate, list[ParamGate]],
         dict[str, int],
     ]:
-        """Build a full decomposition table from QASM operation groups.
+        """Build the full decomposition table for given source gates.
 
-        This method collects all operations from the given QASM dictionary,
-        then builds a full decomposition table using the global equivalence
-        graph. The resulting table maps each template ParamGate to its fully
-        expanded sequence of target-basis ParamGates.
+        This method queries the global equivalence graph and builds a full
+        decomposition table that expands each source ParamGate into a sequence
+        of ParamGates expressed only in the given target (basis) gate set.
+
+        Gates whose names are included in ``target`` will be treated as basis
+        gates and will not be decomposed further.
 
         Args:
-            qasm_dict: Mapping from identifiers (such as module or block names)
-                to lists of BaseOperation objects parsed from QASM.
-            target: List of target (basis) gate names. Gates in this set will
-                not be decomposed further.
+            source: List of source gate names that require decomposition.
+            target: List of target (basis) gate names. Gates in this set are
+                considered terminal and will not be expanded further.
 
         Returns:
-            A decomposition table mapping each template ParamGate to a fully
-            expanded list of ParamGate objects expressed only in target gates.
+            A tuple containing:
+                - decomposition_table:
+                    Mapping from each template ParamGate to its fully expanded
+                    list of ParamGate objects expressed only using target
+                    gates.
+                - usage_stats:
+                    Mapping from gate name to integer usage count collected
+                    during decomposition.
 
         Raises:
+            RuntimeError: If the global equivalence graph has not been
+                initialized.
             ValueError: If a required decomposition rule is missing in the
-                equivalence graph.
+                graph.
         """
         graph = Decomposer._graph
         if graph is None:
             raise RuntimeError("EquivalenceGraph was not initialized.")
 
-        # Flatten all BaseOperation lists from the qasm_dict values.
-        all_ops = [op for _, ops in qasm_dict.values() for op in ops]
-
-        return graph.build_full_decomposition_table(all_ops, target)
+        return graph.build_full_decomposition_table(source, target)
 
     def apply_decompose_rules(
         self,

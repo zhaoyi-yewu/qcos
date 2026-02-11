@@ -268,9 +268,13 @@ class TranspilerCmss(TranspilerBase):
 
         decomposer = Decomposer()
         decompose_rules_dict = {}
+        # Flatten all BaseOperation lists from the qasm_dict values.
+        gate_name_list = list({
+            op.name for _, ops in dp_result_dict.values() for op in ops
+        })
         with Timer() as decompose_ruler_timer:
             decompose_rules_dict, _ = decomposer.get_decompose_rules(
-                dp_result_dict,
+                gate_name_list,
                 supp_basis_gates,
             )
         logger.info(

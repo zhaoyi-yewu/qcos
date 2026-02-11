@@ -21,7 +21,6 @@ from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
     EquivalenceRule,
     EquivalenceGraph,
 )
-from wy_qcos.transpiler.cmss.common.base_operation import BaseOperation
 
 
 class TestEquivalenceRule:
@@ -2224,12 +2223,7 @@ class TestEquivalenceRule:
 class TestEquivalenceGraph:
     def test_no_decomposition_needed(self):
         g = EquivalenceGraph()
-        source = [
-            BaseOperation("rx"),
-            BaseOperation("ry"),
-            BaseOperation("rz"),
-            BaseOperation("cx"),
-        ]
+        source = ["rx", "ry", "rz", "cx"]
         target = ["rx", "ry", "rz", "cx"]
 
         rules = g.get_optimal_decomposition_rule_dictionary(source, target)
@@ -2237,15 +2231,13 @@ class TestEquivalenceGraph:
 
     def test_h_gates(self):
         g = EquivalenceGraph()
-        source = [
-            BaseOperation("h"),
-        ]
+        source = ["h"]
         target = ["rx", "ry", "rz", "cx"]
 
         rules = g.get_optimal_decomposition_rule_dictionary(source, target)
 
         for gate in source:
-            assert gate.name in rules
+            assert gate in rules
 
     def test_single_qubit_gates(self):
         g = EquivalenceGraph()
@@ -2269,9 +2261,14 @@ class TestEquivalenceGraph:
             "u",
         ]
         for gate_name in single_qubit_gates:
-            source = [BaseOperation(gate_name)]
-            rules = g.get_optimal_decomposition_rule_dictionary(source, target)
+            rules = g.get_optimal_decomposition_rule_dictionary(
+                [gate_name], target
+            )
             assert gate_name in rules
+
+        for gate_name in single_qubit_gates:
+            table, _ = g.build_full_decomposition_table([gate_name], target)
+            assert any(g.name == gate_name for g in table)
 
     def test_two_qubits_gates(self):
         g = EquivalenceGraph()
@@ -2294,9 +2291,14 @@ class TestEquivalenceGraph:
             "rzz",
         ]
         for gate_name in two_qubit_gates:
-            source = [BaseOperation(gate_name)]
-            rules = g.get_optimal_decomposition_rule_dictionary(source, target)
+            rules = g.get_optimal_decomposition_rule_dictionary(
+                [gate_name], target
+            )
             assert gate_name in rules
+
+        for gate_name in two_qubit_gates:
+            table, _ = g.build_full_decomposition_table([gate_name], target)
+            assert any(g.name == gate_name for g in table)
 
     def test_three_or_more_qubits_gates(self):
         g = EquivalenceGraph()
@@ -2312,6 +2314,11 @@ class TestEquivalenceGraph:
             "c4x",
         ]
         for gate_name in three_or_more_qubit_gates:
-            source = [BaseOperation(gate_name)]
-            rules = g.get_optimal_decomposition_rule_dictionary(source, target)
+            rules = g.get_optimal_decomposition_rule_dictionary(
+                [gate_name], target
+            )
             assert gate_name in rules
+
+        for gate_name in three_or_more_qubit_gates:
+            table, _ = g.build_full_decomposition_table([gate_name], target)
+            assert any(g.name == gate_name for g in table)

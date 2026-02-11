@@ -33,10 +33,7 @@ verification of the decomposer's correctness.
 import pytest
 from pathlib import Path
 
-from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
-    EquivalenceGraph,
-)
-from wy_qcos.transpiler.cmss.decomposer.rule_applier import RuleApplier
+from wy_qcos.transpiler.cmss.decomposer.decomposer import Decomposer
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.tests.unit_tests.transpiler.comm import (
     validate_ir_equals,
@@ -74,8 +71,7 @@ class TestDecomposer:
         cls.samples_dir = (
             Path(GLOBAL_CONFIGS["samples_dir"]).expanduser().resolve()
         )
-        cls.graph = EquivalenceGraph()
-        cls.applier = RuleApplier()
+        cls.decomposer = Decomposer()
         cls.backend_instruction_sets = {
             "Hanyuan": ["rx", "ry", "cz", "sync", "measure", "reset"],
             "Spinq": [
@@ -159,12 +155,12 @@ class TestDecomposer:
             target_basis: List of gate names supported by the target backend.
             backend_name: Human-readable name of the backend, used for logging.
         """
-        rule_dict, _ = self.graph.build_full_decomposition_table(
-            original_gates,
-            target_basis,
+        gate_name_list = list({op.name for op in original_gates})
+        dict, _ = self.decomposer.get_decompose_rules(
+            gate_name_list, target_basis
         )
-        decomposed_gates = self.applier.apply_with_decomposition_table(
-            original_gates, rule_dict
+        decomposed_gates = self.decomposer.apply_decompose_rules(
+            original_gates, dict
         )
         validate_gates_in_targets(decomposed_gates, target_basis)
         validate_ir_equals(original_gates, decomposed_gates)

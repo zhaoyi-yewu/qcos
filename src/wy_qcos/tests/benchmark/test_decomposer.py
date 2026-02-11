@@ -29,10 +29,6 @@ import time
 from pathlib import Path
 
 from wy_qcos.transpiler.cmss.decomposer.decomposer import Decomposer
-from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
-    EquivalenceGraph,
-)
-from wy_qcos.transpiler.cmss.decomposer.rule_applier import RuleApplier
 from wy_qcos.transpiler.cmss.compiler.decomposer import decompose_gates
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.tests.common.qasm_file_reader import QasmFileReader
@@ -63,16 +59,15 @@ class DecomposerBenchmark:
         Returns:
             Decomposed quantum operations.
         """
-        graph = EquivalenceGraph()
-        applier = RuleApplier()
+        decomposer = Decomposer()
 
         # Measure pure decomposition time (excluding parsing)
         start = time.perf_counter()
-        rule_dict, _ = graph.build_full_decomposition_table(
-            operations,
-            target_gate_set,
+        gate_name_list = list({op.name for op in operations})
+        rule_dict, _ = decomposer.get_decompose_rules(
+            gate_name_list, target_gate_set
         )
-        decomposed_gates = applier.apply_with_decomposition_table(
+        decomposed_gates = decomposer.apply_decompose_rules(
             operations, rule_dict
         )
         elapsed = time.perf_counter() - start
