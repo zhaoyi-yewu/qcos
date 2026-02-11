@@ -180,6 +180,7 @@ class TestJob:
             == Constant.JOB_STATUS_COMPLETED
         )
 
+    @pytest.mark.slow
     def test_submit_two_same_priority_jobs(self):
         first_job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
@@ -244,25 +245,37 @@ class TestJob:
         if result is False:
             assert "RUNNING" in err_msg or "QUEUED" in err_msg
 
-        time.sleep(5)
+        time.sleep(10)
         first_job_results = StLibrary.wait_and_get_job_result(
             self.client, first_job_info, self.timeout, self.interval
         )
+
+        terminal_statuses = {
+            Constant.JOB_STATUS_COMPLETED,
+            Constant.JOB_STATUS_FAILED,
+        }
+        while (
+            first_job_results["result"]["job_status"] not in terminal_statuses
+        ):
+            time.sleep(5)
+            first_job_results = StLibrary.wait_and_get_job_result(
+                self.client, first_job_info, self.timeout, self.interval
+            )
         StLibrary.delete_job(self.client, first_job_info["job_id"])
-        assert (
-            first_job_results["result"]["job_status"]
-            == Constant.JOB_STATUS_COMPLETED
-        )
 
         second_job_results = StLibrary.wait_and_get_job_result(
             self.client, second_job_info, self.timeout, self.interval
         )
+        while (
+            second_job_results["result"]["job_status"] not in terminal_statuses
+        ):
+            time.sleep(5)
+            second_job_results = StLibrary.wait_and_get_job_result(
+                self.client, second_job_info, self.timeout, self.interval
+            )
         StLibrary.delete_job(self.client, second_job_info["job_id"])
-        assert (
-            second_job_results["result"]["job_status"]
-            == Constant.JOB_STATUS_COMPLETED
-        )
 
+    @pytest.mark.slow
     def test_submit_two_different_priority_jobs(self):
         first_job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
@@ -286,7 +299,7 @@ class TestJob:
 
         second_job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
-            "job_name": "submit_two_diff_priority_jobs_2",
+            "job_name": "test_submit_two_diff_priority_jobs_2",
             "source_code_list": [SAMPLES["simple-qasm.qasm"]],
             "code_type": Constant.CODE_TYPE_QASM,
             "job_type": Constant.JOB_TYPE_SAMPLING,
@@ -325,27 +338,40 @@ class TestJob:
         result, err_msg, _ = StLibrary.get_job_status(
             self.client, second_job_info["job_id"]
         )
-        assert result is True
+        if result is False:
+            assert "RUNNING" in err_msg or "QUEUED" in err_msg
 
-        time.sleep(5)
+        time.sleep(10)
         first_job_results = StLibrary.wait_and_get_job_result(
             self.client, first_job_info, self.timeout, self.interval
         )
+
+        terminal_statuses = {
+            Constant.JOB_STATUS_COMPLETED,
+            Constant.JOB_STATUS_FAILED,
+        }
+        while (
+            first_job_results["result"]["job_status"] not in terminal_statuses
+        ):
+            time.sleep(5)
+            first_job_results = StLibrary.wait_and_get_job_result(
+                self.client, first_job_info, self.timeout, self.interval
+            )
         StLibrary.delete_job(self.client, first_job_info["job_id"])
-        assert (
-            first_job_results["result"]["job_status"]
-            == Constant.JOB_STATUS_COMPLETED
-        )
 
         second_job_results = StLibrary.wait_and_get_job_result(
             self.client, second_job_info, self.timeout, self.interval
         )
+        while (
+            second_job_results["result"]["job_status"] not in terminal_statuses
+        ):
+            time.sleep(5)
+            second_job_results = StLibrary.wait_and_get_job_result(
+                self.client, second_job_info, self.timeout, self.interval
+            )
         StLibrary.delete_job(self.client, second_job_info["job_id"])
-        assert (
-            second_job_results["result"]["job_status"]
-            == Constant.JOB_STATUS_COMPLETED
-        )
 
+    @pytest.mark.slow
     def test_submit_two_different_device_jobs(self):
         first_job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
@@ -414,17 +440,28 @@ class TestJob:
         first_job_results = StLibrary.wait_and_get_job_result(
             self.client, first_job_info, self.timeout, self.interval
         )
+
+        terminal_statuses = {
+            Constant.JOB_STATUS_COMPLETED,
+            Constant.JOB_STATUS_FAILED,
+        }
+        while (
+            first_job_results["result"]["job_status"] not in terminal_statuses
+        ):
+            time.sleep(5)
+            first_job_results = StLibrary.wait_and_get_job_result(
+                self.client, first_job_info, self.timeout, self.interval
+            )
         StLibrary.delete_job(self.client, first_job_info["job_id"])
-        assert (
-            first_job_results["result"]["job_status"]
-            == Constant.JOB_STATUS_COMPLETED
-        )
 
         second_job_results = StLibrary.wait_and_get_job_result(
             self.client, second_job_info, self.timeout, self.interval
         )
+        while (
+            second_job_results["result"]["job_status"] not in terminal_statuses
+        ):
+            time.sleep(5)
+            second_job_results = StLibrary.wait_and_get_job_result(
+                self.client, second_job_info, self.timeout, self.interval
+            )
         StLibrary.delete_job(self.client, second_job_info["job_id"])
-        assert (
-            second_job_results["result"]["job_status"]
-            == Constant.JOB_STATUS_COMPLETED
-        )

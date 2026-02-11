@@ -159,7 +159,6 @@ def calibrate(
         )
     driver = device.get_driver()
     driver.calibrate(body.options)
-    device.set_status(device.DEVICE_STATUS_CALIBRATING)
 
 
 @device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
