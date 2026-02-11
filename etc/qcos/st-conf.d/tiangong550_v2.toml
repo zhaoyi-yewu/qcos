@@ -1,0 +1,25 @@
+[tiangong550_v2]
+alias_name = "玻色量子-天工550"
+driver = "DriverTiangong550V2"
+description = "玻色量子-天工(tiangong550_v2)"
+# [Optional] max qubits of device
+# device_max_qubits = 100
+
+# Backend configs
+# [Required] user id
+user_id = "000000000000001"
+# [Required] sdk code
+password_sdk_code = ""
+
+# [Required] machine name
+machine_name = "CPQC-550"
+
+# 用户可灵活配置domain_url_auth。
+# 生产域: https://open.qboson.com
+# 测试域：https://open-pre.qboson.com
+domain_url_auth = "https://open-pre.qboson.com"
+
+# 用户可灵活配置domain_url_task。
+# 生产域: https://new-open.qboson.com
+# 测试域：https://new-open-pre.qboson.com
+domain_url_task = "https://new-open-pre.qboson.com"

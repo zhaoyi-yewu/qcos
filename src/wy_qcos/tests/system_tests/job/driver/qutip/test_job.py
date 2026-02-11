@@ -58,7 +58,7 @@ class TestJob:
             "dry_run": False,
         }
         StLibrary.submit_job(self.client, job_info)
-        job_results = StLibrary.wait_and_get_job_result(
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
             self.client, job_info, self.timeout, self.interval
         )
         StLibrary.delete_job(self.client, job_info["job_id"])

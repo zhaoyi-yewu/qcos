@@ -63,7 +63,10 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        job_results = StLibrary.submit_job(self.client, job_info)
+        StLibrary.submit_job(self.client, job_info)
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+            self.client, job_info, self.timeout, self.interval
+        )
         StLibrary.delete_job(self.client, job_info["job_id"])
         assert (
             job_results["result"]["job_status"]

@@ -1,0 +1,15 @@
+[tiangong100]
+alias_name = "玻色量子-天工100"
+driver = "DriverTiangong100"
+description = "玻色量子-天工100(tiangong100)"
+# [Optional] max qubits of device
+# device_max_qubits = 100
+
+base_url = "http://127.0.0.1:18601"
+username = "test"
+password = ""
+project_id = 1
+device_id = 1
+
+# [Optional] max qubits of device
+# device_max_qubits = 10
