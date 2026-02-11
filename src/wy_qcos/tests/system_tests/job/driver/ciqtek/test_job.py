@@ -27,6 +27,7 @@ from wy_qcos.tests.system_tests.job.driver.ciqtek.ion_1_api_server import main
 
 
 @pytest.mark.usefixtures("global_configs")
+@pytest.mark.driver
 class TestJob:
     @classmethod
     def setup_class(cls):

@@ -44,6 +44,7 @@ from wy_qcos.tests.unit_tests.transpiler.comm import (
 
 
 @pytest.mark.usefixtures("global_configs")
+@pytest.mark.slow
 class TestDecomposeTo1q2q:
     """System-level tests for 1q/2q gate decomposition."""
 

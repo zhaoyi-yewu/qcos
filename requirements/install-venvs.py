@@ -76,20 +76,22 @@ def load_driver_env_file(config_file):
 
         sorted_items = non_copy_items + copy_items
         configs = OrderedDict(sorted_items)
-
         for driver_class, driver_info in configs.items():
             if "copy_from" in driver_info:
                 continue
-            if "deps_filepath" not in driver_info:
+            if "deps_filepaths" not in driver_info:
                 raise Exception(
-                    f"[{driver_class}] ‘deps_filepath’ must be specified")
+                    f"[{driver_class}] ‘deps_filepaths’ must be specified")
             if "envs" not in driver_info:
                 raise Exception(
                     f"[{driver_class}] ‘envs’ must be specified")
-            deps_filepath = driver_info["deps_filepath"]
-            deps_abs_filepath = (
-                        driver_deps_file_path / deps_filepath).resolve()
-            driver_info["deps_filepath"] = str(deps_abs_filepath)
+            deps_filepaths = driver_info["deps_filepaths"]
+            deps_filepaths_list = []
+            for deps_filepath in deps_filepaths:
+                deps_abs_filepath = (
+                            driver_deps_file_path / deps_filepath).resolve()
+                deps_filepaths_list.append(str(deps_abs_filepath))
+            driver_info["deps_filepaths"] = deps_filepaths_list
     except Exception as e:
         raise Exception(f"Error loading configuration: {e}")
 
@@ -148,7 +150,8 @@ def install_venv(configs, venv_base_dir, debug=True, dry_run=False):
             """
             cmds.append(cmd)
         else:
-            deps_path = driver_info["deps_filepath"]
+            deps_path_list = driver_info["deps_filepaths"]
+            deps_path_args = f"-r {' -r '.join(deps_path_list)}"
             envs = driver_info.get("envs", [])
             for env in envs:
                 cmd = f"""
@@ -156,7 +159,7 @@ def install_venv(configs, venv_base_dir, debug=True, dry_run=False):
                   echo -e "\\nInstalling venv: {driver_class}"
                   {env} -m venv {driver_venv_dir}
                   source {driver_venv_dir}/bin/activate
-                  pip3 --no-cache-dir install --prefer-binary -r {deps_path}
+                  pip3 --no-cache-dir install --prefer-binary {deps_path_args}
                   deactivate
                 else
                   echo -e "\\nInstalling venv: {driver_class} - skip"

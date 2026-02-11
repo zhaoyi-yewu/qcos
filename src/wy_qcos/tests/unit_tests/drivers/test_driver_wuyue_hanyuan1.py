@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pytest
+
 from wy_qcos.common.constant import Constant
 from wy_qcos.drivers.cascoldatom.driver_wuyue_hanyuan1 import (
     DriverWuyueHanyuan1,
@@ -24,6 +26,7 @@ from wy_qcos.drivers.cascoldatom.driver_wuyue_hanyuan1 import (
 driver_wuyue_hanyuan1 = DriverWuyueHanyuan1()
 
 
+@pytest.mark.driver
 class TestDriverWuyuehanyuan1:
     def test_init(self):
         assert driver_wuyue_hanyuan1.submit_path == "task/WuYue/submit"

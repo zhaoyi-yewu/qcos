@@ -52,6 +52,7 @@ driver_wuyue_base.password_pub_key = _s(
 )
 
 
+@pytest.mark.driver
 class TestDriverWuyueBase:
     """Test suite for DriverWuyueBase class."""
 

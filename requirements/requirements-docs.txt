@@ -16,5 +16,4 @@ sphinxcontrib-jquery==4.1
 
 # auto api docs
 fastapi==0.122.1
-numpy==1.26.4
-rustworkx==0.16.0
+fastapi-jsonrpc==3.4.2

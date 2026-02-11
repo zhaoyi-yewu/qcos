@@ -38,6 +38,7 @@ data = {"index": 0, "source_code": None, "transpile_results": []}
 data_type = DriverQiskitQasmSim.DATA_TYPE_GATE_SEQUENCE
 
 
+@pytest.mark.driver
 class TestDriverQiskitQasmSim:
     @classmethod
     def teardown_class(cls):

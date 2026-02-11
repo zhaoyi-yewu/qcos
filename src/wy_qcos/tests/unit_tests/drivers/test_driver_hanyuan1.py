@@ -32,6 +32,7 @@ data_type = DriverHanyuan1.DATA_TYPE_GATE_SEQUENCE
 shots = 1024
 
 
+@pytest.mark.driver
 class TestDriverHanyuan1:
     def test_init(self):
         assert driver_hanyuan1.version == "0.0.1"

@@ -34,6 +34,7 @@ user_id = "000000000000001"
 passwd_sdk_code = _s("")
 
 
+@pytest.mark.driver
 class TestDriverTiangongBase:
     def test_init_driver(self):
         assert driver_tiangong_base.init_driver() is None

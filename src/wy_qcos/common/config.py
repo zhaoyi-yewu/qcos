@@ -197,6 +197,7 @@ class Config:
         success, err_msg, _configs = Library.read_toml_file(config_file)
         if not success:
             cls._DRIVER_ENV_CONFIGS = configs
+            return
 
         # sort dict
         # dicts contain key: "copy_from" will put at the end of configs
@@ -224,17 +225,20 @@ class Config:
         for driver_class, driver_info in configs.items():
             if "copy_from" in driver_info:
                 continue
-            if "deps_filepath" not in driver_info:
+            if "deps_filepaths" not in driver_info:
                 raise Exception(
-                    f"[{driver_class}] ‘deps_filepath’ must be specified"
+                    f"[{driver_class}] ‘deps_filepaths’ must be specified"
                 )
             if "envs" not in driver_info:
                 raise Exception(f"[{driver_class}] ‘envs’ must be specified")
-            deps_filepath = driver_info["deps_filepath"]
-            deps_abs_filepath = (
-                driver_deps_file_path / deps_filepath
-            ).resolve()
-            driver_info["deps_filepath"] = str(deps_abs_filepath)
+            deps_filepaths = driver_info["deps_filepaths"]
+            deps_filepaths_list = []
+            for deps_filepath in deps_filepaths:
+                deps_abs_filepath = (
+                    driver_deps_file_path / deps_filepath
+                ).resolve()
+                deps_filepaths_list.append(str(deps_abs_filepath))
+            driver_info["deps_filepaths"] = deps_filepaths_list
         cls._DRIVER_ENV_CONFIGS = configs
 
     @classmethod

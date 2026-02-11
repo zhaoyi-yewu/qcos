@@ -83,6 +83,7 @@ dependencies = [
     "pydocket==0.16.3",
     "pytest==8.4.1",
     "pytest-cov==6.2.1",
+    "python-socketio==5.12.1",
     "redis==7.1.0",
     "requests==2.32.5",
     "rustworkx==0.17.1",

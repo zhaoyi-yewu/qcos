@@ -17,14 +17,13 @@
 
 # ruff: noqa: E402
 # load driver venv
-import sys
-
 from wy_qcos.common.config import Config
 from wy_qcos.common.library import Library
 
 org_path = Library.set_driver_venv_path("DriverUQCMatrix2", Config.VENV_DIR)
 
 import pytest
+import sys
 from unittest.mock import patch, Mock
 
 from uqc_client import UQC
@@ -81,6 +80,7 @@ result_matrix2 = [
 result_simulator = {"0x0": 45, "0x3": 55}
 
 
+@pytest.mark.driver
 class TestDriverUqc:
     @classmethod
     def teardown_class(cls):

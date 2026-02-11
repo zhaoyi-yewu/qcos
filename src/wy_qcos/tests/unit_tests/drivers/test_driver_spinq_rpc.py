@@ -17,8 +17,6 @@
 
 # ruff: noqa: E402
 # load driver venv
-import sys
-
 from wy_qcos.common.config import Config
 from wy_qcos.common.library import Library
 
@@ -26,6 +24,7 @@ org_path = Library.set_driver_venv_path("DriverSpinQRpc", Config.VENV_DIR)
 
 import json
 import pytest
+import sys
 import unittest
 import zerorpc
 from unittest.mock import patch, MagicMock
@@ -71,6 +70,7 @@ def validate_converted_gate(actual_info, expected_info):
     assert actual_info["timeslot"] == expected_info["timeslot"]
 
 
+@pytest.mark.driver
 class TestDriverSpinQRpc(unittest.TestCase):
     def setUp(self):
         self.driver = DriverSpinQRpc()

@@ -30,6 +30,9 @@ ADD ./.build-context/ ${BUILD_CONTEXT}
 WORKDIR /root
 
 RUN set -e && \
+# init vars
+    PYTHONBIN=/usr/bin/python3 \
+    PIPBIN=/usr/bin/pip3 \
 # copy qcos dir
     source ${BUILD_CONTEXT}/build-scripts/.env && \
     mkdir -p /tmp/requirements && \
@@ -68,18 +71,17 @@ RUN set -e && \
     ln -s /usr/bin/pydoc3.11 /usr/bin/pydoc3-qcos ; \
     ln -s /usr/bin/python3.11-config /usr/bin/python3.11-config-qcos ; \
     ln -s /usr/bin/python3.11-config-qcos /usr/bin/python3-config-qcos ; \
-    pip3 install --no-cache-dir -r /tmp/requirements/requirements.txt -r /tmp/requirements/requirements-test.txt && \
-    pip3 install --no-cache-dir -r /tmp/requirements/requirements-sandbox.txt -r /tmp/requirements/requirements-docs.txt && \
-# install python3 deps
+# install driver deps
+    ${PIPBIN} install --no-cache-dir -r /tmp/requirements/requirements.txt && \
     VENV_PATH=/var/lib/qcos/venv && \
-    python3 ${BUILD_CONTEXT}/requirements/install-venvs.py --venv-dir ${VENV_PATH} && \
+    ${PYTHONBIN} ${BUILD_CONTEXT}/requirements/install-venvs.py --venv-dir ${VENV_PATH} && \
 # install npm deps
     registry_url="" && \
     npm_cmd_args="" && \
     if [ -n "${NPM_MIRROR}" ]; then registry_url="--registry=${NPM_MIRROR}"; fi && \
     PUPPETEER_SKIP_DOWNLOAD=true npm install ${npm_cmd_args} ${registry_url} -g @mermaid-js/mermaid-cli plantuml && \
 # config bash
-    echo "source /var/lib/qcos/venv/default/bin/activate" >> /root/.bashrc && \
+    echo "source /var/lib/qcos/venv/sandbox/bin/activate" >> /root/.bashrc && \
 # generate ssh keys
     rm -rf /root/.ssh/id_rsa && \
     ssh-keygen -t rsa -f /root/.ssh/id_rsa -q -N "" && \
