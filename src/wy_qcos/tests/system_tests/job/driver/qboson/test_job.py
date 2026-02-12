@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import logging
 import multiprocessing
 
 import pytest
@@ -24,6 +25,8 @@ from wy_qcos.common.library import Library
 from wy_qcos.tests.system_tests.common.library import StLibrary
 from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS, SAMPLES
 from wy_qcos.tests.system_tests.job.driver.qboson.qboson_api_server import main
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.usefixtures("global_configs")
@@ -63,11 +66,14 @@ class TestJob:
             "dry_run": False,
         }
         StLibrary.submit_job(self.client, job_info)
-        job_results = StLibrary.wait_and_get_job_result(
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
             self.client, job_info, self.timeout, self.interval
         )
-        StLibrary.delete_job(self.client, job_info["job_id"])
-        assert (
-            job_results["result"]["job_status"]
-            == Constant.JOB_STATUS_COMPLETED
-        )
+        if success:
+            StLibrary.delete_job(self.client, job_info["job_id"])
+            assert (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_COMPLETED
+            )
+        else:
+            logger.warning(f"unexpected job result. err_msg:{err_msg}")

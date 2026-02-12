@@ -99,7 +99,7 @@ class StLibrary:
         # check results
         job_result = StLibrary.get_job_results(client, job_info["job_id"])
 
-        return job_result
+        return success, err_msg, job_result
 
     @staticmethod
     def get_job_results(client, job_id):
