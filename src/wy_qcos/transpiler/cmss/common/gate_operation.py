@@ -718,6 +718,28 @@ class SWAP(GateOperation):
         return GateOperation.with_gate_array(swap_array, dtype)
 
 
+class ISWAP(GateOperation):
+    """iSWAP门（双量子比特交换门）.
+
+    iSWAP 门交换 ``|01>`` 与 ``|10>``，
+    并在交换过程中引入一个 i 相位。
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_ISWAP,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+
 class CH(GateOperation):
     """受控Hadamard门，当控制量子比特为`|1⟩`时，对目标量子比特应用Hadamard门（H门）."""
 
@@ -755,6 +777,52 @@ class CH(GateOperation):
             ctrl_state=int("1", 2),
             num_ctrl_qubits=1,
             dtype=dtype,
+        )
+
+
+class CS(GateOperation):
+    """CS门（Controlled-S 门）.
+
+    CS 是一种双量子比特受控相位门，
+    当控制量子比特为 1 时，
+    在目标量子比特上施加 S 门。
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_CS,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+
+class CSDG(GateOperation):
+    """CSDG门（Controlled-S† 门）.
+
+    CSDG 是一种双量子比特受控相位门，
+    当控制量子比特为 1 时，
+    在目标量子比特上施加 S† 门。
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_CSDG,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
         )
 
 
@@ -1159,6 +1227,51 @@ class CU(GateOperation):
         )
 
 
+class ECR(GateOperation):
+    """ECR门（Echoed Cross Resonance 门）.
+
+    ECR 是一种双量子比特纠缠门，
+    在超导量子体系中作为原生门使用，
+    与 CNOT 门局部等价。
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_ECR,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+
+class DCX(GateOperation):
+    """DCX门（Double-CNOT 门）.
+
+    DCX 门由两个方向相反的 CNOT 组成：
+        CX(a→b) 后接 CX(b→a)
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_DCX,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+
 class RXX(GateOperation):
     """RXX门（双量子比特 X-X 旋转门）.
 
@@ -1211,6 +1324,28 @@ class RXX(GateOperation):
         )
 
 
+class RYY(GateOperation):
+    """RYY门（双量子比特 Y-Y 旋转门）.
+
+    RYY 门是一种双量子比特旋转门，
+    用于在两个量子比特的 Y 方向上进行相互耦合的旋转操作。
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_RYY,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+
 class RZZ(GateOperation):
     """RZZ门（双量子比特 Z-Z 旋转门）.
 
@@ -1250,6 +1385,29 @@ class RZZ(GateOperation):
                 [0, 0, 0, exp(-itheta2)],
             ],
             dtype=dtype,
+        )
+
+
+class RZX(GateOperation):
+    """RZX门（双量子比特 Z-X 旋转门）.
+
+    RZX 门是一种双量子比特旋转门，
+    用于在第一个量子比特的 Z 方向与第二个量子比特的 X 方向之间
+    进行相互耦合的旋转操作。
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_RZX,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
         )
 
 

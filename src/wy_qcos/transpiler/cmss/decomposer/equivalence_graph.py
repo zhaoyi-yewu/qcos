@@ -160,13 +160,13 @@ EquivalenceLibary: list[str] = [
         "rz(theta) q1 | "
         "cx() q0,q1 | "
         "h() q1"
-    ),  # qcos not support rzx gate
+    ),
     # RYGate
     #
     #    ┌───────┐        ┌──────────┐
     # q: ┤ Ry(ϴ) ├  ≡  q: ┤ R(ϴ,π/2) ├
     #    └───────┘        └──────────┘
-    "ry(theta) q0 -> r(theta, pi/2) q0",  # qcos not support r gate
+    "ry(theta) q0 -> r(theta, pi/2) q0",
     # CRYGate
     #
     # q_0: ────■────      q_0: ─────────────■────────────────■──
@@ -631,7 +631,7 @@ EquivalenceLibary: list[str] = [
     #      ┌─┴─┐  ≡       ┌────────────┐ │P(π) ┌────────────┐
     # q_1: ┤ X ├     q_1: ┤ U(π/2,0,π) ├─■─────┤ U(π/2,0,π) ├
     #      └───┘          └────────────┘       └────────────┘
-    "cx() q0,q1 -> u(pi/2,0,pi) q1 | cphase(pi) q0,q1 | u(pi/2,0,pi) q1",
+    "cx() q0,q1 -> u(pi/2,0,pi) q1 | cp(pi) q0,q1 | u(pi/2,0,pi) q1",
     # CXGate
     #                     ┌────────────┐
     # q_0: ──■──     q_0: ┤ U(0,0,π/2) ├────■──────────────────
@@ -879,7 +879,7 @@ class EquivalenceRule:
     """Represents an equivalence rule for decomposing quantum gates.
 
     The rule is specified in a DSL string, for example:
-        "cx() q0,q1 -> u(pi/2,0,pi) q1 | cphase(pi) q0,q1 | u(pi/2,0,pi) q1"
+        "cx() q0,q1 -> u(pi/2,0,pi) q1 | cp(pi) q0,q1 | u(pi/2,0,pi) q1"
 
     Attributes:
         target (ParamGate): The target gate to be decomposed.

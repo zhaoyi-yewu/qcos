@@ -144,13 +144,20 @@ class Constant:
     TWO_QUBIT_GATE_CY = "cy"
     TWO_QUBIT_GATE_CZ = "cz"
     TWO_QUBIT_GATE_SWAP = "swap"
+    TWO_QUBIT_GATE_ISWAP = "iswap"
     TWO_QUBIT_GATE_CU1 = "cu1"
     TWO_QUBIT_GATE_CP = "cp"
+    TWO_QUBIT_GATE_CS = "cs"
+    TWO_QUBIT_GATE_CSDG = "csdg"
     TWO_QUBIT_GATE_CU3 = "cu3"
+    TWO_QUBIT_GATE_ECR = "ecr"
+    TWO_QUBIT_GATE_DCX = "dcx"
     TWO_QUBIT_GATE_CSX = "csx"
     TWO_QUBIT_GATE_CU = "cu"
     TWO_QUBIT_GATE_RXX = "rxx"
+    TWO_QUBIT_GATE_RYY = "ryy"
     TWO_QUBIT_GATE_RZZ = "rzz"
+    TWO_QUBIT_GATE_RZX = "rzx"
     TWO_QUBIT_GATE_LIST = [
         TWO_QUBIT_GATE_CH,
         TWO_QUBIT_GATE_CRX,
@@ -161,13 +168,20 @@ class Constant:
         TWO_QUBIT_GATE_CY,
         TWO_QUBIT_GATE_CZ,
         TWO_QUBIT_GATE_SWAP,
+        TWO_QUBIT_GATE_ISWAP,
         TWO_QUBIT_GATE_CU1,
         TWO_QUBIT_GATE_CP,
+        TWO_QUBIT_GATE_CS,
+        TWO_QUBIT_GATE_CSDG,
         TWO_QUBIT_GATE_CU3,
+        TWO_QUBIT_GATE_ECR,
+        TWO_QUBIT_GATE_DCX,
         TWO_QUBIT_GATE_CSX,
         TWO_QUBIT_GATE_CU,
         TWO_QUBIT_GATE_RXX,
+        TWO_QUBIT_GATE_ECR,
         TWO_QUBIT_GATE_RZZ,
+        TWO_QUBIT_GATE_DCX,
     ]
     # three-qubit gates
     THREE_QUBIT_GATE_CCX = "ccx"
