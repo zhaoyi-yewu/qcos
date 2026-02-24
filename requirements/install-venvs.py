@@ -31,12 +31,13 @@ from pathlib import Path
 TOP_DIR = Path(__file__).resolve().parent.parent
 
 
-def load_driver_env_file(config_file, envs=None):
+def load_driver_env_file(config_file, envs=None, skip_env_list=None):
     """Load and validate driver env configuration file.
 
     Args:
         config_file: config file path
         envs: envs
+        skip_env_list: env list to skip
 
     Returns:
         configs: config data
@@ -101,6 +102,11 @@ def load_driver_env_file(config_file, envs=None):
             driver_info["deps_filepaths"] = deps_filepaths_list
     except Exception as e:
         raise Exception(f"Error loading configuration: {e}")
+
+    # delete envs from skip_env_list
+    if skip_env_list:
+        for env in skip_env_list:
+            configs.pop(env, None)
 
     return configs
 
@@ -169,13 +175,13 @@ def install_venv(configs, venv_base_dir, debug=True, dry_run=False):
                   pip3 --no-cache-dir install --prefer-binary {deps_path_args}
                   deactivate
                 else
-                  echo -e "\\nInstalling venv: {driver_class} - skip"
+                  echo -e "\\nInstalling venv: {driver_class} - skipped"
                   echo -e "\\nCan't find env: {env}"
                 fi
                 """
                 cmds.append(cmd)
     if debug:
-        print("[Install venv for drivers]")
+        print("\n[Install venv for drivers]")
         print("\n".join(cmds))
     if dry_run:
         return 0
@@ -233,6 +239,12 @@ USAGE
             help="Default pypy3",
         )
         parser.add_argument(
+            "--skip-envs",
+            dest="skip_envs",
+            default=None,
+            help="Envs to skip",
+        )
+        parser.add_argument(
             "--dry-run",
             dest="dry_run",
             action="store_true",
@@ -245,7 +257,9 @@ USAGE
         venv_base_dir = args.venv_base_dir
         default_python3 = args.default_python3
         default_pypy3 = args.default_pypy3
+        skip_envs = args.skip_envs
         dry_run = args.dry_run
+        skip_env_list = None
 
         if not dry_run:
             os.makedirs(venv_base_dir, exist_ok=True)
@@ -255,8 +269,13 @@ USAGE
             "default_python3": default_python3,
             "default_pypy3": default_pypy3
         }
-        configs = load_driver_env_file(file_path, envs=envs)
-        print(f"Configs: \n{configs}")
+        if skip_envs:
+            skip_env_list = skip_envs.split(",")
+
+        configs = load_driver_env_file(file_path,
+                                       envs=envs,
+                                       skip_env_list=skip_env_list)
+        print(f"[Configs: \n{configs}]")
         ret_code = install_venv(configs, venv_base_dir,
                                 debug=True, dry_run=dry_run)
         err_code = ret_code

@@ -22,13 +22,15 @@
 -----------------
 .. code-block:: shell
 
-   # 操作系统镜像 (容器内包含命令行)
-   ./build-images.sh
-
-   # 独立的命令行镜像 [可选]
-   ./build-sandbox.sh  # 编译qcos-cli wheel包用的容器环境
+   # 编译环境镜像 (统一的编译/测试环境)
+   ./build-images.sh -s
    ./run-sandbox.sh  # 运行sandbox容器环境
-   ./build-images.sh --cli
+
+   # 操作系统镜像 (容器内包含命令行)
+   ./build-images.sh -q
+
+   # 独立的命令行镜像 (可选)
+   ./build-images.sh -c
 
 修改配置文件
 -----------------
