@@ -61,7 +61,7 @@ def init_logger():
     # Config Loguru
     # pylint: disable=duplicate-code
     logger.add(
-        Config.PREFECT_LOG_FILE,
+        Config.JOB_ENGINE_LOG_FILE,
         level="DEBUG" if Config.DEBUG else "INFO",
         rotation=f"{Config.LOG_ROTATE_MAX_SIZE_MB} MB",
         compression="gz" if Config.LOG_ROTATE_COMPRESSION else None,

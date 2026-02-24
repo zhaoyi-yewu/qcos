@@ -96,6 +96,7 @@ dependencies = [
     "typing_extensions==4.15.0",
     "uvicorn==0.34.2",
     "wheel==0.45.1",
+    "zerorpc==0.6.3",  # driver: hanyuan1 only
 
     # requirements-test
     "bandit>=1.8.6",

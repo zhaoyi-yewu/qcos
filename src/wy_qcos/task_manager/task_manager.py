@@ -339,8 +339,8 @@ class TaskFlowManager(ABC):
 
     def kill_workers(self):
         """Kill workers."""
-        match_regex = r"\[prefect\]"
-        process_list = Library.get_processes(match_regex)
+        regex_list = [r"\[prefect\]", r"prefect.engine"]
+        process_list = Library.get_processes(regex_list)
         Library.kill(process_list)
 
     def start_workers(self):

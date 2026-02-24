@@ -112,16 +112,16 @@ RUN set -e && \
 # install pypy3 if required
     if [ -n "${PYPY3_BIN_MIRROR}" ]; then \
       mkdir -p /usr/local/pypy3 ; \
-      pyp3_bin_file=$(basename ${PYPY3_BIN_MIRROR}) ; \
+      pypy3_pkg_file=$(basename ${PYPY3_BIN_MIRROR}) ; \
       wget -P /tmp/ ${PYPY3_BIN_MIRROR} ; \
-      tar xjvf /tmp/${pyp3_bin_file} --strip-components=1 -C /usr/local/pypy3 ; \
+      tar xjvf /tmp/${pypy3_pkg_file} --strip-components=1 -C /usr/local/pypy3 ; \
       ln -s /usr/local/pypy3/bin/pypy3 /usr/bin/pypy3 ; \
-      rm -rf ${pyp3_bin_file} ; \
+      rm -rf ${pypy3_pkg_file} ; \
     fi && \
 # install driver deps
     ${PIPBIN} install --no-cache-dir -r /tmp/requirements/requirements.txt && \
     VENV_PATH=/var/lib/qcos/venv && \
-    ${PYTHONBIN} ${BUILD_CONTEXT}/requirements/install-venvs.py --venv-dir ${VENV_PATH} && \
+    ${PYTHONBIN} ${BUILD_CONTEXT}/requirements/install-venvs.py --venv-dir ${VENV_PATH} --default-python3 ${PYTHONBIN} --default-pypy pypy3 && \
 # create symbolic link for python3
     if [ "${DEV,,}" = "false" ]; then \
       # install qcos wheel package in production mode \

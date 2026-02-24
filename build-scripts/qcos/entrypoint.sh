@@ -45,94 +45,65 @@ done
 qcos_config_file_path=/etc/qcos/qcos.toml
 qcos_extra_config_file_dir=/etc/qcos/conf.d
 qcos_st_config_file_path=/etc/qcos/qcos-st.toml
-qcos_template_st_config_file_path=/etc/qcos-template/qcos-st.toml
+qcos_template_base_dir=/etc/qcos-template
+qcos_template_config_file_path=${qcos_template_base_dir}/qcos.toml
+qcos_template_st_config_file_path=${qcos_template_base_dir}/qcos-st.toml
 
 mkdir -p /etc/qcos/
 mkdir -p /etc/qcos/ssl
 mkdir -p ${qcos_extra_config_file_dir}
-_DEBUG=${DEBUG:-false}
 
 # check if file /etc/qcos/qcos.conf exists and create it if not
 if [ -f "${qcos_config_file_path}" ]; then
   echo "QCOS config file: ${qcos_config_file_path} exists, use it"
 else
   echo "QCOS config file: ${qcos_config_file_path} not exists. auto generate ...."
-  cat << EOM > ${qcos_config_file_path}
-[DEFAULT]
-DEBUG = ${_DEBUG,,}
-# [GLOBAL CONFIG] max jobs (all status)
-MAX_JOBS = ${MAX_JOBS:-10000}
-# [GLOBAL CONFIG] max queued+running jobs
-MAX_QUEUED_JOBS = ${MAX_QUEUED_JOBS:-1000}
-# [GLOBAL CONFIG] default venv base dir
-# VENV_DIR = "/var/lib/qcos/venv"
+  cp ${qcos_template_config_file_path} ${qcos_config_file_path}
 
-[VIRT]
-# enable virtualization
-ENABLE_VIRT = ${ENABLE_VIRT:-false}
-# [GLOBAL CONFIG] max jobs for virtual instance
-MAX_JOBS_PER_VIRTUAL_INSTANCE = ${MAX_JOBS_PER_VIRTUAL_INSTANCE:-10}
-# salt for password/encryption
-PASSWORD_SALT = "${PASSWORD_SALT:-123456}"
+  _DEBUG=${DEBUG:-false}
+  _ENABLE_VIRT=${ENABLE_VIRT:-false}
+  python3 -c "
+def config(doc):
+    doc['DEFAULT']['DEBUG'] = ${_DEBUG^}
+    doc['DEFAULT']['MAX_JOBS'] = ${MAX_JOBS:-10000}
+    doc['DEFAULT']['MAX_QUEUED_JOBS'] = ${MAX_QUEUED_JOBS:-1000}
 
-[API_SERVER]
-# API workers
-API_WORKERS = ${API_WORKERS:-8}
-# API server listen ip
-API_SERVER_LISTEN_IP = "${API_SERVER_LISTEN_IP:-}"
-# API server listen port
-API_SERVER_LISTEN_PORT = ${API_SERVER_LISTEN_PORT:-18400}
+    doc['VIRT']['ENABLE_VIRT'] = ${_ENABLE_VIRT^}
+    doc['VIRT']['MAX_JOBS_PER_VIRTUAL_INSTANCE'] = ${MAX_JOBS_PER_VIRTUAL_INSTANCE:-10}
+    doc['VIRT']['PASSWORD_SALT'] = '${PASSWORD_SALT:-123456}'
 
-[PREFECT]
-PREFECT_API_URL = "${PREFECT_API_URL:-http://127.0.0.1:4200/api}"
-PREFECT_SERVER_DATABASE_CONNECTION_URL = "${PREFECT_SERVER_DATABASE_CONNECTION_URL:-sqlite+aiosqlite:///var/qcos/db/prefect.db}"
-PREFECT_LOCAL_STORAGE_PATH = "${PREFECT_LOCAL_STORAGE_PATH:-/var/qcos/storage}"
-PREFECT_WORKER_QUERY_SECONDS = ${PREFECT_WORKER_QUERY_SECONDS:-1}
-PREFECT_WORKER_PREFETCH_SECONDS = ${PREFECT_WORKER_PREFETCH_SECONDS:-1}
-PREFECT_WORKER_HEARTBEAT_SECONDS = ${PREFECT_WORKER_HEARTBEAT_SECONDS:-30}
-PREFECT_LOGGING_LEVEL = "${PREFECT_LOGGING_LEVEL:-INFO}"
+    doc['API_SERVER']['API_WORKERS'] = ${API_WORKERS:-8}
+    doc['API_SERVER']['API_SERVER_LISTEN_IP'] = '${API_SERVER_LISTEN_IP:-}'
+    doc['API_SERVER']['API_SERVER_LISTEN_PORT'] = ${API_SERVER_LISTEN_PORT:-18400}
 
-[REDIS]
-# redis server ip
-REDIS_SERVER_IP = "${REDIS_SERVER_IP:-127.0.0.1}"
-# redis server port
-REDIS_SERVER_PORT = ${REDIS_SERVER_PORT:-6379}
+    doc['PREFECT']['PREFECT_API_URL'] = '${PREFECT_API_URL:-http://127.0.0.1:4200/api}'
+    doc['PREFECT']['PREFECT_SERVER_DATABASE_CONNECTION_URL'] = '${PREFECT_SERVER_DATABASE_CONNECTION_URL:-sqlite+aiosqlite:///var/qcos/db/prefect.db}'
+    doc['PREFECT']['PREFECT_WORKER_QUERY_SECONDS'] = ${PREFECT_WORKER_QUERY_SECONDS:-1}
+    doc['PREFECT']['PREFECT_WORKER_PREFETCH_SECONDS'] = ${PREFECT_WORKER_PREFETCH_SECONDS:-1}
+    doc['PREFECT']['PREFECT_WORKER_HEARTBEAT_SECONDS'] = ${PREFECT_WORKER_HEARTBEAT_SECONDS:-30}
+    doc['PREFECT']['PREFECT_LOCAL_STORAGE_PATH'] = '${PREFECT_LOCAL_STORAGE_PATH:-/var/qcos/storage}'
+    doc['PREFECT']['PREFECT_LOGGING_LEVEL'] = '${PREFECT_LOGGING_LEVEL:-INFO}'
 
-[LOG]
-# api log file
-API_LOG_FILE = "${API_LOG_FILE:-/var/log/qcos/qcos-api.log}"
-# prefect log file
-PREFECT_LOG_FILE = "${PREFECT_LOG_FILE:-/var/log/qcos/qcos-prefect.log}"
-# log format
-LOG_FORMAT = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
-# log rotate, max_size (MB). default: 10MB
-LOG_ROTATE_MAX_SIZE_MB = 10
-# log rotate, backup count. default: 10
-LOG_ROTATE_BACKUP_COUNT = 10
-# log rotate, compression. default: true
-LOG_ROTATE_COMPRESSION = true
+    doc['REDIS']['REDIS_SERVER_IP'] = '${REDIS_SERVER_IP:-127.0.0.1}'
+    doc['REDIS']['REDIS_SERVER_PORT'] = ${REDIS_SERVER_PORT:-6379}
 
-[SSL]
-# Enable HTTPS for API server
-USE_SSL = false
+    doc['LOG']['API_LOG_FILE'] = '${REDIS_SERVER_IP:-127.0.0.1}'
+    doc['LOG']['JOB_ENGINE_LOG_FILE'] = '${JOB_ENGINE_LOG_FILE:-/var/log/qcos/qcos-engine.log}'
+    doc['LOG']['DEVICE_MONITOR_LOG_FILE'] = '${DEVICE_MONITOR_LOG_FILE:-/var/log/qcos/device-monitor.log}'
+    doc['LOG']['LOG_FORMAT'] = '%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s'
 
-# SSL CERT_FILE
-# eg. CERT_FILE = "/etc/qcos/ssl/ssl.crt"
-# CERT_FILE =
+    doc['DEVICES']['DEVICE_LIST'] = [${DEVICE_LIST:-\"dummy\", \"qutip_sim\"}]
 
-# SSL KEY_FILE
-# eg. KEY_FILE = "/etc/qcos/ssl/ssl.key"
-# KEY_FILE =
-
-# SSL CACERT_FILE (Optional)
-# eg. CACERT_FILE = "/etc/qcos/ssl/cacert.pem"
-# CACERT_FILE =
-
-[DEVICES]
-# DEVICE_LIST example:
-# DEVICE_LIST = ["dummy", "hanyuan1", "wy-hanyuan1", "tiangong100", "tiangong100_v2", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim"]
-DEVICE_LIST = [${DEVICE_LIST:-\"dummy\", \"qutip_sim\"}]
-EOM
+###############
+import tomlkit
+from tomlkit import comment, nl
+config_file='${qcos_config_file_path}'
+with open(config_file, 'r', encoding='utf-8') as f:
+    doc = tomlkit.load(f)
+config(doc)
+with open(config_file, 'w', encoding='utf-8') as f:
+    tomlkit.dump(doc, f)
+  "
 fi
 
 # check if file /etc/qcos/qcos-st.conf exists and create it if not
@@ -157,5 +128,4 @@ fi
 # run QCOS under venv
 source /var/lib/qcos/venv/default/bin/activate
 /usr/bin/qcos-api --config-file ${qcos_config_file_path} --config-dir ${qcos_extra_config_file_dir}
-deactivate
 sleep infinity

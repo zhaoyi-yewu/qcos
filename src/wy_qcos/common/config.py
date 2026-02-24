@@ -63,8 +63,10 @@ class Config:
     # [LOG]
     # api log file
     API_LOG_FILE = "/var/log/qcos/qcos-api.log"
-    # prefect log file
-    PREFECT_LOG_FILE = "/var/log/qcos/qcos-engine.log"
+    # qcos job engine log file
+    JOB_ENGINE_LOG_FILE = "/var/log/qcos/qcos-engine.log"
+    # qcos device monitor log file
+    DEVICE_MONITOR_LOG_FILE = "/var/log/qcos/device-monitor.log"
     # log format
     LOG_FORMAT = (
         "%(asctime)s %(levelname)s %(filename)s:%(lineno)s %(message)s"

@@ -22,7 +22,12 @@
 
   .. code-block:: shell
 
-     pip3 install -r ./requirements/requirements.txt -r ./requirements/requirements-test.txt
+     使用venv虚拟隔离环境 (可避免各驱动软件包的冲突问题)
+     cd ./requirements
+     ./install-venvs.py
+
+     或者直接在当前环境下安装。注意：各驱动所依赖的软件包需另外安装，并自行解决潜在的软件包冲突问题
+     pip3 install -r ./requirements/requirements.txt -r ./requirements/requirements-qcos.txt -r ./requirements/requirements-test.txt -r ./requirements/requirements-docs.txt
 
 .. include:: edit-env.rst
 

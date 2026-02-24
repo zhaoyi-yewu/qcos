@@ -31,11 +31,12 @@ from pathlib import Path
 TOP_DIR = Path(__file__).resolve().parent.parent
 
 
-def load_driver_env_file(config_file):
+def load_driver_env_file(config_file, envs=None):
     """Load and validate driver env configuration file.
 
     Args:
         config_file: config file path
+        envs: envs
 
     Returns:
         configs: config data
@@ -85,6 +86,12 @@ def load_driver_env_file(config_file):
             if "envs" not in driver_info:
                 raise Exception(
                     f"[{driver_class}] ‘envs’ must be specified")
+            if envs:
+                # override envs
+                if driver_class == "pypy":
+                    driver_info["envs"] = [envs["default_pypy3"]]
+                else:
+                    driver_info["envs"] = [envs["default_python3"]]
             deps_filepaths = driver_info["deps_filepaths"]
             deps_filepaths_list = []
             for deps_filepath in deps_filepaths:
@@ -214,6 +221,18 @@ USAGE
             help="Driver venv base dir",
         )
         parser.add_argument(
+            "--default-python3",
+            dest="default_python3",
+            default="python3",
+            help="Default python3",
+        )
+        parser.add_argument(
+            "--default-pypy3",
+            dest="default_pypy3",
+            default="pypy3",
+            help="Default pypy3",
+        )
+        parser.add_argument(
             "--dry-run",
             dest="dry_run",
             action="store_true",
@@ -224,13 +243,19 @@ USAGE
         args = parser.parse_args()
         file_path = args.file_path
         venv_base_dir = args.venv_base_dir
+        default_python3 = args.default_python3
+        default_pypy3 = args.default_pypy3
         dry_run = args.dry_run
 
         if not dry_run:
             os.makedirs(venv_base_dir, exist_ok=True)
             shutil.copy2(file_path, venv_base_dir)
 
-        configs = load_driver_env_file(file_path)
+        envs = {
+            "default_python3": default_python3,
+            "default_pypy3": default_pypy3
+        }
+        configs = load_driver_env_file(file_path, envs=envs)
         print(f"Configs: \n{configs}")
         ret_code = install_venv(configs, venv_base_dir,
                                 debug=True, dry_run=dry_run)

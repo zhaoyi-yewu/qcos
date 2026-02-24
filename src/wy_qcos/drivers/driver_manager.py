@@ -115,9 +115,6 @@ class DriverManager:
         for driver_name, driver in self.drivers.items():
             # Validate driver
             success, err_msg = driver.validate_driver()
-            if success:
-                # Init driver
-                driver.init_driver()
             if not success:
                 logger.error(
                     f"Driver: {driver_name} is disabled. "

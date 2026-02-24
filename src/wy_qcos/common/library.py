@@ -345,18 +345,19 @@ class Library:
         return True, None
 
     @staticmethod
-    def get_processes(match_regex):
+    def get_processes(regex_list):
         """Get processes.
 
         Args:
-            match_regex: regex to match
+            regex_list: regex list to match
         """
         processes = []
         for proc in psutil.process_iter(["pid", "name", "cmdline"]):
             try:
                 cmdline = " ".join(proc.info["cmdline"] or [])
-                if Library.str_match(cmdline, match_regex):
-                    processes.append(proc)
+                for regex in regex_list:
+                    if Library.str_match(cmdline, regex):
+                        processes.append(proc)
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
         return processes

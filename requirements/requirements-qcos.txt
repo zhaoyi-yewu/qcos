@@ -45,4 +45,5 @@ typing-inspection==0.4.1
 typing_extensions==4.15.0
 uvicorn==0.34.2
 wheel==0.45.1
+# driver: hanyuan1 only
 zerorpc==0.6.3

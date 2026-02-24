@@ -54,6 +54,14 @@ class TaskScheduler(ABC):
         self.driver_manager = driver_manager
         self._task_manager.set_driver_manager(driver_manager)
 
+    def get_task_manager(self):
+        """Get task manager.
+
+        Returns:
+            task manager
+        """
+        return self._task_manager
+
     def get_driver_manager(self):
         """Get driver manager.
 

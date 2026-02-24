@@ -263,7 +263,14 @@ class Server:
             # run forever
             logger.info("API server running ...")
             loop.run_until_complete(server.serve())
+        except KeyboardInterrupt as e:
+            raise errors.GenericException(
+                f"KeyboardInterrupt error while running the server: {e}"
+            ) from e
         except Exception as e:
             raise errors.GenericException(
                 f"Critical error while running the server: {e}"
             ) from e
+        finally:
+            print("Killing workers ...")
+            scheduler.get_task_manager().kill_workers()

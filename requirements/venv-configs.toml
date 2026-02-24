@@ -2,7 +2,7 @@
 
 [default]
 deps_filepaths = ["./requirements-qcos.txt"]
-envs = ["python3-qcos"]
+envs = ["python3"]
 
 [sandbox]
 deps_filepaths = [
@@ -11,7 +11,7 @@ deps_filepaths = [
     "./requirements-test.txt",
     "./requirements-docs.txt",
 ]
-envs = ["python3-qcos"]
+envs = ["python3"]
 
 [pypy]
 deps_filepaths = ["./requirements-transpiler-cmss.txt"]
@@ -20,21 +20,21 @@ envs = ["pypy3"]
 [DriverQutipSim]
 module_name = "driver_qutip_sim"
 deps_filepaths = ["./drivers/requirements-qutip.txt"]
-envs = ["python3-qcos"]
+envs = ["python3"]
 
 [DriverSpinQRpc]
 module_name = "driver_spinq_rpc"
 deps_filepaths = ["./drivers/requirements-spinq-rpc.txt"]
-envs = ["python3-qcos"]
+envs = ["python3"]
 
 [DriverUQCMatrix2]
 module_name = "driver_uqc"
 deps_filepaths = ["./drivers/requirements-uqc.txt"]
-envs = ["python3-qcos"]
+envs = ["python3"]
 
 [qiskit]
 deps_filepaths = ["./drivers/requirements-qiskit.txt"]
-envs = ["python3-qcos"]
+envs = ["python3"]
 
 [DriverQiskitQasmSim]
 module_name = "driver_qiskit_qasm_sim"
