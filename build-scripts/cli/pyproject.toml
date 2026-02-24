@@ -70,7 +70,7 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["../../src"]
 include = ["wy_qcos_client*"]
-exclude = ["wy_qcos_client.tests*"]
+exclude = []
 
 [tool.isort]
 profile = "black"

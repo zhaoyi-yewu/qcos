@@ -85,10 +85,13 @@ def get_files(base_dirs, dest_dir_prefix="",
 
 
 # Include package data
+data_files = get_files(["../../samples"],
+                       dest_dir_prefix="share/wy_qcos_client/",
+                       exclude_dirs=["samples/qasm/benchpress"])  # too large
+data_files.append(("tests", ["../../src/wy_qcos_client/tests/pytest.ini"]))
+data_files.append(("share/wy_qcos_client/cicd/", ["../../cicd/run-tests.sh"]))
 setup(
     packages=find_packages(where="../../src"),
     include_package_data=True,
-    data_files=get_files(["../../samples"],
-                         dest_dir_prefix="share/wy_qcos_client/",
-                         exclude_dirs=["samples/qasm/benchpress"])  # too large
+    data_files=data_files
 )

@@ -66,7 +66,7 @@ dependencies = [
     "idna==3.10",
     "jsonrpcclient==4.0.3",
     "loguru==0.7.3",
-    "matplotlib==3.9.2",
+    "matplotlib==3.10.8",
     "mqt.qcec==3.3.0",
     "networkx==3.3",
     "numexpr==2.14.1",
@@ -134,7 +134,7 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["wy_qcos*"]
-exclude = ["wy_qcos.tests*", "wy_qcos_client*"]
+exclude = ["wy_qcos_client*"]
 
 [tool.isort]
 profile = "black"

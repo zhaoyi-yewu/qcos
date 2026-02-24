@@ -20,13 +20,16 @@ ARG CONTAINER_NAME
 ARG QCOS_IMAGE_VERSION
 ARG DEV
 
-LABEL stage=builder
+LABEL stage=${CONTAINER_NAME}-builder
 LABEL build=${CONTAINER_NAME}
+LABEL maintainer="Zhao Yi <zhaoyi_yewu@cmss.chinamobile.com>"
+
 ENV TZ=Asia/Shanghai
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV PS1="(\${CONTAINER_NAME})[$(pwd)]$ "
 
-MAINTAINER Zhao Yi <zhaoyi_yewu@cmss.chinamobile.com>
-
-COPY ./.build-context/ ${BUILD_CONTEXT}
+COPY ./ ${BUILD_CONTEXT}
 WORKDIR /root
 
 RUN set -e && \
@@ -66,11 +69,6 @@ RUN set -e && \
 # cleanup build-context
     yum clean all && \
     rm -rf ${BUILD_CONTEXT}
-
-ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US:en
-ENV CONTAINER_NAME=${CONTAINER_NAME}
-ENV PS1="(\${CONTAINER_NAME})[$(pwd)]$ "
 
 WORKDIR /root
 ENTRYPOINT ["/entrypoint.sh"]
