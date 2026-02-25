@@ -1,4 +1,4 @@
-# This workflow will upload a Python Package to PyPI when a release is created
+# This workflow will build, publish and test the following images: sandbox/qcos/qcos-cli docker
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-to-package-registries
 
 # This workflow uses actions that are not certified by GitHub.
@@ -10,27 +10,69 @@ name: Build/Publish/Test QCOS docker image
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ develop, test ]
     tags:
       - "v*"
-  pull_request:
-    branches: [ develop ]
+  schedule:
+    # trigger on every night (14:00 UTC / 22:00 CST)
+    - cron: '0 14 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build-and-push-sandbox:
+  build-qcos-base-image:
     runs-on: ubuntu-latest
+    container:
+      image: openeuler/openeuler:24.03-lts
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install basic packages
+        run: |
+          yum install -y docker docker-compose rsync
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run Integrated Build Script for base
+        shell: bash
+        run: |
+          cd ./build-scripts
+          source ./version
+          cp ./env.template ./.env
+          ./build-images.sh -b
+
+      - name: Upload qcos-base Docker Image Artifact
+        uses: actions/upload-artifact@v4
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          name: qcos-base-image-artifact
+          path: ./build-scripts/images/qcos-base-amd64-dev.tar.xz
+          retention-days: 1
+
+  build-and-push-sandbox:
+    needs: build-qcos-base-image
+    runs-on: ubuntu-latest
+    container:
+      image: openeuler/openeuler:24.03-lts
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install basic packages
+        run: |
+          yum install -y docker docker-compose rsync findutils
+
+      - name: Download qcos-base Docker Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: qcos-base-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos-base Docker Image
+        run: docker load -i ./build-scripts/images/qcos-base-amd64-dev.tar.xz
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -38,39 +80,54 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.QCOS_DOCKERHUB_TOKEN }}
 
       - name: Generate Docker Metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/qcos-sandbox
+          images: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-sandbox
           tags: |
-            type=schedule,pattern=nightly
+            type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
+            type=raw,value=nightly-{{date 'YYYYMMDD'}},enable=${{ github.event_name == 'schedule' }}
             type=semver,pattern={{version}}
-            type=ref,event=branch
-            type=sha
+            type=semver,pattern=latest
 
-      - name: Run Integrated Build Script
+      - name: Run Integrated Build Script for sandbox
+        shell: bash
+        env:
+          ALL_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          chmod +x ./build-scripts/build-sandbox.sh
-          ./build-scripts/build-sandbox.sh
-          docker tag qcos-sandbox:${{ steps.meta.outputs.tags }} ${{ secrets.DOCKERHUB_USERNAME }}/qcos-sandbox:${{ steps.meta.outputs.tags }}
-          docker tag qcos-sandbox:${{ steps.meta.outputs.tags }} ${{ secrets.DOCKERHUB_USERNAME }}/qcos-sandbox:latest
+          cd ./build-scripts
+          source ./version
+          cp ./env.template ./.env
+          ./build-images.sh -s -n
+          TAG_LIST=$(echo "$ALL_TAGS" | xargs)
+          echo "TAGS: $TAG_LIST"
+          for full_tag in $TAG_LIST; do
+            echo "Processing tag: $full_tag"
+            docker tag qcos-sandbox:dev $full_tag
+            docker push $full_tag
+          done
 
   build-and-push-qcos:
     needs: build-and-push-sandbox
     runs-on: ubuntu-latest
+    container:
+      image: qcos/qcos-sandbox:latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Download qcos-base Docker Image Artifact
+        uses: actions/download-artifact@v4
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          name: qcos-base-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos-base Docker Image
+        run: docker load -i ./build-scripts/images/qcos-base-amd64-dev.tar.xz
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -78,97 +135,116 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.QCOS_DOCKERHUB_TOKEN }}
 
       - name: Generate Docker Metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/qcos
+          images: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos
           tags: |
-            type=schedule,pattern=nightly
+            type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
+            type=raw,value=nightly-{{date 'YYYYMMDD'}},enable=${{ github.event_name == 'schedule' }}
             type=semver,pattern={{version}}
-            type=ref,event=branch
-            type=sha
+            type=semver,pattern=latest
 
-      - name: Run Integrated Build Script
+      - name: Run Integrated Build Script for qcos
+        shell: bash
+        env:
+          ALL_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          chmod +x ./build-scripts/build-images.sh
-          ./build-scripts/build-images.sh -q
-          docker tag qcos:${{ steps.meta.outputs.tags }} ${{ secrets.DOCKERHUB_USERNAME }}/qcos:${{ steps.meta.outputs.tags }}
-          docker tag qcos:${{ steps.meta.outputs.tags }} ${{ secrets.DOCKERHUB_USERNAME }}/qcos:latest
+          cd ./build-scripts
+          source ./version
+          cp ./env.template ./.env
+          ./build-images.sh -q -n
+          TAG_LIST=$(echo "$ALL_TAGS" | xargs)
+          echo "TAGS: $TAG_LIST"
+          for full_tag in $TAG_LIST; do
+            echo "Processing tag: $full_tag"
+            docker tag qcos:${QCOS_VERSION} $full_tag
+            docker push $full_tag
+          done  
 
   build-and-push-qcos-cli:
     needs: build-and-push-sandbox
+    container:
+      image: qcos/qcos-sandbox:latest
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.QCOS_DOCKERHUB_TOKEN }}
 
       - name: Generate Docker Metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/qcos-cli
+          images: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-cli
           tags: |
-            type=schedule,pattern=nightly
+            type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
+            type=raw,value=nightly-{{date 'YYYYMMDD'}},enable=${{ github.event_name == 'schedule' }}
             type=semver,pattern={{version}}
-            type=ref,event=branch
-            type=sha
+            type=semver,pattern=latest
 
-      - name: Run Integrated Build Script
+      - name: Run Integrated Build Script for qcos-cli
+        shell: bash
+        env:
+          ALL_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          chmod +x ./build-scripts/build-images.sh
-          ./build-scripts/build-images.sh -c
-          docker tag qcos-cli:${{ steps.meta.outputs.tags }} ${{ secrets.DOCKERHUB_USERNAME }}/qcos-cli:${{ steps.meta.outputs.tags }}
-          docker tag qcos-cli:${{ steps.meta.outputs.tags }} ${{ secrets.DOCKERHUB_USERNAME }}/qcos-cli:latest
+          cd ./build-scripts
+          source ./version
+          cp ./env.template ./.env
+          ./build-images.sh -c -n
+          TAG_LIST=$(echo "$ALL_TAGS" | xargs)
+          echo "TAGS: $TAG_LIST"
+          for full_tag in $TAG_LIST; do
+            echo "Processing tag: $full_tag"
+            docker tag qcos-cli:${QCOS_VERSION} $full_tag
+            docker push $full_tag
+          done  
 
   run-tests-qcos:
     needs: build-and-push-sandbox
     runs-on: ubuntu-latest
     container:
       image: qcos/qcos-sandbox:latest
-      credentials:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Run Unit Tests
+        shell: bash
         run: |
           cicd/run-tests.sh -c all
+          ls cicd/
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.QCOS_CODECOV_TOKEN }}
+          files: cicd/coverage.xml
 
   run-tests-qcos-cli:
     needs: build-and-push-sandbox
     runs-on: ubuntu-latest
     container:
       image: qcos/qcos-sandbox:latest
-      credentials:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Run Unit Tests
+        shell: bash
         run: |
           cicd/run-tests.sh -e all

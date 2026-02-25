@@ -27,6 +27,7 @@ LABEL maintainer="Zhao Yi <zhaoyi_yewu@cmss.chinamobile.com>"
 ENV TZ=Asia/Shanghai
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
+ENV CONTAINER_NAME=${CONTAINER_NAME}
 ENV PS1="(\${CONTAINER_NAME})[$(pwd)]$ "
 
 COPY ./ ${BUILD_CONTEXT}

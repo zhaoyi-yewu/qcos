@@ -92,7 +92,7 @@ function check_docker_image {
 
 function build_qcos_base_image {
   echo -e "\nBuilding docker image: qcos-base"
-  QCOS_BASE_CONTAINER_NAME=${QCOS_CONTAINER_NAME}-base
+  QCOS_BASE_CONTAINER_NAME=qcos-base
 
   # build qcos building-system: qcos-base
   cd ${BUILD_SCRIPTS_DIR}
@@ -119,8 +119,8 @@ function run_sandbox {
 
 function build_sandbox_image {
   echo -e "\nBuilding docker image: sandbox"
-  SANDBOX_CONTAINER_NAME=${QCOS_CONTAINER_NAME}-sandbox
-  SANDBOX_IMAGE_NAME=${QCOS_IMAGE_NAME}-sandbox
+  SANDBOX_CONTAINER_NAME=qcos-sandbox
+  SANDBOX_IMAGE_NAME=qcos-sandbox
   SANDBOX_IMAGE_VERSION=dev
 
   # build qcos building-system: sandbox
@@ -128,7 +128,6 @@ function build_sandbox_image {
   DOCKER_BUILDKIT=0 docker build -f ./sandbox/Dockerfile --no-cache --rm --network host \
     --build-arg CONTAINER_NAME=${SANDBOX_CONTAINER_NAME} \
     --build-arg SANDBOX_IMAGE_VERSION=${SANDBOX_IMAGE_VERSION} \
-    --build-arg DEV=${DEV} \
     --build-arg NPM_MIRROR=${NPM_MIRROR} \
     -t ${SANDBOX_IMAGE_NAME}:${SANDBOX_IMAGE_VERSION} .build-context
 
@@ -227,7 +226,7 @@ function build_image {
   mkdir -p ${TEMP_PKG_DIR}
 
   QCOS_BASE_IMAGE="${QCOS_BASE_IMAGE_NAME}:${QCOS_BASE_IMAGE_VERSION}"
-  if [ "${base}" != true ];then
+  if [[ "${base}" != true && ( "${qcos}" = true || "${sandbox}" = true ) ]]; then
     if ! check_docker_image "${QCOS_BASE_IMAGE}"; then
       echo "Can't find container image: ${QCOS_BASE_IMAGE}, put it in building list"
       base=true

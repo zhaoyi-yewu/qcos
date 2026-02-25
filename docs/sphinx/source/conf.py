@@ -78,7 +78,7 @@ autodoc_mock_imports = [
     "fastapi_jsonrpc",
     "loguru",
     "mqt",
-    "networkx",
+    # "networkx",  # required for docstring-check.sh / sphinx-build -b html
     # "numpy",  # required for autodoc
     "numexpr",
     "ply",

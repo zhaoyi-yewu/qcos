@@ -26,9 +26,9 @@
    ./build-images.sh
 
    # 独立的命令行镜像 [可选]
-   ./build-sandbox.sh  # 编译qcos-cli wheel包用的容器环境
+   ./build-images.sh -s  # 编译sandbox容器镜像
    ./run-sandbox.sh  # 运行sandbox容器环境
-   ./build-images.sh --cli
+   ./build-images.sh -c  # 编译qcos cli容器镜像
 
 修改配置文件
 --------------------
