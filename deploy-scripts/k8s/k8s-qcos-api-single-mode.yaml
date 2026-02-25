@@ -60,7 +60,7 @@ spec:
         - name: PREFECT_API_URL
           value: "${PREFECT_API_URL}"
         - name: PREFECT_SERVER_DATABASE_CONNECTION_URL
-          value: "sqlite+aiosqlite:////tmp/prefect.db"
+          value: "${PREFECT_SERVER_DATABASE_CONNECTION_URL}"
           #value: "sqlite+aiosqlite:////var/qcos/db/prefect.db"
         - name: PREFECT_API_DATABASE_TIMEOUT
           value: "30"

@@ -55,3 +55,7 @@ echo "Note: you must create PVCs(${K8S_DATABASE_PVC}) before running this script
 
 envsubst < ./k8s-config-device-${QCOS_DEVICE_NAME}.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -
 envsubst < ./k8s-qcos-api-single-mode.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -
+if [ "${DB_BACKEND,,}" = "postgres" ]; then
+  envsubst < ./k8s-config-postgres.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -
+  envsubst < ./k8s-postgres.yaml | kubectl apply -n ${QCOS_NAMESPACE} -f -
+fi
