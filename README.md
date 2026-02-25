@@ -6,8 +6,7 @@
 
 [![PyPI - Version](https://img.shields.io/pypi/v/wy-qcos)](https://pypi.org/project/wy-qcos)
 [![PyPI - Wheel](https://img.shields.io/pypi/wheel/wy-qcos)](https://pypi.org/project/wy-qcos)
-[![PyPI -Downloads](https://pepy.tech/badge/wy-qcos)](https://pepy.tech/project/wy-qcos)
-[![CICD](https://github.com/zhaoyi-yewu/qcos/actions/workflows/publish-docker-qcos.yml/badge.svg?branch=develop)](https://github.com/zhaoyi-yewu/qcos/actions/workflows/publish-docker-qcos.yml)
+[![CICD](https://img.shields.io/github/actions/workflow/status/zhaoyi-yewu/qcos/publish-docker-qcos.yml?label=cicd)](https://github.com/zhaoyi-yewu/qcos/actions/workflows/publish-docker-qcos.yml)
 [![Codecov](https://codecov.io/github/zhaoyi-yewu/qcos/branch/develop/graph/badge.svg)](https://codecov.io/github/zhaoyi-yewu/qcos)
 [![Documentation Status](https://app.readthedocs.org/projects/qcos/badge/?version=latest)](https://qcos.readthedocs.io/zh-cn/latest/)
 [![License](https://img.shields.io/crates/l/efi_signer)](https://gitee.com/OpenWuYue/qcos/blob/develop/LICENSE)

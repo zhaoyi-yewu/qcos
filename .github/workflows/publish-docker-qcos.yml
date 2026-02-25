@@ -32,10 +32,7 @@ jobs:
 
       - name: Install basic packages
         run: |
-          yum install -y docker docker-compose rsync
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+          yum install -y docker docker-compose rsync findutils
 
       - name: Run Integrated Build Script for base
         shell: bash
@@ -43,7 +40,7 @@ jobs:
           cd ./build-scripts
           source ./version
           cp ./env.template ./.env
-          ./build-images.sh -b
+          ./build-images.sh -b -t dev
 
       - name: Upload qcos-base Docker Image Artifact
         uses: actions/upload-artifact@v4
@@ -74,9 +71,6 @@ jobs:
       - name: Load qcos-base Docker Image
         run: docker load -i ./build-scripts/images/qcos-base-amd64-dev.tar.xz
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -91,6 +85,7 @@ jobs:
           tags: |
             type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
             type=raw,value=nightly-{{date 'YYYYMMDD'}},enable=${{ github.event_name == 'schedule' }}
+            type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
             type=semver,pattern={{version}}
             type=semver,pattern=latest
 
@@ -115,7 +110,7 @@ jobs:
     needs: build-and-push-sandbox
     runs-on: ubuntu-latest
     container:
-      image: qcos/qcos-sandbox:latest
+      image: qcos/qcos-sandbox:nightly
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -128,9 +123,6 @@ jobs:
 
       - name: Load qcos-base Docker Image
         run: docker load -i ./build-scripts/images/qcos-base-amd64-dev.tar.xz
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -146,6 +138,7 @@ jobs:
           tags: |
             type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
             type=raw,value=nightly-{{date 'YYYYMMDD'}},enable=${{ github.event_name == 'schedule' }}
+            type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
             type=semver,pattern={{version}}
             type=semver,pattern=latest
 
@@ -169,7 +162,7 @@ jobs:
   build-and-push-qcos-cli:
     needs: build-and-push-sandbox
     container:
-      image: qcos/qcos-sandbox:latest
+      image: qcos/qcos-sandbox:nightly
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -192,6 +185,7 @@ jobs:
           tags: |
             type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
             type=raw,value=nightly-{{date 'YYYYMMDD'}},enable=${{ github.event_name == 'schedule' }}
+            type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
             type=semver,pattern={{version}}
             type=semver,pattern=latest
 
@@ -216,7 +210,7 @@ jobs:
     needs: build-and-push-sandbox
     runs-on: ubuntu-latest
     container:
-      image: qcos/qcos-sandbox:latest
+      image: qcos/qcos-sandbox:nightly
 
     steps:
       - name: Checkout Code
@@ -238,7 +232,7 @@ jobs:
     needs: build-and-push-sandbox
     runs-on: ubuntu-latest
     container:
-      image: qcos/qcos-sandbox:latest
+      image: qcos/qcos-sandbox:nightly
 
     steps:
       - name: Checkout Code
