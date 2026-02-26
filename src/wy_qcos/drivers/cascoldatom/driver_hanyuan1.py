@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import copy
+import random
 import requests
 import time
 from typing import Any
@@ -23,6 +24,9 @@ from typing import Any
 from jsonrpcclient import request
 from loguru import logger
 from schema import Optional, Or
+import zerorpc
+
+from datetime import datetime
 
 from wy_qcos.common.constant import Constant, HttpMethod, HttpCode
 from wy_qcos.common.library import Library
@@ -40,6 +44,7 @@ class DriverHanyuan1(DriverBase):
     verbose = False
     DEFAULT_CONTROL_SYSTEM_IP = "127.0.0.1"
     DEFAULT_CONTROL_SYSTEM_PORT = 18402
+    DEFAULT_CONTROL_SYSTEM_ZMQ_PORT = 18403
     # task status
     task_status_unknown = "unknown"
     task_status_running = "running"
@@ -67,6 +72,8 @@ class DriverHanyuan1(DriverBase):
         self.server_host = None
         self.server_port = None
         self.base_url = None
+        self.zerorpc_clients: list = []  # 连接池，每个元素为 zerorpc.Client
+        self.use_zmq = False
         # task stages and percentages
         self.task_stages = {
             self.TASK_STAGE_START: 0,
@@ -84,7 +91,22 @@ class DriverHanyuan1(DriverBase):
             "ip_address", self.DEFAULT_CONTROL_SYSTEM_IP
         )
         port = extra_configs.get("port", self.DEFAULT_CONTROL_SYSTEM_PORT)
-        self.init_base_url(ip_address, port)
+        zmq_ip_address = extra_configs.get(
+            "zmq_ip_address", self.DEFAULT_CONTROL_SYSTEM_IP
+        )
+        zmq_port = extra_configs.get(
+            "zmq_port", self.DEFAULT_CONTROL_SYSTEM_ZMQ_PORT
+        )
+        self.use_zmq = extra_configs.get("use_zmq", False)
+        zmq_pool_size = extra_configs.get("zmq_pool_size", 60)
+        logger.info(f"use_zmq: {self.use_zmq}")
+
+        if self.use_zmq:
+            self.init_zerorpc_client(
+                zmq_ip_address, zmq_port, pool_size=zmq_pool_size
+            )
+        else:
+            self.init_base_url(ip_address, port)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def validate_driver_configs(self, configs):
@@ -104,6 +126,10 @@ class DriverHanyuan1(DriverBase):
             "ip_address": str,
             "port": int,
             "callback_baseurl": str,
+            "zmq_ip_address": str,
+            "zmq_port": int,
+            "use_zmq": bool,
+            "zmq_pool_size": int,
             "transpiler": {
                 "qpu_configs": {
                     "qubits": int,
@@ -137,6 +163,21 @@ class DriverHanyuan1(DriverBase):
 
     def close_driver(self):
         """Close driver."""
+        if self.zerorpc_clients:
+            for client in self.zerorpc_clients:
+                try:
+                    client.close()
+                except Exception as e:
+                    logger.error(f"Failed to close ZeroRPC client: {e}")
+            self.zerorpc_clients = []
+
+    def get_formatted_timestamp(self):
+        """get_formatted_timestamp.
+
+        Returns:
+            str: formatted timestamp.
+        """
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
     def fetch_configs(self):
         """Fetch configs.
@@ -148,90 +189,126 @@ class DriverHanyuan1(DriverBase):
         job_id = str(Library.create_uuid())
         qpu_configs = {}
 
-        success, err_msg = self.submit_task(job_id=job_id, data_type=data_type)
-        if not success:
-            raise ValueError(
-                f"Failed to fetch configs [{data_type}]: {err_msg}"
-            )
-
-        logger.info("wait for configs")
-        self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
-        success, err_msg, _ = Library.loop_with_timeout(
-            self.check_task_status,
-            600,
-            2,
+        # Execute task workflow
+        qu_configs = self._execute_task_workflow(
             job_id=job_id,
             data_type=data_type,
-            expect_task_status=[self.task_status_completed],
+            interval=1,
         )
-        if not success:
-            raise ValueError(
-                f"Failed to wait for configs [{data_type}]: {err_msg}"
-            )
 
-        success, err_msg, qu_configs = self.get_task_results(
-            job_id=job_id,
-            data_type=data_type,
-        )
-        if not success:
-            raise ValueError(
-                f"Failed to get task results [{data_type}]: {err_msg}"
-            )
         qpu_configs = {"qpu_configs": qu_configs}
         return qpu_configs
 
-    def run(self, job_id, num_qubits, data, data_type, shots=1):
-        """Run job.
+    def _check_task_status(
+        self,
+        job_id: str,
+        data_type: str,
+        data_index: int | None = 0,
+        timeout: int = 1800,
+        interval: int = 5,
+    ) -> tuple[bool, str | None]:
+        """Wait for task status.
 
         Args:
             job_id: job ID
-            num_qubits: number of qubits
-            data: data
             data_type: data type
-            shots: shots (Default value = 1)
-        """
-        # pylint: disable=duplicate-code
-        data_index = data["index"]
-        logger.info(
-            f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
-            f"data_type: {data_type}, data: {data}"
-        )
+            data_index: data index
+            timeout: wait timeout in seconds (optional, default 1800)
+            interval: check interval in seconds (optional, default 5)
 
+        Returns:
+            tuple[bool, str | None]: (success, err_msg)
+        """
+        err_msg = None
+        start_time = time.time()
+        elapsed_time: float = 0.0
+        while True:
+            task_status = self._get_task_status(job_id, data_type, data_index)
+            if task_status == self.task_status_completed:
+                return True, None
+            elif task_status == self.task_status_unknown:
+                err_msg = f"Task [{job_id}] unknown"
+                return False, err_msg
+            else:
+                if elapsed_time >= timeout:
+                    err_msg = f"Task [{job_id}] timed out"
+                    return False, err_msg
+            time.sleep(interval)
+            elapsed_time = time.time() - start_time
+
+    def _execute_task_workflow(
+        self,
+        job_id: str,
+        data_type: str,
+        num_qubits: int | None = None,
+        data: list[Any] | None = None,
+        shots: int | None = None,
+        data_index: int | None = 0,
+        timeout: int = 1800,
+        interval: int = 5,
+    ) -> Any:
+        """Execute task workflow.
+
+        This is a generic task workflow includes the following steps:
+        1. Submit task
+        2. Wait for task completion
+        3. Get task results
+
+        Args:
+            job_id: job ID (required)
+            data_type: data type (required)
+            num_qubits: number of qubits (optional)
+            data: gate list data (optional)
+            shots: shots (optional)
+            data_index: data index (optional, default 0)
+            timeout: wait timeout in seconds (optional, default 1800)
+            interval: check interval in seconds (optional, default 5)
+
+        Returns:
+            Any: task results
+
+        Raises:
+            ValueError: if task submission, waiting, or result retrieval fails
+        """
         self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_device_status(Device.DEVICE_STATUS_BUSY)
-        gates_list = data["transpile_results"]
 
-        # 1. submit task
-        logger.info("submit task")
+        # Step 1: Submit task
+        logger.info(f"submit task: job_id={job_id}, data_type={data_type}")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
         success, err_msg = self.submit_task(
             job_id=job_id,
             data_type=data_type,
             num_qubits=num_qubits,
-            data=gates_list,
+            data=data,
             shots=shots,
             data_index=data_index,
         )
         if not success:
             raise ValueError(f"Failed to submit task [{job_id}]: {err_msg}")
 
-        # 2. wait task results
-        logger.info("wait task status")
+        # Step 2: Wait for task completion
+        logger.info(
+            f"wait task status: job_id={job_id}, data_type={data_type}"
+        )
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
-        success, err_msg, _ = Library.loop_with_timeout(
-            self.check_task_status,
-            1800,
-            5,
+
+        success, err_msg = self._check_task_status(
             job_id=job_id,
             data_type=data_type,
-            expect_task_status=[self.task_status_completed],
             data_index=data_index,
+            timeout=timeout,
+            interval=interval,
         )
         if not success:
-            raise ValueError(f"Failed to wait for task [{job_id}]: {err_msg}")
+            raise ValueError(
+                f"Failed to wait for task status [{job_id}]: {err_msg}"
+            )
 
-        # 3. get task results
-        logger.info("wait done")
+        # Step 3: Get task results
+        logger.info(
+            f"get task results: job_id={job_id}, data_type={data_type}"
+        )
         self.set_progress_by_task(self.TASK_STAGE_GET_RESULTS)
         success, err_msg, results = self.get_task_results(
             job_id=job_id,
@@ -243,19 +320,74 @@ class DriverHanyuan1(DriverBase):
                 f"Failed to get task results [{job_id}]: {err_msg}"
             )
 
+        return results
+
+    def run(self, job_id, num_qubits, data, data_type, shots=1):
+        """Run job.
+
+        Args:
+            job_id: job ID
+            num_qubits: number of qubits
+            data: data
+            data_type: data type
+            shots: shots (Default value = 1)
+        """
+        logger.info(
+            f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
+            f"data_type: {data_type}, data: {data}"
+        )
+
+        gates_list = data["transpile_results"]
+        data_index = data["index"]
+
+        # Execute task workflow
+        results = self._execute_task_workflow(
+            job_id=job_id,
+            data_type=data_type,
+            num_qubits=num_qubits,
+            data=gates_list,
+            shots=shots,
+            data_index=data_index,
+        )
+
         self.set_results(job_id, data_index, results=results)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
-    def cancel(self, job_id):
+    def cancel(
+        self,
+        job_id: str,
+    ) -> tuple:
         """Cancel running job in driver.
 
         Driver should clean up any resources of the job
 
         Args:
             job_id: job ID
+
+        Returns:
+            (success, err_msg)
         """
-        logger.info(f"Cancel job: job_id: {job_id}")
+        success = True
+        err_msg = None
+        try:
+            # call set_task method, pass data_type="cancel_task"
+            success, err_msg, _ = self.set_task(
+                job_id=job_id,
+                data_type="cancel_task",
+            )
+            if success:
+                logger.info(f"Successfully canceled task: job_id={job_id}")
+            else:
+                logger.warning(
+                    f"Failed to cancel task: job_id={job_id}, error={err_msg}"
+                )
+        except Exception as e:
+            success = False
+            err_msg = str(e)
+            logger.error(f"Exception while canceling task: {e}")
+
+        return success, err_msg
 
     def init_base_url(self, ip_address: str, port: int):
         """Init base url.
@@ -269,6 +401,35 @@ class DriverHanyuan1(DriverBase):
 
         api_version = "v1"
         self.base_url = f"http://{ip_address}:{port}/api/{api_version}/job"
+
+    def init_zerorpc_client(
+        self, ip_address: str, port: int, pool_size: int = 60
+    ):
+        """Init ZeroRPC client pool (over ZeroMQ + MessagePack).
+
+        Args:
+            ip_address: server ip address
+            port: server port
+            pool_size: pool size, default 60
+        """
+        self.server_host = ip_address
+        self.server_port = port
+        connect_address = f"tcp://{ip_address}:{port}"
+        self.zerorpc_clients = []
+        for _ in range(pool_size):
+            client = zerorpc.Client(timeout=30)
+            client.connect(connect_address)
+            self.zerorpc_clients.append(client)
+        logger.info(
+            f"ZeroRPC connection ready: {connect_address}, "
+            f"pool size: {pool_size}"
+        )
+
+    def _get_zerorpc_client(self):
+        """Get a client from the connection pool."""
+        if not self.zerorpc_clients:
+            return None
+        return random.choice(self.zerorpc_clients)
 
     @staticmethod
     def print_api_response(status_code, reason, text, result=None):
@@ -285,6 +446,66 @@ class DriverHanyuan1(DriverBase):
                 f"Response: status_code: {status_code}, reason: {reason}, "
                 f"text: {text}, result: {result}"
             )
+
+    def call_zerorpc_rpc(
+        self, method_name: str, data: dict[str, Any] | None = None
+    ) -> tuple:
+        """Call ZeroRPC method (same semantics as former call_zmq_rpc).
+
+        Args:
+            method_name: method name
+            data: params dict (Default value = None)
+
+        Returns:
+            status_code, reason, text, result
+        """
+        status_code = None
+        reason = None
+        text = None
+        result = None
+
+        try:
+            client = self._get_zerorpc_client()
+            if not client:
+                return -1, "ZeroRPC client pool not initialized", None, None
+
+            fn = getattr(client, method_name, None)
+            if fn is None:
+                return -1, f"Unknown method: {method_name}", None, None
+
+            ret = fn(data or {})
+
+            if isinstance(ret, dict) and ret.get("error") is True:
+                status_code = -1
+                reason = ret.get("message", "Unknown error")
+                result = ret
+            else:
+                status_code = HttpCode.SUCCESS_OK
+                reason = "OK"
+                result = (
+                    ret.get("result", ret) if isinstance(ret, dict) else ret
+                )
+
+            DriverHanyuan1.print_api_response(
+                status_code, reason, text, result
+            )
+            return status_code, reason, text, result
+
+        except Exception as e:
+            if (
+                "timeout" in str(e).lower()
+                or type(e).__name__ == "TimeoutExpired"
+            ):
+                status_code = -1
+                reason = "ZeroRPC request timeout"
+                logger.warning(f"ZeroRPC request timeout: {method_name}")
+            else:
+                status_code = -1
+                reason = str(e)
+                logger.error(f"ZeroRPC call failed: {e}")
+
+        DriverHanyuan1.print_api_response(status_code, reason, text, result)
+        return status_code, reason, text, result
 
     @staticmethod
     def call_json_rpc(url, method_name, data=None, params=None):
@@ -339,45 +560,47 @@ class DriverHanyuan1(DriverBase):
         job_id: str,
         data_type: str,
         num_qubits: int | None = 1,
-        data: dict | list[Any] | None = None,
+        data: list[Any] | dict[str, Any] | None = None,
         shots: int | None = 1,
         data_index: int | None = 0,
     ) -> dict[str, Any]:
         """_build_request_data.
 
-        根据不同的 data_type 构建请求数据
-        可扩展方法，方便后续添加新的任务类型
+        Build request data based on different data_type.
 
         Args:
             job_id: job id
-            data_type: data type (gate_sequence, qu_topo, 或其他)
-            num_qubits: number of qubits (可选,默认1)
-            data: gate list data (可选,默认None)
-            shots: shots (可选,默认1)
-            data_index: data index (可选,默认0)
+            data_type: data type (gate_sequence, qu_topo, etc.)
+            num_qubits: number of qubits (optional, default 1)
+            data: gate list data (optional, default None)
+            shots: shots (optional, default 1)
+            data_index: data index (optional, default 0)
 
         Returns:
-            构建好的请求数据字典
+            request data dictionary
         """
-        # 基础请求数据
-        request_data = {
+        # basic request data
+        request_data: dict[str, Any] = {
             "job_id": job_id,
             "data_type": data_type,
-            "timestamp": time.time(),
         }
 
-        # 根据不同的 data_type 构建不同的请求数据
         if data_type == "gate_sequence":
-            # gate_sequence 类型：需要完整的参数
+            # gate_sequence: requires complete parameters
             if data is None:
                 raise ValueError("gate_sequence task requires data parameter")
 
             # process data format
-            gate_list = (
-                data.get("basis_gate_list", data)
-                if isinstance(data, dict)
-                else data
-            )
+            if isinstance(data, dict):
+                gate_list_raw = data.get("basis_gate_list", data)
+                # Ensure gate_list is a list
+                if isinstance(gate_list_raw, list):
+                    gate_list: list[Any] = gate_list_raw
+                else:
+                    # If basis_gate_list doesn't exist, use data itself
+                    gate_list = data if isinstance(data, list) else []
+            else:
+                gate_list = data
 
             processed_data = []
             for gate in gate_list:
@@ -393,15 +616,18 @@ class DriverHanyuan1(DriverBase):
                 "data": processed_data,
                 "shots": shots if shots is not None else 1,
                 "qubit_num": num_qubits if num_qubits is not None else 1,
+                "timestamp": self.get_formatted_timestamp(),
             })
 
         elif data_type == "qu_topo":
-            # qu_topo 类型：只需要 data_type
-            # 不添加其他参数
+            # qu_topo: only data_type
+            pass
+
+        elif data_type == "cancel_task":
+            # cancel_task: only job_id and data_type
             pass
 
         else:
-            # 其他未定义的任务类型：默认处理，待扩展
             pass
 
         return request_data
@@ -417,15 +643,15 @@ class DriverHanyuan1(DriverBase):
     ) -> tuple:
         """Submit task.
 
-        支持多种 data_type 的任务提交.
+        Support multiple data_type task submission.
 
         Args:
             job_id: job id
-            data_type: data type (gate_sequence, qu_topo, 或其他)
-            num_qubits: number of qubits (可选,某些任务类型不需要)
-            data: gate list data (可选,某些任务类型不需要,默认None)
-            shots: shots (可选,某些任务类型不需要)
-            data_index: data index (可选)
+            data_type: data type (gate_sequence, qu_topo, etc.)
+            num_qubits: number of qubits (optional)
+            data: gate list data (optional, default None)
+            shots: shots (optional)
+            data_index: data index (optional)
 
         Returns:
             (success, err_msg)
@@ -433,7 +659,7 @@ class DriverHanyuan1(DriverBase):
         success = True
         err_msgs = []
         try:
-            # 根据 data_type 构建请求数据
+            # build request data based on data_type
             request_data = self._build_request_data(
                 job_id=job_id,
                 data_type=data_type,
@@ -444,20 +670,40 @@ class DriverHanyuan1(DriverBase):
             )
 
             method_name = "submit_task"
-            status_code, reason, text, result = self.call_json_rpc(
-                self.base_url, method_name, request_data
-            )
+            if self.use_zmq:
+                status_code, reason, text, result = self.call_zerorpc_rpc(
+                    method_name, request_data
+                )
+            else:
+                status_code, reason, text, result = self.call_json_rpc(
+                    self.base_url, method_name, request_data
+                )
 
-            # 检查JSON-RPC响应
+            # check response (support JSON-RPC and ZeroRPC)
             if status_code == HttpCode.SUCCESS_OK and result:
-                if "error" in result:
-                    success = False
-                    err_msgs.append(result["error"])
-                elif "result" in result:
-                    success = True
+                if self.use_zmq:
+                    if (
+                        isinstance(result, dict)
+                        and result.get("error") is False
+                    ):
+                        success = True
+                    elif (
+                        isinstance(result, dict)
+                        and result.get("error") is True
+                    ):
+                        success = False
+                        err_msgs.append(result.get("message", "Unknown error"))
+                    else:
+                        success = True
                 else:
-                    success = False
-                    err_msgs.append("unknown jsonrpc format")
+                    if "error" in result:
+                        success = False
+                        err_msgs.append(result["error"])
+                    elif "result" in result:
+                        success = True
+                    else:
+                        success = False
+                        err_msgs.append("unknown jsonrpc format")
             else:
                 success = False
                 err_msgs.append(reason)
@@ -468,25 +714,21 @@ class DriverHanyuan1(DriverBase):
 
         return success, "\n".join(err_msgs)
 
-    def check_task_status(
+    def _get_task_status(
         self,
         job_id: str,
         data_type: str,
-        expect_task_status: list[str],
         data_index: int | None = 0,
-    ) -> tuple:
-        """Check task status.
+    ) -> str | None:
+        """Get task status.
 
         Args:
             job_id: job id
-            data_type: data type (gate_sequence, qu_topo, 或其他)
-            expect_task_status: expect task status
-            data_index: data index (可选,默认0)
+            data_type: data type
+            data_index: data index (optional, default 0)
 
         Returns:
-            bool: True if task status meets requirements, False otherwise
-            str: error message
-            str: task status
+            str: task status, if failed return None
         """
         try:
             # construct request data
@@ -497,29 +739,32 @@ class DriverHanyuan1(DriverBase):
             }
 
             method_name = "query_task_status"
-            status_code, reason, text, result = self.call_json_rpc(
-                self.base_url, method_name, request_data
-            )
+            if self.use_zmq:
+                status_code, reason, text, result = self.call_zerorpc_rpc(
+                    method_name, request_data
+                )
+            else:
+                status_code, reason, text, result = self.call_json_rpc(
+                    self.base_url, method_name, request_data
+                )
 
             if status_code == HttpCode.SUCCESS_OK and result:
-                result = result.get("result")
-                task_status = result.get("status", self.task_status_unknown)
-                if task_status in expect_task_status:
-                    return True, None, task_status
-                err_msg = (
-                    "Task status is not in "
-                    f"{', '.join(map(str, expect_task_status))}, "
-                    f"and current status: {task_status}"
-                )
-                return False, err_msg, None
-            else:
-                return (
-                    False,
-                    (f"Failed to get task status, status_code: {status_code}"),
-                    None,
-                )
-        except Exception as e:
-            return False, str(e), None
+                if self.use_zmq:
+                    if isinstance(result, dict):
+                        return result.get("status", self.task_status_unknown)
+                    return self.task_status_unknown
+                else:
+                    result = (
+                        result.get("result")
+                        if isinstance(result, dict)
+                        else result
+                    )
+                    if isinstance(result, dict):
+                        return result.get("status", self.task_status_unknown)
+                    return self.task_status_unknown
+            return None
+        except Exception:
+            return None
 
     def get_task_results(
         self,
@@ -531,8 +776,8 @@ class DriverHanyuan1(DriverBase):
 
         Args:
             job_id: job id
-            data_type: data type (gate_sequence, qu_topo, 或其他)
-            data_index: data index (可选,默认0)
+            data_type: data type (gate_sequence, qu_topo, etc.)
+            data_index: data index (optional, default 0)
 
         Returns:
             bool: True if task results meets requirements, False otherwise
@@ -551,25 +796,187 @@ class DriverHanyuan1(DriverBase):
         }
 
         method_name = "query_task_result"
-        status_code, reason, text, result = self.call_json_rpc(
-            self.base_url, method_name, request_data
-        )
+        if self.use_zmq:
+            status_code, reason, text, result = self.call_zerorpc_rpc(
+                method_name, request_data
+            )
+        else:
+            status_code, reason, text, result = self.call_json_rpc(
+                self.base_url, method_name, request_data
+            )
 
         if status_code == HttpCode.SUCCESS_OK and result:
-            result = result.get("result")
-            status = result.get("status")
-            if status == "success":
-                success = True
-                results = result.get("result")
-                if results is None:
+            if self.use_zmq:
+                if isinstance(result, dict):
+                    status = result.get("status")
+                    if status == "success":
+                        success = True
+                        results = result.get("result")
+                        if results is None:
+                            success = False
+                            err_msgs.append("no task results")
+                    else:
+                        success = False
+                        err_m = result.get("result")
+                        err_msgs.append(err_m if err_m else "task failed")
+                else:
                     success = False
-                    err_msgs.append("no task results")
+                    err_msgs.append("invalid response format")
             else:
-                success = False
-                err_m = result.get("result")
-                err_msgs.append(err_m)
+                result = (
+                    result.get("result")
+                    if isinstance(result, dict)
+                    else result
+                )
+                if isinstance(result, dict):
+                    status = result.get("status")
+                    if status == "success":
+                        success = True
+                        results = result.get("result")
+                        if results is None:
+                            success = False
+                            err_msgs.append("no task results")
+                    else:
+                        success = False
+                        err_m = result.get("result")
+                        err_msgs.append(err_m if err_m else "task failed")
+                else:
+                    success = False
+                    err_msgs.append("invalid response format")
+        else:
+            success = False
+            err_msgs.append(reason if reason else "request failed")
 
         return success, "\n".join(err_msgs), results
+
+    def set_task(
+        self,
+        job_id: str,
+        data_type: str,
+    ) -> tuple:
+        """Set task.
+
+        Support multiple data_type tasks setting:
+        - cancel_task: cancel executing or queued tasks
+        - other types: (to be extended)
+
+        Args:
+            job_id: job id
+            data_type: data type (cancel_task, etc.)
+
+        Returns:
+            (success, err_msg, result)
+        """
+        try:
+            request_data = self._build_request_data(job_id, data_type)
+            method_name = "set_task"
+            if self.use_zmq:
+                status_code, reason, text, result = self.call_zerorpc_rpc(
+                    method_name, request_data
+                )
+            else:
+                status_code, reason, text, result = self.call_json_rpc(
+                    self.base_url, method_name, request_data
+                )
+
+            if status_code == HttpCode.SUCCESS_OK and result:
+                if self.use_zmq:
+                    if isinstance(result, dict):
+                        status = result.get("status", "")
+                        if status == "success":
+                            return True, None, result
+                        elif status == "failed":
+                            message = result.get(
+                                "message", "Task operation failed"
+                            )
+                            return False, message, result
+                        else:
+                            return True, None, result
+                    else:
+                        return False, "invalid response format", None
+                else:
+                    result_data = (
+                        result.get("result")
+                        if isinstance(result, dict)
+                        else result
+                    )
+                    if isinstance(result_data, dict):
+                        status = result_data.get("status", "")
+                        if status == "success":
+                            return True, None, result_data
+                        elif status == "failed":
+                            message = result_data.get(
+                                "message", "Task operation failed"
+                            )
+                            return False, message, result_data
+                        else:
+                            return True, None, result_data
+                    else:
+                        return False, "invalid response format", None
+            else:
+                return False, reason if reason else "request failed", None
+        except Exception as e:
+            return False, str(e) if str(e) else "request failed", None
+
+    def get_device_info(self):
+        """Get device info.
+
+        Returns:
+            device info
+        """
+        try:
+            job_id = str(Library.create_uuid())
+            data_type = "device_info"
+            request_data = self._build_request_data(job_id, data_type)
+            method_name = "get_device_info"
+
+            if self.use_zmq:
+                status_code, reason, text, result = self.call_zerorpc_rpc(
+                    method_name, request_data
+                )
+            else:
+                status_code, reason, text, result = self.call_json_rpc(
+                    self.base_url, method_name, request_data
+                )
+
+            if status_code == HttpCode.SUCCESS_OK and result:
+                if self.use_zmq:
+                    if isinstance(result, dict):
+                        status = result.get("status", "")
+                        if status == "success":
+                            return True, None, result
+                        elif status == "failed":
+                            message = result.get(
+                                "message", "Task operation failed"
+                            )
+                            return False, message, result
+                        else:
+                            return True, None, result
+                    else:
+                        return False, "invalid response format", None
+                else:
+                    result_data = (
+                        result.get("result")
+                        if isinstance(result, dict)
+                        else result
+                    )
+                    if isinstance(result_data, dict):
+                        status = result_data.get("status", "")
+                        if status == "success":
+                            return True, None, result_data
+                        elif status == "failed":
+                            message = result_data.get(
+                                "message", "Task operation failed"
+                            )
+                            return False, message, result_data
+                        else:
+                            return True, None, result_data
+                    else:
+                        return False, "invalid response format", None
+            else:
+                return False, reason if reason else "request failed", None
+        except Exception as e:
+            return False, str(e) if str(e) else "request failed", None
 
     def fetch_running_info(self):
         """Fetch running info.
@@ -577,7 +984,51 @@ class DriverHanyuan1(DriverBase):
         Returns:
             remote device running info
         """
-        # TODO(jidalong) mock data currently
-        device_running_info = {"status": "online"}
+        device_running_info = {}
+        success, err_msg, result = self.get_device_info()
+        if not success:
+            logger.error(f"Failed to get device info: {err_msg}")
+            device_running_info["status"] = "offline"
+            device_running_info["details"] = {}
+            return device_running_info
+
+        logger.info(f"Device info: {result}")
+        device_info = result.get("device_info")
+        device_running_info["status"] = device_info.get(
+            "device_status", "offline"
+        )
+        topo_data = device_info.get("topo_data")
+        if not topo_data:
+            logger.error("Topo data is None")
+            device_running_info["details"] = {}
+            return device_running_info
+        # handle single_qubit_prop
+        single_qubit_prop = {}
+        device_running_info["details"] = {}
+        if topo_data and isinstance(topo_data, dict):
+            storage_area = topo_data.get("storage_area", [])
+            readout_error = topo_data.get("readout_error", {})
+
+            for idx, storage_qubit in enumerate(storage_area, 1):
+                qubit_name = f"qubit{idx}"
+
+                single_fidelity = readout_error.get(storage_qubit, 0.0)
+
+                single_qubit_prop[qubit_name] = {
+                    "single_qubit_gate_fidelity": single_fidelity,
+                }
+
+        # handle double_qubit_prop
+        double_qubit_prop = None
+
+        # handle tupo_configs
+        tupo_configs = None
+
+        device_running_info["details"]["single_qubit_prop"] = (
+            single_qubit_prop if single_qubit_prop else None
+        )
+        device_running_info["details"]["double_qubit_prop"] = double_qubit_prop
+
+        device_running_info["details"]["tupo_configs"] = tupo_configs
 
         return device_running_info

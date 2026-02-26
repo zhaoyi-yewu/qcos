@@ -9,12 +9,12 @@
 
 前提条件
 -----------------
-保证操作系统已安装了docker、docker-compose等组件
+保证操作系统已安装了docker、docker-compose、rsync、xargs等组件
 
 .. code-block:: shell
 
    # BCLinux/CentOS/OpenEuler环境下示例:
-   yum install -y docker docker-compose rsync
+   yum install -y docker docker-compose rsync findutils
 
 .. include:: edit-env.rst
 
@@ -22,13 +22,15 @@
 -----------------
 .. code-block:: shell
 
-   # 操作系统镜像 (容器内包含命令行)
-   ./build-images.sh
-
-   # 独立的命令行镜像 [可选]
-   ./build-sandbox.sh  # 编译qcos-cli wheel包用的容器环境
+   # 编译环境镜像 (统一的编译/测试环境sandbox)
+   ./build-images.sh -s  # 编译sandbox容器镜像
    ./run-sandbox.sh  # 运行sandbox容器环境
-   ./build-images.sh --cli
+
+   # 操作系统qcos镜像 (容器内包含命令行)
+   ./build-images.sh -q
+
+   # 独立的命令行qcos-cli镜像 (可选)
+   ./build-images.sh -c
 
 修改配置文件
 -----------------

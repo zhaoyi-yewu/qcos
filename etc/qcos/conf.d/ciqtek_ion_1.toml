@@ -1,0 +1,10 @@
+[ciqtek_ion_1]
+alias_name = "国仪量子 离子阱驱动"
+driver = "DriverCiqtekIon1"
+description = "国仪量子 离子阱驱动"
+# [Optional] max qubits of device
+# device_max_qubits = 100
+
+host = "127.0.0.1"
+port = 18605
+device_id = "1217752501201407033233368318"

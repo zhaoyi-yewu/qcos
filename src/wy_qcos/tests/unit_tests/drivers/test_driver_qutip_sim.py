@@ -15,6 +15,17 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+# ruff: noqa: E402
+# load driver venv
+import sys
+
+from wy_qcos.common.config import Config
+from wy_qcos.common.library import Library
+
+org_path = Library.set_driver_venv_path("DriverQutipSim", Config.VENV_DIR)
+
+import pytest
+
 from qutip import Qobj
 
 from wy_qcos.drivers.qutip.driver_qutip_sim import DriverQutipSim
@@ -38,7 +49,12 @@ data = {"index": 0, "source_code": None, "transpile_results": transpile_result}
 data_type = DriverQutipSim.DATA_TYPE_GATE_SEQUENCE
 
 
+@pytest.mark.driver
 class TestDriverQutipSim:
+    @classmethod
+    def teardown_class(cls):
+        sys.path = org_path
+
     def test_get_measurement_prob(self):
         result = driver_qutip_sim.get_measurement_prob(final_state, num_qubits)
         assert result == measure_result

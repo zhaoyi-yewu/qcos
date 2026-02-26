@@ -33,6 +33,7 @@ from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 
 @pytest.mark.usefixtures("global_configs")
+@pytest.mark.slow
 class TestOptimizer:
     """System-level tests for quantum gate optimization.
 

@@ -129,9 +129,9 @@ def main_qiskit_transpiler(
         if not abs_config_path.exists():
             raise ValueError(f"config file[{config_file}] not existed!")
 
-        qpu_config = {}
-        Config.parse_toml_file(config_file, extra_config=True)
-        qpu_config = Config.EXTRA_CONFIGS["qiskit_marrakesh"]["transpiler"][
+        Config.load_config_file(config_file, extra_config=True)
+        extra_configs = Config.get_extra_configs()
+        qpu_config = extra_configs["qiskit_marrakesh"]["transpiler"][
             "qpu_configs"
         ]
         trans_cfg_inst.set_qpu_cfg(qpu_config)

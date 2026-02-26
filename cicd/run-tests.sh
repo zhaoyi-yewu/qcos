@@ -20,21 +20,44 @@ BASE_DIR=$(dirname "$0")
 BASE_DIR=$(readlink -f ${BASE_DIR})
 TOP_DIR=$(readlink -f ${BASE_DIR}/..)
 
+if [ -z "${PKG_DIR+x}" ] || [ -z "${PKG_DIR}" ]; then
+  PKG_DIR=${TOP_DIR}/src
+fi
+QCOS_PKG_DIR=${PKG_DIR}/wy_qcos
+QCOS_CLIENT_PKG_DIR=${PKG_DIR}/wy_qcos_client
+
+if [ -z "${REPORT_DIR+x}" ] || [ -z "${REPORT_DIR}" ]; then
+  REPORT_DIR=${TOP_DIR}/cicd/reports
+fi
+QCOS_REPORT_DIR=${REPORT_DIR}/wy_qcos
+QCOS_CLIENT_REPORT_DIR=${REPORT_DIR}/wy_qcos_client
+
+if [ -z "${QCOS_PYTEST_INI+x}" ] || [ -z "${QCOS_PYTEST_INI}" ]; then
+  QCOS_PYTEST_INI=${QCOS_PKG_DIR}/tests/pytest.ini
+fi
+
+if [ -z "${QCOS_CLIENT_PYTEST_INI+x}" ] || [ -z "${QCOS_CLIENT_PYTEST_INI}" ]; then
+  QCOS_CLIENT_PYTEST_INI=${QCOS_CLIENT_PKG_DIR}/tests/pytest.ini
+fi
+
 function usage {
     echo "Usage: $0 [OPTION] ..."
     echo "Run QCOS's test suite(s)"
     echo ""
-    echo "  -p, --pep8                             Run PEP8 coding style check"
-    echo "  -u, --unit-test [all/TEST_CASE]        Run unit tests (QCOS)"
-    echo "  -c, --coverage  [all/TEST_CASE]        Run unit tests and generate code coverage report (QCOS)"
-    echo "  -j, --client-unit-test [all/TEST_CASE] Run unit tests (QCOS CLIENT)"
-    echo "  -e, --client-coverage [all/TEST_CASE]  Run unit tests and generate code coverage report (QCOS CLIENT)"
-    echo "  -s, --system-test [all/TEST_CASE]      Run system tests"
-    echo "  -h, --help                             Print this usage message"
+    echo "  -p, --pep8                        Run PEP8 coding style check"
+    echo "  -u, --unit-test TEST_CASES        Run unit tests (QCOS)"
+    echo "  -c, --coverage  TEST_CASES        Run unit tests and generate code coverage report (QCOS)"
+    echo "  -j, --client-unit-test TEST_CASES Run unit tests (QCOS CLIENT)"
+    echo "  -e, --client-coverage TEST_CASES  Run unit tests and generate code coverage report (QCOS CLIENT)"
+    echo "  -s, --system-test TEST_CASES      Run system tests"
+    echo "  -m, --pytest-mark MARK            Extra pytest mark"
+    echo "  -h, --help                        Print this usage message"
+    echo ""
+    echo "  TEST_CASES: [all/default/smoke/slow/TEST_CASE]"
     echo ""
 }
 
-opts=$(getopt -o pu:c:j:e:s:h --long pep8,unit-test:,coverage:,client-unit-test:,client-coverage:,system-test:,help -- "$@")
+opts=$(getopt -o pu:c:j:e:s:m:h --long pep8,unit-test:,coverage:,client-unit-test:,client-coverage:,system-test:pytest-mark:,help -- "$@")
 if [[ $? -ne 0 ]]; then
   exit 1
 fi
@@ -51,6 +74,7 @@ coverage=""
 client_unit_test=""
 client_coverage=""
 system_test=""
+pytest_mark=""
 pep8_success=-1
 unit_test_success=-1
 coverage_success=-1
@@ -58,7 +82,6 @@ client_unit_test_success=-1
 client_coverage_success=-1
 system_test_success=-1
 wrapper="sh -c"
-pytest_ini="${TOP_DIR}/src/wy_qcos/tests/pytest.ini"
 
 while true; do
   case "$1" in
@@ -69,15 +92,16 @@ while true; do
     -j | --client-unit-test ) client_unit_test="$2"; shift 2;;
     -e | --client-coverage )  client_coverage="$2";  shift 2;;
     -s | --system-test ) system_test="$2"; shift 2;;
+    -m | --pytest-mark ) pytest_mark="$2"; shift 2;;
     -- ) shift; break ;;
     * )         break ;;
   esac
 done
 
 # check user input options
-if [ "$pep8" = false ] && [ -e "$unit_test" ] && [ -e "$coverage" ] \
-  && [ -e "$client_unit_test" ] && [ -e "$client_coverage" ] \
-  && [ -e "$system_test" ]; then
+if [ "$pep8" = false ] && [ -z "$unit_test" ] && [ -z "$coverage" ] \
+  && [ -z "$client_unit_test" ] && [ -z "$client_coverage" ] \
+  && [ -z "$system_test" ]; then
   echo -e "Error: Invalid arguments\n"
   usage
   exit 1
@@ -91,24 +115,56 @@ function run_pep8 {
   echo
 }
 
+function get_pytest_mark() {
+  local arg_test_case="$1"
+  shift
+  local arg_pytest_mark="$*"
+  local pytest_mark=""
+  local extra_pytest_mark=""
+
+  if [ -n "$arg_pytest_mark" ]; then
+    extra_pytest_mark="and ($arg_pytest_mark)"
+  fi
+
+  local lower_args="${arg_test_case,,}"
+  if [ "$lower_args" = "smoke" ]; then
+    pytest_mark="-m 'smoke ${extra_pytest_mark}'"
+  elif [ "$lower_args" = "slow" ]; then
+    pytest_mark="-m 'slow ${extra_pytest_mark}'"
+  elif [ "$lower_args" = "driver" ]; then
+    pytest_mark="-m 'driver ${extra_pytest_mark}'"
+  elif [ "$lower_args" = "default" ]; then
+    pytest_mark="-m 'not smoke and not slow ${extra_pytest_mark}'"
+  elif [ "$lower_args" = "all" ]; then
+    if [ -n "$arg_pytest_mark" ]; then
+      pytest_mark="-m '$arg_pytest_mark'"
+    else
+      pytest_mark=""
+    fi
+  else
+    pytest_mark="skip"
+  fi
+
+  echo ${pytest_mark}
+}
+
 function run_unit_tests {
   echo "[Running unit tests (QCOS)]"
   args=$*
-  test_case="${TOP_DIR}/src/wy_qcos/tests/unit_tests"
-  local pytest_mark=""
-  local junit_report="--junitxml=${TOP_DIR}/cicd/report.xml"
-  if [ "${args,,}" = "smoke" ]; then
-    pytest_mark="-m 'smoke'"
-  elif [ "${args,,}" = "slow" ]; then
-    pytest_mark="-m 'slow'"
-  elif [ "${args,,}" = "default" ]; then
-    pytest_mark="-m 'not smoke and not slow'"
-  elif [ "${args,,}" = "all" ]; then
+  test_case="${QCOS_PKG_DIR}/tests/unit_tests"
+  local junit_report="--junitxml=${QCOS_REPORT_DIR}/report.xml"
+  local pytest_mark=$(get_pytest_mark ${args})
+  if [ "$pytest_mark" = "skip" ]; then
+    test_case=$1
     pytest_mark=""
-  else
-    test_case=${args}
   fi
-  ${wrapper} "python3 -m pytest -c ${pytest_ini} ${pytest_mark} ${junit_report} ${test_case}"
+
+  rm -rf ${QCOS_REPORT_DIR}/report.xml
+  echo "[pytest command]"
+  echo "python3 -m pytest -c ${QCOS_PYTEST_INI} ${pytest_mark} ${junit_report} ${test_case}"
+  echo
+
+  ${wrapper} "python3 -m pytest -c ${QCOS_PYTEST_INI} ${pytest_mark} ${junit_report} ${test_case}"
   unit_test_success=$?
   echo
 }
@@ -116,21 +172,20 @@ function run_unit_tests {
 function run_client_unit_tests {
   echo "[Running unit tests (QCOS CLIENT)]"
   args=$*
-  test_case="${TOP_DIR}/src/wy_qcos_client/tests/unit_tests"
-  local pytest_mark=""
-  local junit_report="--junitxml=${TOP_DIR}/cicd/report.xml"
-  if [ "${args,,}" = "smoke" ]; then
-    pytest_mark="-m 'smoke'"
-  elif [ "${args,,}" = "slow" ]; then
-    pytest_mark="-m 'slow'"
-  elif [ "${args,,}" = "default" ]; then
-    pytest_mark="-m 'not smoke and not slow'"
-  elif [ "${args,,}" = "all" ]; then
+  test_case="${QCOS_CLIENT_PKG_DIR}/tests//unit_tests"
+  local junit_report="--junitxml=${QCOS_CLIENT_REPORT_DIR}/report.xml"
+  local pytest_mark=$(get_pytest_mark ${args})
+  if [ "$pytest_mark" = "skip" ]; then
+    test_case=$1
     pytest_mark=""
-  else
-    test_case=${args}
   fi
-  ${wrapper} "python3 -m pytest -c ${pytest_ini} ${pytest_mark} ${junit_report} ${test_case}"
+
+  rm -rf ${QCOS_CLIENT_REPORT_DIR}/report.xml
+  echo "[pytest command]"
+  echo "python3 -m pytest -c ${QCOS_CLIENT_PYTEST_INI} ${pytest_mark} ${junit_report} ${test_case}"
+  echo
+
+  ${wrapper} "python3 -m pytest -c ${QCOS_CLIENT_PYTEST_INI} ${pytest_mark} ${junit_report} ${test_case}"
   client_unit_test_success=$?
   echo
 }
@@ -139,16 +194,26 @@ function run_coverage {
   min_fail_rate=80
   echo "[Running code coverage test (QCOS)]"
   args=$*
-  test_case="${TOP_DIR}/src/wy_qcos/tests/unit_tests"
-  if [ "${args,,}" != "all" ]; then
-    test_case=${args}
+  test_case="${QCOS_PKG_DIR}/tests/unit_tests"
+  local pytest_mark=$(get_pytest_mark ${args})
+  if [ "$pytest_mark" = "skip" ]; then
+    test_case=$1
+    pytest_mark=""
   fi
-  ${wrapper} "rm -rf ${BASE_DIR}/coverage ${BASE_DIR}/coverage.xml"
-  ${wrapper} "coverage3 run --data-file=${BASE_DIR}/.coverage --omit='*/site-packages/*' -m pytest -c ${pytest_ini} ${test_case}"
-  ${wrapper} "coverage3 xml --data-file=${BASE_DIR}/.coverage -o ${BASE_DIR}/coverage.xml"
-  ${wrapper} "coverage3 report --data-file=${BASE_DIR}/.coverage --include='${TOP_DIR}/src/wy_qcos/*' --omit='${TOP_DIR}/src/wy_qcos/tests/*' -m --fail-under=$min_fail_rate"
+
+  rm -rf ${QCOS_REPORT_DIR}/.coverage
+  rm -rf ${QCOS_REPORT_DIR}/coverage.xml
+  rm -rf ${QCOS_REPORT_DIR}/coverage_html
+  echo "[pytest command]"
+  echo "coverage run --data-file=${QCOS_REPORT_DIR}/.coverage --omit='*/site-packages/*' -m pytest -c ${QCOS_PYTEST_INI} ${pytest_mark} ${test_case}"
+  echo
+
+  ${wrapper} "rm -rf ${QCOS_REPORT_DIR}/coverage ${QCOS_REPORT_DIR}/coverage.xml"
+  ${wrapper} "coverage run --data-file=${QCOS_REPORT_DIR}/.coverage --omit='*/site-packages/*' -m pytest -c ${QCOS_PYTEST_INI} ${pytest_mark} ${test_case}"
+  ${wrapper} "coverage xml --data-file=${QCOS_REPORT_DIR}/.coverage -o ${QCOS_REPORT_DIR}/coverage.xml"
+  ${wrapper} "coverage report --data-file=${QCOS_REPORT_DIR}/.coverage --include='${QCOS_PKG_DIR}/*' --omit='${QCOS_PKG_DIR}/tests/*' -m --fail-under=$min_fail_rate"
   coverage_success=$?
-  ${wrapper} "coverage3 html --data-file=${BASE_DIR}/.coverage --title='QCOS Coverage Report' --include='${TOP_DIR}/src/wy_qcos/*' --omit='${TOP_DIR}/src/wy_qcos/tests/*' -d ${BASE_DIR}/coverage_html"
+  ${wrapper} "coverage html --data-file=${QCOS_REPORT_DIR}/.coverage --title='QCOS Coverage Report' --include='${QCOS_PKG_DIR}/*' --omit='${QCOS_PKG_DIR}/tests/*' -d ${QCOS_REPORT_DIR}/coverage_html"
   echo
 }
 
@@ -156,36 +221,44 @@ function run_client_coverage {
   min_fail_rate=80
   echo "[Running code coverage test (QCOS CLIENT)]"
   args=$*
-  test_case="${TOP_DIR}/src/wy_qcos_client/tests/unit_tests"
-  if [ "${args,,}" != "all" ]; then
-    test_case=${args}
+  test_case="${QCOS_CLIENT_PKG_DIR}/tests/unit_tests"
+  local pytest_mark=$(get_pytest_mark ${args})
+  if [ "$pytest_mark" = "skip" ]; then
+    test_case=$1
+    pytest_mark=""
   fi
-  ${wrapper} "rm -rf ${BASE_DIR}/coverage ${BASE_DIR}/client-coverage.xml"
-  ${wrapper} "coverage3 run --data-file=${BASE_DIR}/.client_coverage --omit='*/site-packages/*' -m pytest -c ${pytest_ini} ${test_case}"
-  ${wrapper} "coverage3 xml --data-file=${BASE_DIR}/.client_coverage -o ${BASE_DIR}/client-coverage.xml"
-  ${wrapper} "coverage3 report --data-file=${BASE_DIR}/.client_coverage --include='${TOP_DIR}/src/wy_qcos_client/*' --omit='${TOP_DIR}/src/wy_qcos_client/tests/*' -m --fail-under=$min_fail_rate"
+
+  rm -rf ${QCOS_CLIENT_REPORT_DIR}/.coverage
+  rm -rf ${QCOS_CLIENT_REPORT_DIR}/coverage.xml
+  rm -rf ${QCOS_CLIENT_REPORT_DIR}/coverage_html
+  echo "[pytest command]"
+  echo "coverage run --data-file=${QCOS_CLIENT_REPORT_DIR}/.coverage --omit='*/site-packages/*' -m pytest -c ${QCOS_CLIENT_PYTEST_INI} ${pytest_mark} ${test_case}"
+  echo
+
+  ${wrapper} "rm -rf ${QCOS_CLIENT_REPORT_DIR}/coverage ${QCOS_CLIENT_REPORT_DIR}/coverage.xml"
+  ${wrapper} "coverage run --data-file=${QCOS_CLIENT_REPORT_DIR}/.coverage --omit='*/site-packages/*' -m pytest -c ${QCOS_CLIENT_PYTEST_INI} ${pytest_mark} ${test_case}"
+  ${wrapper} "coverage xml --data-file=${QCOS_CLIENT_REPORT_DIR}/.coverage -o ${QCOS_CLIENT_REPORT_DIR}/coverage.xml"
+  ${wrapper} "coverage report --data-file=${QCOS_CLIENT_REPORT_DIR}/.coverage --include='${QCOS_CLIENT_PKG_DIR}/*' --omit='${QCOS_CLIENT_PKG_DIR}/tests/*' -m --fail-under=$min_fail_rate"
   client_coverage_success=$?
-  ${wrapper} "coverage3 html --data-file=${BASE_DIR}/.client_coverage --title='QCOS Client Coverage Report' --include='${TOP_DIR}/src/wy_qcos_client/*' --omit='${TOP_DIR}/src/wy_qcos_client/tests/*' -d ${BASE_DIR}/client_coverage_html"
+  ${wrapper} "coverage html --data-file=${QCOS_CLIENT_REPORT_DIR}/.coverage --title='QCOS Client Coverage Report' --include='${QCOS_CLIENT_PKG_DIR}/*' --omit='${QCOS_CLIENT_PKG_DIR}/tests/*' -d ${QCOS_CLIENT_REPORT_DIR}/coverage_html"
   echo
 }
 
 function run_system_tests {
   echo "[Running system tests]"
   args=$*
-  test_case="${TOP_DIR}/src/wy_qcos/tests/system_tests"
-  local pytest_mark=""
-  if [ "${args,,}" = "smoke" ]; then
-    pytest_mark="-m 'smoke'"
-  elif [ "${args,,}" = "slow" ]; then
-    pytest_mark="-m 'slow'"
-  elif [ "${args,,}" = "default" ]; then
-    pytest_mark="-m 'not smoke and not slow'"
-  elif [ "${args,,}" = "all" ]; then
+  test_case="${QCOS_PKG_DIR}/tests/system_tests"
+  local pytest_mark=$(get_pytest_mark ${args})
+  if [ "$pytest_mark" = "skip" ]; then
+    test_case=$1
     pytest_mark=""
-  else
-    test_case=${args}
   fi
-  ${wrapper} "python3 -m pytest -c ${pytest_ini} ${pytest_mark} ${test_case}"
+
+  echo "[pytest command]"
+  echo "python3 -m pytest -c ${QCOS_PYTEST_INI} ${pytest_mark} ${test_case}"
+  echo
+
+  ${wrapper} "python3 -m pytest -c ${QCOS_PYTEST_INI} ${pytest_mark} ${test_case}"
   system_test_success=$?
   echo
 }
@@ -195,19 +268,19 @@ function run_tests {
     run_pep8
   fi
   if [ -n "$unit_test" ]; then
-    run_unit_tests $unit_test
+    run_unit_tests $unit_test $pytest_mark
   fi
   if [ -n "$coverage" ]; then
-    run_coverage $coverage
+    run_coverage $coverage $pytest_mark
   fi
   if [ -n "$client_unit_test" ]; then
-    run_client_unit_tests $client_unit_test
+    run_client_unit_tests $client_unit_test $pytest_mark
   fi
   if [ -n "$client_coverage" ]; then
-    run_client_coverage $client_coverage
+    run_client_coverage $client_coverage $pytest_mark
   fi
   if [ -n "$system_test" ]; then
-    run_system_tests $system_test
+    run_system_tests $system_test $pytest_mark
   fi
 }
 
@@ -274,5 +347,6 @@ function print_report {
 if [ -f "/var/lib/qcos/venv/default/bin/activate" ]; then
   source /var/lib/qcos/venv/default/bin/activate
 fi
+mkdir -p ${QCOS_REPORT_DIR} ${QCOS_CLIENT_REPORT_DIR}
 run_tests
 print_report

@@ -1,0 +1,12 @@
+# QCOS venv requirements
+# transpiler cmss
+loguru==0.7.3
+matplotlib==3.10.8
+mqt.qcec==3.3.0
+networkx==3.3
+numexpr==2.14.1
+numpy==1.26.4
+ply==3.11
+pulp==3.2.2
+rustworkx==0.17.1
+schema==0.7.7

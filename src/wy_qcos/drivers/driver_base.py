@@ -568,14 +568,13 @@ class DriverBase:
         """
         return self.driver_options
 
-    def calibrate(self, cal_cmd, options):
+    def calibrate(self, options):
         """Calibrate device.
 
         Args:
-            cal_cmd: calibration cmd
             options: calibration options
         """
-        logger.info(f"Start to calibrate, calibrate type: {cal_cmd}")
+        logger.info("Start to calibrate")
 
     def set_device_options(self, device_options):
         """Set Device options.

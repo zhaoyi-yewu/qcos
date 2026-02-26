@@ -114,11 +114,17 @@ class TranspilerCmss(TranspilerBase):
         )
         if isinstance(mapper, EmptyRoute):
             mapping_dict = {}
+            init_layout_dict = {}
             final_layout_dict = {}
             key, value = list(opt_result_dict.items())[0]
             mapping_dict[key] = value[0]
             mapping_res = value[1]
-            return mapping_res, mapping_dict, {}, final_layout_dict
+            return (
+                mapping_res,
+                mapping_dict,
+                init_layout_dict,
+                final_layout_dict,
+            )
 
         # set sc_mapping_options
         if isinstance(mapper, SCRoute) and sc_mapping_options:

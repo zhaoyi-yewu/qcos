@@ -15,8 +15,16 @@
 # See the Mulan PSL v2 for more details.
 # ---------------------------------------------------------------------
 
-import pytest
+# ruff: noqa: E402
+# load driver venv
+import sys
 
+from wy_qcos.common.config import Config
+from wy_qcos.common.library import Library
+
+org_path = Library.set_driver_venv_path("DriverQiskitQasmSim", Config.VENV_DIR)
+
+import pytest
 from unittest.mock import patch, Mock
 
 from qiskit_aer.backends.aerbackend import AerBackend
@@ -30,7 +38,12 @@ data = {"index": 0, "source_code": None, "transpile_results": []}
 data_type = DriverQiskitQasmSim.DATA_TYPE_GATE_SEQUENCE
 
 
+@pytest.mark.driver
 class TestDriverQiskitQasmSim:
+    @classmethod
+    def teardown_class(cls):
+        sys.path = org_path
+
     def test_init_driver(self):
         assert driver_qasm_sim.init_driver() is None
 

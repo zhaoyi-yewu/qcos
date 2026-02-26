@@ -95,6 +95,7 @@ get_result = {
 get_result_text = json.dumps(get_result)
 
 
+@pytest.mark.driver
 class TestDriverSpinQNmr:
     def test_init_driver(self):
         assert spinq_nmr.init_driver() is None

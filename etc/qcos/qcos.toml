@@ -29,8 +29,8 @@ API_SERVER_LISTEN_IP = ""
 API_SERVER_LISTEN_PORT = 18400
 
 [PREFECT]
-PREFECT_SERVER_DATABASE_CONNECTION_URL = "sqlite+aiosqlite:///var/qcos/db/prefect.db"
 PREFECT_API_URL = "http://127.0.0.1:4200/api"
+PREFECT_SERVER_DATABASE_CONNECTION_URL = "sqlite+aiosqlite:///var/qcos/db/prefect.db"
 PREFECT_WORKER_QUERY_SECONDS = 1
 PREFECT_WORKER_PREFETCH_SECONDS = 1
 PREFECT_WORKER_HEARTBEAT_SECONDS = 30
@@ -46,8 +46,10 @@ REDIS_SERVER_PORT = "6379"
 [LOG]
 # api log file
 API_LOG_FILE = "/var/log/qcos/qcos-api.log"
-# prefect log file
-PREFECT_LOG_FILE = "/var/log/qcos/qcos-engine.log"
+# qcos job engine log file
+JOB_ENGINE_LOG_FILE = "/var/log/qcos/qcos-engine.log"
+# qcos device monitor log file
+DEVICE_MONITOR_LOG_FILE = "/var/log/qcos/device-monitor.log"
 # log format
 LOG_FORMAT = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
 # log rotate, max_size (MB). default: 10MB
@@ -75,5 +77,5 @@ USE_SSL = false
 
 [DEVICES]
 # DEVICE_LIST example:
-# DEVICE_LIST = ["dummy", "hanyuan1", "wy-hanyuan1", "tiangong100", "tiangong100_v2", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim"]
+# DEVICE_LIST = ["dummy", "hanyuan1", "wy-hanyuan1", "tiangong100", "tiangong100_v2", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim"， “ciqtek_ion_1”]
 DEVICE_LIST = ["dummy", "qutip_sim"]

@@ -32,7 +32,7 @@ class TestDriverManager:
     @patch.object(Library, "import_classes")
     @patch("wy_qcos.drivers.driver_manager.Config")
     def test_load_drivers(self, mock_config, mock_import_classes):
-        mock_config.EXTRA_CONFIGS = {
+        mock_config._EXTRA_CONFIGS = {
             "device1": {"driver": "DriverDummyDriver"},
             "device2": {"driver": "DriverDummyDriver"},
         }

@@ -996,6 +996,7 @@ class TestJobEngine:
         return_value = driver_run.fn([], DriverBase, 5, self.job_data)
         assert return_value["results"] is None
 
+    @patch("wy_qcos.engine.job_engine.init_logger")
     @patch("wy_qcos.engine.job_engine.register_signals")
     @patch("wy_qcos.engine.job_engine.create_progress_artifact")
     @patch("wy_qcos.engine.job_engine.flow_task_monitor")
@@ -1006,6 +1007,7 @@ class TestJobEngine:
         mock_flow_task_monitor,
         mock_create_progress_artifact,
         mock_register_signals,
+        mock_init_logger,
     ):
         mock_run_code.return_value = (
             self.job_results,
@@ -1013,6 +1015,7 @@ class TestJobEngine:
             None,
             self.mapping_dict,
         )
+        mock_init_logger.return_value = None
         mock_flow_task_monitor.return_value = None
         mock_register_signals.return_values = None
         mock_create_progress_artifact.return_value = self.artifact_id

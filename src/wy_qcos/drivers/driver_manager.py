@@ -42,13 +42,41 @@ class DriverManager:
         module_dirs = Library.find_dirs(
             base_dir=base_dir, recursive=True, excludes=["*__pycache__"]
         )
-
-        # get drivers from devices
         venv_base_dir = Config.VENV_DIR
-        expect_drivers = set()
-        for device_name, device in Config.EXTRA_CONFIGS.items():
-            driver_name = device["driver"]
-            expect_drivers.add(driver_name)
+
+        def driver_venv_loader(module_name, venv_base_dir):
+            """Driver env loader.
+
+            Args:
+                module_name: module name
+                venv_base_dir: venv base dir
+
+            Returns:
+                skip, python_bin, python_path_env
+            """
+            driver_env_configs = Config.get_driver_env_configs()
+            if (
+                not module_name.startswith("driver_")
+                or module_name.endswith("_base")
+                or module_name.endswith("_manager")
+                or module_name.endswith("_errors")
+            ):
+                return True, False, False
+            for driver_name, driver_env_config in driver_env_configs.items():
+                driver_module_name = driver_env_config.get("module_name", None)
+                if module_name == driver_module_name:
+                    python_bin, python_path_env = Library.get_driver_venv(
+                        driver_name, venv_base_dir, add_default_env=True
+                    )
+                    return (
+                        False,
+                        python_bin,
+                        python_path_env.get("PYTHONPATH", None),
+                    )
+            python_bin, python_path_env = Library.get_driver_venv(
+                None, venv_base_dir, add_default_env=True
+            )
+            return False, python_bin, python_path_env.get("PYTHONPATH", None)
 
         # load driver classes
         for pkg_dir in module_dirs:
@@ -59,6 +87,7 @@ class DriverManager:
                 base_class=DriverBase,
                 excluded_class="Base$",
                 venv_base_dir=venv_base_dir,
+                venv_loader=driver_venv_loader,
             )
             for (
                 class_name,
@@ -86,9 +115,6 @@ class DriverManager:
         for driver_name, driver in self.drivers.items():
             # Validate driver
             success, err_msg = driver.validate_driver()
-            if success:
-                # Init driver
-                driver.init_driver()
             if not success:
                 logger.error(
                     f"Driver: {driver_name} is disabled. "

@@ -278,7 +278,7 @@ class DriverUQCMatrix2(DriverBase):
         return dict_result
 
     def convert_results(self, results, num_qubits):
-        """Valid shots.
+        """Convert results.
 
         Args:
             results: task results

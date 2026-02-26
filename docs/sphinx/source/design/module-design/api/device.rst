@@ -138,7 +138,6 @@
                "params": {
                  "body": {
                    "device_name": "dummy",
-                   "cal_cmd": true,
                    "options": { // 校准参数选项
                        "init_freq": 5.018,
                        "step": 0.001,

@@ -37,7 +37,6 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.common.qcos_version import QcosVersion
 on_rtd = os.environ.get("READTHEDOCS") == "True"
 
-
 project = f"{Constant.PLATFORM_NAME}"
 title = f"{Constant.PLATFORM_NAME}文档"
 subject = "文档"
@@ -79,7 +78,7 @@ autodoc_mock_imports = [
     "fastapi_jsonrpc",
     "loguru",
     "mqt",
-    "networkx",
+    # "networkx",  # required for docstring-check.sh / sphinx-build -b html
     # "numpy",  # required for autodoc
     "numexpr",
     "ply",
@@ -129,16 +128,14 @@ def setup(app):
 
     def check_builder(app):
         builder_name = app.builder.name
-        print(f"Builder name: {builder_name}")
-        if "html" in builder_name:
-            extensions.append("sphinxcontrib.jquery")
-            run_apidoc()
-        else:
-            shutil.rmtree(
-                f"{top_dir}/docs/sphinx/source/api/",
-                ignore_errors=True,
-                onerror=None
-            )
+        print(f"[Builder name: {builder_name}]")
+        shutil.rmtree(
+            f"{top_dir}/docs/sphinx/source/api/",
+            ignore_errors=True,
+            onerror=None
+        )
+        extensions.append("sphinxcontrib.jquery")
+        run_apidoc()
 
     app.connect("autodoc-skip-member", skip_modules)
     app.connect("builder-inited", check_builder)

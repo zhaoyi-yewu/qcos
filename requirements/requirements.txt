@@ -8,3 +8,4 @@ schema==0.7.7
 
 # other requirements
 PyYAML==6.0.3
+tomlkit==0.13.3

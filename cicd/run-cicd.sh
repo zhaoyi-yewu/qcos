@@ -20,6 +20,15 @@ set -e
 cwd=$(dirname "${BASH_SOURCE[0]}")
 top_dir=$(realpath ${cwd}/..)
 
+function usage {
+    echo "Usage: $0"
+}
+
+if [ $# -gt 0 ]; then
+    usage
+    exit 1
+fi
+
 echo "Run check-files ..."
 ${top_dir}/cicd/check-files.sh
 echo

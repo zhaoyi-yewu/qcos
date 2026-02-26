@@ -34,6 +34,7 @@ data_type = DriverTiangong100.DATA_TYPE_GATE_SEQUENCE
 shots = 1024
 
 
+@pytest.mark.driver
 class TestDriverTiangong100:
     def test_init_driver(self):
         assert driver_tiangong100.init_driver() is None

@@ -69,7 +69,7 @@ ut:
   artifacts:
     when: always
     reports:
-      junit: cicd/report.xml
+      junit: cicd/reports/wy_qcos/report.xml
 
 # code-coverage
 code-coverage:

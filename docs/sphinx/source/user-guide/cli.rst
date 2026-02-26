@@ -308,6 +308,8 @@
 *典型场景示例*
 ~~~~~~~~~~~~~~~
 
+.. code-block:: shell
+
    # 取消作业
    qcos-cli cancel-jobs 00000000-0000-4000-8000-000000000001
    qcos-cli cancel-jobs -y all
@@ -458,6 +460,8 @@
 *典型场景示例*
 ***************
 
+.. code-block:: shell
+
    # 获取所有驱动信息列表
    qcos-cli list-drivers
 
@@ -501,6 +505,8 @@
 
 *典型场景示例*
 ***************
+
+.. code-block:: shell
 
    # 获取所有设备信息列表
    qcos-cli list-devices
@@ -546,6 +552,8 @@
 
 *典型场景示例*
 ***************
+
+.. code-block:: shell
 
    # 获取所有设备信息列表
    qcos-cli list-devices

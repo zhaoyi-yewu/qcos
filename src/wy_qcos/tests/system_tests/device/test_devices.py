@@ -71,4 +71,56 @@ class TestDevice:
             assert isinstance(device["tech_type"], str | None)
             assert isinstance(device["max_qubits"], int)
             assert isinstance(device["configs"], dict | None)
+            assert isinstance(device["details"], dict | None)
             assert device["max_qubits"] > 0
+
+    def test_get_device_with_details(self):
+        device_name = "dummy"
+        device = StLibrary.get_device(self.client, device_name, True)
+        assert isinstance(device, dict)
+        assert isinstance(device["alias_name"], str)
+        if device["configs"] is not None:
+            assert isinstance(device["configs"], dict)
+        if device["description"] is not None:
+            assert isinstance(device["description"], str)
+        assert device["driver_name"] == "DriverDummy"
+        assert device["enable"] is True
+        assert device["name"] == device_name
+        assert device["status"] == Device.DEVICE_STATUS_ONLINE
+        assert isinstance(device["details"], dict)
+
+    def test_calibrate(self):
+        device_name = "dummy"
+        options = {
+            "init_freq": 5.018,
+            "step": 0.001,
+            "machine_type": "superconducting",
+            "scan_param": "qubit_frequency",
+            "scan_shots": 100,
+        }
+        error_code = StLibrary.calibrate(self.client, device_name, options)
+        assert error_code == 0
+
+    def test_set_device_options(self):
+        device_name = "dummy"
+        device_options = {
+            "sleep": 300,
+            "shot_gap": 1000,
+            "readout_threshold": 0.8,
+        }
+        error_code = StLibrary.set_device_options(
+            self.client, device_name, device_options
+        )
+        assert error_code == -32603
+
+    def test_enable_and_disable_qubit(self):
+        device_name = "dummy"
+        qubits = {
+            "qubit1": True,
+            "qubit2": False,
+            "qubit1_qubit2": False,
+        }
+        error_code = StLibrary.enable_and_disable_qubit(
+            self.client, device_name, qubits
+        )
+        assert error_code == -32603

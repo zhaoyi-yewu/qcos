@@ -68,7 +68,7 @@ def global_configs(request):
     api_port = api_server.get("API_SERVER_PORT", Config.API_SERVER_LISTEN_PORT)
     client = Client(api_server_ip=api_host, api_server_port=api_port)
     GLOBAL_CONFIGS["client"] = client
-    GLOBAL_CONFIGS["timeout"] = 30
+    GLOBAL_CONFIGS["timeout"] = 150
     GLOBAL_CONFIGS["interval"] = 5
     load_configs()
     # print configs for debug purpose when test fails

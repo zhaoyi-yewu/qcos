@@ -33,7 +33,7 @@ class GetDeviceRequest(BaseModel):
 
     # device name
     name: str = Field(description="Device name")
-    # details
+    # need details or not
     details: bool = Field(description="Details info needed or not")
 
 
@@ -77,8 +77,6 @@ class CalibrateDeviceRequest(BaseModel):
 
     # device name
     device_name: str = Field(description="Device name")
-    # calibrate cmd
-    cal_cmd: bool = Field(description="Calibrate cmd")
     # calibrate options
     options: dict | None = Field(default=None, description="Calibrate Options")
 

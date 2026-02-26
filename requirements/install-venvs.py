@@ -20,45 +20,93 @@ Install venv environments
 """
 
 import os
+import shutil
 import subprocess
 import sys
-import yaml
+import tomlkit
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from collections import OrderedDict
 from pathlib import Path
 
 TOP_DIR = Path(__file__).resolve().parent.parent
 
 
-def load_yaml_file(file_path):
-    """Load and validate YAML configuration file.
+def load_driver_env_file(config_file, envs=None, skip_env_list=None):
+    """Load and validate driver env configuration file.
 
     Args:
-        file_path: yaml file path
+        config_file: config file path
+        envs: envs
+        skip_env_list: env list to skip
 
     Returns:
         configs: config data
     """
 
-    driver_deps_file_path = Path(file_path).parent
+    driver_deps_file_path = Path(config_file).parent
+    _configs = {}
     configs = {}
-    if not os.path.exists(file_path):
+    if not os.path.exists(config_file):
         raise FileNotFoundError(
-            f"Configuration file not found: {file_path}")
+            f"Configuration file not found: {config_file}")
 
     try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            raw_data = yaml.safe_load(file)
-            configs = raw_data if raw_data is not None else {}
+        with open(config_file, 'r', encoding='utf-8') as file:
+            _configs = tomlkit.load(file)
 
+        # sort dict
+        # dicts contain key: "copy_from" will put at the end of configs
+        non_copy_items = []
+        copy_items = []
+
+        for key, value in _configs.items():
+            if isinstance(value, dict) and "copy_from" in value:
+                copy_from_value = value["copy_from"]
+                if copy_from_value not in _configs:
+                    raise Exception(
+                        f"Invalid copy_from: {copy_from_value} in [{key}]")
+                ref_driver_name = copy_from_value
+                ref_driver = _configs[ref_driver_name]
+                if "copy_from" in ref_driver:
+                    raise Exception(
+                        f"Invalid copy_from: {ref_driver_name} in [{key}]. "
+                        f"Can't reference the driver: {ref_driver_name}"
+                    )
+                copy_items.append((key, value))
+            else:
+                non_copy_items.append((key, value))
+
+        sorted_items = non_copy_items + copy_items
+        configs = OrderedDict(sorted_items)
         for driver_class, driver_info in configs.items():
-            deps_filepath = driver_info["deps_filepath"]
-            deps_abs_filepath = (
-                        driver_deps_file_path / deps_filepath).resolve()
-            driver_info["deps_filepath"] = deps_abs_filepath
-    except yaml.YAMLError as e:
-        raise yaml.YAMLError(f"YAML parsing error: {e}")
+            if "copy_from" in driver_info:
+                continue
+            if "deps_filepaths" not in driver_info:
+                raise Exception(
+                    f"[{driver_class}] ‘deps_filepaths’ must be specified")
+            if "envs" not in driver_info:
+                raise Exception(
+                    f"[{driver_class}] ‘envs’ must be specified")
+            if envs:
+                # override envs
+                if driver_class == "pypy":
+                    driver_info["envs"] = [envs["default_pypy3"]]
+                else:
+                    driver_info["envs"] = [envs["default_python3"]]
+            deps_filepaths = driver_info["deps_filepaths"]
+            deps_filepaths_list = []
+            for deps_filepath in deps_filepaths:
+                deps_abs_filepath = (
+                            driver_deps_file_path / deps_filepath).resolve()
+                deps_filepaths_list.append(str(deps_abs_filepath))
+            driver_info["deps_filepaths"] = deps_filepaths_list
     except Exception as e:
         raise Exception(f"Error loading configuration: {e}")
+
+    # delete envs from skip_env_list
+    if skip_env_list:
+        for env in skip_env_list:
+            configs.pop(env, None)
 
     return configs
 
@@ -90,13 +138,14 @@ def run_command(command, check=True, capture_output=True, text=True):
         raise
 
 
-def install_venv(configs, venv_base_dir, debug=True):
+def install_venv(configs, venv_base_dir, debug=True, dry_run=False):
     """Install venv.
 
     Args:
         configs: configs
         venv_base_dir: venv base dir
         debug: debug, print commands and results
+        dry_run: dry run
 
     Returns:
         results
@@ -104,18 +153,39 @@ def install_venv(configs, venv_base_dir, debug=True):
     cmds = []
     for driver_class, driver_info in configs.items():
         driver_venv_dir = f"{venv_base_dir}/{driver_class}"
-        deps_filepath = driver_info["deps_filepath"]
-        envs = driver_info["envs"]
-        for env in envs:
-            cmds.append(f"echo -e '\nInstalling venv: {driver_class}'")
-            cmds.append(f"{env} -m venv {driver_venv_dir}")
-            cmds.append(f"source {driver_venv_dir}/bin/activate")
-            cmds.append(f"pip3 --no-cache-dir install -r {deps_filepath}")
-            cmds.append(f"deactivate")
+        copy_from = driver_info.get("copy_from", None)
+        if copy_from:
+            src_dir = f"{venv_base_dir}/{copy_from}"
+            dst_dir = driver_venv_dir
+            cmd = f"""
+            echo -e "\\nInstalling venv: {driver_class} - link"
+            [ ! -L "{dst_dir}" ] && ln -s {src_dir} {dst_dir}
+            """
+            cmds.append(cmd)
+        else:
+            deps_path_list = driver_info["deps_filepaths"]
+            deps_path_args = f"-r {' -r '.join(deps_path_list)}"
+            envs = driver_info.get("envs", [])
+            for env in envs:
+                cmd = f"""
+                if which {env} >/dev/null 2>&1; then
+                  echo -e "\\nInstalling venv: {driver_class}"
+                  {env} -m venv {driver_venv_dir}
+                  source {driver_venv_dir}/bin/activate
+                  pip3 --no-cache-dir install --prefer-binary {deps_path_args}
+                  deactivate
+                else
+                  echo -e "\\nInstalling venv: {driver_class} - skipped"
+                  echo -e "\\nCan't find env: {env}"
+                fi
+                """
+                cmds.append(cmd)
     if debug:
-        print("[Install venv for drivers]")
+        print("\n[Install venv for drivers]")
         print("\n".join(cmds))
-    results = run_command(";".join(cmds), check=False)
+    if dry_run:
+        return 0
+    results = run_command("\n".join(cmds), check=False)
     if debug:
         print(f"{results.stdout}\n{results.stderr}")
 
@@ -146,26 +216,68 @@ USAGE
             "-f",
             "--file",
             dest="file_path",
-            default=f"{TOP_DIR}/requirements/venv-configs.yaml",
+            default=f"{TOP_DIR}/requirements/venv-configs.toml",
             help="Driver dependencies config file path",
         )
         parser.add_argument(
             "-V",
             "--venv-dir",
             dest="venv_base_dir",
-            default="/var/lib/qcos/venv-driver",
+            default="/var/lib/qcos/venv",
             help="Driver venv base dir",
+        )
+        parser.add_argument(
+            "--default-python3",
+            dest="default_python3",
+            default="python3",
+            help="Default python3",
+        )
+        parser.add_argument(
+            "--default-pypy3",
+            dest="default_pypy3",
+            default="pypy3",
+            help="Default pypy3",
+        )
+        parser.add_argument(
+            "--skip-envs",
+            dest="skip_envs",
+            default=None,
+            help="Envs to skip",
+        )
+        parser.add_argument(
+            "--dry-run",
+            dest="dry_run",
+            action="store_true",
+            help="Dry run",
         )
 
         # parse arguments
         args = parser.parse_args()
         file_path = args.file_path
         venv_base_dir = args.venv_base_dir
-        os.makedirs(venv_base_dir, exist_ok=True)
+        default_python3 = args.default_python3
+        default_pypy3 = args.default_pypy3
+        skip_envs = args.skip_envs
+        dry_run = args.dry_run
+        skip_env_list = None
 
-        configs = load_yaml_file(file_path)
-        print(f"Configs: \n{configs}")
-        ret_code = install_venv(configs, venv_base_dir, debug=True)
+        if not dry_run:
+            os.makedirs(venv_base_dir, exist_ok=True)
+            shutil.copy2(file_path, venv_base_dir)
+
+        envs = {
+            "default_python3": default_python3,
+            "default_pypy3": default_pypy3
+        }
+        if skip_envs:
+            skip_env_list = skip_envs.split(",")
+
+        configs = load_driver_env_file(file_path,
+                                       envs=envs,
+                                       skip_env_list=skip_env_list)
+        print(f"[Configs: \n{configs}]")
+        ret_code = install_venv(configs, venv_base_dir,
+                                debug=True, dry_run=dry_run)
         err_code = ret_code
 
         return err_code

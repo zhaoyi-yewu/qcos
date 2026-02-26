@@ -116,7 +116,7 @@ class Server:
         args = parser.parse_args(argv)
         # read and parse config file
         if args.config_file:
-            Config.parse_toml_file(args.config_file)
+            Config.load_config_file(args.config_file)
 
         # read and parse config files under config dir
         if args.config_dir:
@@ -124,10 +124,13 @@ class Server:
                 args.config_dir, pattern="*.toml", recursive=True
             )
             for config_file in config_files:
-                Config.parse_toml_file(config_file, extra_config=True)
+                Config.load_config_file(config_file, extra_config=True)
 
         # validate Config
         Config.validate()
+
+        # load driver env configs
+        Config.load_driver_env_file(f"{Config.VENV_DIR}/venv-configs.toml")
 
         # read command line arguments and override configs
         if args.daemon:
@@ -260,7 +263,14 @@ class Server:
             # run forever
             logger.info("API server running ...")
             loop.run_until_complete(server.serve())
+        except KeyboardInterrupt as e:
+            raise errors.GenericException(
+                f"KeyboardInterrupt error while running the server: {e}"
+            ) from e
         except Exception as e:
             raise errors.GenericException(
                 f"Critical error while running the server: {e}"
             ) from e
+        finally:
+            print("Killing workers ...")
+            scheduler.get_task_manager().kill_workers()

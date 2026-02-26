@@ -1,0 +1,3 @@
+# .dockerignore
+images/
+.build-context/

@@ -14,13 +14,3 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-
-
-import os
-import sys
-
-from wy_qcos.common.config import Config
-from wy_qcos.common.library import Library
-
-# import driver dep packages
-Library.set_venv_path(Config.VENV_DIR)

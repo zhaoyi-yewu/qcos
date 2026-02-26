@@ -15,14 +15,11 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import random
 import time
 
 from loguru import logger
 from itertools import product
-from collections import Counter
 
-from qiskit.result import Counts
 from qutip import basis, expect, tensor
 from qutip_qip.circuit import CircuitSimulator, QubitCircuit
 from schema import Optional
@@ -77,21 +74,43 @@ class DriverQutipSim(DriverBase):
             measurement_results[bit_str] = prob
         return measurement_results
 
-    def convert_result(self, count_prob: dict, shots: int) -> Counts:
+    def convert_result(self, results, shots):
         """Convert result.
 
         Args:
-            count_prob: final state counts
-            shots: qubit shots
+            results: task results
+            shots: shots
 
         Returns:
-            results
+            converted task results
         """
-        random.seed(42)
-        samples = random.choices(
-            list(count_prob.keys()), list(count_prob.values()), k=shots
-        )
-        return Counts(Counter(samples))
+        counts = [(key, shots * results[key]) for key in results]
+        normalized_results = []
+        remainders = []
+        total_base = 0
+
+        for name, val in counts:
+            base = int(val)  # 向下取整
+            rem = val - base
+            normalized_results.append({"name": name, "count": base})
+            remainders.append((name, rem))
+            total_base += base
+
+        remaining = shots - total_base
+        remainders.sort(key=lambda x: x[1], reverse=True)
+
+        for i in range(remaining):
+            target_name = remainders[i][0]
+            for item in normalized_results:
+                if item["name"] == target_name:
+                    item["count"] += 1
+                    break
+        converted_results = {}
+        for result in normalized_results:
+            if result["count"] == 0:
+                continue
+            converted_results[result["name"]] = result["count"]
+        return converted_results
 
     def init_driver(self):
         """Init driver."""

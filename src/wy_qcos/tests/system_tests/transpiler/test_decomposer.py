@@ -44,6 +44,7 @@ from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 
 
 @pytest.mark.usefixtures("global_configs")
+@pytest.mark.slow
 class TestDecomposer:
     """System-level tests for quantum circuit decomposition.
 

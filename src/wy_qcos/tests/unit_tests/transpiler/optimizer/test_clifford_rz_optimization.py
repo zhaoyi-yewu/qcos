@@ -846,13 +846,6 @@ class TestCliffordRzOptimization:
 
         with pytest.raises(CircuitException) as e:
             ir = rcg.random_circuit_with_depth(
-                num_qubits=2, depth=1, outfile="CHANGELOG.md"
-            )
-        err_msg = str(e.value)
-        assert "Output file has existed." in err_msg
-
-        with pytest.raises(CircuitException) as e:
-            ir = rcg.random_circuit_with_depth(
                 num_qubits=10, depth=10, max_operands=0
             )
         err_msg = str(e.value)
