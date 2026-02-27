@@ -36,8 +36,7 @@ RUN set -e && \
     texlive-framed texlive-upquote texlive-needspace texlive-tabulary \
     texlive-lastpage texlive-tocloft texlive-supertabular \
     google-noto-sans-sc-fonts npm docker docker-compose && \
-    mktexlsr && fc-cache -fv \
-    && \
+    mktexlsr && fc-cache -fv && \
 # Install NPM packages: mermaid-cli, plantuml etc.
     registry_url="" && \
     npm_cmd_args="" && \
@@ -45,9 +44,8 @@ RUN set -e && \
     PUPPETEER_SKIP_DOWNLOAD=true npm install ${npm_cmd_args} ${registry_url} -g @mermaid-js/mermaid-cli plantuml \
     && \
 # Active venv: sandbox
-    echo "source /var/lib/qcos/venv/sandbox/bin/activate" >> /root/.bashrc \
-    && \
+    echo "source /var/lib/qcos/venv/sandbox/bin/activate" >> /root/.bashrc && \
 # Write build date/commit-id/version into build-info file
-    echo -e "\nSANDBOX build info\nversion: ${SANDBOX_IMAGE_VERSION}\n" >> /root/build-info.txt \
+    echo -e "\nSANDBOX build info\nversion: ${SANDBOX_IMAGE_VERSION}\n" >> /root/build-info.txt && \
 # cleanup
     yum clean all
