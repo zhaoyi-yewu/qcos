@@ -1,0 +1,6 @@
+[qiskit_aer_sim]
+alias_name = "IBM-Qiskit-Aer模拟器"
+driver = "DriverQiskitAerSim"
+description = "IBM-Qiskit-Aer模拟器(qiskit-aer-sim)"
+# [Optional] max qubits of device
+# device_max_qubits = 10

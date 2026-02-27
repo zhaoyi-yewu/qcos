@@ -23,16 +23,8 @@ source ${BUILD_SCRIPTS_DIR}/setup-build-context.sh
 
 TEMP_PKG_DIR=/tmp/qcos-pkgs
 
-OUTPUT_QCOS_BASE_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/qcos-base-amd64-dev.tar.xz
-OUTPUT_SANDBOX_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-sandbox-amd64-${QCOS_IMAGE_VERSION}.tar.xz
-OUTPUT_QCOS_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-amd64-${QCOS_IMAGE_VERSION}.tar.xz
-OUTPUT_QCOS_CLI_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-cli-amd64-${QCOS_IMAGE_VERSION}.tar.xz
-
 PYTHON_SRC_MIRROR=${PYTHON_SRC_MIRROR:-"https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz"}
 PYPY3_BIN_MIRROR=${PYPY3_BIN_MIRROR:-"https://downloads.python.org/pypy/pypy3.11-v7.3.20-linux64.tar.bz2"}
-
-QCOS_BASE_IMAGE_NAME=qcos-base
-QCOS_BASE_IMAGE_VERSION=dev
 
 function usage {
     echo "Usage: $0 [OPTION] ..."
@@ -43,12 +35,13 @@ function usage {
     echo "  -q, --qcos    Build QCOS image"
     echo "  -c, --cli     Build QCOS cli image"
     echo "  -a, --all     Build all images"
+    echo "  -t, --tag     image tag/version"
     echo "  -n, --no-save Don't export/save images"
     echo "  -h, --help    Print this usage message"
     echo ""
 }
 
-opts=$(getopt -o bsqcanh --long base,sandbox,qcos,cli,all,no-save,help -- "$@")
+opts=$(getopt -o bsqcat:nh --long base,sandbox,qcos,cli,all,tag:,no-save,help -- "$@")
 if [[ $? -ne 0 ]]; then
   exit 1
 fi
@@ -71,11 +64,24 @@ while true; do
     -q | --qcos )  qcos=true;  shift ;;
     -c | --cli )   cli=true;   shift ;;
     -a | --all )   all=true;   shift ;;
+    -t | --tag )   tag="$2";   shift 2;;
     -n | --no-save ) save=false;   shift ;;
     -- ) shift; break ;;
     * )         break ;;
   esac
 done
+
+image_tag=${QCOS_IMAGE_VERSION}
+if [ -n "${tag}" ]; then
+  image_tag=${tag}
+fi
+
+QCOS_BASE_IMAGE_NAME=qcos-base
+QCOS_BASE_IMAGE_VERSION=${tag:-dev}
+OUTPUT_QCOS_BASE_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_BASE_IMAGE_NAME}-amd64-${QCOS_BASE_IMAGE_VERSION}.tar.xz
+OUTPUT_SANDBOX_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-sandbox-amd64-${image_tag}.tar.xz
+OUTPUT_QCOS_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-amd64-${image_tag}.tar.xz
+OUTPUT_QCOS_CLI_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-cli-amd64-${image_tag}.tar.xz
 
 if [ "${all}" = false -a "${base}" = false -a "${sandbox}" = false -a "${qcos}" = false -a "${cli}" = false ]; then
   qcos=true
@@ -166,12 +172,12 @@ function build_qcos_image {
     --build-arg CONTAINER_NAME=${QCOS_CONTAINER_NAME} \
     --build-arg QCOS_IMAGE_VERSION=${QCOS_IMAGE_VERSION} \
     --build-arg DEV=${DEV} \
-    -t ${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION} .build-context
+    -t ${QCOS_IMAGE_NAME}:${image_tag} .build-context
 
   # save image
   if [ "${save}" = true ];then
     echo -e "\nExporting docker image: ${OUTPUT_QCOS_IMAGE_PATH}"
-    docker save ${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION} | xz -c --fast -T 0 > ${OUTPUT_QCOS_IMAGE_PATH}
+    docker save ${QCOS_IMAGE_NAME}:${image_tag} | xz -c --fast -T 0 > ${OUTPUT_QCOS_IMAGE_PATH}
   fi
 }
 
@@ -210,14 +216,14 @@ function build_cli_image {
   DOCKER_BUILDKIT=0 docker build -f ./cli/Dockerfile --no-cache --rm --network host \
     --build-arg CONTAINER_BASE_IMAGE=${CONTAINER_BASE_IMAGE} \
     --build-arg CONTAINER_NAME=${QCOS_CLI_CONTAINER_NAME} \
-    --build-arg QCOS_IMAGE_VERSION=${QCOS_IMAGE_VERSION} \
+    --build-arg QCOS_IMAGE_VERSION=${image_tag} \
     --build-arg DEV=${DEV} \
-    -t ${QCOS_CLI_IMAGE_NAME}:${QCOS_IMAGE_VERSION} .build-context
+    -t ${QCOS_CLI_IMAGE_NAME}:${image_tag} .build-context
 
   # save image
   if [ "${save}" = true ];then
     echo -e "\nExporting docker image: ${OUTPUT_QCOS_CLI_IMAGE_PATH}"
-    docker save ${QCOS_CLI_IMAGE_NAME}:${QCOS_IMAGE_VERSION} | xz -c --fast -T 0 > ${OUTPUT_QCOS_CLI_IMAGE_PATH}
+    docker save ${QCOS_CLI_IMAGE_NAME}:${image_tag} | xz -c --fast -T 0 > ${OUTPUT_QCOS_CLI_IMAGE_PATH}
   fi
 }
 

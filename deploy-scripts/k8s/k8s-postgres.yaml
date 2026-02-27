@@ -1,0 +1,109 @@
+# ----------------------------------------------------------------------
+# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
+---
+# Deploy postgres
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: ${QCOS_NAMESPACE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      hostNetwork: false
+      restartPolicy: Always
+      containers:
+      - name: postgres
+        image: ${REGISTRY}${POSTGRES_IMAGE_NAME}:${POSTGRES_IMAGE_VERSION}
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: TZ
+          value: "Asia/Shanghai"
+        - name: POSTGRES_PASSWORD
+          value: ${POSTGRES_PASSWORD}
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "2Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+        livenessProbe:
+          exec:
+            command: ["pg_isready", "-U", "postgres", "-d", "prefect"]
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-U", "postgres", "-d", "prefect"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+        volumeMounts:
+        - name: database-dir
+          mountPath: /var/lib/postgresql
+        - name: postgres-config
+          mountPath: /etc/postgresql/postgresql.conf
+          subPath: postgresql.conf
+        - name: postgres-init-sh
+          mountPath: /docker-entrypoint-initdb.d/init.sh
+          subPath: init.sh
+        - name: postgres-init-sql
+          mountPath: /docker-entrypoint-initdb.d/init.sql
+          subPath: init.sql
+      volumes:
+      - name: database-dir
+        persistentVolumeClaim:
+          claimName: ${K8S_DATABASE_PVC}
+      - name: postgres-config
+        configMap:
+          name: postgres-config
+      - name: postgres-init-sh
+        configMap:
+          name: postgres-config
+      - name: postgres-init-sql
+        configMap:
+          name: postgres-config
+#      nodeSelector:
+#        postgres: enabled
+#      affinity:
+#        podAntiAffinity:
+#          requiredDuringSchedulingIgnoredDuringExecution:
+#          - labelSelector:
+#              matchLabels:
+#                app: postgres
+#            topologyKey: "kubernetes.io/hostname"
+---
+# postgres service (ClusterIP)
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: ${QCOS_NAMESPACE}
+spec:
+  selector:
+    app: postgres
+  type: ClusterIP
+  ports:
+  - port: ${POSTGRES_SERVER_PORT}
+    targetPort: 5432

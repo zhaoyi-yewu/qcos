@@ -46,12 +46,16 @@ export K8S_DATABASE_PVC="database-pvc"
 # [Optional] The IP address that prefect-server listen on, eg: 192.168.0.1
 export PREFECT_SERVER_API_HOST=
 export PREFECT_SERVER_PORT=4200
+export PREFECT_SERVER_DATABASE_CONNECTION_URL=sqlite+aiosqlite:////tmp/prefect.db
 
 # Redis configures
 # [Optional] The IP address that redis listen on, eg: 192.168.0.1
 export REDIS_SERVER_IP=
 export REDIS_SERVER_PORT=6379
 
+# Postgres configures
+export POSTGRES_PASSWORD=
+export POSTGRES_SERVER_PORT=5432
 
 # image name and version
 # [Required] specify container image REGISTRY
@@ -64,7 +68,10 @@ export PREFECT_IMAGE_NAME=prefecthq/prefect
 export PREFECT_IMAGE_VERSION=3.6.9-python3.13
 export REDIS_IMAGE_NAME=redis
 export REDIS_IMAGE_VERSION=7.2.7
+export POSTGRES_IMAGE_NAME=postgres
+export POSTGRES_IMAGE_VERSION=18
 
 # others
 export DEBUG=False
 export DEV=False
+export DB_BACKEND=POSTGRES

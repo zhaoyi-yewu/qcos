@@ -1,0 +1,12 @@
+[uqc_matrix2]
+alias_name = "幺正量子 UQC-Matrix2 离子阱驱动"
+driver = "DriverUQCMatrix2"
+description = "幺正量子 UQC-Matrix2 离子阱驱动"
+# [Optional] max qubits of device
+# device_max_qubits = 100
+
+uqc_host = "127.0.0.1"
+uqc_port = 5001
+password_token = ""
+# backend_device_name: "Matrix2" or "qiskit-sim"
+backend_device_name = "Matrix2"

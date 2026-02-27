@@ -24,7 +24,15 @@ echo "Creating QCOS dockers ..."
 # copy config files
 mkdir -p /etc/qcos/prefect
 mkdir -p /var/qcos/db
+mkdir -p /var/qcos/db/postgresql
 rm -rf /etc/qcos/prefect/profiles.toml
+mkdir -p /etc/qcos/postgres
+cp -r ${QCOS_LOCAL_SRC_DIR}/build-scripts/postgres /etc/qcos/
+
+docker-compose -f docker-compose-postgres.yaml down
+if [ "${DB_BACKEND,,}" = "postgres" ]; then
+  docker-compose -f docker-compose-postgres.yaml up -d
+fi
 
 if [ "${DEV,,}" = "false" ]; then
   docker-compose -f docker-compose.yaml down

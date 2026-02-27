@@ -1,0 +1,6 @@
+[qiskit_qasm_sim]
+alias_name = "IBM-Qiskit-QASM模拟器"
+driver = "DriverQiskitQasmSim"
+description = "IBM-Qiskit-QASM模拟器(qiskit-qasm-sim)"
+# [Optional] max qubits of device
+# device_max_qubits = 100

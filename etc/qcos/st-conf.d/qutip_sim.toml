@@ -1,0 +1,9 @@
+[qutip_sim]
+alias_name = "Qutip模拟器"
+driver = "DriverQutipSim"
+description = "Qutip模拟器(qutip-sim)"
+# [Optional] max qubits of device
+# device_max_qubits = 10
+
+[qutip_sim.transpiler.qpu_configs]
+qubits = 6
