@@ -83,9 +83,9 @@ jobs:
         with:
           images: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-sandbox
           tags: |
+            type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
             type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
             type=raw,value=nightly-{{date 'YYYYMMDD'}},enable=${{ github.event_name == 'schedule' }}
-            type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
             type=semver,pattern={{version}}
             type=semver,pattern=latest
 
@@ -136,9 +136,9 @@ jobs:
         with:
           images: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos
           tags: |
+            type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
             type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
             type=raw,value=nightly-{{date 'YYYYMMDD'}},enable=${{ github.event_name == 'schedule' }}
-            type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
             type=semver,pattern={{version}}
             type=semver,pattern=latest
 
@@ -148,6 +148,7 @@ jobs:
           ALL_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           cd ./build-scripts
+          source /root/.bashrc
           source ./version
           cp ./env.template ./.env
           ./build-images.sh -q -n
@@ -183,9 +184,9 @@ jobs:
         with:
           images: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-cli
           tags: |
+            type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
             type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
             type=raw,value=nightly-{{date 'YYYYMMDD'}},enable=${{ github.event_name == 'schedule' }}
-            type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
             type=semver,pattern={{version}}
             type=semver,pattern=latest
 
@@ -195,6 +196,7 @@ jobs:
           ALL_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           cd ./build-scripts
+          source /root/.bashrc
           source ./version
           cp ./env.template ./.env
           ./build-images.sh -c -n
@@ -219,14 +221,14 @@ jobs:
       - name: Run Unit Tests
         shell: bash
         run: |
+          source /root/.bashrc
           cicd/run-tests.sh -c all
-          ls cicd/
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.QCOS_CODECOV_TOKEN }}
-          files: cicd/coverage.xml
+          files: cicd/reports/wy_qcos/coverage.xml
 
   run-tests-qcos-cli:
     needs: build-and-push-sandbox
@@ -242,3 +244,125 @@ jobs:
         shell: bash
         run: |
           cicd/run-tests.sh -e all
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.QCOS_CODECOV_TOKEN }}
+          files: cicd/reports/wy_qcos_client/coverage.xml
+
+  send-cicd-report:
+    name: Send CI/CD Report via action-send-mail
+    # Runs after all jobs regardless of their outcome
+    needs:
+      - build-qcos-base-image
+      - build-and-push-sandbox
+      - build-and-push-qcos
+      - build-and-push-qcos-cli
+      - run-tests-qcos
+      - run-tests-qcos-cli
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send CI/CD Report via action-send-mail
+        uses: dawidd6/action-send-mail@v3
+        with:
+          # SMTP server configuration
+          server_address: ${{ secrets.QCOS_SMTP_SERVER_ADDRESS }}
+          server_port: ${{ secrets.QCOS_SMTP_SERVER_PORT }}
+          username: ${{ secrets.QCOS_SMTP_USERNAME }}
+          password: ${{ secrets.QCOS_SMTP_PASSWORD }}
+
+          # Email configuration
+          subject: |
+            [QCOS CI/CD] ${{ needs.build-qcos-base-image.result == 'failure' || needs.build-and-push-sandbox.result == 'failure' || needs.build-and-push-qcos.result == 'failure' || needs.build-and-push-qcos-cli.result == 'failure' || needs.run-tests-qcos.result == 'failure' || needs.run-tests-qcos-cli.result == 'failure' && '❌ FAILED' || '✅ SUCCESS' }} — Run #${{ github.run_number }} on ${{ github.ref_name }} (${{ github.sha }})
+
+          # Recipients (supports multiple comma-separated addresses)
+          to: ${{ vars.QCOS_CICD_REPORT_EMAIL_TO }}
+
+          # Sender address
+          from: ${{ vars.QCOS_CICD_REPORT_EMAIL_FROM || 'qcos-cicd@cmss.chinamobile.com' }}
+
+          # HTML body
+          html_body: |
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>QCOS CI/CD Report</title>
+              <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                       background: #f6f8fa; margin: 0; padding: 24px; color: #24292f; }
+                .card { background: #fff; border-radius: 8px; border: 1px solid #d0d7de;
+                        max-width: 680px; margin: 0 auto; overflow: hidden; }
+                .header { padding: 24px 28px; border-bottom: 1px solid #d0d7de; }
+                .header h1 { margin: 0 0 4px; font-size: 20px; }
+                .header .subtitle { color: #57606a; font-size: 14px; margin: 0; }
+                .overall { padding: 16px 28px; font-size: 18px; font-weight: 600;
+                           border-bottom: 1px solid #d0d7de; }
+                .overall.success { background: #dafbe1; color: #1a7f37; }
+                .overall.failed  { background: #ffebe9; color: #cf222e; }
+                .section { padding: 20px 28px; }
+                .section h2 { font-size: 14px; font-weight: 600; color: #57606a;
+                              text-transform: uppercase; letter-spacing: .05em;
+                              margin: 0 0 12px; }
+                table { width: 100%; border-collapse: collapse; font-size: 14px; }
+                th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #eaeef2; }
+                th { background: #f6f8fa; font-weight: 600; color: #57606a; }
+                tr:last-child td { border-bottom: none; }
+                .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px;
+                             font-size: 14px; }
+                .meta-grid .label { color: #57606a; }
+                .btn { display: inline-block; margin-top: 20px; padding: 10px 20px;
+                       background: #0969da; color: #fff; border-radius: 6px;
+                       text-decoration: none; font-size: 14px; font-weight: 600; }
+                .footer { padding: 16px 28px; border-top: 1px solid #d0d7de;
+                          font-size: 12px; color: #57606a; text-align: center; }
+              </style>
+            </head>
+            <body>
+              <div class="card">
+                <div class="header">
+                  <h1>🚀 QCOS CI/CD Pipeline Report</h1>
+                  <p class="subtitle">Workflow Run #${{ github.run_number }} &nbsp;·&nbsp; ${{ github.event_name }} (${{ github.actor }})</p>
+                </div>
+
+                <div class="overall ${{ needs.build-qcos-base-image.result == 'failure' || needs.build-and-push-sandbox.result == 'failure' || needs.build-and-push-qcos.result == 'failure' || needs.build-and-push-qcos-cli.result == 'failure' || needs.run-tests-qcos.result == 'failure' || needs.run-tests-qcos-cli.result == 'failure' && 'failed' || 'success' }}">
+                  Overall Status: ${{ needs.build-qcos-base-image.result == 'failure' || needs.build-and-push-sandbox.result == 'failure' || needs.build-and-push-qcos.result == 'failure' || needs.build-and-push-qcos-cli.result == 'failure' || needs.run-tests-qcos.result == 'failure' || needs.run-tests-qcos-cli.result == 'failure' && '❌ FAILED' || '✅ SUCCESS' }}
+                </div>
+
+                <div class="section">
+                  <h2>Pipeline Details</h2>
+                  <div class="meta-grid">
+                    <span class="label">Repository</span>  <span>${{ github.repository }}</span>
+                    <span class="label">Branch / Tag</span> <span>${{ github.ref_name }}</span>
+                    <span class="label">Commit</span>       <span>${{ github.sha }}</span>
+                    <span class="label">Triggered by</span> <span>${{ github.event_name }} (${{ github.actor }})</span>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <h2>Job Results</h2>
+                  <table>
+                    <thead>
+                      <tr><th>Job</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>Build QCOS Base Image</td>     <td>${{ needs.build-qcos-base-image.result == 'success' && '✅ success' || needs.build-qcos-base-image.result == 'failure' && '❌ failure' || needs.build-qcos-base-image.result == 'skipped' && '⏭️ skipped' || needs.build-qcos-base-image.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
+                      <tr><td>Build & Push Sandbox</td>  <td>${{ needs.build-and-push-sandbox.result == 'success' && '✅ success' || needs.build-and-push-sandbox.result == 'failure' && '❌ failure' || needs.build-and-push-sandbox.result == 'skipped' && '⏭️ skipped' || needs.build-and-push-sandbox.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
+                      <tr><td>Build & Push QCOS</td>     <td>${{ needs.build-and-push-qcos.result == 'success' && '✅ success' || needs.build-and-push-qcos.result == 'failure' && '❌ failure' || needs.build-and-push-qcos.result == 'skipped' && '⏭️ skipped' || needs.build-and-push-qcos.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
+                      <tr><td>Build & Push QCOS-CLI</td> <td>${{ needs.build-and-push-qcos-cli.result == 'success' && '✅ success' || needs.build-and-push-qcos-cli.result == 'failure' && '❌ failure' || needs.build-and-push-qcos-cli.result == 'skipped' && '⏭️ skipped' || needs.build-and-push-qcos-cli.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
+                      <tr><td>Unit Tests - QCOS</td>         <td>${{ needs.run-tests-qcos.result == 'success' && '✅ success' || needs.run-tests-qcos.result == 'failure' && '❌ failure' || needs.run-tests-qcos.result == 'skipped' && '⏭️ skipped' || needs.run-tests-qcos.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
+                      <tr><td>Unit Tests - QCOS-CLI</td>     <td>${{ needs.run-tests-qcos-cli.result == 'success' && '✅ success' || needs.run-tests-qcos-cli.result == 'failure' && '❌ failure' || needs.run-tests-qcos-cli.result == 'skipped' && '⏭️ skipped' || needs.run-tests-qcos-cli.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
+                    </tbody>
+                  </table>
+                  <a class="btn" href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Full Run Logs →</a>
+                </div>
+
+                <div class="footer">
+                  This email was sent automatically by GitHub Actions · QCOS CI/CD Pipeline
+                </div>
+              </div>
+            </body>
+            </html>

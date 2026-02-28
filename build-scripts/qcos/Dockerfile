@@ -31,18 +31,16 @@ COPY ./ ${BUILD_CONTEXT}
 
 # Copy command line entrypoints
 RUN set -e && \
-    cp -rf ${BUILD_CONTEXT}/bin/qcos-cli.py /usr/bin/qcos-cli \
-    && cp -rf ${BUILD_CONTEXT}/bin/qcos-api.py /usr/bin/qcos-api \
-    && cp -rf ${BUILD_CONTEXT}/bin/qcos-transpiler.py /usr/bin/qcos-transpiler \
-    && chmod +x /usr/bin/qcos-cli /usr/bin/qcos-api /usr/bin/qcos-transpiler \
-    && \
+    cp -rf ${BUILD_CONTEXT}/bin/qcos-cli.py /usr/bin/qcos-cli &&  \
+    cp -rf ${BUILD_CONTEXT}/bin/qcos-api.py /usr/bin/qcos-api &&  \
+    cp -rf ${BUILD_CONTEXT}/bin/qcos-transpiler.py /usr/bin/qcos-transpiler &&  \
+    chmod +x /usr/bin/qcos-cli /usr/bin/qcos-api /usr/bin/qcos-transpiler &&  \
     # config yum and pip repos
     if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then rm -rf /etc/yum.repos.d/*.repo; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi \
     && if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi \
     && \
 # Copy docker entrypint
-    /bin/cp ${BUILD_CONTEXT}/build-scripts/qcos/entrypoint.sh / && chmod +x /entrypoint.sh \
-    && \
+    /bin/cp ${BUILD_CONTEXT}/build-scripts/qcos/entrypoint.sh / && chmod +x /entrypoint.sh && \
 # Install qcos/qcos-cli packages
     if [ "${DEV,,}" = "false" ]; then \
       # production mode: install qcos/qcos-cli wheel packages, and copy config/samples files only
@@ -62,12 +60,11 @@ RUN set -e && \
     && \
 # Active venv: qcos
     echo "source /var/lib/qcos/venv/default/bin/activate" >> /root/.bashrc && \
-    rm -rf ${VENV_PATH}/sandbox \
-    && \
+    rm -rf ${VENV_PATH}/sandbox && \
 # Write build date/commit-id/version into build-info file
     build_date=`date` && \
     commit_id=$(cat "${BUILD_CONTEXT}/latest-commit-id.txt" 2>/dev/null || echo "") && \
-    echo -e "QCOS build info\nversion: ${QCOS_IMAGE_VERSION}\ncommit id: ${commit_id}\nbuild time: ${build_date}\n" > /root/build-info.txt \
+    echo -e "QCOS build info\nversion: ${QCOS_IMAGE_VERSION}\ncommit id: ${commit_id}\nbuild time: ${build_date}\n" > /root/build-info.txt && \
 # cleanup
     yum clean all && \
     rm -rf ${BUILD_CONTEXT}
