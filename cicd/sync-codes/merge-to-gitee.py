@@ -30,7 +30,7 @@ git remote add origin ssh://git@gitlab.cmss.com:2223/OCRI/WuYueOs.git
 git remote add gitee git@gitee.com:OpenWuYue/qcos.git
 git checkout --orphan dev_gitee
 git pull origin dev_gitee --allow-unrelated-histories
-git branch --set-upstream-to=origin/gitee dev_gitee
+git branch --set-upstream-to=origin/dev_gitee dev_gitee
 
 git checkout --orphan temp
 git rm -rf .
@@ -272,8 +272,62 @@ def diff_branches(start_since):
     print("")
 
 
+def sanitize_author(email, name):
+    """Anonymize submitter information.
+
+    Args:
+        email: author email
+        name: author name
+
+    Returns:
+        Desensitized tuple
+    """
+    new_email = email
+    new_name = name
+    if email.endswith("@cmss.chinamobile.com") and "_yewu@" not in email:
+        new_email = email.replace(
+            "@cmss.chinamobile.com", "_yewu@cmss.chinamobile.com"
+        )
+        new_name = f"{name}_yewu"
+    return new_email, new_name
+
+
+def sanitize_message(message):
+    """Sanitize the submitted information.
+
+    Args:
+        message: commit message
+
+    Returns:
+        Desensitized commit message
+    """
+    key_to_remove = {"Jira:", "Code Source From", "市场项目"}
+    new_messages = []
+    for line in message.split("\n"):
+        # Check whether contains keywords that need to be removed
+        should_remove = False
+        for key in key_to_remove:
+            if key.lower() in line.lower():
+                should_remove = True
+                break
+        if should_remove:
+            continue
+        # Replace email domain
+        if "@cmss.chinamobile.com" in line and "_yewu@" not in line:
+            line = line.replace(
+                "@cmss.chinamobile.com", "_yewu@cmss.chinamobile.com"
+            )
+        new_messages.append(line.strip())
+
+    new_message = "\n".join(new_messages)
+    new_message = re.sub(r"(\s*\n)+$", "", new_message)
+    new_message = re.sub(r"\n\s*\n", "\n\n", new_message)
+    new_message = re.sub(r"\n{3,}", "\n", new_message)
+    return new_message
+
+
 def merge_branches(commit_id):
-    """Merge branches.
+    """Merge branch.
 
     Args:
         commit_id: commit id
@@ -282,7 +336,6 @@ def merge_branches(commit_id):
 
     # checkout local merge branch
     cmds = [
-        "git reset --hard",
         "git cherry-pick --abort || true",
         f"git checkout {cmss_local_merge_branch}",
     ]
@@ -291,8 +344,7 @@ def merge_branches(commit_id):
     if ret_code != 0:
         raise MergeException(results.stderr)
 
-    # run git cherry-pick
-    # get git logs
+    # Analyze the list of commits to be merged
     commits = []
     if ".." in commit_id:
         cmd = f"git log --oneline --no-merges --format='%h' {commit_id}"
@@ -303,64 +355,46 @@ def merge_branches(commit_id):
     commits_count = len(commits)
     if commits_count == 0:
         raise MergeException("no commits found to merge")
-    run_command(f"git cherry-pick -m 1 {' '.join(commits)}")
 
-    # get latest commit id
-    results = run_command(f"git log -{commits_count} --format='%H'")
-    merged_commit_id_list = results.stdout.split()
-    print(f"merged commit ids: {merged_commit_id_list}")
-    if len(merged_commit_id_list) == 0:
-        raise MergeException("no commits found to modify")
-    merged_commit_id_str = "[b'" + "',b'".join(merged_commit_id_list) + "']"
+    # cherry-pick and amend for desensitization
+    merged_commit_ids = []
+    for i, commit in enumerate(commits, 1):
+        print(f"cherry-pick [{i}/{commits_count}]: {commit}")
+        run_command(f"git cherry-pick -m 1 {commit}")
 
-    # build git-filter-repo command
-    filter_script = f"""
-    if commit.original_id in {merged_commit_id_str}:
-        # Modify author's email and name
-        decoded_email = commit.author_email.decode('utf-8')
-        decoded_author_name = commit.author_name.decode('utf-8')
-        if decoded_email.endswith('@cmss.chinamobile.com') and \
-                '_yewu@' not in decoded_email:
-            new_email = decoded_email.replace('@cmss.chinamobile.com',
-                '_yewu@cmss.chinamobile.com')
-            encoded_new_email = new_email.encode('utf-8')
-            commit.author_email = encoded_new_email
-            new_author_name = f\\"{{decoded_author_name}}_yewu\\"
-            encoded_new_author_name = new_author_name.encode('utf-8')
-            commit.author_name = encoded_new_author_name
+        # Read the author and message information of the current HEAD
+        author_email = run_command(
+            "git log -1 --format=%ae"
+        ).stdout.strip()
+        author_name = run_command(
+            "git log -1 --format=%an"
+        ).stdout.strip()
+        message = run_command(
+            "git log -1 --format=%B"
+        ).stdout.strip()
 
-        # modify commit messages
-        new_messages = []
-        key_to_remove = set(['Jira:', 'Code Source From', '市场项目'])
-        decoded_message = commit.message.decode('utf-8')
-        messages = decoded_message.split('\\n')
-        for m in messages:
-            add = True
-            for key in key_to_remove:
-                if key.lower() in m.lower():
-                    add = False
-                    break
-            if add:
-                if '@cmss.chinamobile.com' in m and '_yewu@' not in m:
-                    m = m.replace('@cmss.chinamobile.com',
-                        '_yewu@cmss.chinamobile.com')
-                new_messages.append(m.strip())
-        new_message = '\\n'.join(new_messages)
-        new_message = re.sub(r'(\\s*\\n)+$', '', new_message)
-        new_message = re.sub(r'\\n\\s*\\n', '\\n\\n', new_message)
-        new_message = re.sub(r'\\n{(3,)}', '\\n', new_message)
-        encoded_new_message = new_message.encode('utf-8')
-        commit.message = encoded_new_message
-    """
-    # run git-filter-repo
-    cmd = (
-        f'git-filter-repo --force  --commit-callback "{filter_script}" '
-        f"--refs {cmss_local_merge_branch}"
-    )
-    results = run_command(cmd)
-    ret_code = results.returncode
-    if ret_code != 0:
-        raise MergeException(results.stderr)
+        new_email, new_name = sanitize_author(author_email, author_name)
+        new_message = sanitize_message(message)
+
+        # amend current commit
+        amend_cmd = (
+            f'git -c user.name="{new_name}" '
+            f'-c user.email="{new_email}" '
+            f"commit --amend --no-edit "
+            f'--author="{new_name} <{new_email}>"'
+        )
+        run_command(amend_cmd)
+
+        if new_message != message:
+            msg_file = "/tmp/git_commit_msg.txt"
+            with open(msg_file, "w", encoding="utf-8") as f:
+                f.write(new_message)
+            run_command(f'git commit --amend --no-edit -F "{msg_file}"')
+
+        result = run_command("git log -1 --format=%H")
+        merged_commit_ids.append(result.stdout.strip())
+
+    print(f"merged commit ids: {merged_commit_ids}")
 
 
 def main(argv=None):
