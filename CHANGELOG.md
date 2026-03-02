@@ -11,6 +11,7 @@
 - 隔离部分驱动依赖库，默认位置: /var/lib/qcos/venv；通过install-venvs.py脚本自动安装各驱动的venv环境
 - 工作流中默认加载驱动的venv环境
 - 部分编译和检查脚本使用venv环境
+- 支持以TXT或者JSON文档形式保存量子任务结果
 
 ### 变更功能
 
