@@ -22,7 +22,7 @@ from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
-from wy_qcos.transpiler.cmss.mapping.na_zap_mapping import NA_ZAP_Route
+from wy_qcos.transpiler.cmss.mapping.na.zap.na_zap_mapping import NA_ZAP_Route
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 
 

@@ -88,7 +88,7 @@ class TestTranspilerCmss:
         "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
     )
     def test_transpiler_cmss(self, mock_get_mapper):
-        from wy_qcos.transpiler.cmss.mapping import NASingleRoute
+        from wy_qcos.transpiler.cmss.mapping.na.na_mapping import NASingleRoute
         import types
 
         # Create a real mapper instance
@@ -126,7 +126,7 @@ class TestTranspilerCmss:
         "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
     )
     def test_transpiler_aggregation_succ(self, mock_get_mapper):
-        from wy_qcos.transpiler.cmss.mapping import NASingleRoute
+        from wy_qcos.transpiler.cmss.mapping.na.na_mapping import NASingleRoute
         import types
 
         # Create a real mapper instance
@@ -168,7 +168,7 @@ class TestTranspilerCmss:
         "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
     )
     def test_transpiler_aggregation_partly_succ(self, mock_get_mapper):
-        from wy_qcos.transpiler.cmss.mapping import NASingleRoute
+        from wy_qcos.transpiler.cmss.mapping.na.na_mapping import NASingleRoute
         import types
 
         qasm_data = SAMPLES["simple-qasm.qasm"]

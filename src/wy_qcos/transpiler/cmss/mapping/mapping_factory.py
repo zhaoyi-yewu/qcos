@@ -16,7 +16,10 @@
 # ----------------------------------------------------------------------
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.transpiler.cmss.mapping import NASingleRoute, NARoute
+from wy_qcos.transpiler.cmss.mapping.na.na_mapping import (
+    NASingleRoute,
+    NARoute,
+)
 from wy_qcos.transpiler.cmss.mapping import SCRoute
 from wy_qcos.transpiler.cmss.mapping.empty_mapping import EmptyRoute
 from wy_qcos.transpiler.common.errors import MappingException
