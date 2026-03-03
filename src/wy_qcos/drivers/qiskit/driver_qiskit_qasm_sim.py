@@ -33,7 +33,6 @@ class DriverQiskitQasmSim(DriverBase):
         self.version = "0.0.1"
         self.alias_name = "Qiskit Qasm 模拟器驱动"
         self.description = "Qiskit Qasm 模拟器驱动"
-        self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_QISKIT
         self.tech_type = Constant.TECH_TYPE_GENERIC_SIMULATOR
         self.supported_basis_gates = [

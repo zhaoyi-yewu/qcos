@@ -44,7 +44,6 @@
                  "description": "空载测试驱动(中性原子)",
                  "tech_type": "neutral_atom",
                  "max_qubits": 10,
-                 "enable_transpiler": true,
                  "transpiler": "cmss",
                  "supported_transpilers": [
                    "cmss"
@@ -95,7 +94,6 @@
                    "description": "空载测试驱动(中性原子)",
                    "tech_type": "neutral_atom",
                    "max_qubits": 10,
-                   "enable_transpiler": true,
                    "transpiler": "cmss",
                    "supported_transpilers": [
                      "cmss"

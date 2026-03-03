@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -22,7 +22,7 @@ import tempfile
 
 from loguru import logger
 
-from wy_qcos.common.constant import HttpCode, HttpMethod
+from wy_qcos.common.constant import Constant, HttpCode, HttpMethod
 from wy_qcos.common.library import Library
 from wy_qcos.drivers.device import Device
 from wy_qcos.drivers.driver_qubo_base import DriverQuboBase
@@ -47,6 +47,8 @@ class DriverTiangongBase(DriverQuboBase):
 
     def __init__(self):
         super().__init__()
+        self.transpiler = Constant.TRANSPILER_DUMMY
+        self.supported_transpilers = [Constant.TRANSPILER_DUMMY]
         self.domain_url_task = None
         self.domain_url_auth = None
         self.version = "0.0.1"

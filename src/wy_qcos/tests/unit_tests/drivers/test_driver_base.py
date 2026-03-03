@@ -36,12 +36,10 @@ class TestDriverBase:
 
     @pytest.mark.smoke
     def test_validate_driver(self):
-        driver_base.enable_transpiler = True
         driver_base.supported_code_types = True
         success, err_msgs = driver_base.validate_driver()
         assert success is False
 
-        driver_base.enable_transpiler = False
         driver_base.supported_code_types = False
         success, err_msgs = driver_base.validate_driver()
         assert success is False
@@ -96,9 +94,6 @@ class TestDriverBase:
         assert driver_base.get_class_name() == "Library"
 
     def test_get_transpiler(self):
-        driver_base.enable_transpiler = False
-        assert driver_base.get_transpiler() is None
-        driver_base.enable_transpiler = True
         assert driver_base.get_transpiler() == driver_base.transpiler
 
     def test_get_supported_code_types(self):

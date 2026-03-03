@@ -20,16 +20,20 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.transpiler_base import TranspilerBase
 
 
-class TranspilerDummy(TranspilerBase):
-    """Transpiler Class for Dummy."""
+class TranspilerCmssQubo(TranspilerBase):
+    """Transpiler Class for Cmss Qubo."""
 
     def __init__(self):
         super().__init__()
-        self.name = Constant.TRANSPILER_DUMMY
+        self.name = Constant.TRANSPILER_CMSS_QUBO
         # alias name
-        self.alias_name = "空载转译器(dummy)"
+        self.alias_name = "CmssQubo转译器(cmss_qubo)"
         # version
         self.version = "0.1"
+        # supported code types
+        self.supported_code_types = [
+            Constant.CODE_TYPE_QUBO,
+        ]
 
     def init_transpiler(self):
         """Init transpiler."""

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -31,7 +31,6 @@ class DriverQuboBase(DriverBase):
 
     def __init__(self):
         super().__init__()
-        self.enable_transpiler = False
         self.tech_type = Constant.TECH_TYPE_PHOTON
         self.default_data_type = DriverBase.DATA_TYPE_QUBO
         self.supported_code_types = [Constant.CODE_TYPE_QUBO]
@@ -43,6 +42,8 @@ class DriverQuboBase(DriverBase):
             Optional("enable_subqubo"): bool,
             Optional("enable_prec_reduce"): bool,
         }
+        self.transpiler = Constant.TRANSPILER_CMSS_QUBO
+        self.supported_transpilers = [Constant.TRANSPILER_CMSS_QUBO]
 
     def get_fake_results(self, num_qubits, shots, data):
         """Get fake results.

@@ -143,36 +143,33 @@ def init_driver(
                 remote_transpiler_configs = driver.fetch_configs()
 
             # copy cfgs to transpiler cfg inst
-            if driver.enable_transpiler:
-                static_transpiler_configs = device_configs.get(
-                    "transpiler", None
+            static_transpiler_configs = device_configs.get("transpiler", None)
+            trans_cfg_inst.set_max_qubits(driver.get_max_qubits())
+            trans_cfg_inst.set_tech_type(driver.tech_type)
+            trans_cfg_inst.set_driver_name(driver.get_name())
+
+            # config qpu_config/decomposition_rule from config file
+            if static_transpiler_configs:
+                qpu_configs = static_transpiler_configs.get(
+                    "qpu_configs", None
                 )
-                trans_cfg_inst.set_max_qubits(driver.get_max_qubits())
-                trans_cfg_inst.set_tech_type(driver.tech_type)
-                trans_cfg_inst.set_driver_name(driver.get_name())
+                decomposition_rule = static_transpiler_configs.get(
+                    "decomposition_rule", None
+                )
+                trans_cfg_inst.set_qpu_cfg(qpu_configs)
+                trans_cfg_inst.set_decompose_rule(decomposition_rule)
 
-                # config qpu_config/decomposition_rule from config file
-                if static_transpiler_configs:
-                    qpu_configs = static_transpiler_configs.get(
-                        "qpu_configs", None
-                    )
-                    decomposition_rule = static_transpiler_configs.get(
-                        "decomposition_rule", None
-                    )
-                    trans_cfg_inst.set_qpu_cfg(qpu_configs)
-                    trans_cfg_inst.set_decompose_rule(decomposition_rule)
-
-                # config qpu_config/decomposition_rule dynamically
-                # override static_transpiler_configs if necessary
-                if remote_transpiler_configs:
-                    qpu_configs = remote_transpiler_configs.get(
-                        "qpu_configs", None
-                    )
-                    decomposition_rule = remote_transpiler_configs.get(
-                        "decomposition_rule", None
-                    )
-                    trans_cfg_inst.set_qpu_cfg(qpu_configs)
-                    trans_cfg_inst.set_decompose_rule(decomposition_rule)
+            # config qpu_config/decomposition_rule dynamically
+            # override static_transpiler_configs if necessary
+            if remote_transpiler_configs:
+                qpu_configs = remote_transpiler_configs.get(
+                    "qpu_configs", None
+                )
+                decomposition_rule = remote_transpiler_configs.get(
+                    "decomposition_rule", None
+                )
+                trans_cfg_inst.set_qpu_cfg(qpu_configs)
+                trans_cfg_inst.set_decompose_rule(decomposition_rule)
 
         return {"driver": driver, "error": None}
     except Exception as e:
@@ -742,55 +739,50 @@ def _run_code(
         "sub_results": None,
     }
 
-    source_code = None
-    if driver.enable_transpiler:
-        # [flow_parse]
-        parse_results, profiling_time = flow_parse(
-            src_code_dict, transpiler, profiling_types
+    # [flow_parse]
+    parse_results, profiling_time = flow_parse(
+        src_code_dict, transpiler, profiling_types
+    )
+    if profiling_time:
+        job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_PARSE] = (
+            profiling_time
         )
-        if profiling_time:
-            job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_PARSE] = (
-                profiling_time
-            )
 
-        # parser: error handling
-        err_msg = parse_results.get("error", None)
-        if err_msg:
-            job_results = format_error_results(
-                driver, errors.JobEngineParseError, err_msg
-            )
-            return job_results, driver, transpiler, mapping_dict
-
-        # [flow_transpile]
-        transpile_task_results, profiling_time = flow_transpile(
-            parse_results["parsed_src_code"],
-            transpiler,
-            driver,
-            profiling_types,
+    # parser: error handling
+    err_msg = parse_results.get("error", None)
+    if err_msg:
+        job_results = format_error_results(
+            driver, errors.JobEngineParseError, err_msg
         )
-        if profiling_time:
-            job_results["profiling"][
-                Constant.PROFILING_TYPE_DRIVER_TRANSPILE
-            ] = profiling_time
+        return job_results, driver, transpiler, mapping_dict
 
-        # transpile: error handling
-        err_msg = transpile_task_results.get("error", None)
-        mapping_dict = transpile_task_results.get("mapping_dict", None)
-        if err_msg:
-            job_results = format_error_results(
-                driver, errors.JobEngineTranspileError, err_msg
-            )
-            return job_results, driver, transpiler, mapping_dict
-
-        transpile_results = transpile_task_results.get(
-            "transpile_results", None
+    # [flow_transpile]
+    transpile_task_results, profiling_time = flow_transpile(
+        parse_results["parsed_src_code"],
+        transpiler,
+        driver,
+        profiling_types,
+    )
+    if profiling_time:
+        job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_TRANSPILE] = (
+            profiling_time
         )
-        num_qubits = transpile_task_results.get("num_qubits", None)
-        if transpile_results is None or num_qubits is None:
-            raise ValueError("unexpected transpile_results or num_qubits")
-        job_results["num_qubits"] = num_qubits
-    else:
-        source_code = next(iter(src_code_dict.values()))
+
+    # transpile: error handling
+    err_msg = transpile_task_results.get("error", None)
+    mapping_dict = transpile_task_results.get("mapping_dict", None)
+    if err_msg:
+        job_results = format_error_results(
+            driver, errors.JobEngineTranspileError, err_msg
+        )
+        return job_results, driver, transpiler, mapping_dict
+
+    transpile_results = transpile_task_results.get("transpile_results", None)
+    num_qubits = transpile_task_results.get("num_qubits", None)
+    if transpile_results is None or num_qubits is None:
+        raise ValueError("unexpected transpile_results or num_qubits")
+    job_results["num_qubits"] = num_qubits
+    source_code = next(iter(src_code_dict.values()))
 
     if driver:
         # [flow_run_driver]
@@ -876,27 +868,26 @@ def run_code(
 
     # init transpiler (init only once in a flow)
     if not transpiler:
-        if driver.enable_transpiler:
-            future_transpiler = init_transpiler.submit(
-                job_info["transpiler"],
-                job_data.get("transpiler_options", None),
+        future_transpiler = init_transpiler.submit(
+            job_info["transpiler"],
+            job_data.get("transpiler_options", None),
+        )
+        transpiler_task_result = future_transpiler.result()
+        # init transpiler: error handling
+        err_msg = transpiler_task_result.get("error", None)
+        if err_msg:
+            return (
+                format_error_results(
+                    driver, errors.JobEngineTranspilerInitError, err_msg
+                ),
+                driver,
+                transpiler,
+                mapping_dict,
             )
-            transpiler_task_result = future_transpiler.result()
-            # init transpiler: error handling
-            err_msg = transpiler_task_result.get("error", None)
-            if err_msg:
-                return (
-                    format_error_results(
-                        driver, errors.JobEngineTranspilerInitError, err_msg
-                    ),
-                    driver,
-                    transpiler,
-                    mapping_dict,
-                )
-            transpiler = transpiler_task_result["transpiler"]
-            logger.info(
-                f"Init transpiler: {transpiler.name} ({transpiler.alias_name})"
-            )
+        transpiler = transpiler_task_result["transpiler"]
+        logger.info(
+            f"Init transpiler: {transpiler.name} ({transpiler.alias_name})"
+        )
 
     if code_type == Constant.CODE_TYPE_QUBO:
         job_results, driver, transpiler, mapping_dict = run_qubo_code(
@@ -904,7 +895,7 @@ def run_code(
             src_code_dict,
             job_info,
             driver,
-            None,
+            transpiler,
         )
     elif code_type in Constant.CODE_TYPES_ALL_QASM:
         job_results, driver, transpiler, mapping_dict = run_circuit_code(
@@ -1025,7 +1016,7 @@ def run_qubo_code(
             src_code_dict,
             job_info,
             driver,
-            None,
+            transpiler,
         )
     # No need subqubo, but need precision reduction
     else:
@@ -1041,7 +1032,7 @@ def run_qubo_code(
             src_code_dict,
             job_info,
             driver,
-            None,
+            transpiler,
         )
         if job_results["results"]:
             job_results = process_qubo_solution(
@@ -1506,9 +1497,7 @@ def flow_run_driver(job_info, num_qubits, driver, data, profiling_types):
     ):
         profiling_start = time.time()
 
-    wait_for = [init_driver]
-    if driver.enable_transpiler:
-        wait_for = [transpile]
+    wait_for = [init_driver, transpile]
 
     run_task = driver_run.submit(
         job_info, driver, num_qubits, data, wait_for=wait_for

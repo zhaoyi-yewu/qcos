@@ -38,7 +38,6 @@ class DriverDummy(DriverBase):
         self.version = "0.0.1"
         self.alias_name = "空载测试驱动(中性原子)"
         self.description = "空载测试驱动(中性原子)"
-        self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
         self.supported_basis_gates = [

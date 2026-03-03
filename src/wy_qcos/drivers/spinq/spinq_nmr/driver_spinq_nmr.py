@@ -46,7 +46,6 @@ class DriverSpinQNmr(DriverBase):
         self.version = "0.0.1"
         self.alias_name = "量旋科技 核磁量子计算机驱动"
         self.description = "量旋科技 核磁量子计算机驱动"
-        self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NMR
 

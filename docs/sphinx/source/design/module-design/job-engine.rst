@@ -18,10 +18,9 @@
       [
        init_driver()  # 初始化驱动
        parse()  # 源代码解析
-       if enable_transpiler:  # 如果转译器开启
-           init_transpiler()  # 初始化转译器
-           transpile()  # 进行转译
-           results = run_driver()  # 运行驱动中的run函数
+        init_transpiler()  # 初始化转译器
+        transpile()  # 进行转译
+        results = run_driver()  # 运行驱动中的run函数
        return results
 
          run_code ->

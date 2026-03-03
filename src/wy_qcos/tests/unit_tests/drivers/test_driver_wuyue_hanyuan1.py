@@ -40,7 +40,6 @@ class TestDriverWuyuehanyuan1:
             driver_wuyue_hanyuan1.description
             == "WY-中科酷原-汉原1 中性原子驱动"
         )
-        assert driver_wuyue_hanyuan1.enable_transpiler is False
         assert (
             driver_wuyue_hanyuan1.tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM
         )

@@ -38,7 +38,6 @@ class TestDriverHanyuan1:
         assert driver_hanyuan1.version == "0.0.1"
         assert driver_hanyuan1.alias_name == "中科酷原-汉原1 中性原子驱动"
         assert driver_hanyuan1.description == "中科酷原-汉原1 中性原子驱动"
-        assert driver_hanyuan1.enable_transpiler is True
         assert driver_hanyuan1.transpiler == Constant.TRANSPILER_CMSS
         assert driver_hanyuan1.tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM
         assert driver_hanyuan1.supported_basis_gates == [

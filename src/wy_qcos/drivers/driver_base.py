@@ -86,11 +86,9 @@ class DriverBase:
         self._package_paths = None
         # class name
         self._class_name = None
-        # enable transpiler or not
-        self.enable_transpiler = True
         # transpiler type
         self.transpiler = Constant.TRANSPILER_CMSS
-        # supported code types (enable_transpiler=False only)
+        # supported code types
         self.supported_code_types = None
         # quantum computer technology type
         self.tech_type = None
@@ -142,26 +140,14 @@ class DriverBase:
         """Validate driver."""
         success = True
         err_msgs = []
-        if self.enable_transpiler:
-            if self.supported_code_types:
-                success = False
-                err_msgs.append(
-                    "supported_code_types should not be specified "
-                    "when driver.enable_transpiler=True"
-                )
-            if self.transpiler not in self.supported_transpilers:
-                success = False
-                err_msgs.append(
-                    "driver.transpiler must be specified in "
-                    "driver.supported_transpilers list"
-                )
-        else:
-            if not self.supported_code_types:
-                success = False
-                err_msgs.append(
-                    "supported_code_types must be specified "
-                    "when driver.enable_transpiler=False"
-                )
+
+        if self.transpiler not in self.supported_transpilers:
+            success = False
+            err_msgs.append(
+                "driver.transpiler must be specified in "
+                "driver.supported_transpilers list"
+            )
+
         return success, "\n".join(err_msgs)
 
     def validate_driver_configs(self, configs):
@@ -216,7 +202,6 @@ class DriverBase:
             f"alias_name: {self.alias_name}",
             f"description: {self.get_description()}",
             f"version: {self.version}",
-            f"enable_transpiler: {self.enable_transpiler}",
             f"transpiler: {self.transpiler}",
             f"enable_circuit_aggregation: {self.enable_circuit_aggregation}",
             f"results_fetch_mode: {self.results_fetch_mode}",
@@ -317,13 +302,15 @@ class DriverBase:
 
     def get_transpiler(self):
         """Get transpiler."""
-        if self.enable_transpiler:
-            return self.transpiler
-        return None
+        return self.transpiler
 
     def get_supported_code_types(self):
         """Get supported code types."""
         return self.supported_code_types
+
+    def set_supported_code_types(self, supported_code_types):
+        """Set supported code types."""
+        self.supported_code_types = supported_code_types
 
     def get_supported_basis_gates(self):
         """Get supported basis gates.
