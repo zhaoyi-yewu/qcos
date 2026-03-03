@@ -1,15 +1,15 @@
 # 五岳量子计算操作系统（QCOS）介绍
 
-[![Docker - qcos](https://img.shields.io/docker/v/qcos/qcos/latest?label=docker%28qcos%29)](https://hub.docker.com/r/qcos/qcos-sandbox)
-[![Docker - qcos-cli](https://img.shields.io/docker/v/qcos/qcos-cli/latest?label=docker%28qcos-cli%29)](https://hub.docker.com/r/qcos/qcos-sandbox)
-[![Docker - qcos-sandbox](https://img.shields.io/docker/v/qcos/qcos-sandbox/latest?label=docker%28qcos-sandbox%29)](https://hub.docker.com/r/qcos/qcos-sandbox)
+[![qcos](https://img.shields.io/docker/v/qcos/qcos/latest?logo=docker&logoColor=2496ED&labelColor=white&label=qcos)](https://hub.docker.com/r/qcos/qcos-sandbox)
+[![qcos-cli](https://img.shields.io/docker/v/qcos/qcos-cli/latest?logo=docker&logoColor=2496ED&labelColor=white&label=qcos-cli)](https://hub.docker.com/r/qcos/qcos-sandbox)
+[![qcos-sandbox](https://img.shields.io/docker/v/qcos/qcos-sandbox/latest?logo=docker&logoColor=2496ED&labelColor=white&label=qcos-sandbox)](https://hub.docker.com/r/qcos/qcos-sandbox)
 
-[![PyPI - Version](https://img.shields.io/pypi/v/wy-qcos)](https://pypi.org/project/wy-qcos)
-[![PyPI - Wheel](https://img.shields.io/pypi/wheel/wy-qcos)](https://pypi.org/project/wy-qcos)
-[![CICD](https://img.shields.io/github/actions/workflow/status/zhaoyi-yewu/qcos/publish-docker-qcos.yml?label=cicd)](https://github.com/zhaoyi-yewu/qcos/actions/workflows/publish-docker-qcos.yml)
+[![PyPI - Version](https://img.shields.io/pypi/v/wy-qcos?logo=pypi&logoColor=white)](https://pypi.org/project/wy-qcos)
+[![PyPI - Wheel](https://img.shields.io/pypi/wheel/wy-qcos?logo=python&logoColor=white)](https://pypi.org/project/wy-qcos)
+[![CICD](https://img.shields.io/github/actions/workflow/status/zhaoyi-yewu/qcos/publish-docker-qcos.yml?logo=githubactions&logoColor=white&labelColor=blue&label=cicd)](https://github.com/zhaoyi-yewu/qcos/actions/workflows/publish-docker-qcos.yml)
 [![Codecov](https://codecov.io/github/zhaoyi-yewu/qcos/branch/develop/graph/badge.svg)](https://codecov.io/github/zhaoyi-yewu/qcos)
-[![Documentation Status](https://app.readthedocs.org/projects/qcos/badge/?version=latest)](https://qcos.readthedocs.io/zh-cn/latest/)
-[![License](https://img.shields.io/crates/l/efi_signer)](https://gitee.com/OpenWuYue/qcos/blob/develop/LICENSE)
+[![Documentation Status](https://img.shields.io/readthedocs/qcos/latest?logo=readthedocs)](https://qcos.readthedocs.io/zh-cn/latest/)
+[![License](https://img.shields.io/crates/l/efi_signer?logo=opensourceinitiative)](https://gitee.com/OpenWuYue/qcos/blob/develop/LICENSE)
 
 五岳量子计算操作系统：QCOS（Quantum Computing Operating System）是一款开源的通用量子计算操作系统，旨在为不同架构的量子计算机（如：超导、中性原子、离子阱、相干伊辛机等）提供统一的软件支持，推动量子计算的生态发展。
 
