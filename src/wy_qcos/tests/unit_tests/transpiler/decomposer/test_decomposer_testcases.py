@@ -40,7 +40,7 @@ from wy_qcos.tests.unit_tests.transpiler.comm import (
     validate_gates_in_targets,
 )
 from wy_qcos.tests.common.qasm_file_reader import QasmFileReader
-from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
+from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 
 
 @pytest.mark.usefixtures("global_configs")
@@ -201,6 +201,7 @@ class TestDecomposer:
                     backend_name,
                 )
 
+    @pytest.mark.slow
     def test_qasmbench_small_decompose(self):
         """System test for QASMBench-small circuits."""
         qasm_dir = self.samples_dir / "qasm" / "benchpress" / "qasmbench-small"

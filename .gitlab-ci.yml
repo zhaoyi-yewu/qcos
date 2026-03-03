@@ -65,7 +65,7 @@ ut:
   tags:
     - sonic-runner
   script:
-    - ./cicd/run-tests.sh -u all
+    - ./cicd/run-tests.sh -u default
   artifacts:
     when: always
     reports:
@@ -77,7 +77,7 @@ code-coverage:
   tags:
     - sonic-runner
   script:
-    - ./cicd/run-tests.sh -c all
+    - ./cicd/run-tests.sh -c default
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)/'
 
 # ut (qcos_client)
