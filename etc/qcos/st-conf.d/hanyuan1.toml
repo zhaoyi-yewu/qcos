@@ -2,6 +2,7 @@
 alias_name = "中科酷原-汉原1"
 driver = "DriverHanyuan1"
 description = "中科酷原-汉原1(hanyuan1)"
+debug = false
 # [Optional] max qubits of device
 # device_max_qubits = 10
 

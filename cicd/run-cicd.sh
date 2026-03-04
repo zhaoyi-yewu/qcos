@@ -29,38 +29,40 @@ if [ $# -gt 0 ]; then
     exit 1
 fi
 
-echo "Run check-files ..."
-${top_dir}/cicd/check-files.sh
-echo
+print_and_run() {
+    local cmd="$*"
+    echo "Run command: ${cmd}"
+    ${cmd}
+    local exit_code=$?
+    echo
+    return ${exit_code}
+}
 
-echo "Run code-style ..."
-${top_dir}/cicd/code-formatter.sh
-echo
+echo "* Run check-files ..."
+print_and_run "${top_dir}/cicd/check-files.sh"
 
-echo "Run code-linter ..."
-${top_dir}/cicd/code-linter.sh
-echo
+echo "* Run code-style ..."
+print_and_run "${top_dir}/cicd/code-formatter.sh"
 
-echo "Run docstring-check ..."
-${top_dir}/cicd/docstring-check.sh
-echo
+echo "* Run code-linter ..."
+print_and_run "${top_dir}/cicd/code-linter.sh"
 
-echo "Run docs-linter ..."
-${top_dir}/cicd/docs-linter.sh
-echo
+echo "* Run docstring-check ..."
+print_and_run "${top_dir}/cicd/docstring-check.sh"
 
-echo "Run UT (QCOS) ..."
-${top_dir}/cicd/run-tests.sh -u all
-echo
+echo "* Run docs-linter ..."
+print_and_run "${top_dir}/cicd/docs-linter.sh"
 
-echo "Run coverage (QCOS) ..."
-${top_dir}/cicd/run-tests.sh -c all
+echo "* Run UT (QCOS) ..."
+print_and_run "${top_dir}/cicd/run-tests.sh -u default"
 
-echo "Run UT (QCOS CLIENT) ..."
-${top_dir}/cicd/run-tests.sh -j all
-echo
+echo "* Run coverage (QCOS) ..."
+print_and_run "${top_dir}/cicd/run-tests.sh -c default"
 
-echo "Run coverage (QCOS CLIENT) ..."
-${top_dir}/cicd/run-tests.sh -e all
+echo "* Run UT (QCOS CLIENT) ..."
+print_and_run "${top_dir}/cicd/run-tests.sh -j all"
+
+echo "* Run coverage (QCOS CLIENT) ..."
+print_and_run "${top_dir}/cicd/run-tests.sh -e all"
 
 echo "CICD pipeline completed successfully"

@@ -42,7 +42,7 @@ spec:
         imagePullPolicy: IfNotPresent
         command: [
           'sh', '-c',
-          'mkdir -p /var/qcos/db/; mkdir -p /var/qcos/storage'
+          'rm -rf /var/qcos/db/prefect.db-shm /var/qcos/db/prefect.db-wal; mkdir -p /var/qcos/db/; mkdir -p /var/qcos/storage'
         ]
         volumeMounts:
         - name: database-dir

@@ -544,12 +544,10 @@ class TestJobEngine:
         mock_run_subqubo_code.assert_called_once()
         mock_check_bit_width.assert_called_once()
 
-    @patch("wy_qcos.engine.job_engine.logger")
     @patch("wy_qcos.engine.job_engine._run_code")
     def test_run_subqubo_code_normal_flow(
         self,
         mock_run_code,
-        mock_logger,
     ):
         job_id = "00000000-0000-4000-8000-000000000001"
         source_code_index = 0
@@ -595,7 +593,6 @@ class TestJobEngine:
         assert results == sub_job_result
         assert driver == mock_driver
         assert transpiler == mock_transpiler
-        mock_logger.info.assert_called_with("start subqubo")
 
     def test_counts_to_probs_basic(self):
         """Test basic counts to probabilities conversion."""

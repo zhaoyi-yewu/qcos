@@ -57,12 +57,24 @@ from wy_qcos.transpiler.cmss.wirecut.cut_wire import (
 )
 
 
-def init_logger():
+def init_logger(debug=False):
     # Config Loguru
     # pylint: disable=duplicate-code
+    # remove all
+    logger.remove()
+
+    # add logger: stdout
+    logger.add(
+        sys.stdout,
+        level="DEBUG" if debug else "INFO",
+        format=Constant.PREFECT_JOB_LOG_FORMAT,
+        colorize=True,
+    )
+
+    # add logger: log file
     logger.add(
         Config.JOB_ENGINE_LOG_FILE,
-        level="DEBUG" if Config.DEBUG else "INFO",
+        level="DEBUG" if debug else "INFO",
         rotation=f"{Config.LOG_ROTATE_MAX_SIZE_MB} MB",
         compression="gz" if Config.LOG_ROTATE_COMPRESSION else None,
         retention=Config.LOG_ROTATE_BACKUP_COUNT,
@@ -588,7 +600,7 @@ def job_flow(job_info):
     }
 
     # init logger
-    init_logger()
+    init_logger(debug=False)
     logger.info(
         f"Processing work flow: job_engine. "
         f"job_id: {job_id}, job_info: {job_info}"
@@ -1129,6 +1141,7 @@ def run_subqubo_code(
                 driver,
                 transpiler,
             )
+            logger.info(sub_job_results["results"])
             if sub_job_results["results"]:
                 subqubo_solution = (
                     sub_job_results.get("results", {})

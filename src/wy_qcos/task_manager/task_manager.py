@@ -339,12 +339,16 @@ class TaskFlowManager(ABC):
 
     def kill_workers(self):
         """Kill workers."""
+        logger.info("Kill prefect workers")
         regex_list = [r"\[prefect\]", r"prefect.engine"]
+        process_list = Library.get_processes(regex_list)
+        Library.kill(process_list)
         process_list = Library.get_processes(regex_list)
         Library.kill(process_list)
 
     def start_workers(self):
         """Start workers using multiprocessing."""
+        logger.info("Start prefect workers")
         device_names = self.device_manager.get_devices().keys()
         for device_name in device_names:
             pool_name = device_name

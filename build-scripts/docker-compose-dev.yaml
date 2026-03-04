@@ -18,7 +18,7 @@ services:
     container_name: prefect-server
     image: ${REGISTRY}${PREFECT_IMAGE_NAME}:${PREFECT_IMAGE_VERSION}
     restart: always
-    command: prefect server start --host ""
+    command: /bin/sh -c 'rm -rf /var/qcos/db/prefect.db-shm /var/qcos/db/prefect.db-wal; prefect server start --host ""'
     network_mode: "host"
     environment:
       TZ: Asia/Shanghai
@@ -80,7 +80,6 @@ services:
       - /etc/qcos:/etc/qcos
       - /var/log/qcos:/var/log/qcos
       - /var/run/qcos:/var/run/qcos
-      - /var/qcos:/var/qcos
       - ${QCOS_LOCAL_SRC_DIR}:/root/qcos-project
       - ${QCOS_LOCAL_SRC_DIR}/bin/qcos-cli.py:/usr/bin/qcos-cli
     entrypoint: /entrypoint.sh

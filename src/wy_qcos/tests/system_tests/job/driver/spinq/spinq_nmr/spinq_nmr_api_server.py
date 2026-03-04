@@ -20,11 +20,6 @@ import logging
 from aiohttp import web
 import socketio
 
-from wy_qcos.common.library import Library
-
-
-PID_DIR = "/var/run/qcos"
-PID_FILE = f"{PID_DIR}/driver-nmr-server.pid"
 
 logger = logging.getLogger(__name__)
 
@@ -116,10 +111,6 @@ async def get_result_handler(request):
 
 def main():
     init_logging()
-    # kill existing process
-    Library.kill_pid(PID_FILE)
-    Library.mkdir(PID_DIR)
-    Library.create_pid_file(PID_FILE)
 
     app.router.add_post("/user/spinqit/login", auth_handler)
     app.router.add_post("/task/user/create", submit_handler)

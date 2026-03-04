@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -22,9 +22,6 @@ import socketio
 
 from wy_qcos.common.library import Library
 
-
-PID_DIR = "/var/run/qcos"
-PID_FILE = f"{PID_DIR}/driver-qboson-api-v2-server.pid"
 
 logger = logging.getLogger(__name__)
 
@@ -79,10 +76,6 @@ async def get_status_handler(request):
 
 def main():
     init_logging()
-    # kill existing process
-    Library.kill_pid(PID_FILE)
-    Library.mkdir(PID_DIR)
-    Library.create_pid_file(PID_FILE)
 
     app.router.add_post("/sso/access_token/", auth_handler)
     app.router.add_post("/api/system/business/task/", submit_handler)

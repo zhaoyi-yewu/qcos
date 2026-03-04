@@ -41,8 +41,6 @@ _tasks = {}
 # UQC Server simulator
 uqc_listen_ip = "0.0.0.0"
 uqc_listen_port = 5001
-PID_DIR = "/var/run/qcos"
-PID_FILE = f"{PID_DIR}/driver-uqc-api-server.pid"
 
 
 def submit_task(data):
@@ -164,11 +162,6 @@ async def message(sid, data):
 
 
 def main():
-    # kill existing process
-    Library.kill_pid(PID_FILE)
-    Library.mkdir(PID_DIR)
-    Library.create_pid_file(PID_FILE)
-
     bind_address = f"tcp://{uqc_listen_ip}:{uqc_listen_port}"
     # start UQC API service
     logger.info(f"UQC API Server simulator started on {bind_address}")

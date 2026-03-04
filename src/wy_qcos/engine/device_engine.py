@@ -14,7 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
 import json
+import sys
 import time
 
 import redis
@@ -26,12 +28,24 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.engine.job_engine import init_driver
 
 
-def init_logger():
+def init_logger(debug=False):
     # Config Loguru
     # pylint: disable=duplicate-code
+    # remove all
+    logger.remove()
+
+    # add logger: stdout
+    logger.add(
+        sys.stdout,
+        level="DEBUG" if debug else "INFO",
+        format=Constant.PREFECT_JOB_LOG_FORMAT,
+        colorize=True,
+    )
+
+    # add logger: log file
     logger.add(
         Config.DEVICE_MONITOR_LOG_FILE,
-        level="DEBUG" if Config.DEBUG else "INFO",
+        level="DEBUG" if debug else "INFO",
         rotation=f"{Config.LOG_ROTATE_MAX_SIZE_MB} MB",
         compression="gz" if Config.LOG_ROTATE_COMPRESSION else None,
         retention=Config.LOG_ROTATE_BACKUP_COUNT,
@@ -54,8 +68,12 @@ def device_monitor_flow(device_monitor_info):
         None
     """
     device_name = device_monitor_info["name"]
+    device = device_monitor_info["device"]
+    device_config = device["configs"]
+    debug = device_config.get("debug", False)
+
     # init logger
-    init_logger()
+    init_logger(debug)
     logger.info(
         f"Processing device monitor flow: job_engine. "
         f"device_name: {device_name}"
@@ -64,7 +82,7 @@ def device_monitor_flow(device_monitor_info):
     # init driver
     future_driver = init_driver.submit(
         driver_class_info=device_monitor_info["driver"],
-        device=device_monitor_info["device"],
+        device=device,
     )
     driver_task_result = future_driver.result()
     # init driver: error handling

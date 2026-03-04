@@ -13,6 +13,16 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-rm -rf /var/qcos/db/*
-rm -rf /var/qcos/storage/*
+echo "WARNING: This will delete all database files in /var/qcos/db/ and /var/qcos/storage/"
+echo "Type 'YES' to confirm deletion:"
+read confirmation
 
+if [ "$confirmation" = "YES" ]; then
+    echo "Deleting data..."
+    rm -rf /var/qcos/db/*
+    rm -rf /var/qcos/storage/*
+    echo "Data cleared successfully."
+else
+    echo "Operation cancelled."
+    exit 1
+fi
