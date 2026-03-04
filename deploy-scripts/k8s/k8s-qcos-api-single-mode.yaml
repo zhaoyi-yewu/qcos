@@ -245,20 +245,22 @@ spec:
           value: "${QCOS_API_SERVER_IP}"
         - name: API_SERVER_LISTEN_PORT
           value: "${QCOS_API_SERVER_PORT}"
+        - name: QCOS_SERVER_IP
+          value: "${QCOS_SERVER_IP}"
+        - name: QCOS_SERVER_PORT
+          value: "${QCOS_SERVER_PORT}"
         - name: QCOS_ENABLE_VIRT
           value: "${QCOS_ENABLE_VIRT}"
+        - name: QCOS_VIRTUAL_INSTANCE_ID
+          value: "${QCOS_ADMIN_VIRTUAL_INSTANCE_ID}"
+        - name: LOCAL_CICD
+        - value: "${LOCAL_CICD}"
         - name: PREFECT_API_URL
           value: "${PREFECT_API_URL}"
         - name: PREFECT_SERVER_DATABASE_CONNECTION_URL
           value: "${PREFECT_SERVER_DATABASE_CONNECTION_URL}"
         - name: PREFECT_LOCAL_STORAGE_PATH
           value: "${PREFECT_LOCAL_STORAGE_PATH}"
-        - name: QCOS_SERVER_IP
-          value: "${QCOS_SERVER_IP}"
-        - name: QCOS_SERVER_PORT
-          value: "${QCOS_SERVER_PORT}"
-        - name: QCOS_VIRTUAL_INSTANCE_ID
-          value: "${QCOS_ADMIN_VIRTUAL_INSTANCE_ID}"
         - name: REDIS_SERVER_IP
           value: "${REDIS_SERVER_IP}"
         - name: REDIS_SERVER_PORT

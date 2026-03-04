@@ -13,25 +13,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-set -e
+rm -rf /var/qcos/db/*
+rm -rf /var/qcos/storage/*
 
-cwd=$(dirname "${BASH_SOURCE[0]}")
-abs_cwd=$(realpath ${cwd})
-build_scripts_dir=${abs_cwd}
-
-source ${build_scripts_dir}/setup-env.sh
-
-export QCOS_LOCAL_SRC_DIR="${top_dir}"
-
-echo "Creating QCOS cli dockers ..."
-cd ${build_scripts_dir}
-
-if [ "${DEV,,}" = "false" ]; then
-  docker-compose -f docker-compose-cli.yaml down
-  docker-compose -f docker-compose-cli.yaml up -d
-  echo "Run QCOS cli bash: docker exec -it qcos-cli bash"
-else
-  docker-compose -f docker-compose-dev-cli.yaml down
-  docker-compose -f docker-compose-dev-cli.yaml up -d
-  echo "Run QCOS cli bash: docker exec -it qcos-dev-cli bash"
-fi

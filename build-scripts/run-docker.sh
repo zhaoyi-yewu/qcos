@@ -15,7 +15,11 @@
 
 set -e
 
-source ./setup-env.sh
+cwd=$(dirname "${BASH_SOURCE[0]}")
+abs_cwd=$(realpath ${cwd})
+build_scripts_dir=${abs_cwd}
+
+source ${build_scripts_dir}/setup-env.sh
 
 export QCOS_LOCAL_SRC_DIR="${top_dir}"
 
@@ -29,6 +33,7 @@ rm -rf /etc/qcos/prefect/profiles.toml
 mkdir -p /etc/qcos/postgres
 cp -r ${QCOS_LOCAL_SRC_DIR}/build-scripts/postgres /etc/qcos/
 
+cd ${build_scripts_dir}
 docker-compose -f docker-compose-postgres.yaml down
 if [ "${DB_BACKEND,,}" = "postgres" ]; then
   docker-compose -f docker-compose-postgres.yaml up -d
@@ -36,7 +41,6 @@ fi
 
 if [ "${DEV,,}" = "false" ]; then
   docker-compose -f docker-compose.yaml down
-  docker volume rm -f build-scripts_code-data
   docker-compose -f docker-compose.yaml up -d
   echo "Run QCOS bash: docker exec -it qcos bash"
 else

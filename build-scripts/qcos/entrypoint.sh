@@ -45,9 +45,11 @@ done
 qcos_config_file_path=/etc/qcos/qcos.toml
 qcos_extra_config_file_dir=/etc/qcos/conf.d
 qcos_st_config_file_path=/etc/qcos/qcos-st.toml
+qcos_st_config_dir=/etc/qcos/st-conf.d
 qcos_template_base_dir=/etc/qcos-template
 qcos_template_config_file_path=${qcos_template_base_dir}/qcos.toml
 qcos_template_st_config_file_path=${qcos_template_base_dir}/qcos-st.toml
+qcos_template_st_config_dir=${qcos_template_base_dir}/st-conf.d
 
 mkdir -p /etc/qcos/
 mkdir -p /etc/qcos/ssl
@@ -61,48 +63,48 @@ else
   cp ${qcos_template_config_file_path} ${qcos_config_file_path}
 
   _DEBUG=${DEBUG:-false}
-  _ENABLE_VIRT=${ENABLE_VIRT:-false}
+  _ENABLE_VIRT=${QCOS_ENABLE_VIRT:-false}
   python3 -c "
-def config(doc):
-    doc['DEFAULT']['DEBUG'] = ${_DEBUG^}
-    doc['DEFAULT']['MAX_JOBS'] = ${MAX_JOBS:-10000}
-    doc['DEFAULT']['MAX_QUEUED_JOBS'] = ${MAX_QUEUED_JOBS:-1000}
+def config(conf):
+    conf['DEFAULT']['DEBUG'] = ${_DEBUG^}
+    conf['DEFAULT']['MAX_JOBS'] = ${MAX_JOBS:-10000}
+    conf['DEFAULT']['MAX_QUEUED_JOBS'] = ${MAX_QUEUED_JOBS:-1000}
 
-    doc['VIRT']['ENABLE_VIRT'] = ${_ENABLE_VIRT^}
-    doc['VIRT']['MAX_JOBS_PER_VIRTUAL_INSTANCE'] = ${MAX_JOBS_PER_VIRTUAL_INSTANCE:-10}
-    doc['VIRT']['PASSWORD_SALT'] = '${PASSWORD_SALT:-123456}'
+    conf['VIRT']['ENABLE_VIRT'] = ${_ENABLE_VIRT^}
+    conf['VIRT']['MAX_JOBS_PER_VIRTUAL_INSTANCE'] = ${MAX_JOBS_PER_VIRTUAL_INSTANCE:-10}
+    conf['VIRT']['PASSWORD_SALT'] = '${PASSWORD_SALT:-123456}'
 
-    doc['API_SERVER']['API_WORKERS'] = ${API_WORKERS:-8}
-    doc['API_SERVER']['API_SERVER_LISTEN_IP'] = '${API_SERVER_LISTEN_IP:-}'
-    doc['API_SERVER']['API_SERVER_LISTEN_PORT'] = ${API_SERVER_LISTEN_PORT:-18400}
+    conf['API_SERVER']['API_WORKERS'] = ${API_WORKERS:-8}
+    conf['API_SERVER']['API_SERVER_LISTEN_IP'] = '${API_SERVER_LISTEN_IP:-}'
+    conf['API_SERVER']['API_SERVER_LISTEN_PORT'] = ${API_SERVER_LISTEN_PORT:-18400}
 
-    doc['PREFECT']['PREFECT_API_URL'] = '${PREFECT_API_URL:-http://127.0.0.1:4200/api}'
-    doc['PREFECT']['PREFECT_SERVER_DATABASE_CONNECTION_URL'] = '${PREFECT_SERVER_DATABASE_CONNECTION_URL:-sqlite+aiosqlite:///var/qcos/db/prefect.db}'
-    doc['PREFECT']['PREFECT_WORKER_QUERY_SECONDS'] = ${PREFECT_WORKER_QUERY_SECONDS:-1}
-    doc['PREFECT']['PREFECT_WORKER_PREFETCH_SECONDS'] = ${PREFECT_WORKER_PREFETCH_SECONDS:-1}
-    doc['PREFECT']['PREFECT_WORKER_HEARTBEAT_SECONDS'] = ${PREFECT_WORKER_HEARTBEAT_SECONDS:-30}
-    doc['PREFECT']['PREFECT_LOCAL_STORAGE_PATH'] = '${PREFECT_LOCAL_STORAGE_PATH:-/var/qcos/storage}'
-    doc['PREFECT']['PREFECT_LOGGING_LEVEL'] = '${PREFECT_LOGGING_LEVEL:-INFO}'
+    conf['PREFECT']['PREFECT_API_URL'] = '${PREFECT_API_URL:-http://127.0.0.1:4200/api}'
+    conf['PREFECT']['PREFECT_SERVER_DATABASE_CONNECTION_URL'] = '${PREFECT_SERVER_DATABASE_CONNECTION_URL:-sqlite+aiosqlite:///var/qcos/db/prefect.db}'
+    conf['PREFECT']['PREFECT_WORKER_QUERY_SECONDS'] = ${PREFECT_WORKER_QUERY_SECONDS:-1}
+    conf['PREFECT']['PREFECT_WORKER_PREFETCH_SECONDS'] = ${PREFECT_WORKER_PREFETCH_SECONDS:-1}
+    conf['PREFECT']['PREFECT_WORKER_HEARTBEAT_SECONDS'] = ${PREFECT_WORKER_HEARTBEAT_SECONDS:-30}
+    conf['PREFECT']['PREFECT_LOCAL_STORAGE_PATH'] = '${PREFECT_LOCAL_STORAGE_PATH:-/var/qcos/storage}'
+    conf['PREFECT']['PREFECT_LOGGING_LEVEL'] = '${PREFECT_LOGGING_LEVEL:-INFO}'
 
-    doc['REDIS']['REDIS_SERVER_IP'] = '${REDIS_SERVER_IP:-127.0.0.1}'
-    doc['REDIS']['REDIS_SERVER_PORT'] = ${REDIS_SERVER_PORT:-6379}
+    conf['REDIS']['REDIS_SERVER_IP'] = '${REDIS_SERVER_IP:-127.0.0.1}'
+    conf['REDIS']['REDIS_SERVER_PORT'] = ${REDIS_SERVER_PORT:-6379}
 
-    doc['LOG']['API_LOG_FILE'] = '${REDIS_SERVER_IP:-127.0.0.1}'
-    doc['LOG']['JOB_ENGINE_LOG_FILE'] = '${JOB_ENGINE_LOG_FILE:-/var/log/qcos/qcos-engine.log}'
-    doc['LOG']['DEVICE_MONITOR_LOG_FILE'] = '${DEVICE_MONITOR_LOG_FILE:-/var/log/qcos/device-monitor.log}'
-    doc['LOG']['LOG_FORMAT'] = '%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s'
+    conf['LOG']['API_LOG_FILE'] = '${REDIS_SERVER_IP:-127.0.0.1}'
+    conf['LOG']['JOB_ENGINE_LOG_FILE'] = '${JOB_ENGINE_LOG_FILE:-/var/log/qcos/qcos-engine.log}'
+    conf['LOG']['DEVICE_MONITOR_LOG_FILE'] = '${DEVICE_MONITOR_LOG_FILE:-/var/log/qcos/device-monitor.log}'
+    conf['LOG']['LOG_FORMAT'] = '%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s'
 
-    doc['DEVICES']['DEVICE_LIST'] = [${DEVICE_LIST:-\"dummy\", \"qutip_sim\"}]
+    conf['DEVICES']['DEVICE_LIST'] = [${DEVICE_LIST:-\"dummy\", \"qutip_sim\"}]
 
 ###############
 import tomlkit
 from tomlkit import comment, nl
 config_file='${qcos_config_file_path}'
 with open(config_file, 'r', encoding='utf-8') as f:
-    doc = tomlkit.load(f)
-config(doc)
+    conf = tomlkit.load(f)
+config(conf)
 with open(config_file, 'w', encoding='utf-8') as f:
-    tomlkit.dump(doc, f)
+    tomlkit.dump(conf, f)
   "
 fi
 
@@ -113,6 +115,15 @@ else
   echo "QCOS ST config file: ${qcos_st_config_file_path} not exists. auto generate ...."
   cp -f ${qcos_template_st_config_file_path} ${qcos_st_config_file_path}
 fi
+
+# check if dir /etc/qcos/st-conf.d exists and create it if not
+if [ -d "${qcos_st_config_dir}" ]; then
+  echo "QCOS ST config dir: ${qcos_st_config_dir} exists, use it"
+else
+  echo "QCOS ST config dir: ${qcos_st_config_dir} not exists. auto generate ...."
+  cp -f ${qcos_template_st_config_dir} ${qcos_st_config_dir}
+fi
+
 echo "Prefect API URL: ${PREFECT_API_URL}"
 
 # wait optional url is ready
@@ -126,6 +137,35 @@ if [ -n "${wait_for_url}" ]; then
 fi
 
 # run QCOS under venv
+local_cicd=${LOCAL_CICD:-False}
+qcos_config_file_args="--config-file ${qcos_config_file_path} --config-dir ${qcos_extra_config_file_dir}"
+if [ "${local_cicd,,}" = true ]; then
+  qcos_config_file_args="--config-file ${qcos_config_file_path} --config-file ${qcos_st_config_file_path} --config-dir ${qcos_st_config_dir}"
+fi
+
+# load venv
 source /var/lib/qcos/venv/default/bin/activate
-/usr/bin/qcos-api --config-file ${qcos_config_file_path} --config-dir ${qcos_extra_config_file_dir}
+
+# run qcos-api with max attempts
+MAX_ATTEMPTS=30
+SLEEP_INTERVAL=10
+count=0
+
+while [ $count -lt ${MAX_ATTEMPTS} ]; do
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Attempt $((count+1))/${MAX_ATTEMPTS}: Executing /usr/bin/qcos-api ${qcos_config_file_args}"
+  /usr/bin/qcos-api ${qcos_config_file_args}
+  if [ $? -eq 0 ]; then
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] qcos-api executed successfully!"
+    break
+  fi
+  count=$((count+1))
+  if [ $count -lt ${MAX_ATTEMPTS} ]; then
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] qcos-api execution failed, waiting ${SLEEP_INTERVAL} seconds to retry..."
+    sleep ${SLEEP_INTERVAL}
+  fi
+done
+if [ ${count} -ge ${MAX_ATTEMPTS} ]; then
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: qcos-api failed after ${MAX_ATTEMPTS} attempts (total ${MAX_ATTEMPTS}*${SLEEP_INTERVAL}=${MAX_ATTEMPTS*SLEEP_INTERVAL} seconds)"
+fi
+
 sleep infinity

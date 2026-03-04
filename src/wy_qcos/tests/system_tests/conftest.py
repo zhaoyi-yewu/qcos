@@ -63,9 +63,11 @@ def global_configs(request):
     GLOBAL_CONFIGS["base_dir"] = str(top_dir)
     GLOBAL_CONFIGS["samples_dir"] = f"{top_dir}/samples"
     GLOBAL_CONFIGS["env"] = env
-    api_server = config.get("API_SERVER", {})
-    api_host = api_server.get("API_SERVER_IP", "127.0.0.1")
-    api_port = api_server.get("API_SERVER_PORT", Config.API_SERVER_LISTEN_PORT)
+    api_server = config.get("ST_API_SERVER", {})
+    api_host = api_server.get("ST_API_SERVER_IP", "127.0.0.1")
+    api_port = api_server.get(
+        "ST_API_SERVER_PORT", Config.API_SERVER_LISTEN_PORT
+    )
     client = Client(api_server_ip=api_host, api_server_port=api_port)
     GLOBAL_CONFIGS["client"] = client
     GLOBAL_CONFIGS["timeout"] = 150

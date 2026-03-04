@@ -80,6 +80,7 @@ class StLibrary:
         assert result["profiling"] == profiling
         assert result["callbacks"] == callbacks
         assert result["dry_run"] == dry_run
+        return result
 
     @staticmethod
     def wait_and_get_job_result(client, job_info, timeout=30, interval=5):
