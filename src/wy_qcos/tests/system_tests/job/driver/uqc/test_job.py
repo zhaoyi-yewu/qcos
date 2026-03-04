@@ -77,3 +77,4 @@ class TestJob:
             )
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True

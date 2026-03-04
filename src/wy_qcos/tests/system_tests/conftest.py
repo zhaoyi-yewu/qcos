@@ -94,6 +94,6 @@ def load_configs():
     SAMPLES["simple-qubo.json"] = json.loads(
         Library.read_file(f"{samples_dir}/qubo/simple-qubo.json")
     )
-    SAMPLES["qubo_200X200.json"] = json.loads(
-        Library.read_file(f"{samples_dir}/qubo/qubo_200X200.json")
+    SAMPLES["qubo_102X102.json"] = json.loads(
+        Library.read_file(f"{samples_dir}/qubo/qubo_102X102.json")
     )

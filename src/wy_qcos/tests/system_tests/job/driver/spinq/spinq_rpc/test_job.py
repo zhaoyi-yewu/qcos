@@ -78,6 +78,7 @@ class TestJob:
             )
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True
 
     def test_submit_job_dry_run(self):
         job_info = {
@@ -110,6 +111,7 @@ class TestJob:
             )
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True
 
     def test_submit_job_with_multiple_source_code(self):
         job_info = {
@@ -145,3 +147,4 @@ class TestJob:
             )
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True
