@@ -77,7 +77,7 @@ class TestTranspilerCmdLine:
         "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
     )
     def test_cmss_transpiler_tech_na(self, mock_get_mapper):
-        from wy_qcos.transpiler.cmss.mapping import NARoute
+        from wy_qcos.transpiler.cmss.mapping.na.na_mapping import NARoute
         import types
 
         # Create a real mapper instance

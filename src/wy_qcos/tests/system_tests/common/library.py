@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 import json
-import pytest
 import time
 
 import wy_qcos.api.posiq.routes_jsonrpc.errors as jsonrpc_errors
@@ -27,7 +26,6 @@ from wy_qcos.common.library import Library
 class StLibrary:
     """ST Library."""
 
-    @pytest.mark.smoke
     @staticmethod
     def submit_job(client, job_info):
         job_id = job_info["job_id"]
@@ -82,6 +80,7 @@ class StLibrary:
         assert result["profiling"] == profiling
         assert result["callbacks"] == callbacks
         assert result["dry_run"] == dry_run
+        return result
 
     @staticmethod
     def wait_and_get_job_result(client, job_info, timeout=30, interval=5):

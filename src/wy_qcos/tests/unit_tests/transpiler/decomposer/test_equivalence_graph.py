@@ -21,7 +21,6 @@ from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
     EquivalenceRule,
     EquivalenceGraph,
 )
-from wy_qcos.transpiler.cmss.common.base_operation import BaseOperation
 
 
 class TestEquivalenceRule:
@@ -33,18 +32,18 @@ class TestEquivalenceRule:
         # check target
         target = rule.target
         assert target.name == "h"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         # check sources
         assert len(rule.sources) == 1
         src = rule.sources[0]
 
         assert src.name == "u2"
-        assert src.qubits == ["q0"]
+        assert src.qubits == ("q0",)
 
         # check params：0, pi
-        assert src.params == ["0", "pi"]
+        assert src.params == ("0", "pi")
 
     def test_ch_equivalence(self):
         dsl = (
@@ -59,24 +58,22 @@ class TestEquivalenceRule:
         )
         rule = EquivalenceRule(dsl)
 
-        # target
         target = rule.target
         assert target.name == "ch"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
-        # sources
         src = rule.sources
         assert len(src) == 7
 
         expected = [
-            ("s", ["q1"], []),
-            ("h", ["q1"], []),
-            ("t", ["q1"], []),
-            ("cx", ["q0", "q1"], []),
-            ("tdg", ["q1"], []),
-            ("h", ["q1"], []),
-            ("sdg", ["q1"], []),
+            ("s", ("q1",), ()),
+            ("h", ("q1",), ()),
+            ("t", ("q1",), ()),
+            ("cx", ("q0", "q1"), ()),
+            ("tdg", ("q1",), ()),
+            ("h", ("q1",), ()),
+            ("sdg", ("q1",), ()),
         ]
 
         for i, (name, qubits, params) in enumerate(expected):
@@ -88,40 +85,35 @@ class TestEquivalenceRule:
         dsl = "p(theta) q0 -> u1(theta) q0"
         rule = EquivalenceRule(dsl)
 
-        # target
         target = rule.target
         assert target.name == "p"
-        assert target.qubits == ["q0"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0",)
+        assert target.params == ("theta",)
 
-        # source
         assert len(rule.sources) == 1
         src = rule.sources[0]
         assert src.name == "u1"
-        assert src.qubits == ["q0"]
-        assert src.params == ["theta"]
+        assert src.qubits == ("q0",)
+        assert src.params == ("theta",)
 
         dsl = "p(theta) q0 -> u(0, 0, theta) q0"
         rule = EquivalenceRule(dsl)
 
-        # target
         target = rule.target
         assert target.name == "p"
-        assert target.qubits == ["q0"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0",)
+        assert target.params == ("theta",)
 
-        # source
         assert len(rule.sources) == 1
         src = rule.sources[0]
         assert src.name == "u"
-        assert src.qubits == ["q0"]
+        assert src.qubits == ("q0",)
 
         assert src.params[0] == "0"
         assert src.params[1] == "0"
         assert src.params[2] == "theta"
 
     def test_cphase_equivalence(self):
-        # rule 1
         dsl = (
             "cp(theta) q0,q1 -> "
             "p(theta/2) q0 | "
@@ -135,18 +127,18 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "cp"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta",)
 
         src = rule.sources
         assert len(src) == 5
 
         expected = [
-            ("p", ["q0"], ["theta/2"]),
-            ("cx", ["q0", "q1"], []),
-            ("p", ["q1"], ["-theta/2"]),
-            ("cx", ["q0", "q1"], []),
-            ("p", ["q1"], ["theta/2"]),
+            ("p", ("q0",), ("theta/2",)),
+            ("cx", ("q0", "q1"), ()),
+            ("p", ("q1",), ("-theta/2",)),
+            ("cx", ("q0", "q1"), ()),
+            ("p", ("q1",), ("theta/2",)),
         ]
 
         for i, (name, qubits, params) in enumerate(expected):
@@ -154,46 +146,43 @@ class TestEquivalenceRule:
             assert src[i].qubits == qubits
             assert src[i].params == params
 
-        # rule 2
         dsl = "cp(theta) q0,q1 -> cu1(theta) q0,q1"
 
         rule = EquivalenceRule(dsl)
 
         target = rule.target
         assert target.name == "cp"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta",)
 
         src = rule.sources
         assert len(src) == 1
 
         assert src[0].name == "cu1"
-        assert src[0].qubits == ["q0", "q1"]
-        assert src[0].params == ["theta"]
+        assert src[0].qubits == ("q0", "q1")
+        assert src[0].params == ("theta",)
 
     def test_r_equivalence(self):
         dsl = "r(theta, phi) q0 -> u3(theta, phi - pi/2, -phi + pi/2) q0"
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "r"
-        assert target.qubits == ["q0"]
-        assert target.params == ["theta", "phi"]
+        assert target.qubits == ("q0",)
+        assert target.params == ("theta", "phi")
 
-        # check sources
         src = rule.sources
         assert len(src) == 1
 
         gate = src[0]
         assert gate.name == "u3"
-        assert gate.qubits == ["q0"]
-        assert gate.params == [
+        assert gate.qubits == ("q0",)
+        assert gate.params == (
             "theta",
             "phi - pi/2",
             "-phi + pi/2",
-        ]
+        )
 
     def test_rccx_equivalence(self):
         dsl = (
@@ -211,89 +200,76 @@ class TestEquivalenceRule:
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "rccx"
-        assert target.qubits == ["q0", "q1", "q2"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1", "q2")
+        assert not target.params
 
-        # check sources
         src = rule.sources
         assert len(src) == 9
 
-        # h q2
         g0 = src[0]
         assert g0.name == "h"
-        assert g0.qubits == ["q2"]
-        assert g0.params == []
+        assert g0.qubits == ("q2",)
+        assert not g0.params
 
-        # t q2
         g1 = src[1]
         assert g1.name == "t"
-        assert g1.qubits == ["q2"]
-        assert g1.params == []
+        assert g1.qubits == ("q2",)
+        assert not g1.params
 
-        # cx q1,q2
         g2 = src[2]
         assert g2.name == "cx"
-        assert g2.qubits == ["q1", "q2"]
-        assert g2.params == []
+        assert g2.qubits == ("q1", "q2")
+        assert not g2.params
 
-        # tdg q2
         g3 = src[3]
         assert g3.name == "tdg"
-        assert g3.qubits == ["q2"]
-        assert g3.params == []
+        assert g3.qubits == ("q2",)
+        assert not g3.params
 
-        # cx q0,q2
         g4 = src[4]
         assert g4.name == "cx"
-        assert g4.qubits == ["q0", "q2"]
-        assert g4.params == []
+        assert g4.qubits == ("q0", "q2")
+        assert not g4.params
 
-        # t q2
         g5 = src[5]
         assert g5.name == "t"
-        assert g5.qubits == ["q2"]
-        assert g5.params == []
+        assert g5.qubits == ("q2",)
+        assert not g5.params
 
-        # cx q1,q2
         g6 = src[6]
         assert g6.name == "cx"
-        assert g6.qubits == ["q1", "q2"]
-        assert g6.params == []
+        assert g6.qubits == ("q1", "q2")
+        assert not g6.params
 
-        # tdg q2
         g7 = src[7]
         assert g7.name == "tdg"
-        assert g7.qubits == ["q2"]
-        assert g7.params == []
+        assert g7.qubits == ("q2",)
+        assert not g7.params
 
-        # h q2
         g8 = src[8]
         assert g8.name == "h"
-        assert g8.qubits == ["q2"]
-        assert g8.params == []
+        assert g8.qubits == ("q2",)
+        assert not g8.params
 
     def test_rx_equivalence(self):
         dsl = "rx(theta) q0 -> r(theta, 0) q0"
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "rx"
-        assert target.qubits == ["q0"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0",)
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 1
 
         gate = src[0]
         assert gate.name == "r"
-        assert gate.qubits == ["q0"]
-        assert gate.params == ["theta", "0"]
+        assert gate.qubits == ("q0",)
+        assert gate.params == ("theta", "0")
 
     def test_crx_equivalence(self):
         dsl = (
@@ -307,40 +283,38 @@ class TestEquivalenceRule:
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "crx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 5
 
         g0 = src[0]
         assert g0.name == "u1"
-        assert g0.qubits == ["q1"]
-        assert g0.params == ["pi/2"]
+        assert g0.qubits == ("q1",)
+        assert g0.params == ("pi/2",)
 
         g1 = src[1]
         assert g1.name == "cx"
-        assert g1.qubits == ["q0", "q1"]
-        assert g1.params == []
+        assert g1.qubits == ("q0", "q1")
+        assert not g1.params
 
         g2 = src[2]
         assert g2.name == "u3"
-        assert g2.qubits == ["q1"]
-        assert g2.params == ["-theta/2", "0", "0"]
+        assert g2.qubits == ("q1",)
+        assert g2.params == ("-theta/2", "0", "0")
 
         g3 = src[3]
         assert g3.name == "cx"
-        assert g3.qubits == ["q0", "q1"]
-        assert g3.params == []
+        assert g3.qubits == ("q0", "q1")
+        assert not g3.params
 
         g4 = src[4]
         assert g4.name == "u3"
-        assert g4.qubits == ["q1"]
-        assert g4.params == ["theta/2", "-pi/2", "0"]
+        assert g4.qubits == ("q1",)
+        assert g4.params == ("theta/2", "-pi/2", "0")
 
         dsl = (
             "crx(theta) q0,q1 -> "
@@ -354,45 +328,43 @@ class TestEquivalenceRule:
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "crx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 6
 
         g0 = src[0]
         assert g0.name == "s"
-        assert g0.qubits == ["q1"]
-        assert g0.params == []
+        assert g0.qubits == ("q1",)
+        assert not g0.params
 
         g1 = src[1]
         assert g1.name == "cx"
-        assert g1.qubits == ["q0", "q1"]
-        assert g1.params == []
+        assert g1.qubits == ("q0", "q1")
+        assert not g1.params
 
         g2 = src[2]
         assert g2.name == "ry"
-        assert g2.qubits == ["q1"]
-        assert g2.params == ["-theta/2"]
+        assert g2.qubits == ("q1",)
+        assert g2.params == ("-theta/2",)
 
         g3 = src[3]
         assert g3.name == "cx"
-        assert g3.qubits == ["q0", "q1"]
-        assert g3.params == []
+        assert g3.qubits == ("q0", "q1")
+        assert not g3.params
 
         g4 = src[4]
         assert g4.name == "ry"
-        assert g4.qubits == ["q1"]
-        assert g4.params == ["theta/2"]
+        assert g4.qubits == ("q1",)
+        assert g4.params == ("theta/2",)
 
         g5 = src[5]
         assert g5.name == "sdg"
-        assert g5.qubits == ["q1"]
-        assert g5.params == []
+        assert g5.qubits == ("q1",)
+        assert not g5.params
 
     def test_rxx_equivalence(self):
         dsl = (
@@ -406,40 +378,33 @@ class TestEquivalenceRule:
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "rxx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 5
 
-        g0 = src[0]
-        assert g0.name == "h"
-        assert g0.qubits == ["q0"]
-        assert g0.params == []
+        assert src[0].name == "h"
+        assert src[0].qubits == ("q0",)
+        assert not src[0].params
 
-        g1 = src[1]
-        assert g1.name == "h"
-        assert g1.qubits == ["q1"]
-        assert g1.params == []
+        assert src[1].name == "h"
+        assert src[1].qubits == ("q1",)
+        assert not src[1].params
 
-        g2 = src[2]
-        assert g2.name == "rzz"
-        assert g2.qubits == ["q0", "q1"]
-        assert g2.params == ["theta"]
+        assert src[2].name == "rzz"
+        assert src[2].qubits == ("q0", "q1")
+        assert src[2].params == ("theta",)
 
-        g3 = src[3]
-        assert g3.name == "h"
-        assert g3.qubits == ["q0"]
-        assert g3.params == []
+        assert src[3].name == "h"
+        assert src[3].qubits == ("q0",)
+        assert not src[3].params
 
-        g4 = src[4]
-        assert g4.name == "h"
-        assert g4.qubits == ["q1"]
-        assert g4.params == []
+        assert src[4].name == "h"
+        assert src[4].qubits == ("q1",)
+        assert not src[4].params
 
     def test_rzx_equivalence(self):
         dsl = (
@@ -453,104 +418,51 @@ class TestEquivalenceRule:
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "rzx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 5
 
-        g0 = src[0]
-        assert g0.name == "h"
-        assert g0.qubits == ["q1"]
-        assert g0.params == []
+        assert src[0].name == "h"
+        assert src[0].qubits == ("q1",)
+        assert not src[0].params
 
-        g1 = src[1]
-        assert g1.name == "cx"
-        assert g1.qubits == ["q0", "q1"]
-        assert g1.params == []
+        assert src[1].name == "cx"
+        assert src[1].qubits == ("q0", "q1")
+        assert not src[1].params
 
-        g2 = src[2]
-        assert g2.name == "rz"
-        assert g2.qubits == ["q1"]
-        assert g2.params == ["theta"]
+        assert src[2].name == "rz"
+        assert src[2].qubits == ("q1",)
+        assert src[2].params == ("theta",)
 
-        g3 = src[3]
-        assert g3.name == "cx"
-        assert g3.qubits == ["q0", "q1"]
-        assert g3.params == []
+        assert src[3].name == "cx"
+        assert src[3].qubits == ("q0", "q1")
+        assert not src[3].params
 
-        g4 = src[4]
-        assert g4.name == "h"
-        assert g4.qubits == ["q1"]
-        assert g4.params == []
-
-        dsl = (
-            "rzx(theta) q0,q1 -> "
-            "h() q1 | "
-            "cx() q0,q1 | "
-            "rz(theta) q1 | "
-            "cx() q0,q1 | "
-            "h() q1"
-        )
-
-        rule = EquivalenceRule(dsl)
-
-        # check target
-        target = rule.target
-        assert target.name == "rzx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
-
-        # check sources
-        src = rule.sources
-        assert len(src) == 5
-
-        g0 = src[0]
-        assert g0.name == "h"
-        assert g0.qubits == ["q1"]
-        assert g0.params == []
-
-        g1 = src[1]
-        assert g1.name == "cx"
-        assert g1.qubits == ["q0", "q1"]
-        assert g1.params == []
-
-        g2 = src[2]
-        assert g2.name == "rz"
-        assert g2.qubits == ["q1"]
-        assert g2.params == ["theta"]
-
-        g3 = src[3]
-        assert g3.name == "cx"
-        assert g3.qubits == ["q0", "q1"]
-        assert g3.params == []
-
-        g4 = src[4]
-        assert g4.name == "h"
+        assert src[4].name == "h"
+        assert src[4].qubits == ("q1",)
+        assert not src[4].params
 
     def test_ry_equivalence(self):
         dsl = "ry(theta) q0 -> r(theta, pi/2) q0"
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "ry"
-        assert target.qubits == ["q0"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0",)
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 1
 
         g0 = src[0]
         assert g0.name == "r"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["theta", "pi/2"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("theta", "pi/2")
 
     def test_cry_equivalence(self):
         dsl = (
@@ -563,35 +475,29 @@ class TestEquivalenceRule:
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "cry"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 4
 
-        g0 = src[0]
-        assert g0.name == "ry"
-        assert g0.qubits == ["q1"]
-        assert g0.params == ["theta/2"]
+        assert src[0].name == "ry"
+        assert src[0].qubits == ("q1",)
+        assert src[0].params == ("theta/2",)
 
-        g1 = src[1]
-        assert g1.name == "cx"
-        assert g1.qubits == ["q0", "q1"]
-        assert g1.params == []
+        assert src[1].name == "cx"
+        assert src[1].qubits == ("q0", "q1")
+        assert not src[1].params
 
-        g2 = src[2]
-        assert g2.name == "ry"
-        assert g2.qubits == ["q1"]
-        assert g2.params == ["-theta/2"]
+        assert src[2].name == "ry"
+        assert src[2].qubits == ("q1",)
+        assert src[2].params == ("-theta/2",)
 
-        g3 = src[3]
-        assert g3.name == "cx"
-        assert g3.qubits == ["q0", "q1"]
-        assert g3.params == []
+        assert src[3].name == "cx"
+        assert src[3].qubits == ("q0", "q1")
+        assert not src[3].params
 
     def test_ryy_equivalence(self):
         dsl = (
@@ -607,50 +513,41 @@ class TestEquivalenceRule:
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "ryy"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 7
 
-        g0 = src[0]
-        assert g0.name == "rx"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["pi/2"]
+        assert src[0].name == "rx"
+        assert src[0].qubits == ("q0",)
+        assert src[0].params == ("pi/2",)
 
-        g1 = src[1]
-        assert g1.name == "rx"
-        assert g1.qubits == ["q1"]
-        assert g1.params == ["pi/2"]
+        assert src[1].name == "rx"
+        assert src[1].qubits == ("q1",)
+        assert src[1].params == ("pi/2",)
 
-        g2 = src[2]
-        assert g2.name == "cx"
-        assert g2.qubits == ["q0", "q1"]
-        assert g2.params == []
+        assert src[2].name == "cx"
+        assert src[2].qubits == ("q0", "q1")
+        assert not src[2].params
 
-        g3 = src[3]
-        assert g3.name == "rz"
-        assert g3.qubits == ["q1"]
-        assert g3.params == ["theta"]
+        assert src[3].name == "rz"
+        assert src[3].qubits == ("q1",)
+        assert src[3].params == ("theta",)
 
-        g4 = src[4]
-        assert g4.name == "cx"
-        assert g4.qubits == ["q0", "q1"]
-        assert g4.params == []
+        assert src[4].name == "cx"
+        assert src[4].qubits == ("q0", "q1")
+        assert not src[4].params
 
-        g5 = src[5]
-        assert g5.name == "rx"
-        assert g5.qubits == ["q0"]
-        assert g5.params == ["-pi/2"]
+        assert src[5].name == "rx"
+        assert src[5].qubits == ("q0",)
+        assert src[5].params == ("-pi/2",)
 
-        g6 = src[6]
-        assert g6.name == "rx"
-        assert g6.qubits == ["q1"]
-        assert g6.params == ["-pi/2"]
+        assert src[6].name == "rx"
+        assert src[6].qubits == ("q1",)
+        assert src[6].params == ("-pi/2",)
 
         dsl = (
             "ryy(theta) q0,q1 -> "
@@ -663,89 +560,74 @@ class TestEquivalenceRule:
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "ryy"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 5
 
-        g0 = src[0]
-        assert g0.name == "rx"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["pi/2"]
+        assert src[0].name == "rx"
+        assert src[0].qubits == ("q0",)
+        assert src[0].params == ("pi/2",)
 
-        g1 = src[1]
-        assert g1.name == "rx"
-        assert g1.qubits == ["q1"]
-        assert g1.params == ["pi/2"]
+        assert src[1].name == "rx"
+        assert src[1].qubits == ("q1",)
+        assert src[1].params == ("pi/2",)
 
-        g2 = src[2]
-        assert g2.name == "rzz"
-        assert g2.qubits == ["q0", "q1"]
-        assert g2.params == ["theta"]
+        assert src[2].name == "rzz"
+        assert src[2].qubits == ("q0", "q1")
+        assert src[2].params == ("theta",)
 
-        g3 = src[3]
-        assert g3.name == "rx"
-        assert g3.qubits == ["q0"]
-        assert g3.params == ["-pi/2"]
+        assert src[3].name == "rx"
+        assert src[3].qubits == ("q0",)
+        assert src[3].params == ("-pi/2",)
 
-        g4 = src[4]
-        assert g4.name == "rx"
-        assert g4.qubits == ["q1"]
-        assert g4.params == ["-pi/2"]
+        assert src[4].name == "rx"
+        assert src[4].qubits == ("q1",)
+        assert src[4].params == ("-pi/2",)
 
     def test_rz_equivalence(self):
         dsl = "rz(theta) q0 -> u1(theta) q0"
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "rz"
-        assert target.qubits == ["q0"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0",)
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 1
 
-        g0 = src[0]
-        assert g0.name == "u1"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["theta"]
+        assert src[0].name == "u1"
+        assert src[0].qubits == ("q0",)
+        assert src[0].params == ("theta",)
 
         dsl = "rz(theta) q0 -> sx() q0 | ry(-theta) q0 | sxdg() q0"
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "rz"
-        assert target.qubits == ["q0"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0",)
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 3
 
-        g0 = src[0]
-        assert g0.name == "sx"
-        assert g0.qubits == ["q0"]
-        assert g0.params == []
+        assert src[0].name == "sx"
+        assert src[0].qubits == ("q0",)
+        assert not src[0].params
 
-        g1 = src[1]
-        assert g1.name == "ry"
-        assert g1.qubits == ["q0"]
-        assert g1.params == ["-theta"]
+        assert src[1].name == "ry"
+        assert src[1].qubits == ("q0",)
+        assert src[1].params == ("-theta",)
 
-        g2 = src[2]
-        assert g2.name == "sxdg"
-        assert g2.qubits == ["q0"]
-        assert g2.params == []
+        assert src[2].name == "sxdg"
+        assert src[2].qubits == ("q0",)
+        assert not src[2].params
 
     def test_crz_equivalence(self):
         dsl = (
@@ -758,65 +640,54 @@ class TestEquivalenceRule:
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "crz"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 4
 
-        g0 = src[0]
-        assert g0.name == "rz"
-        assert g0.qubits == ["q1"]
-        assert g0.params == ["theta/2"]
+        assert src[0].name == "rz"
+        assert src[0].qubits == ("q1",)
+        assert src[0].params == ("theta/2",)
 
-        g1 = src[1]
-        assert g1.name == "cx"
-        assert g1.qubits == ["q0", "q1"]
-        assert g1.params == []
+        assert src[1].name == "cx"
+        assert src[1].qubits == ("q0", "q1")
+        assert not src[1].params
 
-        g2 = src[2]
-        assert g2.name == "rz"
-        assert g2.qubits == ["q1"]
-        assert g2.params == ["-theta/2"]
+        assert src[2].name == "rz"
+        assert src[2].qubits == ("q1",)
+        assert src[2].params == ("-theta/2",)
 
-        g3 = src[3]
-        assert g3.name == "cx"
-        assert g3.qubits == ["q0", "q1"]
-        assert g3.params == []
+        assert src[3].name == "cx"
+        assert src[3].qubits == ("q0", "q1")
+        assert not src[3].params
 
     def test_rzz_equivalence(self):
         dsl = "rzz(theta) q0,q1 -> cx() q0,q1 | rz(theta) q1 | cx() q0,q1"
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "rzz"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 3
 
-        g0 = src[0]
-        assert g0.name == "cx"
-        assert g0.qubits == ["q0", "q1"]
-        assert g0.params == []
+        assert src[0].name == "cx"
+        assert src[0].qubits == ("q0", "q1")
+        assert not src[0].params
 
-        g1 = src[1]
-        assert g1.name == "rz"
-        assert g1.qubits == ["q1"]
-        assert g1.params == ["theta"]
+        assert src[1].name == "rz"
+        assert src[1].qubits == ("q1",)
+        assert src[1].params == ("theta",)
 
-        g2 = src[2]
-        assert g2.name == "cx"
-        assert g2.qubits == ["q0", "q1"]
-        assert g2.params == []
+        assert src[2].name == "cx"
+        assert src[2].qubits == ("q0", "q1")
+        assert not src[2].params
 
         dsl = (
             "rzz(theta) q0,q1 -> "
@@ -829,40 +700,26 @@ class TestEquivalenceRule:
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "rzz"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 5
 
-        g0 = src[0]
-        assert g0.name == "h"
-        assert g0.qubits == ["q0"]
-        assert g0.params == []
+        for i in [0, 1, 3, 4]:
+            assert src[i].name == "h"
+            assert not src[i].params
 
-        g1 = src[1]
-        assert g1.name == "h"
-        assert g1.qubits == ["q1"]
-        assert g1.params == []
+        assert src[0].qubits == ("q0",)
+        assert src[1].qubits == ("q1",)
+        assert src[3].qubits == ("q0",)
+        assert src[4].qubits == ("q1",)
 
-        g2 = src[2]
-        assert g2.name == "rxx"
-        assert g2.qubits == ["q0", "q1"]
-        assert g2.params == ["theta"]
-
-        g3 = src[3]
-        assert g3.name == "h"
-        assert g3.qubits == ["q0"]
-        assert g3.params == []
-
-        g4 = src[4]
-        assert g4.name == "h"
-        assert g4.qubits == ["q1"]
-        assert g4.params == []
+        assert src[2].name == "rxx"
+        assert src[2].qubits == ("q0", "q1")
+        assert src[2].params == ("theta",)
 
         dsl = (
             "rzz(theta) q0,q1 -> "
@@ -875,88 +732,74 @@ class TestEquivalenceRule:
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "rzz"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta",)
 
-        # check sources
         src = rule.sources
         assert len(src) == 5
 
-        g0 = src[0]
-        assert g0.name == "rx"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["-pi/2"]
+        assert src[0].name == "rx"
+        assert src[0].qubits == ("q0",)
+        assert src[0].params == ("-pi/2",)
 
-        g1 = src[1]
-        assert g1.name == "rx"
-        assert g1.qubits == ["q1"]
-        assert g1.params == ["-pi/2"]
+        assert src[1].name == "rx"
+        assert src[1].qubits == ("q1",)
+        assert src[1].params == ("-pi/2",)
 
-        g2 = src[2]
-        assert g2.name == "ryy"
-        assert g2.qubits == ["q0", "q1"]
-        assert g2.params == ["theta"]
+        assert src[2].name == "ryy"
+        assert src[2].qubits == ("q0", "q1")
+        assert src[2].params == ("theta",)
 
-        g3 = src[3]
-        assert g3.name == "rx"
-        assert g3.qubits == ["q0"]
-        assert g3.params == ["pi/2"]
+        assert src[3].name == "rx"
+        assert src[3].qubits == ("q0",)
+        assert src[3].params == ("pi/2",)
 
-        g4 = src[4]
-        assert g4.name == "rx"
-        assert g4.qubits == ["q1"]
-        assert g4.params == ["pi/2"]
+        assert src[4].name == "rx"
+        assert src[4].qubits == ("q1",)
+        assert src[4].params == ("pi/2",)
 
     def test_ecr_equivalence(self):
         dsl = "ecr() q0,q1 -> rzx(pi/4) q0,q1 | x() q0 | rzx(-pi/4) q0,q1"
 
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "ecr"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
-        # check sources
         src = rule.sources
         assert len(src) == 3
 
-        g0 = src[0]
-        assert g0.name == "rzx"
-        assert g0.qubits == ["q0", "q1"]
-        assert g0.params == ["pi/4"]
+        assert src[0].name == "rzx"
+        assert src[0].qubits == ("q0", "q1")
+        assert src[0].params == ("pi/4",)
 
-        g1 = src[1]
-        assert g1.name == "x"
-        assert g1.qubits == ["q0"]
-        assert g1.params == []
+        assert src[1].name == "x"
+        assert src[1].qubits == ("q0",)
+        assert not src[1].params
 
-        g2 = src[2]
-        assert g2.name == "rzx"
-        assert g2.qubits == ["q0", "q1"]
-        assert g2.params == ["-pi/4"]
+        assert src[2].name == "rzx"
+        assert src[2].qubits == ("q0", "q1")
+        assert src[2].params == ("-pi/4",)
 
     def test_s_equivalence(self):
         dsl = "s() q0 -> u1(pi/2) q0"
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "s"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
-        # check sources
         src = rule.sources
         assert len(src) == 1
-        g0 = src[0]
-        assert g0.name == "u1"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["pi/2"]
+
+        assert src[0].name == "u1"
+        assert src[0].qubits == ("q0",)
+        assert src[0].params == ("pi/2",)
 
     def test_sdg_equivalence(self):
         dsl = "sdg() q0 -> u1(-pi/2) q0"
@@ -964,83 +807,69 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "sdg"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 1
-        g0 = src[0]
-        assert g0.name == "u1"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["-pi/2"]
+
+        assert src[0].name == "u1"
+        assert src[0].qubits == ("q0",)
+        assert src[0].params == ("-pi/2",)
 
         dsl = "sdg() q0 -> s() q0 | z() q0"
         rule = EquivalenceRule(dsl)
 
         target = rule.target
         assert target.name == "sdg"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 2
 
-        g0 = src[0]
-        assert g0.name == "s"
-        assert g0.qubits == ["q0"]
-        assert g0.params == []
+        assert src[0].name == "s"
+        assert src[0].qubits == ("q0",)
+        assert not src[0].params
 
-        g1 = src[1]
-        assert g1.name == "z"
-        assert g1.qubits == ["q0"]
-        assert g1.params == []
+        assert src[1].name == "z"
+        assert src[1].qubits == ("q0",)
+        assert not src[1].params
 
         dsl = "sdg() q0 -> z() q0 | s() q0"
         rule = EquivalenceRule(dsl)
 
         target = rule.target
         assert target.name == "sdg"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 2
 
-        g0 = src[0]
-        assert g0.name == "z"
-        assert g0.qubits == ["q0"]
-        assert g0.params == []
+        assert src[0].name == "z"
+        assert src[0].qubits == ("q0",)
+        assert not src[0].params
 
-        g1 = src[1]
-        assert g1.name == "s"
-        assert g1.qubits == ["q0"]
-        assert g1.params == []
+        assert src[1].name == "s"
+        assert src[1].qubits == ("q0",)
+        assert not src[1].params
 
         dsl = "sdg() q0 -> s() q0 | s() q0 | s() q0"
         rule = EquivalenceRule(dsl)
 
         target = rule.target
         assert target.name == "sdg"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 3
 
-        g0 = src[0]
-        assert g0.name == "s"
-        assert g0.qubits == ["q0"]
-        assert g0.params == []
-
-        g1 = src[1]
-        assert g1.name == "s"
-        assert g1.qubits == ["q0"]
-        assert g1.params == []
-
-        g2 = src[2]
-        assert g2.name == "s"
-        assert g2.qubits == ["q0"]
-        assert g2.params == []
+        for g in src:
+            assert g.name == "s"
+            assert g.qubits == ("q0",)
+            assert not g.params
 
     def test_cs_equivalence(self):
         dsl = "cs() q0,q1 -> h() q1 | csx() q0,q1 | h() q1"
@@ -1048,26 +877,26 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "cs"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 3
 
         g0 = src[0]
         assert g0.name == "h"
-        assert g0.qubits == ["q1"]
-        assert g0.params == []
+        assert g0.qubits == ("q1",)
+        assert not g0.params
 
         g1 = src[1]
         assert g1.name == "csx"
-        assert g1.qubits == ["q0", "q1"]
-        assert g1.params == []
+        assert g1.qubits == ("q0", "q1")
+        assert not g1.params
 
         g2 = src[2]
         assert g2.name == "h"
-        assert g2.qubits == ["q1"]
-        assert g2.params == []
+        assert g2.qubits == ("q1",)
+        assert not g2.params
 
     def test_csdg_equivalence(self):
         dsl = "csdg() q0,q1 -> h() q1 | cx() q0,q1 | csx() q0,q1 | h() q1"
@@ -1075,31 +904,31 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "csdg"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 4
 
         g0 = src[0]
         assert g0.name == "h"
-        assert g0.qubits == ["q1"]
-        assert g0.params == []
+        assert g0.qubits == ("q1",)
+        assert not g0.params
 
         g1 = src[1]
         assert g1.name == "cx"
-        assert g1.qubits == ["q0", "q1"]
-        assert g1.params == []
+        assert g1.qubits == ("q0", "q1")
+        assert not g1.params
 
         g2 = src[2]
         assert g2.name == "csx"
-        assert g2.qubits == ["q0", "q1"]
-        assert g2.params == []
+        assert g2.qubits == ("q0", "q1")
+        assert not g2.params
 
         g3 = src[3]
         assert g3.name == "h"
-        assert g3.qubits == ["q1"]
-        assert g3.params == []
+        assert g3.qubits == ("q1",)
+        assert not g3.params
 
     def test_swap_equivalence(self):
         dsl = "swap() q0,q1 -> cx() q0,q1 | cx() q1,q0 | cx() q0,q1"
@@ -1107,26 +936,26 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "swap"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 3
 
         g0 = src[0]
         assert g0.name == "cx"
-        assert g0.qubits == ["q0", "q1"]
-        assert g0.params == []
+        assert g0.qubits == ("q0", "q1")
+        assert not g0.params
 
         g1 = src[1]
         assert g1.name == "cx"
-        assert g1.qubits == ["q1", "q0"]
-        assert g1.params == []
+        assert g1.qubits == ("q1", "q0")
+        assert not g1.params
 
         g2 = src[2]
         assert g2.name == "cx"
-        assert g2.qubits == ["q0", "q1"]
-        assert g2.params == []
+        assert g2.qubits == ("q0", "q1")
+        assert not g2.params
 
     def test_iswap_equivalence(self):
         dsl = (
@@ -1142,41 +971,41 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "iswap"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 6
 
         g0 = src[0]
         assert g0.name == "s"
-        assert g0.qubits == ["q0"]
-        assert g0.params == []
+        assert g0.qubits == ("q0",)
+        assert not g0.params
 
         g1 = src[1]
         assert g1.name == "s"
-        assert g1.qubits == ["q1"]
-        assert g1.params == []
+        assert g1.qubits == ("q1",)
+        assert not g1.params
 
         g2 = src[2]
         assert g2.name == "h"
-        assert g2.qubits == ["q0"]
-        assert g2.params == []
+        assert g2.qubits == ("q0",)
+        assert not g2.params
 
         g3 = src[3]
         assert g3.name == "cx"
-        assert g3.qubits == ["q0", "q1"]
-        assert g3.params == []
+        assert g3.qubits == ("q0", "q1")
+        assert not g3.params
 
         g4 = src[4]
         assert g4.name == "cx"
-        assert g4.qubits == ["q1", "q0"]
-        assert g4.params == []
+        assert g4.qubits == ("q1", "q0")
+        assert not g4.params
 
         g5 = src[5]
         assert g5.name == "h"
-        assert g5.qubits == ["q1"]
-        assert g5.params == []
+        assert g5.qubits == ("q1",)
+        assert not g5.params
 
     def test_sx_equivalence(self):
         dsl = "sx() q0 -> sdg() q0 | h() q0 | sdg() q0"
@@ -1184,42 +1013,42 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "sx"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 3
 
         g0 = src[0]
         assert g0.name == "sdg"
-        assert g0.qubits == ["q0"]
-        assert g0.params == []
+        assert g0.qubits == ("q0",)
+        assert not g0.params
 
         g1 = src[1]
         assert g1.name == "h"
-        assert g1.qubits == ["q0"]
-        assert g1.params == []
+        assert g1.qubits == ("q0",)
+        assert not g1.params
 
         g2 = src[2]
         assert g2.name == "sdg"
-        assert g2.qubits == ["q0"]
-        assert g2.params == []
+        assert g2.qubits == ("q0",)
+        assert not g2.params
 
         dsl = "sx() q0 -> rx(pi/2) q0"
         rule = EquivalenceRule(dsl)
 
         target = rule.target
         assert target.name == "sx"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 1
 
         g0 = src[0]
         assert g0.name == "rx"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["pi/2"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("pi/2",)
 
     def test_sxdg_equivalence(self):
         dsl = "sxdg() q0 -> s() q0 | h() q0 | s() q0"
@@ -1227,42 +1056,42 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "sxdg"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 3
 
         g0 = src[0]
         assert g0.name == "s"
-        assert g0.qubits == ["q0"]
-        assert g0.params == []
+        assert g0.qubits == ("q0",)
+        assert not g0.params
 
         g1 = src[1]
         assert g1.name == "h"
-        assert g1.qubits == ["q0"]
-        assert g1.params == []
+        assert g1.qubits == ("q0",)
+        assert not g1.params
 
         g2 = src[2]
         assert g2.name == "s"
-        assert g2.qubits == ["q0"]
-        assert g2.params == []
+        assert g2.qubits == ("q0",)
+        assert not g2.params
 
         dsl = "sxdg() q0 -> rx(-pi/2) q0"
         rule = EquivalenceRule(dsl)
 
         target = rule.target
         assert target.name == "sxdg"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 1
 
         g0 = src[0]
         assert g0.name == "rx"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["-pi/2"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("-pi/2",)
 
     def test_csx_equivalence(self):
         dsl = "csx() q0,q1 -> h() q1 | cu1(pi/2) q0,q1 | h() q1"
@@ -1270,26 +1099,26 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "csx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 3
 
         g0 = src[0]
         assert g0.name == "h"
-        assert g0.qubits == ["q1"]
-        assert g0.params == []
+        assert g0.qubits == ("q1",)
+        assert not g0.params
 
         g1 = src[1]
         assert g1.name == "cu1"
-        assert g1.qubits == ["q0", "q1"]
-        assert g1.params == ["pi/2"]
+        assert g1.qubits == ("q0", "q1")
+        assert g1.params == ("pi/2",)
 
         g2 = src[2]
         assert g2.name == "h"
-        assert g2.qubits == ["q1"]
-        assert g2.params == []
+        assert g2.qubits == ("q1",)
+        assert not g2.params
 
         dsl = (
             "csx() q0,q1 -> "
@@ -1303,36 +1132,36 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "csx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 5
 
         g0 = src[0]
         assert g0.name == "x"
-        assert g0.qubits == ["q0"]
-        assert g0.params == []
+        assert g0.qubits == ("q0",)
+        assert not g0.params
 
         g1 = src[1]
         assert g1.name == "rzx"
-        assert g1.qubits == ["q0", "q1"]
-        assert g1.params == ["pi/4"]
+        assert g1.qubits == ("q0", "q1")
+        assert g1.params == ("pi/4",)
 
         g2 = src[2]
         assert g2.name == "tdg"
-        assert g2.qubits == ["q0"]
-        assert g2.params == []
+        assert g2.qubits == ("q0",)
+        assert not g2.params
 
         g3 = src[3]
         assert g3.name == "x"
-        assert g3.qubits == ["q0"]
-        assert g3.params == []
+        assert g3.qubits == ("q0",)
+        assert not g3.params
 
         g4 = src[4]
         assert g4.name == "rx"
-        assert g4.qubits == ["q1"]
-        assert g4.params == ["pi/4"]
+        assert g4.qubits == ("q1",)
+        assert g4.params == ("pi/4",)
 
     def test_dcx_equivalence(self):
         dsl = "dcx() q0,q1 -> cx() q0,q1 | cx() q1,q0"
@@ -1340,21 +1169,21 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "dcx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 2
 
         g0 = src[0]
         assert g0.name == "cx"
-        assert g0.qubits == ["q0", "q1"]
-        assert g0.params == []
+        assert g0.qubits == ("q0", "q1")
+        assert not g0.params
 
         g1 = src[1]
         assert g1.name == "cx"
-        assert g1.qubits == ["q1", "q0"]
-        assert g1.params == []
+        assert g1.qubits == ("q1", "q0")
+        assert not g1.params
 
         dsl = (
             "dcx() q0,q1 -> "
@@ -1368,36 +1197,36 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "dcx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 5
 
         g0 = src[0]
         assert g0.name == "h"
-        assert g0.qubits == ["q0"]
-        assert g0.params == []
+        assert g0.qubits == ("q0",)
+        assert not g0.params
 
         g1 = src[1]
         assert g1.name == "sdg"
-        assert g1.qubits == ["q0"]
-        assert g1.params == []
+        assert g1.qubits == ("q0",)
+        assert not g1.params
 
         g2 = src[2]
         assert g2.name == "sdg"
-        assert g2.qubits == ["q1"]
-        assert g2.params == []
+        assert g2.qubits == ("q1",)
+        assert not g2.params
 
         g3 = src[3]
         assert g3.name == "iswap"
-        assert g3.qubits == ["q0", "q1"]
-        assert g3.params == []
+        assert g3.qubits == ("q0", "q1")
+        assert not g3.params
 
         g4 = src[4]
         assert g4.name == "h"
-        assert g4.qubits == ["q1"]
-        assert g4.params == []
+        assert g4.qubits == ("q1",)
+        assert not g4.params
 
     def test_cswap_equivalence(self):
         dsl = "cswap() q0,q1,q2 -> cx() q2,q1 | ccx() q0,q1,q2 | cx() q2,q1"
@@ -1405,26 +1234,26 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "cswap"
-        assert target.qubits == ["q0", "q1", "q2"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1", "q2")
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 3
 
         g0 = src[0]
         assert g0.name == "cx"
-        assert g0.qubits == ["q2", "q1"]
-        assert g0.params == []
+        assert g0.qubits == ("q2", "q1")
+        assert not g0.params
 
         g1 = src[1]
         assert g1.name == "ccx"
-        assert g1.qubits == ["q0", "q1", "q2"]
-        assert g1.params == []
+        assert g1.qubits == ("q0", "q1", "q2")
+        assert not g1.params
 
         g2 = src[2]
         assert g2.name == "cx"
-        assert g2.qubits == ["q2", "q1"]
-        assert g2.params == []
+        assert g2.qubits == ("q2", "q1")
+        assert not g2.params
 
     def test_t_equivalence(self):
         dsl = "t() q0 -> u1(pi/4) q0"
@@ -1432,16 +1261,16 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "t"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 1
 
         g0 = src[0]
         assert g0.name == "u1"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["pi/4"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("pi/4",)
 
     def test_tdg_equivalence(self):
         dsl = "tdg() q0 -> u1(-pi/4) q0"
@@ -1449,16 +1278,16 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "tdg"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 1
 
         g0 = src[0]
         assert g0.name == "u1"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["-pi/4"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("-pi/4",)
 
     def test_u_equivalence(self):
         dsl = "u(theta,phi,lam) q0 -> u3(theta,phi,lam) q0"
@@ -1466,16 +1295,16 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "u"
-        assert target.qubits == ["q0"]
-        assert target.params == ["theta", "phi", "lam"]
+        assert target.qubits == ("q0",)
+        assert target.params == ("theta", "phi", "lam")
 
         src = rule.sources
         assert len(src) == 1
 
         g0 = src[0]
         assert g0.name == "u3"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["theta", "phi", "lam"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("theta", "phi", "lam")
 
     def test_cu_equivalence(self):
         dsl = (
@@ -1492,46 +1321,46 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "cu"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta", "phi", "lam", "gamma"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta", "phi", "lam", "gamma")
 
         src = rule.sources
         assert len(src) == 7
 
         g0 = src[0]
         assert g0.name == "p"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["gamma"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("gamma",)
 
         g1 = src[1]
         assert g1.name == "p"
-        assert g1.qubits == ["q0"]
-        assert g1.params == ["(lam + phi)/2"]
+        assert g1.qubits == ("q0",)
+        assert g1.params == ("(lam + phi)/2",)
 
         g2 = src[2]
         assert g2.name == "p"
-        assert g2.qubits == ["q1"]
-        assert g2.params == ["(lam - phi)/2"]
+        assert g2.qubits == ("q1",)
+        assert g2.params == ("(lam - phi)/2",)
 
         g3 = src[3]
         assert g3.name == "cx"
-        assert g3.qubits == ["q0", "q1"]
-        assert g3.params == []
+        assert g3.qubits == ("q0", "q1")
+        assert not g3.params
 
         g4 = src[4]
         assert g4.name == "u"
-        assert g4.qubits == ["q1"]
-        assert g4.params == ["-theta/2", "0", "-(phi + lam)/2"]
+        assert g4.qubits == ("q1",)
+        assert g4.params == ("-theta/2", "0", "-(phi + lam)/2")
 
         g5 = src[5]
         assert g5.name == "cx"
-        assert g5.qubits == ["q0", "q1"]
-        assert g5.params == []
+        assert g5.qubits == ("q0", "q1")
+        assert not g5.params
 
         g6 = src[6]
         assert g6.name == "u"
-        assert g6.qubits == ["q1"]
-        assert g6.params == ["theta/2", "phi", "0"]
+        assert g6.qubits == ("q1",)
+        assert g6.params == ("theta/2", "phi", "0")
 
         dsl = (
             "cu(theta,phi,lam,gamma) q0,q1 -> "
@@ -1542,21 +1371,21 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "cu"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta", "phi", "lam", "gamma"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta", "phi", "lam", "gamma")
 
         src = rule.sources
         assert len(src) == 2
 
         g0 = src[0]
         assert g0.name == "p"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["gamma"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("gamma",)
 
         g1 = src[1]
         assert g1.name == "cu3"
-        assert g1.qubits == ["q0", "q1"]
-        assert g1.params == ["theta", "phi", "lam"]
+        assert g1.qubits == ("q0", "q1")
+        assert g1.params == ("theta", "phi", "lam")
 
     def test_u1_equivalence(self):
         dsl = "u1(theta) q0 -> u3(0,0,theta) q0"
@@ -1564,48 +1393,48 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "u1"
-        assert target.qubits == ["q0"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0",)
+        assert target.params == ("theta",)
 
         src = rule.sources
         assert len(src) == 1
 
         g0 = src[0]
         assert g0.name == "u3"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["0", "0", "theta"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("0", "0", "theta")
 
         dsl = "u1(theta) q0 -> p(theta) q0"
         rule = EquivalenceRule(dsl)
 
         target = rule.target
         assert target.name == "u1"
-        assert target.qubits == ["q0"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0",)
+        assert target.params == ("theta",)
 
         src = rule.sources
         assert len(src) == 1
 
         g0 = src[0]
         assert g0.name == "p"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["theta"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("theta",)
 
         dsl = "u1(theta) q0 -> rz(theta) q0"
         rule = EquivalenceRule(dsl)
 
         target = rule.target
         assert target.name == "u1"
-        assert target.qubits == ["q0"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0",)
+        assert target.params == ("theta",)
 
         src = rule.sources
         assert len(src) == 1
 
         g0 = src[0]
         assert g0.name == "rz"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["theta"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("theta",)
 
     def test_cu1_equivalence(self):
         dsl = (
@@ -1620,54 +1449,52 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "cu1"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta",)
 
         src = rule.sources
         assert len(src) == 5
 
         g0 = src[0]
         assert g0.name == "u1"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["theta/2"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("theta/2",)
 
         g1 = src[1]
         assert g1.name == "cx"
-        assert g1.qubits == ["q0", "q1"]
-        assert g1.params == []
+        assert g1.qubits == ("q0", "q1")
+        assert not g1.params
 
         g2 = src[2]
         assert g2.name == "u1"
-        assert g2.qubits == ["q1"]
-        assert g2.params == ["-theta/2"]
+        assert g2.qubits == ("q1",)
+        assert g2.params == ("-theta/2",)
 
         g3 = src[3]
         assert g3.name == "cx"
-        assert g3.qubits == ["q0", "q1"]
-        assert g3.params == []
+        assert g3.qubits == ("q0", "q1")
+        assert not g3.params
 
         g4 = src[4]
         assert g4.name == "u1"
-        assert g4.qubits == ["q1"]
-        assert g4.params == ["theta/2"]
+        assert g4.qubits == ("q1",)
+        assert g4.params == ("theta/2",)
 
     def test_u2_equivalence(self):
         dsl = "u2(phi,lam) q0 -> u3(pi/2,phi,lam) q0"
         rule = EquivalenceRule(dsl)
 
-        # check target
         target = rule.target
         assert target.name == "u2"
-        assert target.qubits == ["q0"]
-        assert target.params == ["phi", "lam"]
+        assert target.qubits == ("q0",)
+        assert target.params == ("phi", "lam")
 
-        # check sources
         src = rule.sources
         assert len(src) == 1
         g0 = src[0]
         assert g0.name == "u3"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["pi/2", "phi", "lam"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("pi/2", "phi", "lam")
 
     def test_u3_equivalence(self):
         dsl = (
@@ -1682,24 +1509,27 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "u3"
-        assert target.qubits == ["q0"]
-        assert target.params == ["theta", "phi", "lam"]
+        assert target.qubits == ("q0",)
+        assert target.params == ("theta", "phi", "lam")
 
         src = rule.sources
         assert len(src) == 5
         g0, g1, g2, g3, g4 = src
-        assert g0.name == "rz" and g0.qubits == ["q0"] and g0.params == ["lam"]
-        assert g1.name == "sx" and g1.qubits == ["q0"] and g1.params == []
+
+        assert (
+            g0.name == "rz" and g0.qubits == ("q0",) and g0.params == ("lam",)
+        )
+        assert g1.name == "sx" and g1.qubits == ("q0",) and not g1.params
         assert (
             g2.name == "rz"
-            and g2.qubits == ["q0"]
-            and g2.params == ["theta+pi"]
+            and g2.qubits == ("q0",)
+            and g2.params == ("theta+pi",)
         )
-        assert g3.name == "sx" and g3.qubits == ["q0"] and g3.params == []
+        assert g3.name == "sx" and g3.qubits == ("q0",) and not g3.params
         assert (
             g4.name == "rz"
-            and g4.qubits == ["q0"]
-            and g4.params == ["phi+3*pi"]
+            and g4.qubits == ("q0",)
+            and g4.params == ("phi+3*pi",)
         )
 
         dsl = "u3(theta,phi,lam) q0 -> u(theta,phi,lam) q0"
@@ -1707,15 +1537,15 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "u3"
-        assert target.qubits == ["q0"]
-        assert target.params == ["theta", "phi", "lam"]
+        assert target.qubits == ("q0",)
+        assert target.params == ("theta", "phi", "lam")
 
         src = rule.sources
         assert len(src) == 1
         g0 = src[0]
         assert g0.name == "u"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["theta", "phi", "lam"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("theta", "phi", "lam")
 
     def test_cu3_equivalence(self):
         dsl = (
@@ -1731,97 +1561,91 @@ class TestEquivalenceRule:
 
         target = rule.target
         assert target.name == "cu3"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta", "phi", "lam"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta", "phi", "lam")
 
         src = rule.sources
         assert len(src) == 6
         g0, g1, g2, g3, g4, g5 = src
         assert (
             g0.name == "u1"
-            and g0.qubits == ["q0"]
-            and g0.params == ["(lam+phi)/2"]
+            and g0.qubits == ("q0",)
+            and g0.params == ("(lam+phi)/2",)
         )
         assert (
             g1.name == "u1"
-            and g1.qubits == ["q1"]
-            and g1.params == ["(lam-phi)/2"]
+            and g1.qubits == ("q1",)
+            and g1.params == ("(lam-phi)/2",)
         )
-        assert (
-            g2.name == "cx" and g2.qubits == ["q0", "q1"] and g2.params == []
-        )
+        assert g2.name == "cx" and g2.qubits == ("q0", "q1") and not g2.params
         assert (
             g3.name == "u3"
-            and g3.qubits == ["q1"]
-            and g3.params == ["-theta/2", "0", "-(phi+lam)/2"]
+            and g3.qubits == ("q1",)
+            and g3.params == ("-theta/2", "0", "-(phi+lam)/2")
         )
-        assert (
-            g4.name == "cx" and g4.qubits == ["q0", "q1"] and g4.params == []
-        )
+        assert g4.name == "cx" and g4.qubits == ("q0", "q1") and not g4.params
         assert (
             g5.name == "u3"
-            and g5.qubits == ["q1"]
-            and g5.params == ["theta/2", "phi", "0"]
+            and g5.qubits == ("q1",)
+            and g5.params == ("theta/2", "phi", "0")
         )
+
         dsl = "cu3(theta,phi,lam) q0,q1 -> cu(theta,phi,lam) q0,q1"
         rule = EquivalenceRule(dsl)
 
         target = rule.target
         assert target.name == "cu3"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == ["theta", "phi", "lam"]
+        assert target.qubits == ("q0", "q1")
+        assert target.params == ("theta", "phi", "lam")
 
         src = rule.sources
         assert len(src) == 1
         g0 = src[0]
         assert g0.name == "cu"
-        assert g0.qubits == ["q0", "q1"]
-        assert g0.params == ["theta", "phi", "lam"]
+        assert g0.qubits == ("q0", "q1")
+        assert g0.params == ("theta", "phi", "lam")
 
     def test_x_equivalences(self):
-        # x() -> u3(pi,0,pi)
         dsl = "x() q0 -> u3(pi,0,pi) q0"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "x"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 1
         g0 = src[0]
         assert g0.name == "u3"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["pi", "0", "pi"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("pi", "0", "pi")
 
-        # x() -> h() s() s() h()
         dsl = "x() q0 -> h() q0 | s() q0 | s() q0 | h() q0"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "x"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 4
         g0, g1, g2, g3 = src
-        assert g0.name == "h" and g0.qubits == ["q0"] and g0.params == []
-        assert g1.name == "s" and g1.qubits == ["q0"] and g1.params == []
-        assert g2.name == "s" and g2.qubits == ["q0"] and g2.params == []
-        assert g3.name == "h" and g3.qubits == ["q0"] and g3.params == []
+        assert g0.name == "h" and g0.qubits == ("q0",) and not g0.params
+        assert g1.name == "s" and g1.qubits == ("q0",) and not g1.params
+        assert g2.name == "s" and g2.qubits == ("q0",) and not g2.params
+        assert g3.name == "h" and g3.qubits == ("q0",) and not g3.params
 
-        # x() q0 -> rx(pi) q0
         dsl = "x() q0 -> rx(pi) q0"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "x"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
         src = rule.sources
         g0 = src[0]
         assert g0.name == "rx"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["pi"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("pi",)
 
     def test_cx_equivalences(self):
         dsl = (
@@ -1835,28 +1659,34 @@ class TestEquivalenceRule:
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "cx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 5
         g0, g1, g2, g3, g4 = src
         assert (
-            g0.name == "ry" and g0.qubits == ["q0"] and g0.params == ["pi/2"]
+            g0.name == "ry" and g0.qubits == ("q0",) and g0.params == ("pi/2",)
         )
         assert (
             g1.name == "rxx"
-            and g1.qubits == ["q0", "q1"]
-            and g1.params == ["pi/2"]
+            and g1.qubits == ("q0", "q1")
+            and g1.params == ("pi/2",)
         )
         assert (
-            g2.name == "rx" and g2.qubits == ["q0"] and g2.params == ["-pi/2"]
+            g2.name == "rx"
+            and g2.qubits == ("q0",)
+            and g2.params == ("-pi/2",)
         )
         assert (
-            g3.name == "rx" and g3.qubits == ["q1"] and g3.params == ["-pi/2"]
+            g3.name == "rx"
+            and g3.qubits == ("q1",)
+            and g3.params == ("-pi/2",)
         )
         assert (
-            g4.name == "ry" and g4.qubits == ["q0"] and g4.params == ["-pi/2"]
+            g4.name == "ry"
+            and g4.qubits == ("q0",)
+            and g4.params == ("-pi/2",)
         )
 
         dsl = (
@@ -1870,27 +1700,29 @@ class TestEquivalenceRule:
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "cx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         g0, g1, g2, g3, g4 = src
         assert (
-            g0.name == "ry" and g0.qubits == ["q0"] and g0.params == ["pi/2"]
+            g0.name == "ry" and g0.qubits == ("q0",) and g0.params == ("pi/2",)
         )
         assert (
             g1.name == "rxx"
-            and g1.qubits == ["q0", "q1"]
-            and g1.params == ["-pi/2"]
+            and g1.qubits == ("q0", "q1")
+            and g1.params == ("-pi/2",)
         )
         assert (
-            g2.name == "rx" and g2.qubits == ["q0"] and g2.params == ["pi/2"]
+            g2.name == "rx" and g2.qubits == ("q0",) and g2.params == ("pi/2",)
         )
         assert (
-            g3.name == "rx" and g3.qubits == ["q1"] and g3.params == ["pi/2"]
+            g3.name == "rx" and g3.qubits == ("q1",) and g3.params == ("pi/2",)
         )
         assert (
-            g4.name == "ry" and g4.qubits == ["q0"] and g4.params == ["-pi/2"]
+            g4.name == "ry"
+            and g4.qubits == ("q0",)
+            and g4.params == ("-pi/2",)
         )
 
         dsl = (
@@ -1904,27 +1736,31 @@ class TestEquivalenceRule:
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "cx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         g0, g1, g2, g3, g4 = src
         assert (
-            g0.name == "ry" and g0.qubits == ["q0"] and g0.params == ["-pi/2"]
+            g0.name == "ry"
+            and g0.qubits == ("q0",)
+            and g0.params == ("-pi/2",)
         )
         assert (
             g1.name == "rxx"
-            and g1.qubits == ["q0", "q1"]
-            and g1.params == ["pi/2"]
+            and g1.qubits == ("q0", "q1")
+            and g1.params == ("pi/2",)
         )
         assert (
-            g2.name == "rx" and g2.qubits == ["q0"] and g2.params == ["-pi/2"]
+            g2.name == "rx"
+            and g2.qubits == ("q0",)
+            and g2.params == ("-pi/2",)
         )
         assert (
-            g3.name == "rx" and g3.qubits == ["q1"] and g3.params == ["pi/2"]
+            g3.name == "rx" and g3.qubits == ("q1",) and g3.params == ("pi/2",)
         )
         assert (
-            g4.name == "ry" and g4.qubits == ["q0"] and g4.params == ["pi/2"]
+            g4.name == "ry" and g4.qubits == ("q0",) and g4.params == ("pi/2",)
         )
 
         dsl = (
@@ -1938,47 +1774,47 @@ class TestEquivalenceRule:
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "cx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         g0, g1, g2, g3, g4 = src
         assert (
-            g0.name == "ry" and g0.qubits == ["q0"] and g0.params == ["-pi/2"]
+            g0.name == "ry"
+            and g0.qubits == ("q0",)
+            and g0.params == ("-pi/2",)
         )
         assert (
             g1.name == "rxx"
-            and g1.qubits == ["q0", "q1"]
-            and g1.params == ["-pi/2"]
+            and g1.qubits == ("q0", "q1")
+            and g1.params == ("-pi/2",)
         )
         assert (
-            g2.name == "rx" and g2.qubits == ["q0"] and g2.params == ["pi/2"]
+            g2.name == "rx" and g2.qubits == ("q0",) and g2.params == ("pi/2",)
         )
         assert (
-            g3.name == "rx" and g3.qubits == ["q1"] and g3.params == ["-pi/2"]
+            g3.name == "rx"
+            and g3.qubits == ("q1",)
+            and g3.params == ("-pi/2",)
         )
         assert (
-            g4.name == "ry" and g4.qubits == ["q0"] and g4.params == ["pi/2"]
+            g4.name == "ry" and g4.qubits == ("q0",) and g4.params == ("pi/2",)
         )
 
-        # cx() -> h() cz() h()
         dsl = "cx() q0,q1 -> h() q1 | cz() q0,q1 | h() q1"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "cx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         assert len(src) == 3
         g0, g1, g2 = src
-        assert g0.name == "h" and g0.qubits == ["q1"] and g0.params == []
-        assert (
-            g1.name == "cz" and g1.qubits == ["q0", "q1"] and g1.params == []
-        )
-        assert g2.name == "h" and g2.qubits == ["q1"] and g2.params == []
+        assert g0.name == "h" and g0.qubits == ("q1",) and not g0.params
+        assert g1.name == "cz" and g1.qubits == ("q0", "q1") and not g1.params
+        assert g2.name == "h" and g2.qubits == ("q1",) and not g2.params
 
-        # cx() -> h() x() h() iswap() ...
         dsl = (
             "cx() q0,q1 -> "
             "h() q0 | "
@@ -1998,8 +1834,8 @@ class TestEquivalenceRule:
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "cx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         expected_names = [
@@ -2018,26 +1854,25 @@ class TestEquivalenceRule:
             "h",
         ]
         expected_qubits = [
-            ["q0"],
-            ["q1"],
-            ["q1"],
-            ["q0", "q1"],
-            ["q0"],
-            ["q1"],
-            ["q1"],
-            ["q0", "q1"],
-            ["q0"],
-            ["q0"],
-            ["q1"],
-            ["q1"],
-            ["q1"],
+            ("q0",),
+            ("q1",),
+            ("q1",),
+            ("q0", "q1"),
+            ("q0",),
+            ("q1",),
+            ("q1",),
+            ("q0", "q1"),
+            ("q0",),
+            ("q0",),
+            ("q1",),
+            ("q1",),
+            ("q1",),
         ]
         for g, name, qubits in zip(src, expected_names, expected_qubits):
             assert g.name == name
             assert g.qubits == qubits
-            assert g.params == []
+            assert not g.params
 
-        # cx() -> rz(-pi/2) ry(pi) rx(pi/2) ecr()
         dsl = (
             "cx() q0,q1 -> "
             "rz(-pi/2) q0 | "
@@ -2048,41 +1883,13 @@ class TestEquivalenceRule:
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "cx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         expected_names = ["rz", "ry", "rx", "ecr"]
-        expected_qubits = [["q0"], ["q0"], ["q1"], ["q0", "q1"]]
-        expected_params = ["-pi/2", "pi", "pi/2", ""]
-        for g, name, qubits, params in zip(
-            src, expected_names, expected_qubits, expected_params
-        ):
-            assert g.name == name
-            assert g.qubits == qubits
-            if params:
-                assert g.params == [params]
-            else:
-                assert g.params == []
-
-        # cx() -> u(pi/2,0,pi) cphase(pi) u(pi/2,0,pi)
-        dsl = (
-            "cx() q0,q1 -> "
-            "u(pi/2,0,pi) q1 | "
-            "cphase(pi) q0,q1 | "
-            "u(pi/2,0,pi) q1"
-        )
-
-        rule = EquivalenceRule(dsl)
-        target = rule.target
-        assert target.name == "cx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
-
-        src = rule.sources
-        expected_names = ["u", "cphase", "u"]
-        expected_qubits = [["q1"], ["q0", "q1"], ["q1"]]
-        expected_params = [["pi/2", "0", "pi"], ["pi"], ["pi/2", "0", "pi"]]
+        expected_qubits = [("q0",), ("q0",), ("q1",), ("q0", "q1")]
+        expected_params = [("-pi/2",), ("pi",), ("pi/2",), ()]
         for g, name, qubits, params in zip(
             src, expected_names, expected_qubits, expected_params
         ):
@@ -2090,7 +1897,33 @@ class TestEquivalenceRule:
             assert g.qubits == qubits
             assert g.params == params
 
-        # cx() -> u(pi/2,0,pi) u(0,0,pi/2) crz(pi)
+        dsl = (
+            "cx() q0,q1 -> "
+            "u(pi/2,0,pi) q1 | "
+            "cphase(pi) q0,q1 | "
+            "u(pi/2,0,pi) q1"
+        )
+        rule = EquivalenceRule(dsl)
+        target = rule.target
+        assert target.name == "cx"
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
+
+        src = rule.sources
+        expected_names = ["u", "cphase", "u"]
+        expected_qubits = [("q1",), ("q0", "q1"), ("q1",)]
+        expected_params = [
+            ("pi/2", "0", "pi"),
+            ("pi",),
+            ("pi/2", "0", "pi"),
+        ]
+        for g, name, qubits, params in zip(
+            src, expected_names, expected_qubits, expected_params
+        ):
+            assert g.name == name
+            assert g.qubits == qubits
+            assert g.params == params
+
         dsl = (
             "cx() q0,q1 -> "
             "u(pi/2,0,pi) q1 | "
@@ -2101,17 +1934,17 @@ class TestEquivalenceRule:
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "cx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         expected_names = ["u", "u", "crz", "u"]
-        expected_qubits = [["q1"], ["q0"], ["q0", "q1"], ["q1"]]
+        expected_qubits = [("q1",), ("q0",), ("q0", "q1"), ("q1",)]
         expected_params = [
-            ["pi/2", "0", "pi"],
-            ["0", "0", "pi/2"],
-            ["pi"],
-            ["pi/2", "0", "pi"],
+            ("pi/2", "0", "pi"),
+            ("0", "0", "pi/2"),
+            ("pi",),
+            ("pi/2", "0", "pi"),
         ]
         for g, name, qubits, params in zip(
             src, expected_names, expected_qubits, expected_params
@@ -2120,18 +1953,17 @@ class TestEquivalenceRule:
             assert g.qubits == qubits
             assert g.params == params
 
-        # cx() -> rzx(pi/2) sdg() sxdg()
         dsl = "cx() q0,q1 -> rzx(pi/2) q0,q1 | sdg() q0 | sxdg() q1"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "cx"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         expected_names = ["rzx", "sdg", "sxdg"]
-        expected_qubits = [["q0", "q1"], ["q0"], ["q1"]]
-        expected_params = [["pi/2"], [], []]
+        expected_qubits = [("q0", "q1"), ("q0",), ("q1",)]
+        expected_params = [("pi/2",), (), ()]
         for g, name, qubits, params in zip(
             src, expected_names, expected_qubits, expected_params
         ):
@@ -2140,7 +1972,6 @@ class TestEquivalenceRule:
             assert g.params == params
 
     def test_ccx_equivalences(self):
-        # ccx() q0,q1,q2 -> h() q2 | cx() q1,q2 | tdg() q2 | ...
         dsl = (
             "ccx() q0,q1,q2 -> "
             "h() q2 | "
@@ -2162,8 +1993,8 @@ class TestEquivalenceRule:
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "ccx"
-        assert target.qubits == ["q0", "q1", "q2"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1", "q2")
+        assert not target.params
 
         src = rule.sources
         expected_names = [
@@ -2184,28 +2015,27 @@ class TestEquivalenceRule:
             "cx",
         ]
         expected_qubits = [
-            ["q2"],
-            ["q1", "q2"],
-            ["q2"],
-            ["q0", "q2"],
-            ["q2"],
-            ["q1", "q2"],
-            ["q2"],
-            ["q0", "q2"],
-            ["q1"],
-            ["q2"],
-            ["q2"],
-            ["q0", "q1"],
-            ["q0"],
-            ["q1"],
-            ["q0", "q1"],
+            ("q2",),
+            ("q1", "q2"),
+            ("q2",),
+            ("q0", "q2"),
+            ("q2",),
+            ("q1", "q2"),
+            ("q2",),
+            ("q0", "q2"),
+            ("q1",),
+            ("q2",),
+            ("q2",),
+            ("q0", "q1"),
+            ("q0",),
+            ("q1",),
+            ("q0", "q1"),
         ]
         for g, name, qubits in zip(src, expected_names, expected_qubits):
             assert g.name == name
             assert g.qubits == qubits
-            assert g.params == []
+            assert not g.params
 
-        # ccx() q0,q1,q2 -> csx() q1,q2 | cx() q0,q1 | z() q2 ...
         dsl = (
             "ccx() q0,q1,q2 -> "
             "csx() q1,q2 | "
@@ -2220,178 +2050,168 @@ class TestEquivalenceRule:
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "ccx"
-        assert target.qubits == ["q0", "q1", "q2"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1", "q2")
+        assert not target.params
 
         src = rule.sources
         expected_names = ["csx", "cx", "z", "sdg", "csx", "z", "cx", "csx"]
         expected_qubits = [
-            ["q1", "q2"],
-            ["q0", "q1"],
-            ["q2"],
-            ["q1"],
-            ["q1", "q2"],
-            ["q2"],
-            ["q0", "q1"],
-            ["q0", "q2"],
+            ("q1", "q2"),
+            ("q0", "q1"),
+            ("q2",),
+            ("q1",),
+            ("q1", "q2"),
+            ("q2",),
+            ("q0", "q1"),
+            ("q0", "q2"),
         ]
         for g, name, qubits in zip(src, expected_names, expected_qubits):
             assert g.name == name
             assert g.qubits == qubits
-            assert g.params == []
+            assert not g.params
 
     def test_y_equivalences(self):
-        # y() q0 -> u3(pi,pi/2,pi/2) q0
         dsl = "y() q0 -> u3(pi,pi/2,pi/2) q0"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "y"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         src = rule.sources
         g0 = src[0]
         assert g0.name == "u3"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["pi", "pi/2", "pi/2"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("pi", "pi/2", "pi/2")
 
-        # y() q0 -> s() q0 | s() q0 | h() q0 | s() q0 | s() q0 | h() q0
         dsl = "y() q0 -> s() q0 | s() q0 | h() q0 | s() q0 | s() q0 | h() q0"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "y"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
 
         src = rule.sources
         expected_names = ["s", "s", "h", "s", "s", "h"]
-        expected_qubits = [["q0"]] * 6
+        expected_qubits = [("q0",)] * 6
         for g, name, qubits in zip(src, expected_names, expected_qubits):
             assert g.name == name
             assert g.qubits == qubits
-            assert g.params == []
+            assert not g.params
 
-        # y() q0 -> ry(pi) q0
         dsl = "y() q0 -> ry(pi) q0"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "y"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
         src = rule.sources
         g0 = src[0]
         assert g0.name == "ry"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["pi"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("pi",)
 
     def test_cy_equivalences(self):
-        # cy() q0,q1 -> sdg() q1 | cx() q0,q1 | s() q1
         dsl = "cy() q0,q1 -> sdg() q1 | cx() q0,q1 | s() q1"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "cy"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
 
         src = rule.sources
         expected_names = ["sdg", "cx", "s"]
-        expected_qubits = [["q1"], ["q0", "q1"], ["q1"]]
+        expected_qubits = [("q1",), ("q0", "q1"), ("q1",)]
         for g, name, qubits in zip(src, expected_names, expected_qubits):
             assert g.name == name
             assert g.qubits == qubits
-            assert g.params == []
+            assert not g.params
 
     def test_z_equivalences(self):
-        # z() q0 -> u1(pi) q0
         dsl = "z() q0 -> u1(pi) q0"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "z"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
         src = rule.sources
         g0 = src[0]
         assert g0.name == "u1"
-        assert g0.qubits == ["q0"]
-        assert g0.params == ["pi"]
+        assert g0.qubits == ("q0",)
+        assert g0.params == ("pi",)
 
-        # z() q0 -> s() q0 | s() q0
         dsl = "z() q0 -> s() q0 | s() q0"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "z"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
         src = rule.sources
         expected_names = ["s", "s"]
-        expected_qubits = [["q0"], ["q0"]]
+        expected_qubits = [("q0",), ("q0",)]
         for g, name, qubits in zip(src, expected_names, expected_qubits):
             assert g.name == name
             assert g.qubits == qubits
-            assert g.params == []
+            assert not g.params
 
     def test_cz_equivalences(self):
-        # cz() q0,q1 -> h() q1 | cx() q0,q1 | h() q1
         dsl = "cz() q0,q1 -> h() q1 | cx() q0,q1 | h() q1"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "cz"
-        assert target.qubits == ["q0", "q1"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1")
+        assert not target.params
         src = rule.sources
         expected_names = ["h", "cx", "h"]
-        expected_qubits = [["q1"], ["q0", "q1"], ["q1"]]
+        expected_qubits = [("q1",), ("q0", "q1"), ("q1",)]
         for g, name, qubits in zip(src, expected_names, expected_qubits):
             assert g.name == name
             assert g.qubits == qubits
-            assert g.params == []
+            assert not g.params
 
     def test_ccz_equivalences(self):
-        # ccz() q0,q1,q2 -> h() q2 | ccx() q0,q1,q2 | h() q2
         dsl = "ccz() q0,q1,q2 -> h() q2 | ccx() q0,q1,q2 | h() q2"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "ccz"
-        assert target.qubits == ["q0", "q1", "q2"]
-        assert target.params == []
+        assert target.qubits == ("q0", "q1", "q2")
+        assert not target.params
         src = rule.sources
         expected_names = ["h", "ccx", "h"]
-        expected_qubits = [["q2"], ["q0", "q1", "q2"], ["q2"]]
+        expected_qubits = [("q2",), ("q0", "q1", "q2"), ("q2",)]
         for g, name, qubits in zip(src, expected_names, expected_qubits):
             assert g.name == name
             assert g.qubits == qubits
-            assert g.params == []
+            assert not g.params
 
     def test_h_equivalences(self):
-        # h() q0 -> ry(pi/2) q0 | rx(pi) q0
         dsl = "h() q0 -> ry(pi/2) q0 | rx(pi) q0"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "h"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
         src = rule.sources
         expected_names = ["ry", "rx"]
-        expected_qubits = [["q0"], ["q0"]]
-        expected_params = ["pi/2", "pi"]
-        for g, name, qubits, param in zip(
+        expected_qubits = [("q0",), ("q0",)]
+        expected_params = [("pi/2",), ("pi",)]
+        for g, name, qubits, params in zip(
             src, expected_names, expected_qubits, expected_params
         ):
             assert g.name == name
             assert g.qubits == qubits
-            assert g.params == [param]
+            assert g.params == params
 
-        # h() q0 -> r(pi/2, pi/2) q0 | r(pi, 0) q0
         dsl = "h() q0 -> r(pi/2, pi/2) q0 | r(pi, 0) q0"
         rule = EquivalenceRule(dsl)
         target = rule.target
         assert target.name == "h"
-        assert target.qubits == ["q0"]
-        assert target.params == []
+        assert target.qubits == ("q0",)
+        assert not target.params
         src = rule.sources
         expected_names = ["r", "r"]
-        expected_qubits = [["q0"], ["q0"]]
-        expected_params = [["pi/2", "pi/2"], ["pi", "0"]]
+        expected_qubits = [("q0",), ("q0",)]
+        expected_params = [("pi/2", "pi/2"), ("pi", "0")]
         for g, name, qubits, params in zip(
             src, expected_names, expected_qubits, expected_params
         ):
@@ -2403,12 +2223,7 @@ class TestEquivalenceRule:
 class TestEquivalenceGraph:
     def test_no_decomposition_needed(self):
         g = EquivalenceGraph()
-        source = [
-            BaseOperation("rx"),
-            BaseOperation("ry"),
-            BaseOperation("rz"),
-            BaseOperation("cx"),
-        ]
+        source = ["rx", "ry", "rz", "cx"]
         target = ["rx", "ry", "rz", "cx"]
 
         rules = g.get_optimal_decomposition_rule_dictionary(source, target)
@@ -2416,15 +2231,13 @@ class TestEquivalenceGraph:
 
     def test_h_gates(self):
         g = EquivalenceGraph()
-        source = [
-            BaseOperation("h"),
-        ]
+        source = ["h"]
         target = ["rx", "ry", "rz", "cx"]
 
         rules = g.get_optimal_decomposition_rule_dictionary(source, target)
 
         for gate in source:
-            assert gate.name in rules
+            assert gate in rules
 
     def test_single_qubit_gates(self):
         g = EquivalenceGraph()
@@ -2448,9 +2261,14 @@ class TestEquivalenceGraph:
             "u",
         ]
         for gate_name in single_qubit_gates:
-            source = [BaseOperation(gate_name)]
-            rules = g.get_optimal_decomposition_rule_dictionary(source, target)
+            rules = g.get_optimal_decomposition_rule_dictionary(
+                [gate_name], target
+            )
             assert gate_name in rules
+
+        for gate_name in single_qubit_gates:
+            table, _ = g.build_full_decomposition_table([gate_name], target)
+            assert any(g.name == gate_name for g in table)
 
     def test_two_qubits_gates(self):
         g = EquivalenceGraph()
@@ -2473,9 +2291,14 @@ class TestEquivalenceGraph:
             "rzz",
         ]
         for gate_name in two_qubit_gates:
-            source = [BaseOperation(gate_name)]
-            rules = g.get_optimal_decomposition_rule_dictionary(source, target)
+            rules = g.get_optimal_decomposition_rule_dictionary(
+                [gate_name], target
+            )
             assert gate_name in rules
+
+        for gate_name in two_qubit_gates:
+            table, _ = g.build_full_decomposition_table([gate_name], target)
+            assert any(g.name == gate_name for g in table)
 
     def test_three_or_more_qubits_gates(self):
         g = EquivalenceGraph()
@@ -2491,6 +2314,11 @@ class TestEquivalenceGraph:
             "c4x",
         ]
         for gate_name in three_or_more_qubit_gates:
-            source = [BaseOperation(gate_name)]
-            rules = g.get_optimal_decomposition_rule_dictionary(source, target)
+            rules = g.get_optimal_decomposition_rule_dictionary(
+                [gate_name], target
+            )
             assert gate_name in rules
+
+        for gate_name in three_or_more_qubit_gates:
+            table, _ = g.build_full_decomposition_table([gate_name], target)
+            assert any(g.name == gate_name for g in table)

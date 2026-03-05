@@ -35,7 +35,7 @@ from wy_qcos.transpiler.cmss.compiler.decomposer import (
 )
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.tests.common.qasm_file_reader import QasmFileReader
-from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
+from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 from wy_qcos.tests.unit_tests.transpiler.comm import (
     validate_ir_equals,
     validate_no_shared_reference_or_raise,
@@ -113,6 +113,7 @@ class TestDecomposeTo1q2q:
 
             print("[OK] Decomposition validated")
 
+    @pytest.mark.slow
     def test_qasmbench_small(self) -> None:
         """Runs system tests on QASMBench-small circuits."""
         qasm_dir = self.samples_dir / "qasm" / "benchpress" / "qasmbench-small"

@@ -43,7 +43,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
 
         validate_gate_ir(result[0], "rx", [0], 1, False)
         validate_gate_ir(result[1], "ry", [0], 1, False)
@@ -59,7 +61,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
 
         assert len(result) == 2
 
@@ -75,7 +79,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 1
 
         validate_gate_ir(result[0], "rx", [0], 1, False)
@@ -89,7 +95,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 1
 
         validate_gate_ir(result[0], "ry", [0], 1, False)
@@ -103,7 +111,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 1
 
         validate_gate_ir(result[0], "rz", [0], 1, False)
@@ -117,7 +127,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 1
 
         validate_gate_ir(result[0], "rz", [0], 1, False)
@@ -131,7 +143,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 1
 
         validate_gate_ir(result[0], "rz", [0], 1, False)
@@ -145,7 +159,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 1
 
         validate_gate_ir(result[0], "rz", [0], 1, False)
@@ -159,7 +175,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 1
 
         validate_gate_ir(result[0], "rz", [0], 1, False)
@@ -173,7 +191,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 1
 
         validate_gate_ir(result[0], "rz", [0], 1, False)
@@ -187,7 +207,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 1
 
         validate_gate_ir(result[0], "rx", [0], 1, False)
@@ -201,7 +223,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 1
 
         validate_gate_ir(result[0], "rx", [0], 1, False)
@@ -215,7 +239,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 3
 
         validate_gate_ir(result[0], "rz", [1], 1, False)
@@ -231,7 +257,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 5
 
         validate_gate_ir(result[0], "ry", [1], 1, False)
@@ -249,7 +277,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 9
 
         validate_gate_ir(result[0], "rz", [1], 1, False)
@@ -271,7 +301,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 3
 
         validate_gate_ir(result[0], "cx", [0, 1], 2, True)
@@ -287,7 +319,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 6
 
         validate_gate_ir(result[0], "rz", [1], 1, False)
@@ -306,7 +340,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 4
 
         validate_gate_ir(result[0], "ry", [1], 1, False)
@@ -323,7 +359,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 4
 
         validate_gate_ir(result[0], "rz", [1], 1, False)
@@ -340,7 +378,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 5
 
         validate_gate_ir(result[0], "rz", [0], 1, False)
@@ -358,7 +398,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 5
 
         validate_gate_ir(result[0], "rz", [0], 1, False)
@@ -376,7 +418,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 14
 
         validate_gate_ir(result[0], "rz", [0], 1, False)
@@ -403,7 +447,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 9
 
         validate_gate_ir(result[0], "ry", [1], 1, False)
@@ -425,7 +471,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 15
 
         validate_gate_ir(result[0], "rz", [0], 1, False)
@@ -453,7 +501,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 11
 
         validate_gate_ir(result[0], "ry", [0], 1, False)
@@ -477,7 +527,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 3
 
         validate_gate_ir(result[0], "cx", [0, 1], 2, True)
@@ -493,7 +545,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 17
 
         validate_gate_ir(result[0], "ry", [2], 1, False)
@@ -523,7 +577,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 19
 
         validate_gate_ir(result[0], "cx", [2, 1], 2, True)
@@ -555,7 +611,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 11
 
         validate_gate_ir(result[0], "ry", [2], 1, False)
@@ -579,7 +637,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 34
 
         validate_gate_ir(result[0], "rz", [3], 1, False)
@@ -633,7 +693,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
 
         assert len(result) == 33
 
@@ -685,7 +747,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
 
         assert len(result) == 69
 
@@ -788,7 +852,9 @@ class TestDecomposer:
         ]
         target = ["rx", "ry", "rz", "cx"]
 
-        result = d.decompose(source, target)
+        gate_name_list = list({op.name for op in source})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        result = d.apply_decompose_rules(source, dict)
         assert len(result) == 153
 
         validate_gate_ir(result[0], "ry", [4], 1, False)
@@ -888,18 +954,24 @@ class TestDecomposer:
         assert len(gates_list) == 21
         d = Decomposer()
         target = ["rx", "ry", "rz", "cx", "sync", "measure"]
-        decomposed_gates = d.decompose(gates_list, target)
+        gate_name_list = list({op.name for op in gates_list})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        decomposed_gates = d.apply_decompose_rules(gates_list, dict)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
         target = ["rx", "ry", "cx", "sync", "measure"]
-        decomposed_gates = d.decompose(gates_list, target)
+        gate_name_list = list({op.name for op in gates_list})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        decomposed_gates = d.apply_decompose_rules(gates_list, dict)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
         # hanyuan quantum instructions set
         target = ["rx", "ry", "cz", "sync", "measure"]
-        decomposed_gates = d.decompose(gates_list, target)
+        gate_name_list = list({op.name for op in gates_list})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        decomposed_gates = d.apply_decompose_rules(gates_list, dict)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
@@ -927,49 +999,65 @@ class TestDecomposer:
             "sync",
             "measure",
         ]
-        decomposed_gates = d.decompose(gates_list, target)
+        gate_name_list = list({op.name for op in gates_list})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        decomposed_gates = d.apply_decompose_rules(gates_list, dict)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
         # Uqc quantum instructions set
         target = ["rx", "ry", "rzz", "sync", "measure"]
-        decomposed_gates = d.decompose(gates_list, target)
+        gate_name_list = list({op.name for op in gates_list})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        decomposed_gates = d.apply_decompose_rules(gates_list, dict)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
         # Ibmq quantum instructions set
         target = ["rz", "sx", "x", "cx", "sync", "measure"]
-        decomposed_gates = d.decompose(gates_list, target)
+        gate_name_list = list({op.name for op in gates_list})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        decomposed_gates = d.apply_decompose_rules(gates_list, dict)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
         # Ionq quantum instructions set
         target = ["rxx", "rx", "ry", "rz", "sync", "measure"]
-        decomposed_gates = d.decompose(gates_list, target)
+        gate_name_list = list({op.name for op in gates_list})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        decomposed_gates = d.apply_decompose_rules(gates_list, dict)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
         # Nam quantum instructions set
         target = ["cx", "h", "rz", "sync", "measure"]
-        decomposed_gates = d.decompose(gates_list, target)
+        gate_name_list = list({op.name for op in gates_list})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        decomposed_gates = d.apply_decompose_rules(gates_list, dict)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
         # Origin quantum instructions set
         target = ["cz", "u3", "sync", "measure"]
-        decomposed_gates = d.decompose(gates_list, target)
+        gate_name_list = list({op.name for op in gates_list})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        decomposed_gates = d.apply_decompose_rules(gates_list, dict)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
         # Quafu quantum instructions set
         target = ["cx", "rx", "ry", "rz", "h", "sync", "measure"]
-        decomposed_gates = d.decompose(gates_list, target)
+        gate_name_list = list({op.name for op in gates_list})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        decomposed_gates = d.apply_decompose_rules(gates_list, dict)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
         # USTC quantum instructions set
         target = ["cx", "rx", "ry", "rz", "h", "x", "sync", "measure"]
-        decomposed_gates = d.decompose(gates_list, target)
+        gate_name_list = list({op.name for op in gates_list})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        decomposed_gates = d.apply_decompose_rules(gates_list, dict)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
@@ -1012,7 +1100,9 @@ class TestDecomposer:
             "measure",
         ]
 
-        decomposed_gates = d.decompose(gates_list, target)
+        gate_name_list = list({op.name for op in gates_list})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        decomposed_gates = d.apply_decompose_rules(gates_list, dict)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
@@ -1034,7 +1124,9 @@ class TestDecomposer:
             "cz",
         ]
 
-        decomposed_gates = d.decompose(gates_list, target)
+        gate_name_list = list({op.name for op in gates_list})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        decomposed_gates = d.apply_decompose_rules(gates_list, dict)
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)
 
@@ -1055,7 +1147,9 @@ class TestDecomposer:
         _, gates_list = cir.num_qubits, cir.get_operations()
         d = Decomposer()
         target = ["rx", "ry", "rz", "cx", "sync", "measure"]
-        decomposed_gates = d.decompose(gates_list, target)
+        gate_name_list = list({op.name for op in gates_list})
+        dict, _ = d.get_decompose_rules(gate_name_list, target)
+        decomposed_gates = d.apply_decompose_rules(gates_list, dict)
         assert id(decomposed_gates[0]) != id(decomposed_gates[17])
         validate_gates_in_targets(decomposed_gates, target)
         validate_ir_equals(gates_list, decomposed_gates)

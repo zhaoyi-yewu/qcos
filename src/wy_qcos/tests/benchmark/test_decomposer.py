@@ -43,6 +43,39 @@ class DecomposerBenchmark:
     """
 
     @staticmethod
+    def benchmark_new_equivalence_graph_decomposer(
+        operations, target_gate_set: list
+    ):
+        """Benchmark the equivalence-graph-based decomposer.
+
+        This decomposer performs gate rewriting based on equivalence
+        relations and graph traversal, which typically trades higher
+        preprocessing cost for better decomposition quality.
+
+        Args:
+            operations: Quantum operations extracted from the circuit IR.
+            target_gate_set: Target hardware-supported gate set.
+
+        Returns:
+            Decomposed quantum operations.
+        """
+        decomposer = Decomposer()
+
+        # Measure pure decomposition time (excluding parsing)
+        start = time.perf_counter()
+        gate_name_list = list({op.name for op in operations})
+        rule_dict, _ = decomposer.get_decompose_rules(
+            gate_name_list, target_gate_set
+        )
+        decomposed_gates = decomposer.apply_decompose_rules(
+            operations, rule_dict
+        )
+        elapsed = time.perf_counter() - start
+
+        print(f"[new Equivalence Graph Decomposer] time={elapsed:.6f}s")
+        return decomposed_gates
+
+    @staticmethod
     def benchmark_equivalence_graph_decomposer(
         operations, target_gate_set: list
     ):
@@ -66,7 +99,7 @@ class DecomposerBenchmark:
         result = decomposer.decompose(operations, target_gate_set)
         elapsed = time.perf_counter() - start
 
-        print(f"[Equivalence Graph Decomposer] time={elapsed:.6f}s\n")
+        print(f"[Equivalence Graph Decomposer] time={elapsed:.6f}s")
         return result
 
     @staticmethod
@@ -129,6 +162,10 @@ class DecomposerBenchmark:
 
                 # Step 4: equivalence-graph-based decomposition
                 DecomposerBenchmark.benchmark_equivalence_graph_decomposer(
+                    operations, target_gate_set
+                )
+
+                DecomposerBenchmark.benchmark_new_equivalence_graph_decomposer(
                     operations, target_gate_set
                 )
 

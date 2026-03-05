@@ -101,13 +101,16 @@ class Library:
         return new_list
 
     @staticmethod
-    def kill_pid(pid_file):
+    def kill_pid(pid_file, expected_process_name=None, allow_kill_self=False):
         """Kill existing process from pid file.
 
         Args:
             pid_file: pid file path
+            expected_process_name: expected process name in regular expression
+            allow_kill_self: allow kill current process
         """
         pid = None
+        need_to_kill = True
         if not os.path.exists(pid_file):
             return
         try:
@@ -117,10 +120,23 @@ class Library:
                 if not pid_str.isdigit():
                     raise ValueError(f"Invalid pid format: {pid_str}")
                 pid = int(pid_str)
+            # match expected process name
+            if expected_process_name and pid:
+                cmd_line = None
+                cmd_line_filepath = f"/proc/{pid}/cmdline"
+                if os.path.exists(cmd_line_filepath):
+                    with open(cmd_line_filepath) as f:
+                        cmd_line = f.read().replace("\0", " ").strip()
+                    if not Library.str_match(cmd_line, expected_process_name):
+                        need_to_kill = False
+            if not allow_kill_self:
+                if os.getpid() == pid:
+                    need_to_kill = False
             # Attempt to terminate the process by sending SIGTERM signal
-            os.kill(pid, signal.SIGTERM)
-            # Wait for process to exit
-            time.sleep(1)
+            if pid and need_to_kill:
+                os.kill(pid, signal.SIGTERM)
+                # Wait for process to exit
+                time.sleep(1)
         except ValueError as e:
             print(f"Failed to process PID file: {e}")
         except ProcessLookupError:

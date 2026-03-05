@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+#!/bin/sh
 # ----------------------------------------------------------------------
 # Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
@@ -8,15 +7,22 @@
 # of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
-#     WITHOUT WARRANTIES OF ANY KIND,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from wy_qcos.transpiler.cmss.mapping.na.na_mapping import (
-    NASingleRoute,
-    NARoute,
-)
-from wy_qcos.transpiler.cmss.mapping.sc_mapping import SCRoute
+echo "WARNING: This will delete all database files in /var/qcos/db/ and /var/qcos/storage/"
+echo "Type 'YES' to confirm deletion:"
+read confirmation
+
+if [ "$confirmation" = "YES" ]; then
+    echo "Deleting data..."
+    rm -rf /var/qcos/db/*
+    rm -rf /var/qcos/storage/*
+    echo "Data cleared successfully."
+else
+    echo "Operation cancelled."
+    exit 1
+fi

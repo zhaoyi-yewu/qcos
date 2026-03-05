@@ -38,7 +38,7 @@ class TestServer:
         mock_argument_parser.return_value = mock_parser
 
         mock_args = Mock()
-        mock_args.config_file = None
+        mock_args.config_files = []
         mock_args.config_dir = None
         mock_parser.parse_args.return_value = mock_args
         Config.VEN_DIR = "/invalid_venv_dir"

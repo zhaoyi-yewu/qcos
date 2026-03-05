@@ -1,6 +1,6 @@
 #!/bin/sh
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,11 +15,16 @@
 
 set -e
 
-source ./setup-env.sh
+cwd=$(dirname "${BASH_SOURCE[0]}")
+abs_cwd=$(realpath ${cwd})
+build_scripts_dir=${abs_cwd}
+
+source ${build_scripts_dir}/setup-env.sh
 
 export QCOS_LOCAL_SRC_DIR="${top_dir}"
 
 echo "Creating QCOS cli dockers ..."
+cd ${build_scripts_dir}
 
 if [ "${DEV,,}" = "false" ]; then
   docker-compose -f docker-compose-cli.yaml down

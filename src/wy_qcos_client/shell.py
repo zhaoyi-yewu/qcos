@@ -1180,6 +1180,61 @@ class GetJobResults(ShowOne):
 
     group = QcosShell.CMD_GROUP_JOB
 
+    def validate_file(self, outfile: str):
+        """Validate file.
+
+        Args:
+            outfile: output file name
+
+        Returns:
+            output file name
+        """
+        if os.path.exists(outfile):
+            if os.path.isfile(outfile):
+                raise argparse.ArgumentTypeError(
+                    f"Error: file: {outfile} existed"
+                )
+            else:
+                raise argparse.ArgumentTypeError(
+                    f"Error: {outfile} is not a file"
+                )
+
+        file_ext = os.path.splitext(outfile)[1].lower()
+        if file_ext:
+            allowed_extensions = [".txt", ".json"]
+            if file_ext not in allowed_extensions:
+                raise argparse.ArgumentTypeError(
+                    f"Invalid file format: {file_ext}"
+                )
+        return outfile
+
+    def save_file(self, outfile: str, job_results):
+        """Save job_results to file.
+
+        Args:
+            outfile: output file name
+            job_results: job results
+        """
+        file_dir = os.path.dirname(outfile)
+        try:
+            if file_dir and not os.path.exists(file_dir):
+                os.makedirs(file_dir, exist_ok=True)
+        except Exception as e:
+            raise Exception(f"Error to create dir{file_dir}, {str(e)}")
+
+        file_ext = os.path.splitext(outfile)[1].lower()
+        try:
+            if file_ext == ".txt":
+                with open(outfile, "w", encoding="utf-8") as f:
+                    f.write(str(job_results))
+            elif file_ext == ".json":
+                with open(outfile, "w", encoding="utf-8") as f:
+                    json.dump(job_results, f)
+        except PermissionError:
+            raise PermissionError(f"Permission Denied：{outfile}")
+        except Exception as e:
+            raise Exception(f"Save File error：{str(e)}")
+
     def get_parser(self, prog_name):
         """Get parser for this command.
 
@@ -1191,6 +1246,13 @@ class GetJobResults(ShowOne):
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("job_id", type=str, help="Job ID")
+        parser.add_argument(
+            "--outfile",
+            dest="outfile",
+            type=self.validate_file,
+            default=None,
+            help="Output file",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -1204,6 +1266,7 @@ class GetJobResults(ShowOne):
         """
         resource = self.group
         job_id = parsed_args.job_id
+        outfile = parsed_args.outfile
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(
@@ -1227,6 +1290,8 @@ class GetJobResults(ShowOne):
                         key = f"{k} [{index}]"
                         json_results[key] = v
                 index += 1
+        if outfile is not None:
+            self.save_file(outfile, json_results)
         table_values = CommandHelper.get_table_data(json_results)
         return table_values
 

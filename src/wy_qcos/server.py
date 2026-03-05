@@ -62,8 +62,8 @@ def _signal_handling():
         except asyncio.CancelledError:
             pass
 
-    # SIGINT and SIGTERM are already registered by uvicorn
-    signals = ["SIGHUP", "SIGQUIT"]
+    # register signals
+    signals = ["SIGHUP", "SIGQUIT", "SIGTERM"]
     if platform.system() != "Linux":
         signals = []
     for signal_name in signals:
@@ -95,9 +95,10 @@ class Server:
         parser.add_argument(
             "-c",
             "--config-file",
-            dest="config_file",
-            default="/etc/qcos/qcos.toml",
-            help="Config file path",
+            dest="config_files",
+            action="append",
+            default=None,
+            help="Config file path (can be specified multiple times)",
         )
         parser.add_argument(
             "--config-dir",
@@ -114,9 +115,12 @@ class Server:
         )
 
         args = parser.parse_args(argv)
-        # read and parse config file
-        if args.config_file:
-            Config.load_config_file(args.config_file)
+        # read and parse config files
+        if args.config_files is None:
+            args.config_files = ["/etc/qcos/qcos.toml"]
+        if args.config_files:
+            for config_file in args.config_files:
+                Config.load_config_file(config_file)
 
         # read and parse config files under config dir
         if args.config_dir:
@@ -151,6 +155,10 @@ class Server:
             compression=Config.LOG_ROTATE_COMPRESSION,
             quiet=False,
         )
+
+        # ensure logger using correct handlers
+        logger.handlers = self._stream_handlers
+        logger.setLevel(logger_level)
 
     @staticmethod
     def _pid_lock(path):
@@ -194,6 +202,14 @@ class Server:
         logger.info(PROGRAM_VERSION)
         logger.info(Config.show_info())
 
+        # get log level
+        logger_level = logging.INFO
+        access_log = False
+        if Config.DEBUG:
+            logger_level = logging.DEBUG
+            # only show uvicorn access logs in debug mode
+            access_log = True
+
         _signal_handling()
         try:
             _listen_ip = (
@@ -202,10 +218,6 @@ class Server:
                 else "all IPs"
             )
             logger.info(f"Starting server, listening on '{_listen_ip}'")
-            # only show uvicorn access logs in debug mode
-            access_log = False
-            if logger.getEffectiveLevel() == logging.DEBUG:
-                access_log = True
 
             config = uvicorn.Config(
                 app,
@@ -230,6 +242,12 @@ class Server:
                 uvicorn_logger = logging.getLogger("uvicorn.access")
                 uvicorn_logger.handlers = self._stream_handlers
                 uvicorn_logger.propagate = False
+
+            # configure wy_qcos root logger to use our handlers
+            wy_qcos_logger = logging.getLogger("wy_qcos")
+            wy_qcos_logger.handlers = self._stream_handlers
+            wy_qcos_logger.setLevel(logger_level)
+            wy_qcos_logger.propagate = False
 
             # init uvicorn server
             server = QcosUvicornServer(config)

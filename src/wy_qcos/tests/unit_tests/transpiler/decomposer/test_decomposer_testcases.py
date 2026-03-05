@@ -40,7 +40,7 @@ from wy_qcos.tests.unit_tests.transpiler.comm import (
     validate_gates_in_targets,
 )
 from wy_qcos.tests.common.qasm_file_reader import QasmFileReader
-from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
+from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 
 
 @pytest.mark.usefixtures("global_configs")
@@ -155,10 +155,13 @@ class TestDecomposer:
             target_basis: List of gate names supported by the target backend.
             backend_name: Human-readable name of the backend, used for logging.
         """
-        decomposed_gates = self.decomposer.decompose(
-            original_gates, target_basis
+        gate_name_list = list({op.name for op in original_gates})
+        dict, _ = self.decomposer.get_decompose_rules(
+            gate_name_list, target_basis
         )
-
+        decomposed_gates = self.decomposer.apply_decompose_rules(
+            original_gates, dict
+        )
         validate_gates_in_targets(decomposed_gates, target_basis)
         validate_ir_equals(original_gates, decomposed_gates)
 
@@ -198,6 +201,7 @@ class TestDecomposer:
                     backend_name,
                 )
 
+    @pytest.mark.slow
     def test_qasmbench_small_decompose(self):
         """System test for QASMBench-small circuits."""
         qasm_dir = self.samples_dir / "qasm" / "benchpress" / "qasmbench-small"

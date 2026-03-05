@@ -42,8 +42,9 @@ class DriverDummy(DriverBase):
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
         self.supported_basis_gates = [
-            Constant.SINGLE_QUBIT_GATE_X,
-            Constant.SINGLE_QUBIT_GATE_Y,
+            Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
+            Constant.SINGLE_QUBIT_GATE_RZ,
         ]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_aggregation = True

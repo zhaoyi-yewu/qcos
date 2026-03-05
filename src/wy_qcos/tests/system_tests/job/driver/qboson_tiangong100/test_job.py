@@ -18,7 +18,6 @@
 import logging
 import multiprocessing
 import pytest
-import time
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
@@ -80,16 +79,18 @@ class TestJob:
             )
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True
 
+    @pytest.mark.slow
     def test_submit_job_enable_subqubo(self):
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
-            "job_name": "test_qboson_submit_job",
-            "source_code_list": [SAMPLES["qubo_200X200.json"]],
+            "job_name": "test_submit_job_enable_subqubo",
+            "source_code_list": [SAMPLES["qubo_102X102.json"]],
             "code_type": Constant.CODE_TYPE_QUBO,
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
-            "description": "description: test_qboson_submit_job",
+            "description": "description: test_submit_job_enable_subqubo",
             "backend": "tiangong100",
             "shots": 100,
             "circuit_aggregation": None,
@@ -100,22 +101,17 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        job_results = StLibrary.submit_job(self.client, job_info)
-        assert job_results["result"]["job_status"] in [
-            Constant.JOB_STATUS_QUEUED,
-            Constant.JOB_STATUS_RUNNING,
-            Constant.JOB_STATUS_COMPLETED,
-        ]
-        while job_results["result"]["job_status"] in [
-            Constant.JOB_STATUS_QUEUED,
-            Constant.JOB_STATUS_RUNNING,
-        ]:
-            job_results = StLibrary.get_job_results(
-                self.client, job_info["job_id"]
-            )
-            time.sleep(self.interval)
-        StLibrary.delete_job(self.client, job_info["job_id"])
-        assert (
-            job_results["result"]["job_status"]
-            == Constant.JOB_STATUS_COMPLETED
+        StLibrary.submit_job(self.client, job_info)
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+            self.client, job_info, self.timeout * 10, self.interval
         )
+
+        if success:
+            StLibrary.delete_job(self.client, job_info["job_id"])
+            assert (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_COMPLETED
+            )
+        else:
+            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True

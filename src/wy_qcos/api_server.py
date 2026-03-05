@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -64,7 +64,7 @@ def main():
     PID_FILE = f"{PID_DIR}/qcos-api.pid"
 
     # kill existing qcos-api process
-    Library.kill_pid(PID_FILE)
+    Library.kill_pid(PID_FILE, expected_process_name=r"qcos-api")
     Library.mkdir(PID_DIR)
     Library.create_pid_file(PID_FILE)
 

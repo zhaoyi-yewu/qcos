@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -17,6 +17,7 @@
 
 import argparse
 import json
+import os
 from argparse import Namespace
 from unittest.mock import patch, Mock
 
@@ -473,8 +474,60 @@ class TestGetJobResults:
 
         mock_client = Mock(spec=Namespace)
         mock_client.job_id = job_id
+        mock_client.outfile = None
         table_values = get_job_results.take_action(mock_client)
         assert table_values is None
+
+    @patch.object(CommandHelper, "get_table_data")
+    @patch.object(CommandHelper, "handle_invalid_arguments")
+    @patch.object(Client, "get_job_results")
+    @patch.object(CommandHelper, "check_results")
+    def test_take_action_save_file(
+        self,
+        mock_check_results,
+        mock_get_job_results,
+        mock_handle_invalid_arguments,
+        mock_get_table_data,
+    ):
+        mock_check_results.return_value = response
+        mock_get_job_results.return_value = iter([None, None, None, None])
+        mock_handle_invalid_arguments.return_value = None
+        mock_get_table_data.return_value = None
+
+        mock_client = Mock(spec=Namespace)
+        mock_client.job_id = job_id
+        mock_client.outfile = "result.txt"
+        table_values = get_job_results.take_action(mock_client)
+        assert table_values is None
+        assert os.path.exists("result.txt") is True
+        os.remove("result.txt")
+
+    def test_validate_file(self):
+        with pytest.raises(argparse.ArgumentTypeError) as e:
+            get_job_results.validate_file("a.doc")
+        assert "Invalid file format" in str(e)
+
+        get_job_results.validate_file("results.txt")
+        get_job_results.validate_file("results.json")
+
+        get_job_results.save_file("results.txt", None)
+        assert os.path.exists("results.txt") is True
+        get_job_results.save_file("results.json", None)
+        assert os.path.exists("results.json") is True
+
+        with pytest.raises(argparse.ArgumentTypeError) as e:
+            get_job_results.validate_file("results.txt")
+        assert "Error: file: results.txt existed" in str(e)
+
+        with pytest.raises(argparse.ArgumentTypeError) as e:
+            get_job_results.validate_file("results.json")
+        assert "Error: file: results.json existed" in str(e)
+
+        with pytest.raises(argparse.ArgumentTypeError) as e:
+            get_job_results.validate_file("./")
+        assert "Error: ./ is not a file" in str(e)
+        os.remove("results.txt")
+        os.remove("results.json")
 
 
 class TestGetJobs:

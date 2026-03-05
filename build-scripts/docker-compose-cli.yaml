@@ -24,7 +24,7 @@ services:
     working_dir: /root
     environment:
       TZ: Asia/Shanghai
-      QCOS_CONTAINER_NAME: ${QCOS_CONTAINER_NAME}
+      CONTAINER_NAME: ${QCOS_CONTAINER_NAME}
       QCOS_SERVER_IP: ${QCOS_SERVER_IP}
       QCOS_SERVER_PORT: ${QCOS_SERVER_PORT}
       QCOS_VIRTUAL_INSTANCE_ID: ${QCOS_VIRTUAL_INSTANCE_ID}

@@ -73,6 +73,7 @@ class TestJob:
             )
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True
 
     def test_submit_job_dry_run(self):
         job_info = {
@@ -105,6 +106,7 @@ class TestJob:
             )
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True
 
     def test_submit_job_profiling(self):
         job_info = {
@@ -163,6 +165,7 @@ class TestJob:
             )
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True
 
     def test_submit_job_wirecut(self):
         job_info = {
@@ -195,6 +198,7 @@ class TestJob:
             )
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True
 
     @pytest.mark.slow
     def test_submit_two_same_priority_jobs(self):
@@ -272,6 +276,7 @@ class TestJob:
             )
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True
 
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
             self.client, second_job_info, self.timeout, self.interval
@@ -284,6 +289,7 @@ class TestJob:
             )
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True
 
     @pytest.mark.slow
     def test_submit_two_different_priority_jobs(self):
@@ -362,6 +368,7 @@ class TestJob:
             )
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True
 
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
             self.client, second_job_info, self.timeout, self.interval
@@ -374,6 +381,7 @@ class TestJob:
             )
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True
 
     @pytest.mark.slow
     def test_submit_two_different_device_jobs(self):
@@ -451,6 +459,7 @@ class TestJob:
             )
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True
 
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
             self.client, second_job_info, self.timeout, self.interval
@@ -464,3 +473,4 @@ class TestJob:
             assert job_results["result"]["job_status"] in terminal_statuses
         else:
             logger.warning(f"unexpected job result. err_msg:{err_msg}")
+        assert success is True

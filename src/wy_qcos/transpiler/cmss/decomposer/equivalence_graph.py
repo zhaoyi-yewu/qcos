@@ -16,10 +16,8 @@
 # ----------------------------------------------------------------------
 
 import heapq
+import re
 from dataclasses import dataclass
-
-from wy_qcos.transpiler.cmss.common.base_operation import BaseOperation
-
 
 EquivalenceLibary: list[str] = [
     # reference from qiskit
@@ -162,13 +160,13 @@ EquivalenceLibary: list[str] = [
         "rz(theta) q1 | "
         "cx() q0,q1 | "
         "h() q1"
-    ),  # qcos not support rzx gate
+    ),
     # RYGate
     #
     #    ┌───────┐        ┌──────────┐
     # q: ┤ Ry(ϴ) ├  ≡  q: ┤ R(ϴ,π/2) ├
     #    └───────┘        └──────────┘
-    "ry(theta) q0 -> r(theta, pi/2) q0",  # qcos not support r gate
+    "ry(theta) q0 -> r(theta, pi/2) q0",
     # CRYGate
     #
     # q_0: ────■────      q_0: ─────────────■────────────────■──
@@ -633,7 +631,7 @@ EquivalenceLibary: list[str] = [
     #      ┌─┴─┐  ≡       ┌────────────┐ │P(π) ┌────────────┐
     # q_1: ┤ X ├     q_1: ┤ U(π/2,0,π) ├─■─────┤ U(π/2,0,π) ├
     #      └───┘          └────────────┘       └────────────┘
-    "cx() q0,q1 -> u(pi/2,0,pi) q1 | cphase(pi) q0,q1 | u(pi/2,0,pi) q1",
+    "cx() q0,q1 -> u(pi/2,0,pi) q1 | cp(pi) q0,q1 | u(pi/2,0,pi) q1",
     # CXGate
     #                     ┌────────────┐
     # q_0: ──■──     q_0: ┤ U(0,0,π/2) ├────■──────────────────
@@ -861,7 +859,7 @@ EquivalenceLibary: list[str] = [
 ]
 
 
-@dataclass
+@dataclass(frozen=True)
 class ParamGate:
     """Represents a parameterized quantum gate.
 
@@ -873,15 +871,15 @@ class ParamGate:
     """
 
     name: str
-    qubits: list[str]
-    params: list[str] | None = None
+    qubits: tuple[str, ...]
+    params: tuple[str, ...] = ()
 
 
 class EquivalenceRule:
     """Represents an equivalence rule for decomposing quantum gates.
 
     The rule is specified in a DSL string, for example:
-        "cx() q0,q1 -> u(pi/2,0,pi) q1 | cphase(pi) q0,q1 | u(pi/2,0,pi) q1"
+        "cx() q0,q1 -> u(pi/2,0,pi) q1 | cp(pi) q0,q1 | u(pi/2,0,pi) q1"
 
     Attributes:
         target (ParamGate): The target gate to be decomposed.
@@ -944,9 +942,11 @@ class EquivalenceRule:
         if not qubit_str:
             raise ValueError(f"no qubit list: {block}")
 
-        qubits = [q.strip() for q in qubit_str.split(",")]
+        qubits = tuple([q.strip() for q in qubit_str.split(",")])  # pylint: disable=consider-using-generator
         params = (
-            [p.strip() for p in params_str.split(",")] if params_str else []
+            tuple([p.strip() for p in params_str.split(",")])  # pylint: disable=consider-using-generator
+            if params_str
+            else ()
         )
 
         return ParamGate(name=name, params=params, qubits=qubits)
@@ -990,7 +990,7 @@ class EquivalenceGraph:
         return float(len(rule.sources))
 
     def get_optimal_decomposition_rule_dictionary(
-        self, source: list[BaseOperation], target: list[str]
+        self, source: list[str], target: list[str]
     ) -> dict[str, EquivalenceRule]:
         """Generate optimal decomposition rules.
 
@@ -998,8 +998,7 @@ class EquivalenceGraph:
         source and target operations.
 
         Args:
-            source (list[BaseOperation]): List of source operations to be
-                decomposed.
+            source (list[str]): List of source gate names to be decomposed.
             target (list[str]): List of target operations to achieve.
 
         Returns:
@@ -1013,13 +1012,13 @@ class EquivalenceGraph:
                 target.append(gate)
 
         visited_gates: set[str] = set()
-        left_source_gates: set[str] = set(
-            x.name for x in source if x.name not in target
-        )
+        left_source_gates: set[str] = set(x for x in source if x not in target)
+
         cost_map: dict[str, float] = {}
         optimal_rules: dict[str, EquivalenceRule] = {}
         priority_queue = []
         counter = 0
+
         for gate_name in target:
             heapq.heappush(priority_queue, (0.0, counter, gate_name))
             counter += 1
@@ -1140,3 +1139,184 @@ class EquivalenceGraph:
 
         lines.append("}")
         return "\n".join(lines)
+
+    def _rewrite_params(
+        self,
+        exprs: tuple[str, ...],
+        param_map: dict[str, str],
+    ) -> tuple[str, ...]:
+        """Rewrite parameter expressions using a parameter map.
+
+        Each parameter token is replaced only when it appears as a full token.
+
+        Args:
+            exprs: Original parameter expression tuple.
+            param_map: Mapping from symbolic parameter to expression string.
+
+        Returns:
+            Rewritten parameter tuple, or None if no parameters.
+        """
+        rewritten: list[str] = []
+
+        for expr in exprs:
+            new_expr = expr
+
+            for key, value in param_map.items():
+                pattern = rf"\b{re.escape(key)}\b"
+                replacement = f"({value})"
+                new_expr = re.sub(pattern, replacement, new_expr)
+
+            rewritten.append(new_expr)
+
+        return tuple(rewritten)
+
+    def _expand_gate_recursive(
+        self,
+        gate: ParamGate,
+        rule_map: dict[str, EquivalenceRule],
+        target_set: set[str],
+        cache: dict[ParamGate, list[ParamGate]],
+        path: set[ParamGate],
+    ) -> list[ParamGate]:
+        """Recursively expand a ParamGate into target-gate sequence.
+
+        Args:
+            gate: Gate to expand.
+            rule_map: Gate name -> decomposition rule.
+            target_set: Names of target gates.
+            cache: Memoization cache.
+            path: Current recursion stack for cycle detection.
+
+        Returns:
+            Fully expanded ParamGate sequence.
+
+        Raises:
+            ValueError: If rule missing, parameter mismatch, or cycle detected.
+        """
+        # -------- Target gate reached --------
+        if gate.name in target_set:
+            return [gate]
+
+        # -------- Cache --------
+        cached = cache.get(gate)
+        if cached is not None:
+            return cached
+
+        # -------- Cycle detection --------
+        if gate in path:
+            raise ValueError(f"Cycle detected at gate {gate}")
+
+        rule = rule_map.get(gate.name)
+        if rule is None:
+            raise ValueError(f"No rule for gate {gate.name}")
+
+        # -------- Parameter binding --------
+        param_map: dict[str, str] = {}
+
+        template = rule.target
+
+        if template.params:
+            if not gate.params or len(gate.params) != len(template.params):
+                raise ValueError(
+                    "Parameter mismatch for gate "
+                    f"{gate.name}: expected {template.params}, "
+                    f"got {gate.params}"
+                )
+
+            param_map = dict(zip(template.params, gate.params))
+
+        # -------- Enter recursion path --------
+        path.add(gate)
+
+        result: list[ParamGate] = []
+
+        for source_gate in rule.sources:
+            # ---- Qubit mapping ----
+            qubit_map = dict(zip(template.qubits, gate.qubits))
+            mapped_qubits = tuple(qubit_map[q] for q in source_gate.qubits)
+
+            # ---- Parameter rewrite ----
+            rewritten_params = self._rewrite_params(
+                source_gate.params,
+                param_map,
+            )
+
+            rewritten_gate = ParamGate(
+                name=source_gate.name,
+                qubits=mapped_qubits,
+                params=rewritten_params,
+            )
+
+            sub_expanded = self._expand_gate_recursive(
+                gate=rewritten_gate,
+                rule_map=rule_map,
+                target_set=target_set,
+                cache=cache,
+                path=path,
+            )
+
+            result.extend(sub_expanded)
+
+        # -------- Exit recursion path --------
+        path.remove(gate)
+
+        cache[gate] = result
+        return result
+
+    def build_full_decomposition_table(
+        self,
+        source: list[str],
+        target: list[str],
+    ) -> tuple[
+        dict[ParamGate, list[ParamGate]],
+        dict[str, int],
+    ]:
+        """Build full decomposition table for all non-target gates.
+
+        Args:
+            source: Source gate names that may require decomposition.
+            target: Target gate name set (basis gates).
+
+        Returns:
+            tuple[dict[ParamGate, list[ParamGate]], dict[str, int]]:
+                Decomposition table and gate expansion count map.
+
+        Raises:
+            ValueError: If decomposition rule missing.
+        """
+        rule_map = self.get_optimal_decomposition_rule_dictionary(
+            source,
+            target,
+        )
+
+        target_set = set(target)
+
+        cache: dict[ParamGate, list[ParamGate]] = {}
+        table: dict[ParamGate, list[ParamGate]] = {}
+        count_map: dict[str, int] = {}
+
+        for name in source:
+            if name in target_set:
+                continue
+
+            rule = rule_map.get(name)
+            if rule is None:
+                raise ValueError(f"No rule for gate {name}")
+
+            template_gate = rule.target
+
+            if template_gate in table:
+                continue
+
+            expanded = self._expand_gate_recursive(
+                gate=template_gate,
+                rule_map=rule_map,
+                target_set=target_set,
+                cache=cache,
+                path=set(),
+            )
+
+            table[template_gate] = expanded
+            count_map[template_gate.name] = len(expanded)
+
+        return table, count_map

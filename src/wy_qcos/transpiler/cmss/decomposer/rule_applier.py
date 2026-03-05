@@ -21,6 +21,7 @@ import numexpr
 from wy_qcos.transpiler.cmss.common.base_operation import BaseOperation
 from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
     EquivalenceRule,
+    ParamGate,
 )
 from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
 
@@ -188,3 +189,105 @@ class RuleApplier:
             decomposed_circuit.extend(_decompose_gate(gate))
 
         return decomposed_circuit
+
+    def apply_with_decomposition_table(
+        self,
+        circuit: list[BaseOperation],
+        table: dict[ParamGate, list[ParamGate]],
+    ) -> list[BaseOperation]:
+        """Apply a pre-built decomposition table to a circuit.
+
+        Each gate in the input circuit is replaced by its fully expanded
+        decomposition sequence if a matching ParamGate template exists in
+        the table. Parameter expressions are numerically evaluated using
+        numexpr with the gate argument environment.
+
+        Args:
+            circuit: List of BaseOperation objects representing the input
+                circuit.
+            table: Mapping from template ParamGate to its expanded ParamGate
+                decomposition sequence.
+
+        Returns:
+            A new list of BaseOperation objects after decomposition.
+
+        Raises:
+            ValueError: If parameter expression evaluation fails.
+        """
+        _expr_code_cache: dict[str, object] = {}
+
+        _SAFE_GLOBALS = {
+            "__builtins__": {},
+            "pi": math.pi,
+            "e": math.e,
+        }
+
+        def _eval_expr_cached(expr, env):
+            code = _expr_code_cache.get(expr)
+
+            if code is None:
+                code = compile(expr, "<expr>", "eval")
+                _expr_code_cache[expr] = code
+
+            return float(eval(code, _SAFE_GLOBALS, env))  # pylint: disable=eval-used  # noqa: S307
+
+        # Build name -> template lookup index.
+        template_index: dict[str, ParamGate] = {
+            template.name: template for template in table
+        }
+
+        new_ops: list[BaseOperation] = []
+
+        for op in circuit:
+            # Gate does not require decomposition.
+            template = template_index.get(op.name)
+            if template is None:
+                new_ops.append(op)
+                continue
+
+            expanded_sequence = table[template]
+
+            # -------- Qubit mapping --------
+            qubit_map: dict[str, int] = dict(zip(template.qubits, op.targets))
+
+            # -------- Parameter environment --------
+            param_env: dict[str, float] = {
+                "pi": math.pi,
+                "e": math.e,
+            }
+
+            if template.params:
+                for key, value in zip(template.params, op.arg_value or []):
+                    param_env[key] = value
+
+            # -------- Emit expanded gates --------
+            for param_gate in expanded_sequence:
+                mapped_qubits = [qubit_map[q] for q in param_gate.qubits]
+
+                if param_gate.params:
+                    try:
+                        mapped_params = []
+                        for expr in param_gate.params:
+                            value = _eval_expr_cached(expr, param_env)
+                            mapped_params.append(value)
+
+                    except Exception as exc:
+                        msg = (
+                            "Parameter evaluation failed for gate "
+                            f"{param_gate.name}: "
+                            f"exprs={param_gate.params}, "
+                            f"env={param_env}"
+                        )
+                        raise ValueError(msg) from exc
+                else:
+                    mapped_params = []
+
+                new_ops.append(
+                    create_gate(
+                        param_gate.name,
+                        mapped_qubits,
+                        mapped_params,
+                    )
+                )
+
+        return new_ops

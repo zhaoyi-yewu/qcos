@@ -27,7 +27,7 @@ from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import (
     optimize,
 )
 from wy_qcos.tests.common.qasm_file_reader import QasmFileReader
-from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
+from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 from wy_qcos.tests.unit_tests.transpiler.comm import validate_ir_equals
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
@@ -123,6 +123,7 @@ class TestOptimizer:
             )
             self._validate_optimization(gates)
 
+    @pytest.mark.slow
     def test_qasmbench_small_optimization(self):
         """System test for QASMBench-small circuits."""
         qasm_dir = self.samples_dir / "qasm" / "benchpress" / "qasmbench-small"

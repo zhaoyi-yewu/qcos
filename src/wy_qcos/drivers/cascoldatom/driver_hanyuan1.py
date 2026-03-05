@@ -123,6 +123,7 @@ class DriverHanyuan1(DriverBase):
 
         # check and load driver configs
         driver_config_schema = {
+            "debug": bool,
             "ip_address": str,
             "port": int,
             "callback_baseurl": str,
@@ -987,7 +988,7 @@ class DriverHanyuan1(DriverBase):
         device_running_info = {}
         success, err_msg, result = self.get_device_info()
         if not success:
-            logger.error(f"Failed to get device info: {err_msg}")
+            logger.debug(f"Failed to get device info: {err_msg}")
             device_running_info["status"] = "offline"
             device_running_info["details"] = {}
             return device_running_info
