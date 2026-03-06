@@ -44,7 +44,7 @@ class DriverDummy(DriverBase):
         self.supported_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_RX,
             Constant.SINGLE_QUBIT_GATE_RY,
-            Constant.SINGLE_QUBIT_GATE_RZ,
+            Constant.TWO_QUBIT_GATE_CZ,
         ]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_aggregation = True
