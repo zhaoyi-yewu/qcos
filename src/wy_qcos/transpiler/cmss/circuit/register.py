@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -41,7 +41,7 @@ class Register:
 
     def __init__(
         self,
-        size: int,
+        size: int | None = None,
         name: str | None = None,
         init_pos: int = 0,
         bits: list[int] | None = None,
@@ -65,6 +65,8 @@ class Register:
                 "provided. size={size}, bits={bits}."""
             )
 
+        init_pos_int = int(init_pos)
+
         if bits is not None:
             if isinstance(bits, list):
                 for bit in bits:
@@ -74,32 +76,29 @@ class Register:
                         )
             else:
                 raise CircuitException(f"Bits must be list. bits: {bits}")
-
-        if size is not None and size < 0:
-            raise CircuitException(
-                f"Register size must be non-negative. size: {size}"
-            )
-
-        if bits is not None:
-            size = len(bits)
             bits.sort()
+            self._bits = bits
+            self._size = len(bits)
+        else:
+            if size is None:
+                raise CircuitException("Size cannot be None when bits is None")
+
+            if size < 0:
+                raise CircuitException(
+                    f"Register size must be non-negative. size: {size}"
+                )
+            self._size = int(size)
+            self._bits = [idx + init_pos_int for idx in range(self._size)]
 
         if name is None:
             name = f"{self.prefix}{next(self.instances_counter)}"
 
         self._name = str(name)
-        self._size = int(size)
         self._init_pos = int(init_pos)
 
         self._repr = (
             f"{self.__class__.__qualname__}({self.size}, '{self.name}')"
         )
-
-        self._bits = []
-        if bits is not None:
-            self._bits = bits
-        else:
-            self._bits = [idx + self._init_pos for idx in range(size)]
 
         self._bit_indices = None
 
