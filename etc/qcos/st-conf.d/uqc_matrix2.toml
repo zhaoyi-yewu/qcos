@@ -7,6 +7,6 @@ description = "幺正量子 UQC-Matrix2 离子阱驱动"
 
 uqc_host = "127.0.0.1"
 uqc_port = 5001
-password_token = ""
+password_token = "123456789"
 # backend_device_name: "Matrix2" or "qiskit-sim"
 backend_device_name = "Matrix2"

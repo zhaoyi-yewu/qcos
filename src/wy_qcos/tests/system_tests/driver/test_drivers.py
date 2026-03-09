@@ -52,8 +52,9 @@ class TestDrivers:
         assert driver["max_qubits"] == 10
         assert driver["results_fetch_mode"] == Constant.RESULTS_FETCH_MODE_SYNC
         assert driver["supported_basis_gates"] == [
-            Constant.SINGLE_QUBIT_GATE_X,
-            Constant.SINGLE_QUBIT_GATE_Y,
+            Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
+            Constant.TWO_QUBIT_GATE_CZ,
         ]
         assert driver["supported_code_types"] == [
             Constant.CODE_TYPE_QASM,
