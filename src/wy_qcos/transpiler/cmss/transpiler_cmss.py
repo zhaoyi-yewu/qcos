@@ -91,6 +91,23 @@ class TranspilerCmss(TranspilerBase):
     def init_transpiler(self):
         """Init transpiler."""
 
+    @staticmethod
+    def _resolve_storage_area_for_block(qpu_cfg, blk):
+        """按配置自动推导 block 对应的 storage_area.
+
+        兼容两种配置格式：
+        1) 旧格式：通过 closest 从 operate_area 映射到 storage_area
+        2) 新格式：operate/storage 同名坐标，直接复用 block
+        """
+        closest = qpu_cfg.get("closest", {})
+        if closest:
+            return [closest.get(o, o) for o in blk]
+        return blk.copy()
+
+    @staticmethod
+    def _has_closest_mapping(qpu_cfg):
+        return bool(qpu_cfg.get("closest", {}))
+
     def mapping(self, qpu_cfg, opt_result_dict):
         """Mapping.
 
@@ -161,9 +178,11 @@ class TranspilerCmss(TranspilerBase):
             ht = HierarchyTree(qpu_cfg)
             ht.construct()
             mapping_res = []
+            original_operate_area = qpu_cfg.get("operate_area", []).copy()
             for key, value in opt_result_dict.items():
                 # 不使用b+树进行block查找
                 blk = get_block(ht, value[0])
+                logger.info(f"xxblock: {blk}")
                 # 使用b+树进行block查找
                 # TODO (wangjujun): use b+ tree by parameter.
                 # blk = get_block_bplus(ht, value[0])
@@ -177,10 +196,17 @@ class TranspilerCmss(TranspilerBase):
                     # For SC, set current_block to limit the mapping range
                     qpu_cfg["current_block"] = blk
                 else:
-                    qpu_cfg["operate_area"] = blk
-                    qpu_cfg["storage_area"] = [
-                        qpu_cfg["closest"][o] for o in blk
-                    ]
+                    if self._has_closest_mapping(qpu_cfg):
+                        # 旧格式：blk 为 operate block
+                        qpu_cfg["operate_area"] = blk
+                    else:
+                        # 新格式：blk 为 storage block，
+                        # operate_area 保持原始配置
+                        qpu_cfg["operate_area"] = original_operate_area.copy()
+                    storage_blk = self._resolve_storage_area_for_block(
+                        qpu_cfg, blk
+                    )
+                    qpu_cfg["storage_area"] = storage_blk
 
                 mapper.prepare_data(value[0], value[1], qpu_cfg)
                 mapping_result, final_layout = mapper.execute_with_order()
