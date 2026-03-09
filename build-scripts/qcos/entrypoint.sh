@@ -89,6 +89,8 @@ def config(conf):
     conf['REDIS']['REDIS_SERVER_IP'] = '${REDIS_SERVER_IP:-127.0.0.1}'
     conf['REDIS']['REDIS_SERVER_PORT'] = ${REDIS_SERVER_PORT:-6379}
 
+    conf['DATABASE']['QCOS_DATABASE_CONNECTION_URL'] = ${QCOS_DATABASE_CONNECTION_URL:-fake}
+
     conf['LOG']['API_LOG_FILE'] = '${REDIS_SERVER_IP:-127.0.0.1}'
     conf['LOG']['JOB_ENGINE_LOG_FILE'] = '${JOB_ENGINE_LOG_FILE:-/var/log/qcos/qcos-engine.log}'
     conf['LOG']['DEVICE_MONITOR_LOG_FILE'] = '${DEVICE_MONITOR_LOG_FILE:-/var/log/qcos/device-monitor.log}'

@@ -60,6 +60,13 @@ class Config:
     # REDIS server port
     REDIS_SERVER_PORT = Constant.DEFAULT_REDIS_SERVER_PORT
 
+    # [DATABASE]
+    # eg. without db: fake,
+    # pg: "postgresql+pg8000://postgres:${password}@100.78.61.22:5432/qcos"
+    QCOS_DATABASE_CONNECTION_URL = (
+        "postgresql+pg8000://postgres:Eisp2020#@192.168.93.10:5432/qcos"
+    )
+
     # [LOG]
     # api log file
     API_LOG_FILE = "/var/log/qcos/qcos-api.log"
@@ -111,6 +118,7 @@ class Config:
         "VIRT",
         "API_SERVER",
         "REDIS",
+        "DATABASE",
         "LOG",
         "SSL",
         "PREFECT",

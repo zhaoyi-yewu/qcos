@@ -1,1 +1,2 @@
 CREATE DATABASE prefect;
+CREATE DATABASE qcos;

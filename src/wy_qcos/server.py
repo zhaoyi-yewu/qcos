@@ -36,6 +36,7 @@ from wy_qcos.drivers.driver_manager import DriverManager
 from wy_qcos.log.logger import init_logger
 from wy_qcos.task_manager import scheduler
 from wy_qcos.transpiler.transpiler_manager import TranspilerManager
+from wy_qcos.db import database
 
 logger = logging.getLogger(__name__)
 
@@ -273,6 +274,10 @@ class Server:
             scheduler.set_transpiler_manager(transpiler_manager)
             scheduler.set_device_manager(device_manager)
             scheduler.start_taskmanager()
+
+            # init database
+            db_engine = database.init_database()
+            app.state._db_engine = db_engine
 
             # run any unfinished callbacks
             logger.info("Processing unfinished callbacks ...")
