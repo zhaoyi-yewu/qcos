@@ -16,7 +16,7 @@ version: '3'
 services:
   qcos-sandbox:
     container_name: qcos-sandbox
-    image: ${REGISTRY}${SANDBOX_IMAGE_NAME}:${SANDBOX_IMAGE_VERSION}
+    image: ${QCOS_REGISTRY}${SANDBOX_IMAGE_NAME}:${SANDBOX_IMAGE_VERSION}
     privileged: true
     network_mode: "host"
     restart: always
