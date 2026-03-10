@@ -63,9 +63,7 @@ class Config:
     # [DATABASE]
     # eg. without db: fake,
     # pg: "postgresql+pg8000://postgres:${password}@100.78.61.22:5432/qcos"
-    QCOS_DATABASE_CONNECTION_URL = (
-        "postgresql+pg8000://postgres:Eisp2020#@192.168.93.10:5432/qcos"
-    )
+    QCOS_DATABASE_CONNECTION_URL = "fake"
 
     # [LOG]
     # api log file
