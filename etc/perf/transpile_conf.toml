@@ -1,0 +1,32 @@
+# 性能测试基础参数，默认注释的参数可以忽略
+[transpile]
+# 性能测试运行次数
+# run_count = 1
+# 输出日志文件路径和性能测试结果文件，绝对路径或项目的相对路径
+# output_log = ""
+# csv_file = ""
+
+# 测试集必须配置，绝对路径或项目的相对路径
+files = ["samples/qasm/2.0/simple-qasm.qasm"]
+dirs = []
+
+[transpile.transpiler]
+# 默认为true
+# is_exec = true
+# base_gates中元素与拓扑类型强相关
+base_gates = ["rx, ry, cx"]
+
+[transpile.optimize]
+# 默认opt_level为[1]
+opt_level = [1]
+
+[transpile.mapping]
+# 默认为true
+# is_exec = true
+# 拓扑类型, 当is_exec不为false时, 拓扑信息必须配置
+tech_type = ["superconducting"]
+# 拓扑类型配置文件, 当is_exec不为false时， 必须配置，绝对路径或项目的相对路径
+config_file = ["etc/qcos/conf.d/spinq_rpc.toml"]
+# json格式的字符串，表示不同算法组合输入，默认不输入，
+# 但元素必须与tech_type和config_file一一对应
+# mapping_options = []

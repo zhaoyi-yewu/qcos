@@ -17,7 +17,7 @@
 
 from schema import Optional
 
-from wy_qcos.transpiler.common.utils import Timer, logger
+from wy_qcos.transpiler.common.utils import TranspileRuntime, Timer, logger
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.cmss.compiler.decomposer import decompose_gates_to_1q2q
 from wy_qcos.transpiler.cmss.decomposer.decomposer import Decomposer
@@ -78,6 +78,7 @@ class TranspilerCmss(TranspilerBase):
             "enable_na_move": enable_na_move,
             # sc_mapping options
             "sc_mapping_options": {},
+            "perf_options": {},
         }
         # transpiler_options schema used in submit-job from user
         self.transpiler_options_schema = {
@@ -258,66 +259,6 @@ class TranspilerCmss(TranspilerBase):
             mapping_dict(dict): mapping dict by cmss mapping.
             only for neutral atom now
         """
-        qpu_cfg = trans_cfg_inst.get_qpu_cfg()
-        if not qpu_cfg:
-            err_msg = "Missing qpu configs"
-            logger.error(err_msg)
-            raise ValueError(err_msg)
-
-        # optimize gates list
-        opt_level = self.transpiler_options.get(
-            "optimization_level", Constant.DEFAULT_OPTIMIZATION_LEVEL
-        )
-        # parse dict, key: job_id, value: (num_qubits, circuit)
-        # firstly optimize
-        opt_result_dict = {}
-        with Timer() as optimize1_timer:
-            for key, value in parse_result.items():
-                opt_result = optimize(value[1], opt_level=min(1, opt_level))
-                opt_result_dict[key] = (value[0], opt_result)
-        logger.info(
-            f"tranpiler(optimize firstly): {optimize1_timer.elapsed:.4f}s\n"
-            f"number of gates: {len(opt_result)}\n"
-        )
-
-        # decompose gate by rules firstly
-        dp_result_dict = {}
-        with Timer() as decompose1_timer:
-            for key, value in opt_result_dict.items():
-                decomposed_gates = decompose_gates_to_1q2q(value[1])
-                dp_result_dict[key] = (value[0], decomposed_gates)
-        logger.info(
-            "tranpiler(decomposing firstly): "
-            f"{decompose1_timer.elapsed:.4f}s\n"
-            f"number of gates: {len(decomposed_gates)}\n"
-        )
-
-        decomposer = Decomposer()
-        decompose_rules_dict = {}
-        # Flatten all BaseOperation lists from the qasm_dict values.
-        gate_name_list = list({
-            op.name for _, ops in dp_result_dict.values() for op in ops
-        })
-        with Timer() as decompose_ruler_timer:
-            decompose_rules_dict, _ = decomposer.get_decompose_rules(
-                gate_name_list,
-                supp_basis_gates,
-            )
-        logger.info(
-            "tranpiler(get decompose rules): "
-            f"{decompose_ruler_timer.elapsed:.4f}s\n"
-        )
-
-        with Timer() as mapping_timer:
-            mapping_res, mapping_dict, _, _ = self.mapping(
-                qpu_cfg, dp_result_dict
-            )
-        logger.info(
-            f"tranpiler(mapping): {mapping_timer.elapsed:.4f}s\n"
-            f"number of gates: {len(mapping_res)}\n"
-        )
-
-        # decompose gates secondly for supp_basis_gates
         enable_na_move = self.transpiler_options.get("enable_na_move", False)
         # support cz gate for NARoute
         if enable_na_move:
@@ -327,26 +268,142 @@ class TranspilerCmss(TranspilerBase):
                 Constant.TWO_QUBIT_GATE_CZ,
             ]
 
-        with Timer() as applier_timer:
-            decomposer_circuit = decomposer.apply_decompose_rules(
-                mapping_res, decompose_rules_dict
-            )
-        logger.info(
-            "tranpiler(applier_timer): "
-            f"{applier_timer.elapsed:.4f}s\n"
-            f"number of gates: {len(decomposer_circuit)}\n"
+        perf_options = self.transpiler_options.get("perf_options", {})
+        mapping_exec = perf_options.get("mapping_exec", True)
+        run_time: TranspileRuntime = perf_options.get(
+            "transpiler_time", TranspileRuntime()
         )
 
-        # secondly optimize
-        with Timer() as optimize2_timer:
-            basis_gate_list = optimize(
-                decomposer_circuit,
-                opt_level,
-                basis_gates=set(supp_basis_gates),
-            )
-        logger.debug(f"final basis_gate_list: {basis_gate_list}")
-        logger.info(
-            f"tranpiler(optimize secondly): {optimize2_timer.elapsed:.4f}s\n"
-            f"number of gates: {len(basis_gate_list)}\n"
+        # get optimization level
+        opt_level = self.transpiler_options.get(
+            "optimization_level", Constant.DEFAULT_OPTIMIZATION_LEVEL
         )
+        # parse dict, key: job_id, value: (num_qubits, circuit)
+        # optimize gates list firstly for better decomposed efficiency.
+        opt_result_dict = {}
+        with Timer() as optimize1_timer:
+            for key, value in parse_result.items():
+                opt_result = optimize(value[1], opt_level=1)
+                opt_result_dict[key] = (value[0], opt_result)
+        run_time.opt_time1 = optimize1_timer.elapsed
+        logger.info(
+            f"tranpiler(optimize firstly): {optimize1_timer.elapsed:.4f}s\n"
+        )
+
+        if mapping_exec:
+            qpu_cfg = trans_cfg_inst.get_qpu_cfg()
+            if not qpu_cfg:
+                err_msg = "Missing qpu configs"
+                logger.error(err_msg)
+                raise ValueError(err_msg)
+
+            # decompose gate to 1q2q gates for mapping
+            dp_result_dict = {}
+            with Timer() as decompose_1q2q_timer:
+                for key, value in opt_result_dict.items():
+                    decomposed_gates = decompose_gates_to_1q2q(value[1])
+                    dp_result_dict[key] = (value[0], decomposed_gates)
+            run_time.decompose_1q2q_time = decompose_1q2q_timer.elapsed
+            logger.info(
+                "tranpiler(decomposing firstly): "
+                f"{decompose_1q2q_timer.elapsed:.4f}s\n"
+                f"number of gates: {len(decomposed_gates)}\n"
+            )
+
+            decomposer = Decomposer()
+            decompose_rules_dict = {}
+            # Flatten all BaseOperation lists from the qasm_dict values.
+            gate_name_list = list({
+                op.name for _, ops in dp_result_dict.values() for op in ops
+            })
+            with Timer() as decompose_ruler_timer:
+                decompose_rules_dict, _ = decomposer.get_decompose_rules(
+                    gate_name_list,
+                    supp_basis_gates,
+                )
+            run_time.decompose_rule_time = decompose_ruler_timer.elapsed
+            logger.info(
+                "tranpiler(get decompose rules): "
+                f"{decompose_ruler_timer.elapsed:.4f}s\n"
+            )
+
+            with Timer() as mapping_timer:
+                mapping_res, mapping_dict, _, _ = self.mapping(
+                    qpu_cfg, dp_result_dict
+                )
+            run_time.mapping_time = mapping_timer.elapsed
+            logger.info(f"tranpiler(mapping): {mapping_timer.elapsed:.4f}s\n")
+
+            with Timer() as applier_timer:
+                decomposer_circuit = decomposer.apply_decompose_rules(
+                    mapping_res, decompose_rules_dict
+                )
+            run_time.decompose_apply_time = applier_timer.elapsed
+            logger.info(
+                f"tranpiler(applier_timer): {applier_timer.elapsed:.4f}s\n"
+            )
+
+            # secondly optimize
+            with Timer() as optimize2_timer:
+                basis_gate_list = optimize(
+                    decomposer_circuit,
+                    opt_level,
+                    basis_gates=set(supp_basis_gates),
+                )
+            run_time.opt_time2 = optimize2_timer.elapsed
+            logger.debug(f"final basis_gate_list: {basis_gate_list}")
+            logger.info(
+                "tranpiler(optimize secondly):"
+                f" {optimize2_timer.elapsed:.4f}s\n"
+            )
+        else:
+            decomposer = Decomposer()
+            decompose_rules_dict = {}
+            # Flatten all BaseOperation lists from the qasm_dict values.
+            gate_name_list = list({
+                op.name for _, ops in opt_result_dict.values() for op in ops
+            })
+
+            with Timer() as decompose_ruler_timer:
+                decompose_rules_dict, _ = decomposer.get_decompose_rules(
+                    gate_name_list,
+                    supp_basis_gates,
+                )
+            run_time.decompose_rule_time = decompose_ruler_timer.elapsed
+            logger.info(
+                "tranpiler(get decompose rules): "
+                f"{decompose_ruler_timer.elapsed:.4f}s\n"
+            )
+
+            decomposer_dict = {}
+            with Timer() as applier_timer:
+                for key, value in opt_result_dict.items():
+                    decomposer_dict[key] = decomposer.apply_decompose_rules(
+                        value[1], decompose_rules_dict
+                    )
+            run_time.decompose_apply_time = applier_timer.elapsed
+            logger.info(
+                f"tranpiler(applier_timer): {applier_timer.elapsed:.4f}s\n"
+            )
+
+            # secondly optimize
+            basis_gates_dict = {}
+            with Timer() as optimize2_timer:
+                for key, value in decomposer_dict.items():
+                    basis_gates_dict[key] = optimize(
+                        value,
+                        opt_level,
+                        basis_gates=set(supp_basis_gates),
+                    )
+            run_time.opt_time2 = optimize2_timer.elapsed
+            basis_gate_list = [
+                gate for gates in basis_gates_dict.values() for gate in gates
+            ]
+            logger.debug(f"final basis_gate_list: {basis_gate_list}")
+            logger.info(
+                "tranpiler(optimize secondly):"
+                f" {optimize2_timer.elapsed:.4f}s\n"
+            )
+            mapping_dict = None
+
         return basis_gate_list, mapping_dict

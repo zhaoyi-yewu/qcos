@@ -56,3 +56,17 @@ class Timer:
     def __exit__(self, *args):
         self.end = time.time()
         self.elapsed = self.end - self.start
+
+
+class TranspileRuntime:
+    def __init__(self):
+        self.total_time = 0.0
+        self.transpile_time = 0.0
+        self.parse_time = 0.0
+        self.opt_time1 = 0.0
+        self.decompose_rule_time = 0.0
+        self.decompose_1q2q_time = 0.0
+        self.decompose_apply_time = 0.0
+        self.opt_time2 = 0.0
+        self.mapping_time = 0.0
+        self.routing_time = 0.0

@@ -26,11 +26,9 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 from wy_qcos.transpiler.common.utils import Timer, init_logging, logger
 from wy_qcos.transpiler.cmss.transpiler_cmd_line import (
-    read_qasm_from_file,
-    main_cmss_transpiler as main,
+    CMSSTranspilerPerf,
     main as cmss_main,
     get_parse_args,
-    check_file_args,
 )
 
 timer = Timer()
@@ -44,136 +42,62 @@ class TestTranspilerCmdLine:
         cls.etc_dir = GLOBAL_CONFIGS["etc_dir"]
 
     def test_read_qasm_from_file(self):
-        read_qasm_from_file("None")
+        perf = CMSSTranspilerPerf()
+        perf.read_qasm_from_file("None")
 
-    @patch("wy_qcos.transpiler.cmss.transpiler_cmd_line.decompose_gates")
-    @patch("wy_qcos.transpiler.cmss.transpiler_cmd_line.optimize_gate")
-    @patch("wy_qcos.transpiler.cmss.transpiler_cmd_line.get_ir")
-    @patch("wy_qcos.transpiler.cmss.transpiler_cmd_line.get_abs_tree")
-    def test_main(
-        self,
-        mock_get_abs_tree,
-        mock_get_ir,
-        mock_optimize_gate,
-        mock_decompose_gates,
-    ):
-        mock_obj = MagicMock()
-        mock_obj.get_operations.return_value = None
+    def test_init_output_head(self):
+        m = mock_open()
+        with patch("builtins.open", m):
+            output_file_path = Path("test.txt")
+            file_path = Path("input.txt")
+            opt_level = 1
+            tech_type = "sc"
+            config_file = "config.yaml"
+            mapping_options = {}
+            CMSSTranspilerPerf.init_output_head(
+                output_file_path,
+                file_path,
+                opt_level,
+                tech_type,
+                config_file,
+                mapping_options,
+            )
+            m.assert_called_once_with(output_file_path, "a", encoding="utf-8")
 
-        mock_get_abs_tree.return_value = None
-        mock_get_ir.return_value = mock_obj
-        mock_optimize_gate.return_value = None
-        mock_decompose_gates.return_value = None
-        default_input_file = (
-            f"{self.samples_dir}/qasm/3.0/benchmark/100bits_50000d.qasm"
-        )
-        default_output_file = ""
-        res = main(
-            input_file=default_input_file, output_file=default_output_file
-        )
-        assert res is True
-
-    @patch(
-        "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
-    )
-    def test_cmss_transpiler_tech_na(self, mock_get_mapper):
-        from wy_qcos.transpiler.cmss.mapping.na.na_mapping import NARoute
-        import types
-
-        # Create a real mapper instance
-        mapper = NARoute()
-        # Mock execute_with_order to return (mapped_ir, final_layout)
-        original_execute = mapper.execute_with_order
-
-        def mock_execute_with_order(self_ref):
-            result = original_execute()
-            # If result is a list, wrap it in a tuple with empty dict
-            if isinstance(result, list):
-                return result, {}
-            return result
-
-        mapper.execute_with_order = types.MethodType(
-            mock_execute_with_order, mapper
-        )
-        mock_get_mapper.return_value = mapper
-
-        qasm_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
-        output_file = ""
-        opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
-        tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
-        config_file = f"{self.etc_dir}/qcos/conf.d/hanyuan1.toml"
-        res = main(
-            input_file=qasm_file,
-            output_file=output_file,
-            opt_level=opt_level,
-            tech_type=tech_type,
-            config_file=config_file,
-        )
-        assert res is True
-
-    @patch(
-        "wy_qcos.transpiler.cmss.mapping.init_mapping."
-        "sc_initial_mapping.topgraph_mapping"
-    )
-    def test_cmss_transpiler_tech_sc(self, mock_topgraph_mapping):
-        # Mock topgraph_mapping to return a valid mapping
-        # instead of [None, None]
-        def mock_mapping(dependency_graph, coupling_graph):
-            # Return naive mapping which is always valid
-            num_q = dependency_graph.get_dg_num_q()
-            return list(range(num_q))
-
-        mock_topgraph_mapping.side_effect = mock_mapping
-
-        qasm_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
-        output_file = ""
-        opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
-        res = main(
-            input_file=qasm_file,
-            output_file=output_file,
-            opt_level=opt_level,
-            tech_type=Constant.TECH_TYPE_SUPERCONDUCTING,
-            config_file=f"{self.etc_dir}/qcos/conf.d/spinq_rpc.toml",
-        )
-        assert res is True
-
-    def test_cmss_transpiler_notech(self):
-        qasm_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
-        output_file = ""
-        opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
-        res = main(
-            input_file=qasm_file,
-            output_file=output_file,
-            opt_level=opt_level,
-            tech_type="",
-            config_file="",
-        )
-        assert res is True
-
-    @patch("wy_qcos.transpiler.cmss.transpiler_cmd_line.main_cmss_transpiler")
-    def test_qiskit_parse_args(self, mock_main_cmss_transpiler):
+    def test_parse_args(self):
         sys.argv = [
             "transpiler_cmd_line.py",
-            "--input-file",
-            f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm",
+            "--config-file",
+            "etc/perf/transpile_conf.toml",
         ]
         cmss_args = get_parse_args()
-        assert (
-            cmss_args["input_file"]
-            == f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
-        )
-        assert cmss_args["output_file"] == ""
-        assert cmss_args["opt_level"] == Constant.DEFAULT_OPTIMIZATION_LEVEL
+        assert cmss_args["config_file"] == "etc/perf/transpile_conf.toml"
 
-        mock_main_cmss_transpiler.return_value = True
-        with patch("sys.exit") as mock_sys_exit:
-            cmss_main(sys.argv)
-            mock_sys_exit.assert_called_with(mock_main_cmss_transpiler())
+        with patch(
+            "wy_qcos.transpiler.cmss.transpiler_cmd_line.CMSSTranspilerPerf"
+        ) as MockPerf:
+            mock_perf = MockPerf()
+            mock_perf.main_cmss_transpiler(
+                cmss_args["config_file"]
+            ).return_value = True
+            with patch("sys.exit") as mock_sys_exit:
+                cmss_main(sys.argv)
+                mock_sys_exit.assert_called_with(
+                    mock_perf.main_cmss_transpiler(cmss_args["config_file"])
+                )
+
+    def test_parse_file_args(self):
+        perf = CMSSTranspilerPerf()
+        perf.file_list = [f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"]
+        perf.dir_list = [f"{self.samples_dir}/qasm/2.0/benchmark"]
+        perf.parse_file_args()
+        assert len(perf.total_files) > 0
 
     def test_check_file_args(self):
+        perf = CMSSTranspilerPerf()
         with pytest.raises(FileNotFoundError) as e:
             input_file1 = f"{self.samples_dir}/qasm/2.0/simple-qasm-2.qasm"
-            _, _ = check_file_args(input_file1, "")
+            _, _ = perf.check_file_args(input_file1, "")
         err_msg = str(e.value)
         assert "Input file not existed!" in err_msg
 
@@ -186,7 +110,7 @@ class TestTranspilerCmdLine:
             patch("builtins.open", mock_file),
             patch("logging.FileHandler", return_value=mock_file_handler),
         ):
-            res, _ = check_file_args(input_file, output_file)
+            res, _ = perf.check_file_args(input_file, output_file)
             mock_file.assert_called_once_with(
                 output_file_path, "w", encoding="utf-8"
             )
@@ -200,3 +124,95 @@ class TestTranspilerCmdLine:
             level=logging.INFO, logfile=os.path.join(Path.cwd(), "test.log")
         )
         assert logger.getEffectiveLevel() == logging.INFO
+
+    @patch.object(
+        CMSSTranspilerPerf,
+        "cmss_transpiler_perf_exec",
+    )
+    def test_main_cmss_transpiler(self, mock_cmss_transpiler_perf_exec):
+        mock_cmss_transpiler_perf_exec.return_value = "runtime"
+        perf = CMSSTranspilerPerf()
+        config_file = "etc/perf/transpile_conf.toml"
+        perf.main_cmss_transpiler(config_file)
+        mock_cmss_transpiler_perf_exec.assert_called_once()
+
+    def test_cmss_transpiler_perf_exec_by_na(self):
+        for hdlr in logger.handlers:
+            if not isinstance(hdlr.level, int):
+                hdlr.level = logging.INFO
+
+        with patch(
+            "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerCmss"
+        ) as MockTranspilerCmss:
+            mock_transpiler = MagicMock()
+            MockTranspilerCmss.return_value = mock_transpiler
+            mock_transpiler.parse.return_value = "parsed_circuit"
+            mock_transpiler.transpile.return_value = (
+                "transpiled_circuit",
+                None,
+            )
+            perf = CMSSTranspilerPerf()
+            input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+            opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
+            basis_gates = ["rx", "ry", "cz"]
+            tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
+            config_file = "etc/qcos/conf.d/hanyuan1.toml"
+
+            runtime = perf.cmss_transpiler_perf_exec(
+                input_file, opt_level, basis_gates, tech_type, config_file
+            )
+            assert runtime is not None
+
+    def test_cmss_transpiler_perf_exec_by_sc(self):
+        for hdlr in logger.handlers:
+            if not isinstance(hdlr.level, int):
+                hdlr.level = logging.INFO
+
+        with patch(
+            "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerCmss"
+        ) as MockTranspilerCmss:
+            mock_transpiler = MagicMock()
+            MockTranspilerCmss.return_value = mock_transpiler
+            mock_transpiler.parse.return_value = "parsed_circuit"
+            mock_transpiler.transpile.return_value = (
+                "transpiled_circuit",
+                None,
+            )
+            perf = CMSSTranspilerPerf()
+            input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+            opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
+            basis_gates = ["rx", "ry", "cx"]
+            tech_type = Constant.TECH_TYPE_SUPERCONDUCTING
+            config_file = "etc/qcos/conf.d/spinq_rpc.toml"
+
+            runtime = perf.cmss_transpiler_perf_exec(
+                input_file, opt_level, basis_gates, tech_type, config_file
+            )
+            assert runtime is not None
+
+    def test_cmss_transpiler_perf_exec_by_non(self):
+        for hdlr in logger.handlers:
+            if not isinstance(hdlr.level, int):
+                hdlr.level = logging.INFO
+
+        with patch(
+            "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerCmss"
+        ) as MockTranspilerCmss:
+            mock_transpiler = MagicMock()
+            MockTranspilerCmss.return_value = mock_transpiler
+            mock_transpiler.parse.return_value = "parsed_circuit"
+            mock_transpiler.transpile.return_value = (
+                "transpiled_circuit",
+                None,
+            )
+            perf = CMSSTranspilerPerf()
+            input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+            opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
+            basis_gates = ["rx", "ry", "cx"]
+            tech_type = ""
+            config_file = "etc/qcos/conf.d/spinq_rpc.toml"
+
+            runtime = perf.cmss_transpiler_perf_exec(
+                input_file, opt_level, basis_gates, tech_type, config_file
+            )
+            assert runtime is not None

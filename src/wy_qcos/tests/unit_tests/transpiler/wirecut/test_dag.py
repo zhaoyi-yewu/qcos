@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -23,7 +23,7 @@ from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.common.gate_operation import H, CX
 from wy_qcos.transpiler.cmss.common.qasm_converter import QasmConverter
 from wy_qcos.transpiler.cmss.compiler.parser import Parser
-from wy_qcos.transpiler.cmss.transpiler_cmd_line import read_qasm_from_file
+from wy_qcos.transpiler.cmss.transpiler_cmd_line import CMSSTranspilerPerf
 from wy_qcos.transpiler.cmss.wirecut.dag import DAG
 
 
@@ -59,7 +59,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "test1")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         # Convert DAG objects into graphs
@@ -78,7 +78,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "test2")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         # Convert DAG objects into graphs.
@@ -97,7 +97,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "test3")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         # Convert the DAG object into a graph.
@@ -112,7 +112,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "test4")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         graph = dag.knit_dag_to_graph()
@@ -129,7 +129,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "test5")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         graph = dag.knit_dag_to_graph()
@@ -147,7 +147,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "test6")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         graph = dag.knit_dag_to_graph()
@@ -162,7 +162,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "depth1")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         topo_nodes = list(dag.knit_dag.topological_op_nodes())
@@ -185,7 +185,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "depth2")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         topo_nodes = list(dag.knit_dag.topological_op_nodes())
@@ -207,7 +207,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "depth3")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         topo_nodes = list(dag.knit_dag.topological_op_nodes())
@@ -222,7 +222,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "depth4")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         topo_nodes = list(dag.knit_dag.topological_op_nodes())
@@ -240,7 +240,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "depth5")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         topo_nodes = list(dag.knit_dag.topological_op_nodes())
@@ -262,7 +262,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "subgraph1")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         result = dag.parse_subgraphs([[0], [1, 2]])
@@ -277,7 +277,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "subgraph2")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         result = dag.parse_subgraphs([[0], [1, 2]])
@@ -291,7 +291,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "subgraph3")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         result = dag.parse_subgraphs([[0], [1]])
@@ -305,7 +305,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "subgraph4")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         result = dag.parse_subgraphs([[0], [1]])
@@ -322,7 +322,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "subgraph5")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         result = dag.parse_subgraphs([[0, 1, 2], [3, 4]])
@@ -342,7 +342,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "subgraph6")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser=parser)
         result = dag.parse_subgraphs([[0, 1, 2], [3, 4]])
@@ -361,7 +361,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(H([1]))
 
         temp_file = self.create_temp_qasm_file(qc, "conversion_test")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser)
 
@@ -383,7 +383,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(CX([2, 3]))
 
         temp_file = self.create_temp_qasm_file(qc, "split_test")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser)
 
@@ -417,7 +417,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(CX([2, 3]))
 
         temp_file = self.create_temp_qasm_file(qc, "add_gates_test")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser)
 
@@ -445,7 +445,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(CX([2, 3]))
 
         temp_file = self.create_temp_qasm_file(qc, "tuple_test")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser)
 
@@ -472,7 +472,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(CX([2, 3]))
 
         temp_file = self.create_temp_qasm_file(qc, "parse_subgraphs_test")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser)
 
@@ -500,7 +500,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(CX([2, 3]))
 
         temp_file = self.create_temp_qasm_file(qc, "depth_test")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser)
 
@@ -526,7 +526,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(CX([2, 3]))
 
         temp_file = self.create_temp_qasm_file(qc, "depth_test")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser)
 
@@ -543,7 +543,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(CX([2, 3]))
 
         temp_file = self.create_temp_qasm_file(qc, "depth_test")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser)
         nqubits, edges = dag.knit_dag_to_graph()
@@ -565,7 +565,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(CX([2, 3]))
 
         temp_file = self.create_temp_qasm_file(qc, "depth_test")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser)
         try:
@@ -585,7 +585,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(CX([2, 3]))
 
         temp_file = self.create_temp_qasm_file(qc, "depth_test")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser)
         try:
@@ -606,7 +606,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(CX([2, 3]))
 
         temp_file = self.create_temp_qasm_file(qc, "depth_test")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser)
         assert parser.nqubits == 4
@@ -621,7 +621,7 @@ class TestCircuitExecutor(unittest.TestCase):
         qc.append(CX([2, 3]))
 
         temp_file = self.create_temp_qasm_file(qc, "depth_test")
-        src_code = read_qasm_from_file(temp_file)
+        src_code = CMSSTranspilerPerf.read_qasm_from_file(temp_file)
         parser = Parser(src_code)
         dag = DAG(parser)
         try:
