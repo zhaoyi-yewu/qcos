@@ -38,23 +38,16 @@ git checkout --orphan gitee-develop
 git pull gitee develop --allow-unrelated-histories
 git branch --set-upstream-to=gitee/develop gitee-develop
 
-2. Update repos
-./merge-to-gitee.py -p
+2. One-click full sync (pull + diff + merge all new commits + push)
+./merge-to-gitee.py -f -s "2025-11-01"
 
-3. find out cmss local commit id to merge
-./merge-to-gitee.py -d
-OR
-./merge-to-gitee.py -d -s "2025-11-01"
+3. One-click sync specified commits (pull + merge + push)
+./merge-to-gitee.py -f -c "12345 23456"
 
-4. merge commits to local merge branch
-./merge-to-gitee.py -c {COMMIT_ID}
-./merge-to-gitee.py -c 12345
-OR
-./merge-to-gitee.py -c "12345 23456 34567"
-
-5. push local commits to remote
-git push ${gitee_remote} ${cmss_local_merge_branch}:${gitee_remote_branch}
-eg. git push gitee gitee-merge:develop
+4. Original commands are still available:
+./merge-to-gitee.py -p (pull only)
+./merge-to-gitee.py -d (diff only)
+./merge-to-gitee.py -c {COMMIT_ID} (merge only)
 """
 
 import hashlib
@@ -108,18 +101,13 @@ def run_command(command, check=True, capture_output=True, text=True):
 
 def pull_branches():
     """Pull branches."""
-
-    cmd = f"git branch -D {cmss_local_merge_branch}"
-    results = run_command(cmd)
-    ret_code = results.returncode
-    if ret_code != 0:
-        raise MergeException(results.stderr)
+    run_command(f"git branch -D {cmss_local_merge_branch} || true")
 
     delete_branch_cmds = [
-        f"git branch -D {cmss_local_merge_branch} || true",
-        f"git checkout -b {cmss_local_merge_branch} {gitee_local_branch}",
+        f"git checkout -b {cmss_local_merge_branch} {gitee_local_branch}"
+        f" || git checkout {cmss_local_merge_branch}"
     ]
-    print(f"Delete branches: {cmss_local_merge_branch}")
+    print(f"Recreate branch: {cmss_local_merge_branch}")
     results = run_command(";".join(delete_branch_cmds))
     ret_code = results.returncode
     if ret_code != 0:
@@ -132,10 +120,7 @@ def pull_branches():
         f"git pull --rebase {gitee_remote} "
         f"{gitee_remote_branch}:{gitee_local_branch}",
     ]
-    print(
-        f"Fetch codes from {gitee_remote}, "
-        f"branch: {gitee_remote_branch}:{gitee_local_branch} ..."
-    )
+    print(f"Fetch from {gitee_remote}, branch: {gitee_remote_branch} ...")
     results = run_command(";".join(fetch_from_gitee_cmds))
     ret_code = results.returncode
     if ret_code != 0:
@@ -217,6 +202,24 @@ def get_commits_dict(branch_name, since_str=None, repo_path="."):
     return commits_dict
 
 
+def get_unsynced_commits(start_since=None):
+    """Get unsynced commits from cmss to gitee."""
+    cmss_commits_dict = get_commits_dict(cmss_local_branch, start_since)
+    gitee_commits_dict = get_commits_dict(gitee_local_branch, start_since)
+
+    cmss_keys = set(cmss_commits_dict.keys())
+    gitee_keys = set(gitee_commits_dict.keys())
+    only_in_cmss = [k for k in cmss_keys if k not in gitee_keys]
+
+    unsynced_commits = []
+    for k in only_in_cmss:
+        unsynced_commits.append(cmss_commits_dict[k]["commit_hash"])
+    unsynced_commits.sort(key=lambda x: cmss_commits_dict[
+        next(k for k, v in cmss_commits_dict.items() if v["commit_hash"] == x)
+    ]["committed_datetime"])
+    return unsynced_commits
+
+
 def diff_branches(start_since):
     """Find differences between branches.
 
@@ -234,10 +237,7 @@ def diff_branches(start_since):
     only_in_gitee = [k for k in gitee_keys if k not in cmss_keys]
 
     print("========================================")
-    print(
-        f"Commits that are in branch: {cmss_local_branch}, "
-        f"but not in branch: '{gitee_local_branch}'"
-    )
+    print(f"Commits in {cmss_local_branch} but not in {gitee_local_branch}")
     print("========================================")
     if only_in_cmss:
         for k, commit_info in cmss_commits_dict.items():
@@ -253,10 +253,7 @@ def diff_branches(start_since):
     print("")
 
     print("========================================")
-    print(
-        f"Commits that are in branch: {gitee_local_branch}, "
-        f"but not in branch: '{cmss_local_branch}'"
-    )
+    print(f"Commits in {gitee_local_branch} but not in {cmss_local_branch}")
     print("========================================")
     if only_in_gitee:
         for k, commit_info in gitee_commits_dict.items():
@@ -332,7 +329,7 @@ def merge_branches(commit_id):
     Args:
         commit_id: commit id
     """
-    print(f"create new branch and merge codes: {cmss_local_merge_branch}")
+    print(f"Merge commits to branch: {cmss_local_merge_branch}")
 
     # checkout local merge branch
     cmds = [
@@ -359,7 +356,7 @@ def merge_branches(commit_id):
     # cherry-pick and amend for desensitization
     merged_commit_ids = []
     for i, commit in enumerate(commits, 1):
-        print(f"cherry-pick [{i}/{commits_count}]: {commit}")
+        print(f"Processing commit [{i}/{commits_count}]: {commit}")
         run_command(f"git cherry-pick -m 1 {commit}")
 
         # Read the author and message information of the current HEAD
@@ -391,10 +388,51 @@ def merge_branches(commit_id):
                 f.write(new_message)
             run_command(f'git commit --amend --no-edit -F "{msg_file}"')
 
-        result = run_command("git log -1 --format=%H")
-        merged_commit_ids.append(result.stdout.strip())
+        merged_commit = run_command("git log -1 --format=%H").stdout.strip()
+        merged_commit_ids.append(merged_commit)
 
-    print(f"merged commit ids: {merged_commit_ids}")
+    print(f"Successfully merged commits: {merged_commit_ids}")
+    return merged_commit_ids
+
+
+def push_to_gitee():
+    """Push merged branch to gitee."""
+    print(f"Push to {gitee_remote}/{gitee_remote_branch} ...")
+    push_cmd = (
+        f"git push {gitee_remote} "
+        f"{cmss_local_merge_branch}:{gitee_remote_branch}"
+        )
+    results = run_command(push_cmd)
+    if results.returncode == 0:
+        print("Push to gitee success!")
+    else:
+        raise MergeException(f"Push failed: {results.stderr}")
+
+
+def full_auto_sync(start_since=None, commit_id=None):
+    """One-click full sync: pull -> merge -> push."""
+    print("==== Step 1: Pull latest code ====")
+    pull_branches()
+
+    print("\n==== Step 2: Determine commits to merge ====")
+    if commit_id:
+        target_commits = commit_id
+        print(f"Specified commits to merge: {target_commits}")
+    else:
+        unsynced_commits = get_unsynced_commits(start_since)
+        if not unsynced_commits:
+            print("No unsynced commits found, exit.")
+            return
+        target_commits = " ".join(unsynced_commits)
+        print(f"Auto-found unsynced commits: {target_commits}")
+
+    print("\n==== Step 3: Merge commits ====")
+    merge_branches(target_commits)
+
+    print("\n==== Step 4: Push to Gitee ====")
+    push_to_gitee()
+
+    print("\n==== One-click sync completed successfully! ====")
 
 
 def main(argv=None):
@@ -406,10 +444,7 @@ def main(argv=None):
         sys.argv.extend(argv)
 
     program_shortdesc = __doc__.strip()
-    program_license = f"""{program_shortdesc}
-
-USAGE
-"""
+    program_license = f"{program_shortdesc}\nUSAGE"
 
     try:
         # config parser
@@ -422,28 +457,33 @@ USAGE
             "--pull",
             dest="pull",
             action="store_true",
-            help="Pull remote_branch to local_branch",
+            help="Pull remote_branch to local_branch"
         )
         parser.add_argument(
             "-d",
             "--branch-diff",
             dest="branch_diff",
             action="store_true",
-            help="Find differences of commits in branches",
+            help="Find differences of commits in branches"
         )
         parser.add_argument(
             "-c",
             "--commit-id",
             dest="commit_id",
-            help=f"Local commit ID (remote: {cmss_remote}, "
-            f"remote_branch: {cmss_local_branch})",
+            help="Local commit ID to merge"
         )
         parser.add_argument(
             "-s",
             "--start-since",
             dest="start_since",
-            help="Start date (git log '--since' "
-            "format: 2025-10-01, 2 months ago)",
+            help="Start date (git log '--since' format: 2025-10-01)"
+        )
+        parser.add_argument(
+            "-f",
+            "--full-sync",
+            dest="full_sync",
+            action="store_true",
+            help="One-click full sync (pull+merge+push)"
         )
 
         # parse arguments
@@ -452,49 +492,51 @@ USAGE
         branch_diff = args.branch_diff
         commit_id = args.commit_id
         start_since = args.start_since
+        full_sync = args.full_sync
 
         commit_id_pattern = r"^[0-9a-fA-F]{7,40}$"
         if commit_id:
             if " " in commit_id:
                 for _commit_id in commit_id.split():
-                    if not re.match(commit_id_pattern, _commit_id):
-                        parser.error(
-                            "Invalid commit ID format for --commit-id: "
-                            f"{_commit_id}"
-                        )
+                    if (
+                        not re.match(commit_id_pattern, _commit_id)
+                        and ".." not in _commit_id
+                    ):
+                        parser.error(f"Invalid commit ID format: {_commit_id}")
             if ".." in commit_id:
                 for _commit_id in commit_id.split(".."):
                     if not re.match(commit_id_pattern, _commit_id):
-                        parser.error(
-                            "Invalid commit ID format for --commit-id: "
-                            f"{_commit_id}"
-                        )
+                        parser.error(f"Invalid commit ID format: {_commit_id}")
 
-        if pull and commit_id:
-            parser.error("Cannot use --pull with --commit-id")
-        if branch_diff and commit_id:
-            parser.error("Cannot use --branch-diff with --commit-id")
+        if full_sync:
+            if pull or branch_diff:
+                parser.error("Con`t use --full-sync with --pull/--branch-diff")
+            full_auto_sync(start_since, commit_id)
+            return 0
+        else:
+            if pull and commit_id:
+                parser.error("Cannot use --pull with --commit-id")
+            if branch_diff and commit_id:
+                parser.error("Cannot use --branch-diff with --commit-id")
 
-        if pull:
-            print("Pull branches ...")
-            pull_branches()
+            if pull:
+                print("Pull branches ...")
+                pull_branches()
 
-        if branch_diff:
-            print("Find the differences between branches ...")
-            diff_branches(start_since)
+            if branch_diff:
+                print("Find the differences between branches ...")
+                diff_branches(start_since)
 
-        if commit_id:
-            print(f"Merge commits: {commit_id}")
-            merge_branches(commit_id)
+            if commit_id:
+                print(f"Merge commits: {commit_id}")
+                merge_branches(commit_id)
+                print(
+                    f"\nRun: git push {gitee_remote}"
+                    f" {cmss_local_merge_branch}:{gitee_remote_branch}"
+                )
 
-            # print git push
-            print(
-                f"\nRun: git push {gitee_remote} "
-                f"{cmss_local_merge_branch}:{gitee_remote_branch}"
-            )
-
-        if not pull and not branch_diff and not commit_id:
-            parser.error("You must specify either -p, -b or -c")
+            if not pull and not branch_diff and not commit_id:
+                parser.error("You must specify either -p, -d, -c or -f")
         return 0
     except KeyboardInterrupt:
         print("\nUser interrupt", file=sys.stderr)
