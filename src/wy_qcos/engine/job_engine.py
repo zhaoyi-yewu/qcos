@@ -50,7 +50,6 @@ from wy_qcos.engine.qubo import (
     process_qubo_solution,
 )
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
-from wy_qcos.transpiler.cmss.compiler.parser import compile
 from wy_qcos.transpiler.cmss.wirecut.cut_wire import (
     generate_all_variant_subcircuits_for_execute,
     reconstruct_probability_distribution_wire_cut,
@@ -225,18 +224,19 @@ def task_monitor(monitor_info):
 
 
 @task(persist_result=False)
-def parse(src_code_dict, transpiler):
+def parse(src_code_dict, transpiler, code_type):
     """Parse task.
 
     Args:
         src_code_dict: src_code_dict
         transpiler: transpiler
+        code_type(str): code type
 
     Returns:
         parsed results
     """
     try:
-        parsed_src_code = transpiler.parse(src_code_dict)
+        parsed_src_code = transpiler.parse(src_code_dict, code_type)
         logger.info(f"final parsed src code: {parsed_src_code}")
         return {"parsed_src_code": parsed_src_code, "error": None}
     except Exception as e:
@@ -736,6 +736,7 @@ def _run_code(
     transpile_results = None
     num_qubits = None
     job_data = job_info["data"]
+    code_type = job_data["code_type"]
     profiling_types = job_data.get("profiling", [])
     profiling_types = [] if profiling_types is None else profiling_types
     mapping_dict = None
@@ -750,7 +751,7 @@ def _run_code(
 
     # [flow_parse]
     parse_results, profiling_time = flow_parse(
-        src_code_dict, transpiler, profiling_types
+        src_code_dict, transpiler, profiling_types, code_type
     )
     if profiling_time:
         job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_PARSE] = (
@@ -1198,12 +1199,14 @@ def run_circuit_code(
     """
     job_results = {}
     job_id = job_info["data"]["job_id"]
+    code_type = job_info["data"]["code_type"]
     max_qubits = driver.get_max_qubits()
     enable_wirecut = driver.get_enable_wirecut()
     logger.info(f"driver max qubits: {max_qubits}")
     src_code = src_code_dict[f"{job_id}-{source_code_index}"]
+    parse_result = transpiler.parse(src_code_dict, code_type)
     try:
-        num_qubits, _ = compile(src_code)
+        num_qubits = parse_result[f"{job_id}-{source_code_index}"][0]
     except Exception as e:
         err_msg = f"Src code: {src_code} compile failed: {str(e)}"
         return (
@@ -1395,13 +1398,14 @@ def probs_to_dict(prob_array):
     return result
 
 
-def flow_parse(src_code_dict, transpiler, profiling_types):
+def flow_parse(src_code_dict, transpiler, profiling_types, code_type):
     """Flow: parse.
 
     Args:
         src_code_dict: src_code_dict
         transpiler: transpiler
         profiling_types: profiling types
+        code_type(str): code_type
 
     Returns:
         results, profiling_time
@@ -1418,7 +1422,10 @@ def flow_parse(src_code_dict, transpiler, profiling_types):
 
     # parser
     parse_task = parse.submit(
-        src_code_dict, transpiler, wait_for=[init_driver, init_transpiler]
+        src_code_dict,
+        transpiler,
+        code_type,
+        wait_for=[init_driver, init_transpiler],
     )
     parse_task_result = parse_task.result()
 

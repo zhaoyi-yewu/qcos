@@ -42,6 +42,9 @@ from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import (
 from wy_qcos.transpiler.common.errors import TranspilerException
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.transpiler_base import TranspilerBase
+from wy_qcos.transpiler.cmss.compiler.openqasm3.parser import (
+    parse as openqasm3_parse,
+)
 
 
 class TranspilerCmss(TranspilerBase):
@@ -226,11 +229,12 @@ class TranspilerCmss(TranspilerBase):
                 final_layout_dict,
             )
 
-    def parse(self, src_code_dict):
+    def parse(self, src_code_dict, code_type: str = Constant.CODE_TYPE_QASM):
         """Parse src_code_dict.
 
         Args:
           src_code_dict(dict): src_code_dict
+          code_type(str): code type
 
         Returns:
             parse result(QuantumCircuit): quantum circuit parsed by cmss
@@ -241,7 +245,17 @@ class TranspilerCmss(TranspilerBase):
         if isinstance(src_code_dict, dict):
             for key, value in src_code_dict.items():
                 trans_logger.log_debug(f"source_code:\n{value}")
-                num_qubits, parse_result = compile(value)
+                num_qubits = 0
+                parse_result = []
+                if code_type in [
+                    Constant.CODE_TYPE_QASM,
+                    Constant.CODE_TYPE_QASM2,
+                ]:
+                    num_qubits, parse_result = compile(value)
+                else:
+                    circuit = openqasm3_parse(value)
+                    num_qubits = circuit.num_qubits
+                    parse_result = circuit.get_operations()
                 if self.total_qubits + num_qubits > trans_cfg_inst.max_qubits:
                     # TODO (xudong): need to remove the remained task item.
                     break

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -161,11 +161,12 @@ class TranspilerBase:
         """
         return self.supported_code_types
 
-    def parse(self, src_code_dict):
+    def parse(self, src_code_dict, code_type):
         """Parse src code dict.
 
         Args:
             src_code_dict: src code dict
+            code_type: code type
 
         Returns:
             parse result

@@ -78,11 +78,14 @@ class TranspilerQiskit(TranspilerBase):
     def init_transpiler(self):
         """Init transpiler."""
 
-    def parse(self, src_code_dict: dict):
+    def parse(
+        self, src_code_dict: dict, code_type: str = Constant.CODE_TYPE_QASM2
+    ):
         """Parse src_code_dict.
 
         Args:
             src_code_dict: src_code_dict
+            code_type(str): code type
 
         Returns:
             parse result
@@ -90,9 +93,9 @@ class TranspilerQiskit(TranspilerBase):
         if isinstance(src_code_dict, dict) and len(src_code_dict) == 1:
             source_code: str = next(iter(src_code_dict.values()))
             trans_logger.log_debug(f"source_code:\n{source_code}")
-            if "OPENQASM 3.0" in source_code:
+            if code_type == Constant.CODE_TYPE_QASM3:
                 parse_result = qiskit.qasm3.loads(source_code)
-            elif "OPENQASM 2.0" in source_code:
+            elif code_type == Constant.CODE_TYPE_QASM2:
                 inst = qiskit.qasm2.LEGACY_CUSTOM_INSTRUCTIONS
                 parse_result = qiskit.qasm2.loads(
                     string=source_code,
