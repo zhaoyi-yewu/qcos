@@ -273,7 +273,7 @@ class TranspilerCmss(TranspilerBase):
         opt_result_dict = {}
         with Timer() as optimize1_timer:
             for key, value in parse_result.items():
-                opt_result = optimize(value[1], opt_level=1)
+                opt_result = optimize(value[1], opt_level=min(1, opt_level))
                 opt_result_dict[key] = (value[0], opt_result)
         logger.info(
             f"tranpiler(optimize firstly): {optimize1_timer.elapsed:.4f}s\n"
