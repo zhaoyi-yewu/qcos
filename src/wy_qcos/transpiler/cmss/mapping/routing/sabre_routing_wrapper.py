@@ -132,7 +132,7 @@ class SABRERouting(ABC):
 
         # 初始化SABRE算法
         sabre = SABRE(
-            coupling_graph=ag,
+            coupling_list=ag,
             extention_size=self.extention_size,
             weight=self.weight,
             decay=self.decay,
