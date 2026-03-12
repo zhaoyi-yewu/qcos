@@ -168,6 +168,7 @@ def install_venv(configs, venv_base_dir, debug=True, dry_run=False):
             envs = driver_info.get("envs", [])
             for env in envs:
                 cmd = f"""
+                set -e
                 if which {env} >/dev/null 2>&1; then
                   echo -e "\\nInstalling venv: {driver_class}"
                   {env} -m venv {driver_venv_dir}
