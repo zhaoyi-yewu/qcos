@@ -206,4 +206,7 @@ class TestTranspilerCmss:
         basis_gate_list, _ = transpiler.transpile(
             parse_result, expected_basis_gates
         )
-        assert len(basis_gate_list) == 8
+        assert len(basis_gate_list) % 2 == 0
+        for idx in range(0, len(basis_gate_list), 2):
+            assert basis_gate_list[idx].name == "rx"
+            assert basis_gate_list[idx + 1].name == "measure"

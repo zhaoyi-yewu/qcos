@@ -56,34 +56,28 @@
                    ],
                    "drivers": {
                      "DriverHanyuan1": {
-                       "enable_transpiler": true,
                        "supported_code_types": null,
                        "description": "中科酷原-汉原1 中性原子驱动"
                      },
                      "DriverCirqSim": {
-                       "enable_transpiler": true,
                        "supported_code_types": null,
                        "description": "Cirq Simulator 模拟器驱动"
                      },
                      "DriverTiangong100": {
-                       "enable_transpiler": false,
                        "supported_code_types": [
                          "qubo"
                        ],
                        "description": "玻色量子-天工100 光量子伊辛机驱动"
                      },
                      "DriverQiskitAerSim": {
-                       "enable_transpiler": true,
                        "supported_code_types": null,
                        "description": "Qiskit Aer 模拟器驱动"
                      },
                      "DriverQiskitQasmSim": {
-                       "enable_transpiler": true,
                        "supported_code_types": null,
                        "description": "Qiskit Qasm 模拟器驱动"
                      },
                      "DriverDummy": {
-                       "enable_transpiler": true,
                        "supported_code_types": null,
                        "description": "空载测试驱动(中性原子)"
                      }
@@ -99,9 +93,6 @@
                      "dummy": {
                        "alias_name": "空载转译器(dummy)",
                        "supported_code_types": [
-                         "qasm",
-                         "qasm2",
-                         "qasm3"
                        ]
                      },
                      "qiskit": {

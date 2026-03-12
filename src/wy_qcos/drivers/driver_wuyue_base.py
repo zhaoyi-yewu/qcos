@@ -59,10 +59,11 @@ class DriverWuyueBase(DriverBase):
 
     def __init__(self):
         super().__init__()
-        self.enable_transpiler = False
+        self.transpiler = Constant.TRANSPILER_DUMMY
         self.tech_type = Constant.TECH_TYPE_NONE
         self.default_data_type = DriverBase.DATA_TYPE_QASM2
         self.supported_code_types = [Constant.CODE_TYPE_QASM2]
+        self.supported_transpilers = [Constant.TRANSPILER_DUMMY]
         self.ip_addr = None
         self.port = None
         self.client_id = None

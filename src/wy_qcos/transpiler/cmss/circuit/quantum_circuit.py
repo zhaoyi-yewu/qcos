@@ -42,7 +42,7 @@ class QuantumCircuit:
             raise CircuitException(
                 "num_qubits and num_clbits must be integers."
             )
-        elif num_qubits < 0 or num_clbits < 0:
+        if num_qubits < 0 or num_clbits < 0:
             raise CircuitException(
                 "Number of qubits and clbits must be non-negative."
             )
@@ -54,6 +54,7 @@ class QuantumCircuit:
         self.qregs: list[QuantumRegister] = []
         self.cregs: list[ClassicalRegister] = []
         self._global_phase: float = global_phase
+        self._parameters = set()
 
     @classmethod
     def from_ir(cls, ir: list[BaseOperation], num_qubits: int = 0):
@@ -123,9 +124,18 @@ class QuantumCircuit:
         return self._global_phase
 
     def set_global_phase(self, phase: float):
-        if not isinstance(phase, (int, float)):
-            raise TypeError("Input global_phase must be a number.")
-        self._global_phase = float(phase)
+        """Set the global phase."""
+        # If the phase is a Parameter or ParameterExpression,
+        # convert it to a string
+        if hasattr(phase, "expression"):
+            self._global_phase = float(phase)
+            if hasattr(phase, "parameters"):
+                self._parameters.update(phase.parameters)
+        elif hasattr(phase, "name"):
+            self._global_phase = phase.name
+            self._parameters.add(phase)
+        else:
+            self._global_phase = float(phase)
 
     def set_num_qubits(self, num_qubits: int):
         if not isinstance(num_qubits, int):

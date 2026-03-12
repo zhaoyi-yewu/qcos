@@ -56,8 +56,6 @@ class GetDriverResponse(BaseModel):
     tech_type: str = Field(description="Technology type")
     # max_qubits
     max_qubits: int = Field(description="Maximum number of qubits")
-    # enable transpiler
-    enable_transpiler: bool = Field(description="Enable transpiler")
     # transpiler
     transpiler: str | None = Field(default=None, description="Transpiler")
     # supported transpilers

@@ -228,6 +228,7 @@ class Constant:
     TRANSPILER_CMSS = "cmss"
     TRANSPILER_QISKIT = "qiskit"
     TRANSPILER_DUMMY = "dummy"
+    TRANSPILER_CMSS_QUBO = "cmss_qubo"
     TRANSPILERS = set()  # autofilled during plugin registration
 
     # Quantum computer tech type

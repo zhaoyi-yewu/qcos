@@ -61,7 +61,7 @@ class TestJob:
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": None,
             "driver_options": None,
-            "transpiler": None,
+            "transpiler": Constant.TRANSPILER_CMSS_QUBO,
             "transpiler_options": None,
             "profiling": None,
             "callbacks": None,
@@ -78,7 +78,9 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True
 
     @pytest.mark.slow
@@ -95,7 +97,7 @@ class TestJob:
             "shots": 100,
             "circuit_aggregation": None,
             "driver_options": {"enable_subqubo": True},
-            "transpiler": None,
+            "transpiler": Constant.TRANSPILER_CMSS_QUBO,
             "transpiler_options": None,
             "profiling": None,
             "callbacks": None,
@@ -113,5 +115,7 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True

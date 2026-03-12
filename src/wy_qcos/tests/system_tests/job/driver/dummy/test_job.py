@@ -72,7 +72,9 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True
 
     def test_submit_job_dry_run(self):
@@ -105,7 +107,9 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True
 
     def test_submit_job_profiling(self):
@@ -164,7 +168,9 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True
 
     def test_submit_job_wirecut(self):
@@ -197,7 +203,9 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True
 
     @pytest.mark.slow
@@ -275,7 +283,9 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True
 
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
@@ -288,7 +298,9 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True
 
     @pytest.mark.slow
@@ -367,7 +379,9 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True
 
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
@@ -380,7 +394,9 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True
 
     @pytest.mark.slow
@@ -458,7 +474,9 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True
 
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
@@ -472,5 +490,7 @@ class TestJob:
             }
             assert job_results["result"]["job_status"] in terminal_statuses
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True

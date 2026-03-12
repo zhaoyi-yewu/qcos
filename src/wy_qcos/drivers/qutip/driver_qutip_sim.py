@@ -38,7 +38,6 @@ class DriverQutipSim(DriverBase):
         self.version = "0.0.1"
         self.alias_name = "QUTIP 模拟器驱动"
         self.description = "QUTIP 模拟器驱动"
-        self.enable_transpiler = True
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_GENERIC_SIMULATOR
         self.supported_basis_gates = [

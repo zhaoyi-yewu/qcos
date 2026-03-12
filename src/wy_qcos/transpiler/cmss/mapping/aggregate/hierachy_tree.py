@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -48,17 +48,34 @@ class HierarchyTree:
 
     def __init__(self, qpu_config, weight=1.0) -> None:
         ag = nx.Graph()
-        for k, e in qpu_config["coupler_map"].items():
-            ag.add_edge(
-                e[0], e[1], weight=1.0 - qpu_config["coupler_error"][k] / 100
-            )
+        closest = qpu_config.get("closest", {})
+        # 旧配置：通过 coupler_map(operate_area) 建树
+        # 新配置（无 closest）：通过 storage_area 建树
+        if closest:
+            candidate_nodes = set()
+            for e in qpu_config["coupler_map"].values():
+                candidate_nodes.update(e)
+        else:
+            candidate_nodes = set(qpu_config.get("storage_area", []))
+            if not candidate_nodes:
+                candidate_nodes = set(
+                    qpu_config.get("readout_error", {}).keys()
+                )
+        ag.add_nodes_from(candidate_nodes)
 
+        coupler_error = qpu_config.get("coupler_error", {})
+        for k, e in qpu_config["coupler_map"].items():
+            if e[0] not in candidate_nodes or e[1] not in candidate_nodes:
+                continue
+            # coupler_error 在部分配置中是可选项，默认按0误差处理
+            c_error = coupler_error.get(k, 0.0)
+            ag.add_edge(e[0], e[1], weight=1.0 - c_error / 100)
+
+        readout_error = qpu_config.get("readout_error", {})
         for q in ag.nodes():
             ag.nodes[q]["weight"] = 1.0
-            if q in qpu_config["readout_error"]:
-                ag.nodes[q]["weight"] = (
-                    1.0 - qpu_config["readout_error"][q] / 100
-                )
+            if q in readout_error:
+                ag.nodes[q]["weight"] = 1.0 - readout_error[q] / 100
 
         self.graph = ag
         self.edge_count = len(ag.edges())
@@ -143,7 +160,10 @@ class HierarchyTree:
                     en += 1
         if en > 0:
             cx_f /= en
-        fidelity = read_f * cx_f
+            fidelity = read_f * cx_f
+        else:
+            # 无耦合边时退化为读出保真度，避免所有候选评分恒为0
+            fidelity = read_f
         return fidelity
 
     def calc_modularity(self, nodes):
@@ -154,6 +174,8 @@ class HierarchyTree:
 
         Returns: 模块度
         """
+        if self.edge_count == 0:
+            return 0
         modularity = 0
         for node in nodes:
             if node.ignore is True:

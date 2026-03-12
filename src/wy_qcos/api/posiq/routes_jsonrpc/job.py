@@ -219,7 +219,6 @@ def submit_job(
     # get driver from backend
     device = devices.get(backend)
     driver = device.get_driver()
-    enable_transpiler = driver.enable_transpiler
     device_status = device.get_status()
     enable_device = device.enable
 
@@ -276,51 +275,45 @@ def submit_job(
     # validate supported_transpilers
     supported_code_types = []
     transpiler_manager = scheduler.get_transpiler_manager()
-    if enable_transpiler:
+    jsonrpc_errors.handle_error_bad_requests(
+        module_name,
+        func_name,
+        Library.validate_values_enum(
+            transpiler_name,
+            "transpiler",
+            driver.supported_transpilers,
+            allow_none=False,
+        ),
+    )
+    body.transpiler = transpiler_name
+    transpiler = transpiler_manager.get_transpiler(transpiler_name)
+    transpiler_options_schema = transpiler.get_transpiler_options_schema()
+
+    # validate: transpiler_options
+    if transpiler_name and transpiler_options:
         jsonrpc_errors.handle_error_bad_requests(
             module_name,
             func_name,
-            Library.validate_values_enum(
-                transpiler_name,
-                "transpiler",
-                driver.supported_transpilers,
-                allow_none=False,
+            Library.validate_schema(
+                transpiler_options,
+                args_schema.TRANSPILER_OPTIONS,
+                allow_none=True,
             ),
         )
-        body.transpiler = transpiler_name
-        transpiler = transpiler_manager.get_transpiler(transpiler_name)
-        transpiler_options_schema = transpiler.get_transpiler_options_schema()
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            Library.validate_schema(
+                transpiler_options,
+                transpiler_options_schema,
+                allow_none=True,
+            ),
+            param_name="transpiler_options",
+        )
 
-        # validate: transpiler_options
-        if transpiler_name and transpiler_options:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                Library.validate_schema(
-                    transpiler_options,
-                    args_schema.TRANSPILER_OPTIONS,
-                    allow_none=True,
-                ),
-            )
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                Library.validate_schema(
-                    transpiler_options,
-                    transpiler_options_schema,
-                    allow_none=True,
-                ),
-                param_name="transpiler_options",
-            )
-
-        # get supported_code_types
-        supported_code_types = transpiler.get_supported_code_types()
-    else:
-        # set transpiler/transpiler_options to None if enable_transpiler=False
-        transpiler_name = None
-        transpiler_options = None
-        body.transpiler = None
-        body.transpiler_options = None
+    # get supported_code_types
+    supported_code_types = transpiler.get_supported_code_types()
+    if supported_code_types is None or len(supported_code_types) == 0:
         supported_code_types = driver.get_supported_code_types()
 
     # validate supported_code_types

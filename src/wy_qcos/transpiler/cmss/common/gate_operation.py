@@ -2094,6 +2094,105 @@ class U(GateOperation):
         )
 
 
+class ControlGate(GateOperation):
+    """Generic control gate."""
+
+    def __init__(
+        self, base_gate, num_controls=1, ctrl_state=None, targets=None
+    ):
+        if not isinstance(base_gate, GateOperation):
+            raise TypeError(
+                f"base_gate must be GateOperation, got {type(base_gate)}"
+            )
+
+        if targets is None:
+            raise ValueError("targets must be provided for ControlGate")
+
+        total_qubits_needed = num_controls + (
+            len(base_gate.targets) if hasattr(base_gate, "targets") else 1
+        )
+        if len(targets) != total_qubits_needed:
+            raise ValueError(
+                f"ControlGate requires {total_qubits_needed} qubits, "
+                f"got {len(targets)}"
+            )
+
+        name = f"c{num_controls if num_controls > 1 else ''}{base_gate.name}"
+
+        super().__init__(
+            name=name,
+            targets=targets,
+            arg_value=base_gate.arg_value
+            if hasattr(base_gate, "arg_value")
+            else None,
+            operation_type=str(total_qubits_needed),
+            hermitian=getattr(base_gate, "hermitian", True),
+        )
+
+        self.base_gate = base_gate
+        self.num_controls = num_controls
+        self.ctrl_state = ctrl_state
+        self._control_qubits = targets[:num_controls]
+        self._target_qubits = targets[num_controls:]
+
+    def __array__(self, dtype=None):
+        if hasattr(self.base_gate, "__array__"):
+            base_mat = np.asarray(
+                self.base_gate.__array__(), dtype=np.complex128
+            )
+        else:
+            base_mat = np.eye(2, dtype=np.complex128)
+
+        if self.ctrl_state is None:
+            ctrl_state = (1 << self.num_controls) - 1
+        elif isinstance(self.ctrl_state, str):
+            ctrl_state = int(self.ctrl_state, 2)
+        else:
+            ctrl_state = self.ctrl_state
+
+        return GateOperation.with_controlled_gate_array(
+            base_array=base_mat,
+            ctrl_state=ctrl_state,
+            num_ctrl_qubits=self.num_controls,
+            dtype=dtype,
+        )
+
+    def default_decompose(self):
+        base_name = self.base_gate.name.lower()
+        control_gate_map = {
+            "x": "cx",
+            "y": "cy",
+            "z": "cz",
+            "h": "ch",
+            "rx": "crx",
+            "ry": "cry",
+            "rz": "crz",
+            "p": "cp",
+        }
+
+        if base_name in control_gate_map:
+            gate_name = control_gate_map[base_name]
+            return [create_gate(gate_name, self.targets, self.arg_value)]
+        else:
+            return self._generic_control_decompose()
+
+    def _generic_control_decompose(self):
+        gates = []
+
+        if self.num_controls == 1:
+            pass
+
+        return gates
+
+    def __repr__(self):
+        return (
+            f"ControlGate(base_gate={self.base_gate.name}, "
+            f"num_controls={self.num_controls}, "
+            f"ctrl_state={self.ctrl_state}, "
+            f"targets={self.targets})"
+        )
+
+
 def create_gate(
     name: str,
     targets: list = [],

@@ -30,6 +30,7 @@ from wy_qcos.drivers.driver_manager import DriverManager
 from wy_qcos.drivers.dummy.driver_dummy import DriverDummy
 from wy_qcos.task_manager import TaskScheduler
 from wy_qcos.transpiler.transpiler_base import TranspilerBase
+from wy_qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
 from wy_qcos.transpiler.transpiler_manager import TranspilerManager
 
 
@@ -37,7 +38,6 @@ response_info = {
     "alias_name": Constant.TECH_TYPE_NEUTRAL_ATOM,
     "description": Constant.TECH_TYPE_NEUTRAL_ATOM,
     "enable_circuit_aggregation": True,
-    "enable_transpiler": True,
     "max_qubits": 10,
     "name": Constant.TRANSPILER_DUMMY,
     "results_fetch_mode": Constant.RESULTS_FETCH_MODE_SYNC,
@@ -96,8 +96,9 @@ class TestDriver:
         assert response.name == self.dummy
 
     @patch.object(DriverBase, "get_supported_code_types")
-    def test__get_driver_info(self, mock_get_supported_code_types):
+    def test_get_driver_info(self, mock_get_supported_code_types):
         mock_get_supported_code_types.return_value = ["qasm"]
         mock_client = DriverBase()
-        _driver_info = _get_driver_info(mock_client, None)
+        transpiler = TranspilerCmss()
+        _driver_info = _get_driver_info(mock_client, transpiler)
         assert _driver_info["name"] is None

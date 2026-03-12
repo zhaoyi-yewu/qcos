@@ -127,6 +127,7 @@
    # 3. 真实运行
    qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
    qcos-cli submit-job --code-type qasm2 --shots 10 --backend wy-hanyuan1 -f ./samples/qasm/2.0/simple-qasm.qasm
+   qcos-cli submit-job --code-type qasm2 --shots 10 --transpiler dummy --backend wy-hanyuan1 -f ./samples/qasm/2.0/simple-qasm.qasm
 
    # 4. 电路切割开启 （--driver-options '{"enable_wirecut":true}'）
    qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 --transpiler-options '{"enable_na_move": true}' --driver-options '{"enable_wirecut":true}' -f ./samples/qasm/2.0/wirecut/12_30.qasm
@@ -144,12 +145,22 @@
    qcos-cli submit-job --code-type qubo --backend tiangong550_v2 -f ./samples/qubo/simple-qubo.csv
    qcos-cli submit-job --code-type qubo --backend tiangong1000_v2 -f ./samples/qubo/simple-qubo.json
    qcos-cli submit-job --code-type qubo --backend tiangong1000_v2 -f ./samples/qubo/simple-qubo.csv
+   qcos-cli submit-job --code-type qubo --transpiler cmss_qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.json
+   qcos-cli submit-job --code-type qubo --transpiler cmss_qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.csv
+   qcos-cli submit-job --code-type qubo --transpiler dummy --backend tiangong100_v2 -f ./samples/qubo/simple-qubo.json
+   qcos-cli submit-job --code-type qubo --transpiler dummy --backend tiangong100_v2 -f ./samples/qubo/simple-qubo.csv
+   qcos-cli submit-job --code-type qubo --transpiler dummy --backend tiangong550_v2 -f ./samples/qubo/simple-qubo.json
+   qcos-cli submit-job --code-type qubo --transpiler dummy --backend tiangong550_v2 -f ./samples/qubo/simple-qubo.csv
+   qcos-cli submit-job --code-type qubo --transpiler dummy --backend tiangong1000_v2 -f ./samples/qubo/simple-qubo.json
+   qcos-cli submit-job --code-type qubo --transpiler dummy --backend tiangong1000_v2 -f ./samples/qubo/simple-qubo.csv
 
    # 开启subqubo功能（默认关闭）
    qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_subqubo": true}' -f ./samples/qubo/qubo_200X200.csv
+   qcos-cli submit-job --code-type qubo --transpiler cmss_qubo --backend tiangong100 --driver-options '{"enable_subqubo": true}' -f ./samples/qubo/qubo_200X200.csv
 
    # 开启降精度功能（默认关闭）
    qcos-cli submit-job --code-type qubo --backend tiangong100 --driver-options '{"enable_prec_reduce": true}' -f ./samples/qubo/qubo_200X200.csv
+   qcos-cli submit-job --code-type qubo --transpiler cmss_qubo --backend tiangong100 --driver-options '{"enable_prec_reduce": true}' -f ./samples/qubo/qubo_200X200.csv
 
 - 量旋科技
 
@@ -164,6 +175,7 @@
 
    # 幺正量子 真实运行
    qcos-cli submit-job --code-type qasm3 --shots 100 --backend uqc_matrix2 -f ./samples/qasm/3.0/simple-qasm-1-bit.qasm
+   qcos-cli submit-job --code-type qasm3 --shots 100 --transpiler dummy --backend uqc_matrix2 -f ./samples/qasm/3.0/simple-qasm-1-bit.qasm
 
 更新作业
 ***************

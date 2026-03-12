@@ -60,7 +60,7 @@ class TestJob:
             "shots": 100,
             "circuit_aggregation": None,
             "driver_options": None,
-            "transpiler": None,
+            "transpiler": Constant.TRANSPILER_DUMMY,
             "transpiler_options": None,
             "profiling": None,
             "callbacks": None,
@@ -77,5 +77,7 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True

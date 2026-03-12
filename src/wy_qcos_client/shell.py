@@ -896,12 +896,11 @@ class SubmitJob(Command):
             default=None,
             help="Set driver options",
         )
-        default_transpiler = Constant.TRANSPILER_CMSS
         parser.add_argument(
             "--transpiler",
             dest="transpiler",
-            default=default_transpiler,
-            help=f"Set transpiler name. eg. {default_transpiler}",
+            default=None,
+            help="Set transpiler name.",
         )
         parser.add_argument(
             "--transpiler-options",

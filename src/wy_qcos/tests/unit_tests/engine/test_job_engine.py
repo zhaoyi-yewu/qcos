@@ -250,7 +250,6 @@ class TestJobEngine:
     ):
         mock_driver = Mock(spec=DriverBase)
         mock_driver.name = "TestDriver"
-        mock_driver.enable_transpiler = True
         mock_transpiler = Mock(spec=TranspilerBase)
         mock_transpiler.name = "TestTranspiler"
         mock_transpiler.alias_name = "TestAlias"
@@ -311,9 +310,15 @@ class TestJobEngine:
     ):
         mock_driver = Mock(spec=DriverBase)
         mock_driver.name = "TestDriver"
-        mock_driver.enable_transpiler = False
         mock_init_driver.return_value.result.return_value = {
             "driver": mock_driver,
+            "error": None,
+        }
+        mock_transpiler = Mock(spec=TranspilerBase)
+        mock_transpiler.name = "TestTranspiler"
+        mock_transpiler.alias_name = "TestAlias"
+        mock_init_transpiler.return_value.result.return_value = {
+            "transpiler": mock_transpiler,
             "error": None,
         }
         expected_results = {"results": "qubo_results"}
@@ -339,7 +344,7 @@ class TestJobEngine:
             src_code_dict,
             job_info,
             None,
-            None,
+            mock_transpiler,
             monitor_info,
         )
         assert results == expected_results

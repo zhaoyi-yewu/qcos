@@ -16,7 +16,7 @@ version: '3'
 services:
   qcos-cli:
     container_name: qcos-cli
-    image: ${REGISTRY}${QCOS_IMAGE_NAME}-cli:${QCOS_IMAGE_VERSION}
+    image: ${REGISTRY}${QCOS_REGISTRY}${QCOS_IMAGE_NAME}-cli:${QCOS_IMAGE_VERSION}
     network_mode: "host"
     restart: always
     stdin_open: True

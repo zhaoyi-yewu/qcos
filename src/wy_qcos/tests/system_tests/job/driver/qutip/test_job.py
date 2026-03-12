@@ -71,5 +71,7 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True

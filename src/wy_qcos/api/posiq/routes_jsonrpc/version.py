@@ -47,7 +47,6 @@ def version(
     transpiler_manager = scheduler.get_transpiler_manager()
     for driver_name, driver in drivers.items():
         driver_name_mapping[driver_name] = {
-            "enable_transpiler": driver.enable_transpiler,
             "supported_code_types": driver.get_supported_code_types(),
             "description": driver.get_description(),
             "driver_options": driver.get_driver_options(),

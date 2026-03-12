@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -30,12 +30,6 @@ class TranspilerDummy(TranspilerBase):
         self.alias_name = "空载转译器(dummy)"
         # version
         self.version = "0.1"
-        # supported code types
-        self.supported_code_types = [
-            Constant.CODE_TYPE_QASM,
-            Constant.CODE_TYPE_QASM2,
-            Constant.CODE_TYPE_QASM3,
-        ]
 
     def init_transpiler(self):
         """Init transpiler."""
@@ -49,6 +43,7 @@ class TranspilerDummy(TranspilerBase):
         Returns:
             parse result
         """
+        return src_code_dict
 
     def transpile(self, parse_result, supp_basis_gates: list):
         """Transpile codes.
@@ -60,3 +55,4 @@ class TranspilerDummy(TranspilerBase):
         Returns:
             transpiled quantum circuit
         """
+        return parse_result, None

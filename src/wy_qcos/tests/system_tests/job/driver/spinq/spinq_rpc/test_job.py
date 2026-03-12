@@ -77,7 +77,9 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True
 
     def test_submit_job_dry_run(self):
@@ -110,7 +112,9 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True
 
     def test_submit_job_with_multiple_source_code(self):
@@ -146,5 +150,7 @@ class TestJob:
                 == Constant.JOB_STATUS_COMPLETED
             )
         else:
-            logger.warning(f"unexpected job result. err_msg:{err_msg}")
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
         assert success is True

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # ----------------------------------------------------------------------
 # Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
@@ -42,38 +42,38 @@ if [ -n "${YUM_MIRROR}" ]; then
 
 [OS]
 name=OS
-baseurl=${YUM_MIRROR}/openeuler/openEuler-24.03-LTS/OS/\$basearch/
+baseurl=${YUM_MIRROR}/openEuler-24.03-LTS/OS/\$basearch/
 enabled=1
 gpgcheck=1
-gpgkey=${YUM_MIRROR}/openeuler/openEuler-24.03-LTS/OS/\$basearch/RPM-GPG-KEY-openEuler
+gpgkey=${YUM_MIRROR}/openEuler-24.03-LTS/OS/\$basearch/RPM-GPG-KEY-openEuler
 
 [everything]
 name=everything
-baseurl=${YUM_MIRROR}/openeuler/openEuler-24.03-LTS/everything/\$basearch/
+baseurl=${YUM_MIRROR}/openEuler-24.03-LTS/everything/\$basearch/
 enabled=1
 gpgcheck=1
-gpgkey=${YUM_MIRROR}/openeuler/openEuler-24.03-LTS/everything/\$basearch/RPM-GPG-KEY-openEuler
+gpgkey=${YUM_MIRROR}/openEuler-24.03-LTS/everything/\$basearch/RPM-GPG-KEY-openEuler
 
 [EPOL]
 name=EPOL
-baseurl=${YUM_MIRROR}/openeuler/openEuler-24.03-LTS/EPOL/main/\$basearch/
+baseurl=${YUM_MIRROR}/openEuler-24.03-LTS/EPOL/main/\$basearch/
 enabled=1
 gpgcheck=1
-gpgkey=${YUM_MIRROR}/openeuler/openEuler-24.03-LTS/OS/\$basearch/RPM-GPG-KEY-openEuler
+gpgkey=${YUM_MIRROR}/openEuler-24.03-LTS/OS/\$basearch/RPM-GPG-KEY-openEuler
 
 [debuginfo]
 name=debuginfo
-baseurl=${YUM_MIRROR}/openeuler/openEuler-24.03-LTS/debuginfo/\$basearch/
+baseurl=${YUM_MIRROR}/openEuler-24.03-LTS/debuginfo/\$basearch/
 enabled=1
 gpgcheck=1
-gpgkey=${YUM_MIRROR}/openeuler/openEuler-24.03-LTS/debuginfo/\$basearch/RPM-GPG-KEY-openEuler
+gpgkey=${YUM_MIRROR}/openEuler-24.03-LTS/debuginfo/\$basearch/RPM-GPG-KEY-openEuler
 
 [update]
 name=update
-baseurl=${YUM_MIRROR}/openeuler/openEuler-24.03-LTS/update/\$basearch/
+baseurl=${YUM_MIRROR}/openEuler-24.03-LTS/update/\$basearch/
 enabled=1
 gpgcheck=1
-gpgkey=${YUM_MIRROR}/openeuler/openEuler-24.03-LTS/OS/\$basearch/RPM-GPG-KEY-openEuler
+gpgkey=${YUM_MIRROR}/openEuler-24.03-LTS/OS/\$basearch/RPM-GPG-KEY-openEuler
 EOM
 fi
 

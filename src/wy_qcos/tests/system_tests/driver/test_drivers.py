@@ -49,12 +49,12 @@ class TestDrivers:
             assert isinstance(driver["description"], str)
         assert driver["name"] == driver_name
         assert driver["enable_circuit_aggregation"] is True
-        assert driver["enable_transpiler"] is True
         assert driver["max_qubits"] == 10
         assert driver["results_fetch_mode"] == Constant.RESULTS_FETCH_MODE_SYNC
         assert driver["supported_basis_gates"] == [
-            Constant.SINGLE_QUBIT_GATE_X,
-            Constant.SINGLE_QUBIT_GATE_Y,
+            Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
+            Constant.TWO_QUBIT_GATE_CZ,
         ]
         assert driver["supported_code_types"] == [
             Constant.CODE_TYPE_QASM,
@@ -79,7 +79,6 @@ class TestDrivers:
             assert isinstance(driver["description"], str)
             assert isinstance(driver["tech_type"], str)
             assert isinstance(driver["max_qubits"], int)
-            assert isinstance(driver["enable_transpiler"], bool)
             assert isinstance(driver["transpiler"], str | None)
             assert isinstance(driver["supported_transpilers"], list)
             assert isinstance(driver["enable_circuit_aggregation"], bool)
@@ -87,8 +86,6 @@ class TestDrivers:
             assert isinstance(driver["supported_basis_gates"], list | None)
             assert isinstance(driver["results_fetch_mode"], str)
             assert driver["max_qubits"] > 0
-            if driver["enable_transpiler"]:
-                assert len(driver["transpiler"]) > 0
-                assert len(driver["supported_transpilers"]) > 0
-                assert len(driver["supported_basis_gates"]) > 0
+            assert len(driver["transpiler"]) > 0
+            assert len(driver["supported_transpilers"]) > 0
             assert len(driver["supported_code_types"]) > 0

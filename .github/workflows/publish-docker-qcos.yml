@@ -23,6 +23,7 @@ permissions:
 
 jobs:
   build-qcos-base-image:
+    name: Build Docker Image (qcos-base)
     runs-on: ubuntu-latest
     container:
       image: openeuler/openeuler:24.03-lts
@@ -32,6 +33,10 @@ jobs:
 
       - name: Install basic packages
         run: |
+          if [ -n "${{ vars.YUM_MIRROR }}" ]; then
+            sed -i 's@https://repo.openeuler.org@${{ vars.YUM_MIRROR }}@g' /etc/yum.repos.d/openEuler.repo
+            yum clean all && yum makecache
+          fi
           yum install -y docker docker-compose rsync findutils
 
       - name: Run Integrated Build Script for base
@@ -40,6 +45,9 @@ jobs:
           cd ./build-scripts
           source ./version
           cp ./env.template ./.env
+          if [ -n "${{ vars.YUM_MIRROR }}" ]; then
+            sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
+          fi
           ./build-images.sh -b -t dev
 
       - name: Upload qcos-base Docker Image Artifact
@@ -49,7 +57,8 @@ jobs:
           path: ./build-scripts/images/qcos-base-amd64-dev.tar.xz
           retention-days: 1
 
-  build-and-push-sandbox-image:
+  build-sandbox-image:
+    name: Build Docker Image (qcos-sandbox)
     needs: build-qcos-base-image
     runs-on: ubuntu-latest
     container:
@@ -60,6 +69,10 @@ jobs:
 
       - name: Install basic packages
         run: |
+          if [ -n "${{ vars.YUM_MIRROR }}" ]; then
+            sed -i 's@https://repo.openeuler.org@${{ vars.YUM_MIRROR }}@g' /etc/yum.repos.d/openEuler.repo
+            yum clean all && yum makecache
+          fi
           yum install -y docker docker-compose rsync findutils
 
       - name: Download qcos-base Docker Image Artifact
@@ -71,49 +84,34 @@ jobs:
       - name: Load qcos-base Docker Image
         run: docker load -i ./build-scripts/images/qcos-base-amd64-dev.tar.xz
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.QCOS_DOCKERHUB_TOKEN }}
-
-      - name: Generate Docker Metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-sandbox
-          tags: |
-            type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
-            type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
-            type=raw,value=nightly-{{date 'YYYYMMDD'}},enable=${{ github.event_name == 'schedule' }}
-            type=semver,pattern={{version}}
-            type=semver,pattern=latest
-
       - name: Run Integrated Build Script for sandbox
         shell: bash
-        env:
-          ALL_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           cd ./build-scripts
           source ./version
           cp ./env.template ./.env
-          ./build-images.sh -s -n
-          TAG_LIST=$(echo "$ALL_TAGS" | xargs)
-          echo "TAGS: $TAG_LIST"
-          for full_tag in $TAG_LIST; do
-            echo "Processing tag: $full_tag"
-            docker tag qcos-sandbox:dev $full_tag
-            docker push $full_tag
-          done
+          if [ -n "${{ vars.YUM_MIRROR }}" ]; then
+            sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
+          fi
+          ./build-images.sh -s -t dev
 
-  build-and-push-qcos-image:
-    needs: build-and-push-sandbox-image
+      - name: Upload qcos-sandbox Docker Image Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qcos-sandbox-image-artifact
+          path: ./build-scripts/images/qcos-sandbox-amd64-dev.tar.xz
+          retention-days: 1
+
+  build-qcos-image:
+    name: Build Docker Image (qcos)
+    needs: build-sandbox-image
     runs-on: ubuntu-latest
-    container:
-      image: qcos/qcos-sandbox:nightly
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Download qcos-base Docker Image Artifact
         uses: actions/download-artifact@v4
@@ -124,46 +122,41 @@ jobs:
       - name: Load qcos-base Docker Image
         run: docker load -i ./build-scripts/images/qcos-base-amd64-dev.tar.xz
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+      - name: Download qcos-sandbox Docker Image Artifact
+        uses: actions/download-artifact@v4
         with:
-          username: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.QCOS_DOCKERHUB_TOKEN }}
+          name: qcos-sandbox-image-artifact
+          path: ./build-scripts/images/
 
-      - name: Generate Docker Metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos
-          tags: |
-            type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
-            type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
-            type=raw,value=nightly-{{date 'YYYYMMDD'}},enable=${{ github.event_name == 'schedule' }}
-            type=semver,pattern={{version}}
-            type=semver,pattern=latest
+      - name: Load qcos-sandbox Docker Image
+        run: docker load -i ./build-scripts/images/qcos-sandbox-amd64-dev.tar.xz
 
       - name: Run Integrated Build Script for qcos
         shell: bash
-        env:
-          ALL_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
+          sudo -s <<'EOF'
+          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
           cd ./build-scripts
           source /root/.bashrc
           source ./version
           cp ./env.template ./.env
-          ./build-images.sh -q -n
-          TAG_LIST=$(echo "$ALL_TAGS" | xargs)
-          echo "TAGS: $TAG_LIST"
-          for full_tag in $TAG_LIST; do
-            echo "Processing tag: $full_tag"
-            docker tag qcos:${QCOS_VERSION} $full_tag
-            docker push $full_tag
-          done  
+          if [ -n "${{ vars.YUM_MIRROR }}" ]; then
+            sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
+          fi
+          ./run-sandbox.sh
+          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -q -t dev"
+          EOF
 
-  build-and-push-qcos-cli-image:
-    needs: build-and-push-sandbox-image
-    container:
-      image: qcos/qcos-sandbox:nightly
+      - name: Upload qcos Docker Image Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qcos-image-artifact
+          path: ./build-scripts/images/qcos-amd64-dev.tar.xz
+          retention-days: 1
+
+  build-qcos-cli-image:
+    name: Build Docker Image (qcos-cli)
+    needs: build-sandbox-image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -172,58 +165,71 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+      - name: Download qcos-sandbox Docker Image Artifact
+        uses: actions/download-artifact@v4
         with:
-          username: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.QCOS_DOCKERHUB_TOKEN }}
+          name: qcos-sandbox-image-artifact
+          path: ./build-scripts/images/
 
-      - name: Generate Docker Metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-cli
-          tags: |
-            type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
-            type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
-            type=raw,value=nightly-{{date 'YYYYMMDD'}},enable=${{ github.event_name == 'schedule' }}
-            type=semver,pattern={{version}}
-            type=semver,pattern=latest
+      - name: Load qcos-sandbox Docker Image
+        run: docker load -i ./build-scripts/images/qcos-sandbox-amd64-dev.tar.xz
 
       - name: Run Integrated Build Script for qcos-cli
         shell: bash
-        env:
-          ALL_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
+          sudo -s <<'EOF'
+          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
           cd ./build-scripts
           source /root/.bashrc
           source ./version
           cp ./env.template ./.env
-          ./build-images.sh -c -n
-          TAG_LIST=$(echo "$ALL_TAGS" | xargs)
-          echo "TAGS: $TAG_LIST"
-          for full_tag in $TAG_LIST; do
-            echo "Processing tag: $full_tag"
-            docker tag qcos-cli:${QCOS_VERSION} $full_tag
-            docker push $full_tag
-          done  
+          if [ -n "${{ vars.YUM_MIRROR }}" ]; then
+            sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
+          fi
+          ./run-sandbox.sh
+          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -c -t dev"
+          EOF
+
+      - name: Upload qcos-cli Docker Image Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qcos-cli-image-artifact
+          path: ./build-scripts/images/qcos-cli-amd64-dev.tar.xz
+          retention-days: 1
 
   run-ut-qcos:
+    name: Run Unit Tests (qcos)
     needs:
-      - build-and-push-qcos-image
+      - build-qcos-image
     runs-on: ubuntu-latest
-    container:
-      image: qcos/qcos-sandbox:nightly
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Run Unit Tests (QCOS)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Download qcos-sandbox Docker Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: qcos-sandbox-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos-sandbox Docker Image
+        run: docker load -i ./build-scripts/images/qcos-sandbox-amd64-dev.tar.xz
+
+      - name: Run Unit Tests (qcos)
         shell: bash
         run: |
-          source /root/.bashrc
-          cicd/run-tests.sh -c all
+          sudo -s <<'EOF'
+          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          cd ./build-scripts
+          cp ./env.template ./.env
+          export SANDBOX_IMAGE_VERSION=dev
+          ./run-sandbox.sh
+          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/cicd; ./run-tests.sh -c all"
+          EOF
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
@@ -232,21 +238,38 @@ jobs:
           files: cicd/reports/wy_qcos/coverage.xml
 
   run-ut-qcos-cli:
+    name: Run Unit Tests (qcos-cli)
     needs:
-      - build-and-push-qcos-cli-image
+      - build-qcos-cli-image
     runs-on: ubuntu-latest
-    container:
-      image: qcos/qcos-sandbox:nightly
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Run Unit Tests (QCOS-CLI)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Download qcos-sandbox Docker Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: qcos-sandbox-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos-sandbox Docker Image
+        run: docker load -i ./build-scripts/images/qcos-sandbox-amd64-dev.tar.xz
+
+      - name: Run Unit Tests (qcos-cli)
         shell: bash
         run: |
-          source /root/.bashrc
-          cicd/run-tests.sh -e all
+          sudo -s <<'EOF'
+          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          cd ./build-scripts
+          cp ./env.template ./.env
+          export SANDBOX_IMAGE_VERSION=dev
+          ./run-sandbox.sh
+          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/cicd; ./run-tests.sh -e all"
+          EOF
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
@@ -255,23 +278,53 @@ jobs:
           files: cicd/reports/wy_qcos_client/coverage.xml
 
   run-st-qcos:
+    name: Run System Tests (qcos)
     needs:
-      - build-and-push-qcos-image
+      - build-qcos-image
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Run System Tests (QCOS)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Download qcos Docker Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: qcos-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos Docker Image
+        run: docker load -i ./build-scripts/images/qcos-amd64-dev.tar.xz
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Run System Tests (qcos)
         shell: bash
         run: |
-          BASE_DIR=$(dirname "$0")
-          TOP_DIR=$(readlink -f ${BASE_DIR})
+          sudo -s <<'EOF'
+          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+
+          TOP_DIR=$(pwd)
+          # config
           cd ${TOP_DIR}/build-scripts
-          source /root/.bashrc
           cp ./env.template ./.env
-          sed -i 's/^LOCAL_CICD=.*/LOCAL_CICD=True/' ./.env
+          if [ -n "${{ vars.YUM_MIRROR }}" ]; then
+            sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
+          fi
+          sed -i 's@^QCOS_VERSION=.*@QCOS_VERSION=dev@' ./version
+          sed -i 's@^LOCAL_CICD=.*@LOCAL_CICD=True@' ./.env
+          mkdir -p /etc/qcos/
+          cp -rf ${TOP_DIR}/etc/qcos/st-conf.d /etc/qcos/
+          cp -rf ${TOP_DIR}/etc/qcos/qcos-st.toml /etc/qcos/qcos.toml
+
+          # run docker
           ./run-docker.sh
 
           # waiting for qcos docker running
@@ -294,21 +347,123 @@ jobs:
             exit 1
           fi
 
-          # run system tests
-          cd ${TOP_DIR}/cicd
-          ./run-tests.sh -s all
+          # run system tests in qcos
+          sleep 10
+          echo "Running system tests in container: qcos"
+          cd ${TOP_DIR}
+          tar czf /tmp/cicd.tar.gz ./cicd ./src ./samples
+          docker cp /tmp/cicd.tar.gz qcos:/tmp/
+          docker exec qcos sh -c "mkdir -p /root/qcos-project/; cd /root/qcos-project/; tar xzf /tmp/cicd.tar.gz"
+          docker exec qcos sh -c "source /root/.bashrc; echo 'Driver list:'; qcos-cli list-devices; echo 'Job list:'; qcos-cli list-jobs; cd /root/qcos-project; ./cicd/run-tests.sh -s all"
+          EOF
+
+  push-docker-images:
+    name: Tag and Push docker images to DockerHub
+    # Runs after all jobs regardless of their outcome
+    needs:
+      - build-qcos-base-image
+      - build-sandbox-image
+      - build-qcos-image
+      - build-qcos-cli-image
+      - run-ut-qcos
+      - run-ut-qcos-cli
+      - run-st-qcos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.QCOS_DOCKERHUB_TOKEN }}
+
+      - name: Download qcos-base Docker Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: qcos-base-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos-base Docker Image
+        run: docker load -i ./build-scripts/images/qcos-base-amd64-dev.tar.xz
+
+      - name: Download qcos-sandbox Docker Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: qcos-sandbox-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos-sandbox Docker Image
+        run: docker load -i ./build-scripts/images/qcos-sandbox-amd64-dev.tar.xz
+
+      - name: Download qcos Docker Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: qcos-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos Docker Image
+        run: docker load -i ./build-scripts/images/qcos-amd64-dev.tar.xz
+
+      - name: Download qcos-cli Docker Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: qcos-cli-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos-cli Docker Image
+        run: docker load -i ./build-scripts/images/qcos-cli-amd64-dev.tar.xz
+
+      - name: Generate Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-base
+            ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-sandbox
+            ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos
+            ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-cli
+          tags: |
+            type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
+            type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
+            type=raw,value=nightly-{{date 'YYYYMMDD'}},enable=${{ github.event_name == 'schedule' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern=latest
+
+      - name: Tag and Push docker images
+        shell: bash
+        env:
+          ALL_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          sudo -s <<'EOF'
+          cd ./build-scripts
+          source /root/.bashrc
+          TAG_LIST=$(echo "$ALL_TAGS" | xargs)
+          echo "TAGS: $TAG_LIST"
+          for full_tag in $TAG_LIST; do
+            echo "Processing tag: $full_tag"
+            image_name=${full_tag%:*}
+            docker tag ${image_name}:dev $full_tag
+            docker push $full_tag
+          done
+          EOF
 
   send-cicd-report:
     name: Send CI/CD Report via action-send-mail
     # Runs after all jobs regardless of their outcome
     needs:
       - build-qcos-base-image
-      - build-and-push-sandbox-image
-      - build-and-push-qcos-image
-      - build-and-push-qcos-cli-image
+      - build-sandbox-image
+      - build-qcos-image
+      - build-qcos-cli-image
       - run-ut-qcos
       - run-ut-qcos-cli
       - run-st-qcos
+      - push-docker-images
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -323,7 +478,7 @@ jobs:
 
           # Email configuration
           subject: |
-            [QCOS CI/CD] ${{ needs.build-qcos-base-image.result == 'failure' || needs.build-and-push-sandbox-image.result == 'failure' || needs.build-and-push-qcos-image.result == 'failure' || needs.build-and-push-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' && '❌ FAILED' || '✅ SUCCESS' }} — Run #${{ github.run_number }} on ${{ github.ref_name }} (${{ github.sha }})
+            [QCOS CI/CD] ${{ needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure' && '❌ FAILED' || '✅ SUCCESS' }} — Run #${{ github.run_number }} on ${{ github.ref_name }} (${{ github.sha }})
 
           # Recipients (supports multiple comma-separated addresses)
           to: ${{ vars.QCOS_CICD_REPORT_EMAIL_TO }}
@@ -376,8 +531,8 @@ jobs:
                   <p class="subtitle">Workflow Run #${{ github.run_number }} &nbsp;·&nbsp; ${{ github.event_name }} (${{ github.actor }})</p>
                 </div>
 
-                <div class="overall ${{ needs.build-qcos-base-image.result == 'failure' || needs.build-and-push-sandbox-image.result == 'failure' || needs.build-and-push-qcos-image.result == 'failure' || needs.build-and-push-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' && 'failed' || 'success' }}">
-                  Overall Status: ${{ needs.build-qcos-base-image.result == 'failure' || needs.build-and-push-sandbox-image.result == 'failure' || needs.build-and-push-qcos-image.result == 'failure' || needs.build-and-push-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' && '❌ FAILED' || '✅ SUCCESS' }}
+                <div class="overall ${{ needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure' && 'failed' || 'success' }}">
+                  Overall Status: ${{ needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure' && '❌ FAILED' || '✅ SUCCESS' }}
                 </div>
 
                 <div class="section">
@@ -398,12 +553,13 @@ jobs:
                     </thead>
                     <tbody>
                       <tr><td>Build QCOS Base Image</td>     <td>${{ needs.build-qcos-base-image.result == 'success' && '✅ success' || needs.build-qcos-base-image.result == 'failure' && '❌ failure' || needs.build-qcos-base-image.result == 'skipped' && '⏭️ skipped' || needs.build-qcos-base-image.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
-                      <tr><td>Build & Push Sandbox Image</td>  <td>${{ needs.build-and-push-sandbox-image.result == 'success' && '✅ success' || needs.build-and-push-sandbox-image.result == 'failure' && '❌ failure' || needs.build-and-push-sandbox-image.result == 'skipped' && '⏭️ skipped' || needs.build-and-push-sandbox-image.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
-                      <tr><td>Build & Push QCOS Image</td>     <td>${{ needs.build-and-push-qcos-image.result == 'success' && '✅ success' || needs.build-and-push-qcos-image.result == 'failure' && '❌ failure' || needs.build-and-push-qcos-image.result == 'skipped' && '⏭️ skipped' || needs.build-and-push-qcos-image.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
-                      <tr><td>Build & Push QCOS-CLI Image</td> <td>${{ needs.build-and-push-qcos-cli-image.result == 'success' && '✅ success' || needs.build-and-push-qcos-cli-image.result == 'failure' && '❌ failure' || needs.build-and-push-qcos-cli-image.result == 'skipped' && '⏭️ skipped' || needs.build-and-push-qcos-cli-image.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
+                      <tr><td>Build Sandbox Image</td>  <td>${{ needs.build-sandbox-image.result == 'success' && '✅ success' || needs.build-sandbox-image.result == 'failure' && '❌ failure' || needs.build-sandbox-image.result == 'skipped' && '⏭️ skipped' || needs.build-sandbox-image.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
+                      <tr><td>Build QCOS Image</td>     <td>${{ needs.build-qcos-image.result == 'success' && '✅ success' || needs.build-qcos-image.result == 'failure' && '❌ failure' || needs.build-qcos-image.result == 'skipped' && '⏭️ skipped' || needs.build-qcos-image.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
+                      <tr><td>Build QCOS-CLI Image</td> <td>${{ needs.build-qcos-cli-image.result == 'success' && '✅ success' || needs.build-qcos-cli-image.result == 'failure' && '❌ failure' || needs.build-qcos-cli-image.result == 'skipped' && '⏭️ skipped' || needs.build-qcos-cli-image.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
                       <tr><td>Unit Tests - QCOS</td>         <td>${{ needs.run-ut-qcos.result == 'success' && '✅ success' || needs.run-ut-qcos.result == 'failure' && '❌ failure' || needs.run-ut-qcos.result == 'skipped' && '⏭️ skipped' || needs.run-ut-qcos.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
                       <tr><td>Unit Tests - QCOS-CLI</td>     <td>${{ needs.run-ut-qcos-cli.result == 'success' && '✅ success' || needs.run-ut-qcos-cli.result == 'failure' && '❌ failure' || needs.run-ut-qcos-cli.result == 'skipped' && '⏭️ skipped' || needs.run-ut-qcos-cli.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
                       <tr><td>System Tests - QCOS</td>       <td>${{ needs.run-st-qcos.result == 'success' && '✅ success' || needs.run-st-qcos.result == 'failure' && '❌ failure' || needs.run-st-qcos.result == 'skipped' && '⏭️ skipped' || needs.run-st-qcos.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
+                      <tr><td>Tag & Push Docker Images</td>       <td>${{ needs.push-docker-images.result == 'success' && '✅ success' || needs.push-docker-images.result == 'failure' && '❌ failure' || needs.push-docker-images.result == 'skipped' && '⏭️ skipped' || needs.push-docker-images.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
                     </tbody>
                   </table>
                   <a class="btn" href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Full Run Logs →</a>

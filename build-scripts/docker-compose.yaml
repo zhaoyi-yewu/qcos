@@ -26,7 +26,6 @@ services:
       PREFECT_SERVER_DATABASE_CONNECTION_URL: ${PREFECT_SERVER_DATABASE_CONNECTION_URL}
       PREFECT_API_DATABASE_TIMEOUT: 30
       PREFECT_API_URL: "${PREFECT_API_URL}"
-      PREFECT_LOCAL_STORAGE_PATH: /var/qcos/storage
       PREFECT_API_DEFAULT_LIMIT: 100000
       PYTHONPATH: /root/qcos-project/src
     volumes:
@@ -41,7 +40,7 @@ services:
     network_mode: "host"
   qcos:
     container_name: qcos
-    image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
+    image: ${REGISTRY}${QCOS_REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
     privileged: true
     network_mode: "host"
     restart: always
@@ -79,4 +78,5 @@ services:
       - /etc/qcos:/etc/qcos
       - /var/log/qcos:/var/log/qcos
       - /var/run/qcos:/var/run/qcos
+      - /var/qcos:/var/qcos
     entrypoint: /entrypoint.sh

@@ -46,7 +46,7 @@ class DriverUQCMatrix2(DriverBase):
         self.version = "0.0.1"
         self.alias_name = "幺正量子 UQC-Matrix2 离子阱驱动"
         self.description = "幺正量子 UQC-Matrix2 离子阱驱动"
-        self.enable_transpiler = False
+        self.transpiler = Constant.TRANSPILER_DUMMY
         self.tech_type = Constant.TECH_TYPE_ION_TRAP
         self.supported_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_RX,
@@ -57,6 +57,7 @@ class DriverUQCMatrix2(DriverBase):
         self.max_qubits = 5
         self.default_data_type = DriverBase.DATA_TYPE_QASM3
         self.supported_code_types = [DriverBase.DATA_TYPE_QASM3]
+        self.supported_transpilers = [Constant.TRANSPILER_DUMMY]
 
         # task stages and percentages
         self.task_stages = {
