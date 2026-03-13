@@ -18,34 +18,90 @@
 import time
 import logging
 
-logger = logging.getLogger(__name__)
 
+class TransLogger:
+    def __init__(self, logfile=None, allowed_tags=None):
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+        self.logger.handlers.clear()
 
-def init_logging(level=logging.INFO, logfile=None):
-    """Init logging."""
-    if logger.handlers:
-        return
+        # 默认允许所有标记，若指定则过滤
+        self.allowed_tags = allowed_tags or []
 
-    file_handler = None
-    console_handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            "%(asctime)s - %(levelname)s - [%(tag)s]:"
+            "%(name)s:%(funcName)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
 
-    if logfile:
-        file_handler = logging.FileHandler(logfile, encoding="utf-8")
+        file_handler = None
+        if logfile:
+            file_handler = logging.FileHandler(logfile, encoding="utf-8")
+            file_handler.setFormatter(formatter)
+            self.logger.addHandler(file_handler)
 
-    formatter = logging.Formatter(
-        "%(asctime)s - %(levelname)s:%(name)s:%(funcName)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    if console_handler:
+        console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
-    if file_handler:
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+        self.logger.addHandler(console_handler)
 
-    logger.setLevel(level)
-    logger.propagate = False
+        self.logger.propagate = False
+
+    def _log(self, level, msg, tag):
+        """Set the log base info.
+
+        Description:
+            If allowed_tags is emtpy, all tags are allowed.
+
+        Args:
+            level: Log level (e.g., logging.INFO, logging.ERROR).
+            msg: Log message.
+            tag: Custom tag for categorizing logs (e.g., "PERF",
+            "ERROR", "WARNING").
+        """
+        if self.allowed_tags and tag not in self.allowed_tags:
+            return
+
+        self.logger.log(level, msg, extra={"tag": tag})
+
+    def log_perf(self, msg):
+        """Performance log (INFO level)."""
+        self._log(logging.INFO, msg, "PERF")
+
+    def log_error(self, msg):
+        """Error log (ERROR level)."""
+        self._log(logging.ERROR, msg, "ERROR")
+
+    def log_warning(self, msg):
+        """Warning log (WARNING level)."""
+        self._log(logging.INFO, msg, "WARNING")
+
+    def log_debug(self, msg):
+        """DEBUG log (DEBUG level)."""
+        self._log(logging.INFO, msg, "DEBUG")
+
+    # Set allowed tags for filtering logs. If empty, all tags are allowed.
+    def set_allowed_tags(self, tags):
+        self.allowed_tags = tags
+
+    def set_log_file(self, log_file):
+        """Set log file path for output.
+
+        Description: Output content will be written to the output file.
+            If None, logs will only be output to console.
+
+        Args:
+            log_file: Path to the log file.
+        """
+        if log_file is None:
+            return
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        formatter = logging.Formatter(
+            "%(asctime)s - %(levelname)s - [%(tag)s]:"
+            "%(name)s:%(funcName)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+        file_handler.setFormatter(formatter)
+        self.logger.addHandler(file_handler)
 
 
 class Timer:
@@ -70,3 +126,28 @@ class TranspileRuntime:
         self.opt_time2 = 0.0
         self.mapping_time = 0.0
         self.routing_time = 0.0
+
+    def add_runtime(self, runtime: "TranspileRuntime"):
+        self.total_time += runtime.total_time
+        self.transpile_time += runtime.transpile_time
+        self.parse_time += runtime.parse_time
+        self.opt_time1 += runtime.opt_time1
+        self.decompose_rule_time += runtime.decompose_rule_time
+        self.decompose_1q2q_time += runtime.decompose_1q2q_time
+        self.decompose_apply_time += runtime.decompose_apply_time
+        self.opt_time2 += runtime.opt_time2
+        self.mapping_time += runtime.mapping_time
+        self.routing_time += runtime.routing_time
+
+    def avg_runtime(self, run_count):
+        self.total_time /= run_count
+        self.transpile_time /= run_count
+        self.parse_time /= run_count
+        self.opt_time1 /= run_count
+        self.decompose_rule_time /= run_count
+        self.decompose_1q2q_time /= run_count
+        self.decompose_apply_time /= run_count
+        self.opt_time2 /= run_count
+
+
+trans_logger = TransLogger(allowed_tags=["PERF", "ERROR", "DEBUG"])

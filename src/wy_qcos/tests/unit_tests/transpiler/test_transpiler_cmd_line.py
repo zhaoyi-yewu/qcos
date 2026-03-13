@@ -15,18 +15,17 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import os
 import sys
-import logging
 from pathlib import Path
 import pytest
 from unittest.mock import patch, MagicMock, mock_open
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
-from wy_qcos.transpiler.common.utils import Timer, init_logging, logger
+from wy_qcos.transpiler.common.utils import Timer, TranspileRuntime
 from wy_qcos.transpiler.cmss.transpiler_cmd_line import (
     CMSSTranspilerPerf,
+    TranspileParams,
     main as cmss_main,
     get_parse_args,
 )
@@ -67,32 +66,45 @@ class TestTranspilerCmdLine:
     def test_parse_args(self):
         sys.argv = [
             "transpiler_cmd_line.py",
-            "--config-file",
+            "--trans-config-file",
             f"{self.etc_dir}/perf/transpile_conf.toml",
         ]
         cmss_args = get_parse_args()
-        assert (
-            cmss_args["config_file"]
-            == f"{self.etc_dir}/perf/transpile_conf.toml"
-        )
+        assert "etc/perf/transpile_conf.toml" in cmss_args["trans_config_file"]
 
         with patch(
             "wy_qcos.transpiler.cmss.transpiler_cmd_line.CMSSTranspilerPerf"
         ) as MockPerf:
             mock_perf = MockPerf()
             mock_perf.main_cmss_transpiler(
-                cmss_args["config_file"]
+                cmss_args["trans_config_file"]
             ).return_value = True
             with patch("sys.exit") as mock_sys_exit:
                 cmss_main(sys.argv)
                 mock_sys_exit.assert_called_with(
-                    mock_perf.main_cmss_transpiler(cmss_args["config_file"])
+                    mock_perf.main_cmss_transpiler(
+                        cmss_args["trans_config_file"]
+                    )
                 )
 
     def test_parse_file_args(self):
         perf = CMSSTranspilerPerf()
         perf.file_list = [f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"]
         perf.dir_list = [f"{self.samples_dir}/qasm/2.0/benchmark"]
+        perf.parse_file_args()
+        assert len(perf.total_files) > 0
+
+        perf = CMSSTranspilerPerf()
+        perf.file_list = [f"{self.samples_dir}/qasm/2.0/simple-qasm1.qasm"]
+        perf.dir_list = [f"{self.samples_dir}/qasm/2.0/benchmark"]
+        perf.total_files = [1]
+        perf.parse_file_args()
+        assert len(perf.total_files) > 0
+
+        perf = CMSSTranspilerPerf()
+        perf.file_list = [f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"]
+        perf.dir_list = [f"{self.samples_dir}/qasm/2.0/benchmark1"]
+        perf.total_files = [1]
         perf.parse_file_args()
         assert len(perf.total_files) > 0
 
@@ -105,15 +117,16 @@ class TestTranspilerCmdLine:
         assert "Input file not existed!" in err_msg
 
         input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
-        output_file = "CHANGELOG"
-        output_file_path = Path(output_file).resolve()
+        output_file = "publish.py"
         mock_file = mock_open()
         mock_file_handler = MagicMock()
         with (
             patch("builtins.open", mock_file),
             patch("logging.FileHandler", return_value=mock_file_handler),
         ):
-            res, _ = perf.check_file_args(input_file, output_file)
+            res, output_file_path = perf.check_file_args(
+                input_file, output_file
+            )
             mock_file.assert_called_once_with(
                 output_file_path, "w", encoding="utf-8"
             )
@@ -122,28 +135,50 @@ class TestTranspilerCmdLine:
             )
             assert res == Path(input_file).resolve()
 
-    def test_init_logging(self):
-        init_logging(
-            level=logging.INFO, logfile=os.path.join(Path.cwd(), "test.log")
-        )
-        assert logger.getEffectiveLevel() == logging.INFO
-
-    @patch.object(
-        CMSSTranspilerPerf,
-        "cmss_transpiler_perf_exec",
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf.get_transpile_result"
     )
-    def test_main_cmss_transpiler(self, mock_cmss_transpiler_perf_exec):
-        mock_cmss_transpiler_perf_exec.return_value = "runtime"
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf.parse_file_args"
+    )
+    def test_main_cmss_transpiler(
+        self, mock_parse_file_args, mock_get_transpile_result
+    ):
+        params = TranspileParams()
+        assert params is not None
+
+        mock_parse_file_args.return_value = None
+        mock_get_transpile_result.return_value = None
         perf = CMSSTranspilerPerf()
-        config_file = f"{self.etc_dir}/perf/transpile_conf.toml"
-        perf.main_cmss_transpiler(config_file)
-        mock_cmss_transpiler_perf_exec.assert_called_once()
+        trans_config_file = (
+            GLOBAL_CONFIGS["etc_dir"] + "/perf/transpile_conf.toml"
+        )
+        perf.total_files = ["0", "1"]
+        perf.main_cmss_transpiler(trans_config_file)
+        mock_parse_file_args.assert_called_once()
+
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf.cmss_transpiler_perf_exec"
+    )
+    def test_get_transpile_result(self, mock_cmss_transpiler_perf_exec):
+        mock_cmss_transpiler_perf_exec.return_value = TranspileRuntime()
+        perf = CMSSTranspilerPerf()
+        perf.run_count = 2
+        params = TranspileParams()
+        params.mapping_info = ("0", "1")
+        perf.params_list.append(params)
+        perf.get_transpile_result()
+        assert perf.transpile_result is not None
+
+        perf.params_list.append(params)
+        perf.get_transpile_result()
+
+        assert perf.transpile_result is not None
 
     def test_cmss_transpiler_perf_exec_by_na(self):
-        for hdlr in logger.handlers:
-            if not isinstance(hdlr.level, int):
-                hdlr.level = logging.INFO
-
         with patch(
             "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerCmss"
         ) as MockTranspilerCmss:
@@ -159,7 +194,9 @@ class TestTranspilerCmdLine:
             opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
             basis_gates = ["rx", "ry", "cz"]
             tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
-            config_file = f"{self.etc_dir}/qcos/conf.d/hanyuan1.toml"
+            config_file = (
+                GLOBAL_CONFIGS["etc_dir"] + "/qcos/conf.d/hanyuan1.toml"
+            )
 
             runtime = perf.cmss_transpiler_perf_exec(
                 input_file, opt_level, basis_gates, tech_type, config_file
@@ -167,10 +204,6 @@ class TestTranspilerCmdLine:
             assert runtime is not None
 
     def test_cmss_transpiler_perf_exec_by_sc(self):
-        for hdlr in logger.handlers:
-            if not isinstance(hdlr.level, int):
-                hdlr.level = logging.INFO
-
         with patch(
             "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerCmss"
         ) as MockTranspilerCmss:
@@ -186,7 +219,9 @@ class TestTranspilerCmdLine:
             opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
             basis_gates = ["rx", "ry", "cx"]
             tech_type = Constant.TECH_TYPE_SUPERCONDUCTING
-            config_file = f"{self.etc_dir}/qcos/conf.d/spinq_rpc.toml"
+            config_file = (
+                GLOBAL_CONFIGS["etc_dir"] + "/qcos/conf.d/spinq_rpc.toml"
+            )
 
             runtime = perf.cmss_transpiler_perf_exec(
                 input_file, opt_level, basis_gates, tech_type, config_file
@@ -194,10 +229,6 @@ class TestTranspilerCmdLine:
             assert runtime is not None
 
     def test_cmss_transpiler_perf_exec_by_non(self):
-        for hdlr in logger.handlers:
-            if not isinstance(hdlr.level, int):
-                hdlr.level = logging.INFO
-
         with patch(
             "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerCmss"
         ) as MockTranspilerCmss:
@@ -213,7 +244,9 @@ class TestTranspilerCmdLine:
             opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
             basis_gates = ["rx", "ry", "cx"]
             tech_type = ""
-            config_file = f"{self.etc_dir}/qcos/conf.d/spinq_rpc.toml"
+            config_file = (
+                GLOBAL_CONFIGS["etc_dir"] + "/qcos/conf.d/spinq_rpc.toml"
+            )
 
             runtime = perf.cmss_transpiler_perf_exec(
                 input_file, opt_level, basis_gates, tech_type, config_file

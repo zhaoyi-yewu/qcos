@@ -19,7 +19,7 @@ import numpy as np
 import time
 from networkx import DiGraph
 from abc import ABC
-from loguru import logger
+from wy_qcos.transpiler.common.utils import trans_logger
 
 from wy_qcos.transpiler.cmss.mapping.utils.dg_swap_opt import DGSwap
 from wy_qcos.transpiler.cmss.mapping.utils.front_circuit import FrontCircuit
@@ -176,8 +176,8 @@ class MCTree(DiGraph):
             self.pick_best_son = self.pick_best_son_size
             self.decay = self.score_decay_rate_size
 
-        logger.info(f"select mode :{self.select_mode}")
-        logger.info(f"mode sim :{self.mode_sim}")
+        trans_logger.log_debug(f"select mode :{self.select_mode}")
+        trans_logger.log_debug(f"mode sim :{self.mode_sim}")
 
     def add_node_mcts(
         self, father_node, added_swap=None, remote_exe_node=None
@@ -1221,7 +1221,7 @@ class MCTSRouting(ABC):
             raise MappingException("initial_layout cannot be None")
 
         # MCT搜索过程
-        logger.info("MCTS search process start")
+        trans_logger.log_debug("MCTS search process start")
         start = time.time()
         while search_tree.nodes[search_tree.root_node]["num_remain_gates"] > 0:
             while search_tree.selec_count < self.selec_times:
@@ -1233,7 +1233,7 @@ class MCTSRouting(ABC):
             search_tree.decision()
 
         end = time.time()
-        logger.info(f"MCTS search process time: {end - start}")
+        trans_logger.log_debug(f"MCTS search process time: {end - start}")
 
         # 生成映射后的依赖图
         dg_qct = search_tree.to_dg()
@@ -1248,8 +1248,8 @@ class MCTSRouting(ABC):
         # 初始化swap映射为恒等映射
         swap_mapping = list(range(max(list(ag.nodes)) + 1))
 
-        logger.info(f"number of swaps: {len(swaps)}")
-        logger.info(f"swap scheme: {swaps}")
+        trans_logger.log_debug(f"number of swaps: {len(swaps)}")
+        trans_logger.log_debug(f"swap scheme: {swaps}")
         # 应用每个SWAP操作
         for swap in swaps:
             t0, t1 = swap_mapping[swap[0]], swap_mapping[swap[1]]
@@ -1291,9 +1291,9 @@ class MCTSRouting(ABC):
             gate.targets = [mapping_virtual_to_final[q] for q in gate.targets]
             mapped_ir.append(gate)
 
-        logger.info(
+        trans_logger.log_debug(
             f"routing completed，mapped_ir contains {len(mapped_ir)} gates"
         )
-        logger.info(f"final layout: {mapping_virtual_to_final}")
+        trans_logger.log_debug(f"final layout: {mapping_virtual_to_final}")
 
         return mapped_ir, mapping_virtual_to_final

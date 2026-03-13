@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from loguru import logger
 from schema import Optional
 
 import qiskit
@@ -41,6 +40,7 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.common.errors import TranspilerException
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.transpiler_base import TranspilerBase
+from wy_qcos.transpiler.common.utils import trans_logger
 
 
 class TranspilerQiskit(TranspilerBase):
@@ -89,7 +89,7 @@ class TranspilerQiskit(TranspilerBase):
         """
         if isinstance(src_code_dict, dict) and len(src_code_dict) == 1:
             source_code: str = next(iter(src_code_dict.values()))
-            logger.debug(f"source_code:\n{source_code}")
+            trans_logger.log_debug(f"source_code:\n{source_code}")
             if "OPENQASM 3.0" in source_code:
                 parse_result = qiskit.qasm3.loads(source_code)
             elif "OPENQASM 2.0" in source_code:

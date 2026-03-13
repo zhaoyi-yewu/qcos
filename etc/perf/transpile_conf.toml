@@ -10,6 +10,10 @@
 files = ["./samples/qasm/2.0/simple-qasm.qasm"]
 dirs = []
 
+# 允许输入的日志标签，当log_tags为空，则默认允许所有标签
+# 当前支持PERF, WARNING, ERROR, DEBUG等标签
+log_tags = ["PERF", "WARNING", "ERROR"]
+
 [transpile.transpiler]
 # 默认为true
 # is_exec = true
@@ -18,7 +22,7 @@ base_gates = ["rx, ry, cx"]
 
 [transpile.optimize]
 # 默认opt_level为[1]
-opt_level = [1]
+opt_level = [0, 1]
 
 [transpile.mapping]
 # 默认为true

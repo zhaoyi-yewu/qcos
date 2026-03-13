@@ -17,7 +17,11 @@
 
 from schema import Optional
 
-from wy_qcos.transpiler.common.utils import TranspileRuntime, Timer, logger
+from wy_qcos.transpiler.common.utils import (
+    TranspileRuntime,
+    Timer,
+    trans_logger,
+)
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.cmss.compiler.decomposer import decompose_gates_to_1q2q
 from wy_qcos.transpiler.cmss.decomposer.decomposer import Decomposer
@@ -156,7 +160,7 @@ class TranspilerCmss(TranspilerBase):
             mapping_dict[key] = value[0]
             with Timer() as mapping_pre_timer:
                 mapper.prepare_data(value[0], value[1], qpu_cfg)
-            logger.info(
+            trans_logger.log_perf(
                 f"mapping(prepare_data): {mapping_pre_timer.elapsed:.4f}s\n"
             )
             with Timer() as mapping_exec_timer:
@@ -164,8 +168,8 @@ class TranspilerCmss(TranspilerBase):
 
             final_layout_dict[key] = final_layout
             init_layout_dict[key] = mapper.initial_layout
-            logger.debug(f"after mapping: {mapping_res}")
-            logger.info(
+            trans_logger.log_debug(f"after mapping: {mapping_res}")
+            trans_logger.log_perf(
                 "mapping(execute_with_order): "
                 f"{mapping_exec_timer.elapsed:.4f}s\n"
             )
@@ -183,7 +187,7 @@ class TranspilerCmss(TranspilerBase):
             for key, value in opt_result_dict.items():
                 # 不使用b+树进行block查找
                 blk = get_block(ht, value[0])
-                logger.info(f"xxblock: {blk}")
+                trans_logger.log_debug(f"xxblock: {blk}")
                 # 使用b+树进行block查找
                 # TODO (wangjujun): use b+ tree by parameter.
                 # blk = get_block_bplus(ht, value[0])
@@ -193,7 +197,7 @@ class TranspilerCmss(TranspilerBase):
                     continue
                 mapping_dict[key] = value[0]
                 if isinstance(mapper, SCRoute):
-                    logger.info(f"set current_block to {blk}")
+                    trans_logger.log_debug(f"set current_block to {blk}")
                     # For SC, set current_block to limit the mapping range
                     qpu_cfg["current_block"] = blk
                 else:
@@ -236,7 +240,7 @@ class TranspilerCmss(TranspilerBase):
         self.total_qubits = 0
         if isinstance(src_code_dict, dict):
             for key, value in src_code_dict.items():
-                logger.debug(f"source_code:\n{value}")
+                trans_logger.log_debug(f"source_code:\n{value}")
                 num_qubits, parse_result = compile(value)
                 if self.total_qubits + num_qubits > trans_cfg_inst.max_qubits:
                     # TODO (xudong): need to remove the remained task item.
@@ -286,7 +290,7 @@ class TranspilerCmss(TranspilerBase):
                 opt_result = optimize(value[1], opt_level=1)
                 opt_result_dict[key] = (value[0], opt_result)
         run_time.opt_time1 = optimize1_timer.elapsed
-        logger.info(
+        trans_logger.log_perf(
             f"tranpiler(optimize firstly): {optimize1_timer.elapsed:.4f}s\n"
         )
 
@@ -294,7 +298,7 @@ class TranspilerCmss(TranspilerBase):
             qpu_cfg = trans_cfg_inst.get_qpu_cfg()
             if not qpu_cfg:
                 err_msg = "Missing qpu configs"
-                logger.error(err_msg)
+                trans_logger.log_error(err_msg)
                 raise ValueError(err_msg)
 
             # decompose gate to 1q2q gates for mapping
@@ -304,10 +308,9 @@ class TranspilerCmss(TranspilerBase):
                     decomposed_gates = decompose_gates_to_1q2q(value[1])
                     dp_result_dict[key] = (value[0], decomposed_gates)
             run_time.decompose_1q2q_time = decompose_1q2q_timer.elapsed
-            logger.info(
+            trans_logger.log_perf(
                 "tranpiler(decomposing firstly): "
                 f"{decompose_1q2q_timer.elapsed:.4f}s\n"
-                f"number of gates: {len(decomposed_gates)}\n"
             )
 
             decomposer = Decomposer()
@@ -322,7 +325,7 @@ class TranspilerCmss(TranspilerBase):
                     supp_basis_gates,
                 )
             run_time.decompose_rule_time = decompose_ruler_timer.elapsed
-            logger.info(
+            trans_logger.log_perf(
                 "tranpiler(get decompose rules): "
                 f"{decompose_ruler_timer.elapsed:.4f}s\n"
             )
@@ -332,14 +335,16 @@ class TranspilerCmss(TranspilerBase):
                     qpu_cfg, dp_result_dict
                 )
             run_time.mapping_time = mapping_timer.elapsed
-            logger.info(f"tranpiler(mapping): {mapping_timer.elapsed:.4f}s\n")
+            trans_logger.log_perf(
+                f"tranpiler(mapping): {mapping_timer.elapsed:.4f}s\n"
+            )
 
             with Timer() as applier_timer:
                 decomposer_circuit = decomposer.apply_decompose_rules(
                     mapping_res, decompose_rules_dict
                 )
             run_time.decompose_apply_time = applier_timer.elapsed
-            logger.info(
+            trans_logger.log_perf(
                 f"tranpiler(applier_timer): {applier_timer.elapsed:.4f}s\n"
             )
 
@@ -351,8 +356,8 @@ class TranspilerCmss(TranspilerBase):
                     basis_gates=set(supp_basis_gates),
                 )
             run_time.opt_time2 = optimize2_timer.elapsed
-            logger.debug(f"final basis_gate_list: {basis_gate_list}")
-            logger.info(
+            trans_logger.log_debug(f"final basis_gate_list: {basis_gate_list}")
+            trans_logger.log_perf(
                 "tranpiler(optimize secondly):"
                 f" {optimize2_timer.elapsed:.4f}s\n"
             )
@@ -370,7 +375,7 @@ class TranspilerCmss(TranspilerBase):
                     supp_basis_gates,
                 )
             run_time.decompose_rule_time = decompose_ruler_timer.elapsed
-            logger.info(
+            trans_logger.log_perf(
                 "tranpiler(get decompose rules): "
                 f"{decompose_ruler_timer.elapsed:.4f}s\n"
             )
@@ -382,7 +387,7 @@ class TranspilerCmss(TranspilerBase):
                         value[1], decompose_rules_dict
                     )
             run_time.decompose_apply_time = applier_timer.elapsed
-            logger.info(
+            trans_logger.log_perf(
                 f"tranpiler(applier_timer): {applier_timer.elapsed:.4f}s\n"
             )
 
@@ -399,8 +404,8 @@ class TranspilerCmss(TranspilerBase):
             basis_gate_list = [
                 gate for gates in basis_gates_dict.values() for gate in gates
             ]
-            logger.debug(f"final basis_gate_list: {basis_gate_list}")
-            logger.info(
+            trans_logger.log_debug(f"final basis_gate_list: {basis_gate_list}")
+            trans_logger.log_perf(
                 "tranpiler(optimize secondly):"
                 f" {optimize2_timer.elapsed:.4f}s\n"
             )
