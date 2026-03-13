@@ -22,13 +22,18 @@
 --------------------
 .. code-block:: shell
 
-   # 操作系统镜像 (容器内包含命令行)
-   ./build-images.sh
+   # 编译基础镜像 (可选; sandbox和qcos镜像基于本base容器镜像; 如果基础软件环境没变, 只需第一次编译base镜像，后续编译sandbox和qcos镜像时无需每次重新编译base镜像)
+   ./build-images.sh -b  # 编译base基础容器镜像
 
-   # 独立的命令行镜像 [可选]
+   # 编译环境镜像 (统一的编译/测试环境sandbox)
    ./build-images.sh -s  # 编译sandbox容器镜像
    ./run-sandbox.sh  # 运行sandbox容器环境
-   ./build-images.sh -c  # 编译qcos cli容器镜像
+
+   # 操作系统qcos镜像 (容器内包含命令行)
+   ./build-images.sh -q
+
+   # 独立的命令行qcos-cli镜像 (可选)
+   ./build-images.sh -c
 
 修改配置文件
 --------------------
