@@ -46,6 +46,7 @@ from aiohttp import ClientTimeout, ClientError
 from collections import OrderedDict
 from cryptography.fernet import Fernet
 from datetime import datetime
+from pathlib import Path
 from http import HTTPStatus
 from schema import Schema
 from urllib.parse import urlparse
@@ -307,6 +308,10 @@ class Library:
                 if fnmatch.fnmatch(entry, pattern):
                     files.append(os.path.join(base_dir, entry))
         return files
+
+    @staticmethod
+    def get_top_dir():
+        return str(Path(__file__).resolve().parent.parent.parent.parent)
 
     @staticmethod
     def mkdir(dir_name, mode=None):

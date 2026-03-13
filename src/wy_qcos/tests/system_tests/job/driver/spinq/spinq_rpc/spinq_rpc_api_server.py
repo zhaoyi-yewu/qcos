@@ -32,6 +32,7 @@ from pathlib import Path
 from wy_qcos.common.library import Library
 
 logger = logging.getLogger(__name__)
+top_dir = Library.get_top_dir()
 
 
 # SpinQ RPC Server simulator
@@ -59,8 +60,12 @@ def init_logging():
     )
 
 
-def load_config(path: str = "/etc/qcos/conf.d/spinq_rpc.toml"):
-    """从 TOML 配置文件加载配置."""
+def load_config(path: str = f"{top_dir}/etc/qcos/st-conf.d/spinq_rpc.toml"):
+    """Load config files.
+
+    Args:
+        path: path to config file
+    """
     global _config_data, _qubits_num, _coupling_list, _qpu_configs
 
     # find config file
