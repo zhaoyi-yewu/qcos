@@ -18,8 +18,9 @@
 import logging
 
 from sqlalchemy.engine import Engine
-from sqlalchemy import make_url, create_engine
+from sqlalchemy import make_url, create_engine, text
 
+from wy_qcos.common.library import Library
 from wy_qcos.db.models import Base
 from wy_qcos.common.config import Config
 
@@ -60,6 +61,27 @@ class DatabaseDriver:
             logger.info(f"Error while creating tables : {e}")
             raise Exception(e)
 
+    def check_connection(self):
+        """Check connection."""
+
+        def is_connected():
+            if self._engine is None:
+                logger.error("Database engine not initialized")
+                return False, None, None
+
+            try:
+                with self._engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                logger.info("Database is connected")
+                return True, None, None
+            except Exception as e:
+                logger.error(f"Database connection check failed: {str(e)}")
+                return False, str(e), None
+
+        success, err_msg, _ = Library.loop_with_timeout(is_connected, 60, 5)
+        if not success:
+            raise TimeoutError("Connection to database timeout")
+
 
 def init_database():
     """Init database."""
@@ -72,5 +94,6 @@ def init_database():
     db_driver = DatabaseDriver(config_db_url, config_db_url.database)
 
     db_engine = db_driver.create_engine()
+    db_driver.check_connection()
     db_driver.create_tables()
     return db_engine
