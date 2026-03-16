@@ -223,7 +223,11 @@ class TestJobEngine:
         mock_flow_transpile.return_value = ({}, 466)
         with pytest.raises(ValueError) as e:
             _run_code(
-                [1, 2, 3], {}, {"data": {}}, DriverBase(), TranspilerBase()
+                0,
+                {"0-0": self.simple_data},
+                {"data": {}},
+                DriverBase(),
+                TranspilerBase(),
             )
         assert str(e.value) == "unexpected transpile_results or num_qubits"
 
@@ -236,7 +240,13 @@ class TestJobEngine:
             {"results": "v", "metadata": "m"},
             233,
         ])
-        _run_code([1, 2, 3], {}, {"data": {}}, DriverBase(), TranspilerBase())
+        _run_code(
+            0,
+            {"0-0": self.simple_data},
+            {"data": {}},
+            DriverBase(),
+            TranspilerBase(),
+        )
 
     # test run_code for qasm
     @patch("wy_qcos.engine.job_engine.init_driver.submit")
@@ -1033,6 +1043,7 @@ class TestJobEngine:
         ]
         self.job_info["data"]["code_type"] = Constant.CODE_TYPE_QASM
         self.job_info["data"]["driver_options"] = {}
+        self.job_info["data"]["backend"] = "dummy"
         self.job_info["global"] = {"configs": {}}
         self.job_info["device"] = {"configs": {}}
         job_results_list = raw_job_flow_func(self.job_info)

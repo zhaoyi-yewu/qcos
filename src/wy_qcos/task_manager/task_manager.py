@@ -577,11 +577,25 @@ class TaskFlowManager(ABC):
         Returns:
             flow run uuid
         """
-        flow_run_id = self.loop.run_until_complete(
-            self.run_task_flow_by_client(
-                deployment_id, args, tags=tags, work_queue_name=work_queue_name
+        if self.loop.is_running():
+            flow_run_id = asyncio.run_coroutine_threadsafe(
+                self.run_task_flow_by_client(
+                    deployment_id,
+                    args,
+                    tags=tags,
+                    work_queue_name=work_queue_name,
+                ),
+                self.loop,
+            ).result()
+        else:
+            flow_run_id = self.loop.run_until_complete(
+                self.run_task_flow_by_client(
+                    deployment_id,
+                    args,
+                    tags=tags,
+                    work_queue_name=work_queue_name,
+                )
             )
-        )
 
         return flow_run_id
 
@@ -763,9 +777,15 @@ class TaskFlowManager(ABC):
         if flow_run_id is None:
             return False
 
-        return self.loop.run_until_complete(
-            _update_flow(flow_run_id, name, parameters, variables)
-        )
+        if self.loop.is_running():
+            return asyncio.run_coroutine_threadsafe(
+                _update_flow(flow_run_id, name, parameters, variables),
+                self.loop,
+            ).result()
+        else:
+            return self.loop.run_until_complete(
+                _update_flow(flow_run_id, name, parameters, variables)
+            )
 
     def get_task_flow_result_by_client(self, flow_run_id):
         """Get flow run state and result by prefect client.
@@ -1107,9 +1127,14 @@ class TaskFlowManager(ABC):
             data: data to send
             callbacks: callbacks.
         """
-        return self.loop.run_until_complete(
-            Library.async_run_callbacks(data, callbacks)
-        )
+        if self.loop.is_running():
+            return asyncio.run_coroutine_threadsafe(
+                Library.async_run_callbacks(data, callbacks), self.loop
+            ).result()
+        else:
+            return self.loop.run_until_complete(
+                Library.async_run_callbacks(data, callbacks)
+            )
 
     async def process_aggregation_job(self):
         """Process aggregation job."""

@@ -92,8 +92,6 @@ def config(conf):
     conf['DATABASE']['QCOS_DATABASE_CONNECTION_URL'] = ${QCOS_DATABASE_CONNECTION_URL:-fake}
 
     conf['LOG']['API_LOG_FILE'] = '${REDIS_SERVER_IP:-127.0.0.1}'
-    conf['LOG']['JOB_ENGINE_LOG_FILE'] = '${JOB_ENGINE_LOG_FILE:-/var/log/qcos/qcos-engine.log}'
-    conf['LOG']['DEVICE_MONITOR_LOG_FILE'] = '${DEVICE_MONITOR_LOG_FILE:-/var/log/qcos/device-monitor.log}'
     conf['LOG']['LOG_FORMAT'] = '%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s'
 
     conf['DEVICES']['DEVICE_LIST'] = [${DEVICE_LIST:-\"dummy\", \"qutip_sim\"}]

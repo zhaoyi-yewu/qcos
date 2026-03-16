@@ -2,8 +2,21 @@
 alias_name = "玻色量子-天工100"
 driver = "DriverTiangong100"
 description = "玻色量子-天工100(tiangong100)"
+
 # [Optional] max qubits of device
 # device_max_qubits = 100
+
+# [Optional] debug
+# debug = false
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_tiangong100.log
+device_log_file = "/var/log/qcos/device_tiangong100.log"
+
+# [Optional] device monitor log file path
+# monitor_log_file = /var/log/qcos/device_montior_tiangong100.log
+monitor_log_file = "/var/log/qcos/device_monitor_tiangong100.log"
 
 base_url = "http://127.0.0.1:18601"
 username = "test"

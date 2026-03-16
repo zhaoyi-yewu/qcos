@@ -2,5 +2,19 @@
 alias_name = "IBM-Qiskit-Aer模拟器"
 driver = "DriverQiskitAerSim"
 description = "IBM-Qiskit-Aer模拟器(qiskit-aer-sim)"
+
 # [Optional] max qubits of device
 # device_max_qubits = 10
+
+# [Optional] debug
+# debug = false
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_qiskit_aer_sim.log
+device_log_file = "/var/log/qcos/device_qiskit_aer_sim.log"
+
+# [Optional] device monitor log file path
+# monitor_log_file = /var/log/qcos/device_montior_qiskit_aer_sim.log
+monitor_log_file = "/var/log/qcos/device_monitor_qiskit_aer_sim.log"
+

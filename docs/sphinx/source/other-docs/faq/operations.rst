@@ -35,6 +35,6 @@
 ------------------------------------
 .. code-block:: shell
 
-    tail -f /var/log/qcos/qcos-engine.log
+    tail -f /var/log/qcos/device-{设备名}.log
     或者
-    cat /var/log/qcos/qcos-engine.log | grep ERROR
+    cat /var/log/qcos/device-{设备名}.log | grep ERROR

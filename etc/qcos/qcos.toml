@@ -31,8 +31,8 @@ API_SERVER_LISTEN_PORT = 18400
 [PREFECT]
 PREFECT_API_URL = "http://127.0.0.1:4200/api"
 PREFECT_SERVER_DATABASE_CONNECTION_URL = "sqlite+aiosqlite:///var/qcos/db/prefect.db"
-PREFECT_WORKER_QUERY_SECONDS = 1
-PREFECT_WORKER_PREFETCH_SECONDS = 1
+PREFECT_WORKER_QUERY_SECONDS = 2
+PREFECT_WORKER_PREFETCH_SECONDS = 2
 PREFECT_WORKER_HEARTBEAT_SECONDS = 30
 PREFECT_LOCAL_STORAGE_PATH = "/var/qcos/storage"
 PREFECT_LOGGING_LEVEL = "INFO"
@@ -51,10 +51,6 @@ QCOS_DATABASE_CONNECTION_URL = "fake"
 [LOG]
 # api log file
 API_LOG_FILE = "/var/log/qcos/qcos-api.log"
-# qcos job engine log file
-JOB_ENGINE_LOG_FILE = "/var/log/qcos/qcos-engine.log"
-# qcos device monitor log file
-DEVICE_MONITOR_LOG_FILE = "/var/log/qcos/device-monitor.log"
 # log format
 LOG_FORMAT = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
 # log rotate, max_size (MB). default: 10MB

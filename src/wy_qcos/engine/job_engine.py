@@ -57,7 +57,7 @@ from wy_qcos.transpiler.cmss.wirecut.cut_wire import (
 )
 
 
-def init_logger(debug=False):
+def init_logger(log_file_path, debug=False):
     # Config Loguru
     # pylint: disable=duplicate-code
     # remove all
@@ -73,7 +73,7 @@ def init_logger(debug=False):
 
     # add logger: log file
     logger.add(
-        Config.JOB_ENGINE_LOG_FILE,
+        log_file_path,
         level="DEBUG" if debug else "INFO",
         rotation=f"{Config.LOG_ROTATE_MAX_SIZE_MB} MB",
         compression="gz" if Config.LOG_ROTATE_COMPRESSION else None,
@@ -587,6 +587,7 @@ def job_flow(job_info):
     job_id = job_data["job_id"]
     global_configs = job_info["global"]["configs"]
     device_configs = job_info["device"]["configs"]
+    backend = job_data["backend"]
     profiling_code_start = 0
     callbacks = job_data.get("callbacks", None)
     monitor_info = {
@@ -602,7 +603,10 @@ def job_flow(job_info):
     debug = global_configs.get("DEBUG", False)
     if "debug" in device_configs:
         debug = device_configs["debug"]
-    init_logger(debug=debug)
+    device_log_file = f"/var/log/qcos/device_{backend}.log"
+    if "device_log_file" in device_configs:
+        device_log_file = device_configs["device_log_file"]
+    init_logger(log_file_path=device_log_file, debug=debug)
     logger.info(
         f"Processing work flow: job_engine. "
         f"job_id: {job_id}, job_info: {job_info}"

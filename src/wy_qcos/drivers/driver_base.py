@@ -136,7 +136,11 @@ class DriverBase:
         # driver_options schema
         self.driver_options_schema = {Optional("enable_wirecut"): bool}
         # default driver_config schema
-        self.default_driver_config_schema = {Optional("debug"): bool}
+        self.default_driver_config_schema = {
+            Optional("debug"): bool,
+            Optional("device_log_file"): str,
+            Optional("monitor_log_file"): str,
+        }
 
     def validate_driver(self):
         """Validate driver."""

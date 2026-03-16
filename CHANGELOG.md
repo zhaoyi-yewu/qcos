@@ -12,6 +12,7 @@
 - 工作流中默认加载驱动的venv环境
 - 部分编译和检查脚本使用venv环境
 - 支持以TXT或者JSON文档形式保存量子任务结果
+- 新增设备的device-monitor进程用来实时同步设备信息，并支持独立的日志
 
 ### 变更功能
 
@@ -20,6 +21,7 @@
 - 启动驱动的prefect worker从线程改为进程
 - prefect worker查询作业时间(PREFECT_WORKER_QUERY_SECONDS)从15秒改为1秒，大幅降低提交作业后等待的时间
 - 修改部分驱动的默认转译器
+- 移除job-engine.log, 改为在各驱动配置文件独立配置
 
 ### 修复问题
 
