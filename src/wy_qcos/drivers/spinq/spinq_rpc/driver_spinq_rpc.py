@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 import enum
 import json
 import time
@@ -151,7 +152,9 @@ class DriverSpinQRpc(DriverBase):
         # Note: storage_area and operate_area are optional for
         # superconducting devices as they don't require separate storage
         # and operation areas like neutral atom devices
-        driver_config_schema = {  # TODO(zhouyunxiao): qpu_configs redefine
+        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
+        # TODO(zhouyunxiao): qpu_configs redefine
+        driver_config_schema.update({
             "rpc_host": str,
             "rpc_port": int,
             "username": str,
@@ -167,7 +170,7 @@ class DriverSpinQRpc(DriverBase):
                     Optional("closest"): {str: str},
                 }
             },
-        }
+        })
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema
         )

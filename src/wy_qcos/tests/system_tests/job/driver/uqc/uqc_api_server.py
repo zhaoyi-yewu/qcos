@@ -30,7 +30,6 @@ import logging
 from aiohttp import web
 import socketio
 
-from wy_qcos.common.library import Library
 
 logger = logging.getLogger(__name__)
 sio = socketio.AsyncServer(cors_allowed_origins="*")

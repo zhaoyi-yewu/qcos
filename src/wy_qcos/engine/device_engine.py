@@ -69,11 +69,15 @@ def device_monitor_flow(device_monitor_info):
     """
     device_name = device_monitor_info["name"]
     device = device_monitor_info["device"]
-    device_config = device["configs"]
-    debug = device_config.get("debug", False)
+    device_configs = device["configs"]
+    global_configs = device_monitor_info["global"]["configs"]
+    debug = device_configs.get("debug", False)
 
     # init logger
-    init_logger(debug)
+    debug = global_configs.get("DEBUG", False)
+    if "debug" in device_configs:
+        debug = device_configs["debug"]
+    init_logger(debug=debug)
     logger.info(
         f"Processing device monitor flow: job_engine. "
         f"device_name: {device_name}"

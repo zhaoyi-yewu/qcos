@@ -43,7 +43,7 @@ class TestTranspilerCmdLine:
 
     def test_read_qasm_from_file(self):
         perf = CMSSTranspilerPerf()
-        perf.read_qasm_from_file("None")
+        perf.read_qasm_from_file("invalid_file")
 
     def test_init_output_head(self):
         m = mock_open()
@@ -68,10 +68,13 @@ class TestTranspilerCmdLine:
         sys.argv = [
             "transpiler_cmd_line.py",
             "--config-file",
-            "etc/perf/transpile_conf.toml",
+            f"{self.etc_dir}/perf/transpile_conf.toml",
         ]
         cmss_args = get_parse_args()
-        assert cmss_args["config_file"] == "etc/perf/transpile_conf.toml"
+        assert (
+            cmss_args["config_file"]
+            == f"{self.etc_dir}/perf/transpile_conf.toml"
+        )
 
         with patch(
             "wy_qcos.transpiler.cmss.transpiler_cmd_line.CMSSTranspilerPerf"
@@ -132,7 +135,7 @@ class TestTranspilerCmdLine:
     def test_main_cmss_transpiler(self, mock_cmss_transpiler_perf_exec):
         mock_cmss_transpiler_perf_exec.return_value = "runtime"
         perf = CMSSTranspilerPerf()
-        config_file = "etc/perf/transpile_conf.toml"
+        config_file = f"{self.etc_dir}/perf/transpile_conf.toml"
         perf.main_cmss_transpiler(config_file)
         mock_cmss_transpiler_perf_exec.assert_called_once()
 
@@ -156,7 +159,7 @@ class TestTranspilerCmdLine:
             opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
             basis_gates = ["rx", "ry", "cz"]
             tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
-            config_file = "etc/qcos/conf.d/hanyuan1.toml"
+            config_file = f"{self.etc_dir}/qcos/conf.d/hanyuan1.toml"
 
             runtime = perf.cmss_transpiler_perf_exec(
                 input_file, opt_level, basis_gates, tech_type, config_file
@@ -183,7 +186,7 @@ class TestTranspilerCmdLine:
             opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
             basis_gates = ["rx", "ry", "cx"]
             tech_type = Constant.TECH_TYPE_SUPERCONDUCTING
-            config_file = "etc/qcos/conf.d/spinq_rpc.toml"
+            config_file = f"{self.etc_dir}/qcos/conf.d/spinq_rpc.toml"
 
             runtime = perf.cmss_transpiler_perf_exec(
                 input_file, opt_level, basis_gates, tech_type, config_file
@@ -210,7 +213,7 @@ class TestTranspilerCmdLine:
             opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
             basis_gates = ["rx", "ry", "cx"]
             tech_type = ""
-            config_file = "etc/qcos/conf.d/spinq_rpc.toml"
+            config_file = f"{self.etc_dir}/qcos/conf.d/spinq_rpc.toml"
 
             runtime = perf.cmss_transpiler_perf_exec(
                 input_file, opt_level, basis_gates, tech_type, config_file

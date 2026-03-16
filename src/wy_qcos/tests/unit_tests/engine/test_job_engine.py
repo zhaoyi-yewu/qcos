@@ -1033,6 +1033,8 @@ class TestJobEngine:
         ]
         self.job_info["data"]["code_type"] = Constant.CODE_TYPE_QASM
         self.job_info["data"]["driver_options"] = {}
+        self.job_info["global"] = {"configs": {}}
+        self.job_info["device"] = {"configs": {}}
         job_results_list = raw_job_flow_func(self.job_info)
         assert len(job_results_list) == len(
             self.job_info["data"]["source_code"]

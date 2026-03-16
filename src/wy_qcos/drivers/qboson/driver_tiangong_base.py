@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 import csv
 import json
 import os
@@ -85,13 +86,14 @@ class DriverTiangongBase(DriverQuboBase):
         err_msg = None
 
         # check and load driver configs
-        driver_config_schema = {
+        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
+        driver_config_schema.update({
             "domain_url_auth": str,
             "domain_url_task": str,
             "user_id": str,
             "password_sdk_code": str,
             "machine_name": str,
-        }
+        })
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema
         )

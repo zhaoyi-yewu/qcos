@@ -585,6 +585,8 @@ def job_flow(job_info):
     """
     job_data = job_info["data"]
     job_id = job_data["job_id"]
+    global_configs = job_info["global"]["configs"]
+    device_configs = job_info["device"]["configs"]
     profiling_code_start = 0
     callbacks = job_data.get("callbacks", None)
     monitor_info = {
@@ -597,7 +599,10 @@ def job_flow(job_info):
     }
 
     # init logger
-    init_logger(debug=False)
+    debug = global_configs.get("DEBUG", False)
+    if "debug" in device_configs:
+        debug = device_configs["debug"]
+    init_logger(debug=debug)
     logger.info(
         f"Processing work flow: job_engine. "
         f"job_id: {job_id}, job_info: {job_info}"

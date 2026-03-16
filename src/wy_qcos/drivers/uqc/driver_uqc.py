@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 import re
 
 import numpy as np
@@ -82,12 +83,13 @@ class DriverUQCMatrix2(DriverBase):
         success = True
         err_msg = None
 
-        driver_config_schema = {
+        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
+        driver_config_schema.update({
             "uqc_host": str,
             "uqc_port": int,
             "password_token": str,
             "backend_device_name": str,
-        }
+        })
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema
         )

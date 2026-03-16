@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import base64
+import copy
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.backends import default_backend
@@ -99,7 +100,8 @@ class DriverWuyueBase(DriverBase):
         err_msg = None
 
         # check and load driver configs
-        driver_config_schema = {
+        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
+        driver_config_schema.update({
             "ip_address": str,
             "port": int,
             "client_id": str,
@@ -107,7 +109,7 @@ class DriverWuyueBase(DriverBase):
             "password_secret": str,
             "password_pub_key": str,
             "password_pri_key": str,
-        }
+        })
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema
         )

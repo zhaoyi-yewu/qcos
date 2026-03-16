@@ -254,6 +254,7 @@ class TaskFlowManager(ABC):
         Args:
             pool_names: pool names
         """
+        logger.info(f"create_pools: {', '.join(pool_names)}")
         create_workpools = [
             self.create_pool(pool_name, Constant.DEFAULT_POOL_CONCURRENCY)
             for pool_name in pool_names
@@ -285,6 +286,7 @@ class TaskFlowManager(ABC):
         Args:
             queue_names: queue names
         """
+        logger.info(f"create_queues: {', '.join(queue_names)}")
         queues = await self._client.read_work_queues()
         for pool_name in queue_names:
             for priority in range(1, Constant.MAX_JOB_PRIORITY + 1):
@@ -303,6 +305,9 @@ class TaskFlowManager(ABC):
         Args:
             deployment_configs: deployment configs
         """
+        logger.info(
+            f"create_deployments: {', '.join(deployment_configs.keys())}"
+        )
         deployments = {}
         for deployment_name, deployment_config in deployment_configs.items():
             flow_name = deployment_config["flow_name"]
@@ -342,9 +347,7 @@ class TaskFlowManager(ABC):
         logger.info("Kill prefect workers")
         regex_list = [r"\[prefect\]", r"prefect.engine"]
         process_list = Library.get_processes(regex_list)
-        Library.kill(process_list)
-        process_list = Library.get_processes(regex_list)
-        Library.kill(process_list)
+        Library.kill(process_list, force=True)
 
     def start_workers(self):
         """Start workers using multiprocessing."""
@@ -386,7 +389,7 @@ class TaskFlowManager(ABC):
                 device_monitor_process.daemon = True
                 device_monitor_process.start()
                 logger.info(
-                    f"Started Prefect Worker process: {process_name}_monitor"
+                    f"Started Prefect Worker process: {process_name}_monitor "
                     f"for pool: {pool_name}_monitor"
                 )
 
@@ -412,6 +415,9 @@ class TaskFlowManager(ABC):
                 }
                 device_monitor_info["device"] = {
                     "configs": device.get_configs()
+                }
+                device_monitor_info["global"] = {
+                    "configs": Config.get_configs()
                 }
                 device_monitor_info["name"] = device.get_name()
                 device_monitor_info["redis"] = {

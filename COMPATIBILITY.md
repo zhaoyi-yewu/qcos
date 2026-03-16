@@ -7,7 +7,7 @@
 | Linux | OpenEuler 24.03 (LTS) | 全量测试 |
 | Linux | BigCloud Enterprise Linux For Euler 21.10 LTS | 全量测试 |
 
-## 驱动配置要求
+## 硬件资源要求
 
 | CPU要求 | 内存要求 |
 |:--------|:--------|

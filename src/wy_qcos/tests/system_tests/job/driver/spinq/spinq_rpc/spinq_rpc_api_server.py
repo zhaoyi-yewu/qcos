@@ -25,8 +25,10 @@ org_path = Library.set_driver_venv_path("DriverSpinQRpc", Config.VENV_DIR)
 import enum
 import logging
 import json
+import sys
 import time
 import zerorpc
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from pathlib import Path
 
 from wy_qcos.common.library import Library
@@ -60,25 +62,25 @@ def init_logging():
     )
 
 
-def load_config(path: str = f"{top_dir}/etc/qcos/st-conf.d/spinq_rpc.toml"):
+def load_config(config_file_path: str):
     """Load config files.
 
     Args:
-        path: path to config file
+        config_file_path: path to config file
     """
     global _config_data, _qubits_num, _coupling_list, _qpu_configs
 
     # find config file
-    config_file = Path(path)
+    config_file = Path(config_file_path)
     if not config_file.exists():
         logger.warning(
             "Config file not found, using default values "
             "(25 qubits, simple coupling)"
         )
-        raise FileNotFoundError(f"Config file not found: {config_file}")
+        raise FileNotFoundError(f"Config file not found: {config_file_path}")
 
     # read toml file
-    success, err_msg, config_data = Library.read_toml_file(str(config_file))
+    success, err_msg, config_data = Library.read_toml_file(config_file_path)
     if not success:
         logger.warning(
             f"Failed to read config file: {err_msg}, using default values"
@@ -194,6 +196,7 @@ def request_logout(username, session_id):
         username: username
         session_id: session_id
     """
+    global _shots
     logger.info(
         f"[request_logout|request] username: {username}, "
         f"session_id: {session_id}"
@@ -215,6 +218,7 @@ def push_task(task_name, task_gates, measures, task_desc, shots, session_id):
     Returns:
         response
     """
+    global _shots
     status = 0
     task_id = 1000
     response = (status, task_id)
@@ -305,36 +309,68 @@ def get_task_result(task_id, session_id):
     return json_response
 
 
-def main():
-    # init logging
-    init_logging()
-
-    # load configs
-    load_config()
-
-    # kill existing process
-    Library.kill_pid(PID_FILE)
-    Library.mkdir(PID_DIR)
-    Library.create_pid_file(PID_FILE)
-
-    service = {
-        "request_login": request_login,
-        "request_logout": request_logout,
-        "push_task": push_task,
-        "get_task_status": get_task_status,
-        "get_task_result": get_task_result,
-    }
-    server = zerorpc.Server(service, heartbeat=5)
-    bind_address = f"tcp://{rpc_listen_ip}:{rpc_listen_port}"
-
-    # start SpinQ API service
-    logger.info(f"SpinQ API Server simulator started on {bind_address}")
-    logger.info("Press Ctrl+C to stop service ...")
+def main(cmd_args=None):
+    server = None
     try:
+        # config parser
+        parser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
+        default_config_file = f"{top_dir}/etc/qcos/st-conf.d/spinq_rpc.toml"
+        parser.add_argument(
+            "-c",
+            "--config-file",
+            dest="config_file",
+            default=default_config_file,
+            help="Config file",
+        )
+        # parse arguments
+        args = parser.parse_args(args=cmd_args)
+        config_file = args.config_file
+
+        # init logging
+        init_logging()
+
+        # load configs
+        load_config(config_file)
+
+        # kill existing process
+        Library.kill_pid(PID_FILE)
+        time.sleep(2)  # wait for socket to be released
+        Library.mkdir(PID_DIR)
+        Library.create_pid_file(PID_FILE)
+
+        service = {
+            "request_login": request_login,
+            "request_logout": request_logout,
+            "push_task": push_task,
+            "get_task_status": get_task_status,
+            "get_task_result": get_task_result,
+        }
+        server = zerorpc.Server(service, heartbeat=5)
+        bind_address = f"tcp://{rpc_listen_ip}:{rpc_listen_port}"
+
+        # start SpinQ API service
+        logger.info(f"SpinQ API Server simulator started on {bind_address}")
+        logger.info("Press Ctrl+C to stop service ...")
+
         server.bind(bind_address)
         server.run()
+
+        return 0
+
     except KeyboardInterrupt:
-        logger.info("\nServer is stopped")
+        print("\nUser interrupt", file=sys.stderr)
+        return 0
+    except Exception as e:
+        print(f"Fatal error: {e}", file=sys.stderr)
+        return 2
+    finally:
+        if server:
+            logger.info("\nServer is stopped")
+            server.close()
+        try:
+            Library.remove_pid_file(PID_FILE)
+        except Exception as e:
+            logger.warning(f"Failed to remove PID file: {e}")
 
 
 if __name__ == "__main__":

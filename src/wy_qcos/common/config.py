@@ -261,6 +261,22 @@ class Config:
             raise errors.GenericException("Device list must be list of str")
 
     @classmethod
+    def get_configs(cls, mask_password=False):
+        configs = {}
+        cls_vars = vars(cls)
+        for k, v in cls_vars.items():
+            if (
+                k.startswith("__")
+                or k.startswith("_")
+                or isinstance(v, classmethod)
+            ):
+                continue
+            configs[k] = v
+        if mask_password:
+            configs = Library.mask_password(configs)
+        return configs
+
+    @classmethod
     def get_extra_configs(cls):
         """Get extra configs.
 
@@ -281,17 +297,7 @@ class Config:
     @classmethod
     def show_info(cls):
         """Show class variables."""
-        configs = {}
-        cls_vars = vars(cls)
-        for k, v in cls_vars.items():
-            if (
-                k.startswith("__")
-                or k.startswith("_")
-                or isinstance(v, classmethod)
-            ):
-                continue
-            configs[k] = v
-        configs = Library.mask_password(configs)
+        configs = cls.get_configs(mask_password=True)
         outputs = ["[Configs]"]
         for k, v in configs.items():
             outputs.append(f"{k:<20}: {v}")
