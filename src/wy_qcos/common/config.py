@@ -63,6 +63,7 @@ class Config:
     # [DATABASE]
     # eg. without db: fake,
     # pg: "postgresql+pg8000://postgres:${password}@100.78.61.22:5432/qcos"
+    # sqlite: "sqlite:////var/qcos/db/qcos.db"
     QCOS_DATABASE_CONNECTION_URL = "fake"
 
     # [LOG]

@@ -14,11 +14,16 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+import uuid
 
-from sqlalchemy import Column, DateTime, func
+from sqlalchemy import Column, DateTime, func, TypeDecorator, String, UUID
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import inspect, MetaData
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.sqlite import JSON, CHAR
 from sqlalchemy.orm import as_declarative
+
+from wy_qcos.common.constant import Constant
 
 metadata = MetaData()
 
@@ -50,3 +55,62 @@ class BaseTable(Base):
     )
 
     __mapper_args__ = {"eager_defaults": True}
+
+
+class ArrayType(TypeDecorator):
+    """Platform-independent Array type."""
+
+    impl = JSON
+    cache_ok = True
+    """Using cache."""
+
+    def load_dialect_impl(self, dialect):
+        """Load dialect impl."""
+        if dialect.name == Constant.DB_DIALECT_POSTGRESQL:
+            return dialect.type_descriptor(ARRAY(String(64)))
+        else:
+            return dialect.type_descriptor(JSON)
+
+    def process_bind_param(self, value, dialect):
+        """Process bind param."""
+        if value is None:
+            return []
+        if dialect.name != Constant.DB_DIALECT_POSTGRESQL:
+            return value if isinstance(value, list) else []
+        return value
+
+    def process_result_value(self, value, dialect):
+        """Process result value."""
+        if value is None:
+            return []
+        return (
+            list(value) if isinstance(value, (list, set, tuple)) else [value]
+        )
+
+
+class GUID(TypeDecorator):
+    """Platform-independent GUID type."""
+
+    impl = CHAR
+    cache_ok = True
+    """Using cache."""
+
+    def load_dialect_impl(self, dialect):
+        """Load dialect impl."""
+        if dialect.name == Constant.DB_DIALECT_POSTGRESQL:
+            return dialect.type_descriptor(UUID())
+        else:
+            return dialect.type_descriptor(CHAR(32))
+
+    def process_bind_param(self, value, dialect):
+        """Process bind param."""
+        if value is None:
+            return value
+        elif dialect.name == Constant.DB_DIALECT_POSTGRESQL:
+            return str(value)
+        else:
+            if not isinstance(value, uuid.UUID):
+                return "%.32x" % uuid.UUID(value).int
+            else:
+                # hexstring
+                return "%.32x" % value.int

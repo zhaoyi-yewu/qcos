@@ -46,6 +46,9 @@ class Constant:
     DEFAULT_REDIS_SERVER_PORT = 6379
     DEVICE_RUNNING_INFO_REDIS_CHANNEL_SUFFIX = "/device_running_info"
 
+    # DATABASE
+    DB_DIALECT_POSTGRESQL = "postgresql"
+
     # Security
     DEFAULT_FERNET_KEY = "qevBn4Ol_3bJ7t0IW7TmPCCZurqfw_QRa810U43o_m0="
     ENCRYPTION_PREFIX = "++"
