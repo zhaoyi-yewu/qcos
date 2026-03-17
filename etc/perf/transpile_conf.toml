@@ -12,7 +12,8 @@ dirs = []
 
 # 允许输入的日志标签，当log_tags为空，则默认允许所有标签
 # 当前支持PERF, WARNING, ERROR, DEBUG等标签
-log_tags = ["PERF", "WARNING", "ERROR"]
+# log_tags = ["PERF", "WARNING", "ERROR"]
+log_tags = ["WARNING", "ERROR"]
 
 [transpile.transpiler]
 # 默认为true
@@ -33,4 +34,15 @@ tech_type = ["superconducting"]
 config_file = ["./etc/qcos/conf.d/spinq_rpc.toml"]
 # json格式的字符串，表示不同算法组合输入，默认不输入，
 # 但元素必须与tech_type和config_file一一对应
-# mapping_options = []
+# mapping_options = ["""
+#     {
+#             "routing_algorithm": "sc",
+#             "select_mode": ["KS", 2],
+#             "use_prune": 1,
+#             "use_hash": 1,
+#             "score_layer": 1,
+#             "mode_sim": ["fix_cx_num", [10, 3]],
+#             "score_decay_rate_size": 0.7,
+#             "score_decay_rate_depth": 0.85
+#     }
+# """]

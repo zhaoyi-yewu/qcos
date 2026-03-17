@@ -22,7 +22,12 @@ from unittest.mock import patch, MagicMock, mock_open
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
-from wy_qcos.transpiler.common.utils import Timer, TranspileRuntime
+from wy_qcos.transpiler.common.utils import (
+    Timer,
+    TranspileRuntime,
+    trans_logger,
+)
+from wy_qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
 from wy_qcos.transpiler.cmss.transpiler_cmd_line import (
     CMSSTranspilerPerf,
     TranspileParams,
@@ -94,6 +99,7 @@ class TestTranspilerCmdLine:
         perf.parse_file_args()
         assert len(perf.total_files) > 0
 
+        trans_logger.set_allowed_tags(["PERF", "WARNING", "ERROR"])
         perf = CMSSTranspilerPerf()
         perf.file_list = [f"{self.samples_dir}/qasm/2.0/simple-qasm1.qasm"]
         perf.dir_list = [f"{self.samples_dir}/qasm/2.0/benchmark"]
@@ -151,6 +157,7 @@ class TestTranspilerCmdLine:
 
         mock_parse_file_args.return_value = None
         mock_get_transpile_result.return_value = None
+        trans_logger.set_allowed_tags(["PERF", "WARNING", "ERROR"])
         perf = CMSSTranspilerPerf()
         trans_config_file = (
             GLOBAL_CONFIGS["etc_dir"] + "/perf/transpile_conf.toml"
@@ -165,6 +172,7 @@ class TestTranspilerCmdLine:
     )
     def test_get_transpile_result(self, mock_cmss_transpiler_perf_exec):
         mock_cmss_transpiler_perf_exec.return_value = TranspileRuntime()
+        trans_logger.set_allowed_tags(["PERF", "WARNING", "ERROR"])
         perf = CMSSTranspilerPerf()
         perf.run_count = 2
         params = TranspileParams()
@@ -184,11 +192,12 @@ class TestTranspilerCmdLine:
         ) as MockTranspilerCmss:
             mock_transpiler = MagicMock()
             MockTranspilerCmss.return_value = mock_transpiler
-            mock_transpiler.parse.return_value = "parsed_circuit"
+            mock_transpiler.parse.return_value = {"000": (1, ["x"])}
             mock_transpiler.transpile.return_value = (
                 "transpiled_circuit",
                 None,
             )
+            trans_logger.set_allowed_tags(["PERF", "WARNING", "ERROR"])
             perf = CMSSTranspilerPerf()
             input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
             opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
@@ -209,11 +218,12 @@ class TestTranspilerCmdLine:
         ) as MockTranspilerCmss:
             mock_transpiler = MagicMock()
             MockTranspilerCmss.return_value = mock_transpiler
-            mock_transpiler.parse.return_value = "parsed_circuit"
+            mock_transpiler.parse.return_value = {"000": (1, ["x"])}
             mock_transpiler.transpile.return_value = (
                 "transpiled_circuit",
                 None,
             )
+            trans_logger.set_allowed_tags(["PERF", "WARNING", "ERROR"])
             perf = CMSSTranspilerPerf()
             input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
             opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
@@ -234,12 +244,13 @@ class TestTranspilerCmdLine:
         ) as MockTranspilerCmss:
             mock_transpiler = MagicMock()
             MockTranspilerCmss.return_value = mock_transpiler
-            mock_transpiler.parse.return_value = "parsed_circuit"
+            mock_transpiler.parse.return_value = {"000": (1, ["x"])}
             mock_transpiler.transpile.return_value = (
                 "transpiled_circuit",
                 None,
             )
             perf = CMSSTranspilerPerf()
+            trans_logger.set_allowed_tags(["PERF", "WARNING", "ERROR"])
             input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
             opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
             basis_gates = ["rx", "ry", "cx"]
@@ -252,3 +263,32 @@ class TestTranspilerCmdLine:
                 input_file, opt_level, basis_gates, tech_type, config_file
             )
             assert runtime is not None
+
+    def test_output_csv_file(self):
+        perf = CMSSTranspilerPerf()
+        perf.csv_file = ""
+        assert perf.output_csv_file() is None
+
+        input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        file_path, _ = perf.check_file_args(
+            input_file=input_file, output_file=""
+        )
+        qasm_data = perf.read_qasm_from_file(str(file_path))
+        transpiler = TranspilerCmss()
+        src_code_info = {"000": qasm_data}
+        parse_result = transpiler.parse(src_code_info)
+        perf.parse_results[file_path] = list(parse_result.values())[0]
+        perf.csv_file = "cmss_perf.csv"
+        params = TranspileParams()
+        params.file = Path(
+            f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        ).resolve()
+        params.mapping_info = (
+            Constant.TECH_TYPE_SUPERCONDUCTING,
+            "config.yaml",
+        )
+        perf.transpile_result[params] = TranspileRuntime()
+        file_path = perf.output_csv_file()
+        if file_path.exists():
+            file_path.unlink()
+        assert file_path is not None

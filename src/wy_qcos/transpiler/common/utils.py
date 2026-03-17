@@ -114,6 +114,39 @@ class Timer:
         self.elapsed = self.end - self.start
 
 
+class TranspilePerfConstant:
+    QASM_FILE = "qasm文件"
+    NUM_QUBITS = "比特数"
+    DEPTH = "电路深度"
+    TECH_TYPE = "qpu类型"
+    OPT_LEVEL = "优化级别"
+    PARSE_TIME = "解析时间(s)"
+    OPT_TIME1 = "优化1(s)"
+    DECOMPOSE_RULE_TIME = "分解规则(s)"
+    DECOMPOSE_1Q2Q_TIME = "分解1q2q(s)"
+    MAPPING_TIME = "映射时间(s)"
+    DECOMPOSE_APPLY_TIME = "分解应用(s)"
+    OPT_TIME2 = "优化2(s)"
+    TRANSPILE_TIME = "转译时间(s)"
+    TOTAL_TIME = "总时间(s)"
+    CONS_DICT = {
+        QASM_FILE: 0,
+        NUM_QUBITS: 1,
+        DEPTH: 2,
+        TECH_TYPE: 3,
+        OPT_LEVEL: 4,
+        PARSE_TIME: 5,
+        OPT_TIME1: 6,
+        DECOMPOSE_RULE_TIME: 7,
+        DECOMPOSE_1Q2Q_TIME: 8,
+        MAPPING_TIME: 9,
+        DECOMPOSE_APPLY_TIME: 10,
+        OPT_TIME2: 11,
+        TRANSPILE_TIME: 12,
+        TOTAL_TIME: 13,
+    }
+
+
 class TranspileRuntime:
     def __init__(self):
         self.total_time = 0.0
