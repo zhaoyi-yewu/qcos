@@ -23,7 +23,7 @@ from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 from wy_qcos.transpiler.cmss.common.gate_operation import X, H, CX
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.transpiler_cmd_line import (
-    read_qasm_from_file,
+    CMSSTranspilerPerf,
 )
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.transpiler.cmss.circuit.register import (
@@ -96,7 +96,7 @@ class TestQuantumCircuit:
         qasm_path = GLOBAL_CONFIGS["samples_dir"]
         qasm_file = f"{qasm_path}/qasm/2.0/simple-qasm.qasm"
         file_path = Path(qasm_file).resolve()
-        qasm_data = read_qasm_from_file(str(file_path))
+        qasm_data = CMSSTranspilerPerf.read_qasm_from_file(str(file_path))
         cir = get_ir(get_abs_tree(qasm_data))
         depth = cir.depth()
         width = cir.width()

@@ -16,5 +16,6 @@
 # ----------------------------------------------------------------------
 
 from .base import Base
+from .base import ArrayType, GUID
 from .user import User
 from .user import Role

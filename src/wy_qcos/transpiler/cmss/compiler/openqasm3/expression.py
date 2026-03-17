@@ -213,7 +213,7 @@ class ValueResolver(QASMVisitor):
         if end is not None:
             # OpenQASM 3 ranges are double-end inclusive.  This isn't perfect,
             # but good enough for anything we're actually supporting.
-            positive = step_type == types.Never() or step > 0
+            positive = step_type == types.Never() or not step
             end = end + 1 if positive else end - 1
         return slice(start, end, step), types.Range(range_type)
 

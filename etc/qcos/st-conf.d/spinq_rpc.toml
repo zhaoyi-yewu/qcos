@@ -2,8 +2,21 @@
 driver = "DriverSpinQRpc"
 alias_name = "量旋科技 大熊座-S25 超导量子计算机驱动 (RPC版本)"
 description = "量旋科技 大熊座-S25 超导量子计算机驱动 (RPC版本)"
+
 # [Optional] max qubits of device
 # device_max_qubits = 100
+
+# [Optional] debug
+# debug = false
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_spinq_rpc.log
+device_log_file = "/var/log/qcos/device_spinq_rpc.log"
+
+# [Optional] device monitor log file path
+# monitor_log_file = /var/log/qcos/device_montior_spinq_rpc.log
+monitor_log_file = "/var/log/qcos/device_monitor_spinq_rpc.log"
 
 rpc_host = "127.0.0.1"
 rpc_port = 4242

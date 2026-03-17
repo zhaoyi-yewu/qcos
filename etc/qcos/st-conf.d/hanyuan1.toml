@@ -2,9 +2,21 @@
 alias_name = "中科酷原-汉原1"
 driver = "DriverHanyuan1"
 description = "中科酷原-汉原1(hanyuan1)"
-debug = false
+
 # [Optional] max qubits of device
 # device_max_qubits = 10
+
+# [Optional] debug
+# debug = false
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_hanyuan1.log
+device_log_file = "/var/log/qcos/device_hanyuan1.log"
+
+# [Optional] device monitor log file path
+# monitor_log_file = /var/log/qcos/device_montior_hanyuan1.log
+monitor_log_file = "/var/log/qcos/device_monitor_hanyuan1.log"
 
 ip_address = "127.0.0.1"
 port = 18402

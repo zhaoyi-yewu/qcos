@@ -121,7 +121,8 @@ class DriverHanyuan1(DriverBase):
         err_msg = None
 
         # check and load driver configs
-        driver_config_schema = {
+        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
+        driver_config_schema.update({
             "debug": bool,
             "ip_address": str,
             "port": int,
@@ -144,7 +145,7 @@ class DriverHanyuan1(DriverBase):
                     str: {"gates": [list], Optional("params"): [str]}
                 },
             },
-        }
+        })
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema
         )

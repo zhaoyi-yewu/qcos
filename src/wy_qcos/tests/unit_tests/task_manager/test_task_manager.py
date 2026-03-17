@@ -180,18 +180,29 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_process.start.call_count == len(mock_devices)
 
     def test_run_task_flow(self):
-        mock_client = Mock()
-        mock_run = Mock()
-        mock_run.run_task_flow_by_client.return_value = mock_client
-        self.task_manager.loop = mock_client
-        deployment_id = ConstantForTest.deployment_id
-        flow_run_id = self.task_manager.run_task_flow(
-            deployment_id,
-            ConstantForTest.args,
-            tags=None,
-            work_queue_name=None,
-        )
-        assert flow_run_id is not None
+        async def mock_run_task_flow_by_client_impl(*args, **kwargs):
+            return "test_flow_run_id"
+
+        with patch.object(
+            TaskFlowManager,
+            "run_task_flow_by_client",
+            side_effect=mock_run_task_flow_by_client_impl,
+        ):
+            mock_loop = Mock()
+            mock_loop.is_running.return_value = False
+            mock_loop.run_until_complete.side_effect = (
+                lambda coro: asyncio.run(coro)
+            )
+            self.task_manager.loop = mock_loop
+
+            deployment_id = ConstantForTest.deployment_id
+            flow_run_id = self.task_manager.run_task_flow(
+                deployment_id,
+                ConstantForTest.args,
+                tags=None,
+                work_queue_name=None,
+            )
+            assert flow_run_id is not None
 
     def test_get_flow_run_id_by_job_id(self):
         mock_client = Mock()
@@ -258,10 +269,17 @@ class TestTaskFlowManager(unittest.TestCase):
 
     @patch.object(TaskFlowManager, "get_flow_run_id_by_job_id")
     def test_update_flow(self, mock_get_flow_run_id_by_job_id):
-        mock_client = AsyncMock()
-        mock_run = AsyncMock()
-        self.task_manager.loop = mock_client
-        mock_run._update_flow.return_value = mock_client
+        mock_client = Mock()
+        mock_client.update_flow_run = AsyncMock(return_value=None)
+        self.task_manager._client = mock_client
+
+        mock_loop = Mock()
+        mock_loop.is_running.return_value = False
+        mock_loop.run_until_complete.side_effect = lambda coro: asyncio.run(
+            coro
+        )
+        self.task_manager.loop = mock_loop
+
         mock_get_flow_run_id_by_job_id.return_value = None
         success = self.task_manager.update_flow(ConstantForTest.job_id)
         assert success is False
@@ -339,10 +357,10 @@ class TestTaskFlowManager(unittest.TestCase):
         assert results is not None
 
     def test_run_callbacks(self):
-        mock_client = Mock()
-        mock_run = Mock()
-        self.task_manager.loop = mock_client
-        mock_client.async_run_callbacks.return_value = mock_run
+        mock_loop = Mock()
+        mock_loop.is_running.return_value = False
+        mock_loop.run_until_complete.return_value = "callback_result"
+        self.task_manager.loop = mock_loop
         results = self.task_manager.run_callbacks([], "call")
         assert results is not None
 

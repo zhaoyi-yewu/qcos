@@ -2,8 +2,21 @@
 alias_name = "空载测试设备"
 driver = "DriverDummy"
 description = "空载测试设备(dummy)"
+
 # [Optional] max qubits of device
 # device_max_qubits = 10
+
+# [Optional] debug
+# debug = false
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_dummy.log
+device_log_file = "/var/log/qcos/device_dummy.log"
+
+# [Optional] device monitor log file path
+# monitor_log_file = /var/log/qcos/device_montior_dummy.log
+monitor_log_file = "/var/log/qcos/device_monitor_dummy.log"
 
 [dummy.transpiler.qpu_configs]
 # Samples

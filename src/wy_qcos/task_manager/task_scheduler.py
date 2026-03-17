@@ -207,6 +207,7 @@ class TaskScheduler(ABC):
                 "class_name": transpiler_class_name,
             }
             job_json_info["device"] = {"configs": device.get_configs()}
+            job_json_info["global"] = {"configs": Config.get_configs()}
 
             job_id = self._policy_handler.exec_task(
                 deployment, job_json_info, tags=tags
@@ -470,9 +471,10 @@ class PrioritySchedulingPolicy(ABC):
 
         deployment_id = deployment["deploy_id"]
         work_queue_name = f"{pool_name}_{priority}"
+        args = {"job_info": job_info}
         job_run_id = self._task_manager.run_task_flow(
             deployment_id,
-            {"job_info": job_info},
+            args,
             tags=tags,
             work_queue_name=work_queue_name,
         )

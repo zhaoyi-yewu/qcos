@@ -28,7 +28,7 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.engine.job_engine import init_driver
 
 
-def init_logger(debug=False):
+def init_logger(log_file_path, debug=False):
     # Config Loguru
     # pylint: disable=duplicate-code
     # remove all
@@ -44,7 +44,7 @@ def init_logger(debug=False):
 
     # add logger: log file
     logger.add(
-        Config.DEVICE_MONITOR_LOG_FILE,
+        log_file_path,
         level="DEBUG" if debug else "INFO",
         rotation=f"{Config.LOG_ROTATE_MAX_SIZE_MB} MB",
         compression="gz" if Config.LOG_ROTATE_COMPRESSION else None,
@@ -69,11 +69,17 @@ def device_monitor_flow(device_monitor_info):
     """
     device_name = device_monitor_info["name"]
     device = device_monitor_info["device"]
-    device_config = device["configs"]
-    debug = device_config.get("debug", False)
+    device_configs = device["configs"]
+    global_configs = device_monitor_info["global"]["configs"]
 
     # init logger
-    init_logger(debug)
+    debug = global_configs.get("DEBUG", False)
+    if "debug" in device_configs:
+        debug = device_configs["debug"]
+    device_monitor_log_file = f"/var/log/qcos/device_monitor_{device_name}.log"
+    if "device_log_file" in device_configs:
+        device_monitor_log_file = device_configs["monitor_log_file"]
+    init_logger(log_file_path=device_monitor_log_file, debug=debug)
     logger.info(
         f"Processing device monitor flow: job_engine. "
         f"device_name: {device_name}"

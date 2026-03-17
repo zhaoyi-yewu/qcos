@@ -2,8 +2,21 @@
 alias_name = "Qutip模拟器"
 driver = "DriverQutipSim"
 description = "Qutip模拟器(qutip-sim)"
+
 # [Optional] max qubits of device
 # device_max_qubits = 10
+
+# [Optional] debug
+# debug = false
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_qutip_sim.log
+device_log_file = "/var/log/qcos/device_qutip_sim.log"
+
+# [Optional] device monitor log file path
+# monitor_log_file = /var/log/qcos/device_montior_qutip_sim.log
+monitor_log_file = "/var/log/qcos/device_monitor_qutip_sim.log"
 
 [qutip_sim.transpiler.qpu_configs]
 qubits = 6

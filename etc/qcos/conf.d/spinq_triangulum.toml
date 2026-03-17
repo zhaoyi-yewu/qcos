@@ -2,8 +2,22 @@
 alias_name = "量旋科技-三角座核磁量子计算机"
 driver = "DriverSpinQTriangulum"
 description = "量旋科技-三角座核磁量子计算机"
+
 # [Optional] max qubits of device
 # device_max_qubits = 100
+
+# [Optional] debug
+# debug = false
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_spinq_triangulum.log
+device_log_file = "/var/log/qcos/device_spinq_triangulum.log"
+
+# [Optional] device monitor log file path
+# monitor_log_file = /var/log/qcos/device_montior_spinq_triangulum.log
+monitor_log_file = "/var/log/qcos/device_monitor_spinq_triangulum.log"
+
 
 # [Optional] remote host
 remote_host = "cloud.spinq.cn"

@@ -300,11 +300,13 @@ SABRE（Stochastic Allocation of Blocks for Routing and Execution）算法是一
                    mapping_res += mapper.execute_with_order()
                return mapping_res, mapping_dict
 
-       def parse(self, src_code_dict):
+       def parse(self, src_code_dict, code_type: str = Constant.CODE_TYPE_QASM):
            """Parse src_code_dict.
 
            Args:
              src_code_dict: src_code_dict
+             code_type: code_type
+
            :return parse result
            """
            # compile
@@ -313,7 +315,17 @@ SABRE（Stochastic Allocation of Blocks for Routing and Execution）算法是一
            if isinstance(src_code_dict, dict):
                for key, value in src_code_dict.items():
                    logger.info(f"source_code:\n{value}")
-                   num_qubits, parse_result = compile(value)
+                   num_qubits = 0
+                   parse_result = []
+                   if code_type in [
+                       Constant.CODE_TYPE_QASM,
+                       Constant.CODE_TYPE_QASM2,
+                   ]:
+                       num_qubits, parse_result = compile(value)
+                   else:
+                       circuit = openqasm3_parse(value)
+                       num_qubits = circuit.num_qubits
+                       parse_result = circuit.get_operations()
                    if self.total_qubits + num_qubits > trans_cfg_inst.max_qubits:
                        # TODO (xudong): need to remove the remained task item.
                        break

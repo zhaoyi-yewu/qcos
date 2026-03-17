@@ -33,7 +33,7 @@ from wy_qcos.transpiler.cmss.circuit.dag_node import DAGOpNode
 from wy_qcos.transpiler.cmss.circuit.collect_blocks import (
     BlockCollector,
 )
-from wy_qcos.transpiler.common.utils import Timer, logger
+from wy_qcos.transpiler.common.utils import Timer, trans_logger
 
 
 class CliffordRzOptimization:
@@ -476,7 +476,7 @@ class CliffordRzOptimization:
             total_time += step_timer.elapsed
 
             if self.verbose:
-                logger.info(
+                trans_logger.log_perf(
                     f"\t{self._optimize_sub_method[step]}: {cur_cnt} "
                     f"gates reduced, cost {np.round(step_timer.elapsed, 3)} s"
                 )
@@ -491,7 +491,7 @@ class CliffordRzOptimization:
         res_size = dag.size()
 
         if self.verbose:
-            logger.info(
+            trans_logger.log_perf(
                 f"initially {init_size} gates, "
                 f"reduced {gate_reduced_cnt} gates, "
                 f"remain {res_size} gates, "

@@ -37,8 +37,14 @@ class TestJob:
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
+        cls.etc_dir = GLOBAL_CONFIGS["etc_dir"]
         print("Start SpinQ server")
-        cls.rpc_process = multiprocessing.Process(target=main, daemon=True)
+        cmd_args = ["-c", f"{cls.etc_dir}/qcos/st-conf.d/spinq_rpc.toml"]
+        cls.rpc_process = multiprocessing.Process(
+            target=main,
+            daemon=True,
+            args=(cmd_args,),
+        )
         cls.rpc_process.start()
 
     @classmethod

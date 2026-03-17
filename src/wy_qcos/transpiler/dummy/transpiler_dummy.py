@@ -34,11 +34,12 @@ class TranspilerDummy(TranspilerBase):
     def init_transpiler(self):
         """Init transpiler."""
 
-    def parse(self, src_code_dict):
+    def parse(self, src_code_dict, code_type: str = Constant.CODE_TYPE_QASM):
         """Parse src_code_dict.
 
         Args:
             src_code_dict: src_code_dict
+            code_type(str): code type
 
         Returns:
             parse result

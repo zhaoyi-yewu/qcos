@@ -31,7 +31,7 @@ from wy_qcos.transpiler.cmss.mapping.init_mapping.sc_initial_mapping import (
 from wy_qcos.transpiler.cmss.mapping.routing.sc_routing import (
     SCRoutingFactory,
 )
-from wy_qcos.transpiler.common.utils import logger
+from wy_qcos.transpiler.common.utils import trans_logger
 
 # 默认 sc_mapping 配置参数
 DEFAULT_SC_MAPPING_OPTIONS = {
@@ -207,7 +207,7 @@ class SCRoute(ABC):
 
         # 获取 current_block，如果存在则限制物理比特范围
         current_block = qpu_config.get("current_block")
-        logger.info(f"current_block: {current_block}")
+        trans_logger.log_debug(f"current_block: {current_block}")
         if current_block is not None:
             # 将 current_block 转换为 set，并统一转换为整数
             # 因为后续 q1, q2 是整数，需要类型一致才能正确比较
@@ -220,7 +220,7 @@ class SCRoute(ABC):
                     current_block_set.add(int(item))
                 else:
                     current_block_set.add(item)
-            logger.info(
+            trans_logger.log_debug(
                 f"Limiting mapping to current_block: "
                 f"{sorted(current_block_set)}"
             )
@@ -362,8 +362,8 @@ class SCRoute(ABC):
             self.dg, self.ag, self.method_init_mapping
         )
         end = time.time()
-        logger.info(f"get_initial_mapping time: {end - start}")
-        logger.info(f"init_map: {init_map}")
+        trans_logger.log_debug(f"get_initial_mapping time: {end - start}")
+        trans_logger.log_debug(f"init_map: {init_map}")
         self.initial_layout = self._layout_list_to_dict(init_map)
 
         # 初始化搜索树，从 sc_mapping_options 获取配置
@@ -441,7 +441,7 @@ class SCRoute(ABC):
                     "search_tree must be initialized for MCT routing algorithm"
                 )
             # 使用MCTSRouting执行路由搜索
-            logger.info("MCTS routing start")
+            trans_logger.log_debug("MCTS routing start")
             start = time.time()
             mapped_ir, final_layout = self.routing.execute_routing(
                 search_tree=self.search_tree,
@@ -450,9 +450,9 @@ class SCRoute(ABC):
                 num_q_vir=self.num_q_vir,
                 measure_ops=self.measure_ops,
             )
-            logger.info(f"mapped_ir: {mapped_ir}")
+            trans_logger.log_debug(f"mapped_ir: {mapped_ir}")
             end = time.time()
-            logger.info(f"MCTS routing time: {end - start}")
+            trans_logger.log_debug(f"MCTS routing time: {end - start}")
         else:
             # 对于SABRE算法，传递dg参数
             # self.routing 在 else 分支中一定是 SABRERouting 实例
@@ -465,5 +465,5 @@ class SCRoute(ABC):
                 measure_ops=self.measure_ops,
                 dg=self.dg,
             )
-            logger.info(f"mapped_ir: {mapped_ir}")
+            trans_logger.log_debug(f"mapped_ir: {mapped_ir}")
         return mapped_ir, final_layout

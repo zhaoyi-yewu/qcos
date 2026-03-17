@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 import pytest
+import types
 from unittest.mock import patch
 
 from wy_qcos.common.constant import Constant
@@ -23,6 +24,7 @@ from wy_qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
 from wy_qcos.tests.unit_tests.transpiler.comm import validate_gate_ir
 from wy_qcos.tests.unit_tests.transpiler.comm import validate_non_gate_ir
 from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS, SAMPLES
+from wy_qcos.transpiler.cmss.mapping.na.na_mapping import NASingleRoute
 
 
 @pytest.mark.usefixtures("global_configs")
@@ -85,12 +87,10 @@ class TestTranspilerCmss:
 
     @pytest.mark.smoke
     @patch(
-        "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
+        "wy_qcos.transpiler.cmss.transpiler_cmss."
+        "MappingFactory.get_mapper_by_type"
     )
     def test_transpiler_cmss(self, mock_get_mapper):
-        from wy_qcos.transpiler.cmss.mapping.na.na_mapping import NASingleRoute
-        import types
-
         # Create a real mapper instance
         mapper = NASingleRoute()
         # Mock execute_with_order to return (mapped_ir, final_layout)
@@ -123,12 +123,10 @@ class TestTranspilerCmss:
         validate_non_gate_ir(basis_gate_list[1], "measure", [27], 0)
 
     @patch(
-        "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
+        "wy_qcos.transpiler.cmss.transpiler_cmss."
+        "MappingFactory.get_mapper_by_type"
     )
     def test_transpiler_aggregation_succ(self, mock_get_mapper):
-        from wy_qcos.transpiler.cmss.mapping.na.na_mapping import NASingleRoute
-        import types
-
         # Create a real mapper instance
         mapper = NASingleRoute()
         # Mock execute_with_order to return (mapped_ir, final_layout)
@@ -165,12 +163,10 @@ class TestTranspilerCmss:
         assert len(basis_gate_list) == 10
 
     @patch(
-        "wy_qcos.transpiler.cmss.transpiler_cmss.MappingFactory.get_mapper_by_type"
+        "wy_qcos.transpiler.cmss.transpiler_cmss."
+        "MappingFactory.get_mapper_by_type"
     )
     def test_transpiler_aggregation_partly_succ(self, mock_get_mapper):
-        from wy_qcos.transpiler.cmss.mapping.na.na_mapping import NASingleRoute
-        import types
-
         qasm_data = SAMPLES["simple-qasm.qasm"]
         if qasm_data is None:
             return
@@ -210,3 +206,30 @@ class TestTranspilerCmss:
         for idx in range(0, len(basis_gate_list), 2):
             assert basis_gate_list[idx].name == "rx"
             assert basis_gate_list[idx + 1].name == "measure"
+
+        src_code_info2 = {
+            "000": qasm_data,
+        }
+        parse_result = transpiler.parse(src_code_info2)
+        basis_gate_list, _ = transpiler.transpile(
+            parse_result, expected_basis_gates
+        )
+        assert len(basis_gate_list) % 2 == 0
+
+    def test_transpiler_with_no_mapping(self):
+        transpiler = TranspilerCmss()
+        transpiler.transpiler_options["perf_options"] = {
+            "mapping_exec": False,
+        }
+        expected_basis_gates = [
+            Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
+        ]
+        src_code_info = {
+            "000": self.simple_data,
+        }
+        parse_result = transpiler.parse(src_code_info)
+        basis_gate_list, _ = transpiler.transpile(
+            parse_result, expected_basis_gates
+        )
+        assert len(basis_gate_list) == 2

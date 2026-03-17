@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 import json
 
 from loguru import logger
@@ -82,11 +83,12 @@ class DriverCiqtekIon1(DriverBase):
         success = True
         err_msg = None
 
-        driver_config_schema = {
+        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
+        driver_config_schema.update({
             "host": str,
             "port": int,
             "device_id": str,
-        }
+        })
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema
         )

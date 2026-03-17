@@ -62,6 +62,7 @@ def global_configs(request):
     top_dir = Path(current_path).resolve().parent.parent.parent.parent
     GLOBAL_CONFIGS["base_dir"] = str(top_dir)
     GLOBAL_CONFIGS["samples_dir"] = f"{top_dir}/samples"
+    GLOBAL_CONFIGS["etc_dir"] = f"{top_dir}/etc"
     GLOBAL_CONFIGS["env"] = env
     api_server = config.get("ST_API_SERVER", {})
     api_host = api_server.get("ST_API_SERVER_IP", "127.0.0.1")

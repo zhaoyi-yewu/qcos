@@ -77,7 +77,8 @@ class DriverDummy(DriverBase):
         err_msg = None
 
         # check and load driver configs
-        driver_config_schema = {
+        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
+        driver_config_schema.update({
             Optional("ip_address"): str,
             Optional("port"): int,
             "transpiler": {
@@ -94,7 +95,7 @@ class DriverDummy(DriverBase):
                     str: {"gates": [list], Optional("params"): [str]}
                 },
             },
-        }
+        })
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema
         )

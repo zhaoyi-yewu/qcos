@@ -2,8 +2,21 @@
 alias_name = "国仪量子 离子阱驱动"
 driver = "DriverCiqtekIon1"
 description = "国仪量子 离子阱驱动"
+
 # [Optional] max qubits of device
 # device_max_qubits = 100
+
+# [Optional] debug
+# debug = false
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_ciqtek_ion1.log
+device_log_file = "/var/log/qcos/device_ciqtek_ion1.log"
+
+# [Optional] device monitor log file path
+# monitor_log_file = /var/log/qcos/device_monitor_ciqtek_ion1.log
+monitor_log_file = "/var/log/qcos/device_monitor_ciqtek_ion1.log"
 
 host = "127.0.0.1"
 port = 18605

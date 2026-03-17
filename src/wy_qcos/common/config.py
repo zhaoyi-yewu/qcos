@@ -63,15 +63,12 @@ class Config:
     # [DATABASE]
     # eg. without db: fake,
     # pg: "postgresql+pg8000://postgres:${password}@100.78.61.22:5432/qcos"
+    # sqlite: "sqlite:////var/qcos/db/qcos.db"
     QCOS_DATABASE_CONNECTION_URL = "fake"
 
     # [LOG]
     # api log file
     API_LOG_FILE = "/var/log/qcos/qcos-api.log"
-    # qcos job engine log file
-    JOB_ENGINE_LOG_FILE = "/var/log/qcos/qcos-engine.log"
-    # qcos device monitor log file
-    DEVICE_MONITOR_LOG_FILE = "/var/log/qcos/device-monitor.log"
     # log format
     LOG_FORMAT = (
         "%(asctime)s %(levelname)s %(filename)s:%(lineno)s %(message)s"
@@ -260,6 +257,22 @@ class Config:
             raise errors.GenericException("Device list must be list of str")
 
     @classmethod
+    def get_configs(cls, mask_password=False):
+        configs = {}
+        cls_vars = vars(cls)
+        for k, v in cls_vars.items():
+            if (
+                k.startswith("__")
+                or k.startswith("_")
+                or isinstance(v, classmethod)
+            ):
+                continue
+            configs[k] = v
+        if mask_password:
+            configs = Library.mask_password(configs)
+        return configs
+
+    @classmethod
     def get_extra_configs(cls):
         """Get extra configs.
 
@@ -280,17 +293,7 @@ class Config:
     @classmethod
     def show_info(cls):
         """Show class variables."""
-        configs = {}
-        cls_vars = vars(cls)
-        for k, v in cls_vars.items():
-            if (
-                k.startswith("__")
-                or k.startswith("_")
-                or isinstance(v, classmethod)
-            ):
-                continue
-            configs[k] = v
-        configs = Library.mask_password(configs)
+        configs = cls.get_configs(mask_password=True)
         outputs = ["[Configs]"]
         for k, v in configs.items():
             outputs.append(f"{k:<20}: {v}")

@@ -223,7 +223,11 @@ class TestJobEngine:
         mock_flow_transpile.return_value = ({}, 466)
         with pytest.raises(ValueError) as e:
             _run_code(
-                [1, 2, 3], {}, {"data": {}}, DriverBase(), TranspilerBase()
+                0,
+                {"0-0": self.simple_data},
+                {"data": {"code_type": Constant.CODE_TYPE_QASM2}},
+                DriverBase(),
+                TranspilerBase(),
             )
         assert str(e.value) == "unexpected transpile_results or num_qubits"
 
@@ -236,7 +240,13 @@ class TestJobEngine:
             {"results": "v", "metadata": "m"},
             233,
         ])
-        _run_code([1, 2, 3], {}, {"data": {}}, DriverBase(), TranspilerBase())
+        _run_code(
+            0,
+            {"0-0": self.simple_data},
+            {"data": {"code_type": Constant.CODE_TYPE_QASM2}},
+            DriverBase(),
+            TranspilerBase(),
+        )
 
     # test run_code for qasm
     @patch("wy_qcos.engine.job_engine.init_driver.submit")
@@ -669,16 +679,17 @@ class TestJobEngine:
         assert result["10"] == 0.4
 
     # Test run_circuit_code function
-    @patch("wy_qcos.engine.job_engine.compile")
     @patch("wy_qcos.engine.job_engine._run_code")
-    def test_run_circuit_code_within_limit(self, mock_run_code, mock_compile):
+    def test_run_circuit_code_within_limit(self, mock_run_code):
         """Test run_circuit_code when qubit count is within limit."""
-        # Mock compile to return 2 qubits
-        mock_compile.return_value = (2, None)
         mock_driver = Mock()
         mock_driver.get_max_qubits.return_value = 2
         mock_driver.get_name.return_value = "TestDevice"
         mock_transpiler = Mock()
+        mock_transpiler.parse.return_value = {
+            "00000000-0000-4000-8000-000000000001-0": (2, None)
+        }
+
         # Mock _run_code to return test results
         expected_results = {
             "results": {"00": 0.5, "11": 0.5},
@@ -720,21 +731,21 @@ class TestJobEngine:
         assert driver == mock_driver
         assert transpiler == mock_transpiler
         assert mapping == {}
-        mock_compile.assert_called_once()
         mock_run_code.assert_called_once()
 
-    @patch("wy_qcos.engine.job_engine.compile")
     @patch("wy_qcos.engine.job_engine.format_error_results")
     def test_run_circuit_code_exceeds_limit_no_wirecut(
-        self, mock_format_error, mock_compile
+        self, mock_format_error
     ):
         """Test run_circuit_code when qubit count exceeds limit."""
         # Mock compile to return 10 qubits (exceeds 5 limit)
-        mock_compile.return_value = (20, None)
         mock_driver = Mock()
         mock_driver.get_max_qubits.return_value = 2
         mock_driver.get_name.return_value = "TestDevice"
         mock_transpiler = Mock()
+        mock_transpiler.parse.return_value = {
+            "00000000-0000-4000-8000-000000000001-0": (20, None)
+        }
         source_code_index = 0
         src_code_dict = {"00000000-0000-4000-8000-000000000001-0": "value"}
         job_info = {
@@ -916,7 +927,12 @@ class TestJobEngine:
     @patch("wy_qcos.engine.job_engine.parse.submit")
     def test_flow_parse(self, mock_parse):
         mock_parse.return_value = Mock()
-        result, _ = flow_parse({}, TranspilerBase(), Constant.PROFILING_TYPES)
+        result, _ = flow_parse(
+            {},
+            TranspilerBase(),
+            Constant.PROFILING_TYPES,
+            Constant.CODE_TYPE_QASM2,
+        )
         assert isinstance(result, Mock) is True
 
     @patch("wy_qcos.engine.job_engine.transpile.submit")
@@ -987,7 +1003,7 @@ class TestJobEngine:
         assert task_monitor.fn(monitor_info) is None
 
     def test_parse(self):
-        return_value = parse.fn([], TranspilerBase())
+        return_value = parse.fn([], TranspilerBase(), Constant.CODE_TYPE_QASM2)
         assert return_value["parsed_src_code"] is None
 
     def test_transpile(self):
@@ -1033,6 +1049,9 @@ class TestJobEngine:
         ]
         self.job_info["data"]["code_type"] = Constant.CODE_TYPE_QASM
         self.job_info["data"]["driver_options"] = {}
+        self.job_info["data"]["backend"] = "dummy"
+        self.job_info["global"] = {"configs": {}}
+        self.job_info["device"] = {"configs": {}}
         job_results_list = raw_job_flow_func(self.job_info)
         assert len(job_results_list) == len(
             self.job_info["data"]["source_code"]

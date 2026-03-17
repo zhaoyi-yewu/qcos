@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 import json
 import re
 
@@ -108,7 +109,8 @@ class DriverSpinQNmr(DriverBase):
         success = True
         err_msg = None
 
-        driver_config_schema = {
+        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
+        driver_config_schema.update({
             "remote_host": str,
             "remote_port": int,
             "username": str,
@@ -119,7 +121,7 @@ class DriverSpinQNmr(DriverBase):
                     "coupler_map": {str: [str]},
                 }
             },
-        }
+        })
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema
         )
