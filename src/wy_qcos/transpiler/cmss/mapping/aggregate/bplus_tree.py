@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -30,7 +30,7 @@ class BPlusTreeNode:
 class BPlusTreeInternalNode(BPlusTreeNode):
     """B+树内部节点."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(is_leaf=False)
         self.children: list[BPlusTreeNode] = []  # 子节点列表
 
@@ -80,7 +80,7 @@ class BPlusTreeInternalNode(BPlusTreeNode):
 class BPlusTreeLeafNode(BPlusTreeNode):
     """B+树叶子节点."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(is_leaf=True)
         self.values: list[list[int]] = []  # 存储候选区域数据
         self.next_leaf: BPlusTreeLeafNode | None = (

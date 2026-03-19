@@ -1204,8 +1204,8 @@ def run_circuit_code(
     enable_wirecut = driver.get_enable_wirecut()
     logger.info(f"driver max qubits: {max_qubits}")
     src_code = src_code_dict[f"{job_id}-{source_code_index}"]
-    parse_result = transpiler.parse(src_code_dict, code_type)
     try:
+        parse_result = transpiler.parse(src_code_dict, code_type)
         num_qubits = parse_result[f"{job_id}-{source_code_index}"][0]
     except Exception as e:
         err_msg = f"Src code: {src_code} compile failed: {str(e)}"

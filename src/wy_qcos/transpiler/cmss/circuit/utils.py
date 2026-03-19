@@ -38,8 +38,8 @@ class RandomCircuitGen:
         Generate random circuit with depth or number of gates.
     """
 
-    def __init__(self):
-        self.qc: QuantumCircuit = None
+    def __init__(self) -> None:
+        self.qc: QuantumCircuit | None = None
         # number of qubits of quantum circuit
         self.num_qubits = 0
         # depth of quantum circuit

@@ -53,7 +53,7 @@ class DriverHanyuan1(DriverBase):
     # extended data type
     data_type_qu_topo = "qu_topo"
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.version = "0.0.1"
         self.alias_name = "中科酷原-汉原1 中性原子驱动"
@@ -68,9 +68,9 @@ class DriverHanyuan1(DriverBase):
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_aggregation = True
         self.max_qubits = 10
-        self.server_host = None
-        self.server_port = None
-        self.base_url = None
+        self.server_host: str | None = None
+        self.server_port: int | None = None
+        self.base_url: str | None = None
         self.zerorpc_clients: list = []  # 连接池，每个元素为 zerorpc.Client
         self.use_zmq = False
         # task stages and percentages

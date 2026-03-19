@@ -41,7 +41,7 @@ PREFECT_LOGGING_LEVEL = "INFO"
 # redis server ip
 REDIS_SERVER_IP = "127.0.0.1"
 # redis server port
-REDIS_SERVER_PORT = "6379"
+REDIS_SERVER_PORT = 6379
 
 [DATABASE]
 # eg. without db: fake,
