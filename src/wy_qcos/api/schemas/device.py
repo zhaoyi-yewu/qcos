@@ -70,15 +70,53 @@ class GetDeviceResponse(BaseModel):
 
 
 class CalibrateDeviceRequest(BaseModel):
-    """Get Device Properities.
+    """Calibrate Device.
 
-    Pydantic Model for Get Device Properities.
+    Pydantic Model for Get Calibrate Device.
     """
 
     # device name
     device_name: str = Field(description="Device name")
+    # method
+    method: str = Field(description="method name")
     # calibrate options
     options: dict | None = Field(default=None, description="Calibrate Options")
+
+
+class CalibrateDeviceResponse(BaseModel):
+    """Get Calibrate Device Response.
+
+    Pydantic Model for Get Calibrate Device Response.
+    """
+
+    # calibrate response detail
+    details: dict | None = Field(
+        default=None, description="Calibrate Response details"
+    )
+
+
+class GetCalibrateResultRequest(BaseModel):
+    """Get Calibrate Result Request.
+
+    Pydantic Model for Get Calibrate Result.
+    """
+
+    # device name
+    device_name: str = Field(description="Device name")
+    # method
+    method: str = Field(description="method name")
+
+
+class GetCalibrateResultResponse(BaseModel):
+    """Get Calibrate Result Response.
+
+    Pydantic Model for Get Calibrate Result.
+    """
+
+    # get calibrate result detail
+    details: dict | None = Field(
+        default=None, description="Calibrate Response details"
+    )
 
 
 class SetDeviceOptionsRequest(BaseModel):
@@ -89,10 +127,10 @@ class SetDeviceOptionsRequest(BaseModel):
 
     # device name
     device_name: str = Field(description="Device name")
+    # method
+    method: str = Field(description="method name")
     # set options
-    device_options: dict | None = Field(
-        default=None, description="Device Options"
-    )
+    options: dict | None = Field(default=None, description="Device Options")
 
 
 class SetDeviceOptionsResponse(BaseModel):
@@ -101,27 +139,31 @@ class SetDeviceOptionsResponse(BaseModel):
     Pydantic Model for Set Device Options Response.
     """
 
-    # results
-    results: dict = Field(description="Results")
+    # calibrate response detail
+    details: dict | None = Field(
+        default=None, description="Set Device Options Response details"
+    )
 
 
-class EnableAndDisableQubitRequest(BaseModel):
-    """Enable and Disable Qubit.
+class GetDeviceOptionsRequest(BaseModel):
+    """Get Device Options Request.
 
-    Pydantic Model for Enable and Disable Qubit.
+    Pydantic Model for Get Device Options Request.
     """
 
     # device name
     device_name: str = Field(description="Device name")
-    # qubits
-    qubits: dict = Field(description="Qubits")
+    # method
+    method: str = Field(description="method name")
 
 
-class EnableAndDisableQubitResponse(BaseModel):
-    """Enable and Disable Qubit Response.
+class GetDeviceOptionsResponse(BaseModel):
+    """Get Device Options Response.
 
-    Pydantic Model for Enable and Disable Qubit Response.
+    Pydantic Model for Get Device Options Response.
     """
 
-    # results
-    results: dict = Field(description="Results")
+    # get calibrate result detail
+    details: dict | None = Field(
+        default=None, description="Get Device Options Response details"
+    )

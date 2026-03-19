@@ -207,13 +207,95 @@ class TaskScheduler(ABC):
                 "class_name": transpiler_class_name,
             }
             job_json_info["device"] = {"configs": device.get_configs()}
-            job_json_info["global"] = {"configs": Config.get_configs()}
 
             job_id = self._policy_handler.exec_task(
                 deployment, job_json_info, tags=tags
             )
             res = {"job_id": job_id}
             return res, None
+        except Exception as e:
+            logger.error(f"Prefect execute flow error: {str(e)}")
+            raise errors.WorkFlowError(e)
+
+    def add_manage_job(self, job_info):
+        """Add manage job to scheduler.
+
+        Args:
+            job_info: job info
+
+        Returns:
+            added job info, error messages
+        """
+        # check current all flows count exceed MAX_JOBS
+        all_flows = self._task_manager.get_flow_runs_with_filters()
+        all_flow_count = len(all_flows)
+        if all_flow_count >= Config.MAX_JOBS:
+            return None, (
+                f"Current job count exceeds max job limit: {Config.MAX_JOBS}"
+            )
+        if all_flow_count >= Constant.FLOW_LIMIT:
+            return None, (
+                f"Current job count exceeds max flow limit: "
+                f"{Constant.FLOW_LIMIT}"
+            )
+
+        # check current queued+running flows count exceed MAX_QUEUED_JOBS
+        wait_states = self._task_manager.convert_to_prefect_states(
+            Constant.PREFECT_WAIT_STATES
+        )
+        wait_states_flows = self._task_manager.get_flow_runs_with_filters(
+            states=wait_states
+        )
+        wait_states_flow_count = len(wait_states_flows)
+        if wait_states_flow_count >= Config.MAX_QUEUED_JOBS:
+            return None, (
+                f"Current running+queued job count exceeds "
+                f"max queued job limit: {Config.MAX_QUEUED_JOBS}"
+            )
+
+        # get driver info
+        backend = job_info.device_name
+        device = self.device_manager.get_device(backend)
+        if not device:
+            err_msg = f"Backend: '{backend}' is not found"
+            logger.error(err_msg)
+            return None, f"Execute work flow failed: {err_msg}"
+        if not device.enable:
+            err_msg = f"Backend driver: {backend} is disabled"
+            logger.error(err_msg)
+            return None, f"Execute work flow failed: {err_msg}"
+        driver = device.get_driver()
+        driver_module_name = driver.get_module_name()
+        driver_class_name = driver.get_class_name()
+        driver_package_paths = driver.get_package_paths()
+
+        # execute task
+        try:
+            deployment_name = backend + "_mgr"
+            deployment = self._task_manager.get_deployment(deployment_name)
+            device_mgr_info = {}
+            device_mgr_info["device_name"] = job_info.device_name
+            device_mgr_info["method"] = job_info.method
+            device_mgr_info["data"] = job_info.model_dump()
+            device_mgr_info["driver"] = {
+                "module_name": driver_module_name,
+                "class_name": driver_class_name,
+                "package_paths": driver_package_paths,
+            }
+            device_mgr_info["device"] = {"configs": device.get_configs()}
+            device_mgr_info["redis"] = {
+                "ip": self.device_manager.config.REDIS_SERVER_IP,
+                "port": self.device_manager.config.REDIS_SERVER_PORT,
+            }
+            device_mgr_info["global"] = {"configs": Config.get_configs()}
+            succ, details = self._policy_handler.exec_manage_task(
+                deployment, device_mgr_info
+            )
+            if succ:
+                return details
+            else:
+                logger.error(f"exec manage task error details: {details}")
+                raise errors.WorkFlowError(f"exec error details: {details}")
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
             raise errors.WorkFlowError(e)
@@ -471,14 +553,32 @@ class PrioritySchedulingPolicy(ABC):
 
         deployment_id = deployment["deploy_id"]
         work_queue_name = f"{pool_name}_{priority}"
-        args = {"job_info": job_info}
         job_run_id = self._task_manager.run_task_flow(
             deployment_id,
-            args,
+            {"job_info": job_info},
             tags=tags,
             work_queue_name=work_queue_name,
         )
         return job_run_id
+
+    def exec_manage_task(self, deployment, device_mgr_info):
+        """Execute task.
+
+        Args:
+            deployment: deployment info
+            device_mgr_info: device_mgr_info
+
+        Returns:
+            job uuid
+        """
+        deployment_id = deployment["deploy_id"]
+        work_queue_name = "default"
+        succ, details = self._task_manager.run_manage_task_flow(
+            deployment_id,
+            {"device_mgr_info": device_mgr_info},
+            work_queue_name=work_queue_name,
+        )
+        return succ, details
 
     def calculate_priority(self, job_info):
         """Calculate priority.

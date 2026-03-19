@@ -112,15 +112,3 @@ class TestDevice:
             self.client, device_name, device_options
         )
         assert error_code == -32603
-
-    def test_enable_and_disable_qubit(self):
-        device_name = "dummy"
-        qubits = {
-            "qubit1": True,
-            "qubit2": False,
-            "qubit1_qubit2": False,
-        }
-        error_code = StLibrary.enable_and_disable_qubit(
-            self.client, device_name, qubits
-        )
-        assert error_code == -32603

@@ -21,10 +21,13 @@ from .device import (
     GetDeviceRequest,
     GetDeviceResponse,
     CalibrateDeviceRequest,
+    CalibrateDeviceResponse,
     SetDeviceOptionsRequest,
     SetDeviceOptionsResponse,
-    EnableAndDisableQubitRequest,
-    EnableAndDisableQubitResponse,
+    GetCalibrateResultRequest,
+    GetCalibrateResultResponse,
+    GetDeviceOptionsRequest,
+    GetDeviceOptionsResponse,
 )
 from .transpiler import (
     GetTranspilersRequest,
@@ -55,7 +58,3 @@ from .system import (
     SystemInfoResponse,
 )
 from .version import GetVersionRequest, GetVersionResponse
-from .user import (
-    CreateUserRequest,
-    UpdateUserRequest,
-)

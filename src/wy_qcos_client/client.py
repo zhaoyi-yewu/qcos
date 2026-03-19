@@ -282,24 +282,6 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def enable_and_disable_qubit(self, device_name, qubits):
-        """Enable and Disalbe Qubit.
-
-        Args:
-            device_name: device name
-            qubits: qubits
-        """
-        method_name = "enable_and_disable_qubit"
-
-        # construct data and call json rpc
-        data = {"device_name": device_name, "qubits": qubits}
-
-        # construct data and call json rpc
-        status_code, reason, text, result = Client.call_json_rpc(
-            self.device_url, method_name, data
-        )
-        return status_code, reason, text, result
-
     def set_device_options(self, device_name, device_options):
         """Set device options.
 

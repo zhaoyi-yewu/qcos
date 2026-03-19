@@ -226,6 +226,7 @@ class Constant:
     # Devices
     DEVICE_DUMMY = "dummy"
     DEVICE_MONITOR_PREFIX = "device_monitor_"
+    DEVICE_MANAGER_PREFIX = "device_mgr_"
 
     # Transpiler
     TRANSPILER_CMSS = "cmss"
@@ -307,7 +308,7 @@ class Constant:
     DEFAULT_JOB_TIMEOUT = 300
     DEFAULT_JOB_INTERVAL = 5
 
-    # device engine property
+    # device monitor engine property
     DEFAULT_DEVICE_MONITOR_RETRIES = 1000
     DEFAULT_DEVICE_MONITOR_RETRY_INTERVAL = 5
     DEFAULT_DEVICE_MONITOR_INTERVAL = 5

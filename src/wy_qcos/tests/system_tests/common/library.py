@@ -188,17 +188,6 @@ class StLibrary:
         return error_code
 
     @staticmethod
-    def enable_and_disable_qubit(client, device_name, qubits):
-        status_code, reason, text, response = client.enable_and_disable_qubit(
-            device_name, qubits
-        )
-        assert status_code == HttpCode.SUCCESS_OK
-        result = json.loads(text)
-        error = result.get("error", {})
-        error_code = error.get("code", 0)
-        return error_code
-
-    @staticmethod
     def get_drivers(client):
         status_code, reason, text, response = client.get_drivers()
         assert status_code == HttpCode.SUCCESS_OK

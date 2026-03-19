@@ -33,6 +33,7 @@ class TestJob:
     @classmethod
     def setup_class(cls):
         cls.client = GLOBAL_CONFIGS["client"]
+        cls.client.verbose = True
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
