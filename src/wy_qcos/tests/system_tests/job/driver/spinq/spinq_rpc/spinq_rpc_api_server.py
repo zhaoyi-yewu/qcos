@@ -23,13 +23,14 @@ from wy_qcos.common.library import Library
 org_path = Library.set_driver_venv_path("DriverSpinQRpc", Config.VENV_DIR)
 
 import enum
-import logging
 import json
+import logging
 import sys
 import time
-import zerorpc
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from pathlib import Path
+
+import zerorpc
 
 from wy_qcos.common.library import Library
 
@@ -41,8 +42,9 @@ top_dir = Library.get_top_dir()
 rpc_listen_ip = "0.0.0.0"
 rpc_listen_port = 4242
 _shots = 0
-PID_DIR = "/var/run/qcos"
-PID_FILE = f"{PID_DIR}/driver-spinq-api-server.pid"
+
+# zerorpc configs
+ZERORPC_HEARTBEAT = 5
 
 # config data (from toml file)
 _config_data = None
@@ -332,11 +334,7 @@ def main(cmd_args=None):
         # load configs
         load_config(config_file)
 
-        # kill existing process
-        Library.kill_pid(PID_FILE)
         time.sleep(2)  # wait for socket to be released
-        Library.mkdir(PID_DIR)
-        Library.create_pid_file(PID_FILE)
 
         service = {
             "request_login": request_login,
@@ -345,15 +343,26 @@ def main(cmd_args=None):
             "get_task_status": get_task_status,
             "get_task_result": get_task_result,
         }
-        server = zerorpc.Server(service, heartbeat=5)
+
+        # create zerorpc server
+        server = zerorpc.Server(
+            service,
+            heartbeat=ZERORPC_HEARTBEAT,
+        )
         bind_address = f"tcp://{rpc_listen_ip}:{rpc_listen_port}"
 
         # start SpinQ API service
         logger.info(f"SpinQ API Server simulator started on {bind_address}")
+        logger.info(f"zerorpc config: heartbeat={ZERORPC_HEARTBEAT}s")
+        logger.info(f"cmd_args: {cmd_args}")
         logger.info("Press Ctrl+C to stop service ...")
 
-        server.bind(bind_address)
-        server.run()
+        try:
+            server.bind(bind_address)
+            server.run()
+        except Exception as e:
+            logger.error(f"Failed to bind or run server: {e}")
+            raise
 
         return 0
 
@@ -365,12 +374,11 @@ def main(cmd_args=None):
         return 2
     finally:
         if server:
-            logger.info("\nServer is stopped")
-            server.close()
-        try:
-            Library.remove_pid_file(PID_FILE)
-        except Exception as e:
-            logger.warning(f"Failed to remove PID file: {e}")
+            try:
+                logger.info("\nServer is stopped")
+                server.close()
+            except Exception as e:
+                logger.error(f"Error during server shutdown: {e}")
 
 
 if __name__ == "__main__":

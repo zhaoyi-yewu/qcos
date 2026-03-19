@@ -157,6 +157,7 @@ show_error_context = true
 show_column_numbers = true
 warn_unused_ignores = true
 check_untyped_defs = false
+strict = false
 # remove gradually as progress is made
 disable_error_code = "import-untyped,var-annotated,import-not-found"
 # honor excludes by not following there through imports
@@ -237,7 +238,7 @@ quote-style = "double"
 indent-style = "space"
 docstring-code-format = true
 skip-magic-trailing-comma = false
-line-ending = "auto"
+line-ending = "lf"
 exclude = [
     "src/wy_qcos/transpiler/cmss/compiler/parser.py",
     "src/wy_qcos/transpiler/cmss/compiler/tokrules.py",

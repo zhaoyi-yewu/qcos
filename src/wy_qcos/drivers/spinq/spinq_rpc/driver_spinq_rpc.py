@@ -311,7 +311,7 @@ class DriverSpinQRpc(DriverBase):
 
         # init zerorpc client
         try:
-            self._client = zerorpc.Client(self._rpc_conn_str)
+            self._client = zerorpc.Client(self._rpc_conn_str, timeout=30)
         except Exception as e:
             raise ValueError(f"SpinQ exception: {e}") from e
 
@@ -479,8 +479,14 @@ class DriverSpinQRpc(DriverBase):
         Returns:
             success, error message, task_id
         """
-        task_status = self._client.get_task_status(task_id, self._session_id)
-        return True, None, task_status
+        try:
+            task_status = self._client.get_task_status(
+                task_id, self._session_id
+            )
+            return True, None, task_status
+        except Exception as e:
+            logger.warning(f"Failed to get task status: {e}")
+            return False, str(e), None
 
     @rpc_retry()
     def get_task_results(self, task_id):
@@ -491,9 +497,13 @@ class DriverSpinQRpc(DriverBase):
         Returns:
             success, error message, response
         """
-        resp_json = self._client.get_task_result(task_id, self._session_id)
-        response = json.loads(resp_json)
-        return True, None, response
+        try:
+            resp_json = self._client.get_task_result(task_id, self._session_id)
+            response = json.loads(resp_json)
+            return True, None, response
+        except Exception as e:
+            logger.warning(f"Failed to get task results: {e}")
+            return False, str(e), None
 
     def client_close(self, username, session_id):
         """Close client rpc.
