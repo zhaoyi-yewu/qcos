@@ -23,7 +23,6 @@ from wy_qcos.transpiler.cmss.compiler.openqasm3.parser import (
 )
 from wy_qcos.transpiler.cmss.compiler.parser import compile
 from wy_qcos.transpiler.common.errors import TranspilerException
-from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.common.utils import (
     trans_logger,
 )
@@ -68,8 +67,6 @@ class TranspilerDummy(TranspilerBase):
                 else:
                     circuit = openqasm3_parse(value)
                     num_qubits = circuit.num_qubits
-                if self.total_qubits + num_qubits > trans_cfg_inst.max_qubits:
-                    break
                 self.total_qubits += num_qubits
                 parse_result_dict[key] = (num_qubits, value)
             return parse_result_dict

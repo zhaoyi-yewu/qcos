@@ -256,9 +256,6 @@ class TranspilerCmss(TranspilerBase):
                     circuit = openqasm3_parse(value)
                     num_qubits = circuit.num_qubits
                     parse_result = circuit.get_operations()
-                if self.total_qubits + num_qubits > trans_cfg_inst.max_qubits:
-                    # TODO (xudong): need to remove the remained task item.
-                    break
                 self.total_qubits += num_qubits
                 parse_result_dict[key] = (num_qubits, parse_result)
             return parse_result_dict
