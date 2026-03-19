@@ -899,16 +899,6 @@ def run_code(
             f"Init transpiler: {transpiler.name} ({transpiler.alias_name})"
         )
 
-    if transpiler.name == "dummy":
-        job_results, driver, transpiler, mapping_dict = _run_code(
-            source_code_index,
-            src_code_dict,
-            job_info,
-            driver,
-            transpiler,
-        )
-        return job_results, driver, transpiler, mapping_dict
-
     if code_type == Constant.CODE_TYPE_QUBO:
         job_results, driver, transpiler, mapping_dict = run_qubo_code(
             source_code_index,
