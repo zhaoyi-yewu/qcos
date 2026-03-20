@@ -303,7 +303,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
 
       - name: Run System Tests (qcos)
         shell: bash
@@ -351,7 +350,7 @@ jobs:
           sleep 10
           echo "Running system tests in container: qcos"
           cd ${TOP_DIR}
-          tar czf /tmp/cicd.tar.gz ./cicd ./src ./samples
+          tar czf /tmp/cicd.tar.gz ./cicd ./src ./etc ./samples
           docker cp /tmp/cicd.tar.gz qcos:/tmp/
           docker exec qcos sh -c "mkdir -p /root/qcos-project/; cd /root/qcos-project/; tar xzf /tmp/cicd.tar.gz"
           docker exec qcos sh -c "source /root/.bashrc; echo 'Driver list:'; qcos-cli list-devices; echo 'Job list:'; qcos-cli list-jobs; cd /root/qcos-project; ./cicd/run-tests.sh -s all"
