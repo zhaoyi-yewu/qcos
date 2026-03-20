@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -22,7 +22,7 @@ from unittest.mock import patch, MagicMock
 
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.common.gate_operation import H, CX
-from wy_qcos.transpiler.cmss.wirecut.utils import (
+from wy_qcos.transpiler.common.wirecut.utils import (
     asign_probability,
     compute_measure_combian,
     attribute_prob,
@@ -31,7 +31,7 @@ from wy_qcos.transpiler.cmss.wirecut.utils import (
     generate_subcircuits_for_execute,
     generate_config_circuits_for_one_subcircuit,
 )
-from wy_qcos.transpiler.cmss.wirecut.prepare_data import to_basic_init
+from wy_qcos.transpiler.common.wirecut.prepare_data import to_basic_init
 
 
 class TestUtils(unittest.TestCase):
@@ -219,7 +219,7 @@ class TestUtils(unittest.TestCase):
         ]
 
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.utils."
+            "wy_qcos.transpiler.common.wirecut.utils."
             "generate_config_circuits_for_one_subcircuit"
         ) as mock_generate_config:
             mock_generate_config.return_value = {
@@ -233,7 +233,7 @@ class TestUtils(unittest.TestCase):
         """Test the generate_config_circuits_for_one_subcircuit function."""
         input_status = [(("0", "0"), ("X", "Y")), (("0", "1"), ("Z", "I"))]
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.utils.generate_measure_plans"
+            "wy_qcos.transpiler.common.wirecut.utils.generate_measure_plans"
         ) as mock_generate_measure:
             mock_generate_measure.return_value = self.qc
             result = generate_config_circuits_for_one_subcircuit(

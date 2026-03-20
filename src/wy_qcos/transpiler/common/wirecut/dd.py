@@ -20,11 +20,11 @@ import copy
 import math
 import numpy as np
 
-from wy_qcos.transpiler.cmss.wirecut.reconstructor import (
+from wy_qcos.transpiler.common.wirecut.reconstructor import (
     Reconstructor,
     parse_results_from_hardware_service,
 )
-from wy_qcos.transpiler.cmss.wirecut.utils import asign_probability
+from wy_qcos.transpiler.common.wirecut.utils import asign_probability
 
 
 class DD:

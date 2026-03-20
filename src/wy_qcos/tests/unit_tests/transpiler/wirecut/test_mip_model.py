@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -18,7 +18,7 @@
 import pulp
 import unittest
 
-from wy_qcos.transpiler.cmss.wirecut.mip_model import MIPModel
+from wy_qcos.transpiler.common.wirecut.mip_model import MIPModel
 
 
 class TestMIPModel(unittest.TestCase):

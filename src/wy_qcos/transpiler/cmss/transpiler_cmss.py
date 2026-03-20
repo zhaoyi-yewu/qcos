@@ -23,7 +23,9 @@ from wy_qcos.transpiler.common.utils import (
     trans_logger,
 )
 from wy_qcos.common.constant import Constant
-from wy_qcos.transpiler.cmss.compiler.decomposer import decompose_gates_to_1q2q
+from wy_qcos.transpiler.cmss.compiler.decomposer import (
+    decompose_gates_to_1q2q,
+)
 from wy_qcos.transpiler.cmss.decomposer.decomposer import Decomposer
 from wy_qcos.transpiler.cmss.compiler.parser import compile
 from wy_qcos.transpiler.cmss.mapping.aggregate.hierachy_tree import (

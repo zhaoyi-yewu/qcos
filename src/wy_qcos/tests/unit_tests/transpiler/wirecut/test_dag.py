@@ -24,7 +24,7 @@ from wy_qcos.transpiler.cmss.common.gate_operation import H, CX
 from wy_qcos.transpiler.cmss.common.qasm_converter import QasmConverter
 from wy_qcos.transpiler.cmss.compiler.parser import Parser
 from wy_qcos.transpiler.cmss.transpiler_cmd_line import CMSSTranspilerPerf
-from wy_qcos.transpiler.cmss.wirecut.dag import DAG
+from wy_qcos.transpiler.common.wirecut.dag import DAG
 
 
 class TestCircuitExecutor(unittest.TestCase):

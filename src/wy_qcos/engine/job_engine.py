@@ -50,7 +50,7 @@ from wy_qcos.engine.qubo import (
     process_qubo_solution,
 )
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
-from wy_qcos.transpiler.cmss.wirecut.cut_wire import (
+from wy_qcos.transpiler.common.wirecut.cut_wire import (
     generate_all_variant_subcircuits_for_execute,
     reconstruct_probability_distribution_wire_cut,
 )

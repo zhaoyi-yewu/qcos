@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -22,8 +22,8 @@ from unittest.mock import MagicMock
 
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.common.gate_operation import H, CX
-from wy_qcos.transpiler.cmss.wirecut.cut import Cut
-from wy_qcos.transpiler.cmss.wirecut.prepare_data import (
+from wy_qcos.transpiler.common.wirecut.cut import Cut
+from wy_qcos.transpiler.common.wirecut.prepare_data import (
     Prepare_data,
     Topo_Subcircuits,
     build_topo_subcircuits,

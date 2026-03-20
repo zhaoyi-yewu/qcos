@@ -22,7 +22,7 @@ import numpy as np
 
 from unittest.mock import patch, MagicMock
 
-from wy_qcos.transpiler.cmss.wirecut.cut_wire import (
+from wy_qcos.transpiler.common.wirecut.cut_wire import (
     CutWire,
     generate_all_variant_subcircuits_for_execute,
     simple_subcircuit_dict,
@@ -60,10 +60,10 @@ class TestCutWire(unittest.TestCase):
 
     @pytest.mark.smoke
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.cut_wire.open",
+        "wy_qcos.transpiler.common.wirecut.cut_wire.open",
         side_effect=lambda *args, **kwargs: MagicMock(),
     )
-    @patch("wy_qcos.transpiler.cmss.wirecut.mip_model.MIPModel")
+    @patch("wy_qcos.transpiler.common.wirecut.mip_model.MIPModel")
     def test_cutwire_init_success(self, mock_mip_model, mock_open):
         """Test CutWire successfully initialized."""
         mock_mip_instance = MagicMock()
@@ -73,7 +73,9 @@ class TestCutWire(unittest.TestCase):
             [[0], [1, 2, 3]],
         )
         mock_mip_model.return_value = mock_mip_instance
-        with patch("wy_qcos.transpiler.cmss.wirecut.cut_wire.DAG") as mock_dag:
+        with patch(
+            "wy_qcos.transpiler.common.wirecut.cut_wire.DAG"
+        ) as mock_dag:
             mock_dag_instance = MagicMock()
             mock_dag_instance.knit_dag_to_graph.return_value = (
                 4,
@@ -85,7 +87,7 @@ class TestCutWire(unittest.TestCase):
             ]
             mock_dag.return_value = mock_dag_instance
             with patch(
-                "wy_qcos.transpiler.cmss.wirecut.cut_wire.Cut"
+                "wy_qcos.transpiler.common.wirecut.cut_wire.Cut"
             ) as mock_cut:
                 qc = QuantumCircuit(4)
                 qc.append(H([0]))
@@ -100,7 +102,7 @@ class TestCutWire(unittest.TestCase):
                 mock_cut.return_value = mock_cut_instance
 
                 with patch(
-                    "wy_qcos.transpiler.cmss.wirecut.cut_wire.Prepare_data"
+                    "wy_qcos.transpiler.common.wirecut.cut_wire.Prepare_data"
                 ):
                     # Create a CutWire instance
                     cut_wire = CutWire(
@@ -120,16 +122,18 @@ class TestCutWire(unittest.TestCase):
                     assert cut_wire.max_cuts == self.max_cuts
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.cut_wire.open",
+        "wy_qcos.transpiler.common.wirecut.cut_wire.open",
         side_effect=lambda *args, **kwargs: MagicMock(),
     )
-    @patch("wy_qcos.transpiler.cmss.wirecut.mip_model.MIPModel")
+    @patch("wy_qcos.transpiler.common.wirecut.mip_model.MIPModel")
     def test_cutwire_init_failure(self, mock_mip_model, mock_open):
         """Test CutWire initialization failed."""
         mock_mip_instance = MagicMock()
         mock_mip_instance.solve.return_value = (False, [], None)
         mock_mip_model.return_value = mock_mip_instance
-        with patch("wy_qcos.transpiler.cmss.wirecut.cut_wire.DAG") as mock_dag:
+        with patch(
+            "wy_qcos.transpiler.common.wirecut.cut_wire.DAG"
+        ) as mock_dag:
             mock_dag_instance = MagicMock()
             mock_dag_instance.knit_dag_to_graph.return_value = (
                 4,
@@ -163,9 +167,9 @@ class TestCutWire(unittest.TestCase):
         for qasm in expected:
             assert qasm in result
 
-    @patch("wy_qcos.transpiler.cmss.wirecut.cut_wire.CutWire")
+    @patch("wy_qcos.transpiler.common.wirecut.cut_wire.CutWire")
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.cut_wire.open",
+        "wy_qcos.transpiler.common.wirecut.cut_wire.open",
         side_effect=lambda *args, **kwargs: MagicMock(),
     )
     def test_generate_all_variant_subcircuits_for_execute_success(
@@ -193,7 +197,7 @@ class TestCutWire(unittest.TestCase):
         assert result_dill is not None
         assert isinstance(result_json, list)
 
-    @patch("wy_qcos.transpiler.cmss.wirecut.cut_wire.CutWire")
+    @patch("wy_qcos.transpiler.common.wirecut.cut_wire.CutWire")
     def test_generate_all_variant_subcircuits_for_execute_failure(
         self, mock_cutwire
     ):
@@ -219,14 +223,14 @@ class TestCutWire(unittest.TestCase):
     ):
         """Test generate_all_variant_subcircuits_for_execute method."""
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.cut_wire.CutWire"
+            "wy_qcos.transpiler.common.wirecut.cut_wire.CutWire"
         ) as mock_cutwire:
             mock_cutwire_in = MagicMock()
             mock_cutwire_in.generate_all_variants_subcircuits.return_value = {}
             mock_cutwire.return_value = mock_cutwire_in
 
             with patch(
-                "wy_qcos.transpiler.cmss.wirecut.cut_wire.open",
+                "wy_qcos.transpiler.common.wirecut.cut_wire.open",
                 side_effect=lambda *args, **kwargs: MagicMock(),
             ):
                 generate_all_variant_subcircuits_for_execute(
@@ -240,9 +244,9 @@ class TestCutWire(unittest.TestCase):
                 _, kwargs = mock_cutwire.call_args
                 assert kwargs["max_cuts"] == 100
 
-    @patch("wy_qcos.transpiler.cmss.wirecut.cut_wire.DD")
+    @patch("wy_qcos.transpiler.common.wirecut.cut_wire.DD")
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.cut_wire.reconstruct_prob_from_bins"
+        "wy_qcos.transpiler.common.wirecut.cut_wire.reconstruct_prob_from_bins"
     )
     def test_reconstruct_probability_distribution_wire_cut(
         self, mock_reconstruct_prob, mock_dd
@@ -297,7 +301,7 @@ class TestCutWire(unittest.TestCase):
     def test_cutwire_reconstruct_method(self):
         """Testing the CutWire refactoring method."""
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.cut_wire.CutWire"
+            "wy_qcos.transpiler.common.wirecut.cut_wire.CutWire"
         ) as mock_cutwire:
             mock_cutwire_instance = MagicMock()
             mock_cutwire_instance.subcircuits_dict = {
@@ -315,7 +319,7 @@ class TestCutWire(unittest.TestCase):
             )
             mock_cutwire.return_value = mock_cutwire_instance
             with patch(
-                "wy_qcos.transpiler.cmss.wirecut.cut_wire.open",
+                "wy_qcos.transpiler.common.wirecut.cut_wire.open",
                 side_effect=lambda *args, **kwargs: MagicMock(),
             ):
                 results_for_execute = [[0.5, 0.3, 0.2], [0.6, 0.4]]
@@ -325,7 +329,7 @@ class TestCutWire(unittest.TestCase):
     def test_cutwire_generate_all_variants_subcircuits(self):
         """Test generation of all variant subcircuits."""
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.cut_wire.CutWire"
+            "wy_qcos.transpiler.common.wirecut.cut_wire.CutWire"
         ) as mock_cutwire:
             mock_cutwire = MagicMock()
             mock_cutwire.generate_all_variants_subcircuits.return_value = {
@@ -333,7 +337,7 @@ class TestCutWire(unittest.TestCase):
             }
             mock_cutwire.return_value = mock_cutwire
             with patch(
-                "wy_qcos.transpiler.cmss.wirecut.cut_wire.open",
+                "wy_qcos.transpiler.common.wirecut.cut_wire.open",
                 side_effect=lambda *args, **kwargs: MagicMock(),
             ):
                 cut_wire = mock_cutwire
@@ -369,9 +373,9 @@ class TestCutWire(unittest.TestCase):
         mock_wirecut = MockWirecut()
         results_for_execute = [[0.7, 0.3]]
         with (
-            patch("wy_qcos.transpiler.cmss.wirecut.cut_wire.DD") as mock_dd,
+            patch("wy_qcos.transpiler.common.wirecut.cut_wire.DD") as mock_dd,
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.cut_wire."
+                "wy_qcos.transpiler.common.wirecut.cut_wire."
                 "reconstruct_prob_from_bins"
             ) as mock_reconstruct,
         ):

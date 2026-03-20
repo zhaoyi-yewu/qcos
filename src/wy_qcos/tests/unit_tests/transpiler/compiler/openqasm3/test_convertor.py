@@ -18,7 +18,9 @@
 import pytest
 import openqasm3
 
-from wy_qcos.transpiler.cmss.compiler.openqasm3.convertor import ConvertVisitor
+from wy_qcos.transpiler.cmss.compiler.openqasm3.convertor import (
+    ConvertVisitor,
+)
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.common.gate_operation import (
     GateOperation,
@@ -98,7 +100,9 @@ class TestConvertVisitor:
         assert builder._num_qubits == 2
 
         # Test with parameters
-        from wy_qcos.transpiler.cmss.compiler.openqasm3.state import Parameter
+        from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
+            Parameter,
+        )
 
         params = [Parameter("theta"), Parameter("phi")]
         builder = GateBuilder("my_gate", circuit, params)
@@ -110,7 +114,9 @@ class TestConvertVisitor:
         from wy_qcos.transpiler.cmss.compiler.openqasm3.convertor import (
             GateBuilder,
         )
-        from wy_qcos.transpiler.cmss.compiler.openqasm3.state import Parameter
+        from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
+            Parameter,
+        )
 
         circuit = QuantumCircuit(num_qubits=2)
         params = [Parameter("theta"), Parameter("phi")]

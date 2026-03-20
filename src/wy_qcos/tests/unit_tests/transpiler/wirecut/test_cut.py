@@ -20,7 +20,7 @@ from unittest.mock import patch, MagicMock
 
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.common.gate_operation import H, CX, X, Y, Z
-from wy_qcos.transpiler.cmss.wirecut.cut import Cut
+from wy_qcos.transpiler.common.wirecut.cut import Cut
 
 
 class TestCut(unittest.TestCase):
@@ -41,14 +41,14 @@ class TestCut(unittest.TestCase):
         assert self.cut.dag is not None
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.cut.Cut."
+        "wy_qcos.transpiler.common.wirecut.cut.Cut."
         "_initialize_gate_depth_encodings"
     )
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.cut.Cut._assign_qubits_to_subcircuits"
+        "wy_qcos.transpiler.common.wirecut.cut.Cut._assign_qubits_to_subcircuits"
     )
-    @patch("wy_qcos.transpiler.cmss.wirecut.cut.Cut._update_path_elements")
-    @patch("wy_qcos.transpiler.cmss.wirecut.cut.Cut.generate_subcircuits")
+    @patch("wy_qcos.transpiler.common.wirecut.cut.Cut._update_path_elements")
+    @patch("wy_qcos.transpiler.common.wirecut.cut.Cut.generate_subcircuits")
     def test_cut_circuit(
         self,
         mock_generate_subcircuits,
