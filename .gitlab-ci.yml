@@ -59,8 +59,8 @@ docs-linter:
   script:
     - ./cicd/docs-linter.sh
 
-# ut
-ut:
+# ut (qcos)
+ut-qcos:
   stage: functional-tests
   tags:
     - sonic-runner
@@ -71,8 +71,8 @@ ut:
     reports:
       junit: cicd/reports/wy_qcos/report.xml
 
-# code-coverage
-code-coverage:
+# code-coverage (qcos)
+code-coverage-qcos:
   stage: functional-tests
   tags:
     - sonic-runner

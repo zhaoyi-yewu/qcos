@@ -18,15 +18,21 @@
 #include <gtest/gtest.h>
 
 #include "circuit/base_operation.h"
+using namespace qcos;
 
-TEST(BaseOperationTest, test1) {
-  qcos::BaseOperation op("h", {0});
-  EXPECT_EQ(op.targets.size(), 1);
+TEST(BaseOperationTest, SingleQubitNoParam) {
+  BaseOperation op("h", {0});
   EXPECT_EQ(op.name, "h");
+  EXPECT_EQ(op.targets.size(), 1);
+  EXPECT_EQ(op.targets[0], 0);
+  EXPECT_TRUE(op.arg_value.empty());
+  EXPECT_EQ(op.operation_type, OperationType::SINGLE_QUBIT_OPERATION);
 }
 
-TEST(BaseOperationTest, test2) {
-  qcos::BaseOperation op("rx", {1}, 1.57);
-  ASSERT_EQ(op.arg_value.size(), 1);
-  EXPECT_DOUBLE_EQ(op.arg_value[0], 1.57);
+TEST(BaseOperationTest, SingleQubitWithParam) {
+  BaseOperation op("rx", {1}, {3.1415926});
+  EXPECT_EQ(op.name, "rx");
+  EXPECT_EQ(op.targets.size(), 1);
+  EXPECT_EQ(op.arg_value.size(), 1);
+  EXPECT_DOUBLE_EQ(op.arg_value[0], 3.1415926);
 }

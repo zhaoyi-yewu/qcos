@@ -16,3 +16,22 @@
  */
 
 #pragma once
+
+#include "circuit/base_operation.h"
+
+namespace qcos {
+
+class GateOperation : public BaseOperation {
+ public:
+  bool hermitian;
+
+  GateOperation(std::string name_, std::vector<int> targets_,
+                std::vector<double> arg_value_ = {},
+                OperationType op_type_ = OperationType::SINGLE_QUBIT_OPERATION,
+                bool hermitian_ = true);
+
+ private:
+  void validate_params() const;
+};
+
+}  // namespace qcos

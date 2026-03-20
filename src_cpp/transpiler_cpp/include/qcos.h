@@ -22,3 +22,5 @@
 #include "circuit/gate_operation.h"
 // mapping
 #include "mapping/sabre_routing.h"
+// utils
+#include "utils/load_files.h"
