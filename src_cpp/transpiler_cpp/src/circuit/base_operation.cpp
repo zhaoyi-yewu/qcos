@@ -19,21 +19,12 @@
 
 namespace qcos {
 
-BaseOperation::BaseOperation(const std::string& name_,
-                             const std::vector<int>& targets_,
-                             const std::vector<double>& arg_value_,
+BaseOperation::BaseOperation(std::string name_, std::vector<int> targets_,
+                             std::vector<double> arg_value_,
                              OperationType op_type_)
-    : name(name_),
-      targets(targets_),
-      arg_value(arg_value_),
-      operation_type(op_type_) {}
-
-BaseOperation::BaseOperation(const std::string& name_,
-                             const std::vector<int>& targets_,
-                             double single_arg, OperationType op_type_)
-    : name(name_),
-      targets(targets_),
-      arg_value{single_arg},
+    : name(std::move(name_)),
+      targets(std::move(targets_)),
+      arg_value(std::move(arg_value_)),
       operation_type(op_type_) {}
 
 }  // namespace qcos

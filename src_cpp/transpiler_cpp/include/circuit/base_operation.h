@@ -41,14 +41,11 @@ class BaseOperation {
   OperationType operation_type;
 
  public:
-  BaseOperation(
-      const std::string& name_, const std::vector<int>& targets_ = {},
-      const std::vector<double>& arg_value_ = {},
-      OperationType op_type_ = OperationType::SINGLE_QUBIT_OPERATION);
+  virtual ~BaseOperation() = default;
 
   BaseOperation(
-      const std::string& name_, const std::vector<int>& targets_,
-      double single_arg,
+      std::string name_, std::vector<int> targets_,
+      std::vector<double> arg_value_ = {},
       OperationType op_type_ = OperationType::SINGLE_QUBIT_OPERATION);
 };
 
