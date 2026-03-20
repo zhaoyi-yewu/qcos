@@ -4,7 +4,7 @@ requires = ["setuptools>=61.0", "wheel>=0.37.1"]
 
 [project]
 name = "wy-qcos"
-version = "1.0.1"
+version = "1.1.0"
 description = """WuYue QCOS (Quantum Computing Operating System), \
 is an open-source, general-purpose Quantum Computing Operating System \
 designed to provide unified software support for quantum computers of \

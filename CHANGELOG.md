@@ -6,6 +6,24 @@
 
 ### 新增功能
 
+- 无
+
+### 变更功能
+
+- 无
+
+### 修复问题
+
+- 无
+
+### 移除内容
+
+- 无
+
+## [1.1.0] - 2026-03-20
+
+### 新增功能
+
 - 新增可配置的环境变量PREFECT_WORKER_QUERY_SECONDS、PREFECT_WORKER_PREFETCH_SECONDS，加速worker检查新作业的速度
 - 支持自动编译python3环境，可用来兼容部分老旧的CPU
 - 隔离部分驱动依赖库，默认位置: /var/lib/qcos/venv；通过install-venvs.py脚本自动安装各驱动的venv环境
