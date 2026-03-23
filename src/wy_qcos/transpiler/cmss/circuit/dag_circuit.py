@@ -39,7 +39,7 @@ class DAGCircuit:
     The nodes are connected by directed edges that correspond to qubits.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create an empty circuit."""
         self.name = None
 
@@ -571,10 +571,10 @@ class DAGCircuit:
                 input_node._node_id, output_node._node_id
             ):
                 pred = self._multi_graph.find_predecessors_by_edge(
-                    node._node_id, lambda edge, wire=self_wire: edge == wire
+                    node._node_id, lambda edge: edge == self_wire
                 )[0]
                 succ = self._multi_graph.find_successors_by_edge(
-                    node._node_id, lambda edge, wire=self_wire: edge == wire
+                    node._node_id, lambda edge: edge == self_wire
                 )[0]
                 self._multi_graph.add_edge(
                     pred._node_id, succ._node_id, self_wire

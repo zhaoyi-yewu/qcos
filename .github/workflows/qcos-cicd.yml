@@ -228,7 +228,7 @@ jobs:
           cp ./env.template ./.env
           export SANDBOX_IMAGE_VERSION=dev
           ./run-sandbox.sh
-          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/cicd; ./run-tests.sh -c all"
+          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -c all"
           EOF
 
       - name: Upload coverage reports to Codecov
@@ -268,7 +268,7 @@ jobs:
           cp ./env.template ./.env
           export SANDBOX_IMAGE_VERSION=dev
           ./run-sandbox.sh
-          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/cicd; ./run-tests.sh -e all"
+          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -e all"
           EOF
 
       - name: Upload coverage reports to Codecov
