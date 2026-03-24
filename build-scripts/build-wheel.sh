@@ -37,4 +37,3 @@ if [ -n "${PIP_MIRROR}" ]; then
   poetry source -C ${TOP_DIR} remove pip_mirror
 fi
 echo "Dist package dir: ${OUTPUT_DIR}"
-

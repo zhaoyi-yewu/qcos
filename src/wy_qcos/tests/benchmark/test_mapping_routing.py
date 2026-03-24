@@ -51,7 +51,7 @@ class TestMappingRouting:
     def get_coupling_graph(self):
         """Load coupling graph from config file."""
         _, _, coupling_list, _ = load_config(
-            path="./etc/qcos/conf.d/spinq_rpc.toml"
+            config_file_path="./etc/qcos/conf.d/spinq_rpc.toml"
         )
         if coupling_list is None:
             raise ValueError("Coupling list is None")

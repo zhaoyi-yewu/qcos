@@ -12,10 +12,18 @@ endif()
 include_directories(${PROJECT_SOURCE_DIR}/include
                     ${PROJECT_SOURCE_DIR}/third_party
                     ${PROJECT_SOURCE_DIR}/third_party/googletest
-                    ${PROJECT_SOURCE_DIR}/third_party/googletest/include)
+                    ${PROJECT_SOURCE_DIR}/third_party/googletest/include
+                    ${PROJECT_SOURCE_DIR}/third_party/pybind11/include)
 
 set(LIB_GTEST gtest)
+
+option(USE_PYQCOS "use transpiler in python" ON)
+option(USE_STUBGEN "generate pyi files" OFF)
 
 add_subdirectory(third_party)
 add_subdirectory(src)
 add_subdirectory(tests)
+if(USE_PYQCOS)
+    add_subdirectory(qcos_bindings)
+endif(USE_PYQCOS)
+message(STATUS "USE_PYQCOS=" ${USE_PYQCOS})
