@@ -74,6 +74,7 @@ class Client:
         self.device_url = f"{endpoint_url}/device"
         self.transpiler_url = f"{endpoint_url}/transpiler"
         self.job_url = f"{endpoint_url}/job"
+        self.user_url = f"{endpoint_url}/user"
         self.system_url = f"{endpoint_url}/system"
 
     @staticmethod
@@ -598,3 +599,129 @@ class Client:
             self.job_url, method_name, data
         )
         return status_code, reason, text, result
+
+    # [User]
+    def get_user_management_status(self):
+        """Get user management status."""
+        data = {}
+        return Client.call_json_rpc(
+            self.user_url, "get_user_management_status", data
+        )
+
+    def create_user(
+        self,
+        user_name,
+        password,
+        roles,
+        description=None,
+        password_expiry_days=None,
+        is_enabled=True,
+        is_locked=True,
+    ):
+        """Create user."""
+        data = {
+            "user_name": user_name,
+            "password": password,
+            "roles": roles,
+            "is_enabled": is_enabled,
+            "is_locked": is_locked,
+        }
+        if description:
+            data["description"] = description
+        if password_expiry_days is not None:
+            data["password_expiry_days"] = password_expiry_days
+        if is_enabled is not None:
+            data["is_enabled"] = is_enabled
+        if is_locked is not None:
+            data["is_locked"] = is_locked
+        return Client.call_json_rpc(self.user_url, "create_user", data)
+
+    def get_user(self, user_name):
+        """Get user."""
+        data = {"user_name": user_name}
+        return Client.call_json_rpc(self.user_url, "get_user", data)
+
+    def update_user(
+        self,
+        user_name,
+        roles=None,
+        description=None,
+        password_expiry_days=None,
+        is_enabled=None,
+        is_locked=None,
+    ):
+        """Update user."""
+        data = {"user_name": user_name}
+        if roles:
+            data["roles"] = roles
+        if description is not None:
+            data["description"] = description
+        if password_expiry_days is not None:
+            data["password_expiry_days"] = password_expiry_days
+        if is_enabled is not None:
+            data["is_enabled"] = is_enabled
+        if is_locked is not None:
+            data["is_locked"] = is_locked
+        return Client.call_json_rpc(self.user_url, "update_user", data)
+
+    def delete_user(self, user_name):
+        """Delete user."""
+        data = {"user_name": user_name}
+        return Client.call_json_rpc(self.user_url, "delete_user", data)
+
+    def get_users(self):
+        """Get users."""
+        data = {}
+        return Client.call_json_rpc(self.user_url, "get_users", data)
+
+    def create_role(self, role_name, permissions, description=None):
+        """Create role."""
+        data = {"role_name": role_name, "permissions": permissions}
+        if description:
+            data["description"] = description
+        return Client.call_json_rpc(self.user_url, "create_role", data)
+
+    def get_role(self, role_name):
+        """Get role."""
+        data = {"role_name": role_name}
+        return Client.call_json_rpc(self.user_url, "get_role", data)
+
+    def update_role(self, role_name, permissions=None, description=None):
+        """Update role."""
+        data = {"role_name": role_name}
+        if permissions:
+            data["permissions"] = permissions
+        if description is not None:
+            data["description"] = description
+        return Client.call_json_rpc(self.user_url, "update_role", data)
+
+    def delete_role(self, role_name):
+        """Delete role."""
+        data = {"role_name": role_name}
+        return Client.call_json_rpc(self.user_url, "delete_role", data)
+
+    def get_roles(self):
+        """Get roles."""
+        data = {}
+        return Client.call_json_rpc(self.user_url, "get_roles", data)
+
+    def lock_user(self, user_name, action):
+        """Lock or unlock user."""
+        data = {"user_name": user_name, "action": action}
+        return Client.call_json_rpc(self.user_url, "lock_user", data)
+
+    def change_password(self, user_name, old_password, new_password):
+        """Change password."""
+        data = {
+            "user_name": user_name,
+            "old_password": old_password,
+            "new_password": new_password,
+        }
+        return Client.call_json_rpc(self.user_url, "change_password", data)
+
+    def get_login_logs(self, user_name=None, limit=100, offset=0):
+        """Get login logs."""
+        data = {"limit": limit, "offset": offset}
+        if user_name:
+            data["user_name"] = user_name
+        return Client.call_json_rpc(self.user_url, "get_login_logs", data)

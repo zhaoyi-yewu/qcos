@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
+from unittest.mock import patch
+
+from wy_qcos_client.client import Client
+from wy_qcos.tests.unit_tests.task_manager.constant_for_test import (
+    ConstantForTest,
+)
+
+client = Client()
+
+
+class TestClient:
+    @classmethod
+    def setup_class(cls):
+        cls.return_values = [-1, "reason", "text", "result"]
+        cls.job_id = ConstantForTest.job_id
+        cls.job_ids = ConstantForTest.job_ids
+
+    def test_handle_invalid_arguments(self):
+        assert client.handle_invalid_arguments([1, 2]) is None
+
+    @patch.object(Client, "call_json_rpc")
+    def test_submit_job(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.submit_job("msg")
+        assert reason == "reason"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_get_job_status(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.get_job_status(self.job_id)
+        assert text == "text"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_get_jobs(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.get_jobs()
+        assert result == "result"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_cancel_jobs(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.cancel_jobs(self.job_ids)
+        assert status_code == -1
+
+    @patch.object(Client, "call_json_rpc")
+    def test_delete_jobs(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.delete_jobs(self.job_ids)
+        assert reason == "reason"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_set_job_results(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.set_job_results(
+            self.job_id, "result"
+        )
+        assert text == "text"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_get_job_results(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.get_job_results(self.job_id)
+        assert status_code == -1
+
+    @patch.object(Client, "call_json_rpc")
+    def test_update_job(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.update_job("msg")
+        assert reason == "reason"

@@ -15,10 +15,26 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from . import driver
-from . import device
-from . import transpiler
-from . import job
-from . import system
-from . import version
-from . import user
+from unittest.mock import patch
+
+from wy_qcos_client.client import Client
+
+client = Client()
+
+
+class TestClient:
+    @classmethod
+    def setup_class(cls):
+        cls.return_values = [-1, "reason", "text", "result"]
+
+    @patch.object(Client, "call_json_rpc")
+    def test_get_devices(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.get_devices()
+        assert status_code == -1
+
+    @patch.object(Client, "call_json_rpc")
+    def test_get_device(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.get_device("device")
+        assert reason == "reason"

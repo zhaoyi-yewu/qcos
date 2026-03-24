@@ -66,6 +66,13 @@ class Config:
     # sqlite: "sqlite:////var/qcos/db/qcos.db"
     QCOS_DATABASE_CONNECTION_URL = "fake"
 
+    # [USERS]
+    ENABLE_USER_MGMT = True
+    PASSWORD_EXPIRY_DAYS = 90
+    MAX_LOGIN_ATTEMPTS = 5
+    LOCKOUT_DURATION_MINUTES = 30
+    ADMIN_PASSWORD = None
+
     # [LOG]
     # api log file
     API_LOG_FILE = "/var/log/qcos/qcos-api.log"
@@ -114,6 +121,7 @@ class Config:
         "API_SERVER",
         "REDIS",
         "DATABASE",
+        "USERS",
         "LOG",
         "SSL",
         "PREFECT",

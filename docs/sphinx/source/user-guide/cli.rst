@@ -220,7 +220,7 @@
 .. code-block:: shell
 
    # 查询作业列表
-   usage: qcos-cli list-job [-h] [-f {csv,json,table,value,yaml}] [-c COLUMN] [--quote {all,minimal,none,nonnumeric}] [--noindent]
+   usage: qcos-cli list-jobs [-h] [-f {csv,json,table,value,yaml}] [-c COLUMN] [--quote {all,minimal,none,nonnumeric}] [--noindent]
                             [--max-width <integer>] [--fit-width] [--print-empty] [--sort-column SORT_COLUMN] [--sort-ascending | --sort-descending]
 
    Get jobs.
@@ -576,3 +576,193 @@
 
    # 获取设备信息详情
    qcos-cli get-device dummy
+
+用户/角色管理命令
+----------------------
+
+用户管理命令包含用户账户的增删改查，角色的增删改查等，密码的修改操作。
+
+用户创建
+***************
+
+创建用户的操作命令
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 创建用户
+   usage: qcos-cli create-user [-h] [--role-name ROLE_NAMES] [--description DESCRIPTION] [--password-expiry-days PASSWORD_EXPIRY_DAYS] [--disable] [--lock] username password
+
+   Create user.
+
+   positional arguments:
+     username      Username
+     password      Password
+
+   options:
+     -h, --help            show this help message and exit
+     --role-name ROLE_NAMES
+                           Role name (can be specified multiple times)
+     --description DESCRIPTION
+                           Description
+     --password-expiry-days PASSWORD_EXPIRY_DAYS
+                           Password expiry days (optional, 0: never expired)
+     --disable             Disable user account upon creation
+     --lock                Lock user account upon creation
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 创建一个普通用户
+   qcos-cli create-user alice mypassword
+
+   # 创建一个管理员用户
+   qcos-cli create-user bob mypassword --role-name admin
+
+   # 创建一个禁用的用户
+   qcos-cli create-user charlie mypassword --disable
+
+   # 创建一个锁定的用户
+   qcos-cli create-user dave mypassword --lock
+
+   # 创建一个密码永不过期的用户
+   qcos-cli create-user eve mypassword --password-expiry-days 0
+
+   # 创建一个完整配置的用户
+   qcos-cli create-user frank mypassword --role-name admin --description "管理员用户" --password-expiry-days 90 --disable --lock
+
+用户列表查询
+***************
+
+查询用户列表的操作命令
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 查询用户列表
+   usage: qcos-cli list-users [-h] [-f {csv,json,table,value,yaml}] [-c COLUMN] [--quote {all,minimal,none,nonnumeric}] [--noindent]
+                              [--max-width <integer>] [--fit-width] [--print-empty] [--sort-column SORT_COLUMN] [--sort-ascending | --sort-descending]
+
+   Get users.
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 查询用户列表
+   qcos-cli list-users
+
+用户详情查询
+***************
+
+查询用户详情的操作命令
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 查询用户详情
+   usage: qcos-cli get-user [-h] [-f {json,shell,table,value,yaml}] [-c COLUMN] [--noindent] [--prefix PREFIX] [--max-width <integer>] [--fit-width]
+                            [--print-empty]
+                            username
+
+   Get user.
+
+   positional arguments:
+     username      Username
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 查询用户test的详情
+   qcos-cli get-user test
+
+用户信息更新
+***************
+
+更新用户的操作命令
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 更新用户
+   usage: qcos-cli update-user [-h] [--role-name ROLE_NAMES] [--password-expiry-days PASSWORD_EXPIRY_DAYS] [--description DESCRIPTION] [--enable] [--disable] [--lock] [--unlock] username
+
+   Update user.
+
+   positional arguments:
+     username      Username
+
+   options:
+     -h, --help            show this help message and exit
+     --role-name ROLE_NAMES
+                           Role names (can be specified multiple times, default: user)
+     --password-expiry-days PASSWORD_EXPIRY_DAYS
+                           Password expiry days (optional, 0: never expired)
+     --description DESCRIPTION
+                           Description
+     --enable              Enable user account
+     --disable             Disable user account
+     --lock                Lock user account
+     --unlock              Unlock user account
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 更新用户角色和密码过期天数
+   qcos-cli update-user --role-name admin --password-expiry-days 80 test
+
+   # 启用用户账户
+   qcos-cli update-user --enable test
+
+   # 禁用用户账户
+   qcos-cli update-user --disable test
+
+   # 锁定用户账户
+   qcos-cli update-user --lock test
+
+   # 解锁用户账户
+   qcos-cli update-user --unlock test
+
+   # 完整的用户更新示例
+   qcos-cli update-user --role-name admin --password-expiry-days 90 --description "更新的管理员用户" --enable --unlock test
+
+用户删除
+***************
+
+删除用户的操作命令
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 删除用户
+   usage: qcos-cli delete-user [-h] username
+
+   Delete user.
+
+   positional arguments:
+     username  Username
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 删除用户：test
+   qcos-cli delete-user test

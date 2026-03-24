@@ -39,3 +39,6 @@ device_api_v1 = jsonrpc.Entrypoint(
 transpiler_api_v1 = jsonrpc.Entrypoint(
     f"{BASE_ENDPOINT}/transpiler", common_dependencies=[Depends(auth)]
 )
+user_api_v1 = jsonrpc.Entrypoint(
+    f"{BASE_ENDPOINT}/user", common_dependencies=[Depends(auth)]
+)

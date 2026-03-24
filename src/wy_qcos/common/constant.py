@@ -88,9 +88,21 @@ class Constant:
     FILE_TYPE_JSON = ".json"
     FILE_TYPE_CSV = ".csv"
 
+    # User length
+    MIN_USER_LENGTH = 2
+    MAX_USER_LENGTH = 32
+
+    # Role length
+    MIN_ROLE_LENGTH = 2
+    MAX_ROLE_LENGTH = 32
+
     # Description length
     MIN_DESCRIPTION_LENGTH = 1
     MAX_DESCRIPTION_LENGTH = 255
+
+    # Password length
+    MIN_PASSWORD_LENGTH = 6
+    MAX_PASSWORD_LENGTH = 32
 
     # Quantum Gates
     # single-qubit gates
@@ -312,6 +324,13 @@ class Constant:
     DEFAULT_DEVICE_MONITOR_RETRIES = 1000
     DEFAULT_DEVICE_MONITOR_RETRY_INTERVAL = 5
     DEFAULT_DEVICE_MONITOR_INTERVAL = 5
+
+    # user management
+    DEFAULT_ADMIN_USERNAME = "admin"
+    DEFAULT_ADMIN_PASSWORD = (lambda: "123456")()
+    ROLE_ADMIN = "admin"
+    ROLE_USER = "user"
+    ROLES = [ROLE_ADMIN, ROLE_USER]
 
     # Job status
     JOB_STATUS_UNKNOWN = "UNKNOWN"

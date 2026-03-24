@@ -30,6 +30,7 @@ from wy_qcos.api.posiq.routes_jsonrpc.routes import (
     device_api_v1,
     transpiler_api_v1,
     job_api_v1,
+    user_api_v1,
     system_api_v1,
 )
 
@@ -87,6 +88,7 @@ app.bind_entrypoint(driver_api_v1)
 app.bind_entrypoint(device_api_v1)
 app.bind_entrypoint(transpiler_api_v1)
 app.bind_entrypoint(job_api_v1)
+app.bind_entrypoint(user_api_v1)
 app.bind_entrypoint(system_api_v1)
 
 # Monkey Patch uvicorn signal handler to detect the app is shutting down
