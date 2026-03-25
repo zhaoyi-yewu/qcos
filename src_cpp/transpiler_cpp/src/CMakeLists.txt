@@ -4,7 +4,10 @@ add_library(${PROJECT_NAME} SHARED
                             circuit/base_operation.cpp
                             circuit/gate_operation.cpp
                             mapping/sabre_routing.cpp
-                            utils/load_files.cpp)
+                            utils/load_files.cpp
+                            mapping/mcts_routing.cpp
+                            )
+
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/include
