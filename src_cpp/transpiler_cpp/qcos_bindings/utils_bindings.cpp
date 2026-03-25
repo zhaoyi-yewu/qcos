@@ -26,21 +26,23 @@ using namespace qcos;
 void bind_utils(py::module_& m) {
   m.def("load_config_file", &load_config_file, py::arg("filename"),
         R"pbdoc(
-          从配置文件中加载量子芯片耦合列表
+从配置文件中加载量子芯片耦合列表.
 
-          Args:
-              filename (str): 配置文件路径
-          Returns:
-              List[Tuple[int,int]]: 耦合对列表
-          )pbdoc");
+Args:
+    filename (str): 配置文件路径
+
+Returns:
+    list[tuple[int,int]]: 耦合对列表
+)pbdoc");
 
   m.def("load_qasm_to_gate_list", &load_qasm_to_gate_list, py::arg("filename"),
         R"pbdoc(
-          将QASM文件加载为门操作列表
+将QASM文件加载为门操作列表.
 
-          Args:
-              filename (str): QASM文件路径
-          Returns:
-              List[GateOperation]: 解析得到的门操作列表
-          )pbdoc");
+Args:
+    filename (str): QASM文件路径
+
+Returns:
+    list[GateOperation]: 解析得到的门操作列表
+)pbdoc");
 }

@@ -31,14 +31,17 @@ void bind_mapping(py::module_& m) {
            py::arg("coupling_list"), py::arg("extention_size") = 20,
            py::arg("weight") = 0.5, py::arg("decay") = 0.001,
            R"pbdoc(
-            SABRE constructor.
+Construct a SABRE router.
 
-            Args:
-                coupling_list (List[Tuple[int,int]]): Physical qubit connectivity.
-                extention_size (int, optional): Lookahead set size. Default is 20.
-                weight (float, optional): Front layer / lookahead weight. Default is 0.5.
-                decay (float, optional): SWAP decay coefficient. Default is 0.001.
-            )pbdoc")
+Args:
+    coupling_list (list[tuple[int, int]]): Physical qubit connectivity
+        graph.
+    extention_size (int, optional): Size of the lookahead set.
+        Defaults to 20.
+    weight (float, optional): Weight between front layer and lookahead
+        cost. Defaults to 0.5.
+    decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
+)pbdoc")
 
       .def("execute",
            static_cast<void (SABRE::*)(const std::vector<GateOperation>&,
@@ -46,23 +49,22 @@ void bind_mapping(py::module_& m) {
                &SABRE::execute),
            py::arg("gates_list"), py::arg("initial_l2p") = std::vector<int>{},
            R"pbdoc(
-            Execute SABRE routing.
+Execute SABRE routing.
 
-            Args:
-                gates_list (List[GateOperation]):
-                    Logical gate sequence.
-                initial_l2p (List[int], optional):
-                    Initial logical-to-physical mapping. Defaults to empty.
+Args:
+    gates_list (list[GateOperation]): Logical gate sequence.
+    initial_l2p (list[int], optional): Initial logical-to-physical
+        mapping. Defaults to empty.
 
-            Returns:
-                None
-            )pbdoc")
+Returns:
+    None
+)pbdoc")
 
       .def("get_physical_gates", &SABRE::get_physical_gates,
            R"pbdoc(
-            Get the sequence of mapped physical gates after routing.
+Get the sequence of mapped physical gates after routing.
 
-            Returns:
-                List[GateOperation]: The physical gate sequence.
-            )pbdoc");
+Returns:
+    list[GateOperation]: The physical gate sequence.
+)pbdoc");
 }

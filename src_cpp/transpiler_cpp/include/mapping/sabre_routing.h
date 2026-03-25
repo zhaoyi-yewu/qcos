@@ -29,6 +29,14 @@
 
 namespace qcos {
 
+// forward declaration
+class SABRE;
+
+bool validate_routing(const SABRE& sabre,
+                      const std::vector<GateOperation>& logical_gates,
+                      const std::vector<GateOperation>& physical_gates,
+                      std::vector<int>& initial_l2p);
+
 /**
  * @brief SABRE算法中的节点结构
  *
@@ -90,7 +98,7 @@ class SABRE {
    * @return std::vector<GateOperation> 物理门操作列表
    */
   inline std::vector<GateOperation> get_physical_gates() const {
-    return phy_exe_gates;
+    return phy_exe_gates_;
   }
 
   friend bool validate_routing(
@@ -99,19 +107,19 @@ class SABRE {
       std::vector<int>& initial_l2p);
 
  private:
-  int phy_qubit_num;   ///< 物理量子比特总数
-  int extention_size;  ///< 扩展深度
-  double weight;       ///< 扩展层权重
-  double decay;        ///< SWAP衰减因子
+  int phy_qubit_num_;   ///< 物理量子比特总数
+  int extention_size_;  ///< 扩展深度
+  double weight_;       ///< 扩展层权重
+  double decay_;        ///< SWAP衰减因子
   std::unordered_map<int, std::unordered_set<int>>
-      adj_list;                                    ///< 物理耦合图邻接表
-  std::vector<std::vector<int>> dist;              ///< 最短路径距离矩阵
-  std::vector<int> cur_l2p;                        ///< 当前逻辑到物理映射
-  std::vector<int> cur_p2l;                        ///< 当前物理到逻辑映射
-  std::vector<std::shared_ptr<Node>> front_layer;  ///< 前沿层节点列表
-  std::vector<GateOperation> phy_exe_gates;        ///< 映射后的物理门序列
-  std::vector<int> logic2phy;                      ///< 最终逻辑到物理映射
-  std::vector<int> phy2logic;                      ///< 最终物理到逻辑映射
+      adj_list_;                                    ///< 物理耦合图邻接表
+  std::vector<std::vector<int>> dist_;              ///< 最短路径距离矩阵
+  std::vector<int> cur_l2p_;                        ///< 当前逻辑到物理映射
+  std::vector<int> cur_p2l_;                        ///< 当前物理到逻辑映射
+  std::vector<std::shared_ptr<Node>> front_layer_;  ///< 前沿层节点列表
+  std::vector<GateOperation> phy_exe_gates_;        ///< 映射后的物理门序列
+  std::vector<int> logic2phy_;                      ///< 最终逻辑到物理映射
+  std::vector<int> phy2logic_;                      ///< 最终物理到逻辑映射
 
   /**
    * @brief 构建物理耦合图

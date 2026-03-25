@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-add_library(${PROJECT_NAME} SHARED
+add_library(${LIB_TRANSPILER} SHARED
                             circuit/base_operation.cpp
                             circuit/gate_operation.cpp
                             mapping/sabre_routing.cpp
@@ -9,9 +9,9 @@ add_library(${PROJECT_NAME} SHARED
                             )
 
 
-target_include_directories(${PROJECT_NAME} PUBLIC
+target_include_directories(${LIB_TRANSPILER} PUBLIC
     ${PROJECT_SOURCE_DIR}/include
 )
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC $<$<CONFIG:Debug>:LOG_DEBUG>)
-target_compile_definitions(${PROJECT_NAME} PUBLIC $<$<CONFIG:Release>:TEST_BENCH>)
+target_compile_definitions(${LIB_TRANSPILER} PUBLIC $<$<CONFIG:Debug>:LOG_DEBUG>)
+target_compile_definitions(${LIB_TRANSPILER} PUBLIC $<$<CONFIG:Release>:TEST_BENCH>)
