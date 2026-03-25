@@ -1,12 +1,12 @@
-设备引擎
-========
+设备监控引擎
+=============
 
-设备引擎（device engine）主要用来执行周期性任务获取设备的运行信息，包括状态等。
+设备监控引擎（device monitor engine）主要用来执行周期性任务获取设备的运行信息，包括状态等。
 
 操作系统启动后，每个设备都会自动生成一个 Prefect 作业，以进程形式运行。
 
-设备引擎调用驱动
-----------------
+设备监控引擎调用驱动
+---------------------
 
 引擎层核心调用逻辑如下：
 
@@ -21,7 +21,7 @@
         time.sleep(interval)
 
 Device Manager 订阅 Redis
---------------------------
+----------------------------
 
 Device Manager 调用逻辑如下：
 
@@ -42,4 +42,3 @@ Device Manager 调用逻辑如下：
         device_info = json.loads(message["data"])
         status = device_info["status"]
         device.set_status(status)      # 更新设备信息
-

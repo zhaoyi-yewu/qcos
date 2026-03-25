@@ -8,7 +8,8 @@
 
    jobs
    job-engine
-   device-engine
+   device-monitor-engine
+   device-mgr-engine
    driver
    transpiler
    instruction-set
