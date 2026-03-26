@@ -105,7 +105,8 @@ class DriverBase:
         self.supported_transpilers = []
         # enable device monitor
         self.enable_device_monitor = True
-
+        # enable device manager
+        self.enable_device_mgr = False
         # task stage to track progress
         # task stages and percentages
         self.task_stages = {
@@ -213,6 +214,7 @@ class DriverBase:
             f"results_fetch_mode: {self.results_fetch_mode}",
             f"max_qubits: {self.max_qubits}",
             f"enable_device_monitor: {self.enable_device_monitor}",
+            f"enable_device_mgr: {self.enable_device_mgr}",
         ]
         return "\n".join(show_list)
 
@@ -561,28 +563,28 @@ class DriverBase:
         """
         return self.driver_options
 
-    def calibrate(self, options):
+    def calibrate(self, data):
         """Calibrate device.
 
         Args:
-            options: calibration options
+            data: calibration data
         """
         logger.info("Start to calibrate")
 
-    def set_device_options(self, device_options):
+    def set_device_options(self, data):
         """Set Device options.
 
         Args:
-            device_options: Device options
+            data: Device options data
         """
         results = None
         return results
 
-    def enable_and_disable_qubit(self, qubits):
-        """Enable and Disable Qubit.
+    def get_device_options(self, data):
+        """Get Device options.
 
         Args:
-            qubits: qubits
+            data: data
         """
         results = None
         return results

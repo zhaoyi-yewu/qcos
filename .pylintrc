@@ -642,6 +642,7 @@ check-str-concat-over-line-jumps=no
 
 
 [TYPECHECK]
+extension-pkg-allow-list=wy_qcos.transpiler.high_performance
 
 # List of decorators that produce context managers, such as
 # contextlib.contextmanager. Add to this list to register other decorators that

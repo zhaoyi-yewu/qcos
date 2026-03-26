@@ -151,7 +151,7 @@ class DeviceManager:
             thread.daemon = True
             thread.start()
             # Show driver info
-            logger.info(f"\n{device.get_device_info()}")
+            logger.info(f"\n{device.show_device_info()}")
 
     def has_device(self, device_name):
         """Has device.
@@ -186,11 +186,13 @@ class DeviceManager:
     def subscribe_device_info(self, redis_instance, device):
         """Subscribe device info by redis."""
         pubsub = redis_instance.pubsub()
-        channel_name = (
+        running_info_channel = (
             device.name + Constant.DEVICE_RUNNING_INFO_REDIS_CHANNEL_SUFFIX
         )
-        pubsub.subscribe(channel_name)
+        pubsub.subscribe(running_info_channel)
         for message in pubsub.listen():
             if message.get("type") == "message":
-                device_running_info = json.loads(message.get("data"))
-                device.set_device_running_info(device_running_info)
+                channel = message.get("channel").decode()
+                if channel == running_info_channel:
+                    device_running_info = json.loads(message.get("data"))
+                    device.set_device_running_info(device_running_info)

@@ -22,7 +22,7 @@ import math
 from unittest.mock import patch, MagicMock
 
 
-from wy_qcos.transpiler.cmss.wirecut.dd import (
+from wy_qcos.transpiler.common.wirecut.dd import (
     DD,
     reconstruct_prob_from_bins,
     merge_prob_vector,
@@ -65,10 +65,10 @@ class TestDD(unittest.TestCase):
         self.max_depths = 3
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.dd."
+        "wy_qcos.transpiler.common.wirecut.dd."
         "parse_results_from_hardware_service"
     )
-    @patch("wy_qcos.transpiler.cmss.wirecut.dd.asign_probability")
+    @patch("wy_qcos.transpiler.common.wirecut.dd.asign_probability")
     def test_dd_init(self, mock_asign_probability, mock_parse_results):
         """Testing DD class initialization."""
         mock_parse_results.return_value = {
@@ -97,10 +97,10 @@ class TestDD(unittest.TestCase):
         assert isinstance(dd.subcircuit_entry_probs, dict)
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.dd."
+        "wy_qcos.transpiler.common.wirecut.dd."
         "parse_results_from_hardware_service"
     )
-    @patch("wy_qcos.transpiler.cmss.wirecut.dd.asign_probability")
+    @patch("wy_qcos.transpiler.common.wirecut.dd.asign_probability")
     def test_init_data(self, mock_asign_probability, mock_parse_results):
         """Testing the init_data method."""
         mock_parse_results.return_value = {}
@@ -119,10 +119,10 @@ class TestDD(unittest.TestCase):
         assert isinstance(dd.subcircuit_entry_probs, dict)
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.dd."
+        "wy_qcos.transpiler.common.wirecut.dd."
         "parse_results_from_hardware_service"
     )
-    @patch("wy_qcos.transpiler.cmss.wirecut.dd.asign_probability")
+    @patch("wy_qcos.transpiler.common.wirecut.dd.asign_probability")
     def test_distribute_load(self, mock_asign_probability, mock_parse_results):
         """Test the _distribute_load method."""
         mock_parse_results.return_value = {}
@@ -145,10 +145,10 @@ class TestDD(unittest.TestCase):
             assert loads[idx] <= capacities[idx]
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.dd."
+        "wy_qcos.transpiler.common.wirecut.dd."
         "parse_results_from_hardware_service"
     )
-    @patch("wy_qcos.transpiler.cmss.wirecut.dd.asign_probability")
+    @patch("wy_qcos.transpiler.common.wirecut.dd.asign_probability")
     def test_assign_probabilities(
         self, mock_asign_probability, mock_parse_results
     ):
@@ -202,11 +202,11 @@ class TestDD(unittest.TestCase):
         np.testing.assert_almost_equal(result[0], 1.0)
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.dd."
+        "wy_qcos.transpiler.common.wirecut.dd."
         "parse_results_from_hardware_service"
     )
-    @patch("wy_qcos.transpiler.cmss.wirecut.dd.asign_probability")
-    @patch("wy_qcos.transpiler.cmss.wirecut.dd.Reconstructor")
+    @patch("wy_qcos.transpiler.common.wirecut.dd.asign_probability")
+    @patch("wy_qcos.transpiler.common.wirecut.dd.Reconstructor")
     def test_dd_main_flow(
         self, mock_reconstructor, mock_asign_probability, mock_parse_results
     ):
@@ -346,11 +346,11 @@ class TestDD(unittest.TestCase):
         """Testing the DD workflow at different depths."""
         with (
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd."
+                "wy_qcos.transpiler.common.wirecut.dd."
                 "parse_results_from_hardware_service"
             ) as mock_parse_results,
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.asign_probability"
+                "wy_qcos.transpiler.common.wirecut.dd.asign_probability"
             ) as mock_asign_probability,
         ):
             mock_parse_results.return_value = {0: {}, 1: {}}
@@ -376,14 +376,14 @@ class TestDD(unittest.TestCase):
         """Testing the structure of DD bins."""
         with (
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd."
+                "wy_qcos.transpiler.common.wirecut.dd."
                 "parse_results_from_hardware_service"
             ) as mock_parse_results,
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.asign_probability"
+                "wy_qcos.transpiler.common.wirecut.dd.asign_probability"
             ) as mock_asign_probability,
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.Reconstructor"
+                "wy_qcos.transpiler.common.wirecut.dd.Reconstructor"
             ) as mock_reconstructor,
         ):
             mock_parse_results.return_value = {0: {}, 1: {}}
@@ -410,11 +410,11 @@ class TestDD(unittest.TestCase):
         """Testing DD in-memory computing."""
         with (
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd."
+                "wy_qcos.transpiler.common.wirecut.dd."
                 "parse_results_from_hardware_service"
             ) as mock_parse_results,
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.asign_probability"
+                "wy_qcos.transpiler.common.wirecut.dd.asign_probability"
             ) as mock_asign_probability,
         ):
             mock_parse_results.return_value = {}
@@ -435,14 +435,14 @@ class TestDD(unittest.TestCase):
         """Testing the complete workflow of DD."""
         with (
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd."
+                "wy_qcos.transpiler.common.wirecut.dd."
                 "parse_results_from_hardware_service"
             ) as mock_parse_results,
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.asign_probability"
+                "wy_qcos.transpiler.common.wirecut.dd.asign_probability"
             ) as mock_asign_probability,
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.Reconstructor"
+                "wy_qcos.transpiler.common.wirecut.dd.Reconstructor"
             ) as mock_reconstructor,
         ):
             mock_parse_results.return_value = {
@@ -478,11 +478,11 @@ class TestDD(unittest.TestCase):
         """Testing the DD probability allocation method."""
         with (
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd."
+                "wy_qcos.transpiler.common.wirecut.dd."
                 "parse_results_from_hardware_service"
             ) as mock_parse_results,
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.asign_probability"
+                "wy_qcos.transpiler.common.wirecut.dd.asign_probability"
             ) as mock_asign_probability,
         ):
             mock_parse_results.return_value = {
@@ -505,11 +505,11 @@ class TestDD(unittest.TestCase):
         """Testing DD initialization under different parameters."""
         with (
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd."
+                "wy_qcos.transpiler.common.wirecut.dd."
                 "parse_results_from_hardware_service"
             ) as mock_parse_results,
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.asign_probability"
+                "wy_qcos.transpiler.common.wirecut.dd.asign_probability"
             ) as mock_asign_probability,
         ):
             mock_parse_results.return_value = {}
@@ -536,11 +536,11 @@ class TestDD(unittest.TestCase):
     def test_dd_recursive_expansion(self):
         """Testing DD's recursive expansion method."""
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.dd."
+            "wy_qcos.transpiler.common.wirecut.dd."
             "parse_results_from_hardware_service"
         ) as mock_parse_results:
             with patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.asign_probability"
+                "wy_qcos.transpiler.common.wirecut.dd.asign_probability"
             ) as mock_asign_probability:
                 mock_parse_results.return_value = {
                     0: {"parsed_result_0": "data_0"},
@@ -564,7 +564,7 @@ class TestDD(unittest.TestCase):
                         1: {"config2": np.array([0.3, 0.7, 0.0, 0.0])},
                     }
                     with patch(
-                        "wy_qcos.transpiler.cmss.wirecut.dd.Reconstructor"
+                        "wy_qcos.transpiler.common.wirecut.dd.Reconstructor"
                     ) as mock_reconstructor:
                         mock_reconstructor_instance = MagicMock()
                         mock_reconstructor_instance.reconstructed_prob = (
@@ -580,11 +580,11 @@ class TestDD(unittest.TestCase):
     def test_dd_merge_states_method(self):
         """Test the _merge_states method of DD."""
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.dd."
+            "wy_qcos.transpiler.common.wirecut.dd."
             "parse_results_from_hardware_service"
         ) as mock_parse_results:
             with patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.asign_probability"
+                "wy_qcos.transpiler.common.wirecut.dd.asign_probability"
             ) as mock_asign_probability:
                 mock_parse_results.return_value = {}
                 mock_asign_probability.return_value = {}
@@ -613,11 +613,11 @@ class TestDD(unittest.TestCase):
     def test_dd_distribute_load_edge_cases_1(self):
         """Test the boundary cases of the _distribute_load method in DD."""
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.dd."
+            "wy_qcos.transpiler.common.wirecut.dd."
             "parse_results_from_hardware_service"
         ) as mock_parse_results:
             with patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.asign_probability"
+                "wy_qcos.transpiler.common.wirecut.dd.asign_probability"
             ) as mock_asign_probability:
                 mock_parse_results.return_value = {}
                 mock_asign_probability.return_value = {}
@@ -641,11 +641,11 @@ class TestDD(unittest.TestCase):
         """Testing the boundary conditions of load distribution."""
         with (
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd."
+                "wy_qcos.transpiler.common.wirecut.dd."
                 "parse_results_from_hardware_service"
             ) as mock_parse_results,
             patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.asign_probability"
+                "wy_qcos.transpiler.common.wirecut.dd.asign_probability"
             ) as mock_asign_probability,
         ):
             mock_parse_results.return_value = {}
@@ -680,11 +680,11 @@ class TestDD(unittest.TestCase):
     def test_dd_schedule_state_recursive(self):
         """Test the recursive condition of DD's schedule_state."""
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.dd."
+            "wy_qcos.transpiler.common.wirecut.dd."
             "parse_results_from_hardware_service"
         ) as mock_parse_results:
             with patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.asign_probability"
+                "wy_qcos.transpiler.common.wirecut.dd.asign_probability"
             ) as mock_asign_probability:
                 mock_parse_results.return_value = {}
                 mock_asign_probability.return_value = {}
@@ -701,7 +701,7 @@ class TestDD(unittest.TestCase):
                         1: {"config2": np.array([0.3, 0.7])},
                     }
                     with patch(
-                        "wy_qcos.transpiler.cmss.wirecut.dd.Reconstructor"
+                        "wy_qcos.transpiler.common.wirecut.dd.Reconstructor"
                     ) as mock_reconstructor:
                         mock_reconstructor = MagicMock()
                         mock_reconstructor.reconstructed_prob = np.array([
@@ -721,11 +721,11 @@ class TestDD(unittest.TestCase):
     def test_dd_memory_qubits_calculation(self):
         """Testing the calculation of memory qubit count in DD."""
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.dd."
+            "wy_qcos.transpiler.common.wirecut.dd."
             "parse_results_from_hardware_service"
         ) as mock_parse_results:
             with patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.asign_probability"
+                "wy_qcos.transpiler.common.wirecut.dd.asign_probability"
             ) as mock_asign_probability:
                 mock_parse_results.return_value = {}
                 mock_asign_probability.return_value = {}
@@ -743,11 +743,11 @@ class TestDD(unittest.TestCase):
     def test_dd_capacities_calculation(self):
         """Testing the capacity calculation of DD."""
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.dd."
+            "wy_qcos.transpiler.common.wirecut.dd."
             "parse_results_from_hardware_service"
         ) as mock_parse_results:
             with patch(
-                "wy_qcos.transpiler.cmss.wirecut.dd.asign_probability"
+                "wy_qcos.transpiler.common.wirecut.dd.asign_probability"
             ) as mock_asign_probability:
                 mock_parse_results.return_value = {}
                 mock_asign_probability.return_value = {}

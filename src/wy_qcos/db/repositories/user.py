@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from wy_qcos.db.models import User
 from wy_qcos.db.repositories import BaseRepository
 from wy_qcos.db.utils import db_utils
-from wy_qcos.api import schemas
+from wy_qcos.api.schemas.user import CreateUserRequest
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class UserRepository(BaseRepository):
     def __init__(self, db_session: Session) -> None:
         super().__init__(db_session)
 
-    def create_user(self, user_create: schemas.CreateUserRequest):
+    def create_user(self, user_create: CreateUserRequest):
         """Create a new user."""
         user_create_dict = user_create.model_dump()
         user_create_dict["hashed_password"] = db_utils.hash_password(
@@ -49,9 +49,7 @@ class UserRepository(BaseRepository):
     def get_users(self):
         return self.get_all(User)
 
-    def update_user(
-        self, user_id: UUID, user_update: schemas.UpdateUserRequest
-    ):
+    def update_user(self, user_id: UUID, user_update: CreateUserRequest):
         """Update a user."""
         user_update_dict = user_update.model_dump()
         if user_update_dict.get("password"):

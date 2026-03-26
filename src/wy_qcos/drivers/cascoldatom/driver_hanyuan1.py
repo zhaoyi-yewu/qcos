@@ -82,6 +82,7 @@ class DriverHanyuan1(DriverBase):
             self.TASK_STAGE_GET_RESULTS: 95,
             self.TASK_STAGE_COMPLETE: 100,
         }
+        self.enable_device_mgr = True
 
     def init_driver(self):
         """Init driver."""
@@ -1022,14 +1023,14 @@ class DriverHanyuan1(DriverBase):
         # handle double_qubit_prop
         double_qubit_prop = None
 
-        # handle tupo_configs
-        tupo_configs = None
+        # handle topo_configs
+        topo_configs = None
 
         device_running_info["details"]["single_qubit_prop"] = (
             single_qubit_prop if single_qubit_prop else None
         )
         device_running_info["details"]["double_qubit_prop"] = double_qubit_prop
 
-        device_running_info["details"]["tupo_configs"] = tupo_configs
+        device_running_info["details"]["topo_configs"] = topo_configs
 
         return device_running_info

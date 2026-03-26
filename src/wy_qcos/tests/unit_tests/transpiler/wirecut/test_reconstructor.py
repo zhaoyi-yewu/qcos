@@ -20,7 +20,7 @@ import numpy as np
 
 from unittest.mock import patch, MagicMock
 
-from wy_qcos.transpiler.cmss.wirecut.reconstructor import (
+from wy_qcos.transpiler.common.wirecut.reconstructor import (
     Reconstructor,
     parse_results_from_hardware_service,
 )
@@ -53,7 +53,7 @@ class TestReconstructor(unittest.TestCase):
         }
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+        "wy_qcos.transpiler.common.wirecut.reconstructor."
         "Reconstructor.reconstruct"
     )
     def test_reconstructor_init(self, mock_reconstruct):
@@ -69,7 +69,7 @@ class TestReconstructor(unittest.TestCase):
         mock_reconstruct.assert_called_once()
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+        "wy_qcos.transpiler.common.wirecut.reconstructor."
         "Reconstructor.reconstruct"
     )
     def test_init_data(self, mock_reconstruct):
@@ -86,7 +86,7 @@ class TestReconstructor(unittest.TestCase):
         assert reconstructor.num_qubits == 4
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+        "wy_qcos.transpiler.common.wirecut.reconstructor."
         "Reconstructor.reconstruct"
     )
     def test_get_measure_config_length(self, mock_reconstruct):
@@ -100,14 +100,14 @@ class TestReconstructor(unittest.TestCase):
         assert length == 4
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+        "wy_qcos.transpiler.common.wirecut.reconstructor."
         "Reconstructor.compute_tensor_product_for_bases"
     )
     def test_reconstruct(self, mock_compute_tensor):
         """Test the reconstruct method."""
         mock_compute_tensor.return_value = np.array([0.1, 0.2, 0.3, 0.4])
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+            "wy_qcos.transpiler.common.wirecut.reconstructor."
             "Reconstructor.reconstruct"
         ) as mock_reconstruct:
             mock_reconstruct.return_value = np.array([0.25, 0.25, 0.25, 0.25])
@@ -120,7 +120,7 @@ class TestReconstructor(unittest.TestCase):
             assert isinstance(result, np.ndarray)
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+        "wy_qcos.transpiler.common.wirecut.reconstructor."
         "Reconstructor.reconstruct"
     )
     def test_compute_tensor_product_for_bases(self, mock_reconstruct):
@@ -137,7 +137,7 @@ class TestReconstructor(unittest.TestCase):
         topo_subcircuits = self.mock_prepare_data.topo_subcircuits
         topo_subcircuits.get_init_meas.return_value = (("0", "0"), ("I", "X"))
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.reconstructor.tensor_product"
+            "wy_qcos.transpiler.common.wirecut.reconstructor.tensor_product"
         ) as mock_tensor_product:
             mock_tensor_product.return_value = np.array([0.1, 0.2, 0.3, 0.4])
             result = reconstructor.compute_tensor_product_for_bases(
@@ -150,7 +150,7 @@ class TestReconstructor(unittest.TestCase):
             assert isinstance(result, np.ndarray)
 
     @patch(
-        "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+        "wy_qcos.transpiler.common.wirecut.reconstructor."
         "Reconstructor.reconstruct"
     )
     def test_normalize_probability(self, mock_reconstruct):
@@ -170,7 +170,7 @@ class TestReconstructor(unittest.TestCase):
     def test_reconstructor_normalize_probability_fixed(self):
         """Testing probability normalization methods."""
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+            "wy_qcos.transpiler.common.wirecut.reconstructor."
             "Reconstructor.reconstruct"
         ) as mock_reconstruct:
             mock_reconstruct.return_value = np.array([0.25, 0.25, 0.25, 0.25])
@@ -191,7 +191,7 @@ class TestReconstructor(unittest.TestCase):
     def test_reconstructor_compute_tensor_product_for_bases_fixed(self):
         """Test the method for computing the tensor product of bases."""
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+            "wy_qcos.transpiler.common.wirecut.reconstructor."
             "Reconstructor.reconstruct"
         ) as mock_reconstruct:
             mock_reconstruct.return_value = np.array([0.25, 0.25, 0.25, 0.25])
@@ -210,7 +210,7 @@ class TestReconstructor(unittest.TestCase):
                     ("I", "X"),
                 )
                 with patch(
-                    "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+                    "wy_qcos.transpiler.common.wirecut.reconstructor."
                     "tensor_product"
                 ) as mock_tensor_product:
                     mock_tensor_product.return_value = np.array([
@@ -235,7 +235,7 @@ class TestReconstructor(unittest.TestCase):
     def test_reconstructor_get_measure_config_length_fixed(self):
         """Test the method for obtaining measurement configuration length."""
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+            "wy_qcos.transpiler.common.wirecut.reconstructor."
             "Reconstructor.reconstruct"
         ) as mock_reconstruct:
             mock_reconstruct.return_value = np.array([0.25, 0.25, 0.25, 0.25])
@@ -250,7 +250,7 @@ class TestReconstructor(unittest.TestCase):
     def test_reconstructor_full_workflow_fixed(self):
         """Test the full workflow of reconstructoring."""
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+            "wy_qcos.transpiler.common.wirecut.reconstructor."
             "Reconstructor.reconstruct"
         ) as mock_reconstruct:
             mock_reconstruct.return_value = np.array([0.25, 0.25, 0.25, 0.25])
@@ -280,11 +280,11 @@ class TestReconstructor(unittest.TestCase):
             },
         }
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+            "wy_qcos.transpiler.common.wirecut.reconstructor."
             "compute_measure_combian"
         ) as mock_compute_measure:
             with patch(
-                "wy_qcos.transpiler.cmss.wirecut.reconstructor.attribute_prob"
+                "wy_qcos.transpiler.common.wirecut.reconstructor.attribute_prob"
             ) as mock_attribute_prob:
                 mock_compute_measure.return_value = [("I", "X"), ("Z", "X")]
                 mock_attribute_prob.return_value = np.array([
@@ -309,7 +309,7 @@ class TestReconstructor(unittest.TestCase):
             (0, 1)
         ]
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+            "wy_qcos.transpiler.common.wirecut.reconstructor."
             "Reconstructor.reconstruct"
         ) as mock_reconstruct:
             mock_reconstruct.return_value = np.array([0.25, 0.25, 0.25, 0.25])
@@ -338,7 +338,7 @@ class TestReconstructor(unittest.TestCase):
     def test_reconstructor_normalize_probability_edge_cases(self):
         """Testing the boundary cases of the normalize_probability method."""
         with patch(
-            "wy_qcos.transpiler.cmss.wirecut.reconstructor."
+            "wy_qcos.transpiler.common.wirecut.reconstructor."
             "Reconstructor.reconstruct"
         ) as mock_reconstruct:
             mock_reconstruct.return_value = np.array([0.25, 0.25, 0.25, 0.25])

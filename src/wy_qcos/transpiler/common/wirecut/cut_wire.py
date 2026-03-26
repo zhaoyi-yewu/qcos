@@ -22,13 +22,13 @@ from loguru import logger
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.cmss.compiler.parser import Parser
-from wy_qcos.transpiler.cmss.wirecut.cut import Cut
-from wy_qcos.transpiler.cmss.wirecut.dag import DAG
-from wy_qcos.transpiler.cmss.wirecut.dd import DD, reconstruct_prob_from_bins
-from wy_qcos.transpiler.cmss.wirecut.greedy import GreedyModel
-from wy_qcos.transpiler.cmss.wirecut.mip_model import MIPModel
-from wy_qcos.transpiler.cmss.wirecut.prepare_data import Prepare_data
-from wy_qcos.transpiler.cmss.wirecut.utils import (
+from wy_qcos.transpiler.common.wirecut.cut import Cut
+from wy_qcos.transpiler.common.wirecut.dag import DAG
+from wy_qcos.transpiler.common.wirecut.dd import DD, reconstruct_prob_from_bins
+from wy_qcos.transpiler.common.wirecut.greedy import GreedyModel
+from wy_qcos.transpiler.common.wirecut.mip_model import MIPModel
+from wy_qcos.transpiler.common.wirecut.prepare_data import Prepare_data
+from wy_qcos.transpiler.common.wirecut.utils import (
     generate_subcircuits_for_execute,
 )
 

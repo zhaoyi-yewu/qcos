@@ -23,7 +23,10 @@ from loguru import logger
 from wy_qcos.transpiler.cmss.compiler.qtypes import Node, RegType
 from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
 from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
-from wy_qcos.transpiler.cmss.compiler.linked_list import LinkedList, LinkedNode
+from wy_qcos.transpiler.cmss.compiler.linked_list import (
+    LinkedList,
+    LinkedNode,
+)
 
 
 class Visitor:
@@ -342,9 +345,11 @@ class Visitor:
 
         self.check_qlist(qids, s.pos)
         if self.in_gate:
-            self.defined_gate[self.now_gate]["base_gate"].append(
-                ("sync", [], qids)
-            )
+            self.defined_gate[self.now_gate]["base_gate"].append((
+                "sync",
+                [],
+                qids,
+            ))
         else:
             self._circuit.append(create_gate("sync", qids))
 
@@ -372,9 +377,11 @@ class Visitor:
 
         self.check_qlist(qids, s.pos)
         if self.in_gate:
-            self.defined_gate[self.now_gate]["base_gate"].append(
-                ("reset", [], qids)
-            )
+            self.defined_gate[self.now_gate]["base_gate"].append((
+                "reset",
+                [],
+                qids,
+            ))
         else:
             self._circuit.append(create_gate("reset", qids))
 
@@ -399,13 +406,12 @@ class Visitor:
             clist = self.check_reg(cids, RegType.CREG, s.pos)
             if len(qlist) != len(clist):
                 raise RuntimeError(
-                    f"in line {s.pos},"
-                    f"the len of qregs and cregs is different"
+                    f"in line {s.pos},the len of qregs and cregs is different"
                 )
             for qubit in qlist:
                 if qubit in self.measure_qubits:
                     raise RuntimeError(
-                        f"in line {s.pos}," f"multiple measurements"
+                        f"in line {s.pos},multiple measurements"
                     )
                 self.measure_qubits.append(qubit)
                 self._circuit.append(create_gate("measure", [qubit]))
@@ -656,9 +662,11 @@ class Visitor:
                 self.check_in_gate_qubit(qubit, s.pos)
                 qids.append(qubit[0])
             self.check_qlist(qids, s.pos)
-            self.defined_gate[self.now_gate]["base_gate"].append(
-                (uid, s.children[1], qids)
-            )
+            self.defined_gate[self.now_gate]["base_gate"].append((
+                uid,
+                s.children[1],
+                qids,
+            ))
         else:
             qreg_num = -1
             for qubit in s.leaf:
@@ -759,7 +767,7 @@ class Visitor:
                 f"in classical_declare_statement"
             )
             raise SyntaxError(
-                f"in line {s.pos} undefined scene: " f"{s.children[0].type}"
+                f"in line {s.pos} undefined scene: {s.children[0].type}"
             )
 
     def visit_array_literal(self, s: Node) -> list:
@@ -830,7 +838,6 @@ class Visitor:
             assign_val = self.visit_exp(s.children[2], True, s.pos)
             self.modify_in_symbol_table(val_name, assign_val, s.pos, True)
         elif len(indexed_identifier.children) == 1:
-
             # 检查变量类型是否是数组
             var_dict = symbol_table.data[val_name]
             if "category" not in var_dict or var_dict["category"] != "array":

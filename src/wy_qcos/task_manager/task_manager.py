@@ -49,7 +49,8 @@ from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant, HttpCode
 from wy_qcos.common.library import Library
 from wy_qcos.engine.job_engine import job_flow
-from wy_qcos.engine.device_engine import device_monitor_flow
+from wy_qcos.engine.device_mgr_engine import device_manager_flow
+from wy_qcos.engine.device_monitor_engine import device_monitor_flow
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +160,7 @@ class TaskFlowManager(ABC):
                 "command": f"{python_bin} -m prefect.engine",
                 "env": python_path_env,
             }
+
             device = self.device_manager.get_devices().get(device_name)
             enable_device_monitor = device.get_driver().enable_device_monitor
             if enable_device_monitor:
@@ -166,11 +168,23 @@ class TaskFlowManager(ABC):
                     "python_bin": python_bin,
                     "pool_name": f"{device_name}_monitor",
                     "queue_name": "default",
-                    "path": "../engine/device_engine.py",
+                    "path": "../engine/device_monitor_engine.py",
                     "flow_name": device_monitor_flow.__name__,
                     "command": f"{python_bin} -m prefect.engine",
                     "env": python_path_env,
                 }
+            enable_device_mgr = device.get_driver().enable_device_mgr
+            if enable_device_mgr:
+                deployment_configs[f"{device_name}_mgr"] = {
+                    "python_bin": python_bin,
+                    "pool_name": f"{device_name}_mgr",
+                    "queue_name": "default",
+                    "path": "../engine/device_mgr_engine.py",
+                    "flow_name": device_manager_flow.__name__,
+                    "command": f"{python_bin} -m prefect.engine",
+                    "env": python_path_env,
+                }
+
         return deployment_configs
 
     def start(self):
@@ -183,19 +197,29 @@ class TaskFlowManager(ABC):
 
             self.check_connection()
             device_names = self.device_manager.get_devices().keys()
+            # create resources
+            self.loop.run_until_complete(
+                self.create_pools(pool_names=device_names)
+            )
+
             monitor_devices = [
                 device.get_name() + "_monitor"
                 for device in self.device_manager.get_devices().values()
                 if device.get_driver().enable_device_monitor
             ]
-
-            # create resources
-            self.loop.run_until_complete(
-                self.create_pools(pool_names=device_names)
-            )
             self.loop.run_until_complete(
                 self.create_pools(pool_names=monitor_devices)
             )
+
+            manager_devices = [
+                device.get_name() + "_mgr"
+                for device in self.device_manager.get_devices().values()
+                if device.get_driver().enable_device_monitor
+            ]
+            self.loop.run_until_complete(
+                self.create_pools(pool_names=manager_devices)
+            )
+
             self.loop.run_until_complete(
                 self.create_queues(queue_names=device_names)
             )
@@ -344,7 +368,7 @@ class TaskFlowManager(ABC):
 
     def kill_workers(self):
         """Kill workers."""
-        logger.info("Kill prefect workers")
+        logger.info("Kill existing prefect workers")
         regex_list = [r"\[prefect\]", r"prefect.engine"]
         process_list = Library.get_processes(regex_list)
         Library.kill(process_list, force=True)
@@ -391,6 +415,20 @@ class TaskFlowManager(ABC):
                 logger.info(
                     f"Started Prefect Worker process: {process_name}_monitor "
                     f"for pool: {pool_name}_monitor"
+                )
+
+            enable_device_mgr = device.get_driver().enable_device_mgr
+            if enable_device_mgr:
+                device_mgr_process = multiprocessing.Process(
+                    target=self.start_device_mgr_work,
+                    args=(process_name, pool_name, concurrency_limit),
+                    name=process_name,
+                )
+                device_mgr_process.daemon = True
+                device_mgr_process.start()
+                logger.info(
+                    f"Started Prefect Worker process: {process_name}_mgr "
+                    f"for pool: {pool_name}_mgr"
                 )
 
     def run_device_monitor(self):
@@ -505,6 +543,27 @@ class TaskFlowManager(ABC):
             )
             asyncio.run(worker.start())
 
+    @staticmethod
+    def start_device_mgr_work(process_name, pool_name, concurrency_limit):
+        """Start device mgr worker by prefect client.
+
+        Args:
+            process_name: process name
+            pool_name: work pool name
+            concurrency_limit: max num of jobs running at the same time
+        """
+        # get prefect configs
+        prefect_configs = TaskFlowManager.get_prefect_configs()
+        # start process worker
+        with prefect_settings.temporary_settings(updates=prefect_configs):
+            worker = ProcessWorker(
+                name=process_name + "_mgr",
+                work_pool_name=pool_name + "_mgr",
+                limit=concurrency_limit,
+            )
+            setproctitle.setproctitle(f"[prefect] {process_name}_device_mgr")
+            asyncio.run(worker.start())
+
     async def wait_workers(self):
         """Start all workers for work pool."""
         device_names = self.device_manager.get_devices().keys()
@@ -599,6 +658,42 @@ class TaskFlowManager(ABC):
 
         return flow_run_id
 
+    def run_manage_task_flow(
+        self,
+        deployment_id,
+        args: dict[str, Any],
+        work_queue_name=None,
+    ):
+        """Run flow.
+
+        Args:
+            deployment_id: deploy uuid
+            args: flow function args in dict
+            tags: prefect flow tags
+            work_queue_name: work queue name
+
+        Returns:
+            flow run uuid
+        """
+        if self.loop.is_running():
+            succ, details = asyncio.run_coroutine_threadsafe(
+                self.run_manage_task_flow_by_client(
+                    deployment_id,
+                    args,
+                    work_queue_name=work_queue_name,
+                ),
+                self.loop,
+            ).result()
+        else:
+            succ, details = self.loop.run_until_complete(
+                self.run_manage_task_flow_by_client(
+                    deployment_id,
+                    args,
+                    work_queue_name=work_queue_name,
+                )
+            )
+        return succ, details
+
     def get_flow_run_id_by_job_id(self, job_id, tags=None):
         flow_run_filter_kwargs = {}
 
@@ -661,6 +756,32 @@ class TaskFlowManager(ABC):
         )
 
         return job_id
+
+    async def run_manage_task_flow_by_client(
+        self,
+        deployment_id,
+        args: dict[str, Any],
+        work_queue_name=None,
+    ):
+        """Run flow by prefect client.
+
+        Args:
+            deployment_id: deploy uuid
+            args: flow function args in dict
+            work_queue_name: work queue name
+        """
+        details = None
+        await self._client.create_flow_run_from_deployment(
+            deployment_id=deployment_id,
+            work_queue_name=work_queue_name,
+            parameters=args,
+        )
+        if args["device_mgr_info"]["method"] == "get_device_options":
+            # TODO xudong need sleep or not?
+            device_name = args["device_mgr_info"]["device_name"]
+            device = self.device_manager.get_devices().get(device_name)
+            details = device.get_device_options_info()
+        return True, details
 
     def get_task_flow_result(self, job_id, tags=None):
         """Get flow run state and result.

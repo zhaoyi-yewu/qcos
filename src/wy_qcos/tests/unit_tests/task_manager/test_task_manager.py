@@ -411,3 +411,56 @@ class TestTaskFlowManager(unittest.TestCase):
             ConstantForTest.flow_run_ids
         )
         assert not success_list
+
+    def test_run_manage_task_flow(self):
+        async def run_manage_task_flow_by_client(*args, **kwargs):
+            return True, None
+
+        with patch.object(
+            TaskFlowManager,
+            "run_manage_task_flow_by_client",
+            side_effect=run_manage_task_flow_by_client,
+        ):
+            mock_loop = Mock()
+            mock_loop.is_running.return_value = False
+            mock_loop.run_until_complete.side_effect = (
+                lambda coro: asyncio.run(coro)
+            )
+            self.task_manager.loop = mock_loop
+
+            deployment_id = ConstantForTest.deployment_id
+            args = {
+                "device_mgr_info": {
+                    "method": "set_device_options",
+                    "device_name": "dummy",
+                }
+            }
+            succ, details = self.task_manager.run_manage_task_flow(
+                deployment_id,
+                args,
+                work_queue_name=None,
+            )
+            assert succ
+            assert details is None
+
+    def test_run_manage_task_flow_by_client(self):
+        mock_client = AsyncMock()
+        self.task_manager._client = mock_client
+        mock_run = AsyncMock()
+        mock_client.create_flow_run_from_deployment.return_value = mock_run
+        deployment_id = ConstantForTest.deployment_id
+        args = {
+            "device_mgr_info": {
+                "method": "set_device_options",
+                "device_name": "dummy",
+            }
+        }
+        succ, details = asyncio.run(
+            self.task_manager.run_manage_task_flow_by_client(
+                deployment_id,
+                args,
+                work_queue_name=None,
+            )
+        )
+        assert succ
+        assert details is None

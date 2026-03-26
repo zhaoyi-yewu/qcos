@@ -93,6 +93,11 @@ class SABRE {
     return phy_exe_gates;
   }
 
+  friend bool validate_routing(
+      const SABRE& sabre, const std::vector<GateOperation>& logical_gates,
+      const std::vector<GateOperation>& physical_gates,
+      std::vector<int>& initial_l2p);
+
  private:
   int phy_qubit_num;   ///< 物理量子比特总数
   int extention_size;  ///< 扩展深度
@@ -178,7 +183,8 @@ class SABRE {
    * @param gates_list 待映射逻辑门序列
    * @return int 最大逻辑量子比特编号+1
    */
-  int get_qubit_num_from_ir(const std::vector<GateOperation>& gates_list);
+  int get_qubit_num_from_ir(
+      const std::vector<GateOperation>& gates_list) const;
 };
 
 }  // namespace qcos

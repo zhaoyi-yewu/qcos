@@ -64,6 +64,20 @@ class TestDevice:
         configs = device.get_configs()
         assert configs == "configs"
 
-    def test_get_device_info(self):
-        device_info = device.get_device_info()
-        assert "dummy" in device_info
+    def test_set_device_detail(self):
+        details = {}
+        calibrate_info = {}
+        calibrate_info["step"] = 0.1
+        details["calibrate_info"] = calibrate_info
+        device.set_device_detail(details)
+        assert device.details is not None
+        assert device.calibrate_info is not None
+        assert device.calibrate_info["step"] == 0.1
+
+    def test_set_device_option(self):
+        dev_opt_info = {}
+        dev_opt_info["gap"] = 50
+        device.set_device_options_info(dev_opt_info)
+        res = device.get_device_options_info()
+        assert res is not None
+        assert res["gap"] == 50

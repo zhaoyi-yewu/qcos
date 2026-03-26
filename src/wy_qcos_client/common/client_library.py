@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -299,3 +299,15 @@ class ClientLibrary:
         if err_msgs:
             return False, err_msgs
         return True, None
+
+
+def _s(secret):
+    """Secret text wrapper.
+
+    Args:
+        secret: secret text to be wrapped
+
+    Returns:
+        wrapped secret text
+    """
+    return secret

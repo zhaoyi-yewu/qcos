@@ -18,8 +18,8 @@
 import numpy as np
 import itertools
 
-from wy_qcos.transpiler.cmss.wirecut.prepare_data import tensor_product
-from wy_qcos.transpiler.cmss.wirecut.utils import (
+from wy_qcos.transpiler.common.wirecut.prepare_data import tensor_product
+from wy_qcos.transpiler.common.wirecut.utils import (
     compute_measure_combian,
     attribute_prob,
 )

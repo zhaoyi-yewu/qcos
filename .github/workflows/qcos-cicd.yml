@@ -438,18 +438,16 @@ jobs:
         env:
           ALL_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          sudo -s <<'EOF'
           cd ./build-scripts
-          source /root/.bashrc
           TAG_LIST=$(echo "$ALL_TAGS" | xargs)
           echo "TAGS: $TAG_LIST"
           for full_tag in $TAG_LIST; do
             echo "Processing tag: $full_tag"
-            image_name=${full_tag%:*}
+            tmp_image_name="${full_tag#*/}"
+            image_name=${tmp_image_name%:*}
             docker tag ${image_name}:dev $full_tag
             docker push $full_tag
           done
-          EOF
 
   send-cicd-report:
     name: Send CI/CD Report via action-send-mail

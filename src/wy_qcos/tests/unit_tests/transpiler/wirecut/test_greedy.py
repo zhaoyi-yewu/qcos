@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -17,7 +17,7 @@
 
 import unittest
 
-from wy_qcos.transpiler.cmss.wirecut.greedy import GreedyModel
+from wy_qcos.transpiler.common.wirecut.greedy import GreedyModel
 
 
 class TestGreedyModel(unittest.TestCase):

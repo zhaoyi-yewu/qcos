@@ -17,6 +17,7 @@
 
 import os
 import sys
+import csv
 from pathlib import Path
 from datetime import datetime
 import argparse
@@ -25,13 +26,17 @@ import itertools
 
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
-from wy_qcos.transpiler.common.utils import Timer
+from wy_qcos.transpiler.common.utils import (
+    Timer,
+    TranspilePerfConstant as TPC,
+)
 from wy_qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.common.utils import (
     TranspileRuntime,
     trans_logger,
 )
+from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 
 class TranspileParams:
@@ -42,7 +47,9 @@ class TranspileParams:
         self.output_log = ""
         self.csv_file = ""
         self.file = "samples/qasm/2.0/simple-qasm.qasm"
+        # circuit info
         self.num_qubits = 0
+        self.depth = 0
         # transpiler configs
         self.tech_gates = []
         # optimization level, 0, 1, 2, 3
@@ -56,6 +63,7 @@ class TranspileParams:
 
 class CMSSTranspilerPerf:
     def __init__(self):
+        # list of TranspileParams
         self.params_list = []
         # dict[TranspileParams, TranspileRuntime]
         self.transpile_result = {}
@@ -93,6 +101,8 @@ class CMSSTranspilerPerf:
             "cz": Constant.TWO_QUBIT_GATE_CZ,
         }
 
+        self.parse_results = {}
+
     @staticmethod
     def init_output_head(
         output_file_path,
@@ -129,14 +139,17 @@ class CMSSTranspilerPerf:
         """Check whether the input file and output file exist.
 
         Args:
-            input_file(str): The input file path.
+            input_file(Path): The input file path.
             output_file(str): The output file path.
 
         Returns:
             file_path(Path): The resolved input file path.
             output_file_path(Path): The resolved output file path.
         """
-        file_path = Path(input_file).resolve()
+        if not isinstance(input_file, Path):
+            file_path = Path(input_file).resolve()
+        else:
+            file_path = input_file
         if not file_path.exists():
             raise FileNotFoundError(
                 f"Input file not existed! file: {file_path}."
@@ -329,7 +342,7 @@ class CMSSTranspilerPerf:
         # calculate the average runtime
         self.get_transpile_result()
 
-        # TODO: output csv file
+        _ = self.output_csv_file()
 
     def get_transpile_result(self):
         transpile_all_result = {}
@@ -352,9 +365,167 @@ class CMSSTranspilerPerf:
             runtime.avg_runtime(self.run_count)
             self.transpile_result[params] = runtime
 
+    def output_csv_file(self):
+        csv_file_path = None
+        if self.csv_file == "":
+            return None
+        else:
+            csv_file = self.csv_file
+            csv_file_path = Path(csv_file).resolve()
+            if csv_file_path.exists():
+                trans_logger.log_warning(
+                    f"csv file has existed! file: {csv_file_path}."
+                )
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                csv_file_path = csv_file_path.with_stem(
+                    f"{csv_file_path.stem}_{timestamp}"
+                )
+        transpile_result = self.transpile_result
+        # parse_results = dict[input_file, parse_result]
+        # parse_result = tuple(num_qubits, operations)
+        parse_results = self.parse_results
+        total_content = []
+        for params, runtime in transpile_result.items():
+            params.num_qubits = parse_results[params.file][0]
+            qc = QuantumCircuit(num_qubits=params.num_qubits)
+            qc.append_operations(parse_results[params.file][1])
+            params.depth = qc.depth()
+            perf_content = []
+            # The list order must be same as TranspilePerfConstant.CONS_DICT.
+            # add qasm file
+            perf_content.append(params.file.name)
+            # add qubit number
+            perf_content.append(params.num_qubits)
+            # circuit depth
+            perf_content.append(params.depth)
+            # tech_type
+            perf_content.append(params.mapping_info[0])
+            # optimize level
+            perf_content.append(params.opt_level)
+            # parse time
+            perf_content.append(runtime.parse_time)
+            perf_content.append(runtime.opt_time1)
+            perf_content.append(runtime.decompose_rule_time)
+            perf_content.append(runtime.decompose_1q2q_time)
+            perf_content.append(runtime.mapping_time)
+            # mapping time
+            perf_content.append(runtime.decompose_apply_time)
+            perf_content.append(runtime.opt_time2)
+            perf_content.append(runtime.transpile_time)
+            perf_content.append(runtime.total_time)
+            total_content.append(perf_content)
+
+        total_content = sorted(
+            total_content, key=lambda x: (x[1], x[2], x[3], x[4])
+        )
+
+        csv_content = []
+        csv_titles = [
+            TPC.QASM_FILE,
+            TPC.NUM_QUBITS,
+            TPC.DEPTH,
+            TPC.TECH_TYPE,
+            TPC.OPT_LEVEL,
+            TPC.PARSE_TIME,
+        ]
+        # default start from 0 to 5
+        l = TPC.CONS_DICT[TPC.QASM_FILE]
+        r = TPC.CONS_DICT[TPC.PARSE_TIME]
+        if not self.transpiler_exec:
+            # parse
+            csv_titles.append(TPC.TOTAL_TIME)
+            for row in total_content:
+                row_content = []
+                row_content.extend(row[l:r])
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.PARSE_TIME]]:.4f}s"
+                )
+                # total time
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.TOTAL_TIME]]:.4f}s"
+                )
+                csv_content.append(row_content)
+        elif not self.mapping_exec:
+            # parse + transpile(no mapping)
+            csv_titles.extend([
+                TPC.OPT_TIME1,
+                TPC.DECOMPOSE_RULE_TIME,
+                TPC.DECOMPOSE_APPLY_TIME,
+                TPC.OPT_TIME2,
+                TPC.TRANSPILE_TIME,
+                TPC.TOTAL_TIME,
+            ])
+            for row in total_content:
+                row_content = []
+                row_content.extend(row[l:r])
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.PARSE_TIME]]:.4f}s"
+                )
+                row_content.append(f"{row[TPC.CONS_DICT[TPC.OPT_TIME1]]:.4f}s")
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_RULE_TIME]]:.4f}s"
+                )
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_APPLY_TIME]]:.4f}s"
+                )
+                row_content.append(f"{row[TPC.CONS_DICT[TPC.OPT_TIME2]]:.4f}s")
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.TRANSPILE_TIME]]:.4f}s"
+                )
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.TOTAL_TIME]]:.4f}s"
+                )
+                csv_content.append(row_content)
+        else:
+            # parse + transpile
+            csv_titles.extend([
+                TPC.OPT_TIME1,
+                TPC.DECOMPOSE_RULE_TIME,
+                TPC.DECOMPOSE_1Q2Q_TIME,
+                TPC.MAPPING_TIME,
+                TPC.DECOMPOSE_APPLY_TIME,
+                TPC.OPT_TIME2,
+                TPC.TRANSPILE_TIME,
+                TPC.TOTAL_TIME,
+            ])
+            for row in total_content:
+                row_content = []
+                row_content.extend(row[l:r])
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.PARSE_TIME]]:.4f}s"
+                )
+                row_content.append(f"{row[TPC.CONS_DICT[TPC.OPT_TIME1]]:.4f}s")
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_RULE_TIME]]:.4f}s"
+                )
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_1Q2Q_TIME]]:.4f}s"
+                )
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.MAPPING_TIME]]:.4f}s"
+                )
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_APPLY_TIME]]:.4f}s"
+                )
+                row_content.append(f"{row[TPC.CONS_DICT[TPC.OPT_TIME2]]:.4f}s")
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.TRANSPILE_TIME]]:.4f}s"
+                )
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.TOTAL_TIME]]:.4f}s"
+                )
+                csv_content.append(row_content)
+
+        with open(csv_file_path, "w", encoding="utf-8-sig", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(csv_titles)
+            writer.writerows(csv_content)
+
+        return csv_file_path
+
     def cmss_transpiler_perf_exec(
         self,
-        input_file: str = "",
+        input_file: Path | None = None,
         opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
         base_gates: list = [],
         tech_type: str = "",
@@ -364,7 +535,7 @@ class CMSSTranspilerPerf:
         """cmss-transpiler performance test for single run.
 
         Args:
-            input_file (str): input qasm file path
+            input_file (Path | None): input qasm file path
             opt_level (int): optimization level
             base_gates (list): base gates for technology type
             tech_type (str): technology type
@@ -478,6 +649,7 @@ class CMSSTranspilerPerf:
             with Timer() as ast_timer:
                 src_code_info = {"000": qasm_data}
                 parse_result = transpiler.parse(src_code_info)
+                self.parse_results[input_file] = list(parse_result.values())[0]
             runtime.parse_time = ast_timer.elapsed
             trans_logger.log_perf(f"parse openqasm: {ast_timer.elapsed:.4f}s")
 
@@ -514,7 +686,7 @@ def get_parse_args():
         "--trans-config-file",
         dest="trans_config_file",
         type=str,
-        default="",
+        default="etc/perf/transpile_conf.toml",
         help="Input config file.",
     )
     args = parser.parse_args()

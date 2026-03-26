@@ -16,41 +16,15 @@
 # ----------------------------------------------------------------------
 
 import json
-import sys
 import time
 
 import redis
 from prefect import flow
 from loguru import logger
 
-from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
+from wy_qcos.engine.common import init_logger
 from wy_qcos.engine.job_engine import init_driver
-
-
-def init_logger(log_file_path, debug=False):
-    # Config Loguru
-    # pylint: disable=duplicate-code
-    # remove all
-    logger.remove()
-
-    # add logger: stdout
-    logger.add(
-        sys.stdout,
-        level="DEBUG" if debug else "INFO",
-        format=Constant.PREFECT_JOB_LOG_FORMAT,
-        colorize=True,
-    )
-
-    # add logger: log file
-    logger.add(
-        log_file_path,
-        level="DEBUG" if debug else "INFO",
-        rotation=f"{Config.LOG_ROTATE_MAX_SIZE_MB} MB",
-        compression="gz" if Config.LOG_ROTATE_COMPRESSION else None,
-        retention=Config.LOG_ROTATE_BACKUP_COUNT,
-        format=Constant.PREFECT_JOB_LOG_FORMAT,
-    )
 
 
 @flow(

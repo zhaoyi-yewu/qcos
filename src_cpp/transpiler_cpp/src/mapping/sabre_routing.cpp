@@ -76,7 +76,7 @@ void SABRE::build_coupling_graph(
 }
 
 int SABRE::get_qubit_num_from_ir(
-    const std::vector<GateOperation>& gates_list) {
+    const std::vector<GateOperation>& gates_list) const {
   int max_logic_id = -1;
   for (const auto& gate : gates_list) {
     for (int bit : gate.targets) {

@@ -4,11 +4,14 @@ alembic==1.16.3
 annotated-types==0.7.0
 anyio==4.9.0
 argcomplete==3.6.2
+casbin==1.43.0
+casbin-sqlalchemy-adapter==1.4.0
 click==8.1.8
 cliff==4.10.0
 cryptography==45.0.7
 fastapi==0.122.1
 fastapi-jsonrpc==3.4.2
+fastapi-users==15.0.4
 h11==0.16.0
 httpcore==1.0.9
 httpx==0.28.1

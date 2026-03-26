@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-add_library(${PROJECT_NAME} STATIC
+add_library(${PROJECT_NAME} SHARED
                             circuit/base_operation.cpp
                             circuit/gate_operation.cpp
                             mapping/sabre_routing.cpp

@@ -65,6 +65,10 @@ class Device:
         self.configs = {}
         # device details info
         self.details = {}
+        # device calibrate info
+        self.calibrate_info = {}
+        # device option info
+        self.device_options_info = {}
 
     def init_device(self):
         """Init device.
@@ -186,17 +190,9 @@ class Device:
         Args:
             details: device details
         """
-        single_qubit_prop = details.get("single_qubit_prop")
-        if single_qubit_prop:
-            self.details["single_qubit_prop"] = single_qubit_prop
-
-        double_qubit_prop = details.get("double_qubit_prop")
-        if double_qubit_prop:
-            self.details["double_qubit_prop"] = double_qubit_prop
-
-        tupo_configs = details.get("tupo_configs")
-        if tupo_configs:
-            self.details["tupo_configs"] = tupo_configs
+        self.details = details
+        self.calibrate_info = details.get("calibrate_info")
+        self.device_options_info = details.get("device_options_info")
 
     def set_device_running_info(self, device_running_info):
         """Set device running info.
@@ -213,7 +209,7 @@ class Device:
             self.set_device_detail(details)
         return
 
-    def get_device_info(self):
+    def show_device_info(self):
         """Show device info."""
         show_list = [
             f"device_name: {self.name}",
@@ -225,6 +221,7 @@ class Device:
             f"tech_type: {self.tech_type}",
             f"max_qubits: {self.max_qubits}",
             f"configs: {self.get_configs(hide_password=True)}",
+            f"details: {self.details}",
         ]
         return "\n".join(show_list)
 
@@ -235,3 +232,19 @@ class Device:
             max_qubits: device max qubits
         """
         self.max_qubits = max_qubits
+
+    def set_device_options_info(self, device_options_info):
+        """Set device option info.
+
+        Args:
+            device_options_info: device option info
+        """
+        self.device_options_info = device_options_info
+
+    def get_device_options_info(self):
+        """Get device option info.
+
+        Returns:
+            device option info
+        """
+        return self.device_options_info
