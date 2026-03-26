@@ -11,8 +11,9 @@ add_executable(${TEST_NAME} test_main.cpp
                             test_quantum_circuit.cpp
                             test_sabre_routing.cpp
                             test_sabre_mapping.cpp
+                            test_qasm_to_origin_ir.cpp
 )
-target_link_libraries(${TEST_NAME} ${LIB_TRANSPILER} ${LIB_GTEST})
+target_link_libraries(${TEST_NAME} ${LIB_TRANSPILER} ${LIB_GTEST} ${LIB_ANTLR4})
 
 target_compile_definitions(${TEST_NAME} PRIVATE 
     TEST_DATA_DIR="${PROJECT_SOURCE_DIR}/../../samples/"

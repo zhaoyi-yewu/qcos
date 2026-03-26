@@ -15,24 +15,26 @@
  * ----------------------------------------------------------------------
  */
 
-#include <pybind11/pybind11.h>
+#include "compiler/operations/expression.hpp"
 
-namespace py = pybind11;
+namespace sym {
 
-void bind_enums(py::module_& m);
-void bind_circuits(py::module_& m);
-void bind_mapping(py::module_& m);
-void bind_utils(py::module_& m);
-void bind_cpp_mcts(py::module_& m);
-void bind_parser(py::module_& m);
-
-PYBIND11_MODULE(high_performance, m) {
-  m.doc() = "Binding qcos transpiler cpp functions.";
-
-  bind_enums(m);
-  bind_circuits(m);
-  bind_mapping(m);
-  bind_utils(m);
-  bind_cpp_mcts(m);
-  bind_parser(m);
+Variable::Variable(const std::string& name) {
+  const auto it = registered.find(name);
+  if (it != registered.end()) {
+    id = it->second;
+  } else {
+    registered[name] = nextId;
+    names[nextId] = name;
+    id = nextId;
+    ++nextId;
+  }
 }
+
+std::string Variable::getName() const { return names[id]; }
+
+std::ostream& operator<<(std::ostream& os, const Variable& var) {
+  os << var.getName();
+  return os;
+}
+}  // namespace sym

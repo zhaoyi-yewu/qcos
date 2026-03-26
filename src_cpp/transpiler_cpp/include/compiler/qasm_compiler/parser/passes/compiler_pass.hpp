@@ -15,24 +15,15 @@
  * ----------------------------------------------------------------------
  */
 
-#include <pybind11/pybind11.h>
+#pragma once
 
-namespace py = pybind11;
+#include "compiler/qasm_compiler/parser/statement.hpp"
 
-void bind_enums(py::module_& m);
-void bind_circuits(py::module_& m);
-void bind_mapping(py::module_& m);
-void bind_utils(py::module_& m);
-void bind_cpp_mcts(py::module_& m);
-void bind_parser(py::module_& m);
+namespace qasm {
+class CompilerPass {
+ public:
+  virtual ~CompilerPass() = default;
 
-PYBIND11_MODULE(high_performance, m) {
-  m.doc() = "Binding qcos transpiler cpp functions.";
-
-  bind_enums(m);
-  bind_circuits(m);
-  bind_mapping(m);
-  bind_utils(m);
-  bind_cpp_mcts(m);
-  bind_parser(m);
-}
+  virtual void processStatement(Statement& statement) = 0;
+};
+}  // namespace qasm
