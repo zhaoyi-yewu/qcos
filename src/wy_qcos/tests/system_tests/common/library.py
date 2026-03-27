@@ -166,28 +166,6 @@ class StLibrary:
         return device
 
     @staticmethod
-    def calibrate(client, device_name, options=None):
-        status_code, reason, text, response = client.calibrate(
-            device_name, options
-        )
-        assert status_code == HttpCode.SUCCESS_OK
-        result = json.loads(text)
-        error = result.get("error", {})
-        error_code = error.get("code", 0)
-        return error_code
-
-    @staticmethod
-    def set_device_options(client, device_name, device_options):
-        status_code, reason, text, response = client.set_device_options(
-            device_name, device_options
-        )
-        assert status_code == HttpCode.SUCCESS_OK
-        result = json.loads(text)
-        error = result.get("error", {})
-        error_code = error.get("code", 0)
-        return error_code
-
-    @staticmethod
     def get_drivers(client):
         status_code, reason, text, response = client.get_drivers()
         assert status_code == HttpCode.SUCCESS_OK

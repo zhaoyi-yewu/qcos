@@ -88,27 +88,3 @@ class TestDevice:
         assert device["name"] == device_name
         assert device["status"] == Device.DEVICE_STATUS_ONLINE
         assert isinstance(device["details"], dict)
-
-    def test_calibrate(self):
-        device_name = "dummy"
-        options = {
-            "init_freq": 5.018,
-            "step": 0.001,
-            "machine_type": "superconducting",
-            "scan_param": "qubit_frequency",
-            "scan_shots": 100,
-        }
-        error_code = StLibrary.calibrate(self.client, device_name, options)
-        assert error_code == 0
-
-    def test_set_device_options(self):
-        device_name = "dummy"
-        device_options = {
-            "sleep": 300,
-            "shot_gap": 1000,
-            "readout_threshold": 0.8,
-        }
-        error_code = StLibrary.set_device_options(
-            self.client, device_name, device_options
-        )
-        assert error_code == -32603

@@ -563,7 +563,7 @@ class DriverBase:
         """
         return self.driver_options
 
-    def calibrate(self, data):
+    def calibrate_device(self, data):
         """Calibrate device.
 
         Args:

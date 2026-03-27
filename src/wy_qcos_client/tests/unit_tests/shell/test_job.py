@@ -36,6 +36,10 @@ from wy_qcos_client.shell import (
     DeleteJobs,
     SetJobResults,
     UpdateJob,
+    CalibrateDevice,
+    GetCalibrateResults,
+    SetDeviceOptions,
+    GetDeviceOptions,
 )
 from wy_qcos_client.common.qcos_version import QcosVersion
 from wy_qcos_client.common.constant import Constant
@@ -88,6 +92,10 @@ cancel_jobs = CancelJobs(shell, None)
 delete_jobs = DeleteJobs(shell, None)
 set_job_results = SetJobResults(shell, None)
 update_job = UpdateJob(shell, None)
+calibrate_device = CalibrateDevice(shell, None)
+get_calibrate_results = GetCalibrateResults(shell, None)
+set_device_options = SetDeviceOptions(shell, None)
+get_device_options = GetDeviceOptions(shell, None)
 
 
 class TestSubmitJob:
@@ -384,3 +392,74 @@ class TestUpdateJob:
         mock_client.job_priority = Constant.DEFAULT_JOB_PRIORITY
 
         assert update_job.take_action(mock_client) is None
+
+
+class TestCalibrateDevice:
+    def test_get_parser(self):
+        parser = calibrate_device.get_parser("")
+        assert parser is not None
+
+    @patch.object(CommandHelper, "check_results")
+    @patch.object(Client, "calibrate_device")
+    def test_take_action(self, mock_calibrate_device, mock_check_results):
+        mock_client = Mock(spec=Namespace)
+        mock_client.device_name = "device"
+        mock_client.options = '{"options": "value"}'
+        mock_calibrate_device.return_value = iter([None, None, None, None])
+        mock_check_results.return_value = None
+
+        assert calibrate_device.take_action(mock_client) is None
+
+
+class TestGetCalibrateResults:
+    def test_get_parser(self):
+        parser = get_calibrate_results.get_parser("")
+        assert parser is not None
+
+    @patch.object(CommandHelper, "check_results")
+    @patch.object(Client, "get_calibrate_results")
+    def test_take_action(self, mock_get_calibrate_results, mock_check_results):
+        mock_client = Mock(spec=Namespace)
+        mock_client.device_name = "device"
+        mock_get_calibrate_results.return_value = iter([
+            None,
+            None,
+            None,
+            None,
+        ])
+        mock_check_results.return_value = None
+
+        assert get_calibrate_results.take_action(mock_client) is None
+
+
+class TestSetDeviceOptions:
+    def test_get_parser(self):
+        parser = set_device_options.get_parser("")
+        assert parser is not None
+
+    @patch.object(CommandHelper, "check_results")
+    @patch.object(Client, "set_device_options")
+    def test_take_action(self, mock_set_device_options, mock_check_results):
+        mock_client = Mock(spec=Namespace)
+        mock_client.device_name = "device"
+        mock_client.options = '{"options": "value"}'
+        mock_set_device_options.return_value = iter([None, None, None, None])
+        mock_check_results.return_value = None
+
+        assert set_device_options.take_action(mock_client) is None
+
+
+class TestGetDeviceOptions:
+    def test_get_parser(self):
+        parser = get_device_options.get_parser("")
+        assert parser is not None
+
+    @patch.object(CommandHelper, "check_results")
+    @patch.object(Client, "get_device_options")
+    def test_take_action(self, mock_get_device_options, mock_check_results):
+        mock_client = Mock(spec=Namespace)
+        mock_client.device_name = "device"
+        mock_get_device_options.return_value = iter([None, None, None, None])
+        mock_check_results.return_value = None
+
+        assert get_device_options.take_action(mock_client) is None

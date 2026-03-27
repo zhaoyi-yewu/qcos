@@ -117,9 +117,9 @@
              }
 
    * - **校准设备**
-     - **calibrate**
+     - **calibrate-device**
 
-       URI: /v1/device/calibrate
+       URI: /v1/device/calibrate-device
      - .. container:: table-code-small-font
 
           .. code-block:: json
@@ -127,7 +127,7 @@
              {
                "jsonrpc": "2.0",
                "id": 1,
-               "method": "calibrate",
+               "method": "calibrate_device",
                "params": {
                  "body": {
                    "device_name": "dummy",

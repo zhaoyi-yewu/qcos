@@ -192,7 +192,9 @@ class DeviceManager:
         pubsub.subscribe(running_info_channel)
         for message in pubsub.listen():
             if message.get("type") == "message":
-                channel = message.get("channel").decode()
+                channel = message.get("channel", b"")
+                if isinstance(channel, bytes):
+                    channel = channel.decode("utf-8")
                 if channel == running_info_channel:
                     device_running_info = json.loads(message.get("data"))
                     device.set_device_running_info(device_running_info)

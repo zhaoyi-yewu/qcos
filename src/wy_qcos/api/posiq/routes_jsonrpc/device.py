@@ -131,7 +131,7 @@ def get_device(
 
 
 @device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
-def calibrate(
+def calibrate_device(
     body: schemas.CalibrateDeviceRequest,
 ) -> schemas.CalibrateDeviceResponse:
     """Calibrate device.
@@ -139,7 +139,7 @@ def calibrate(
     Args:
         body(schemas.CalibrateDeviceRequest): CalibrateDeviceRequest body
     """
-    func_name = "calibrate"
+    func_name = "calibrate_device"
     logger.info(f"Call {func_name}: {body}")
 
     body.method = func_name
