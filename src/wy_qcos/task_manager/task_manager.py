@@ -197,32 +197,37 @@ class TaskFlowManager(ABC):
 
             self.check_connection()
             device_names = self.device_manager.get_devices().keys()
+
             # create resources
-            self.loop.run_until_complete(
-                self.create_pools(pool_names=device_names)
-            )
+            if device_names:
+                self.loop.run_until_complete(
+                    self.create_pools(pool_names=device_names)
+                )
 
             monitor_devices = [
                 device.get_name() + "_monitor"
                 for device in self.device_manager.get_devices().values()
                 if device.get_driver().enable_device_monitor
             ]
-            self.loop.run_until_complete(
-                self.create_pools(pool_names=monitor_devices)
-            )
+            if monitor_devices:
+                self.loop.run_until_complete(
+                    self.create_pools(pool_names=monitor_devices)
+                )
 
             manager_devices = [
                 device.get_name() + "_mgr"
                 for device in self.device_manager.get_devices().values()
                 if device.get_driver().enable_device_monitor
             ]
-            self.loop.run_until_complete(
-                self.create_pools(pool_names=manager_devices)
-            )
+            if manager_devices:
+                self.loop.run_until_complete(
+                    self.create_pools(pool_names=manager_devices)
+                )
 
-            self.loop.run_until_complete(
-                self.create_queues(queue_names=device_names)
-            )
+            if device_names:
+                self.loop.run_until_complete(
+                    self.create_queues(queue_names=device_names)
+                )
             # delete old monitor flow
             self.delete_task_flow_by_name("device-monitor-flow")
 

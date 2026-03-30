@@ -1950,7 +1950,7 @@ class CreateUser(Command):
         json_results = CommandHelper.check_results(
             resource, "create_user", status_code, reason, text
         )
-        self.app.stdout.write(f"User created: {json_results['user_name']}")
+        print(f"User created: {json_results['user_name']}")
 
 
 class UpdateUser(Command):
@@ -2064,11 +2064,11 @@ class UpdateUser(Command):
         )
         if is_enabled is not None:
             action = "enabled" if is_enabled else "disabled"
-            self.app.stdout.write(f"User {action}: {parsed_args.user_name}")
+            print(f"User {action}: {parsed_args.user_name}")
         if is_locked is not None:
             action = "locked" if is_locked else "unlocked"
-            self.app.stdout.write(f"User {action}: {parsed_args.user_name}")
-        self.app.stdout.write(f"User updated: {parsed_args.user_name}")
+            print(f"User {action}: {parsed_args.user_name}")
+        print(f"User updated: {parsed_args.user_name}")
 
 
 class GetUser(ShowOne):
@@ -2162,7 +2162,7 @@ class GetUsers(Lister):
             json_results, header_list, is_dict=True
         )
         if not json_results:
-            self.app.stdout.write("No users found\n")
+            print("No users found")
         return table_values
 
 
@@ -2184,7 +2184,7 @@ class DeleteUser(Command):
         CommandHelper.check_results(
             resource, "delete_user", status_code, reason, text
         )
-        self.app.stdout.write(f"User deleted: {parsed_args.user_name}")
+        print(f"User deleted: {parsed_args.user_name}")
 
 
 class CreateRole(Command):
@@ -2211,7 +2211,7 @@ class CreateRole(Command):
         json_results = CommandHelper.check_results(
             resource, "create_role", status_code, reason, text
         )
-        self.app.stdout.write(f"Role created: {json_results['role_name']}")
+        print(f"Role created: {json_results['role_name']}")
 
 
 class GetRole(ShowOne):
@@ -2266,7 +2266,7 @@ class UpdateRole(Command):
         CommandHelper.check_results(
             resource, "update_role", status_code, reason, text
         )
-        self.app.stdout.write(f"Role updated: {parsed_args.role_name}")
+        print(f"Role updated: {parsed_args.role_name}")
 
 
 class DeleteRole(Command):
@@ -2287,7 +2287,7 @@ class DeleteRole(Command):
         CommandHelper.check_results(
             resource, "delete_role", status_code, reason, text
         )
-        self.app.stdout.write(f"Role deleted: {parsed_args.role_name}")
+        print(f"Role deleted: {parsed_args.role_name}")
 
 
 class GetRoles(Lister):
@@ -2310,7 +2310,7 @@ class GetRoles(Lister):
             json_results, header_list, is_dict=True
         )
         if not json_results:
-            self.app.stdout.write("No roles found\n")
+            print("No roles found")
         return table_values
 
 
@@ -2336,9 +2336,7 @@ class ChangePassword(Command):
         CommandHelper.check_results(
             resource, "change_password", status_code, reason, text
         )
-        self.app.stdout.write(
-            f"Password changed for user: {parsed_args.user_name}"
-        )
+        print(f"Password changed for user: {parsed_args.user_name}")
 
 
 class GetLoginLogs(Lister):
@@ -2375,7 +2373,7 @@ class GetLoginLogs(Lister):
             json_results, header_list, is_dict=True
         )
         if not json_results:
-            self.app.stdout.write("No login logs found\n")
+            print("No login logs found")
         return table_values
 
 

@@ -18,6 +18,7 @@
 import logging
 import hashlib
 from datetime import datetime, timedelta
+from typing import Any
 
 from fastapi import Depends
 
@@ -30,6 +31,44 @@ from .dependencies.authentication import auth
 
 logger = logging.getLogger(__name__)
 module_name = "USER"
+
+
+def _mask_hidden_fields(obj: Any) -> Any:
+    """Mask fields with hidden=True in json_schema_extra.
+
+    Args:
+        obj: The object to process (can be a Pydantic model or dict)
+
+    Returns:
+        The object with hidden fields masked
+    """
+    if hasattr(obj, "model_fields"):
+        # It's a Pydantic model
+        result = {}
+        for field_name, field_info in obj.model_fields.items():
+            value = getattr(obj, field_name, None)
+            # Check if field has json_schema_extra with hidden=True
+            if (
+                field_info.json_schema_extra
+                and field_info.json_schema_extra.get("is_sensitive") is True
+            ):
+                result[field_name] = "********"
+            else:
+                result[field_name] = _mask_hidden_fields(value)
+        return result
+    elif isinstance(obj, dict):
+        # It's a dictionary
+        result = {}
+        for key, value in obj.items():
+            result[key] = _mask_hidden_fields(value)
+        return result
+    elif isinstance(obj, list):
+        # It's a list
+        return [_mask_hidden_fields(item) for item in obj]
+    else:
+        # It's a primitive type, return as is
+        return obj
+
 
 # Database storage for users and roles (in-memory for now)
 # TODO(zhaoyi): Move to database
@@ -102,7 +141,7 @@ def get_user_management_status(
         User management status response
     """
     func_name = "get_user_management_status"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     _response_info = {
         "enabled": Config.ENABLE_USER_MGMT,
@@ -135,7 +174,7 @@ def create_user(
         Create user response
     """
     func_name = "create_user"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     check_user_management_enabled()
 
@@ -245,7 +284,7 @@ def get_user(
         Get user response
     """
     func_name = "get_user"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     check_user_management_enabled()
 
@@ -280,7 +319,7 @@ def update_user(
         Update user response
     """
     func_name = "update_user"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     check_user_management_enabled()
 
@@ -341,7 +380,7 @@ def delete_user(
         Delete user response
     """
     func_name = "delete_user"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     check_user_management_enabled()
 
@@ -385,7 +424,7 @@ def create_role(
         Create role response
     """
     func_name = "create_role"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     check_user_management_enabled()
 
@@ -456,7 +495,7 @@ def get_role(
         Get role response
     """
     func_name = "get_role"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     check_user_management_enabled()
 
@@ -491,7 +530,7 @@ def update_role(
         Update role response
     """
     func_name = "update_role"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     check_user_management_enabled()
 
@@ -532,7 +571,7 @@ def delete_role(
         Delete role response
     """
     func_name = "delete_role"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     check_user_management_enabled()
 
@@ -593,7 +632,7 @@ def lock_user(
         Lock user response
     """
     func_name = "lock_user"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     check_user_management_enabled()
 
@@ -660,7 +699,7 @@ def change_password(
         Change password response
     """
     func_name = "change_password"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     check_user_management_enabled()
 
@@ -744,7 +783,7 @@ def get_login_logs(
         Dictionary of login logs keyed by timestamp
     """
     func_name = "get_login_logs"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     check_user_management_enabled()
 
@@ -803,7 +842,7 @@ def get_users(
         Dictionary of users keyed by user_name
     """
     func_name = "get_users"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     check_user_management_enabled()
 
@@ -832,7 +871,7 @@ def get_roles(
         Dictionary of roles keyed by role name
     """
     func_name = "get_roles"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     check_user_management_enabled()
 
@@ -883,14 +922,14 @@ def initialize_user_management():
     logger.info("User management initialized with default admin user")
 
 
-def get_user_response(user):
+def get_user_response(user) -> dict:
     """Get user response.
 
     Args:
-        user: user info
+        user (schemas.User): User model instance
 
     Returns:
-        user response
+        schemas.GetUserResponse: Formatted user response
     """
     response_info = {
         "user_name": user.user_name,
@@ -910,7 +949,7 @@ def get_user_response(user):
     return response_info
 
 
-def get_role_response(role: schemas.Role) -> dict:
+def get_role_response(role) -> dict:
     """Get role response.
 
     Args:

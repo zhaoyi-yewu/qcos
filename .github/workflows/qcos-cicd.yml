@@ -48,6 +48,7 @@ jobs:
           if [ -n "${{ vars.YUM_MIRROR }}" ]; then
             sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
           fi
+          df -h
           ./build-images.sh -b -t dev
 
       - name: Upload qcos-base Docker Image Artifact
@@ -93,6 +94,7 @@ jobs:
           if [ -n "${{ vars.YUM_MIRROR }}" ]; then
             sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
           fi
+          df -h
           ./build-images.sh -s -t dev
 
       - name: Upload qcos-sandbox Docker Image Artifact
@@ -143,6 +145,7 @@ jobs:
           if [ -n "${{ vars.YUM_MIRROR }}" ]; then
             sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
           fi
+          df -h
           ./run-sandbox.sh
           docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -q -t dev"
           EOF
@@ -186,6 +189,7 @@ jobs:
           if [ -n "${{ vars.YUM_MIRROR }}" ]; then
             sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
           fi
+          df -h
           ./run-sandbox.sh
           docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -c -t dev"
           EOF

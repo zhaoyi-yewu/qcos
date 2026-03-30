@@ -24,7 +24,11 @@ class User(BaseModel):
     """User model."""
 
     user_name: str = Field(..., description="User name")
-    password_hash: str = Field(..., description="Password hash")
+    password_hash: str = Field(
+        ...,
+        description="Password hash",
+        json_schema_extra={"is_sensitive": True},
+    )
     roles: list[str] = Field(default=[], description="User roles")
     password_expiry_days: int | None = Field(
         description="Password expiry days"
@@ -81,7 +85,12 @@ class CreateUserRequest(BaseModel):
     user_name: str = Field(
         ..., min_length=3, max_length=50, description="User name"
     )
-    password: str = Field(..., min_length=6, description="Password")
+    password: str = Field(
+        ...,
+        min_length=6,
+        description="Password",
+        json_schema_extra={"is_sensitive": True},
+    )
     roles: list[str] = Field(default=["user"], description="User roles")
     password_expiry_days: int | None = Field(
         default=None, description="Password expiry days (optional)"
@@ -218,9 +227,16 @@ class ChangePasswordRequest(BaseModel):
 
     user_name: str = Field(..., description="User name")
     old_password: str | None = Field(
-        default=None, description="Old password (for non-admin changes)"
+        default=None,
+        description="Old password (for non-admin changes)",
+        json_schema_extra={"is_sensitive": True},
     )
-    new_password: str = Field(..., min_length=6, description="New password")
+    new_password: str = Field(
+        ...,
+        min_length=6,
+        description="New password",
+        json_schema_extra={"is_sensitive": True},
+    )
 
 
 class ChangePasswordResponse(BaseModel):
