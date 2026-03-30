@@ -162,7 +162,7 @@ class TaskScheduler(ABC):
         wait_states_flow_count = len(wait_states_flows)
         if wait_states_flow_count >= Config.MAX_QUEUED_JOBS:
             return None, (
-                f"Current running+queued job count exceeds "
+                f"Current queued job count exceeds "
                 f"max queued job limit: {Config.MAX_QUEUED_JOBS}"
             )
 
@@ -177,6 +177,18 @@ class TaskScheduler(ABC):
             err_msg = f"Backend driver: {backend} is disabled"
             logger.error(err_msg)
             return None, f"Execute work flow failed: {err_msg}"
+
+        pool_wait_states_flows = self._task_manager.get_flow_runs_with_filters(
+            states=wait_states, pool_name=backend
+        )
+        pool_wait_states_flows_count = len(pool_wait_states_flows)
+        device_max_queued_jobs = device.get_max_queued_jobs()
+        if pool_wait_states_flows_count >= device_max_queued_jobs:
+            return None, (
+                f"Current queued job count exceeds "
+                f"max queued job limit: {device_max_queued_jobs}"
+            )
+
         driver = device.get_driver()
         driver_module_name = driver.get_module_name()
         driver_class_name = driver.get_class_name()
@@ -207,6 +219,7 @@ class TaskScheduler(ABC):
                 "class_name": transpiler_class_name,
             }
             job_json_info["device"] = {"configs": device.get_configs()}
+            job_json_info["global"] = {"configs": Config.get_configs()}
 
             job_id = self._policy_handler.exec_task(
                 deployment, job_json_info, tags=tags

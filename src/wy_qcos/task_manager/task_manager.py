@@ -1209,12 +1209,15 @@ class TaskFlowManager(ABC):
             logger.error(f"Prefect execute error: {str(e)}")
             return None
 
-    def get_flow_runs_with_filters(self, states=None, tags=None):
+    def get_flow_runs_with_filters(
+        self, states=None, tags=None, pool_name=None
+    ):
         """Get flow runs with filters.
 
         Args:
             states: flow states
             tags: prefect flow tags
+            pool_name: pool_name
 
         Returns:
             flow runs.
@@ -1231,6 +1234,9 @@ class TaskFlowManager(ABC):
         if Config.ENABLE_VIRT and tags is not None:
             tags_filter = FlowRunFilterTags(all_=tags)
             flow_run_filter_kwargs["tags"] = tags_filter
+
+        if pool_name is not None:
+            flow_run_filter_kwargs["work_pool_name"] = {"eq_": pool_name}
 
         # create flow run filter with flow_run_filter_kwargs
         flow_run_filter = FlowRunFilter(**flow_run_filter_kwargs)

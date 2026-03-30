@@ -77,7 +77,7 @@ class DeviceManager:
                 device_max_qubits = device_configs.pop(
                     "device_max_qubits", None
                 )
-
+                max_queued_jobs = device_configs.pop("max_queued_jobs", -1)
                 driver = self.driver_manager.get_driver(driver_name)
                 if driver:
                     device = Device(device_name, driver)
@@ -87,6 +87,8 @@ class DeviceManager:
                         device.set_description(description)
                     if device_max_qubits is not None:
                         device.set_max_qubits(device_max_qubits)
+                    if max_queued_jobs is not None:
+                        device.set_max_queued_jobs(max_queued_jobs)
                     success, err_msg = driver.validate_driver_configs(
                         device_configs
                     )
