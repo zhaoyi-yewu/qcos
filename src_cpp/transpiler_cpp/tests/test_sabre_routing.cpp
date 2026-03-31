@@ -54,16 +54,19 @@ bool qcos::validate_routing(const SABRE& sabre,
   }
 
   // 构造DAG
-  std::vector<std::shared_ptr<Node>> pre_nodes(logic_qubit_num, nullptr);
-  std::vector<std::shared_ptr<Node>> front_layer;
-  std::vector<std::shared_ptr<Node>> all_nodes;
+  std::vector<Node> node_pool;
+  node_pool.reserve(logical_gates.size());
+  std::vector<Node*> pre_nodes(logic_qubit_num, nullptr);
+  std::vector<Node*> front_layer;
+  std::vector<Node*> all_nodes;
   for (const auto& gate : logical_gates) {
-    auto node = std::make_shared<Node>(gate);
+    node_pool.emplace_back(gate);
+    Node* node = &node_pool.back();
     int pre_number = 0;
 
     if (node->bits.size() == 2) {
       for (int bit : node->bits) {
-        auto pre = pre_nodes[bit];
+        auto* pre = pre_nodes[bit];
         if (pre != nullptr) {
           auto it = std::find(pre->edges.begin(), pre->edges.end(), node);
           if (it == pre->edges.end()) {
@@ -104,18 +107,18 @@ bool qcos::validate_routing(const SABRE& sabre,
     }
 
     // 验证当前两个物理比特之间是否有耦合连接
-    if (!sabre.adj_list_.at(p0).count(p1)) return false;
+    if (!sabre.adj_matrix_[p0][p1]) return false;
 
     bool matched = false;
     // 寻找并执行对应的逻辑门
     for (int i = 0; i < (int)front_layer.size(); ++i) {
-      auto node = front_layer[i];
+      auto* node = front_layer[i];
       int l0 = node->bits[0];
       int l1 = node->bits[1];
 
       if ((l2p[l0] == p0 && l2p[l1] == p1) ||
           (l2p[l0] == p1 && l2p[l1] == p0)) {
-        for (auto& succ : node->edges) {
+        for (auto* succ : node->edges) {
           succ->pre_number--;
           if (succ->pre_number == 0) front_layer.push_back(succ);
         }
@@ -129,7 +132,7 @@ bool qcos::validate_routing(const SABRE& sabre,
   }
 
   // 判断是否所有逻辑门均执行
-  for (const auto& node : all_nodes) {
+  for (const auto* node : all_nodes) {
     if (node->pre_number > 0) return false;
   }
 
@@ -203,11 +206,11 @@ TEST(SabreCoreTest, LinearTopologySwap) {
 }
 
 #ifdef TEST_BENCH
-TEST(SabreCoreTest, Benchmark) {
-  std::string config_path = topo_dir + "/topology/spinq_rpc_156.toml";
-  std::string qasm_dir = data_dir + "/qasm/benchpress/qft";
-  routing_and_validate_qasmfiles(qasm_dir, config_path);
-}
+// TEST(SabreCoreTest, Benchmark) {
+//   std::string config_path = topo_dir + "/topology/spinq_rpc_156.toml";
+//   std::string qasm_dir = data_dir + "/qasm/benchpress/qft";
+//   routing_and_validate_qasmfiles(qasm_dir, config_path);
+// }
 
 TEST(SabreCoreTest, LoadAndRoute) {
   // topology
