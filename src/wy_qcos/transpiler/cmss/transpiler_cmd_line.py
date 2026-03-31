@@ -348,6 +348,15 @@ class CMSSTranspilerPerf:
         transpile_all_result = {}
         for _ in range(self.run_count):
             for params in self.params_list:
+                trans_logger.log_perf(
+                    "parameters:\n"
+                    f"input_file: {params.file}\n"
+                    f"opt_level: {params.opt_level}\n"
+                    f"base_gates: {params.tech_gates}\n"
+                    f"tech_type: {params.mapping_info[0]}\n"
+                    f"config_file: {params.mapping_info[1]}\n"
+                    f"mapping_options: {params.mapping_options}\n"
+                )
                 runtime = self.cmss_transpiler_perf_exec(
                     input_file=params.file,
                     opt_level=params.opt_level,
@@ -645,7 +654,9 @@ class CMSSTranspilerPerf:
             )
 
             # generate basis gates list
-            trans_logger.log_perf("start qiskit performace testing...")
+            trans_logger.log_perf(
+                "Start performace testing of cmss compiling."
+            )
             with Timer() as ast_timer:
                 src_code_info = {"000": qasm_data}
                 parse_result = transpiler.parse(src_code_info)
