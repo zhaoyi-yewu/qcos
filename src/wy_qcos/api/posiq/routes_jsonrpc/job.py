@@ -34,14 +34,16 @@ module_name = "JOB"
 
 
 @job_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
     errors=[
         jsonrpc_errors.BadRequestError,
         jsonrpc_errors.ConflictError,
         jsonrpc_errors.InternalServerError,
-    ]
+    ],
 )
 def submit_job(
-    body: schemas.SubmitJobRequest, auth_data: dict | None = Depends(auth)
+    body: schemas.SubmitJobRequest,
+    auth_data: dict | None = Depends(auth),
 ) -> schemas.SubmitJobResponse:
     """Submit job.
 
@@ -402,10 +404,12 @@ def submit_job(
 
 
 @job_api_v1.method(
-    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError]
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError],
 )
 def get_job_status(
-    body: schemas.GetJobStatusRequest, auth_data: dict | None = Depends(auth)
+    body: schemas.GetJobStatusRequest,
+    auth_data: dict | None = Depends(auth),
 ) -> schemas.GetJobStatusResponse:
     """Get job status.
 
@@ -463,10 +467,12 @@ def get_job_status(
 
 
 @job_api_v1.method(
-    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError]
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError],
 )
 def get_job_results(
-    body: schemas.GetJobResultsRequest, auth_data: dict | None = Depends(auth)
+    body: schemas.GetJobResultsRequest,
+    auth_data: dict | None = Depends(auth),
 ) -> schemas.GetJobResultsResponse:
     """Get job results.
 
@@ -525,7 +531,10 @@ def get_job_results(
     return response_info
 
 
-@job_api_v1.method(errors=[jsonrpc_errors.InternalServerError])
+@job_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    errors=[jsonrpc_errors.InternalServerError],
+)
 def get_jobs(
     body: schemas.GetJobsRequest | None = None,
     auth_data: dict | None = Depends(auth),
@@ -576,7 +585,9 @@ def get_jobs(
     return response_list
 
 
-@job_api_v1.method(errors=[])
+@job_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]}, errors=[]
+)
 def cancel_jobs(
     body: schemas.CancelJobsRequest,
     auth_data: dict | None = Depends(auth),
@@ -614,7 +625,9 @@ def cancel_jobs(
     return response_info
 
 
-@job_api_v1.method(errors=[])
+@job_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]}, errors=[]
+)
 def delete_jobs(
     body: schemas.DeleteJobsRequest,
     auth_data: dict | None = Depends(auth),
@@ -655,7 +668,8 @@ def delete_jobs(
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError]
 )
 def set_job_results(
-    body: schemas.SetJobResultsRequest, auth_data: dict | None = Depends(auth)
+    body: schemas.SetJobResultsRequest,
+    auth_data: dict | None = Depends(auth),
 ) -> schemas.SetJobResultsResponse:
     """Set job results for existing job.
 
@@ -713,7 +727,7 @@ def set_job_results(
         )
 
     parameters = response.get("parameters", None)
-    source_code = Library.get_nested_dict_value(
+    source_code: list = Library.get_nested_dict_value(
         parameters, "job_info", "data", "source_code", default=[]
     )
 
@@ -810,9 +824,12 @@ def set_job_results(
     return response_info
 
 
-@job_api_v1.method(errors=[])
+@job_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]}, errors=[]
+)
 def update_job(
-    body: schemas.UpdateJobRequest, auth_data: dict | None = Depends(auth)
+    body: schemas.UpdateJobRequest,
+    auth_data: dict | None = Depends(auth),
 ) -> schemas.UpdateJobResponse:
     """Update job.
 

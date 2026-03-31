@@ -17,10 +17,14 @@
 
 import logging
 
+from fastapi import Depends
+
 from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import driver_api_v1
+from wy_qcos.common.constant import Constant
 from wy_qcos.task_manager import scheduler
+from .dependencies.authentication import auth
 
 logger = logging.getLogger(__name__)
 module_name = "DRIVER"
@@ -57,14 +61,18 @@ def _get_driver_info(driver, transpiler):
     return _driver_info
 
 
-@driver_api_v1.method(errors=[])
+@driver_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]}, errors=[]
+)
 def get_drivers(
     body: schemas.GetDriversRequest | None = None,
+    auth_data: dict | None = Depends(auth),
 ) -> dict[str, schemas.GetDriverResponse]:
     """Get driver dict request.
 
     Args:
         body(schemas.GetDriversRequest): message
+        auth_data: auth data
 
     Returns:
         Get drivers response
@@ -85,12 +93,19 @@ def get_drivers(
     return response_info
 
 
-@driver_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
-def get_driver(body: schemas.GetDriverRequest) -> schemas.GetDriverResponse:
+@driver_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    errors=[jsonrpc_errors.NotFoundError],
+)
+def get_driver(
+    body: schemas.GetDriverRequest,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.GetDriverResponse:
     """Get driver info request.
 
     Args:
         body(schemas.GetDriverRequest): driver_name
+        auth_data: auth data
 
     Returns:
         Get driver info response

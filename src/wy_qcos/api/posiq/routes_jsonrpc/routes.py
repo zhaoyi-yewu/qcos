@@ -42,3 +42,13 @@ transpiler_api_v1 = jsonrpc.Entrypoint(
 user_api_v1 = jsonrpc.Entrypoint(
     f"{BASE_ENDPOINT}/user", common_dependencies=[Depends(auth)]
 )
+all_api_v1 = [
+    base_api,
+    driver_api_v1,
+    device_api_v1,
+    transpiler_api_v1,
+    job_api_v1,
+    user_api_v1,
+    system_api_v1,
+]
+all_api = all_api_v1

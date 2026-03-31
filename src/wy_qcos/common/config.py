@@ -20,7 +20,7 @@ from pathlib import Path
 
 from wy_qcos.common import errors
 from wy_qcos.common.constant import Constant
-from wy_qcos.common.library import Library
+from wy_qcos.common.library import _s, Library
 
 
 class Config:
@@ -72,6 +72,12 @@ class Config:
     MAX_LOGIN_ATTEMPTS = 5
     LOCKOUT_DURATION_MINUTES = 30
     ADMIN_PASSWORD = None
+    ACCESS_CONTROL_MODEL_FILE = "/etc/qcos/roles/casbin_model.conf"
+    ACCESS_CONTROL_POLICY_FILE = "/etc/qcos/roles/policy.conf"
+    SECRET_KEY = _s("47pW_6k8A4iU1Z8-r8G2j4_xN9M5V3L7Q9p2X1Y4Z0A")
+    ALGORITHM = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES = 30
+    REFRESH_TOKEN_EXPIRE_DAYS = 7
 
     # [LOG]
     # api log file

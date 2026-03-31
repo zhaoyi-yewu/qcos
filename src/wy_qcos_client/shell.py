@@ -2064,11 +2064,11 @@ class UpdateUser(Command):
         )
         if is_enabled is not None:
             action = "enabled" if is_enabled else "disabled"
-            print(f"User {action}: {parsed_args.user_name}")
+            self.app.stdout.write(f"User {action}: {parsed_args.user_name}\n")
         if is_locked is not None:
             action = "locked" if is_locked else "unlocked"
-            print(f"User {action}: {parsed_args.user_name}")
-        print(f"User updated: {parsed_args.user_name}")
+            self.app.stdout.write(f"User {action}: {parsed_args.user_name}\n")
+        self.app.stdout.write(f"User updated: {parsed_args.user_name}")
 
 
 class GetUser(ShowOne):
@@ -2162,7 +2162,7 @@ class GetUsers(Lister):
             json_results, header_list, is_dict=True
         )
         if not json_results:
-            print("No users found")
+            self.app.stdout.write("No users found\n")
         return table_values
 
 
@@ -2310,7 +2310,7 @@ class GetRoles(Lister):
             json_results, header_list, is_dict=True
         )
         if not json_results:
-            print("No roles found")
+            self.app.stdout.write("No roles found\n")
         return table_values
 
 
@@ -2373,7 +2373,7 @@ class GetLoginLogs(Lister):
             json_results, header_list, is_dict=True
         )
         if not json_results:
-            print("No login logs found")
+            self.app.stdout.write("No login logs found\n")
         return table_values
 
 

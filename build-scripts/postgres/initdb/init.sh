@@ -1,3 +1,4 @@
+#!/bin/bash
 # ----------------------------------------------------------------------
 # Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
@@ -12,7 +13,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-#!/bin/bash
 set -e
 
 cp /etc/postgresql/postgresql.conf $PGDATA/

@@ -38,6 +38,7 @@ pydantic_core==2.33.2
 pydocket==0.16.3
 pytest==8.4.1
 pytest-cov==6.2.1
+python-jose==3.5.0
 python-socketio==5.12.1
 PyYAML==6.0.3
 redis==7.1.0

@@ -27,7 +27,7 @@ class TranspilerCmssQubo(TranspilerBase):
         super().__init__()
         self.name = Constant.TRANSPILER_CMSS_QUBO
         # alias name
-        self.alias_name = "CmssQubo转译器(cmss_qubo)"
+        self.alias_name = "五岳QUBO转译器"
         # version
         self.version = "0.1"
         # supported code types

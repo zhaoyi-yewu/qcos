@@ -14,55 +14,113 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-import logging
-import uuid
-from typing import ClassVar
 
-from sqlalchemy.sql.schema import Table
-from sqlalchemy import Column, String, DateTime, Boolean, event
+from datetime import datetime
 
-from wy_qcos.db.models.base import BaseTable, ArrayType, GUID
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Boolean,
+    DateTime,
+    JSON,
+    Text,
+    ForeignKey,
+)
+from sqlalchemy.orm import relationship
 
-logger = logging.getLogger(__name__)
+from wy_qcos.db.models.base import Base
 
 
-class User(BaseTable):
-    """Users table."""
+class User(Base):
+    """User database model."""
 
     __tablename__ = "users"
-    __table__: ClassVar[Table]
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    username = Column(String(64), unique=True, index=True)
-    hashed_password = Column(String(128))
-    roles = Column(ArrayType, index=True, default=list)
+    # Primary key: auto-increment ID
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+
+    # Business unique constraint: user name
+    user_name = Column(String(50), unique=True, index=True, nullable=False)
+
+    # FastAPI-Users base fields (password management)
+    hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
+    is_superuser = Column(Boolean, default=False)
+    is_verified = Column(Boolean, default=False)
+
+    # Extended fields from existing model
+    roles = Column(JSON, default=[])
     is_locked = Column(Boolean, default=False)
-    last_login = Column(DateTime)
-    password_changed_at = Column(DateTime)
-    locked_until = Column(DateTime)
+    last_login = Column(DateTime, nullable=True)
+    password_changed_at = Column(DateTime, default=datetime.now)
+    locked_until = Column(DateTime, nullable=True)
+    password_expiry_days = Column(Integer, default=0)
+    failed_login_attempts = Column(Integer, default=0)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # Relationships
+    login_logs = relationship("LoginLog", back_populates="user")
+    user_roles = relationship("UserRole", back_populates="user")
 
 
-class Role(BaseTable):
-    """Roles table."""
+class Role(Base):
+    """Role database model."""
 
     __tablename__ = "roles"
-    __table__: ClassVar[Table]
 
-    name = Column(String(64), primary_key=True, unique=True, index=True)
-    permissions = Column(ArrayType, index=True, default=list)
-    description = Column(String(256))
+    # Primary key: auto-increment ID
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+
+    # Business unique constraint: role name
+    role_name = Column(String(50), unique=True, index=True, nullable=False)
+
+    # Role permissions and metadata
+    permissions = Column(JSON, default=[])
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # Relationships
+    user_roles = relationship("UserRole", back_populates="role")
 
 
-@event.listens_for(Role.__table__, "after_create")
-def create_default_role(target, connection, **kw):
-    default_name = "admin"
-    default_permissions = ["all"]
+class UserRole(Base):
+    """User-Role many-to-many relationship model."""
 
-    stmt = target.insert().values(
-        name=default_name,
-        permissions=default_permissions,
-    )
+    __tablename__ = "user_roles"
 
-    connection.execute(stmt)
-    logger.info("The default super role has been created in the database")
+    # Primary key: auto-increment ID
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+
+    # Foreign keys
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
+
+    # Creation timestamp
+    created_at = Column(DateTime, default=datetime.now)
+
+    # Relationships
+    user = relationship("User", back_populates="user_roles")
+    role = relationship("Role", back_populates="user_roles")
+
+
+class LoginLog(Base):
+    """Login log database model."""
+
+    __tablename__ = "login_logs"
+
+    # Primary key: auto-increment ID
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+
+    # Login information
+    user_name = Column(String(50), index=True, nullable=False)
+    ip_address = Column(String(45), nullable=False)  # Support IPv6
+    login_time = Column(DateTime, default=datetime.now)
+    login_status = Column(String(20), nullable=False)  # success, failed
+    user_agent = Column(Text, nullable=True)
+
+    # Relationships
+    user = relationship("User", back_populates="login_logs")
