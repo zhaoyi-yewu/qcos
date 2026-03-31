@@ -17,3 +17,9 @@ device_log_file = "/var/log/qcos/device_qiskit_aer_sim.log"
 # [Optional] device monitor log file path
 # monitor_log_file = /var/log/qcos/device_montior_qiskit_aer_sim.log
 monitor_log_file = "/var/log/qcos/device_monitor_qiskit_aer_sim.log"
+
+# [Optional] device manager log file path
+# mgr_log_file = /var/log/qcos/device_mgr_qiskit_aer_sim.log
+
+# [Optional] max queued jobs, -1 means unlimited
+max_queued_jobs = -1

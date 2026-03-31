@@ -18,6 +18,12 @@ device_log_file = "/var/log/qcos/device_spinq_gemini.log"
 # monitor_log_file = /var/log/qcos/device_montior_spinq_gemini.log
 monitor_log_file = "/var/log/qcos/device_monitor_spinq_gemini.log"
 
+# [Optional] device manager log file path
+# mgr_log_file = /var/log/qcos/device_mgr_spinq_gemini.log
+
+# [Optional] max queued jobs, -1 means unlimited
+max_queued_jobs = -1
+
 # [Optional] remote host
 remote_host = "127.0.0.1"
 

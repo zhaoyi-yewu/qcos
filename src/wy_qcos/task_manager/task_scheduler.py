@@ -183,7 +183,12 @@ class TaskScheduler(ABC):
         )
         pool_wait_states_flows_count = len(pool_wait_states_flows)
         device_max_queued_jobs = device.get_max_queued_jobs()
-        if pool_wait_states_flows_count >= device_max_queued_jobs:
+        if (
+            device_max_queued_jobs == 0 and pool_wait_states_flows_count > 0
+        ) or (
+            device_max_queued_jobs > 0
+            and pool_wait_states_flows_count >= device_max_queued_jobs
+        ):
             return None, (
                 f"Current queued job count exceeds "
                 f"max queued job limit: {device_max_queued_jobs}"

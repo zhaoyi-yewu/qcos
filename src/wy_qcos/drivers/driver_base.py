@@ -141,6 +141,8 @@ class DriverBase:
             Optional("debug"): bool,
             Optional("device_log_file"): str,
             Optional("monitor_log_file"): str,
+            Optional("mgr_log_file"): str,
+            Optional("max_queued_jobs"): int,
         }
 
     def validate_driver(self):
