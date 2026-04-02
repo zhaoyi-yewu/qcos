@@ -22,6 +22,7 @@ from fastapi import Depends
 from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import device_api_v1
+from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.task_manager import scheduler
 from .dependencies.authentication import auth
@@ -65,7 +66,9 @@ def _get_device_info(device, auth_data=None, details=False):
     return _device_info
 
 
-@device_api_v1.method(errors=[])
+@device_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]}, errors=[]
+)
 def get_devices(
     body: schemas.GetDevicesRequest | None = None,
     auth_data: dict | None = Depends(auth),
@@ -96,7 +99,10 @@ def get_devices(
     return response_info
 
 
-@device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
+@device_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    errors=[jsonrpc_errors.NotFoundError],
+)
 def get_device(
     body: schemas.GetDeviceRequest,
     auth_data: dict | None = Depends(auth),
@@ -131,15 +137,17 @@ def get_device(
 
 
 @device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
-def calibrate(
+def calibrate_device(
     body: schemas.CalibrateDeviceRequest,
+    auth_data: dict | None = Depends(auth),
 ) -> schemas.CalibrateDeviceResponse:
     """Calibrate device.
 
     Args:
         body(schemas.CalibrateDeviceRequest): CalibrateDeviceRequest body
+        auth_data: auth data
     """
-    func_name = "calibrate"
+    func_name = "calibrate_device"
     logger.info(f"Call {func_name}: {body}")
 
     body.method = func_name
@@ -154,11 +162,13 @@ def calibrate(
 @device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
 def get_calibrate_results(
     body: schemas.GetCalibrateResultRequest,
+    auth_data: dict | None = Depends(auth),
 ) -> schemas.GetCalibrateResultResponse:
     """Get Calibrate result.
 
     Args:
         body(schemas.GetCalibrateResultRequest): GetCalibrateResultRequest body
+        auth_data: auth data
     """
     func_name = "get_calibrate_results"
     logger.info(f"Call {func_name}: {body}")
@@ -181,11 +191,13 @@ def get_calibrate_results(
 @device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
 def set_device_options(
     body: schemas.SetDeviceOptionsRequest,
+    auth_data: dict | None = Depends(auth),
 ) -> schemas.SetDeviceOptionsResponse:
     """Set device Options request.
 
     Args:
         body(schemas.SetDeviceOptionsRequest): SetDeviceOptionsRequest body
+        auth_data: auth data
 
     Returns:
         Set device Options response
@@ -201,14 +213,19 @@ def set_device_options(
     return response_info
 
 
-@device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
+@device_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    errors=[jsonrpc_errors.NotFoundError],
+)
 def get_device_options(
     body: schemas.GetDeviceOptionsRequest,
+    auth_data: dict | None = Depends(auth),
 ) -> schemas.GetDeviceOptionsResponse:
     """Get device Options request.
 
     Args:
         body(schemas.GetDeviceOptionsRequest): GetDeviceOptionsRequest body
+        auth_data: auth data
 
     Returns:
         Set device Options response

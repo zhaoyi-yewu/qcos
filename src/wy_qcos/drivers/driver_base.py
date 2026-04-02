@@ -141,6 +141,8 @@ class DriverBase:
             Optional("debug"): bool,
             Optional("device_log_file"): str,
             Optional("monitor_log_file"): str,
+            Optional("mgr_log_file"): str,
+            Optional("max_queued_jobs"): int,
         }
 
     def validate_driver(self):
@@ -563,7 +565,7 @@ class DriverBase:
         """
         return self.driver_options
 
-    def calibrate(self, data):
+    def calibrate_device(self, data):
         """Calibrate device.
 
         Args:

@@ -652,6 +652,196 @@ class GetDevice(ShowOne):
         return table_values
 
 
+class CalibrateDevice(Command):
+    """Calibrate device."""
+
+    group = QcosShell.CMD_GROUP_DEVICE
+
+    def get_parser(self, prog_name):
+        """Get parser for this command.
+
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument("device_name", type=str, help="Device name")
+        parser.add_argument(
+            "--options",
+            dest="options",
+            type=str,
+            default=None,
+            help="Calibration options",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        """Take action for command line arguments.
+
+        Args:
+            parsed_args: command line arguments
+        """
+        resource = self.group
+        device_name = parsed_args.device_name
+        options = parsed_args.options
+
+        # Validate argument: options
+        if options:
+            try:
+                options = json.loads(options)
+            except json.decoder.JSONDecodeError as exc:
+                raise errors.InvalidArguments(
+                    "Invalid argument: options"
+                ) from exc
+
+        status_code, reason, text, result = self.app.client.calibrate_device(
+            device_name, options
+        )
+        CommandHelper.check_results(
+            resource, "calibrate_device", status_code, reason, text
+        )
+        print(f"Send Device {device_name} calibrate cmd successfully")
+
+
+class GetCalibrateResults(ShowOne):
+    """Get calibrate results."""
+
+    group = QcosShell.CMD_GROUP_DEVICE
+
+    def get_parser(self, prog_name):
+        """Get parser for this command.
+
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument("device_name", type=str, help="Device name")
+        return parser
+
+    def take_action(self, parsed_args):
+        """Take action for command line arguments.
+
+        Args:
+            parsed_args: command line arguments
+        """
+        resource = self.group
+        device_name = parsed_args.device_name
+
+        status_code, reason, text, result = (
+            self.app.client.get_calibrate_results(device_name)
+        )
+        json_results = CommandHelper.check_results(
+            resource, "get_calibrate_results", status_code, reason, text
+        )
+        if json_results is not None and json_results["details"] is not None:
+            table_values = CommandHelper.get_table_data(
+                json_results["details"]
+            )
+            return table_values
+        else:
+            print("json_results is None or json_results['details'] is None")
+
+
+class SetDeviceOptions(Command):
+    """Set device options."""
+
+    group = QcosShell.CMD_GROUP_DEVICE
+
+    def get_parser(self, prog_name):
+        """Get parser for this command.
+
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument("device_name", type=str, help="Device name")
+        parser.add_argument(
+            "--options",
+            dest="options",
+            type=str,
+            default=None,
+            help="Device options",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        """Take action for command line arguments.
+
+        Args:
+            parsed_args: command line arguments
+        """
+        resource = self.group
+        device_name = parsed_args.device_name
+        options = parsed_args.options
+
+        # Validate argument: options
+        if options:
+            try:
+                options = json.loads(options)
+            except json.decoder.JSONDecodeError as exc:
+                raise errors.InvalidArguments(
+                    "Invalid argument: options"
+                ) from exc
+
+        status_code, reason, text, result = self.app.client.set_device_options(
+            device_name, options
+        )
+        CommandHelper.check_results(
+            resource, "set_device_options", status_code, reason, text
+        )
+        print(f"Device {device_name} options set successfully")
+
+
+class GetDeviceOptions(ShowOne):
+    """Get device options."""
+
+    group = QcosShell.CMD_GROUP_DEVICE
+
+    def get_parser(self, prog_name):
+        """Get parser for this command.
+
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument("device_name", type=str, help="Device name")
+        return parser
+
+    def take_action(self, parsed_args):
+        """Take action for command line arguments.
+
+        Args:
+            parsed_args: command line arguments
+        """
+        resource = self.group
+        device_name = parsed_args.device_name
+
+        status_code, reason, text, result = self.app.client.get_device_options(
+            device_name
+        )
+        json_results = CommandHelper.check_results(
+            resource, "get_device_options", status_code, reason, text
+        )
+        if json_results is not None and json_results["details"] is not None:
+            table_values = CommandHelper.get_table_data(
+                json_results["details"]
+            )
+            return table_values
+        else:
+            print("json_results is None or json_results['details'] is None")
+
+
 # Transpiler commands
 class GetTranspilers(Lister):
     """Get transpiler list."""
@@ -1760,7 +1950,7 @@ class CreateUser(Command):
         json_results = CommandHelper.check_results(
             resource, "create_user", status_code, reason, text
         )
-        self.app.stdout.write(f"User created: {json_results['user_name']}")
+        print(f"User created: {json_results['user_name']}")
 
 
 class UpdateUser(Command):
@@ -1874,10 +2064,10 @@ class UpdateUser(Command):
         )
         if is_enabled is not None:
             action = "enabled" if is_enabled else "disabled"
-            self.app.stdout.write(f"User {action}: {parsed_args.user_name}")
+            self.app.stdout.write(f"User {action}: {parsed_args.user_name}\n")
         if is_locked is not None:
             action = "locked" if is_locked else "unlocked"
-            self.app.stdout.write(f"User {action}: {parsed_args.user_name}")
+            self.app.stdout.write(f"User {action}: {parsed_args.user_name}\n")
         self.app.stdout.write(f"User updated: {parsed_args.user_name}")
 
 
@@ -1994,7 +2184,7 @@ class DeleteUser(Command):
         CommandHelper.check_results(
             resource, "delete_user", status_code, reason, text
         )
-        self.app.stdout.write(f"User deleted: {parsed_args.user_name}")
+        print(f"User deleted: {parsed_args.user_name}")
 
 
 class CreateRole(Command):
@@ -2021,7 +2211,7 @@ class CreateRole(Command):
         json_results = CommandHelper.check_results(
             resource, "create_role", status_code, reason, text
         )
-        self.app.stdout.write(f"Role created: {json_results['role_name']}")
+        print(f"Role created: {json_results['role_name']}")
 
 
 class GetRole(ShowOne):
@@ -2076,7 +2266,7 @@ class UpdateRole(Command):
         CommandHelper.check_results(
             resource, "update_role", status_code, reason, text
         )
-        self.app.stdout.write(f"Role updated: {parsed_args.role_name}")
+        print(f"Role updated: {parsed_args.role_name}")
 
 
 class DeleteRole(Command):
@@ -2097,7 +2287,7 @@ class DeleteRole(Command):
         CommandHelper.check_results(
             resource, "delete_role", status_code, reason, text
         )
-        self.app.stdout.write(f"Role deleted: {parsed_args.role_name}")
+        print(f"Role deleted: {parsed_args.role_name}")
 
 
 class GetRoles(Lister):
@@ -2146,9 +2336,7 @@ class ChangePassword(Command):
         CommandHelper.check_results(
             resource, "change_password", status_code, reason, text
         )
-        self.app.stdout.write(
-            f"Password changed for user: {parsed_args.user_name}"
-        )
+        print(f"Password changed for user: {parsed_args.user_name}")
 
 
 class GetLoginLogs(Lister):
@@ -2210,6 +2398,10 @@ command_manager.add_command("get-driver", GetDriver)
 command_manager.add_command("list-drivers", GetDrivers)
 # device command
 command_manager.add_command("get-device", GetDevice)
+command_manager.add_command("calibrate-device", CalibrateDevice)
+command_manager.add_command("get-calibrate-results", GetCalibrateResults)
+command_manager.add_command("set-device-options", SetDeviceOptions)
+command_manager.add_command("get-device-options", GetDeviceOptions)
 command_manager.add_command("list-devices", GetDevices)
 # transpiler command
 command_manager.add_command("get-transpiler", GetTranspiler)

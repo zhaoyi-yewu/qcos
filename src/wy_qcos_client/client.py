@@ -265,17 +265,21 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def calibrate(self, device_name, options=None):
-        """Get device info.
+    def calibrate_device(self, device_name, options=None):
+        """Calibrate device.
 
         Args:
             device_name: device name
             options: calibration options
         """
-        method_name = "calibrate"
+        method_name = "calibrate_device"
 
         # construct data and call json rpc
-        data = {"device_name": device_name, "options": options}
+        data = {
+            "device_name": device_name,
+            "method": method_name,
+            "options": options,
+        }
 
         # construct data and call json rpc
         status_code, reason, text, result = Client.call_json_rpc(
@@ -283,17 +287,56 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def set_device_options(self, device_name, device_options):
+    def get_calibrate_results(self, device_name):
+        """Get calibrate results.
+
+        Args:
+            device_name: device name
+        """
+        method_name = "get_calibrate_results"
+
+        # construct data and call json rpc
+        data = {"device_name": device_name, "method": method_name}
+        status_code, reason, text, result = Client.call_json_rpc(
+            self.device_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def set_device_options(self, device_name, options=None):
         """Set device options.
 
         Args:
             device_name: device name
-            device_options: device options
+            options: device options
         """
         method_name = "set_device_options"
 
         # construct data and call json rpc
-        data = {"device_name": device_name, "device_options": device_options}
+        data = {
+            "device_name": device_name,
+            "method": method_name,
+            "options": options,
+        }
+
+        # construct data and call json rpc
+        status_code, reason, text, result = Client.call_json_rpc(
+            self.device_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def get_device_options(self, device_name):
+        """Get device options.
+
+        Args:
+            device_name: device name
+
+        Returns:
+            status_code, reason, text, result
+        """
+        method_name = "get_device_options"
+
+        # construct data and call json rpc
+        data = {"device_name": device_name, "method": method_name}
 
         # construct data and call json rpc
         status_code, reason, text, result = Client.call_json_rpc(

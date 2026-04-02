@@ -519,6 +519,60 @@
    options:
      -h, --help            show this help message and exit
 
+.. code-block:: shell
+
+   # 设备校准
+   usage: qcos-cli calibrate-device [-h] [--options OPTIONS] device_name
+
+   Calibrate device.
+
+   positional arguments:
+     device_name   Device name
+
+   options:
+     -h, --help            show this help message and exit
+     --options OPTIONS     Calibration options
+
+.. code-block:: shell
+
+   # 获取设备校准结果
+   usage: qcos-cli get-calibrate-results [-h] device_name
+
+   Get calibrate results.
+
+   positional arguments:
+     device_name   Device name
+
+   options:
+     -h, --help            show this help message and exit
+
+.. code-block:: shell
+
+   # 设置设备选项
+   usage: qcos-cli set-device-options [-h] [--options OPTIONS] device_name
+
+   Set device options.
+
+   positional arguments:
+     device_name   Device name
+
+   options:
+     -h, --help            show this help message and exit
+     --options OPTIONS     Device options
+
+.. code-block:: shell
+
+   # 获取设备选项
+   usage: qcos-cli get-device-options [-h] device_name
+
+   Get device options.
+
+   positional arguments:
+     device_name   Device name
+
+   options:
+     -h, --help            show this help message and exit
+
 *典型场景示例*
 ***************
 
@@ -529,6 +583,19 @@
 
    # 获取设备信息详情
    qcos-cli get-device dummy
+
+   # 设备校准
+   qcos-cli calibrate-device dummy
+   qcos-cli calibrate-device dummy --options '{"calibrate_option": "value"}'
+
+   # 获取设备校准结果
+   qcos-cli get-calibrate-results dummy
+
+   # 设置设备选项
+   qcos-cli set-device-options dummy --options '{"options": "value"}'
+
+   # 获取设备选项
+   qcos-cli get-device-options dummy
 
 转译器命令
 -------------
@@ -577,10 +644,10 @@
    # 获取设备信息详情
    qcos-cli get-device dummy
 
-用户/角色管理命令
+用户管理命令
 ----------------------
 
-用户管理命令包含用户账户的增删改查，角色的增删改查等，密码的修改操作。
+用户管理命令包含用户账户的增删改查、角色的增删改查、权限配置、密码的修改等操作。
 
 用户创建
 ***************

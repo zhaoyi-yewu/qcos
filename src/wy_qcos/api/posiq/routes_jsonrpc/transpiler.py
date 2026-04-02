@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -17,10 +17,14 @@
 
 import logging
 
+from fastapi import Depends
+
 from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import transpiler_api_v1
+from wy_qcos.common.constant import Constant
 from wy_qcos.task_manager import scheduler
+from .dependencies.authentication import auth
 
 logger = logging.getLogger(__name__)
 module_name = "TRANSPILER"
@@ -45,14 +49,18 @@ def _get_transpiler_info(transpiler_info):
     return _transpiler_info
 
 
-@transpiler_api_v1.method(errors=[])
+@transpiler_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]}, errors=[]
+)
 def get_transpilers(
     body: schemas.GetTranspilersRequest | None = None,
+    auth_data: dict | None = Depends(auth),
 ) -> dict[str, schemas.GetTranspilerResponse]:
     """Get transpiler list request.
 
     Args:
         body(schemas.GetTranspilersRequest): message
+        auth_data: auth data
 
     Returns:
         Get transpilers response
@@ -71,14 +79,19 @@ def get_transpilers(
     return response_info
 
 
-@transpiler_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
+@transpiler_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    errors=[jsonrpc_errors.NotFoundError],
+)
 def get_transpiler(
     body: schemas.GetTranspilerRequest,
+    auth_data: dict | None = Depends(auth),
 ) -> schemas.GetTranspilerResponse:
     """Get transpiler info request.
 
     Args:
         body(schemas.GetTranspilerRequest): driver_name
+        auth_data: auth data
 
     Returns:
         Get transpiler info response

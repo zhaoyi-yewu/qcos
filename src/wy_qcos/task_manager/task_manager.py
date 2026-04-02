@@ -197,32 +197,37 @@ class TaskFlowManager(ABC):
 
             self.check_connection()
             device_names = self.device_manager.get_devices().keys()
+
             # create resources
-            self.loop.run_until_complete(
-                self.create_pools(pool_names=device_names)
-            )
+            if device_names:
+                self.loop.run_until_complete(
+                    self.create_pools(pool_names=device_names)
+                )
 
             monitor_devices = [
                 device.get_name() + "_monitor"
                 for device in self.device_manager.get_devices().values()
                 if device.get_driver().enable_device_monitor
             ]
-            self.loop.run_until_complete(
-                self.create_pools(pool_names=monitor_devices)
-            )
+            if monitor_devices:
+                self.loop.run_until_complete(
+                    self.create_pools(pool_names=monitor_devices)
+                )
 
             manager_devices = [
                 device.get_name() + "_mgr"
                 for device in self.device_manager.get_devices().values()
                 if device.get_driver().enable_device_monitor
             ]
-            self.loop.run_until_complete(
-                self.create_pools(pool_names=manager_devices)
-            )
+            if manager_devices:
+                self.loop.run_until_complete(
+                    self.create_pools(pool_names=manager_devices)
+                )
 
-            self.loop.run_until_complete(
-                self.create_queues(queue_names=device_names)
-            )
+            if device_names:
+                self.loop.run_until_complete(
+                    self.create_queues(queue_names=device_names)
+                )
             # delete old monitor flow
             self.delete_task_flow_by_name("device-monitor-flow")
 
@@ -1209,12 +1214,15 @@ class TaskFlowManager(ABC):
             logger.error(f"Prefect execute error: {str(e)}")
             return None
 
-    def get_flow_runs_with_filters(self, states=None, tags=None):
+    def get_flow_runs_with_filters(
+        self, states=None, tags=None, pool_name=None
+    ):
         """Get flow runs with filters.
 
         Args:
             states: flow states
             tags: prefect flow tags
+            pool_name: pool_name
 
         Returns:
             flow runs.
@@ -1231,6 +1239,9 @@ class TaskFlowManager(ABC):
         if Config.ENABLE_VIRT and tags is not None:
             tags_filter = FlowRunFilterTags(all_=tags)
             flow_run_filter_kwargs["tags"] = tags_filter
+
+        if pool_name is not None:
+            flow_run_filter_kwargs["work_pool_name"] = {"eq_": pool_name}
 
         # create flow run filter with flow_run_filter_kwargs
         flow_run_filter = FlowRunFilter(**flow_run_filter_kwargs)

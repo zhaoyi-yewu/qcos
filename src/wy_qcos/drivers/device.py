@@ -69,6 +69,8 @@ class Device:
         self.calibrate_info = {}
         # device option info
         self.device_options_info = {}
+        # device max queued jobs
+        self.max_queued_jobs = -1
 
     def init_device(self):
         """Init device.
@@ -248,3 +250,19 @@ class Device:
             device option info
         """
         return self.device_options_info
+
+    def set_max_queued_jobs(self, max_queued_jobs: int):
+        """Set Max Queued Kobs.
+
+        Args:
+            max_queued_jobs: max_queued_jobs
+        """
+        self.max_queued_jobs = max_queued_jobs
+
+    def get_max_queued_jobs(self):
+        """Set Max Queued Kobs.
+
+        Returns:
+            max_queued_jobs
+        """
+        return self.max_queued_jobs

@@ -30,7 +30,7 @@ namespace qcos {
 
 SABRE::SABRE(const std::vector<std::pair<int, int>>& coupling_list,
              int extention_size, double weight, double decay)
-    : extention_size(extention_size), weight(weight), decay(decay) {
+    : extention_size_(extention_size), weight_(weight), decay_(decay) {
   // Build physical coupling graph
   build_coupling_graph(coupling_list);
   // Initialize shortest-path distance matrix
@@ -40,12 +40,12 @@ SABRE::SABRE(const std::vector<std::pair<int, int>>& coupling_list,
 void SABRE::init_distance_matrix() {
   const int INF = 1000000;
   // Allocate and initialize distance matrix
-  dist.assign(phy_qubit_num, std::vector<int>(phy_qubit_num, INF));
+  dist_.assign(phy_qubit_num_, std::vector<int>(phy_qubit_num_, INF));
 
   // Run BFS from each physical qubit
-  for (const auto& [start_node, _] : adj_list) {
+  for (const auto& [start_node, _] : adj_list_) {
     // Distance to itself is 0
-    dist[start_node][start_node] = 0;
+    dist_[start_node][start_node] = 0;
     std::queue<int> q;
     q.push(start_node);
     // BFS main loop
@@ -53,10 +53,10 @@ void SABRE::init_distance_matrix() {
       int curr = q.front();
       q.pop();
       // Traverse neighbors
-      for (int neighbor : adj_list[curr]) {
+      for (int neighbor : adj_list_[curr]) {
         // Update if shorter path found
-        if (dist[start_node][neighbor] > dist[start_node][curr] + 1) {
-          dist[start_node][neighbor] = dist[start_node][curr] + 1;
+        if (dist_[start_node][neighbor] > dist_[start_node][curr] + 1) {
+          dist_[start_node][neighbor] = dist_[start_node][curr] + 1;
           q.push(neighbor);
         }
       }
@@ -68,11 +68,11 @@ void SABRE::build_coupling_graph(
     const std::vector<std::pair<int, int>>& coupling_list) {
   int max_q = 0;
   for (const auto& edge : coupling_list) {
-    adj_list[edge.first].insert(edge.second);
-    adj_list[edge.second].insert(edge.first);
+    adj_list_[edge.first].insert(edge.second);
+    adj_list_[edge.second].insert(edge.first);
     max_q = std::max({max_q, edge.first, edge.second});
   }
-  phy_qubit_num = max_q + 1;
+  phy_qubit_num_ = max_q + 1;
 }
 
 int SABRE::get_qubit_num_from_ir(
@@ -92,30 +92,30 @@ void SABRE::execute(const std::vector<GateOperation>& gates_list,
 
   // initialize logical to physical mapping
   if (initial_l2p.empty()) {
-    cur_l2p.resize(phy_qubit_num);
-    for (int i = 0; i < phy_qubit_num; ++i) cur_l2p[i] = i;
+    cur_l2p_.resize(phy_qubit_num_);
+    for (int i = 0; i < phy_qubit_num_; ++i) cur_l2p_[i] = i;
   } else {
     std::unordered_set<int> used_qubits(initial_l2p.begin(),
                                         initial_l2p.end());
-    cur_l2p = initial_l2p;
+    cur_l2p_ = initial_l2p;
     // add remaining unmapped qubits at the end
-    for (int q = 0; q < phy_qubit_num; ++q) {
+    for (int q = 0; q < phy_qubit_num_; ++q) {
       if (used_qubits.find(q) == used_qubits.end()) {
-        cur_l2p.push_back(q);
+        cur_l2p_.push_back(q);
       }
     }
   }
 
   // physical to logical mapping
-  cur_p2l.assign(phy_qubit_num, 0);
-  for (int logical = 0; logical < (int)cur_l2p.size(); ++logical) {
-    cur_p2l[cur_l2p[logical]] = logical;
+  cur_p2l_.assign(phy_qubit_num_, 0);
+  for (int logical = 0; logical < (int)cur_l2p_.size(); ++logical) {
+    cur_p2l_[cur_l2p_[logical]] = logical;
   }
 
   // list storing the latest node acting on each logical qubit
   std::vector<std::shared_ptr<Node>> pre_nodes(logic_qubit_num, nullptr);
-  front_layer.clear();
-  phy_exe_gates.clear();
+  front_layer_.clear();
+  phy_exe_gates_.clear();
 
   for (const auto& gate : gates_list) {
     auto node = std::make_shared<Node>(gate);
@@ -127,7 +127,7 @@ void SABRE::execute(const std::vector<GateOperation>& gates_list,
         pre_node->attach.push_back(node);
       } else {
         // can execute in physical
-        phy_exe_gates.push_back(phy_gate(node->gate));
+        phy_exe_gates_.push_back(phy_gate(node->gate));
       }
     } else if (node->bits.size() == 2) {
       for (int bit : node->bits) {
@@ -147,16 +147,16 @@ void SABRE::execute(const std::vector<GateOperation>& gates_list,
 
       node->pre_number = pre_number;
       // can execute in logical
-      if (pre_number == 0) front_layer.push_back(node);
+      if (pre_number == 0) front_layer_.push_back(node);
     }
   }
 
   // The main process of the SABRE algorithm
-  std::vector<double> decay_list(phy_qubit_num, 1.0);
+  std::vector<double> decay_list(phy_qubit_num_, 1.0);
   int decay_cycle = 5;
   int decay_time = 0;
 
-  while (!front_layer.empty()) {
+  while (!front_layer_.empty()) {
     decay_time += 1;
     // reset the decay parameters
     if (decay_time % decay_cycle == 0) {
@@ -164,30 +164,30 @@ void SABRE::execute(const std::vector<GateOperation>& gates_list,
     }
 
     std::vector<std::shared_ptr<Node>> exe_gate_list;
-    for (const auto& node : front_layer) {
+    for (const auto& node : front_layer_) {
       // can execute in physical
       if (can_execute(node)) {
         exe_gate_list.push_back(node);
-        phy_exe_gates.push_back(phy_gate(node->gate));
+        phy_exe_gates_.push_back(phy_gate(node->gate));
         // the single qubit gate attached to the node
         for (const auto& gate_node : node->attach) {
           if (gate_node == nullptr)
             throw std::invalid_argument("The attached gate is not a Node");
-          phy_exe_gates.push_back(phy_gate(gate_node->gate));
+          phy_exe_gates_.push_back(phy_gate(gate_node->gate));
         }
       }
     }
     if (!exe_gate_list.empty()) {
       for (const auto& node : exe_gate_list) {
-        front_layer.erase(
-            std::remove(front_layer.begin(), front_layer.end(), node),
-            front_layer.end());
+        front_layer_.erase(
+            std::remove(front_layer_.begin(), front_layer_.end(), node),
+            front_layer_.end());
         for (const auto& successor : node->edges) {
           successor->pre_number -= 1;
           if (successor->pre_number < 0)
             throw std::invalid_argument("The pre_number of node is < 0");
           if (successor->pre_number == 0) {
-            front_layer.push_back(successor);
+            front_layer_.push_back(successor);
           }
         }
       }
@@ -205,19 +205,19 @@ void SABRE::execute(const std::vector<GateOperation>& gates_list,
       int actual_extend_size;
       std::unordered_map<int, std::vector<std::shared_ptr<Node>>>
           front_qubit_gate_map, extend_qubit_gate_map;
-      heuristic_cost(cur_l2p, base_cost, actual_extend_size,
+      heuristic_cost(cur_l2p_, base_cost, actual_extend_size,
                      front_qubit_gate_map, extend_qubit_gate_map);
 
       for (const auto& swap : candidate_list) {
         auto temp_mapping = get_temp_mapping(swap);
         // The cost change caused by the current candidate swap gate
         double delta = delta_heuristic_cost(
-            cur_l2p, temp_mapping, swap, actual_extend_size,
+            cur_l2p_, temp_mapping, swap, actual_extend_size,
             front_qubit_gate_map, extend_qubit_gate_map);
 
         double H_score = base_cost + delta;
-        H_score = H_score * std::max(decay_list[cur_p2l[swap.first]],
-                                     decay_list[cur_p2l[swap.second]]);
+        H_score = H_score * std::max(decay_list[cur_p2l_[swap.first]],
+                                     decay_list[cur_p2l_[swap.second]]);
 
         if (best_swap.first == -1 || H_score < best_score) {
           best_score = H_score;
@@ -227,21 +227,21 @@ void SABRE::execute(const std::vector<GateOperation>& gates_list,
       }
 
       // update the current mapping
-      std::swap(cur_p2l[best_swap.first], cur_p2l[best_swap.second]);
-      cur_l2p = cur_best_mapping;
+      std::swap(cur_p2l_[best_swap.first], cur_p2l_[best_swap.second]);
+      cur_l2p_ = cur_best_mapping;
 
       // insert a swap gate
-      phy_exe_gates.push_back(
+      phy_exe_gates_.push_back(
           GateOperation("swap", {best_swap.first, best_swap.second}, {},
                         OperationType::DOUBLE_QUBIT_OPERATION, false));
-      decay_list[cur_p2l[best_swap.first]] += decay;
-      decay_list[cur_p2l[best_swap.second]] += decay;
+      decay_list[cur_p2l_[best_swap.first]] += decay_;
+      decay_list[cur_p2l_[best_swap.second]] += decay_;
     }
   }
 
   // final mapping
-  phy2logic = cur_p2l;
-  logic2phy = cur_l2p;
+  phy2logic_ = cur_p2l_;
+  logic2phy_ = cur_l2p_;
 }
 
 bool SABRE::can_execute(const std::shared_ptr<Node>& node) {
@@ -249,8 +249,8 @@ bool SABRE::can_execute(const std::shared_ptr<Node>& node) {
     return true;
   else if (node->bits.size() == 2) {
     int logic0 = node->bits[0], logic1 = node->bits[1];
-    int phy0 = cur_l2p[logic0], phy1 = cur_l2p[logic1];
-    return adj_list[phy0].count(phy1) > 0;
+    int phy0 = cur_l2p_[logic0], phy1 = cur_l2p_[logic1];
+    return adj_list_[phy0].count(phy1) > 0;
   }
   throw std::invalid_argument("The number of node.bits is not 1 or 2");
 }
@@ -259,14 +259,14 @@ std::vector<std::pair<int, int>> SABRE::obtain_swaps() {
   std::vector<std::pair<int, int>> candidates;
   std::unordered_set<int> phy_bits;
   // Only consider SWAPs related to the front layer
-  for (const auto& node : front_layer) {
+  for (const auto& node : front_layer_) {
     if (node->bits.size() == 1) continue;
     // Extract logical qubits and map them to physical qubits
-    for (int bit : node->bits) phy_bits.insert(cur_l2p[bit]);
+    for (int bit : node->bits) phy_bits.insert(cur_l2p_[bit]);
   }
 
   // Traverse all edges
-  for (auto const& [u, neighbors] : adj_list) {
+  for (auto const& [u, neighbors] : adj_list_) {
     for (int v : neighbors) {
       // (u < v) prevents duplicate bidirectional edges
       if (u < v && (phy_bits.count(u) || phy_bits.count(v))) {
@@ -278,10 +278,10 @@ std::vector<std::pair<int, int>> SABRE::obtain_swaps() {
 }
 
 std::vector<int> SABRE::get_temp_mapping(const std::pair<int, int>& edge) {
-  std::vector<int> new_mapping = cur_l2p;
+  std::vector<int> new_mapping = cur_l2p_;
   int u = edge.first, v = edge.second;
-  new_mapping[cur_p2l[u]] = v;
-  new_mapping[cur_p2l[v]] = u;
+  new_mapping[cur_p2l_[u]] = v;
+  new_mapping[cur_p2l_[v]] = u;
   return new_mapping;
 }
 
@@ -289,7 +289,7 @@ GateOperation SABRE::phy_gate(const GateOperation& logic_gate) {
   // TODO: Measure, Reset, Barrier...
   std::vector<int> physical_targets;
   for (int bit : logic_gate.targets) {
-    physical_targets.push_back(cur_l2p[bit]);
+    physical_targets.push_back(cur_l2p_[bit]);
   }
   return GateOperation(logic_gate.name, physical_targets, logic_gate.arg_value,
                        logic_gate.operation_type, logic_gate.hermitian);
@@ -307,23 +307,24 @@ void SABRE::heuristic_cost(
   double h_extend = 0.0;
 
   // compute cost of front layer
-  for (const auto& node : front_layer) {
+  for (const auto& node : front_layer_) {
     int q0 = node->bits[0], q1 = node->bits[1];
-    h_basic += dist[logic2phy[q0]][logic2phy[q1]];
+    h_basic += dist_[logic2phy[q0]][logic2phy[q1]];
     front_qubit_gate_map[q0].push_back(node);
     front_qubit_gate_map[q1].push_back(node);
   }
-  int f_count = front_layer.size();
+  int f_count = front_layer_.size();
   if (f_count > 0) h_basic /= f_count;
 
   // lookahead extension set
   std::vector<std::shared_ptr<Node>> extend_set;
   // temporary queue to store nodes whose indegree is modified
   std::unordered_map<Node*, int> temp_indegree;
-  std::deque<std::shared_ptr<Node>> extend_queue(front_layer.begin(),
-                                                 front_layer.end());
+  std::deque<std::shared_ptr<Node>> extend_queue(front_layer_.begin(),
+                                                 front_layer_.end());
 
-  while (extend_set.size() < (size_t)extention_size && !extend_queue.empty()) {
+  while (extend_set.size() < (size_t)extention_size_ &&
+         !extend_queue.empty()) {
     auto node = extend_queue.front();
     extend_queue.pop_front();
     for (auto& successor : node->edges) {
@@ -346,11 +347,11 @@ void SABRE::heuristic_cost(
   // compute cost of extension set
   e_count = extend_set.size();
   for (const auto& node : extend_set) {
-    h_extend += dist[logic2phy[node->bits[0]]][logic2phy[node->bits[1]]];
+    h_extend += dist_[logic2phy[node->bits[0]]][logic2phy[node->bits[1]]];
   }
   if (e_count > 0) h_extend /= e_count;
 
-  h_total = h_basic + weight * h_extend;
+  h_total = h_basic + weight_ * h_extend;
 }
 
 double SABRE::delta_heuristic_cost(
@@ -361,8 +362,8 @@ double SABRE::delta_heuristic_cost(
     std::unordered_map<int, std::vector<std::shared_ptr<Node>>>&
         extend_qubit_gate_map) {
   // Logical qubits corresponding to the candidate swap gate
-  int logic_q0 = cur_p2l[swap.first];
-  int logic_q1 = cur_p2l[swap.second];
+  int logic_q0 = cur_p2l_[swap.first];
+  int logic_q1 = cur_p2l_[swap.second];
 
   // Compute the incremental cost for a set of nodes
   auto _delta_sum =
@@ -370,8 +371,8 @@ double SABRE::delta_heuristic_cost(
         double delta = 0.0;
         for (auto const& node : nodes) {
           int q0 = node->bits[0], q1 = node->bits[1];
-          delta +=
-              dist[new_l2p[q0]][new_l2p[q1]] - dist[old_l2p[q0]][old_l2p[q1]];
+          delta += dist_[new_l2p[q0]][new_l2p[q1]] -
+                   dist_[old_l2p[q0]][old_l2p[q1]];
         }
         return delta;
       };
@@ -388,7 +389,7 @@ double SABRE::delta_heuristic_cost(
   }
 
   double delta_front = _delta_sum(affected_front_nodes);
-  int f_count = front_layer.size();
+  int f_count = front_layer_.size();
   if (f_count > 0) delta_front /= f_count;
 
   // All extension-layer gates affected by the two qubits of the swap
@@ -403,7 +404,7 @@ double SABRE::delta_heuristic_cost(
   }
 
   double delta_extend = _delta_sum(affected_extend_nodes);
-  delta_extend *= weight;
+  delta_extend *= weight_;
   if (extend_size > 0) delta_extend /= extend_size;
 
   return delta_front + delta_extend;

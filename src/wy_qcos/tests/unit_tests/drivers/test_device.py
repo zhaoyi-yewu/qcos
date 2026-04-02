@@ -81,3 +81,8 @@ class TestDevice:
         res = device.get_device_options_info()
         assert res is not None
         assert res["gap"] == 50
+
+    def test_set_and_get_max_queued_jobs(self):
+        device.set_max_queued_jobs(10)
+        res = device.get_max_queued_jobs()
+        assert res == 10

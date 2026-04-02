@@ -142,10 +142,13 @@ class SABRE:
         """SABRE constructor.
 
         Args:
-            coupling_list (List[Tuple[int,int]]): Physical qubit connectivity.
-            extention_size (int, optional): Lookahead set size. Default is 20.
-            weight (float, optional): Front layer / lookahead. Default is 0.5.
-            decay (float, optional): SWAP decay coefficient. Default is 0.001.
+            coupling_list (list[tuple[int, int]]): Physical qubit connectivity
+                graph.
+            extention_size (int, optional): Size of the lookahead set.
+                Defaults to 20.
+            weight (float, optional): Weight between front layer and lookahead
+                cost. Defaults to 0.5.
+            decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
         """
     def execute(
         self, gates_list: list[GateOperation], initial_l2p: list[int] = []
@@ -153,10 +156,9 @@ class SABRE:
         """Execute SABRE routing.
 
         Args:
-            gates_list (List[GateOperation]):
-                Logical gate sequence.
-            initial_l2p (List[int], optional):
-                Initial logical-to-physical mapping. Defaults to empty.
+            gates_list (list[GateOperation]): Logical gate sequence.
+            initial_l2p (list[int], optional): Initial logical-to-physical
+                mapping. Defaults to empty.
 
         Returns:
             None
@@ -165,7 +167,7 @@ class SABRE:
         """Get the sequence of mapped physical gates after routing.
 
         Returns:
-            List[GateOperation]: The physical gate sequence.
+            list[GateOperation]: The physical gate sequence.
         """
 
 def load_config_file(filename: str) -> list[tuple[int, int]]:
@@ -173,8 +175,9 @@ def load_config_file(filename: str) -> list[tuple[int, int]]:
 
     Args:
         filename (str): 配置文件路径
+
     Returns:
-        List[Tuple[int,int]]: 耦合对列表
+        list[tuple[int,int]]: 耦合对列表
     """
 
 def load_qasm_to_gate_list(filename: str) -> list[GateOperation]:
@@ -182,8 +185,9 @@ def load_qasm_to_gate_list(filename: str) -> list[GateOperation]:
 
     Args:
         filename (str): QASM文件路径
+
     Returns:
-        List[GateOperation]: 解析得到的门操作列表
+        list[GateOperation]: 解析得到的门操作列表
     """
 
 DOUBLE_QUBIT_OPERATION: (

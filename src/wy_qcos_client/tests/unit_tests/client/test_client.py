@@ -46,3 +46,49 @@ class TestClient:
         mock_parse.return_value = None
         success, parse = client.parse_jsonrpc_response(None)
         assert not success
+
+    @patch.object(Client, "call_json_rpc")
+    def test_calibrate_device(self, mock_call_json_rpc):
+        """Test calibrate_device method."""
+        mock_call_json_rpc.return_value = (200, "OK", "text", "result")
+        status_code, reason, text, result = client.calibrate_device(
+            "device", {"options": "value"}
+        )
+        assert status_code == 200
+        assert reason == "OK"
+        assert text == "text"
+        assert result == "result"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_get_calibrate_results(self, mock_call_json_rpc):
+        """Test get_calibrate_results method."""
+        mock_call_json_rpc.return_value = (200, "OK", "text", "result")
+        status_code, reason, text, result = client.get_calibrate_results(
+            "device"
+        )
+        assert status_code == 200
+        assert reason == "OK"
+        assert text == "text"
+        assert result == "result"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_set_device_options(self, mock_call_json_rpc):
+        """Test set_device_options method."""
+        mock_call_json_rpc.return_value = (200, "OK", "text", "result")
+        status_code, reason, text, result = client.set_device_options(
+            "device", {"options": "value"}
+        )
+        assert status_code == 200
+        assert reason == "OK"
+        assert text == "text"
+        assert result == "result"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_get_device_options(self, mock_call_json_rpc):
+        """Test get_device_options method."""
+        mock_call_json_rpc.return_value = (200, "OK", "text", "result")
+        status_code, reason, text, result = client.get_device_options("device")
+        assert status_code == 200
+        assert reason == "OK"
+        assert text == "text"
+        assert result == "result"

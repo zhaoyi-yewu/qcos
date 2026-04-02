@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -32,11 +32,15 @@ module_name = "SYSTEM"
 
 
 @system_api_v1.method()
-def ping(body: schemas.PingRequest) -> schemas.PongResponse:
+def ping(
+    body: schemas.PingRequest,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.PongResponse:
     """Ping-pong to verify the availability of the system.
 
     Args:
         body(schemas.PingRequest): message
+        auth_data: auth data
 
     Returns:
         pong response

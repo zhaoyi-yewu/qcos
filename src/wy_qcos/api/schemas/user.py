@@ -17,6 +17,66 @@
 
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
+from fastapi_users import schemas as fastapi_users_schemas
+
+
+# FastAPI-Users compatible models
+class UserRead(fastapi_users_schemas.BaseUser[int]):
+    """User read schema."""
+
+    user_name: str = Field(..., description="User name")
+    roles: list[str] = Field(default=[], description="User roles")
+    is_locked: bool = Field(default=False, description="Is user locked")
+    last_login: str | None = Field(default=None, description="Last login time")
+    password_changed_at: str = Field(
+        ..., description="Password last changed timestamp"
+    )
+    locked_until: str | None = Field(
+        default=None, description="Locked until timestamp"
+    )
+    password_expiry_days: int | None = Field(
+        default=None, description="Password expiry days"
+    )
+    failed_login_attempts: int = Field(
+        default=0, description="Failed login attempts count"
+    )
+    description: str | None = Field(
+        default=None, description="User description"
+    )
+    created_at: str = Field(..., description="User creation timestamp")
+    updated_at: str = Field(..., description="User last updated timestamp")
+
+
+class UserCreate(fastapi_users_schemas.BaseUserCreate):
+    """User create schema."""
+
+    user_name: str = Field(
+        ..., min_length=3, max_length=50, description="User name"
+    )
+    roles: list[str] = Field(default=["user"], description="User roles")
+    is_locked: bool = Field(default=False, description="Is user locked")
+    password_expiry_days: int | None = Field(
+        default=None, description="Password expiry days"
+    )
+    description: str | None = Field(
+        default=None, description="User description"
+    )
+
+
+class UserUpdate(fastapi_users_schemas.BaseUserUpdate):
+    """User update schema."""
+
+    user_name: str | None = Field(
+        default=None, min_length=3, max_length=50, description="User name"
+    )
+    roles: list[str] | None = Field(default=None, description="User roles")
+    is_locked: bool | None = Field(default=None, description="Is user locked")
+    password_expiry_days: int | None = Field(
+        default=None, description="Password expiry days"
+    )
+    description: str | None = Field(
+        default=None, description="User description"
+    )
 
 
 # Internal models for routes_jsonrpc/user.py
@@ -24,7 +84,11 @@ class User(BaseModel):
     """User model."""
 
     user_name: str = Field(..., description="User name")
-    password_hash: str = Field(..., description="Password hash")
+    password_hash: str = Field(
+        ...,
+        description="Password hash",
+        json_schema_extra={"is_sensitive": True},
+    )
     roles: list[str] = Field(default=[], description="User roles")
     password_expiry_days: int | None = Field(
         description="Password expiry days"
@@ -81,7 +145,12 @@ class CreateUserRequest(BaseModel):
     user_name: str = Field(
         ..., min_length=3, max_length=50, description="User name"
     )
-    password: str = Field(..., min_length=6, description="Password")
+    password: str = Field(
+        ...,
+        min_length=6,
+        description="Password",
+        json_schema_extra={"is_sensitive": True},
+    )
     roles: list[str] = Field(default=["user"], description="User roles")
     password_expiry_days: int | None = Field(
         default=None, description="Password expiry days (optional)"
@@ -218,9 +287,16 @@ class ChangePasswordRequest(BaseModel):
 
     user_name: str = Field(..., description="User name")
     old_password: str | None = Field(
-        default=None, description="Old password (for non-admin changes)"
+        default=None,
+        description="Old password (for non-admin changes)",
+        json_schema_extra={"is_sensitive": True},
     )
-    new_password: str = Field(..., min_length=6, description="New password")
+    new_password: str = Field(
+        ...,
+        min_length=6,
+        description="New password",
+        json_schema_extra={"is_sensitive": True},
+    )
 
 
 class ChangePasswordResponse(BaseModel):
@@ -279,7 +355,9 @@ class Role(BaseModel):
 
     role_name: str = Field(..., description="Role name")
     permissions: list[str] = Field(default=[], description="Role permissions")
-    description: str = Field(default="", description="Role description")
+    description: str | None = Field(
+        default=None, description="Role description"
+    )
 
 
 class CreateRoleRequest(BaseModel):

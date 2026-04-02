@@ -20,7 +20,7 @@ import pytest
 from unittest.mock import Mock, patch
 
 from wy_qcos.api.posiq.routes_jsonrpc.device import (
-    calibrate,
+    calibrate_device,
     get_calibrate_results,
     get_device,
     get_devices,
@@ -154,9 +154,9 @@ class TestDevice:
         mock_add_manage_job.return_value = None
         mock_client = Mock(spec=CalibrateDeviceRequest)
         mock_client.device_name = self.dummy
-        mock_client.method = "calibrate"
+        mock_client.method = "calibrate_device"
         mock_client.details = None
-        response_info = calibrate(mock_client)
+        response_info = calibrate_device(mock_client)
         assert response_info is not None
         assert response_info.details is None
 

@@ -31,12 +31,14 @@ from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.common.qcos_version import QcosVersion
+from wy_qcos.db import database
 from wy_qcos.drivers.device_manager import DeviceManager
 from wy_qcos.drivers.driver_manager import DriverManager
 from wy_qcos.log.logger import init_logger
 from wy_qcos.task_manager import scheduler
 from wy_qcos.transpiler.transpiler_manager import TranspilerManager
-from wy_qcos.db import database
+from wy_qcos.user.security_manager import SecurityManager
+from wy_qcos.user.user_manager import UserManager
 
 logger = logging.getLogger(__name__)
 
@@ -278,6 +280,22 @@ class Server:
             # init database
             db_engine = database.init_database()
             app.state._db_engine = db_engine
+
+            # init user management module
+            logger.info("Init user manager")
+            from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api
+
+            user_manager = UserManager(
+                Config.ACCESS_CONTROL_MODEL_FILE,
+                Config.ACCESS_CONTROL_POLICY_FILE,
+                all_api,
+            )
+            app.state._user_manager = user_manager
+
+            # init security manager
+            logger.info("Init security manager")
+            security_manager = SecurityManager(user_manager)
+            app.state._security_manager = security_manager
 
             # run any unfinished callbacks
             logger.info("Processing unfinished callbacks ...")

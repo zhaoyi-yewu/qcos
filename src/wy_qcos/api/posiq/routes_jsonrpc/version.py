@@ -27,7 +27,9 @@ logger = logging.getLogger(__name__)
 module_name = "VERSION"
 
 
-@base_api.method()
+@base_api.method(
+    openapi_extra={"no_auth": True},
+)
 def version(
     body: schemas.GetVersionRequest,
 ) -> schemas.GetVersionResponse:

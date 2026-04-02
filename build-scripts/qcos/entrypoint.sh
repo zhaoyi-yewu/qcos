@@ -42,16 +42,24 @@ while true; do
 done
 
 # Create QCOS config file
+qcos_template_base_dir=/etc/qcos-template
+# qcos configs
 qcos_config_file_path=/etc/qcos/qcos.toml
 qcos_extra_config_file_dir=/etc/qcos/conf.d
+qcos_template_config_file_path=${qcos_template_base_dir}/qcos.toml
+# roles configs
+qcos_roles_config_dir=/etc/qcos/roles
+qcos_template_roles_config_dir=${qcos_template_base_dir}/roles
+# st configs
 qcos_st_config_file_path=/etc/qcos/qcos-st.toml
 qcos_st_config_dir=/etc/qcos/st-conf.d
-qcos_template_base_dir=/etc/qcos-template
-qcos_template_config_file_path=${qcos_template_base_dir}/qcos.toml
 qcos_template_st_config_file_path=${qcos_template_base_dir}/qcos-st.toml
 qcos_template_st_config_dir=${qcos_template_base_dir}/st-conf.d
 
+mkdir -p /var/log/qcos
+chmod 777 /var/log/qcos
 mkdir -p /etc/qcos/
+mkdir -p /etc/qcos/roles
 mkdir -p /etc/qcos/ssl
 mkdir -p ${qcos_extra_config_file_dir}
 
@@ -106,6 +114,14 @@ config(conf)
 with open(config_file, 'w', encoding='utf-8') as f:
     tomlkit.dump(conf, f)
   "
+fi
+
+# check if dir /etc/qcos/st-conf.d exists and create it if not
+if [ -d "${qcos_roles_config_dir}" ]; then
+  echo "QCOS roles config dir: ${qcos_roles_config_dir} exists, use it"
+else
+  echo "QCOS roles config dir: ${qcos_roles_config_dir} not exists. auto generate ...."
+  cp -f ${qcos_template_roles_config_dir} ${qcos_roles_config_dir}
 fi
 
 # check if file /etc/qcos/qcos-st.conf exists and create it if not

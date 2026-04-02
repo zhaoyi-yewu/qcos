@@ -16,93 +16,89 @@
 # ----------------------------------------------------------------------
 
 import logging
-import hashlib
 from datetime import datetime, timedelta
+from typing import Any
 
-from fastapi import Depends
+from fastapi import Depends, Request
 
 from wy_qcos.api.schemas import user as schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import user_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.config import Config
+from wy_qcos.user.user_manager import UserManager
 from .dependencies.authentication import auth
+
 
 logger = logging.getLogger(__name__)
 module_name = "USER"
 
-# Database storage for users and roles (in-memory for now)
-# TODO(zhaoyi): Move to database
-users_db = {}
-roles_db = {}
-login_logs = []
 
-# Default admin user
-DEFAULT_ADMIN_USERNAME = Constant.DEFAULT_ADMIN_USERNAME
-DEFAULT_ADMIN_PASSWORD = (
-    Config.ADMIN_PASSWORD
-    if Config.ADMIN_PASSWORD
-    else Constant.DEFAULT_ADMIN_PASSWORD
-)
+def get_user_manager(request: Request):
+    """Get user manager.
+
+    Args:
+        request: request object
+
+    Returns:
+        user manager object
+    """
+    return request.app.state._user_manager
 
 
-def hash_password(password: str) -> str:
-    """Hash password using SHA-256."""
-    return hashlib.sha256(password.encode()).hexdigest()
+def _mask_hidden_fields(obj: Any) -> Any:
+    """Mask fields with hidden=True in json_schema_extra.
 
+    Args:
+        obj: The object to process (can be a Pydantic model or dict)
 
-def check_password(password: str, password_hash: str) -> bool:
-    """Check if password matches hash."""
-    return hash_password(password) == password_hash
-
-
-def is_password_expired(user: schemas.User) -> bool:
-    """Check if password has expired."""
-    expiry_days = user.password_expiry_days or 0
-    expiry_date = user.password_changed_at + timedelta(days=expiry_days)
-    return datetime.now() > expiry_date
-
-
-def log_login_attempt(
-    user_name: str, ip_address: str, status: str, user_agent: str | None = None
-):
-    """Log login attempt."""
-    log_entry = schemas.LoginLog(
-        user_name=user_name,
-        ip_address=ip_address,
-        login_status=status,
-        user_agent=user_agent,
-    )
-    login_logs.append(log_entry)
-    # Keep only last 1000 logs
-    if len(login_logs) > 1000:
-        login_logs.pop(0)
-
-
-def check_user_management_enabled():
-    """Check if user management is enabled."""
-    if not Config.ENABLE_USER_MGMT:
-        jsonrpc_errors.handle_error_forbidden(
-            module_name,
-            "user_operation",
-            (False, "User management is disabled"),
-        )
+    Returns:
+        The object with hidden fields masked
+    """
+    if hasattr(obj, "model_fields"):
+        # It's a Pydantic model
+        result = {}
+        for field_name, field_info in obj.model_fields.items():
+            value = getattr(obj, field_name, None)
+            # Check if field has json_schema_extra with hidden=True
+            if (
+                field_info.json_schema_extra
+                and field_info.json_schema_extra.get("is_sensitive") is True
+            ):
+                result[field_name] = "********"
+            else:
+                result[field_name] = _mask_hidden_fields(value)
+        return result
+    elif isinstance(obj, dict):
+        # It's a dictionary
+        result = {}
+        for key, value in obj.items():
+            result[key] = _mask_hidden_fields(value)
+        return result
+    elif isinstance(obj, list):
+        # It's a list
+        return [_mask_hidden_fields(item) for item in obj]
+    else:
+        # It's a primitive type, return as is
+        return obj
 
 
 @user_api_v1.method(errors=[])
 def get_user_management_status(
     body: schemas.GetUserManagementStatusRequest | None = None,
+    auth_data: dict | None = Depends(auth),
 ) -> schemas.GetUserManagementStatusResponse:
     """Get user management status.
 
     Args:
         body: request body
+        auth_data: auth data
 
     Returns:
         User management status response
     """
     func_name = "get_user_management_status"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     _response_info = {
         "enabled": Config.ENABLE_USER_MGMT,
@@ -124,20 +120,20 @@ def get_user_management_status(
 def create_user(
     body: schemas.CreateUserRequest,
     auth_data: dict | None = Depends(auth),
+    user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.CreateUserResponse:
     """Create a new user.
 
     Args:
         body: user creation request
         auth_data: auth data
+        user_manager: user manager
 
     Returns:
         Create user response
     """
     func_name = "create_user"
-    logger.info(f"Call {func_name}: {body}")
-
-    check_user_management_enabled()
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     user_name = body.user_name
     password = body.password
@@ -191,7 +187,7 @@ def create_user(
         )
 
     # Check if user already exists
-    if user_name in users_db:
+    if user_manager.get_user(user_name):
         jsonrpc_errors.handle_error_conflict(
             module_name,
             func_name,
@@ -200,12 +196,23 @@ def create_user(
 
     # Validate roles
     for role_name in roles:
-        if role_name not in roles_db:
+        if not user_manager.get_role(role_name):
             jsonrpc_errors.handle_error_bad_requests(
                 module_name,
                 func_name,
                 (False, f"Role '{role_name}' does not exist"),
             )
+
+    if description and len(description) > Constant.MAX_DESCRIPTION_LENGTH:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                f"Description is too long "
+                f"(maximum {Constant.MAX_DESCRIPTION_LENGTH} characters)",
+            ),
+        )
 
     # Create user
     is_enabled = body.is_enabled
@@ -214,52 +221,84 @@ def create_user(
     if password_expiry_days is None:
         password_expiry_days = Config.PASSWORD_EXPIRY_DAYS
 
-    user = schemas.User(
-        user_name=user_name,
-        password_hash=hash_password(password),
-        roles=roles,
-        password_expiry_days=password_expiry_days,
-        is_enabled=is_enabled,
-        is_locked=is_locked,
-        description=description,
+    user = user_manager.create_user(
+        user_name,
+        password,
+        roles,
+        is_enabled,
+        is_locked,
+        password_expiry_days,
+        description,
     )
-    users_db[user_name] = user
 
     _response_info = get_user_response(user)
     response_info = schemas.CreateUserResponse.model_validate(_response_info)
     return response_info
 
 
-@user_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
+@user_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    errors=[jsonrpc_errors.NotFoundError],
+)
 def get_user(
     body: schemas.GetUserRequest,
     auth_data: dict | None = Depends(auth),
+    user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.GetUserResponse:
     """Get user information.
 
     Args:
         body: get user request
         auth_data: auth data
+        user_manager: user manager
 
     Returns:
         Get user response
     """
     func_name = "get_user"
-    logger.info(f"Call {func_name}: {body}")
-
-    check_user_management_enabled()
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     user_name = body.user_name
 
-    if user_name not in users_db:
+    user = user_manager.get_user(user_name)
+    if not user:
         jsonrpc_errors.handle_error_not_found(
             module_name, func_name, (False, f"User '{user_name}' not found")
         )
 
-    user = users_db[user_name]
-
     _response_info = get_user_response(user)
     response_info = schemas.GetUserResponse.model_validate(_response_info)
+    return response_info
+
+
+@user_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_USER]}, errors=[]
+)
+def get_users(
+    body: schemas.GetUsersRequest | None = None,
+    auth_data: dict | None = Depends(auth),
+    user_manager: UserManager = Depends(get_user_manager),
+) -> dict[str, schemas.GetUserResponse]:
+    """Get all users.
+
+    Args:
+        body: get users request
+        auth_data: auth data
+        user_manager: user manager
+
+    Returns:
+        Dictionary of users keyed by user_name
+    """
+    func_name = "get_users"
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
+
+    response_info = {}
+    for user_name, user in user_manager.get_users().items():
+        user_data = get_user_response(user)
+        response_info[user_name] = schemas.GetUserResponse.model_validate(
+            user_data
+        )
+
     return response_info
 
 
@@ -269,20 +308,20 @@ def get_user(
 def update_user(
     body: schemas.UpdateUserRequest,
     auth_data: dict | None = Depends(auth),
+    user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.UpdateUserResponse:
     """Update user information.
 
     Args:
         body: user update request
         auth_data: auth data
+        user_manager: user manager
 
     Returns:
         Update user response
     """
     func_name = "update_user"
-    logger.info(f"Call {func_name}: {body}")
-
-    check_user_management_enabled()
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     user_name = body.user_name
     roles = body.roles
@@ -291,35 +330,32 @@ def update_user(
     password_expiry_days = body.password_expiry_days
     description = body.description
 
-    if user_name not in users_db:
+    user = user_manager.get_user(user_name)
+
+    if not user:
         jsonrpc_errors.handle_error_not_found(
             module_name, func_name, (False, f"User '{user_name}' not found")
         )
 
     # Validate roles
+    existing_roles = user_manager.get_roles()
     if roles:
         for role_name in roles:
-            if role_name not in roles_db:
+            if role_name not in existing_roles:
                 jsonrpc_errors.handle_error_bad_requests(
                     module_name,
                     func_name,
                     (False, f"Role '{role_name}' does not exist"),
                 )
 
-    user = users_db[user_name]
-    if roles is not None:
-        user.roles = roles
-    if is_enabled is not None:
-        user.is_enabled = is_enabled
-    if is_locked is not None:
-        user.is_locked = is_locked
-    if password_expiry_days is not None:
-        user.password_expiry_days = password_expiry_days
-    if description is not None:
-        user.description = description
-
-    # Update the updated_at timestamp
-    user.updated_at = datetime.now()
+    user = user_manager.update_user(
+        user_name,
+        roles,
+        is_enabled,
+        is_locked,
+        password_expiry_days,
+        description,
+    )
 
     _response_info = get_user_response(user)
     response_info = schemas.UpdateUserResponse.model_validate(_response_info)
@@ -330,35 +366,36 @@ def update_user(
 def delete_user(
     body: schemas.DeleteUserRequest,
     auth_data: dict | None = Depends(auth),
+    user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.DeleteUserResponse:
     """Delete user.
 
     Args:
         body: delete user request
         auth_data: auth data
+        user_manager: user manager
 
     Returns:
         Delete user response
     """
     func_name = "delete_user"
-    logger.info(f"Call {func_name}: {body}")
-
-    check_user_management_enabled()
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     user_name = body.user_name
 
-    if user_name not in users_db:
+    user = user_manager.get_user(user_name)
+    if not user:
         jsonrpc_errors.handle_error_not_found(
             module_name, func_name, (False, f"User '{user_name}' not found")
         )
 
     # Don't allow deletion of admin user
-    if user_name == DEFAULT_ADMIN_USERNAME:
+    if user_name == Constant.DEFAULT_ADMIN_USERNAME:
         jsonrpc_errors.handle_error_conflict(
             module_name, func_name, (False, "Cannot delete admin user")
         )
 
-    del users_db[user_name]
+    user_manager.delete_user(user_name)
 
     _response_info = {
         "user_name": user_name,
@@ -374,20 +411,20 @@ def delete_user(
 def create_role(
     body: schemas.CreateRoleRequest,
     auth_data: dict | None = Depends(auth),
+    user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.CreateRoleResponse:
     """Create a new role.
 
     Args:
         body: role creation request
         auth_data: auth data
+        user_manager: user manager
 
     Returns:
         Create role response
     """
     func_name = "create_role"
-    logger.info(f"Call {func_name}: {body}")
-
-    check_user_management_enabled()
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     role_name = body.role_name
     permissions = body.permissions
@@ -421,20 +458,37 @@ def create_role(
         jsonrpc_errors.handle_error_bad_requests(
             module_name,
             func_name,
-            (False, "Description is too long"),
+            (
+                False,
+                f"Description is too long "
+                f"(maximum {Constant.MAX_DESCRIPTION_LENGTH} characters)",
+            ),
         )
 
-    if role_name in roles_db:
+    role = user_manager.get_role(role_name)
+    if role:
         jsonrpc_errors.handle_error_conflict(
             module_name,
             func_name,
             (False, f"Role '{role_name}' already exists"),
         )
 
-    role = schemas.Role(
-        role_name=role_name, permissions=permissions, description=description
-    )
-    roles_db[role_name] = role
+    if permissions:
+        invalid_permissions = []
+        for permission in permissions:
+            if permission not in user_manager.get_default_policies(
+                simple=True
+            ):
+                invalid_permissions.append(permission)
+        if invalid_permissions:
+            err_msgs = f"Invalid permission: {', '.join(invalid_permissions)}"
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                (False, err_msgs),
+            )
+
+    role = user_manager.create_role(role_name, permissions, description)
 
     _response_info = get_role_response(role)
     response_info = schemas.CreateRoleResponse.model_validate(_response_info)
@@ -445,32 +499,59 @@ def create_role(
 def get_role(
     body: schemas.GetRoleRequest,
     auth_data: dict | None = Depends(auth),
+    user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.GetRoleResponse:
     """Get role information.
 
     Args:
         body: get role request
         auth_data: auth data
+        user_manager: user manager
 
     Returns:
         Get role response
     """
     func_name = "get_role"
-    logger.info(f"Call {func_name}: {body}")
-
-    check_user_management_enabled()
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     role_name = body.role_name
-
-    if role_name not in roles_db:
+    role = user_manager.get_role(role_name)
+    if not role:
         jsonrpc_errors.handle_error_not_found(
             module_name, func_name, (False, f"Role '{role_name}' not found")
         )
 
-    role = roles_db[role_name]
-
     _response_info = get_role_response(role)
     response_info = schemas.GetRoleResponse.model_validate(_response_info)
+    return response_info
+
+
+@user_api_v1.method(errors=[])
+def get_roles(
+    body: schemas.GetRolesRequest | None = None,
+    auth_data: dict | None = Depends(auth),
+    user_manager: UserManager = Depends(get_user_manager),
+) -> dict[str, schemas.GetRoleResponse]:
+    """Get all roles.
+
+    Args:
+        body: get roles request
+        auth_data: auth data
+        user_manager: user manager
+
+    Returns:
+        Dictionary of roles keyed by role name
+    """
+    func_name = "get_roles"
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
+
+    response_info = {}
+    for role_name, role in user_manager.get_roles().items():
+        role_data = get_role_response(role)
+        response_info[role_name] = schemas.GetRoleResponse.model_validate(
+            role_data
+        )
+
     return response_info
 
 
@@ -480,35 +561,46 @@ def get_role(
 def update_role(
     body: schemas.UpdateRoleRequest,
     auth_data: dict | None = Depends(auth),
+    user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.UpdateRoleResponse:
     """Update role information.
 
     Args:
         body: role update request
         auth_data: auth data
+        user_manager: user manager
 
     Returns:
         Update role response
     """
     func_name = "update_role"
-    logger.info(f"Call {func_name}: {body}")
-
-    check_user_management_enabled()
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     role_name = body.role_name
     permissions = body.permissions
     description = body.description
 
-    if role_name not in roles_db:
+    role = user_manager.get_role(role_name)
+    if not role:
         jsonrpc_errors.handle_error_not_found(
             module_name, func_name, (False, f"Role '{role_name}' not found")
         )
 
-    role = roles_db[role_name]
-    if permissions is not None:
-        role.permissions = permissions
-    if description is not None:
-        role.description = description
+    # validate permissions
+    if permissions:
+        invalid_permissions = []
+        for permission in permissions:
+            if permission not in user_manager.get_default_policies(
+                simple=True
+            ):
+                invalid_permissions.append(permission)
+        if invalid_permissions:
+            err_msgs = f"Invalid permission: {', '.join(invalid_permissions)}"
+            jsonrpc_errors.handle_error_not_found(
+                module_name, func_name, (False, err_msgs)
+            )
+
+    role = user_manager.update_role(role_name, permissions, description)
 
     _response_info = get_role_response(role)
     response_info = schemas.UpdateRoleResponse.model_validate(_response_info)
@@ -521,24 +613,25 @@ def update_role(
 def delete_role(
     body: schemas.DeleteRoleRequest,
     auth_data: dict | None = Depends(auth),
+    user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.DeleteRoleResponse:
     """Delete role.
 
     Args:
         body: delete role request
         auth_data: auth data
+        user_manager: user manager
 
     Returns:
         Delete role response
     """
     func_name = "delete_role"
-    logger.info(f"Call {func_name}: {body}")
-
-    check_user_management_enabled()
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     role_name = body.role_name
 
-    if role_name not in roles_db:
+    role = user_manager.get_role(role_name)
+    if not role:
         jsonrpc_errors.handle_error_not_found(
             module_name, func_name, (False, f"Role '{role_name}' not found")
         )
@@ -550,11 +643,7 @@ def delete_role(
         )
 
     # Check if any users are using this role
-    users_using_role = [
-        user_name
-        for user_name, user in users_db.items()
-        if role_name in user.roles
-    ]
+    users_using_role = user_manager.find_users_by_role(role_name)
     if users_using_role:
         jsonrpc_errors.handle_error_conflict(
             module_name,
@@ -566,7 +655,7 @@ def delete_role(
             ),
         )
 
-    del roles_db[role_name]
+    user_manager.delete_role(role_name)
 
     _response_info = {
         "role_name": role_name,
@@ -582,36 +671,35 @@ def delete_role(
 def lock_user(
     body: schemas.LockUserRequest,
     auth_data: dict | None = Depends(auth),
+    user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.LockUserResponse:
     """Lock or unlock user.
 
     Args:
         body: user lock request
         auth_data: auth data
+        user_manager: user manager
 
     Returns:
         Lock user response
     """
     func_name = "lock_user"
-    logger.info(f"Call {func_name}: {body}")
-
-    check_user_management_enabled()
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     user_name = body.user_name
     action = body.action
 
-    if user_name not in users_db:
+    user = user_manager.get_user(user_name)
+    if not user:
         jsonrpc_errors.handle_error_not_found(
             module_name, func_name, (False, f"User '{user_name}' not found")
         )
 
     # Don't allow locking of admin user
-    if user_name == DEFAULT_ADMIN_USERNAME:
+    if user_name == Constant.DEFAULT_ADMIN_USERNAME:
         jsonrpc_errors.handle_error_conflict(
             module_name, func_name, (False, "Cannot lock admin user")
         )
-
-    user = users_db[user_name]
 
     if action == "lock":
         user.is_locked = True
@@ -649,41 +737,42 @@ def lock_user(
 def change_password(
     body: schemas.ChangePasswordRequest,
     auth_data: dict | None = Depends(auth),
+    user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.ChangePasswordResponse:
     """Change user password.
 
     Args:
         body: password change request
         auth_data: auth data
+        user_manager: user manager
 
     Returns:
         Change password response
     """
     func_name = "change_password"
-    logger.info(f"Call {func_name}: {body}")
-
-    check_user_management_enabled()
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     user_name = body.user_name
     old_password = body.old_password
     new_password = body.new_password
 
-    if user_name not in users_db:
+    user = user_manager.get_user(user_name)
+    if not user:
         jsonrpc_errors.handle_error_not_found(
             module_name, func_name, (False, f"User '{user_name}' not found")
         )
 
-    user = users_db[user_name]
-
     # For non-admin users, validate old password
-    if user_name != DEFAULT_ADMIN_USERNAME:
+    if user_name != Constant.DEFAULT_ADMIN_USERNAME:
         if not old_password:
             jsonrpc_errors.handle_error_bad_requests(
                 module_name,
                 func_name,
                 (False, "Old password is required for non-admin users"),
             )
-        if not check_password(old_password or "", user.password_hash):
+        if not UserManager.check_password(
+            old_password or "", user.password_hash
+        ):
             jsonrpc_errors.handle_error_bad_requests(
                 module_name, func_name, (False, "Incorrect old password")
             )
@@ -712,7 +801,7 @@ def change_password(
         )
 
     # Update password
-    user.password_hash = hash_password(new_password)
+    user.password_hash = UserManager.hash_password(new_password)
     user.password_changed_at = datetime.now()
     user.failed_login_attempts = 0
     user.is_locked = False
@@ -733,23 +822,23 @@ def change_password(
 def get_login_logs(
     body: schemas.GetLoginLogsRequest | None = None,
     auth_data: dict | None = Depends(auth),
+    user_manager: UserManager = Depends(get_user_manager),
 ) -> dict[str, schemas.LoginLogResponse]:
     """Get login logs.
 
     Args:
         body: get login logs request
         auth_data: auth data
+        user_manager: user manager
 
     Returns:
         Dictionary of login logs keyed by timestamp
     """
     func_name = "get_login_logs"
-    logger.info(f"Call {func_name}: {body}")
-
-    check_user_management_enabled()
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     # Filter logs based on request parameters
-    filtered_logs = login_logs.copy()
+    filtered_logs = user_manager.get_login_logs().copy()
 
     if body and body.user_name:
         filtered_logs = [
@@ -788,109 +877,14 @@ def get_login_logs(
     return response_info
 
 
-@user_api_v1.method(errors=[])
-def get_users(
-    body: schemas.GetUsersRequest | None = None,
-    auth_data: dict | None = Depends(auth),
-) -> dict[str, schemas.GetUserResponse]:
-    """Get all users.
-
-    Args:
-        body: get users request
-        auth_data: auth data
-
-    Returns:
-        Dictionary of users keyed by user_name
-    """
-    func_name = "get_users"
-    logger.info(f"Call {func_name}: {body}")
-
-    check_user_management_enabled()
-
-    response_info = {}
-    for user_name, user in users_db.items():
-        user_data = get_user_response(user)
-        response_info[user_name] = schemas.GetUserResponse.model_validate(
-            user_data
-        )
-
-    return response_info
-
-
-@user_api_v1.method(errors=[])
-def get_roles(
-    body: schemas.GetRolesRequest | None = None,
-    auth_data: dict | None = Depends(auth),
-) -> dict[str, schemas.GetRoleResponse]:
-    """Get all roles.
-
-    Args:
-        body: get roles request
-        auth_data: auth data
-
-    Returns:
-        Dictionary of roles keyed by role name
-    """
-    func_name = "get_roles"
-    logger.info(f"Call {func_name}: {body}")
-
-    check_user_management_enabled()
-
-    response_info = {}
-    for role_name, role in roles_db.items():
-        role_data = get_role_response(role)
-        response_info[role_name] = schemas.GetRoleResponse.model_validate(
-            role_data
-        )
-
-    return response_info
-
-
-# Initialize default admin user and roles
-def initialize_user_management():
-    """Initialize user management with default admin user and roles."""
-    global users_db, roles_db
-
-    # Create admin role
-    admin_role = schemas.Role(
-        role_name=Constant.ROLE_ADMIN,
-        permissions=["*"],
-        description="Administrator with full permissions",
-    )
-    roles_db[Constant.ROLE_ADMIN] = admin_role
-
-    # Create user role
-    user_role = schemas.Role(
-        role_name=Constant.ROLE_USER,
-        permissions=["job:submit", "job:get", "job:list"],
-        description="Regular user with basic permissions",
-    )
-    roles_db[Constant.ROLE_USER] = user_role
-
-    # Create default admin user
-    admin_user = schemas.User(
-        user_name=DEFAULT_ADMIN_USERNAME,
-        password_hash=hash_password(DEFAULT_ADMIN_PASSWORD),
-        roles=[Constant.ROLE_ADMIN],
-        password_expiry_days=0,
-        is_enabled=True,
-        description="Administrator with full permissions",
-        created_at=datetime.now(),
-        updated_at=datetime.now(),
-    )
-    users_db[DEFAULT_ADMIN_USERNAME] = admin_user
-
-    logger.info("User management initialized with default admin user")
-
-
-def get_user_response(user):
+def get_user_response(user) -> dict:
     """Get user response.
 
     Args:
-        user: user info
+        user (schemas.User): User model instance
 
     Returns:
-        user response
+        schemas.GetUserResponse: Formatted user response
     """
     response_info = {
         "user_name": user.user_name,
@@ -910,7 +904,7 @@ def get_user_response(user):
     return response_info
 
 
-def get_role_response(role: schemas.Role) -> dict:
+def get_role_response(role) -> dict:
     """Get role response.
 
     Args:
@@ -925,7 +919,3 @@ def get_role_response(role: schemas.Role) -> dict:
         "description": role.description,
     }
     return response_info
-
-
-# Initialize on import
-initialize_user_management()

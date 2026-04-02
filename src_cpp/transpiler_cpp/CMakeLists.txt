@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(qcos LANGUAGES CXX)
+project(transpiler LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,6 +15,7 @@ include_directories(${PROJECT_SOURCE_DIR}/include
                     ${PROJECT_SOURCE_DIR}/third_party/googletest/include
                     ${PROJECT_SOURCE_DIR}/third_party/pybind11/include)
 
+set(LIB_TRANSPILER ${PROJECT_NAME})
 set(LIB_GTEST gtest)
 
 option(USE_PYQCOS "use transpiler in python" ON)

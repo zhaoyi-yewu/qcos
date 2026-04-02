@@ -80,9 +80,9 @@ bool qcos::validate_routing(const SABRE& sabre,
   }
 
   std::vector<int> l2p = initial_l2p;
-  std::vector<int> p2l(sabre.phy_qubit_num, -1);
+  std::vector<int> p2l(sabre.phy_qubit_num_, -1);
   for (int l = 0; l < (int)l2p.size(); ++l) {
-    if (l2p[l] >= 0 && l2p[l] < sabre.phy_qubit_num) p2l[l2p[l]] = l;
+    if (l2p[l] >= 0 && l2p[l] < sabre.phy_qubit_num_) p2l[l2p[l]] = l;
   }
 
   // 模拟执行
@@ -104,7 +104,7 @@ bool qcos::validate_routing(const SABRE& sabre,
     }
 
     // 验证当前两个物理比特之间是否有耦合连接
-    if (!sabre.adj_list.at(p0).count(p1)) return false;
+    if (!sabre.adj_list_.at(p0).count(p1)) return false;
 
     bool matched = false;
     // 寻找并执行对应的逻辑门

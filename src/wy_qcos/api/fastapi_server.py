@@ -24,15 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 from uvicorn.main import Server as UvicornServer
 
-from wy_qcos.api.posiq.routes_jsonrpc.routes import (
-    base_api,
-    driver_api_v1,
-    device_api_v1,
-    transpiler_api_v1,
-    job_api_v1,
-    user_api_v1,
-    system_api_v1,
-)
+from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api
 
 logger = logging.getLogger(__name__)
 
@@ -83,13 +75,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.bind_entrypoint(base_api)
-app.bind_entrypoint(driver_api_v1)
-app.bind_entrypoint(device_api_v1)
-app.bind_entrypoint(transpiler_api_v1)
-app.bind_entrypoint(job_api_v1)
-app.bind_entrypoint(user_api_v1)
-app.bind_entrypoint(system_api_v1)
+
+# bind entrypoint
+for api_entrypoint in all_api:
+    app.bind_entrypoint(api_entrypoint)
 
 # Monkey Patch uvicorn signal handler to detect the app is shutting down
 app.state.exiting = False

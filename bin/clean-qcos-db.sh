@@ -54,4 +54,5 @@ fi
 echo "Deleting data..."
 rm -rf /var/qcos/db/*
 rm -rf /var/qcos/storage/*
+rm -rf /var/qcos/db/postgresql/
 echo "Data cleared successfully."
