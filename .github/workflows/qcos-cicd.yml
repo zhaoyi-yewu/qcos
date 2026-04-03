@@ -339,6 +339,7 @@ jobs:
           echo "qcos-api: http://${QCOS_SERVER_IP}:${QCOS_SERVER_PORT}"
           until curl -o /dev/null -s http://${QCOS_SERVER_IP}:${QCOS_SERVER_PORT} || [ $count -ge ${MAX_ATTEMPTS} ]; do
             echo "waiting for qcos-api ... (attempt $((count+1))/${MAX_ATTEMPTS})"
+            docker logs qcos
             sleep ${SLEEP_INTERVAL}
             count=$((count+1))
           done
@@ -347,6 +348,11 @@ jobs:
           else
             total_seconds=$((MAX_ATTEMPTS * SLEEP_INTERVAL))
             echo "ERROR: qcos-api did not become ready after ${MAX_ATTEMPTS} attempts (total ${MAX_ATTEMPTS}*${SLEEP_INTERVAL}=${total_seconds} seconds)"
+            docker logs qcos
+            echo "Print /var/log/qos/qcos-api.log ..."
+            cat /var/log/qcos/qcos-api.log || true
+            echo "Print /var/log/qcos/postgresql.log ..."
+            cat /var/log/qcos/postgresql.log || true
             exit 1
           fi
 

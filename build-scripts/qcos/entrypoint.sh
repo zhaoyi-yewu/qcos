@@ -62,6 +62,10 @@ mkdir -p /etc/qcos/
 mkdir -p /etc/qcos/roles
 mkdir -p /etc/qcos/ssl
 mkdir -p ${qcos_extra_config_file_dir}
+mkdir -p ${qcos_st_config_dir}
+
+# load venv
+source /var/lib/qcos/venv/default/bin/activate
 
 # check if file /etc/qcos/qcos.conf exists and create it if not
 if [ -f "${qcos_config_file_path}" ]; then
@@ -72,6 +76,7 @@ else
 
   _DEBUG=${DEBUG:-false}
   _ENABLE_VIRT=${QCOS_ENABLE_VIRT:-false}
+  _ENABLE_USER_MGMT=${ENABLE_USER_MGMT:-false}
   python3 -c "
 def config(conf):
     conf['DEFAULT']['DEBUG'] = ${_DEBUG^}
@@ -98,6 +103,7 @@ def config(conf):
     conf['REDIS']['REDIS_SERVER_PORT'] = ${REDIS_SERVER_PORT:-6379}
 
     conf['DATABASE']['QCOS_DATABASE_CONNECTION_URL'] = ${QCOS_DATABASE_CONNECTION_URL:-fake}
+    conf['USERS']['ENABLE_USER_MGMT'] = ${_ENABLE_USER_MGMT^}
 
     conf['LOG']['API_LOG_FILE'] = '${REDIS_SERVER_IP:-127.0.0.1}'
     conf['LOG']['LOG_FORMAT'] = '%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s'
@@ -116,29 +122,17 @@ with open(config_file, 'w', encoding='utf-8') as f:
   "
 fi
 
-# check if dir /etc/qcos/st-conf.d exists and create it if not
-if [ -d "${qcos_roles_config_dir}" ]; then
-  echo "QCOS roles config dir: ${qcos_roles_config_dir} exists, use it"
-else
-  echo "QCOS roles config dir: ${qcos_roles_config_dir} not exists. auto generate ...."
-  cp -f ${qcos_template_roles_config_dir} ${qcos_roles_config_dir}
-fi
+# check if dir /etc/qcos/roles exists and create it if not
+echo "Sync QCOS role dir: ${qcos_roles_config_dir}"
+rsync -av --ignore-existing ${qcos_template_roles_config_dir}/ ${qcos_roles_config_dir}/
 
 # check if file /etc/qcos/qcos-st.conf exists and create it if not
-if [ -f "${qcos_st_config_file_path}" ]; then
-  echo "QCOS ST config file: ${qcos_st_config_file_path} exists, use it"
-else
-  echo "QCOS ST config file: ${qcos_st_config_file_path} not exists. auto generate ...."
-  cp -f ${qcos_template_st_config_file_path} ${qcos_st_config_file_path}
-fi
+echo "Sync QCOS ST config file: ${qcos_st_config_file_path} ..."
+rsync -av --ignore-existing ${qcos_template_st_config_file_path} ${qcos_st_config_file_path}
 
 # check if dir /etc/qcos/st-conf.d exists and create it if not
-if [ -d "${qcos_st_config_dir}" ]; then
-  echo "QCOS ST config dir: ${qcos_st_config_dir} exists, use it"
-else
-  echo "QCOS ST config dir: ${qcos_st_config_dir} not exists. auto generate ...."
-  cp -f ${qcos_template_st_config_dir} ${qcos_st_config_dir}
-fi
+echo "Sync QCOS ST config dir: ${qcos_st_config_dir} ..."
+rsync -av --ignore-existing ${qcos_template_st_config_dir}/ ${qcos_st_config_dir}/
 
 echo "Prefect API URL: ${PREFECT_API_URL}"
 
@@ -158,9 +152,6 @@ qcos_config_file_args="--config-file ${qcos_config_file_path} --config-dir ${qco
 if [ "${local_cicd,,}" = true ]; then
   qcos_config_file_args="--config-file ${qcos_config_file_path} --config-file ${qcos_st_config_file_path} --config-dir ${qcos_st_config_dir}"
 fi
-
-# load venv
-source /var/lib/qcos/venv/default/bin/activate
 
 # run qcos-api with max attempts
 MAX_ATTEMPTS=30
