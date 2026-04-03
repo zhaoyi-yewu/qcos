@@ -20,6 +20,7 @@
 
 #include "circuit/gate_operation.h"
 #include "mapping/sabre_mapping.h"
+#include "mapping/greedy_routing.h"
 #include "mapping/sabre_routing.h"
 
 namespace py = pybind11;
@@ -68,6 +69,20 @@ Get the sequence of mapped physical gates after routing.
 Returns:
     list[GateOperation]: The physical gate sequence.
 )pbdoc");
+
+py::class_<GreedyRouting>(
+    m, "GreedyRouting",
+    "Greedy blocked-gate routing: insert a SWAP only when a gate is blocked")
+    .def(py::init<const std::vector<std::pair<int, int>>&>(),
+        py::arg("coupling_list"))
+    .def("execute",
+        static_cast<void (GreedyRouting::*)(const std::vector<GateOperation>&,
+                                   const std::vector<int>&)>(
+           &GreedyRouting::execute),
+        py::arg("gates_list"), py::arg("initial_l2p") = std::vector<int>{})
+    .def("get_physical_gates", &GreedyRouting::get_physical_gates)
+    .def_readonly("logic2phy", &GreedyRouting::logic2phy)
+    .def_readonly("phy2logic", &GreedyRouting::phy2logic);
 
   m.def("sabre_initial_mapping",
         static_cast<std::vector<int> (*)(
