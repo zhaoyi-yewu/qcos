@@ -38,6 +38,8 @@ from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     SCRoute,
     SC_MAPPING_OPTIONS_SCHEMA,
 )
+
+from wy_qcos.transpiler.cmss.mapping.utils import dg_swap_opt
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import (
     optimize,
 )
@@ -333,10 +335,13 @@ class TranspilerCmss(TranspilerBase):
                 op.name for _, ops in dp_result_dict.values() for op in ops
             })
             with Timer() as decompose_ruler_timer:
-                decompose_rules_dict, _ = decomposer.get_decompose_rules(
-                    gate_name_list,
-                    supp_basis_gates,
+                decompose_rules_dict, gate_depth = (
+                    decomposer.get_decompose_rules(
+                        gate_name_list,
+                        supp_basis_gates,
+                    )
                 )
+                dg_swap_opt.gate_depth = gate_depth.copy()
             run_time.decompose_rule_time = decompose_ruler_timer.elapsed
             trans_logger.log_perf(
                 "tranpiler(get decompose rules): "
