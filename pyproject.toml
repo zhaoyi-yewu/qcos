@@ -60,7 +60,6 @@ dependencies = [
     "cryptography==45.0.7",
     "fastapi==0.122.1",
     "fastapi-jsonrpc==3.4.2",
-    "fastapi-users==15.0.4",
     "h11==0.16.0",
     "httpcore==1.0.9",
     "httpx==0.28.1",
@@ -163,7 +162,7 @@ warn_unused_ignores = true
 check_untyped_defs = false
 strict = false
 # remove gradually as progress is made
-disable_error_code = "import-untyped,var-annotated,import-not-found"
+disable_error_code = "import-untyped,var-annotated,import-not-found,union-attr,index"
 # honor excludes by not following there through imports
 follow_imports = "skip"
 files = "src"

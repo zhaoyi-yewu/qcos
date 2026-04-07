@@ -42,22 +42,24 @@ class QcosShell(App):
     """QCOS shell."""
 
     CMD_GROUP_DEFAULT = "Default"
+    CMD_GROUP_VERSION = "Version"
+    CMD_GROUP_SYSTEM = "System"
+    CMD_GROUP_AUTH = "Auth"
+    CMD_GROUP_USER = "User"
     CMD_GROUP_DRIVER = "Driver"
     CMD_GROUP_DEVICE = "Device"
     CMD_GROUP_TRANSPILER = "Transpiler"
     CMD_GROUP_JOB = "Job"
-    CMD_GROUP_USER = "User"
-    CMD_GROUP_SYSTEM = "System"
-    CMD_GROUP_VERSION = "Version"
     CMD_GROUPS = [
         CMD_GROUP_DEFAULT,
         CMD_GROUP_VERSION,
+        CMD_GROUP_SYSTEM,
+        CMD_GROUP_AUTH,
+        CMD_GROUP_USER,
         CMD_GROUP_DRIVER,
         CMD_GROUP_DEVICE,
         CMD_GROUP_TRANSPILER,
-        CMD_GROUP_SYSTEM,
         CMD_GROUP_JOB,
-        CMD_GROUP_USER,
     ]
 
     def __init__(self, description, version, command_manager):
@@ -1411,7 +1413,7 @@ class GetJobResults(ShowOne):
             if file_dir and not os.path.exists(file_dir):
                 os.makedirs(file_dir, exist_ok=True)
         except Exception as e:
-            raise Exception(f"Error to create dir{file_dir}, {str(e)}")
+            raise Exception(f"Failed to create dir: {file_dir}, {str(e)}")
 
         file_ext = os.path.splitext(outfile)[1].lower()
         try:
@@ -1859,7 +1861,7 @@ class SetJobResults(Command):
 
 
 # User commands
-class GetUserManagementStatus(ShowOne):
+class GetUserMgmtStatus(ShowOne):
     """Get user management status."""
 
     group = QcosShell.CMD_GROUP_USER
@@ -1871,10 +1873,10 @@ class GetUserManagementStatus(ShowOne):
     def take_action(self, parsed_args):
         resource = self.group
         status_code, reason, text, result = (
-            self.app.client.get_user_management_status()
+            self.app.client.get_user_mgmt_status()
         )
         json_results = CommandHelper.check_results(
-            resource, "get_user_management_status", status_code, reason, text
+            resource, "get_user_mgmt_status", status_code, reason, text
         )
         table_values = CommandHelper.get_table_data(json_results)
         return table_values
@@ -1951,16 +1953,17 @@ class CreateUser(Command):
             resource, "create_user", status_code, reason, text
         )
         print(f"User created: {json_results['user_name']}")
+        print(f"User ID: {json_results['id']}")
 
 
 class UpdateUser(Command):
-    """Update user."""
+    """Update user by ID."""
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("user_name", type=str, help="User name")
+        parser.add_argument("user_id", type=str, help="User ID (UUID)")
         parser.add_argument(
             "--role-name",
             action="append",
@@ -2014,6 +2017,7 @@ class UpdateUser(Command):
 
     def take_action(self, parsed_args):
         resource = self.group
+        user_id = parsed_args.user_id
 
         # collect all provided role names and remove duplicates
         roles = None
@@ -2039,7 +2043,7 @@ class UpdateUser(Command):
             is_locked = True
 
         # Prepare args and kwargs for update_user call
-        args = [parsed_args.user_name]
+        args = [user_id]
         kwargs = {}
         if roles:
             kwargs["roles"] = roles
@@ -2064,28 +2068,32 @@ class UpdateUser(Command):
         )
         if is_enabled is not None:
             action = "enabled" if is_enabled else "disabled"
-            self.app.stdout.write(f"User {action}: {parsed_args.user_name}\n")
+            self.app.stdout.write(f"User {action}: {user_id}\n")
         if is_locked is not None:
             action = "locked" if is_locked else "unlocked"
-            self.app.stdout.write(f"User {action}: {parsed_args.user_name}\n")
-        self.app.stdout.write(f"User updated: {parsed_args.user_name}")
+            self.app.stdout.write(f"User {action}: {user_id}\n")
+        self.app.stdout.write(f"User updated: {user_id}\n")
 
 
 class GetUser(ShowOne):
-    """Get user."""
+    """Get user by ID."""
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("user_name", type=str, help="User name")
+        parser.add_argument(
+            "user_id",
+            type=str,
+            help="User ID (UUID)",
+        )
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
-        status_code, reason, text, result = self.app.client.get_user(
-            parsed_args.user_name
-        )
+        user_id = parsed_args.user_id
+
+        status_code, reason, text, result = self.app.client.get_user(user_id)
         json_results = CommandHelper.check_results(
             resource, "get_user", status_code, reason, text
         )
@@ -2120,6 +2128,7 @@ class GetUsers(Lister):
     def take_action(self, parsed_args):
         resource = self.group
         header_list = [
+            "id",
             "user_name",
             "roles",
             "is_enabled",
@@ -2167,24 +2176,25 @@ class GetUsers(Lister):
 
 
 class DeleteUser(Command):
-    """Delete user."""
+    """Delete user by ID."""
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("user_name", type=str, help="User name")
+        parser.add_argument("user_id", type=str, help="User ID (UUID)")
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
+        user_id = parsed_args.user_id
         status_code, reason, text, result = self.app.client.delete_user(
-            parsed_args.user_name
+            user_id
         )
         CommandHelper.check_results(
             resource, "delete_user", status_code, reason, text
         )
-        print(f"User deleted: {parsed_args.user_name}")
+        print(f"User deleted: {user_id}")
 
 
 class CreateRole(Command):
@@ -2212,23 +2222,28 @@ class CreateRole(Command):
             resource, "create_role", status_code, reason, text
         )
         print(f"Role created: {json_results['role_name']}")
+        print(f"Role ID: {json_results['id']}")
 
 
 class GetRole(ShowOne):
-    """Get role."""
+    """Get role by ID."""
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("role_name", type=str, help="Role name")
+        parser.add_argument(
+            "role_id",
+            type=str,
+            help="Role ID (UUID)",
+        )
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
-        status_code, reason, text, result = self.app.client.get_role(
-            parsed_args.role_name
-        )
+        role_id = parsed_args.role_id
+
+        status_code, reason, text, result = self.app.client.get_role(role_id)
         json_results = CommandHelper.check_results(
             resource, "get_role", status_code, reason, text
         )
@@ -2237,13 +2252,13 @@ class GetRole(ShowOne):
 
 
 class UpdateRole(Command):
-    """Update role."""
+    """Update role by ID."""
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("role_name", type=str, help="Role name")
+        parser.add_argument("role_id", type=str, help="Role ID (UUID)")
         parser.add_argument(
             "--permissions", type=str, help="Permissions (JSON)"
         )
@@ -2252,6 +2267,7 @@ class UpdateRole(Command):
 
     def take_action(self, parsed_args):
         resource = self.group
+        role_id = parsed_args.role_id
         permissions = None
         if parsed_args.permissions:
             try:
@@ -2261,33 +2277,34 @@ class UpdateRole(Command):
                     "Invalid permissions JSON"
                 ) from exc
         status_code, reason, text, result = self.app.client.update_role(
-            parsed_args.role_name, permissions, parsed_args.description
+            role_id, permissions, parsed_args.description
         )
         CommandHelper.check_results(
             resource, "update_role", status_code, reason, text
         )
-        print(f"Role updated: {parsed_args.role_name}")
+        print(f"Role updated: {role_id}")
 
 
 class DeleteRole(Command):
-    """Delete role."""
+    """Delete role by ID."""
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("role_name", type=str, help="Role name")
+        parser.add_argument("role_id", type=str, help="Role ID (UUID)")
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
+        role_id = parsed_args.role_id
         status_code, reason, text, result = self.app.client.delete_role(
-            parsed_args.role_name
+            role_id
         )
         CommandHelper.check_results(
             resource, "delete_role", status_code, reason, text
         )
-        print(f"Role deleted: {parsed_args.role_name}")
+        print(f"Role deleted: {role_id}")
 
 
 class GetRoles(Lister):
@@ -2301,7 +2318,7 @@ class GetRoles(Lister):
 
     def take_action(self, parsed_args):
         resource = self.group
-        header_list = ["role_name", "permissions", "description"]
+        header_list = ["id", "role_name", "permissions", "description"]
         status_code, reason, text, result = self.app.client.get_roles()
         json_results = CommandHelper.check_results(
             resource, "get_roles", status_code, reason, text
@@ -2315,47 +2332,66 @@ class GetRoles(Lister):
 
 
 class ChangePassword(Command):
-    """Change password."""
+    """Change password for user by ID."""
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("user_name", type=str, help="User name")
+        parser.add_argument("user_id", type=str, help="User ID (UUID)")
         parser.add_argument("old_password", type=str, help="Old password")
         parser.add_argument("new_password", type=str, help="New password")
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
+        user_id = parsed_args.user_id
         status_code, reason, text, result = self.app.client.change_password(
-            parsed_args.user_name,
+            user_id,
             parsed_args.old_password,
             parsed_args.new_password,
         )
         CommandHelper.check_results(
             resource, "change_password", status_code, reason, text
         )
-        print(f"Password changed for user: {parsed_args.user_name}")
+        print(f"Password changed for user: {user_id}")
 
 
 class GetLoginLogs(Lister):
-    """Get login logs."""
+    """Get login logs by user ID."""
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("--user-name", type=str, help="User name")
+        parser.add_argument(
+            "user_id",
+            type=str,
+            nargs="?",
+            default=None,
+            help="User ID (UUID), optional if --all is used",
+        )
         parser.add_argument("--limit", type=int, default=100, help="Limit")
         parser.add_argument("--offset", type=int, default=0, help="Offset")
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
-        header_list = ["user_name", "login_time", "ip_address", "success"]
+        user_id = parsed_args.user_id
+        header_list = [
+            "user_name",
+            "login_time",
+            "ip_address",
+            "success",
+            "failure_reason",
+        ]
+
+        # If --all is specified, set limit to a very large number
+        limit = parsed_args.limit
+        offset = parsed_args.offset
+
         status_code, reason, text, result = self.app.client.get_login_logs(
-            parsed_args.user_name, parsed_args.limit, parsed_args.offset
+            user_id, limit, offset
         )
         json_results = CommandHelper.check_results(
             resource, "get_login_logs", status_code, reason, text
@@ -2377,10 +2413,134 @@ class GetLoginLogs(Lister):
         return table_values
 
 
+# Auth commands
+class Login(Command):
+    """User login to get JWT token."""
+
+    group = QcosShell.CMD_GROUP_AUTH
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument("username", type=str, help="Username")
+        parser.add_argument("password", type=str, help="Password")
+        parser.add_argument(
+            "--token-only",
+            action="store_true",
+            help="Only print the access token (useful for scripting)",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        username = parsed_args.username
+        password = parsed_args.password
+
+        status_code, reason, text, result = self.app.client.login(
+            username, password
+        )
+        json_results = CommandHelper.check_results(
+            resource, "login", status_code, reason, text
+        )
+        access_token = json_results.get("access_token")
+        if not access_token:
+            raise argparse.ArgumentTypeError("Error: can't find access_token")
+        self.app.client.set_token(access_token)
+        os.environ[Constant.ENV_VAR_ACCESS_TOKEN] = access_token
+
+        if parsed_args.token_only:
+            # Only print the token, useful for scripting
+            print(access_token)
+        else:
+            print(
+                "Login successful.\n"
+                f"Token expires in {json_results['expires_in']} seconds\n"
+                f"Token: {access_token}"
+            )
+
+
+class Logout(Command):
+    """User logout."""
+
+    group = QcosShell.CMD_GROUP_AUTH
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        status_code, reason, text, result = self.app.client.logout()
+        CommandHelper.check_results(
+            resource, "logout", status_code, reason, text
+        )
+        print("Logout successful")
+
+
+class RefreshToken(Command):
+    """Refresh JWT token."""
+
+    group = QcosShell.CMD_GROUP_AUTH
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--token-only",
+            action="store_true",
+            help="Only print the access token (useful for scripting)",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        status_code, reason, text, result = self.app.client.refresh_token()
+        json_results = CommandHelper.check_results(
+            resource, "refresh_token", status_code, reason, text
+        )
+        access_token = json_results.get("access_token")
+        if not access_token:
+            raise argparse.ArgumentTypeError("Error: can't find access_token")
+        self.app.client.set_token(access_token)
+        os.environ[Constant.ENV_VAR_ACCESS_TOKEN] = access_token
+        if parsed_args.token_only:
+            # Only print the token, useful for scripting
+            print(access_token)
+        else:
+            print(
+                f"Token refreshed. "
+                f"New token expires in {json_results['expires_in']} "
+                f"seconds\n"
+                f"Token: {access_token}"
+            )
+
+
+class Whoami(ShowOne):
+    """Show current authenticated user information."""
+
+    group = QcosShell.CMD_GROUP_AUTH
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        status_code, reason, text, result = self.app.client.get_current_user()
+        json_results = CommandHelper.check_results(
+            resource, "get_current_user", status_code, reason, text
+        )
+        table_values = CommandHelper.get_table_data(json_results)
+        return table_values
+
+
 # Register commands
 command_manager = CommandManager("qcos")
 # version command
 command_manager.add_command("version", Version)
+# auth command
+command_manager.add_command("login", Login)
+command_manager.add_command("logout", Logout)
+command_manager.add_command("refresh-token", RefreshToken)
+command_manager.add_command("whoami", Whoami)
 # system command
 command_manager.add_command("ping", Ping)
 command_manager.add_command("system-info", SystemInfo)
@@ -2407,9 +2567,7 @@ command_manager.add_command("list-devices", GetDevices)
 command_manager.add_command("get-transpiler", GetTranspiler)
 command_manager.add_command("list-transpilers", GetTranspilers)
 # user command
-command_manager.add_command(
-    "get-user-management-status", GetUserManagementStatus
-)
+command_manager.add_command("get-user-mgmt-status", GetUserMgmtStatus)
 command_manager.add_command("create-user", CreateUser)
 command_manager.add_command("get-user", GetUser)
 command_manager.add_command("list-users", GetUsers)

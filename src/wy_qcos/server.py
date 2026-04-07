@@ -158,9 +158,6 @@ class Server:
             compression=Config.LOG_ROTATE_COMPRESSION,
             quiet=False,
         )
-
-        # ensure logger using correct handlers
-        logger.handlers = self._stream_handlers
         logger.setLevel(logger_level)
 
     @staticmethod

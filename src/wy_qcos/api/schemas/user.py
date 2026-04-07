@@ -15,17 +15,21 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import uuid
 from datetime import datetime
-from pydantic import BaseModel, Field, field_validator
-from fastapi_users import schemas as fastapi_users_schemas
+from pydantic import BaseModel, Field, ConfigDict
 
 
-# FastAPI-Users compatible models
-class UserRead(fastapi_users_schemas.BaseUser[int]):
+# Custom user schemas (fastapi-users removed)
+class UserRead(BaseModel):
     """User read schema."""
 
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str = Field(..., description="User ID (UUID)")
     user_name: str = Field(..., description="User name")
     roles: list[str] = Field(default=[], description="User roles")
+    is_enabled: bool = Field(default=True, description="Is user enabled")
     is_locked: bool = Field(default=False, description="Is user locked")
     last_login: str | None = Field(default=None, description="Last login time")
     password_changed_at: str = Field(
@@ -47,12 +51,13 @@ class UserRead(fastapi_users_schemas.BaseUser[int]):
     updated_at: str = Field(..., description="User last updated timestamp")
 
 
-class UserCreate(fastapi_users_schemas.BaseUserCreate):
+class UserCreate(BaseModel):
     """User create schema."""
 
     user_name: str = Field(
         ..., min_length=3, max_length=50, description="User name"
     )
+    password: str = Field(..., min_length=6, description="Password")
     roles: list[str] = Field(default=["user"], description="User roles")
     is_locked: bool = Field(default=False, description="Is user locked")
     password_expiry_days: int | None = Field(
@@ -63,7 +68,7 @@ class UserCreate(fastapi_users_schemas.BaseUserCreate):
     )
 
 
-class UserUpdate(fastapi_users_schemas.BaseUserUpdate):
+class UserUpdate(BaseModel):
     """User update schema."""
 
     user_name: str | None = Field(
@@ -83,6 +88,11 @@ class UserUpdate(fastapi_users_schemas.BaseUserUpdate):
 class User(BaseModel):
     """User model."""
 
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()), description="User ID (UUID)"
+    )
     user_name: str = Field(..., description="User name")
     password_hash: str = Field(
         ...,
@@ -118,11 +128,11 @@ class User(BaseModel):
     )
 
 
-class GetUserManagementStatusRequest(BaseModel):
+class GetUserMgmtStatusRequest(BaseModel):
     """Get user management status request."""
 
 
-class GetUserManagementStatusResponse(BaseModel):
+class GetUserMgmtStatusResponse(BaseModel):
     """Get user management status response."""
 
     enabled: bool = Field(
@@ -165,17 +175,11 @@ class CreateUserRequest(BaseModel):
         default=None, description="User description"
     )
 
-    @field_validator("user_name")
-    @classmethod
-    def validate_user_name(cls, v):
-        if not v.isalnum():
-            raise ValueError("User name must be alphanumeric")
-        return v
-
 
 class CreateUserResponse(BaseModel):
     """Create user response."""
 
+    id: str = Field(..., description="User ID (UUID)")
     user_name: str = Field(..., description="User name")
     roles: list[str] | None = Field(..., description="User roles")
     is_enabled: bool | None = Field(..., description="Whether user is enabled")
@@ -184,14 +188,15 @@ class CreateUserResponse(BaseModel):
 
 
 class GetUserRequest(BaseModel):
-    """Get user request."""
+    """Get user request by ID."""
 
-    user_name: str = Field(..., description="User name")
+    user_id: str = Field(..., description="User ID (UUID)")
 
 
 class GetUserResponse(BaseModel):
     """Get user response."""
 
+    id: str = Field(..., description="User ID (UUID)")
     user_name: str = Field(..., description="User name")
     roles: list[str] = Field(..., description="User roles")
     is_enabled: bool = Field(..., description="Whether user is enabled")
@@ -220,9 +225,9 @@ class GetUsersRequest(BaseModel):
 
 
 class UpdateUserRequest(BaseModel):
-    """Update user request."""
+    """Update user request by ID."""
 
-    user_name: str = Field(..., description="User name")
+    user_id: str = Field(..., description="User ID (UUID)")
     roles: list[str] | None = Field(default=None, description="User roles")
     password_expiry_days: int | None = Field(
         default=None, description="Password expiry days"
@@ -252,9 +257,9 @@ class UpdateUserResponse(BaseModel):
 
 
 class DeleteUserRequest(BaseModel):
-    """Delete user request."""
+    """Delete user request by ID."""
 
-    user_name: str = Field(..., description="User name")
+    user_id: str = Field(..., description="User ID (UUID)")
 
 
 class DeleteUserResponse(BaseModel):
@@ -283,9 +288,9 @@ class LockUserResponse(BaseModel):
 
 
 class ChangePasswordRequest(BaseModel):
-    """Change password request."""
+    """Change password request by user ID."""
 
-    user_name: str = Field(..., description="User name")
+    user_id: str = Field(..., description="User ID (UUID)")
     old_password: str | None = Field(
         default=None,
         description="Old password (for non-admin changes)",
@@ -317,23 +322,34 @@ class LoginLog(BaseModel):
     login_time: datetime = Field(
         default_factory=datetime.now, description="Login time"
     )
-    login_status: str = Field(
-        ..., description="Login status: success or failed"
-    )
+    success: bool = Field(..., description="Whether login was successful")
     user_agent: str | None = Field(default=None, description="User agent")
+    failure_reason: str | None = Field(
+        default=None,
+        description="Reason for login failure if success is False",
+    )
 
 
 class GetLoginLogsRequest(BaseModel):
-    """Get login logs request."""
+    """Get login logs request by user ID."""
 
-    user_name: str | None = Field(
-        default=None, description="Filter by user name"
+    user_id: str | None = Field(
+        default=None, description="Filter by user ID (UUID)"
     )
     start_time: str | None = Field(
         default=None, description="Filter by start time (ISO format)"
     )
     end_time: str | None = Field(
         default=None, description="Filter by end time (ISO format)"
+    )
+    limit: int | None = Field(
+        default=100,
+        ge=1,
+        le=1000,
+        description="Maximum number of logs to return",
+    )
+    offset: int | None = Field(
+        default=0, ge=0, description="Number of logs to skip"
     )
 
 
@@ -346,13 +362,18 @@ class LoginLogResponse(BaseModel):
     user_agent: str | None = Field(default=None, description="User agent")
     success: bool = Field(..., description="Whether login was successful")
     failure_reason: str | None = Field(
-        default=None, description="Failure reason if login failed"
+        default=None, description="Failed reason if login failed"
     )
 
 
 class Role(BaseModel):
     """Role model."""
 
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()), description="Role ID (UUID)"
+    )
     role_name: str = Field(..., description="Role name")
     permissions: list[str] = Field(default=[], description="Role permissions")
     description: str | None = Field(
@@ -371,31 +392,26 @@ class CreateRoleRequest(BaseModel):
         default="", max_length=200, description="Role description"
     )
 
-    @field_validator("role_name")
-    @classmethod
-    def validate_role_name(cls, v):
-        if not v.isalnum():
-            raise ValueError("Role name must be alphanumeric")
-        return v
-
 
 class CreateRoleResponse(BaseModel):
     """Create role response."""
 
+    id: str = Field(..., description="Role ID (UUID)")
     role_name: str = Field(..., description="Role name")
     permissions: list[str] = Field(..., description="Role permissions")
     description: str = Field(..., description="Role description")
 
 
 class GetRoleRequest(BaseModel):
-    """Get role request."""
+    """Get role request by ID."""
 
-    role_name: str = Field(..., description="Role name")
+    role_id: str = Field(..., description="Role ID (UUID)")
 
 
 class GetRoleResponse(BaseModel):
     """Get role response."""
 
+    id: str = Field(..., description="Role ID (UUID)")
     role_name: str = Field(..., description="Role name")
     permissions: list[str] = Field(..., description="Role permissions")
     description: str = Field(..., description="Role description")
@@ -406,9 +422,9 @@ class GetRolesRequest(BaseModel):
 
 
 class UpdateRoleRequest(BaseModel):
-    """Update role request."""
+    """Update role request by ID."""
 
-    role_name: str = Field(..., description="Role name")
+    role_id: str = Field(..., description="Role ID (UUID)")
     permissions: list[str] | None = Field(
         default=None, description="Role permissions"
     )
@@ -426,9 +442,9 @@ class UpdateRoleResponse(BaseModel):
 
 
 class DeleteRoleRequest(BaseModel):
-    """Delete role request."""
+    """Delete role request by ID."""
 
-    role_name: str = Field(..., description="Role name")
+    role_id: str = Field(..., description="Role ID (UUID)")
 
 
 class DeleteRoleResponse(BaseModel):

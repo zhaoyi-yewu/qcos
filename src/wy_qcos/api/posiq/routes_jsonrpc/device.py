@@ -67,7 +67,7 @@ def _get_device_info(device, auth_data=None, details=False):
 
 
 @device_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_USER]}, errors=[]
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
 )
 def get_devices(
     body: schemas.GetDevicesRequest | None = None,
@@ -100,7 +100,7 @@ def get_devices(
 
 
 @device_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.NotFoundError],
 )
 def get_device(
@@ -136,7 +136,10 @@ def get_device(
     return response_info
 
 
-@device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
+@device_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.NotFoundError],
+)
 def calibrate_device(
     body: schemas.CalibrateDeviceRequest,
     auth_data: dict | None = Depends(auth),
@@ -159,7 +162,10 @@ def calibrate_device(
     return response_info
 
 
-@device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
+@device_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.NotFoundError],
+)
 def get_calibrate_results(
     body: schemas.GetCalibrateResultRequest,
     auth_data: dict | None = Depends(auth),
@@ -188,7 +194,10 @@ def get_calibrate_results(
     return response_info
 
 
-@device_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
+@device_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.NotFoundError],
+)
 def set_device_options(
     body: schemas.SetDeviceOptionsRequest,
     auth_data: dict | None = Depends(auth),
@@ -214,7 +223,7 @@ def set_device_options(
 
 
 @device_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
 def get_device_options(

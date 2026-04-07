@@ -42,7 +42,7 @@ class TestUserManagerRoles:
         mock_enforcer.enforce.return_value = True
 
         with patch(
-            "wy_qcos.user.user_manager.casbin.Enforcer",
+            "wy_qcos.user.permission_manager.casbin.Enforcer",
             return_value=mock_enforcer,
         ):
             manager = UserManager("model.conf", "policy.csv", all_api)
@@ -69,6 +69,30 @@ class TestUserManagerRoles:
             user_manager.validate_role_name(
                 "a" * (Constant.MAX_ROLE_LENGTH + 1)
             )
+
+    def test_validate_role_name_starts_with_underscore(self, user_manager):
+        """Test role name validation with name starting with underscore."""
+        with pytest.raises(ValueError, match="cannot start with underscore"):
+            user_manager.validate_role_name("_invalid_role")
+
+    def test_validate_role_name_invalid_characters(self, user_manager):
+        """Test role name validation with invalid characters."""
+        with pytest.raises(ValueError, match="is invalid"):
+            user_manager.validate_role_name("role@name")
+        with pytest.raises(ValueError, match="is invalid"):
+            user_manager.validate_role_name("role.name")
+        with pytest.raises(ValueError, match="is invalid"):
+            user_manager.validate_role_name("role name")  # space
+        with pytest.raises(ValueError, match="is invalid"):
+            user_manager.validate_role_name("123role")  # starts with digit
+
+    def test_validate_role_name_valid_formats(self, user_manager):
+        """Test role name validation with various valid formats."""
+        # Should allow letters, digits, hyphens, and underscores (not at start)
+        user_manager.validate_role_name("valid_role")
+        user_manager.validate_role_name("valid-role")
+        user_manager.validate_role_name("validRole123")
+        user_manager.validate_role_name("role123_test-name")
 
     def test_validate_description_success(self, user_manager):
         """Test successful description validation."""
@@ -117,7 +141,8 @@ class TestUserManagerRoles:
             "/v1/device/get_devices",
         ]
         assert role.description == "Test role description"
-        assert "testrole" in user_manager.roles_db
+        # roles_db is keyed by UUID, but _role_name_to_id maps name to UUID
+        assert "testrole" in user_manager._role_name_to_id
 
     def test_create_role_duplicate(self, user_manager):
         """Test creating a role with duplicate name."""
@@ -359,12 +384,15 @@ class TestUserManagerRoles:
     def test_init_users_creates_default_roles(self, user_manager):
         """Test that initialization creates default roles."""
         # Should create default admin and user roles
-        assert "admin" in user_manager.roles_db
-        assert "user" in user_manager.roles_db
+        # roles_db is keyed by UUID, but _role_name_to_id maps name to UUID
+        assert "admin" in user_manager._role_name_to_id
+        assert "user" in user_manager._role_name_to_id
 
-        admin_role = user_manager.roles_db["admin"]
-        user_role = user_manager.roles_db["user"]
+        admin_role = user_manager.get_role("admin")
+        user_role = user_manager.get_role("user")
 
+        assert admin_role is not None
+        assert user_role is not None
         assert admin_role.role_name == "admin"
         assert user_role.role_name == "user"
 

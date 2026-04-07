@@ -171,7 +171,7 @@ class TestSecurityManager:
         assert len(security_manager.failed_attempts[user_name]) == 0
         # Login should be logged
         mock_user_manager.log_login_attempt.assert_called_once_with(
-            user_name, ip_address, "success", user_agent
+            user_name, ip_address, True, user_agent=user_agent
         )
 
     @patch("wy_qcos.user.security_manager.jwt.encode")
@@ -377,7 +377,7 @@ class TestSecurityManager:
         assert result.locked_until is None
         # Login should be logged
         mock_user_manager.log_login_attempt.assert_called_once_with(
-            user_name, ip_address, "success", user_agent
+            user_name, ip_address, True, user_agent=user_agent
         )
 
     def test_check_permissions_direct(

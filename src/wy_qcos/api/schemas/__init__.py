@@ -15,6 +15,43 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from .auth import (
+    LoginRequest,
+    LoginResponse,
+    LogoutRequest,
+    LogoutResponse,
+    TokenRefreshRequest,
+    TokenRefreshResponse,
+)
+from .version import GetVersionRequest, GetVersionResponse
+from .user import (
+    GetUserMgmtStatusRequest,
+    GetUserMgmtStatusResponse,
+    CreateUserRequest,
+    CreateUserResponse,
+    GetUserRequest,
+    GetUserResponse,
+    UpdateUserRequest,
+    UpdateUserResponse,
+    GetUsersRequest,
+    DeleteUserRequest,
+    DeleteUserResponse,
+    LockUserRequest,
+    LockUserResponse,
+    ChangePasswordRequest,
+    ChangePasswordResponse,
+    GetLoginLogsRequest,
+    LoginLogResponse,
+    CreateRoleRequest,
+    CreateRoleResponse,
+    GetRoleRequest,
+    GetRoleResponse,
+    GetRolesRequest,
+    UpdateRoleRequest,
+    UpdateRoleResponse,
+    DeleteRoleRequest,
+    DeleteRoleResponse,
+)
 from .driver import GetDriversRequest, GetDriverRequest, GetDriverResponse
 from .device import (
     GetDevicesRequest,
@@ -56,33 +93,4 @@ from .system import (
     PongResponse,
     SystemInfoRequest,
     SystemInfoResponse,
-)
-from .version import GetVersionRequest, GetVersionResponse
-from .user import (
-    GetUserManagementStatusRequest,
-    GetUserManagementStatusResponse,
-    CreateUserRequest,
-    CreateUserResponse,
-    GetUserRequest,
-    GetUserResponse,
-    UpdateUserRequest,
-    UpdateUserResponse,
-    GetUsersRequest,
-    DeleteUserRequest,
-    DeleteUserResponse,
-    LockUserRequest,
-    LockUserResponse,
-    ChangePasswordRequest,
-    ChangePasswordResponse,
-    GetLoginLogsRequest,
-    LoginLogResponse,
-    CreateRoleRequest,
-    CreateRoleResponse,
-    GetRoleRequest,
-    GetRoleResponse,
-    GetRolesRequest,
-    UpdateRoleRequest,
-    UpdateRoleResponse,
-    DeleteRoleRequest,
-    DeleteRoleResponse,
 )

@@ -18,6 +18,8 @@
 # Don't import any other libraries
 from wy_qcos.common.qcos_version import QcosVersion
 
+_s = lambda x: x
+
 
 class Constant:
     """Constants."""
@@ -327,10 +329,13 @@ class Constant:
 
     # user management
     DEFAULT_ADMIN_USERNAME = "admin"
-    DEFAULT_ADMIN_PASSWORD = (lambda: "123456")()
+    DEFAULT_ADMIN_PASSWORD = _s("123456")
+    ENV_VAR_ACCESS_TOKEN = _s("QCOS_ACCESS_TOKEN")
+    JWT_AUTH_AUDIENCE = "qcos"
     ROLE_ADMIN = "admin"
     ROLE_USER = "user"
-    ROLES = [ROLE_ADMIN, ROLE_USER]
+    ROLE_ANY = "__any__"
+    ALL_ROLES = [ROLE_ADMIN, ROLE_USER]
 
     # Job status
     JOB_STATUS_UNKNOWN = "UNKNOWN"

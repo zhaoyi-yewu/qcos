@@ -366,6 +366,9 @@ jobs:
           docker exec qcos sh -c "source /root/.bashrc; echo 'Driver list:'; qcos-cli list-devices; echo 'Job list:'; qcos-cli list-jobs; cd /root/qcos-project; ./cicd/run-tests.sh -s all"
           EOF
 
+          # print log files for debug rurpose
+          awk 'FNR==1{print "\n\n--- Log File: " FILENAME " ---"} {print} END{print ""}' /var/log/qcos/qcos-api.log /var/log/qcos/postgresql.log /var/log/qcos/device*.log
+
   push-docker-images:
     name: Tag and Push docker images to DockerHub
     # Runs after all jobs regardless of their outcome

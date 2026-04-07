@@ -24,6 +24,9 @@ from .dependencies.authentication import auth
 
 BASE_ENDPOINT = f"/{Constant.API_VERSION}"
 base_api = jsonrpc.Entrypoint("")
+
+# Auth API entrypoint (no auth required for login endpoint)
+auth_api_v1 = jsonrpc.Entrypoint(f"{BASE_ENDPOINT}/auth")
 system_api_v1 = jsonrpc.Entrypoint(
     f"{BASE_ENDPOINT}/system", common_dependencies=[Depends(auth)]
 )
@@ -42,8 +45,11 @@ transpiler_api_v1 = jsonrpc.Entrypoint(
 user_api_v1 = jsonrpc.Entrypoint(
     f"{BASE_ENDPOINT}/user", common_dependencies=[Depends(auth)]
 )
+
+# All API entrypoints including auth
 all_api_v1 = [
     base_api,
+    auth_api_v1,
     driver_api_v1,
     device_api_v1,
     transpiler_api_v1,

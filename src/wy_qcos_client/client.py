@@ -70,12 +70,16 @@ class Client:
         base_endpoint_url = f"{http_proto}://{api_server_ip}:{api_server_port}"
         endpoint_url = f"{base_endpoint_url}/{api_version}"
         self.version_url = f"{base_endpoint_url}/version"
+        self.auth_url = f"{endpoint_url}/auth"
         self.driver_url = f"{endpoint_url}/driver"
         self.device_url = f"{endpoint_url}/device"
         self.transpiler_url = f"{endpoint_url}/transpiler"
         self.job_url = f"{endpoint_url}/job"
         self.user_url = f"{endpoint_url}/user"
         self.system_url = f"{endpoint_url}/system"
+
+        # JWT token storage
+        self.access_token = None
 
     @staticmethod
     def print_api_response(status_code, reason, text, result=None):
@@ -93,8 +97,27 @@ class Client:
                 f"text: {text}, result: {result}"
             )
 
-    @staticmethod
-    def call_json_rpc(url, method_name, data=None, params=None):
+    def set_token(self, token):
+        """Set JWT access token for subsequent requests.
+
+        Args:
+            token: JWT access token string
+        """
+        self.access_token = token
+
+    def get_token(self):
+        """Get current JWT token.
+
+        Returns:
+            Current JWT access token or None
+        """
+        return self.access_token
+
+    def clear_token(self):
+        """Clear stored JWT token."""
+        self.access_token = None
+
+    def call_json_rpc(self, url, method_name, data=None, params=None):
         """Call json-rpc.
 
         Args:
@@ -123,9 +146,16 @@ class Client:
                 result,
             )
 
+        # Add JWT token to headers if available
+        access_token = os.environ.get(Constant.ENV_VAR_ACCESS_TOKEN, None)
+        if self.access_token:
+            access_token = self.access_token  # override access_token
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+
         # get qcos virtual instance id
         qcos_virtual_instance_id = os.environ.get(
-            "QCOS_VIRTUAL_INSTANCE_ID", None
+            Constant.ENV_VAR_VIRTUAL_INSTANCE_ID, None
         )
         if qcos_virtual_instance_id:
             headers["x-qcos-virtual-instance-id"] = qcos_virtual_instance_id
@@ -189,7 +219,7 @@ class Client:
         method_name = "version"
 
         # construct data and call json rpc
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.version_url, method_name, {}
         )
         return status_code, reason, text, result
@@ -204,7 +234,7 @@ class Client:
         method_name = "get_drivers"
 
         # construct data and call json rpc
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.driver_url, method_name, data=None
         )
         return status_code, reason, text, result
@@ -224,7 +254,7 @@ class Client:
         data = {"name": driver_name}
 
         # construct data and call json rpc
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.driver_url, method_name, data
         )
         return status_code, reason, text, result
@@ -239,7 +269,7 @@ class Client:
         method_name = "get_devices"
 
         # construct data and call json rpc
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.device_url, method_name, data=None
         )
         return status_code, reason, text, result
@@ -260,7 +290,7 @@ class Client:
         data = {"name": device_name, "details": details}
 
         # construct data and call json rpc
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.device_url, method_name, data
         )
         return status_code, reason, text, result
@@ -282,7 +312,7 @@ class Client:
         }
 
         # construct data and call json rpc
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.device_url, method_name, data
         )
         return status_code, reason, text, result
@@ -297,7 +327,7 @@ class Client:
 
         # construct data and call json rpc
         data = {"device_name": device_name, "method": method_name}
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.device_url, method_name, data
         )
         return status_code, reason, text, result
@@ -319,7 +349,7 @@ class Client:
         }
 
         # construct data and call json rpc
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.device_url, method_name, data
         )
         return status_code, reason, text, result
@@ -339,7 +369,7 @@ class Client:
         data = {"device_name": device_name, "method": method_name}
 
         # construct data and call json rpc
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.device_url, method_name, data
         )
         return status_code, reason, text, result
@@ -354,7 +384,7 @@ class Client:
         method_name = "get_transpilers"
 
         # construct data and call json rpc
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.transpiler_url, method_name, data=None
         )
         return status_code, reason, text, result
@@ -374,7 +404,7 @@ class Client:
         data = {"name": transpiler_name}
 
         # construct data and call json rpc
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.transpiler_url, method_name, data
         )
         return status_code, reason, text, result
@@ -393,7 +423,7 @@ class Client:
 
         # construct data and call json rpc
         data = {"message": message}
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.system_url, method_name, data
         )
         return status_code, reason, text, result
@@ -407,7 +437,7 @@ class Client:
         method_name = "system_info"
 
         # construct data and call json rpc
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.system_url, method_name, data=None
         )
         return status_code, reason, text, result
@@ -480,7 +510,7 @@ class Client:
 
         if job_id:
             data["job_id"] = str(job_id)
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.job_url, method_name, data
         )
         return status_code, reason, text, result
@@ -503,7 +533,7 @@ class Client:
 
         # construct data and call json rpc
         data = {"job_id": job_id}
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.job_url, method_name, data
         )
         return status_code, reason, text, result
@@ -526,7 +556,7 @@ class Client:
 
         # construct data and call json rpc
         data = {"job_id": job_id}
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.job_url, method_name, data
         )
         return status_code, reason, text, result
@@ -541,7 +571,7 @@ class Client:
 
         # construct data and call json rpc
         data = {}
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.job_url, method_name, data
         )
         return status_code, reason, text, result
@@ -565,7 +595,7 @@ class Client:
 
         # construct data and call json rpc
         data = {"job_ids": job_ids}
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.job_url, method_name, data
         )
         return status_code, reason, text, result
@@ -589,7 +619,7 @@ class Client:
 
         # construct data and call json rpc
         data = {"job_ids": job_ids}
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.job_url, method_name, data
         )
         return status_code, reason, text, result
@@ -613,7 +643,7 @@ class Client:
 
         # construct data and call json rpc
         data = {"job_id": job_id, "results": new_results}
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.job_url, method_name, data
         )
         return status_code, reason, text, result
@@ -638,18 +668,16 @@ class Client:
 
         if job_id:
             data["job_id"] = str(job_id)
-        status_code, reason, text, result = Client.call_json_rpc(
+        status_code, reason, text, result = self.call_json_rpc(
             self.job_url, method_name, data
         )
         return status_code, reason, text, result
 
     # [User]
-    def get_user_management_status(self):
+    def get_user_mgmt_status(self):
         """Get user management status."""
         data = {}
-        return Client.call_json_rpc(
-            self.user_url, "get_user_management_status", data
-        )
+        return self.call_json_rpc(self.user_url, "get_user_mgmt_status", data)
 
     def create_user(
         self,
@@ -677,24 +705,37 @@ class Client:
             data["is_enabled"] = is_enabled
         if is_locked is not None:
             data["is_locked"] = is_locked
-        return Client.call_json_rpc(self.user_url, "create_user", data)
+        return self.call_json_rpc(self.user_url, "create_user", data)
 
-    def get_user(self, user_name):
-        """Get user."""
-        data = {"user_name": user_name}
-        return Client.call_json_rpc(self.user_url, "get_user", data)
+    def get_user(self, user_id):
+        """Get user by ID.
+
+        Args:
+            user_id: User ID (UUID)
+        """
+        data = {"user_id": user_id}
+        return self.call_json_rpc(self.user_url, "get_user", data)
 
     def update_user(
         self,
-        user_name,
+        user_id,
         roles=None,
         description=None,
         password_expiry_days=None,
         is_enabled=None,
         is_locked=None,
     ):
-        """Update user."""
-        data = {"user_name": user_name}
+        """Update user by ID.
+
+        Args:
+            user_id: User ID (UUID)
+            roles: List of role names to assign
+            description: User description
+            password_expiry_days: Number of days until password expires
+            is_enabled: Whether user account is enabled
+            is_locked: Whether user account is locked
+        """
+        data = {"user_id": user_id}
         if roles:
             data["roles"] = roles
         if description is not None:
@@ -705,66 +746,156 @@ class Client:
             data["is_enabled"] = is_enabled
         if is_locked is not None:
             data["is_locked"] = is_locked
-        return Client.call_json_rpc(self.user_url, "update_user", data)
+        return self.call_json_rpc(self.user_url, "update_user", data)
 
-    def delete_user(self, user_name):
-        """Delete user."""
-        data = {"user_name": user_name}
-        return Client.call_json_rpc(self.user_url, "delete_user", data)
+    def delete_user(self, user_id):
+        """Delete user by ID.
+
+        Args:
+            user_id: User ID (UUID)
+        """
+        data = {"user_id": user_id}
+        return self.call_json_rpc(self.user_url, "delete_user", data)
 
     def get_users(self):
         """Get users."""
         data = {}
-        return Client.call_json_rpc(self.user_url, "get_users", data)
+        return self.call_json_rpc(self.user_url, "get_users", data)
 
     def create_role(self, role_name, permissions, description=None):
         """Create role."""
         data = {"role_name": role_name, "permissions": permissions}
         if description:
             data["description"] = description
-        return Client.call_json_rpc(self.user_url, "create_role", data)
+        return self.call_json_rpc(self.user_url, "create_role", data)
 
-    def get_role(self, role_name):
-        """Get role."""
-        data = {"role_name": role_name}
-        return Client.call_json_rpc(self.user_url, "get_role", data)
+    def get_role(self, role_id):
+        """Get role by ID.
 
-    def update_role(self, role_name, permissions=None, description=None):
-        """Update role."""
-        data = {"role_name": role_name}
+        Args:
+            role_id: Role ID (UUID)
+        """
+        data = {"role_id": role_id}
+        return self.call_json_rpc(self.user_url, "get_role", data)
+
+    def update_role(self, role_id, permissions=None, description=None):
+        """Update role by ID.
+
+        Args:
+            role_id: Role ID (UUID)
+            permissions: List of permission strings
+            description: Role description
+        """
+        data = {"role_id": role_id}
         if permissions:
             data["permissions"] = permissions
         if description is not None:
             data["description"] = description
-        return Client.call_json_rpc(self.user_url, "update_role", data)
+        return self.call_json_rpc(self.user_url, "update_role", data)
 
-    def delete_role(self, role_name):
-        """Delete role."""
-        data = {"role_name": role_name}
-        return Client.call_json_rpc(self.user_url, "delete_role", data)
+    def delete_role(self, role_id):
+        """Delete role by ID.
+
+        Args:
+            role_id: Role ID (UUID)
+        """
+        data = {"role_id": role_id}
+        return self.call_json_rpc(self.user_url, "delete_role", data)
 
     def get_roles(self):
         """Get roles."""
         data = {}
-        return Client.call_json_rpc(self.user_url, "get_roles", data)
+        return self.call_json_rpc(self.user_url, "get_roles", data)
 
     def lock_user(self, user_name, action):
         """Lock or unlock user."""
         data = {"user_name": user_name, "action": action}
-        return Client.call_json_rpc(self.user_url, "lock_user", data)
+        return self.call_json_rpc(self.user_url, "lock_user", data)
 
-    def change_password(self, user_name, old_password, new_password):
-        """Change password."""
+    def change_password(self, user_id, old_password, new_password):
+        """Change password for user by ID.
+
+        Args:
+            user_id: User ID (UUID)
+            old_password: Current password
+            new_password: New password to set
+        """
         data = {
-            "user_name": user_name,
+            "user_id": user_id,
             "old_password": old_password,
             "new_password": new_password,
         }
-        return Client.call_json_rpc(self.user_url, "change_password", data)
+        return self.call_json_rpc(self.user_url, "change_password", data)
 
-    def get_login_logs(self, user_name=None, limit=100, offset=0):
-        """Get login logs."""
+    def get_login_logs(self, user_id=None, limit=100, offset=0):
+        """Get login logs by user ID.
+
+        Args:
+            user_id: User ID (UUID) to filter logs
+            limit: Maximum number of logs to return (default: 100)
+            offset: Number of logs to skip (default: 0)
+        """
         data = {"limit": limit, "offset": offset}
-        if user_name:
-            data["user_name"] = user_name
-        return Client.call_json_rpc(self.user_url, "get_login_logs", data)
+        if user_id:
+            data["user_id"] = user_id
+        return self.call_json_rpc(self.user_url, "get_login_logs", data)
+
+    # [Auth]
+    def login(self, username, password):
+        """User login to get JWT token.
+
+        Args:
+            username: Username for authentication
+            password: Password for authentication
+
+        Returns:
+            Login response with JWT access token
+        """
+        data = {"username": username, "password": password}
+        status_code, reason, text, result = self.call_json_rpc(
+            self.auth_url, "login", data
+        )
+        return status_code, reason, text, result
+
+    def logout(self):
+        """User logout.
+
+        Returns:
+            Logout response
+        """
+        status_code, reason, text, result = self.call_json_rpc(
+            self.auth_url, "logout", {}
+        )
+        if status_code == 200:
+            self.clear_token()
+        return status_code, reason, text, result
+
+    def refresh_token(self):
+        """Refresh JWT token.
+
+        Returns:
+            Token refresh response with new JWT access token
+        """
+        status_code, reason, text, result = self.call_json_rpc(
+            self.auth_url, "refresh_token", {}
+        )
+        if status_code == 200:
+            # Handle both dict and Response object
+            if isinstance(result, dict):
+                access_token = result.get("access_token")
+            elif hasattr(result, "get"):
+                access_token = result.get("access_token")
+            else:
+                access_token = None
+
+            if access_token:
+                self.set_token(access_token)
+        return status_code, reason, text, result
+
+    def get_current_user(self):
+        """Get current authenticated user info.
+
+        Returns:
+            Current user information
+        """
+        return self.call_json_rpc(self.auth_url, "get_current_user_info", {})
