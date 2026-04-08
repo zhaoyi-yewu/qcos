@@ -112,6 +112,7 @@ class TestTranspilerCmss:
         expected_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_RX,
             Constant.SINGLE_QUBIT_GATE_RY,
+            Constant.TWO_QUBIT_GATE_CX,
         ]
         src_code_info = {"000": self.simple_data}
         parse_result = transpiler.parse(src_code_info)
@@ -148,6 +149,7 @@ class TestTranspilerCmss:
         expected_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_RX,
             Constant.SINGLE_QUBIT_GATE_RY,
+            Constant.TWO_QUBIT_GATE_CX,
         ]
         src_code_info = {
             "000": self.simple_data,
@@ -192,6 +194,7 @@ class TestTranspilerCmss:
         expected_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_RX,
             Constant.SINGLE_QUBIT_GATE_RY,
+            Constant.TWO_QUBIT_GATE_CX,
         ]
         src_code_info = {
             "000": qasm_data,
@@ -224,6 +227,7 @@ class TestTranspilerCmss:
         expected_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_RX,
             Constant.SINGLE_QUBIT_GATE_RY,
+            Constant.TWO_QUBIT_GATE_CX,
         ]
         src_code_info = {
             "000": self.simple_data,

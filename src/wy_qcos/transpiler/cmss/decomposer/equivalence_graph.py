@@ -1284,8 +1284,9 @@ class EquivalenceGraph:
         Raises:
             ValueError: If decomposition rule missing.
         """
+        # Compute additional SWAP depth for the mapping module
         rule_map = self.get_optimal_decomposition_rule_dictionary(
-            source,
+            source + ["swap"],
             target,
         )
 
@@ -1295,8 +1296,9 @@ class EquivalenceGraph:
         table: dict[ParamGate, list[ParamGate]] = {}
         count_map: dict[str, int] = {}
 
-        for name in source:
+        for name in source + ["swap"]:
             if name in target_set:
+                count_map[name] = 1
                 continue
 
             rule = rule_map.get(name)
@@ -1317,6 +1319,6 @@ class EquivalenceGraph:
             )
 
             table[template_gate] = expanded
-            count_map[template_gate.name] = len(expanded)
+            count_map[template_gate.name] = len(expanded) + 1
 
         return table, count_map
