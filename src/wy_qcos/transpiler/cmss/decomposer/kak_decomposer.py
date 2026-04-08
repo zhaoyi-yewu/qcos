@@ -15,11 +15,12 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from math import sqrt, atan2
+from math import sqrt
 import numpy as np
-from numpy import kron
 from scipy import linalg
 from scipy.linalg import expm
+
+from wy_qcos.transpiler.cmss.decomposer.euler_decomposer import EulerDecomposer
 
 
 class KAKDecomposer:
@@ -29,6 +30,7 @@ class KAKDecomposer:
         self.A1 = None
         self.B0 = None
         self.B1 = None
+        self.euler_decomposer = EulerDecomposer()
 
         self.M = np.array(
             [
@@ -183,14 +185,6 @@ class KAKDecomposer:
 
         a1, a0 = self.decompose_matrix(self.M @ q_left @ self.M_DAG)
         b1, b0 = self.decompose_matrix(self.M @ q_right.T @ self.M_DAG)
-        (
-            kron(a1, a0)
-            @ self.M
-            @ ashn
-            / np.exp(-1j * phase)
-            @ self.M_DAG
-            @ kron(b1, b0)
-        )
 
         self.A0 = self.euler_decompose(a0)
         self.A1 = self.euler_decompose(a1)
@@ -219,17 +213,9 @@ class KAKDecomposer:
             mat: 2x2 unitary matrix
 
         Returns:
-            three parameters theta, phi, lambda of a standard U3 gate.
+            lam, theta, phi.
         """
-        mat = mat.astype(np.complex128)
-        coe = linalg.det(mat) ** (-0.5)
-        v = coe * mat
-
-        theta = 2 * atan2(abs(v[1, 0]), abs(v[0, 0]))
-        phi_lam_sum = 2 * np.angle(v[1, 1])
-        phi_lam_diff = 2 * np.angle(v[1, 0])
-
-        phi = (phi_lam_sum + phi_lam_diff) / 2
-        lam = (phi_lam_sum - phi_lam_diff) / 2
-        U3_gate_parms = [theta, phi, lam]
+        self.euler_decomposer.set_matrix(mat)
+        lam, theta, phi = self.euler_decomposer.run()
+        U3_gate_parms = [lam, theta, phi]
         return U3_gate_parms
