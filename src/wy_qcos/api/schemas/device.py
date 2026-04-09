@@ -57,6 +57,8 @@ class GetDeviceResponse(BaseModel):
     enable: bool = Field(description="Device enable status")
     # device status
     status: str = Field(description="Device status")
+    # device status timestamp
+    timestamp: str = Field(description="Device status timestamp")
     # tech type
     tech_type: str = Field(description="Technology type")
     # max qubits

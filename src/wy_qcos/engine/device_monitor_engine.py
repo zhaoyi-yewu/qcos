@@ -81,6 +81,9 @@ def device_monitor_flow(device_monitor_info):
     while True:
         # get running device info by driver
         device_info = driver.fetch_running_info()
+        device_info["timestamp"] = time.strftime(
+            "%Y-%m-%d %H:%M:%S", time.localtime()
+        )
         device_info_json = json.dumps(device_info)
 
         # publish device info by redis
