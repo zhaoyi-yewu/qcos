@@ -55,6 +55,7 @@ def _get_device_info(device, auth_data=None, details=False):
         "max_qubits": device.max_qubits,
         "configs": configs,
         "details": device.details,
+        "timestamp": device.timestamp,
     }
     if auth_data is not None:
         # only admin user can access to config info

@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import logging
+import time
 
 from wy_qcos.common.library import Library
 
@@ -55,6 +56,8 @@ class Device:
         self.enable = False
         # status
         self.status = self.DEVICE_STATUS_OFFLINE
+        # timestamp
+        self.timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         # qubits
         self.max_qubits = driver.get_max_qubits()
         # tech_type
@@ -203,8 +206,10 @@ class Device:
             device_running_info: device running info
         """
         device_status = device_running_info.get("status")
+        timestamp = device_running_info.get("timestamp")
         if device_status:
             self.set_status(device_status)
+            self.timestamp = timestamp
 
         details = device_running_info.get("details")
         if details:
