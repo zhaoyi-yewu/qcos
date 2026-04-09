@@ -36,7 +36,7 @@ class TestSCRoute:
         route = SCRoute()
         assert route.qpu_config is None
         assert route.initial_layout is None
-        assert route.method_init_mapping == "topgraph"
+        assert route.method_init_mapping == "sabre"
         assert route.objective == "size"
         # routing is initialized as None and will be created in prepare_data
         assert route.routing is None

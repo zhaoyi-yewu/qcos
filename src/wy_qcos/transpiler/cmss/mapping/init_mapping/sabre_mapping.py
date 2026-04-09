@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -22,7 +22,7 @@ from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
 from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing import SABRE
 
 
-INITIAL_MAPPING_PREFIX_LAYERS = 25
+_INITIAL_MAPPING_PREFIX_LAYERS = 25
 
 
 def _extract_two_qubit_layer_prefix(
@@ -76,7 +76,7 @@ def sabre_initial_mapping(
     """
     sabre = SABRE(coupling_graph)
     prefix_gates = _extract_two_qubit_layer_prefix(
-        gates_list, INITIAL_MAPPING_PREFIX_LAYERS
+        gates_list, _INITIAL_MAPPING_PREFIX_LAYERS
     )
     reverse_gates = list(reversed(prefix_gates))
     # get initial mapping for reverse ir

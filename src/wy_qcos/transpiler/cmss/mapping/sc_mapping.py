@@ -107,7 +107,7 @@ class SCRoute(ABC):
         self.measure_ops = None
         self.num_q_vir = None
         self.search_tree = None
-        self.method_init_mapping = "topgraph"
+        self.method_init_mapping = "sabre"
         self.objective = "size"
         self.routing = None  # 路由搜索实例，将在prepare_data中根据参数创建
         # sc_mapping 配置选项
