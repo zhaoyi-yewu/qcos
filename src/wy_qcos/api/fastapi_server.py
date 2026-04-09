@@ -18,17 +18,19 @@
 import logging
 
 import fastapi_jsonrpc as jsonrpc
-from fastapi_jsonrpc import InvalidParams
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_jsonrpc import InvalidParams
 from pydantic import ValidationError
 from uvicorn.main import Server as UvicornServer
 
+from wy_qcos.api.fastapi_coroutine import lifespan
 from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api
+from wy_qcos.metrics.metrics_middleware import MetricsMiddleware
 
 logger = logging.getLogger(__name__)
 
-app = jsonrpc.API()
+app = jsonrpc.API(lifespan=lifespan)
 
 
 def patched_invalid_params_from_validation_error(
@@ -75,7 +77,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+# Metrics Middleware to collect metrics
+app.add_middleware(MetricsMiddleware)
 # bind entrypoint
 for api_entrypoint in all_api:
     app.bind_entrypoint(api_entrypoint)
