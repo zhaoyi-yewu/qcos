@@ -54,6 +54,12 @@ class Config:
     # API server listen port
     API_SERVER_LISTEN_PORT = Constant.DEFAULT_API_SERVER_LISTEN_PORT
 
+    # [METRICS_SERVER]
+    # Metrics server listen ip
+    METRICS_SERVER_LISTEN_IP = Constant.DEFAULT_METRICS_SERVER_LISTEN_IP
+    # Metrics server listen port
+    METRICS_SERVER_LISTEN_PORT = Constant.DEFAULT_METRICS_SERVER_LISTEN_PORT
+
     # [REDIS]
     # REDIS server ip
     REDIS_SERVER_IP = Constant.DEFAULT_REDIS_SERVER_IP
