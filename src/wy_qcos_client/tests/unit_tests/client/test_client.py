@@ -30,13 +30,16 @@ class TestClient:
     def test_print_api_response(self):
         assert client.print_api_response("200", "OK", "no") is None
 
+    @patch("wy_qcos_client.client.ClientLibrary.call_http_api")
     @patch.object(Client, "print_api_response")
-    def test_call_json_rpc(self, mock_print_api_response):
+    def test_call_json_rpc(self, mock_print_api_response, mock_call_http_api):
+        mock_call_http_api.return_value = self.return_values
         mock_print_api_response.return_value = self.return_values
         status_code, reason, text, result = client.call_json_rpc(
-            "127.0.0.1", "get", {}
+            "http://127.0.0.1", "get", {}
         )
         assert status_code == -1
+        mock_call_http_api.assert_called_once()
 
     def test_handle_invalid_arguments(self):
         assert client.handle_invalid_arguments([1, 2]) is None

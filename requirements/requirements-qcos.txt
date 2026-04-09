@@ -9,7 +9,6 @@ cliff==4.10.0
 cryptography==45.0.7
 fastapi==0.122.1
 fastapi-jsonrpc==3.4.2
-fastapi-users==15.0.4
 h11==0.16.0
 httpcore==1.0.9
 httpx==0.28.1
@@ -37,6 +36,7 @@ pydantic==2.11.5
 pydantic_core==2.33.2
 pydocket==0.16.3
 pytest==8.4.1
+pytest-asyncio==0.21.1
 pytest-cov==6.2.1
 python-jose==3.5.0
 python-socketio==5.12.1

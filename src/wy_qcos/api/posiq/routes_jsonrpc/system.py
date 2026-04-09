@@ -23,6 +23,7 @@ from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import system_api_v1
 from wy_qcos.common import errors
+from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.task_manager import scheduler
 from .dependencies.authentication import auth
@@ -31,7 +32,9 @@ logger = logging.getLogger(__name__)
 module_name = "SYSTEM"
 
 
-@system_api_v1.method()
+@system_api_v1.method(
+    openapi_extra={"no_auth": True},
+)
 def ping(
     body: schemas.PingRequest,
     auth_data: dict | None = Depends(auth),
@@ -55,7 +58,9 @@ def ping(
     return response_info
 
 
-@system_api_v1.method()
+@system_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+)
 def system_info(
     body: schemas.SystemInfoRequest | None = None,
     auth_data: dict | None = Depends(auth),
@@ -76,7 +81,7 @@ def system_info(
     responses = []
     try:
         tags = None
-        if auth_data is not None:
+        if Config.ENABLE_VIRT and auth_data is not None:
             virtual_instance_id = auth_data["instance_id"]
             tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         responses, err = scheduler.get_jobs(tags=tags)

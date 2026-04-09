@@ -15,15 +15,17 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import logging
 from datetime import datetime, timedelta
+import logging
+import re
+import uuid
 
-import casbin
 import hashlib
 
 from wy_qcos.api.schemas import user as schemas
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
+from wy_qcos.user.permission_manager import PermissionManager
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +36,7 @@ DEFAULT_ADMIN_PASSWORD = (
     if Config.ADMIN_PASSWORD
     else Constant.DEFAULT_ADMIN_PASSWORD
 )
-MAX_LOGIN_ENTRIES = 100
+MAX_LOGIN_ENTRIES = 1000
 
 
 class UserManager:
@@ -50,14 +52,18 @@ class UserManager:
             access_control_policy_file (str): Access control policy file path
             all_api: list of all API endpoints
         """
-        self.users_db = {}
-        self.roles_db = {}
+        self.users_db = {}  # key: user_id (UUID str), value: User object
+        self.roles_db = {}  # key: role_id (UUID str), value: Role object
+        self._username_to_id = {}  # key: username, value: user_id
+        self._role_name_to_id = {}  # key: role_name, value: role_id
         self.login_logs = []
-        self.enforcer = None
-        self.access_control_model_file = access_control_model_file
-        self.access_control_policy_file = access_control_policy_file
+        # key: token_jti, value: expires_at (datetime)
+        self.token_blacklist = {}
         self.all_api = all_api
-        self.init_enforcer()
+        # Initialize permission manager for casbin access control
+        self.permission_manager = PermissionManager(
+            access_control_model_file, access_control_policy_file
+        )
         self.default_admin_policies = self.fetch_default_policies(
             role=Constant.ROLE_ADMIN
         )
@@ -65,10 +71,20 @@ class UserManager:
             role=Constant.ROLE_USER
         )
         self.default_all_policies = self.fetch_default_policies()
+        self.noauth_policies = self.fetch_default_policies(
+            role=Constant.ROLE_ANY
+        )
         self.init_users()
 
     def get_permissions_list(self, policies):
-        """Get permissions list."""
+        """Get permissions list.
+
+        Args:
+            policies: permission policies
+
+        Returns:
+            permission list
+        """
         permission_list = []
         for policy in policies:
             permission_list.append(policy[1])
@@ -77,27 +93,25 @@ class UserManager:
     def init_users(self):
         """Init users."""
         # Create admin role
-        role = self.create_role(
+        self.create_role(
             Constant.ROLE_ADMIN,
             permissions=self.get_permissions_list(
                 self.get_default_policies(Constant.ROLE_ADMIN)
             ),
             description="Administrator with full permissions",
         )
-        self.roles_db[Constant.ROLE_ADMIN] = role
 
         # Create user role
-        role = self.create_role(
+        self.create_role(
             Constant.ROLE_USER,
             permissions=self.get_permissions_list(
                 self.get_default_policies(Constant.ROLE_USER)
             ),
             description="Regular user with basic permissions",
         )
-        self.roles_db[Constant.ROLE_USER] = role
 
         # Create default admin user
-        user = self.create_user(
+        self.create_user(
             DEFAULT_ADMIN_USERNAME,
             DEFAULT_ADMIN_PASSWORD,
             [Constant.ROLE_ADMIN],
@@ -106,24 +120,6 @@ class UserManager:
             0,
             description="Administrator with full permissions",
         )
-        self.users_db[DEFAULT_ADMIN_USERNAME] = user
-
-    def init_enforcer(self):
-        """Initialize Casbin Enforcer."""
-        try:
-            # Initialize Enforcer with policy file
-            self.enforcer = casbin.Enforcer(
-                self.access_control_model_file, self.access_control_policy_file
-            )
-            logger.info(
-                "Casbin Enforcer initialized successfully with "
-                "model file: %s, policy file: %s",
-                self.access_control_model_file,
-                self.access_control_policy_file,
-            )
-        except Exception as e:
-            logger.error(f"Failed to initialize Casbin Enforcer: {e}")
-            raise
 
     def perms_check_enforce(self, sub: str, obj: str, act: str) -> bool:
         """Permission enforce check.
@@ -132,31 +128,24 @@ class UserManager:
             sub: sub
             obj: obj
             act: act
-        """
-        if not self.enforcer:
-            logger.warning("Casbin Enforcer not initialized")
-            return False
 
-        try:
-            result = self.enforcer.enforce(sub, obj, act)
-            logger.debug(
-                f"Permission enforce: {sub} -> {obj}:{act} = {result}"
-            )
-            return result
-        except Exception as e:
-            logger.error(f"Permission enforce failed: {e}")
-            return False
+        Returns:
+            policy enforced results: True, False
+        """
+        return self.permission_manager.perms_check_enforce(sub, obj, act)
 
     def perms_add_policy(self, sub: str, obj: str, act: str) -> bool:
-        """Add permission policy."""
-        try:
-            result = self.enforcer.add_policy(sub, obj, act)
-            if result:
-                logger.debug(f"Added permission policy: {sub} -> {obj}:{act}")
-            return result
-        except Exception as e:
-            logger.error(f"Failed to add permission policy: {e}")
-            return False
+        """Add permission policy.
+
+        Args:
+            sub: sub
+            obj: obj
+            act: act
+
+        Returns:
+            policy added results: True, False
+        """
+        return self.permission_manager.perms_add_policy(sub, obj, act)
 
     def perms_remove_policy(
         self, sub: str, obj: str | None = None, act: str | None = None
@@ -167,32 +156,22 @@ class UserManager:
             sub: sub
             obj: obj
             act: act
+
+        Returns:
+            policy removed results: True, False
         """
-        try:
-            result = self.enforcer.remove_policy(sub, obj, act)
-            if result:
-                logger.debug(
-                    f"Removed permission policy: {sub} -> {obj}:{act}"
-                )
-            return result
-        except Exception as e:
-            logger.error(f"Failed to remove permission policy: {e}")
-            return False
+        return self.permission_manager.perms_remove_policy(sub, obj, act)
 
     def perms_remove_role(self, role_name):
         """Remove permission role.
 
         Args:
             role_name: role name
+
+        Returns:
+            role removed results: True, False
         """
-        try:
-            result = self.enforcer.delete_role(role_name)
-            if result:
-                logger.debug(f"Removed permission role: {role_name}")
-            return result
-        except Exception as e:
-            logger.error(f"Failed to remove permission role: {e}")
-            return False
+        return self.permission_manager.perms_remove_role(role_name)
 
     def perms_get_for_role(self, role: str) -> list:
         """Get all permissions for role.
@@ -203,11 +182,7 @@ class UserManager:
         Returns:
             role permissions
         """
-        try:
-            return self.enforcer.get_permissions_for_user(role)
-        except Exception as e:
-            logger.error(f"Failed to get permissions for role {role}: {e}")
-            return []
+        return self.permission_manager.perms_get_for_role(role)
 
     def perms_add_role_for_user(self, user: str, role: str) -> bool:
         """Add permission role for user.
@@ -216,14 +191,7 @@ class UserManager:
             user: user
             role: role
         """
-        try:
-            result = self.enforcer.add_grouping_policy(user, role)
-            if result:
-                logger.debug(f"Added permission role {role} for user {user}")
-            return result
-        except Exception as e:
-            logger.error(f"Failed to add permission role for user {user}: {e}")
-            return False
+        return self.permission_manager.perms_add_role_for_user(user, role)
 
     def perms_delete_role_for_user(
         self, user: str, role: str | None = None
@@ -233,20 +201,11 @@ class UserManager:
         Args:
             user: user
             role: role
+
+        Returns:
+            role deleted for user results: True, False
         """
-        try:
-            if role:
-                result = self.enforcer.remove_grouping_policy(user, role)
-            else:
-                result = self.enforcer.delete_roles_for_user(user)
-            if result:
-                logger.debug(f"Removed permission role {role} for user {user}")
-            return result
-        except Exception as e:
-            logger.error(
-                f"Failed to remove permission role for user {user}: {e}"
-            )
-            return False
+        return self.permission_manager.perms_delete_role_for_user(user, role)
 
     def fetch_default_policies(self, role=None):
         """Fetch default policies based on role.
@@ -261,28 +220,34 @@ class UserManager:
         if role is None or role == Constant.ROLE_ADMIN:
             # Admin role permissions
             permissions.append((Constant.ROLE_ADMIN, "*", "*"))
-        if role is None or role == Constant.ROLE_USER:
-            # User role permissions
-            for api_entrypoint in self.all_api:
-                for entrypoint_route in api_entrypoint.routes:
-                    if not entrypoint_route.openapi_extra:
-                        continue
-                    objs = entrypoint_route.openapi_extra.get(
-                        "allowed_roles", []
-                    )
-                    for obj in objs:
+
+        # User role permissions
+        for api_entrypoint in self.all_api:
+            for entrypoint_route in api_entrypoint.routes:
+                if not entrypoint_route.openapi_extra:
+                    continue
+                objs = entrypoint_route.openapi_extra.get("allowed_roles", [])
+                for obj in objs:
+                    if role is None or (
+                        role == obj and role in [Constant.ROLE_USER]
+                    ):
                         permissions.append((
                             obj,
                             entrypoint_route.path,
                             "call",
                         ))
-                    if entrypoint_route.openapi_extra.get("no_auth", False):
+                if entrypoint_route.openapi_extra.get("no_auth", False):
+                    if role is None or role in [Constant.ROLE_ANY]:
                         permissions.append((
                             "*",
                             entrypoint_route.path,
                             "call",
                         ))
         permissions.sort()
+        if role:
+            logger.info(f"Permissions of role: {role}")
+            for permission in permissions:
+                logger.info(permission)
         return permissions
 
     def get_default_policies(self, role=None, simple=False):
@@ -300,6 +265,8 @@ class UserManager:
             policies = self.default_admin_policies
         elif role == Constant.ROLE_USER:
             policies = self.default_user_policies
+        elif role == Constant.ROLE_ANY:
+            policies = self.noauth_policies
         else:
             policies = self.default_all_policies
         if simple:
@@ -325,6 +292,21 @@ class UserManager:
             raise ValueError(
                 f"User name '{user_name}' is too long "
                 f"(maximum {Constant.MAX_USER_LENGTH} characters)"
+            )
+
+        # Check if user name starts with underscore
+        if user_name.startswith("_"):
+            raise ValueError(
+                f"User name '{user_name}' cannot start with underscore"
+            )
+
+        # Check if user name contains only allowed characters:
+        # letters (a-z, A-Z), digits (0-9), hyphen (-), underscore (_)
+        if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]*$", user_name):
+            raise ValueError(
+                f"User name '{user_name}' is invalid. "
+                f"Must start with a letter and contain only letters, "
+                f"digits, hyphens, or underscores"
             )
 
     def validate_password(self, password: str) -> None:
@@ -367,6 +349,21 @@ class UserManager:
             raise ValueError(
                 f"Role name '{role_name}' is too long "
                 f"(maximum {Constant.MAX_ROLE_LENGTH} characters)"
+            )
+
+        # Check if role name starts with underscore
+        if role_name.startswith("_"):
+            raise ValueError(
+                f"Role name '{role_name}' cannot start with underscore"
+            )
+
+        # Check if role name contains only allowed characters:
+        # letters (a-z, A-Z), digits (0-9), hyphen (-), underscore (_)
+        if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]*$", role_name):
+            raise ValueError(
+                f"Role name '{role_name}' is invalid. "
+                f"Must start with a letter and contain only letters, "
+                f"digits, hyphens, or underscores"
             )
 
     def validate_description(self, description: str | None) -> None:
@@ -436,8 +433,11 @@ class UserManager:
         self.validate_description(description)
 
         # Check if role already exists
-        if role_name in self.roles_db:
+        if role_name in self._role_name_to_id:
             raise ValueError(f"Role '{role_name}' already exists")
+
+        # Generate UUID for role
+        role_id = str(uuid.uuid4())
 
         # assign user permissions if permissions are not specified
         if permissions is None:
@@ -448,6 +448,7 @@ class UserManager:
             self.validate_permissions(permissions)
 
         role = schemas.Role(
+            id=role_id,
             role_name=role_name,
             permissions=permissions,
             description=description,
@@ -457,7 +458,8 @@ class UserManager:
         for permission in permissions:
             self.perms_add_policy(role_name, permission, "call")
 
-        self.roles_db[role_name] = role
+        self.roles_db[role_id] = role
+        self._role_name_to_id[role_name] = role_id
         return role
 
     def update_role(
@@ -500,9 +502,13 @@ class UserManager:
             for permission in permissions:
                 self.perms_add_policy(role_name, permission, "call")
 
+        # Update in database
+        role_id = self._role_name_to_id[role_name]
+        self.roles_db[role_id] = role
+
         return role
 
-    def get_role(self, role_name: str) -> schemas.Role:
+    def get_role(self, role_name: str) -> schemas.Role | None:
         """Get role by name.
 
         Args:
@@ -511,15 +517,19 @@ class UserManager:
         Returns:
             role
         """
-        return self.roles_db.get(role_name)
+        role_id = self._role_name_to_id.get(role_name)
+        if role_id:
+            return self.roles_db.get(role_id)
+        return None
 
     def get_roles(self) -> dict[str, schemas.Role]:
-        """Get roles.
+        """Get roles keyed by role_name.
 
         Returns:
-            roles
+            roles keyed by role_name
         """
-        return self.roles_db
+        # Return dict keyed by role_name for backward compatibility
+        return {role.role_name: role for role in self.roles_db.values()}
 
     def delete_role(self, role_name: str) -> schemas.Role:
         """Delete role.
@@ -527,10 +537,12 @@ class UserManager:
         Args:
             role_name: role name
         """
-        if role_name not in self.roles_db:
+        if role_name not in self._role_name_to_id:
             raise ValueError(f"Role '{role_name}' not found")
+
+        role_id = self._role_name_to_id.pop(role_name)
         self.perms_remove_role(role_name)
-        return self.roles_db.pop(role_name)
+        return self.roles_db.pop(role_id)
 
     def create_user(
         self,
@@ -563,11 +575,15 @@ class UserManager:
         self.validate_roles(roles)
 
         # Check if user already exists
-        if user_name in self.users_db:
+        if user_name in self._username_to_id:
             raise ValueError(f"User '{user_name}' already exists")
+
+        # Generate UUID for user
+        user_id = str(uuid.uuid4())
 
         # Create user
         user = schemas.User(
+            id=user_id,
             user_name=user_name,
             password_hash=UserManager.hash_password(password),
             roles=roles,
@@ -584,7 +600,8 @@ class UserManager:
         for role_name in roles:
             self.perms_add_role_for_user(user_name, role_name)
 
-        self.users_db[user_name] = user
+        self.users_db[user_id] = user
+        self._username_to_id[user_name] = user_id
         return user
 
     def update_user(
@@ -644,7 +661,7 @@ class UserManager:
 
         return user
 
-    def get_user(self, user_name: str | None = None) -> schemas.User:
+    def get_user(self, user_name: str | None = None) -> schemas.User | None:
         """Get user by name.
 
         Args:
@@ -653,7 +670,23 @@ class UserManager:
         Returns:
             user
         """
-        return self.users_db.get(user_name)
+        if user_name is None:
+            return None
+        user_id = self._username_to_id.get(user_name)
+        if user_id:
+            return self.users_db.get(user_id)
+        return None
+
+    def get_user_by_id(self, user_id: str) -> schemas.User | None:
+        """Get user by ID.
+
+        Args:
+            user_id: user ID (UUID)
+
+        Returns:
+            user
+        """
+        return self.users_db.get(user_id)
 
     def get_users(self) -> dict[str, schemas.User]:
         """Get users.
@@ -669,8 +702,12 @@ class UserManager:
         Args:
             user_name: user name
         """
+        if user_name not in self._username_to_id:
+            raise ValueError(f"User '{user_name}' not found")
+
+        user_id = self._username_to_id.pop(user_name)
         self.perms_delete_role_for_user(user_name)
-        return self.users_db.pop(user_name)
+        return self.users_db.pop(user_id)
 
     def find_users_by_role(self, role_name: str) -> list[str]:
         """Find users by role name.
@@ -679,19 +716,20 @@ class UserManager:
             role_name: role name
 
         Returns:
-            users
+            list of usernames
         """
         users = []
-        for user, user_info in self.users_db.items():
+        for user_id, user_info in self.users_db.items():
             if role_name in user_info.roles:
-                users.append(user)
+                users.append(user_info.user_name)
         return users
 
     def log_login_attempt(
         self,
         user_name: str,
         ip_address: str,
-        status: str,
+        success: bool,
+        failure_reason: str | None = None,
         user_agent: str | None = None,
     ):
         """Log login attempt.
@@ -699,16 +737,27 @@ class UserManager:
         Args:
             user_name: user name
             ip_address: ip address
-            status: status
+            success: whether login was successful
+            failure_reason: reason for failure if not successful
             user_agent: user agent
         """
         log_entry = schemas.LoginLog(
             user_name=user_name,
             ip_address=ip_address,
-            login_status=status,
+            success=success,
             user_agent=user_agent,
+            failure_reason=failure_reason,
         )
         self.login_logs.append(log_entry)
+        # Format login time in human-readable format
+        login_time_str = log_entry.login_time.strftime("%Y-%m-%d %H:%M:%S")
+        status_str = "successful" if success else f"failed ({failure_reason})"
+        logger.info(
+            f"Login attempt: user={user_name}, "
+            f"time={login_time_str}, "
+            f"ip={ip_address}, "
+            f"status={status_str}"
+        )
         # Keep only last 1000 logs
         if len(self.login_logs) > MAX_LOGIN_ENTRIES:
             self.login_logs.pop(0)
@@ -720,6 +769,47 @@ class UserManager:
             login logs
         """
         return self.login_logs
+
+    def add_to_blacklist(self, token_jti: str, expires_at: datetime) -> None:
+        """Add a token to the blacklist.
+
+        Args:
+            token_jti: Unique identifier of the token (JWT 'jti' claim)
+            expires_at: When the token would have expired
+        """
+        self.token_blacklist[token_jti] = expires_at
+        # Clean up expired entries periodically
+        self._cleanup_blacklist()
+
+    def is_blacklisted(self, token_jti: str) -> bool:
+        """Check if a token is blacklisted.
+
+        Args:
+            token_jti: Unique identifier of the token (JWT 'jti' claim)
+
+        Returns:
+            True if token is blacklisted, False otherwise
+        """
+        if token_jti not in self.token_blacklist:
+            return False
+        # Check if the blacklist entry has expired
+        expires_at = self.token_blacklist[token_jti]
+        if datetime.now() > expires_at:
+            # Entry has expired, remove it
+            del self.token_blacklist[token_jti]
+            return False
+        return True
+
+    def _cleanup_blacklist(self) -> None:
+        """Remove expired entries from the blacklist."""
+        now = datetime.now()
+        expired = [
+            jti
+            for jti, expires_at in self.token_blacklist.items()
+            if now > expires_at
+        ]
+        for jti in expired:
+            del self.token_blacklist[jti]
 
     @staticmethod
     def is_password_expired(user: schemas.User) -> bool:

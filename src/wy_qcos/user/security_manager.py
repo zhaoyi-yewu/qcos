@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 import logging
-import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
@@ -33,10 +32,10 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
 # Token configuration
-SECRET_KEY = Config.SECRET_KEY or secrets.token_urlsafe(32)
-ALGORITHM = Config.ALGORITHM or "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = Config.ACCESS_TOKEN_EXPIRE_MINUTES or 30
-REFRESH_TOKEN_EXPIRE_DAYS = Config.REFRESH_TOKEN_EXPIRE_DAYS or 7
+JWT_AUTH_SECRET_KEY = Config.JWT_AUTH_SECRET_KEY
+JWT_AUTH_ALGORITHM = Config.JWT_AUTH_ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = Config.ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_TOKEN_EXPIRE_DAYS = Config.REFRESH_TOKEN_EXPIRE_DAYS
 
 # Rate limiting configuration
 MAX_LOGIN_ATTEMPTS = Config.MAX_LOGIN_ATTEMPTS or 5
@@ -144,7 +143,7 @@ class SecurityManager:
 
         # Log the successful login
         self.user_manager.log_login_attempt(
-            user_name, ip_address, "success", user_agent
+            user_name, ip_address, True, user_agent=user_agent
         )
 
         logger.info(
@@ -171,7 +170,9 @@ class SecurityManager:
                 minutes=ACCESS_TOKEN_EXPIRE_MINUTES
             )
         to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        encoded_jwt = jwt.encode(
+            to_encode, JWT_AUTH_SECRET_KEY, algorithm=JWT_AUTH_ALGORITHM
+        )
         return encoded_jwt
 
     def create_refresh_token(self, data: dict) -> str:
@@ -188,7 +189,9 @@ class SecurityManager:
             days=REFRESH_TOKEN_EXPIRE_DAYS
         )
         to_encode.update({"exp": expire, "type": "refresh"})
-        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        encoded_jwt = jwt.encode(
+            to_encode, JWT_AUTH_SECRET_KEY, algorithm=JWT_AUTH_ALGORITHM
+        )
         return encoded_jwt
 
     def verify_token(self, token: str) -> dict:
@@ -204,7 +207,9 @@ class SecurityManager:
             HTTPException: if token is invalid
         """
         try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(
+                token, JWT_AUTH_SECRET_KEY, algorithms=[JWT_AUTH_ALGORITHM]
+            )
             return payload
         except JWTError as e:
             logger.error(f"Token verification failed: {e}")
@@ -234,7 +239,12 @@ class SecurityManager:
         # Check if account is locked
         if self.check_account_lockout(user_name):
             self.user_manager.log_login_attempt(
-                user_name, ip_address, "locked", user_agent
+                user_name,
+                ip_address,
+                False,
+                failure_reason="Account is locked due to too "
+                "many failed attempts",
+                user_agent=user_agent,
             )
             raise HTTPException(
                 status_code=status.HTTP_423_LOCKED,
@@ -249,7 +259,11 @@ class SecurityManager:
         if not user:
             self.record_failed_attempt(user_name)
             self.user_manager.log_login_attempt(
-                user_name, ip_address, "user_not_found", user_agent
+                user_name,
+                ip_address,
+                False,
+                failure_reason="User not found",
+                user_agent=user_agent,
             )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -261,7 +275,11 @@ class SecurityManager:
         if not user.is_enabled:
             self.record_failed_attempt(user_name)
             self.user_manager.log_login_attempt(
-                user_name, ip_address, "disabled", user_agent
+                user_name,
+                ip_address,
+                False,
+                failure_reason="Account is disabled",
+                user_agent=user_agent,
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -276,7 +294,11 @@ class SecurityManager:
         ):
             self.record_failed_attempt(user_name)
             self.user_manager.log_login_attempt(
-                user_name, ip_address, "locked", user_agent
+                user_name,
+                ip_address,
+                False,
+                failure_reason="Account is locked",
+                user_agent=user_agent,
             )
             raise HTTPException(
                 status_code=status.HTTP_423_LOCKED,
@@ -287,7 +309,11 @@ class SecurityManager:
         if not self.verify_password(password, user.password_hash):
             self.record_failed_attempt(user_name)
             self.user_manager.log_login_attempt(
-                user_name, ip_address, "invalid_password", user_agent
+                user_name,
+                ip_address,
+                False,
+                failure_reason="Invalid password",
+                user_agent=user_agent,
             )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -298,7 +324,11 @@ class SecurityManager:
         # Check password expiration
         if UserManager.is_password_expired(user):
             self.user_manager.log_login_attempt(
-                user_name, ip_address, "password_expired", user_agent
+                user_name,
+                ip_address,
+                False,
+                failure_reason="Password expired",
+                user_agent=user_agent,
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

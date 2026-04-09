@@ -74,8 +74,9 @@ class Config:
     ADMIN_PASSWORD = None
     ACCESS_CONTROL_MODEL_FILE = "/etc/qcos/roles/casbin_model.conf"
     ACCESS_CONTROL_POLICY_FILE = "/etc/qcos/roles/policy.conf"
-    SECRET_KEY = _s("47pW_6k8A4iU1Z8-r8G2j4_xN9M5V3L7Q9p2X1Y4Z0A")
-    ALGORITHM = "HS256"
+    JWT_AUTH_SECRET_KEY = _s("47pW_6k8A4iU1Z8-r8G2j4_xN9M5V3L7Q9p2X1Y4Z0A")
+    JWT_AUTH_ALGORITHM = "HS256"
+    JWT_AUTH_LIFE_SECONDS = 3600 * 24 * 7
     ACCESS_TOKEN_EXPIRE_MINUTES = 30
     REFRESH_TOKEN_EXPIRE_DAYS = 7
 
@@ -246,10 +247,10 @@ class Config:
                 continue
             if "deps_filepaths" not in driver_info:
                 raise Exception(
-                    f"[{driver_class}] ‘deps_filepaths’ must be specified"
+                    f"[{driver_class}] 'deps_filepaths' must be specified"
                 )
             if "envs" not in driver_info:
-                raise Exception(f"[{driver_class}] ‘envs’ must be specified")
+                raise Exception(f"[{driver_class}] 'envs' must be specified")
             deps_filepaths = driver_info["deps_filepaths"]
             deps_filepaths_list = []
             for deps_filepath in deps_filepaths:

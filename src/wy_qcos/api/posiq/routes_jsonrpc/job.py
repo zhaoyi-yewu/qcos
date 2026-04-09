@@ -34,7 +34,7 @@ module_name = "JOB"
 
 
 @job_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[
         jsonrpc_errors.BadRequestError,
         jsonrpc_errors.ConflictError,
@@ -404,7 +404,7 @@ def submit_job(
 
 
 @job_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError],
 )
 def get_job_status(
@@ -467,7 +467,7 @@ def get_job_status(
 
 
 @job_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError],
 )
 def get_job_results(
@@ -532,7 +532,7 @@ def get_job_results(
 
 
 @job_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.InternalServerError],
 )
 def get_jobs(
@@ -586,7 +586,7 @@ def get_jobs(
 
 
 @job_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_USER]}, errors=[]
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
 )
 def cancel_jobs(
     body: schemas.CancelJobsRequest,
@@ -626,7 +626,7 @@ def cancel_jobs(
 
 
 @job_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_USER]}, errors=[]
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
 )
 def delete_jobs(
     body: schemas.DeleteJobsRequest,
@@ -665,7 +665,8 @@ def delete_jobs(
 
 
 @job_api_v1.method(
-    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError]
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError],
 )
 def set_job_results(
     body: schemas.SetJobResultsRequest,
@@ -825,7 +826,7 @@ def set_job_results(
 
 
 @job_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_USER]}, errors=[]
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
 )
 def update_job(
     body: schemas.UpdateJobRequest,

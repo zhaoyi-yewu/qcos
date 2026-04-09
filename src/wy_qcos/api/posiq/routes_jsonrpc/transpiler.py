@@ -50,7 +50,7 @@ def _get_transpiler_info(transpiler_info):
 
 
 @transpiler_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_USER]}, errors=[]
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
 )
 def get_transpilers(
     body: schemas.GetTranspilersRequest | None = None,
@@ -80,7 +80,7 @@ def get_transpilers(
 
 
 @transpiler_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.NotFoundError],
 )
 def get_transpiler(

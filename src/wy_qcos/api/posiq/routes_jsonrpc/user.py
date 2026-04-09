@@ -83,11 +83,13 @@ def _mask_hidden_fields(obj: Any) -> Any:
         return obj
 
 
-@user_api_v1.method(errors=[])
-def get_user_management_status(
-    body: schemas.GetUserManagementStatusRequest | None = None,
+@user_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]}, errors=[]
+)
+def get_user_mgmt_status(
+    body: schemas.GetUserMgmtStatusRequest | None = None,
     auth_data: dict | None = Depends(auth),
-) -> schemas.GetUserManagementStatusResponse:
+) -> schemas.GetUserMgmtStatusResponse:
     """Get user management status.
 
     Args:
@@ -97,7 +99,7 @@ def get_user_management_status(
     Returns:
         User management status response
     """
-    func_name = "get_user_management_status"
+    func_name = "get_user_mgmt_status"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     _response_info = {
@@ -108,14 +110,15 @@ def get_user_management_status(
         "max_login_attempts": Config.MAX_LOGIN_ATTEMPTS,
         "lockout_duration_minutes": Config.LOCKOUT_DURATION_MINUTES,
     }
-    response_info = schemas.GetUserManagementStatusResponse.model_validate(
+    response_info = schemas.GetUserMgmtStatusResponse.model_validate(
         _response_info
     )
     return response_info
 
 
 @user_api_v1.method(
-    errors=[jsonrpc_errors.ConflictError, jsonrpc_errors.BadRequestError]
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.ConflictError, jsonrpc_errors.BadRequestError],
 )
 def create_user(
     body: schemas.CreateUserRequest,
@@ -221,15 +224,26 @@ def create_user(
     if password_expiry_days is None:
         password_expiry_days = Config.PASSWORD_EXPIRY_DAYS
 
-    user = user_manager.create_user(
-        user_name,
-        password,
-        roles,
-        is_enabled,
-        is_locked,
-        password_expiry_days,
-        description,
-    )
+    user = None
+    try:
+        user = user_manager.create_user(
+            user_name,
+            password,
+            roles,
+            is_enabled,
+            is_locked,
+            password_expiry_days,
+            description,
+        )
+    except Exception as e:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                str(e),
+            ),
+        )
 
     _response_info = get_user_response(user)
     response_info = schemas.CreateUserResponse.model_validate(_response_info)
@@ -237,7 +251,7 @@ def create_user(
 
 
 @user_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_USER]},
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
 def get_user(
@@ -245,10 +259,10 @@ def get_user(
     auth_data: dict | None = Depends(auth),
     user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.GetUserResponse:
-    """Get user information.
+    """Get user information by ID.
 
     Args:
-        body: get user request
+        body: get user request (contains user_id)
         auth_data: auth data
         user_manager: user manager
 
@@ -258,12 +272,14 @@ def get_user(
     func_name = "get_user"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    user_name = body.user_name
+    user_id = body.user_id
 
-    user = user_manager.get_user(user_name)
+    user = user_manager.get_user_by_id(user_id)
     if not user:
         jsonrpc_errors.handle_error_not_found(
-            module_name, func_name, (False, f"User '{user_name}' not found")
+            module_name,
+            func_name,
+            (False, f"User with ID '{user_id}' not found"),
         )
 
     _response_info = get_user_response(user)
@@ -272,7 +288,7 @@ def get_user(
 
 
 @user_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_USER]}, errors=[]
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]}, errors=[]
 )
 def get_users(
     body: schemas.GetUsersRequest | None = None,
@@ -303,17 +319,18 @@ def get_users(
 
 
 @user_api_v1.method(
-    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.ConflictError]
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.BadRequestError],
 )
 def update_user(
     body: schemas.UpdateUserRequest,
     auth_data: dict | None = Depends(auth),
     user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.UpdateUserResponse:
-    """Update user information.
+    """Update user information by ID.
 
     Args:
-        body: user update request
+        body: user update request (contains user_id)
         auth_data: auth data
         user_manager: user manager
 
@@ -323,19 +340,23 @@ def update_user(
     func_name = "update_user"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    user_name = body.user_name
+    user_id = body.user_id
     roles = body.roles
     is_enabled = body.is_enabled
     is_locked = body.is_locked
     password_expiry_days = body.password_expiry_days
     description = body.description
 
-    user = user_manager.get_user(user_name)
+    user = user_manager.get_user_by_id(user_id)
 
     if not user:
         jsonrpc_errors.handle_error_not_found(
-            module_name, func_name, (False, f"User '{user_name}' not found")
+            module_name,
+            func_name,
+            (False, f"User with ID '{user_id}' not found"),
         )
+
+    user_name = user.user_name
 
     # Validate roles
     existing_roles = user_manager.get_roles()
@@ -348,30 +369,48 @@ def update_user(
                     (False, f"Role '{role_name}' does not exist"),
                 )
 
-    user = user_manager.update_user(
-        user_name,
-        roles,
-        is_enabled,
-        is_locked,
-        password_expiry_days,
-        description,
-    )
+    user = None
+    try:
+        user = user_manager.update_user(
+            user_name,
+            roles,
+            is_enabled,
+            is_locked,
+            password_expiry_days,
+            description,
+        )
+    except Exception as e:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                str(e),
+            ),
+        )
 
     _response_info = get_user_response(user)
     response_info = schemas.UpdateUserResponse.model_validate(_response_info)
     return response_info
 
 
-@user_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
+@user_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.NotFoundError,
+        jsonrpc_errors.ConflictError,
+    ],
+)
 def delete_user(
     body: schemas.DeleteUserRequest,
     auth_data: dict | None = Depends(auth),
     user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.DeleteUserResponse:
-    """Delete user.
+    """Delete user by ID.
 
     Args:
-        body: delete user request
+        body: delete user request (contains user_id)
         auth_data: auth data
         user_manager: user manager
 
@@ -381,13 +420,17 @@ def delete_user(
     func_name = "delete_user"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    user_name = body.user_name
+    user_id = body.user_id
 
-    user = user_manager.get_user(user_name)
+    user = user_manager.get_user_by_id(user_id)
     if not user:
         jsonrpc_errors.handle_error_not_found(
-            module_name, func_name, (False, f"User '{user_name}' not found")
+            module_name,
+            func_name,
+            (False, f"User with ID '{user_id}' not found"),
         )
+
+    user_name = user.user_name
 
     # Don't allow deletion of admin user
     if user_name == Constant.DEFAULT_ADMIN_USERNAME:
@@ -395,7 +438,17 @@ def delete_user(
             module_name, func_name, (False, "Cannot delete admin user")
         )
 
-    user_manager.delete_user(user_name)
+    try:
+        user_manager.delete_user(user_name)
+    except Exception as e:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                str(e),
+            ),
+        )
 
     _response_info = {
         "user_name": user_name,
@@ -406,7 +459,12 @@ def delete_user(
 
 
 @user_api_v1.method(
-    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.ConflictError]
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.NotFoundError,
+        jsonrpc_errors.ConflictError,
+    ],
 )
 def create_role(
     body: schemas.CreateRoleRequest,
@@ -477,7 +535,7 @@ def create_role(
         invalid_permissions = []
         for permission in permissions:
             if permission not in user_manager.get_default_policies(
-                simple=True
+                role=Constant.ROLE_USER, simple=True
             ):
                 invalid_permissions.append(permission)
         if invalid_permissions:
@@ -488,23 +546,37 @@ def create_role(
                 (False, err_msgs),
             )
 
-    role = user_manager.create_role(role_name, permissions, description)
+    role = None
+    try:
+        role = user_manager.create_role(role_name, permissions, description)
+    except Exception as e:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                str(e),
+            ),
+        )
 
     _response_info = get_role_response(role)
     response_info = schemas.CreateRoleResponse.model_validate(_response_info)
     return response_info
 
 
-@user_api_v1.method(errors=[jsonrpc_errors.NotFoundError])
+@user_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.NotFoundError],
+)
 def get_role(
     body: schemas.GetRoleRequest,
     auth_data: dict | None = Depends(auth),
     user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.GetRoleResponse:
-    """Get role information.
+    """Get role information by ID.
 
     Args:
-        body: get role request
+        body: get role request (contains role_id)
         auth_data: auth data
         user_manager: user manager
 
@@ -514,11 +586,13 @@ def get_role(
     func_name = "get_role"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    role_name = body.role_name
-    role = user_manager.get_role(role_name)
+    role_id = body.role_id
+    role = user_manager.get_roles().get(role_id)
     if not role:
         jsonrpc_errors.handle_error_not_found(
-            module_name, func_name, (False, f"Role '{role_name}' not found")
+            module_name,
+            func_name,
+            (False, f"Role with ID '{role_id}' not found"),
         )
 
     _response_info = get_role_response(role)
@@ -526,7 +600,9 @@ def get_role(
     return response_info
 
 
-@user_api_v1.method(errors=[])
+@user_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]}, errors=[]
+)
 def get_roles(
     body: schemas.GetRolesRequest | None = None,
     auth_data: dict | None = Depends(auth),
@@ -556,17 +632,22 @@ def get_roles(
 
 
 @user_api_v1.method(
-    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.ConflictError]
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.NotFoundError,
+        jsonrpc_errors.ConflictError,
+    ],
 )
 def update_role(
     body: schemas.UpdateRoleRequest,
     auth_data: dict | None = Depends(auth),
     user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.UpdateRoleResponse:
-    """Update role information.
+    """Update role information by ID.
 
     Args:
-        body: role update request
+        body: role update request (contains role_id)
         auth_data: auth data
         user_manager: user manager
 
@@ -576,31 +657,46 @@ def update_role(
     func_name = "update_role"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    role_name = body.role_name
+    role_id = body.role_id
     permissions = body.permissions
     description = body.description
 
-    role = user_manager.get_role(role_name)
+    role = user_manager.get_roles().get(role_id)
     if not role:
         jsonrpc_errors.handle_error_not_found(
-            module_name, func_name, (False, f"Role '{role_name}' not found")
+            module_name,
+            func_name,
+            (False, f"Role with ID '{role_id}' not found"),
         )
+
+    role_name = role.role_name
 
     # validate permissions
     if permissions:
         invalid_permissions = []
         for permission in permissions:
             if permission not in user_manager.get_default_policies(
-                simple=True
+                role=Constant.ROLE_USER, simple=True
             ):
                 invalid_permissions.append(permission)
         if invalid_permissions:
             err_msgs = f"Invalid permission: {', '.join(invalid_permissions)}"
-            jsonrpc_errors.handle_error_not_found(
+            jsonrpc_errors.handle_error_bad_requests(
                 module_name, func_name, (False, err_msgs)
             )
 
-    role = user_manager.update_role(role_name, permissions, description)
+    role = None
+    try:
+        role = user_manager.update_role(role_name, permissions, description)
+    except Exception as e:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                str(e),
+            ),
+        )
 
     _response_info = get_role_response(role)
     response_info = schemas.UpdateRoleResponse.model_validate(_response_info)
@@ -608,17 +704,22 @@ def update_role(
 
 
 @user_api_v1.method(
-    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.ConflictError]
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.NotFoundError,
+        jsonrpc_errors.ConflictError,
+    ],
 )
 def delete_role(
     body: schemas.DeleteRoleRequest,
     auth_data: dict | None = Depends(auth),
     user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.DeleteRoleResponse:
-    """Delete role.
+    """Delete role by ID.
 
     Args:
-        body: delete role request
+        body: delete role request (contains role_id)
         auth_data: auth data
         user_manager: user manager
 
@@ -628,13 +729,17 @@ def delete_role(
     func_name = "delete_role"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    role_name = body.role_name
+    role_id = body.role_id
 
-    role = user_manager.get_role(role_name)
+    role = user_manager.get_roles().get(role_id)
     if not role:
         jsonrpc_errors.handle_error_not_found(
-            module_name, func_name, (False, f"Role '{role_name}' not found")
+            module_name,
+            func_name,
+            (False, f"Role with ID '{role_id}' not found"),
         )
+
+    role_name = role.role_name
 
     # Don't allow deletion of admin role
     if role_name == Constant.ROLE_ADMIN:
@@ -655,7 +760,17 @@ def delete_role(
             ),
         )
 
-    user_manager.delete_role(role_name)
+    try:
+        user_manager.delete_role(role_name)
+    except Exception as e:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                str(e),
+            ),
+        )
 
     _response_info = {
         "role_name": role_name,
@@ -666,7 +781,12 @@ def delete_role(
 
 
 @user_api_v1.method(
-    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.ConflictError]
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.NotFoundError,
+        jsonrpc_errors.ConflictError,
+    ],
 )
 def lock_user(
     body: schemas.LockUserRequest,
@@ -732,17 +852,22 @@ def lock_user(
 
 
 @user_api_v1.method(
-    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.ConflictError]
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.NotFoundError,
+        jsonrpc_errors.ConflictError,
+    ],
 )
 def change_password(
     body: schemas.ChangePasswordRequest,
     auth_data: dict | None = Depends(auth),
     user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.ChangePasswordResponse:
-    """Change user password.
+    """Change user password by ID.
 
     Args:
-        body: password change request
+        body: password change request (contains user_id)
         auth_data: auth data
         user_manager: user manager
 
@@ -752,15 +877,19 @@ def change_password(
     func_name = "change_password"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    user_name = body.user_name
+    user_id = body.user_id
     old_password = body.old_password
     new_password = body.new_password
 
-    user = user_manager.get_user(user_name)
+    user = user_manager.get_user_by_id(user_id)
     if not user:
         jsonrpc_errors.handle_error_not_found(
-            module_name, func_name, (False, f"User '{user_name}' not found")
+            module_name,
+            func_name,
+            (False, f"User with ID '{user_id}' not found"),
         )
+
+    user_name = user.user_name
 
     # For non-admin users, validate old password
     if user_name != Constant.DEFAULT_ADMIN_USERNAME:
@@ -818,21 +947,24 @@ def change_password(
     return response_info
 
 
-@user_api_v1.method(errors=[])
+@user_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.NotFoundError],
+)
 def get_login_logs(
     body: schemas.GetLoginLogsRequest | None = None,
     auth_data: dict | None = Depends(auth),
     user_manager: UserManager = Depends(get_user_manager),
-) -> dict[str, schemas.LoginLogResponse]:
-    """Get login logs.
+) -> list[schemas.LoginLogResponse]:
+    """Get login logs by user ID.
 
     Args:
-        body: get login logs request
+        body: get login logs request (contains user_id, limit, offset)
         auth_data: auth data
         user_manager: user manager
 
     Returns:
-        Dictionary of login logs keyed by timestamp
+        List of login logs in descending order by login_time
     """
     func_name = "get_login_logs"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
@@ -840,10 +972,20 @@ def get_login_logs(
     # Filter logs based on request parameters
     filtered_logs = user_manager.get_login_logs().copy()
 
-    if body and body.user_name:
-        filtered_logs = [
-            log for log in filtered_logs if log.user_name == body.user_name
-        ]
+    if body and body.user_id:
+        # Get user name from user_id
+        user = user_manager.get_user_by_id(body.user_id)
+        if user:
+            filtered_logs = [
+                log for log in filtered_logs if log.user_name == user.user_name
+            ]
+        else:
+            # User not found, raise error
+            jsonrpc_errors.handle_error_not_found(
+                module_name,
+                func_name,
+                (False, f"User with ID '{body.user_id}' not found"),
+            )
 
     if body and body.start_time:
         start_dt = datetime.fromisoformat(body.start_time)
@@ -857,22 +999,27 @@ def get_login_logs(
             log for log in filtered_logs if log.login_time <= end_dt
         ]
 
+    # Sort by login_time in descending order (newest first)
+    filtered_logs.sort(key=lambda x: x.login_time, reverse=True)
+
+    # Apply pagination (offset and limit)
+    if body:
+        offset = body.offset if body.offset is not None else 0
+        limit = body.limit if body.limit is not None else 100
+        filtered_logs = filtered_logs[offset : offset + limit]
+
     # Convert to response format
-    response_info = {}
+    response_info = []
     for log in filtered_logs:
         log_data = {
             "user_name": log.user_name,
             "login_time": log.login_time.isoformat(),
             "ip_address": log.ip_address,
             "user_agent": log.user_agent,
-            "success": log.login_status == "success",
-            "failure_reason": None
-            if log.login_status == "success"
-            else log.login_status,
+            "success": log.success,
+            "failure_reason": log.failure_reason,
         }
-        # Use timestamp as key to ensure uniqueness
-        key = log.login_time.isoformat()
-        response_info[key] = schemas.LoginLogResponse.model_validate(log_data)
+        response_info.append(schemas.LoginLogResponse.model_validate(log_data))
 
     return response_info
 
@@ -887,6 +1034,7 @@ def get_user_response(user) -> dict:
         schemas.GetUserResponse: Formatted user response
     """
     response_info = {
+        "id": user.id,
         "user_name": user.user_name,
         "roles": user.roles,
         "is_enabled": user.is_enabled,
@@ -914,6 +1062,7 @@ def get_role_response(role) -> dict:
         role response
     """
     response_info = {
+        "id": role.id,
         "role_name": role.role_name,
         "permissions": role.permissions,
         "description": role.description,

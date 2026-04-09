@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -119,20 +119,19 @@ def handle_errors(err_cls, module_name, func_name, results, param_name, code):
         code: error code
     """
     success, err_msg = results
-    if success is False:
-        param_str = ""
-        if param_name:
-            param_str = f"{param_name}: "
-
-        details = f"{param_str}{err_msg}"
-        if isinstance(err_msg, list):
-            details = f"{param_str}{';'.join(err_msg)}"
-
-        error = err_cls(data={"details": details})
-        if code:
-            error.CODE = code
-        error.MESSAGE = f"[{module_name}] Failed to {func_name}"
-        raise error
+    if success is True:
+        return
+    param_str = ""
+    if param_name:
+        param_str = f"{param_name}: "
+    details = f"{param_str}{err_msg}"
+    if isinstance(err_msg, list):
+        details = f"{param_str}{';'.join(err_msg)}"
+    error = err_cls(data={"details": details})
+    if code:
+        error.CODE = code
+    error.MESSAGE = f"[{module_name}] Failed to {func_name}"
+    raise error
 
 
 def handle_error_bad_requests(

@@ -44,7 +44,7 @@ class TestUserManager:
         mock_enforcer.enforce.return_value = True
 
         with patch(
-            "wy_qcos.user.user_manager.casbin.Enforcer",
+            "wy_qcos.user.permission_manager.casbin.Enforcer",
             return_value=mock_enforcer,
         ):
             manager = UserManager("model.conf", "policy.csv", all_api)
@@ -90,6 +90,30 @@ class TestUserManager:
             user_manager.validate_user_name(
                 "a" * (Constant.MAX_USER_LENGTH + 1)
             )
+
+    def test_validate_user_name_starts_with_underscore(self, user_manager):
+        """Test user name validation with name starting with underscore."""
+        with pytest.raises(ValueError, match="cannot start with underscore"):
+            user_manager.validate_user_name("_invalid_user")
+
+    def test_validate_user_name_invalid_characters(self, user_manager):
+        """Test user name validation with invalid characters."""
+        with pytest.raises(ValueError, match="is invalid"):
+            user_manager.validate_user_name("user@name")
+        with pytest.raises(ValueError, match="is invalid"):
+            user_manager.validate_user_name("user.name")
+        with pytest.raises(ValueError, match="is invalid"):
+            user_manager.validate_user_name("user name")  # space
+        with pytest.raises(ValueError, match="is invalid"):
+            user_manager.validate_user_name("123user")  # starts with digit
+
+    def test_validate_user_name_valid_formats(self, user_manager):
+        """Test user name validation with various valid formats."""
+        # Should allow letters, digits, hyphens, and underscores (not at start)
+        user_manager.validate_user_name("valid_user")
+        user_manager.validate_user_name("valid-user")
+        user_manager.validate_user_name("validUser123")
+        user_manager.validate_user_name("user123_test-name")
 
     def test_validate_password_success(self, user_manager):
         """Test successful password validation."""
@@ -203,7 +227,8 @@ class TestUserManager:
             "/v1/device/get_devices",
         ]
         assert role.description == "Test role description"
-        assert "testrole" in user_manager.roles_db
+        # roles_db is keyed by UUID, but _role_name_to_id maps name to UUID
+        assert "testrole" in user_manager._role_name_to_id
 
     def test_create_role_duplicate(self, user_manager):
         """Test creating a role with duplicate name."""
@@ -301,7 +326,8 @@ class TestUserManager:
         assert user.is_locked is False
         assert user.password_expiry_days == 90
         assert user.description == "Test user description"
-        assert "testuser" in user_manager.users_db
+        # users_db is keyed by UUID, but _username_to_id maps name to UUID
+        assert "testuser" in user_manager._username_to_id
 
     def test_create_user_duplicate(self, user_manager):
         """Test creating a user with duplicate username."""
@@ -402,7 +428,7 @@ class TestUserManager:
 
     def test_delete_user_not_found(self, user_manager):
         """Test deleting non-existent user."""
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError, match="not found"):
             user_manager.delete_user("nonexistent")
 
     def test_find_users_by_role(self, user_manager):
@@ -430,24 +456,24 @@ class TestUserManager:
     def test_log_login_attempt(self, user_manager):
         """Test logging login attempts."""
         user_manager.log_login_attempt(
-            "testuser", "192.168.1.1", "success", "Mozilla/5.0"
+            "testuser", "192.168.1.1", True, user_agent="Mozilla/5.0"
         )
 
         assert len(user_manager.login_logs) == 1
         log = user_manager.login_logs[0]
         assert log.user_name == "testuser"
         assert log.ip_address == "192.168.1.1"
-        assert log.login_status == "success"
+        assert log.success is True
         assert log.user_agent == "Mozilla/5.0"
 
     def test_get_login_logs(self, user_manager):
         """Test getting login logs."""
         # Add some logs
         user_manager.log_login_attempt(
-            "user1", "192.168.1.1", "success", "Mozilla/5.0"
+            "user1", "192.168.1.1", True, user_agent="Mozilla/5.0"
         )
         user_manager.log_login_attempt(
-            "user2", "192.168.1.2", "failed", "Chrome/91.0"
+            "user2", "192.168.1.2", False, user_agent="Chrome/91.0"
         )
 
         logs = user_manager.get_login_logs()
@@ -502,13 +528,16 @@ class TestUserManager:
     def test_init_users(self, user_manager):
         """Test user initialization."""
         # Should create default admin and user roles
-        assert "admin" in user_manager.roles_db
-        assert "user" in user_manager.roles_db
+        # roles_db is keyed by UUID, but _role_name_to_id maps name to UUID
+        assert "admin" in user_manager._role_name_to_id
+        assert "user" in user_manager._role_name_to_id
 
         # Should create default admin user
-        assert "admin" in user_manager.users_db
+        # users_db is keyed by UUID, but _username_to_id maps name to UUID
+        assert "admin" in user_manager._username_to_id
 
-        admin_user = user_manager.users_db["admin"]
+        admin_user = user_manager.get_user("admin")
+        assert admin_user is not None
         assert admin_user.user_name == "admin"
         assert "admin" in admin_user.roles
 
