@@ -8,6 +8,7 @@ add_executable(${TEST_NAME} test_main.cpp
                             test_base_operations.cpp
                             test_gate_operations.cpp
                             test_sabre_routing.cpp
+                            test_sabre_mapping.cpp
 )
 target_link_libraries(${TEST_NAME} ${LIB_TRANSPILER} ${LIB_GTEST})
 

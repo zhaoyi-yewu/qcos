@@ -4,8 +4,9 @@ add_library(${LIB_TRANSPILER} SHARED
                             circuit/base_operation.cpp
                             circuit/gate_operation.cpp
                             mapping/sabre_routing.cpp
-                            utils/load_files.cpp
                             mapping/mcts_routing.cpp
+                            mapping/sabre_mapping.cpp
+                            utils/load_files.cpp
                             )
 
 

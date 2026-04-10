@@ -98,6 +98,13 @@ class SABRE {
     return phy_exe_gates_;
   }
 
+  /**
+   * @brief 获取最终的逻辑->物理映射
+   * @return std::vector<int> mapping where index is logical qubit and value is
+   * physical qubit
+   */
+  inline std::vector<int> get_logic2phy() const { return logic2phy_; }
+
   friend bool validate_routing(
       const SABRE& sabre, const std::vector<GateOperation>& logical_gates,
       const std::vector<GateOperation>& physical_gates,
