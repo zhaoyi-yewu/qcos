@@ -17,8 +17,49 @@
 
 from networkx import Graph
 
+from wy_qcos.transpiler.cmss.common.base_operation import OperationType
 from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
 from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing import SABRE
+
+
+INITIAL_MAPPING_PREFIX_LAYERS = 25
+
+
+def _extract_two_qubit_layer_prefix(
+    gates_list: list[GateOperation], prefix_layers: int
+) -> list[GateOperation]:
+    if prefix_layers <= 0 or not gates_list:
+        return list(gates_list)
+
+    last_layer_by_qubit: dict[int, int] = {}
+    last_prefix_index = -1
+    max_layer = -1
+
+    for index, gate in enumerate(gates_list):
+        if gate.operation_type != OperationType.DOUBLE_QUBIT_OPERATION.value:
+            continue
+
+        q0, q1 = gate.targets
+        layer = (
+            max(
+                last_layer_by_qubit.get(q0, -1),
+                last_layer_by_qubit.get(q1, -1),
+            )
+            + 1
+        )
+        last_layer_by_qubit[q0] = layer
+        last_layer_by_qubit[q1] = layer
+        max_layer = max(max_layer, layer)
+        if layer < prefix_layers:
+            last_prefix_index = index
+
+    if max_layer < prefix_layers:
+        return list(gates_list)
+
+    if last_prefix_index < 0:
+        return list(gates_list)
+
+    return list(gates_list[: last_prefix_index + 1])
 
 
 def sabre_initial_mapping(
@@ -34,10 +75,12 @@ def sabre_initial_mapping(
         list[int]: the initial mapping.
     """
     sabre = SABRE(coupling_graph)
-    # TODO lwc: use subcircuit is faster
-    reverse_gates = list(reversed(gates_list))
+    prefix_gates = _extract_two_qubit_layer_prefix(
+        gates_list, INITIAL_MAPPING_PREFIX_LAYERS
+    )
+    reverse_gates = list(reversed(prefix_gates))
     # get initial mapping for reverse ir
-    sabre.execute(gates_list)
+    sabre.execute(prefix_gates)
     reverse_mapping = sabre.logic2phy.copy()
     # get the initial mapping for original ir
     sabre.execute(reverse_gates, initial_l2p=reverse_mapping)
