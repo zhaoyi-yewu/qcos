@@ -35,6 +35,7 @@ __all__: list[str] = [
     "TRIPLE_QUBIT_OPERATION",
     "load_config_file",
     "load_qasm_to_gate_list",
+    "sabre_initial_mapping",
 ]
 
 class BaseOperation:
@@ -188,6 +189,19 @@ def load_qasm_to_gate_list(filename: str) -> list[GateOperation]:
 
     Returns:
         list[GateOperation]: 解析得到的门操作列表
+    """
+
+def sabre_initial_mapping(
+    gates_list: list[GateOperation], coupling_list: list[tuple[int, int]]
+) -> list[int]:
+    """Get the initial mapping using the SABRE algorithm.
+
+    Args:
+        gates_list (list[GateOperation]): Logical gate sequence.
+        coupling_list (list[tuple[int, int]]): Physical qubit coupling list.
+
+    Returns:
+        list[int]: The initial logical-to-physical mapping.
     """
 
 DOUBLE_QUBIT_OPERATION: (

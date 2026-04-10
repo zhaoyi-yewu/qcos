@@ -19,6 +19,7 @@
 #include <pybind11/stl.h>
 
 #include "circuit/gate_operation.h"
+#include "mapping/sabre_mapping.h"
 #include "mapping/sabre_routing.h"
 
 namespace py = pybind11;
@@ -66,5 +67,22 @@ Get the sequence of mapped physical gates after routing.
 
 Returns:
     list[GateOperation]: The physical gate sequence.
+)pbdoc");
+
+  m.def("sabre_initial_mapping",
+        static_cast<std::vector<int> (*)(
+            const std::vector<qcos::GateOperation>&,
+            const std::vector<std::pair<int, int>>&)>(
+            &qcos::sabre_initial_mapping),
+        py::arg("gates_list"), py::arg("coupling_list"),
+        R"pbdoc(
+Get the initial mapping using the SABRE algorithm.
+
+Args:
+    gates_list (list[GateOperation]): Logical gate sequence.
+    coupling_list (list[tuple[int, int]]): Physical qubit coupling list.
+
+Returns:
+    list[int]: The initial logical-to-physical mapping.
 )pbdoc");
 }
