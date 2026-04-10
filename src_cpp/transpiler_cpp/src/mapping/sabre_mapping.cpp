@@ -18,20 +18,58 @@
 #include "mapping/sabre_mapping.h"
 
 #include <algorithm>
+#include <unordered_map>
 
 namespace qcos {
+
+constexpr int k_initial_mapping_prefix_layers = 25;
+
+std::vector<qcos::GateOperation> extract_two_qubit_layer_prefix(
+    const std::vector<qcos::GateOperation>& gates_list, int prefix_layers) {
+  if (prefix_layers <= 0 || gates_list.empty()) return gates_list;
+
+  std::unordered_map<int, int> last_layer_by_qubit;
+  int last_prefix_index = -1;
+  int max_layer = -1;
+
+  for (int index = 0; index < static_cast<int>(gates_list.size()); ++index) {
+    const auto& gate = gates_list[index];
+    if (gate.operation_type != qcos::OperationType::DOUBLE_QUBIT_OPERATION) {
+      continue;
+    }
+
+    int q0 = gate.targets[0];
+    int q1 = gate.targets[1];
+    int layer =
+        std::max(
+            last_layer_by_qubit.count(q0) ? last_layer_by_qubit[q0] : -1,
+            last_layer_by_qubit.count(q1) ? last_layer_by_qubit[q1] : -1) +
+        1;
+    last_layer_by_qubit[q0] = layer;
+    last_layer_by_qubit[q1] = layer;
+    max_layer = std::max(max_layer, layer);
+    if (layer < prefix_layers) last_prefix_index = index;
+  }
+
+  if (max_layer < prefix_layers || last_prefix_index < 0) return gates_list;
+
+  return std::vector<qcos::GateOperation>(
+      gates_list.begin(), gates_list.begin() + last_prefix_index + 1);
+}
 
 std::vector<int> sabre_initial_mapping(
     const std::vector<GateOperation>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list) {
   SABRE sabre(coupling_list);
+  auto prefix_gates = extract_two_qubit_layer_prefix(
+      gates_list, k_initial_mapping_prefix_layers);
 
   // reverse gates
-  std::vector<GateOperation> reverse_gates = gates_list;
+  std::vector<GateOperation> reverse_gates = prefix_gates;
   std::reverse(reverse_gates.begin(), reverse_gates.end());
 
   // get initial mapping for reverse ir
-  sabre.execute(gates_list);
+  sabre.execute(prefix_gates);
   std::vector<int> reverse_mapping = sabre.get_logic2phy();
 
   // get the initial mapping for original ir using reverse mapping
