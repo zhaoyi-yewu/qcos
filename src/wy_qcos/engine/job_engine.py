@@ -49,7 +49,6 @@ from wy_qcos.engine.qubo import (
     get_spins_num,
     process_qubo_solution,
 )
-from wy_qcos.metrics.metrics_hook import MetricsStateHook
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.common.wirecut.cut_wire import (
     generate_all_variant_subcircuits_for_execute,
@@ -547,10 +546,9 @@ def get_external_aggregated_results(job_results, mapping_dict):
 
 @flow(
     persist_result=True,
-    on_completion=[MetricsStateHook.callback],
-    on_failure=[Library.job_callback, MetricsStateHook.callback],
-    on_crashed=[Library.job_callback, MetricsStateHook.callback],
-    on_cancellation=[Library.job_callback, MetricsStateHook.callback],
+    on_failure=[Library.job_callback],
+    on_crashed=[Library.job_callback],
+    on_cancellation=[Library.job_callback],
 )
 def job_flow(job_info):
     """Job flow.
