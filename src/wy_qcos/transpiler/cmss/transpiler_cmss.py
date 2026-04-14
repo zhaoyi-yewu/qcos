@@ -290,7 +290,7 @@ class TranspilerCmss(TranspilerBase):
                 Constant.TWO_QUBIT_GATE_CZ,
             ]
 
-        mapping_exec = self.transpiler_options.get("enable_mapping", True)
+        enable_mapping = self.transpiler_options.get("enable_mapping", True)
         run_time: TranspileRuntime = self.transpiler_runtime
 
         # get optimization level
@@ -309,7 +309,7 @@ class TranspilerCmss(TranspilerBase):
             f"tranpiler(optimize firstly): {optimize1_timer.elapsed:.4f}s\n"
         )
 
-        if mapping_exec:
+        if enable_mapping:
             qpu_cfg = trans_cfg_inst.get_qpu_cfg()
             if not qpu_cfg:
                 err_msg = "Missing qpu configs"

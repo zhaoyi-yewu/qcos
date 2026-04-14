@@ -124,6 +124,9 @@
    # 2.1 模拟运行双量子比特门 (dry-run)
    qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 --transpiler-options '{"enable_na_move": true}' -f ./samples/qasm/2.0/rb.qasm
 
+   # 2.2 模拟跳过mapping运行双量子比特门 (dry-run)
+   qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 --transpiler-options '{"enable_na_move": true, "enable_mapping": false}' -f ./samples/qasm/2.0/rb.qasm
+
    # 3. 真实运行
    qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
    qcos-cli submit-job --code-type qasm2 --shots 10 --backend wy-hanyuan1 -f ./samples/qasm/2.0/simple-qasm.qasm

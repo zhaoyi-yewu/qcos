@@ -5,7 +5,6 @@
 .venv
 *.patch
 .build-context/
-.zhanlu
 
 # python byte codes/caches
 *.py[cod]

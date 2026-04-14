@@ -17,7 +17,7 @@ log_tags = ["WARNING", "ERROR"]
 
 [transpile.transpiler]
 # 默认为true
-# is_exec = true
+# enable_transpiler = true
 # base_gates中元素与拓扑类型强相关
 base_gates = ["rx, ry, cx"]
 
@@ -27,7 +27,7 @@ opt_level = [0, 1]
 
 [transpile.mapping]
 # 默认为true
-# is_exec = true
+# enable_mapping = true
 # 拓扑类型, 当is_exec不为false时, 拓扑信息必须配置
 tech_type = ["superconducting"]
 # 拓扑类型配置文件, 当is_exec不为false时， 必须配置，绝对路径或项目的相对路径
