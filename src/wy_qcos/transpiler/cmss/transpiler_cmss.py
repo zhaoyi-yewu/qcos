@@ -58,6 +58,7 @@ class TranspilerCmss(TranspilerBase):
         self,
         optimization_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
         enable_na_move: bool = False,
+        enable_mapping: bool = True,
     ):
         super().__init__()
         self.total_qubits = 0
@@ -87,18 +88,20 @@ class TranspilerCmss(TranspilerBase):
             # default optimization level
             "optimization_level": optimization_level,
             "enable_na_move": enable_na_move,
+            "enable_mapping": enable_mapping,
             # sc_mapping options
             "sc_mapping_options": {},
-            "perf_options": {},
         }
         # transpiler_options schema used in submit-job from user
         self.transpiler_options_schema = {
             Optional("optimization_level"): int,
             Optional("enable_na_move"): bool,
+            Optional("enable_mapping"): bool,
             Optional("sc_mapping_options"): SC_MAPPING_OPTIONS_SCHEMA,
         }
         # qpu_config
         self.qpu_config = None
+        self.transpiler_runtime = TranspileRuntime()
 
     def init_transpiler(self):
         """Init transpiler."""
@@ -287,11 +290,8 @@ class TranspilerCmss(TranspilerBase):
                 Constant.TWO_QUBIT_GATE_CZ,
             ]
 
-        perf_options = self.transpiler_options.get("perf_options", {})
-        mapping_exec = perf_options.get("mapping_exec", True)
-        run_time: TranspileRuntime = perf_options.get(
-            "transpiler_time", TranspileRuntime()
-        )
+        mapping_exec = self.transpiler_options.get("enable_mapping", True)
+        run_time: TranspileRuntime = self.transpiler_runtime
 
         # get optimization level
         opt_level = self.transpiler_options.get(

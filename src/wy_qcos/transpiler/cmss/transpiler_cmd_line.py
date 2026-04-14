@@ -688,10 +688,11 @@ class CMSSTranspilerPerf:
                         transpiler.transpiler_options["sc_mapping_options"] = (
                             mapping_options
                         )
-                    transpiler.transpiler_options["perf_options"] = {
-                        "mapping_exec": self.mapping_exec,
-                        "transpiler_time": runtime,
-                    }
+                    transpiler.transpiler_options["enable_mapping"] = (
+                        self.mapping_exec
+                    )
+                    transpiler.transpiler_runtime = runtime
+
                     _, _ = transpiler.transpile(
                         parse_result, expected_basis_gates
                     )
