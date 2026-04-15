@@ -34,7 +34,7 @@ class DriverWuyueHanyuan1(DriverWuyueBase):
         self.version = "0.0.1"
         self.alias_name = "WY-中科酷原-汉原1 中性原子驱动"
         self.description = "WY-中科酷原-汉原1 中性原子驱动"
-        self.transpiler = Constant.TRANSPILER_DUMMY
+        self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
         self.supported_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_RX,
@@ -42,7 +42,7 @@ class DriverWuyueHanyuan1(DriverWuyueBase):
             Constant.TWO_QUBIT_GATE_CZ,
         ]
         self.supported_code_types = [Constant.CODE_TYPE_QASM2]
-        self.supported_transpilers = [Constant.TRANSPILER_DUMMY]
+        self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.max_qubits = 100
 
     def fetch_running_info(self):

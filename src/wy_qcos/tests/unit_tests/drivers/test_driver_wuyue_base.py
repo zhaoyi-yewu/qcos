@@ -244,7 +244,11 @@ class TestDriverWuyueBase:
         mock_decrypt_by_private_key.return_value = mock_response
         job_id = "test_job"
         num_qubits = 2
-        data = {"index": "test_index", "source_code": "test_code"}
+        data = {
+            "index": "test_index",
+            "source_code": "test_code",
+            "transpile_results": [],
+        }
         data_type = "qasm2"
         shots = 1
 
@@ -277,7 +281,11 @@ class TestDriverWuyueBase:
 
         job_id = "test_job"
         num_qubits = 2
-        data = {"index": "test_index", "source_code": "test_code"}
+        data = {
+            "index": "test_index",
+            "source_code": "test_code",
+            "transpile_results": [],
+        }
         data_type = "qasm2"
         shots = 1
 
@@ -438,6 +446,90 @@ class TestDriverWuyueBase:
         query_data = driver_wuyue_base.prepare_query_task_data(task_id)
         assert len(query_data) == 344
 
+    def test_convert_code_with_valid_transpile_results(self):
+        """Test convert_code with valid transpile results."""
+        num_qubits = 2
+        src_code = (
+            'OPENQASM 2.0;\ninclude "qelib1.inc";\n'
+            "qreg q[2];\nh q[0];\ncx q[0],q[1];"
+        )
+        transpile_results = []
+
+        result = driver_wuyue_base.convert_code(
+            num_qubits, src_code, transpile_results
+        )
+        assert result == src_code
+
+    def test_convert_code_with_invalid_transpile_results(self):
+        """Test convert_code with invalid transpile results."""
+        num_qubits = 2
+        src_code = (
+            'OPENQASM 2.0;\ninclude "qelib1.inc";\n'
+            "qreg q[2];\nh q[0];\ncx q[0],q[1];"
+        )
+        transpile_results = [
+            "invalid",
+            "operations",
+        ]  # Non-BaseOperation items
+
+        result = driver_wuyue_base.convert_code(
+            num_qubits, src_code, transpile_results
+        )
+        assert result == src_code
+
+    def test_convert_code_with_non_list_transpile_results(self):
+        """Test convert_code with non-list transpile results."""
+        num_qubits = 2
+        src_code = (
+            'OPENQASM 2.0;\ninclude "qelib1.inc";\n'
+            "qreg q[2];\nh q[0];\ncx q[0],q[1];"
+        )
+        transpile_results = "not a list"  # Non-list input
+
+        result = driver_wuyue_base.convert_code(
+            num_qubits, src_code, transpile_results
+        )
+        assert result == src_code
+
+    def test_convert_code_with_valid_base_operations(self):
+        """Test convert_code with valid BaseOperation instances."""
+        num_qubits = 2
+        src_code = (
+            'OPENQASM 2.0;\ninclude "qelib1.inc";\n'
+            "qreg q[2];\nh q[0];\ncx q[0],q[1];"
+        )
+        transpile_results = []  # Empty list of BaseOperation instances
+
+        result = driver_wuyue_base.convert_code(
+            num_qubits, src_code, transpile_results
+        )
+        assert result == src_code
+
+    def test_convert_code_edge_case_empty_qasm(self):
+        """Test convert_code with empty QASM code."""
+        num_qubits = 0
+        src_code = ""
+        transpile_results = []
+
+        result = driver_wuyue_base.convert_code(
+            num_qubits, src_code, transpile_results
+        )
+        assert result == src_code
+
+    def test_convert_code_edge_case_none_transpile_results(self):
+        """Test convert_code with None transpile results."""
+        num_qubits = 2
+        src_code = (
+            'OPENQASM 2.0;\ninclude "qelib1.inc";\n'
+            "qreg q[2];\nh q[0];\ncx q[0],q[1];"
+        )
+        transpile_results = None
+
+        result = driver_wuyue_base.convert_code(
+            num_qubits, src_code, transpile_results
+        )
+        assert result == src_code
+
     @patch.object(DriverWuyueBase, "decrypt_by_private_key")
     @patch.object(Library, "loop_with_timeout")
     @patch.object(Library, "call_http_api")
@@ -473,7 +565,11 @@ class TestDriverWuyueBase:
         driver_wuyue_base.get_task_results = mock_get_results
         job_id = "test_job"
         num_qubits = 2
-        data = {"index": "test_index", "source_code": "test_code"}
+        data = {
+            "index": "test_index",
+            "source_code": "test_code",
+            "transpile_results": [],
+        }
         data_type = "qasm2"
         shots = 100
 

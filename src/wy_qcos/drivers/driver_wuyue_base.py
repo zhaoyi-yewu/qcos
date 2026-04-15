@@ -31,6 +31,9 @@ from wy_qcos.common.constant import Constant, HttpCode, HttpMethod
 from wy_qcos.common.library import Library
 from wy_qcos.drivers.device import Device
 from wy_qcos.drivers.driver_base import DriverBase
+from wy_qcos.transpiler.cmss.common.gate_operation import BaseOperation
+from wy_qcos.transpiler.cmss.common.qasm_converter import QasmConverter
+from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 
 class DriverWuyueBase(DriverBase):
@@ -137,6 +140,33 @@ class DriverWuyueBase(DriverBase):
             remote transpiler configs
         """
 
+    def convert_code(self, num_qubits: int, src_code: str, transpile_results):
+        """Convert code.
+
+        Args:
+            num_qubits: num qubits
+            src_code: src code
+            transpile_results: transpile results
+
+        Returns:
+            converted code
+        """
+        if transpile_results is None or len(transpile_results) == 0:
+            return src_code
+
+        if not isinstance(transpile_results, list):
+            return src_code
+
+        for op in transpile_results:
+            if not isinstance(op, BaseOperation):
+                return src_code
+
+        circ = QuantumCircuit(num_qubits)
+        circ.append_operations(transpile_results)
+        converter = QasmConverter(circ)
+        qasm_code = converter.to_qasm2()
+        return qasm_code
+
     def run(self, job_id, num_qubits, data, data_type, shots=1):
         """Run job.
 
@@ -161,12 +191,15 @@ class DriverWuyueBase(DriverBase):
         logger.info("1. load code")
         self.set_progress_by_task(self.TASK_STAGE_LOADING)
         src_code = data["source_code"]
+        transpile_results = data["transpile_results"]
+        final_code = self.convert_code(num_qubits, src_code, transpile_results)
+        logger.info("after converting, code is: {converted_code}")
 
         # 2. Prepare task data
         logger.info("2. prepare data")
         self.set_progress_by_task(self.TASK_STAGE_PREPARE_DATA)
         task_data = self.prepare_submit_data(
-            job_id, src_code, shots, data_index
+            job_id, final_code, shots, data_index
         )
 
         # 3. Submit task
