@@ -3655,4 +3655,161 @@ std::string U ::to_string() const {
          ", arg_value=" + arg_value_to_string() + ")";
 }
 
+Sync::Sync(std::vector<int> targets, std::vector<double> arg_value,
+           OperationType operation_type)
+    : BaseOperation("sync", std::move(targets), std::move(arg_value),
+                    operation_type) {}
+
+std::string Sync::to_string() const {
+  return "Sync(targets=" + targets_to_string() +
+         ", arg_value=" + arg_value_to_string() + ")";
+}
+
+Measure::Measure(std::vector<int> targets, std::vector<double> arg_value,
+                 OperationType operation_type)
+    : BaseOperation("measure", std::move(targets), std::move(arg_value),
+                    operation_type) {}
+
+std::string Measure::to_string() const {
+  return "Measure(targets=" + targets_to_string() +
+         ", arg_value=" + arg_value_to_string() + ")";
+}
+
+Move::Move(std::vector<int> targets, std::vector<double> arg_value,
+           OperationType operation_type)
+    : BaseOperation("move", std::move(targets), std::move(arg_value),
+                    operation_type) {}
+
+std::string Move::to_string() const {
+  return "Move(targets=" + targets_to_string() +
+         ", arg_value=" + arg_value_to_string() + ")";
+}
+
+Reset::Reset(std::vector<int> targets, std::vector<double> arg_value,
+             OperationType operation_type)
+    : BaseOperation("reset", std::move(targets), std::move(arg_value),
+                    operation_type) {}
+
+std::string Reset::to_string() const {
+  return "Reset(targets=" + targets_to_string() +
+         ", arg_value=" + arg_value_to_string() + ")";
+}
+
+std::shared_ptr<BaseOperation> create_gate(const std::string& name,
+                                           std::vector<int> targets,
+                                           std::vector<double> arg_value,
+                                           bool allow_undefined) {
+  if (name == Constant::SINGLE_QUBIT_GATE_H) {
+    return std::make_shared<H>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_X) {
+    return std::make_shared<X>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_Y) {
+    return std::make_shared<Y>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_Z) {
+    return std::make_shared<Z>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_R) {
+    return std::make_shared<R>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_RX) {
+    return std::make_shared<RX>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_RY) {
+    return std::make_shared<RY>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_RZ) {
+    return std::make_shared<RZ>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_SX) {
+    return std::make_shared<SX>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_SXDG) {
+    return std::make_shared<SXDG>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_S) {
+    return std::make_shared<S>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_T) {
+    return std::make_shared<T>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_P) {
+    return std::make_shared<P>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_SDG) {
+    return std::make_shared<SDG>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_TDG) {
+    return std::make_shared<TDG>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_U1) {
+    return std::make_shared<U1>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_U2) {
+    return std::make_shared<U2>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_U3) {
+    return std::make_shared<U3>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_U) {
+    return std::make_shared<U>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_CX) {
+    return std::make_shared<CX>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_CY) {
+    return std::make_shared<CY>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_CZ) {
+    return std::make_shared<CZ>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_CH) {
+    return std::make_shared<CH>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_SWAP) {
+    return std::make_shared<SWAP>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_CRX) {
+    return std::make_shared<CRX>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_CRY) {
+    return std::make_shared<CRY>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_CRZ) {
+    return std::make_shared<CRZ>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_CU1) {
+    return std::make_shared<CU1>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_CP) {
+    return std::make_shared<CP>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_CU3) {
+    return std::make_shared<CU3>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_CSX) {
+    return std::make_shared<CSX>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_CU) {
+    return std::make_shared<CU>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_RXX) {
+    return std::make_shared<RXX>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_RZZ) {
+    return std::make_shared<RZZ>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_ISWAP) {
+    return std::make_shared<ISWAP>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_CS) {
+    return std::make_shared<CS>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_CSDG) {
+    return std::make_shared<CSDG>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_ECR) {
+    return std::make_shared<ECR>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_DCX) {
+    return std::make_shared<DCX>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_RYY) {
+    return std::make_shared<RYY>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::TWO_QUBIT_GATE_RZX) {
+    return std::make_shared<RZX>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::THREE_QUBIT_GATE_CCX) {
+    return std::make_shared<CCX>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::THREE_QUBIT_GATE_CSWAP) {
+    return std::make_shared<CSWAP>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::THREE_QUBIT_GATE_RCCX) {
+    return std::make_shared<RCCX>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::FOUR_QUBIT_GATE_RC3X) {
+    return std::make_shared<RC3X>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::FOUR_QUBIT_GATE_C3X) {
+    return std::make_shared<C3X>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::FOUR_QUBIT_GATE_C3SQRTX) {
+    return std::make_shared<C3SQRTX>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::FIVE_QUBIT_GATE_C4X) {
+    return std::make_shared<C4X>(std::move(targets), std::move(arg_value));
+  } else if (name == "sync") {
+    return std::make_shared<Sync>(std::move(targets), std::move(arg_value));
+  } else if (name == "measure") {
+    return std::make_shared<Measure>(std::move(targets), std::move(arg_value));
+  } else if (name == "move") {
+    return std::make_shared<Move>(std::move(targets), std::move(arg_value));
+  } else if (name == "reset") {
+    return std::make_shared<Reset>(std::move(targets), std::move(arg_value));
+  } else {
+    if (allow_undefined) {
+      return std::make_shared<GateOperation>(name, std::move(targets),
+                                             std::move(arg_value));
+    } else {
+      throw std::runtime_error(name + " is not supported");
+    }
+  }
+}
 }  // namespace qcos

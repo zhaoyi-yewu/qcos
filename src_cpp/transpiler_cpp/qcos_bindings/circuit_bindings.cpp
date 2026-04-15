@@ -25,7 +25,7 @@ namespace py = pybind11;
 using namespace qcos;
 
 void bind_circuits(py::module_& m) {
-  py::class_<BaseOperation>(m, "BaseOperation")
+  py::class_<BaseOperation, std::shared_ptr<BaseOperation>>(m, "BaseOperation")
       .def(py::init<std::string, std::vector<int>, std::vector<double>,
                     OperationType>(),
            py::arg("name"), py::arg("targets"), py::arg("arg_value"),
@@ -34,9 +34,21 @@ void bind_circuits(py::module_& m) {
       .def_readonly("name", &BaseOperation::name)
       .def_readonly("targets", &BaseOperation::targets)
       .def_readonly("arg_value", &BaseOperation::arg_value)
-      .def_readonly("operation_type", &BaseOperation::operation_type);
+      .def_readonly("operation_type", &BaseOperation::operation_type)
+      .def("targets_to_string", &BaseOperation::targets_to_string)
+      .def("arg_value_to_string", &BaseOperation::arg_value_to_string)
+      .def("__repr__",
+           [](BaseOperation& self) {
+             return self.name + "(targets=" + self.targets_to_string() +
+                    ", arg_value=" + self.arg_value_to_string() + ")";
+           })
+      .def("to_openqasm",
+           py::overload_cast<const std::string&>(&BaseOperation::to_openqasm,
+                                                 py::const_),
+           py::arg("qubit_prefix") = "q");
 
-  py::class_<GateOperation, BaseOperation>(m, "GateOperation")
+  py::class_<GateOperation, BaseOperation, std::shared_ptr<GateOperation>>(
+      m, "GateOperation")
       .def(py::init<std::string, std::vector<int>, std::vector<double>,
                     OperationType, bool>(),
            py::arg("name"), py::arg("targets"), py::arg("arg_value"),
