@@ -19,7 +19,9 @@
 
 // circuit
 #include "circuit/base_operation.h"
+#include "circuit/dag_node.h"
 #include "circuit/gate_operation.h"
+#include "circuit/quantum_circuit.h"
 // mapping
 #include "mapping/sabre_routing.h"
 // utils
