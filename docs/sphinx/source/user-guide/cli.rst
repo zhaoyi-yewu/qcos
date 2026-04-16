@@ -172,6 +172,20 @@
    # 量旋科技 真实运行
    qcos-cli submit-job --code-type qasm --shots 10 --backend spinq_rpc -f ./samples/qasm/2.0/simple-qasm.qasm
 
+   # 使用MCTS路由算法并自定义sc_mapping参数
+   qcos-cli submit-job \
+       -f ./samples/qasm/2.0/benchmark/gcm_h6_2447.qasm \
+       --backend spinq_rpc \
+       --transpiler cmss \
+       --transpiler-options '{"optimization_level": 2, "sc_mapping_options": {"routing_algorithm": "mct", "select_mode": ["KS", 2], "use_prune": 1, "use_hash": 1, "score_layer": 1, "mode_sim": ["fix_cx_num", [10, 3]], "score_decay_rate_size": 0.7, "score_decay_rate_depth": 0.85}}'
+
+   # 使用SABRE路由算法
+   qcos-cli submit-job \
+       -f ./samples/qasm/2.0/simple-qasm.qasm \
+       --backend spinq_rpc \
+       --transpiler cmss \
+       --transpiler-options '{"sc_mapping_options": {"routing_algorithm": "sabre", "sabre_extention_size": 20, "sabre_weight": 0.5, "sabre_decay": 0.001}}'
+
 - 幺正量子
 
 .. code-block:: shell
