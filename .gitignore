@@ -1,5 +1,6 @@
 # vscode/ide/virtual env/logs
 .vscode
+.zhanlu
 .idea
 .venv
 *.patch
