@@ -42,7 +42,7 @@ class JobMetrics:
 
         __slots__ = (
             "total",
-            "success",
+            "completed",
             "failed",
             "running",
             "queued",
@@ -55,7 +55,7 @@ class JobMetrics:
         def __init__(
             self,
             total: int = 0,
-            success: int = 0,
+            completed: int = 0,
             failed: int = 0,
             running: int = 0,
             queued: int = 0,
@@ -65,7 +65,7 @@ class JobMetrics:
             unknown: int = 0,
         ):
             self.total = total
-            self.success = success
+            self.completed = completed
             self.failed = failed
             self.running = running
             self.queued = queued
@@ -76,11 +76,17 @@ class JobMetrics:
 
         def __repr__(self):
             return (
-                f"JobMetricsData(total={self.total}, success={self.success}, "
-                f"failed={self.failed}, running={self.running})"
+                f"JobMetricsData(total={self.total}, "
+                f"completed={self.completed}, "
+                f"failed={self.failed}, "
+                f"running={self.running}, "
+                f"queued={self.queued}, "
+                f"cancelled={self.cancelled}, "
+                f"deleted={self.deleted}, "
+                f"unknown={self.unknown})"
             )
 
-    def __init__(self):
+    def __init__(self) -> None:
         #  Prometheus metrics for job metrics
         self.job_total = Gauge("jobs_total", "Total number of jobs")
         self.job_completed_total = Gauge(
@@ -105,11 +111,16 @@ class JobMetrics:
         # Lock to ensure atomicity of update operations
         self._lock = threading.Lock()
 
+        # Internal tracking of current values for quick access
+        self._current_values = self.JobMetricsData()
+
     def update(self, data: JobMetricsData):
         """Update Prometheus metrics."""
         with self._lock:
+            self._current_values = data
+
             self.job_total.set(data.total)
-            self.job_completed_total.set(data.success)
+            self.job_completed_total.set(data.completed)
             self.job_failed_total.set(data.failed)
             self.job_running.set(data.running)
             self.job_queued.set(data.queued)
@@ -119,6 +130,122 @@ class JobMetrics:
             self.job_unknown.set(data.unknown)
 
         logger.debug(f"Job metrics updated: {data}")
+
+    def get_values(self) -> JobMetricsData:
+        """Get current values of all job metrics.
+
+        This method returns the internally tracked values, which is faster
+        than collecting from Prometheus metrics.
+
+        Returns:
+            JobMetricsData object with current metric values
+        """
+        with self._lock:
+            return self._current_values
+
+
+class SystemHealthMetrics:
+    """System health metrics."""
+
+    class SystemHealthMetricsData:
+        """System health metrics data."""
+
+        __slots__ = (
+            "overall_healthy",
+            "heartbeat_timestamp",
+            "worker_healthy",
+            "prefect_healthy",
+            "fastapi_healthy",
+            "redis_healthy",
+        )
+
+        def __init__(
+            self,
+            heartbeat_timestamp: int = 0,
+            worker_healthy: bool = False,
+            prefect_healthy: bool = False,
+            fastapi_healthy: bool = False,
+            redis_healthy: bool = False,
+        ) -> None:
+            self.heartbeat_timestamp = heartbeat_timestamp or 0
+            self.worker_healthy = worker_healthy
+            self.prefect_healthy = prefect_healthy
+            self.fastapi_healthy = fastapi_healthy
+            self.redis_healthy = redis_healthy
+            self.overall_healthy = all([
+                self.worker_healthy,
+                self.prefect_healthy,
+                self.fastapi_healthy,
+                self.redis_healthy,
+            ])
+
+        def __repr__(self):
+            return (
+                f"SystemHealthMetricsData( "
+                f"heartbeat_timestamp={self.heartbeat_timestamp}, "
+                f"worker_healthy={self.worker_healthy}, "
+                f"prefect_healthy={self.prefect_healthy}, "
+                f"fastapi_healthy={self.fastapi_healthy},  "
+                f"redis_healthy={self.redis_healthy})"
+            )
+
+    def __init__(self) -> None:
+        self.system_online = Gauge(
+            "system_online", "System online status (1=online, 0=offline)"
+        )
+        self.heartbeat_timestamp_gauge = Gauge(
+            "system_heartbeat_timestamp",
+            "System heartbeat timestamp (Unix timestamp)",
+        )
+        self.component_health_gauge = Gauge(
+            "component_health_status",
+            "Component health status (1=healthy, 0=unhealthy)",
+            ["component"],
+        )
+
+        # Lock to ensure atomicity of update operations
+        self._lock = threading.Lock()
+
+        self._current_values = self.SystemHealthMetricsData()
+
+    def update(self, data: SystemHealthMetricsData):
+        """Update system health metrics.
+
+        Args:
+            data: SystemHealthMetricsData object with system health status
+        """
+        with self._lock:
+            self._current_values = data
+            self.system_online.set(1 if data.overall_healthy else 0)
+            self.heartbeat_timestamp_gauge.set(data.heartbeat_timestamp)
+
+            # Update component metrics
+            self.component_health_gauge.labels(component="worker").set(
+                1 if data.worker_healthy else 0
+            )
+            self.component_health_gauge.labels(component="prefect").set(
+                1 if data.prefect_healthy else 0
+            )
+            self.component_health_gauge.labels(component="fastapi").set(
+                1 if data.fastapi_healthy else 0
+            )
+            self.component_health_gauge.labels(component="redis").set(
+                1 if data.redis_healthy else 0
+            )
+
+        logger.debug(f"System health metrics updated: {data}")
+
+    def get_values(self) -> SystemHealthMetricsData:
+        """Get current system health status.
+
+        This method returns the internally tracked values, which is faster
+        than collecting from Prometheus metrics.
+
+        Returns:
+            SystemHealthMetricsData object with current health status
+        """
+        with self._lock:
+            return self._current_values
 
 
 class APIMetrics:
@@ -142,7 +269,7 @@ class APIMetrics:
             endpoint: str,
             status_code: int,
             duration: float,
-        ):
+        ) -> None:
             self.module = module
             self.method = method
             self.endpoint = endpoint
@@ -183,6 +310,9 @@ class APIMetrics:
         self._api_stats_lock = threading.Lock()
         self._api_request_timestamps: list[datetime] = []
 
+        # Internal tracking for quick access to total requests
+        self._total_requests_count = 0
+
     def record_api_request(self, data: APIMetricsData):
         """Record an API request.
 
@@ -209,6 +339,7 @@ class APIMetrics:
 
         # Record timestamp for time-windowed statistics
         with self._api_stats_lock:
+            self._total_requests_count += 1
             current_time = datetime.now()
             self._api_request_timestamps.append(current_time)
 
@@ -248,12 +379,7 @@ class APIMetrics:
 
             last_hour_count = len(self._api_request_timestamps) - idx_hour
             last_day_count = len(self._api_request_timestamps) - idx_day
-
-        # Get total from counter
-        total_counter = self.api_requests_total._metrics
-        total_requests = sum(
-            metric.value() for metric in total_counter.values()
-        )
+            total_requests = self._total_requests_count
 
         return {
             "total_requests": total_requests,
@@ -285,44 +411,22 @@ class MetricsCollector:
         # Global lock for thread-safe operations across all metrics
         self._global_lock = threading.Lock()
 
-        # System health metrics
-        self.system_online = Gauge(
-            "system_online", "System online status (1=online, 0=offline)"
-        )
         # job metrics
         self.job_metrics = JobMetrics()
 
         # API access metrics
         self.api_metrics = APIMetrics()
 
-        # Initialize system as offline
-        self.set_system_online(False)
+        # System health metrics
+        self.system_health_metrics = SystemHealthMetrics()
 
         logger.info("MetricsCollector initialized")
-
-    def set_system_online(self, online: bool):
-        """Set system online status.
-
-        Args:
-            online: True if system is online, False otherwise
-        """
-        with self._global_lock:
-            self.system_online.set(1 if online else 0)
-        logger.debug(f"System online status set to: {online}")
 
     def update_job_metrics(self, data: JobMetrics.JobMetricsData):
         """Update job-related metrics.
 
         Args:
             data: JobMetrics.JobMetricsData
-            {
-                job_id: Job ID
-                job_status: Job status
-                job_priority: Job priority
-                job_duration: Job duration in seconds
-                job_start_time: Job start time
-                job_end_time: Job end time
-            }
         """
         self.job_metrics.update(data)
 
@@ -352,6 +456,34 @@ class MetricsCollector:
                 self.api_metrics.increment_api_requests_in_progress()
             else:
                 self.api_metrics.decrement_api_requests_in_progress()
+
+    def update_system_health(
+        self, data: SystemHealthMetrics.SystemHealthMetricsData
+    ):
+        """Update system health metrics.
+
+        Args:
+            data: SystemHealthMetrics.SystemHealthMetricsData
+            {
+                heartbeat_timestamp: Timestamp of the last heartbeat
+                workers_healthy: Whether all workers are healthy
+                prefect_healthy: Whether Prefect is healthy
+                fastapi_healthy: Whether FastAPI is healthy
+                redis_healthy: Whether Redis is healthy
+            }
+
+        """
+        self.system_health_metrics.update(data)
+
+    def get_system_health_status(
+        self,
+    ) -> SystemHealthMetrics.SystemHealthMetricsData:
+        """Get system health status.
+
+        Returns:
+            System health status
+        """
+        return self.system_health_metrics.get_values()
 
     def get_metrics(self) -> bytes:
         """Generate Prometheus metrics output.
