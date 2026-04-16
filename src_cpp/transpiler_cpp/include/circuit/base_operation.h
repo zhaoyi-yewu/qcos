@@ -16,6 +16,9 @@
  */
 
 #pragma once
+#include <cmath>
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -47,6 +50,45 @@ class BaseOperation {
       std::string name_, std::vector<int> targets_,
       std::vector<double> arg_value_ = {},
       OperationType op_type_ = OperationType::SINGLE_QUBIT_OPERATION);
+
+  std::string targets_to_string() const {
+    std::ostringstream oss;
+    oss << "[";
+    for (size_t i = 0; i < targets.size(); ++i) {
+      if (i > 0) oss << ", ";
+      oss << targets[i];
+    }
+    oss << "]";
+    return oss.str();
+  }
+
+  std::string arg_value_to_string() const {
+    std::ostringstream oss;
+    oss << "[";
+    for (size_t i = 0; i < arg_value.size(); ++i) {
+      if (i > 0) oss << ", ";
+
+      double value = arg_value[i];
+
+      if (std::abs(value - M_PI) < 1e-10) {
+        oss << "π";
+      } else if (std::abs(value + M_PI) < 1e-10) {
+        oss << "-π";
+      } else if (std::abs(value - M_PI / 2) < 1e-10) {
+        oss << "π/2";
+      } else if (std::abs(value + M_PI / 2) < 1e-10) {
+        oss << "-π/2";
+      } else if (std::abs(value - M_PI / 4) < 1e-10) {
+        oss << "π/4";
+      } else if (std::abs(value + M_PI / 4) < 1e-10) {
+        oss << "-π/4";
+      } else {
+        oss << std::fixed << std::setprecision(4) << value;
+      }
+    }
+    oss << "]";
+    return oss.str();
+  }
 };
 
 }  // namespace qcos
