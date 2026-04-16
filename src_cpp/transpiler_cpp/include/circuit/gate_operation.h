@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <array>
 #include <complex>
 #include <memory>
 
