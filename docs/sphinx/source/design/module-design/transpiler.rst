@@ -213,6 +213,7 @@ SABRE（Stochastic Allocation of Blocks for Routing and Execution）算法是一
            self,
            optimization_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
            enable_na_move: bool = False,
+           enable_mapping: bool = True,
        ):
            super().__init__()
            self.total_qubits = 0
@@ -242,11 +243,13 @@ SABRE（Stochastic Allocation of Blocks for Routing and Execution）算法是一
                # default optimization level
                "optimization_level": optimization_level,
                "enable_na_move": enable_na_move,
+               "enable_mapping": enable_mapping,
            }
            # transpiler_options schema used in submit-job from user
            self.transpiler_options_schema = {
                Optional("optimization_level"): int,
                Optional("enable_na_move"): bool,
+               Optional("enable_mapping"): bool,
            }
            # qpu_config
            self.qpu_config = None
@@ -363,7 +366,7 @@ SABRE（Stochastic Allocation of Blocks for Routing and Execution）算法是一
 
            mapping_res, mapping_dict = self.mapping(qpu_cfg, opt_result_dict)
 
-           # decompose gates
+           # transpiler options
            enable_na_move = self.transpiler_options.get("enable_na_move", False)
 
            # support cz gate for NARoute

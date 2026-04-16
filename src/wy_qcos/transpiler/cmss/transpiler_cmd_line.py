@@ -53,10 +53,10 @@ class TranspileParams:
         # transpiler configs
         self.tech_gates = []
         # optimization level, 0, 1, 2, 3
-        self.transpiler_exec = True
+        self.enable_transpiler = True
         self.opt_level = 1
         # mapping configs
-        self.mapping_exec = True
+        self.enable_mapping = True
         self.mapping_info = ()
         self.mapping_options = {}
 
@@ -78,10 +78,10 @@ class CMSSTranspilerPerf:
         # transpiler configs
         self.base_gates = []
         # optimization level, 0, 1, 2, 3
-        self.transpiler_exec = True
+        self.enable_transpiler = True
         self.opt_level = [1]
         # mapping configs
-        self.mapping_exec = True
+        self.enable_mapping = True
         self.tech_type = []
         self.mapping_config_file = []
         self.mapping_info = []
@@ -207,8 +207,8 @@ class CMSSTranspilerPerf:
         # set the allowed log tags for performance logger
         trans_logger.set_allowed_tags(self.log_tags)
 
-        self.transpiler_exec = extra_configs["transpile"]["transpiler"].get(
-            "is_exec", True
+        self.enable_transpiler = extra_configs["transpile"]["transpiler"].get(
+            "enable_transpiler", True
         )
         self.opt_level = extra_configs["transpile"]["optimize"].get(
             "opt_level", [1]
@@ -229,8 +229,8 @@ class CMSSTranspilerPerf:
                         raise ValueError(f"gate[{gate}] is not supported!")
                 self.base_gates.append(tuple(gate_list))
 
-        self.mapping_exec = extra_configs["transpile"]["mapping"].get(
-            "is_exec", True
+        self.enable_mapping = extra_configs["transpile"]["mapping"].get(
+            "enable_mapping", True
         )
         self.tech_type = extra_configs["transpile"]["mapping"].get(
             "tech_type", []
@@ -449,7 +449,7 @@ class CMSSTranspilerPerf:
         # default start from 0 to 5
         l = TPC.CONS_DICT[TPC.QASM_FILE]
         r = TPC.CONS_DICT[TPC.PARSE_TIME]
-        if not self.transpiler_exec:
+        if not self.enable_transpiler:
             # parse
             csv_titles.append(TPC.TOTAL_TIME)
             for row in total_content:
@@ -463,7 +463,7 @@ class CMSSTranspilerPerf:
                     f"{row[TPC.CONS_DICT[TPC.TOTAL_TIME]]:.4f}s"
                 )
                 csv_content.append(row_content)
-        elif not self.mapping_exec:
+        elif not self.enable_mapping:
             # parse + transpile(no mapping)
             csv_titles.extend([
                 TPC.OPT_TIME1,
@@ -682,14 +682,14 @@ class CMSSTranspilerPerf:
             trans_logger.log_perf(f"parse openqasm: {ast_timer.elapsed:.4f}s")
 
             # optimize the transpiled gates
-            if self.transpiler_exec:
+            if self.enable_transpiler:
                 with Timer() as tranpile_timer:
                     if len(mapping_options) > 0:
                         transpiler.transpiler_options["sc_mapping_options"] = (
                             mapping_options
                         )
                     transpiler.transpiler_options["enable_mapping"] = (
-                        self.mapping_exec
+                        self.enable_mapping
                     )
                     transpiler.transpiler_runtime = runtime
 

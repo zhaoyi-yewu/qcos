@@ -221,9 +221,7 @@ class TestTranspilerCmss:
 
     def test_transpiler_with_no_mapping(self):
         transpiler = TranspilerCmss()
-        transpiler.transpiler_options["perf_options"] = {
-            "mapping_exec": False,
-        }
+        transpiler.transpiler_options["enable_mapping"] = False
         expected_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_RX,
             Constant.SINGLE_QUBIT_GATE_RY,
