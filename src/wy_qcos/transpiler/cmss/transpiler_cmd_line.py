@@ -283,6 +283,8 @@ class CMSSTranspilerPerf:
                 raise ValueError(
                     f"input file[{file_path}] is not a valid file!"
                 )
+            if file_path.suffix != ".qasm":
+                continue
             total_files.append(file_path)
 
         for dir in self.dir_list:
@@ -299,6 +301,8 @@ class CMSSTranspilerPerf:
             for root, _, files in os.walk(dir_path):
                 for file in files:
                     file_path = Path(os.path.join(root, file))
+                    if file_path.suffix != ".qasm":
+                        continue
                     total_files.append(file_path)
 
         if len(total_files) == 0:
@@ -381,6 +385,10 @@ class CMSSTranspilerPerf:
         else:
             csv_file = self.csv_file
             csv_file_path = Path(csv_file).resolve()
+            if csv_file_path.suffix != ".csv":
+                raise ValueError(
+                    f"csv file[{csv_file_path}] is not a csv file!"
+                )
             if csv_file_path.exists():
                 trans_logger.log_warning(
                     f"csv file has existed! file: {csv_file_path}."
@@ -419,6 +427,7 @@ class CMSSTranspilerPerf:
             perf_content.append(runtime.mapping_time)
             # mapping time
             perf_content.append(runtime.decompose_apply_time)
+            perf_content.append(runtime.decomposed_time)
             perf_content.append(runtime.opt_time2)
             perf_content.append(runtime.transpile_time)
             perf_content.append(runtime.total_time)
@@ -460,6 +469,7 @@ class CMSSTranspilerPerf:
                 TPC.OPT_TIME1,
                 TPC.DECOMPOSE_RULE_TIME,
                 TPC.DECOMPOSE_APPLY_TIME,
+                TPC.DECOMPOSED_TIME,
                 TPC.OPT_TIME2,
                 TPC.TRANSPILE_TIME,
                 TPC.TOTAL_TIME,
@@ -477,6 +487,9 @@ class CMSSTranspilerPerf:
                 row_content.append(
                     f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_APPLY_TIME]]:.4f}s"
                 )
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSED_TIME]]:.4f}s"
+                )
                 row_content.append(f"{row[TPC.CONS_DICT[TPC.OPT_TIME2]]:.4f}s")
                 row_content.append(
                     f"{row[TPC.CONS_DICT[TPC.TRANSPILE_TIME]]:.4f}s"
@@ -493,6 +506,7 @@ class CMSSTranspilerPerf:
                 TPC.DECOMPOSE_1Q2Q_TIME,
                 TPC.MAPPING_TIME,
                 TPC.DECOMPOSE_APPLY_TIME,
+                TPC.DECOMPOSED_TIME,
                 TPC.OPT_TIME2,
                 TPC.TRANSPILE_TIME,
                 TPC.TOTAL_TIME,
@@ -515,6 +529,9 @@ class CMSSTranspilerPerf:
                 )
                 row_content.append(
                     f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_APPLY_TIME]]:.4f}s"
+                )
+                row_content.append(
+                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSED_TIME]]:.4f}s"
                 )
                 row_content.append(f"{row[TPC.CONS_DICT[TPC.OPT_TIME2]]:.4f}s")
                 row_content.append(
@@ -682,6 +699,11 @@ class CMSSTranspilerPerf:
                 trans_logger.log_perf(
                     f"cmss tranpiler: {tranpile_timer.elapsed:.4f}s\n"
                 )
+        runtime.decomposed_time = (
+            runtime.decompose_rule_time
+            + runtime.decompose_1q2q_time
+            + runtime.decompose_apply_time
+        )
         runtime.total_time = total_timer.elapsed
         trans_logger.log_perf(
             "total running time of cmss-transpiler:"

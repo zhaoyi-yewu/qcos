@@ -126,6 +126,7 @@ class TranspilePerfConstant:
     DECOMPOSE_1Q2Q_TIME = "分解1q2q(s)"
     MAPPING_TIME = "映射时间(s)"
     DECOMPOSE_APPLY_TIME = "分解应用(s)"
+    DECOMPOSED_TIME = "分解总时间(s)"
     OPT_TIME2 = "优化2(s)"
     TRANSPILE_TIME = "转译时间(s)"
     TOTAL_TIME = "总时间(s)"
@@ -141,9 +142,10 @@ class TranspilePerfConstant:
         DECOMPOSE_1Q2Q_TIME: 8,
         MAPPING_TIME: 9,
         DECOMPOSE_APPLY_TIME: 10,
-        OPT_TIME2: 11,
-        TRANSPILE_TIME: 12,
-        TOTAL_TIME: 13,
+        DECOMPOSED_TIME: 11,
+        OPT_TIME2: 12,
+        TRANSPILE_TIME: 13,
+        TOTAL_TIME: 14,
     }
 
 
@@ -156,6 +158,7 @@ class TranspileRuntime:
         self.decompose_rule_time = 0.0
         self.decompose_1q2q_time = 0.0
         self.decompose_apply_time = 0.0
+        self.decomposed_time = 0.0
         self.opt_time2 = 0.0
         self.mapping_time = 0.0
         self.routing_time = 0.0
