@@ -24,7 +24,7 @@ from typing import Protocol
 import fastapi_jsonrpc as jsonrpc
 
 from wy_qcos.metrics.metrics_server import MetricsServer
-
+from wy_qcos.metrics.metrics_scheduler import MetricsScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +99,10 @@ async def app_lifespan(app: jsonrpc.API):
         None
     """
     manager = BackgroundServiceManager()
+
+    # Register metrics schedule
+    metrics_schedule = MetricsScheduler()
+    manager.add_service(metrics_schedule)
 
     # Register metrics server
     metrics_server = MetricsServer()
