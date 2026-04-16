@@ -43,7 +43,6 @@ def create_mock_request(path: str, body: bytes = b"", method: str = "POST"):
 
 @pytest.mark.asyncio
 class TestMetricsMiddleware:
-    @pytest.mark.smoke
     async def test_dispatch_excluded_path(self):
         middleware = MetricsMiddleware(app=MagicMock())
         request = create_mock_request("/metrics")
@@ -56,7 +55,6 @@ class TestMetricsMiddleware:
         call_next.assert_awaited_once_with(request)
         mock_normalize.assert_not_called()
 
-    @pytest.mark.smoke
     async def test_dispatch_success(self):
         middleware = MetricsMiddleware(app=MagicMock())
         path = "/v1/driver/123"
@@ -103,7 +101,6 @@ class TestMetricsMiddleware:
         assert data.status_code == 200
         assert data.duration > 0
 
-    @pytest.mark.smoke
     async def test_dispatch_exception(self):
         middleware = MetricsMiddleware(app=MagicMock())
         path = "/v1/device"
@@ -140,7 +137,6 @@ class TestMetricsMiddleware:
         data = kwargs["data"]
         assert data.status_code == HttpCode.INTERNAL_SERVER_ERROR
 
-    @pytest.mark.smoke
     def test_normalize_endpoint(self):
         middleware = MetricsMiddleware(app=MagicMock())
         assert middleware._normalize_endpoint("/v1/driver") == "/v1/driver"
@@ -169,7 +165,6 @@ class TestMetricsMiddleware:
         )
         assert middleware._normalize_endpoint("") == ""
 
-    @pytest.mark.smoke
     def test_extract_module(self):
         middleware = MetricsMiddleware(app=MagicMock())
         assert middleware._extract_module("/v1/driver") == "driver"
@@ -180,7 +175,6 @@ class TestMetricsMiddleware:
         assert middleware._extract_module("/") == "root"
         assert middleware._extract_module("/v1/system/status") == "system"
 
-    @pytest.mark.smoke
     def test_extract_rpc_method(self):
         middleware = MetricsMiddleware(app=MagicMock())
         body = json.dumps({"method": "createDriver"}).encode()
@@ -193,7 +187,6 @@ class TestMetricsMiddleware:
         assert middleware._extract_rpc_method(b"{invalid") == "parse_error"
         assert middleware._extract_rpc_method(b"not json") == "parse_error"
 
-    @pytest.mark.smoke
     def test_restore_request_body(self):
         middleware = MetricsMiddleware(app=MagicMock())
         request = MagicMock()
