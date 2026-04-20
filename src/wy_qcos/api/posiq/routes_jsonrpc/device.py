@@ -57,11 +57,14 @@ def _get_device_info(device, auth_data=None, details=False):
         "details": device.details,
         "timestamp": device.timestamp,
     }
-    if auth_data is not None:
+    if (
+        auth_data is not None
+        and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL
+    ):
         # only admin user can access to config info
         # remove config info in device_info for non-admin user
         _device_info.pop("configs")
-    if details is False:
+    if not details:
         _device_info.pop("details")
 
     return _device_info
@@ -90,7 +93,10 @@ def get_devices(
     devices = device_manager.get_devices()
     response_info = {}
     for device_name, device in sorted(devices.items()):
-        if auth_data is not None:
+        if (
+            auth_data is not None
+            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL
+        ):
             if device_name not in auth_data["device_names"]:
                 continue
         _response_info = _get_device_info(device, auth_data)
@@ -123,7 +129,10 @@ def get_device(
     device_name = body.name
     device_manager = scheduler.get_device_manager()
     device = device_manager.get_device(device_name)
-    if auth_data is not None:
+    if (
+        auth_data is not None
+        and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL
+    ):
         if device_name not in auth_data["device_names"]:
             device = None
     if not device:
