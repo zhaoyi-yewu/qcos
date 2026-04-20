@@ -135,6 +135,12 @@ class MetricsServer:
                 PrometheusHandler,
                 bind_and_activate=False,
             )
+            # Enable SO_REUSEADDR to allow the socket to be bound immediately after restart
+            # This prevents "Address already in use" errors when the service restarts quickly
+            self._server.socket.setsockopt(
+                socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
+            )
+
             if self.allow_dual_stack:
                 self._server.socket.setsockopt(
                     socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, False
@@ -142,6 +148,9 @@ class MetricsServer:
                 logger.info("IPv6 Dual-Stack enabled")
             self._server.server_bind()
             self._server.server_activate()
+            logger.info(
+                f"Metrics server socket successfully bound to {self.ip}:{self.port}"
+            )
         except OSError as e:
             logger.error(f"Error creating metrics server: {e}")
             raise
