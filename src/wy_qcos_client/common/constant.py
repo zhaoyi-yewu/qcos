@@ -17,6 +17,18 @@
 # Don't import any libraries
 
 
+def _s(secret):
+    """Secret text wrapper.
+
+    Args:
+        secret: secret text to be wrapped
+
+    Returns:
+        wrapped secret text
+    """
+    return secret
+
+
 class Constant:
     """Constants."""
 
@@ -76,7 +88,8 @@ class Constant:
     MAX_JOB_PRIORITY = 10
 
     # User
-    ENV_VAR_ACCESS_TOKEN = (lambda: "QCOS_ACCESS_TOKEN")()
+    ENV_VAR_ACCESS_TOKEN = _s("QCOS_ACCESS_TOKEN")
+    ENV_VAR_REFRESH_TOKEN = _s("QCOS_REFRESH_TOKEN")
     ENV_VAR_VIRTUAL_INSTANCE_ID = "QCOS_VIRTUAL_INSTANCE_ID"
 
     # Job status
