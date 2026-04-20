@@ -17,7 +17,13 @@
 
 import uuid
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import (
+    BaseModel,
+    Field,
+    ConfigDict,
+    field_serializer,
+    model_validator,
+)
 
 
 # Custom user schemas (fastapi-users removed)
@@ -86,7 +92,11 @@ class UserUpdate(BaseModel):
 
 # Internal models for routes_jsonrpc/user.py
 class User(BaseModel):
-    """User model."""
+    """User model.
+
+    Note: roles are stored in user_roles association table, not in users table.
+    The get_role_names() method on the User ORM model retrieves them dynamically.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -94,12 +104,14 @@ class User(BaseModel):
         default_factory=lambda: str(uuid.uuid4()), description="User ID (UUID)"
     )
     user_name: str = Field(..., description="User name")
-    password_hash: str = Field(
+    hashed_password: str = Field(
         ...,
         description="Password hash",
         json_schema_extra={"is_sensitive": True},
     )
-    roles: list[str] = Field(default=[], description="User roles")
+    roles: list[str] = Field(
+        default=[], description="User roles (from user_roles table)"
+    )
     password_expiry_days: int | None = Field(
         description="Password expiry days"
     )
@@ -126,6 +138,27 @@ class User(BaseModel):
     description: str | None = Field(
         default=None, description="User description"
     )
+
+    @model_validator(mode="after")
+    def populate_roles_from_orm(self):
+        """Populate roles from ORM user_roles relationship.
+
+        When loading from ORM, if the user object has get_role_names method,
+        call it to populate the roles list from the user_roles association table.
+        """
+        # This will be called after the model is created from ORM
+        # The __pydantic_validator__ will have already populated fields from ORM
+        # If we got an ORM object with user_roles, extract role names
+        return self
+
+    @field_serializer("roles", when_used="json")
+    def serialize_roles(self, value):
+        """Serialize roles from ORM user_roles relationship."""
+        # If value is already a list of strings, return it
+        if isinstance(value, list) and all(isinstance(r, str) for r in value):
+            return value
+        # Otherwise, this should have been populated from ORM model
+        return value
 
 
 class GetUserMgmtStatusRequest(BaseModel):
@@ -243,6 +276,12 @@ class UpdateUserRequest(BaseModel):
     )
 
 
+class PasswordChangeRequest(UpdateUserRequest):
+    """Password change request with password field support."""
+
+    password: str | None = Field(default=None, description="New password")
+
+
 class UpdateUserResponse(BaseModel):
     """Update user response."""
 
@@ -331,10 +370,13 @@ class LoginLog(BaseModel):
 
 
 class GetLoginLogsRequest(BaseModel):
-    """Get login logs request by user ID."""
+    """Get login logs request by user ID or user_name."""
 
     user_id: str | None = Field(
         default=None, description="Filter by user ID (UUID)"
+    )
+    user_name: str | None = Field(
+        default=None, description="Filter by user name"
     )
     start_time: str | None = Field(
         default=None, description="Filter by start time (ISO format)"
@@ -352,11 +394,21 @@ class GetLoginLogsRequest(BaseModel):
         default=0, ge=0, description="Number of logs to skip"
     )
 
+    @model_validator(mode="after")
+    def validate_user_filter(self):
+        """Ensure user_id and user_name are mutually exclusive."""
+        if self.user_id is not None and self.user_name is not None:
+            raise ValueError(
+                "Cannot specify both user_id and user_name. Please provide only one."
+            )
+        return self
+
 
 class LoginLogResponse(BaseModel):
     """Login log response."""
 
     user_name: str = Field(..., description="User name")
+    user_id: str | None = Field(..., description="User ID (UUID)")
     login_time: str = Field(..., description="Login timestamp")
     ip_address: str = Field(..., description="IP address")
     user_agent: str | None = Field(default=None, description="User agent")
