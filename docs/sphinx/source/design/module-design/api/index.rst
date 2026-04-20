@@ -17,5 +17,6 @@
    driver
    transpiler
    device
-   user-management
+   auth
+   user
    error

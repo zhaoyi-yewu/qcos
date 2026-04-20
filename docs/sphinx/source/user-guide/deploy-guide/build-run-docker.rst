@@ -9,12 +9,12 @@
 
 前提条件
 -----------------
-保证操作系统已安装了docker、docker-compose、rsync、xargs等组件
+保证操作系统已安装了docker、docker-compose、rsync、xargs、python3等组件
 
 .. code-block:: shell
 
    # BCLinux/CentOS/OpenEuler环境下示例:
-   yum install -y docker docker-compose rsync findutils
+   yum install -y docker docker-compose rsync findutils postgresql python3-alembic python3-sqlalchemy python3-SQLAlchemy-Utils python3-toml
 
 .. include:: edit-env.rst
 
