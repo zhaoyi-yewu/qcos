@@ -336,7 +336,7 @@ class Constant:
     DEFAULT_ADMIN_USERNAME = "admin"
     DEFAULT_ADMIN_PASSWORD = _s("123456")
     ENV_VAR_ACCESS_TOKEN = _s("QCOS_ACCESS_TOKEN")
-    JWT_AUTH_AUDIENCE = "qcos"
+    JWT_AUTH_AUDIENCE = "qcos-api"
     ROLE_ADMIN = "admin"
     ROLE_USER = "user"
     ROLE_ANY = "__any__"
@@ -376,6 +376,9 @@ class Constant:
     PREFECT_CANCEL_REQUIRED_STATES = [PREFECT_STATE_RUNNING]
     PREFECT_WAIT_STATES = [PREFECT_STATE_SCHEDULED, PREFECT_STATE_PENDING]
 
+    AUTH_MODE_KEY = "auth_mode"
+    AUTH_MODE_VIRTUAL = "virtual"
+    AUTH_MODE_USER = "user"
     VID_TAGS_PREFIX = "VIRTUAL_INSTANCE_ID"
 
     # Prefect job log
