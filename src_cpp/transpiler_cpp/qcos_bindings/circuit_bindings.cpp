@@ -25,7 +25,7 @@ namespace py = pybind11;
 using namespace qcos;
 
 void bind_circuits(py::module_& m) {
-  py::class_<BaseOperation, std::shared_ptr<BaseOperation>>(m, "BaseOperation")
+  py::class_<BaseOperation, std::unique_ptr<BaseOperation>>(m, "BaseOperation")
       .def(py::init<std::string, std::vector<int>, std::vector<double>,
                     OperationType>(),
            py::arg("name"), py::arg("targets"), py::arg("arg_value"),
@@ -47,7 +47,7 @@ void bind_circuits(py::module_& m) {
                                                  py::const_),
            py::arg("qubit_prefix") = "q");
 
-  py::class_<GateOperation, BaseOperation, std::shared_ptr<GateOperation>>(
+  py::class_<GateOperation, BaseOperation, std::unique_ptr<GateOperation>>(
       m, "GateOperation")
       .def(py::init<std::string, std::vector<int>, std::vector<double>,
                     OperationType, bool>(),
