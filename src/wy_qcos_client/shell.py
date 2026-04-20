@@ -2161,11 +2161,6 @@ class GetUsers(Lister):
                     user_data["is_enabled"] = (
                         "enabled" if user_data["is_enabled"] else "disabled"
                     )
-                # For backward compatibility, also check for is_active field
-                elif "is_active" in user_data:
-                    user_data["is_enabled"] = (
-                        "enabled" if user_data["is_active"] else "disabled"
-                    )
 
         table_values = CommandHelper.get_table_list_data(
             json_results, header_list, is_dict=True
@@ -2205,8 +2200,12 @@ class CreateRole(Command):
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
         parser.add_argument("role_name", type=str, help="Role name")
-        parser.add_argument("permissions", type=str, help="Permissions (JSON)")
-        parser.add_argument("--description", type=str, help="Description")
+        parser.add_argument(
+            "permissions",
+            type=str,
+            help='Permissions (JSON array, e.g., \'["api/path1", "api/path2"]\')',
+        )
+        parser.add_argument("--description", type=str, help="Role description")
         return parser
 
     def take_action(self, parsed_args):
@@ -2214,7 +2213,9 @@ class CreateRole(Command):
         try:
             permissions = json.loads(parsed_args.permissions)
         except json.decoder.JSONDecodeError as exc:
-            raise errors.InvalidArguments("Invalid permissions JSON") from exc
+            raise errors.InvalidArguments(
+                f'Invalid permissions JSON format. Expected: \'["path1", "path2"]\'. Got: {parsed_args.permissions}'
+            ) from exc
         status_code, reason, text, result = self.app.client.create_role(
             parsed_args.role_name, permissions, parsed_args.description
         )
@@ -2260,9 +2261,13 @@ class UpdateRole(Command):
         parser = super().get_parser(prog_name)
         parser.add_argument("role_id", type=str, help="Role ID (UUID)")
         parser.add_argument(
-            "--permissions", type=str, help="Permissions (JSON)"
+            "--permissions",
+            "--permission",  # Add alias for backward compatibility
+            type=str,
+            dest="permissions",
+            help='Permissions (JSON array, e.g., \'["api/path1", "api/path2"]\')',
         )
-        parser.add_argument("--description", type=str, help="Description")
+        parser.add_argument("--description", type=str, help="Role description")
         return parser
 
     def take_action(self, parsed_args):
@@ -2274,7 +2279,7 @@ class UpdateRole(Command):
                 permissions = json.loads(parsed_args.permissions)
             except json.decoder.JSONDecodeError as exc:
                 raise errors.InvalidArguments(
-                    "Invalid permissions JSON"
+                    f'Invalid permissions JSON format. Expected: \'["path1", "path2"]\'. Got: {parsed_args.permissions}'
                 ) from exc
         status_code, reason, text, result = self.app.client.update_role(
             role_id, permissions, parsed_args.description
@@ -2358,18 +2363,17 @@ class ChangePassword(Command):
 
 
 class GetLoginLogs(Lister):
-    """Get login logs by user ID."""
+    """Get login logs by user ID or user name."""
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
         parser.add_argument(
-            "user_id",
-            type=str,
-            nargs="?",
-            default=None,
-            help="User ID (UUID), optional if --all is used",
+            "--user-id", type=str, default=None, help="User ID (UUID)"
+        )
+        parser.add_argument(
+            "--user-name", type=str, default=None, help="User name"
         )
         parser.add_argument("--limit", type=int, default=100, help="Limit")
         parser.add_argument("--offset", type=int, default=0, help="Offset")
@@ -2378,8 +2382,17 @@ class GetLoginLogs(Lister):
     def take_action(self, parsed_args):
         resource = self.group
         user_id = parsed_args.user_id
+        user_name = parsed_args.user_name
+
+        # Validate that only one of user_id or user_name is provided
+        if user_id is not None and user_name is not None:
+            raise errors.InvalidArguments(
+                "Cannot specify both user_id and user_name. Please provide only one."
+            )
+
         header_list = [
             "user_name",
+            "user_id",
             "login_time",
             "ip_address",
             "success",
@@ -2391,7 +2404,7 @@ class GetLoginLogs(Lister):
         offset = parsed_args.offset
 
         status_code, reason, text, result = self.app.client.get_login_logs(
-            user_id, limit, offset
+            user_id, user_name, limit, offset
         )
         json_results = CommandHelper.check_results(
             resource, "get_login_logs", status_code, reason, text
@@ -2424,9 +2437,14 @@ class Login(Command):
         parser.add_argument("username", type=str, help="Username")
         parser.add_argument("password", type=str, help="Password")
         parser.add_argument(
-            "--token-only",
+            "--access-token",
             action="store_true",
-            help="Only print the access token (useful for scripting)",
+            help="Only print the access token",
+        )
+        parser.add_argument(
+            "--refresh-token",
+            action="store_true",
+            help="Only print the refresh token",
         )
         return parser
 
@@ -2442,19 +2460,29 @@ class Login(Command):
             resource, "login", status_code, reason, text
         )
         access_token = json_results.get("access_token")
+        refresh_token = json_results.get("refresh_token")
+
         if not access_token:
             raise argparse.ArgumentTypeError("Error: can't find access_token")
-        self.app.client.set_token(access_token)
-        os.environ[Constant.ENV_VAR_ACCESS_TOKEN] = access_token
+        if not refresh_token:
+            raise argparse.ArgumentTypeError("Error: can't find refresh_token")
 
-        if parsed_args.token_only:
-            # Only print the token, useful for scripting
+        self.app.client.set_token(access_token)
+
+        if parsed_args.access_token:
+            # Only print the access token
             print(access_token)
+        elif parsed_args.refresh_token:
+            # Only print the refresh token
+            print(refresh_token)
         else:
             print(
                 "Login successful.\n"
-                f"Token expires in {json_results['expires_in']} seconds\n"
-                f"Token: {access_token}"
+                f"Access token expires in {json_results['expires_in']} seconds\n"
+                f"Refresh token expires in {json_results['refresh_expires_in']} seconds\n\n"
+                "Set environment variables to take effect:\n"
+                f"export {Constant.ENV_VAR_ACCESS_TOKEN}={access_token}\n"
+                f"export {Constant.ENV_VAR_REFRESH_TOKEN}={refresh_token}"
             )
 
 
@@ -2484,33 +2512,43 @@ class RefreshToken(Command):
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
         parser.add_argument(
-            "--token-only",
-            action="store_true",
-            help="Only print the access token (useful for scripting)",
+            "--refresh-token",
+            type=str,
+            default=None,
+            help="Specify refresh_token directly (overrides environment variable)",
         )
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
-        status_code, reason, text, result = self.app.client.refresh_token()
+        refresh_token_value = parsed_args.refresh_token or os.environ.get(
+            "QCOS_REFRESH_TOKEN"
+        )
+        if not refresh_token_value:
+            raise argparse.ArgumentTypeError(
+                "Error: No refresh_token provided (use --refresh-token or set QCOS_REFRESH_TOKEN)"
+            )
+        status_code, reason, text, result = self.app.client.call_json_rpc(
+            self.app.client.auth_url,
+            "refresh_token",
+            {"refresh_token": refresh_token_value},
+        )
         json_results = CommandHelper.check_results(
             resource, "refresh_token", status_code, reason, text
         )
         access_token = json_results.get("access_token")
+        refresh_token = json_results.get("refresh_token")
         if not access_token:
             raise argparse.ArgumentTypeError("Error: can't find access_token")
         self.app.client.set_token(access_token)
-        os.environ[Constant.ENV_VAR_ACCESS_TOKEN] = access_token
-        if parsed_args.token_only:
-            # Only print the token, useful for scripting
-            print(access_token)
-        else:
-            print(
-                f"Token refreshed. "
-                f"New token expires in {json_results['expires_in']} "
-                f"seconds\n"
-                f"Token: {access_token}"
-            )
+        print(
+            f"Token refreshed.\n"
+            f"Access token expires in {json_results['expires_in']} seconds\n"
+            f"Refresh token expires in {json_results['refresh_expires_in']} seconds\n\n"
+            "Set environment variables to take effect:\n"
+            f"export {Constant.ENV_VAR_ACCESS_TOKEN}={access_token}\n"
+            f"export {Constant.ENV_VAR_REFRESH_TOKEN}={refresh_token}"
+        )
 
 
 class Whoami(ShowOne):
