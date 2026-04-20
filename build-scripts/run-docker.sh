@@ -20,10 +20,7 @@ abs_cwd=$(realpath ${cwd})
 build_scripts_dir=${abs_cwd}
 
 source ${build_scripts_dir}/setup-env.sh
-
 export QCOS_LOCAL_SRC_DIR="${top_dir}"
-
-echo "Creating QCOS dockers ..."
 
 # copy config files
 mkdir -p /etc/qcos/prefect
@@ -34,11 +31,22 @@ mkdir -p /etc/qcos/postgres
 cp -r ${QCOS_LOCAL_SRC_DIR}/build-scripts/postgres /etc/qcos/
 
 cd ${build_scripts_dir}
+
+# start postgres sql
 docker-compose -f docker-compose-postgres.yaml down
 if [ "${DB_BACKEND,,}" = "postgres" ]; then
   docker-compose -f docker-compose-postgres.yaml up -d
 fi
 
+# start cli
+docker-compose -f docker-compose-dev-cli.yaml down
+docker-compose -f docker-compose-dev-cli.yaml up -d
+
+# init database
+docker exec -i -e PASS="${QCOS_DATABASE_PASSWORD}" qcos-dev-cli /bin/bash -c "cd /root/qcos-project/build-scripts; ./init-db.sh -i -u"
+
+# start qcos
+echo "Creating QCOS dockers ..."
 if [ "${DEV,,}" = "false" ]; then
   docker-compose -f docker-compose.yaml down
   docker-compose -f docker-compose.yaml up -d
