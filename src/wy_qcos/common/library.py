@@ -702,6 +702,8 @@ class Library:
         Returns:
             success, err_msg
         """
+        if not file_path:
+            return False, "file_path cannot be empty"
         try:
             with open(file_path, "w", encoding="utf-8") as file:
                 tomlkit.dump(data, file)
