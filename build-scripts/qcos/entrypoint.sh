@@ -105,7 +105,7 @@ def config(conf):
     conf['DATABASE']['QCOS_DATABASE_CONNECTION_URL'] = '${QCOS_DATABASE_CONNECTION_URL:-fake}'
     conf['USERS']['ENABLE_USER_MGMT'] = ${_ENABLE_USER_MGMT^}
 
-    conf['LOG']['API_LOG_FILE'] = '${REDIS_SERVER_IP:-127.0.0.1}'
+    conf['LOG']['API_LOG_FILE'] = '${API_LOG_FILE:-/var/log/qcos/qcos-api.log}'
     conf['LOG']['LOG_FORMAT'] = '%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s'
 
     conf['DEVICES']['DEVICE_LIST'] = [${DEVICE_LIST:-\"dummy\", \"qutip_sim\"}]
