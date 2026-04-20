@@ -23,7 +23,7 @@ from jsonrpcclient import Ok, parse, request
 
 from .common import errors
 from .common.client_library import ClientLibrary
-from .common.constant import Constant, HttpHeaders, HttpMethod
+from .common.constant import Constant, HttpHeaders, HttpMethod, HttpCode
 
 logger = logging.getLogger(__name__)
 
@@ -807,11 +807,6 @@ class Client:
         data = {}
         return self.call_json_rpc(self.user_url, "get_roles", data)
 
-    def lock_user(self, user_name, action):
-        """Lock or unlock user."""
-        data = {"user_name": user_name, "action": action}
-        return self.call_json_rpc(self.user_url, "lock_user", data)
-
     def change_password(self, user_id, old_password, new_password):
         """Change password for user by ID.
 
@@ -827,34 +822,70 @@ class Client:
         }
         return self.call_json_rpc(self.user_url, "change_password", data)
 
-    def get_login_logs(self, user_id=None, limit=100, offset=0):
-        """Get login logs by user ID.
+    def get_login_logs(
+        self, user_id=None, user_name=None, limit=100, offset=0
+    ):
+        """Get login logs by user ID or user_name.
 
         Args:
-            user_id: User ID (UUID) to filter logs
+            user_id: User ID (UUID) to filter logs (optional)
+            user_name: User name to filter logs (optional)
             limit: Maximum number of logs to return (default: 100)
             offset: Number of logs to skip (default: 0)
         """
         data = {"limit": limit, "offset": offset}
         if user_id:
             data["user_id"] = user_id
+        if user_name:
+            data["user_name"] = user_name
         return self.call_json_rpc(self.user_url, "get_login_logs", data)
 
     # [Auth]
     def login(self, username, password):
-        """User login to get JWT token.
+        """User login to get JWT tokens.
+
+        This method implements the standard JWT login pattern:
+        - Sends username and password to the server
+        - Receives access_token (short-lived) and refresh_token (long-lived)
+        - Stores both tokens for subsequent requests
 
         Args:
             username: Username for authentication
             password: Password for authentication
 
         Returns:
-            Login response with JWT access token
+            Login response with JWT access and refresh tokens
         """
         data = {"username": username, "password": password}
         status_code, reason, text, result = self.call_json_rpc(
             self.auth_url, "login", data
         )
+
+        # Store tokens on successful login
+        if status_code == HttpCode.SUCCESS_OK:
+            try:
+                if isinstance(result, dict):
+                    access_token = result.get("access_token")
+                    refresh_token = result.get("refresh_token")
+                elif hasattr(result, "get"):
+                    access_token = result.get("access_token")
+                    refresh_token = result.get("refresh_token")
+                else:
+                    access_token = None
+                    refresh_token = None
+
+                if access_token:
+                    self.set_token(access_token)
+                    os.environ[Constant.ENV_VAR_ACCESS_TOKEN] = access_token
+
+                if refresh_token:
+                    os.environ["QCOS_REFRESH_TOKEN"] = refresh_token
+
+            except Exception as e:
+                logger.warning(
+                    f"Failed to store tokens from login response: {e}"
+                )
+
         return status_code, reason, text, result
 
     def logout(self):
@@ -866,30 +897,55 @@ class Client:
         status_code, reason, text, result = self.call_json_rpc(
             self.auth_url, "logout", {}
         )
-        if status_code == 200:
+        if status_code == HttpCode.SUCCESS_OK:
             self.clear_token()
         return status_code, reason, text, result
 
     def refresh_token(self):
-        """Refresh JWT token.
+        """Refresh JWT token using refresh_token.
+
+        This method implements the standard JWT refresh token pattern:
+        - Sends the stored refresh_token to the server
+        - Receives new access_token and refresh_token
+        - Updates stored tokens
 
         Returns:
-            Token refresh response with new JWT access token
+            Token refresh response with new JWT access and refresh tokens
         """
+        # Get refresh token from environment or stored value
+        refresh_token_value = os.environ.get("QCOS_REFRESH_TOKEN")
+        if not refresh_token_value:
+            return (
+                401,
+                "Unauthorized",
+                "",
+                {"error": "No refresh token available"},
+            )
+
         status_code, reason, text, result = self.call_json_rpc(
-            self.auth_url, "refresh_token", {}
+            self.auth_url,
+            "refresh_token",
+            {"refresh_token": refresh_token_value},
         )
-        if status_code == 200:
+
+        if status_code == HttpCode.SUCCESS_OK:
             # Handle both dict and Response object
             if isinstance(result, dict):
                 access_token = result.get("access_token")
+                refresh_token_new = result.get("refresh_token")
             elif hasattr(result, "get"):
                 access_token = result.get("access_token")
+                refresh_token_new = result.get("refresh_token")
             else:
                 access_token = None
+                refresh_token_new = None
 
             if access_token:
                 self.set_token(access_token)
+                # Also update refresh token
+                if refresh_token_new:
+                    os.environ["QCOS_REFRESH_TOKEN"] = refresh_token_new
+
         return status_code, reason, text, result
 
     def get_current_user(self):
