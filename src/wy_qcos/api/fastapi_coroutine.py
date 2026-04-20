@@ -89,7 +89,7 @@ class BackgroundServiceManager:
 
 
 @asynccontextmanager
-async def lifespan(app: jsonrpc.API):
+async def app_lifespan(app: jsonrpc.API):
     """FastAPI lifespan manager for background services.
 
     Args:
