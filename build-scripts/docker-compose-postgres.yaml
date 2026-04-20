@@ -21,10 +21,11 @@ services:
     network_mode: "host"
     environment:
       TZ: Asia/Shanghai
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD}
     volumes:
       - /etc/hosts:/etc/hosts
       - /etc/qcos/postgres/initdb:/docker-entrypoint-initdb.d
       - /etc/qcos/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+      - /var/run/postgresql:/var/run/postgresql
       - /var/log/qcos:/var/log/qcos
       - /var/qcos/db/postgresql:/var/lib/postgresql
