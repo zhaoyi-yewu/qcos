@@ -16,16 +16,12 @@
 # ----------------------------------------------------------------------
 
 import argparse
-import asyncio
-import functools
 import logging
-import os
-import platform
-import signal
 import sys
 import uvicorn
 
 from wy_qcos.api.fastapi_server import app, QcosUvicornServer
+from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api
 from wy_qcos.common import errors
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
@@ -47,32 +43,6 @@ PROGRAM_AUTHOR = Constant.PROGRAM_AUTHOR
 PROGRAM_VERSION = f"{PROGRAM_NAME} - v{QcosVersion.VERSION} ({PROGRAM_AUTHOR})"
 LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_FORMAT = "%(asctime)s %(process)d %(levelname)s [%(name)s] %(message)s"
-
-
-def _signal_handling():
-    """Signal handling."""
-
-    def signal_handler(signame, *args):
-        """Signal handler."""
-        try:
-            if signame == "SIGHUP":
-                logger.info(f"Server has got signal {signame}, reloading...")
-                # asyncio.ensure_future(Controller.instance().reload())
-            else:
-                logger.info(f"Server has got signal {signame}, exiting...")
-                # send SIGTERM to the server PID so uvicorn can be shutdown
-                os.kill(os.getpid(), signal.SIGTERM)
-        except asyncio.CancelledError:
-            pass
-
-    # register signals
-    signals = ["SIGHUP", "SIGQUIT", "SIGTERM"]
-    if platform.system() != "Linux":
-        signals = []
-    for signal_name in signals:
-        callback = functools.partial(signal_handler, signal_name)
-        loop = asyncio.get_event_loop()
-        loop.add_signal_handler(getattr(signal, signal_name), callback)
 
 
 class Server:
@@ -160,42 +130,6 @@ class Server:
         )
         logger.setLevel(logger_level)
 
-    @staticmethod
-    def _pid_lock(path):
-        """Write the file in a file on the system.
-
-        Check if the process is not already running
-
-        Args:
-            path: pid lock file path
-        """
-        if os.path.exists(path):
-            pid = None
-            try:
-                with open(path, encoding="utf-8") as f:
-                    try:
-                        pid = int(f.read())
-                        # kill returns an error if the process is not running
-                        os.kill(pid, 0)
-                    except (OSError, SystemError, ValueError):
-                        pid = None
-            except OSError as e:
-                logger.critical("Can't open pid file %s: %s", pid, str(e))
-                sys.exit(1)
-
-            if pid:
-                logger.critical(
-                    "QCOS api server is already running pid: %d", pid
-                )
-                sys.exit(1)
-
-        try:
-            with open(path, "w+", encoding="utf-8") as f:
-                f.write(str(os.getpid()))
-        except OSError as e:
-            logger.critical("Can't write pid file %s: %s", path, str(e))
-            sys.exit(1)
-
     def run(self, loop):
         """Run the server."""
         self._parse_arguments(sys.argv[1:])
@@ -210,7 +144,7 @@ class Server:
             # only show uvicorn access logs in debug mode
             access_log = True
 
-        _signal_handling()
+        # Let uvicorn handle signals; do not register custom signal handlers here.
         try:
             _listen_ip = (
                 Config.API_SERVER_LISTEN_IP
@@ -280,19 +214,21 @@ class Server:
 
             # init user management module
             logger.info("Init user manager")
-            from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api
+            from wy_qcos.db.utils import db_utils  # TODO: to be unified
 
-            user_manager = UserManager(
-                Config.ACCESS_CONTROL_MODEL_FILE,
-                Config.ACCESS_CONTROL_POLICY_FILE,
-                all_api,
-            )
-            app.state._user_manager = user_manager
+            with db_utils.create_db_session(db_engine) as db_session:
+                user_manager = UserManager(
+                    Config.ACCESS_CONTROL_MODEL_FILE,
+                    Config.ACCESS_CONTROL_POLICY_FILE,
+                    all_api,
+                    db_session,
+                )
+                app.state._user_manager = user_manager
 
-            # init security manager
-            logger.info("Init security manager")
-            security_manager = SecurityManager(user_manager)
-            app.state._security_manager = security_manager
+                # init security manager
+                logger.info("Init security manager")
+                security_manager = SecurityManager(user_manager)
+                app.state._security_manager = security_manager
 
             # run any unfinished callbacks
             logger.info("Processing unfinished callbacks ...")
