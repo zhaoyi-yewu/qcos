@@ -40,12 +40,19 @@ class DatabaseDriver:
 
     def create_engine(self):
         """Create db engine."""
-        self._engine = create_engine(
-            self._url,
-            pool_size=10,
-            max_overflow=1000,
-            pool_pre_ping=True,
-        )
+        # Convert URL string to URL object if needed
+        url = self._url if hasattr(self._url, 'drivername') else make_url(self._url)
+
+        # Build engine kwargs based on database type
+        engine_kwargs = {'pool_pre_ping': True}
+
+        # Only set pool parameters for databases that support connection pooling
+        # SQLite uses SingletonThreadPool which doesn't support these parameters
+        if not url.drivername.startswith('sqlite'):
+            engine_kwargs['pool_size'] = 10
+            engine_kwargs['max_overflow'] = 1000
+
+        self._engine = create_engine(url, **engine_kwargs)
         return self._engine
 
     def disconnect_from_db(self) -> None:
@@ -59,16 +66,15 @@ class DatabaseDriver:
             Base.metadata.create_all(bind=self._engine)  # type: ignore[attr-defined]
         except Exception as e:
             logger.info(f"Error while creating tables : {e}")
-            raise Exception(e)
+            raise
 
     def check_connection(self):
         """Check connection."""
+        if self._engine is None:
+            logger.error("Database engine not initialized")
+            raise TimeoutError("Database engine not initialized")
 
         def is_connected():
-            if self._engine is None:
-                logger.error("Database engine not initialized")
-                return False, None, None
-
             try:
                 with self._engine.connect() as conn:
                     conn.execute(text("SELECT 1"))
@@ -85,9 +91,9 @@ class DatabaseDriver:
 
 def init_database():
     """Init database."""
-    if Config.QCOS_DATABASE_CONNECTION_URL == "fake":
+    if Config.QCOS_DATABASE_CONNECTION_URL == "fake":  # TODO: remove fake
         logger.info("Skip init database without db config.")
-        return
+        return None
 
     logger.info("Init database ...")
     config_db_url = make_url(Config.QCOS_DATABASE_CONNECTION_URL)
@@ -95,5 +101,5 @@ def init_database():
 
     db_engine = db_driver.create_engine()
     db_driver.check_connection()
-    db_driver.create_tables()
+    # db_driver.create_tables()  # TODO: don't create tables here
     return db_engine
