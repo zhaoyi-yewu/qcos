@@ -76,13 +76,13 @@ class Config:
     ENABLE_USER_MGMT = True
     PASSWORD_EXPIRY_DAYS = 90
     MAX_LOGIN_ATTEMPTS = 5
+    MAX_LOGIN_LOGS = 10000  # Maximum number of login logs to keep in database
     LOCKOUT_DURATION_MINUTES = 30
     ADMIN_PASSWORD = None
     ACCESS_CONTROL_MODEL_FILE = "/etc/qcos/roles/casbin_model.conf"
     ACCESS_CONTROL_POLICY_FILE = "/etc/qcos/roles/policy.conf"
     JWT_AUTH_SECRET_KEY = _s("47pW_6k8A4iU1Z8-r8G2j4_xN9M5V3L7Q9p2X1Y4Z0A")
     JWT_AUTH_ALGORITHM = "HS256"
-    JWT_AUTH_LIFE_SECONDS = 3600 * 24 * 7
     ACCESS_TOKEN_EXPIRE_MINUTES = 30
     REFRESH_TOKEN_EXPIRE_DAYS = 7
 
@@ -269,6 +269,13 @@ class Config:
 
     @classmethod
     def validate(cls):
+        # Only one of ENABLE_USER_MGMT or ENABLE_VIRT can be enabled
+        if cls.ENABLE_VIRT and cls.ENABLE_USER_MGMT:
+            raise errors.GenericException(
+                "Cannot enable both ENABLE_USER_MGMT and ENABLE_VIRT simultaneously. "
+                "Only one authentication mode can be enabled."
+            )
+
         # remove duplicated devices
         cls.DEVICE_LIST = Library.remove_duplicates(cls.DEVICE_LIST)
         success, err_msg = Library.validate_schema(
