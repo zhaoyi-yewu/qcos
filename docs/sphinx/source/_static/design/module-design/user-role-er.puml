@@ -1,0 +1,70 @@
+@startuml
+' 统一全局字体，确保中文正常显示
+skinparam defaultFontName "Noto Sans CJK SC"
+skinparam dpi 300
+
+' 设置布局方向
+top to bottom direction
+
+' define user
+class User {
+  - id: int
+  - user_name: str
+  - hashed_password: str
+  - roles: list[str]
+  - is_active: bool
+  - is_locked: bool
+  - last_login: datetime
+  - password_changed_at: datetime
+  - locked_until: datetime
+  - password_expiry_days: int
+  - failed_login_attempts: int
+  - description: str
+  - created_at: datetime
+  - updated_at: datetime
+}
+
+' define role
+class Role {
+  - id: int
+  - role_name: str
+  - permissions: list[str]
+  - description: str
+  - created_at: datetime
+  - updated_at: datetime
+}
+
+' define user_role association
+class UserRole {
+  - id: int
+  - user_id: int
+  - role_id: int
+  - created_at: datetime
+}
+
+' define permission
+class Permission {
+  - sub: str
+  - obj: str
+  - act: str
+}
+
+' define permission manager
+class PermissionManager {
+  - enforcer: CasbinEnforcer
+  + enforce()
+  + add_policy()
+  + remove_policy()
+}
+
+' relationships
+User --> UserRole : has many
+UserRole --> Role : belongs to
+Role --> Permission : has many
+PermissionManager --> Permission : manages
+
+' example roles
+Role : admin
+Role : user
+
+@enduml
