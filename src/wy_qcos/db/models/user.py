@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import uuid
 from datetime import datetime
 
 from sqlalchemy import (
@@ -37,20 +38,22 @@ class User(Base):
 
     __tablename__ = "users"
 
-    # Primary key: auto-increment ID
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    # Primary key: UUID
+    id = Column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+        index=True,
+    )
 
     # Business unique constraint: user name
     user_name = Column(String(50), unique=True, index=True, nullable=False)
 
     # FastAPI-Users base fields (password management)
     hashed_password = Column(String(255), nullable=False)
-    is_active = Column(Boolean, default=True)
-    is_superuser = Column(Boolean, default=False)
-    is_verified = Column(Boolean, default=False)
+    is_enabled = Column(Boolean, default=True)
 
     # Extended fields from existing model
-    roles = Column(JSON, default=[])
     is_locked = Column(Boolean, default=False)
     last_login = Column(DateTime, nullable=True)
     password_changed_at = Column(DateTime, default=datetime.now)
@@ -62,8 +65,24 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     # Relationships
-    login_logs = relationship("LoginLog", back_populates="user")
     user_roles = relationship("UserRole", back_populates="user")
+
+    @property
+    def roles(self) -> list[str]:
+        """Get list of role names for this user (convenience property).
+
+        Returns:
+            List of role names from user_roles association
+        """
+        return self.get_role_names()
+
+    def get_role_names(self) -> list[str]:
+        """Get list of role names for this user.
+
+        Returns:
+            List of role names from user_roles association
+        """
+        return [ur.role.role_name for ur in self.user_roles if ur.role]
 
 
 class Role(Base):
@@ -71,8 +90,13 @@ class Role(Base):
 
     __tablename__ = "roles"
 
-    # Primary key: auto-increment ID
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    # Primary key: UUID
+    id = Column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+        index=True,
+    )
 
     # Business unique constraint: role name
     role_name = Column(String(50), unique=True, index=True, nullable=False)
@@ -92,12 +116,17 @@ class UserRole(Base):
 
     __tablename__ = "user_roles"
 
-    # Primary key: auto-increment ID
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    # Primary key: UUID
+    id = Column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+        index=True,
+    )
 
     # Foreign keys
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    role_id = Column(String(36), ForeignKey("roles.id"), nullable=False)
 
     # Creation timestamp
     created_at = Column(DateTime, default=datetime.now)
@@ -112,15 +141,45 @@ class LoginLog(Base):
 
     __tablename__ = "login_logs"
 
-    # Primary key: auto-increment ID
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    # Primary key: UUID
+    id = Column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+        index=True,
+    )
 
     # Login information
     user_name = Column(String(50), index=True, nullable=False)
     ip_address = Column(String(45), nullable=False)  # Support IPv6
     login_time = Column(DateTime, default=datetime.now)
-    login_status = Column(String(20), nullable=False)  # success, failed
+    login_status = Column(
+        Boolean, nullable=False
+    )  # True for success, False for failed
+    failure_reason = Column(
+        Text, nullable=True
+    )  # Reason for login failure if login_status is False
     user_agent = Column(Text, nullable=True)
 
-    # Relationships
-    user = relationship("User", back_populates="login_logs")
+
+class TokenBlacklist(Base):
+    """Token blacklist database model for tracking revoked JWT tokens."""
+
+    __tablename__ = "token_blacklist"
+
+    # Primary key: UUID
+    id = Column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+        index=True,
+    )
+
+    # Token JTI (unique identifier)
+    token_jti = Column(String(36), unique=True, index=True, nullable=False)
+
+    # Token expiration time
+    expires_at = Column(DateTime, nullable=False)
+
+    # Creation timestamp
+    created_at = Column(DateTime, default=datetime.now)
