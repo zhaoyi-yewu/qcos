@@ -79,6 +79,7 @@ services:
       - /etc/qcos:/etc/qcos
       - /var/log/qcos:/var/log/qcos
       - /var/run/qcos:/var/run/qcos
+      - /var/run/postgresql:/var/run/postgresql
       - /var/qcos:/var/qcos
       - ${QCOS_LOCAL_SRC_DIR}:/root/qcos-project
       - ${QCOS_LOCAL_SRC_DIR}/bin/qcos-cli.py:/usr/bin/qcos-cli
