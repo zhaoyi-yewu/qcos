@@ -23,7 +23,6 @@ from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import system_api_v1
 from wy_qcos.common import errors
-from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.task_manager import scheduler
 from .dependencies.authentication import auth
@@ -81,7 +80,10 @@ def system_info(
     responses = []
     try:
         tags = None
-        if Config.ENABLE_VIRT and auth_data is not None:
+        if (
+            auth_data is not None
+            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL
+        ):
             virtual_instance_id = auth_data["instance_id"]
             tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         responses, err = scheduler.get_jobs(tags=tags)
