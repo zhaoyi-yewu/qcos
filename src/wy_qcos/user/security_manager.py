@@ -16,7 +16,8 @@
 # ----------------------------------------------------------------------
 
 import logging
-from datetime import datetime, timedelta, timezone
+import time
+from datetime import datetime, timedelta
 from typing import Annotated
 
 import bcrypt
@@ -31,16 +32,6 @@ from wy_qcos.user.user_manager import UserManager
 logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
-# Token configuration
-JWT_AUTH_SECRET_KEY = Config.JWT_AUTH_SECRET_KEY
-JWT_AUTH_ALGORITHM = Config.JWT_AUTH_ALGORITHM
-ACCESS_TOKEN_EXPIRE_MINUTES = Config.ACCESS_TOKEN_EXPIRE_MINUTES
-REFRESH_TOKEN_EXPIRE_DAYS = Config.REFRESH_TOKEN_EXPIRE_DAYS
-
-# Rate limiting configuration
-MAX_LOGIN_ATTEMPTS = Config.MAX_LOGIN_ATTEMPTS or 5
-LOCKOUT_DURATION_MINUTES = Config.LOCKOUT_DURATION_MINUTES or 15
-
 
 class SecurityManager:
     """Enhanced security manager with advanced authentication features."""
@@ -53,7 +44,6 @@ class SecurityManager:
         """
         self.user_manager = user_manager
         self.failed_attempts = {}  # Track failed login attempts
-        self.active_sessions = {}  # Track active sessions
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -100,12 +90,12 @@ class SecurityManager:
             return False
 
         attempts = self.failed_attempts[user_name]
-        if len(attempts) < MAX_LOGIN_ATTEMPTS:
+        if len(attempts) < Config.MAX_LOGIN_ATTEMPTS:
             return False
 
         last_attempt = attempts[-1]
         lockout_until = last_attempt + timedelta(
-            minutes=LOCKOUT_DURATION_MINUTES
+            minutes=Config.LOCKOUT_DURATION_MINUTES
         )
 
         if datetime.now() < lockout_until:
@@ -163,15 +153,23 @@ class SecurityManager:
             JWT token string
         """
         to_encode = data.copy()
+        # Use Unix timestamp (seconds since epoch) to avoid datetime timezone issues
+        # This ensures compatibility with PyJWT's token expiration handling
+        # Read from Config at runtime to support dynamic configuration changes
+        current_timestamp = int(time.time())
         if expires_delta:
-            expire = datetime.now(timezone.utc) + expires_delta
-        else:
-            expire = datetime.now(timezone.utc) + timedelta(
-                minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+            expire_timestamp = current_timestamp + int(
+                expires_delta.total_seconds()
             )
-        to_encode.update({"exp": expire})
+        else:
+            expire_timestamp = current_timestamp + (
+                Config.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            )
+        to_encode.update({"exp": expire_timestamp})
         encoded_jwt = jwt.encode(
-            to_encode, JWT_AUTH_SECRET_KEY, algorithm=JWT_AUTH_ALGORITHM
+            to_encode,
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.JWT_AUTH_ALGORITHM,
         )
         return encoded_jwt
 
@@ -185,12 +183,17 @@ class SecurityManager:
             JWT refresh token string
         """
         to_encode = data.copy()
-        expire = datetime.now(timezone.utc) + timedelta(
-            days=REFRESH_TOKEN_EXPIRE_DAYS
+        # Use Unix timestamp (seconds since epoch) to avoid datetime timezone issues
+        # Read from Config at runtime to support dynamic configuration changes
+        current_timestamp = int(time.time())
+        expire_timestamp = current_timestamp + (
+            Config.REFRESH_TOKEN_EXPIRE_DAYS * 86400
         )
-        to_encode.update({"exp": expire, "type": "refresh"})
+        to_encode.update({"exp": expire_timestamp, "type": "refresh"})
         encoded_jwt = jwt.encode(
-            to_encode, JWT_AUTH_SECRET_KEY, algorithm=JWT_AUTH_ALGORITHM
+            to_encode,
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.JWT_AUTH_ALGORITHM,
         )
         return encoded_jwt
 
@@ -208,7 +211,9 @@ class SecurityManager:
         """
         try:
             payload = jwt.decode(
-                token, JWT_AUTH_SECRET_KEY, algorithms=[JWT_AUTH_ALGORITHM]
+                token,
+                Config.JWT_AUTH_SECRET_KEY,
+                algorithms=[Config.JWT_AUTH_ALGORITHM],
             )
             return payload
         except JWTError as e:
@@ -306,7 +311,7 @@ class SecurityManager:
             )
 
         # Check password
-        if not self.verify_password(password, user.password_hash):
+        if not self.verify_password(password, user.hashed_password):
             self.record_failed_attempt(user_name)
             self.user_manager.log_login_attempt(
                 user_name,
@@ -428,16 +433,12 @@ class SecurityManager:
             True if user has permission
         """
         # Check if user has direct permissions
-        if self.user_manager.perms_check_enforce(
-            user.user_name, resource, action
-        ):
+        if self.user_manager.perms_enforce(user.user_name, resource, action):
             return True
 
         # Check if user has role-based permissions
         for role_name in user.roles:
-            if self.user_manager.perms_check_enforce(
-                role_name, resource, action
-            ):
+            if self.user_manager.perms_enforce(role_name, resource, action):
                 return True
 
         return False
