@@ -15,10 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from contextlib import contextmanager
 from fastapi import Depends
 from starlette.requests import HTTPConnection
 from sqlalchemy.orm import Session
-from passlib.context import CryptContext
 
 from wy_qcos.db.repositories import BaseRepository
 
@@ -45,6 +45,10 @@ def get_repository(repo: type[BaseRepository]):
     return get_repo
 
 
-def hash_password(password: str) -> str:
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    return pwd_context.hash(password)
+@contextmanager
+def create_db_session(db_engine):
+    session = Session(db_engine, expire_on_commit=False)
+    try:
+        yield session
+    finally:
+        session.close()
