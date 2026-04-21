@@ -60,7 +60,7 @@ class TestConfig:
         mock_config = {
             "DEFAULT": {
                 "debug": "false",
-                "password_salt": f"{Constant.ENCRYPTION_PREFIX}abc123"
+                "password_salt": f"{Constant.ENCRYPTION_PREFIX}abc123",
             }
         }
         mock_obj = Mock()
@@ -78,9 +78,7 @@ class TestConfig:
     ):
         """Test load config with decryption failure."""
         mock_config = {
-            "DEFAULT": {
-                "password_salt": f"{Constant.ENCRYPTION_PREFIX}abc123"
-            }
+            "DEFAULT": {"password_salt": f"{Constant.ENCRYPTION_PREFIX}abc123"}
         }
         mock_obj = Mock()
         mock_obj.unwrap.return_value = mock_config
@@ -118,9 +116,7 @@ class TestConfig:
     @patch.object(Library, "read_toml_file")
     def test_load_config_file_invalid_section_key(self, mock_read_toml):
         """Test loading config with invalid key in DEFAULT section."""
-        mock_config = {
-            "DEFAULT": {"invalid_config_key": "value"}
-        }
+        mock_config = {"DEFAULT": {"invalid_config_key": "value"}}
         mock_obj = Mock()
         mock_obj.unwrap.return_value = mock_config
         mock_read_toml.return_value = (True, None, mock_obj)
@@ -132,9 +128,7 @@ class TestConfig:
     @patch.object(Library, "read_toml_file")
     def test_load_config_file_valid_section_invalid_key(self, mock_read_toml):
         """Test valid section but with invalid config key."""
-        mock_config = {
-            "DEFAULT": {"nonexistent_param": "value"}
-        }
+        mock_config = {"DEFAULT": {"nonexistent_param": "value"}}
         mock_obj = Mock()
         mock_obj.unwrap.return_value = mock_config
         mock_read_toml.return_value = (True, None, mock_obj)
@@ -145,9 +139,7 @@ class TestConfig:
     @patch.object(Library, "read_toml_file")
     def test_load_extra_config_not_in_valid_sections(self, mock_read_toml):
         """Test extra config loading when section not in valid sections."""
-        mock_config = {
-            "CUSTOM_SECTION": {"custom_key": "custom_value"}
-        }
+        mock_config = {"CUSTOM_SECTION": {"custom_key": "custom_value"}}
         mock_obj = Mock()
         mock_obj.unwrap.return_value = mock_config
         mock_read_toml.return_value = (True, None, mock_obj)
@@ -161,18 +153,21 @@ class TestConfig:
         """Test driver env file with copy_from handling."""
         from collections import OrderedDict
         from pathlib import Path
+
         mock_configs = OrderedDict([
-            ("base_driver", {
-                "deps_filepaths": ["deps.txt"],
-                "envs": ["ENV1", "ENV2"]
-            }),
-            ("derived_driver", {"copy_from": "base_driver"})
+            (
+                "base_driver",
+                {"deps_filepaths": ["deps.txt"], "envs": ["ENV1", "ENV2"]},
+            ),
+            ("derived_driver", {"copy_from": "base_driver"}),
         ])
         mock_read_toml.return_value = (True, None, mock_configs)
 
         with patch("pathlib.Path.parent") as mock_parent:
             mock_parent_obj = Mock()
-            mock_parent_obj.__truediv__ = Mock(return_value=Path("/test/deps.txt"))
+            mock_parent_obj.__truediv__ = Mock(
+                return_value=Path("/test/deps.txt")
+            )
             mock_parent.__truediv__ = Mock(return_value=mock_parent_obj)
             with patch("pathlib.Path.resolve") as mock_resolve:
                 mock_resolve.return_value = Path("/test/deps.txt")
@@ -229,7 +224,9 @@ class TestConfig:
         configs = config.get_configs(mask_password=False)
         # Should not include attributes starting with _ or __
         for key in configs.keys():
-            assert not key.startswith('_'), f"Config should not include private attr: {key}"
+            assert not key.startswith("_"), (
+                f"Config should not include private attr: {key}"
+            )
 
     def test_show_info_formatting(self):
         """Test show_info returns properly formatted string."""

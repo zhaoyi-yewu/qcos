@@ -535,23 +535,30 @@ class TestLoginLogging:
             mock_users_repo.create_user.return_value = (True, None, None)
 
             # Mock login log tracking
-            def mock_create_login_log(user_name, ip_address, success,
-                                     failure_reason=None, user_agent=None):
+            def mock_create_login_log(
+                user_name,
+                ip_address,
+                success,
+                failure_reason=None,
+                user_agent=None,
+            ):
                 log = LoginLog(
                     user_name=user_name,
                     ip_address=ip_address,
                     success=success,
                     failure_reason=failure_reason,
                     user_agent=user_agent,
-                    timestamp=datetime.now()
+                    timestamp=datetime.now(),
                 )
                 login_logs.append(log)
 
             mock_users_repo.create_login_log.side_effect = (
                 mock_create_login_log
             )
-            mock_users_repo.get_login_logs.side_effect = (
-                lambda limit=100: (True, None, login_logs[-limit:])
+            mock_users_repo.get_login_logs.side_effect = lambda limit=100: (
+                True,
+                None,
+                login_logs[-limit:],
             )
             manager.users_repo = mock_users_repo
 
@@ -591,4 +598,3 @@ class TestLoginLogging:
         logs = user_manager.get_login_logs()
         # Latest logs should be first
         assert len(logs) >= 3
-

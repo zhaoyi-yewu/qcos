@@ -113,4 +113,3 @@ class TestClientRole:
         mock_call_json_rpc.assert_called_once_with(
             client.user_url, "get_roles", {}
         )
-

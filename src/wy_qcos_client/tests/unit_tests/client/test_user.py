@@ -148,8 +148,6 @@ class TestClientUser:
             client.user_url, "get_users", {}
         )
 
-
-
     @patch.object(Client, "call_json_rpc")
     def test_change_password(self, mock_call_json_rpc):
         """Test change_password method."""

@@ -106,7 +106,7 @@ def user_manager_with_mocks():
 
         def mock_delete_user_by_id(user_id):
             for user_name, user in list(created_users.items()):
-                if hasattr(user, 'id') and user.id == user_id:
+                if hasattr(user, "id") and user.id == user_id:
                     del created_users[user_name]
                     return (True, None)
             return (False, "User not found")
@@ -116,7 +116,7 @@ def user_manager_with_mocks():
 
         def mock_update_role(role_id, request):
             for role in created_roles.values():
-                if hasattr(role, 'id') and role.id == role_id:
+                if hasattr(role, "id") and role.id == role_id:
                     role.permissions = request.permissions or role.permissions
                     role.description = request.description or role.description
                     return (True, None, role)
@@ -124,14 +124,14 @@ def user_manager_with_mocks():
 
         def mock_delete_role(role_id):
             for role_name, role in list(created_roles.items()):
-                if hasattr(role, 'id') and role.id == role_id:
+                if hasattr(role, "id") and role.id == role_id:
                     del created_roles[role_name]
                     return (True, None)
             return (False, "Role not found")
 
         def mock_update_user(user_id, request):
             for user in created_users.values():
-                if hasattr(user, 'id') and user.id == user_id:
+                if hasattr(user, "id") and user.id == user_id:
                     if request.roles is not None:
                         user.roles = request.roles
                     if request.is_enabled is not None:
@@ -139,7 +139,9 @@ def user_manager_with_mocks():
                     if request.is_locked is not None:
                         user.is_locked = request.is_locked
                     if request.password_expiry_days is not None:
-                        user.password_expiry_days = request.password_expiry_days
+                        user.password_expiry_days = (
+                            request.password_expiry_days
+                        )
                     if request.description is not None:
                         user.description = request.description
                     return (True, None, user)
@@ -155,8 +157,10 @@ def user_manager_with_mocks():
         mock_users_repo.delete_user_by_id.side_effect = mock_delete_user_by_id
         mock_users_repo.update_user.side_effect = mock_update_user
         mock_users_repo.create_login_log.return_value = None
-        mock_users_repo.get_login_logs.side_effect = (
-            lambda limit=100: (True, None, manager.login_logs[-limit:])
+        mock_users_repo.get_login_logs.side_effect = lambda limit=100: (
+            True,
+            None,
+            manager.login_logs[-limit:],
         )
         manager.users_repo = mock_users_repo
 
@@ -178,4 +182,3 @@ def user_manager_with_mocks():
     finally:
         patcher1.stop()
         patcher2.stop()
-

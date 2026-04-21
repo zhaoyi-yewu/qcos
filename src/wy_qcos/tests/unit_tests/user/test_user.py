@@ -45,7 +45,7 @@ class TestUserManager:
 
         mock_perms_check = Mock()
         mock_perms_check.get_for_role.return_value = []
-        
+
         patcher1 = patch(
             "wy_qcos.user.permission_manager.casbin.Enforcer",
             return_value=mock_enforcer,
@@ -53,17 +53,17 @@ class TestUserManager:
         patcher2 = patch(
             "wy_qcos.user.user_manager.PermissionManager",
         )
-        
+
         patcher1.start()
         patcher2.start()
         try:
             manager = UserManager("model.conf", "policy.csv", all_api)
             manager.perms_check = mock_perms_check
-            
+
             # Setup roles and users storage
             created_roles = {}
             created_users = {}
-            
+
             def mock_create_role(request):
                 role = schemas.Role(
                     id=str(len(created_roles)),
@@ -73,12 +73,12 @@ class TestUserManager:
                 )
                 created_roles[request.role_name] = role
                 return (True, None, role)
-            
+
             def mock_get_role_by_name(role_name):
                 if role_name in created_roles:
                     return (True, None, created_roles[role_name])
                 return (False, None, None)
-            
+
             def mock_create_user(request):
                 user = schemas.User(
                     id=str(len(created_users)),
@@ -95,47 +95,51 @@ class TestUserManager:
                 )
                 created_users[request.user_name] = user
                 return (True, None, user)
-            
+
             def mock_get_user_by_username(user_name):
                 if user_name in created_users:
                     return (True, None, created_users[user_name])
                 return (False, None, None)
-            
+
             def mock_get_users():
                 return (True, None, list(created_users.values()))
-            
+
             def mock_delete_user_by_id(user_id):
                 # Find and delete user by id
                 for user_name, user in list(created_users.items()):
-                    if hasattr(user, 'id') and user.id == user_id:
+                    if hasattr(user, "id") and user.id == user_id:
                         del created_users[user_name]
                         return (True, None)
                 return (False, "User not found")
-            
+
             def mock_get_roles():
                 return (True, None, list(created_roles.values()))
 
             def mock_update_role(role_id, request):
                 # Find role by id and update it
                 for role in created_roles.values():
-                    if hasattr(role, 'id') and role.id == role_id:
-                        role.permissions = request.permissions or role.permissions
-                        role.description = request.description or role.description
+                    if hasattr(role, "id") and role.id == role_id:
+                        role.permissions = (
+                            request.permissions or role.permissions
+                        )
+                        role.description = (
+                            request.description or role.description
+                        )
                         return (True, None, role)
                 return (False, "Role not found", None)
 
             def mock_delete_role(role_id):
                 # Find and delete role by id
                 for role_name, role in list(created_roles.items()):
-                    if hasattr(role, 'id') and role.id == role_id:
+                    if hasattr(role, "id") and role.id == role_id:
                         del created_roles[role_name]
                         return (True, None)
                 return (False, "Role not found")
-            
+
             def mock_update_user(user_id, request):
                 # Find user by id and update it
                 for user in created_users.values():
-                    if hasattr(user, 'id') and user.id == user_id:
+                    if hasattr(user, "id") and user.id == user_id:
                         if request.roles is not None:
                             user.roles = request.roles
                         if request.is_enabled is not None:
@@ -143,7 +147,9 @@ class TestUserManager:
                         if request.is_locked is not None:
                             user.is_locked = request.is_locked
                         if request.password_expiry_days is not None:
-                            user.password_expiry_days = request.password_expiry_days
+                            user.password_expiry_days = (
+                                request.password_expiry_days
+                            )
                         if request.description is not None:
                             user.description = request.description
                         return (True, None, user)
@@ -156,28 +162,34 @@ class TestUserManager:
                 mock_get_user_by_username
             )
             mock_users_repo.get_users.side_effect = mock_get_users
-            mock_users_repo.delete_user_by_id.side_effect = mock_delete_user_by_id
+            mock_users_repo.delete_user_by_id.side_effect = (
+                mock_delete_user_by_id
+            )
             mock_users_repo.update_user.side_effect = mock_update_user
             mock_users_repo.create_login_log.return_value = None
-            mock_users_repo.get_login_logs.side_effect = (
-                lambda limit=100: (True, None, manager.login_logs[-limit:])
+            mock_users_repo.get_login_logs.side_effect = lambda limit=100: (
+                True,
+                None,
+                manager.login_logs[-limit:],
             )
             manager.users_repo = mock_users_repo
-            
+
             mock_roles_repo = Mock()
             mock_roles_repo.create_role.side_effect = mock_create_role
-            mock_roles_repo.get_role_by_name.side_effect = mock_get_role_by_name
+            mock_roles_repo.get_role_by_name.side_effect = (
+                mock_get_role_by_name
+            )
             mock_roles_repo.get_roles.side_effect = mock_get_roles
             mock_roles_repo.update_role.side_effect = mock_update_role
             mock_roles_repo.delete_role_by_id.side_effect = mock_delete_role
             manager.roles_repo = mock_roles_repo
-            
+
             # Call init_users to create default roles
             manager.init_users()
-            
+
             # Clear login_logs to start fresh for each test
             manager.login_logs = []
-            
+
             yield manager
         finally:
             patcher1.stop()
@@ -915,7 +927,7 @@ class TestUserQueryOperations:
     def user_manager_with_users(self, user_manager_with_mocks):
         """Create a UserManager with test users."""
         manager = user_manager_with_mocks
-        
+
         # Create test users
         manager.create_user(
             "query_user1", _s("password1"), ["user"], True, False, 90
@@ -926,7 +938,7 @@ class TestUserQueryOperations:
         manager.create_user(
             "admin_user1", _s("password3"), ["admin"], True, False, 0
         )
-        
+
         return manager
 
     def test_get_all_users(self, user_manager_with_users):
@@ -1096,8 +1108,6 @@ class TestUserLifecycleIntegration:
         assert unlocked_user.is_locked is False
 
 
-
-
 class TestPasswordManagement:
     """Integration tests for password management."""
 
@@ -1141,8 +1151,6 @@ class TestPasswordManagement:
         assert not user_manager.check_password(wrong_password, hash1)
 
 
-
-
 class TestUserBatchOperations:
     """Integration tests for batch user operations."""
 
@@ -1168,18 +1176,18 @@ class TestUserBatchOperations:
             manager = UserManager("model.conf", "policy.csv", all_api)
             # Mock repos to prevent initialization errors
             login_logs = []
-            
+
             # Track created users
             created_users = {}
-            
+
             def mock_get_user_by_username(user_name):
                 if user_name in created_users:
                     return (True, None, created_users[user_name])
                 return (False, None, None)
-            
+
             def mock_get_users():
                 return (True, None, list(created_users.values()))
-            
+
             def mock_create_user(request):
                 user = schemas.User(
                     user_name=request.user_name,
@@ -1195,38 +1203,45 @@ class TestUserBatchOperations:
                 )
                 created_users[request.user_name] = user
                 return (True, None, user)
-            
+
             mock_users_repo = Mock()
             mock_users_repo.get_user_by_username.side_effect = (
                 mock_get_user_by_username
             )
             mock_users_repo.get_users.side_effect = mock_get_users
             mock_users_repo.create_user.side_effect = mock_create_user
-            
+
             # Mock login log tracking
-            def mock_create_login_log(user_name, ip_address, success,
-                                     failure_reason=None, user_agent=None):
+            def mock_create_login_log(
+                user_name,
+                ip_address,
+                success,
+                failure_reason=None,
+                user_agent=None,
+            ):
                 log = LoginLog(
                     user_name=user_name,
                     ip_address=ip_address,
                     success=success,
                     failure_reason=failure_reason,
                     user_agent=user_agent,
-                    timestamp=datetime.now()
+                    timestamp=datetime.now(),
                 )
                 login_logs.append(log)
 
             mock_users_repo.create_login_log.side_effect = (
                 mock_create_login_log
             )
-            mock_users_repo.get_login_logs.side_effect = (
-                lambda limit=100: (True, None, login_logs[-limit:])
+            mock_users_repo.get_login_logs.side_effect = lambda limit=100: (
+                True,
+                None,
+                login_logs[-limit:],
             )
             manager.users_repo = mock_users_repo
 
             # Track created roles
             created_roles = {}
-            
+
             def mock_create_role_func(request):
                 role = schemas.Role(
                     role_name=request.role_name,
@@ -1235,12 +1250,12 @@ class TestUserBatchOperations:
                 )
                 created_roles[request.role_name] = role
                 return (True, None, role)
-            
+
             def mock_get_role_by_name_func(role_name):
                 if role_name in created_roles:
                     return (True, None, created_roles[role_name])
                 return (False, None, None)
-            
+
             mock_roles_repo = Mock()
             mock_roles_repo.create_role.side_effect = mock_create_role_func
             mock_roles_repo.get_role_by_name.side_effect = (
@@ -1248,18 +1263,18 @@ class TestUserBatchOperations:
             )
             mock_roles_repo.get_roles.return_value = (True, None, [])
             manager.roles_repo = mock_roles_repo
-            
+
             # Create basic roles for testing
             manager.create_role(
                 "user",
-                ["/version", "/v1/device/get_device", "/v1/device/get_devices"],
-                "Basic user role"
+                [
+                    "/version",
+                    "/v1/device/get_device",
+                    "/v1/device/get_devices",
+                ],
+                "Basic user role",
             )
-            manager.create_role(
-                "admin",
-                ["*"],
-                "Administrator role"
-            )
+            manager.create_role("admin", ["*"], "Administrator role")
 
             yield manager
         finally:

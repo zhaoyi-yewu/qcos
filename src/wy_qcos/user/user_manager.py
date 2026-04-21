@@ -78,7 +78,7 @@ class UserManager:
         self._role_name_to_id = {}
         self.login_logs = []
         self.perms_check = self.permission_manager
-        
+
         self.default_admin_policies = self.fetch_default_policies(
             role=Constant.ROLE_ADMIN
         )
@@ -153,7 +153,7 @@ class UserManager:
         # Skip if roles_repo not initialized (e.g., in tests)
         if self.roles_repo is None:
             return
-        
+
         try:
             # Get all roles from database
             success, error, roles = self.roles_repo.get_roles()
@@ -539,7 +539,7 @@ class UserManager:
 
         # Add to internal storage
         self.roles_db[role_name] = role
-        if hasattr(role, 'id'):
+        if hasattr(role, "id"):
             self._role_name_to_id[role_name] = role.id
 
         # add policies
@@ -640,9 +640,11 @@ class UserManager:
         # Remove from internal storage
         if role_name in self.roles_db:
             del self.roles_db[role_name]
-        if hasattr(role, 'id') and role.id in self._role_name_to_id.values():
+        if hasattr(role, "id") and role.id in self._role_name_to_id.values():
             # Remove from mapping
-            self._role_name_to_id = {k: v for k, v in self._role_name_to_id.items() if v != role.id}
+            self._role_name_to_id = {
+                k: v for k, v in self._role_name_to_id.items() if v != role.id
+            }
 
         # Remove policies
         self.perms_remove_role(role_name)
@@ -702,7 +704,7 @@ class UserManager:
 
         # Add to internal storage
         self.users_db[user_name] = user
-        if hasattr(user, 'id'):
+        if hasattr(user, "id"):
             self._username_to_id[user_name] = user.id
 
         # Add role permissions
@@ -839,9 +841,11 @@ class UserManager:
         # Remove from internal storage
         if user_name in self.users_db:
             del self.users_db[user_name]
-        if hasattr(user, 'id') and user.id in self._username_to_id.values():
+        if hasattr(user, "id") and user.id in self._username_to_id.values():
             # Remove from mapping
-            self._username_to_id = {k: v for k, v in self._username_to_id.items() if v != user.id}
+            self._username_to_id = {
+                k: v for k, v in self._username_to_id.items() if v != user.id
+            }
 
         # Remove permissions
         self.perms_delete_role_for_user(user_name)
@@ -884,18 +888,19 @@ class UserManager:
         """
         # Create log entry
         from wy_qcos.api.schemas.user import LoginLog
+
         log_entry = LoginLog(
             user_name=user_name,
             ip_address=ip_address,
             success=success,
             failure_reason=failure_reason,
             user_agent=user_agent,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
-        
+
         # Add to memory
         self.login_logs.append(log_entry)
-        
+
         # Save to database directly with user_name
         self.users_repo.create_login_log(
             user_name, ip_address, success, failure_reason, user_agent
