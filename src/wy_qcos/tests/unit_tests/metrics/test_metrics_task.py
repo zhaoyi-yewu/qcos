@@ -25,6 +25,10 @@ from unittest.mock import (
 import pytest
 
 from wy_qcos.common.constant import Constant
+from wy_qcos.metrics.metrics_task import (
+    update_job_metrics,
+    update_metrics_task_async,
+)
 
 
 class TestUpdateJobMetrics:
@@ -63,8 +67,6 @@ class TestUpdateJobMetrics:
                     mock_update_job_metrics,
                 ),
             ):
-                from wy_qcos.metrics.metrics_task import update_job_metrics
-
                 await update_job_metrics()
 
                 mock_scheduler.aget_jobs.assert_called_once()
@@ -98,8 +100,6 @@ class TestUpdateJobMetrics:
                     mock_update_job_metrics,
                 ),
             ):
-                from wy_qcos.metrics.metrics_task import update_job_metrics
-
                 await update_job_metrics()
 
                 mock_scheduler.aget_jobs.assert_called_once()
@@ -121,8 +121,6 @@ class TestUpdateJobMetrics:
                     mock_update_job_metrics,
                 ),
             ):
-                from wy_qcos.metrics.metrics_task import update_job_metrics
-
                 await update_job_metrics()
 
                 mock_scheduler.aget_jobs.assert_called_once()
@@ -155,8 +153,6 @@ class TestUpdateJobMetrics:
                     mock_update_job_metrics,
                 ),
             ):
-                from wy_qcos.metrics.metrics_task import update_job_metrics
-
                 await update_job_metrics()
 
                 mock_data_class.assert_called_once_with(
@@ -185,10 +181,6 @@ class TestUpdateMetricsTaskAsync:
                 "wy_qcos.metrics.metrics_task.update_job_metrics",
                 mock_update_job_metrics,
             ):
-                from wy_qcos.metrics.metrics_task import (
-                    update_metrics_task_async,
-                )
-
                 await update_metrics_task_async()
                 mock_update_job_metrics.assert_called_once()
 
@@ -212,10 +204,6 @@ class TestUpdateMetricsTaskAsync:
                     mock_logger_error,
                 ),
             ):
-                from wy_qcos.metrics.metrics_task import (
-                    update_metrics_task_async,
-                )
-
                 await update_metrics_task_async()
 
                 mock_update_job_metrics.assert_called_once()
@@ -257,10 +245,6 @@ class TestIntegration:
                     mock_update_job_metrics,
                 ),
             ):
-                from wy_qcos.metrics.metrics_task import (
-                    update_metrics_task_async,
-                )
-
                 await update_metrics_task_async()
 
                 mock_data_class.assert_called_once_with(
@@ -304,8 +288,6 @@ class TestIntegration:
                     mock_update_job_metrics,
                 ),
             ):
-                from wy_qcos.metrics.metrics_task import update_job_metrics
-
                 tasks = [update_job_metrics() for _ in range(3)]
                 await asyncio.gather(*tasks)
 

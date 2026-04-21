@@ -27,12 +27,14 @@ import shutil
 import sys
 import types
 
+import pydantic.functional_serializers
 from sphinx.ext import apidoc
 
 current_dir = os.path.split(os.path.realpath(__file__))[0]
 top_dir = os.path.abspath(f"{current_dir}/../../..")
 src_dir = os.path.abspath(f"{top_dir}/src")
 sys.path.insert(0, src_dir)
+
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.qcos_version import QcosVersion
 on_rtd = os.environ.get("READTHEDOCS") == "True"
@@ -74,24 +76,39 @@ exclude_patterns = [
 # skip module
 autodoc_mock_imports = [
     "aiohttp",
-    # "fastapi",  # required for autodoc
+    "argparse",
+    "cliff",
+    "fastapi",
+    "fastapi.applications",
     "fastapi_jsonrpc",
+    "fastapi_jsonrpc.api",
+    "fastapi_jsonrpc.base",
+    "fastapi_jsonrpc.core",
     "loguru",
     "mqt",
     # "networkx",  # required for docstring-check.sh / sphinx-build -b html
     # "numpy",  # required for autodoc
     "numexpr",
+    "openqasm3",
+    "pydantic",
+    "pydantic_core",
+    "pydantic_settings",
+    "pydantic.functional_serializers",
     "ply",
     "prefect",
+    "prometheus_client",
     "psutil",
     "pulp",
+    "pwdlib",
     "qiskit",
     "qiskit_aer",
     "qutip",
     "redis",
     # "rustworkx",  # required for autodoc
     "setproctitle",
+    "stevedore",
     "uvicorn",
+    "yarl",
     "zerorpc",
     "zmp",
     "wy_qcos.drivers.casoldatom",
@@ -101,17 +118,24 @@ autodoc_mock_imports = [
     "wy_qcos.drivers.spinq",
     "wy_qcos.drivers.uqc",
     "wy_qcos.tests",
+    "wy_qcos.transpiler.high_performance",
+    "wy_qcos_client.shell",
+    "wy_qcos_client.tests",
 ]
 suppress_warnings = [
     "autodoc",
+    "autodoc.import_object",
+    "config.misconfig",
+    "ref.ref",
 ]
 
 
 def skip_modules(app, what, name, obj, skip, options):
+    # Skip modules
     skip_module_list = []
     if what == "module" and isinstance(obj, types.ModuleType):
+        module_name = obj.__name__
         for skip_module in skip_module_list:
-            module_name = obj.__name__
             if skip_module in module_name:
                 return True
     return skip
@@ -119,7 +143,6 @@ def skip_modules(app, what, name, obj, skip, options):
 
 def run_apidoc():
     """Run apidoc."""
-
     apidoc.main(["-H", "QCOS API文档", "-f", "-o", sphinx_api_dir, f"{src_dir}"])
 
 
@@ -152,11 +175,17 @@ myst_enable_extensions = [
     "substitution",
 ]
 
+nitpicky = False
+nitpick_ignore = []
+
+autodoc_inherit_docstrings = False
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
 autodoc_preserve_defaults = True
-autodoc_pydantic_model_show_json = True
 autodoc_pydantic_field_list_validators = True
+autodoc_pydantic_model_member_order = 'bysource'
+autodoc_pydantic_model_show_json = True
+autodoc_pydantic_model_undoc_members = False
 
 numfig = False
 html_secnumber_depth = 0

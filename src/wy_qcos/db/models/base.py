@@ -31,7 +31,7 @@ from sqlalchemy import (
     CHAR,
     ARRAY,
 )
-from sqlalchemy.orm import as_declarative
+from sqlalchemy.orm import DeclarativeBase
 
 from wy_qcos.common.constant import Constant
 
@@ -45,8 +45,7 @@ class MyEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-@as_declarative(metadata=metadata)
-class Base:
+class Base(DeclarativeBase):
     """Base model."""
 
     def asdict(self):

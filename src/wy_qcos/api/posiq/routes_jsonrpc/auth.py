@@ -59,6 +59,7 @@ async def login(
         request: HTTP request object
         body: Login request containing username and password
         user_manager: UserManager dependency for user operations
+        users_repo: User repository dependency for database operations
 
     Returns:
         LoginResponse containing JWT access token and expiration info
@@ -100,7 +101,8 @@ async def login(
                     0  # Reset failed attempts counter when unlocking
                 )
                 logger.info(
-                    f"User '{username}' auto-unlocked - lockout period ({Config.LOCKOUT_DURATION_MINUTES} minutes) has expired"
+                    f"User '{username}' auto-unlocked - lockout period "
+                    f"({Config.LOCKOUT_DURATION_MINUTES} minutes) has expired"
                 )
 
                 # Persist auto-unlock to database immediately
@@ -114,40 +116,52 @@ async def login(
                     )
                     if success:
                         logger.info(
-                            f"User '{username}' auto-unlock state persisted to database"
+                            f"User '{username}' auto-unlock state "
+                            "persisted to database"
                         )
-                        # Update the in-memory user object if update returned a fresh copy
+                        # Update in-memory user object if returned
                         if updated_user:
                             user = updated_user
                     else:
                         logger.warning(
-                            f"Failed to persist auto-unlock state to database: {error}"
+                            f"Failed to persist auto-unlock state to "
+                            f"database: {error}"
                         )
                 except Exception as e:
                     logger.warning(
                         f"Failed to persist auto-unlock state to database: {e}"
                     )
 
-                # Continue with password validation (don't set failure_type, will fall through to password checks)
-                # Note: Intentionally not returning here to allow password validation below
-                # Reset login_failure_type to None so password checks can proceed
+                # Continue with password validation
+                # (don't set failure_type, will fall through to checks)
+                # Note: Intentionally not returning here to allow
+                # password validation below
+                # Reset login_failure_type to None so checks proceed
                 login_failure_type = None
                 login_failure_reason = None
             else:
-                # User is still locked - but we still need to validate password
-                # Continue to password validation to check if the provided password is also incorrect
-                # This allows us to track and increment failed_login_attempts for attempts during lockout
+                # User is still locked - but we still need password check
+                # Continue to password validation to check if password is
+                # also incorrect. This allows us to track and increment
+                # failed_login_attempts for attempts during lockout
                 is_user_locked_before_password_check = (
                     True  # Mark that user was locked
                 )
                 logger.debug(
-                    f"User '{username}' is locked until {user.locked_until}. Proceeding to password validation to track attempts."
+                    f"User '{username}' is locked until "
+                    f"{user.locked_until}. Proceeding to password "
+                    "validation to track attempts."
                 )
-                # Don't set login_failure_type yet - let password validation continue below
+                # Don't set login_failure_type yet
+                # let password validation continue below
                 # We'll return locked error after password check
 
-        # Check if password has expired (only if not locked or lock has expired)
-        if not login_failure_type and UserManager.is_password_expired(user):
+        # Check if password has expired (skip if locked)
+        if (
+            not login_failure_type
+            and user
+            and UserManager.is_password_expired(user)
+        ):
             login_failure_type = "forbidden"
             login_failure_reason = (
                 "Password has expired. Please change your password"
@@ -159,7 +173,11 @@ async def login(
         ):
             # Password is incorrect
             logger.debug(
-                f"Password validation failed for user '{username}'. is_user_locked_before_password_check={is_user_locked_before_password_check}, current_failed_attempts={user.failed_login_attempts}, is_locked={user.is_locked}"
+                f"Password validation failed for user '{username}'. "
+                f"is_user_locked_before_password_check="
+                f"{is_user_locked_before_password_check}, "
+                f"current_failed_attempts={user.failed_login_attempts}, "
+                f"is_locked={user.is_locked}"
             )
             if is_user_locked_before_password_check:
                 # User was already locked, so continue to count this attempt
@@ -168,7 +186,10 @@ async def login(
                     user.failed_login_attempts or 0
                 ) + 1
                 logger.debug(
-                    f"Locked user '{username}' attempted login with wrong password. Incremented from {user.failed_login_attempts - 1} to {user.failed_login_attempts}"
+                    f"Locked user '{username}' attempted login with "
+                    "wrong password. Incremented from "
+                    f"{user.failed_login_attempts - 1} to "
+                    f"{user.failed_login_attempts}"
                 )
                 # Persist the updated counter
                 try:
@@ -179,44 +200,69 @@ async def login(
                     )
                     if success:
                         logger.debug(
-                            f"Updated failed_login_attempts to {user.failed_login_attempts} for locked user '{username}'"
+                            f"Updated failed_login_attempts to "
+                            f"{user.failed_login_attempts} for locked "
+                            f"user '{username}'"
                         )
                     else:
                         logger.warning(
-                            f"Failed to update failed_login_attempts for locked user: {error}"
+                            f"Failed to update failed_login_attempts "
+                            f"for locked user: {error}"
                         )
                 except Exception as e:
                     logger.warning(
-                        f"Failed to update failed_login_attempts for locked user: {e}"
+                        f"Failed to update failed_login_attempts for "
+                        f"locked user: {e}"
                     )
-                # Set login_failure_type to "forbidden" to indicate locked status
+                # Set login_failure_type to "forbidden"
+                # to indicate locked status
                 login_failure_type = "forbidden"
-                remaining_minutes = int(
-                    (user.locked_until - datetime.now()).total_seconds() / 60
+                if user.locked_until is not None:
+                    time_delta = (
+                        user.locked_until - datetime.now()
+                    ).total_seconds()
+                    remaining_minutes = int(time_delta / 60)
+                else:
+                    remaining_minutes = 0
+                login_failure_reason = (
+                    f"User account is locked. Please try again in "
+                    f"{remaining_minutes} minutes"
                 )
-                login_failure_reason = f"User account is locked. Please try again in {remaining_minutes} minutes"
             else:
-                # User was not locked before, so this is a regular password failure
-                # Make sure we're not incrementing from a stale value
+                # User was not locked before, so this is a regular
+                # password failure. Make sure we're not incrementing
+                # from a stale value
                 logger.debug(
-                    f"Regular password failure for user '{username}'. Current failed_login_attempts: {user.failed_login_attempts}"
+                    f"Regular password failure for user '{username}'. "
+                    f"Current failed_login_attempts: "
+                    f"{user.failed_login_attempts}"
                 )
                 login_failure_type = "unauthorized"
                 login_failure_reason = "Invalid username or password"
         elif not login_failure_type and UserManager.check_password(
             password, user.hashed_password
         ):
-            # Password is correct, but check if user was locked before password validation
+            # Password is correct, but check if user was locked before
+            # password validation
             if is_user_locked_before_password_check:
-                # User was locked before, deny login even though password is correct
+                # User was locked before, deny login even though
+                # password is correct
                 logger.warning(
-                    f"User '{username}' attempted login with correct password while locked. Access denied."
+                    f"User '{username}' attempted login with correct "
+                    f"password while locked. Access denied."
                 )
                 login_failure_type = "forbidden"
-                remaining_minutes = int(
-                    (user.locked_until - datetime.now()).total_seconds() / 60
+                if user.locked_until is not None:
+                    time_delta = (
+                        user.locked_until - datetime.now()
+                    ).total_seconds()
+                    remaining_minutes = int(time_delta / 60)
+                else:
+                    remaining_minutes = 0
+                login_failure_reason = (
+                    f"User account is locked. Please try again in "
+                    f"{remaining_minutes} minutes"
                 )
-                login_failure_reason = f"User account is locked. Please try again in {remaining_minutes} minutes"
 
     # Get client IP address and user agent
     client_ip = request.client.host if request.client else "unknown"
@@ -225,7 +271,8 @@ async def login(
     if login_failure_type:
         # Log failed login attempt and handle account lockout
         if user and login_failure_type == "unauthorized":
-            # Only increment failed attempts for password authentication failures
+            # Only increment failed attempts for password
+            # authentication failures
             # Not for disabled, locked, or expired password cases
             user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
             # Check if max login attempts exceeded
@@ -235,9 +282,16 @@ async def login(
                 user.locked_until = datetime.now() + timedelta(
                     minutes=Config.LOCKOUT_DURATION_MINUTES
                 )
-                login_failure_reason = f"Account locked due to {user.failed_login_attempts} failed login attempts. Please try again after {Config.LOCKOUT_DURATION_MINUTES} minutes."
+                login_failure_reason = (
+                    f"Account locked due to "
+                    f"{user.failed_login_attempts} failed login attempts. "
+                    f"Please try again after "
+                    f"{Config.LOCKOUT_DURATION_MINUTES} minutes."
+                )
                 logger.warning(
-                    f"User '{username}' exceeded max login attempts ({user.failed_login_attempts}). Account will be locked until {user.locked_until}."
+                    f"User '{username}' exceeded max login attempts "
+                    f"({user.failed_login_attempts}). Account will be "
+                    f"locked until {user.locked_until}."
                 )
                 # Update database with locked status
                 try:
@@ -249,7 +303,8 @@ async def login(
                     )
                     if success:
                         logger.info(
-                            f"User '{username}' locked in database until {user.locked_until}"
+                            f"User '{username}' locked in database until "
+                            f"{user.locked_until}"
                         )
                     else:
                         logger.error(
@@ -262,7 +317,10 @@ async def login(
             else:
                 # Still within limit - update failed attempts in database
                 logger.debug(
-                    f"Failed login attempt #{user.failed_login_attempts} for user '{username}' - limit is {Config.MAX_LOGIN_ATTEMPTS}"
+                    f"Failed login attempt "
+                    f"#{user.failed_login_attempts} for "
+                    f"user '{username}' - limit is "
+                    f"{Config.MAX_LOGIN_ATTEMPTS}"
                 )
                 # Update failed attempts count in database
                 try:
@@ -275,15 +333,19 @@ async def login(
                     )
                     if success:
                         logger.debug(
-                            f"Updated failed_login_attempts to {user.failed_login_attempts} for user '{username}'"
+                            f"Updated failed_login_attempts to "
+                            f"{user.failed_login_attempts} for "
+                            f"user '{username}'"
                         )
                     else:
                         logger.warning(
-                            f"Failed to update failed_login_attempts in database: {error}"
+                            f"Failed to update "
+                            f"failed_login_attempts in database: {error}"
                         )
                 except Exception as e:
                     logger.warning(
-                        f"Failed to update failed_login_attempts in database: {e}"
+                        f"Failed to update "
+                        f"failed_login_attempts in database: {e}"
                     )
         # Log failed login attempt
         user_manager.log_login_attempt(
@@ -340,7 +402,8 @@ async def login(
         )
         if success:
             logger.debug(
-                f"Updated user login info for user '{username}' on successful login"
+                f"Updated user login info for user '{username}' on "
+                f"successful login"
             )
         else:
             logger.warning(
@@ -423,13 +486,15 @@ def logout(
                 expires_at = datetime.fromtimestamp(token_exp)
 
                 logger.debug(
-                    f"Token exp timestamp: {token_exp}, expires_at (local): {expires_at}"
+                    f"Token exp timestamp: {token_exp}, "
+                    f"expires_at (local): {expires_at}"
                 )
 
                 # Add to blacklist
                 user_manager.add_to_blacklist(token_jti, expires_at)
                 logger.info(
-                    f"Token {token_jti} added to blacklist, expires_at: {expires_at}"
+                    f"Token {token_jti} added to blacklist, "
+                    f"expires_at: {expires_at}"
                 )
 
                 # Immediately verify it was blacklisted
@@ -437,7 +502,8 @@ def logout(
                 logger.info(f"Blacklist verification for {token_jti}: {is_bl}")
             else:
                 logger.warning(
-                    f"Invalid token payload - jti or exp missing. jti={token_jti}, exp={token_exp}"
+                    f"Invalid token payload - jti or exp missing. "
+                    f"jti={token_jti}, exp={token_exp}"
                 )
         except Exception as e:
             logger.warning(f"Failed to blacklist token: {e}", exc_info=True)
@@ -564,7 +630,7 @@ async def refresh_token(
         )
 
     # Check if password has expired
-    if UserManager.is_password_expired(user):
+    if user and UserManager.is_password_expired(user):
         jsonrpc_errors.handle_error_forbidden(
             module_name,
             func_name,
@@ -646,13 +712,7 @@ def get_current_user_info(
         )
 
     # Build response - get roles from user_roles association table
-    roles = []
-    if hasattr(user, "get_role_names"):
-        # ORM model with relationship - get roles from association table
-        roles = user.get_role_names()
-    elif hasattr(user, "roles") and isinstance(user.roles, list):
-        # Schema model with roles field
-        roles = user.roles
+    roles = user.get_role_names()
 
     response_info = {
         "id": user.id,

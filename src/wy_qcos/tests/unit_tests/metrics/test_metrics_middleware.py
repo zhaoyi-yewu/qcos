@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import asyncio
 import json
 from unittest.mock import (
     AsyncMock,
@@ -199,7 +200,6 @@ class TestMetricsMiddleware:
         body = b"test body"
         middleware._restore_request_body(request, body)
         assert callable(request._receive)
-        import asyncio
 
         async def test_receive():
             return await request._receive()

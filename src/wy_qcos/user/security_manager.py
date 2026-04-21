@@ -153,9 +153,10 @@ class SecurityManager:
             JWT token string
         """
         to_encode = data.copy()
-        # Use Unix timestamp (seconds since epoch) to avoid datetime timezone issues
-        # This ensures compatibility with PyJWT's token expiration handling
-        # Read from Config at runtime to support dynamic configuration changes
+        # Use Unix timestamp (seconds since epoch) to avoid
+        # datetime timezone issues. This ensures compatibility
+        # with PyJWT's token expiration handling. Read from Config
+        # at runtime to support dynamic configuration changes
         current_timestamp = int(time.time())
         if expires_delta:
             expire_timestamp = current_timestamp + int(
@@ -183,8 +184,9 @@ class SecurityManager:
             JWT refresh token string
         """
         to_encode = data.copy()
-        # Use Unix timestamp (seconds since epoch) to avoid datetime timezone issues
-        # Read from Config at runtime to support dynamic configuration changes
+        # Use Unix timestamp (seconds since epoch) to avoid
+        # datetime timezone issues. Read from Config at runtime
+        # to support dynamic configuration changes
         current_timestamp = int(time.time())
         expire_timestamp = current_timestamp + (
             Config.REFRESH_TOKEN_EXPIRE_DAYS * 86400

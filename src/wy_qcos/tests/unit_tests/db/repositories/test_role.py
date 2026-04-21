@@ -15,13 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import pytest
 import uuid
-from datetime import datetime
 from unittest.mock import patch
 
 from wy_qcos.db.models import Role
-from wy_qcos.db.repositories.role import RoleRepository
 from wy_qcos.api.schemas.user import CreateRoleRequest, UpdateRoleRequest
 
 

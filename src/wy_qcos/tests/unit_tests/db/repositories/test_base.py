@@ -15,12 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import pytest
 import uuid
-from datetime import datetime
-from unittest.mock import Mock, patch
 
-from wy_qcos.db.models import User, Role
+from wy_qcos.common.library import _s
+from wy_qcos.db.models import User
 from wy_qcos.db.repositories.base import (
     BaseRepository,
     ControllerDatabaseError,
@@ -55,7 +53,7 @@ class TestBaseRepository:
             User,
             id=str(uuid.uuid4()),
             user_name="newuser",
-            hashed_password="hashed123",
+            hashed_password=_s("hashed123"),
             is_enabled=True,
         )
         assert success is True
@@ -68,7 +66,7 @@ class TestBaseRepository:
         mock_db_session.add.side_effect = Exception("DB Error")
         repo = BaseRepository(mock_db_session)
         success, error, result = repo.create(
-            User, user_name="test", hashed_password="hash"
+            User, user_name="test", hashed_password=_s("hash")
         )
         assert success is False
         assert error is not None
@@ -99,7 +97,7 @@ class TestBaseRepository:
             user = User(
                 id=str(uuid.uuid4()),
                 user_name=f"user{i}",
-                hashed_password="hash",
+                hashed_password=_s("hash"),
                 is_enabled=True,
             )
             in_memory_db.add(user)
@@ -159,7 +157,7 @@ class TestBaseRepository:
             user = User(
                 id=str(uuid.uuid4()),
                 user_name=f"user{i}",
-                hashed_password="hash",
+                hashed_password=_s("hash"),
                 is_enabled=True,
             )
             in_memory_db.add(user)
@@ -232,7 +230,8 @@ class TestBaseRepository:
         """Test delete by UUID with non-existent record."""
         fake_id = str(uuid.uuid4())
         success, error = base_repository.delete_by_uuid(User, fake_id)
-        # Should return False when no record is deleted (rowcount=0 means success but no rows affected)
+        # Should return False when no record is deleted
+        # (rowcount=0 means success but no rows affected)
         assert success is False
         assert error is None
 
@@ -257,7 +256,8 @@ class TestBaseRepository:
         success, error = base_repository.delete_by_attr(
             User, "user_name", "nonexistent"
         )
-        # Should return False when no record is deleted (rowcount=0 means success but no rows affected)
+        # Should return False when no record is deleted
+        # (rowcount=0 means success but no rows affected)
         assert success is False
         assert error is None
 
@@ -290,7 +290,7 @@ class TestBaseRepository:
                 user = User(
                     id=str(uuid.uuid4()),
                     user_name=f"testdup{i}",
-                    hashed_password="hash",
+                    hashed_password=_s("hash"),
                     is_enabled=True,
                 )
                 in_memory_db.add(user)
@@ -303,6 +303,5 @@ class TestBaseRepository:
             # Should fail because multiple records are found
             assert success is False
             assert error is not None
-        except Exception:
-            # Expected behavior
-            pass
+        except Exception as e:
+            print(f"Expected behavior: {e}")

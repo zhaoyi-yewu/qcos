@@ -783,7 +783,7 @@ class TestRefreshToken:
         cmd.app.stdout = Mock()
         parsed_args = Mock()
         parsed_args.token_only = False
-        parsed_args.refresh_token = "refresh123"
+        parsed_args.refresh_token = _s("refresh123")
         cmd.take_action(parsed_args)
         mock_call_json_rpc.assert_called_once()
 
@@ -812,7 +812,7 @@ class TestRefreshToken:
         cmd.app.stdout = Mock()
         parsed_args = Mock()
         parsed_args.token_only = True
-        parsed_args.refresh_token = "refresh123"
+        parsed_args.refresh_token = _s("refresh123")
         cmd.take_action(parsed_args)
 
 

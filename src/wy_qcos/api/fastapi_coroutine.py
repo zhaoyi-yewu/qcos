@@ -44,7 +44,7 @@ class StoppableService(Protocol):
 class BackgroundServiceManager:
     """Manages the lifecycle of background services."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the service manager."""
         self._services: list[StoppableService] = []
         self._tasks: list[asyncio.Task] = []

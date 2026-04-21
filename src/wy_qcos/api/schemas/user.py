@@ -26,7 +26,6 @@ from pydantic import (
 )
 
 
-# Custom user schemas (fastapi-users removed)
 class UserRead(BaseModel):
     """User read schema."""
 
@@ -94,8 +93,9 @@ class UserUpdate(BaseModel):
 class User(BaseModel):
     """User model.
 
-    Note: roles are stored in user_roles association table, not in users table.
-    The get_role_names() method on the User ORM model retrieves them dynamically.
+    Note: roles are stored in user_roles association table, not in
+    users table. The get_role_names() method on the User ORM model
+    retrieves them dynamically.
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -143,16 +143,18 @@ class User(BaseModel):
     def populate_roles_from_orm(self):
         """Populate roles from ORM user_roles relationship.
 
-        When loading from ORM, if the user object has get_role_names method,
-        call it to populate the roles list from the user_roles association table.
+        When loading from ORM, if the user object has
+        get_role_names method, call it to populate the roles list
+        from the user_roles association table.
         """
         # This will be called after the model is created from ORM
-        # The __pydantic_validator__ will have already populated fields from ORM
-        # If we got an ORM object with user_roles, extract role names
+        # The __pydantic_validator__ will have already populated
+        # fields from ORM. If we got an ORM object with user_roles,
+        # extract role names
         return self
 
     @field_serializer("roles", when_used="json")
-    def serialize_roles(self, value):
+    def serialize_roles(self, value) -> list[str]:
         """Serialize roles from ORM user_roles relationship."""
         # If value is already a list of strings, return it
         if isinstance(value, list) and all(isinstance(r, str) for r in value):
@@ -399,7 +401,8 @@ class GetLoginLogsRequest(BaseModel):
         """Ensure user_id and user_name are mutually exclusive."""
         if self.user_id is not None and self.user_name is not None:
             raise ValueError(
-                "Cannot specify both user_id and user_name. Please provide only one."
+                "Cannot specify both user_id and user_name. "
+                "Please provide only one."
             )
         return self
 

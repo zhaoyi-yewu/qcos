@@ -149,7 +149,7 @@ class APIMetrics:
             self.status_code = status_code
             self.duration = duration
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.api_requests_total = Counter(
             "api_requests_total",
             "Total API requests",

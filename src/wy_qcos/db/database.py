@@ -50,8 +50,9 @@ class DatabaseDriver:
         # Build engine kwargs based on database type
         engine_kwargs = {"pool_pre_ping": True}
 
-        # Only set pool parameters for databases that support connection pooling
-        # SQLite uses SingletonThreadPool which doesn't support these parameters
+        # Only set pool parameters for databases that support
+        # connection pooling. SQLite uses SingletonThreadPool which
+        # doesn't support these parameters
         if not url.drivername.startswith("sqlite"):
             engine_kwargs["pool_size"] = 10
             engine_kwargs["max_overflow"] = 1000
@@ -67,7 +68,7 @@ class DatabaseDriver:
     def create_tables(self) -> None:
         """Create tables."""
         try:
-            Base.metadata.create_all(bind=self._engine)  # type: ignore[attr-defined]
+            Base.metadata.create_all(bind=self._engine)
         except Exception as e:
             logger.info(f"Error while creating tables : {e}")
             raise

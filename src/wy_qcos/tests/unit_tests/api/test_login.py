@@ -26,6 +26,7 @@ from wy_qcos.api.posiq.routes_jsonrpc.auth import (
 )
 from wy_qcos.api.schemas import user as user_schemas
 from wy_qcos.api.schemas import auth as auth_schemas
+from wy_qcos.common.config import Config
 from wy_qcos.common.library import _s
 from wy_qcos.user.user_manager import UserManager
 from wy_qcos.user.security_manager import SecurityManager
@@ -109,8 +110,8 @@ class TestLogin:
         )
 
         assert result is not None
-        assert result.access_token == "test_jwt_token"
-        assert result.token_type == "bearer"
+        assert result.access_token == _s("test_jwt_token")
+        assert result.token_type == _s("bearer")
         mock_user_manager.log_login_attempt.assert_called()
 
     @pytest.mark.asyncio
@@ -211,7 +212,7 @@ class TestLogin:
     async def test_login_locked_user_with_correct_password(
         self, mock_request, mock_user_manager, mock_users_repo
     ):
-        """Test login with locked user and correct password - should still fail."""
+        """Test login with locked user and correct password."""
         locked_user = user_schemas.User(
             user_name="lockeduser",
             hashed_password=UserManager.hash_password("password123"),
@@ -287,11 +288,11 @@ class TestLogin:
             mock_request, body, mock_user_manager, mock_users_repo
         )
         assert result is not None
-        assert result.access_token == "test_jwt_token"
+        assert result.access_token == _s("test_jwt_token")
 
     @pytest.mark.asyncio
     async def test_login_password_expired(
-        self, mock_request, mock_user_manager
+        self, mock_request, mock_user_manager, mock_users_repo
     ):
         """Test login with password expired."""
         expired_user = user_schemas.User(
@@ -321,11 +322,9 @@ class TestLogin:
 
     @pytest.mark.asyncio
     async def test_login_max_attempts_exceeded(
-        self, mock_request, mock_user_manager
+        self, mock_request, mock_user_manager, mock_users_repo
     ):
         """Test that exceeding max login attempts locks the account."""
-        from wy_qcos.common.config import Config
-
         user = user_schemas.User(
             user_name="testuser",
             hashed_password=UserManager.hash_password("password123"),
@@ -440,7 +439,7 @@ class TestLogout:
 
 
 class TestLoginEnhanced:
-    """Enhanced test cases for login function covering account locking scenarios."""
+    """Enhanced test cases for login."""
 
     @pytest.fixture
     def mock_user_manager(self):
@@ -495,7 +494,7 @@ class TestLoginEnhanced:
         )
 
         with pytest.raises(Exception):
-            await login(mock_request, body, mock_user_manager, mock_users_repo)
+            await login(mock_request, body, mock_user_manager)
 
     @pytest.mark.asyncio
     async def test_login_auto_unlock_on_expiry(
@@ -532,7 +531,7 @@ class TestLoginEnhanced:
             mock_request, body, mock_user_manager, mock_users_repo
         )
         assert result is not None
-        assert result.access_token == "test_token"
+        assert result.access_token == _s("test_token")
 
     @pytest.mark.asyncio
     async def test_login_password_expired(
@@ -568,8 +567,6 @@ class TestLoginEnhanced:
         self, mock_request, mock_user_manager, mock_users_repo
     ):
         """Test that exceeding max login attempts locks the account."""
-        from wy_qcos.common.config import Config
-
         user = user_schemas.User(
             user_name="testuser",
             hashed_password=UserManager.hash_password("password123"),
@@ -676,7 +673,7 @@ class TestLoginMissingScenarios:
     async def test_login_locked_user_wrong_password_increments_counter(
         self, mock_request, mock_user_manager, mock_users_repo
     ):
-        """Test that locked user with wrong password increments attempt counter.
+        """Test that locked user with wrong password.
 
         Test points:
         - Verify that when user is locked and password is wrong
@@ -749,7 +746,7 @@ class TestRefreshTokenMissingScenarios:
         mock_user_manager.get_user.return_value = None
 
         body = auth_schemas.TokenRefreshRequest(
-            refresh_token="valid_but_user_deleted_refresh_token"
+            refresh_token=_s("valid_but_user_deleted_refresh_token")
         )
 
         with pytest.raises(Exception) as exc_info:
@@ -773,7 +770,7 @@ class TestRefreshTokenMissingScenarios:
         mock_user_manager.get_user.return_value = None
 
         body = auth_schemas.TokenRefreshRequest(
-            refresh_token="valid_refresh_token_but_user_deleted"
+            refresh_token=_s("valid_refresh_token_but_user_deleted")
         )
 
         with pytest.raises(Exception):
@@ -834,7 +831,7 @@ class TestRefreshTokenAdditionalScenarios:
         mock_user_manager.get_user.return_value = disabled_user
 
         body = auth_schemas.TokenRefreshRequest(
-            refresh_token="disabled_user_refresh_token"
+            refresh_token=_s("disabled_user_refresh_token")
         )
 
         with pytest.raises(Exception) as exc_info:
@@ -872,7 +869,7 @@ class TestRefreshTokenAdditionalScenarios:
         mock_user_manager.get_user.return_value = locked_user
 
         body = auth_schemas.TokenRefreshRequest(
-            refresh_token="locked_user_refresh_token"
+            refresh_token=_s("locked_user_refresh_token")
         )
 
         with pytest.raises(Exception) as exc_info:
@@ -917,7 +914,7 @@ class TestRefreshTokenAdditionalScenarios:
         mock_user_manager.get_user.return_value = expired_pwd_user
 
         body = auth_schemas.TokenRefreshRequest(
-            refresh_token="expired_password_refresh_token"
+            refresh_token=_s("expired_password_refresh_token")
         )
 
         with pytest.raises(Exception) as exc_info:

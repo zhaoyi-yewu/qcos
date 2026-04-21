@@ -115,7 +115,7 @@ class TestClientLogin:
             mock_response,
         )
         client.set_token("old_token")
-        os.environ["QCOS_REFRESH_TOKEN"] = "old_refresh_token"
+        os.environ["QCOS_REFRESH_TOKEN"] = _s("old_refresh_token")
         status_code, reason, text, result = client.refresh_token()
         assert status_code == 200
         assert client.get_token() == "new_token_123"
@@ -132,7 +132,7 @@ class TestClientLogin:
             {},
         )
         client.set_token("old_token")
-        os.environ["QCOS_REFRESH_TOKEN"] = "invalid_token"
+        os.environ["QCOS_REFRESH_TOKEN"] = _s("invalid_token")
         status_code, reason, text, result = client.refresh_token()
         assert status_code == 401
         if "QCOS_REFRESH_TOKEN" in os.environ:

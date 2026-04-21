@@ -244,11 +244,13 @@ def create_user(
                 reload_success = user_manager.reload_role_permissions_from_db()
                 if reload_success:
                     logger.info(
-                        f"Successfully reloaded permission policies from database after creating user '{user.user_name}'"
+                        f"Successfully reloaded permission policies from "
+                        f"database after creating user '{user.user_name}'"
                     )
                 else:
                     logger.warning(
-                        f"Failed to reload permission policies from database after creating user '{user.user_name}'"
+                        f"Failed to reload permission policies from "
+                        f"database after creating user '{user.user_name}'"
                     )
     except Exception as e:
         jsonrpc_errors.handle_error_bad_requests(
@@ -395,7 +397,8 @@ def update_user(
     user = None
     roles_changed = False
     try:
-        # If unlocking user, handle it specially to ensure locked_until and failed_login_attempts are cleared
+        # If unlocking user, handle it specially to ensure
+        # locked_until and failed_login_attempts are cleared
         if is_locked is not None and is_locked is False:
             try:
                 success, error, user = users_repo.update(
@@ -411,7 +414,8 @@ def update_user(
                     )
                 else:
                     logger.debug(
-                        f"Successfully cleared locked_until and failed_login_attempts for user {user_id}"
+                        f"Successfully cleared locked_until and "
+                        f"failed_login_attempts for user {user_id}"
                     )
             except Exception as e:
                 logger.error(
@@ -426,7 +430,7 @@ def update_user(
         else:
             # Normal update for non-unlock cases
             # Create update request with only provided fields
-            update_data = {"user_id": user_id}
+            update_data: dict[str, Any] = {"user_id": user_id}
             if roles is not None:
                 update_data["roles"] = roles
                 roles_changed = True
@@ -454,15 +458,18 @@ def update_user(
         if roles_changed and user:
             user_manager = get_user_manager(request)
             if user_manager and user_manager.permission_manager:
-                # Reload policies from database since role permissions are now updated in DB
+                # Reload policies from database since role permissions
+                # are now updated in DB
                 reload_success = user_manager.reload_role_permissions_from_db()
                 if reload_success:
                     logger.info(
-                        f"Successfully reloaded permission policies after updating roles for user '{user.user_name}'"
+                        f"Successfully reloaded permission policies after "
+                        f"updating roles for user '{user.user_name}'"
                     )
                 else:
                     logger.warning(
-                        f"Failed to reload permission policies after updating roles for user '{user.user_name}'"
+                        f"Failed to reload permission policies after "
+                        f"updating roles for user '{user.user_name}'"
                     )
     except Exception as e:
         jsonrpc_errors.handle_error_bad_requests(
@@ -540,19 +547,24 @@ def delete_user(
             )
 
             if success_logs and logs:
-                # Note: We cannot directly get tokens from login logs since they are not stored
-                # However, we can notify the system that this user's tokens are no longer valid
-                # by marking all their tokens as invalidated (this would require a separate mechanism)
+                # Note: We cannot directly get tokens from login logs
+                # since they are not stored. However, we can notify
+                # the system that this user's tokens are no longer valid
+                # by marking all their tokens as invalidated (this would
+                # require a separate mechanism)
                 logger.warning(
-                    f"User '{user_name}' (ID: {user_id}) has been deleted. "
-                    f"All their active sessions should be invalidated."
+                    f"User '{user_name}' (ID: {user_id}) has been "
+                    f"deleted. All their active sessions should be "
+                    f"invalidated."
                 )
 
-            # Optional: Add a marker in the database to indicate user deletion
-            # This can be used to reject any subsequent token validations for this user
+            # Optional: Add a marker in the database to indicate
+            # user deletion. This can be used to reject any subsequent
+            # token validations for this user
             logger.info(
-                f"User '{user_name}' (ID: {user_id}) deletion completed. "
-                f"Tokens will be rejected on next validation attempt."
+                f"User '{user_name}' (ID: {user_id}) deletion "
+                f"completed. Tokens will be rejected on next "
+                f"validation attempt."
             )
 
         except Exception as e:
@@ -668,11 +680,13 @@ def create_role(
                 reload_success = user_manager.reload_role_permissions_from_db()
                 if reload_success:
                     logger.info(
-                        f"Successfully reloaded permission policies from database after creating role '{role.role_name}'"
+                        f"Successfully reloaded permission policies from "
+                        f"database after creating role '{role.role_name}'"
                     )
                 else:
                     logger.warning(
-                        f"Failed to reload permission policies from database after creating role '{role.role_name}'"
+                        f"Failed to reload permission policies from "
+                        f"database after creating role '{role.role_name}'"
                     )
     except Exception as e:
         jsonrpc_errors.handle_error_bad_requests(
@@ -809,7 +823,7 @@ def update_role(
     role = None
     try:
         # Create update request with only provided fields
-        update_data = {}
+        update_data: dict[str, Any] = {}
         if permissions is not None:
             update_data["permissions"] = permissions
         if description is not None:
@@ -833,11 +847,13 @@ def update_role(
                 reload_success = user_manager.reload_role_permissions_from_db()
                 if reload_success:
                     logger.info(
-                        f"Successfully reloaded permission policies from database after updating role '{role.role_name}'"
+                        f"Successfully reloaded permission policies from "
+                        f"database after updating role '{role.role_name}'"
                     )
                 else:
                     logger.warning(
-                        f"Failed to reload permission policies from database after updating role '{role.role_name}'"
+                        f"Failed to reload permission policies from "
+                        f"database after updating role '{role.role_name}'"
                     )
     except Exception as e:
         jsonrpc_errors.handle_error_bad_requests(
@@ -943,11 +959,13 @@ def delete_role(
             reload_success = user_manager.reload_role_permissions_from_db()
             if reload_success:
                 logger.info(
-                    f"Successfully reloaded permission policies after deleting role '{role_name}'"
+                    f"Successfully reloaded permission policies after "
+                    f"deleting role '{role_name}'"
                 )
             else:
                 logger.warning(
-                    f"Failed to reload permission policies after deleting role '{role_name}'"
+                    f"Failed to reload permission policies after "
+                    f"deleting role '{role_name}'"
                 )
     except Exception as e:
         jsonrpc_errors.handle_error_bad_requests(
@@ -1090,7 +1108,8 @@ def get_login_logs(
     """Get login logs by user ID or user_name.
 
     Args:
-        body: get login logs request (contains user_id, user_name, limit, offset)
+        body: get login logs request (contains user_id, user_name,
+              limit, offset)
         auth_data: auth data
         users_repo: User repository dependency
 
@@ -1117,7 +1136,8 @@ def get_login_logs(
                 func_name,
                 (
                     False,
-                    "Cannot specify both user_id and user_name. Please provide only one.",
+                    "Cannot specify both user_id and user_name. "
+                    "Please provide only one.",
                 ),
             )
 

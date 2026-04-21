@@ -14,11 +14,15 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+import logging
 from typing import Any
 
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 
 class ControllerDatabaseError(Exception):
@@ -77,8 +81,8 @@ class BaseRepository:
                 # Always refresh the ORM object to avoid stale cache
                 try:
                     self._db_session.refresh(db_records[0])
-                except Exception:
-                    pass  # Ignore refresh error for read-only
+                except Exception as e:
+                    logger.debug(f"Refresh error for read-only: {e}")
                 return True, None, db_records[0]
             else:
                 return (
@@ -94,8 +98,8 @@ class BaseRepository:
             for obj in db_records:
                 try:
                     self._db_session.refresh(obj)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Refresh error for record: {e}")
             return True, None, db_records
 
     def get_by_uuid(
@@ -119,8 +123,8 @@ class BaseRepository:
             if db_record:
                 try:
                     self._db_session.refresh(db_record)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Refresh error for record: {e}")
             return True, None, db_record
         except Exception as e:
             return False, e, None
@@ -140,8 +144,8 @@ class BaseRepository:
             for obj in db_records:
                 try:
                     self._db_session.refresh(obj)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Refresh error for record: {e}")
             return True, None, db_records
         except Exception as e:
             return False, e, None
@@ -158,7 +162,7 @@ class BaseRepository:
                 kwargs.pop(id_attr_name)
             if db_record:
                 for key, value in kwargs.items():
-                    # Allow setting fields to None (for clearing/nullifying fields)
+                    # Allow setting fields to None (for clearing fields)
                     if hasattr(model_class, key):
                         setattr(db_record, key, value)
                 self._db_session.commit()

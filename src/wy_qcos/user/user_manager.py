@@ -58,13 +58,11 @@ class UserManager:
             all_api: list of all API endpoints
         """
         self._db_session = db_session
+        self.users_repo: UserRepository | None = None
+        self.roles_repo: RoleRepository | None = None
         if db_session:
             self.users_repo = UserRepository(db_session)
             self.roles_repo = RoleRepository(db_session)
-        else:
-            # Backward compatibility mode - will be initialized later
-            self.users_repo = None
-            self.roles_repo = None
 
         self.all_api = all_api
         # Initialize permission manager for casbin access control
@@ -145,10 +143,10 @@ class UserManager:
             )
 
     def load_role_permissions(self):
-        """Load all role permissions from database and add to permission system.
+        """Load all role permissions from database.
 
-        This method reads all roles and their permissions from the database
-        and adds them to the casbin-based permission manager.
+        This method reads all roles and their permissions from the
+        database and adds them to the casbin-based permission manager.
         """
         # Skip if roles_repo not initialized (e.g., in tests)
         if self.roles_repo is None:
@@ -284,7 +282,8 @@ class UserManager:
         """
         if not self.roles_repo:
             logger.warning(
-                "RoleRepository not available, cannot reload permissions from database"
+                "RoleRepository not available, cannot reload "
+                "permissions from database"
             )
             return False
         return self.permission_manager.reload_policy_from_db(self.roles_repo)
