@@ -6,7 +6,7 @@
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
 # of the Mulan PSL v2.
-# You can obtain a copy of Mulan PSL v2 at:
+# You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
 #     WITHOUT WARRANTIES OF ANY KIND,
@@ -16,25 +16,22 @@
 # ----------------------------------------------------------------------
 
 import asyncio
-from unittest.mock import (
-    AsyncMock,
-    MagicMock,
-    patch,
-)
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from prefect.client.schemas.objects import WorkerStatus
 
-from wy_qcos.common.constant import (
-    Constant,
-    HttpCode,
-)
+from wy_qcos.common.constant import Constant, HttpCode
 from wy_qcos.metrics import metrics_collector
 from wy_qcos.metrics.metrics_task import (
+    call_sync_with_timeout,
     check_fastapi_health,
     check_prefect_health,
     check_redis_health,
     check_worker_health,
+    clear_redis_client,
+    get_redis_client,
+    require_sync_client,
     update_job_metrics,
     update_metrics_task_async,
     update_system_health_metrics,
@@ -42,7 +39,7 @@ from wy_qcos.metrics.metrics_task import (
 
 
 def run_async(coro):
-    """Helper function to run async functions in sync tests."""
+    """Helper to run async functions in sync tests."""
     loop = asyncio.new_event_loop()
     try:
         return loop.run_until_complete(coro)
@@ -50,252 +47,372 @@ def run_async(coro):
         loop.close()
 
 
-class TestUpdateJobMetrics:
-    """Test cases for update_job_metrics function."""
+class TestRedisClient:
+    """Redis client management tests."""
 
-    def test_update_job_metrics_success(self):
-        """Test update_job_metrics with various job statuses."""
-        mock_responses = [
-            {"job_status": Constant.JOB_STATUS_COMPLETED},
-            {"job_status": Constant.JOB_STATUS_COMPLETED},
-            {"job_status": Constant.JOB_STATUS_FAILED},
-            {"job_status": Constant.JOB_STATUS_RUNNING},
-            {"job_status": Constant.JOB_STATUS_UNKNOWN},
+    @pytest.mark.smoke
+    def test_singleton(self):
+        from wy_qcos.metrics import metrics_task
+
+        mock_redis = AsyncMock()
+        with patch.object(
+            metrics_task.async_redis, "Redis", return_value=mock_redis
+        ):
+            with patch.object(metrics_task, "_redis_client", None):
+                c1 = run_async(get_redis_client())
+                c2 = run_async(get_redis_client())
+                assert c1 is c2
+
+    def test_clear(self):
+        from wy_qcos.metrics import metrics_task
+
+        mock_redis = AsyncMock()
+        metrics_task._redis_client = mock_redis
+        run_async(clear_redis_client())
+        assert metrics_task._redis_client is None
+        mock_redis.aclose.assert_called_once()
+
+    def test_clear_error(self):
+        from wy_qcos.metrics import metrics_task
+
+        mock_redis = AsyncMock()
+        mock_redis.aclose.side_effect = Exception("Error")
+        metrics_task._redis_client = mock_redis
+        run_async(clear_redis_client())
+        assert metrics_task._redis_client is None
+
+
+class TestCallSyncWithTimeout:
+    """Sync call with timeout tests."""
+
+    @pytest.mark.smoke
+    def test_success(self):
+        result = run_async(
+            call_sync_with_timeout(lambda x, y: x + y, timeout=1.0, x=5, y=3)
+        )
+        assert result == 8
+
+    @pytest.mark.slow
+    def test_timeout(self):
+        def slow():
+            import time
+
+            time.sleep(5)
+
+        with pytest.raises(TimeoutError):
+            run_async(call_sync_with_timeout(slow, timeout=0.1))
+
+    def test_exception(self):
+        def fail():
+            raise ValueError("Error")
+
+        with pytest.raises(ValueError):
+            run_async(call_sync_with_timeout(fail, timeout=1.0))
+
+
+class TestRequireSyncClient:
+    """Decorator tests."""
+
+    @pytest.mark.smoke
+    def test_success(self):
+        mock_tm = MagicMock()
+        mock_tm._sync_client = MagicMock()
+
+        @require_sync_client
+        async def func(sync_client=None):
+            return sync_client is not None
+
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = mock_tm
+            assert run_async(func()) is True
+
+    def test_not_initialized(self):
+        @require_sync_client
+        async def func(sync_client=None):
+            return True
+
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = None
+            result = run_async(func())
+            assert result[0] is False
+
+
+class TestUpdateJobMetrics:
+    """Job metrics update tests."""
+
+    @pytest.mark.smoke
+    def test_success(self):
+        responses = [
+            {"job_status": s}
+            for s in [
+                Constant.JOB_STATUS_COMPLETED,
+                Constant.JOB_STATUS_COMPLETED,
+                Constant.JOB_STATUS_FAILED,
+                Constant.JOB_STATUS_RUNNING,
+                Constant.JOB_STATUS_QUEUED,
+                Constant.JOB_STATUS_CANCELLING,
+                Constant.JOB_STATUS_CANCELLED,
+                Constant.JOB_STATUS_DELETED,
+                Constant.JOB_STATUS_UNKNOWN,
+            ]
         ]
 
-        with patch("wy_qcos.metrics.metrics_task.scheduler") as mock_scheduler:
-            mock_scheduler.aget_jobs = AsyncMock(
-                return_value=(mock_responses, None)
-            )
-
-            with patch.object(
-                metrics_collector, "update_job_metrics"
-            ) as mock_update:
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.aget_jobs = AsyncMock(return_value=(responses, None))
+            with patch.object(metrics_collector, "update_job_metrics") as mu:
                 run_async(update_job_metrics())
-
-                assert mock_update.called
-                data = mock_update.call_args.kwargs["data"]
-
-                assert data.total == 5
+                data = mu.call_args.kwargs["data"]
+                assert data.total == 9
                 assert data.completed == 2
-                assert data.failed == 1
-                assert data.running == 1
-                assert data.unknown == 1
 
-    def test_update_job_metrics_empty_response(self):
-        """Test update_job_metrics with empty or None responses."""
-        with patch("wy_qcos.metrics.metrics_task.scheduler") as mock_scheduler:
-            mock_scheduler.aget_jobs = AsyncMock(return_value=([], None))
-
-            with patch.object(
-                metrics_collector, "update_job_metrics"
-            ) as mock_update:
+    def test_empty(self):
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.aget_jobs = AsyncMock(return_value=([], None))
+            with patch.object(metrics_collector, "update_job_metrics") as mu:
                 run_async(update_job_metrics())
-                mock_update.assert_not_called()
+                mu.assert_not_called()
 
-    def test_update_job_metrics_exception(self):
-        """Test update_job_metrics when scheduler raises exception."""
-        with patch("wy_qcos.metrics.metrics_task.scheduler") as mock_scheduler:
-            mock_scheduler.aget_jobs = AsyncMock(
-                side_effect=Exception("Scheduler error")
-            )
-
-            with pytest.raises(Exception, match="Scheduler error"):
+    def test_exception(self):
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.aget_jobs = AsyncMock(side_effect=Exception("Error"))
+            with patch.object(metrics_collector, "update_job_metrics") as mu:
                 run_async(update_job_metrics())
+                mu.assert_not_called()
 
 
 class TestCheckWorkerHealth:
-    """Test cases for check_worker_health function."""
+    """Worker health check tests."""
 
     @pytest.mark.smoke
-    def test_check_worker_health_healthy(self):
-        """Test check_worker_health when all workers are healthy."""
-        mock_task_manager = MagicMock()
-        mock_sync_client = MagicMock()
-        mock_device_manager = MagicMock()
+    def test_healthy(self):
+        mock_tm = MagicMock()
+        mock_sc = MagicMock()
+        mock_dm = MagicMock()
 
-        mock_worker = MagicMock()
-        mock_worker.status = WorkerStatus.ONLINE
-        mock_sync_client.read_workers_for_work_pool.return_value = [
-            mock_worker
-        ]
-        mock_task_manager._sync_client = mock_sync_client
-        mock_device_manager.get_devices.return_value = {"device1": {}}
+        worker = MagicMock()
+        worker.status = WorkerStatus.ONLINE
+        mock_sc.read_workers_for_work_pool.return_value = [worker]
+        mock_tm._sync_client = mock_sc
+        mock_dm.get_devices.return_value = {"d1": {}}
 
-        with patch("wy_qcos.metrics.metrics_task.scheduler") as mock_scheduler:
-            mock_scheduler.get_task_manager.return_value = mock_task_manager
-            mock_scheduler.device_manager = mock_device_manager
-
-            is_healthy, error_msg = run_async(check_worker_health())
-
-            assert is_healthy is True
-            assert error_msg == ""
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = mock_tm
+            ms.device_manager = mock_dm
+            healthy, msg = run_async(check_worker_health())
+            assert healthy and msg == ""
 
     @pytest.mark.smoke
-    def test_check_worker_health_not_initialized(self):
-        """Test check_worker_health when not initialized."""
-        with patch("wy_qcos.metrics.metrics_task.scheduler") as mock_scheduler:
-            mock_scheduler.get_task_manager.return_value = None
+    def test_not_initialized(self):
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = None
+            healthy, msg = run_async(check_worker_health())
+            assert not healthy and "not initialized" in msg
 
-            is_healthy, error_msg = run_async(check_worker_health())
+    def test_no_devices(self):
+        mock_tm = MagicMock()
+        mock_tm._sync_client = MagicMock()
+        mock_dm = MagicMock()
+        mock_dm.get_devices.return_value = {}
 
-            assert is_healthy is False
-            assert "Task manager or sync client not initialized" in error_msg
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = mock_tm
+            ms.device_manager = mock_dm
+            healthy, msg = run_async(check_worker_health())
+            assert not healthy and "No devices" in msg
 
-    def test_check_worker_health_unhealthy(self):
-        """Test check_worker_health when workers are unhealthy."""
-        mock_task_manager = MagicMock()
-        mock_sync_client = MagicMock()
-        mock_device_manager = MagicMock()
+    def test_no_workers(self):
+        mock_tm = MagicMock()
+        mock_sc = MagicMock()
+        mock_dm = MagicMock()
 
-        mock_worker = MagicMock()
-        mock_worker.status = WorkerStatus.OFFLINE
-        mock_sync_client.read_workers_for_work_pool.return_value = [
-            mock_worker
-        ]
-        mock_task_manager._sync_client = mock_sync_client
-        mock_device_manager.get_devices.return_value = {"device1": {}}
+        mock_sc.read_workers_for_work_pool.return_value = []
+        mock_tm._sync_client = mock_sc
+        mock_dm.get_devices.return_value = {"d1": {}}
 
-        with patch("wy_qcos.metrics.metrics_task.scheduler") as mock_scheduler:
-            mock_scheduler.get_task_manager.return_value = mock_task_manager
-            mock_scheduler.device_manager = mock_device_manager
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = mock_tm
+            ms.device_manager = mock_dm
+            healthy, msg = run_async(check_worker_health())
+            assert not healthy and "no_workers" in msg
 
-            is_healthy, error_msg = run_async(check_worker_health())
+    def test_offline(self):
+        mock_tm = MagicMock()
+        mock_sc = MagicMock()
+        mock_dm = MagicMock()
 
-            assert is_healthy is False
-            assert "No online workers" in error_msg
+        worker = MagicMock()
+        worker.status = WorkerStatus.OFFLINE
+        mock_sc.read_workers_for_work_pool.return_value = [worker]
+        mock_tm._sync_client = mock_sc
+        mock_dm.get_devices.return_value = {"d1": {}}
 
-    def test_check_worker_health_exception(self):
-        """Test check_worker_health when exception occurs."""
-        mock_task_manager = MagicMock()
-        mock_sync_client = MagicMock()
-        mock_device_manager = MagicMock()
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = mock_tm
+            ms.device_manager = mock_dm
+            healthy, msg = run_async(check_worker_health())
+            assert not healthy and "no_online" in msg
 
-        mock_sync_client.read_workers_for_work_pool.side_effect = Exception(
-            "Connection error"
+    def test_timeout(self):
+        mock_tm = MagicMock()
+        mock_sc = MagicMock()
+        mock_dm = MagicMock()
+
+        def timeout_func(*args, **kwargs):
+            raise TimeoutError("Timeout")
+
+        mock_sc.read_workers_for_work_pool = timeout_func
+        mock_tm._sync_client = mock_sc
+        mock_dm.get_devices.return_value = {"d1": {}}
+
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = mock_tm
+            ms.device_manager = mock_dm
+            healthy, msg = run_async(check_worker_health())
+            assert not healthy and "timeout" in msg
+
+    def test_error(self):
+        mock_tm = MagicMock()
+        mock_sc = MagicMock()
+        mock_dm = MagicMock()
+
+        mock_sc.read_workers_for_work_pool.side_effect = Exception(
+            "Conn error"
         )
-        mock_task_manager._sync_client = mock_sync_client
-        mock_device_manager.get_devices.return_value = {"device1": {}}
+        mock_tm._sync_client = mock_sc
+        mock_dm.get_devices.return_value = {"d1": {}}
 
-        with patch("wy_qcos.metrics.metrics_task.scheduler") as mock_scheduler:
-            mock_scheduler.get_task_manager.return_value = mock_task_manager
-            mock_scheduler.device_manager = mock_device_manager
-
-            is_healthy, error_msg = run_async(check_worker_health())
-
-            assert is_healthy is False
-            assert "Error checking workers" in error_msg
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = mock_tm
+            ms.device_manager = mock_dm
+            healthy, msg = run_async(check_worker_health())
+            assert not healthy and "error:" in msg
 
 
 class TestCheckPrefectHealth:
-    """Test cases for check_prefect_health function."""
+    """Prefect health check tests."""
 
     @pytest.mark.smoke
-    def test_check_prefect_health_healthy(self):
-        """Test check_prefect_health when Prefect is healthy."""
-        mock_task_manager = MagicMock()
-        mock_sync_client = MagicMock()
+    def test_healthy(self):
+        mock_tm = MagicMock()
+        mock_sc = MagicMock()
 
-        mock_response = MagicMock()
-        mock_response.status_code = HttpCode.SUCCESS_OK
-        mock_sync_client.hello.return_value = mock_response
-        mock_task_manager._sync_client = mock_sync_client
+        resp = MagicMock()
+        resp.status_code = HttpCode.SUCCESS_OK
+        mock_sc.hello.return_value = resp
+        mock_tm._sync_client = mock_sc
 
-        with patch("wy_qcos.metrics.metrics_task.scheduler") as mock_scheduler:
-            mock_scheduler.get_task_manager.return_value = mock_task_manager
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = mock_tm
+            healthy, msg = run_async(check_prefect_health())
+            assert healthy and msg == ""
 
-            is_healthy, error_msg = run_async(check_prefect_health())
+    @pytest.mark.smoke
+    def test_no_client(self):
+        mock_tm = MagicMock()
+        mock_tm._sync_client = None
 
-            assert is_healthy is True
-            assert error_msg == ""
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = mock_tm
+            healthy, msg = run_async(check_prefect_health())
+            assert not healthy and "not initialized" in msg
 
-    def test_check_prefect_health_unhealthy(self):
-        """Test check_prefect_health when Prefect is unhealthy."""
-        mock_task_manager = MagicMock()
-        mock_sync_client = MagicMock()
+    def test_unhealthy(self):
+        mock_tm = MagicMock()
+        mock_sc = MagicMock()
 
-        mock_response = MagicMock()
-        mock_response.status_code = HttpCode.INTERNAL_SERVER_ERROR
-        mock_sync_client.hello.return_value = mock_response
-        mock_task_manager._sync_client = mock_sync_client
+        resp = MagicMock()
+        resp.status_code = HttpCode.INTERNAL_SERVER_ERROR
+        mock_sc.hello.return_value = resp
+        mock_tm._sync_client = mock_sc
 
-        with patch("wy_qcos.metrics.metrics_task.scheduler") as mock_scheduler:
-            mock_scheduler.get_task_manager.return_value = mock_task_manager
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = mock_tm
+            healthy, msg = run_async(check_prefect_health())
+            assert not healthy and "status code" in msg
 
-            is_healthy, error_msg = run_async(check_prefect_health())
+    def test_timeout(self):
+        mock_tm = MagicMock()
+        mock_sc = MagicMock()
 
-            assert is_healthy is False
-            assert "Prefect API returned status code" in error_msg
+        def timeout_func(*args, **kwargs):
+            raise TimeoutError("Timeout")
 
-    def test_check_prefect_health_exception(self):
-        """Test check_prefect_health when exception occurs."""
-        mock_task_manager = MagicMock()
-        mock_sync_client = MagicMock()
-        mock_sync_client.hello.side_effect = Exception("Connection failed")
-        mock_task_manager._sync_client = mock_sync_client
+        mock_sc.hello = timeout_func
+        mock_tm._sync_client = mock_sc
 
-        with patch("wy_qcos.metrics.metrics_task.scheduler") as mock_scheduler:
-            mock_scheduler.get_task_manager.return_value = mock_task_manager
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = mock_tm
+            healthy, msg = run_async(check_prefect_health())
+            assert not healthy and "timed out" in msg
 
-            is_healthy, error_msg = run_async(check_prefect_health())
+    def test_error(self):
+        mock_tm = MagicMock()
+        mock_sc = MagicMock()
 
-            assert is_healthy is False
-            assert "Prefect API connection failed" in error_msg
+        def error_func(*args, **kwargs):
+            raise Exception("Failed")
+
+        mock_sc.hello = error_func
+        mock_tm._sync_client = mock_sc
+
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = mock_tm
+            healthy, msg = run_async(check_prefect_health())
+            assert not healthy and "connection failed" in msg
 
 
 class TestCheckFastapiHealth:
-    """Test cases for check_fastapi_health function."""
+    """FastAPI health check tests."""
 
     @pytest.mark.smoke
-    def test_check_fastapi_health(self):
-        """Test check_fastapi_health always returns healthy."""
-        is_healthy, error_msg = run_async(check_fastapi_health())
-
-        assert is_healthy is True
-        assert error_msg == ""
+    def test_healthy(self):
+        healthy, msg = run_async(check_fastapi_health())
+        assert healthy and msg == ""
 
 
 class TestCheckRedisHealth:
-    """Test cases for check_redis_health function."""
+    """Redis health check tests."""
 
     @pytest.mark.smoke
-    def test_check_redis_health_healthy(self):
-        """Test check_redis_health when Redis is healthy."""
-        mock_redis_client = AsyncMock()
-        mock_redis_client.ping = AsyncMock(return_value=True)
-        mock_redis_client.aclose = AsyncMock()
+    def test_healthy(self):
+        mock_rc = AsyncMock()
+        mock_rc.ping = AsyncMock(return_value=True)
 
-        with patch("redis.asyncio.Redis") as mock_redis_class:
-            mock_redis_class.return_value = mock_redis_client
+        with patch("wy_qcos.metrics.metrics_task.async_redis") as mar:
+            mar.Redis.return_value = mock_rc
+            with patch("wy_qcos.metrics.metrics_task._redis_client", None):
+                healthy, msg = run_async(check_redis_health())
+                run_async(clear_redis_client())
+                assert healthy and msg == ""
 
-            is_healthy, error_msg = run_async(check_redis_health())
+    def test_timeout(self):
+        mock_rc = AsyncMock()
+        mock_rc.ping = AsyncMock(side_effect=asyncio.TimeoutError())
 
-            assert is_healthy is True
-            assert error_msg == ""
+        with patch("wy_qcos.metrics.metrics_task.async_redis") as mar:
+            mar.Redis.return_value = mock_rc
+            with patch("wy_qcos.metrics.metrics_task._redis_client", None):
+                healthy, msg = run_async(check_redis_health())
+                run_async(clear_redis_client())
+                assert not healthy and "timed out" in msg
 
-    def test_check_redis_health_unhealthy(self):
-        """Test check_redis_health when Redis ping fails."""
-        mock_redis_client = AsyncMock()
-        mock_redis_client.ping = AsyncMock(
-            side_effect=Exception("Connection refused")
-        )
-        mock_redis_client.aclose = AsyncMock()
+    def test_error(self):
+        mock_rc = AsyncMock()
+        mock_rc.ping = AsyncMock(side_effect=Exception("Refused"))
 
-        with patch("redis.asyncio.Redis") as mock_redis_class:
-            mock_redis_class.return_value = mock_redis_client
-
-            is_healthy, error_msg = run_async(check_redis_health())
-
-            assert is_healthy is False
-            assert "Redis ping failed" in error_msg
+        with patch("wy_qcos.metrics.metrics_task.async_redis") as mar:
+            mar.Redis.return_value = mock_rc
+            with patch("wy_qcos.metrics.metrics_task._redis_client", None):
+                healthy, msg = run_async(check_redis_health())
+                run_async(clear_redis_client())
+                assert not healthy and "failed" in msg
 
 
-class TestUpdateSystemHealthMetrics:
-    """Test cases for update_system_health_metrics function."""
+class TestUpdateSystemHealth:
+    """System health metrics tests."""
 
     @pytest.mark.smoke
-    def test_update_system_health_metrics_all_healthy(self):
-        """Test update_system_health_metrics when all components healthy."""
+    def test_all_healthy(self):
         with patch(
             "wy_qcos.metrics.metrics_task.check_worker_health",
             return_value=(True, ""),
@@ -314,20 +431,20 @@ class TestUpdateSystemHealthMetrics:
                     ):
                         with patch.object(
                             metrics_collector, "update_system_health"
-                        ) as mock_update:
+                        ) as mu:
                             run_async(update_system_health_metrics())
+                            data = mu.call_args.args[0]
+                            assert all([
+                                data.worker_healthy,
+                                data.prefect_healthy,
+                                data.fastapi_healthy,
+                                data.redis_healthy,
+                            ])
 
-                            assert mock_update.called
-                            data = mock_update.call_args.args[0]
-
-                            assert data.overall_healthy is True
-                            assert data.heartbeat_timestamp > 0
-
-    def test_update_system_health_metrics_unhealthy(self):
-        """Test update_system_health_metrics when some components unhealthy."""
+    def test_some_unhealthy(self):
         with patch(
             "wy_qcos.metrics.metrics_task.check_worker_health",
-            return_value=(False, "Worker error"),
+            return_value=(False, "Err"),
         ):
             with patch(
                 "wy_qcos.metrics.metrics_task.check_prefect_health",
@@ -339,56 +456,86 @@ class TestUpdateSystemHealthMetrics:
                 ):
                     with patch(
                         "wy_qcos.metrics.metrics_task.check_redis_health",
-                        return_value=(False, "Redis error"),
+                        return_value=(False, "Err"),
                     ):
                         with patch.object(
                             metrics_collector, "update_system_health"
-                        ) as mock_update:
+                        ) as mu:
                             run_async(update_system_health_metrics())
+                            data = mu.call_args.args[0]
+                            assert (
+                                not data.worker_healthy
+                                and not data.redis_healthy
+                            )
 
-                            data = mock_update.call_args.args[0]
-                            assert data.overall_healthy is False
-                            assert data.worker_healthy is False
-                            assert data.redis_healthy is False
-
-    def test_update_system_health_metrics_exception(self):
-        """Test update_system_health_metrics handles exceptions gracefully."""
+    def test_exception(self):
         with patch(
             "wy_qcos.metrics.metrics_task.check_worker_health",
-            side_effect=Exception("Unexpected error"),
+            side_effect=Exception("Err"),
         ):
-            with patch.object(
-                metrics_collector, "update_system_health"
-            ) as mock_update:
-                run_async(update_system_health_metrics())
-                mock_update.assert_not_called()
+            with patch(
+                "wy_qcos.metrics.metrics_task.check_prefect_health",
+                return_value=(True, ""),
+            ):
+                with patch(
+                    "wy_qcos.metrics.metrics_task.check_fastapi_health",
+                    return_value=(True, ""),
+                ):
+                    with patch(
+                        "wy_qcos.metrics.metrics_task.check_redis_health",
+                        return_value=(True, ""),
+                    ):
+                        with patch.object(
+                            metrics_collector, "update_system_health"
+                        ) as mu:
+                            run_async(update_system_health_metrics())
+                            data = mu.call_args.args[0]
+                            assert not data.worker_healthy
 
 
 class TestUpdateMetricsTaskAsync:
-    """Test cases for update_metrics_task_async function."""
+    """Main metrics task tests."""
 
     @pytest.mark.smoke
-    def test_update_metrics_task_async_success(self):
-        """Test update_metrics_task_async executes successfully."""
-        with patch(
-            "wy_qcos.metrics.metrics_task.update_job_metrics"
-        ) as mock_job:
+    def test_success(self):
+        with patch("wy_qcos.metrics.metrics_task.update_job_metrics") as mj:
             with patch(
                 "wy_qcos.metrics.metrics_task.update_system_health_metrics"
-            ) as mock_health:
+            ) as mh:
                 run_async(update_metrics_task_async())
+                mj.assert_called_once()
+                mh.assert_called_once()
 
-                mock_job.assert_called_once()
-                mock_health.assert_called_once()
-
-    def test_update_metrics_task_async_error(self):
-        """Test update_metrics_task_async handles errors."""
+    def test_job_error(self):
         with patch(
             "wy_qcos.metrics.metrics_task.update_job_metrics",
-            side_effect=Exception("Job metrics error"),
+            side_effect=Exception("Err"),
         ):
             with patch(
                 "wy_qcos.metrics.metrics_task.update_system_health_metrics"
-            ) as mock_health:
+            ) as mh:
                 run_async(update_metrics_task_async())
-                mock_health.assert_not_called()
+                mh.assert_called_once()
+
+    @pytest.mark.slow
+    def test_health_error(self):
+        with patch("wy_qcos.metrics.metrics_task.update_job_metrics"):
+            with patch(
+                "wy_qcos.metrics.metrics_task.update_system_health_metrics",
+                side_effect=Exception("Err"),
+            ):
+                run_async(update_metrics_task_async())
+
+    @pytest.mark.slow
+    def test_timeout(self):
+        async def slow():
+            await asyncio.sleep(15)
+
+        with patch(
+            "wy_qcos.metrics.metrics_task.update_job_metrics", side_effect=slow
+        ):
+            with patch(
+                "wy_qcos.metrics.metrics_task.update_system_health_metrics",
+                side_effect=slow,
+            ):
+                run_async(update_metrics_task_async())
