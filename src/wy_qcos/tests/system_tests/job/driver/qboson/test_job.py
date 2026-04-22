@@ -55,7 +55,7 @@ class TestJob:
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
             "description": "description: test_qboson_submit_job",
-            "backend": "tiangong100_v2",
+            "backend": "tiangong550_v2",
             "shots": 100,
             "circuit_aggregation": None,
             "driver_options": None,

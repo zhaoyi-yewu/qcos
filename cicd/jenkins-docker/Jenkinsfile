@@ -550,13 +550,7 @@ services:
             sed -i 's|base_url = "http://127.0.0.1:8088"|base_url = "http://127.0.0.1:18601"|g' /etc/qcos/conf.d/tiangong100.toml
         fi
         
-        # --- Patch 2: tiangong100_v2.toml ---
-        if [ -f "/etc/qcos/conf.d/tiangong100_v2.toml" ]; then
-            sed -i 's|domain_url_auth = "https://open-pre.qboson.com"|domain_url_auth = "http://127.0.0.1:18600"|g' /etc/qcos/conf.d/tiangong100_v2.toml
-            sed -i 's|domain_url_task = "https://new-open-pre.qboson.com"|domain_url_task = "http://127.0.0.1:18600"|g' /etc/qcos/conf.d/tiangong100_v2.toml
-        fi
-        
-        # --- Patch 3: uqc_matrix2.toml ---
+        # --- Patch 2: uqc_matrix2.toml ---
         if [ -f "/etc/qcos/conf.d/uqc_matrix2.toml" ]; then
             sed -i 's|uqc_host = "cloud.unitaryqubit.com"|uqc_host = "127.0.0.1"|g' /etc/qcos/conf.d/uqc_matrix2.toml
             sed -i 's|password_token = ""|password_token = "1234"|g' /etc/qcos/conf.d/uqc_matrix2.toml

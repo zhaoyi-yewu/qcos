@@ -142,16 +142,12 @@
    # 真实运行
    qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.json
    qcos-cli submit-job --code-type qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.csv
-   qcos-cli submit-job --code-type qubo --backend tiangong100_v2 -f ./samples/qubo/simple-qubo.json
-   qcos-cli submit-job --code-type qubo --backend tiangong100_v2 -f ./samples/qubo/simple-qubo.csv
    qcos-cli submit-job --code-type qubo --backend tiangong550_v2 -f ./samples/qubo/simple-qubo.json
    qcos-cli submit-job --code-type qubo --backend tiangong550_v2 -f ./samples/qubo/simple-qubo.csv
    qcos-cli submit-job --code-type qubo --backend tiangong1000_v2 -f ./samples/qubo/simple-qubo.json
    qcos-cli submit-job --code-type qubo --backend tiangong1000_v2 -f ./samples/qubo/simple-qubo.csv
    qcos-cli submit-job --code-type qubo --transpiler cmss_qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.json
    qcos-cli submit-job --code-type qubo --transpiler cmss_qubo --backend tiangong100 -f ./samples/qubo/simple-qubo.csv
-   qcos-cli submit-job --code-type qubo --transpiler dummy --backend tiangong100_v2 -f ./samples/qubo/simple-qubo.json
-   qcos-cli submit-job --code-type qubo --transpiler dummy --backend tiangong100_v2 -f ./samples/qubo/simple-qubo.csv
    qcos-cli submit-job --code-type qubo --transpiler dummy --backend tiangong550_v2 -f ./samples/qubo/simple-qubo.json
    qcos-cli submit-job --code-type qubo --transpiler dummy --backend tiangong550_v2 -f ./samples/qubo/simple-qubo.csv
    qcos-cli submit-job --code-type qubo --transpiler dummy --backend tiangong1000_v2 -f ./samples/qubo/simple-qubo.json
