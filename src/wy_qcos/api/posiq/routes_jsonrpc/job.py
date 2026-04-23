@@ -207,7 +207,10 @@ def submit_job(
     devices = device_manger.get_devices()
 
     # validate: backend
-    if auth_data is not None:
+    if (
+        auth_data is not None
+        and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL
+    ):
         if backend not in auth_data["device_names"]:
             jsonrpc_errors.handle_error_bad_requests(
                 module_name, func_name, (False, f"no such device: {backend}")
@@ -360,7 +363,10 @@ def submit_job(
     try:
         device_name = device.get_name()
         tags = [f"{device_name}"]
-        if auth_data is not None:
+        if (
+            auth_data is not None
+            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL
+        ):
             virtual_instance_id = auth_data["instance_id"]
             tags.extend([f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"])
         res, err = scheduler.add(
@@ -429,7 +435,10 @@ def get_job_status(
     response = {}
     try:
         tags = None
-        if auth_data is not None:
+        if (
+            auth_data is not None
+            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL
+        ):
             virtual_instance_id = auth_data["instance_id"]
             tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         response, _ = scheduler.get_result_by_id(job_id, tags=tags)
@@ -492,7 +501,10 @@ def get_job_results(
     response = {}
     try:
         tags = None
-        if auth_data is not None:
+        if (
+            auth_data is not None
+            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL
+        ):
             virtual_instance_id = auth_data["instance_id"]
             tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         response, _ = scheduler.get_result_by_id(job_id, tags=tags)
@@ -555,7 +567,10 @@ def get_jobs(
     responses = []
     try:
         tags = None
-        if auth_data is not None:
+        if (
+            auth_data is not None
+            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL
+        ):
             virtual_instance_id = auth_data["instance_id"]
             tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         responses, err = scheduler.get_jobs(tags=tags)
@@ -610,7 +625,10 @@ def cancel_jobs(
     job_ids = list(dict.fromkeys(job_ids))
 
     tags = None
-    if auth_data is not None:
+    if (
+        auth_data is not None
+        and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL
+    ):
         virtual_instance_id = auth_data["instance_id"]
         tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
     # cancel jobs
@@ -649,7 +667,10 @@ def delete_jobs(
     # get unique job_ids
     job_ids = list(dict.fromkeys(job_ids))
     tags = None
-    if auth_data is not None:
+    if (
+        auth_data is not None
+        and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL
+    ):
         virtual_instance_id = auth_data["instance_id"]
         tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
     # delete jobs
@@ -694,7 +715,10 @@ def set_job_results(
     response = {}
     try:
         tags = None
-        if auth_data is not None:
+        if (
+            auth_data is not None
+            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL
+        ):
             virtual_instance_id = auth_data["instance_id"]
             tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
         response, err = scheduler.get_result_by_id(job_id, tags)
@@ -849,7 +873,10 @@ def update_job(
     job_id = body.job_id
 
     tags = None
-    if auth_data is not None:
+    if (
+        auth_data is not None
+        and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL
+    ):
         virtual_instance_id = auth_data["instance_id"]
         tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
     try:
