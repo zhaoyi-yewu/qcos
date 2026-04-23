@@ -47,7 +47,7 @@ RUN set -e && \
 # install basic rpms
     yum install -y hostname openssh openssh-clients sshpass iputils iproute \
       telnet net-tools openssl util-linux vim findutils \
-      python3 python3-pip python3-requests python3-devel && \
+      python3 python3-pip python3-requests python3-devel postgresql && \
     if [ "${DEV,,}" = "false" ]; then \
       # install qcos wheel package in production mode
       pip3 install ${BUILD_CONTEXT}/pkg/wy_qcos_client-*.whl;  \
