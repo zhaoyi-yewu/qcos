@@ -26,6 +26,20 @@ from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.transpiler.cmss.common.gate_operation import X, H, CCX, CX
 
 
+def normalize_runs(runs):
+    return sorted(
+        [[node.name for node in run] for run in runs],
+        key=lambda run: (len(run), run),
+    )
+
+
+def normalize_run_qargs(runs):
+    return sorted(
+        [[tuple(node.qargs) for node in run] for run in runs],
+        key=lambda run: (len(run), run),
+    )
+
+
 class TestDAGCircuit:
     data1 = """
     OPENQASM 3.0;
@@ -296,3 +310,102 @@ class TestDAGCircuit:
             if isinstance(src, DAGOpNode) and isinstance(dest, DAGOpNode):
                 edge_list.append([node_dict[src], node_dict[dest]])
         assert edge_list == [[0, 2], [1, 2], [3, 4], [2, 4]]
+
+    def test_collect_runs_h_chain(self):
+        dag = DAGCircuit()
+        dag.add_qubits(1)
+        dag.apply_operation_back(H([0]))
+        dag.apply_operation_back(H([0]))
+
+        assert normalize_runs(dag.collect_runs(["h"])) == [["h", "h"]]
+
+    def test_collect_runs_two_adjacent_cx(self):
+        dag = DAGCircuit()
+        dag.add_qubits(3)
+        dag.apply_operation_back(CX([0, 1]))
+        dag.apply_operation_back(CX([1, 2]))
+
+        assert normalize_runs(dag.collect_runs(["cx"])) == [["cx"], ["cx"]]
+        assert normalize_run_qargs(dag.collect_runs(["cx"])) == [
+            [(0, 1)],
+            [(1, 2)],
+        ]
+
+    def test_collect_runs_wide_three_wire_block(self):
+        dag = DAGCircuit()
+        dag.add_qubits(3)
+        dag.apply_operation_back(H([0]))
+        dag.apply_operation_back(CX([0, 1]))
+        dag.apply_operation_back(CX([1, 2]))
+        dag.apply_operation_back(H([2]))
+
+        assert normalize_runs(dag.collect_runs(["h", "cx"])) == [
+            ["cx"],
+            ["h"],
+            ["h", "cx"],
+        ]
+        assert normalize_run_qargs(dag.collect_runs(["h", "cx"])) == [
+            [(1, 2)],
+            [(2,)],
+            [(0,), (0, 1)],
+        ]
+
+    def test_collect_runs_wide_three_wire_branch(self):
+        dag = DAGCircuit()
+        dag.add_qubits(3)
+        dag.apply_operation_back(H([0]))
+        dag.apply_operation_back(CX([0, 1]))
+        dag.apply_operation_back(CX([1, 2]))
+        dag.apply_operation_back(H([1]))
+        dag.apply_operation_back(H([2]))
+
+        assert normalize_runs(dag.collect_runs(["h", "cx"])) == [
+            ["cx"],
+            ["h"],
+            ["h"],
+            ["h", "cx"],
+        ]
+        assert normalize_run_qargs(dag.collect_runs(["h", "cx"])) == [
+            [(1,)],
+            [(1, 2)],
+            [(2,)],
+            [(0,), (0, 1)],
+        ]
+
+    def test_collect_runs_wide_four_wire_block(self):
+        dag = DAGCircuit()
+        dag.add_qubits(4)
+        dag.apply_operation_back(H([0]))
+        dag.apply_operation_back(CX([0, 1]))
+        dag.apply_operation_back(CX([1, 2]))
+        dag.apply_operation_back(CX([2, 3]))
+        dag.apply_operation_back(H([3]))
+
+        assert normalize_runs(dag.collect_runs(["h", "cx"])) == [
+            ["cx"],
+            ["cx"],
+            ["h"],
+            ["h", "cx"],
+        ]
+        assert normalize_run_qargs(dag.collect_runs(["h", "cx"])) == [
+            [(1, 2)],
+            [(2, 3)],
+            [(3,)],
+            [(0,), (0, 1)],
+        ]
+
+    def test_collect_runs_only_extends_forward(self):
+        dag = DAGCircuit()
+        dag.add_qubits(2)
+        dag.apply_operation_back(H([0]))
+        dag.apply_operation_back(H([1]))
+        dag.apply_operation_back(CX([0, 1]))
+
+        assert normalize_runs(dag.collect_runs(["h", "cx"])) == [
+            ["h"],
+            ["h", "cx"],
+        ]
+        assert normalize_run_qargs(dag.collect_runs(["h", "cx"])) == [
+            [(0,)],
+            [(1,), (0, 1)],
+        ]
