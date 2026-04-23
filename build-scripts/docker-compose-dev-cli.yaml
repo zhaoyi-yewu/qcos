@@ -26,7 +26,7 @@ services:
       DEBUG: ${DEBUG}
       DEV: ${DEV}
       TZ: Asia/Shanghai
-      CONTAINER_NAME: ${QCOS_CONTAINER_NAME}
+      CONTAINER_NAME: ${QCOS_CONTAINER_NAME}-cli
       QCOS_SERVER_IP: ${QCOS_SERVER_IP}
       QCOS_SERVER_PORT: ${QCOS_SERVER_PORT}
       QCOS_VIRTUAL_INSTANCE_ID: ${QCOS_VIRTUAL_INSTANCE_ID}
@@ -38,6 +38,7 @@ services:
         max-file: "10"
     volumes:
       - /etc/hosts:/etc/hosts
+      - /var/run/postgresql:/var/run/postgresql
       - ${QCOS_LOCAL_SRC_DIR}:/root/qcos-project
       - ${QCOS_LOCAL_SRC_DIR}/bin/qcos-cli.py:/usr/bin/qcos-cli
     entrypoint: /entrypoint.sh
