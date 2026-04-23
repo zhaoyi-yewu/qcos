@@ -33,7 +33,9 @@
      - 系统配置文件示例：
         - 全局配置文件: etc/qcos/qcos.toml
         - 设备独立配置文件: etc/qcos/conf.d/\*.toml
+        - 角色权限casbin规则配置文件: etc/qcos/roles/\*.conf
         - ST配置文件: etc/qcos/qcos-st.toml
+        - ST设备独立配置文件: etc/qcos/st-conf.d/\*.toml
         - openssl证书配置文件: etc/ssl/openssl.conf
    * - samples
      - qasm2.0、qasm3.0、qubo等输入示例文件
@@ -63,3 +65,5 @@
      - 第三方库
    * - src/wy_qcos_client
      - QCOS命令行和客户端实现
+   * - src_cpp/transpiler_cpp
+     - C++实现的转译器模块，提供Python接口
