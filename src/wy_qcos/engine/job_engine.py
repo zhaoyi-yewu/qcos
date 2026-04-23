@@ -23,8 +23,10 @@ import numpy as np
 import signal
 import sys
 import time
+from datetime import datetime
 from typing import Any
 
+import numpy as np
 from loguru import logger
 from prefect import flow, task, pause_flow_run
 from prefect.artifacts import (
@@ -42,13 +44,17 @@ from wy_qcos.engine.qubo import (
     subqubo,
     check_matrix,
     check_qubo_matrix_bit_width,
+    get_spins_num,
+    ising_matrix_to_qubo_matrix,
     precision_reduction,
+    process_qubo_solution,
     qubo_matrix_to_ising_matrix,
     ising_matrix_to_qubo_matrix,
     scale_to_integer_matrix,
     get_spins_num,
     process_qubo_solution,
 )
+from wy_qcos.metrics.metrics_hook import MetricsStateHook
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.common.wirecut.cut_wire import (
     generate_all_variant_subcircuits_for_execute,
@@ -546,9 +552,10 @@ def get_external_aggregated_results(job_results, mapping_dict):
 
 @flow(
     persist_result=True,
-    on_failure=[Library.job_callback],
-    on_crashed=[Library.job_callback],
-    on_cancellation=[Library.job_callback],
+    on_completion=[MetricsStateHook.callback],
+    on_failure=[Library.job_callback, MetricsStateHook.callback],
+    on_crashed=[Library.job_callback, MetricsStateHook.callback],
+    on_cancellation=[Library.job_callback, MetricsStateHook.callback],
 )
 def job_flow(job_info):
     """Job flow.
@@ -1145,7 +1152,8 @@ def run_subqubo_code(
             logger.info(sub_job_results["results"])
             if sub_job_results["results"]:
                 subqubo_solution = (
-                    sub_job_results.get("results", {})
+                    sub_job_results
+                    .get("results", {})
                     .get("out_data", [{}])[0]
                     .get("solutionVector", [])
                 )
