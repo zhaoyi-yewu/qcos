@@ -39,7 +39,7 @@ RUN set -e && \
     if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then rm -rf /etc/yum.repos.d/*.repo; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi \
     && if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi \
     && \
-# Copy docker entrypint
+# Copy docker entrypoint
     /bin/cp ${BUILD_CONTEXT}/build-scripts/qcos/entrypoint.sh / && chmod +x /entrypoint.sh && \
 # Install qcos/qcos-cli packages
     if [ "${DEV,,}" = "false" ]; then \
