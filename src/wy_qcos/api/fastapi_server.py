@@ -24,13 +24,13 @@ from fastapi_jsonrpc import InvalidParams
 from pydantic import ValidationError
 from uvicorn.main import Server as UvicornServer
 
-from wy_qcos.api.fastapi_coroutine import lifespan
+from wy_qcos.api.fastapi_coroutine import app_lifespan
 from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api
 from wy_qcos.metrics.metrics_middleware import MetricsMiddleware
 
 logger = logging.getLogger(__name__)
 
-app = jsonrpc.API(lifespan=lifespan)
+app = jsonrpc.API(lifespan=app_lifespan)
 
 
 def patched_invalid_params_from_validation_error(
@@ -88,6 +88,7 @@ app.state.exiting = False
 app.state.timing = False
 
 
+# Force include_signal_handlers=True to ensure SIGTERM is handled correctly
 class QcosUvicornServer(UvicornServer):
     """QCOS Uvicorn Server."""
 
