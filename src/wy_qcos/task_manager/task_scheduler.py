@@ -19,6 +19,7 @@ import asyncio
 import logging
 from abc import ABC
 
+import inspect
 from prefect import exceptions as prefect_exceptions
 
 from wy_qcos.common import errors
@@ -380,6 +381,42 @@ class TaskScheduler(ABC):
             return flow_list, None
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
+            raise errors.WorkFlowError(e)
+
+    async def aget_jobs(self, tags=None):
+        """Asynchronously get job list.
+
+        This method is designed to be used in async contexts to avoid
+        coroutine object issues when accessing state.result().
+
+        Args:
+            tags: prefect flow tags
+
+        Returns:
+            job list
+        """
+        try:
+            # Use run_in_executor to safely call the synchronous method
+            # in an async context without event loop conflicts
+            loop = asyncio.get_running_loop()
+            flow_list = await loop.run_in_executor(
+                None, lambda: self._task_manager.get_task_flow_list(tags=tags)
+            )
+
+            # Process results to handle any potential coroutines
+            for flow in flow_list:
+                # If results is a coroutine, await it
+                if flow["results"] and inspect.iscoroutine(flow["results"]):
+                    flow["results"] = await flow["results"]
+
+                # Set job status
+                flow["job_status"] = self.get_job_status(
+                    flow["state"], flow["results"], flow["parameters"]
+                )
+
+            return flow_list, None
+        except Exception as e:
+            logger.error(f"Prefect async execute flow error: {str(e)}")
             raise errors.WorkFlowError(e)
 
     def delete_jobs(self, ids, tags=None):
