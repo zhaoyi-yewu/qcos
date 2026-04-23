@@ -14,7 +14,6 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-from uuid import UUID
 from typing import Any
 
 from sqlalchemy import select, delete
@@ -68,12 +67,18 @@ class BaseRepository:
                 .options(selectinload(getattr(model_class, child_attr_name)))
                 .where(getattr(model_class, attr_name) == attr_value)
             )
+
         result = self._db_session.execute(query)
         db_records = result.scalars().all()
         if unique:
             if len(db_records) == 0:
                 return False, None, None
             elif len(db_records) == 1:
+                # Always refresh the ORM object to avoid stale cache
+                try:
+                    self._db_session.refresh(db_records[0])
+                except Exception:
+                    pass  # Ignore refresh error for read-only
                 return True, None, db_records[0]
             else:
                 return (
@@ -85,12 +90,18 @@ class BaseRepository:
                     None,
                 )
         else:
+            # Refresh all objects in the result list
+            for obj in db_records:
+                try:
+                    self._db_session.refresh(obj)
+                except Exception:
+                    pass
             return True, None, db_records
 
     def get_by_uuid(
-        self, model_class: type, uuid: UUID, child_attr_name: str | None = None
+        self, model_class: type, uuid: str, child_attr_name: str | None = None
     ):
-        """Get a record from table by UUID."""
+        """Get a record from table by UUID string."""
         id_attr_name = "id"
         if not child_attr_name:
             query = select(model_class).where(
@@ -105,6 +116,11 @@ class BaseRepository:
         try:
             result = self._db_session.execute(query)
             db_record = result.scalars().first()
+            if db_record:
+                try:
+                    self._db_session.refresh(db_record)
+                except Exception:
+                    pass
             return True, None, db_record
         except Exception as e:
             return False, e, None
@@ -120,28 +136,41 @@ class BaseRepository:
         try:
             result = self._db_session.execute(query)
             db_records = result.scalars().all()
+            # Refresh all objects in the result list
+            for obj in db_records:
+                try:
+                    self._db_session.refresh(obj)
+                except Exception:
+                    pass
             return True, None, db_records
         except Exception as e:
             return False, e, None
 
-    def update(self, model_class: type, uuid: UUID, **kwargs: Any):
-        """Update a record with UUID using args."""
+    def update(self, model_class: type, uuid: str, **kwargs: Any):
+        """Update a record with UUID string using args."""
         try:
-            _, _, db_record = self.get_by_uuid(model_class, uuid)
+            success, error, db_record = self.get_by_uuid(model_class, uuid)
+            if not success:
+                # If get_by_uuid failed, propagate the error
+                return False, error, None
             id_attr_name = "id"
             if id_attr_name in kwargs:
                 kwargs.pop(id_attr_name)
             if db_record:
                 for key, value in kwargs.items():
-                    if value is not None and hasattr(model_class, key):
+                    # Allow setting fields to None (for clearing/nullifying fields)
+                    if hasattr(model_class, key):
                         setattr(db_record, key, value)
                 self._db_session.commit()
+                # Refresh to ensure we have the latest committed data
+                self._db_session.refresh(db_record)
             return True, None, db_record
         except Exception as e:
+            self.rollback()
             return False, e, None
 
-    def delete_by_uuid(self, model_class: type, uuid: UUID):
-        """Delete a record from table by UUID."""
+    def delete_by_uuid(self, model_class: type, uuid: str):
+        """Delete a record from table by UUID string."""
         try:
             id_attr_name = "id"
             query = delete(model_class).where(
