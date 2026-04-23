@@ -14,18 +14,35 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-import uuid
 
-from sqlalchemy import Column, DateTime, func, TypeDecorator, String, UUID
-from fastapi.encoders import jsonable_encoder
-from sqlalchemy import inspect, MetaData
-from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy.dialects.sqlite import JSON, CHAR
+import json
+import uuid
+from datetime import datetime
+
+from sqlalchemy import (
+    Column,
+    DateTime,
+    func,
+    TypeDecorator,
+    String,
+    inspect,
+    MetaData,
+    JSON,
+    CHAR,
+    ARRAY,
+)
 from sqlalchemy.orm import as_declarative
 
 from wy_qcos.common.constant import Constant
 
 metadata = MetaData()
+
+
+class MyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime, uuid.UUID)):
+            return str(obj)
+        return super().default(obj)
 
 
 @as_declarative(metadata=metadata)
@@ -39,7 +56,7 @@ class Base:
         }
 
     def asjson(self):
-        return jsonable_encoder(self.asdict())
+        return json.dumps(self.asdict(), cls=MyEncoder)
 
 
 class BaseTable(Base):
@@ -98,6 +115,8 @@ class GUID(TypeDecorator):
     def load_dialect_impl(self, dialect):
         """Load dialect impl."""
         if dialect.name == Constant.DB_DIALECT_POSTGRESQL:
+            from sqlalchemy.dialects.postgresql import UUID
+
             return dialect.type_descriptor(UUID())
         else:
             return dialect.type_descriptor(CHAR(32))

@@ -19,3 +19,6 @@ from .base import Base
 from .base import ArrayType, GUID
 from .user import User
 from .user import Role
+from .user import UserRole
+from .user import LoginLog
+from .user import TokenBlacklist
