@@ -6,6 +6,7 @@ set(TEST_NAME ${PROJECT_NAME}_test)
 
 add_executable(${TEST_NAME} test_main.cpp
                             test_base_operations.cpp
+                            test_multi_graph.cpp
                             test_gate_operations.cpp
                             test_quantum_circuit.cpp
                             test_sabre_routing.cpp
