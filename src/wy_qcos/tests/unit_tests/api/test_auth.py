@@ -16,256 +16,444 @@
 # ----------------------------------------------------------------------
 
 import pytest
-from unittest.mock import Mock, patch
+import jwt
+import logging
+from unittest.mock import patch, Mock
 from datetime import datetime, timedelta
 
-from wy_qcos.api.posiq.routes_jsonrpc.auth import (
-    login,
-    logout,
+from wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication import (
+    auth,
+    auth_virt,
+    auth_user,
+    decode_jwt_token,
+    get_current_user_from_token,
 )
+from wy_qcos.common.config import Config
+from wy_qcos.common.library import Library, _s
+from wy_qcos.common.constant import Constant
 from wy_qcos.api.schemas import user as user_schemas
-from wy_qcos.api.schemas import auth as auth_schemas
-from wy_qcos.common.library import _s
 from wy_qcos.user.user_manager import UserManager
-from wy_qcos.user.security_manager import SecurityManager
+
+# Import Constant for JWT audience
+JWT_AUDIENCE = Constant.JWT_AUTH_AUDIENCE
+
+# Suppress warning logs during tests (expected warnings for invalid tokens)
+logging.getLogger(
+    "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication"
+).setLevel(logging.ERROR)
 
 
-class TestLogin:
-    """Test cases for login function."""
+class TestDecodeJwtToken:
+    """Test cases for decode_jwt_token function."""
+
+    def test_decode_valid_token(self):
+        """Test decoding a valid JWT token."""
+        payload = {
+            "sub": "user-uuid-123",
+            "jti": "token-jti-456",
+            "exp": datetime.now().timestamp() + 3600,
+            "aud": JWT_AUDIENCE,  # Add required audience claim
+        }
+        token = jwt.encode(
+            payload,
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.JWT_AUTH_ALGORITHM,
+        )
+
+        result = decode_jwt_token(token)
+
+        assert result is not None
+        assert result["sub"] == "user-uuid-123"
+        assert result["jti"] == "token-jti-456"
+
+    def test_decode_expired_token(self):
+        """Test decoding an expired JWT token."""
+        payload = {
+            "sub": "user-uuid-123",
+            "jti": "token-jti-456",
+            "exp": datetime.now().timestamp() - 3600,  # Expired 1 hour ago
+        }
+        token = jwt.encode(
+            payload,
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.JWT_AUTH_ALGORITHM,
+        )
+
+        result = decode_jwt_token(token)
+
+        assert result is None
+
+    def test_decode_invalid_token(self):
+        """Test decoding an invalid JWT token."""
+        token = _s("invalid.jwt.token")
+
+        result = decode_jwt_token(token)
+
+        assert result is None
+
+    def test_decode_token_with_wrong_secret(self):
+        """Test decoding a token with wrong secret."""
+        payload = {
+            "sub": "user-uuid-123",
+            "exp": datetime.now().timestamp() + 3600,
+        }
+        token = jwt.encode(
+            payload, "wrong_secret", algorithm=Config.JWT_AUTH_ALGORITHM
+        )
+
+        result = decode_jwt_token(token)
+
+        assert result is None
+
+
+class TestGetCurrentUserFromToken:
+    """Test cases for get_current_user_from_token function."""
 
     @pytest.fixture
     def mock_user_manager(self):
         """Create a mock user manager."""
         mock = Mock(spec=UserManager)
-        mock.get_user.return_value = user_schemas.User(
+        mock.is_blacklisted.return_value = False
+        return mock
+
+    @pytest.fixture
+    def sample_user(self):
+        """Create a sample user for testing."""
+        return user_schemas.User(
             user_name="testuser",
-            password_hash=UserManager.hash_password("password123"),
+            hashed_password=_s("hashed_password"),
             roles=["user"],
             is_enabled=True,
             is_locked=False,
+            last_login=None,
             password_expiry_days=90,
             password_changed_at=datetime.now(),
+            locked_until=None,
+            description="Test user",
             created_at=datetime.now(),
             updated_at=datetime.now(),
-            last_login=None,
             failed_login_attempts=0,
         )
-        mock.log_login_attempt = Mock()
-        return mock
+
+    def test_no_token(self, mock_user_manager):
+        """Test with no token provided."""
+        result = get_current_user_from_token(None, mock_user_manager)
+        assert result is None
+
+    def test_valid_token_with_valid_user(self, mock_user_manager, sample_user):
+        """Test with valid token and valid user."""
+        # Create a valid token
+        payload = {
+            "sub": "testuser",
+            "jti": "token-jti-456",
+            "exp": datetime.now().timestamp() + 3600,
+            "aud": JWT_AUDIENCE,  # Add required audience claim
+        }
+        token = jwt.encode(
+            payload,
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.JWT_AUTH_ALGORITHM,
+        )
+
+        mock_user_manager.get_user_by_name.return_value = sample_user
+        mock_user_manager.is_blacklisted.return_value = False
+
+        result = get_current_user_from_token(token, mock_user_manager)
+
+        assert result is not None
+        assert result.user_name == "testuser"
+        mock_user_manager.get_user_by_name.assert_called_once_with(
+            "testuser"
+        )
+
+    def test_token_with_blacklisted_jti(self, mock_user_manager):
+        """Test with blacklisted token JTI."""
+        payload = {
+            "sub": "user-uuid-123",
+            "jti": "blacklisted-jti",
+            "exp": datetime.now().timestamp() + 3600,
+        }
+        token = jwt.encode(
+            payload,
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.JWT_AUTH_ALGORITHM,
+        )
+
+        mock_user_manager.is_blacklisted.return_value = True
+
+        result = get_current_user_from_token(token, mock_user_manager)
+
+        assert result is None
+
+    def test_token_with_disabled_user(self, mock_user_manager):
+        """Test with token for disabled user."""
+        payload = {
+            "sub": "user-uuid-123",
+            "jti": "token-jti-456",
+            "exp": datetime.now().timestamp() + 3600,
+        }
+        token = jwt.encode(
+            payload,
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.JWT_AUTH_ALGORITHM,
+        )
+
+        disabled_user = user_schemas.User(
+            user_name="disableduser",
+            hashed_password=_s("hashed_password"),
+            roles=["user"],
+            is_enabled=False,  # Disabled
+            is_locked=False,
+            last_login=None,
+            password_expiry_days=90,
+            password_changed_at=datetime.now(),
+            locked_until=None,
+            description="Disabled user",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            failed_login_attempts=0,
+        )
+
+        mock_user_manager.get_user_by_id.return_value = disabled_user
+        mock_user_manager.is_blacklisted.return_value = False
+
+        result = get_current_user_from_token(token, mock_user_manager)
+
+        assert result is None
+
+    def test_token_with_nonexistent_user(self, mock_user_manager):
+        """Test with token for non-existent user (Case 1: Deleted users)."""
+        payload = {
+            "sub": "nonexistent-uuid",
+            "jti": "token-jti-456",
+            "exp": datetime.now().timestamp() + 3600,
+        }
+        token = jwt.encode(
+            payload,
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.JWT_AUTH_ALGORITHM,
+        )
+
+        mock_user_manager.get_user_by_name.return_value = None
+        mock_user_manager.is_blacklisted.return_value = False
+
+        result = get_current_user_from_token(token, mock_user_manager)
+
+        assert result is None
+
+    def test_token_with_locked_user(self, mock_user_manager):
+        """Test with token for locked user."""
+        payload = {
+            "sub": "locked-user-uuid",
+            "jti": "token-jti-456",
+            "exp": datetime.now().timestamp() + 3600,
+            "aud": JWT_AUDIENCE,
+        }
+        token = jwt.encode(
+            payload,
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.JWT_AUTH_ALGORITHM,
+        )
+
+        locked_user = user_schemas.User(
+            user_name="lockeduser",
+            hashed_password=_s("hashed_password"),
+            roles=["user"],
+            is_enabled=True,
+            is_locked=True,  # Locked
+            last_login=None,
+            password_expiry_days=90,
+            password_changed_at=datetime.now(),
+            locked_until=datetime.now() + timedelta(minutes=30),
+            description="Locked user",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            failed_login_attempts=5,
+        )
+
+        mock_user_manager.get_user_by_name.return_value = locked_user
+        mock_user_manager.is_blacklisted.return_value = False
+
+        result = get_current_user_from_token(token, mock_user_manager)
+
+        assert result is None
+
+    def test_token_with_expired_password(self, mock_user_manager):
+        """Test with token for user with expired password."""
+        payload = {
+            "sub": "expiredpwduser",
+            "jti": "token-jti-456",
+            "exp": datetime.now().timestamp() + 3600,
+            "aud": JWT_AUDIENCE,
+        }
+        token = jwt.encode(
+            payload,
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.JWT_AUTH_ALGORITHM,
+        )
+
+        expired_pwd_user = user_schemas.User(
+            user_name="expiredpwduser",
+            hashed_password=_s("hashed_password"),
+            roles=["user"],
+            is_enabled=True,
+            is_locked=False,
+            last_login=None,
+            password_expiry_days=30,  # 30 day expiry
+            password_changed_at=datetime.now() - timedelta(days=91),
+            locked_until=None,
+            description="User with expired password",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            failed_login_attempts=0,
+        )
+
+        mock_user_manager.get_user_by_name.return_value = expired_pwd_user
+        mock_user_manager.is_blacklisted.return_value = False
+
+        result = get_current_user_from_token(token, mock_user_manager)
+
+        assert result is None
+
+
+class TestAuthVirt:
+    """Test cases for auth_virt function."""
+
+    @patch.object(Library, "decrypt_virtual_instance_id")
+    def test_auth_virt_success(self, mock_decrypt):
+        """Test successful virtual instance authentication."""
+        mock_decrypt.return_value = (
+            True,
+            None,
+            ["device1", "device2"],
+            "instance-123",
+        )
+
+        result = auth_virt("encrypted-instance-id")
+
+        assert result is not None
+        assert result["device_names"] == ["device1", "device2"]
+        assert result["instance_id"] == "instance-123"
+
+    @patch.object(Library, "decrypt_virtual_instance_id")
+    def test_auth_virt_admin_user(self, mock_decrypt):
+        """Test virtual instance authentication for admin user."""
+        mock_decrypt.return_value = (
+            True,
+            None,
+            ["all"],
+            "all",
+        )
+
+        result = auth_virt("admin-encrypted-instance-id")
+
+        assert result is None  # Admin user returns None
+
+    def test_auth_virt_no_instance_id(self):
+        """Test virtual instance authentication with no instance ID."""
+        with pytest.raises(Exception):  # Should raise unauthorized error
+            auth_virt(None)
+
+    @patch.object(Library, "decrypt_virtual_instance_id")
+    def test_auth_virt_decryption_failure(self, mock_decrypt):
+        """Test virtual instance authentication with decryption failure."""
+        mock_decrypt.return_value = (
+            False,
+            "Decryption error",
+            [],
+            None,
+        )
+
+        with pytest.raises(Exception):  # Should raise unauthorized error
+            auth_virt("invalid-encrypted-instance-id")
+
+
+class TestAuthUser:
+    """Test cases for auth_user function."""
 
     @pytest.fixture
     def mock_request(self):
         """Create a mock request object."""
         mock = Mock()
-        mock.client = Mock()
-        mock.client.host = "192.168.1.1"
-        mock.headers = {"user-agent": "Mozilla/5.0"}
+        mock.url = Mock()
+        mock.url.path = "/v1/test/resource"
         return mock
-
-    @patch.object(
-        SecurityManager, "create_access_token", return_value="test_jwt_token"
-    )
-    @pytest.mark.asyncio
-    async def test_login_success(
-        self, mock_create_access_token, mock_request, mock_user_manager
-    ):
-        """Test successful login."""
-        # Mock security_manager in app state
-        mock_request.app = Mock()
-        mock_request.app.state = Mock()
-        mock_security_manager = Mock()
-        mock_security_manager.create_access_token.return_value = (
-            "test_jwt_token"
-        )
-        mock_request.app.state._security_manager = mock_security_manager
-
-        body = auth_schemas.LoginRequest(
-            username="testuser", password=_s("password123")
-        )
-
-        result = await login(mock_request, body, mock_user_manager)
-
-        assert result is not None
-        assert result.access_token == _s("test_jwt_token")
-        assert result.token_type == _s("bearer")
-        mock_user_manager.log_login_attempt.assert_called()
-
-    @pytest.mark.asyncio
-    async def test_login_user_not_found(self, mock_request, mock_user_manager):
-        """Test login with non-existent user."""
-        mock_user_manager.get_user.return_value = None
-        mock_request.app = Mock()
-        mock_request.app.state = Mock()
-        mock_request.app.state._security_manager = Mock()
-
-        body = auth_schemas.LoginRequest(
-            username="nonexistent", password=_s("password123")
-        )
-
-        with pytest.raises(Exception):  # Should raise UnauthorizedError
-            await login(mock_request, body, mock_user_manager)
-
-    @pytest.mark.asyncio
-    async def test_login_wrong_password(self, mock_request, mock_user_manager):
-        """Test login with wrong password."""
-        mock_request.app = Mock()
-        mock_request.app.state = Mock()
-        mock_request.app.state._security_manager = Mock()
-
-        body = auth_schemas.LoginRequest(
-            username="testuser", password=_s("wrong_password")
-        )
-
-        with pytest.raises(Exception):  # Should raise UnauthorizedError
-            await login(mock_request, body, mock_user_manager)
-
-    @pytest.mark.asyncio
-    async def test_login_disabled_user(self, mock_request, mock_user_manager):
-        """Test login with disabled user."""
-        disabled_user = user_schemas.User(
-            user_name="disableduser",
-            password_hash=UserManager.hash_password("password123"),
-            roles=["user"],
-            is_enabled=False,
-            is_locked=False,
-            password_expiry_days=90,
-            password_changed_at=datetime.now(),
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-            last_login=None,
-            failed_login_attempts=0,
-        )
-        mock_user_manager.get_user.return_value = disabled_user
-        mock_request.app = Mock()
-        mock_request.app.state = Mock()
-        mock_request.app.state._security_manager = Mock()
-
-        body = auth_schemas.LoginRequest(
-            username="disableduser", password=_s("password123")
-        )
-
-        with pytest.raises(Exception):  # Should raise ForbiddenError
-            await login(mock_request, body, mock_user_manager)
-
-    @pytest.mark.asyncio
-    async def test_login_locked_user(self, mock_request, mock_user_manager):
-        """Test login with locked user."""
-        locked_user = user_schemas.User(
-            user_name="lockeduser",
-            password_hash=UserManager.hash_password("password123"),
-            roles=["user"],
-            is_enabled=True,
-            is_locked=True,
-            password_expiry_days=90,
-            password_changed_at=datetime.now(),
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-            last_login=None,
-            failed_login_attempts=0,
-        )
-        mock_user_manager.get_user.return_value = locked_user
-        mock_request.app = Mock()
-        mock_request.app.state = Mock()
-        mock_request.app.state._security_manager = Mock()
-
-        body = auth_schemas.LoginRequest(
-            username="lockeduser", password=_s("password123")
-        )
-
-        with pytest.raises(Exception):  # Should raise ForbiddenError
-            await login(mock_request, body, mock_user_manager)
-
-
-class TestLogout:
-    """Test cases for logout function."""
 
     @pytest.fixture
     def mock_user_manager(self):
         """Create a mock user manager."""
         mock = Mock(spec=UserManager)
-        mock.add_to_blacklist = Mock()
+        mock.perms_enforce.return_value = True
         return mock
 
-    @pytest.fixture
-    def mock_request_with_token(self):
-        """Create a mock request object with authorization header."""
-        mock = Mock()
-        mock.headers = {"Authorization": "Bearer test_jwt_token"}
-        return mock
-
-    @pytest.fixture
-    def mock_request_without_token(self):
-        """Create a mock request object without authorization header."""
-        mock = Mock()
-        mock.headers = {}
-        return mock
-
-    @patch("wy_qcos.api.posiq.routes_jsonrpc.auth.jwt.decode")
-    def test_logout_with_token(
-        self, mock_jwt_decode, mock_request_with_token, mock_user_manager
-    ):
-        """Test logout with valid token."""
-        mock_jwt_decode.return_value = {
-            "jti": "token-jti-123",
-            "exp": (datetime.now() + timedelta(hours=1)).timestamp(),
+    def test_auth_user_success(self, mock_request, mock_user_manager):
+        """Test successful user authentication with valid permissions."""
+        auth_data = {
+            "user_id": "testuser",
+            "roles": ["user", "admin"],
+            "auth_method": "jwt",
         }
 
-        auth_data = {"user_id": "testuser"}
-        result = logout(
-            mock_request_with_token, None, auth_data, mock_user_manager
-        )
+        result = auth_user(mock_request, auth_data, mock_user_manager)
 
         assert result is not None
-        assert result.message == "Successfully logged out"
-        mock_user_manager.add_to_blacklist.assert_called()
+        assert result == auth_data
+        mock_user_manager.perms_enforce.assert_called()
 
-    def test_logout_without_token(
-        self, mock_request_without_token, mock_user_manager
+    def test_auth_user_no_auth_data(self, mock_request, mock_user_manager):
+        """Test user authentication with no auth data."""
+        with pytest.raises(Exception):  # Should raise unauthorized error
+            auth_user(mock_request, None, mock_user_manager)
+
+    def test_auth_user_no_roles(self, mock_request, mock_user_manager):
+        """Test user authentication with no roles."""
+        auth_data = {
+            "user_id": "testuser",
+            "roles": [],
+            "auth_method": "jwt",
+        }
+
+        with pytest.raises(Exception):  # Should raise forbidden error
+            auth_user(mock_request, auth_data, mock_user_manager)
+
+    def test_auth_user_insufficient_permissions(
+        self, mock_request, mock_user_manager
     ):
-        """Test logout without token."""
-        auth_data = {"user_id": "testuser"}
-        result = logout(
-            mock_request_without_token, None, auth_data, mock_user_manager
-        )
+        """Test user authentication with insufficient permissions."""
+        auth_data = {
+            "user_id": "testuser",
+            "roles": ["user"],
+            "auth_method": "jwt",
+        }
 
-        assert result is not None
-        assert result.message == "Successfully logged out"
+        mock_user_manager.perms_enforce.return_value = False
 
-    def test_logout_without_auth_data(
-        self, mock_request_without_token, mock_user_manager
+        with pytest.raises(Exception):  # Should raise forbidden error
+            auth_user(mock_request, auth_data, mock_user_manager)
+
+
+class TestAuth:
+    """Test cases for main auth function."""
+
+    @patch.object(Library, "decrypt_virtual_instance_id")
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication.Config"
+    )
+    @pytest.mark.asyncio
+    @pytest.mark.smoke
+    async def test_auth_virt_mode(
+        self, mock_config, mock_decrypt_virtual_instance_id
     ):
-        """Test logout without auth data."""
-        result = logout(
-            mock_request_without_token, None, None, mock_user_manager
+        """Test authentication in virtual instance mode."""
+        mock_config.ENABLE_VIRT = True
+        mock_decrypt_virtual_instance_id.return_value = (
+            True,
+            None,
+            ["dummy", "tiangong100"],
+            "f5840120bca448628cad4d990b29d673",
         )
-
-        assert result is not None
-        assert result.message == "Successfully logged out"
-
-    @patch("wy_qcos.api.posiq.routes_jsonrpc.auth.jwt.decode")
-    def test_logout_invalid_token(
-        self, mock_jwt_decode, mock_request_with_token, mock_user_manager
-    ):
-        """Test logout with invalid token."""
-        mock_jwt_decode.side_effect = Exception("Invalid token")
-
-        auth_data = {"user_id": "testuser"}
-        result = logout(
-            mock_request_with_token, None, auth_data, mock_user_manager
-        )
-
-        assert result is not None
-        assert result.message == "Successfully logged out"
-
-
-# Note: The following tests for refresh_token and get_current_user_info
-# require FastAPI's TestClient for proper dependency injection testing.
-# These tests are better suited for integration testing.
-#
-# class TestRefreshToken:
-#     """Test cases for refresh_token function."""
-#     ...
-#
-# class TestGetCurrentUserInfo:
-#     """Test cases for get_current_user_info function."""
-#     ...
+        # Create a mock request object
+        mock_request = Mock()
+        auth_data = await auth(mock_request, x_qcos_virtual_instance_id="test")
+        assert auth_data["device_names"] == ["dummy", "tiangong100"]
+        assert auth_data["instance_id"] == "f5840120bca448628cad4d990b29d673"
