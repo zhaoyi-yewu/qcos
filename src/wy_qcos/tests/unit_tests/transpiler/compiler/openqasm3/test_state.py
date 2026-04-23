@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import math
 import pytest
 
 from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
@@ -631,7 +632,6 @@ def test_builtin_constants():
     assert "ℇ" in _BUILTINS
 
     # Check values
-    import math
 
     assert _BUILTINS["pi"].data == math.pi
     assert _BUILTINS["π"].data == math.pi
