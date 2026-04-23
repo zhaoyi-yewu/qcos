@@ -15,9 +15,12 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+
 import logging
 import asyncio
 from contextlib import asynccontextmanager
+from typing import Protocol
+
 import fastapi_jsonrpc as jsonrpc
 
 from wy_qcos.metrics.metrics_server import MetricsServer
@@ -26,53 +29,86 @@ from wy_qcos.metrics.metrics_server import MetricsServer
 logger = logging.getLogger(__name__)
 
 
-class FastApiCoroutineManager:
-    """Controls the lifecycle of FastAPI coroutines."""
+class StoppableService(Protocol):
+    """Protocol for services that can be started and stopped."""
+
+    async def start(self) -> None:
+        """Start the service."""
+        ...
+
+    async def stop(self) -> None:
+        """Stop the service gracefully."""
+        ...
+
+
+class BackgroundServiceManager:
+    """Manages the lifecycle of background services."""
 
     def __init__(self):
-        """Init the coros list."""
-        self.coros = []
+        """Initialize the service manager."""
+        self._services: list[StoppableService] = []
+        self._tasks: list[asyncio.Task] = []
 
-    def add_coro(self, coro):
-        """Add a coroutine to the manager.
+    def add_service(self, service: StoppableService) -> None:
+        """Add a background service to the manager.
 
         Args:
-            coro (coroutine): The coroutine to add.
+            service: A service object with start() and stop() methods.
         """
-        coro = asyncio.create_task(coro())
-        self.coros.append(coro)
+        self._services.append(service)
 
-    async def stop(self):
-        """Stop all background coros."""
-        if not self.coros:
+    async def start_all(self) -> None:
+        """Start all registered background services."""
+        if not self._services:
             return
-        logger.info(f"is stopping {len(self.coros)} background coros...")
 
-        for task in self.coros:
-            task.cancel()
-        await asyncio.gather(*self.coros, return_exceptions=True)
+        logger.info(f"Starting {len(self._services)} background service(s)...")
 
-        logger.info("Background coros stopped")
+        for service in self._services:
+            task = asyncio.create_task(service.start())
+            self._tasks.append(task)
+
+        logger.info("All background services started")
+
+    async def stop_all(self) -> None:
+        """Stop all background services gracefully."""
+        if not self._services:
+            return
+
+        logger.info(f"Stopping {len(self._services)} background service(s)...")
+
+        # Call stop() on all services
+        stop_coroutines = [service.stop() for service in self._services]
+        await asyncio.gather(*stop_coroutines, return_exceptions=True)
+
+        # Wait for all tasks to complete
+        if self._tasks:
+            await asyncio.gather(*self._tasks, return_exceptions=True)
+
+        logger.info("All background services stopped")
 
 
 @asynccontextmanager
 async def lifespan(app: jsonrpc.API):
-    """FastAPI lifespan manager.
+    """FastAPI lifespan manager for background services.
 
     Args:
-        app (jsonrpc.API): FastAPI app
+        app: FastAPI application instance
 
-    Returns:
-        Asynchronous context manager
+    Yields:
+        None
     """
-    manager = FastApiCoroutineManager()
-    logger.info("Starting background coros")
+    manager = BackgroundServiceManager()
 
-    # add metrics server to run in background
-    manager.add_coro(MetricsServer().run)
+    # Register metrics server
+    metrics_server = MetricsServer()
+    manager.add_service(metrics_server)
 
-    # return to FastAPI
-    yield
+    # Start all background services
+    await manager.start_all()
 
-    # stop all background coros
-    await manager.stop()
+    try:
+        yield
+    finally:
+        # Stop all background services
+        await manager.stop_all()

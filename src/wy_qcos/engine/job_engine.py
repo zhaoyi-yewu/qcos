@@ -23,10 +23,8 @@ import numpy as np
 import signal
 import sys
 import time
-from datetime import datetime
 from typing import Any
 
-import numpy as np
 from loguru import logger
 from prefect import flow, task, pause_flow_run
 from prefect.artifacts import (
@@ -44,10 +42,7 @@ from wy_qcos.engine.qubo import (
     subqubo,
     check_matrix,
     check_qubo_matrix_bit_width,
-    get_spins_num,
-    ising_matrix_to_qubo_matrix,
     precision_reduction,
-    process_qubo_solution,
     qubo_matrix_to_ising_matrix,
     ising_matrix_to_qubo_matrix,
     scale_to_integer_matrix,
@@ -1152,8 +1147,7 @@ def run_subqubo_code(
             logger.info(sub_job_results["results"])
             if sub_job_results["results"]:
                 subqubo_solution = (
-                    sub_job_results
-                    .get("results", {})
+                    sub_job_results.get("results", {})
                     .get("out_data", [{}])[0]
                     .get("solutionVector", [])
                 )

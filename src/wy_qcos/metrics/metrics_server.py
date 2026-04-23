@@ -146,8 +146,8 @@ class MetricsServer:
             logger.error(f"Error creating metrics server: {e}")
             raise
 
-    async def run(self):
-        """Run the metrics server."""
+    async def start(self):
+        """Start the metrics server."""
         logger.info("Starting Prometheus metrics server")
         logger.info(f"Listening on {self.ip}:{self.port}/metrics")
 
