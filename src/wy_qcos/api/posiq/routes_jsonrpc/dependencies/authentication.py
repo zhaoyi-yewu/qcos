@@ -38,12 +38,6 @@ oauth2_scheme = OAuth2PasswordBearer(
 )
 
 
-# JWT Authentication Configuration
-JWT_AUTH_SECRET_KEY = Config.JWT_AUTH_SECRET_KEY
-JWT_AUTH_LIFETIME_SECONDS = Config.JWT_AUTH_LIFE_SECONDS
-JWT_AUTH_ALGORITHM = Config.JWT_AUTH_ALGORITHM
-
-
 def get_user_manager(request: Request) -> UserManager:
     """Get user manager from request state.
 
@@ -74,8 +68,8 @@ def decode_jwt_token(token: str) -> dict | None:
     try:
         payload = jwt.decode(
             token,
-            JWT_AUTH_SECRET_KEY,
-            algorithms=[JWT_AUTH_ALGORITHM],
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithms=[Config.JWT_AUTH_ALGORITHM],
             audience=Constant.JWT_AUTH_AUDIENCE,
             options={"verify_exp": True},
         )
@@ -94,14 +88,22 @@ def get_current_user_from_token(
     """Extract and validate current user from JWT token.
 
     This function decodes the JWT token and retrieves the corresponding user.
-    It also checks if the token has been blacklisted.
+    It validates token validity, blacklist status, and all user account conditions.
+
+    Validation checks (in order):
+    1. Token must be present and decodable
+    2. Token must not be blacklisted
+    3. User must exist (Case 1: Deleted users with valid tokens are rejected)
+    4. User account must be enabled
+    5. User account must not be locked
+    6. User password must not be expired
 
     Args:
         token: JWT token string
         user_manager: UserManager instance for user lookup
 
     Returns:
-        User object if token is valid and user exists, None otherwise
+        User object if all validations pass, None otherwise
     """
     if not token:
         return None
@@ -111,23 +113,48 @@ def get_current_user_from_token(
         user_data = decode_jwt_token(token)
 
         if not user_data or "sub" not in user_data:
+            logger.warning("Token decode failed or 'sub' claim missing")
             return None
 
         # Check if token is blacklisted
         token_jti = user_data.get("jti")
+        logger.debug(f"Checking blacklist for token jti: {token_jti}")
+
         if token_jti and user_manager.is_blacklisted(token_jti):
-            logger.warning(f"Token {token_jti} is blacklisted")
+            logger.warning(
+                f"Token {token_jti} is blacklisted, rejecting access"
+            )
             return None
 
-        # Retrieve user from manager using user ID (UUID) from token
-        user = user_manager.get_user_by_id(user_data["sub"])
+        # Retrieve user from manager using user name from token
+        user = user_manager.get_user_by_name(user_data["sub"])
 
-        if not user or not user.is_enabled:
+        # Case 1: User has been deleted after token was issued
+        if not user:
+            logger.warning(
+                f"User '{user_data['sub']}' not found - account may have been deleted"
+            )
             return None
 
+        # User account is disabled
+        if not user.is_enabled:
+            logger.warning(f"User '{user_data['sub']}' is disabled")
+            return None
+
+        # User is locked
+        if user.is_locked:
+            logger.warning(f"User '{user_data['sub']}' is locked")
+            return None
+
+        # Password has expired
+        if UserManager.is_password_expired(user):
+            logger.warning(f"User '{user_data['sub']}' password has expired")
+            return None
+
+        logger.debug(f"User '{user_data['sub']}' authenticated successfully")
         return user
     except Exception as e:
-        logger.error(f"Token validation failed: {e}")
+        logger.error(f"Token validation failed: {e}", exc_info=True)
         return None
 
 
@@ -172,9 +199,16 @@ async def auth(
 
         auth_data = None
         if current_user:
+            # Get roles from user_roles association table
+            user_roles = (
+                current_user.get_role_names()
+                if hasattr(current_user, "get_role_names")
+                else current_user.roles
+            )
             auth_data = {
+                Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_USER,
                 "user_id": current_user.user_name,
-                "roles": current_user.roles,
+                "roles": user_roles,
                 "auth_method": "jwt",
             }
 
@@ -226,6 +260,7 @@ def auth_virt(x_qcos_virtual_instance_id):
         auth_data = None
     else:
         auth_data = {
+            Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_VIRTUAL,
             "device_names": device_names,
             "instance_id": instance_id,
         }
@@ -275,7 +310,7 @@ def auth_user(
     # Check permissions
     has_permission = False
     for role in user_roles:
-        if user_manager.perms_check_enforce(role, obj, act):
+        if user_manager.perms_enforce(role, obj, act):
             has_permission = True
             break
 
