@@ -58,7 +58,7 @@ RUN set -e && \
 # install basic rpm packages
     yum install -y hostname openssh openssh-clients sshpass iputils iproute \
     telnet net-tools openssl util-linux vim findutils dos2unix wget rsync \
-    gettext make cmake gcc gcc-g++ rust cargo \
+    gettext make cmake gcc gcc-g++ rust cargo  postgresql \
     python3 python3-pip python3-sphinx python3-requests python3-devel \
     sqlite-devel bzip2-devel ncurses-devel gdbm-devel xz-devel \
     tk-devel tcl-devel libuuid-devel yp-tools ypbind readline-devel \
