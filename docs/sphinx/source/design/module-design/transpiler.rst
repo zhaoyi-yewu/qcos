@@ -102,7 +102,7 @@ MCTS（Monte Carlo Tree Search）算法基于蒙特卡罗树搜索，通过树�
      - 评分层数，控制评分计算的深度。值越大，评分越准确，但计算开销越大。默认值: ``5``
    * - **mode_sim**
      - list
-     - 模拟模式，格式为 ``["fix_cx_num", [N_sim, G_sim]]``，其中 ``N_sim`` 是模拟次数，``G_sim`` 是模拟门数。默认值: ``["fix_cx_num", [500, 30]]``
+     - 模拟模式，格式为 ``["fix_cx_num", [N_sim, G_sim]]``，其中 ``N_sim`` 是模拟次数，``G_sim`` 是模拟门数。默认值: ``["fix_cx_num", [50, 10]]``
    * - **score_decay_rate_size**
      - float
      - 大小评分衰减率，用于优化线路大小（门数量）。取值范围: ``0.0`` 到 ``1.0``。值越小，衰减越快。默认值: ``0.7``
@@ -140,34 +140,58 @@ SABRE（Stochastic Allocation of Blocks for Routing and Execution）算法是一
 
 参数配置示例
 ********************
-以下示例展示了如何配置路由算法参数：
+以下示例展示了如何在 ``transpiler_options`` 中配置路由算法参数。``sc_mapping_options`` 作为 ``transpiler_options`` 的嵌套字典传入：
 
 使用MCTS算法（默认配置）:
 
 .. code-block:: python
 
-   sc_mapping_options = {
-       "routing_algorithm": "mct",
-       "select_mode": ["KS", 15],
-       "use_prune": 1,
-       "use_hash": 1,
-       "score_layer": 5,
-       "mode_sim": ["fix_cx_num", [500, 30]],
-       "score_decay_rate_size": 0.7,
-       "score_decay_rate_depth": 0.85,
-       "objective": "size"
+   transpiler_options = {
+       "optimization_level": 2,
+       "sc_mapping_options": {
+           "routing_algorithm": "mct",
+           "select_mode": ["KS", 15],
+           "use_prune": 1,
+           "use_hash": 1,
+           "score_layer": 5,
+           "mode_sim": ["fix_cx_num", [50, 10]],
+           "score_decay_rate_size": 0.7,
+           "score_decay_rate_depth": 0.85,
+           "objective": "size"
+       }
    }
 
 使用SABRE算法:
 
 .. code-block:: python
 
-   sc_mapping_options = {
-       "routing_algorithm": "sabre",
-       "sabre_extention_size": 20,
-       "sabre_weight": 0.5,
-       "sabre_decay": 0.001
+   transpiler_options = {
+       "optimization_level": 1,
+       "sc_mapping_options": {
+           "routing_algorithm": "sabre",
+           "sabre_extention_size": 20,
+           "sabre_weight": 0.5,
+           "sabre_decay": 0.001
+       }
    }
+
+命令行示例:
+
+.. code-block:: shell
+
+   # 使用MCTS算法提交作业
+   qcos-cli submit-job \
+       -f ./samples/qasm/2.0/benchmark/gcm_h6_2447.qasm \
+       --backend spinq_rpc \
+       --transpiler cmss \
+       --transpiler-options '{"optimization_level": 2, "sc_mapping_options": {"routing_algorithm": "mct", "select_mode": ["KS", 2], "use_prune": 1, "use_hash": 1, "score_layer": 1, "mode_sim": ["fix_cx_num", [10, 3]]}}'
+
+   # 使用SABRE算法提交作业
+   qcos-cli submit-job \
+       -f ./samples/qasm/2.0/simple-qasm.qasm \
+       --backend spinq_rpc \
+       --transpiler cmss \
+       --transpiler-options '{"sc_mapping_options": {"routing_algorithm": "sabre", "sabre_extention_size": 20, "sabre_weight": 0.5, "sabre_decay": 0.001}}'
 
 **转译管理器初始化**
 
@@ -244,12 +268,15 @@ SABRE（Stochastic Allocation of Blocks for Routing and Execution）算法是一
                "optimization_level": optimization_level,
                "enable_na_move": enable_na_move,
                "enable_mapping": enable_mapping,
+               # sc_mapping options
+               "sc_mapping_options": {},
            }
            # transpiler_options schema used in submit-job from user
            self.transpiler_options_schema = {
                Optional("optimization_level"): int,
                Optional("enable_na_move"): bool,
                Optional("enable_mapping"): bool,
+               Optional("sc_mapping_options"): SC_MAPPING_OPTIONS_SCHEMA,
            }
            # qpu_config
            self.qpu_config = None
