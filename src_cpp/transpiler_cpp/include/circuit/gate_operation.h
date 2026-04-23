@@ -500,4 +500,37 @@ class U : public GateOperation {
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
+
+class Sync : public BaseOperation {
+ public:
+  Sync(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
+       OperationType operation_type = qcos::OperationType::SYNC);
+  std::string to_string() const;
+};
+
+class Measure : public BaseOperation {
+ public:
+  Measure(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
+          OperationType operation_type = qcos::OperationType::MEASURE);
+  std::string to_string() const;
+};
+
+class Move : public BaseOperation {
+ public:
+  Move(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
+       OperationType operation_type = qcos::OperationType::MOVE);
+  std::string to_string() const;
+};
+
+class Reset : public BaseOperation {
+ public:
+  Reset(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
+        OperationType operation_type = qcos::OperationType::RESET);
+  std::string to_string() const;
+};
+
+std::shared_ptr<BaseOperation> create_gate(const std::string& name,
+                                           std::vector<int> targets = {},
+                                           std::vector<double> arg_value = {},
+                                           bool allow_undefined = false);
 }  // namespace qcos
