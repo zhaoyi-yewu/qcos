@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 from sqlalchemy.engine import Engine
 
 from wy_qcos.db.database import DatabaseDriver, init_database
@@ -53,7 +53,7 @@ class TestDatabaseDriver:
         """Test successful database disconnection."""
         db_url = "sqlite:///:memory:"
         driver = DatabaseDriver(db_url, "test_db")
-        engine = driver.create_engine()
+        driver.create_engine()
         driver.disconnect_from_db()
         # Should not raise exception
 
@@ -68,7 +68,7 @@ class TestDatabaseDriver:
         """Test successful table creation."""
         db_url = "sqlite:///:memory:"
         driver = DatabaseDriver(db_url, "test_db")
-        engine = driver.create_engine()
+        driver.create_engine()
         driver.create_tables()
         # Should not raise exception
 
@@ -97,7 +97,7 @@ class TestDatabaseDriver:
         """Test successful connection check."""
         db_url = "sqlite:///:memory:"
         driver = DatabaseDriver(db_url, "test_db")
-        engine = driver.create_engine()
+        driver.create_engine()
         # Should not raise exception
         driver.check_connection()
 

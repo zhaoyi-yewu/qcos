@@ -18,11 +18,12 @@
 import pytest
 import uuid
 from datetime import datetime
-from unittest.mock import Mock, MagicMock
+from unittest.mock import MagicMock
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
+from wy_qcos.common.library import _s
 from wy_qcos.db.models import (
     Base,
     User,
@@ -79,7 +80,7 @@ def sample_user(in_memory_db):
     user = User(
         id=str(uuid.uuid4()),
         user_name="testuser",
-        hashed_password="hashed_password_123",
+        hashed_password=_s("hashed_password_123"),
         is_enabled=True,
         is_locked=False,
         password_changed_at=datetime.now(),

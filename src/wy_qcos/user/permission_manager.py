@@ -199,8 +199,9 @@ class PermissionManager:
     def reload_policy(self) -> bool:
         """Reload all policies from policy file.
 
-        This method reloads the access control policies from the policy file,
-        ensuring that any changes to role permissions are reflected in the system.
+        This method reloads the access control policies from the
+        policy file, ensuring that any changes to role permissions
+        are reflected in the system.
 
         Returns:
             True if reload successful, False otherwise
@@ -227,14 +228,16 @@ class PermissionManager:
         useful when role permissions are updated in the database.
 
         Args:
-            roles_repo: RoleRepository instance to load roles and permissions from
+            roles_repo: RoleRepository instance to load roles and
+                        permissions from
 
         Returns:
             True if reload successful, False otherwise
         """
         if not roles_repo:
             logger.warning(
-                "RoleRepository not provided for reloading policies from database"
+                "RoleRepository not provided for reloading "
+                "policies from database"
             )
             return False
 
@@ -266,7 +269,8 @@ class PermissionManager:
                         result = self.add_policy(role_name, permission, "call")
                         if result:
                             logger.debug(
-                                f"Added policy: {role_name}, {permission}, call"
+                                f"Added policy: {role_name}, {permission}, "
+                                f"call"
                             )
                     except Exception as e:
                         logger.warning(

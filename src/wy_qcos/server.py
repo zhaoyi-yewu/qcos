@@ -144,7 +144,8 @@ class Server:
             # only show uvicorn access logs in debug mode
             access_log = True
 
-        # Let uvicorn handle signals; do not register custom signal handlers here.
+        # Let uvicorn handle signals; do not register custom signal
+        # handlers here.
         try:
             _listen_ip = (
                 Config.API_SERVER_LISTEN_IP

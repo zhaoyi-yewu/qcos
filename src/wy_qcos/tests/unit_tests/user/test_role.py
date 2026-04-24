@@ -16,12 +16,9 @@
 # ---------------------------------------------------------------------
 
 import pytest
-from unittest.mock import Mock, patch
 
-from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import _s
-from wy_qcos.user.user_manager import UserManager
 
 
 class TestUserManagerRoles:

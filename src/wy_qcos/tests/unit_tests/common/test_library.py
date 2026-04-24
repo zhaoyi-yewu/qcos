@@ -19,14 +19,12 @@ import base64
 import csv as csv_module
 import os
 import shutil
-import tempfile
-import zipfile
 import uuid
 from datetime import datetime
 from unittest.mock import patch, Mock, MagicMock, AsyncMock
 
 import pytest
-import psutil
+import tempfile
 
 from wy_qcos.common.constant import HttpMethod
 from wy_qcos.common.library import Library, _s
@@ -148,16 +146,16 @@ class TestLibrary:
             "api_key": _s("key123"),
         }
         masked = Library.mask_password(
-            configs, password_replace="***HIDDEN***"
+            configs, password_replace=_s("***HIDDEN***")
         )
-        assert masked["password"] == "***HIDDEN***"
+        assert masked["password"] == _s("***HIDDEN***")
 
     def test_mask_password_dict(self):
         """Test mask_password with dictionary."""
         config = {"password": "secret", "user": "john"}
         result = Library.mask_password(config)
-        assert (
-            "***" in str(result["password"]) or result["password"] != "secret"
+        assert "***" in str(result["password"]) or result["password"] != _s(
+            "secret"
         )
 
     def test_mask_password_nested(self):
@@ -283,12 +281,12 @@ class TestLibrary:
 
     def test_base64_encode(self):
         """Test base64_encode."""
-        result = base64.b64encode("test".encode("utf-8")).decode("utf-8")
+        result = base64.b64encode(b"test").decode("utf-8")
         assert isinstance(result, str)
 
     def test_base64_decode(self):
         """Test base64_decode."""
-        encoded = base64.b64encode("test".encode("utf-8")).decode("utf-8")
+        encoded = base64.b64encode(b"test").decode("utf-8")
         decoded = base64.b64decode(encoded).decode("utf-8")
         assert decoded == "test"
 
@@ -475,13 +473,25 @@ class TestLibrary:
     def test_read_file_basic(self, mock_open):
         """Test read_file basic functionality."""
         mock_open.return_value.__enter__.return_value.read.return_value = ""
-        content = library.read_file("/tmp/test.txt")
+        with tempfile.NamedTemporaryFile(
+            mode="w", delete=False, suffix=".txt"
+        ) as f:
+            temp_path = f.name
+        content = library.read_file(temp_path)
         assert content is not None
         pattern = {"1": "1"}
-        content = library.read_file("/tmp/test.txt", replace_pattern=pattern)
+        with tempfile.NamedTemporaryFile(
+            mode="w", delete=False, suffix=".txt"
+        ) as f:
+            temp_path = f.name
+        content = library.read_file(temp_path, replace_pattern=pattern)
         assert content is not None
         formats = {"2": "2"}
-        content = library.read_file("/tmp/test.txt", customer_format=formats)
+        with tempfile.NamedTemporaryFile(
+            mode="w", delete=False, suffix=".txt"
+        ) as f:
+            temp_path = f.name
+        content = library.read_file(temp_path, customer_format=formats)
         assert content is not None
 
     @patch("builtins.open", create=True)
@@ -588,23 +598,26 @@ class TestLibrary:
     @patch("wy_qcos.common.library.os.walk")
     def test_find_files_recursively(self, mock_walk, mock_isdir):
         """Test find_files with recursive search."""
+        tmp_dir = tempfile.gettempdir()
         mock_isdir.return_value = True
-        mock_walk.return_value = [("/tmp", ["subdir"], ["test.txt"])]
-        result = Library.find_files("/tmp", pattern="*.txt", recursive=True)
+        mock_walk.return_value = [(tmp_dir, ["subdir"], ["test.txt"])]
+        result = Library.find_files(tmp_dir, pattern="*.txt", recursive=True)
         assert result is not None
 
     @patch("wy_qcos.common.library.os.path.isdir")
     def test_find_files_with_exclusion(self, mock_isdir):
         """Test find_files with exclusion pattern."""
+        tmp_dir = tempfile.gettempdir()
         mock_isdir.return_value = False
-        result = Library.find_files("/tmp", exclusives="exclude*")
+        result = Library.find_files(tmp_dir, exclusives="exclude*")
         assert result is not None
 
     @patch("wy_qcos.common.library.os.path.isdir")
     def test_find_files_extended(self, mock_isdir):
         """Test find_files extended functionality."""
+        tmp_dir = tempfile.gettempdir()
         mock_isdir.return_value = False
-        result = Library.find_files("/tmp", pattern="*.txt")
+        result = Library.find_files(tmp_dir, pattern="*.txt")
         assert result is not None
 
     @patch("wy_qcos.common.library.Library.create_file")
@@ -636,8 +649,9 @@ class TestLibrary:
     @patch("wy_qcos.common.library.os.path.isdir")
     def test_is_directory_true(self, mock_isdir):
         """Test is_directory with directory."""
+        tmp_dir = tempfile.gettempdir()
         mock_isdir.return_value = True
-        assert mock_isdir("/tmp") is True
+        assert mock_isdir(tmp_dir) is True
 
     @patch("wy_qcos.common.library.os.path.isdir")
     def test_is_directory_false(self, mock_isdir):
@@ -1082,10 +1096,11 @@ class TestLibrary:
     @patch("wy_qcos.common.library.os.walk")
     def test_find_files_with_exclusives_list(self, mock_walk, mock_isdir):
         """Test find_files with exclusives as list."""
+        tmp_dir = tempfile.gettempdir()
         mock_isdir.return_value = True
-        mock_walk.return_value = [("/tmp", [], ["test.txt", "exclude.txt"])]
+        mock_walk.return_value = [(tmp_dir, [], ["test.txt", "exclude.txt"])]
         result = Library.find_files(
-            "/tmp", pattern="*.txt", recursive=True, exclusives=["exclude"]
+            tmp_dir, pattern="*.txt", recursive=True, exclusives=["exclude"]
         )
         assert result is not None
 
@@ -1571,15 +1586,15 @@ class TestLibrary:
         mock_proc.pid = 999
         mock_proc.terminate.side_effect = Exception("Error")
         with patch("wy_qcos.common.library.psutil.wait_procs"):
-            # Exception during terminate should be caught and added to failed_pids
+            # Exception during terminate should be caught and
+            # added to failed_pids
             try:
                 success_pids, failed_pids = Library.kill(
                     [mock_proc], force=False
                 )
                 assert len(failed_pids) > 0
-            except Exception:
-                # Expected: Exception is raised by the mock
-                pass
+            except Exception as e:
+                print(f"Expected: Exception is raised by the mock: {e}")
 
     # ========== Additional Coverage for get_venv_dirs ==========
 
@@ -1624,7 +1639,8 @@ class TestLibrary:
     ):
         """Test get_venv_dirs reorders default venv."""
         mock_exists.return_value = True
-        # Need more return values for all isdir calls: bin_dir for each venv, lib_dir for each venv
+        # Need more return values for all isdir calls:
+        # bin_dir for each venv, lib_dir for each venv
         mock_isdir.side_effect = [True, True, True, True, True, True]
         mock_listdir.return_value = ["default", "other"]
         mock_walk.side_effect = [
@@ -1837,7 +1853,8 @@ class TestLibrary:
         result = Library.get_sorted_keys(sort_obj, ["name"])
         assert result is not None
 
-    # ========== Additional Coverage for encrypt/decrypt_virtual_instance_id ==========
+    # ========== Additional Coverage for
+    # encrypt/decrypt_virtual_instance_id ==========
 
     def test_encrypt_virtual_instance_id_exception(self):
         """Test encrypt_virtual_instance_id with exception."""

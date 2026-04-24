@@ -29,7 +29,8 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Create users table (without roles JSON field - now using user_roles association table)
+    # Create users table (without roles JSON field - now using
+    # user_roles association table)
     op.create_table(
         "users",
         sa.Column("id", sa.String(length=36), nullable=False),

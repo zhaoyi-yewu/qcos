@@ -15,8 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session
 
 from wy_qcos.db.utils.db_utils import (
@@ -65,7 +64,7 @@ class TestGetDbSession:
             mock_session_class.return_value = mock_session_instance
 
             gen = get_db_session(mock_request)
-            session = next(gen)
+            next(gen)
 
             try:
                 gen.send(None)
@@ -125,7 +124,7 @@ class TestCreateDbSession:
             mock_session_instance = MagicMock(spec=Session)
             mock_session_class.return_value = mock_session_instance
 
-            with create_db_session(mock_engine) as session:
+            with create_db_session(mock_engine):
                 pass
 
             mock_session_instance.close.assert_called_once()
@@ -139,7 +138,7 @@ class TestCreateDbSession:
             mock_session_class.return_value = mock_session_instance
 
             try:
-                with create_db_session(mock_engine) as session:
+                with create_db_session(mock_engine):
                     raise ValueError("Test exception")
             except ValueError:
                 pass
@@ -154,7 +153,7 @@ class TestCreateDbSession:
             mock_session_instance = MagicMock(spec=Session)
             mock_session_class.return_value = mock_session_instance
 
-            with create_db_session(mock_engine) as session:
+            with create_db_session(mock_engine):
                 # Verify Session was called with expire_on_commit=False
                 mock_session_class.assert_called_once_with(
                     mock_engine, expire_on_commit=False

@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from collections import OrderedDict
+from pathlib import Path
 from unittest.mock import patch, Mock
 import pytest
 
@@ -98,7 +100,7 @@ class TestConfig:
     def test_get_configs_with_mask(self, mock_mask):
         """Test get_configs with password masking."""
         mock_mask.return_value = {"password": "***"}
-        configs = config.get_configs(mask_password=True)
+        config.get_configs(mask_password=True)
         mock_mask.assert_called_once()
 
     def test_get_extra_configs(self):
@@ -146,14 +148,12 @@ class TestConfig:
 
         Config._EXTRA_CONFIGS = {}
         config.load_config_file("/config.toml", extra_config=False)
-        # Should add to extra configs since CUSTOM_SECTION not in VALID_SECTIONS
+        # Should add to extra configs since CUSTOM_SECTION
+        # not in VALID_SECTIONS
 
     @patch.object(Library, "read_toml_file")
     def test_load_driver_env_file_copy_from_handling(self, mock_read_toml):
         """Test driver env file with copy_from handling."""
-        from collections import OrderedDict
-        from pathlib import Path
-
         mock_configs = OrderedDict([
             (
                 "base_driver",

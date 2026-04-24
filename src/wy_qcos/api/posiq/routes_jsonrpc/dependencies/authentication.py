@@ -87,13 +87,15 @@ def get_current_user_from_token(
 ) -> user_schemas.User | None:
     """Extract and validate current user from JWT token.
 
-    This function decodes the JWT token and retrieves the corresponding user.
-    It validates token validity, blacklist status, and all user account conditions.
+    This function decodes the JWT token and retrieves the
+    corresponding user. It validates token validity, blacklist
+    status, and all user account conditions.
 
     Validation checks (in order):
     1. Token must be present and decodable
     2. Token must not be blacklisted
-    3. User must exist (Case 1: Deleted users with valid tokens are rejected)
+    3. User must exist (Case 1: Deleted users with valid
+    tokens are rejected)
     4. User account must be enabled
     5. User account must not be locked
     6. User password must not be expired
@@ -132,7 +134,8 @@ def get_current_user_from_token(
         # Case 1: User has been deleted after token was issued
         if not user:
             logger.warning(
-                f"User '{user_data['sub']}' not found - account may have been deleted"
+                f"User '{user_data['sub']}' not found - "
+                "account may have been deleted"
             )
             return None
 

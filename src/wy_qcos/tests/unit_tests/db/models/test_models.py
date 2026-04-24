@@ -21,17 +21,11 @@ import json
 from datetime import datetime
 
 from wy_qcos.db.models import (
-    Base,
-    User,
-    Role,
-    UserRole,
     LoginLog,
-    TokenBlacklist,
     ArrayType,
     GUID,
 )
 from wy_qcos.db.models.base import MyEncoder
-from wy_qcos.common.constant import Constant
 
 
 class TestBaseModel:

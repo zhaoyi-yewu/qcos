@@ -179,8 +179,9 @@ class TestUserRepositoryCRUD:
 
     def test_update_user_password(self, user_repository, sample_user):
         """Test user password update."""
-        # UpdateUserRequest doesn't have password field, use it for other fields
-        # Password updates are handled separately in the actual implementation
+        # UpdateUserRequest doesn't have password field,
+        # use it for other fields. Password updates are
+        # handled separately in the actual implementation
         update_request = UpdateUserRequest(
             user_id=sample_user.id, description="Updated description"
         )
@@ -484,9 +485,7 @@ class TestUserRepositoryExceptionHandling:
         """Test cleanup blacklist exception handling."""
         with patch.object(user_repository, "get_all") as mock_get:
             mock_get.side_effect = Exception("DB Error")
-            with patch.object(
-                user_repository, "delete_by_attr"
-            ) as mock_delete:
+            with patch.object(user_repository, "delete_by_attr"):
                 success, count = user_repository.cleanup_blacklist()
                 # May succeed or fail depending on implementation
                 assert isinstance(success, bool)
@@ -498,7 +497,7 @@ class TestUserRepositoryEdgeCases:
     def test_create_user_no_roles(self, user_repository):
         """Test create user with empty roles list."""
         create_request = CreateUserRequest(
-            user_name="no_roles_user", password="password123", roles=[]
+            user_name="no_roles_user", password=_s("password123"), roles=[]
         )
         success, error, user = user_repository.create_user(create_request)
         assert success is True
@@ -512,7 +511,7 @@ class TestUserRepositoryEdgeCases:
         user = User(
             id=str(uuid.uuid4()),
             user_name="locked_valid_user",
-            hashed_password="hashed",
+            hashed_password=_s("hashed"),
             is_locked=True,
             locked_until=future_time,
             is_enabled=True,
@@ -619,7 +618,7 @@ class TestUserRepositoryEdgeCases:
 
     def test_assign_role_with_exception(self, user_repository):
         """Test assign role exception handling."""
-        with patch.object(user_repository, "rollback") as mock_rollback:
+        with patch.object(user_repository, "rollback"):
             with patch("wy_qcos.db.repositories.user.select") as mock_select:
                 mock_select.side_effect = Exception("DB Error")
                 success, error = user_repository.assign_role(
@@ -629,7 +628,7 @@ class TestUserRepositoryEdgeCases:
 
     def test_remove_role_with_exception(self, user_repository):
         """Test remove role exception handling."""
-        with patch.object(user_repository, "rollback") as mock_rollback:
+        with patch.object(user_repository, "rollback"):
             with patch("wy_qcos.db.repositories.user.select") as mock_select:
                 mock_select.side_effect = Exception("DB Error")
                 success, error = user_repository.remove_role(
@@ -639,7 +638,7 @@ class TestUserRepositoryEdgeCases:
 
     def test_update_user_roles_with_exception(self, user_repository):
         """Test update user roles exception handling."""
-        with patch.object(user_repository, "rollback") as mock_rollback:
+        with patch.object(user_repository, "rollback"):
             with patch("wy_qcos.db.repositories.user.delete") as mock_delete:
                 mock_delete.side_effect = Exception("DB Error")
                 success, error = user_repository.update_user_roles(
@@ -701,7 +700,7 @@ class TestUserRepositoryEdgeCases:
 
     def test_cleanup_blacklist_exception_handling(self, user_repository):
         """Test cleanup blacklist exception handling."""
-        with patch.object(user_repository, "rollback") as mock_rollback:
+        with patch.object(user_repository, "rollback"):
             with patch("wy_qcos.db.repositories.user.delete") as mock_delete:
                 mock_delete.side_effect = Exception("DB Error")
                 success, error = user_repository.cleanup_blacklist()
@@ -786,7 +785,9 @@ class TestUserRepositoryEdgeCases:
                 user_repository._db_session, "execute"
             ) as mock_execute:
                 # Simulate verification failure
-                mock_execute.return_value.scalars.return_value.first.return_value = None
+                (
+                    mock_execute.return_value.scalars.return_value.first
+                ).return_value = None
                 success, error = user_repository.add_to_blacklist(
                     token_jti, expires_at
                 )
@@ -832,7 +833,8 @@ class TestUserRepositoryEdgeCases:
         )
         with patch.object(user_repository, "get_by_uuid") as mock_get:
             with patch.object(user_repository, "update") as mock_update:
-                # First call succeeds (get existing), second call to update succeeds
+                # First call succeeds (get existing),
+                # second call to update succeeds
                 mock_get.side_effect = [
                     (True, None, sample_user),
                     (True, None, sample_user),
@@ -847,7 +849,7 @@ class TestUserRepositoryEdgeCases:
     def test_update_user_with_no_password_no_role(
         self, user_repository, sample_user
     ):
-        """Test update user with only other fields when no password or roles."""
+        """Test update user when no password or roles."""
         update_request = UpdateUserRequest(
             user_id=sample_user.id, is_enabled=False
         )

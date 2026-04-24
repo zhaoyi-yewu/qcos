@@ -272,7 +272,8 @@ class Config:
         # Only one of ENABLE_USER_MGMT or ENABLE_VIRT can be enabled
         if cls.ENABLE_VIRT and cls.ENABLE_USER_MGMT:
             raise errors.GenericException(
-                "Cannot enable both ENABLE_USER_MGMT and ENABLE_VIRT simultaneously. "
+                "Cannot enable both ENABLE_USER_MGMT and "
+                "ENABLE_VIRT simultaneously. "
                 "Only one authentication mode can be enabled."
             )
 

@@ -98,15 +98,18 @@ class UserRepository(BaseRepository):
                 User, "user_name", user_name
             )
             if success and user:
-                # Auto-cleanup: If user is marked as locked but lockout period has expired,
-                # automatically unlock them before returning
+                # Auto-cleanup: If user is marked as locked but lockout
+                # period has expired, automatically unlock them before
+                # returning
                 if (
                     user.is_locked
                     and user.locked_until
                     and datetime.now() >= user.locked_until
                 ):
                     logger.info(
-                        f"Auto-unlocking user '{user_name}' - lockout period has expired (locked_until: {user.locked_until})"
+                        f"Auto-unlocking user '{user_name}' - lockout "
+                        f"period has expired (locked_until: "
+                        f"{user.locked_until})"
                     )
                     # Update the user record
                     user.is_locked = False
@@ -115,7 +118,8 @@ class UserRepository(BaseRepository):
                     self._db_session.commit()
                     self._db_session.refresh(user)
                     logger.info(
-                        f"User '{user_name}' auto-unlocked and persisted to database"
+                        f"User '{user_name}' auto-unlocked and "
+                        f"persisted to database"
                     )
                 return True, None, user
             else:
@@ -129,15 +133,18 @@ class UserRepository(BaseRepository):
         try:
             success, error, user = self.get_by_uuid(User, user_id)
             if success and user:
-                # Auto-cleanup: If user is marked as locked but lockout period has expired,
-                # automatically unlock them before returning
+                # Auto-cleanup: If user is marked as locked but lockout
+                # period has expired, automatically unlock them before
+                # returning
                 if (
                     user.is_locked
                     and user.locked_until
                     and datetime.now() >= user.locked_until
                 ):
                     logger.info(
-                        f"Auto-unlocking user ID '{user_id}' - lockout period has expired (locked_until: {user.locked_until})"
+                        f"Auto-unlocking user ID '{user_id}' - lockout "
+                        f"period has expired (locked_until: "
+                        f"{user.locked_until})"
                     )
                     # Update the user record
                     user.is_locked = False
@@ -146,7 +153,8 @@ class UserRepository(BaseRepository):
                     self._db_session.commit()
                     self._db_session.refresh(user)
                     logger.info(
-                        f"User ID '{user_id}' auto-unlocked and persisted to database"
+                        f"User ID '{user_id}' auto-unlocked and "
+                        f"persisted to database"
                     )
                 return True, None, user
             return False, f"User with id {user_id} not found", None
@@ -192,8 +200,9 @@ class UserRepository(BaseRepository):
                 # Update password_changed_at timestamp when password is changed
                 update_data["password_changed_at"] = datetime.now()
 
-            # Filter out keys that were not provided (model_dump with exclude_unset=True)
-            # but keep None values to allow clearing/nullifying fields
+            # Filter out keys that were not provided
+            # (model_dump with exclude_unset=True) but keep None values
+            # to allow clearing/nullifying fields
             if update_data:
                 success, error, updated_user = self.update(
                     User, user_id, **update_data
@@ -209,7 +218,8 @@ class UserRepository(BaseRepository):
                     )
                     if not success:
                         logger.error(
-                            f"Failed to reload user after password change: {error}"
+                            f"Failed to reload user after password "
+                            f"change: {error}"
                         )
                         return False, error, None
                 else:
@@ -238,8 +248,8 @@ class UserRepository(BaseRepository):
     def delete_user_by_id(self, user_id: str):
         """Delete a user by UUID string.
 
-        This method first deletes all user-role associations before deleting the user
-        to avoid foreign key constraint violations.
+        This method first deletes all user-role associations before
+        deleting the user to avoid foreign key constraint violations.
         """
         try:
             # First, delete all role associations for this user
@@ -249,7 +259,8 @@ class UserRepository(BaseRepository):
             result = self._db_session.execute(delete_roles_query)
             self._db_session.flush()
             logger.debug(
-                f"Deleted {result.rowcount} role associations for user {user_id}"
+                f"Deleted {result.rowcount} role associations for "
+                f"user {user_id}"
             )
 
             # Then delete the user itself
@@ -268,8 +279,8 @@ class UserRepository(BaseRepository):
     def delete_user_by_username(self, user_name: str):
         """Delete a user by username.
 
-        This method first deletes all user-role associations before deleting the user
-        to avoid foreign key constraint violations.
+        This method first deletes all user-role associations before
+        deleting the user to avoid foreign key constraint violations.
         """
         try:
             # Get the user first to get their ID
@@ -285,7 +296,8 @@ class UserRepository(BaseRepository):
             result = self._db_session.execute(delete_roles_query)
             self._db_session.flush()
             logger.debug(
-                f"Deleted {result.rowcount} role associations for user {user_name}"
+                f"Deleted {result.rowcount} role associations for "
+                f"user {user_name}"
             )
 
             # Then delete the user itself
@@ -311,7 +323,7 @@ class UserRepository(BaseRepository):
         failure_reason: str | None = None,
         user_agent: str | None = None,
     ):
-        """Create a login log entry with automatic cleanup when max logs exceeded."""
+        """Create a login log entry with auto cleanup when logs exceeded."""
         try:
             log_data = {
                 "user_name": user_name,
@@ -410,7 +422,8 @@ class UserRepository(BaseRepository):
         """Add a token to the blacklist."""
         try:
             logger.debug(
-                f"Adding token to blacklist - jti: {token_jti}, expires_at: {expires_at}"
+                f"Adding token to blacklist - jti: {token_jti}, "
+                f"expires_at: {expires_at}"
             )
             token_data = {
                 "token_jti": token_jti,
@@ -419,7 +432,8 @@ class UserRepository(BaseRepository):
             success, error, token = self.create(TokenBlacklist, **token_data)
             if success:
                 logger.info(
-                    f"Token {token_jti} successfully added to blacklist with ID: {token.id}"
+                    f"Token {token_jti} successfully added to blacklist "
+                    f"with ID: {token.id}"
                 )
                 # Verify it was actually persisted
                 verify_query = select(TokenBlacklist).where(
@@ -429,11 +443,13 @@ class UserRepository(BaseRepository):
                 verify_token = verify_result.scalars().first()
                 if verify_token:
                     logger.debug(
-                        f"Blacklist entry verified in database: {verify_token.id}"
+                        f"Blacklist entry verified in database: "
+                        f"{verify_token.id}"
                     )
                 else:
                     logger.warning(
-                        f"Failed to verify blacklist entry for token {token_jti}"
+                        f"Failed to verify blacklist entry for "
+                        f"token {token_jti}"
                     )
                 return True, None
             else:
@@ -464,19 +480,23 @@ class UserRepository(BaseRepository):
 
             if token:
                 logger.debug(
-                    f"Token {token_jti} found in blacklist, expires_at: {token.expires_at}"
+                    f"Token {token_jti} found in blacklist, "
+                    f"expires_at: {token.expires_at}"
                 )
-                # Check if the blacklist entry has expired (using local time - UTC+8)
+                # Check if the blacklist entry has expired
+                # (using local time - UTC+8)
                 now = datetime.now()
                 if now > token.expires_at:
                     # Entry has expired, remove it
                     logger.info(
-                        f"Blacklist entry for token {token_jti} has expired ({now} > {token.expires_at}), removing"
+                        f"Blacklist entry for token {token_jti} has "
+                        f"expired ({now} > {token.expires_at}), removing"
                     )
                     self.delete_by_uuid(TokenBlacklist, token.id)
                     return False
                 logger.info(
-                    f"Token {token_jti} is still in blacklist (valid until {token.expires_at})"
+                    f"Token {token_jti} is still in blacklist "
+                    f"(valid until {token.expires_at})"
                 )
                 return True
             else:
@@ -500,7 +520,8 @@ class UserRepository(BaseRepository):
             self._db_session.commit()
             if result.rowcount > 0:
                 logger.info(
-                    f"Cleaned up {result.rowcount} expired token(s) from blacklist"
+                    f"Cleaned up {result.rowcount} expired token(s) "
+                    f"from blacklist"
                 )
             return True, None
         except Exception as e:
@@ -508,7 +529,7 @@ class UserRepository(BaseRepository):
             self.rollback()
             return False, e
 
-    # ==================== User-Role Association Operations ====================
+    # ==================== User-Role Association Operations ==
 
     def assign_role(
         self, user_id: str, role_name: str

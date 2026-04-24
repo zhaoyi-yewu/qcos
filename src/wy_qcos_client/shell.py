@@ -2203,7 +2203,8 @@ class CreateRole(Command):
         parser.add_argument(
             "permissions",
             type=str,
-            help='Permissions (JSON array, e.g., \'["api/path1", "api/path2"]\')',
+            help="Permissions (JSON array, e.g., "
+            '\'["api/path1", "api/path2"]\')',
         )
         parser.add_argument("--description", type=str, help="Role description")
         return parser
@@ -2214,7 +2215,9 @@ class CreateRole(Command):
             permissions = json.loads(parsed_args.permissions)
         except json.decoder.JSONDecodeError as exc:
             raise errors.InvalidArguments(
-                f'Invalid permissions JSON format. Expected: \'["path1", "path2"]\'. Got: {parsed_args.permissions}'
+                f"Invalid permissions JSON format. "
+                f'Expected: \'["path1", "path2"]\'. '
+                f"Got: {parsed_args.permissions}"
             ) from exc
         status_code, reason, text, result = self.app.client.create_role(
             parsed_args.role_name, permissions, parsed_args.description
@@ -2265,7 +2268,8 @@ class UpdateRole(Command):
             "--permission",  # Add alias for backward compatibility
             type=str,
             dest="permissions",
-            help='Permissions (JSON array, e.g., \'["api/path1", "api/path2"]\')',
+            help="Permissions (JSON array, e.g., "
+            '\'["api/path1", "api/path2"]\')',
         )
         parser.add_argument("--description", type=str, help="Role description")
         return parser
@@ -2279,7 +2283,9 @@ class UpdateRole(Command):
                 permissions = json.loads(parsed_args.permissions)
             except json.decoder.JSONDecodeError as exc:
                 raise errors.InvalidArguments(
-                    f'Invalid permissions JSON format. Expected: \'["path1", "path2"]\'. Got: {parsed_args.permissions}'
+                    f"Invalid permissions JSON format. "
+                    f'Expected: \'["path1", "path2"]\'. '
+                    f"Got: {parsed_args.permissions}"
                 ) from exc
         status_code, reason, text, result = self.app.client.update_role(
             role_id, permissions, parsed_args.description
@@ -2387,7 +2393,8 @@ class GetLoginLogs(Lister):
         # Validate that only one of user_id or user_name is provided
         if user_id is not None and user_name is not None:
             raise errors.InvalidArguments(
-                "Cannot specify both user_id and user_name. Please provide only one."
+                "Cannot specify both user_id and user_name. "
+                "Please provide only one."
             )
 
         header_list = [
@@ -2478,8 +2485,10 @@ class Login(Command):
         else:
             print(
                 "Login successful.\n"
-                f"Access token expires in {json_results['expires_in']} seconds\n"
-                f"Refresh token expires in {json_results['refresh_expires_in']} seconds\n\n"
+                f"Access token expires in "
+                f"{json_results['expires_in']} seconds\n"
+                f"Refresh token expires in "
+                f"{json_results['refresh_expires_in']} seconds\n\n"
                 "Set environment variables to take effect:\n"
                 f"export {Constant.ENV_VAR_ACCESS_TOKEN}={access_token}\n"
                 f"export {Constant.ENV_VAR_REFRESH_TOKEN}={refresh_token}"
@@ -2515,7 +2524,8 @@ class RefreshToken(Command):
             "--refresh-token",
             type=str,
             default=None,
-            help="Specify refresh_token directly (overrides environment variable)",
+            help="Specify refresh_token directly "
+            "(overrides environment variable)",
         )
         return parser
 
@@ -2526,7 +2536,8 @@ class RefreshToken(Command):
         )
         if not refresh_token_value:
             raise argparse.ArgumentTypeError(
-                "Error: No refresh_token provided (use --refresh-token or set QCOS_REFRESH_TOKEN)"
+                "Error: No refresh_token provided (use --refresh-token "
+                "or set QCOS_REFRESH_TOKEN)"
             )
         status_code, reason, text, result = self.app.client.call_json_rpc(
             self.app.client.auth_url,
@@ -2543,8 +2554,10 @@ class RefreshToken(Command):
         self.app.client.set_token(access_token)
         print(
             f"Token refreshed.\n"
-            f"Access token expires in {json_results['expires_in']} seconds\n"
-            f"Refresh token expires in {json_results['refresh_expires_in']} seconds\n\n"
+            f"Access token expires in "
+            f"{json_results['expires_in']} seconds\n"
+            f"Refresh token expires in "
+            f"{json_results['refresh_expires_in']} seconds\n\n"
             "Set environment variables to take effect:\n"
             f"export {Constant.ENV_VAR_ACCESS_TOKEN}={access_token}\n"
             f"export {Constant.ENV_VAR_REFRESH_TOKEN}={refresh_token}"

@@ -508,7 +508,6 @@ class TestLoginLogging:
     @pytest.fixture
     def user_manager(self):
         """Create a UserManager instance."""
-
         mock_enforcer = Mock()
         mock_enforcer.add_policy.return_value = True
         mock_enforcer.remove_policy.return_value = True
