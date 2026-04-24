@@ -94,3 +94,13 @@ from .system import (
     SystemInfoRequest,
     SystemInfoResponse,
 )
+from .metrics import (
+    GetMetricsRequest,
+    GetMetricsResponse,
+    GetSystemHealthRequest,
+    GetSystemHealthResponse,
+    GetApiStatsRequest,
+    GetApiStatsResponse,
+    GetJobStatsRequest,
+    GetJobStatsResponse,
+)
