@@ -92,8 +92,10 @@
    # 2. QCOS CLIENT单元测试
    ./cicd/run-tests.sh -j all
 
-执行覆盖率测试(Coverage)，确保覆盖率不低于：80%
+执行覆盖率测试(Coverage)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+确保代码覆盖率不低于：80%
 
 .. code-block:: shell
 
