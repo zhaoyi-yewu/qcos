@@ -607,6 +607,7 @@ class TestGetLoginLogs:
         cmd.app.stdout = Mock()
         parsed_args = Mock()
         parsed_args.user_id = user_id
+        parsed_args.user_name = None
         parsed_args.limit = 100
         parsed_args.offset = 0
         result = cmd.take_action(parsed_args)
@@ -650,7 +651,12 @@ class TestLogin:
         """Test Login take_action method."""
         mock_response = {
             "jsonrpc": "2.0",
-            "result": {"access_token": "token123", "expires_in": 3600},
+            "result": {
+                "access_token": "token123",
+                "refresh_token": "refresh123",
+                "expires_in": 3600,
+                "refresh_expires_in": 7200,
+            },
             "id": 0,
         }
         mock_login.return_value = (
@@ -666,6 +672,8 @@ class TestLogin:
         parsed_args.username = "admin"
         parsed_args.password = _s("admin123")
         parsed_args.token_only = False
+        parsed_args.access_token = False
+        parsed_args.refresh_token = False
         cmd.take_action(parsed_args)
         mock_login.assert_called_once_with("admin", "admin123")
 
@@ -674,7 +682,12 @@ class TestLogin:
         """Test Login with token_only flag."""
         mock_response = {
             "jsonrpc": "2.0",
-            "result": {"access_token": "token123", "expires_in": 3600},
+            "result": {
+                "access_token": "token123",
+                "refresh_token": "refresh123",
+                "expires_in": 3600,
+                "refresh_expires_in": 7200,
+            },
             "id": 0,
         }
         mock_login.return_value = (
@@ -690,6 +703,8 @@ class TestLogin:
         parsed_args.username = "admin"
         parsed_args.password = _s("admin123")
         parsed_args.token_only = True
+        parsed_args.access_token = False
+        parsed_args.refresh_token = False
         cmd.take_action(parsed_args)
 
     @patch.object(Client, "login")
@@ -743,47 +758,61 @@ class TestRefreshToken:
         parser = cmd.get_parser("refresh-token")
         assert parser is not None
 
-    @patch.object(Client, "refresh_token")
-    def test_take_action(self, mock_refresh_token):
+    @patch.object(Client, "call_json_rpc")
+    def test_take_action(self, mock_call_json_rpc):
         """Test RefreshToken take_action method."""
         mock_response = {
             "jsonrpc": "2.0",
-            "result": {"access_token": "newtoken456", "expires_in": 3600},
+            "result": {
+                "access_token": "newtoken456",
+                "refresh_token": "refresh789",
+                "expires_in": 3600,
+                "refresh_expires_in": 7200,
+            },
             "id": 0,
         }
-        mock_refresh_token.return_value = (
+        mock_call_json_rpc.return_value = (
             200,
             "OK",
             json.dumps(mock_response),
             mock_response["result"],
         )
+        shell.client.auth_url = "http://localhost:18400/v1/auth"
         cmd = RefreshToken(shell, None)
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
         parsed_args.token_only = False
+        parsed_args.refresh_token = "refresh123"
         cmd.take_action(parsed_args)
-        mock_refresh_token.assert_called_once()
+        mock_call_json_rpc.assert_called_once()
 
-    @patch.object(Client, "refresh_token")
-    def test_take_action_token_only(self, mock_refresh_token):
+    @patch.object(Client, "call_json_rpc")
+    def test_take_action_token_only(self, mock_call_json_rpc):
         """Test RefreshToken with token_only flag."""
         mock_response = {
             "jsonrpc": "2.0",
-            "result": {"access_token": "newtoken456", "expires_in": 3600},
+            "result": {
+                "access_token": "newtoken456",
+                "refresh_token": "refresh789",
+                "expires_in": 3600,
+                "refresh_expires_in": 7200,
+            },
             "id": 0,
         }
-        mock_refresh_token.return_value = (
+        mock_call_json_rpc.return_value = (
             200,
             "OK",
             json.dumps(mock_response),
             mock_response["result"],
         )
+        shell.client.auth_url = "http://localhost:18400/v1/auth"
         cmd = RefreshToken(shell, None)
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
         parsed_args.token_only = True
+        parsed_args.refresh_token = "refresh123"
         cmd.take_action(parsed_args)
 
 
