@@ -15,12 +15,12 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import argcomplete
 import argparse
 import json
 import os
 import sys
 
+import argcomplete
 from cliff import help
 from cliff.app import App
 from cliff.command import Command
@@ -33,6 +33,7 @@ from .common import args_schema, errors
 from .common.client_library import ClientLibrary
 from .common.constant import Constant, HttpCode
 from .common.qcos_version import QcosVersion
+
 
 VERSION = QcosVersion.VERSION
 DESCRIPTION = "QCOS command line interface"
@@ -50,6 +51,7 @@ class QcosShell(App):
     CMD_GROUP_DEVICE = "Device"
     CMD_GROUP_TRANSPILER = "Transpiler"
     CMD_GROUP_JOB = "Job"
+    CMD_GROUP_METRICS = "Metrics"
     CMD_GROUPS = [
         CMD_GROUP_DEFAULT,
         CMD_GROUP_VERSION,
@@ -60,6 +62,7 @@ class QcosShell(App):
         CMD_GROUP_DEVICE,
         CMD_GROUP_TRANSPILER,
         CMD_GROUP_JOB,
+        CMD_GROUP_METRICS,
     ]
 
     def __init__(self, description, version, command_manager):
@@ -2524,6 +2527,115 @@ class GetLoginLogs(Lister):
         return table_values
 
 
+# Metrics commands
+class GetSystemHealth(Lister):
+    """Get system health status."""
+
+    group = QcosShell.CMD_GROUP_METRICS
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+
+        status_code, reason, text, result = self.app.client.get_system_health()
+        json_results = CommandHelper.check_results(
+            resource, "get_system_health", status_code, reason, text
+        )
+
+        if "components" not in json_results:
+            raise errors.GenericException(
+                "Invalid response format: 'components' field is missing"
+            )
+
+        header_list = ["SYSTEM", "STATUS"]
+
+        stats_list = [
+            {header_list[0]: key, header_list[1]: value}
+            for key, value in json_results["components"].items()
+        ]
+
+        table_values = CommandHelper.get_table_list_data(
+            stats_list, header_list, is_dict=False
+        )
+
+        overall_status = (
+            "online" if json_results.get("healthy", False) else "offline"
+        )
+        print(f"\nOverall System Status: {overall_status}")
+        print(
+            f"Last Heartbeat: {json_results.get('heartbeat_timestamp', 'N/A')}"
+        )
+        print("\nComponent Details:")
+
+        return table_values
+
+
+class GetApiStats(Lister):
+    """Get API access statistics."""
+
+    group = QcosShell.CMD_GROUP_METRICS
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+
+        status_code, reason, text, result = self.app.client.get_api_stats()
+        print(f"API access statistics:{text}")
+        json_results = CommandHelper.check_results(
+            resource, "get_api_stats", status_code, reason, text
+        )
+
+        header_list = ["API_METRICS", "COUNT"]
+
+        # Customize display field names
+
+        stats_list = [
+            {header_list[0]: key, header_list[1]: value}
+            for key, value in json_results.items()
+        ]
+
+        table_values = CommandHelper.get_table_list_data(
+            stats_list, header_list, is_dict=False
+        )
+        return table_values
+
+
+class GetJobStats(Lister):
+    """Get job statistics."""
+
+    group = QcosShell.CMD_GROUP_METRICS
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+
+        status_code, reason, text, result = self.app.client.get_job_stats()
+
+        json_results = CommandHelper.check_results(
+            resource, "get_job_stats", status_code, reason, text
+        )
+        header_list = ["JOB_METRICS", "COUNT"]
+
+        stats_list = [
+            {header_list[0]: key, header_list[1]: value}
+            for key, value in json_results.items()
+        ]
+
+        table_values = CommandHelper.get_table_list_data(
+            stats_list, header_list, is_dict=False
+        )
+        return table_values
+
+
 # Auth commands
 class Login(Command):
     """User login to get JWT token."""
@@ -2722,6 +2834,10 @@ command_manager.add_command("get-role", GetRole)
 command_manager.add_command("list-roles", GetRoles)
 command_manager.add_command("update-role", UpdateRole)
 command_manager.add_command("delete-role", DeleteRole)
+# metrics command
+command_manager.add_command("get-system-health", GetSystemHealth)
+command_manager.add_command("get-api-stats", GetApiStats)
+command_manager.add_command("get-job-stats", GetJobStats)
 
 
 def set_debug_option(args):

@@ -18,14 +18,15 @@
 import json
 import logging
 import os
-import requests
 import uuid
 
+import requests
 from jsonrpcclient import Ok, parse, request
 
 from .common import errors
 from .common.client_library import ClientLibrary
-from .common.constant import Constant, HttpHeaders, HttpMethod, HttpCode
+from .common.constant import Constant, HttpCode, HttpHeaders, HttpMethod
+
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,7 @@ class Client:
         self.job_url = f"{endpoint_url}/job"
         self.user_url = f"{endpoint_url}/user"
         self.system_url = f"{endpoint_url}/system"
+        self.metrics_url = f"{endpoint_url}/metrics"
 
         # JWT token storage
         self.access_token = None
@@ -1056,3 +1058,41 @@ class Client:
             Current user information
         """
         return self.call_json_rpc(self.auth_url, "me", {})
+
+    # [Metrics]
+    def get_system_health(self):
+        """Get system health status.
+
+        Returns:
+            System health status
+        """
+        method_name = "get_system_health"
+        status_code, reason, text, result = self.call_json_rpc(
+            self.metrics_url, method_name, data=None
+        )
+        return status_code, reason, text, result
+
+    def get_api_stats(self):
+        """Get API access statistics.
+
+        Returns:
+            API statistics
+            including total requests, last hour and last day counts
+        """
+        method_name = "get_api_stats"
+        status_code, reason, text, result = self.call_json_rpc(
+            self.metrics_url, method_name, data=None
+        )
+        return status_code, reason, text, result
+
+    def get_job_stats(self):
+        """Get job statistics.
+
+        Returns:
+            Job statistics including total, success, failed, running, etc.
+        """
+        method_name = "get_job_stats"
+        status_code, reason, text, result = self.call_json_rpc(
+            self.metrics_url, method_name, data=None
+        )
+        return status_code, reason, text, result
