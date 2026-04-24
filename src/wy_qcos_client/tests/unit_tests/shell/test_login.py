@@ -213,9 +213,7 @@ class TestShellAuth:
         mock_get_user.assert_called_once()
 
     @patch.object(Client, "get_current_user")
-    def test_get_current_user_command_unauthorized(
-        self, mock_get_user
-    ):
+    def test_get_current_user_command_unauthorized(self, mock_get_user):
         """Test get current user when not authenticated."""
         mock_response = {"jsonrpc": "2.0", "result": {}, "id": 0}
         mock_get_user.return_value = (

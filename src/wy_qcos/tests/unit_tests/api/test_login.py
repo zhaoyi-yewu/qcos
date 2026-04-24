@@ -74,12 +74,18 @@ class TestLogin:
         SecurityManager, "create_access_token", return_value="test_jwt_token"
     )
     @patch.object(
-        SecurityManager, "create_refresh_token", return_value="test_refresh_token"
+        SecurityManager,
+        "create_refresh_token",
+        return_value="test_refresh_token",
     )
     @pytest.mark.asyncio
     async def test_login_success(
-        self, mock_create_refresh_token, mock_create_access_token, 
-        mock_request, mock_user_manager, mock_users_repo
+        self,
+        mock_create_refresh_token,
+        mock_create_access_token,
+        mock_request,
+        mock_user_manager,
+        mock_users_repo,
     ):
         """Test successful login."""
         # Mock security_manager in app state
@@ -141,7 +147,9 @@ class TestLogin:
             await login(mock_request, body, mock_user_manager, mock_users_repo)
 
     @pytest.mark.asyncio
-    async def test_login_disabled_user(self, mock_request, mock_user_manager, mock_users_repo):
+    async def test_login_disabled_user(
+        self, mock_request, mock_user_manager, mock_users_repo
+    ):
         """Test login with disabled user."""
         disabled_user = user_schemas.User(
             user_name="disableduser",
@@ -169,7 +177,9 @@ class TestLogin:
             await login(mock_request, body, mock_user_manager, mock_users_repo)
 
     @pytest.mark.asyncio
-    async def test_login_locked_user(self, mock_request, mock_user_manager, mock_users_repo):
+    async def test_login_locked_user(
+        self, mock_request, mock_user_manager, mock_users_repo
+    ):
         """Test login with locked user."""
         locked_user = user_schemas.User(
             user_name="lockeduser",
@@ -273,7 +283,9 @@ class TestLogin:
         )
 
         # Should succeed because lockout period has expired
-        result = await login(mock_request, body, mock_user_manager, mock_users_repo)
+        result = await login(
+            mock_request, body, mock_user_manager, mock_users_repo
+        )
         assert result is not None
         assert result.access_token == "test_jwt_token"
 
@@ -516,7 +528,9 @@ class TestLoginEnhanced:
             username="testuser", password=_s("password123")
         )
 
-        result = await login(mock_request, body, mock_user_manager, mock_users_repo)
+        result = await login(
+            mock_request, body, mock_user_manager, mock_users_repo
+        )
         assert result is not None
         assert result.access_token == "test_token"
 
@@ -722,9 +736,7 @@ class TestRefreshTokenMissingScenarios:
         mock.app.state._security_manager = mock_security_manager
         return mock
 
-    @patch(
-        "wy_qcos.api.posiq.routes_jsonrpc.auth.jwt.decode"
-    )
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.auth.jwt.decode")
     @pytest.mark.asyncio
     async def test_refresh_token_user_deleted(
         self, mock_jwt_decode, mock_request, mock_user_manager
@@ -748,9 +760,7 @@ class TestRefreshTokenMissingScenarios:
             or "unauthorized" in str(exc_info.value).lower()
         )
 
-    @patch(
-        "wy_qcos.api.posiq.routes_jsonrpc.auth.jwt.decode"
-    )
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.auth.jwt.decode")
     @pytest.mark.asyncio
     async def test_refresh_token_deleted_user_with_valid_token(
         self, mock_jwt_decode, mock_request, mock_user_manager
@@ -798,9 +808,7 @@ class TestRefreshTokenAdditionalScenarios:
         mock.app.state._security_manager = mock_security_manager
         return mock
 
-    @patch(
-        "wy_qcos.api.posiq.routes_jsonrpc.auth.jwt.decode"
-    )
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.auth.jwt.decode")
     @pytest.mark.asyncio
     async def test_refresh_token_disabled_user(
         self, mock_jwt_decode, mock_request, mock_user_manager
@@ -837,9 +845,7 @@ class TestRefreshTokenAdditionalScenarios:
             or "forbidden" in str(exc_info.value).lower()
         )
 
-    @patch(
-        "wy_qcos.api.posiq.routes_jsonrpc.auth.jwt.decode"
-    )
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.auth.jwt.decode")
     @pytest.mark.asyncio
     async def test_refresh_token_locked_user(
         self, mock_jwt_decode, mock_request, mock_user_manager
@@ -877,9 +883,7 @@ class TestRefreshTokenAdditionalScenarios:
             or "forbidden" in str(exc_info.value).lower()
         )
 
-    @patch(
-        "wy_qcos.api.posiq.routes_jsonrpc.auth.jwt.decode"
-    )
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.auth.jwt.decode")
     @patch(
         "wy_qcos.api.posiq.routes_jsonrpc.auth.UserManager.is_password_expired"
     )

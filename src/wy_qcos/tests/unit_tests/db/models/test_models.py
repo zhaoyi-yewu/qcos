@@ -28,7 +28,7 @@ from wy_qcos.db.models import (
     LoginLog,
     TokenBlacklist,
     ArrayType,
-    GUID
+    GUID,
 )
 from wy_qcos.db.models.base import MyEncoder
 from wy_qcos.common.constant import Constant
@@ -41,24 +41,24 @@ class TestBaseModel:
         """Test asdict method."""
         user_dict = sample_user.asdict()
         assert isinstance(user_dict, dict)
-        assert user_dict['user_name'] == 'testuser'
-        assert user_dict['is_enabled'] is True
-        assert 'id' in user_dict
+        assert user_dict["user_name"] == "testuser"
+        assert user_dict["is_enabled"] is True
+        assert "id" in user_dict
 
     def test_asjson(self, sample_user):
         """Test asjson method."""
         json_str = sample_user.asjson()
         assert isinstance(json_str, str)
         data = json.loads(json_str)
-        assert data['user_name'] == 'testuser'
-        assert data['is_enabled'] is True
+        assert data["user_name"] == "testuser"
+        assert data["is_enabled"] is True
 
     def test_asdict_with_relationships(self, sample_user_with_role):
         """Test asdict with user-role relationship."""
         user, _ = sample_user_with_role
         user_dict = user.asdict()
         assert isinstance(user_dict, dict)
-        assert user_dict['user_name'] == 'testuser'
+        assert user_dict["user_name"] == "testuser"
 
 
 class TestMyEncoder:
@@ -70,7 +70,7 @@ class TestMyEncoder:
         dt = datetime(2024, 1, 1, 12, 0, 0)
         result = encoder.default(dt)
         assert isinstance(result, str)
-        assert '2024-01-01' in result
+        assert "2024-01-01" in result
 
     def test_encode_uuid(self):
         """Test encoding UUID object."""
@@ -84,7 +84,7 @@ class TestMyEncoder:
         """Test encoding unsupported type raises error."""
         encoder = MyEncoder()
         with pytest.raises(TypeError):
-            encoder.default({'key': 'value'})
+            encoder.default({"key": "value"})
 
 
 class TestUserModel:
@@ -92,7 +92,7 @@ class TestUserModel:
 
     def test_user_creation(self, sample_user):
         """Test user creation."""
-        assert sample_user.user_name == 'testuser'
+        assert sample_user.user_name == "testuser"
         assert sample_user.is_enabled is True
         assert sample_user.is_locked is False
 
@@ -119,9 +119,9 @@ class TestUserModel:
     def test_user_asdict(self, sample_user):
         """Test user asdict conversion."""
         user_dict = sample_user.asdict()
-        assert user_dict['user_name'] == 'testuser'
-        assert user_dict['is_enabled'] is True
-        assert user_dict['is_locked'] is False
+        assert user_dict["user_name"] == "testuser"
+        assert user_dict["is_enabled"] is True
+        assert user_dict["is_locked"] is False
 
 
 class TestRoleModel:
@@ -129,15 +129,15 @@ class TestRoleModel:
 
     def test_role_creation(self, sample_role):
         """Test role creation."""
-        assert sample_role.role_name == 'admin'
-        assert sample_role.permissions == ['read', 'write', 'delete']
-        assert sample_role.description == 'Administrator role'
+        assert sample_role.role_name == "admin"
+        assert sample_role.permissions == ["read", "write", "delete"]
+        assert sample_role.description == "Administrator role"
 
     def test_role_asdict(self, sample_role):
         """Test role asdict conversion."""
         role_dict = sample_role.asdict()
-        assert role_dict['role_name'] == 'admin'
-        assert role_dict['permissions'] == ['read', 'write', 'delete']
+        assert role_dict["role_name"] == "admin"
+        assert role_dict["permissions"] == ["read", "write", "delete"]
 
 
 class TestUserRoleModel:
@@ -156,8 +156,8 @@ class TestUserRoleModel:
         user, _ = sample_user_with_role
         user_role = user.user_roles[0]
         ur_dict = user_role.asdict()
-        assert ur_dict['user_id'] == user.id
-        assert 'id' in ur_dict
+        assert ur_dict["user_id"] == user.id
+        assert "id" in ur_dict
 
 
 class TestLoginLogModel:
@@ -165,31 +165,31 @@ class TestLoginLogModel:
 
     def test_login_log_creation(self, sample_login_log):
         """Test login log creation."""
-        assert sample_login_log.user_name == 'testuser'
-        assert sample_login_log.ip_address == '192.168.1.1'
+        assert sample_login_log.user_name == "testuser"
+        assert sample_login_log.ip_address == "192.168.1.1"
         assert sample_login_log.login_status is True
-        assert sample_login_log.user_agent == 'Mozilla/5.0'
+        assert sample_login_log.user_agent == "Mozilla/5.0"
 
     def test_login_log_failed(self, in_memory_db):
         """Test login log with failed status."""
         log = LoginLog(
             id=str(uuid.uuid4()),
-            user_name='testuser',
-            ip_address='192.168.1.2',
+            user_name="testuser",
+            ip_address="192.168.1.2",
             login_time=datetime.now(),
             login_status=False,
-            failure_reason='Invalid password'
+            failure_reason="Invalid password",
         )
         in_memory_db.add(log)
         in_memory_db.commit()
         assert log.login_status is False
-        assert log.failure_reason == 'Invalid password'
+        assert log.failure_reason == "Invalid password"
 
     def test_login_log_asdict(self, sample_login_log):
         """Test login log asdict conversion."""
         log_dict = sample_login_log.asdict()
-        assert log_dict['user_name'] == 'testuser'
-        assert log_dict['login_status'] is True
+        assert log_dict["user_name"] == "testuser"
+        assert log_dict["login_status"] is True
 
 
 class TestTokenBlacklistModel:
@@ -203,8 +203,8 @@ class TestTokenBlacklistModel:
     def test_token_blacklist_asdict(self, sample_token_blacklist):
         """Test token blacklist asdict conversion."""
         token_dict = sample_token_blacklist.asdict()
-        assert 'token_jti' in token_dict
-        assert 'expires_at' in token_dict
+        assert "token_jti" in token_dict
+        assert "expires_at" in token_dict
 
 
 class TestArrayType:
@@ -213,6 +213,7 @@ class TestArrayType:
     def test_array_type_load_dialect_impl_postgresql(self):
         """Test ArrayType dialect implementation for PostgreSQL."""
         from sqlalchemy.dialects.postgresql import dialect as pg_dialect
+
         array_type = ArrayType()
         mock_dialect = pg_dialect()
         impl = array_type.load_dialect_impl(mock_dialect)
@@ -221,6 +222,7 @@ class TestArrayType:
     def test_array_type_load_dialect_impl_sqlite(self):
         """Test ArrayType dialect implementation for SQLite."""
         from sqlalchemy.dialects.sqlite import dialect as sqlite_dialect
+
         array_type = ArrayType()
         mock_dialect = sqlite_dialect()
         impl = array_type.load_dialect_impl(mock_dialect)
@@ -235,10 +237,11 @@ class TestArrayType:
     def test_array_type_process_bind_param_list(self):
         """Test ArrayType process_bind_param with list."""
         from sqlalchemy.dialects.sqlite import dialect as sqlite_dialect
+
         array_type = ArrayType()
         mock_dialect = sqlite_dialect()
-        result = array_type.process_bind_param(['a', 'b'], mock_dialect)
-        assert result == ['a', 'b']
+        result = array_type.process_bind_param(["a", "b"], mock_dialect)
+        assert result == ["a", "b"]
 
     def test_array_type_process_result_value_none(self):
         """Test ArrayType process_result_value with None."""
@@ -249,20 +252,20 @@ class TestArrayType:
     def test_array_type_process_result_value_list(self):
         """Test ArrayType process_result_value with list."""
         array_type = ArrayType()
-        result = array_type.process_result_value(['a', 'b'], None)
-        assert result == ['a', 'b']
+        result = array_type.process_result_value(["a", "b"], None)
+        assert result == ["a", "b"]
 
     def test_array_type_process_result_value_tuple(self):
         """Test ArrayType process_result_value with tuple."""
         array_type = ArrayType()
-        result = array_type.process_result_value(('a', 'b'), None)
-        assert result == ['a', 'b']
+        result = array_type.process_result_value(("a", "b"), None)
+        assert result == ["a", "b"]
 
     def test_array_type_process_result_value_single_value(self):
         """Test ArrayType process_result_value with single value."""
         array_type = ArrayType()
-        result = array_type.process_result_value('single', None)
-        assert result == ['single']
+        result = array_type.process_result_value("single", None)
+        assert result == ["single"]
 
 
 class TestGUIDType:
@@ -271,6 +274,7 @@ class TestGUIDType:
     def test_guid_type_load_dialect_impl_postgresql(self):
         """Test GUID dialect implementation for PostgreSQL."""
         from sqlalchemy.dialects.postgresql import dialect as pg_dialect
+
         guid_type = GUID()
         mock_dialect = pg_dialect()
         impl = guid_type.load_dialect_impl(mock_dialect)
@@ -279,6 +283,7 @@ class TestGUIDType:
     def test_guid_type_load_dialect_impl_sqlite(self):
         """Test GUID dialect implementation for SQLite."""
         from sqlalchemy.dialects.sqlite import dialect as sqlite_dialect
+
         guid_type = GUID()
         mock_dialect = sqlite_dialect()
         impl = guid_type.load_dialect_impl(mock_dialect)
@@ -293,6 +298,7 @@ class TestGUIDType:
     def test_guid_type_process_bind_param_string(self):
         """Test GUID process_bind_param with string UUID."""
         from sqlalchemy.dialects.sqlite import dialect as sqlite_dialect
+
         guid_type = GUID()
         mock_dialect = sqlite_dialect()
         test_uuid = str(uuid.uuid4())
@@ -303,10 +309,10 @@ class TestGUIDType:
     def test_guid_type_process_bind_param_uuid_object(self):
         """Test GUID process_bind_param with UUID object."""
         from sqlalchemy.dialects.sqlite import dialect as sqlite_dialect
+
         guid_type = GUID()
         mock_dialect = sqlite_dialect()
         test_uuid = uuid.uuid4()
         result = guid_type.process_bind_param(test_uuid, mock_dialect)
         assert isinstance(result, str)
         assert len(result) == 32
-

@@ -41,16 +41,20 @@ class DatabaseDriver:
     def create_engine(self):
         """Create db engine."""
         # Convert URL string to URL object if needed
-        url = self._url if hasattr(self._url, 'drivername') else make_url(self._url)
+        url = (
+            self._url
+            if hasattr(self._url, "drivername")
+            else make_url(self._url)
+        )
 
         # Build engine kwargs based on database type
-        engine_kwargs = {'pool_pre_ping': True}
+        engine_kwargs = {"pool_pre_ping": True}
 
         # Only set pool parameters for databases that support connection pooling
         # SQLite uses SingletonThreadPool which doesn't support these parameters
-        if not url.drivername.startswith('sqlite'):
-            engine_kwargs['pool_size'] = 10
-            engine_kwargs['max_overflow'] = 1000
+        if not url.drivername.startswith("sqlite"):
+            engine_kwargs["pool_size"] = 10
+            engine_kwargs["max_overflow"] = 1000
 
         self._engine = create_engine(url, **engine_kwargs)
         return self._engine

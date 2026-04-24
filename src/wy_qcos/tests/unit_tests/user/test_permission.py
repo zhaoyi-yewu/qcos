@@ -855,4 +855,3 @@ class TestPermissionManagerClear:
         result = pm.clear_policy()
 
         assert result is False
-

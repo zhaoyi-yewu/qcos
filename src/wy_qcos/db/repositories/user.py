@@ -587,7 +587,7 @@ class UserRepository(BaseRepository):
             # Delete user-role association
             query = delete(UserRole).where(
                 (UserRole.user_id == user_id) & (UserRole.role_id == role.id)
-             )
+            )
             result = self._db_session.execute(query)
             self._db_session.commit()
 

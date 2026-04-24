@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 from wy_qcos.db.utils.db_utils import (
     get_db_session,
     get_repository,
-    create_db_session
+    create_db_session,
 )
 from wy_qcos.db.repositories.base import BaseRepository
 from wy_qcos.db.repositories.user import UserRepository
@@ -41,7 +41,7 @@ class TestGetDbSession:
         mock_request.app = mock_app
 
         # Mock Session to avoid actual database connection
-        with patch('wy_qcos.db.utils.db_utils.Session') as mock_session_class:
+        with patch("wy_qcos.db.utils.db_utils.Session") as mock_session_class:
             mock_session_instance = MagicMock(spec=Session)
             mock_session_class.return_value = mock_session_instance
 
@@ -60,7 +60,7 @@ class TestGetDbSession:
         mock_request = MagicMock()
         mock_request.app = mock_app
 
-        with patch('wy_qcos.db.utils.db_utils.Session') as mock_session_class:
+        with patch("wy_qcos.db.utils.db_utils.Session") as mock_session_class:
             mock_session_instance = MagicMock(spec=Session)
             mock_session_class.return_value = mock_session_instance
 
@@ -110,7 +110,7 @@ class TestCreateDbSession:
         """Test context manager creation."""
         mock_engine = MagicMock()
 
-        with patch('wy_qcos.db.utils.db_utils.Session') as mock_session_class:
+        with patch("wy_qcos.db.utils.db_utils.Session") as mock_session_class:
             mock_session_instance = MagicMock(spec=Session)
             mock_session_class.return_value = mock_session_instance
 
@@ -121,7 +121,7 @@ class TestCreateDbSession:
         """Test context manager cleanup."""
         mock_engine = MagicMock()
 
-        with patch('wy_qcos.db.utils.db_utils.Session') as mock_session_class:
+        with patch("wy_qcos.db.utils.db_utils.Session") as mock_session_class:
             mock_session_instance = MagicMock(spec=Session)
             mock_session_class.return_value = mock_session_instance
 
@@ -134,13 +134,13 @@ class TestCreateDbSession:
         """Test context manager cleanup on exception."""
         mock_engine = MagicMock()
 
-        with patch('wy_qcos.db.utils.db_utils.Session') as mock_session_class:
+        with patch("wy_qcos.db.utils.db_utils.Session") as mock_session_class:
             mock_session_instance = MagicMock(spec=Session)
             mock_session_class.return_value = mock_session_instance
 
             try:
                 with create_db_session(mock_engine) as session:
-                    raise ValueError('Test exception')
+                    raise ValueError("Test exception")
             except ValueError:
                 pass
 
@@ -150,27 +150,26 @@ class TestCreateDbSession:
         """Test session is created with expire_on_commit=False."""
         mock_engine = MagicMock()
 
-        with patch('wy_qcos.db.utils.db_utils.Session') as mock_session_class:
+        with patch("wy_qcos.db.utils.db_utils.Session") as mock_session_class:
             mock_session_instance = MagicMock(spec=Session)
             mock_session_class.return_value = mock_session_instance
 
             with create_db_session(mock_engine) as session:
                 # Verify Session was called with expire_on_commit=False
                 mock_session_class.assert_called_once_with(
-                    mock_engine,
-                    expire_on_commit=False
+                    mock_engine, expire_on_commit=False
                 )
 
     def test_create_db_session_multiple_usage(self):
         """Test multiple context manager usage."""
         mock_engine = MagicMock()
 
-        with patch('wy_qcos.db.utils.db_utils.Session') as mock_session_class:
+        with patch("wy_qcos.db.utils.db_utils.Session") as mock_session_class:
             mock_session_instance1 = MagicMock(spec=Session)
             mock_session_instance2 = MagicMock(spec=Session)
             mock_session_class.side_effect = [
                 mock_session_instance1,
-                mock_session_instance2
+                mock_session_instance2,
             ]
 
             with create_db_session(mock_engine) as session1:
@@ -181,4 +180,3 @@ class TestCreateDbSession:
 
             assert mock_session_instance1.close.called
             assert mock_session_instance2.close.called
-

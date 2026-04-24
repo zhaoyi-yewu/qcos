@@ -23,7 +23,14 @@ from unittest.mock import Mock, MagicMock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
-from wy_qcos.db.models import Base, User, Role, UserRole, LoginLog, TokenBlacklist
+from wy_qcos.db.models import (
+    Base,
+    User,
+    Role,
+    UserRole,
+    LoginLog,
+    TokenBlacklist,
+)
 from wy_qcos.db.repositories.base import BaseRepository
 from wy_qcos.db.repositories.user import UserRepository
 from wy_qcos.db.repositories.role import RoleRepository
@@ -39,7 +46,7 @@ def mock_db_session():
 @pytest.fixture
 def in_memory_db():
     """Create an in-memory SQLite database for testing."""
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     SessionLocal = sessionmaker(bind=engine)
     session = SessionLocal()
@@ -71,11 +78,11 @@ def sample_user(in_memory_db):
     """Create a sample user in the database."""
     user = User(
         id=str(uuid.uuid4()),
-        user_name='testuser',
-        hashed_password='hashed_password_123',
+        user_name="testuser",
+        hashed_password="hashed_password_123",
         is_enabled=True,
         is_locked=False,
-        password_changed_at=datetime.now()
+        password_changed_at=datetime.now(),
     )
     in_memory_db.add(user)
     in_memory_db.commit()
@@ -88,9 +95,9 @@ def sample_role(in_memory_db):
     """Create a sample role in the database."""
     role = Role(
         id=str(uuid.uuid4()),
-        role_name='admin',
-        permissions=['read', 'write', 'delete'],
-        description='Administrator role'
+        role_name="admin",
+        permissions=["read", "write", "delete"],
+        description="Administrator role",
     )
     in_memory_db.add(role)
     in_memory_db.commit()
@@ -102,9 +109,7 @@ def sample_role(in_memory_db):
 def sample_user_with_role(in_memory_db, sample_user, sample_role):
     """Create a user with assigned role."""
     user_role = UserRole(
-        id=str(uuid.uuid4()),
-        user_id=sample_user.id,
-        role_id=sample_role.id
+        id=str(uuid.uuid4()), user_id=sample_user.id, role_id=sample_role.id
     )
     in_memory_db.add(user_role)
     in_memory_db.commit()
@@ -116,11 +121,11 @@ def sample_login_log(in_memory_db):
     """Create a sample login log."""
     log = LoginLog(
         id=str(uuid.uuid4()),
-        user_name='testuser',
-        ip_address='192.168.1.1',
+        user_name="testuser",
+        ip_address="192.168.1.1",
         login_time=datetime.now(),
         login_status=True,
-        user_agent='Mozilla/5.0'
+        user_agent="Mozilla/5.0",
     )
     in_memory_db.add(log)
     in_memory_db.commit()
@@ -134,10 +139,9 @@ def sample_token_blacklist(in_memory_db):
     token = TokenBlacklist(
         id=str(uuid.uuid4()),
         token_jti=str(uuid.uuid4()),
-        expires_at=datetime.now()
+        expires_at=datetime.now(),
     )
     in_memory_db.add(token)
     in_memory_db.commit()
     in_memory_db.refresh(token)
     return token
-

@@ -147,14 +147,18 @@ class TestLibrary:
             "password": _s("secret123"),
             "api_key": _s("key123"),
         }
-        masked = Library.mask_password(configs, password_replace="***HIDDEN***")
+        masked = Library.mask_password(
+            configs, password_replace="***HIDDEN***"
+        )
         assert masked["password"] == "***HIDDEN***"
 
     def test_mask_password_dict(self):
         """Test mask_password with dictionary."""
         config = {"password": "secret", "user": "john"}
         result = Library.mask_password(config)
-        assert "***" in str(result["password"]) or result["password"] != "secret"
+        assert (
+            "***" in str(result["password"]) or result["password"] != "secret"
+        )
 
     def test_mask_password_nested(self):
         """Test mask_password with nested dict."""
@@ -279,28 +283,28 @@ class TestLibrary:
 
     def test_base64_encode(self):
         """Test base64_encode."""
-        result = base64.b64encode("test".encode('utf-8')).decode('utf-8')
+        result = base64.b64encode("test".encode("utf-8")).decode("utf-8")
         assert isinstance(result, str)
 
     def test_base64_decode(self):
         """Test base64_decode."""
-        encoded = base64.b64encode("test".encode('utf-8')).decode('utf-8')
-        decoded = base64.b64decode(encoded).decode('utf-8')
+        encoded = base64.b64encode("test".encode("utf-8")).decode("utf-8")
+        decoded = base64.b64decode(encoded).decode("utf-8")
         assert decoded == "test"
 
     def test_base64_special_chars(self):
         """Test base64 with special characters."""
         original = "Special!@#$%^&*()"
-        encoded = base64.b64encode(original.encode('utf-8')).decode('utf-8')
-        decoded = base64.b64decode(encoded).decode('utf-8')
+        encoded = base64.b64encode(original.encode("utf-8")).decode("utf-8")
+        decoded = base64.b64decode(encoded).decode("utf-8")
         assert decoded == original
 
     def test_base64_roundtrip(self):
         """Test base64 encode/decode roundtrip."""
         texts = ["simple", "with spaces", "special!@#", "numbers123"]
         for text in texts:
-            encoded = base64.b64encode(text.encode('utf-8')).decode('utf-8')
-            decoded = base64.b64decode(encoded).decode('utf-8')
+            encoded = base64.b64encode(text.encode("utf-8")).decode("utf-8")
+            decoded = base64.b64decode(encoded).decode("utf-8")
             assert decoded == text
 
     # ========== UUID Operations ==========
@@ -406,47 +410,53 @@ class TestLibrary:
 
     # ========== File Operations ==========
 
-    @patch('wy_qcos.common.library.os.chmod')
-    @patch('builtins.open', create=True)
-    @patch('wy_qcos.common.library.Library.mkdirs')
-    def test_create_file_with_mode(self, mock_mkdirs, mock_open_builtin, mock_chmod):
+    @patch("wy_qcos.common.library.os.chmod")
+    @patch("builtins.open", create=True)
+    @patch("wy_qcos.common.library.Library.mkdirs")
+    def test_create_file_with_mode(
+        self, mock_mkdirs, mock_open_builtin, mock_chmod
+    ):
         """Test create_file with specific mode."""
         file_path = "/test_file.txt"
-        success, error = Library.create_file(file_path, "test content", mode=0o644)
+        success, error = Library.create_file(
+            file_path, "test content", mode=0o644
+        )
         assert success is True
 
-    @patch('wy_qcos.common.library.os.chmod')
-    @patch('builtins.open', create=True)
-    @patch('wy_qcos.common.library.Library.mkdirs')
-    def test_create_file_existing(self, mock_mkdirs, mock_open_builtin, mock_chmod):
+    @patch("wy_qcos.common.library.os.chmod")
+    @patch("builtins.open", create=True)
+    @patch("wy_qcos.common.library.Library.mkdirs")
+    def test_create_file_existing(
+        self, mock_mkdirs, mock_open_builtin, mock_chmod
+    ):
         """Test create_file when file already exists."""
         file_path = "/existing.txt"
         success, error = Library.create_file(file_path, "new content")
         assert success is True
 
-    @patch('wy_qcos.common.library.os.path.isfile')
+    @patch("wy_qcos.common.library.os.path.isfile")
     def test_is_file_basic(self, mock_isfile):
         """Test is_file with existing file."""
         mock_isfile.return_value = True
         assert Library.is_file("/test_file.txt") is True
 
-    @patch('wy_qcos.common.library.os.path.isfile')
+    @patch("wy_qcos.common.library.os.path.isfile")
     def test_is_file_not_found(self, mock_isfile):
         """Test is_file with non-existent file."""
         mock_isfile.return_value = False
         result = Library.is_file("/nonexistent/path/file.txt")
         assert result is False
 
-    @patch('wy_qcos.common.library.os.remove')
-    @patch('wy_qcos.common.library.os.path.isfile')
+    @patch("wy_qcos.common.library.os.remove")
+    @patch("wy_qcos.common.library.os.path.isfile")
     def test_rm_file_basic(self, mock_isfile, mock_remove):
         """Test rm_file basic functionality."""
         mock_isfile.return_value = False
         success, _ = library.rm_file("/test.txt")
         assert success is True
 
-    @patch('wy_qcos.common.library.os.remove')
-    @patch('wy_qcos.common.library.os.path.isfile')
+    @patch("wy_qcos.common.library.os.remove")
+    @patch("wy_qcos.common.library.os.path.isfile")
     def test_rm_file_success(self, mock_isfile, mock_remove):
         """Test rm_file with existing file."""
         mock_isfile.return_value = True
@@ -454,14 +464,14 @@ class TestLibrary:
         assert success is True
         mock_remove.assert_called_once()
 
-    @patch('wy_qcos.common.library.os.path.isfile')
+    @patch("wy_qcos.common.library.os.path.isfile")
     def test_rm_file_nonexistent(self, mock_isfile):
         """Test rm_file with non-existent file."""
         mock_isfile.return_value = False
         success, error = Library.rm_file("/nonexistent/file.txt")
         assert success is True
 
-    @patch('builtins.open', create=True)
+    @patch("builtins.open", create=True)
     def test_read_file_basic(self, mock_open):
         """Test read_file basic functionality."""
         mock_open.return_value.__enter__.return_value.read.return_value = ""
@@ -474,24 +484,30 @@ class TestLibrary:
         content = library.read_file("/tmp/test.txt", customer_format=formats)
         assert content is not None
 
-    @patch('builtins.open', create=True)
+    @patch("builtins.open", create=True)
     def test_read_file_with_encoding(self, mock_open):
         """Test read_file with specific encoding."""
-        mock_open.return_value.__enter__.return_value.read.return_value = "test content"
+        mock_open.return_value.__enter__.return_value.read.return_value = (
+            "test content"
+        )
         content = Library.read_file("/test.txt")
         assert content == "test content"
 
-    @patch('builtins.open', create=True)
+    @patch("builtins.open", create=True)
     def test_read_file_basic_extended(self, mock_open):
         """Test read_file with content verification."""
-        mock_open.return_value.__enter__.return_value.read.return_value = "content"
+        mock_open.return_value.__enter__.return_value.read.return_value = (
+            "content"
+        )
         result = Library.read_file("/test.txt")
         assert result == "content"
 
-    @patch('wy_qcos.common.library.os.chmod')
-    @patch('builtins.open', create=True)
-    @patch('wy_qcos.common.library.Library.mkdirs')
-    def test_write_file_basic(self, mock_mkdirs, mock_open_builtin, mock_chmod):
+    @patch("wy_qcos.common.library.os.chmod")
+    @patch("builtins.open", create=True)
+    @patch("wy_qcos.common.library.Library.mkdirs")
+    def test_write_file_basic(
+        self, mock_mkdirs, mock_open_builtin, mock_chmod
+    ):
         """Test write_file."""
         file_path = "/test.txt"
         Library.create_file(file_path, "content")
@@ -499,9 +515,9 @@ class TestLibrary:
 
     # ========== Directory Operations ==========
 
-    @patch('wy_qcos.common.library.os.rmdir')
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.mkdir')
+    @patch("wy_qcos.common.library.os.rmdir")
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.mkdir")
     def test_mkdir_rmdir_basic(self, mock_mkdir, mock_exists, mock_rmdir):
         """Test mkdir and rmdir basic functionality."""
         mock_mkdir.return_value = None
@@ -513,8 +529,8 @@ class TestLibrary:
         success, _ = library.rmdir(input_file)
         assert success is True
 
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.mkdir')
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.mkdir")
     def test_mkdir_success(self, mock_mkdir, mock_exists):
         """Test mkdir creates directory."""
         mock_exists.return_value = False
@@ -524,16 +540,16 @@ class TestLibrary:
         assert result is True
         mock_mkdir.assert_called()
 
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.mkdir')
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.mkdir")
     def test_mkdir_existing(self, mock_mkdir, mock_exists):
         """Test mkdir with existing directory."""
         mock_exists.return_value = True
         result = Library.mkdir("/existing_dir")
         assert isinstance(result, bool)
 
-    @patch('wy_qcos.common.library.os.path.isdir')
-    @patch('wy_qcos.common.library.os.rmdir')
+    @patch("wy_qcos.common.library.os.path.isdir")
+    @patch("wy_qcos.common.library.os.rmdir")
     def test_rmdir_success(self, mock_rmdir, mock_isdir):
         """Test rmdir removes directory."""
         mock_isdir.side_effect = [True, False]
@@ -542,21 +558,21 @@ class TestLibrary:
         success, error = Library.rmdir(dir_path)
         assert success is True
 
-    @patch('wy_qcos.common.library.os.path.isdir')
+    @patch("wy_qcos.common.library.os.path.isdir")
     def test_find_dirs_basic(self, mock_isdir):
         """Test find_dirs basic functionality."""
         mock_isdir.return_value = False
         dirs = library.find_dirs(base_dir="/tests", recursive=True)
         assert not dirs
 
-    @patch('wy_qcos.common.library.os.path.isdir')
+    @patch("wy_qcos.common.library.os.path.isdir")
     def test_find_dirs_empty_result(self, mock_isdir):
         """Test find_dirs with non-existent base directory."""
         mock_isdir.return_value = False
         result = Library.find_dirs("/nonexistent/path")
         assert result == []
 
-    @patch('wy_qcos.common.library.os.path.isdir')
+    @patch("wy_qcos.common.library.os.path.isdir")
     def test_find_files_basic(self, mock_isdir):
         """Test find_files basic functionality."""
         mock_isdir.return_value = False
@@ -568,32 +584,30 @@ class TestLibrary:
         )
         assert not library.find_files("no_such_dir")
 
-    @patch('wy_qcos.common.library.os.path.isdir')
-    @patch('wy_qcos.common.library.os.walk')
+    @patch("wy_qcos.common.library.os.path.isdir")
+    @patch("wy_qcos.common.library.os.walk")
     def test_find_files_recursively(self, mock_walk, mock_isdir):
         """Test find_files with recursive search."""
         mock_isdir.return_value = True
-        mock_walk.return_value = [
-            ("/tmp", ["subdir"], ["test.txt"])
-        ]
+        mock_walk.return_value = [("/tmp", ["subdir"], ["test.txt"])]
         result = Library.find_files("/tmp", pattern="*.txt", recursive=True)
         assert result is not None
 
-    @patch('wy_qcos.common.library.os.path.isdir')
+    @patch("wy_qcos.common.library.os.path.isdir")
     def test_find_files_with_exclusion(self, mock_isdir):
         """Test find_files with exclusion pattern."""
         mock_isdir.return_value = False
         result = Library.find_files("/tmp", exclusives="exclude*")
         assert result is not None
 
-    @patch('wy_qcos.common.library.os.path.isdir')
+    @patch("wy_qcos.common.library.os.path.isdir")
     def test_find_files_extended(self, mock_isdir):
         """Test find_files extended functionality."""
         mock_isdir.return_value = False
         result = Library.find_files("/tmp", pattern="*.txt")
         assert result is not None
 
-    @patch('wy_qcos.common.library.Library.create_file')
+    @patch("wy_qcos.common.library.Library.create_file")
     def test_create_pid_file_basic(self, mock_create_file):
         """Test create_pid_file basic functionality."""
         mock_create_file.return_value = (True, None)
@@ -601,7 +615,7 @@ class TestLibrary:
         library.create_pid_file(input_file)
         mock_create_file.assert_called()
 
-    @patch('wy_qcos.common.library.Library.create_file')
+    @patch("wy_qcos.common.library.Library.create_file")
     def test_create_pid_file(self, mock_create_file):
         """Test create_pid_file."""
         mock_create_file.return_value = (True, None)
@@ -609,8 +623,8 @@ class TestLibrary:
         Library.create_pid_file(pid_file)
         mock_create_file.assert_called()
 
-    @patch('wy_qcos.common.library.Library.create_file')
-    @patch('wy_qcos.common.library.Library.rm_file')
+    @patch("wy_qcos.common.library.Library.create_file")
+    @patch("wy_qcos.common.library.Library.rm_file")
     def test_kill_pid_basic(self, mock_rm_file, mock_create_file):
         """Test kill_pid basic functionality."""
         mock_create_file.return_value = (True, None)
@@ -619,20 +633,20 @@ class TestLibrary:
         library.create_file(input_file, "28336")
         assert library.kill_pid(input_file) is None
 
-    @patch('wy_qcos.common.library.os.path.isdir')
+    @patch("wy_qcos.common.library.os.path.isdir")
     def test_is_directory_true(self, mock_isdir):
         """Test is_directory with directory."""
         mock_isdir.return_value = True
         assert mock_isdir("/tmp") is True
 
-    @patch('wy_qcos.common.library.os.path.isdir')
+    @patch("wy_qcos.common.library.os.path.isdir")
     def test_is_directory_false(self, mock_isdir):
         """Test is_directory with file."""
         mock_isdir.return_value = False
         assert mock_isdir("/test.txt") is False
 
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.mkdir')
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.mkdir")
     def test_create_directory_new(self, mock_mkdir, mock_exists):
         """Test create_directory with new directory."""
         mock_exists.return_value = False
@@ -640,41 +654,41 @@ class TestLibrary:
         Library.mkdir("/newdir")
         mock_mkdir.assert_called()
 
-    @patch('wy_qcos.common.library.os.path.exists')
+    @patch("wy_qcos.common.library.os.path.exists")
     def test_file_exists_true(self, mock_exists):
         """Test file_exists with existing file."""
         mock_exists.return_value = True
         assert mock_exists("/test.txt") is True
 
-    @patch('wy_qcos.common.library.os.path.exists')
+    @patch("wy_qcos.common.library.os.path.exists")
     def test_file_exists_false(self, mock_exists):
         """Test file_exists with non-existent file."""
         mock_exists.return_value = False
         assert mock_exists("/nonexistent.txt") is False
 
-    @patch('wy_qcos.common.library.os.remove')
-    @patch('wy_qcos.common.library.os.path.isfile')
+    @patch("wy_qcos.common.library.os.remove")
+    @patch("wy_qcos.common.library.os.path.isfile")
     def test_delete_file_basic(self, mock_isfile, mock_remove):
         """Test delete_file."""
         mock_isfile.return_value = True
         Library.rm_file("/test.txt")
         mock_remove.assert_called()
 
-    @patch('shutil.copy')
+    @patch("shutil.copy")
     def test_copy_file_basic(self, mock_copy):
         """Test copy_file."""
         mock_copy.return_value = None
         shutil.copy("/src.txt", "/dst.txt")
         mock_copy.assert_called_with("/src.txt", "/dst.txt")
 
-    @patch('shutil.move')
+    @patch("shutil.move")
     def test_move_file_basic(self, mock_move):
         """Test move_file."""
         mock_move.return_value = None
         shutil.move("/src.txt", "/dst.txt")
         mock_move.assert_called_with("/src.txt", "/dst.txt")
 
-    @patch('wy_qcos.common.library.os.path.getsize')
+    @patch("wy_qcos.common.library.os.path.getsize")
     def test_get_file_size_basic(self, mock_getsize):
         """Test get_file_size."""
         mock_getsize.return_value = 100
@@ -683,20 +697,22 @@ class TestLibrary:
 
     # ========== CSV/TOML Operations ==========
 
-    @patch('builtins.open', create=True)
+    @patch("builtins.open", create=True)
     def test_read_csv_file_basic(self, mock_open):
         """Test read_csv_file basic functionality."""
         mock_open.return_value.__enter__.return_value.read.return_value = ""
         assert library.read_csv_file("/test.csv") is not None
 
-    @patch('builtins.open', create=True)
+    @patch("builtins.open", create=True)
     def test_read_csv_basic(self, mock_open):
         """Test read_csv."""
-        mock_open.return_value.__enter__.return_value.read.return_value = "a,b,c\n1,2,3"
+        mock_open.return_value.__enter__.return_value.read.return_value = (
+            "a,b,c\n1,2,3"
+        )
         result = Library.read_csv_file("/test.csv")
         assert result is not None
 
-    @patch('builtins.open', create=True)
+    @patch("builtins.open", create=True)
     def test_write_csv_basic(self, mock_open):
         """Test write_csv."""
         data = [{"a": 1, "b": 2}]
@@ -711,8 +727,8 @@ class TestLibrary:
         success, _, _ = library.read_toml_file("/test-toml.toml")
         assert success is False
 
-    @patch('builtins.open', create=True)
-    @patch('wy_qcos.common.library.tomlkit.load')
+    @patch("builtins.open", create=True)
+    @patch("wy_qcos.common.library.tomlkit.load")
     def test_read_toml_file_valid(self, mock_tomlkit_load, mock_open):
         """Test read_toml_file with valid TOML."""
         mock_tomlkit_load.return_value = {"section": {"key": "value"}}
@@ -720,8 +736,8 @@ class TestLibrary:
         success, error, content = Library.read_toml_file("/config.toml")
         assert success is True
 
-    @patch('builtins.open', create=True)
-    @patch('wy_qcos.common.library.tomlkit.load')
+    @patch("builtins.open", create=True)
+    @patch("wy_qcos.common.library.tomlkit.load")
     def test_read_toml_file_invalid(self, mock_tomlkit_load, mock_open):
         """Test read_toml_file with invalid TOML."""
         mock_tomlkit_load.side_effect = Exception("Invalid TOML")
@@ -729,8 +745,8 @@ class TestLibrary:
         success, error, content = Library.read_toml_file("/invalid.toml")
         assert success is False
 
-    @patch('builtins.open', create=True)
-    @patch('wy_qcos.common.library.tomlkit.dump')
+    @patch("builtins.open", create=True)
+    @patch("wy_qcos.common.library.tomlkit.dump")
     def test_write_to_toml_basic(self, mock_tomlkit_dump, mock_open):
         """Test create_toml basic functionality."""
         mock_tomlkit_dump.return_value = None
@@ -742,8 +758,8 @@ class TestLibrary:
         success, _ = library.create_toml("", data)
         assert success is False
 
-    @patch('builtins.open', create=True)
-    @patch('wy_qcos.common.library.tomlkit.dump')
+    @patch("builtins.open", create=True)
+    @patch("wy_qcos.common.library.tomlkit.dump")
     def test_write_toml_basic(self, mock_tomlkit_dump, mock_open):
         """Test write_toml."""
         mock_tomlkit_dump.return_value = None
@@ -822,7 +838,9 @@ class TestLibrary:
 
     def test_validate_values_length_invalid(self):
         """Test validate_values_length with invalid value."""
-        success, error = Library.validate_values_length("test", "field", 10, 20)
+        success, error = Library.validate_values_length(
+            "test", "field", 10, 20
+        )
         assert success is False
 
     def test_validate_values_list_basic(self):
@@ -953,7 +971,7 @@ class TestLibrary:
         result = Library.is_valid_url("not_a_url", {"http", "https"})
         assert result is False
 
-    @patch('wy_qcos.common.library.requests.post')
+    @patch("wy_qcos.common.library.requests.post")
     def test_run_callbacks_basic(self, mock_post):
         """Test run_callbacks basic functionality."""
         data = {
@@ -980,35 +998,41 @@ class TestLibrary:
         assert success is True
         mock_post.assert_called()
 
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('builtins.open', create=True)
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("builtins.open", create=True)
     def test_kill_pid_with_invalid_format(self, mock_open, mock_exists):
         """Test kill_pid with invalid PID format."""
         mock_exists.return_value = True
-        mock_open.return_value.__enter__.return_value.read.return_value = "invalid_pid"
+        mock_open.return_value.__enter__.return_value.read.return_value = (
+            "invalid_pid"
+        )
         library.kill_pid("/test.pid")
         assert mock_open.called
 
-    @patch('wy_qcos.common.library.os.chmod')
-    @patch('builtins.open', create=True)
-    @patch('wy_qcos.common.library.Library.mkdirs')
+    @patch("wy_qcos.common.library.os.chmod")
+    @patch("builtins.open", create=True)
+    @patch("wy_qcos.common.library.Library.mkdirs")
     def test_create_file_with_mkdir(self, mock_mkdirs, mock_open, mock_chmod):
         """Test create_file with mkdir option."""
-        success, _ = Library.create_file("/test/file.txt", "content", mkdir=True)
+        success, _ = Library.create_file(
+            "/test/file.txt", "content", mkdir=True
+        )
         assert success is True
         mock_mkdirs.assert_called()
 
-    @patch('wy_qcos.common.library.os.chmod')
-    @patch('builtins.open', create=True)
-    @patch('wy_qcos.common.library.Library.mkdirs')
+    @patch("wy_qcos.common.library.os.chmod")
+    @patch("builtins.open", create=True)
+    @patch("wy_qcos.common.library.Library.mkdirs")
     def test_create_file_chmod_error(self, mock_mkdirs, mock_open, mock_chmod):
         """Test create_file with chmod error."""
         mock_chmod.side_effect = Exception("chmod failed")
-        success, error = Library.create_file("/test.txt", "content", mode=0o644)
+        success, error = Library.create_file(
+            "/test.txt", "content", mode=0o644
+        )
         assert success is False
         assert "chmod failed" in error
 
-    @patch('wy_qcos.common.library.Library.mkdirs')
+    @patch("wy_qcos.common.library.Library.mkdirs")
     def test_create_temp_file_with_str(self, mock_mkdirs):
         """Test create_temp_file with string content."""
         tf = Library.create_temp_file("test content", dir=self.temp_dir)
@@ -1017,7 +1041,7 @@ class TestLibrary:
         assert b"test content" in content
         tf.close()
 
-    @patch('wy_qcos.common.library.Library.mkdirs')
+    @patch("wy_qcos.common.library.Library.mkdirs")
     def test_create_temp_file_with_bytes(self, mock_mkdirs):
         """Test create_temp_file with bytes content."""
         tf = Library.create_temp_file(b"test bytes", dir=self.temp_dir)
@@ -1031,8 +1055,8 @@ class TestLibrary:
         with pytest.raises(TypeError):
             Library.create_temp_file(123)
 
-    @patch('wy_qcos.common.library.os.remove')
-    @patch('wy_qcos.common.library.os.path.isfile')
+    @patch("wy_qcos.common.library.os.remove")
+    @patch("wy_qcos.common.library.os.path.isfile")
     def test_rm_file_with_error(self, mock_isfile, mock_remove):
         """Test rm_file with removal error."""
         mock_isfile.return_value = True
@@ -1041,30 +1065,32 @@ class TestLibrary:
         assert success is False
         assert "remove failed" in error
 
-    @patch('wy_qcos.common.library.os.path.isdir')
-    @patch('wy_qcos.common.library.os.walk')
+    @patch("wy_qcos.common.library.os.path.isdir")
+    @patch("wy_qcos.common.library.os.walk")
     def test_find_dirs_recursive_with_excludes(self, mock_walk, mock_isdir):
         """Test find_dirs with recursive and excludes."""
         mock_isdir.return_value = True
         mock_walk.return_value = [
             ("/base", ["dir1", "dir2", "exclude_dir"], [])
         ]
-        result = Library.find_dirs("/base", pattern="*", recursive=True, excludes=["exclude*"])
+        result = Library.find_dirs(
+            "/base", pattern="*", recursive=True, excludes=["exclude*"]
+        )
         assert result is not None
 
-    @patch('wy_qcos.common.library.os.path.isdir')
-    @patch('wy_qcos.common.library.os.walk')
+    @patch("wy_qcos.common.library.os.path.isdir")
+    @patch("wy_qcos.common.library.os.walk")
     def test_find_files_with_exclusives_list(self, mock_walk, mock_isdir):
         """Test find_files with exclusives as list."""
         mock_isdir.return_value = True
-        mock_walk.return_value = [
-            ("/tmp", [], ["test.txt", "exclude.txt"])
-        ]
-        result = Library.find_files("/tmp", pattern="*.txt", recursive=True, exclusives=["exclude"])
+        mock_walk.return_value = [("/tmp", [], ["test.txt", "exclude.txt"])]
+        result = Library.find_files(
+            "/tmp", pattern="*.txt", recursive=True, exclusives=["exclude"]
+        )
         assert result is not None
 
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.mkdir')
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.mkdir")
     def test_mkdir_with_mode(self, mock_mkdir, mock_exists):
         """Test mkdir with mode parameter."""
         mock_exists.return_value = False
@@ -1072,8 +1098,8 @@ class TestLibrary:
         assert result is True
         mock_mkdir.assert_called_with("/newdir", 0o755)
 
-    @patch('wy_qcos.common.library.os.path.isdir')
-    @patch('wy_qcos.common.library.os.rmdir')
+    @patch("wy_qcos.common.library.os.path.isdir")
+    @patch("wy_qcos.common.library.os.rmdir")
     def test_rmdir_with_error(self, mock_rmdir, mock_isdir):
         """Test rmdir with error."""
         mock_rmdir.side_effect = Exception("rmdir failed")
@@ -1087,16 +1113,20 @@ class TestLibrary:
         assert result is not None
         assert isinstance(result, str)
 
-    @patch('wy_qcos.common.library.psutil.process_iter')
+    @patch("wy_qcos.common.library.psutil.process_iter")
     def test_get_processes(self, mock_process_iter):
         """Test get_processes."""
         mock_proc = Mock()
-        mock_proc.info = {"pid": 123, "name": "test", "cmdline": ["python", "test.py"]}
+        mock_proc.info = {
+            "pid": 123,
+            "name": "test",
+            "cmdline": ["python", "test.py"],
+        }
         mock_process_iter.return_value = [mock_proc]
         result = Library.get_processes(["python"])
         assert result is not None
 
-    @patch('wy_qcos.common.library.psutil.process_iter')
+    @patch("wy_qcos.common.library.psutil.process_iter")
     def test_get_processes_with_exception(self, mock_process_iter):
         """Test get_processes with exception."""
         mock_proc = Mock()
@@ -1110,7 +1140,7 @@ class TestLibrary:
         mock_proc = Mock()
         mock_proc.pid = 123
         mock_proc.terminate = Mock()
-        with patch('wy_qcos.common.library.psutil.wait_procs') as mock_wait:
+        with patch("wy_qcos.common.library.psutil.wait_procs") as mock_wait:
             mock_wait.return_value = ([mock_proc], [])
             success_pids, failed_pids = Library.kill([mock_proc], force=False)
             assert 123 in success_pids
@@ -1121,21 +1151,21 @@ class TestLibrary:
         mock_proc = Mock()
         mock_proc.pid = 456
         mock_proc.kill = Mock()
-        with patch('wy_qcos.common.library.psutil.wait_procs') as mock_wait:
+        with patch("wy_qcos.common.library.psutil.wait_procs") as mock_wait:
             mock_wait.return_value = ([mock_proc], [])
             success_pids, failed_pids = Library.kill([mock_proc], force=True)
             assert 456 in success_pids
 
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.path.isdir')
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.path.isdir")
     def test_get_venv_dirs_not_exists(self, mock_isdir, mock_exists):
         """Test get_venv_dirs with non-existent directory."""
         mock_exists.return_value = False
         result = Library.get_venv_dirs("/nonexistent")
         assert result == {}
 
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.path.isdir')
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.path.isdir")
     def test_get_venv_dirs_not_dir(self, mock_isdir, mock_exists):
         """Test get_venv_dirs with file instead of directory."""
         mock_exists.return_value = True
@@ -1152,13 +1182,17 @@ class TestLibrary:
     def test_get_nested_dict_value_with_keys(self):
         """Test get_nested_dict_value with multiple keys."""
         data = {"level1": {"level2": {"level3": "value"}}}
-        result = Library.get_nested_dict_value(data, "level1", "level2", "level3")
+        result = Library.get_nested_dict_value(
+            data, "level1", "level2", "level3"
+        )
         assert result == "value"
 
     def test_get_nested_dict_value_with_default(self):
         """Test get_nested_dict_value with default value."""
         data = {"key1": "value1"}
-        result = Library.get_nested_dict_value(data, "nonexistent", default="default")
+        result = Library.get_nested_dict_value(
+            data, "nonexistent", default="default"
+        )
         assert result == "default"
 
     def test_get_sorted_keys_with_string(self):
@@ -1169,7 +1203,9 @@ class TestLibrary:
 
     def test_validate_values_uuid_version_error(self):
         """Test validate_values_uuid with version error."""
-        success, error = Library.validate_values_uuid("00000000-0000-0000-0000-000000000000", "test_id")
+        success, error = Library.validate_values_uuid(
+            "00000000-0000-0000-0000-000000000000", "test_id"
+        )
         assert success is False
 
     def test_validate_qubo_matrices_empty(self):
@@ -1184,7 +1220,7 @@ class TestLibrary:
         success, error = Library.validate_qubo_matrices(qubo)
         assert success is False
 
-    @patch('wy_qcos.common.library.requests.post')
+    @patch("wy_qcos.common.library.requests.post")
     def test_call_http_api_with_debug(self, mock_post):
         """Test call_http_api with debug enabled."""
         mock_response = Mock()
@@ -1193,14 +1229,11 @@ class TestLibrary:
         mock_response.text = "response"
         mock_post.return_value = mock_response
         status, reason, text, _ = Library.call_http_api(
-            "http://test.com",
-            HttpMethod.POST,
-            debug=True,
-            func_name="test"
+            "http://test.com", HttpMethod.POST, debug=True, func_name="test"
         )
         assert status == 200
 
-    @patch('wy_qcos.common.library.requests.put')
+    @patch("wy_qcos.common.library.requests.put")
     def test_call_http_api_put_method(self, mock_put):
         """Test call_http_api with PUT method."""
         mock_response = Mock()
@@ -1209,12 +1242,11 @@ class TestLibrary:
         mock_response.text = "response"
         mock_put.return_value = mock_response
         status, reason, text, _ = Library.call_http_api(
-            "http://test.com",
-            "put"
+            "http://test.com", "put"
         )
         assert status == 200
 
-    @patch('wy_qcos.common.library.requests.patch')
+    @patch("wy_qcos.common.library.requests.patch")
     def test_call_http_api_patch_method(self, mock_patch):
         """Test call_http_api with PATCH method."""
         mock_response = Mock()
@@ -1223,12 +1255,11 @@ class TestLibrary:
         mock_response.text = "response"
         mock_patch.return_value = mock_response
         status, reason, text, _ = Library.call_http_api(
-            "http://test.com",
-            "patch"
+            "http://test.com", "patch"
         )
         assert status == 200
 
-    @patch('wy_qcos.common.library.requests.delete')
+    @patch("wy_qcos.common.library.requests.delete")
     def test_call_http_api_delete_method(self, mock_delete):
         """Test call_http_api with DELETE method."""
         mock_response = Mock()
@@ -1237,8 +1268,7 @@ class TestLibrary:
         mock_response.text = "response"
         mock_delete.return_value = mock_response
         status, reason, text, _ = Library.call_http_api(
-            "http://test.com",
-            "delete"
+            "http://test.com", "delete"
         )
         assert status == 200
 
@@ -1247,7 +1277,7 @@ class TestLibrary:
         result = Library.is_valid_url("://invalid", {"http"})
         assert result is False
 
-    @patch('wy_qcos.common.library.zipfile.ZipFile')
+    @patch("wy_qcos.common.library.zipfile.ZipFile")
     def test_get_zip_content_success(self, mock_zipfile):
         """Test get_zip_content with valid zip file."""
         mock_zf = MagicMock()
@@ -1259,7 +1289,7 @@ class TestLibrary:
         success, errors, results = Library.get_zip_content("/test.zip")
         assert success is True
 
-    @patch('wy_qcos.common.library.zipfile.ZipFile')
+    @patch("wy_qcos.common.library.zipfile.ZipFile")
     def test_get_zip_content_exception(self, mock_zipfile):
         """Test get_zip_content with exception."""
         mock_zipfile.side_effect = Exception("zip error")
@@ -1268,20 +1298,28 @@ class TestLibrary:
 
     def test_loop_with_timeout_success(self):
         """Test loop_with_timeout with successful condition."""
+
         def condition_check():
             return True, None, "result"
-        success, error, result = Library.loop_with_timeout(condition_check, 1, 0.1)
+
+        success, error, result = Library.loop_with_timeout(
+            condition_check, 1, 0.1
+        )
         assert success is True
 
     def test_loop_with_timeout_timeout(self):
         """Test loop_with_timeout with timeout."""
+
         def condition_check():
             return False, "not ready", None
-        success, error, result = Library.loop_with_timeout(condition_check, 0.5, 0.1)
+
+        success, error, result = Library.loop_with_timeout(
+            condition_check, 0.5, 0.1
+        )
         assert success is False
         assert "Timed out" in error
 
-    @patch('wy_qcos.common.library.requests.post')
+    @patch("wy_qcos.common.library.requests.post")
     def test_run_callbacks_no_url(self, mock_post):
         """Test run_callbacks with no URL."""
         data = {"test": "data"}
@@ -1298,8 +1336,7 @@ class TestLibrary:
     def test_encrypt_virtual_instance_id_with_list(self):
         """Test encrypt_virtual_instance_id with device list."""
         success, _, vid = Library.encrypt_virtual_instance_id(
-            ["device1", "device2"],
-            "uuid-string"
+            ["device1", "device2"], "uuid-string"
         )
         assert success is True
         assert "device1+device2" in vid
@@ -1311,7 +1348,7 @@ class TestLibrary:
 
     def test_set_venv_path(self):
         """Test set_venv_path."""
-        with patch('wy_qcos.common.library.Library.get_venv_dirs') as mock_get:
+        with patch("wy_qcos.common.library.Library.get_venv_dirs") as mock_get:
             mock_get.return_value = {}
             Library.set_venv_path("/venv")
             assert mock_get.called
@@ -1319,34 +1356,39 @@ class TestLibrary:
     def test_get_driver_venv_no_default_env(self):
         """Test get_driver_venv without default env."""
         python_bin, python_path_env = Library.get_driver_venv(
-            "test_driver",
-            "/venv",
-            add_default_env=False
+            "test_driver", "/venv", add_default_env=False
         )
         assert python_bin is not None
         assert "PYTHONPATH" in python_path_env
 
     # ========== Additional Coverage for kill_pid ==========
 
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.kill')
-    @patch('wy_qcos.common.library.time.sleep')
-    @patch('builtins.open', create=True)
-    def test_kill_pid_with_process_match(self, mock_open, mock_sleep, mock_kill, mock_exists):
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.kill")
+    @patch("wy_qcos.common.library.time.sleep")
+    @patch("builtins.open", create=True)
+    def test_kill_pid_with_process_match(
+        self, mock_open, mock_sleep, mock_kill, mock_exists
+    ):
         """Test kill_pid with expected process name matching."""
         mock_exists.side_effect = [True, True]
         mock_file = MagicMock()
         mock_file.read.return_value = "12345"
         mock_cmdline = MagicMock()
         mock_cmdline.read.return_value = "python\x00test.py"
-        mock_open.return_value.__enter__.side_effect = [mock_file, mock_cmdline]
+        mock_open.return_value.__enter__.side_effect = [
+            mock_file,
+            mock_cmdline,
+        ]
         Library.kill_pid("/test.pid", expected_process_name="python.*")
         assert mock_open.called
 
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.getpid')
-    @patch('builtins.open', create=True)
-    def test_kill_pid_prevent_self_kill(self, mock_open, mock_getpid, mock_exists):
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.getpid")
+    @patch("builtins.open", create=True)
+    def test_kill_pid_prevent_self_kill(
+        self, mock_open, mock_getpid, mock_exists
+    ):
         """Test kill_pid prevents killing self."""
         mock_exists.return_value = True
         mock_getpid.return_value = 12345
@@ -1356,10 +1398,12 @@ class TestLibrary:
         Library.kill_pid("/test.pid", allow_kill_self=False)
         assert mock_open.called
 
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.kill')
-    @patch('builtins.open', create=True)
-    def test_kill_pid_process_lookup_error(self, mock_open, mock_kill, mock_exists):
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.kill")
+    @patch("builtins.open", create=True)
+    def test_kill_pid_process_lookup_error(
+        self, mock_open, mock_kill, mock_exists
+    ):
         """Test kill_pid with ProcessLookupError."""
         mock_exists.return_value = True
         mock_file = MagicMock()
@@ -1369,10 +1413,12 @@ class TestLibrary:
         Library.kill_pid("/test.pid")
         assert mock_kill.called
 
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.kill')
-    @patch('builtins.open', create=True)
-    def test_kill_pid_permission_error(self, mock_open, mock_kill, mock_exists):
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.kill")
+    @patch("builtins.open", create=True)
+    def test_kill_pid_permission_error(
+        self, mock_open, mock_kill, mock_exists
+    ):
         """Test kill_pid with PermissionError."""
         mock_exists.return_value = True
         mock_file = MagicMock()
@@ -1382,10 +1428,12 @@ class TestLibrary:
         Library.kill_pid("/test.pid")
         assert mock_kill.called
 
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.kill')
-    @patch('builtins.open', create=True)
-    def test_kill_pid_general_exception(self, mock_open, mock_kill, mock_exists):
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.kill")
+    @patch("builtins.open", create=True)
+    def test_kill_pid_general_exception(
+        self, mock_open, mock_kill, mock_exists
+    ):
         """Test kill_pid with general exception."""
         mock_exists.return_value = True
         mock_file = MagicMock()
@@ -1395,10 +1443,12 @@ class TestLibrary:
         Library.kill_pid("/test.pid")
         assert mock_kill.called
 
-    @patch('wy_qcos.common.library.os.remove')
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('builtins.open', create=True)
-    def test_kill_pid_remove_file_error(self, mock_open, mock_exists, mock_remove):
+    @patch("wy_qcos.common.library.os.remove")
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("builtins.open", create=True)
+    def test_kill_pid_remove_file_error(
+        self, mock_open, mock_exists, mock_remove
+    ):
         """Test kill_pid with file removal error."""
         mock_exists.return_value = True
         mock_file = MagicMock()
@@ -1412,14 +1462,16 @@ class TestLibrary:
 
     def test_create_temp_file_with_dir_and_mode(self):
         """Test create_temp_file with directory and mode."""
-        with patch('wy_qcos.common.library.Library.mkdirs'):
-            tf = Library.create_temp_file("test", dir=self.temp_dir, dir_mode=0o755)
+        with patch("wy_qcos.common.library.Library.mkdirs"):
+            tf = Library.create_temp_file(
+                "test", dir=self.temp_dir, dir_mode=0o755
+            )
             assert tf is not None
             tf.close()
 
     def test_create_temp_file_exception_handling(self):
         """Test create_temp_file exception handling."""
-        with patch('tempfile.NamedTemporaryFile') as mock_temp:
+        with patch("tempfile.NamedTemporaryFile") as mock_temp:
             mock_tf = MagicMock()
             mock_tf.write.side_effect = Exception("Write error")
             mock_temp.return_value = mock_tf
@@ -1428,11 +1480,12 @@ class TestLibrary:
 
     # ========== Additional Coverage for mkdirs ==========
 
-    @patch('wy_qcos.common.library.os.mkdir')
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.path.dirname')
+    @patch("wy_qcos.common.library.os.mkdir")
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.path.dirname")
     def test_mkdirs_recursive(self, mock_dirname, mock_exists, mock_mkdir):
         """Test mkdirs with recursive directory creation."""
+
         # Setup dirname with function to handle variable calls
         def dirname_impl(path):
             return {
@@ -1441,22 +1494,25 @@ class TestLibrary:
                 "/a": "",
                 "": "",
             }.get(path, "")
+
         mock_dirname.side_effect = dirname_impl
-        
+
         # Setup exists to handle recursive checks
         # We track which paths exist: only root ("") exists
         def exists_impl(path):
             return path == ""
+
         mock_exists.side_effect = exists_impl
-        
+
         Library.mkdirs("/a/b/c")
         assert mock_mkdir.called
 
-    @patch('wy_qcos.common.library.os.mkdir')
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.path.dirname')
+    @patch("wy_qcos.common.library.os.mkdir")
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.path.dirname")
     def test_mkdirs_with_mode(self, mock_dirname, mock_exists, mock_mkdir):
         """Test mkdirs with mode parameter."""
+
         # Setup dirname with function to handle variable calls
         def dirname_impl(path):
             return {
@@ -1464,26 +1520,28 @@ class TestLibrary:
                 "/test": "",
                 "": "",
             }.get(path, "")
+
         mock_dirname.side_effect = dirname_impl
-        
+
         # Setup exists to handle recursive checks
         # Only root ("") exists
         def exists_impl(path):
             return path == ""
+
         mock_exists.side_effect = exists_impl
-        
+
         Library.mkdirs("/test/dir", mode=0o755)
         # Verify mkdir was called with correct mode
         assert mock_mkdir.called
         calls = mock_mkdir.call_args_list
         # Last call should have mode=0o755
         last_call = calls[-1]
-        assert last_call[1].get('mode') == 0o755
+        assert last_call[1].get("mode") == 0o755
 
     # ========== Additional Coverage for find_dirs ==========
 
-    @patch('wy_qcos.common.library.os.path.isdir')
-    @patch('wy_qcos.common.library.os.walk')
+    @patch("wy_qcos.common.library.os.path.isdir")
+    @patch("wy_qcos.common.library.os.walk")
     def test_find_dirs_with_pattern_match(self, mock_walk, mock_isdir):
         """Test find_dirs with pattern matching."""
         mock_isdir.return_value = True
@@ -1501,7 +1559,7 @@ class TestLibrary:
         mock_proc.pid = 789
         mock_proc.terminate = Mock()
         mock_proc.kill = Mock()
-        with patch('wy_qcos.common.library.psutil.wait_procs') as mock_wait:
+        with patch("wy_qcos.common.library.psutil.wait_procs") as mock_wait:
             mock_wait.side_effect = [([], [mock_proc]), ([mock_proc], [])]
             success_pids, failed_pids = Library.kill([mock_proc], force=False)
             assert 789 in success_pids
@@ -1512,10 +1570,12 @@ class TestLibrary:
         mock_proc = Mock()
         mock_proc.pid = 999
         mock_proc.terminate.side_effect = Exception("Error")
-        with patch('wy_qcos.common.library.psutil.wait_procs'):
+        with patch("wy_qcos.common.library.psutil.wait_procs"):
             # Exception during terminate should be caught and added to failed_pids
             try:
-                success_pids, failed_pids = Library.kill([mock_proc], force=False)
+                success_pids, failed_pids = Library.kill(
+                    [mock_proc], force=False
+                )
                 assert len(failed_pids) > 0
             except Exception:
                 # Expected: Exception is raised by the mock
@@ -1523,11 +1583,13 @@ class TestLibrary:
 
     # ========== Additional Coverage for get_venv_dirs ==========
 
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.path.isdir')
-    @patch('wy_qcos.common.library.os.listdir')
-    @patch('wy_qcos.common.library.os.walk')
-    def test_get_venv_dirs_with_activate(self, mock_walk, mock_listdir, mock_isdir, mock_exists):
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.path.isdir")
+    @patch("wy_qcos.common.library.os.listdir")
+    @patch("wy_qcos.common.library.os.walk")
+    def test_get_venv_dirs_with_activate(
+        self, mock_walk, mock_listdir, mock_isdir, mock_exists
+    ):
         """Test get_venv_dirs with activate file."""
         mock_exists.return_value = True
         mock_isdir.side_effect = [True, True, True]
@@ -1535,15 +1597,17 @@ class TestLibrary:
         mock_walk.side_effect = [
             [("/venv/venv1/bin", [], ["activate"])],
             [("/venv/venv1/lib", ["python3.11"], [])],
-            [("/venv/venv1/lib/python3.11", ["site-packages"], [])]
+            [("/venv/venv1/lib/python3.11", ["site-packages"], [])],
         ]
         result = Library.get_venv_dirs("/venv")
         assert result is not None
 
-    @patch('wy_qcos.common.library.os.path.exists')
-    @patch('wy_qcos.common.library.os.path.isdir')
-    @patch('wy_qcos.common.library.os.listdir')
-    def test_get_venv_dirs_with_permission_error(self, mock_listdir, mock_isdir, mock_exists):
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.path.isdir")
+    @patch("wy_qcos.common.library.os.listdir")
+    def test_get_venv_dirs_with_permission_error(
+        self, mock_listdir, mock_isdir, mock_exists
+    ):
         """Test get_venv_dirs with PermissionError."""
         mock_exists.return_value = True
         mock_isdir.return_value = True
@@ -1551,11 +1615,13 @@ class TestLibrary:
         result = Library.get_venv_dirs("/venv")
         assert result == {}
 
-    @patch('wy_qcos.common.library.os.walk')
-    @patch('wy_qcos.common.library.os.listdir')
-    @patch('wy_qcos.common.library.os.path.isdir')
-    @patch('wy_qcos.common.library.os.path.exists')
-    def test_get_venv_dirs_reorder_default(self, mock_exists, mock_isdir, mock_listdir, mock_walk):
+    @patch("wy_qcos.common.library.os.walk")
+    @patch("wy_qcos.common.library.os.listdir")
+    @patch("wy_qcos.common.library.os.path.isdir")
+    @patch("wy_qcos.common.library.os.path.exists")
+    def test_get_venv_dirs_reorder_default(
+        self, mock_exists, mock_isdir, mock_listdir, mock_walk
+    ):
         """Test get_venv_dirs reorders default venv."""
         mock_exists.return_value = True
         # Need more return values for all isdir calls: bin_dir for each venv, lib_dir for each venv
@@ -1565,15 +1631,15 @@ class TestLibrary:
             [("/venv/default/bin", [], ["activate"])],
             [("/venv/default/lib", ["python3.11"], [])],
             [("/venv/other/bin", [], ["activate"])],
-            [("/venv/other/lib", ["python3.11"], [])]
+            [("/venv/other/lib", ["python3.11"], [])],
         ]
         result = Library.get_venv_dirs("/venv", default_venv_dir="default")
         assert result is not None
 
     # ========== Additional Coverage for set_venv_path ==========
 
-    @patch('wy_qcos.common.library.os.path.isdir')
-    @patch('wy_qcos.common.library.Library.get_venv_dirs')
+    @patch("wy_qcos.common.library.os.path.isdir")
+    @patch("wy_qcos.common.library.Library.get_venv_dirs")
     def test_set_venv_path_with_valid_dirs(self, mock_get_dirs, mock_isdir):
         """Test set_venv_path with valid directories."""
         mock_get_dirs.return_value = {
@@ -1585,40 +1651,46 @@ class TestLibrary:
 
     # ========== Additional Coverage for get_driver_venv ==========
 
-    @patch('wy_qcos.common.library.Library.is_file')
+    @patch("wy_qcos.common.library.Library.is_file")
     def test_get_driver_venv_with_driver_bin(self, mock_is_file):
         """Test get_driver_venv with driver-specific python bin."""
         mock_is_file.side_effect = [True]
-        python_bin, python_path_env = Library.get_driver_venv("test_driver", "/venv")
+        python_bin, python_path_env = Library.get_driver_venv(
+            "test_driver", "/venv"
+        )
         assert "/venv/test_driver/bin/python3" in python_bin
 
-    @patch('wy_qcos.common.library.Library.is_file')
+    @patch("wy_qcos.common.library.Library.is_file")
     def test_get_driver_venv_with_default_bin(self, mock_is_file):
         """Test get_driver_venv with default python bin."""
         mock_is_file.side_effect = [False, True]
-        python_bin, python_path_env = Library.get_driver_venv("test_driver", "/venv")
+        python_bin, python_path_env = Library.get_driver_venv(
+            "test_driver", "/venv"
+        )
         assert python_bin is not None
 
-    @patch('wy_qcos.common.library.Library.is_file')
-    @patch.dict('os.environ', {'PYTHONPATH': '/custom/path'})
+    @patch("wy_qcos.common.library.Library.is_file")
+    @patch.dict("os.environ", {"PYTHONPATH": "/custom/path"})
     def test_get_driver_venv_with_env_pythonpath(self, mock_is_file):
         """Test get_driver_venv with PYTHONPATH environment variable."""
         mock_is_file.return_value = False
-        python_bin, python_path_env = Library.get_driver_venv("test_driver", "/venv")
+        python_bin, python_path_env = Library.get_driver_venv(
+            "test_driver", "/venv"
+        )
         assert "PYTHONPATH" in python_path_env
 
     # ========== Additional Coverage for import_classes ==========
 
-    @patch('wy_qcos.common.library.pkgutil.iter_modules')
+    @patch("wy_qcos.common.library.pkgutil.iter_modules")
     def test_import_classes_with_venv_loader(self, mock_iter):
         """Test import_classes with venv_loader."""
         mock_iter.return_value = []
+
         def venv_loader(name, venv_dir):
             return False, "python3", "/path1:/path2"
+
         classes, venv_dirs = Library.import_classes(
-            "/pkg",
-            venv_base_dir="/venv",
-            venv_loader=venv_loader
+            "/pkg", venv_base_dir="/venv", venv_loader=venv_loader
         )
         assert classes is not None
 
@@ -1645,17 +1717,20 @@ class TestLibrary:
         async_cm_mock.__aenter__ = AsyncMock(return_value=mock_response)
         async_cm_mock.__aexit__ = AsyncMock(return_value=None)
 
-        with patch('wy_qcos.common.library.aiohttp.ClientSession') as mock_session_class:
+        with patch(
+            "wy_qcos.common.library.aiohttp.ClientSession"
+        ) as mock_session_class:
             mock_session = MagicMock()
             mock_session.post = MagicMock(return_value=async_cm_mock)
             mock_session_class.return_value.__aenter__ = AsyncMock(
                 return_value=mock_session
             )
-            mock_session_class.return_value.__aexit__ = AsyncMock(return_value=None)
+            mock_session_class.return_value.__aexit__ = AsyncMock(
+                return_value=None
+            )
 
             success, error, data, response = await Library.async_call_http_api(
-                "http://test.com",
-                HttpMethod.POST
+                "http://test.com", HttpMethod.POST
             )
             assert success is True
 
@@ -1672,18 +1747,20 @@ class TestLibrary:
         async_cm_mock.__aenter__ = AsyncMock(return_value=mock_response)
         async_cm_mock.__aexit__ = AsyncMock(return_value=None)
 
-        with patch('wy_qcos.common.library.aiohttp.ClientSession') as mock_session_class:
+        with patch(
+            "wy_qcos.common.library.aiohttp.ClientSession"
+        ) as mock_session_class:
             mock_session = MagicMock()
             mock_session.post = MagicMock(return_value=async_cm_mock)
             mock_session_class.return_value.__aenter__ = AsyncMock(
                 return_value=mock_session
             )
-            mock_session_class.return_value.__aexit__ = AsyncMock(return_value=None)
+            mock_session_class.return_value.__aexit__ = AsyncMock(
+                return_value=None
+            )
 
             success, error, data, response = await Library.async_call_http_api(
-                "http://test.com",
-                HttpMethod.POST,
-                retries=1
+                "http://test.com", HttpMethod.POST, retries=1
             )
             assert success is False
 
@@ -1692,23 +1769,25 @@ class TestLibrary:
         """Test async_call_http_api with timeout."""
         # Create mock that raises TimeoutError
         async_cm_mock = MagicMock()
-        async_cm_mock.__aenter__ = AsyncMock(side_effect=TimeoutError(
-            "Connection timeout"
-        ))
+        async_cm_mock.__aenter__ = AsyncMock(
+            side_effect=TimeoutError("Connection timeout")
+        )
         async_cm_mock.__aexit__ = AsyncMock(return_value=None)
 
-        with patch('wy_qcos.common.library.aiohttp.ClientSession') as mock_session_class:
+        with patch(
+            "wy_qcos.common.library.aiohttp.ClientSession"
+        ) as mock_session_class:
             mock_session = MagicMock()
             mock_session.post = MagicMock(return_value=async_cm_mock)
             mock_session_class.return_value.__aenter__ = AsyncMock(
                 return_value=mock_session
             )
-            mock_session_class.return_value.__aexit__ = AsyncMock(return_value=None)
+            mock_session_class.return_value.__aexit__ = AsyncMock(
+                return_value=None
+            )
 
             success, error, data, response = await Library.async_call_http_api(
-                "http://test.com",
-                HttpMethod.POST,
-                retries=1
+                "http://test.com", HttpMethod.POST, retries=1
             )
             assert success is False
 
@@ -1723,10 +1802,14 @@ class TestLibrary:
     @pytest.mark.asyncio
     async def test_async_run_callbacks_with_url(self):
         """Test async_run_callbacks with URL."""
-        with patch('wy_qcos.common.library.Library.async_call_http_api') as mock_call:
+        with patch(
+            "wy_qcos.common.library.Library.async_call_http_api"
+        ) as mock_call:
             mock_call.return_value = (True, None, "response", None)
             callbacks = [{"url": "http://test.com"}]
-            success, error = await Library.async_run_callbacks({"data": "test"}, callbacks)
+            success, error = await Library.async_run_callbacks(
+                {"data": "test"}, callbacks
+            )
             assert success is True
 
     # ========== Additional Coverage for get_sorted_keys ==========
@@ -1745,9 +1828,11 @@ class TestLibrary:
 
     def test_get_sorted_keys_with_object_attribute(self):
         """Test get_sorted_keys with object attribute."""
+
         class TestObj:
             def __init__(self):
                 self.name = "test"
+
         sort_obj = TestObj()
         result = Library.get_sorted_keys(sort_obj, ["name"])
         assert result is not None
@@ -1762,24 +1847,17 @@ class TestLibrary:
     def test_decrypt_virtual_instance_id_with_encode(self):
         """Test decrypt_virtual_instance_id with base64 encoding."""
         success, _, vid = Library.encrypt_virtual_instance_id(
-            ["device1"],
-            "uuid-string",
-            salt="salt",
-            encode=True
+            ["device1"], "uuid-string", salt="salt", encode=True
         )
         assert success is True
-        success2, error, devices, instance_id = Library.decrypt_virtual_instance_id(
-            vid,
-            salt="salt",
-            encode=True
+        success2, error, devices, instance_id = (
+            Library.decrypt_virtual_instance_id(vid, salt="salt", encode=True)
         )
         assert success2 is True
 
     def test_decrypt_virtual_instance_id_wrong_verify_code(self):
         """Test decrypt_virtual_instance_id with wrong verify code."""
         success, error, _, _ = Library.decrypt_virtual_instance_id(
-            "device|uuid|wrong",
-            salt="salt"
+            "device|uuid|wrong", salt="salt"
         )
         assert success is False
-

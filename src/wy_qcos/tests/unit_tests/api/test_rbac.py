@@ -90,21 +90,21 @@ class TestRBAC:
         mock_request.app.state._user_manager = mock_user_manager
 
         mock_users_repo = Mock()
-        mock_users_repo.get_user_by_username.return_value = (
-            False, None, None
-        )
-        mock_users_repo.create_user.return_value = (
-            True, None, created_user
-        )
+        mock_users_repo.get_user_by_username.return_value = (False, None, None)
+        mock_users_repo.create_user.return_value = (True, None, created_user)
         mock_roles_repo = Mock()
         mock_roles_repo.get_role_by_name.return_value = (
-            True, None, admin_role
+            True,
+            None,
+            admin_role,
         )
 
         result = create_user(
-            body, mock_request, None,
+            body,
+            mock_request,
+            None,
             users_repo=mock_users_repo,
-            roles_repo=mock_roles_repo
+            roles_repo=mock_roles_repo,
         )
 
         assert result is not None
@@ -145,21 +145,21 @@ class TestRBAC:
         mock_request.app.state._user_manager = mock_user_manager
 
         mock_users_repo = Mock()
-        mock_users_repo.get_user_by_username.return_value = (
-            False, None, None
-        )
-        mock_users_repo.create_user.return_value = (
-            True, None, created_user
-        )
+        mock_users_repo.get_user_by_username.return_value = (False, None, None)
+        mock_users_repo.create_user.return_value = (True, None, created_user)
         mock_roles_repo = Mock()
         mock_roles_repo.get_role_by_name.return_value = (
-            True, None, viewer_role
+            True,
+            None,
+            viewer_role,
         )
 
         result = create_user(
-            body, mock_request, None,
+            body,
+            mock_request,
+            None,
             users_repo=mock_users_repo,
-            roles_repo=mock_roles_repo
+            roles_repo=mock_roles_repo,
         )
 
         assert result is not None
@@ -216,7 +216,9 @@ class TestRBAC:
 
         mock_roles_repo = Mock()
         mock_roles_repo.get_roles.return_value = (
-            True, None, [admin_role, operator_role]
+            True,
+            None,
+            [admin_role, operator_role],
         )
 
         roles = get_roles(None, None, roles_repo=mock_roles_repo)
@@ -506,9 +508,7 @@ class TestUserPermissionIntegration:
             updated_at=datetime.now(),
         )
         mock_users_repo = Mock()
-        mock_users_repo.get_user_by_id.return_value = (
-            True, None, admin_user
-        )
+        mock_users_repo.get_user_by_id.return_value = (True, None, admin_user)
 
         body = user_schemas.GetUserRequest(user_id="admin-uuid")
         result = get_user(body, None, users_repo=mock_users_repo)
@@ -531,7 +531,9 @@ class TestUserPermissionIntegration:
         )
         mock_users_repo = Mock()
         mock_users_repo.get_user_by_id.return_value = (
-            True, None, limited_user
+            True,
+            None,
+            limited_user,
         )
 
         body = user_schemas.GetUserRequest(user_id="operator-uuid")
@@ -539,4 +541,3 @@ class TestUserPermissionIntegration:
 
         assert result is not None
         assert "operator" in result.roles
-

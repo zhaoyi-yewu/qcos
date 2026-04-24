@@ -162,9 +162,7 @@ class TestGetCurrentUserFromToken:
 
         assert result is not None
         assert result.user_name == "testuser"
-        mock_user_manager.get_user_by_name.assert_called_once_with(
-            "testuser"
-        )
+        mock_user_manager.get_user_by_name.assert_called_once_with("testuser")
 
     def test_token_with_blacklisted_jti(self, mock_user_manager):
         """Test with blacklisted token JTI."""

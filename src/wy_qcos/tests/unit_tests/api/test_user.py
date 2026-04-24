@@ -206,9 +206,7 @@ class TestCreateUser:
         return mock
 
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
-    def test_create_user_success(
-        self, mock_config, mock_user_manager
-    ):
+    def test_create_user_success(self, mock_config, mock_user_manager):
         """Test successful user creation."""
         mock_config.PASSWORD_EXPIRY_DAYS = 90
 
@@ -218,9 +216,7 @@ class TestCreateUser:
         mock_request.app.state._user_manager = mock_user_manager
 
         mock_users_repo = Mock()
-        mock_users_repo.get_user_by_username.return_value = (
-            False, None, None
-        )
+        mock_users_repo.get_user_by_username.return_value = (False, None, None)
         new_user = user_schemas.User(
             user_name="newuser",
             hashed_password=_s("password123"),
@@ -232,14 +228,12 @@ class TestCreateUser:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        mock_users_repo.create_user.return_value = (
-            True, None, new_user
-        )
+        mock_users_repo.create_user.return_value = (True, None, new_user)
         mock_roles_repo = Mock()
         mock_roles_repo.get_role_by_name.return_value = (
             True,
             None,
-            Mock(role_name="user")
+            Mock(role_name="user"),
         )
 
         body = user_schemas.CreateUserRequest(
@@ -321,9 +315,7 @@ class TestGetUser:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        mock_users_repo.get_user_by_id.return_value = (
-            True, None, user_obj
-        )
+        mock_users_repo.get_user_by_id.return_value = (True, None, user_obj)
 
         body = user_schemas.GetUserRequest(user_id="user-uuid-123")
 
@@ -331,15 +323,15 @@ class TestGetUser:
 
         assert result is not None
         assert result.user_name == "testuser"
-        mock_users_repo.get_user_by_id.assert_called_once_with(
-            "user-uuid-123"
-        )
+        mock_users_repo.get_user_by_id.assert_called_once_with("user-uuid-123")
 
     def test_get_user_not_found(self, mock_user_manager):
         """Test getting non-existent user."""
         mock_users_repo = Mock()
         mock_users_repo.get_user_by_id.return_value = (
-            False, "Not found", None
+            False,
+            "Not found",
+            None,
         )
 
         body = user_schemas.GetUserRequest(user_id="nonexistent-uuid")
@@ -405,9 +397,7 @@ class TestGetUsers:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        mock_users_repo.get_users.return_value = (
-            True, None, [user1, user2]
-        )
+        mock_users_repo.get_users.return_value = (True, None, [user1, user2])
 
         result = get_users(None, None, users_repo=mock_users_repo)
 
@@ -424,17 +414,19 @@ class TestUpdateUser:
     def mock_user_manager(self):
         """Create a mock user manager."""
         mock = Mock(spec=UserManager)
-        mock.get_user_by_id = Mock(return_value=user_schemas.User(
-            user_name="testuser",
-            hashed_password=_s("hashed"),
-            roles=["user"],
-            is_enabled=True,
-            is_locked=False,
-            password_expiry_days=90,
-            password_changed_at=datetime.now(),
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-        ))
+        mock.get_user_by_id = Mock(
+            return_value=user_schemas.User(
+                user_name="testuser",
+                hashed_password=_s("hashed"),
+                roles=["user"],
+                is_enabled=True,
+                is_locked=False,
+                password_expiry_days=90,
+                password_changed_at=datetime.now(),
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+            )
+        )
         mock.get_roles.return_value = {
             "user": Mock(role_name="user"),
             "admin": Mock(role_name="admin"),
@@ -463,7 +455,9 @@ class TestUpdateUser:
 
         mock_users_repo = Mock()
         mock_users_repo.get_user_by_id.return_value = (
-            True, None, Mock(user_name="testuser")
+            True,
+            None,
+            Mock(user_name="testuser"),
         )
         updated_user = user_schemas.User(
             user_name="testuser",
@@ -476,12 +470,12 @@ class TestUpdateUser:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        mock_users_repo.update_user.return_value = (
-            True, None, updated_user
-        )
+        mock_users_repo.update_user.return_value = (True, None, updated_user)
         mock_roles_repo = Mock()
         mock_roles_repo.get_role_by_name.return_value = (
-            True, None, Mock(role_name="admin")
+            True,
+            None,
+            Mock(role_name="admin"),
         )
 
         body = user_schemas.UpdateUserRequest(
@@ -491,9 +485,11 @@ class TestUpdateUser:
         )
 
         result = update_user(
-            body, mock_request, mock_user_manager,
+            body,
+            mock_request,
+            mock_user_manager,
             users_repo=mock_users_repo,
-            roles_repo=mock_roles_repo
+            roles_repo=mock_roles_repo,
         )
 
         assert result is not None
@@ -535,13 +531,9 @@ class TestDeleteUser:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        mock_users_repo.get_user_by_id.return_value = (
-            True, None, user_obj
-        )
+        mock_users_repo.get_user_by_id.return_value = (True, None, user_obj)
         # delete_user_by_id returns 2-tuple (success, error)
-        mock_users_repo.delete_user_by_id.return_value = (
-            True, None
-        )
+        mock_users_repo.delete_user_by_id.return_value = (True, None)
 
         body = user_schemas.DeleteUserRequest(user_id="user-uuid-123")
 
@@ -598,17 +590,13 @@ class TestCreateRole:
         mock_request.app.state._user_manager = mock_user_manager
 
         mock_roles_repo = Mock()
-        mock_roles_repo.get_role_by_name.return_value = (
-            False, None, None
-        )
+        mock_roles_repo.get_role_by_name.return_value = (False, None, None)
         new_role = user_schemas.Role(
             role_name="newrole",
             permissions=["/v1/device/get_device"],
             description="New role",
         )
-        mock_roles_repo.create_role.return_value = (
-            True, None, new_role
-        )
+        mock_roles_repo.create_role.return_value = (True, None, new_role)
 
         body = user_schemas.CreateRoleRequest(
             role_name="newrole",
@@ -617,8 +605,7 @@ class TestCreateRole:
         )
 
         result = create_role(
-            body, mock_request, mock_user_manager,
-            roles_repo=mock_roles_repo
+            body, mock_request, mock_user_manager, roles_repo=mock_roles_repo
         )
 
         assert result is not None
@@ -635,7 +622,9 @@ class TestCreateRole:
 
         mock_roles_repo = Mock()
         mock_roles_repo.get_role_by_name.return_value = (
-            True, None, existing_role
+            True,
+            None,
+            existing_role,
         )
 
         body = user_schemas.CreateRoleRequest(
@@ -645,8 +634,7 @@ class TestCreateRole:
 
         with pytest.raises(Exception):
             create_role(
-                body, None, mock_user_manager,
-                roles_repo=mock_roles_repo
+                body, None, mock_user_manager, roles_repo=mock_roles_repo
             )
 
 
@@ -673,9 +661,7 @@ class TestGetRole:
             permissions=["/v1/device/get_device"],
             description="Test role",
         )
-        mock_roles_repo.get_role_by_id.return_value = (
-            True, None, role_obj
-        )
+        mock_roles_repo.get_role_by_id.return_value = (True, None, role_obj)
 
         body = user_schemas.GetRoleRequest(role_id="testrole")
 
@@ -719,7 +705,9 @@ class TestGetRoles:
             description="Regular user",
         )
         mock_roles_repo.get_roles.return_value = (
-            True, None, [admin_role, user_role]
+            True,
+            None,
+            [admin_role, user_role],
         )
 
         result = get_roles(None, None, roles_repo=mock_roles_repo)
@@ -770,30 +758,25 @@ class TestUpdateRole:
             description="Test role",
         )
         mock_roles_repo.get_role_by_id.return_value = (
-            True, None, existing_role
+            True,
+            None,
+            existing_role,
         )
         updated_role = user_schemas.Role(
             role_name="testrole",
-            permissions=[
-                "/v1/device/get_device", "/v1/device/get_devices"
-            ],
+            permissions=["/v1/device/get_device", "/v1/device/get_devices"],
             description="Updated role",
         )
-        mock_roles_repo.update_role.return_value = (
-            True, None, updated_role
-        )
+        mock_roles_repo.update_role.return_value = (True, None, updated_role)
 
         body = user_schemas.UpdateRoleRequest(
             role_id="testrole",
-            permissions=[
-                "/v1/device/get_device", "/v1/device/get_devices"
-            ],
+            permissions=["/v1/device/get_device", "/v1/device/get_devices"],
             description="Updated role",
         )
 
         result = update_role(
-            body, mock_request, mock_user_manager,
-            roles_repo=mock_roles_repo
+            body, mock_request, mock_user_manager, roles_repo=mock_roles_repo
         )
 
         assert result is not None
@@ -830,23 +813,17 @@ class TestDeleteRole:
             permissions=["/v1/device/get_device"],
             description="Test role",
         )
-        mock_roles_repo.get_role_by_id.return_value = (
-            True, None, role_obj
-        )
+        mock_roles_repo.get_role_by_id.return_value = (True, None, role_obj)
         # delete_role_by_id returns 2-tuple (success, error)
-        mock_roles_repo.delete_role_by_id.return_value = (
-            True, None
-        )
+        mock_roles_repo.delete_role_by_id.return_value = (True, None)
 
         mock_users_repo = Mock()
-        mock_users_repo.find_users_by_role.return_value = (
-            True, None, []
-        )
-        mock_users_repo.get_users.return_value = (
-            True, None, []
-        )
+        mock_users_repo.find_users_by_role.return_value = (True, None, [])
+        mock_users_repo.get_users.return_value = (True, None, [])
         mock_users_repo.get_user_by_username.return_value = (
-            True, None, Mock(id="user-uuid-123")
+            True,
+            None,
+            Mock(id="user-uuid-123"),
         )
 
         # Mock user_manager requires these for reload
@@ -857,9 +834,11 @@ class TestDeleteRole:
         body = user_schemas.DeleteRoleRequest(role_id="testrole")
 
         result = delete_role(
-            body, mock_request, mock_user_manager,
+            body,
+            mock_request,
+            mock_user_manager,
             roles_repo=mock_roles_repo,
-            users_repo=mock_users_repo
+            users_repo=mock_users_repo,
         )
 
         assert result is not None
@@ -889,7 +868,25 @@ class TestChangePassword:
     def mock_user_manager(self):
         """Create a mock user manager."""
         mock = Mock(spec=UserManager)
-        mock.get_user_by_id = Mock(return_value=user_schemas.User(
+        mock.get_user_by_id = Mock(
+            return_value=user_schemas.User(
+                user_name="testuser",
+                hashed_password=UserManager.hash_password("old_password"),
+                roles=["user"],
+                is_enabled=True,
+                is_locked=False,
+                password_expiry_days=90,
+                password_changed_at=datetime.now(),
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+            )
+        )
+        return mock
+
+    def test_change_password_success(self, mock_user_manager):
+        """Test successful password change."""
+        mock_users_repo = Mock()
+        user_obj = user_schemas.User(
             user_name="testuser",
             hashed_password=UserManager.hash_password("old_password"),
             roles=["user"],
@@ -899,42 +896,20 @@ class TestChangePassword:
             password_changed_at=datetime.now(),
             created_at=datetime.now(),
             updated_at=datetime.now(),
-        ))
-        return mock
+        )
+        mock_users_repo.get_user_by_id.return_value = (True, None, user_obj)
+        mock_users_repo.update_user.return_value = (True, None, user_obj)
 
-    def test_change_password_success(self, mock_user_manager):
-         """Test successful password change."""
-         mock_users_repo = Mock()
-         user_obj = user_schemas.User(
-             user_name="testuser",
-             hashed_password=UserManager.hash_password("old_password"),
-             roles=["user"],
-             is_enabled=True,
-             is_locked=False,
-             password_expiry_days=90,
-             password_changed_at=datetime.now(),
-             created_at=datetime.now(),
-             updated_at=datetime.now(),
-         )
-         mock_users_repo.get_user_by_id.return_value = (
-             True, None, user_obj
-         )
-         mock_users_repo.update_user.return_value = (
-             True, None, user_obj
-         )
+        body = user_schemas.ChangePasswordRequest(
+            user_id="user-uuid-123",
+            old_password=_s("old_password"),
+            new_password=_s("new_password123"),
+        )
 
-         body = user_schemas.ChangePasswordRequest(
-             user_id="user-uuid-123",
-             old_password=_s("old_password"),
-             new_password=_s("new_password123"),
-         )
+        result = change_password(body, None, users_repo=mock_users_repo)
 
-         result = change_password(
-             body, None, users_repo=mock_users_repo
-         )
-
-         assert result is not None
-         assert result.message == "Password changed successfully"
+        assert result is not None
+        assert result.message == "Password changed successfully"
 
     def test_change_password_incorrect_old(self, mock_user_manager):
         """Test password change with incorrect old password."""
@@ -1011,7 +986,9 @@ class TestGetLoginLogs:
         ]
         mock_users_repo.get_login_logs.return_value = (True, None, logs)
         mock_users_repo.get_user_by_username.return_value = (
-            True, None, Mock(id="user-uuid-123")
+            True,
+            None,
+            Mock(id="user-uuid-123"),
         )
 
         body = user_schemas.GetLoginLogsRequest()
@@ -1037,7 +1014,9 @@ class TestGetLoginLogs:
         ]
         mock_users_repo.get_login_logs.return_value = (True, None, logs)
         mock_users_repo.get_user_by_username.return_value = (
-            True, None, Mock(id="user-uuid-123")
+            True,
+            None,
+            Mock(id="user-uuid-123"),
         )
 
         body = user_schemas.GetLoginLogsRequest(limit=1, offset=0)
@@ -1071,7 +1050,9 @@ class TestGetLoginLogs:
         ]
         mock_users_repo.get_login_logs.return_value = (True, None, logs)
         mock_users_repo.get_user_by_username.return_value = (
-            True, None, Mock(id="user-uuid-123")
+            True,
+            None,
+            Mock(id="user-uuid-123"),
         )
 
         body = user_schemas.GetLoginLogsRequest()
@@ -1081,8 +1062,6 @@ class TestGetLoginLogs:
         assert len(result) == 2
         # login_time now is ISO string after conversion
         assert result[0].login_time >= result[1].login_time
-
-
 
 
 class TestBoundaryConditions:
@@ -1096,18 +1075,14 @@ class TestBoundaryConditions:
         mock.get_role.return_value = None
         return mock
 
-    def test_create_user_with_minimum_length_username(
-        self, mock_user_manager
-    ):
+    def test_create_user_with_minimum_length_username(self, mock_user_manager):
         """Test creating user with minimum length username."""
         mock_request = Mock()
         mock_request.app = Mock()
         mock_request.app.state = Mock()
 
         mock_users_repo = Mock()
-        mock_users_repo.get_user_by_username.return_value = (
-            False, None, None
-        )
+        mock_users_repo.get_user_by_username.return_value = (False, None, None)
         min_user = user_schemas.User(
             user_name="abc",
             hashed_password=_s("hashed"),
@@ -1119,12 +1094,12 @@ class TestBoundaryConditions:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        mock_users_repo.create_user.return_value = (
-            True, None, min_user
-        )
+        mock_users_repo.create_user.return_value = (True, None, min_user)
         mock_roles_repo = Mock()
         mock_roles_repo.get_role_by_name.return_value = (
-            True, None, Mock(role_name="user")
+            True,
+            None,
+            Mock(role_name="user"),
         )
 
         body = user_schemas.CreateUserRequest(
@@ -1134,15 +1109,15 @@ class TestBoundaryConditions:
         )
 
         result = create_user(
-            body, mock_request, mock_user_manager,
+            body,
+            mock_request,
+            mock_user_manager,
             users_repo=mock_users_repo,
-            roles_repo=mock_roles_repo
+            roles_repo=mock_roles_repo,
         )
         assert result is not None
 
-    def test_create_user_with_maximum_length_username(
-        self, mock_user_manager
-    ):
+    def test_create_user_with_maximum_length_username(self, mock_user_manager):
         """Test creating user with maximum length username."""
         mock_request = Mock()
         mock_request.app = Mock()
@@ -1151,9 +1126,7 @@ class TestBoundaryConditions:
         long_username = "a" * Constant.MAX_USER_LENGTH
 
         mock_users_repo = Mock()
-        mock_users_repo.get_user_by_username.return_value = (
-            False, None, None
-        )
+        mock_users_repo.get_user_by_username.return_value = (False, None, None)
         max_user = user_schemas.User(
             user_name=long_username,
             hashed_password=_s("hashed"),
@@ -1165,12 +1138,12 @@ class TestBoundaryConditions:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        mock_users_repo.create_user.return_value = (
-            True, None, max_user
-        )
+        mock_users_repo.create_user.return_value = (True, None, max_user)
         mock_roles_repo = Mock()
         mock_roles_repo.get_role_by_name.return_value = (
-            True, None, Mock(role_name="user")
+            True,
+            None,
+            Mock(role_name="user"),
         )
 
         body = user_schemas.CreateUserRequest(
@@ -1180,9 +1153,11 @@ class TestBoundaryConditions:
         )
 
         result = create_user(
-            body, mock_request, mock_user_manager,
+            body,
+            mock_request,
+            mock_user_manager,
             users_repo=mock_users_repo,
-            roles_repo=mock_roles_repo
+            roles_repo=mock_roles_repo,
         )
         assert result is not None
 
@@ -1193,24 +1168,22 @@ class TestBoundaryConditions:
         mock_request.app.state = Mock()
         mock_request.app.state._user_manager = mock_user_manager
 
-        mock_user_manager.create_role.return_value = (
+        mock_user_manager.create_role.return_value = user_schemas.Role(
+            role_name="empty_role",
+            permissions=[],
+            description="Empty role",
+        )
+
+        mock_roles_repo = Mock()
+        mock_roles_repo.get_role_by_name.return_value = (False, None, None)
+        mock_roles_repo.create_role.return_value = (
+            True,
+            None,
             user_schemas.Role(
                 role_name="empty_role",
                 permissions=[],
                 description="Empty role",
-            )
-        )
-
-        mock_roles_repo = Mock()
-        mock_roles_repo.get_role_by_name.return_value = (
-            False, None, None
-        )
-        mock_roles_repo.create_role.return_value = (
-            True, None, user_schemas.Role(
-                role_name="empty_role",
-                permissions=[],
-                description="Empty role",
-            )
+            ),
         )
 
         body = user_schemas.CreateRoleRequest(
@@ -1219,8 +1192,7 @@ class TestBoundaryConditions:
         )
 
         result = create_role(
-            body, mock_request, mock_user_manager,
-            roles_repo=mock_roles_repo
+            body, mock_request, mock_user_manager, roles_repo=mock_roles_repo
         )
         assert result is not None
         assert result.permissions == []
@@ -1233,17 +1205,13 @@ class TestBoundaryConditions:
         mock_request.app.state._user_manager = mock_user_manager
 
         mock_roles_repo = Mock()
-        mock_roles_repo.get_role_by_name.return_value = (
-            False, None, None
-        )
+        mock_roles_repo.get_role_by_name.return_value = (False, None, None)
         wildcard_role = user_schemas.Role(
             role_name="full_access_role",
             permissions=["*"],
             description="Full access role",
         )
-        mock_roles_repo.create_role.return_value = (
-            True, None, wildcard_role
-        )
+        mock_roles_repo.create_role.return_value = (True, None, wildcard_role)
 
         body = user_schemas.CreateRoleRequest(
             role_name="full_access_role",
@@ -1251,8 +1219,7 @@ class TestBoundaryConditions:
         )
 
         result = create_role(
-            body, mock_request, mock_user_manager,
-            roles_repo=mock_roles_repo
+            body, mock_request, mock_user_manager, roles_repo=mock_roles_repo
         )
         assert result is not None
         assert "*" in result.permissions
@@ -1303,31 +1270,33 @@ class TestErrorHandlingChains:
 
     def test_update_user_to_invalid_role(self, mock_user_manager):
         """Test updating user with invalid role."""
-        mock_user_manager.get_user_by_id = Mock(return_value=(
-            user_schemas.User(
-                user_name="testuser",
-                hashed_password=_s("hashed"),
-                roles=["user"],
-                is_enabled=True,
-                is_locked=False,
-                password_expiry_days=90,
-                password_changed_at=datetime.now(),
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
+        mock_user_manager.get_user_by_id = Mock(
+            return_value=(
+                user_schemas.User(
+                    user_name="testuser",
+                    hashed_password=_s("hashed"),
+                    roles=["user"],
+                    is_enabled=True,
+                    is_locked=False,
+                    password_expiry_days=90,
+                    password_changed_at=datetime.now(),
+                    created_at=datetime.now(),
+                    updated_at=datetime.now(),
+                )
             )
-        ))
+        )
         mock_user_manager.get_roles.return_value = {
             "user": Mock(role_name="user")
         }
 
         mock_users_repo = Mock()
         mock_users_repo.get_user_by_id.return_value = (
-            True, None, Mock(user_name="testuser")
+            True,
+            None,
+            Mock(user_name="testuser"),
         )
         mock_roles_repo = Mock()
-        mock_roles_repo.get_role_by_name.return_value = (
-            False, None, None
-        )
+        mock_roles_repo.get_role_by_name.return_value = (False, None, None)
 
         body = user_schemas.UpdateUserRequest(
             user_id="testuser-uuid",
@@ -1336,9 +1305,11 @@ class TestErrorHandlingChains:
 
         with pytest.raises(Exception):
             update_user(
-                body, None, mock_user_manager,
+                body,
+                None,
+                mock_user_manager,
                 users_repo=mock_users_repo,
-                roles_repo=mock_roles_repo
+                roles_repo=mock_roles_repo,
             )
 
     def test_create_duplicate_role(self, mock_user_manager):
@@ -1351,7 +1322,9 @@ class TestErrorHandlingChains:
 
         mock_roles_repo = Mock()
         mock_roles_repo.get_role_by_name.return_value = (
-            True, None, existing_role
+            True,
+            None,
+            existing_role,
         )
 
         body = user_schemas.CreateRoleRequest(
@@ -1361,8 +1334,7 @@ class TestErrorHandlingChains:
 
         with pytest.raises(Exception):
             create_role(
-                body, None, mock_user_manager,
-                roles_repo=mock_roles_repo
+                body, None, mock_user_manager, roles_repo=mock_roles_repo
             )
 
 
@@ -1392,28 +1364,30 @@ class TestUserStatusManagement:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        mock_user_manager.get_user_by_id = Mock(return_value=(
-            user_schemas.User(
-                user_name="testuser",
-                hashed_password=_s("hashed"),
-                roles=["user"],
-                is_enabled=True,
-                is_locked=False,
-                password_expiry_days=90,
-                password_changed_at=datetime.now(),
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
+        mock_user_manager.get_user_by_id = Mock(
+            return_value=(
+                user_schemas.User(
+                    user_name="testuser",
+                    hashed_password=_s("hashed"),
+                    roles=["user"],
+                    is_enabled=True,
+                    is_locked=False,
+                    password_expiry_days=90,
+                    password_changed_at=datetime.now(),
+                    created_at=datetime.now(),
+                    updated_at=datetime.now(),
+                )
             )
-        ))
+        )
         mock_user_manager.update_user.return_value = disabled_user
 
         mock_users_repo = Mock()
         mock_users_repo.get_user_by_id.return_value = (
-            True, None, Mock(user_name="testuser")
+            True,
+            None,
+            Mock(user_name="testuser"),
         )
-        mock_users_repo.update_user.return_value = (
-            True, None, disabled_user
-        )
+        mock_users_repo.update_user.return_value = (True, None, disabled_user)
         mock_roles_repo = Mock()
 
         body = user_schemas.UpdateUserRequest(
@@ -1421,9 +1395,11 @@ class TestUserStatusManagement:
         )
 
         result = update_user(
-            body, mock_request, mock_user_manager,
+            body,
+            mock_request,
+            mock_user_manager,
             users_repo=mock_users_repo,
-            roles_repo=mock_roles_repo
+            roles_repo=mock_roles_repo,
         )
         assert result.is_enabled is False
 
@@ -1444,28 +1420,30 @@ class TestUserStatusManagement:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        mock_user_manager.get_user_by_id = Mock(return_value=(
-            user_schemas.User(
-                user_name="testuser",
-                hashed_password=_s("hashed"),
-                roles=["user"],
-                is_enabled=True,
-                is_locked=False,
-                password_expiry_days=90,
-                password_changed_at=datetime.now(),
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
+        mock_user_manager.get_user_by_id = Mock(
+            return_value=(
+                user_schemas.User(
+                    user_name="testuser",
+                    hashed_password=_s("hashed"),
+                    roles=["user"],
+                    is_enabled=True,
+                    is_locked=False,
+                    password_expiry_days=90,
+                    password_changed_at=datetime.now(),
+                    created_at=datetime.now(),
+                    updated_at=datetime.now(),
+                )
             )
-        ))
+        )
         mock_user_manager.update_user.return_value = locked_user
 
         mock_users_repo = Mock()
         mock_users_repo.get_user_by_id.return_value = (
-            True, None, Mock(user_name="testuser")
+            True,
+            None,
+            Mock(user_name="testuser"),
         )
-        mock_users_repo.update_user.return_value = (
-            True, None, locked_user
-        )
+        mock_users_repo.update_user.return_value = (True, None, locked_user)
         mock_roles_repo = Mock()
 
         body = user_schemas.UpdateUserRequest(
@@ -1473,9 +1451,11 @@ class TestUserStatusManagement:
         )
 
         result = update_user(
-            body, mock_request, mock_user_manager,
+            body,
+            mock_request,
+            mock_user_manager,
             users_repo=mock_users_repo,
-            roles_repo=mock_roles_repo
+            roles_repo=mock_roles_repo,
         )
         assert result.is_locked is True
 
@@ -1495,4 +1475,3 @@ class TestUserStatusManagement:
         mock_user_manager.get_user.return_value = disabled_user
 
         assert disabled_user.is_enabled is False
-

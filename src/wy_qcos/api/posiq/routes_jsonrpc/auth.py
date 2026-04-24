@@ -494,7 +494,7 @@ async def refresh_token(
     security_manager = request.app.state._security_manager
     username = None
     payload = None
-    
+
     try:
         payload = jwt.decode(
             body.refresh_token,
@@ -559,9 +559,7 @@ async def refresh_token(
             func_name,
             (
                 False,
-                [
-                    "User account is locked, cannot refresh token"
-                ],
+                ["User account is locked, cannot refresh token"],
             ),
         )
 

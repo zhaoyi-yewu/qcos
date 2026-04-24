@@ -437,4 +437,3 @@ class TestRolePermissionIntegration:
 
         # Verify role is deleted
         assert user_manager.get_role("temp_role") is None
-
