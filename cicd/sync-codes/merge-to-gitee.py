@@ -216,8 +216,11 @@ def get_unsynced_commits(start_since=None):
     only_in_cmss = [k for k in cmss_keys if k not in gitee_keys]
 
     unsynced_commits = []
-    for k in only_in_cmss:
-        unsynced_commits.append(cmss_commits_dict[k]["commit_hash"])
+    if only_in_cmss:
+        for k, commit_info in cmss_commits_dict.items():
+            if k in only_in_cmss:
+                unsynced_commits.append(commit_info["commit_hash"])
+    unsynced_commits.reverse()
     unsynced_commits.sort(key=lambda x: cmss_commits_dict[
         next(k for k, v in cmss_commits_dict.items() if v["commit_hash"] == x)
     ]["committed_datetime"])
@@ -238,6 +241,7 @@ def diff_branches(start_since):
     gitee_keys = set(gitee_commits_dict.keys())
 
     only_in_cmss = [k for k in cmss_keys if k not in gitee_keys]
+    print(only_in_cmss)
     only_in_gitee = [k for k in gitee_keys if k not in cmss_keys]
 
     print("========================================")

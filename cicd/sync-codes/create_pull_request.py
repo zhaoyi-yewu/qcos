@@ -30,7 +30,6 @@ branch_prefix = "commit-"
 
 required_envs = {
     "gitee_token": gitee_token,
-
 }
 missing_envs = [k for k, v in required_envs.items() if not v]
 if missing_envs:
@@ -68,6 +67,28 @@ def get_all_commit_branches():
         page += 1
     return branches
 
+
+def get_branch_number_map(branches):
+    """
+    Get Mapping of the branch list
+    Args:
+        branches: branch list
+    Returns:
+        number_map: Mapping from numbers to branch names
+        max_num: the largest number
+    """
+    number_map = {}
+    max_num = 0
+    for branch in branches:
+        num_str = branch.replace(branch_prefix, "")
+        if num_str.isdigit():
+            num = int(num_str)
+            number_map[num] = branch
+            if num > max_num:
+                max_num = num
+    return number_map, max_num
+
+
 def get_latest_commit_message(branch):
     """Get latest commit message.
 
@@ -91,6 +112,7 @@ def get_latest_commit_message(branch):
         return f"{branch}"
     except Exception:
         return f"{branch}"
+
 
 def create_pr(branch):
     """Create pull request.
@@ -120,13 +142,30 @@ def create_pr(branch):
     else:
         print(f"{branch} 失败：{res.status_code} {res.text}\n")
 
+
 def main():
     print("===== 开始批量创建 Gitee PR =====")
-    branches = get_all_commit_branches()
-    for branch in branches:
-        create_pr(branch)
+    raw_branches = get_all_commit_branches()
+    if not raw_branches:
+        print("未找到任何以 commit- 为前缀的分支，退出")
+        return 0
+
+    branch_num_map, max_num = get_branch_number_map(raw_branches)
+    if not branch_num_map:
+        print("未找到含有效数字的 commit- 分支（如 commit-1），退出")
+        return 0
+
+    for num in range(1, max_num + 1):
+        if num in branch_num_map:
+            branch = branch_num_map[num]
+            print(f"开始处理分支：{branch}（数字 {num}）")
+            create_pr(branch)
+        else:
+            print(f"跳过缺失分支：{branch_prefix}{num}\n")
+
     print("===== 全部完成 =====")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
