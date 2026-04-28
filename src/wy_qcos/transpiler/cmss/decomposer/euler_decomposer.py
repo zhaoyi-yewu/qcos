@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from cmath import exp
 from math import atan2, cos, sin
 
 import numpy as np
@@ -51,7 +52,7 @@ class EulerDecomposer:
         phi = sum + diff
         lam = sum - diff
 
-        return coe, lam, theta, phi
+        return coe, theta, phi, lam
 
     def euler_u3_decomposition(self):
         """Decompose the unitary matrix into U3(λ,θ,ϕ).
@@ -62,10 +63,10 @@ class EulerDecomposer:
             theta: θ
             phi: ϕ
         """
-        coe, lam, theta, phi = self.euler_zyz_decomposition()
-        return coe, lam, theta, phi
+        coe, theta, phi, lam = self.euler_zyz_decomposition()
+        return coe, theta, phi, lam
 
-    def reconstruct_from_zyz(self, lam, theta, phi):
+    def reconstruct_from_zyz(self, theta, phi, lam):
         """Reconstruct matrix use Rz(λ) Ry(θ) Rz(ϕ).
 
         Args:
@@ -77,21 +78,21 @@ class EulerDecomposer:
             the reconstructed Rz(λ) Ry(θ) Rz(ϕ) matrix.
         """
         Rz_lam = np.array([
-            [np.exp(-1j * lam / 2), 0],
-            [0, np.exp(1j * lam / 2)],
+            [exp(-1j * lam / 2), 0],
+            [0, exp(1j * lam / 2)],
         ])
         Ry_theta = np.array([
-            [np.cos(theta / 2), -np.sin(theta / 2)],
-            [np.sin(theta / 2), np.cos(theta / 2)],
+            [cos(theta / 2), -sin(theta / 2)],
+            [sin(theta / 2), cos(theta / 2)],
         ])
         Rz_phi = np.array([
-            [np.exp(-1j * phi / 2), 0],
-            [0, np.exp(1j * phi / 2)],
+            [exp(-1j * phi / 2), 0],
+            [0, exp(1j * phi / 2)],
         ])
 
         return Rz_phi @ Ry_theta @ Rz_lam
 
-    def reconstruct_from_u3(self, lam, theta, phi):
+    def reconstruct_from_u3(self, theta, phi, lam):
         """Reconstruct matrix use U3(λ,θ,ϕ).
 
         Args:
@@ -106,8 +107,8 @@ class EulerDecomposer:
         u3_sin = sin(theta / 2)
         u3_matrix = np.array(
             [
-                [u3_cos, -np.exp(1j * lam) * u3_sin],
-                [np.exp(1j * phi) * u3_sin, np.exp(1j * (phi + lam)) * u3_cos],
+                [u3_cos, -exp(1j * lam) * u3_sin],
+                [exp(1j * phi) * u3_sin, exp(1j * (phi + lam)) * u3_cos],
             ],
             dtype=complex,
         )
@@ -123,23 +124,26 @@ class EulerDecomposer:
             lam, theta, phi.
         """
         if basis == "zyz":
-            coe, lam, theta, phi = self.euler_zyz_decomposition()
-            U_reconstructed = self.reconstruct_from_zyz(lam, theta, phi)
+            coe, theta, phi, lam = self.euler_zyz_decomposition()
+            alpha = -np.angle(coe)
+            U_reconstructed = self.reconstruct_from_zyz(theta, phi, lam)
             U_reconstructed = U_reconstructed / coe
             errors = np.linalg.norm(self.matrix - U_reconstructed)
             if errors > 1e-6:
                 raise ValueError(
                     "decomposed matrix and original matrix is not the same"
                 )
-            return lam, theta, phi
+            return theta, phi, lam, alpha
         elif basis == "u3":
-            coe, lam, theta, phi = self.euler_zyz_decomposition()
-            U_reconstructed = self.reconstruct_from_u3(lam, theta, phi)
+            coe, theta, phi, lam = self.euler_u3_decomposition()
+            alpha = -np.angle(coe)
+            phase = alpha - (phi + lam) / 2
+            U_reconstructed = self.reconstruct_from_u3(theta, phi, lam)
             U_reconstructed = U_reconstructed / coe
             errors = np.linalg.norm(self.matrix - U_reconstructed)
             if errors > 1e-6:
                 raise ValueError(
                     "decomposed matrix and original matrix is not the same"
                 )
-            return lam, theta, phi
+            return theta, phi, lam, phase
         return None

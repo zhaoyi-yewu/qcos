@@ -25,6 +25,11 @@ from wy_qcos.transpiler.cmss.decomposer.euler_decomposer import EulerDecomposer
 
 class KAKDecomposer:
     def __init__(self):
+        self.b1_matrix = None
+        self.b0_matrix = None
+        self.a1_matrix = None
+        self.a0_matrix = None
+        self.phase = None
         self.matrix = None
         self.A0 = None
         self.A1 = None
@@ -186,25 +191,35 @@ class KAKDecomposer:
         a1, a0 = self.decompose_matrix(self.M @ q_left @ self.M_DAG)
         b1, b0 = self.decompose_matrix(self.M @ q_right.T @ self.M_DAG)
 
+        self.a1_matrix = a1
+        self.a0_matrix = a0
+        self.b1_matrix = b1
+        self.b0_matrix = b0
+        self.phase = phase
         self.A0 = self.euler_decompose(a0)
         self.A1 = self.euler_decompose(a1)
         self.B0 = self.euler_decompose(b0)
         self.B1 = self.euler_decompose(b1)
 
-        for i in range(len(parms)):
-            if parms[i] < 0:
-                parms[i] += np.pi / 2
-        sorted_parms = sorted(parms, reverse=True)
-
-        if sorted_parms[0] + sorted_parms[1] >= np.pi / 2:
-            sorted_parms[0] = np.pi / 2 - sorted_parms[1]
-            sorted_parms[1] = np.pi / 2 - sorted_parms[0]
-            sorted_parms = sorted(sorted_parms, reverse=True)
-
-        if sorted_parms[2] == 0 and sorted_parms[0] > np.pi / 4:
-            sorted_parms[0] = np.pi / 2 - sorted_parms[0]
-            sorted_parms = sorted(sorted_parms, reverse=True)
-        return sorted_parms
+        U_reconstructed = (
+            np.kron(a1, a0)
+            @ expm(
+                1j
+                * (
+                    parms[0] * self.XX
+                    + parms[1] * self.YY
+                    + parms[2] * self.ZZ
+                )
+            )
+            / expm(-1j * phase)
+            @ np.kron(b1, b0)
+        )
+        errors = np.linalg.norm(self.matrix - U_reconstructed)
+        if errors > 1e-6:
+            raise ValueError(
+                "decomposed matrix and original matrix is not the same"
+            )
+        return parms
 
     def euler_decompose(self, mat):
         """Obtain the U3 parameters of a 2x2 unitary matrix.
@@ -216,6 +231,6 @@ class KAKDecomposer:
             lam, theta, phi.
         """
         self.euler_decomposer.set_matrix(mat)
-        lam, theta, phi = self.euler_decomposer.run()
-        U3_gate_parms = [lam, theta, phi]
+        theta, phi, lam, phase = self.euler_decomposer.run()
+        U3_gate_parms = [theta, phi, lam, phase]
         return U3_gate_parms
