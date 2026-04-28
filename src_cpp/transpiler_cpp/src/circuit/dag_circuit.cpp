@@ -80,6 +80,7 @@ void DAGCircuit::add_wire(int wire) {
   auto [input_id, output_id] = multi_graph_.add_nodes(input_node, output_node);
   input_map[wire] = input_node;
   output_map[wire] = output_node;
+  // 每条量子线初始只有input->output一条直连边，后续门节点都插入到这条线上。
   multi_graph_.add_edge(input_id, output_id, wire);
 }
 
@@ -93,6 +94,7 @@ void DAGCircuit::decrement_op(const std::shared_ptr<BaseOperation>& op) {
     return;
   }
   if (iterator->second <= 1) {
+    // 计数归零后直接移除键。
     op_names_.erase(iterator);
     return;
   }
@@ -116,6 +118,7 @@ void DAGCircuit::rename_op(const std::shared_ptr<BaseOperation>& old_op,
 }
 
 void DAGCircuit::parameterize_all_rz() {
+  // 离散相位门到rz的标准角度映射。
   const std::unordered_map<std::string, double> angles = {{"s", kPi / 2.0},
                                                           {"t", kPi / 4.0},
                                                           {"sdg", -kPi / 2.0},
@@ -126,6 +129,7 @@ void DAGCircuit::parameterize_all_rz() {
     if (!is_phase_gate_name(node->name())) {
       continue;
     }
+    // 将离散相位门统一重写为rz(theta)，便于后续做参数化等价变换。
     auto new_op =
         make_shared_gate("rz", node->op->targets, {angles.at(node->name())});
     rename_op(node->op, new_op);
@@ -141,6 +145,7 @@ void DAGCircuit::deparameterize_all_rz(double tolerance) {
     if (node->name() != "rz" || node->op->arg_value.empty()) {
       continue;
     }
+    // 先把角度折叠到2pi周期内，再映射到以pi/4为步长的8个槽位。
     const double turns =
         std::fmod(node->op->arg_value[0], 2.0 * kPi) / (kPi / 4.0);
     if (std::abs(turns - std::round(turns)) > tolerance) {
@@ -148,6 +153,7 @@ void DAGCircuit::deparameterize_all_rz(double tolerance) {
     }
     const int slot = (static_cast<int>(std::llround(turns)) % 8 + 8) % 8;
     if (slot == 0) {
+      // 旋转角等价于0时直接删点，保持线路语义不变。
       remove_op_node(node);
       continue;
     }
@@ -175,6 +181,7 @@ std::shared_ptr<DAGOpNode> DAGCircuit::apply_operation_back(
   for (int bit : qargs) {
     output_ids.push_back(output_map.at(bit)->node_id());
   }
+  // 从每条量子线的输出端向前插入，相当于把门追加到线路尾部。
   multi_graph_.insert_node_on_in_edges_multiple(node_id, output_ids);
   return node;
 }
@@ -193,15 +200,18 @@ std::shared_ptr<DAGOpNode> DAGCircuit::apply_operation_front(
   for (int bit : qargs) {
     input_ids.push_back(input_map.at(bit)->node_id());
   }
+  // 从每条量子线的输入端向后插入，相当于把门压到线路最前面。
   multi_graph_.insert_node_on_out_edges_multiple(node_id, input_ids);
   return node;
 }
 
 int DAGCircuit::size() const {
+  // 扣掉每条 wire 的 input/output 哨兵节点。
   return multi_graph_.num_nodes() - 2 * static_cast<int>(wires_set_.size());
 }
 
 int DAGCircuit::depth() const {
+  // 最长路径额外包含端点哨兵，因此需要减1。
   const int computed_depth = multi_graph_.dag_longest_path_length() - 1;
   return computed_depth >= 0 ? computed_depth : 0;
 }
@@ -232,6 +242,7 @@ std::vector<std::shared_ptr<DAGNode>> DAGCircuit::nodes_on_wire(
 std::vector<std::shared_ptr<DAGNode>> DAGCircuit::topological_nodes(
     std::function<std::string(const std::shared_ptr<DAGNode>&)> key) {
   if (!key) {
+    // 默认排序键用于在拓扑序存在多解时给出稳定输出。
     key = [](const std::shared_ptr<DAGNode>& current) {
       return current->sort_key();
     };
@@ -291,6 +302,7 @@ std::vector<std::shared_ptr<DAGOpNode>> DAGCircuit::multi_qubit_ops() {
 std::vector<std::shared_ptr<DAGNode>> DAGCircuit::longest_path() {
   std::vector<std::shared_ptr<DAGNode>> result;
   for (int node_id : multi_graph_.dag_longest_path()) {
+    // 将图内部的id路径转换成节点对象。
     result.push_back(multi_graph_[node_id]);
   }
   return result;
@@ -384,6 +396,7 @@ std::set<std::vector<std::shared_ptr<DAGNode>>> DAGCircuit::collect_runs(
 
   std::set<std::vector<std::shared_ptr<DAGNode>>> result;
   for (auto& run : multi_graph_.collect_runs(filter_fn)) {
+    // 用set去重，避免同一串连续门因不同遍历入口重复返回。
     result.insert(std::move(run));
   }
   return result;
@@ -400,6 +413,7 @@ void DAGCircuit::build_from_operations(
     qubits.insert(gate->targets.begin(), gate->targets.end());
   }
   if (!qubits.empty()) {
+    // 这里按最大量子位索引补齐[0, max]，保证后续可直接按下标访问wire。
     add_qubits(*qubits.rbegin() + 1);
   }
   for (const auto& gate : ops) {
