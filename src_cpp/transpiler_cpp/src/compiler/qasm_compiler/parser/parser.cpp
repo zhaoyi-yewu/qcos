@@ -51,7 +51,8 @@ std::vector<std::shared_ptr<Statement>> Parser::parseProgram() {
   while (!isAtEnd()) {
     if (!scanner.top().isImplicitInclude) {
       // We allow a version declaration at the beginning of the file.
-      if (current().kind == Token::Kind::OpenQasm) {
+      Token::Kind kind = current().kind;
+      if (kind == Token::Kind::OpenQasm) {
         if (!versionDeclarationAllowed) {
           error(current(),
                 "Version declaration must be at the beginning of the file.");
@@ -62,9 +63,11 @@ std::vector<std::shared_ptr<Statement>> Parser::parseProgram() {
       }
       // Once we encounter a non-comment token, we don't allow a version
       // declaration anymore.
-      if (current().kind != Token::Kind::InitialLayout &&
-          current().kind != Token::Kind::OutputPermutation) {
-        versionDeclarationAllowed = false;
+      if (versionDeclarationAllowed) {
+        if (kind != Token::Kind::InitialLayout &&
+            kind != Token::Kind::OutputPermutation) {
+          versionDeclarationAllowed = false;
+        }
       }
     }
 
@@ -74,52 +77,49 @@ std::vector<std::shared_ptr<Statement>> Parser::parseProgram() {
 }
 
 std::shared_ptr<Statement> Parser::parseStatement() {
-  if (current().kind == Token::Kind::Include) {
-    // We parse include and then continue in parseStatement, as the include
-    // statement just adds a new file to the scanner.
+  Token::Kind kind = current().kind;
+
+  if (kind == Token::Kind::Include) {
     parseInclude();
+    return parseStatement();
   }
 
-  if (current().kind == Token::Kind::Const) {
+  if (kind == Token::Kind::Const) {
     scan();
     return parseDeclaration(true);
   }
 
-  if (current().kind == Token::Kind::Int ||
-      current().kind == Token::Kind::Uint ||
-      current().kind == Token::Kind::Bit ||
-      current().kind == Token::Kind::QBit ||
-      current().kind == Token::Kind::Float ||
-      current().kind == Token::Kind::Angle ||
-      current().kind == Token::Kind::Bool ||
-      current().kind == Token::Kind::Duration ||
-      current().kind == Token::Kind::CReg ||
-      current().kind == Token::Kind::Qreg) {
+  if (kind == Token::Kind::Int || kind == Token::Kind::Uint ||
+      kind == Token::Kind::Bit || kind == Token::Kind::QBit ||
+      kind == Token::Kind::Float || kind == Token::Kind::Angle ||
+      kind == Token::Kind::Bool || kind == Token::Kind::Duration ||
+      kind == Token::Kind::CReg || kind == Token::Kind::Qreg) {
     return parseDeclaration(false);
   }
 
-  if (current().kind == Token::Kind::InitialLayout) {
+  if (kind == Token::Kind::InitialLayout) {
     const auto tBegin = current();
     scan();
     return std::make_shared<InitialLayout>(
         InitialLayout{makeDebugInfo(tBegin), parsePermutation(tBegin.str)});
   }
-  if (current().kind == Token::Kind::OutputPermutation) {
+
+  if (kind == Token::Kind::OutputPermutation) {
     const auto tBegin = current();
     scan();
     return std::make_shared<OutputPermutation>(OutputPermutation{
         makeDebugInfo(tBegin), parsePermutation(tBegin.str)});
   }
 
-  if (current().kind == Token::Kind::Gate) {
+  if (kind == Token::Kind::Gate) {
     return parseGateDefinition();
   }
-  if (current().kind == Token::Kind::Opaque) {
+
+  if (kind == Token::Kind::Opaque) {
     return parseOpaqueGateDefinition();
   }
 
-  if (current().kind == Token::Kind::Identifier) {
-    // switch for readability
+  if (kind == Token::Kind::Identifier) {
     switch (peek().kind) {
       case Token::Kind::LBracket:
       case Token::Kind::Equals:
@@ -141,10 +141,11 @@ std::shared_ptr<Statement> Parser::parseStatement() {
     }
   }
 
-  if (current().kind == Token::Kind::If) {
+  if (kind == Token::Kind::If) {
     return parseIfStatement();
   }
-  if (current().kind == Token::Kind::Measure) {
+
+  if (kind == Token::Kind::Measure) {
     return parseMeasureStatement();
   }
 
@@ -157,23 +158,21 @@ std::shared_ptr<Statement> Parser::parseStatement() {
 }
 
 std::shared_ptr<QuantumStatement> Parser::parseQuantumStatement() {
-  if (current().kind == Token::Kind::Inv ||
-      current().kind == Token::Kind::Pow ||
-      current().kind == Token::Kind::Ctrl ||
-      current().kind == Token::Kind::NegCtrl ||
-      current().kind == Token::Kind::Identifier ||
-      current().kind == Token::Kind::Gphase ||
-      current().kind == Token::Kind::S) {
+  Token::Kind kind = current().kind;
+  if (kind == Token::Kind::Inv || kind == Token::Kind::Pow ||
+      kind == Token::Kind::Ctrl || kind == Token::Kind::NegCtrl ||
+      kind == Token::Kind::Identifier || kind == Token::Kind::Gphase ||
+      kind == Token::Kind::S) {
     // TODO: since we do not support classical function calls yet, we can
     // assume that this is a gate statement
     return parseGateCallStatement();
   }
 
-  if (current().kind == Token::Kind::Reset) {
+  if (kind == Token::Kind::Reset) {
     return parseResetStatement();
   }
 
-  if (current().kind == Token::Kind::Barrier) {
+  if (kind == Token::Kind::Barrier) {
     return parseBarrierStatement();
   }
 
