@@ -130,6 +130,7 @@
    # 3. 真实运行
    qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
    qcos-cli submit-job --code-type qasm2 --shots 10 --backend wy-hanyuan1 --transpiler-options '{"enable_mapping": false}' -f ./samples/qasm/2.0/simple-qasm.qasm
+   qcos-cli submit-job --code-type qasm2 --shots 10 --backend wy-hanyuan1-sim --transpiler-options '{"enable_mapping": false}' -f ./samples/qasm/2.0/simple-qasm.qasm
    qcos-cli submit-job --code-type qasm2 --shots 10 --transpiler dummy --backend wy-hanyuan1 --transpiler-options '{"enable_mapping": false}' -f ./samples/qasm/2.0/simple-qasm.qasm
 
    # 4. 电路切割开启 （--driver-options '{"enable_wirecut":true}'）

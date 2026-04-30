@@ -193,7 +193,7 @@ class DriverWuyueBase(DriverBase):
         src_code = data["source_code"]
         transpile_results = data["transpile_results"]
         final_code = self.convert_code(num_qubits, src_code, transpile_results)
-        logger.info("after converting, code is: {converted_code}")
+        logger.info(f"after converting, code is: {final_code}")
 
         # 2. Prepare task data
         logger.info("2. prepare data")
@@ -505,17 +505,25 @@ class DriverWuyueBase(DriverBase):
                     return success, "\n".join(err_msgs), None
                 task_status = data[0]["taskStatus"]
                 logger.info(f"task_status: {task_status}")
+                result = None
+                if (
+                    data[0]["outData"] is not None
+                    and data[0]["outData"]["lineResult"] is not None
+                ):
+                    result = data[0]["outData"]["lineResult"]
+
                 if task_status == self.task_status_failed:
                     success = True
                     realtime_status = {
                         "task_status": data[0]["taskStatus"],
-                        "result": data[0]["outData"]["lineResult"],
+                        "result": result,
                     }
                     err_msgs.append(f"Task failed: {task_status}")
                 elif task_status == self.task_status_completed:
+                    success = True
                     realtime_status = {
                         "task_status": data[0]["taskStatus"],
-                        "result": data[0]["outData"]["lineResult"],
+                        "result": result,
                     }
                 else:
                     success = False
