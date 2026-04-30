@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 add_library(${LIB_TRANSPILER} SHARED
                             circuit/base_operation.cpp
                             circuit/dag_node.cpp
+                            circuit/multi_graph.cpp
                             circuit/gate_operation.cpp
                             circuit/quantum_circuit.cpp
                             mapping/greedy_routing.cpp
