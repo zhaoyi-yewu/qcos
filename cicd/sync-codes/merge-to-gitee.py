@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------
 
 """
-Merge local git branch to remote branch
+Merge local git branch to remote branch / Split commits to single branches
 
 Prerequisite:
 yum install -y git
@@ -44,7 +44,11 @@ git branch --set-upstream-to=gitee/develop gitee-develop
 3. One-click sync specified commits (pull + merge + push)
 ./merge-to-gitee.py -f -c "12345 23456"
 
-4. Original commands are still available:
+4. Split commits to single branches and push to Gitee
+./merge-to-gitee.py -S -s "2025-11-01"  # Split commits since 2025-11-01
+./merge-to-gitee.py -S -c "12345 23456"  # Split specified commits
+
+5. Original commands are still available:
 ./merge-to-gitee.py -p (pull only)
 ./merge-to-gitee.py -d (diff only)
 ./merge-to-gitee.py -c {COMMIT_ID} (merge only)
@@ -298,7 +302,7 @@ def sanitize_message(message):
     Returns:
         Desensitized commit message
     """
-    key_to_remove = {"Jira:", "Code Source From", "市场项目"}
+    key_to_remove = {"Jira:", "Code Source From", "市场项目", "AI Co-author:"}
     new_messages = []
     for line in message.split("\n"):
         # Check whether contains keywords that need to be removed
@@ -323,11 +327,133 @@ def sanitize_message(message):
     return new_message
 
 
-def merge_branches(commit_id):
-    """Merge branch.
+def create_single_commit_branch(
+        commit_hash,
+        num,
+        base_branch=gitee_local_branch
+):
+    """Create separate branch for a single commit
+    and desensitize the commit information
 
     Args:
-        commit_id: commit id
+        commit_hash: Commit ID to split
+        num: commit number
+        base_branch: base branch
+
+    Returns:
+        New branch name, masked commit ID
+    """
+    # generate branch name
+    branch_name = f"commit-{num}"
+    if num > 1:
+        base_branch = f"commit-{num - 1}"
+
+    # 1. Delete existing branch with the same name
+    run_command(f"git branch -D {branch_name} || true")
+    # 2. Create a new branch based on the base branch
+    run_command(f"git checkout {base_branch}")
+    run_command(f"git checkout -b {branch_name}")
+    # 3. Clear the current branch
+    run_command("git reset --hard")
+    # 4. Cherry-pick single commit
+    run_command(f"git cherry-pick -m 1 {commit_hash}")
+
+    # 5. Submit desensitized information
+    author_email = run_command("git log -1 --format=%ae").stdout.strip()
+    author_name = run_command("git log -1 --format=%an").stdout.strip()
+    message = run_command("git log -1 --format=%B").stdout.strip()
+
+    new_email, new_name = sanitize_author(author_email, author_name)
+    new_message = sanitize_message(message)
+
+    # 6. Rewrite commit message
+    amend_cmd = (
+        f'git -c user.name="{new_name}" '
+        f'-c user.email="{new_email}" '
+        f"commit --amend --no-edit "
+        f'--author="{new_name} <{new_email}>"'
+    )
+    run_command(amend_cmd)
+
+    if new_message != message:
+        msg_file = "/tmp/git_commit_msg.txt"
+        with open(msg_file, "w", encoding="utf-8") as f:
+            f.write(new_message)
+        run_command(f'git commit --amend --no-edit -F "{msg_file}"')
+
+    new_commit_hash = run_command("git log -1 --format=%H").stdout.strip()
+    print(
+        f"Created branch [{branch_name}] for commit"
+        f" [{commit_hash}] -> new commit [{new_commit_hash}]"
+    )
+    return branch_name, new_commit_hash
+
+
+def push_single_branch(branch_name):
+    """Push single branch to gitee
+
+    Args:
+        branch_name: branch name
+    """
+    push_cmd = f"git push {gitee_remote} {branch_name}:{branch_name}"
+    results = run_command(push_cmd)
+    if results.returncode == 0:
+        print(f"Pushed branch [{branch_name}] to Gitee success!")
+    else:
+        raise MergeException(
+            f"Push branch [{branch_name}] failed: {results.stderr}"
+        )
+
+
+def split_and_push_single_commits(start_since=None, commit_id=None):
+    """Split submission into an independent branch and push to Gitee
+
+    Args:
+        start_since: Time Range
+        commit_id: Specify the commit ID to split
+    """
+    print("==== Step 1: Pull latest code ====")
+    pull_branches()
+
+    print("\n==== Step 2: Determine commits to split ====")
+    target_commits = []
+    if commit_id:
+        if ".." in commit_id:
+            cmd = f"git log --oneline --no-merges --format='%h' {commit_id}"
+            results = run_command(cmd)
+            target_commits = results.stdout.splitlines()[::-1]
+        else:
+            target_commits = commit_id.split()
+        print(f"Specified commits to split: {target_commits}")
+    else:
+        unsynced_commits = get_unsynced_commits(start_since)
+        if not unsynced_commits:
+            print("No unsynced commits found, exit.")
+            return
+        target_commits = unsynced_commits
+        print(f"Auto-found unsynced commits to split: {target_commits}")
+
+    print("\n==== Step 3: Split and push single commits ====")
+    for i, commit in enumerate(target_commits, 1):
+        print(f"\nProcessing commit [{i}/{len(target_commits)}]: {commit}")
+        try:
+            branch_name, new_commit = create_single_commit_branch(commit, i)
+            push_single_branch(branch_name)
+        except Exception as e:
+            print(f"Failed to process commit [{commit}]: {e}")
+            continue
+
+    print("\n==== Split and push all single commits completed! ====")
+
+
+def merge_branches(commit_id):
+    """Merge branches
+
+    Args:
+        commit_id: commit ID
+
+    Returns:
+        merged commit ids
     """
     print(f"Merge commits to branch: {cmss_local_merge_branch}")
 
@@ -401,7 +527,7 @@ def push_to_gitee():
     push_cmd = (
         f"git push {gitee_remote} "
         f"{cmss_local_merge_branch}:{gitee_remote_branch}"
-        )
+    )
     results = run_command(push_cmd)
     if results.returncode == 0:
         print("Push to gitee success!")
@@ -410,7 +536,12 @@ def push_to_gitee():
 
 
 def full_auto_sync(start_since=None, commit_id=None):
-    """One-click full sync: pull -> merge -> push."""
+    """auto push to Gitee
+
+    Args:
+        start_since: Time Range
+        commit_id: commit ID
+    """
     print("==== Step 1: Pull latest code ====")
     pull_branches()
 
@@ -485,6 +616,13 @@ def main(argv=None):
             action="store_true",
             help="One-click full sync (pull+merge+push)"
         )
+        parser.add_argument(
+            "-S",
+            "--split",
+            dest="split",
+            action="store_true",
+            help="Split commits to single branches and push to Gitee"
+        )
 
         # parse arguments
         args = parser.parse_args()
@@ -493,6 +631,7 @@ def main(argv=None):
         commit_id = args.commit_id
         start_since = args.start_since
         full_sync = args.full_sync
+        split = args.split
 
         commit_id_pattern = r"^[0-9a-fA-F]{7,40}$"
         if commit_id:
@@ -508,9 +647,18 @@ def main(argv=None):
                     if not re.match(commit_id_pattern, _commit_id):
                         parser.error(f"Invalid commit ID format: {_commit_id}")
 
+        if full_sync and split:
+            parser.error("Cannot use --full-sync with --split")
+        if full_sync and (pull or branch_diff):
+            parser.error("Cannot use --full-sync with --pull/--branch-diff")
+        if split and (pull or branch_diff):
+            parser.error("Cannot use --split with --pull/--branch-diff")
+
+        if split:
+            split_and_push_single_commits(start_since, commit_id)
+            return 0
+
         if full_sync:
-            if pull or branch_diff:
-                parser.error("Con`t use --full-sync with --pull/--branch-diff")
             full_auto_sync(start_since, commit_id)
             return 0
         else:
@@ -536,7 +684,7 @@ def main(argv=None):
                 )
 
             if not pull and not branch_diff and not commit_id:
-                parser.error("You must specify either -p, -d, -c or -f")
+                parser.error("You must specify either -p, -d, -c, -f or -S")
         return 0
     except KeyboardInterrupt:
         print("\nUser interrupt", file=sys.stderr)

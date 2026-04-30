@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -40,6 +40,7 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 default_project_id = "R251166SC04"
 default_jira_id = "#QSE-8888"
+default_ai_co_author = "NONE"
 gitee_remote = "gitee"
 gitee_remote_branch = "develop"
 gitee_local_branch = "gitee-develop"
@@ -158,7 +159,8 @@ def merge_branches(commit_id):
         key_to_modify = {{
             'Jira': (False, '{default_jira_id}'),
             'Code Source From': (False, 'Others'),
-            '市场项目编号（名称）': (False, '{default_project_id}')
+            '市场项目编号（名称）': (False, '{default_project_id}'),
+            'AI Co-author': (False, '{default_ai_co_author}'),
         }}
         last_message = None
         decoded_message = commit.message.decode('utf-8')
