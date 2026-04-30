@@ -27,6 +27,9 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.drivers.device import Device
 from wy_qcos.drivers.driver_base import DriverBase
+from wy_qcos.transpiler.cmss.common.gate_operation import BaseOperation
+from wy_qcos.transpiler.cmss.common.qasm_converter import QasmConverter
+from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
 
 
 class DriverUQCMatrix2(DriverBase):
@@ -47,7 +50,7 @@ class DriverUQCMatrix2(DriverBase):
         self.version = "0.0.1"
         self.alias_name = "幺正量子 UQC-Matrix2 离子阱驱动"
         self.description = "幺正量子 UQC-Matrix2 离子阱驱动"
-        self.transpiler = Constant.TRANSPILER_DUMMY
+        self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_ION_TRAP
         self.supported_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_RX,
@@ -58,7 +61,7 @@ class DriverUQCMatrix2(DriverBase):
         self.max_qubits = 5
         self.default_data_type = DriverBase.DATA_TYPE_QASM3
         self.supported_code_types = [DriverBase.DATA_TYPE_QASM3]
-        self.supported_transpilers = [Constant.TRANSPILER_DUMMY]
+        self.supported_transpilers = [Constant.TRANSPILER_CMSS]
 
         # task stages and percentages
         self.task_stages = {
@@ -131,6 +134,33 @@ class DriverUQCMatrix2(DriverBase):
         """
         logger.info(f"Cancel job: job_id: {job_id}")
 
+    def convert_code(self, num_qubits: int, src_code: str, transpile_results):
+        """Convert code.
+
+        Args:
+            num_qubits: num qubits
+            src_code: src code
+            transpile_results: transpile results
+
+        Returns:
+            converted code
+        """
+        if transpile_results is None or len(transpile_results) == 0:
+            return src_code
+
+        if not isinstance(transpile_results, list):
+            return src_code
+
+        for op in transpile_results:
+            if not isinstance(op, BaseOperation):
+                return src_code
+
+        circ = QuantumCircuit(num_qubits)
+        circ.append_operations(transpile_results)
+        converter = QasmConverter(circ)
+        qasm_code = converter.to_qasm3()
+        return qasm_code
+
     def run(self, job_id, num_qubits, data, data_type, shots=100):
         """Run job.
 
@@ -159,12 +189,16 @@ class DriverUQCMatrix2(DriverBase):
         logger.info("1. validate shots")
         self.set_progress_by_task(self.TASK_STAGE_VALIDATING)
         self.is_valid_shots(shots)
+        src_code = data["source_code"]
+        transpile_results = data["transpile_results"]
+        final_code = self.convert_code(num_qubits, src_code, transpile_results)
+        logger.info(f"after converting, code is: {final_code}")
 
         # 2. Submit task
         logger.info("2. submit task")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
         task_id = self._uqc.submit_task(
-            data["source_code"], self.backend_device_name, shots
+            final_code, self.backend_device_name, shots
         )
 
         # 3. Wait for task_status success

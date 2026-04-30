@@ -28,7 +28,7 @@
 | 量旋科技 大熊座-S25 超导量子计算机驱动 (RPC版本) | DriverSpinQRpc | 0.0.1 | 超导 | 57 | cmss | 量旋科技 大熊座-S25 超导量子计算机驱动 (RPC版本) (实验) |
 | 量旋科技 双子座 核磁量子计算机驱动 | DriverSpinQGemini | 0.0.1 | 核磁共振 | 2 | dummy | 量旋科技 双子座 核磁量子计算机驱动 (实验) |
 | 量旋科技 三角座 核磁量子计算机驱动 | DriverSpinQTriangulum | 0.0.1 | 核磁共振 | 2 | dummy | 量旋科技 三角座 核磁量子计算机驱动 (实验) |
-| 幺正量子 UQC-Matrix2 离子阱驱动 | DriverUQCMatrix2 | 0.0.1 | 离子阱 | 5 | dummy | 幺正量子 UQC-Matrix2 离子阱驱动 |
+| 幺正量子 UQC-Matrix2 离子阱驱动 | DriverUQCMatrix2 | 0.0.1 | 离子阱 | 5 | cmss | 幺正量子 UQC-Matrix2 离子阱驱动 |
 | 五岳-中科酷原-汉原1 中性原子驱动 | DriverWuyueHanyuan1 | 0.0.1 | 中性原子 | 100 | cmss | 五岳-中科酷原-汉原1 中性原子驱动 (云平台版) |
 | 五岳-中科酷原-汉原1 中性原子驱动 - 模拟器 | DriverWuyueHanyuan1Sim | 0.0.1 | 中性原子 | 25 | cmss | 五岳-中科酷原-汉原1 中性原子驱动 (云平台模拟器版) |
 | Qiskit Aer 模拟器驱动 | DriverQiskitAerSim | 0.0.1 | 通用模拟器 | 30 | qiskit | Qiskit Aer 模拟器驱动 |
