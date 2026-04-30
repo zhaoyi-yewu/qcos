@@ -137,9 +137,28 @@ void bind_parser(py::module_& m) {
                 返回解析得到的量子操作列表
                 
             Example:
-                >>> import high_performance_parser
+                >>> import high_performance
                 >>> qasm = "OPENQASM 2.0; qreg q[2]; h q[0]; cx q[0], q[1];"
-                >>> ops = high_performance_parser.convert_qasm_string_to_operations(qasm)
+                >>> ops = high_performance.convert_qasm_string_to_operations(qasm)
+                >>> print(f"解析到 {len(ops)} 个操作")
+        )",
+        py::arg("qasm_str"));
+
+  m.def("convert_qasm_string_to_qcos_operations",
+        &convert_qasm_string_to_qcos_operations,
+        R"(
+            将QASM字符串转换为操作列表
+
+            Args:
+                qasm_str: QASM格式的量子电路字符串
+
+            Returns:
+                返回解析得到的量子操作列表
+
+            Example:
+                >>> import high_performance
+                >>> qasm = "OPENQASM 2.0; qreg q[2]; h q[0]; cx q[0], q[1];"
+                >>> ops = high_performance.convert_qasm_string_to_qcos_operations(qasm)
                 >>> print(f"解析到 {len(ops)} 个操作")
         )",
         py::arg("qasm_str"));

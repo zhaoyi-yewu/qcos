@@ -15,7 +15,8 @@
  * ----------------------------------------------------------------------
  */
 
-#include "compiler/quantum_computation.hpp"
+#include "circuit/base_operation.h"
+#include "compiler/operations/operation.hpp"
 
 using namespace qc;
 std::string qasmfile2str(const std::string& filename);
@@ -24,3 +25,5 @@ std::string convert_qasm_to_originir(std::string file_path);
 std::string convert_qasm_string_to_originir(std::string qasm_str);
 std::vector<std::unique_ptr<Operation>> convert_qasm_string_to_operations(
     std::string qasm_str);
+std::vector<std::unique_ptr<qcos::BaseOperation>>
+convert_qasm_string_to_qcos_operations(std::string qasm_str);

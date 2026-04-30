@@ -62,12 +62,10 @@ class NonUnitaryOperation final : public Operation {
   }
 
   [[nodiscard]] const Controls& getControls() const override {
-    throw QFRException("Cannot get controls from non-unitary operation.");
+    return controls;
   }
 
-  [[nodiscard]] Controls& getControls() override {
-    throw QFRException("Cannot get controls from non-unitary operation.");
-  }
+  [[nodiscard]] Controls& getControls() override { return controls; }
 
   void addDepthContribution(std::vector<std::size_t>& depths) const override;
 

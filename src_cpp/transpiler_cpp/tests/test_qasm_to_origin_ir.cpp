@@ -17,6 +17,7 @@
 
 #include <time.h>
 
+#include <chrono>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -479,80 +480,6 @@ rz(pi - 5) q[0];
 c[1] = measure q[0]; 
 )";
 
-  // �������� originir
-
-  std::string RESET_ir = R"(QINIT 4
-CREG 4
-RESET q[0]
-
-)";
-
-  std::string MEASURE_ir = R"(QINIT 4
-CREG 4
-X q[2]
-MEASURE q[2],c[2]
-
-)";
-
-  std::string BARRIER_ir = R"(QINIT 4
-CREG 4
-BARRIER q[0], q[1],q[2]
-
-)";
-
-  // ��������ʽ originir
-  std::string ClassEXp_ir = R"(QINIT 2
-CREG 7
-c[0]=5
-c[2]=35
-c[1]=25
-c[2]=c[0]+c[1]
-c[3]=c[0]-c[1]
-c[4]=c[0]*c[1]
-c[5]=c[0]/c[1]
-c[6]=c[1]/c[2]
-
-)";
-
-  std::string gate_ir = R"(QINIT 3
-CREG 3
-P q[0],(2.14)
-H q[0]
-H q[1]
-H q[2]
-X q[0]
-Y q[1]
-Z q[2]
-X1 q[1]
-Y1 q[2]
-Z1 q[0]
-RX q[0],(1.570796)
-RY q[1],(1.570796)
-RZ q[2],(1.570796)
-T q[2]
-S q[0]
-U1 q[0],(1.570796)
-U2 q[0],(1.570796,-3.141593)
-U3 q[0],(1.570796,4.712389,1.570796)
-U4 q[1],(3.141593,4.712389,1.570796,-3.141593)
-RPhi q[0],(1.570796,-3.141593)
-CU q[1],q[0],(1.57,0,1.57,3.14)
-CNOT q[0],q[1]
-CZ q[0],q[1]
-SWAP q[0],q[1]
-CR q[0],q[1],(1.570796)
-ISWAP q[0],q[1]
-RXX q[0],q[1],(1.570796)
-RYY q[0],q[1],(1.570796)
-RZZ q[0],q[1],(1.570796)
-RZX q[0],q[1],(1.570796)
-TOFFOLI  q[0],q[1],q[2]
-MEASURE q[0],c[0]
-MEASURE q[1],c[1]
-MEASURE q[2],c[2]
-
-)";
-
   std::string a_b = R"(
 OPENQASM 3.0;
 include "stdgates.inc";
@@ -564,10 +491,63 @@ for int m in [0:49999] {
 measure q -> c;
 )";
 
+  std::string qasm_path = R"(../../../../samples/qasm/2.0/bogaddr.qasm)";
   static bool test_qasm2originir(const std::string& qasm_str) {
     std::cout << "### from qasm: " << qasm_str << std::endl;
     std::string origin_ir = convert_qasm_string_to_originir(qasm_str);
     std::cout << "### originir from qasm:\n" << origin_ir << std::endl;
+    return true;
+  }
+
+  static bool test_qasm2originoperations(const std::string& qasm_str) {
+    std::cout << "### from qasm: " << qasm_str << std::endl;
+    std::vector<std::unique_ptr<Operation>> origin_operations =
+        convert_qasm_string_to_operations(qasm_str);
+    std::cout << "=== Print all Operation names ===" << std::endl;
+    for (const auto& op_ptr : origin_operations) {
+      if (op_ptr) {
+        std::cout << "Operation name: " << op_ptr->name << std::endl;
+      }
+    }
+
+    return true;
+  }
+  static bool test_qasm2operations(const std::string& qasm_str) {
+    std::cout << "### from qasm: " << qasm_str << std::endl;
+    std::vector<std::unique_ptr<qcos::BaseOperation>> operations =
+        convert_qasm_string_to_qcos_operations(qasm_str);
+    std::cout << "=== Print all Operation names ===" << std::endl;
+    for (const auto& op_ptr : operations) {
+      if (op_ptr) {
+        std::cout << "QCOS Operation name: " << op_ptr->name
+                  << ", targets: " << op_ptr->targets_to_string()
+                  << ", arg_value: " << op_ptr->arg_value_to_string()
+                  << std::endl;
+      }
+    }
+
+    return true;
+  }
+
+  static bool test_qasm2operationsfromfile(const std::string& filepath) {
+    std::cout << "### from qasm file: " << filepath << std::endl;
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+      std::cerr << "Error: Failed to open file: " << filepath << std::endl;
+      return false;
+    }
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    file.close();
+    std::string qasm_str = buffer.str();
+    auto start_time = std::chrono::high_resolution_clock::now();
+    std::vector<std::unique_ptr<qcos::BaseOperation>> operations =
+        convert_qasm_string_to_qcos_operations(qasm_str);
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duration = end_time - start_time;
+    std::cout << "\n QASM转QCOS operations执行时间: " << duration.count()
+              << " 毫秒 (" << duration.count() / 1000.0 << " 秒)\n"
+              << "生成的操作数量: " << operations.size() << " 个" << std::endl;
     return true;
   }
 };
@@ -579,88 +559,295 @@ TEST(QASMToOriginIR, StandardGate) {
   try {
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.SX_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.SX_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.SX_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.SXdg_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.SXdg_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.SXdg_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.ISWAP_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.ISWAP_qasm);
+    test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2operations(
+                                     test_.ISWAP_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.DCX_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.DCX_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.DCX_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CS_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CS_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.CS_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CCZ_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CCZ_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.CCZ_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.ECR_qasm);
     test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.ECR_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.ECR_qasm);
+    test_actual =
         test_actual && QASM_To_OriginIR_TEST::test_qasm2originir(test_.R_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.R_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.R_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CSdg_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CSdg_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.CSdg_qasm);
     test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2originir(
+                                     test_.XXMinusYY_qasm);
+    test_actual =
+        test_actual && QASM_To_OriginIR_TEST::test_qasm2originoperations(
+                           test_.XXMinusYY_qasm);
+    test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2operations(
                                      test_.XXMinusYY_qasm);
     test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2originir(
                                      test_.XXPlusYY_qasm);
     test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.XXPlusYY_qasm);
+    // test_actual = test_actual &&
+    // QASM_To_OriginIR_TEST::test_qasm2operations(
+    //                                  test_.XXPlusYY_qasm);
+    test_actual =
         test_actual && QASM_To_OriginIR_TEST::test_qasm2originir(test_.V_qasm);
     test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.V_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.V_qasm);
+    test_actual =
         test_actual && QASM_To_OriginIR_TEST::test_qasm2originir(test_.W_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.W_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.W_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CCX_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CCX_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.CCX_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CH_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CH_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.CH_qasm);
     test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2originir(
+                                     test_.CNOT_CZ_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CNOT_CZ_qasm);
+    test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2operations(
                                      test_.CNOT_CZ_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CRX_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CRX_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.CRX_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CRY_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CRY_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.CRY_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CRZ_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CRZ_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.CRZ_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CSWAP_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CSWAP_qasm);
+    test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2operations(
+                                     test_.CSWAP_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CSX_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CSX_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.CSX_qasm);
+
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CU_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CU_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.CU_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CU1_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CU1_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.CU1_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CU3_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CU3_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.CU3_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CY_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CY_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.CY_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.CP_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.CP_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.CP_qasm);
     test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2originir(
+                                     test_.C3SQRTX_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.C3SQRTX_qasm);
+    test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2operations(
                                      test_.C3SQRTX_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.C3X_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.C3X_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.C3X_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.C4X_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.C4X_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.C4X_qasm);
     test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2originir(
+                                     test_.H_I_X_Y_Z_S_T_qasm);
+    test_actual =
+        test_actual && QASM_To_OriginIR_TEST::test_qasm2originoperations(
+                           test_.H_I_X_Y_Z_S_T_qasm);
+    test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2operations(
                                      test_.H_I_X_Y_Z_S_T_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.RCCX_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.RCCX_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.RCCX_qasm);
+
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.RC3X_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.RC3X_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.RC3X_qasm);
     test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2originir(
+                                     test_.RXX_RYY_RZZ_RZX_qasm);
+    test_actual =
+        test_actual && QASM_To_OriginIR_TEST::test_qasm2originoperations(
+                           test_.RXX_RYY_RZZ_RZX_qasm);
+    test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2operations(
                                      test_.RXX_RYY_RZZ_RZX_qasm);
     test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2originir(
                                      test_.RX_RY_RZ_P_qasm);
+    test_actual =
+        test_actual && QASM_To_OriginIR_TEST::test_qasm2originoperations(
+                           test_.RX_RY_RZ_P_qasm);
+    test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2operations(
+                                     test_.RX_RY_RZ_P_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.SDG_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.SDG_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.SDG_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.SWAP_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.SWAP_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.SWAP_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.TDG_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.TDG_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.TDG_qasm);
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.U2_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.U2_qasm);
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.U2_qasm);
 
     test_actual = test_actual &&
                   QASM_To_OriginIR_TEST::test_qasm2originir(test_.U3_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.U3_qasm);
+
+    test_actual = test_actual &&
+                  QASM_To_OriginIR_TEST::test_qasm2operations(test_.U3_qasm);
     test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2originir(
                                      test_.BARRIER_qasm);
     test_actual =
-        test_actual && QASM_To_OriginIR_TEST::test_qasm2originir(test_.a_b);
-
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.BARRIER_qasm);
+    test_actual = test_actual && QASM_To_OriginIR_TEST::test_qasm2operations(
+                                     test_.BARRIER_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2originoperations(test_.BARRIER_qasm);
+    test_actual =
+        test_actual &&
+        QASM_To_OriginIR_TEST::test_qasm2operationsfromfile(test_.qasm_path);
   }
 
   catch (const std::exception& e) {
