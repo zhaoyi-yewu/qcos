@@ -9,17 +9,23 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 endif()
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wno-attributes)
+endif()
+
 include_directories(${PROJECT_SOURCE_DIR}/include
                     ${PROJECT_SOURCE_DIR}/third_party
                     ${PROJECT_SOURCE_DIR}/third_party/googletest
                     ${PROJECT_SOURCE_DIR}/third_party/googletest/include
-                    ${PROJECT_SOURCE_DIR}/third_party/pybind11/include)
+                    ${PROJECT_SOURCE_DIR}/third_party/pybind11/include
+                    ${PROJECT_SOURCE_DIR}/third_party/antlr4/runtime/src)
 
 set(LIB_TRANSPILER ${PROJECT_NAME})
 set(LIB_GTEST gtest)
+set(LIB_ANTLR4 antlr4)
 
 option(USE_PYQCOS "use transpiler in python" ON)
-option(USE_STUBGEN "generate pyi files" OFF)
+option(USE_STUBGEN "generate pyi files" ON)
 
 add_subdirectory(third_party)
 add_subdirectory(src)

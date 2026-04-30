@@ -13,7 +13,7 @@ target_compile_features(${LIB_HIGH_PERF} PRIVATE cxx_std_17)
 
 set_target_properties(${LIB_HIGH_PERF} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_OUT_PATH})
 
-target_link_libraries(${LIB_HIGH_PERF} PRIVATE ${LIB_TRANSPILER})
+target_link_libraries(${LIB_HIGH_PERF} PRIVATE ${LIB_TRANSPILER} ${LIB_ANTLR4})
 
 if(USE_STUBGEN)
     add_custom_command(TARGET ${LIB_HIGH_PERF}

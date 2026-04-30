@@ -1,4 +1,4 @@
-/*
+﻿/*
  * ----------------------------------------------------------------------
  * Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
  *
@@ -15,24 +15,12 @@
  * ----------------------------------------------------------------------
  */
 
-#include <pybind11/pybind11.h>
+#include "compiler/quantum_computation.hpp"
 
-namespace py = pybind11;
+using namespace qc;
+std::string qasmfile2str(const std::string& filename);
 
-void bind_enums(py::module_& m);
-void bind_circuits(py::module_& m);
-void bind_mapping(py::module_& m);
-void bind_utils(py::module_& m);
-void bind_cpp_mcts(py::module_& m);
-void bind_parser(py::module_& m);
-
-PYBIND11_MODULE(high_performance, m) {
-  m.doc() = "Binding qcos transpiler cpp functions.";
-
-  bind_enums(m);
-  bind_circuits(m);
-  bind_mapping(m);
-  bind_utils(m);
-  bind_cpp_mcts(m);
-  bind_parser(m);
-}
+std::string convert_qasm_to_originir(std::string file_path);
+std::string convert_qasm_string_to_originir(std::string qasm_str);
+std::vector<std::unique_ptr<Operation>> convert_qasm_string_to_operations(
+    std::string qasm_str);
