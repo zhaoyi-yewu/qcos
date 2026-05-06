@@ -36,7 +36,7 @@ from wy_qcos.transpiler.common.utils import (
     TranspileRuntime,
     trans_logger,
 )
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
 
 class TranspileParams:

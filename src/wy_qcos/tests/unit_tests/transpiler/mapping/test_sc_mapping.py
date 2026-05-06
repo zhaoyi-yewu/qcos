@@ -21,7 +21,7 @@ from unittest.mock import Mock
 
 from wy_qcos.transpiler.common.errors import MappingException
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import SCRoute
-from wy_qcos.transpiler.cmss.common.gate_operation import CX, H, Measure
+from wy_qcos.common.cmss.gate_operation import CX, H, Measure
 
 
 class TestSCRoute:

@@ -20,15 +20,15 @@ import numpy as np
 from pathlib import Path
 
 from wy_qcos.transpiler.common.errors import CircuitException
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import (
+from wy_qcos.common.cmss.quantum_circuit import (
     QuantumCircuit,
     ClassicalRegister,
 )
 from wy_qcos.transpiler.cmss.circuit.operators.operator import Operator
-from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
+from wy_qcos.common.cmss.gate_operation import create_gate
 from wy_qcos.common.constant import Constant
-from wy_qcos.transpiler.cmss.common.measure import Measure
-from wy_qcos.transpiler.cmss.common.qasm_converter import QasmConverter
+from wy_qcos.common.cmss.measure import Measure
+from wy_qcos.common.cmss.qasm_converter import QasmConverter
 
 
 class RandomCircuitGen:

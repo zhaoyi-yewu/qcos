@@ -16,9 +16,9 @@
 # ----------------------------------------------------------------------
 
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
-from wy_qcos.transpiler.cmss.circuit.register import QuantumRegister
-from wy_qcos.transpiler.cmss.common.measure import Measure
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.register import QuantumRegister
+from wy_qcos.common.cmss.measure import Measure
 
 
 class Cut:

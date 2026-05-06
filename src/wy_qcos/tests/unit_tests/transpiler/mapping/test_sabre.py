@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -21,7 +21,7 @@ from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing import SABRE
 from wy_qcos.transpiler.cmss.mapping.init_mapping.sabre_mapping import (
     sabre_initial_mapping,
 )
-from wy_qcos.transpiler.cmss.common.gate_operation import X, H, CX, SWAP
+from wy_qcos.common.cmss.gate_operation import X, H, CX, SWAP
 
 
 class TestSabre:

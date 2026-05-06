@@ -21,7 +21,7 @@ from unittest.mock import patch
 
 from wy_qcos.common.library import Library
 from wy_qcos.drivers.spinq.spinq_nmr.driver_spinq_nmr import DriverSpinQNmr
-from wy_qcos.transpiler.cmss.common.gate_operation import H
+from wy_qcos.common.cmss.gate_operation import H
 
 spinq_nmr = DriverSpinQNmr()
 

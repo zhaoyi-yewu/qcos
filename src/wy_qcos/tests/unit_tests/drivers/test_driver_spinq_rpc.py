@@ -31,8 +31,8 @@ from unittest.mock import patch, MagicMock
 
 from wy_qcos.common.library import _s
 from wy_qcos.drivers.spinq.spinq_rpc.driver_spinq_rpc import DriverSpinQRpc
-from wy_qcos.transpiler.cmss.common.gate_operation import CX, H, RX, RY, RZ
-from wy_qcos.transpiler.cmss.common.measure import Measure
+from wy_qcos.common.cmss.gate_operation import CX, H, RX, RY, RZ
+from wy_qcos.common.cmss.measure import Measure
 
 job_id = "00000000-0000-4000-8000-000000000001"
 task_id = "123456"

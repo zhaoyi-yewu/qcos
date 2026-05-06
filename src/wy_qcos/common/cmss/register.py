@@ -69,9 +69,7 @@ class Register:
             if isinstance(bits, list):
                 for bit in bits:
                     if not isinstance(bit, int):
-                        raise TypeError(
-                            f"Bits must be integers. bits: {bits}"
-                        )
+                        raise TypeError(f"Bits must be integers. bits: {bits}")
             else:
                 raise TypeError(f"Bits must be list. bits: {bits}")
             bits.sort()

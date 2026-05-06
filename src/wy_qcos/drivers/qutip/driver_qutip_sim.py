@@ -27,7 +27,7 @@ from schema import Optional
 from wy_qcos.drivers.device import Device
 from wy_qcos.common.constant import Constant
 from wy_qcos.drivers.driver_base import DriverBase
-from wy_qcos.transpiler.cmss.common.base_operation import OperationType
+from wy_qcos.common.cmss.base_operation import OperationType
 
 
 class DriverQutipSim(DriverBase):

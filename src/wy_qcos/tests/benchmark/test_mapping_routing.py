@@ -29,10 +29,9 @@ from wy_qcos.transpiler.cmss.mapping.init_mapping.sc_initial_mapping import (
 )
 from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing import SABRE
 from wy_qcos.transpiler.cmss.mapping.utils.dg import DG
-from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
+from wy_qcos.common.cmss.gate_operation import GateOperation
 from wy_qcos.transpiler.cmss.mapping.utils.front_circuit import FrontCircuit
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
-
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
 initial_methods = [
     "naive",

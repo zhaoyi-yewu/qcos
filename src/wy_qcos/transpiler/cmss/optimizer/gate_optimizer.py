@@ -19,7 +19,7 @@ from typing import Any
 import numpy as np
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.transpiler.cmss.common.gate_operation import (
+from wy_qcos.common.cmss.gate_operation import (
     create_gate,
     H,
     CX,
@@ -34,8 +34,8 @@ from wy_qcos.transpiler.cmss.common.gate_operation import (
     CZ,
     CCX,
 )
-from wy_qcos.transpiler.cmss.common.move import Move
-from wy_qcos.transpiler.cmss.common.reset import Reset
+from wy_qcos.common.cmss.move import Move
+from wy_qcos.common.cmss.reset import Reset
 from wy_qcos.transpiler.cmss.optimizer.inverse_cancellation import (
     InverseCancellation,
 )

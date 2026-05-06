@@ -20,8 +20,8 @@ import numpy as np
 
 from unittest.mock import patch, MagicMock
 
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
-from wy_qcos.transpiler.cmss.common.gate_operation import H, CX
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.gate_operation import H, CX
 from wy_qcos.transpiler.common.wirecut.utils import (
     asign_probability,
     compute_measure_combian,

@@ -20,9 +20,9 @@ import copy
 import itertools
 
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
-from wy_qcos.transpiler.cmss.common.gate_operation import H, S, SDG, X
-from wy_qcos.transpiler.cmss.common.qasm_converter import QasmConverter
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.gate_operation import H, S, SDG, X
+from wy_qcos.common.cmss.qasm_converter import QasmConverter
 
 
 def generate_subcircuits_for_execute(prepare_data):

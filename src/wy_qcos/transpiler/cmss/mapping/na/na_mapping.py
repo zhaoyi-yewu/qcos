@@ -21,7 +21,7 @@ import rustworkx as rx
 from copy import deepcopy
 from collections import defaultdict
 
-from wy_qcos.transpiler.cmss.common.move import Move
+from wy_qcos.common.cmss.move import Move
 from wy_qcos.transpiler.common.errors import MappingException
 
 

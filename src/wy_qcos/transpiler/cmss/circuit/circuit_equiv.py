@@ -20,8 +20,8 @@ from mqt import qcec
 
 from wy_qcos.transpiler.common.errors import CircuitException
 from wy_qcos.transpiler.cmss.circuit.operators.operator import Operator
-from wy_qcos.transpiler.cmss.common.qasm_converter import QasmConverter
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.qasm_converter import QasmConverter
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
 
 class CircuitEquivChecker:

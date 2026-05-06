@@ -21,7 +21,7 @@ from wy_qcos.transpiler.cmss.compiler import tokrules
 from wy_qcos.transpiler.cmss.compiler.tokrules import tokens
 from wy_qcos.transpiler.cmss.compiler.qtypes import Node
 from wy_qcos.transpiler.cmss.compiler.visitor import Visitor
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
 
 gate_params = []

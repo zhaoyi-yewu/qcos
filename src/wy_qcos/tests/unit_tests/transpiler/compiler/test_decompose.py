@@ -19,9 +19,9 @@ import numpy as np
 import pytest
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.transpiler.cmss.common.base_operation import OperationType
-from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
-from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
+from wy_qcos.common.cmss.base_operation import OperationType
+from wy_qcos.common.cmss.gate_operation import GateOperation
+from wy_qcos.common.cmss.gate_operation import create_gate
 from wy_qcos.transpiler.cmss.compiler.decomposer import (
     decompose_gates,
     decompose_gates_to_1q2q,

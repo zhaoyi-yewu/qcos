@@ -20,7 +20,7 @@
 from collections import defaultdict
 
 from wy_qcos.transpiler.cmss.circuit.barrier import Barrier
-from wy_qcos.transpiler.cmss.common.measure import Measure
+from wy_qcos.common.cmss.measure import Measure
 from wy_qcos.transpiler.common.pulse_ir.compatible.exceptions import (
     QiskitError,
 )

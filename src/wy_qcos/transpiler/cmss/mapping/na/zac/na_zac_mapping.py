@@ -17,15 +17,13 @@
 
 import math
 import networkx as nx
-
 from abc import ABC
 from copy import deepcopy
 from itertools import zip_longest
-
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import maximum_bipartite_matching
 
-from wy_qcos.transpiler.cmss.common.move import Move
+from wy_qcos.common.cmss.move import Move
 from wy_qcos.transpiler.common.errors import MappingException
 from wy_qcos.transpiler.cmss.mapping.na.zac.placer.saplacer import SAPlacer
 from wy_qcos.transpiler.cmss.mapping.na.zac.placer.vmplacer import (

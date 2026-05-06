@@ -18,8 +18,8 @@
 import pytest
 
 from wy_qcos.transpiler.common.errors import CircuitException
-from wy_qcos.transpiler.cmss.common.gate_operation import X, H, CX
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.gate_operation import X, H, CX
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.circuit.circuit_equiv import CircuitEquivChecker
 
 

@@ -23,7 +23,7 @@ from schema import Optional
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.drivers.device import Device
-from wy_qcos.transpiler.cmss.common.measure import Measure
+from wy_qcos.common.cmss.measure import Measure
 
 logger = logging.getLogger(__name__)
 

@@ -19,7 +19,7 @@ import os
 import pytest
 
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
-from wy_qcos.transpiler.cmss.common.qasm_converter import QasmConverter
+from wy_qcos.common.cmss.qasm_converter import QasmConverter
 
 
 class TestQasmConverter:

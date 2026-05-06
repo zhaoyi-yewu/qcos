@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -17,11 +17,10 @@
 
 import pytest
 
-from wy_qcos.transpiler.cmss.circuit.register import (
+from wy_qcos.common.cmss.register import (
     QuantumRegister,
     ClassicalRegister,
 )
-from wy_qcos.transpiler.common.errors import CircuitException
 
 
 class TestRegister:
@@ -86,46 +85,46 @@ class TestRegister:
         assert creg1 == creg4
 
     def test_register_abnormal(self):
-        with pytest.raises(CircuitException) as e1:
+        with pytest.raises(ValueError) as e1:
             _ = QuantumRegister(size=None, bits=None)
 
         msg = str(e1.value)
         assert "Exactly one" in msg
 
-        with pytest.raises(CircuitException) as e2:
+        with pytest.raises(TypeError) as e2:
             _ = QuantumRegister(size=None, bits=["a", "b"])
 
         msg = str(e2.value)
         assert "Bits must be integers" in msg
 
-        with pytest.raises(CircuitException) as e3:
+        with pytest.raises(ValueError) as e3:
             _ = QuantumRegister(size=-1)
 
         msg = str(e3.value)
         assert "Register size must be non-negative" in msg
 
-        with pytest.raises(CircuitException) as e4:
+        with pytest.raises(TypeError) as e4:
             qreg = QuantumRegister(size=3)
             _ = qreg["a"]
 
         msg = str(e4.value)
         assert "expected integer" in msg
 
-        with pytest.raises(CircuitException) as e5:
+        with pytest.raises(KeyError) as e5:
             qreg = QuantumRegister(size=3)
             _ = qreg[[0, 5]]
 
         msg = str(e5.value)
         assert "register index out of range" in msg
 
-        with pytest.raises(CircuitException) as e6:
+        with pytest.raises(KeyError) as e6:
             qreg = QuantumRegister(size=3)
             _ = qreg.index(5)
 
         msg = str(e6.value)
         assert "not found" in msg
 
-        with pytest.raises(CircuitException) as e7:
+        with pytest.raises(TypeError) as e7:
             _ = QuantumRegister(size=None, bits="6")
 
         msg = str(e7.value)

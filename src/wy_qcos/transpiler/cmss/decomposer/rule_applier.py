@@ -18,12 +18,12 @@ import math
 import copy
 import numexpr
 
-from wy_qcos.transpiler.cmss.common.base_operation import BaseOperation
+from wy_qcos.common.cmss.base_operation import BaseOperation
 from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
     EquivalenceRule,
     ParamGate,
 )
-from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
+from wy_qcos.common.cmss.gate_operation import create_gate
 
 
 class RuleApplier:

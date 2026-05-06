@@ -22,7 +22,7 @@ from wy_qcos.transpiler.cmss.mapping.utils.estimate import (
     SCEstimate,
     NAEstimate,
 )
-from wy_qcos.transpiler.cmss.common.move import Move
+from wy_qcos.common.cmss.move import Move
 
 
 class TestSCEstimate:

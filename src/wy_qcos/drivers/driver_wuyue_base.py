@@ -31,9 +31,9 @@ from wy_qcos.common.constant import Constant, HttpCode, HttpMethod
 from wy_qcos.common.library import Library
 from wy_qcos.drivers.device import Device
 from wy_qcos.drivers.driver_base import DriverBase
-from wy_qcos.transpiler.cmss.common.gate_operation import BaseOperation
-from wy_qcos.transpiler.cmss.common.qasm_converter import QasmConverter
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.gate_operation import BaseOperation
+from wy_qcos.common.cmss.qasm_converter import QasmConverter
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
 
 class DriverWuyueBase(DriverBase):

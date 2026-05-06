@@ -18,8 +18,8 @@
 import unittest
 from unittest.mock import patch, MagicMock
 
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
-from wy_qcos.transpiler.cmss.common.gate_operation import H, CX, X, Y, Z
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.gate_operation import H, CX, X, Y, Z
 from wy_qcos.transpiler.common.wirecut.cut import Cut
 
 

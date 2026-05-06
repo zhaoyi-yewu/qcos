@@ -28,9 +28,8 @@ from wy_qcos.transpiler.common.wirecut.cut_wire import (
     simple_subcircuit_dict,
     reconstruct_probability_distribution_wire_cut,
 )
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
-from wy_qcos.transpiler.cmss.common.gate_operation import H, CX
-
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.gate_operation import H, CX
 
 TEST_QASM_CONTENT = """OPENQASM 2.0;
 include "qelib1.inc";

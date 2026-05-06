@@ -17,7 +17,7 @@
 
 import copy
 
-from wy_qcos.transpiler.cmss.common.gate_operation import (
+from wy_qcos.common.cmss.gate_operation import (
     X,
     H,
     Z,

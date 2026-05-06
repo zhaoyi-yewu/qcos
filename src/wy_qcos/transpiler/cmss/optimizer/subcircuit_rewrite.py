@@ -23,7 +23,7 @@ from wy_qcos.transpiler.cmss.optimizer.template import (
     replace_all,
     filter_templates_by_basis,
 )
-from wy_qcos.transpiler.cmss.common.gate_operation import (
+from wy_qcos.common.cmss.gate_operation import (
     X,
     H,
     Z,

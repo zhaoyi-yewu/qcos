@@ -133,7 +133,7 @@ py::tuple execute_routing_py(qcos::CppMCTSRouting& router,
   }
 
   py::module_ gate_module =
-      py::module_::import("wy_qcos.transpiler.cmss.common.gate_operation");
+      py::module_::import("wy_qcos.common.cmss.gate_operation");
   py::object create_gate = gate_module.attr("create_gate");
 
   py::list mapped_ir;
