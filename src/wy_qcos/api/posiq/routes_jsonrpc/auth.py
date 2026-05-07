@@ -421,6 +421,7 @@ async def login(
     )
 
     return schemas.LoginResponse(
+        user_name=username,
         access_token=access_token,
         refresh_token=refresh_token,
         token_type=_s("bearer"),
@@ -654,6 +655,7 @@ async def refresh_token(
     logger.info(f"Token refreshed for user: {username}")
 
     return schemas.TokenRefreshResponse(
+        user_name=username,
         access_token=access_token,
         refresh_token=refresh_token_new,
         token_type=_s("bearer"),
@@ -668,7 +670,7 @@ async def refresh_token(
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.UnauthorizedError],
 )
-def get_current_user_info(
+def me(
     body: schemas.GetUserMgmtStatusRequest | None = None,
     auth_data: dict | None = Depends(auth),
     user_manager: UserManager = Depends(get_user_manager),
@@ -701,14 +703,14 @@ def get_current_user_info(
         )
 
     # Get current user
-    username = auth_data["user_id"]
-    user = user_manager.get_user(username)
+    user_id = auth_data["user_id"]
+    user = user_manager.get_user_by_id(user_id)
 
     if not user:
         jsonrpc_errors.handle_error_not_found(
             module_name,
             func_name,
-            (False, f"User '{username}' not found"),
+            (False, f"User '{user_id}' not found"),
         )
 
     # Build response - get roles from user_roles association table
@@ -716,6 +718,7 @@ def get_current_user_info(
 
     response_info = {
         "id": user.id,
+        "project_id": user.project_id,
         "user_name": user.user_name,
         "roles": roles,
         "is_enabled": user.is_enabled,
