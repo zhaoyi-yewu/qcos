@@ -16,7 +16,9 @@
   .. code-block:: shell
 
      # BCLinux/CentOS/OpenEuler环境下示例:
+     # 需保证Python3>=3.11版本
      yum install -y python3 python3-pip python3-sphinx python3-requests python3-alembic
+     pip3 install tomlkit
 
 - 安装Python依赖包：
 
@@ -119,6 +121,13 @@ DEVICE_LIST列出的设备名一致。 文件中section必须对应相关设备�
 
    # 启动redis服务
    systemctl start redis 或者 redis-server
+
+   # 启动postgresql服务
+   systemctl start postgresql 或者 pg_ctl -D /var/lib/pgsql/data start
+
+   # 运行init-db.sh脚本初始化数据库
+   cd build-scripts
+   ./init-db.sh
 
    # 启动QCOS API服务（指定配置文件和配置目录）
    qcos-api --config-file /etc/qcos/qcos.toml --config-dir /etc/qcos/conf.d/
