@@ -249,12 +249,12 @@ spec:
           value: "${QCOS_SERVER_IP}"
         - name: QCOS_SERVER_PORT
           value: "${QCOS_SERVER_PORT}"
-        - name: QCOS_ENABLE_VIRT
-          value: "${QCOS_ENABLE_VIRT}"
+        - name: QCOS_AUTH_MODE
+          value: "${QCOS_AUTH_MODE}"
         - name: QCOS_VIRTUAL_INSTANCE_ID
           value: "${QCOS_ADMIN_VIRTUAL_INSTANCE_ID}"
         - name: LOCAL_CICD
-        - value: "${LOCAL_CICD}"
+          value: "${LOCAL_CICD}"
         - name: PREFECT_API_URL
           value: "${PREFECT_API_URL}"
         - name: PREFECT_SERVER_DATABASE_CONNECTION_URL
