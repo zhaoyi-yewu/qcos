@@ -187,37 +187,44 @@ class TestConfig:
         finally:
             Config.DEVICE_LIST = original_devices
 
-    def test_validate_single_auth_mode_virt_only(self):
-        """Test validate succeeds with only ENABLE_VIRT."""
-        original_virt = Config.ENABLE_VIRT
-        original_mgmt = Config.ENABLE_USER_MGMT
+    def test_validate_auth_mode_no(self):
+        """Test validate succeeds with AUTH_MODE = no."""
+        original_auth_mode = Config.AUTH_MODE
         try:
-            Config.ENABLE_VIRT = True
-            Config.ENABLE_USER_MGMT = False
+            Config.AUTH_MODE = Constant.AUTH_MODE_NO
             with patch.object(Library, "remove_duplicates") as mock_remove:
                 with patch.object(Library, "validate_schema") as mock_validate:
                     mock_remove.return_value = []
                     mock_validate.return_value = (True, None)
                     config.validate()  # Should not raise
         finally:
-            Config.ENABLE_VIRT = original_virt
-            Config.ENABLE_USER_MGMT = original_mgmt
+            Config.AUTH_MODE = original_auth_mode
 
-    def test_validate_single_auth_mode_user_mgmt_only(self):
-        """Test validate succeeds with only ENABLE_USER_MGMT."""
-        original_virt = Config.ENABLE_VIRT
-        original_mgmt = Config.ENABLE_USER_MGMT
+    def test_validate_auth_mode_password(self):
+        """Test validate succeeds with AUTH_MODE = jwt."""
+        original_auth_mode = Config.AUTH_MODE
         try:
-            Config.ENABLE_VIRT = False
-            Config.ENABLE_USER_MGMT = True
+            Config.AUTH_MODE = Constant.AUTH_MODE_JWT
             with patch.object(Library, "remove_duplicates") as mock_remove:
                 with patch.object(Library, "validate_schema") as mock_validate:
                     mock_remove.return_value = []
                     mock_validate.return_value = (True, None)
                     config.validate()  # Should not raise
         finally:
-            Config.ENABLE_VIRT = original_virt
-            Config.ENABLE_USER_MGMT = original_mgmt
+            Config.AUTH_MODE = original_auth_mode
+
+    def test_validate_auth_mode_virtual_instance(self):
+        """Test validate succeeds with AUTH_MODE = virtual_instance."""
+        original_auth_mode = Config.AUTH_MODE
+        try:
+            Config.AUTH_MODE = Constant.AUTH_MODE_VIRTUAL_INSTANCE
+            with patch.object(Library, "remove_duplicates") as mock_remove:
+                with patch.object(Library, "validate_schema") as mock_validate:
+                    mock_remove.return_value = []
+                    mock_validate.return_value = (True, None)
+                    config.validate()  # Should not raise
+        finally:
+            Config.AUTH_MODE = original_auth_mode
 
     def test_get_configs_filters_private_attributes(self):
         """Test get_configs filters out private and magic attributes."""
