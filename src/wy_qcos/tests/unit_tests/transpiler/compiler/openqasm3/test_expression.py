@@ -25,7 +25,11 @@ from wy_qcos.transpiler.cmss.compiler.openqasm3.expression import (
     join_numeric_types,
 )
 from wy_qcos.transpiler.cmss.compiler.openqasm3 import types
-from wy_qcos.transpiler.cmss.compiler.openqasm3.state import State, Parameter
+from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
+    State,
+    Parameter,
+    SymbolTables,
+)
 from wy_qcos.transpiler.cmss.compiler.openqasm3.data import Symbol, Scope
 
 
@@ -36,9 +40,6 @@ class TestExpression:
         """Setup test fixtures."""
         self.state = State()
         # Add some test symbols to the state
-        from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
-            SymbolTables,
-        )
 
         self.state.symbol_table = SymbolTables()
 
@@ -324,9 +325,6 @@ class TestExpression:
     def test_resolve_condition_bit_equal_bool(self):
         """Test resolve_condition with bit == bool."""
         # Setup: create a bit in the state
-        from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
-            SymbolTables,
-        )
 
         self.state.symbol_table = SymbolTables()
 
@@ -350,9 +348,6 @@ class TestExpression:
     def test_resolve_condition_bit_not_equal_bool(self):
         """Test resolve_condition with bit != bool."""
         # Setup: create a bit in the state
-        from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
-            SymbolTables,
-        )
 
         self.state.symbol_table = SymbolTables()
 
@@ -376,9 +371,6 @@ class TestExpression:
     def test_resolve_condition_bitarray_equal_int(self):
         """Test resolve_condition with bitarray == int."""
         # Setup: create a bit array in the state
-        from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
-            SymbolTables,
-        )
 
         self.state.symbol_table = SymbolTables()
 
@@ -402,9 +394,6 @@ class TestExpression:
     def test_resolve_condition_single_bit(self):
         """Test resolve_condition with single bit (no comparison)."""
         # Setup: create a bit in the state
-        from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
-            SymbolTables,
-        )
 
         self.state.symbol_table = SymbolTables()
 
@@ -423,9 +412,6 @@ class TestExpression:
     def test_resolve_condition_negated_bit(self):
         """Test resolve_condition with negated bit (~c)."""
         # Setup: create a bit in the state
-        from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
-            SymbolTables,
-        )
 
         self.state.symbol_table = SymbolTables()
 
@@ -447,9 +433,6 @@ class TestExpression:
     def test_resolve_condition_error_unsupported_comparison(self):
         """Test resolve_condition error for unsupported comparison."""
         # Setup: create a bit in the state
-        from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
-            SymbolTables,
-        )
 
         self.state.symbol_table = SymbolTables()
 
@@ -474,9 +457,6 @@ class TestExpression:
     def test_resolve_condition_error_bitarray_not_equal(self):
         """Test resolve_condition error for bitarray != int."""
         # Setup: create a bit array in the state
-        from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
-            SymbolTables,
-        )
 
         self.state.symbol_table = SymbolTables()
 
