@@ -166,3 +166,92 @@
                },
                "id": 1
              }
+
+版本协商详解
+~~~~~~~~~~~~
+
+API 版本管理
+^^^^^^^^^^^^
+
+系统支持多个API版本，允许客户端与不同版本的服务器兼容：
+
+- **当前版本 (CURRENT)**：正在活跃使用的API版本
+- **废弃版本 (DEPRECATED)**：即将停止支持的版本
+- **支持期**：通常为新版本发布后的6个月
+
+能力枚举 (Capabilities)
+^^^^^^^^^^^^^^^^^^^^^^^
+
+``capabilities`` 字段包含系统支持的各种功能和类型：
+
+1. **job_types**：系统支持的作业类型
+   - ``sampling``：采样作业，获取量子电路的测量结果
+   - ``estimation``：估计作业，评估电路性能
+
+2. **drivers**：可用的驱动程序列表
+   - 包含驱动名称、支持的代码类型和描述
+
+3. **transpilers**：可用的转译器列表
+   - 包含转译器别名和支持的代码类型
+
+4. **tech_types**：支持的量子技术类型
+   - 中性原子、离子阱、超导、光量子等
+
+5. **profiling**：性能评估类型
+   - 用于了解作业执行性能
+
+6. **driver_transpiler_mappings**：驱动与转译器的对应关系
+   - 指定每个驱动支持的转译器
+
+API版本状态说明
+^^^^^^^^^^^^^^^
+
+系统支持多个API版本状态：
+
+- **CURRENT** - 当前活跃版本，推荐使用，优先使用
+- **DEPRECATED** - 已废弃但仍可用，即将停止支持，尽快升级
+- **UNSUPPORTED** - 不再支持的版本，必须升级
+
+最佳实践建议
+^^^^^^^^^^^^^^^^
+
+1. **启动时查询版本**
+
+   .. code-block:: python
+
+      # 应用启动时调用一次
+      version_info = version()
+      api_version = version_info["api_version"]
+      availability = version_info["supported_api_versions"]
+
+2. **版本兼容性检查**
+
+   .. code-block:: python
+
+      # 检查服务器是否支持需要的API版本
+      def check_compatibility(required_version):
+          version_info = version()
+          for api_version in version_info["supported_api_versions"]:
+              if api_version["version"] == required_version:
+                  return api_version["status"] != "UNSUPPORTED"
+          return False
+
+3. **驱动与转译器配合**
+
+   .. code-block:: python
+
+      # 获取特定驱动支持的转译器
+      version_info = version()
+      driver_transpilers = version_info["capabilities"]["driver_transpiler_mappings"]
+
+      # 提交作业时使用兼容的组合
+      available_transpilers = driver_transpilers.get("DriverDummy", [])
+
+4. **缓存版本信息**
+
+   .. code-block:: text
+
+      • 推荐在应用启动时查询一次 version() 接口
+      • 将版本信息缓存在内存中
+      • 通常无需频繁调用，除非检测到API不兼容错误
+
