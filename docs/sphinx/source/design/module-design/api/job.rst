@@ -712,3 +712,203 @@
              },
              "id":1
            }
+
+作业管理详解
+~~~~~~~~~~~~
+
+作业状态说明
+^^^^^^^^^^^^
+
+作业在其生命周期中会经历多个状态：
+
+- **UNKNOWN** - 未知状态，通常表示不可预见的错误
+- **QUEUED** - 已排队，等待系统调度执行
+- **RUNNING** - 运行中，正在硬件或模拟器上执行
+- **COMPLETED** - 已完成，获取结果使用 get_job_results
+- **FAILED** - 执行失败，查看错误信息了解失败原因
+- **CANCELLED** - 已取消，用户主动取消的作业
+- **CANCELLING** - 取消中，正在处理取消请求
+- **DELETED** - 已删除，作业记录已被清除
+
+作业参数详解
+^^^^^^^^^^^^
+
+提交作业时的关键参数：
+
++------------------------+----------+----------------------------------------------+
+| 参数名                 | 类型     | 说明                                         |
++========================+==========+==============================================+
+| job_id                 | uuid     | 作业唯一标识，可自定义或由系统生成           |
++------------------------+----------+----------------------------------------------+
+| code_type              | string   | 代码类型：qasm/qasm2/qasm3/qubo              |
++------------------------+----------+----------------------------------------------+
+| source_code            | array    | 量子代码列表，支持批量提交                   |
++------------------------+----------+----------------------------------------------+
+| backend                | string   | 目标硬件或模拟器名称                         |
++------------------------+----------+----------------------------------------------+
+| transpiler             | string   | 转译器名称，将代码转为硬件可执行格式         |
++------------------------+----------+----------------------------------------------+
+| job_priority           | int      | 任务优先级(1-10)，1最高，10最低              |
++------------------------+----------+----------------------------------------------+
+| shots                  | int      | 测量次数，影响统计精度                       |
++------------------------+----------+----------------------------------------------+
+| dry_run                | boolean  | 模拟运行，不使用真实硬件资源                 |
++------------------------+----------+----------------------------------------------+
+| profiling              | array    | 性能评估类型，可用于分析运行时间分布         |
++------------------------+----------+----------------------------------------------+
+| callbacks              | array    | 回调通知配置，作业完成时推送结果             |
++------------------------+----------+----------------------------------------------+
+
+代码类型说明
+~~~~~~~~~~~~
+
+- **qasm**：通用QASM格式，兼容v1/v2/v3版本
+- **qasm2**：OpenQASM 2.0标准格式
+- **qasm3**：OpenQASM 3.0标准格式
+- **qubo**：矩阵格式，用于QUBO优化问题
+
+测量结果格式
+~~~~~~~~~~~~
+
+对于量子电路（qasm格式）：
+
+.. code-block:: json
+
+   {
+     "00": 95,  // 测得|00⟩状态的次数
+     "11": 9    // 测得|11⟩状态的次数
+   }
+
+对于QUBO问题（qubo格式）：
+
+.. code-block:: json
+
+   [
+     {
+       "result": 1,
+       "quboValue": -112.0,
+       "maxcutValue": 28.0,
+       "solutionVector": [1, 0, 1, 0]
+     }
+   ]
+
+最佳实践建议
+^^^^^^^^^^^^^^^^
+
+1. **作业提交流程**
+
+   .. code-block:: python
+
+      # 步骤1: 准备量子代码
+      qasm_code = """
+      OPENQASM 2.0;
+      include "qelib1.inc";
+      qreg q[2];
+      creg c[2];
+      h q[0];
+      cx q[0], q[1];
+      measure q -> c;
+      """
+
+      # 步骤2: 提交作业
+      job = submit_job(
+          code_type="qasm2",
+          source_code=[qasm_code],
+          backend="dummy",
+          transpiler="cmss",
+          shots=1000,
+          job_priority=5
+      )
+
+      # 步骤3: 轮询等待完成
+      while True:
+          status = get_job_status(job["job_id"])
+          if status["job_status"] in ["COMPLETED", "FAILED"]:
+              break
+          time.sleep(1)
+
+      # 步骤4: 获取结果
+      if status["job_status"] == "COMPLETED":
+          results = get_job_results(job["job_id"])
+
+2. **批量作业管理**
+
+   .. code-block:: python
+
+      # 提交多个相关作业
+      job_ids = []
+      for i in range(10):
+          job = submit_job(
+              code_type="qasm2",
+              source_code=[generate_circuit(i)],
+              backend="dummy",
+              job_priority=5 + (i % 5)  # 交错优先级
+          )
+          job_ids.append(job["job_id"])
+
+      # 等待所有作业完成
+      completed = []
+      for job_id in job_ids:
+          result = get_job_results(job_id)
+          completed.append(result)
+
+3. **错误处理和重试**
+
+   .. code-block:: python
+
+      def submit_job_with_retry(params, max_retries=3):
+          for attempt in range(max_retries):
+              try:
+                  job = submit_job(**params)
+                  return job
+              except Exception as e:
+                  if attempt < max_retries - 1:
+                      time.sleep(2 ** attempt)
+                  else:
+                      raise
+
+      # 处理失败作业
+      def handle_failed_job(job_id):
+          job = get_job_status(job_id)
+          if job["job_status"] == "FAILED":
+              # 检查失败原因
+              results = get_job_results(job_id)
+              for result in results["results"]:
+                  if "error" in result:
+                      print(f"Error: {result['error']['message']}")
+
+4. **性能优化**
+
+   .. code-block:: text
+
+      • 使用 dry_run=true 测试代码正确性（不消耗资源）
+      • 启用 profiling 分析各阶段耗时
+      • 对于长流程，使用 callbacks 异步获取结果
+      • 批量提交相关作业以提高资源利用率
+
+5. **回调通知配置**
+
+   .. code-block:: python
+
+      callbacks = [
+          {
+              "name": "webhook",
+              "type": "results",
+              "method": "post",
+              "url": "http://your-server/webhook/job-completed"
+          }
+      ]
+
+      job = submit_job(
+          source_code=[qasm_code],
+          callbacks=callbacks,
+          ...
+      )
+
+      # 服务器端接收回调
+      # POST /webhook/job-completed
+      # Body: {
+      #   "job_id": "xxx",
+      #   "job_status": "COMPLETED",
+      #   "results": [...]
+      # }
