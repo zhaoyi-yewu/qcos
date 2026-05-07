@@ -44,14 +44,3 @@ class DriverWuyueHanyuan1(DriverWuyueBase):
         self.supported_code_types = [Constant.CODE_TYPE_QASM2]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.max_qubits = 100
-
-    def fetch_running_info(self):
-        """Fetch running info.
-
-        Returns:
-            remote device running info
-        """
-        # TODO(jidalong) mock data currently
-        device_running_info = {"status": "online"}
-
-        return device_running_info
