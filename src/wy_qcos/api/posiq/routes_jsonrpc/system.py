@@ -82,7 +82,7 @@ def system_info(
         tags = None
         if (
             auth_data is not None
-            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL
+            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL_INSTANCE
         ):
             virtual_instance_id = auth_data["instance_id"]
             tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
