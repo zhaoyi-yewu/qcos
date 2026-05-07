@@ -20,7 +20,6 @@ import argparse
 import json
 import os
 import sys
-import uuid
 
 from cliff import help
 from cliff.app import App
@@ -437,7 +436,6 @@ class CommandHelper:
             _values.append(v)
         results = (tuple(headers), tuple(_values))
         return results
-
 
 
 # Version commands
@@ -1960,7 +1958,7 @@ class CreateUser(Command):
 
 class UpdateUser(Command):
     """Update user by ID or name.
-    
+
     Can accept either a UUID or a user name as user_id parameter.
     If a valid UUID is provided, it will be used directly.
     Otherwise, the system will look up the user by name.
@@ -2026,9 +2024,7 @@ class UpdateUser(Command):
 
     def take_action(self, parsed_args):
         resource = self.group
-        user_id = Client.resolve_user_id(
-            self.app.client, parsed_args.user_id
-        )
+        user_id = Client.resolve_user_id(self.app.client, parsed_args.user_id)
 
         # collect all provided role names and remove duplicates
         roles = None
@@ -2088,7 +2084,7 @@ class UpdateUser(Command):
 
 class GetUser(ShowOne):
     """Get user by ID or name.
-    
+
     Can accept either a UUID or a user name as user_id parameter.
     If a valid UUID is provided, it will be used directly.
     Otherwise, the system will look up the user by name.
@@ -2107,9 +2103,7 @@ class GetUser(ShowOne):
 
     def take_action(self, parsed_args):
         resource = self.group
-        user_id = Client.resolve_user_id(
-            self.app.client, parsed_args.user_id
-        )
+        user_id = Client.resolve_user_id(self.app.client, parsed_args.user_id)
 
         status_code, reason, text, result = self.app.client.get_user(user_id)
         json_results = CommandHelper.check_results(
@@ -2166,12 +2160,12 @@ class GetUsers(Lister):
             "last_login",
             "description",
         ]
-        
+
         # Build filters if user_name is provided
         filters = None
         if parsed_args.user_name:
             filters = {"user_name": parsed_args.user_name}
-        
+
         status_code, reason, text, result = self.app.client.get_users(
             filters=filters
         )
@@ -2209,7 +2203,7 @@ class GetUsers(Lister):
 
 class DeleteUser(Command):
     """Delete user by ID or name.
-    
+
     Can accept either a UUID or a user name as user_id parameter.
     If a valid UUID is provided, it will be used directly.
     Otherwise, the system will look up the user by name.
@@ -2219,9 +2213,12 @@ class DeleteUser(Command):
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("user_id", type=str, help="User ID (UUID) or user name")
         parser.add_argument(
-            "-f", "--force",
+            "user_id", type=str, help="User ID (UUID) or user name"
+        )
+        parser.add_argument(
+            "-f",
+            "--force",
             action="store_true",
             dest="force",
             help="Force delete user and cascade delete related resources",
@@ -2230,9 +2227,7 @@ class DeleteUser(Command):
 
     def take_action(self, parsed_args):
         resource = self.group
-        user_id = Client.resolve_user_id(
-            self.app.client, parsed_args.user_id
-        )
+        user_id = Client.resolve_user_id(self.app.client, parsed_args.user_id)
         force = parsed_args.force
         status_code, reason, text, result = self.app.client.delete_user(
             user_id, force=force
@@ -2301,9 +2296,7 @@ class GetRole(ShowOne):
 
     def take_action(self, parsed_args):
         resource = self.group
-        role_id = Client.resolve_role_id(
-            self.app.client, parsed_args.role_id
-        )
+        role_id = Client.resolve_role_id(self.app.client, parsed_args.role_id)
 
         status_code, reason, text, result = self.app.client.get_role(role_id)
         json_results = CommandHelper.check_results(
@@ -2325,7 +2318,9 @@ class UpdateRole(Command):
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("role_id", type=str, help="Role ID (UUID) or role name")
+        parser.add_argument(
+            "role_id", type=str, help="Role ID (UUID) or role name"
+        )
         parser.add_argument(
             "--permissions",
             type=str,
@@ -2338,9 +2333,7 @@ class UpdateRole(Command):
 
     def take_action(self, parsed_args):
         resource = self.group
-        role_id = Client.resolve_role_id(
-            self.app.client, parsed_args.role_id
-        )
+        role_id = Client.resolve_role_id(self.app.client, parsed_args.role_id)
         permissions = None
         if parsed_args.permissions:
             try:
@@ -2372,14 +2365,14 @@ class DeleteRole(Command):
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("role_id", type=str, help="Role ID (UUID) or role name")
+        parser.add_argument(
+            "role_id", type=str, help="Role ID (UUID) or role name"
+        )
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
-        role_id = Client.resolve_role_id(
-            self.app.client, parsed_args.role_id
-        )
+        role_id = Client.resolve_role_id(self.app.client, parsed_args.role_id)
 
         status_code, reason, text, result = self.app.client.delete_role(
             role_id
@@ -2413,12 +2406,12 @@ class GetRoles(Lister):
     def take_action(self, parsed_args):
         resource = self.group
         header_list = ["id", "role_name", "permissions", "description"]
-        
+
         # Build filters if role_name is provided
         filters = None
         if parsed_args.role_name:
             filters = {"role_name": parsed_args.role_name}
-        
+
         status_code, reason, text, result = self.app.client.get_roles(
             filters=filters
         )
@@ -2435,7 +2428,7 @@ class GetRoles(Lister):
 
 class ChangePassword(Command):
     """Change password for user by ID or name.
-    
+
     Can accept either a UUID or a user name as user_id parameter.
     If a valid UUID is provided, it will be used directly.
     Otherwise, the system will look up the user by name.
@@ -2445,16 +2438,16 @@ class ChangePassword(Command):
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("user_id", type=str, help="User ID (UUID) or user name")
+        parser.add_argument(
+            "user_id", type=str, help="User ID (UUID) or user name"
+        )
         parser.add_argument("old_password", type=str, help="Old password")
         parser.add_argument("new_password", type=str, help="New password")
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
-        user_id = Client.resolve_user_id(
-            self.app.client, parsed_args.user_id
-        )
+        user_id = Client.resolve_user_id(self.app.client, parsed_args.user_id)
         status_code, reason, text, result = self.app.client.change_password(
             user_id,
             parsed_args.old_password,

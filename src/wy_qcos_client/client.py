@@ -708,8 +708,8 @@ class Client:
             users_data = json.loads(text)
             # Parse the response to find user by name
             # Response format: {user_id: {user_data}, ...}
-            if 'result' in users_data and users_data['result']:
-                users_info = users_data['result']
+            if "result" in users_data and users_data["result"]:
+                users_info = users_data["result"]
                 # Should only have one or zero users due to filter
                 # Get the first (and only) user_id key
                 for user_id in users_info.keys():
@@ -750,8 +750,8 @@ class Client:
             roles_data = json.loads(text)
             # Parse the response to find role by name
             # Response format: {role_id: {role_data}, ...}
-            if 'result' in roles_data and roles_data['result']:
-                roles_info = roles_data['result']
+            if "result" in roles_data and roles_data["result"]:
+                roles_info = roles_data["result"]
                 # Should only have one or zero roles due to filter
                 # Get the first (and only) role_id key
                 for role_id in roles_info.keys():
@@ -849,7 +849,7 @@ class Client:
         """Get users with optional filtering.
 
         Args:
-            filters: Optional dict with filter conditions, e.g. {'user_name': 'admin'}
+            filters: Optional filter conditions dictionary
         """
         data = {}
         if filters:
@@ -900,7 +900,8 @@ class Client:
         """Get roles with optional filtering.
 
         Args:
-            filters: Optional dict with filter conditions, e.g. {'role_name': 'admin'}
+            filters: Optional dict with filter conditions, e.g.
+                {'role_name': 'admin'}
         """
         data = {}
         if filters:

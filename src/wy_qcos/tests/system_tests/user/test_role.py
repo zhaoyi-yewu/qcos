@@ -15,9 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import logging
 import pytest
 
-from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import _s
 from wy_qcos.tests.system_tests.common.library import StLibrary
 from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
@@ -44,15 +44,19 @@ class TestRole:
         )
         for role_name in cls.test_roles:
             try:
-                StLibrary.delete_role(cls.admin_client, role_name, is_name=True)
-            except:
-                pass
+                StLibrary.delete_role(
+                    cls.admin_client, role_name, is_name=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
         for username in cls.test_users:
             try:
-                StLibrary.delete_user(cls.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    cls.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @classmethod
     def setup_class(cls):
@@ -71,7 +75,6 @@ class TestRole:
 
         # Clean up any existing test resources before starting tests
         cls._cleanup_test_resources()
-
 
     @classmethod
     def teardown_class(cls):
@@ -117,15 +120,19 @@ class TestRole:
             assert "read" in created_role.get("permissions", [])
 
             # Verify role is created
-            retrieved_role = StLibrary.get_role(self.admin_client, "_test_role_st", is_name=True)
+            retrieved_role = StLibrary.get_role(
+                self.admin_client, "_test_role_st", is_name=True
+            )
             assert retrieved_role["role_name"] == "_test_role_st"
 
         finally:
             # Delete role
             try:
-                StLibrary.delete_role(self.admin_client, "_test_role_st", is_name=True)
-            except:
-                pass
+                StLibrary.delete_role(
+                    self.admin_client, "_test_role_st", is_name=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_get_all_roles_list(self):

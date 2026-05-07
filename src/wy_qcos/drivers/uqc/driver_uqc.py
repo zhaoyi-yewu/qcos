@@ -114,7 +114,7 @@ class DriverUQCMatrix2(DriverBase):
         extra_configs = self.get_configs()
         self.token = extra_configs.get("password_token", "")
         self.uqc_host = extra_configs.get("uqc_host", "127.0.0.1")
-        self.uqc_port = extra_configs.get("uqc_port", 5001)
+        self.uqc_port = extra_configs.get("uqc_port", 8003)
         self.backend_device_name = extra_configs.get("backend_device_name", "")
         try:
             uqc_config.SERVER_HOST = self.uqc_host

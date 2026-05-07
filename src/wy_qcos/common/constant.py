@@ -96,11 +96,11 @@ class Constant:
     FILE_TYPE_CSV = ".csv"
 
     # User length
-    MIN_USER_LENGTH = 1
+    MIN_USER_LENGTH = 2
     MAX_USER_LENGTH = 64
 
     # Role length
-    MIN_ROLE_LENGTH = 1
+    MIN_ROLE_LENGTH = 2
     MAX_ROLE_LENGTH = 64
 
     # Description length

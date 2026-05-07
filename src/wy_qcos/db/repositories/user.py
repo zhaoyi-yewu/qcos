@@ -350,7 +350,6 @@ class UserRepository(BaseRepository):
     def _cleanup_old_login_logs(self):
         """Remove oldest login logs when exceeding MAX_LOGIN_LOGS."""
         try:
-
             # Count existing logs
             count_query = select(func.count(LoginLog.id))
             count_result = self._db_session.execute(count_query).scalar()
@@ -469,7 +468,6 @@ class UserRepository(BaseRepository):
             logger.debug(
                 f"Checking if token is blacklisted - jti: {token_jti}"
             )
-
 
             query = select(TokenBlacklist).where(
                 TokenBlacklist.token_jti == token_jti

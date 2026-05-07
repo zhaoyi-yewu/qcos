@@ -18,13 +18,17 @@
 # ruff: noqa: E402
 # load driver venv
 import sys
+
+from wy_qcos.common.config import Config
+from wy_qcos.common.library import Library
+
+org_path = Library.set_driver_venv_path("DriverQiskitQasmSim", Config.VENV_DIR)
+
 import logging
 from pathlib import Path
 import pytest
 from unittest.mock import patch, mock_open, MagicMock
 
-from wy_qcos.common.config import Config
-from wy_qcos.common.library import Library
 from wy_qcos.common.constant import Constant
 from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
@@ -37,8 +41,6 @@ from wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd import (
     get_parse_args,
     check_file_args,
 )
-
-org_path = Library.set_driver_venv_path("DriverQiskitQasmSim", Config.VENV_DIR)
 
 timer = Timer()
 

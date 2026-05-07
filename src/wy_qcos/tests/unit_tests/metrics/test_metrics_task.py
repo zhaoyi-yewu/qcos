@@ -52,7 +52,6 @@ class TestRedisClient:
 
     @pytest.mark.smoke
     def test_singleton(self):
-
         mock_redis = AsyncMock()
         with patch.object(
             metrics_task.async_redis, "Redis", return_value=mock_redis
@@ -63,7 +62,6 @@ class TestRedisClient:
                 assert c1 is c2
 
     def test_clear(self):
-
         mock_redis = AsyncMock()
         metrics_task._redis_client = mock_redis
         run_async(clear_redis_client())
@@ -71,7 +69,6 @@ class TestRedisClient:
         mock_redis.aclose.assert_called_once()
 
     def test_clear_error(self):
-
         mock_redis = AsyncMock()
         mock_redis.aclose.side_effect = Exception("Error")
         metrics_task._redis_client = mock_redis

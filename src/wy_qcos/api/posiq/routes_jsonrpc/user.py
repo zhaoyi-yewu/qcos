@@ -24,7 +24,7 @@ from fastapi import Depends, Request
 from wy_qcos.api.schemas import user as schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import user_api_v1
-from wy_qcos.common import args_schema, errors
+from wy_qcos.common import args_schema
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.config import Config
 from wy_qcos.common.library import Library
@@ -151,7 +151,7 @@ def create_user(
     password = body.password
     roles = body.roles
     description = body.description
-    
+
     # Set project_id to default if not provided
     project_id = body.project_id or Constant.DEFAULT_PROJECT_ID
     # Update body with resolved project_id for later use
@@ -1059,7 +1059,9 @@ def delete_role(
 
 
 @user_api_v1.method(
-    openapi_extra={"allowed_roles": Constant.ALL_ROLES,},
+    openapi_extra={
+        "allowed_roles": Constant.ALL_ROLES,
+    },
     errors=[
         jsonrpc_errors.BadRequestError,
         jsonrpc_errors.NotFoundError,

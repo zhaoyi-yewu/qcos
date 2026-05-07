@@ -225,7 +225,9 @@ class TestRBAC:
 
         # Find roles by name in the response
         admin_roles = [r for r in roles.values() if r.role_name == "admin"]
-        operator_roles = [r for r in roles.values() if r.role_name == "operator"]
+        operator_roles = [
+            r for r in roles.values() if r.role_name == "operator"
+        ]
 
         assert len(admin_roles) == 1
         assert len(operator_roles) == 1

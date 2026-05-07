@@ -188,16 +188,19 @@ class TestUserManager:
             manager.create_role(
                 "admin",
                 permissions=["*"],
-                description="Administrator with full permissions"
+                description="Administrator with full permissions",
             )
             manager.create_role(
                 "user",
                 permissions=[
-                    "/v1/auth/logout", "/v1/auth/me", "/v1/device/get_device",
-                    "/v1/device/get_devices", "/v1/driver/get_driver",
-                    "/v1/driver/get_drivers"
+                    "/v1/auth/logout",
+                    "/v1/auth/me",
+                    "/v1/device/get_device",
+                    "/v1/device/get_devices",
+                    "/v1/driver/get_driver",
+                    "/v1/driver/get_drivers",
                 ],
-                description="Regular user with basic permissions"
+                description="Regular user with basic permissions",
             )
 
             # Create default admin user for tests
@@ -209,7 +212,7 @@ class TestUserManager:
                 True,
                 False,
                 0,
-                "Administrator user"
+                "Administrator user",
             )
 
             # Clear login_logs to start fresh for each test
@@ -498,14 +501,24 @@ class TestUserManager:
     def test_create_user_duplicate(self, user_manager):
         """Test creating a user with duplicate username."""
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "testuser", _s("password123"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "testuser",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
         )
 
         with pytest.raises(ValueError, match="already exists"):
             user_manager.create_user(
-                Constant.DEFAULT_PROJECT_ID, "testuser", _s("password456"),
-                ["user"], True, False, 90
+                Constant.DEFAULT_PROJECT_ID,
+                "testuser",
+                _s("password456"),
+                ["user"],
+                True,
+                False,
+                90,
             )
 
     def test_create_user_invalid_name(self, user_manager):
@@ -538,15 +551,25 @@ class TestUserManager:
         """Test creating user with invalid roles."""
         with pytest.raises(ValueError, match="does not exist"):
             user_manager.create_user(
-                Constant.DEFAULT_PROJECT_ID, "testuser", _s("password123"),
-                ["nonexistent"], True, False, 90
+                Constant.DEFAULT_PROJECT_ID,
+                "testuser",
+                _s("password123"),
+                ["nonexistent"],
+                True,
+                False,
+                90,
             )
 
     def test_get_user_success(self, user_manager):
         """Test successful user retrieval."""
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "testuser", _s("password123"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "testuser",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
         )
         user = user_manager.get_user("testuser")
 
@@ -562,8 +585,13 @@ class TestUserManager:
     def test_update_user_success(self, user_manager):
         """Test successful user update."""
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "testuser", _s("password123"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "testuser",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
         )
 
         updated_user = user_manager.update_user(
@@ -591,8 +619,13 @@ class TestUserManager:
     def test_delete_user_success(self, user_manager):
         """Test successful user deletion."""
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "testuser", _s("password123"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "testuser",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
         )
         user = user_manager.delete_user("testuser")
 
@@ -607,16 +640,31 @@ class TestUserManager:
     def test_find_users_by_role(self, user_manager):
         """Test finding users by role."""
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "user1", _s("password123"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "user1",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
         )
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "user2", _s("password123"),
-            ["admin"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "user2",
+            _s("password123"),
+            ["admin"],
+            True,
+            False,
+            90,
         )
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "user3", _s("password123"),
-            ["user", "admin"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "user3",
+            _s("password123"),
+            ["user", "admin"],
+            True,
+            False,
+            90,
         )
 
         users_with_user_role = user_manager.find_users_by_role("user")
@@ -788,8 +836,13 @@ class TestConcurrentUserOperations:
         users = []
         for i in range(3):
             user = user_manager.create_user(
-                Constant.DEFAULT_PROJECT_ID, f"seq_user_{i}",
-                _s(f"pass_{i}"), ["user"], True, False, 90
+                Constant.DEFAULT_PROJECT_ID,
+                f"seq_user_{i}",
+                _s(f"pass_{i}"),
+                ["user"],
+                True,
+                False,
+                90,
             )
             users.append(user)
 
@@ -801,8 +854,13 @@ class TestConcurrentUserOperations:
     def test_duplicate_user_creation_prevention(self, user_manager):
         """Test that duplicate user creation is prevented."""
         user1 = user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "unique_user", _s("password123"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "unique_user",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
         )
         assert user1.user_name == "unique_user"
 
@@ -851,8 +909,13 @@ class TestConcurrentUserOperations:
         """Test user deletion while login attempt is happening."""
         # Create user
         user = user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "delete_test_user", _s("password123"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "delete_test_user",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
         )
         assert user.user_name == "delete_test_user"
 
@@ -980,16 +1043,31 @@ class TestUserQueryOperations:
 
         # Create test users
         manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "query_user1", _s("password1"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "query_user1",
+            _s("password1"),
+            ["user"],
+            True,
+            False,
+            90,
         )
         manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "query_user2", _s("password2"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "query_user2",
+            _s("password2"),
+            ["user"],
+            True,
+            False,
+            90,
         )
         manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "admin_user1", _s("password3"),
-            ["admin"], True, False, 0
+            Constant.DEFAULT_PROJECT_ID,
+            "admin_user1",
+            _s("password3"),
+            ["admin"],
+            True,
+            False,
+            0,
         )
 
         return manager
@@ -1077,16 +1155,31 @@ class TestUserLifecycleIntegration:
 
         # Create users with different roles
         admin = user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "admin_user", _s("admin_pass"),
-            ["super_admin"], True, False, 0
+            Constant.DEFAULT_PROJECT_ID,
+            "admin_user",
+            _s("admin_pass"),
+            ["super_admin"],
+            True,
+            False,
+            0,
         )
         viewer = user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "viewer_user", _s("viewer_pass"),
-            ["viewer"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "viewer_user",
+            _s("viewer_pass"),
+            ["viewer"],
+            True,
+            False,
+            90,
         )
         regular_user = user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "regular_user", _s("user_pass"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "regular_user",
+            _s("user_pass"),
+            ["user"],
+            True,
+            False,
+            90,
         )
 
         # Verify role assignments
@@ -1363,13 +1456,31 @@ class TestUserBatchOperations:
         """Test finding users with multiple role assignments."""
         # Create users with overlapping roles
         user_manager.create_user(
-            "default_project", "multi_user1", _s("pass123"), ["user", "admin"], True, False, 90
+            "default_project",
+            "multi_user1",
+            _s("pass123"),
+            ["user", "admin"],
+            True,
+            False,
+            90,
         )
         user_manager.create_user(
-            "default_project", "multi_user2", _s("pass456"), ["user"], True, False, 90
+            "default_project",
+            "multi_user2",
+            _s("pass456"),
+            ["user"],
+            True,
+            False,
+            90,
         )
         user_manager.create_user(
-            "default_project", "multi_user3", _s("pass789"), ["admin"], True, False, 90
+            "default_project",
+            "multi_user3",
+            _s("pass789"),
+            ["admin"],
+            True,
+            False,
+            90,
         )
 
         # Find by each role
@@ -1552,16 +1663,19 @@ class TestAuthModeUserOperations:
             manager.create_role(
                 "admin",
                 permissions=["*"],
-                description="Administrator with full permissions"
+                description="Administrator with full permissions",
             )
             manager.create_role(
                 "user",
                 permissions=[
-                    "/v1/auth/logout", "/v1/auth/me", "/v1/device/get_device",
-                    "/v1/device/get_devices", "/v1/driver/get_driver",
-                    "/v1/driver/get_drivers"
+                    "/v1/auth/logout",
+                    "/v1/auth/me",
+                    "/v1/device/get_device",
+                    "/v1/device/get_devices",
+                    "/v1/driver/get_driver",
+                    "/v1/driver/get_drivers",
                 ],
-                description="Regular user with basic permissions"
+                description="Regular user with basic permissions",
             )
 
             # Create default admin user for tests
@@ -1573,7 +1687,7 @@ class TestAuthModeUserOperations:
                 True,
                 False,
                 0,
-                "Administrator user"
+                "Administrator user",
             )
 
             # Clear login_logs to start fresh for each test
@@ -1862,14 +1976,24 @@ class TestAuthModeUserOperations:
     def test_create_user_duplicate(self, user_manager):
         """Test creating a user with duplicate username."""
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "testuser", _s("password123"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "testuser",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
         )
 
         with pytest.raises(ValueError, match="already exists"):
             user_manager.create_user(
-                Constant.DEFAULT_PROJECT_ID, "testuser", _s("password456"),
-                ["user"], True, False, 90
+                Constant.DEFAULT_PROJECT_ID,
+                "testuser",
+                _s("password456"),
+                ["user"],
+                True,
+                False,
+                90,
             )
 
     def test_create_user_invalid_name(self, user_manager):
@@ -1902,15 +2026,25 @@ class TestAuthModeUserOperations:
         """Test creating user with invalid roles."""
         with pytest.raises(ValueError, match="does not exist"):
             user_manager.create_user(
-                Constant.DEFAULT_PROJECT_ID, "testuser", _s("password123"),
-                ["nonexistent"], True, False, 90
+                Constant.DEFAULT_PROJECT_ID,
+                "testuser",
+                _s("password123"),
+                ["nonexistent"],
+                True,
+                False,
+                90,
             )
 
     def test_get_user_success(self, user_manager):
         """Test successful user retrieval."""
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "testuser", _s("password123"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "testuser",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
         )
         user = user_manager.get_user("testuser")
 
@@ -1926,8 +2060,13 @@ class TestAuthModeUserOperations:
     def test_update_user_success(self, user_manager):
         """Test successful user update."""
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "testuser", _s("password123"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "testuser",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
         )
 
         updated_user = user_manager.update_user(
@@ -1955,8 +2094,13 @@ class TestAuthModeUserOperations:
     def test_delete_user_success(self, user_manager):
         """Test successful user deletion."""
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "testuser", _s("password123"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "testuser",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
         )
         user = user_manager.delete_user("testuser")
 
@@ -1971,16 +2115,31 @@ class TestAuthModeUserOperations:
     def test_find_users_by_role(self, user_manager):
         """Test finding users by role."""
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "user1", _s("password123"),
-            ["user"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "user1",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
         )
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "user2", _s("password123"),
-            ["admin"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "user2",
+            _s("password123"),
+            ["admin"],
+            True,
+            False,
+            90,
         )
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "user3", _s("password123"),
-            ["user", "admin"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "user3",
+            _s("password123"),
+            ["user", "admin"],
+            True,
+            False,
+            90,
         )
 
         users_with_user_role = user_manager.find_users_by_role("user")
@@ -2087,4 +2246,3 @@ class TestAuthModeUserOperations:
 
         admin_permissions = [p[1] for p in admin_policies]
         assert "*" in admin_permissions
-

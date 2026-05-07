@@ -144,9 +144,7 @@ class TestClientLogin:
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.get_me()
         assert status_code == 200
-        mock_call_json_rpc.assert_called_once_with(
-            client.auth_url, "get_me_info", {}
-        )
+        mock_call_json_rpc.assert_called_once_with(client.auth_url, "me", {})
 
     @patch.object(Client, "call_json_rpc")
     def test_get_me_unauthorized(self, mock_call_json_rpc):

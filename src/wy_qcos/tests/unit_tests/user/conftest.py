@@ -177,16 +177,19 @@ def user_manager_with_mocks():
         manager.create_role(
             "admin",
             permissions=["*"],
-            description="Administrator with full permissions"
+            description="Administrator with full permissions",
         )
         manager.create_role(
             "user",
             permissions=[
-                "/v1/auth/logout", "/v1/auth/me", "/v1/device/get_device",
-                "/v1/device/get_devices", "/v1/driver/get_driver",
-                "/v1/driver/get_drivers"
+                "/v1/auth/logout",
+                "/v1/auth/me",
+                "/v1/device/get_device",
+                "/v1/device/get_devices",
+                "/v1/driver/get_driver",
+                "/v1/driver/get_drivers",
             ],
-            description="Regular user with basic permissions"
+            description="Regular user with basic permissions",
         )
 
         # Create default admin user for tests
@@ -198,7 +201,7 @@ def user_manager_with_mocks():
             True,
             False,
             0,
-            "Administrator user"
+            "Administrator user",
         )
 
         # Clear login_logs to start fresh for each test

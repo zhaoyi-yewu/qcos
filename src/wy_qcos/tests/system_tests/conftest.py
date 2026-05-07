@@ -23,7 +23,7 @@ from pathlib import Path
 
 from wy_qcos.common.constant import Constant
 from wy_qcos_client.client import Client
-from wy_qcos.common.library import HttpCode, Library, _s
+from wy_qcos.common.library import Library, _s
 from wy_qcos.common.config import Config
 from wy_qcos.tests.system_tests.common.library import StLibrary
 
@@ -90,7 +90,9 @@ def global_configs(request):
     # Authenticate with admin credentials at the beginning
     client = Client(api_server_ip=api_host, api_server_port=api_port)
     admin_client = Client(api_server_ip=api_host, api_server_port=api_port)
-    login_result = StLibrary.login(admin_client, admin_user, str(admin_password))
+    login_result = StLibrary.login(
+        admin_client, admin_user, str(admin_password)
+    )
     token = login_result["access_token"]
     admin_client.set_token(token)
     GLOBAL_CONFIGS["client"] = client

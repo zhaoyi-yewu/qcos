@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import logging
 import pytest
 
 from wy_qcos.common.constant import Constant, HttpCode
@@ -49,9 +50,11 @@ class TestSecurity:
         )
         for username in cls.test_usernames:
             try:
-                StLibrary.delete_user(cls.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    cls.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @classmethod
     def setup_class(cls):
@@ -74,10 +77,9 @@ class TestSecurity:
         cls.password_1 = _s("Password123!")
         cls.password_2 = _s("Password456!")
         cls.password_2 = _s("Password456!")
-        
+
         # Clean up any existing test resources before starting tests
         cls._cleanup_test_users()
-
 
     @classmethod
     def teardown_class(cls):
@@ -99,7 +101,9 @@ class TestSecurity:
             result = StLibrary.create_user(self.admin_client, user_data)
             assert result is not None
             # Retrieve test user and verify password is not exposed
-            user = StLibrary.get_user(self.admin_client, "_test_no_plain_pwd_user", is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, "_test_no_plain_pwd_user", is_name=True
+            )
             assert user is not None
             # Password should not be in response
             assert "password" not in user
@@ -107,12 +111,17 @@ class TestSecurity:
             assert str(self.password) not in str(user)
         except (AssertionError, Exception):
             # Expected to fail
-            pass
+            logging.warning("Expected exception during test")
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, "_test_no_plain_pwd_user", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_no_plain_pwd_user",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_weak_password_rejection(self):
@@ -132,23 +141,30 @@ class TestSecurity:
 
         except (AssertionError, Exception):
             # Expected to fail
-            pass
+            logging.warning("Expected exception during test")
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, "_test_weak_pwd_user", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_weak_pwd_user",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_invalid_credentials_denied(self):
         """Test invalid credentials are denied access."""
         # Test user with wrong password
         try:
-            result = StLibrary.login(self.client, self.test_user, "wrong_password")
+            result = StLibrary.login(
+                self.client, self.test_user, "wrong_password"
+            )
             assert result is None or result.get("user_name") is None
         except (AssertionError, Exception):
             # Expected to fail
-            pass
+            logging.warning("Expected exception during test")
 
     @pytest.mark.smoke
     def test_nonexistent_user_denied_login(self):
@@ -160,7 +176,7 @@ class TestSecurity:
             assert result is None or result.get("user_name") is None
         except (AssertionError, Exception):
             # Expected to fail
-            pass
+            logging.warning("Expected exception during test")
 
     @pytest.mark.smoke
     def test_successful_login_returns_token(self):
@@ -174,11 +190,13 @@ class TestSecurity:
             "roles": [Constant.ROLE_ADMIN],
             "is_locked": False,
         }
-        
+
         try:
             StLibrary.create_user(self.admin_client, user_data)
-            
-            login_result = StLibrary.login(self.client, username, str(password))
+
+            login_result = StLibrary.login(
+                self.client, username, str(password)
+            )
             assert login_result is not None
             # Should have access token or similar auth mechanism
             assert (
@@ -188,9 +206,11 @@ class TestSecurity:
             )
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_token_invalidation_on_logout(self):
@@ -204,12 +224,14 @@ class TestSecurity:
             "roles": [Constant.ROLE_ADMIN],
             "is_locked": False,
         }
-        
+
         try:
             StLibrary.create_user(self.admin_client, user_data)
-            
+
             # Login
-            login_result = StLibrary.login(self.client, username, str(password))
+            login_result = StLibrary.login(
+                self.client, username, str(password)
+            )
             assert login_result is not None
 
             # Logout
@@ -218,17 +240,21 @@ class TestSecurity:
 
             # Try to use old token - should fail
             try:
-                user = StLibrary.get_user(self.admin_client, username, is_name=True)
+                user = StLibrary.get_user(
+                    self.admin_client, username, is_name=True
+                )
                 # If we can still access, verify it's a new session
                 assert user is not None
-            except:
+            except Exception:
                 # Expected - token invalidated
-                pass
+                logging.warning("Exception during cleanup")
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_role_based_access_control(self):
@@ -259,9 +285,14 @@ class TestSecurity:
 
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, "_test_rbac_user", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_rbac_user",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_permission_enforcement_denied(self):
@@ -290,19 +321,29 @@ class TestSecurity:
                 )
                 # If succeeds, verify it's from admin context
                 assert result is None or result.get("error") is not None
-            except:
+            except Exception:
                 # Expected - permission denied
-                pass
+                logging.warning("Exception during cleanup")
 
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, "_test_limited_perms_user", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_limited_perms_user",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
             try:
-                StLibrary.delete_user(self.admin_client, "_test_unauthorized_create", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_unauthorized_create",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_sql_injection_prevention(self):
@@ -321,9 +362,9 @@ class TestSecurity:
                 # Input should be sanitized
                 assert injection_payload not in result.get("user_name", "")
 
-        except:
+        except Exception:
             # Expected - malformed input rejected
-            pass
+            logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_admin_password_change_security(self):
@@ -356,21 +397,28 @@ class TestSecurity:
                     str(self.old_password),
                 )
                 assert login_result is None
-            except:
+            except Exception:
                 # Expected - old password should fail
-                pass
+                logging.warning("Exception during cleanup")
 
             # Verify new password works
             login_result = StLibrary.login(
-                self.client, "_test_pwd_change_security", str(self.new_password)
+                self.client,
+                "_test_pwd_change_security",
+                str(self.new_password),
             )
             assert login_result is not None
 
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, "_test_pwd_change_security", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_pwd_change_security",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_audit_logging_user_operations(self):
@@ -397,8 +445,9 @@ class TestSecurity:
             init_login_logs_count = len(login_logs)
 
             # login successfully
-            StLibrary.login(self.client, "_test_audit_user",
-                            str(self.password))
+            StLibrary.login(
+                self.client, "_test_audit_user", str(self.password)
+            )
             # Attempt to get login logs
             login_logs = StLibrary.get_login_logs(
                 self.admin_client, username="_test_audit_user"
@@ -408,7 +457,9 @@ class TestSecurity:
 
             # login failed (wrong password)
             wrong_password = f"{self.password}_wrong"
-            status_code, reason, text, result = self.client.login("_test_audit_user", wrong_password)
+            status_code, reason, text, result = self.client.login(
+                "_test_audit_user", wrong_password
+            )
             assert status_code == HttpCode.SUCCESS_OK
             # Attempt to get login logs
             login_logs = StLibrary.get_login_logs(
@@ -418,9 +469,14 @@ class TestSecurity:
             assert len(login_logs) == init_login_logs_count + 2
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, "_test_audit_user", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_audit_user",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_session_isolation(self):
@@ -447,14 +503,20 @@ class TestSecurity:
             assert user2["user_name"] == "_test_session_user2"
 
             # Login as user1
-            StLibrary.login(self.client, "_test_session_user1", str(self.password_1))
+            StLibrary.login(
+                self.client, "_test_session_user1", str(self.password_1)
+            )
 
             # Verify user1 session exists
-            current_user = StLibrary.get_user(self.admin_client, "_test_session_user1", is_name=True)
+            current_user = StLibrary.get_user(
+                self.admin_client, "_test_session_user1", is_name=True
+            )
             assert current_user is not None
 
             # Login as user2
-            login_response = StLibrary.login(self.client, "_test_session_user2", str(self.password_2))
+            login_response = StLibrary.login(
+                self.client, "_test_session_user2", str(self.password_2)
+            )
             self.client.set_token(login_response["access_token"])
 
             # Verify user2 session is now active
@@ -464,10 +526,20 @@ class TestSecurity:
 
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, "_test_session_user1", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_session_user1",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
             try:
-                StLibrary.delete_user(self.admin_client, "_test_session_user2", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_session_user2",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")

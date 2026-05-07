@@ -320,8 +320,13 @@ class TestUserManagerRoles:
             ["/version", "/v1/device/get_device", "/v1/device/get_devices"],
         )
         user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "testuser", _s("password123"),
-            ["testrole"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "testuser",
+            _s("password123"),
+            ["testrole"],
+            True,
+            False,
+            90,
         )
 
         # Should be able to delete role even if used by users
@@ -425,8 +430,13 @@ class TestRolePermissionIntegration:
 
         # Create user with this role
         user = user_manager.create_user(
-            Constant.DEFAULT_PROJECT_ID, "temp_user", _s("password123"),
-            ["temp_role"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID,
+            "temp_user",
+            _s("password123"),
+            ["temp_role"],
+            True,
+            False,
+            90,
         )
         assert "temp_role" in user.roles
 

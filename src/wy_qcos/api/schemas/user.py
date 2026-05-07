@@ -24,6 +24,7 @@ from pydantic import (
     field_serializer,
     model_validator,
 )
+
 from wy_qcos.common.constant import Constant
 
 
@@ -51,7 +52,10 @@ class UserRead(BaseModel):
         default=0, description="Failed login attempts count"
     )
     description: str | None = Field(
-        default=None, description="User description"
+        default=None,
+        min_length=Constant.MIN_DESCRIPTION_LENGTH,
+        max_length=Constant.MAX_DESCRIPTION_LENGTH,
+        description="User description",
     )
     created_at: str = Field(..., description="User creation timestamp")
     updated_at: str = Field(..., description="User last updated timestamp")
@@ -61,16 +65,27 @@ class UserCreate(BaseModel):
     """User create schema."""
 
     user_name: str = Field(
-        ..., min_length=3, max_length=50, description="User name"
+        ...,
+        min_length=Constant.MIN_USER_LENGTH,
+        max_length=Constant.MAX_USER_LENGTH,
+        description="User name",
     )
-    password: str = Field(..., min_length=6, description="Password")
+    password: str = Field(
+        ...,
+        min_length=Constant.MIN_PASSWORD_LENGTH,
+        max_length=Constant.MAX_PASSWORD_LENGTH,
+        description="Password",
+    )
     roles: list[str] = Field(default=["user"], description="User roles")
     is_locked: bool = Field(default=False, description="Is user locked")
     password_expiry_days: int | None = Field(
         default=None, description="Password expiry days"
     )
     description: str | None = Field(
-        default=None, description="User description"
+        default=None,
+        min_length=Constant.MIN_DESCRIPTION_LENGTH,
+        max_length=Constant.MAX_DESCRIPTION_LENGTH,
+        description="User description",
     )
 
 
@@ -78,7 +93,10 @@ class UserUpdate(BaseModel):
     """User update schema."""
 
     user_name: str | None = Field(
-        default=None, min_length=3, max_length=50, description="User name"
+        default=None,
+        min_length=Constant.MIN_USER_LENGTH,
+        max_length=Constant.MAX_USER_LENGTH,
+        description="User name",
     )
     roles: list[str] | None = Field(default=None, description="User roles")
     is_locked: bool | None = Field(default=None, description="Is user locked")
@@ -86,7 +104,10 @@ class UserUpdate(BaseModel):
         default=None, description="Password expiry days"
     )
     description: str | None = Field(
-        default=None, description="User description"
+        default=None,
+        min_length=Constant.MIN_DESCRIPTION_LENGTH,
+        max_length=Constant.MAX_DESCRIPTION_LENGTH,
+        description="User description",
     )
 
 
@@ -106,7 +127,7 @@ class User(BaseModel):
     )
     project_id: str = Field(
         default_factory=lambda: Constant.DEFAULT_PROJECT_ID,
-        description="Project ID (UUID)"
+        description="Project ID (UUID)",
     )
     user_name: str = Field(..., description="User name")
     hashed_password: str = Field(
@@ -194,14 +215,19 @@ class CreateUserRequest(BaseModel):
 
     project_id: str | None = Field(
         default=None,
-        description="Project ID (UUID) - optional, defaults to DEFAULT_PROJECT_ID"
+        description="Project ID (UUID) - optional, "
+        "defaults to DEFAULT_PROJECT_ID",
     )
     user_name: str = Field(
-        ..., min_length=3, max_length=50, description="User name"
+        ...,
+        min_length=Constant.MIN_USER_LENGTH,
+        max_length=Constant.MAX_USER_LENGTH,
+        description="User name",
     )
     password: str = Field(
         ...,
-        min_length=6,
+        min_length=Constant.MIN_PASSWORD_LENGTH,
+        max_length=Constant.MAX_PASSWORD_LENGTH,
         description="Password",
         json_schema_extra={"is_sensitive": True},
     )
@@ -229,6 +255,9 @@ class CreateUserResponse(BaseModel):
     roles: list[str] | None = Field(..., description="User roles")
     is_enabled: bool | None = Field(..., description="Whether user is enabled")
     is_locked: bool | None = Field(..., description="Whether user is locked")
+    description: str | None = Field(
+        default=None, description="User description"
+    )
     created_at: str | None = Field(..., description="Creation timestamp")
 
 
@@ -271,7 +300,7 @@ class GetUsersRequest(BaseModel):
 
     filters: dict | None = Field(
         default=None,
-        description="Filter conditions dict, e.g. {'user_name': 'admin'}"
+        description="Filter conditions dict, e.g. {'user_name': 'admin'}",
     )
 
 
@@ -321,7 +350,7 @@ class DeleteUserRequest(BaseModel):
     user_id: str = Field(..., description="User ID (UUID)")
     force: bool = Field(
         default=False,
-        description="Force delete user and cascade delete related resources"
+        description="Force delete user and cascade delete related resources",
     )
 
 
@@ -363,7 +392,8 @@ class ChangePasswordRequest(BaseModel):
     )
     new_password: str = Field(
         ...,
-        min_length=6,
+        min_length=Constant.MIN_PASSWORD_LENGTH,
+        max_length=Constant.MAX_PASSWORD_LENGTH,
         description="New password",
         json_schema_extra={"is_sensitive": True},
     )
@@ -465,11 +495,17 @@ class CreateRoleRequest(BaseModel):
     """Create role request."""
 
     role_name: str = Field(
-        ..., min_length=2, max_length=50, description="Role name"
+        ...,
+        min_length=Constant.MIN_ROLE_LENGTH,
+        max_length=Constant.MAX_ROLE_LENGTH,
+        description="Role name",
     )
     permissions: list[str] = Field(default=[], description="Role permissions")
-    description: str = Field(
-        default="", max_length=200, description="Role description"
+    description: str | None = Field(
+        default=None,
+        min_length=Constant.MIN_DESCRIPTION_LENGTH,
+        max_length=Constant.MAX_DESCRIPTION_LENGTH,
+        description="Role description",
     )
 
 
@@ -479,7 +515,9 @@ class CreateRoleResponse(BaseModel):
     id: str = Field(..., description="Role ID (UUID)")
     role_name: str = Field(..., description="Role name")
     permissions: list[str] = Field(..., description="Role permissions")
-    description: str = Field(..., description="Role description")
+    description: str | None = Field(
+        default=None, description="Role description"
+    )
 
 
 class GetRoleRequest(BaseModel):
@@ -494,7 +532,9 @@ class GetRoleResponse(BaseModel):
     id: str = Field(..., description="Role ID (UUID)")
     role_name: str = Field(..., description="Role name")
     permissions: list[str] = Field(..., description="Role permissions")
-    description: str = Field(..., description="Role description")
+    description: str | None = Field(
+        default=None, description="Role description"
+    )
 
 
 class GetRolesRequest(BaseModel):
@@ -502,7 +542,7 @@ class GetRolesRequest(BaseModel):
 
     filters: dict | None = Field(
         default=None,
-        description="Filter conditions dict, e.g. {'role_name': 'admin'}"
+        description="Filter conditions dict, e.g. {'role_name': 'admin'}",
     )
 
 

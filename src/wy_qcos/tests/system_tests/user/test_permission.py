@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import logging
 import json
 import pytest
 
@@ -44,15 +45,19 @@ class TestPermission:
         """Clean up test roles and users."""
         for role_name in cls.test_roles:
             try:
-                StLibrary.delete_role(cls.admin_client, role_name, is_name=True)
-            except:
-                pass
+                StLibrary.delete_role(
+                    cls.admin_client, role_name, is_name=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
         for username in cls.test_users:
             try:
-                StLibrary.delete_user(cls.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    cls.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @classmethod
     def setup_class(cls):
@@ -71,7 +76,6 @@ class TestPermission:
 
         # Clean up any existing test resources before starting tests
         cls._cleanup_test_resources()
-
 
     @classmethod
     def teardown_class(cls):
@@ -137,14 +141,21 @@ class TestPermission:
         finally:
             # Clean up test data
             try:
-                StLibrary.delete_user(self.admin_client, "_test_user_permissions", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_user_permissions",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
             try:
-                StLibrary.delete_role(self.admin_client, "_test_read_only_role", is_name=True)
-            except:
-                pass
+                StLibrary.delete_role(
+                    self.admin_client, "_test_read_only_role", is_name=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_permission_role_insufficient_permission(self):
@@ -173,11 +184,16 @@ class TestPermission:
 
             # Create user
             new_user = StLibrary.create_user(self.admin_client, user_data)
-            assert new_user["user_name"] == "_test_user_insufficient_permissions"
+            assert (
+                new_user["user_name"] == "_test_user_insufficient_permissions"
+            )
 
             # login
-            login_response = StLibrary.login(self.client, "_test_user_insufficient_permissions",
-                                             str(self.password))
+            login_response = StLibrary.login(
+                self.client,
+                "_test_user_insufficient_permissions",
+                str(self.password),
+            )
             self.client.set_token(login_response["access_token"])
 
             # access device (success)
@@ -192,15 +208,24 @@ class TestPermission:
             result = json.loads(text)
             error = result.get("error", {})
             error_code = error.get("code", 0)
-            assert error_code == - HttpCode.FORBIDDEN_ERROR
+            assert error_code == -HttpCode.FORBIDDEN_ERROR
         finally:
             # Clean up test data
             try:
-                StLibrary.delete_user(self.admin_client, "_test_user_insufficient_permissions", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_user_insufficient_permissions",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
             try:
-                StLibrary.delete_role(self.admin_client, "_test_role_insufficient_permission", is_name=True)
-            except:
-                pass
+                StLibrary.delete_role(
+                    self.admin_client,
+                    "_test_role_insufficient_permission",
+                    is_name=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
