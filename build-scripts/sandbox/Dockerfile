@@ -30,12 +30,12 @@ ENV QCOS_SANDBOX=true
 
 # Install extra rpm packages for sandbox: LaTeX/fonts/Java/Graphics etc.
 RUN set -e && \
-    yum install -y rpm-build firefox java graphviz \
+    yum install -y rpm-build firefox java npm docker docker-compose graphviz \
     texlive-gnu-freefont latexmk texlive texlive-xetex texlive-xecjk \
     texlive-ctex texlive-fncychap texlive-wrapfig texlive-capt-of \
     texlive-framed texlive-upquote texlive-needspace texlive-tabulary \
     texlive-lastpage texlive-tocloft texlive-supertabular \
-    google-noto-sans-sc-fonts npm docker docker-compose && \
+    google-noto-sans-sc-fonts librsvg2-tools && \
     mktexlsr && fc-cache -fv && \
 # Install NPM packages: mermaid-cli, plantuml etc.
     registry_url="" && \
