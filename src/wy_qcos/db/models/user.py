@@ -46,6 +46,15 @@ class User(Base):
         index=True,
     )
 
+    # Foreign key to project (default: admin project)
+    project_id = Column(
+        String(36),
+        ForeignKey("projects.id"),
+        default="00000000-0000-4000-8000-000000000001",
+        nullable=False,
+        index=True,
+    )
+
     # Business unique constraint: user name
     user_name = Column(String(50), unique=True, index=True, nullable=False)
 
@@ -66,6 +75,7 @@ class User(Base):
 
     # Relationships
     user_roles = relationship("UserRole", back_populates="user")
+    project = relationship("Project", back_populates="users")
 
     @property
     def roles(self) -> list[str]:
