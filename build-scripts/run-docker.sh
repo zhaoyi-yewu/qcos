@@ -36,22 +36,20 @@ cd ${build_scripts_dir}
 docker-compose -f docker-compose-postgres.yaml down
 if [ "${DB_BACKEND,,}" = "postgres" ]; then
   docker-compose -f docker-compose-postgres.yaml up -d
+  docker exec -it postgres psql -U postgres -c "CREATE USER prefect WITH PASSWORD '${PREFECT_DATABASE_PASSWORD}';"
+  docker exec -it postgres psql -U postgres -c "CREATE DATABASE prefect WITH OWNER prefect;"
+  docker exec -it postgres psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE prefect TO prefect;"
 fi
-
-# start cli
-docker-compose -f docker-compose-dev-cli.yaml down
-docker-compose -f docker-compose-dev-cli.yaml up -d
-
-# init database
-docker exec -i -e PASS="${QCOS_DATABASE_PASSWORD}" qcos-dev-cli /bin/bash -c "cd /root/qcos-project/build-scripts; ./init-db.sh -i -u"
 
 # start qcos
 echo "Creating QCOS dockers ..."
 if [ "${DEV,,}" = "false" ]; then
+  # start qcos
   docker-compose -f docker-compose.yaml down
   docker-compose -f docker-compose.yaml up -d
   echo "Run QCOS bash: docker exec -it qcos bash"
 else
+  # start qcos-dev
   docker-compose -f docker-compose-dev.yaml down
   docker-compose -f docker-compose-dev.yaml up -d
   echo "Run QCOS bash: docker exec -it qcos-dev bash"
