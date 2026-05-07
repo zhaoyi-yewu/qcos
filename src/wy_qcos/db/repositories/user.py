@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 from wy_qcos.db.models import User, LoginLog, TokenBlacklist, UserRole, Role
 from wy_qcos.db.repositories import BaseRepository
 from wy_qcos.api.schemas.user import CreateUserRequest, UpdateUserRequest
+from wy_qcos.common.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -349,7 +350,6 @@ class UserRepository(BaseRepository):
     def _cleanup_old_login_logs(self):
         """Remove oldest login logs when exceeding MAX_LOGIN_LOGS."""
         try:
-            from wy_qcos.common.config import Config
 
             # Count existing logs
             count_query = select(func.count(LoginLog.id))
@@ -470,7 +470,6 @@ class UserRepository(BaseRepository):
                 f"Checking if token is blacklisted - jti: {token_jti}"
             )
 
-            from sqlalchemy import select
 
             query = select(TokenBlacklist).where(
                 TokenBlacklist.token_jti == token_jti
