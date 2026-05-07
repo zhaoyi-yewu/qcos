@@ -22,6 +22,7 @@ from datetime import datetime
 from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api
 from wy_qcos.api.schemas import user as schemas
 from wy_qcos.common.library import _s
+from wy_qcos.common.constant import Constant
 from wy_qcos.user.user_manager import UserManager
 
 
@@ -172,8 +173,33 @@ def user_manager_with_mocks():
         mock_roles_repo.delete_role_by_id.side_effect = mock_delete_role
         manager.roles_repo = mock_roles_repo
 
-        # Call init_users to create default roles
-        manager.init_users()
+        # Create default roles for tests
+        manager.create_role(
+            "admin",
+            permissions=["*"],
+            description="Administrator with full permissions"
+        )
+        manager.create_role(
+            "user",
+            permissions=[
+                "/v1/auth/logout", "/v1/auth/me", "/v1/device/get_device",
+                "/v1/device/get_devices", "/v1/driver/get_driver",
+                "/v1/driver/get_drivers"
+            ],
+            description="Regular user with basic permissions"
+        )
+
+        # Create default admin user for tests
+        manager.create_user(
+            Constant.DEFAULT_PROJECT_ID,
+            "admin",
+            "admin_password",
+            ["admin"],
+            True,
+            False,
+            0,
+            "Administrator user"
+        )
 
         # Clear login_logs to start fresh for each test
         manager.login_logs = []
