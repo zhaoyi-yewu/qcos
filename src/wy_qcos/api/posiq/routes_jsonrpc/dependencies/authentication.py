@@ -187,13 +187,23 @@ async def auth(
     """
     auth_data: dict[str, list[str] | str | None] | None = None
 
+    # No authentication
+    if Config.AUTH_MODE == Constant.AUTH_MODE_NO:
+        auth_data = {
+            Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_NO,
+            "user_id": Constant.ANONYMOUS_USERNAME,
+            "roles": [Constant.ROLE_ADMIN],
+            "auth_method": "no",
+        }
+        return auth_data
+
     # Virtual instance authentication
-    if Config.ENABLE_VIRT:
+    if Config.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE:
         auth_data = auth_virt(x_qcos_virtual_instance_id)
         return auth_data
 
     # JWT authentication (when user management is enabled)
-    if Config.ENABLE_USER_MGMT:
+    if Config.AUTH_MODE == Constant.AUTH_MODE_JWT:
         # Extract token from Authorization header
         access_token = await oauth2_scheme(request)
 
@@ -209,8 +219,10 @@ async def auth(
                 else current_user.roles
             )
             auth_data = {
-                Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_USER,
-                "user_id": current_user.user_name,
+                Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_JWT,
+                "user_id": current_user.id,
+                "user_name": current_user.user_name,
+                "project_id": current_user.project_id,
                 "roles": user_roles,
                 "auth_method": "jwt",
             }
@@ -263,7 +275,7 @@ def auth_virt(x_qcos_virtual_instance_id):
         auth_data = None
     else:
         auth_data = {
-            Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_VIRTUAL,
+            Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_VIRTUAL_INSTANCE,
             "device_names": device_names,
             "instance_id": instance_id,
         }
@@ -297,7 +309,7 @@ def auth_user(
     if not auth_data:
         jsonrpc_errors.handle_error_unauthorized(
             "authentication",
-            "require_permission",
+            "auth_user",
             (False, ["Authentication required"]),
         )
 
@@ -306,7 +318,7 @@ def auth_user(
     if not user_roles:
         jsonrpc_errors.handle_error_forbidden(
             "authentication",
-            "require_permission",
+            "auth_user",
             (False, ["No roles assigned to user"]),
         )
 
@@ -320,7 +332,25 @@ def auth_user(
     if not has_permission:
         jsonrpc_errors.handle_error_forbidden(
             "authentication",
-            "require_permission",
+            "auth_user",
             (False, [f"Insufficient permissions for {obj}:{act}"]),
         )
     return auth_data
+
+def auth_match_user_id(user_id, auth_data, allow_admin=False):
+    """Authenticate: user ids are matched.
+
+    Args:
+        user_id: User ID
+        auth_data: Authentication data containing user roles
+        allow_admin: Allow admin user
+    """
+    if allow_admin and Constant.ROLE_ADMIN in auth_data.get("roles", []):
+        return
+    if user_id == auth_data.get("user_id", None):
+        return
+    jsonrpc_errors.handle_error_forbidden(
+        "authentication",
+        "auth_match_user_id",
+        (False, ["User is not allowed to access the requested resource"]),
+    )
