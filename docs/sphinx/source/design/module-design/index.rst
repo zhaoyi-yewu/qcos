@@ -15,5 +15,4 @@
    instruction-set
    aggregation-cutting
    user
-   virtualization
    api/index.rst
