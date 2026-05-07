@@ -26,7 +26,7 @@ from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 class TestPing:
     @classmethod
     def setup_class(cls):
-        cls.client = GLOBAL_CONFIGS["client"]
+        cls.admin_client = GLOBAL_CONFIGS["admin_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
 
@@ -36,7 +36,7 @@ class TestPing:
 
     def test_version(self):
         message = "123"
-        status_code, reason, text, response = self.client.ping(message)
+        status_code, reason, text, response = self.admin_client.ping(message)
         assert status_code == HttpCode.SUCCESS_OK
         result = json.loads(text)
         error = result.get("error", {})
