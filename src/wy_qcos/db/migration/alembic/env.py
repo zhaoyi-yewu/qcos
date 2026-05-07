@@ -26,6 +26,11 @@ from sqlalchemy import pool
 from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy.engine.url import make_url
 
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
+
 top_dir = Path(__file__).resolve().parent.parent.parent.parent.parent
 sys.path.insert(0, str(top_dir))
 from wy_qcos.db.models import Base  # noqa: E402
@@ -100,19 +105,51 @@ def run_migrations_online() -> None:
 
 
 def get_url_from_config():
-    """Get database url from env."""
+    """Get database url from env or config file."""
     db_str = "QCOS_DATABASE_CONNECTION_URL"
-    print(f"Reading {db_str} from environment variable")
 
+    # 1. Try to get from environment variable first
+    print(f"[1/3] Attempting to read {db_str} from environment variable")
     db_connection_url = os.environ.get(db_str, None)
-    if not db_connection_url:
-        raise Exception(f"Can't find {db_str} in environment variable")
+    if db_connection_url:
+        print(f"✓ Found {db_str} in environment variable")
+        url = make_url(db_connection_url)
+        if not database_exists(url):
+            create_database(url)
+            print(f"✓ Database '{url.database}' created.")
+        return url
 
-    url = make_url(db_connection_url)
-    if not database_exists(url):
-        create_database(url)
-        print(f"database {url.database} created.")
-    return url
+    # 2. Try to get from TOML config file
+    print(f"[2/3] Attempting to read {db_str} from config file: {qcos_config_file}")
+    if os.path.exists(qcos_config_file):
+        try:
+            with open(qcos_config_file, "rb") as f:
+                config_data = tomllib.load(f)
+
+            # Navigate through the config hierarchy
+            # Expected path: config_data['DATABASE']['QCOS_DATABASE_CONNECTION_URL']
+            if "DATABASE" in config_data and db_str in config_data["DATABASE"]:
+                db_connection_url = config_data["DATABASE"][db_str]
+                if db_connection_url:
+                    print(f"✓ Found {db_str} in config file")
+                    url = make_url(db_connection_url)
+                    if not database_exists(url):
+                        create_database(url)
+                        print(f"✓ Database '{url.database}' created.")
+                    return url
+        except Exception as e:
+            print(f"✗ Error reading config file: {e}")
+    else:
+        print(f"✗ Config file not found: {qcos_config_file}")
+
+    # 3. If still not found, raise error
+    print(f"[3/3] ERROR: Could not find {db_str}")
+    raise Exception(
+        f"Could not find '{db_str}'. Please:\n"
+        f"  1. Set environment variable: export {db_str}='postgresql://...'\n"
+        f"  2. Or configure it in {qcos_config_file} under [DATABASE] section\n"
+        f"     Example: {db_str} = 'postgresql://user:password@localhost:5432/qcos'"
+    )
 
 
 if context.is_offline_mode():
