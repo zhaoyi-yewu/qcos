@@ -223,11 +223,15 @@ class TestRBAC:
 
         roles = get_roles(None, None, roles_repo=mock_roles_repo)
 
-        assert "admin" in roles
-        assert "operator" in roles
-        assert len(roles["admin"].permissions) == 1
-        assert "*" in roles["admin"].permissions
-        assert len(roles["operator"].permissions) == 2
+        # Find roles by name in the response
+        admin_roles = [r for r in roles.values() if r.role_name == "admin"]
+        operator_roles = [r for r in roles.values() if r.role_name == "operator"]
+
+        assert len(admin_roles) == 1
+        assert len(operator_roles) == 1
+        assert len(admin_roles[0].permissions) == 1
+        assert "*" in admin_roles[0].permissions
+        assert len(operator_roles[0].permissions) == 2
 
     def test_multiple_role_assignment(self, mock_user_manager):
         """Test user with multiple roles gets combined permissions."""
@@ -511,7 +515,8 @@ class TestUserPermissionIntegration:
         mock_users_repo.get_user_by_id.return_value = (True, None, admin_user)
 
         body = user_schemas.GetUserRequest(user_id="admin-uuid")
-        result = get_user(body, None, users_repo=mock_users_repo)
+        auth_data = {"user_id": "admin-uuid", "roles": ["admin"]}
+        result = get_user(body, auth_data, users_repo=mock_users_repo)
 
         assert result is not None
         assert "admin" in result.roles
@@ -537,7 +542,8 @@ class TestUserPermissionIntegration:
         )
 
         body = user_schemas.GetUserRequest(user_id="operator-uuid")
-        result = get_user(body, None, users_repo=mock_users_repo)
+        auth_data = {"user_id": "operator-uuid", "roles": ["operator"]}
+        result = get_user(body, auth_data, users_repo=mock_users_repo)
 
         assert result is not None
         assert "operator" in result.roles
