@@ -26,7 +26,7 @@ from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 class TestTranspilers:
     @classmethod
     def setup_class(cls):
-        cls.client = GLOBAL_CONFIGS["client"]
+        cls.admin_client = GLOBAL_CONFIGS["admin_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
@@ -36,13 +36,13 @@ class TestTranspilers:
         pass
 
     def test_get_transpilers(self):
-        transpilers = StLibrary.get_transpilers(self.client)
+        transpilers = StLibrary.get_transpilers(self.admin_client)
         assert isinstance(transpilers, dict)
 
     @pytest.mark.smoke
     def test_get_transpiler(self):
         transpiler_name = Constant.TRANSPILER_CMSS
-        transpiler = StLibrary.get_transpiler(self.client, transpiler_name)
+        transpiler = StLibrary.get_transpiler(self.admin_client, transpiler_name)
         assert isinstance(transpiler, dict)
         assert isinstance(transpiler["alias_name"], str)
         assert transpiler["enable"] is True
