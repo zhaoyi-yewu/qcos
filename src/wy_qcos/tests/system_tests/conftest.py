@@ -21,9 +21,11 @@ import pprint
 import pytest
 from pathlib import Path
 
+from wy_qcos.common.constant import Constant
 from wy_qcos_client.client import Client
-from wy_qcos.common.library import Library
+from wy_qcos.common.library import HttpCode, Library, _s
 from wy_qcos.common.config import Config
+from wy_qcos.tests.system_tests.common.library import StLibrary
 
 GLOBAL_CONFIGS = {}
 SAMPLES = {}
@@ -69,10 +71,32 @@ def global_configs(request):
     api_port = api_server.get(
         "ST_API_SERVER_PORT", Config.API_SERVER_LISTEN_PORT
     )
-    client = Client(api_server_ip=api_host, api_server_port=api_port)
-    GLOBAL_CONFIGS["client"] = client
     GLOBAL_CONFIGS["timeout"] = 150
     GLOBAL_CONFIGS["interval"] = 5
+    GLOBAL_CONFIGS["max_login_attempts"] = Config.MAX_LOGIN_ATTEMPTS
+    _admin_password = config["USERS"]["ADMIN_PASSWORD"]
+    if Constant.ENCRYPTION_PREFIX in _admin_password:
+        success, err_msg, decrypted_value = Library.decrypt_text(
+            _admin_password,
+            encryption_prefix=Constant.ENCRYPTION_PREFIX,
+            fernet_key=Constant.DEFAULT_FERNET_KEY,
+        )
+        _admin_password = decrypted_value
+    admin_user = "admin"
+    admin_password = _admin_password or _s("123456")
+    GLOBAL_CONFIGS["admin_user"] = admin_user
+    GLOBAL_CONFIGS["admin_password"] = admin_password
+
+    # Authenticate with admin credentials at the beginning
+    client = Client(api_server_ip=api_host, api_server_port=api_port)
+    admin_client = Client(api_server_ip=api_host, api_server_port=api_port)
+    login_result = StLibrary.login(admin_client, admin_user, str(admin_password))
+    token = login_result["access_token"]
+    admin_client.set_token(token)
+    GLOBAL_CONFIGS["client"] = client
+    GLOBAL_CONFIGS["admin_client"] = admin_client
+
+    # load configs
     load_configs()
     # print configs for debug purpose when test fails
     print("\nGLOBAL_CONFIGS:")
