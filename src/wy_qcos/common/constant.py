@@ -96,12 +96,12 @@ class Constant:
     FILE_TYPE_CSV = ".csv"
 
     # User length
-    MIN_USER_LENGTH = 2
-    MAX_USER_LENGTH = 32
+    MIN_USER_LENGTH = 1
+    MAX_USER_LENGTH = 64
 
     # Role length
-    MIN_ROLE_LENGTH = 2
-    MAX_ROLE_LENGTH = 32
+    MIN_ROLE_LENGTH = 1
+    MAX_ROLE_LENGTH = 64
 
     # Description length
     MIN_DESCRIPTION_LENGTH = 1
@@ -333,8 +333,19 @@ class Constant:
     DEFAULT_DEVICE_MONITOR_INTERVAL = 5
 
     # user management
-    DEFAULT_ADMIN_USERNAME = "admin"
+    AUTH_MODE_KEY = "auth_mode"
+    AUTH_MODE_NO = "no"
+    AUTH_MODE_JWT = "jwt"
+    AUTH_MODE_VIRTUAL_INSTANCE = "virtual_instance"
+    AUTH_MODES = [AUTH_MODE_NO, AUTH_MODE_JWT, AUTH_MODE_VIRTUAL_INSTANCE]
+
+    ADMIN_PROJECT_ID = "00000000-0000-4000-8000-000000000001"
+    ADMIN_PROJECT_NAME = "admin project"
+    DEFAULT_PROJECT_ID = "00000000-0000-4000-8000-000000000000"
+    DEFAULT_PROJECT_NAME = "default project"
+    ADMIN_USERNAME = "admin"
     DEFAULT_ADMIN_PASSWORD = _s("123456")
+    ANONYMOUS_USERNAME = "anonymous"
     ENV_VAR_ACCESS_TOKEN = _s("QCOS_ACCESS_TOKEN")
     JWT_AUTH_AUDIENCE = "qcos-api"
     ROLE_ADMIN = "admin"
@@ -376,9 +387,6 @@ class Constant:
     PREFECT_CANCEL_REQUIRED_STATES = [PREFECT_STATE_RUNNING]
     PREFECT_WAIT_STATES = [PREFECT_STATE_SCHEDULED, PREFECT_STATE_PENDING]
 
-    AUTH_MODE_KEY = "auth_mode"
-    AUTH_MODE_VIRTUAL = "virtual"
-    AUTH_MODE_USER = "user"
     VID_TAGS_PREFIX = "VIRTUAL_INSTANCE_ID"
 
     # Prefect job log
