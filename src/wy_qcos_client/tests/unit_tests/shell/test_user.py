@@ -824,8 +824,8 @@ class TestWhoami:
         parser = cmd.get_parser("whoami")
         assert parser is not None
 
-    @patch.object(Client, "get_current_user")
-    def test_take_action(self, mock_get_current_user):
+    @patch.object(Client, "get_me")
+    def test_take_action(self, mock_get_me):
         """Test Whoami take_action method."""
         mock_response = {
             "jsonrpc": "2.0",
@@ -836,7 +836,7 @@ class TestWhoami:
             },
             "id": 0,
         }
-        mock_get_current_user.return_value = (
+        mock_get_me.return_value = (
             200,
             "OK",
             json.dumps(mock_response),
