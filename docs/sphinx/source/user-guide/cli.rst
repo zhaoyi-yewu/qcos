@@ -187,7 +187,7 @@
 .. code-block:: shell
 
    # 幺正量子 真实运行
-   qcos-cli submit-job --code-type qasm3 --shots 100 --backend uqc_matrix2 -f ./samples/qasm/3.0/simple-qasm-1-bit.qasm
+   qcos-cli submit-job --code-type qasm3 --shots 100 --backend uqc_matrix2 --transpiler-options '{"enable_mapping": false}' -f ./samples/qasm/3.0/simple-qasm-1-bit.qasm
 
 更新作业
 ***************

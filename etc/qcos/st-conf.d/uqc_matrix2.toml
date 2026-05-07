@@ -25,7 +25,7 @@ monitor_log_file = "/var/log/qcos/device_monitor_uqc_matrix2.log"
 max_queued_jobs = -1
 
 uqc_host = "127.0.0.1"
-uqc_port = 5001
+uqc_port = 8003
 password_token = "123456789"
 # backend_device_name: "Matrix2" or "qiskit-sim"
 backend_device_name = "Matrix2"
