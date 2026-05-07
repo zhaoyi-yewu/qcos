@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 class TestJob:
     @classmethod
     def setup_class(cls):
-        cls.client = GLOBAL_CONFIGS["client"]
+        cls.admin_client = GLOBAL_CONFIGS["admin_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
@@ -60,12 +60,12 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        StLibrary.submit_job(self.client, job_info)
+        StLibrary.submit_job(self.admin_client, job_info)
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-            self.client, job_info, self.timeout, self.interval
+            self.admin_client, job_info, self.timeout, self.interval
         )
         if success:
-            StLibrary.delete_job(self.client, job_info["job_id"])
+            StLibrary.delete_job(self.admin_client, job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
                 == Constant.JOB_STATUS_COMPLETED
