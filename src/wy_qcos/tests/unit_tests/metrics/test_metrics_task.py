@@ -22,7 +22,7 @@ import pytest
 from prefect.client.schemas.objects import WorkerStatus
 
 from wy_qcos.common.constant import Constant, HttpCode
-from wy_qcos.metrics import metrics_collector
+from wy_qcos.metrics import metrics_collector, metrics_task
 from wy_qcos.metrics.metrics_task import (
     call_sync_with_timeout,
     check_fastapi_health,
@@ -52,7 +52,6 @@ class TestRedisClient:
 
     @pytest.mark.smoke
     def test_singleton(self):
-        from wy_qcos.metrics import metrics_task
 
         mock_redis = AsyncMock()
         with patch.object(
@@ -64,7 +63,6 @@ class TestRedisClient:
                 assert c1 is c2
 
     def test_clear(self):
-        from wy_qcos.metrics import metrics_task
 
         mock_redis = AsyncMock()
         metrics_task._redis_client = mock_redis
@@ -73,7 +71,6 @@ class TestRedisClient:
         mock_redis.aclose.assert_called_once()
 
     def test_clear_error(self):
-        from wy_qcos.metrics import metrics_task
 
         mock_redis = AsyncMock()
         mock_redis.aclose.side_effect = Exception("Error")
