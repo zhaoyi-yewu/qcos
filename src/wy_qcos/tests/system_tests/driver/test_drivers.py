@@ -26,7 +26,7 @@ from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 class TestDrivers:
     @classmethod
     def setup_class(cls):
-        cls.client = GLOBAL_CONFIGS["client"]
+        cls.admin_client = GLOBAL_CONFIGS["admin_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
@@ -36,13 +36,13 @@ class TestDrivers:
         pass
 
     def test_get_drivers(self):
-        drivers = StLibrary.get_drivers(self.client)
+        drivers = StLibrary.get_drivers(self.admin_client)
         assert isinstance(drivers, dict)
 
     @pytest.mark.smoke
     def test_get_driver(self):
         driver_name = "DriverDummy"
-        driver = StLibrary.get_driver(self.client, driver_name)
+        driver = StLibrary.get_driver(self.admin_client, driver_name)
         assert isinstance(driver, dict)
         assert driver["alias_name"] is not None
         if driver["description"] is not None:
@@ -67,10 +67,10 @@ class TestDrivers:
             assert isinstance(driver["version"], str)
 
     def test_get_drivers_check_details(self):
-        drivers = StLibrary.get_drivers(self.client)
+        drivers = StLibrary.get_drivers(self.admin_client)
         assert isinstance(drivers, dict)
         for driver_name, driver_info in drivers.items():
-            driver = StLibrary.get_driver(self.client, driver_name)
+            driver = StLibrary.get_driver(self.admin_client, driver_name)
             _driver_name = driver["name"]
             assert driver_name == _driver_name
             assert isinstance(driver["name"], str)
