@@ -86,7 +86,6 @@ class DriverWuyueBase(DriverBase):
             self.TASK_STAGE_GET_RESULTS: 95,
             self.TASK_STAGE_COMPLETE: 100,
         }
-        self.enable_device_monitor = True
 
     def init_driver(self):
         """Init driver."""
@@ -195,7 +194,7 @@ class DriverWuyueBase(DriverBase):
         src_code = data["source_code"]
         transpile_results = data["transpile_results"]
         final_code = self.convert_code(num_qubits, src_code, transpile_results)
-        logger.info("after converting, code is: {final_code}")
+        logger.info(f"after converting, code is: {final_code}")
 
         # 2. Prepare task data
         logger.info("2. prepare data")
