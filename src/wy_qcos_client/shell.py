@@ -20,6 +20,7 @@ import argparse
 import json
 import os
 import sys
+import uuid
 
 from cliff import help
 from cliff.app import App
@@ -436,6 +437,7 @@ class CommandHelper:
             _values.append(v)
         results = (tuple(headers), tuple(_values))
         return results
+
 
 
 # Version commands
@@ -1957,13 +1959,20 @@ class CreateUser(Command):
 
 
 class UpdateUser(Command):
-    """Update user by ID."""
+    """Update user by ID or name.
+    
+    Can accept either a UUID or a user name as user_id parameter.
+    If a valid UUID is provided, it will be used directly.
+    Otherwise, the system will look up the user by name.
+    """
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("user_id", type=str, help="User ID (UUID)")
+        parser.add_argument(
+            "user_id", type=str, help="User ID (UUID) or user name"
+        )
         parser.add_argument(
             "--role-name",
             action="append",
@@ -2017,7 +2026,9 @@ class UpdateUser(Command):
 
     def take_action(self, parsed_args):
         resource = self.group
-        user_id = parsed_args.user_id
+        user_id = Client.resolve_user_id(
+            self.app.client, parsed_args.user_id
+        )
 
         # collect all provided role names and remove duplicates
         roles = None
@@ -2076,7 +2087,12 @@ class UpdateUser(Command):
 
 
 class GetUser(ShowOne):
-    """Get user by ID."""
+    """Get user by ID or name.
+    
+    Can accept either a UUID or a user name as user_id parameter.
+    If a valid UUID is provided, it will be used directly.
+    Otherwise, the system will look up the user by name.
+    """
 
     group = QcosShell.CMD_GROUP_USER
 
@@ -2085,13 +2101,15 @@ class GetUser(ShowOne):
         parser.add_argument(
             "user_id",
             type=str,
-            help="User ID (UUID)",
+            help="User ID (UUID) or user name",
         )
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
-        user_id = parsed_args.user_id
+        user_id = Client.resolve_user_id(
+            self.app.client, parsed_args.user_id
+        )
 
         status_code, reason, text, result = self.app.client.get_user(user_id)
         json_results = CommandHelper.check_results(
@@ -2117,12 +2135,23 @@ class GetUser(ShowOne):
 
 
 class GetUsers(Lister):
-    """Get users."""
+    """Get users with optional filtering.
+
+    Examples:
+        list-users                      # List all users
+        list-users --user-name admin    # Filter by user name
+    """
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--user-name",
+            type=str,
+            dest="user_name",
+            help="Filter users by user name",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -2137,7 +2166,15 @@ class GetUsers(Lister):
             "last_login",
             "description",
         ]
-        status_code, reason, text, result = self.app.client.get_users()
+        
+        # Build filters if user_name is provided
+        filters = None
+        if parsed_args.user_name:
+            filters = {"user_name": parsed_args.user_name}
+        
+        status_code, reason, text, result = self.app.client.get_users(
+            filters=filters
+        )
         json_results = CommandHelper.check_results(
             resource, "get_users", status_code, reason, text
         )
@@ -2171,20 +2208,34 @@ class GetUsers(Lister):
 
 
 class DeleteUser(Command):
-    """Delete user by ID."""
+    """Delete user by ID or name.
+    
+    Can accept either a UUID or a user name as user_id parameter.
+    If a valid UUID is provided, it will be used directly.
+    Otherwise, the system will look up the user by name.
+    """
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("user_id", type=str, help="User ID (UUID)")
+        parser.add_argument("user_id", type=str, help="User ID (UUID) or user name")
+        parser.add_argument(
+            "-f", "--force",
+            action="store_true",
+            dest="force",
+            help="Force delete user and cascade delete related resources",
+        )
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
-        user_id = parsed_args.user_id
+        user_id = Client.resolve_user_id(
+            self.app.client, parsed_args.user_id
+        )
+        force = parsed_args.force
         status_code, reason, text, result = self.app.client.delete_user(
-            user_id
+            user_id, force=force
         )
         CommandHelper.check_results(
             resource, "delete_user", status_code, reason, text
@@ -2230,7 +2281,12 @@ class CreateRole(Command):
 
 
 class GetRole(ShowOne):
-    """Get role by ID."""
+    """Get role by ID or name.
+
+    Can accept either a UUID or a role name as role_id parameter.
+    If a valid UUID is provided, it will be used directly.
+    Otherwise, the system will look up the role by name.
+    """
 
     group = QcosShell.CMD_GROUP_USER
 
@@ -2239,13 +2295,15 @@ class GetRole(ShowOne):
         parser.add_argument(
             "role_id",
             type=str,
-            help="Role ID (UUID)",
+            help="Role ID (UUID) or role name",
         )
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
-        role_id = parsed_args.role_id
+        role_id = Client.resolve_role_id(
+            self.app.client, parsed_args.role_id
+        )
 
         status_code, reason, text, result = self.app.client.get_role(role_id)
         json_results = CommandHelper.check_results(
@@ -2256,16 +2314,20 @@ class GetRole(ShowOne):
 
 
 class UpdateRole(Command):
-    """Update role by ID."""
+    """Update role by ID or name.
+
+    Can accept either a UUID or a role name as role_id parameter.
+    If a valid UUID is provided, it will be used directly.
+    Otherwise, the system will look up the role by name.
+    """
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("role_id", type=str, help="Role ID (UUID)")
+        parser.add_argument("role_id", type=str, help="Role ID (UUID) or role name")
         parser.add_argument(
             "--permissions",
-            "--permission",  # Add alias for backward compatibility
             type=str,
             dest="permissions",
             help="Permissions (JSON array, e.g., "
@@ -2276,7 +2338,9 @@ class UpdateRole(Command):
 
     def take_action(self, parsed_args):
         resource = self.group
-        role_id = parsed_args.role_id
+        role_id = Client.resolve_role_id(
+            self.app.client, parsed_args.role_id
+        )
         permissions = None
         if parsed_args.permissions:
             try:
@@ -2297,18 +2361,26 @@ class UpdateRole(Command):
 
 
 class DeleteRole(Command):
-    """Delete role by ID."""
+    """Delete role by ID or name.
+
+    Can accept either a UUID or a role name as role_id parameter.
+    If a valid UUID is provided, it will be used directly.
+    Otherwise, the system will look up the role by name.
+    """
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("role_id", type=str, help="Role ID (UUID)")
+        parser.add_argument("role_id", type=str, help="Role ID (UUID) or role name")
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
-        role_id = parsed_args.role_id
+        role_id = Client.resolve_role_id(
+            self.app.client, parsed_args.role_id
+        )
+
         status_code, reason, text, result = self.app.client.delete_role(
             role_id
         )
@@ -2319,18 +2391,37 @@ class DeleteRole(Command):
 
 
 class GetRoles(Lister):
-    """Get roles."""
+    """Get roles with optional filtering.
+
+    Examples:
+        list-roles                      # List all roles
+        list-roles --role-name admin    # Filter by role name
+    """
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--role-name",
+            type=str,
+            dest="role_name",
+            help="Filter roles by role name",
+        )
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
         header_list = ["id", "role_name", "permissions", "description"]
-        status_code, reason, text, result = self.app.client.get_roles()
+        
+        # Build filters if role_name is provided
+        filters = None
+        if parsed_args.role_name:
+            filters = {"role_name": parsed_args.role_name}
+        
+        status_code, reason, text, result = self.app.client.get_roles(
+            filters=filters
+        )
         json_results = CommandHelper.check_results(
             resource, "get_roles", status_code, reason, text
         )
@@ -2343,20 +2434,27 @@ class GetRoles(Lister):
 
 
 class ChangePassword(Command):
-    """Change password for user by ID."""
+    """Change password for user by ID or name.
+    
+    Can accept either a UUID or a user name as user_id parameter.
+    If a valid UUID is provided, it will be used directly.
+    Otherwise, the system will look up the user by name.
+    """
 
     group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("user_id", type=str, help="User ID (UUID)")
+        parser.add_argument("user_id", type=str, help="User ID (UUID) or user name")
         parser.add_argument("old_password", type=str, help="Old password")
         parser.add_argument("new_password", type=str, help="New password")
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
-        user_id = parsed_args.user_id
+        user_id = Client.resolve_user_id(
+            self.app.client, parsed_args.user_id
+        )
         status_code, reason, text, result = self.app.client.change_password(
             user_id,
             parsed_args.old_password,
@@ -2575,9 +2673,9 @@ class Whoami(ShowOne):
 
     def take_action(self, parsed_args):
         resource = self.group
-        status_code, reason, text, result = self.app.client.get_current_user()
+        status_code, reason, text, result = self.app.client.get_me()
         json_results = CommandHelper.check_results(
-            resource, "get_current_user", status_code, reason, text
+            resource, "me", status_code, reason, text
         )
         table_values = CommandHelper.get_table_data(json_results)
         return table_values
