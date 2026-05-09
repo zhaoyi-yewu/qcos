@@ -320,7 +320,8 @@ class TestUserManagerRoles:
             ["/version", "/v1/device/get_device", "/v1/device/get_devices"],
         )
         user_manager.create_user(
-            "testuser", _s("password123"), ["testrole"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID, "testuser", _s("password123"),
+            ["testrole"], True, False, 90
         )
 
         # Should be able to delete role even if used by users
@@ -419,12 +420,13 @@ class TestRolePermissionIntegration:
 
     def test_role_deletion_cascade(self, user_manager):
         """Test role deletion when users depend on it."""
-        # Create a role
+        # Create role
         user_manager.create_role("temp_role", ["/version"], "Temporary role")
 
         # Create user with this role
         user = user_manager.create_user(
-            "temp_user", _s("password123"), ["temp_role"], True, False, 90
+            Constant.DEFAULT_PROJECT_ID, "temp_user", _s("password123"),
+            ["temp_role"], True, False, 90
         )
         assert "temp_role" in user.roles
 
