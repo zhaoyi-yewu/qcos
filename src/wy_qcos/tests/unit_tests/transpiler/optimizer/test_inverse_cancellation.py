@@ -19,7 +19,7 @@ from wy_qcos.transpiler.cmss.optimizer.inverse_cancellation import (
     InverseCancellation,
 )
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
-from wy_qcos.transpiler.cmss.common.gate_operation import (
+from wy_qcos.common.cmss.gate_operation import (
     H,
     CX,
     S,

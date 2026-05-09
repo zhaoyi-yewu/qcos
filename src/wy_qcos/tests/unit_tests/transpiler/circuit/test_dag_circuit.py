@@ -21,9 +21,9 @@ from wy_qcos.transpiler.cmss.circuit.dag_node import (
     DAGOpNode,
 )
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
-from wy_qcos.transpiler.cmss.common.gate_operation import X, H, CCX, CX
+from wy_qcos.common.cmss.gate_operation import X, H, CCX, CX
 
 
 def normalize_runs(runs):

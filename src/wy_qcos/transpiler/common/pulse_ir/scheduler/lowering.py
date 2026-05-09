@@ -26,7 +26,7 @@ from collections import namedtuple
 from wy_qcos.transpiler.cmss.circuit.barrier import Barrier
 from wy_qcos.transpiler.cmss.circuit.delay import Delay
 from wy_qcos.transpiler.cmss.circuit.duration import convert_durations_to_dt
-from wy_qcos.transpiler.cmss.common.measure import Measure
+from wy_qcos.common.cmss.measure import Measure
 from wy_qcos.transpiler.common.pulse_ir.compatible.exceptions import (
     QiskitError,
 )

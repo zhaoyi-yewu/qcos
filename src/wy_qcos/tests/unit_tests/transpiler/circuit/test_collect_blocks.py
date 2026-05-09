@@ -22,8 +22,8 @@ from wy_qcos.transpiler.cmss.circuit.collect_blocks import (
     BlockSplitter,
 )
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
-from wy_qcos.transpiler.cmss.common.gate_operation import CX, Z, H, RZ
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.gate_operation import CX, Z, H, RZ
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
 
 class TestCollectBlocks:

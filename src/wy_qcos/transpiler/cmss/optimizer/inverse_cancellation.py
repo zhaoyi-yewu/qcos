@@ -17,7 +17,7 @@
 
 import numpy as np
 
-from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
+from wy_qcos.common.cmss.gate_operation import GateOperation
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
 
 

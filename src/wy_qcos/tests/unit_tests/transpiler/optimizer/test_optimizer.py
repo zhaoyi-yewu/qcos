@@ -29,7 +29,7 @@ from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import (
 from wy_qcos.tests.common.qasm_file_reader import QasmFileReader
 from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 from wy_qcos.tests.unit_tests.transpiler.comm import validate_ir_equals
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
 
 @pytest.mark.usefixtures("global_configs")

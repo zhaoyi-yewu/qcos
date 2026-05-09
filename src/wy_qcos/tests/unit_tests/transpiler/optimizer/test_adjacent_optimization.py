@@ -22,7 +22,7 @@ from wy_qcos.transpiler.cmss.optimizer.adjacent_optimization import (
     AdjacentPhaseOptPass,
 )
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
-from wy_qcos.transpiler.cmss.common.gate_operation import (
+from wy_qcos.common.cmss.gate_operation import (
     RX,
     RY,
     RZ,

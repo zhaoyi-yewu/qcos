@@ -17,7 +17,7 @@
 import pytest
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.transpiler.cmss.common.move import Move
+from wy_qcos.common.cmss.move import Move
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 
 from wy_qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss

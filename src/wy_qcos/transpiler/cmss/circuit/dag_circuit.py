@@ -27,9 +27,9 @@ from wy_qcos.transpiler.cmss.circuit.dag_node import (
     DAGOutNode,
     DAGNode,
 )
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
-from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
-from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.gate_operation import GateOperation
+from wy_qcos.common.cmss.gate_operation import create_gate
 
 
 class DAGCircuit:

@@ -17,8 +17,8 @@
 
 from networkx import Graph
 
-from wy_qcos.transpiler.cmss.common.base_operation import OperationType
-from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
+from wy_qcos.common.cmss.base_operation import OperationType
+from wy_qcos.common.cmss.gate_operation import GateOperation
 from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing import SABRE
 
 

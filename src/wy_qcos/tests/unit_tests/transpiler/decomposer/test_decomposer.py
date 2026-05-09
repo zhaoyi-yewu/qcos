@@ -19,7 +19,7 @@ import pytest
 import numpy as np
 
 from wy_qcos.transpiler.cmss.decomposer.decomposer import Decomposer
-from wy_qcos.transpiler.cmss.common.gate_operation import create_gate
+from wy_qcos.common.cmss.gate_operation import create_gate
 from wy_qcos.tests.unit_tests.transpiler.comm import (
     validate_gate_ir,
     validate_ir_equals,

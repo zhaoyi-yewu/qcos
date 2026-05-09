@@ -23,7 +23,7 @@ from unittest.mock import patch
 from wy_qcos.transpiler.cmss.optimizer.clifford_rz_optimization import (
     CliffordRzOptimization,
 )
-from wy_qcos.transpiler.cmss.common.gate_operation import (
+from wy_qcos.common.cmss.gate_operation import (
     RZ,
     X,
     H,
@@ -37,7 +37,7 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.common.errors import CircuitException
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
 from wy_qcos.transpiler.cmss.circuit.utils import RandomCircuitGen, is_equal
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize
 from wy_qcos.tests.unit_tests.transpiler.comm import validate_optimize_result
 from wy_qcos.transpiler.common.utils import trans_logger

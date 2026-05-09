@@ -46,8 +46,8 @@ from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
     Parameter,
     ParameterExpression,
 )
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
-from wy_qcos.transpiler.cmss.common.gate_operation import (
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.gate_operation import (
     GateOperation,
     create_gate,
     ControlGate,
@@ -55,12 +55,11 @@ from wy_qcos.transpiler.cmss.common.gate_operation import (
     Reset,
     Measure,
 )
-from wy_qcos.transpiler.cmss.common.sync import Sync
-from wy_qcos.transpiler.cmss.circuit.register import (
+from wy_qcos.common.cmss.sync import Sync
+from wy_qcos.common.cmss.register import (
     QuantumRegister,
     ClassicalRegister,
 )
-
 
 _QASM2_IDENTIFIER = re.compile(r"[a-z]\w*", flags=re.ASCII)
 
@@ -180,7 +179,7 @@ class GateBuilder:
         name (str): Name of the custom gate
         definition (QuantumCircuit): Circuit that defines the gate's behavior
         order (Sequence[Parameter] | None): Ordered list of gate parameters
-        
+
     The gate builder creates GateOperation instances with the specified
     parameters applied to the defined circuit.
     """

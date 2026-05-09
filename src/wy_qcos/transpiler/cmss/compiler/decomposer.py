@@ -17,7 +17,7 @@
 
 from copy import deepcopy
 
-from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
+from wy_qcos.common.cmss.gate_operation import GateOperation
 
 
 def decompose_gates(ir: list, supp_basis_gates: list):

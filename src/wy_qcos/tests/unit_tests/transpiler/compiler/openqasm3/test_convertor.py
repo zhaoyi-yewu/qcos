@@ -21,8 +21,8 @@ import openqasm3
 from wy_qcos.transpiler.cmss.compiler.openqasm3.convertor import (
     ConvertVisitor,
 )
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
-from wy_qcos.transpiler.cmss.common.gate_operation import (
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.gate_operation import (
     GateOperation,
     Measure,
     Reset,

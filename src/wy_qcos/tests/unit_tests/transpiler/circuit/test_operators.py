@@ -19,7 +19,7 @@ import pytest
 import numpy as np
 import math as m
 
-from wy_qcos.transpiler.cmss.common.gate_operation import (
+from wy_qcos.common.cmss.gate_operation import (
     H,
     X,
     Y,
@@ -59,9 +59,9 @@ from wy_qcos.transpiler.cmss.common.gate_operation import (
     U3,
     C4X,
 )
-from wy_qcos.transpiler.cmss.common.sync import Sync
+from wy_qcos.common.cmss.sync import Sync
 from wy_qcos.transpiler.cmss.circuit.operators.operator import Operator
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
 
 class TestOperators:

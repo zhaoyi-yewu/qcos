@@ -20,13 +20,13 @@ import pytest
 from pathlib import Path
 
 from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
-from wy_qcos.transpiler.cmss.common.gate_operation import X, H, CX
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.gate_operation import X, H, CX
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.transpiler_cmd_line import (
     CMSSTranspilerPerf,
 )
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
-from wy_qcos.transpiler.cmss.circuit.register import (
+from wy_qcos.common.cmss.register import (
     QuantumRegister,
     ClassicalRegister,
 )

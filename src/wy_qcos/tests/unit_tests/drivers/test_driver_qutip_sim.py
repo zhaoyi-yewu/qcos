@@ -29,8 +29,8 @@ import pytest
 from qutip import Qobj
 
 from wy_qcos.drivers.qutip.driver_qutip_sim import DriverQutipSim
-from wy_qcos.transpiler.cmss.common.gate_operation import RX
-from wy_qcos.transpiler.cmss.common.measure import Measure
+from wy_qcos.common.cmss.gate_operation import RX
+from wy_qcos.common.cmss.measure import Measure
 
 driver_qutip_sim = DriverQutipSim()
 job_id = "00000000-0000-4000-8000-000000000001"

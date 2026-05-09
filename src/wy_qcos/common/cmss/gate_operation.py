@@ -23,10 +23,6 @@ from copy import deepcopy
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.cmss.base_operation import BaseOperation
 from wy_qcos.common.cmss.base_operation import OperationType
-from wy_qcos.transpiler.common.errors import (
-    DecomposeException,
-    CircuitException,
-)
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.common.cmss.measure import Measure
 from wy_qcos.common.cmss.move import Move
@@ -65,7 +61,7 @@ class GateOperation(BaseOperation):
         Operation type already indicated the number of qubits that gate needed.
         """
         if len(self.targets) != int(self.operation_type):
-            raise DecomposeException("invalid targets num")
+            raise ValueError("invalid targets num")
 
     def decompose(self):
         """门对应的分解规则，如无指定规则，则调用默认的分解方法.
@@ -112,7 +108,7 @@ class GateOperation(BaseOperation):
             params_list = custom_gate.get("params", [])
             need_args = self.arg_value
             if len(params_list) != len(need_args):
-                raise DecomposeException(
+                raise ValueError(
                     f"Gate: {self.name} requires arg: "
                     f"{need_args}, found {params_list}"
                 )
@@ -130,14 +126,14 @@ class GateOperation(BaseOperation):
             return gates
 
         except Exception as e:
-            raise DecomposeException(str(e)) from e
+            raise ValueError(str(e)) from e
 
     def decompose_to_1q2q(self):
         return deepcopy([self])
 
     def default_decompose(self):
         """默认的分解方法."""
-        raise DecomposeException("please specify the decomposition gates")
+        raise ValueError("Please specify the decomposition gates.")
 
     def __repr__(self):
         return (
@@ -172,7 +168,7 @@ class GateOperation(BaseOperation):
             ndarray: controlled version of base matrix.
 
         Raises:
-            CircuitException: unrecognized mode or invalid ctrl_state
+            ValueError: unrecognized mode or invalid ctrl_state
         """
         num_target = int(log2(base_mat.shape[0]))
         ctrl_dim = 2**num_ctrl_qubits
@@ -183,11 +179,9 @@ class GateOperation(BaseOperation):
             ctrl_state = int(ctrl_state, 2)
         if isinstance(ctrl_state, int):
             if not 0 <= ctrl_state < ctrl_dim:
-                raise CircuitException(
-                    "Invalid control state value specified."
-                )
+                raise ValueError("Invalid control state value specified.")
         else:
-            raise CircuitException("Invalid control state type specified.")
+            raise ValueError("Invalid control state type specified.")
         ctrl_proj = np.diag(np.roll(ctrl_grnd, ctrl_state))
         full_mat = np.kron(
             np.eye(2**num_target), np.eye(ctrl_dim) - ctrl_proj
@@ -244,12 +238,12 @@ class GateOperation(BaseOperation):
             np.ndarray: a matrix array of the gate.
 
         Raises:
-            CircuitException: If a Gate subclass does not implement this method
+            ValueError: If a Gate subclass does not implement this method
             an exception will be raised when this base class method is called.
         """
         if hasattr(self, "__array__"):
             return self.__array__(dtype=complex)
-        raise CircuitException(f"to_matrix not defined for this {type(self)}")
+        raise ValueError(f"to_matrix not defined for this {type(self)}")
 
 
 # 实例化门，需包含一个默认的分解方法
@@ -2309,4 +2303,4 @@ def create_gate(
     else:
         if allow_undefined:
             return GateOperation(name, targets=targets, arg_value=arg_value)
-        raise DecomposeException(f"{name} is not support")
+        raise ValueError(f"{name} is not support.")

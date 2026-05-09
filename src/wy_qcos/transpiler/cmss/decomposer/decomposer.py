@@ -14,7 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-from wy_qcos.transpiler.cmss.common.base_operation import BaseOperation
+from wy_qcos.common.cmss.base_operation import BaseOperation
 from wy_qcos.transpiler.cmss.decomposer.rule_applier import RuleApplier
 from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
     EquivalenceGraph,

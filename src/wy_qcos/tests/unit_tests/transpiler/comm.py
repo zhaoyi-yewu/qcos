@@ -15,12 +15,12 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from wy_qcos.transpiler.cmss.common.gate_operation import (
+from wy_qcos.common.cmss.gate_operation import (
     GateOperation,
     BaseOperation,
 )
-from wy_qcos.transpiler.cmss.common.base_operation import OperationType
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.base_operation import OperationType
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
 from wy_qcos.transpiler.cmss.circuit.utils import is_equal
 from wy_qcos.transpiler.cmss.circuit.operators.operator import Operator

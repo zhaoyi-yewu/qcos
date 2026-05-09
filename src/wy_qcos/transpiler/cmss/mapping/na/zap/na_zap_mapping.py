@@ -22,7 +22,7 @@ import networkx as nx
 from abc import ABC
 from copy import deepcopy
 
-from wy_qcos.transpiler.cmss.common.move import Move
+from wy_qcos.common.cmss.move import Move
 from wy_qcos.transpiler.common.errors import MappingException
 
 

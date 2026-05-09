@@ -20,7 +20,7 @@ from wy_qcos.transpiler.high_performance import (
     OperationType as OperationType_cpp,
     load_qasm_to_gate_list,
 )
-from wy_qcos.transpiler.cmss.common.gate_operation import (
+from wy_qcos.common.cmss.gate_operation import (
     OperationType,
     GateOperation,
 )

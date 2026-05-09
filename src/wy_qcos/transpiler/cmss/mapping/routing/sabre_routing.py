@@ -21,8 +21,8 @@ from collections import deque
 import networkx as nx
 import rustworkx as rx
 
-from wy_qcos.transpiler.cmss.common.gate_operation import SWAP
-from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
+from wy_qcos.common.cmss.gate_operation import SWAP
+from wy_qcos.common.cmss.gate_operation import GateOperation
 
 
 class Node:

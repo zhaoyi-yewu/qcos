@@ -32,7 +32,7 @@ from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
 )
 from wy_qcos.transpiler.cmss.compiler.openqasm3.data import Scope, Symbol
 from wy_qcos.transpiler.cmss.compiler.openqasm3 import types
-from wy_qcos.transpiler.cmss.circuit.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
 
 class TestParameter:

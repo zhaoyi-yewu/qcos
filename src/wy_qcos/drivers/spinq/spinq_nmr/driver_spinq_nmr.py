@@ -26,8 +26,8 @@ from wy_qcos.common.constant import Constant, HttpMethod, HttpCode
 from wy_qcos.common.library import Library
 from wy_qcos.drivers.device import Device
 from wy_qcos.drivers.driver_base import DriverBase
-from wy_qcos.transpiler.cmss.common.base_operation import OperationType
-from wy_qcos.transpiler.cmss.common.gate_operation import GateOperation
+from wy_qcos.common.cmss.base_operation import OperationType
+from wy_qcos.common.cmss.gate_operation import GateOperation
 
 
 class DriverSpinQNmr(DriverBase):
