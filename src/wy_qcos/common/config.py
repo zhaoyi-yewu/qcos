@@ -35,12 +35,12 @@ class Config:
     MAX_JOBS = 10000
     # [GLOBAL CONFIG] max queued+running jobs
     MAX_QUEUED_JOBS = 1000
+    # [GLOBAL CONFIG] authentication mode: "no" (default), "password", "virtual_instance"
+    AUTH_MODE = Constant.AUTH_MODE_NO
     # [GLOBAL CONFIG] default venv base dir
     VENV_DIR = "/var/lib/qcos/venv"
 
     # [VIRT]
-    # enable virtualization
-    ENABLE_VIRT = False
     # [GLOBAL CONFIG] max jobs for virtual instance
     MAX_JOBS_PER_VIRTUAL_INSTANCE = 10
     # salt for pwd/encryption
@@ -73,7 +73,6 @@ class Config:
     QCOS_DATABASE_CONNECTION_URL = "fake"
 
     # [USERS]
-    ENABLE_USER_MGMT = True
     PASSWORD_EXPIRY_DAYS = 90
     MAX_LOGIN_ATTEMPTS = 5
     MAX_LOGIN_LOGS = 10000  # Maximum number of login logs to keep in database
@@ -269,12 +268,10 @@ class Config:
 
     @classmethod
     def validate(cls):
-        # Only one of ENABLE_USER_MGMT or ENABLE_VIRT can be enabled
-        if cls.ENABLE_VIRT and cls.ENABLE_USER_MGMT:
+        if cls.AUTH_MODE not in Constant.AUTH_MODES:
             raise errors.GenericException(
-                "Cannot enable both ENABLE_USER_MGMT and "
-                "ENABLE_VIRT simultaneously. "
-                "Only one authentication mode can be enabled."
+                f"Invalid AUTH_MODE: '{cls.AUTH_MODE}'. "
+                f"Allowed values are: {', '.join(Constant.AUTH_MODES)}"
             )
 
         # remove duplicated devices
