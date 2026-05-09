@@ -151,24 +151,24 @@ class TestDriverUqc:
 
     def test_convert_code_with_valid_transpile_results(self):
         """Test convert_code with valid transpile results."""
-        num_qubits = 1
+        qubits_num = 1
         src_code = (
             'OPENQASM 3.0;\ninclude "stdgates.inc";\n'
-            'bit[1] c;\nqubit[1] q;\nrx(pi) q[0];'
+            "bit[1] c;\nqubit[1] q;\nrx(pi) q[0];\nc[0] = measure q[0];"
         )
         transpile_results = []
 
         result = driver_uqc.convert_code(
-            num_qubits, src_code, transpile_results
+            qubits_num, src_code, transpile_results
         )
         assert result == src_code
 
     def test_convert_code_with_invalid_transpile_results(self):
         """Test convert_code with invalid transpile results."""
-        num_qubits = 1
+        qubits_num = 1
         src_code = (
             'OPENQASM 3.0;\ninclude "stdgates.inc";\n'
-            'bit[1] c;\nqubit[1] q;\nrx(pi) q[0];'
+            "bit[1] c;\nqubit[1] q;\nrx(pi) q[0];\nc[0] = measure q[0];"
         )
         transpile_results = [
             "invalid",
@@ -176,59 +176,59 @@ class TestDriverUqc:
         ]  # Non-BaseOperation items
 
         result = driver_uqc.convert_code(
-            num_qubits, src_code, transpile_results
+            qubits_num, src_code, transpile_results
         )
         assert result == src_code
 
     def test_convert_code_with_non_list_transpile_results(self):
         """Test convert_code with non-list transpile results."""
-        num_qubits = 1
+        qubits_num = 1
         src_code = (
             'OPENQASM 3.0;\ninclude "stdgates.inc";\n'
-            'bit[1] c;\nqubit[1] q;\nrx(pi) q[0];'
+            "bit[1] c;\nqubit[1] q;\nrx(pi) q[0];\nc[0] = measure q[0];"
         )
         transpile_results = "not a list"  # Non-list input
 
         result = driver_uqc.convert_code(
-            num_qubits, src_code, transpile_results
+            qubits_num, src_code, transpile_results
         )
         assert result == src_code
 
     def test_convert_code_with_valid_base_operations(self):
         """Test convert_code with valid BaseOperation instances."""
-        num_qubits = 1
+        qubits_num = 1
         src_code = (
             'OPENQASM 3.0;\ninclude "stdgates.inc";\n'
-            'bit[1] c;\nqubit[1] q;\nrx(pi) q[0];'
+            "bit[1] c;\nqubit[1] q;\nrx(pi) q[0];\nc[0] = measure q[0];"
         )
         transpile_results = []  # Empty list of BaseOperation instances
 
         result = driver_uqc.convert_code(
-            num_qubits, src_code, transpile_results
+            qubits_num, src_code, transpile_results
         )
         assert result == src_code
 
     def test_convert_code_edge_case_empty_qasm(self):
         """Test convert_code with empty QASM code."""
-        num_qubits = 0
+        qubits_num = 0
         src_code = ""
         transpile_results = []
 
         result = driver_uqc.convert_code(
-            num_qubits, src_code, transpile_results
+            qubits_num, src_code, transpile_results
         )
         assert result == src_code
 
     def test_convert_code_edge_case_none_transpile_results(self):
         """Test convert_code with None transpile results."""
-        num_qubits = 1
+        qubits_num = 1
         src_code = (
             'OPENQASM 3.0;\ninclude "stdgates.inc";\n'
-            'bit[1] c;\nqubit[1] q;\nrx(pi) q[0];'
+            "bit[1] c;\nqubit[1] q;\nrx(pi) q[0];\nc[0] = measure q[0];"
         )
         transpile_results = None
 
         result = driver_uqc.convert_code(
-            num_qubits, src_code, transpile_results
+            qubits_num, src_code, transpile_results
         )
         assert result == src_code
