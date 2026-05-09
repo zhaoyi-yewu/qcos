@@ -30,7 +30,7 @@ set(LIB_GTEST gtest)
 set(LIB_ANTLR4 antlr4)
 
 option(USE_PYQCOS "use transpiler in python" ON)
-option(USE_STUBGEN "generate pyi files" ON)
+option(USE_STUBGEN "generate pyi files" OFF)
 
 add_subdirectory(third_party)
 add_subdirectory(src)

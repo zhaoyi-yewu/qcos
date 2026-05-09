@@ -22,6 +22,10 @@
 #include "circuit/dag_node.h"
 #include "circuit/gate_operation.h"
 #include "circuit/quantum_circuit.h"
+// decomposer
+#include "decomposer/decomposer.h"
+#include "decomposer/equivalence_graph.h"
+#include "decomposer/rule_applier.h"
 // mapping
 #include "mapping/sabre_routing.h"
 // utils
