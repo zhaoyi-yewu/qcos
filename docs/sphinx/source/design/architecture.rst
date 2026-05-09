@@ -12,7 +12,7 @@
 * 系统引擎：提供量子相关的QASM文件输入解析、转译、量子比特映射、逻辑门分解、优化等。
 * 驱动和驱动管理：提供不同量子计算机的驱动，以及驱动的自动发现、配置加载等能力。
 
-.. figure:: ../_static/architecture.png
+.. figure:: ../_static/architecture.svg
    :align: center
 
    量子计算操作系统(QCOS)架构图
