@@ -62,7 +62,11 @@ class StLibrary:
             callbacks=callbacks,
             dry_run=dry_run,
         )
-        assert status_code == HttpCode.SUCCESS_OK
+        if status_code != HttpCode.SUCCESS_OK:
+            raise AssertionError(
+                f"Job submission failed with status {status_code}. "
+                f"Reason: {reason}. Response: {text}"
+            )
         json_results = json.loads(text)
         result = json_results["result"]
 
@@ -210,3 +214,211 @@ class StLibrary:
         assert error_code == 0
         transpiler = result["result"]
         return transpiler
+
+    @staticmethod
+    def login(client, username, password):
+        """User login."""
+        status_code, reason, text, result = client.login(username, password)
+        assert status_code == HttpCode.SUCCESS_OK, f"Login failed: {status_code} {reason} {text}"
+
+        # Parse JSON response from text
+        response = json.loads(text) if text else {}
+
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0, f"Login error: {error_code} - {error.get('message', 'Unknown error')} - Response: {response}"
+        login_result = response.get("result", response)
+        return login_result
+
+    @staticmethod
+    def logout(client):
+        """User logout."""
+        status_code, reason, text, result = client.logout()
+        assert status_code == HttpCode.SUCCESS_OK
+
+        # Parse JSON response from text
+        response = json.loads(text) if text else {}
+
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0
+
+    @staticmethod
+    def create_user(client, user_data):
+        """Create user."""
+        user_name = user_data.get("user_name")
+        password = user_data.get("password")
+        roles = user_data.get("roles", [])
+        description = user_data.get("description")
+        password_expiry_days = user_data.get("password_expiry_days")
+        is_enabled = user_data.get("is_enabled", True)
+        is_locked = user_data.get("is_locked", True)
+
+        status_code, reason, text, result = client.create_user(
+            user_name,
+            password,
+            roles,
+            description=description,
+            password_expiry_days=password_expiry_days,
+            is_enabled=is_enabled,
+            is_locked=is_locked,
+        )
+        assert status_code == HttpCode.SUCCESS_OK, f"Create user failed: {status_code} {reason} {text}"
+        response = json.loads(text) if text else {}
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0, f"Create user error: {error_code} - {error.get('message', 'Unknown error')} - Response: {response}"
+        user = response.get("result", response)
+        return user
+
+    @staticmethod
+    def get_user(client, username, is_name=False):
+        """Get user info."""
+        user_id = username
+        if is_name:
+            user_id = client.resolve_user_id(client, username)
+        status_code, reason, text, result = client.get_user(user_id)
+        assert status_code == HttpCode.SUCCESS_OK, f"Get user failed: {status_code} {reason} {text}"
+        response = json.loads(text) if text else {}
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0, f"Get user error: {error_code} - {error.get('message', 'Unknown error')} - Response: {response}"
+        user = response.get("result", response)
+        return user
+
+    @staticmethod
+    def get_users(client):
+        """Get all users."""
+        status_code, reason, text, result = client.get_users()
+        assert status_code == HttpCode.SUCCESS_OK, f"Get users failed: {status_code} {reason} {text}"
+        response = json.loads(text) if text else {}
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0, f"Get users error: {error_code} - {error.get('message', 'Unknown error')} - Response: {response}"
+        users = response.get("result", response)
+        return users
+
+    @staticmethod
+    def get_me(client):
+        """Get user info."""
+        status_code, reason, text, result = client.get_me()
+        assert status_code == HttpCode.SUCCESS_OK, f"Get current user failed: {status_code} {reason} {text}"
+        response = json.loads(text) if text else {}
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0, f"Get current user error: {error_code} - {error.get('message', 'Unknown error')} - Response: {response}"
+        user = response.get("result", response)
+        return user
+
+    @staticmethod
+    def delete_user(client, username, is_name=False, force=False):
+        """Delete user."""
+        user_id = username
+        if is_name:
+            user_id = client.resolve_user_id(client, username)
+        status_code, reason, text, result = client.delete_user(user_id, force)
+        assert status_code == HttpCode.SUCCESS_OK, f"Delete user failed: {status_code} {reason} {text}"
+        response = json.loads(text) if text else {}
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0, f"Delete user error: {error_code} - {error.get('message', 'Unknown error')} - Response: {response}"
+
+    @staticmethod
+    def create_role(client, role_data):
+        """Create role."""
+        role_name = role_data.get("role_name")
+        permissions = role_data.get("permissions", [])
+        description = role_data.get("description")
+
+        status_code, reason, text, result = client.create_role(
+            role_name, permissions, description=description
+        )
+        assert status_code == HttpCode.SUCCESS_OK, f"Create role failed: {status_code} {reason} {text}"
+        response = json.loads(text) if text else {}
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0, f"Create role error: {error_code} - {error.get('message', 'Unknown error')} - Response: {response}"
+        role = response.get("result", response)
+        return role
+
+    @staticmethod
+    def get_role(client, role_name, is_name=False):
+        """Get role info."""
+        role_id = role_name
+        if is_name:
+            role_id = client.resolve_role_id(client, role_name)
+        status_code, reason, text, result = client.get_role(role_id)
+        assert status_code == HttpCode.SUCCESS_OK, f"Get role failed: {status_code} {reason} {text}"
+        response = json.loads(text) if text else {}
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0, f"Get role error: {error_code} - {error.get('message', 'Unknown error')} - Response: {response}"
+        role = response.get("result", response)
+        return role
+
+    @staticmethod
+    def get_roles(client):
+        """Get all roles."""
+        status_code, reason, text, result = client.get_roles()
+        assert status_code == HttpCode.SUCCESS_OK, f"Get roles failed: {status_code} {reason} {text}"
+        response = json.loads(text) if text else {}
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0, f"Get roles error: {error_code} - {error.get('message', 'Unknown error')} - Response: {response}"
+        roles = response.get("result", response)
+        return roles
+
+    @staticmethod
+    def delete_role(client, role_name, is_name=False):
+        """Delete role."""
+        role_id = role_name
+        if is_name:
+            role_id = client.resolve_role_id(client, role_name)
+        status_code, reason, text, result = client.delete_role(role_id)
+        assert status_code == HttpCode.SUCCESS_OK, f"Delete role failed: {status_code} {reason} {text}"
+        response = json.loads(text) if text else {}
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0, f"Delete role error: {error_code} - {error.get('message', 'Unknown error')} - Response: {response}"
+
+    @staticmethod
+    def change_password(client, username, old_password, new_password, is_name=False):
+        """Change user password."""
+        user_id = username
+        if is_name:
+            user_id = client.resolve_user_id(client, username)
+        status_code, reason, text, result = client.change_password(
+            user_id, old_password, new_password
+        )
+        assert status_code == HttpCode.SUCCESS_OK, f"Change password failed: {status_code} {reason} {text}"
+        response = json.loads(text) if text else {}
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0, f"Change password error: {error_code} - {error.get('message', 'Unknown error')} - Response: {response}"
+
+    @staticmethod
+    def get_user_roles(client, username):
+        """Get all roles for user."""
+        status_code, reason, text, result = client.get_user_roles(username)
+        assert status_code == HttpCode.SUCCESS_OK, f"Get user roles failed: {status_code} {reason} {text}"
+        response = json.loads(text) if text else {}
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0, f"Get user roles error: {error_code} - {error.get('message', 'Unknown error')} - Response: {response}"
+        roles = response.get("result", response)
+        return roles
+
+    @staticmethod
+    def get_login_logs(client, username=None, user_id=None, limit=100, offset=0):
+        """Get login logs."""
+        status_code, reason, text, result = client.get_login_logs(
+            user_id=user_id, user_name=username, limit=limit, offset=offset
+        )
+        assert status_code == HttpCode.SUCCESS_OK, f"Get login logs failed: {status_code} {reason} {text}"
+        response = json.loads(text) if text else {}
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0, f"Get login logs error: {error_code} - {error.get('message', 'Unknown error')} - Response: {response}"
+        logs = response.get("result", response)
+        return logs
+
