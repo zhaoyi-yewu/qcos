@@ -135,7 +135,9 @@ class TestClientUser:
         status_code, reason, text, result = client.delete_user(self.user_id)
         assert status_code == 200
         mock_call_json_rpc.assert_called_once_with(
-            client.user_url, "delete_user", {"user_id": self.user_id}
+            client.user_url,
+            "delete_user",
+            {"user_id": self.user_id, "force": False},
         )
 
     @patch.object(Client, "call_json_rpc")

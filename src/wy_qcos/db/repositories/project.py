@@ -135,4 +135,3 @@ class ProjectRepository(BaseRepository):
         except Exception as e:
             logger.error(f"Failed to check project existence: {e}")
             return False
-

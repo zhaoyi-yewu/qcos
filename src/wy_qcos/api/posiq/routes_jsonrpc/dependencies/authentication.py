@@ -337,6 +337,7 @@ def auth_user(
         )
     return auth_data
 
+
 def auth_match_user_id(user_id, auth_data, allow_admin=False):
     """Authenticate: user ids are matched.
 

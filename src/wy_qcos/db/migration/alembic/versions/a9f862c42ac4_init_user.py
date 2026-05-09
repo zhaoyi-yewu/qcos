@@ -29,7 +29,8 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Create projects table first (before users, since users has FK to projects)
+    # Create projects table first (before users, since users has FK to
+    # projects)
     op.create_table(
         "projects",
         sa.Column("id", sa.String(length=36), nullable=False),
@@ -181,4 +182,3 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_projects_name"), table_name="projects")
     op.drop_index(op.f("ix_projects_id"), table_name="projects")
     op.drop_table("projects")
-

@@ -15,9 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import pytest
-import jwt
 import logging
+import jwt
+import pytest
 from unittest.mock import patch, Mock, AsyncMock
 from datetime import datetime, timedelta
 
@@ -461,18 +461,14 @@ class TestAuth:
     )
     @pytest.mark.asyncio
     @pytest.mark.smoke
-    async def test_auth_no_mode(
-        self, mock_config
-    ):
+    async def test_auth_no_mode(self, mock_config):
         """Test authentication with auth_mode=no (no authentication)."""
         mock_config.AUTH_MODE = Constant.AUTH_MODE_NO
 
         mock_request = Mock()
         mock_user_manager = Mock(spec=UserManager)
 
-        auth_data = await auth(
-            mock_request, user_manager=mock_user_manager
-        )
+        auth_data = await auth(mock_request, user_manager=mock_user_manager)
 
         assert auth_data is not None
         assert auth_data["auth_method"] == "no"
@@ -489,10 +485,8 @@ class TestAuth:
     )
     @pytest.mark.asyncio
     @pytest.mark.smoke
-    async def test_auth_jwt_mode_success(
-        self, mock_oauth2_scheme, mock_config
-    ):
-        """Test authentication with auth_mode=jwt (JWT token authentication)."""
+    async def test_auth_mode_jwt(self, mock_oauth2_scheme, mock_config):
+        """Test authentication with JWT token mode."""
         mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
         mock_config.JWT_AUTH_SECRET_KEY = Config.JWT_AUTH_SECRET_KEY
         mock_config.JWT_AUTH_ALGORITHM = Config.JWT_AUTH_ALGORITHM
@@ -723,4 +717,3 @@ class TestAuth:
 
         with pytest.raises(Exception):
             await auth(mock_request, user_manager=mock_user_manager)
-

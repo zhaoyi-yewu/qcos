@@ -339,8 +339,9 @@ class TestDeleteUser:
         cmd.app = shell
         parsed_args = Mock()
         parsed_args.user_id = user_id
+        parsed_args.force = False
         cmd.take_action(parsed_args)
-        mock_delete_user.assert_called_once_with(user_id)
+        mock_delete_user.assert_called_once_with(user_id, force=False)
 
 
 class TestCreateRole:

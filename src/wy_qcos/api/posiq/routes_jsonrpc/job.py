@@ -209,7 +209,8 @@ def submit_job(
     # validate: backend
     if (
         auth_data is not None
-        and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+        and auth_data[Constant.AUTH_MODE_KEY]
+        == Constant.AUTH_MODE_VIRTUAL_INSTANCE
     ):
         if backend not in auth_data["device_names"]:
             jsonrpc_errors.handle_error_bad_requests(
@@ -365,7 +366,8 @@ def submit_job(
         tags = [f"{device_name}"]
         if (
             auth_data is not None
-            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+            and auth_data[Constant.AUTH_MODE_KEY]
+            == Constant.AUTH_MODE_VIRTUAL_INSTANCE
         ):
             virtual_instance_id = auth_data["instance_id"]
             tags.extend([f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"])
@@ -437,7 +439,8 @@ def get_job_status(
         tags = None
         if (
             auth_data is not None
-            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+            and auth_data[Constant.AUTH_MODE_KEY]
+            == Constant.AUTH_MODE_VIRTUAL_INSTANCE
         ):
             virtual_instance_id = auth_data["instance_id"]
             tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
@@ -503,7 +506,8 @@ def get_job_results(
         tags = None
         if (
             auth_data is not None
-            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+            and auth_data[Constant.AUTH_MODE_KEY]
+            == Constant.AUTH_MODE_VIRTUAL_INSTANCE
         ):
             virtual_instance_id = auth_data["instance_id"]
             tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
@@ -569,7 +573,8 @@ def get_jobs(
         tags = None
         if (
             auth_data is not None
-            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+            and auth_data[Constant.AUTH_MODE_KEY]
+            == Constant.AUTH_MODE_VIRTUAL_INSTANCE
         ):
             virtual_instance_id = auth_data["instance_id"]
             tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
@@ -627,7 +632,8 @@ def cancel_jobs(
     tags = None
     if (
         auth_data is not None
-        and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+        and auth_data[Constant.AUTH_MODE_KEY]
+        == Constant.AUTH_MODE_VIRTUAL_INSTANCE
     ):
         virtual_instance_id = auth_data["instance_id"]
         tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
@@ -669,7 +675,8 @@ def delete_jobs(
     tags = None
     if (
         auth_data is not None
-        and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+        and auth_data[Constant.AUTH_MODE_KEY]
+        == Constant.AUTH_MODE_VIRTUAL_INSTANCE
     ):
         virtual_instance_id = auth_data["instance_id"]
         tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
@@ -717,7 +724,8 @@ def set_job_results(
         tags = None
         if (
             auth_data is not None
-            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+            and auth_data[Constant.AUTH_MODE_KEY]
+            == Constant.AUTH_MODE_VIRTUAL_INSTANCE
         ):
             virtual_instance_id = auth_data["instance_id"]
             tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
@@ -875,7 +883,8 @@ def update_job(
     tags = None
     if (
         auth_data is not None
-        and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+        and auth_data[Constant.AUTH_MODE_KEY]
+        == Constant.AUTH_MODE_VIRTUAL_INSTANCE
     ):
         virtual_instance_id = auth_data["instance_id"]
         tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]

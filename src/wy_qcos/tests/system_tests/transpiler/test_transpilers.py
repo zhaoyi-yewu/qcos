@@ -42,7 +42,9 @@ class TestTranspilers:
     @pytest.mark.smoke
     def test_get_transpiler(self):
         transpiler_name = Constant.TRANSPILER_CMSS
-        transpiler = StLibrary.get_transpiler(self.admin_client, transpiler_name)
+        transpiler = StLibrary.get_transpiler(
+            self.admin_client, transpiler_name
+        )
         assert isinstance(transpiler, dict)
         assert isinstance(transpiler["alias_name"], str)
         assert transpiler["enable"] is True
@@ -50,6 +52,7 @@ class TestTranspilers:
         assert transpiler["supported_code_types"] == [
             Constant.CODE_TYPE_QASM,
             Constant.CODE_TYPE_QASM2,
+            Constant.CODE_TYPE_QASM3,
         ]
         if transpiler["transpiler_options"] is not None:
             assert isinstance(transpiler["transpiler_options"], dict)

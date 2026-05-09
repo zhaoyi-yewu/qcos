@@ -59,6 +59,7 @@ class TestDrivers:
         assert driver["supported_code_types"] == [
             Constant.CODE_TYPE_QASM,
             Constant.CODE_TYPE_QASM2,
+            Constant.CODE_TYPE_QASM3,
         ]
         assert driver["supported_transpilers"] == [Constant.TRANSPILER_CMSS]
         assert driver["tech_type"] == Constant.TECH_TYPE_NEUTRAL_ATOM

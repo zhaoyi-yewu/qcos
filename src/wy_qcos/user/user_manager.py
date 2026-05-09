@@ -122,14 +122,14 @@ class UserManager:
 
         def init_projects(project_id, project_name):
             """Initialize a project if not already exists.
-            
+
             Creates a new project in the database if it doesn't already exist.
             Logs success or failure of the operation.
-            
+
             Args:
                 project_id: Unique identifier (UUID) for the project
                 project_name: Human-readable name of the project
-            
+
             Returns:
                 None. Logs project status to logger.
             """
@@ -137,10 +137,8 @@ class UserManager:
                 self.projects_repo.get_project_by_id(project_id)
             )
             if not (success and existing_project):
-                success, error, project = (
-                    self.projects_repo.create_project(
-                        project_id, project_name
-                    )
+                success, error, project = self.projects_repo.create_project(
+                    project_id, project_name
                 )
                 if not success:
                     error_msg = (
@@ -157,14 +155,14 @@ class UserManager:
 
         def init_roles(role_name, description=""):
             """Initialize a role if not already exists.
-            
-            Creates a new role with default permissions if it doesn't already exist.
-            Assigns permissions based on the role type (admin, user, etc).
-            
+
+            Creates a new role with default permissions if not exists.
+            Assigns permissions based on the role type.
+
             Args:
                 role_name: Name of the role to create
                 description: Optional description of the role's purpose
-            
+
             Returns:
                 None. Created role is stored internally in roles_db.
             """
@@ -177,20 +175,22 @@ class UserManager:
                     description=description,
                 )
 
-        def init_users(user_name, project_id, role_names, password, description=""):
+        def init_users(
+            user_name, project_id, role_names, password, description=""
+        ):
             """Initialize a user if not already exists.
-            
-            Creates a new user in the specified project with assigned roles if the
-            user doesn't already exist. The user is created with the account enabled
-            but not locked, and no password expiry.
-            
+
+            Creates a new user in the specified project with assigned roles
+            if the user doesn't already exist. The user is created with the
+            account enabled but not locked, and no password expiry.
+
             Args:
                 user_name: Unique username for the user
                 project_id: Project ID (UUID) this user belongs to
                 role_names: List of role names to assign to the user
                 password: Initial password for the user
                 description: Optional description of the user's purpose
-            
+
             Returns:
                 None. Created user is stored internally in users_db.
             """
@@ -208,26 +208,35 @@ class UserManager:
 
         # init projects
         init_projects(Constant.ADMIN_PROJECT_ID, Constant.ADMIN_PROJECT_NAME)
-        init_projects(Constant.DEFAULT_PROJECT_ID,
-                      Constant.DEFAULT_PROJECT_NAME)
+        init_projects(
+            Constant.DEFAULT_PROJECT_ID, Constant.DEFAULT_PROJECT_NAME
+        )
 
         # init roles
-        init_roles(Constant.ROLE_ADMIN,
-                   description="Administrator with full permissions")
-        init_roles(Constant.ROLE_USER,
-                   description="Regular user with basic permissions")
+        init_roles(
+            Constant.ROLE_ADMIN,
+            description="Administrator with full permissions",
+        )
+        init_roles(
+            Constant.ROLE_USER,
+            description="Regular user with basic permissions",
+        )
 
         # init users
-        init_users(Constant.ADMIN_USERNAME, Constant.DEFAULT_PROJECT_ID,
-                   [Constant.ROLE_ADMIN],
-                   DEFAULT_ADMIN_PASSWORD,
-                   description="Administrator with full permissions")
-        init_users(Constant.ANONYMOUS_USERNAME,
-                   Constant.DEFAULT_PROJECT_ID,
-                   [Constant.ROLE_ADMIN],
-                   DEFAULT_ADMIN_PASSWORD,
-                   description="Anonymous user with full permissions "
-                               "(auth_mode=no)")
+        init_users(
+            Constant.ADMIN_USERNAME,
+            Constant.DEFAULT_PROJECT_ID,
+            [Constant.ROLE_ADMIN],
+            DEFAULT_ADMIN_PASSWORD,
+            description="Administrator with full permissions",
+        )
+        init_users(
+            Constant.ANONYMOUS_USERNAME,
+            Constant.DEFAULT_PROJECT_ID,
+            [Constant.ROLE_ADMIN],
+            DEFAULT_ADMIN_PASSWORD,
+            description="Anonymous user with full permissions (auth_mode=no)",
+        )
 
     def load_role_permissions(self):
         """Load all role permissions from database.
@@ -617,7 +626,7 @@ class UserManager:
         create_request = schemas.CreateRoleRequest(
             role_name=role_name,
             permissions=permissions,
-            description=description or "",
+            description=description,
         )
         success, error, role = self.roles_repo.create_role(create_request)
         if not success or not role:

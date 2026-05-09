@@ -71,6 +71,7 @@ class TranspilerCmss(TranspilerBase):
         self.supported_code_types = [
             Constant.CODE_TYPE_QASM,
             Constant.CODE_TYPE_QASM2,
+            Constant.CODE_TYPE_QASM3,
         ]
         # transpiler_options
         if (

@@ -706,7 +706,10 @@ class TaskFlowManager(ABC):
             name_filter = FlowRunFilterName(any_=[str(job_id)])
             flow_run_filter_kwargs["name"] = name_filter
 
-        if Config.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE and tags is not None:
+        if (
+            Config.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+            and tags is not None
+        ):
             tags_filter = FlowRunFilterTags(all_=tags)
             flow_run_filter_kwargs["tags"] = tags_filter
         # create flow run filter with flow_run_filter_kwargs
@@ -1236,7 +1239,10 @@ class TaskFlowManager(ABC):
             flow_run_filter_kwargs["state"] = state_filter
 
         # assign tags_filter if tags is not None
-        if Config.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE and tags is not None:
+        if (
+            Config.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+            and tags is not None
+        ):
             tags_filter = FlowRunFilterTags(all_=tags)
             flow_run_filter_kwargs["tags"] = tags_filter
 

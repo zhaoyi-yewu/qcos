@@ -1533,7 +1533,9 @@ class TestAuthModeIntegration:
         assert result.password_expiry_days == 90
 
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
-    def test_get_user_mgmt_status_with_virtual_instance_mode(self, mock_config):
+    def test_get_user_mgmt_status_with_virtual_instance_mode(
+        self, mock_config
+    ):
         """Test user management status with auth_mode=virtual_instance."""
         mock_config.AUTH_MODE = Constant.AUTH_MODE_VIRTUAL_INSTANCE
         mock_config.PASSWORD_EXPIRY_DAYS = 0
@@ -1703,4 +1705,3 @@ class TestAuthModeIntegration:
 
         assert result is not None
         assert result.user_name == "testuser_virt"
-

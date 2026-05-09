@@ -166,8 +166,8 @@ class MetricsServer:
             except OSError as e:
                 if attempt < self.max_retries - 1:
                     logger.warning(
-                        f"Failed to bind metrics server (attempt {attempt + 1}/"
-                        f"{self.max_retries}): {e}. "
+                        f"Failed to bind metrics server "
+                        f"(attempt {attempt + 1}/{self.max_retries}): {e}. "
                         f"Retrying in {self.retry_delay} seconds..."
                     )
                     time.sleep(self.retry_delay)

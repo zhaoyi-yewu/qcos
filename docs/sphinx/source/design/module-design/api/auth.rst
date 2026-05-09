@@ -114,22 +114,22 @@
                "id": 1
              }
 
-    * - **获取当前用户信息**
-      - **me**
+   * - **获取当前用户信息**
+     - **me**
 
-        URI: /v1/auth/me
-      - .. container:: table-code-small-font
+       URI: /v1/auth/me
+     - .. container:: table-code-small-font
 
-           .. code-block:: json
+          .. code-block:: json
 
-              {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "me",
-                "params": {
-                  "body": null
-                }
-              }
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "method": "me",
+               "params": {
+                 "body": null
+               }
+             }
      - .. container:: table-code-small-font
 
           .. code-block:: json

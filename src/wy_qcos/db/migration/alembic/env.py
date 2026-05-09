@@ -20,16 +20,12 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
+import tomllib
 from alembic import context
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy.engine.url import make_url
-
-try:
-    import tomllib
-except ImportError:
-    import tomli as tomllib
 
 top_dir = Path(__file__).resolve().parent.parent.parent.parent.parent
 sys.path.insert(0, str(top_dir))
@@ -120,14 +116,18 @@ def get_url_from_config():
         return url
 
     # 2. Try to get from TOML config file
-    print(f"[2/3] Attempting to read {db_str} from config file: {qcos_config_file}")
+    print(
+        f"[2/3] Attempting to read {db_str} from config file: "
+        f"{qcos_config_file}"
+    )
     if os.path.exists(qcos_config_file):
         try:
             with open(qcos_config_file, "rb") as f:
                 config_data = tomllib.load(f)
 
             # Navigate through the config hierarchy
-            # Expected path: config_data['DATABASE']['QCOS_DATABASE_CONNECTION_URL']
+            # Expected path: config_data['DATABASE'][
+            # 'QCOS_DATABASE_CONNECTION_URL']
             if "DATABASE" in config_data and db_str in config_data["DATABASE"]:
                 db_connection_url = config_data["DATABASE"][db_str]
                 if db_connection_url:
@@ -146,8 +146,8 @@ def get_url_from_config():
     print(f"[3/3] ERROR: Could not find {db_str}")
     raise Exception(
         f"Could not find '{db_str}'. Please:\n"
-        f"  1. Set environment variable: export {db_str}='postgresql://...'\n"
-        f"  2. Or configure it in {qcos_config_file} under [DATABASE] section\n"
+        f"  1. Set environment variable: export {db_str}='postgresql...'\n"
+        f"  2. Or configure it in {qcos_config_file} under [DATABASE]\n"
         f"     Example: {db_str} = 'postgresql://user:password@localhost:5432/qcos'"
     )
 

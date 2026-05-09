@@ -20,9 +20,6 @@ import openqasm3
 
 from wy_qcos.transpiler.cmss.compiler.openqasm3.convertor import (
     ConvertVisitor,
-    _create_standard_gate,
-    _escape_qasm2,
-    GateBuilder,
 )
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.common.cmss.gate_operation import (
@@ -43,6 +40,9 @@ class TestConvertVisitor:
 
     def test_create_standard_gate_builder(self):
         """Test the _create_standard_gate function."""
+        from wy_qcos.transpiler.cmss.compiler.openqasm3.convertor import (
+            _create_standard_gate,
+        )
 
         # Test single-qubit gate with no parameters
         builder = _create_standard_gate("x", 0, 1)
@@ -69,6 +69,9 @@ class TestConvertVisitor:
 
     def test_escape_qasm2_identifier(self):
         """Test the _escape_qasm2 function for valid OpenQASM 2 identifiers."""
+        from wy_qcos.transpiler.cmss.compiler.openqasm3.convertor import (
+            _escape_qasm2,
+        )
 
         # Test valid identifiers
         assert _escape_qasm2("q0") == "q0"
@@ -83,6 +86,9 @@ class TestConvertVisitor:
 
     def test_gate_builder_initialization(self):
         """Test GateBuilder class initialization."""
+        from wy_qcos.transpiler.cmss.compiler.openqasm3.convertor import (
+            GateBuilder,
+        )
 
         circuit = QuantumCircuit(num_qubits=2)
 
@@ -94,6 +100,9 @@ class TestConvertVisitor:
         assert builder._num_qubits == 2
 
         # Test with parameters
+        from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
+            Parameter,
+        )
 
         params = [Parameter("theta"), Parameter("phi")]
         builder = GateBuilder("my_gate", circuit, params)
@@ -102,6 +111,12 @@ class TestConvertVisitor:
 
     def test_gate_builder_call(self):
         """Test GateBuilder.__call__ method."""
+        from wy_qcos.transpiler.cmss.compiler.openqasm3.convertor import (
+            GateBuilder,
+        )
+        from wy_qcos.transpiler.cmss.compiler.openqasm3.state import (
+            Parameter,
+        )
 
         circuit = QuantumCircuit(num_qubits=2)
         params = [Parameter("theta"), Parameter("phi")]

@@ -35,7 +35,8 @@ class Config:
     MAX_JOBS = 10000
     # [GLOBAL CONFIG] max queued+running jobs
     MAX_QUEUED_JOBS = 1000
-    # [GLOBAL CONFIG] authentication mode: "no" (default), "password", "virtual_instance"
+    # [GLOBAL CONFIG] authentication mode: "no" (default), "password",
+    # "virtual_instance"
     AUTH_MODE = Constant.AUTH_MODE_NO
     # [GLOBAL CONFIG] default venv base dir
     VENV_DIR = "/var/lib/qcos/venv"

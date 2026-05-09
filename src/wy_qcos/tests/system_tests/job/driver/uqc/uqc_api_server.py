@@ -39,7 +39,7 @@ _tasks = {}
 
 # UQC Server simulator
 uqc_listen_ip = "0.0.0.0"
-uqc_listen_port = 5001
+uqc_listen_port = 8003
 
 
 def submit_task(data):

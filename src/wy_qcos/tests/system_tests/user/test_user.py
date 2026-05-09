@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import logging
 import json
 import pytest
 
@@ -69,9 +70,11 @@ class TestUser:
         """Clean up test users."""
         for username in cls.test_usernames:
             try:
-                StLibrary.delete_user(cls.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    cls.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @classmethod
     def setup_class(cls):
@@ -81,7 +84,7 @@ class TestUser:
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.max_login_attempts = GLOBAL_CONFIGS["max_login_attempts"]
-        
+
         # Admin credentials for cleanup operations
         cls.admin_user = GLOBAL_CONFIGS["admin_user"]
         cls.admin_password = GLOBAL_CONFIGS["admin_password"]
@@ -91,11 +94,10 @@ class TestUser:
         cls.temp_password = _s("TempPass123!")
         cls.old_password = _s("OldPassword123!")
         cls.new_password = _s("NewPassword456!")
-        
+
         # Initialize and clean up test resources
         cls._init_test_usernames()
         cls._cleanup_test_users()
-
 
     @classmethod
     def teardown_class(cls):
@@ -116,12 +118,16 @@ class TestUser:
         try:
             StLibrary.create_user(self.admin_client, user_data)
 
-            user = StLibrary.get_user(self.admin_client, username, is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
             assert user["user_name"] == username
             assert isinstance(user["is_enabled"], bool)
 
-            login_response = StLibrary.login(self.client, username, str(self.password))
+            login_response = StLibrary.login(
+                self.client, username, str(self.password)
+            )
             self.client.set_token(login_response["access_token"])
 
             # Verify user session is now active
@@ -130,9 +136,11 @@ class TestUser:
             current_user["user_name"] = username
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_create_and_delete_user(self):
@@ -151,15 +159,22 @@ class TestUser:
             assert new_user["user_name"] == "_test_user_st"
 
             # Verify user is created
-            retrieved_user = StLibrary.get_user(self.admin_client, "_test_user_st", is_name=True)
+            retrieved_user = StLibrary.get_user(
+                self.admin_client, "_test_user_st", is_name=True
+            )
             assert retrieved_user["user_name"] == "_test_user_st"
 
         finally:
             # Delete user
             try:
-                StLibrary.delete_user(self.admin_client, "_test_user_st", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_user_st",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_get_all_users(self):
@@ -199,18 +214,21 @@ class TestUser:
             assert user_roles is not None
             # Should have at least one role
             role_count = (
-                len(user_roles)
-                if isinstance(user_roles, (dict, list))
-                else 0
+                len(user_roles) if isinstance(user_roles, (dict, list)) else 0
             )
             assert role_count > 0
 
         finally:
             # Clean up
             try:
-                StLibrary.delete_user(self.admin_client, "_test_user_multi_roles", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_user_multi_roles",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_user_enable_disable_workflow(self):
@@ -228,7 +246,9 @@ class TestUser:
             assert new_user["user_name"] == "_test_user_enable_disable"
 
             # Verify user status
-            user = StLibrary.get_user(self.admin_client, "_test_user_enable_disable", is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, "_test_user_enable_disable", is_name=True
+            )
             assert user is not None
             # New user should be enabled
             assert isinstance(user["is_enabled"], bool)
@@ -236,9 +256,14 @@ class TestUser:
         finally:
             # Clean up
             try:
-                StLibrary.delete_user(self.admin_client, "_test_user_enable_disable", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_user_enable_disable",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_user_account_properties(self):
@@ -257,7 +282,9 @@ class TestUser:
             assert new_user is not None
 
             # Verify user properties
-            user = StLibrary.get_user(self.admin_client, "_test_user_properties", is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, "_test_user_properties", is_name=True
+            )
             assert user["user_name"] == "_test_user_properties"
             assert "created_at" in user or "created_time" in user
             assert isinstance(user["is_enabled"], bool)
@@ -265,9 +292,14 @@ class TestUser:
         finally:
             # Clean up
             try:
-                StLibrary.delete_user(self.admin_client, "_test_user_properties", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_user_properties",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_user_creation_and_login_flow(self):
@@ -286,13 +318,16 @@ class TestUser:
             assert new_user["user_name"] == username
 
             # Login with new credentials
-            login_result = StLibrary.login(self.client, username, str(self.password))
+            login_result = StLibrary.login(
+                self.client, username, str(self.password)
+            )
             assert login_result is not None
             assert login_result["user_name"] == username
 
             # Verify user last_login
-            user = StLibrary.get_user(self.admin_client, username,
-                                      is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
             assert user.get("last_login") is not None
             assert user.get("password_changed_at") is not None
@@ -304,9 +339,11 @@ class TestUser:
         finally:
             # Clean up
             try:
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_user_role_assignment(self):
@@ -330,18 +367,22 @@ class TestUser:
                 StLibrary.assign_role_to_user(self.client, username, "user")
             except Exception:
                 # Role may not exist
-                pass
+                logging.warning("Exception during cleanup")
 
             # Verify user
-            user = StLibrary.get_user(self.admin_client, username, is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
 
         finally:
             # Clean up
             try:
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_user_description_field(self):
@@ -360,14 +401,18 @@ class TestUser:
             assert new_user["user_name"] == username
 
             # Get user and verify description
-            user = StLibrary.get_user(self.admin_client, username, is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
             assert user.get("description") == description
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_user_is_enabled_field(self):
@@ -385,13 +430,17 @@ class TestUser:
             assert new_user["user_name"] == username
 
             # Get user and verify is_enabled
-            user = StLibrary.get_user(self.admin_client, username, is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
             assert isinstance(user.get("is_enabled"), bool)
             assert user.get("is_enabled") is False
 
             # login user
-            status_code, reason, text, result = self.client.login(username, self.password)
+            status_code, reason, text, result = self.client.login(
+                username, self.password
+            )
             assert status_code == HttpCode.SUCCESS_OK
             # Parse JSON response from text
             response = json.loads(text) if text else {}
@@ -400,9 +449,11 @@ class TestUser:
             assert error_code == -HttpCode.FORBIDDEN_ERROR
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_user_is_locked_field(self):
@@ -419,13 +470,17 @@ class TestUser:
             assert new_user["user_name"] == username
 
             # Get user and verify is_locked
-            user = StLibrary.get_user(self.admin_client, username, is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
             assert isinstance(user.get("is_locked"), bool)
             assert user.get("is_locked") is True
 
             # login user
-            status_code, reason, text, result = self.client.login(username, self.password)
+            status_code, reason, text, result = self.client.login(
+                username, self.password
+            )
             assert status_code == HttpCode.SUCCESS_OK
             # Parse JSON response from text
             response = json.loads(text) if text else {}
@@ -434,9 +489,11 @@ class TestUser:
             assert error_code == -HttpCode.FORBIDDEN_ERROR
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_update_user_is_enabled_field(self):
@@ -455,24 +512,29 @@ class TestUser:
             assert new_user["user_name"] == username
 
             # Verify user is enabled
-            user = StLibrary.get_user(self.admin_client, username, is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
             assert user.get("is_enabled") is True
 
             # Update user to disable it
             status_code, reason, text, result = self.admin_client.update_user(
-                user.get("id"),
-                is_enabled=False
+                user.get("id"), is_enabled=False
             )
             assert status_code == HttpCode.SUCCESS_OK
 
             # Verify user is now disabled
-            user = StLibrary.get_user(self.admin_client, username, is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
             assert user.get("is_enabled") is False
 
             # login user
-            status_code, reason, text, result = self.client.login(username, self.password)
+            status_code, reason, text, result = self.client.login(
+                username, self.password
+            )
             assert status_code == HttpCode.SUCCESS_OK
             # Parse JSON response from text
             response = json.loads(text) if text else {}
@@ -481,9 +543,11 @@ class TestUser:
             assert error_code == -HttpCode.FORBIDDEN_ERROR
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_update_user_is_locked_field(self):
@@ -501,24 +565,29 @@ class TestUser:
             assert new_user["user_name"] == username
 
             # Verify user is not locked
-            user = StLibrary.get_user(self.admin_client, username, is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
             assert user.get("is_locked") is False
 
             # Update user to lock it
             status_code, reason, text, result = self.admin_client.update_user(
-                user.get("id"),
-                is_locked=True
+                user.get("id"), is_locked=True
             )
             assert status_code == HttpCode.SUCCESS_OK
 
             # Verify user is now locked
-            user = StLibrary.get_user(self.admin_client, username, is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
             assert user.get("is_locked") is True
 
             # login user
-            status_code, reason, text, result = self.client.login(username, self.password)
+            status_code, reason, text, result = self.client.login(
+                username, self.password
+            )
             assert status_code == HttpCode.SUCCESS_OK
             # Parse JSON response from text
             response = json.loads(text) if text else {}
@@ -527,9 +596,11 @@ class TestUser:
             assert error_code == -HttpCode.FORBIDDEN_ERROR
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_user_failed_login_attempts_field(self):
@@ -548,19 +619,25 @@ class TestUser:
             # login user
             wrong_password = f"{self.password}_wrong"
             for i in range(self.max_login_attempts):
-                status_code, reason, text, result = self.client.login(username, wrong_password)
+                status_code, reason, text, result = self.client.login(
+                    username, wrong_password
+                )
                 assert status_code == HttpCode.SUCCESS_OK
 
             # Get user and verify failed_login_attempts
-            user = StLibrary.get_user(self.admin_client, username, is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
             is_locked = user.get("is_locked", False)
             assert is_locked is True
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_user_last_login_field(self):
@@ -577,7 +654,9 @@ class TestUser:
             assert new_user["user_name"] == username
 
             # Get user before login - last_login should be None or not set
-            user = StLibrary.get_user(self.admin_client, username, is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
             last_login_before = user.get("last_login")
             assert last_login_before is None
@@ -586,16 +665,20 @@ class TestUser:
             StLibrary.login(self.client, username, str(self.password))
 
             # Get user after login - last_login should be set
-            user = StLibrary.get_user(self.admin_client, username, is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
             last_login_after = user.get("last_login")
             # last_login should be populated after login
             assert last_login_after is not None
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_user_password_expiry_days_field(self):
@@ -614,13 +697,16 @@ class TestUser:
             assert new_user["user_name"] == username
 
             # Get user and verify password_expiry_days
-            user = StLibrary.get_user(self.admin_client, username, is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
             retrieved_expiry_days = user.get("password_expiry_days")
             assert retrieved_expiry_days == expiry_days
 
-            status_code, reason, text, result = self.client.login(username,
-                                                                  self.password)
+            status_code, reason, text, result = self.client.login(
+                username, self.password
+            )
             assert status_code == HttpCode.SUCCESS_OK
             response = json.loads(text) if text else {}
             error = response.get("error", {})
@@ -628,6 +714,8 @@ class TestUser:
             assert error_code == -HttpCode.FORBIDDEN_ERROR
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")

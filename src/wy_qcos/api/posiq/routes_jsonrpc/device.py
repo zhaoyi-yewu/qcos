@@ -59,7 +59,8 @@ def _get_device_info(device, auth_data=None, details=False):
     }
     if (
         auth_data is not None
-        and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+        and auth_data[Constant.AUTH_MODE_KEY]
+        == Constant.AUTH_MODE_VIRTUAL_INSTANCE
     ):
         # only admin user can access to config info
         # remove config info in device_info for non-admin user
@@ -95,7 +96,8 @@ def get_devices(
     for device_name, device in sorted(devices.items()):
         if (
             auth_data is not None
-            and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+            and auth_data[Constant.AUTH_MODE_KEY]
+            == Constant.AUTH_MODE_VIRTUAL_INSTANCE
         ):
             if device_name not in auth_data["device_names"]:
                 continue
@@ -131,7 +133,8 @@ def get_device(
     device = device_manager.get_device(device_name)
     if (
         auth_data is not None
-        and auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+        and auth_data[Constant.AUTH_MODE_KEY]
+        == Constant.AUTH_MODE_VIRTUAL_INSTANCE
     ):
         if device_name not in auth_data["device_names"]:
             device = None

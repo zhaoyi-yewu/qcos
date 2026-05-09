@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import logging
 import pytest
 
 from wy_qcos.common.constant import Constant
@@ -43,9 +44,11 @@ class TestAuth:
         """Clean up test users."""
         for username in cls.test_usernames:
             try:
-                StLibrary.delete_user(cls.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    cls.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @classmethod
     def setup_class(cls):
@@ -95,9 +98,11 @@ class TestAuth:
         finally:
             try:
                 # Login as admin to delete user
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_login_with_invalid_credentials(self):
@@ -120,7 +125,9 @@ class TestAuth:
 
         try:
             StLibrary.create_user(self.admin_client, user_data)
-            login_result = StLibrary.login(self.client, username, str(password))
+            login_result = StLibrary.login(
+                self.client, username, str(password)
+            )
             assert login_result is not None
 
             # Then logout
@@ -129,9 +136,11 @@ class TestAuth:
         finally:
             try:
                 # Login as admin to delete user
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_login_and_get_user_info(self):
@@ -148,19 +157,25 @@ class TestAuth:
 
         try:
             StLibrary.create_user(self.admin_client, user_data)
-            login_result = StLibrary.login(self.client, username, str(password))
+            login_result = StLibrary.login(
+                self.client, username, str(password)
+            )
             assert login_result["user_name"] == username
 
             # Get user info
-            user = StLibrary.get_user(self.admin_client, username, is_name=True)
+            user = StLibrary.get_user(
+                self.admin_client, username, is_name=True
+            )
             assert user is not None
             assert user["user_name"] == username
             assert isinstance(user["is_enabled"], bool)
         finally:
             try:
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_multiple_login_sessions(self):
@@ -186,9 +201,11 @@ class TestAuth:
         finally:
             try:
                 # Login as admin to delete user
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_change_password(self):
@@ -229,9 +246,14 @@ class TestAuth:
             # Clean up test user
             try:
                 # Login as admin to delete user
-                StLibrary.delete_user(self.admin_client, "_test_user_change_pwd", is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_user_change_pwd",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_token_expiry_and_refresh(self):
@@ -250,7 +272,9 @@ class TestAuth:
             StLibrary.create_user(self.admin_client, user_data)
 
             # Logout admin and login to get token
-            login_result = StLibrary.login(self.client, username, str(password))
+            login_result = StLibrary.login(
+                self.client, username, str(password)
+            )
             assert login_result is not None
 
             # Verify token exists
@@ -261,9 +285,11 @@ class TestAuth:
         finally:
             try:
                 # Login as admin to delete user
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_get_current_user(self):
@@ -282,15 +308,19 @@ class TestAuth:
             StLibrary.create_user(self.admin_client, user_data)
 
             # Logout admin and login
-            login_result = StLibrary.login(self.client, username, str(password))
+            login_result = StLibrary.login(
+                self.client, username, str(password)
+            )
             assert login_result is not None
             assert login_result["user_name"] == username
         finally:
             try:
                 # Login as admin to delete user
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")
 
     @pytest.mark.smoke
     def test_authentication_with_role_permission(self):
@@ -314,15 +344,19 @@ class TestAuth:
 
             # Get user roles
             try:
-                user_roles = StLibrary.get_user_roles(self.admin_client, username)
+                user_roles = StLibrary.get_user_roles(
+                    self.admin_client, username
+                )
                 assert user_roles is not None
                 assert isinstance(user_roles, (dict, list))
             except Exception:
                 # User may not have roles assigned yet
-                pass
+                logging.warning("Exception during cleanup")
         finally:
             try:
                 # Login as admin to delete user
-                StLibrary.delete_user(self.admin_client, username, is_name=True, force=True)
-            except:
-                pass
+                StLibrary.delete_user(
+                    self.admin_client, username, is_name=True, force=True
+                )
+            except Exception:
+                logging.warning("Exception during cleanup")

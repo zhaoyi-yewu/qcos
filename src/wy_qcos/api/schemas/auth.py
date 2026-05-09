@@ -17,19 +17,22 @@
 
 from pydantic import BaseModel, Field
 
+from wy_qcos.common.constant import Constant
+
 
 class LoginRequest(BaseModel):
     """Login request schema."""
 
     username: str = Field(
         ...,
-        min_length=3,
-        max_length=50,
+        min_length=Constant.MIN_USER_LENGTH,
+        max_length=Constant.MAX_USER_LENGTH,
         description="Username for authentication",
     )
     password: str = Field(
         ...,
-        min_length=6,
+        min_length=Constant.MIN_PASSWORD_LENGTH,
+        max_length=Constant.MAX_PASSWORD_LENGTH,
         description="Password for authentication",
         json_schema_extra={"is_sensitive": True},
     )
