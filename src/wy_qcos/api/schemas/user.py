@@ -24,6 +24,7 @@ from pydantic import (
     field_serializer,
     model_validator,
 )
+from wy_qcos.common.constant import Constant
 
 
 class UserRead(BaseModel):
@@ -102,6 +103,10 @@ class User(BaseModel):
 
     id: str = Field(
         default_factory=lambda: str(uuid.uuid4()), description="User ID (UUID)"
+    )
+    project_id: str = Field(
+        default_factory=lambda: Constant.DEFAULT_PROJECT_ID,
+        description="Project ID (UUID)"
     )
     user_name: str = Field(..., description="User name")
     hashed_password: str = Field(
@@ -187,6 +192,10 @@ class GetUserMgmtStatusResponse(BaseModel):
 class CreateUserRequest(BaseModel):
     """Create user request."""
 
+    project_id: str | None = Field(
+        default=None,
+        description="Project ID (UUID) - optional, defaults to DEFAULT_PROJECT_ID"
+    )
     user_name: str = Field(
         ..., min_length=3, max_length=50, description="User name"
     )
@@ -215,6 +224,7 @@ class CreateUserResponse(BaseModel):
     """Create user response."""
 
     id: str = Field(..., description="User ID (UUID)")
+    project_id: str = Field(..., description="Project ID (UUID)")
     user_name: str = Field(..., description="User name")
     roles: list[str] | None = Field(..., description="User roles")
     is_enabled: bool | None = Field(..., description="Whether user is enabled")
@@ -232,6 +242,7 @@ class GetUserResponse(BaseModel):
     """Get user response."""
 
     id: str = Field(..., description="User ID (UUID)")
+    project_id: str = Field(..., description="Project ID (UUID)")
     user_name: str = Field(..., description="User name")
     roles: list[str] = Field(..., description="User roles")
     is_enabled: bool = Field(..., description="Whether user is enabled")
@@ -256,7 +267,12 @@ class GetUserResponse(BaseModel):
 
 
 class GetUsersRequest(BaseModel):
-    """Get users request."""
+    """Get users request with optional filtering."""
+
+    filters: dict | None = Field(
+        default=None,
+        description="Filter conditions dict, e.g. {'user_name': 'admin'}"
+    )
 
 
 class UpdateUserRequest(BaseModel):
@@ -287,6 +303,8 @@ class PasswordChangeRequest(UpdateUserRequest):
 class UpdateUserResponse(BaseModel):
     """Update user response."""
 
+    id: str = Field(..., description="User ID (UUID)")
+    project_id: str = Field(..., description="Project ID (UUID)")
     user_name: str = Field(..., description="User name")
     roles: list[str] = Field(..., description="User roles")
     is_enabled: bool = Field(..., description="Whether user is enabled")
@@ -301,11 +319,17 @@ class DeleteUserRequest(BaseModel):
     """Delete user request by ID."""
 
     user_id: str = Field(..., description="User ID (UUID)")
+    force: bool = Field(
+        default=False,
+        description="Force delete user and cascade delete related resources"
+    )
 
 
 class DeleteUserResponse(BaseModel):
     """Delete user response."""
 
+    id: str = Field(..., description="User ID (UUID)")
+    project_id: str = Field(..., description="Project ID (UUID)")
     user_name: str = Field(..., description="User name")
     deleted_at: str = Field(..., description="Deletion timestamp")
 
@@ -410,8 +434,9 @@ class GetLoginLogsRequest(BaseModel):
 class LoginLogResponse(BaseModel):
     """Login log response."""
 
-    user_name: str = Field(..., description="User name")
     user_id: str | None = Field(..., description="User ID (UUID)")
+    project_id: str = Field(..., description="Project ID (UUID)")
+    user_name: str = Field(..., description="User name")
     login_time: str = Field(..., description="Login timestamp")
     ip_address: str = Field(..., description="IP address")
     user_agent: str | None = Field(default=None, description="User agent")
@@ -473,7 +498,12 @@ class GetRoleResponse(BaseModel):
 
 
 class GetRolesRequest(BaseModel):
-    """Get roles request."""
+    """Get roles request with optional filtering."""
+
+    filters: dict | None = Field(
+        default=None,
+        description="Filter conditions dict, e.g. {'role_name': 'admin'}"
+    )
 
 
 class UpdateRoleRequest(BaseModel):
