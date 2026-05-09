@@ -15,9 +15,11 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import json
 import logging
 import os
 import requests
+import uuid
 
 from jsonrpcclient import Ok, parse, request
 
@@ -674,6 +676,91 @@ class Client:
         return status_code, reason, text, result
 
     # [User]
+
+    @staticmethod
+    def resolve_user_id(client, user_identifier):
+        """Resolve user_id from either UUID or user_name.
+
+        If user_identifier is a valid UUID, return it directly.
+        Otherwise, treat it as a user_name and fetch the user_id from server.
+
+        Args:
+            client: The QCOS client instance
+            user_identifier: Either a user UUID or user name
+
+        Returns:
+            The user UUID
+        """
+        # Check if it's a valid UUID
+        try:
+            uuid.UUID(user_identifier)
+            return user_identifier
+        except ValueError:
+            # Not a UUID, treat as user_name and fetch with filters
+            status_code, reason, text, result = client.get_users(
+                filters={"user_name": user_identifier}
+            )
+            if status_code != 200:
+                raise errors.GenericException(
+                    f"Failed to fetch users: {reason}"
+                )
+
+            users_data = json.loads(text)
+            # Parse the response to find user by name
+            # Response format: {user_id: {user_data}, ...}
+            if 'result' in users_data and users_data['result']:
+                users_info = users_data['result']
+                # Should only have one or zero users due to filter
+                # Get the first (and only) user_id key
+                for user_id in users_info.keys():
+                    return user_id
+
+            raise errors.GenericException(
+                f"User '{user_identifier}' not found"
+            )
+
+    @staticmethod
+    def resolve_role_id(client, role_identifier):
+        """Resolve role_id from either UUID or role_name.
+
+        If role_identifier is a valid UUID, return it directly.
+        Otherwise, treat it as a role_name and fetch the role_id from server.
+
+        Args:
+            client: The QCOS client instance
+            role_identifier: Either a role UUID or role name
+
+        Returns:
+            The role UUID
+        """
+        # Check if it's a valid UUID
+        try:
+            uuid.UUID(role_identifier)
+            return role_identifier
+        except ValueError:
+            # Not a UUID, treat as role_name and fetch with filters
+            status_code, reason, text, result = client.get_roles(
+                filters={"role_name": role_identifier}
+            )
+            if status_code != 200:
+                raise errors.GenericException(
+                    f"Failed to fetch roles: {reason}"
+                )
+
+            roles_data = json.loads(text)
+            # Parse the response to find role by name
+            # Response format: {role_id: {role_data}, ...}
+            if 'result' in roles_data and roles_data['result']:
+                roles_info = roles_data['result']
+                # Should only have one or zero roles due to filter
+                # Get the first (and only) role_id key
+                for role_id in roles_info.keys():
+                    return role_id
+
+            raise errors.GenericException(
+                f"Role '{role_identifier}' not found"
+            )
+
     def get_user_mgmt_status(self):
         """Get user management status."""
         data = {}
@@ -748,18 +835,25 @@ class Client:
             data["is_locked"] = is_locked
         return self.call_json_rpc(self.user_url, "update_user", data)
 
-    def delete_user(self, user_id):
+    def delete_user(self, user_id, force=False):
         """Delete user by ID.
 
         Args:
             user_id: User ID (UUID)
+            force: Force delete user and cascade delete related resources
         """
-        data = {"user_id": user_id}
+        data = {"user_id": user_id, "force": force}
         return self.call_json_rpc(self.user_url, "delete_user", data)
 
-    def get_users(self):
-        """Get users."""
+    def get_users(self, filters=None):
+        """Get users with optional filtering.
+
+        Args:
+            filters: Optional dict with filter conditions, e.g. {'user_name': 'admin'}
+        """
         data = {}
+        if filters:
+            data["filters"] = filters
         return self.call_json_rpc(self.user_url, "get_users", data)
 
     def create_role(self, role_name, permissions, description=None):
@@ -802,9 +896,15 @@ class Client:
         data = {"role_id": role_id}
         return self.call_json_rpc(self.user_url, "delete_role", data)
 
-    def get_roles(self):
-        """Get roles."""
+    def get_roles(self, filters=None):
+        """Get roles with optional filtering.
+
+        Args:
+            filters: Optional dict with filter conditions, e.g. {'role_name': 'admin'}
+        """
         data = {}
+        if filters:
+            data["filters"] = filters
         return self.call_json_rpc(self.user_url, "get_roles", data)
 
     def change_password(self, user_id, old_password, new_password):
@@ -948,10 +1048,10 @@ class Client:
 
         return status_code, reason, text, result
 
-    def get_current_user(self):
+    def get_me(self):
         """Get current authenticated user info.
 
         Returns:
             Current user information
         """
-        return self.call_json_rpc(self.auth_url, "get_current_user_info", {})
+        return self.call_json_rpc(self.auth_url, "me", {})
