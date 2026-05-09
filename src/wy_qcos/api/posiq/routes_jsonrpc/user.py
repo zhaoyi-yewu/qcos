@@ -24,13 +24,15 @@ from fastapi import Depends, Request
 from wy_qcos.api.schemas import user as schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import user_api_v1
+from wy_qcos.common import args_schema, errors
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.config import Config
+from wy_qcos.common.library import Library
 from wy_qcos.db.models.user import User as UserModel
 from wy_qcos.db.repositories.user import UserRepository
 from wy_qcos.db.repositories.role import RoleRepository
 from wy_qcos.db.utils.db_utils import get_repository
-from .dependencies.authentication import auth
+from .dependencies.authentication import auth, auth_match_user_id
 
 
 logger = logging.getLogger(__name__)
@@ -106,7 +108,7 @@ def get_user_mgmt_status(
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     _response_info = {
-        "enabled": Config.ENABLE_USER_MGMT,
+        "enabled": Config.AUTH_MODE == Constant.AUTH_MODE_JWT,
         "password_expiry_days": Config.PASSWORD_EXPIRY_DAYS
         if Config.PASSWORD_EXPIRY_DAYS
         else 0,
@@ -149,6 +151,11 @@ def create_user(
     password = body.password
     roles = body.roles
     description = body.description
+    
+    # Set project_id to default if not provided
+    project_id = body.project_id or Constant.DEFAULT_PROJECT_ID
+    # Update body with resolved project_id for later use
+    body.project_id = project_id
 
     # Validate user name length
     if len(user_name) < Constant.MIN_USER_LENGTH:
@@ -172,6 +179,13 @@ def create_user(
                 f"(maximum {Constant.MAX_USER_LENGTH} characters)",
             ),
         )
+
+    # valid user name schema
+    jsonrpc_errors.handle_error_bad_requests(
+        module_name,
+        func_name,
+        Library.validate_schema(user_name, args_schema.NAME_SCHEMA),
+    )
 
     # Validate password length
     if len(password) < Constant.MIN_PASSWORD_LENGTH:
@@ -265,7 +279,7 @@ def create_user(
 
 
 @user_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.NotFoundError],
 )
 def get_user(
@@ -288,6 +302,9 @@ def get_user(
 
     user_id = body.user_id
 
+    # authentication: match user id
+    auth_match_user_id(user_id, auth_data, allow_admin=True)
+
     success, error, user = users_repo.get_user_by_id(user_id)
     if not success or not user:
         jsonrpc_errors.handle_error_not_found(
@@ -309,31 +326,53 @@ def get_users(
     auth_data: dict | None = Depends(auth),
     users_repo: UserRepository = Depends(get_repository(UserRepository)),
 ) -> dict[str, schemas.GetUserResponse]:
-    """Get all users.
+    """Get users with optional filtering.
 
     Args:
-        body: get users request
+        body: get users request with optional filter dict
         auth_data: auth data
         users_repo: User repository dependency
 
     Returns:
         Dictionary of users keyed by user_name
+
+    Filter example:
+        {"user_name": "admin"} - filter by user_name
     """
     func_name = "get_users"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    success, error, users = users_repo.get_users()
-    if not success:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (False, f"Failed to get users: {error}"),
-        )
+    users = []
+    # Extract filter conditions from request body
+    filter_conditions = None
+    if body and body.filters:
+        filter_conditions = body.filters
 
+    # Apply filtering logic
+    if filter_conditions and "user_name" in filter_conditions:
+        # Filter by user_name: fetch single user
+        user_name = filter_conditions["user_name"]
+        success, error, user = users_repo.get_user_by_username(user_name)
+        if not success or not user:
+            # If user not found with filter, return empty dict
+            users = []
+        else:
+            users = [user]
+    else:
+        # Get all users when no filter or empty filter
+        success, error, users = users_repo.get_users()
+        if not success:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                (False, f"Failed to get users: {error}"),
+            )
+
+    # Build response
     response_info = {}
     for user in users:
         user_data = get_user_response(user)
-        response_info[user.user_name] = schemas.GetUserResponse.model_validate(
+        response_info[user.id] = schemas.GetUserResponse.model_validate(
             user_data
         )
 
@@ -499,7 +538,7 @@ def delete_user(
     """Delete user by ID.
 
     Args:
-        body: delete user request (contains user_id)
+        body: delete user request (contains user_id and optional force flag)
         auth_data: auth data
         users_repo: User repository dependency
 
@@ -510,6 +549,7 @@ def delete_user(
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     user_id = body.user_id
+    force = body.force
 
     # Get user from database
     success, error, user = users_repo.get_user_by_id(user_id)
@@ -521,15 +561,21 @@ def delete_user(
         )
 
     user_name = user.user_name
+    user_project_id = user.project_id
 
     # Don't allow deletion of admin user
-    if user_name == Constant.DEFAULT_ADMIN_USERNAME:
+    if user_name == Constant.ADMIN_USERNAME:
         jsonrpc_errors.handle_error_conflict(
             module_name, func_name, (False, "Cannot delete admin user")
         )
 
     # Delete user from database
     try:
+        if force:
+            # Force delete: cascade delete all related resources
+            # TODO (zhaoyi): to be implemented, delete related jobs
+            pass
+
         success, error = users_repo.delete_user_by_id(user_id)
         if not success:
             jsonrpc_errors.handle_error_bad_requests(
@@ -580,6 +626,8 @@ def delete_user(
         )
 
     _response_info = {
+        "id": user_id,
+        "project_id": user_project_id,
         "user_name": user_name,
         "deleted_at": datetime.now().isoformat(),
     }
@@ -640,6 +688,13 @@ def create_role(
                 f"(maximum {Constant.MAX_ROLE_LENGTH} characters)",
             ),
         )
+
+    # valid role name schema
+    jsonrpc_errors.handle_error_bad_requests(
+        module_name,
+        func_name,
+        Library.validate_schema(role_name, args_schema.NAME_SCHEMA),
+    )
 
     # Validate description length
     if description and len(description) > Constant.MAX_DESCRIPTION_LENGTH:
@@ -746,32 +801,53 @@ def get_roles(
     auth_data: dict | None = Depends(auth),
     roles_repo: RoleRepository = Depends(get_repository(RoleRepository)),
 ) -> dict[str, schemas.GetRoleResponse]:
-    """Get all roles.
+    """Get roles with optional filtering.
 
     Args:
-        body: get roles request
+        body: get roles request with optional filter dict
         auth_data: auth data
         roles_repo: Role repository dependency
 
     Returns:
         Dictionary of roles keyed by role name
+
+    Filter example:
+        {"role_name": "admin"} - filter by role_name
     """
     func_name = "get_roles"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    # Get all roles from database
-    success, error, roles = roles_repo.get_roles()
-    if not success:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (False, f"Failed to get roles: {error}"),
-        )
+    roles = []
+    # Extract filter conditions from request body
+    filter_conditions = None
+    if body and body.filters:
+        filter_conditions = body.filters
 
+    # Apply filtering logic
+    if filter_conditions and "role_name" in filter_conditions:
+        # Filter by role_name: fetch single role
+        role_name = filter_conditions["role_name"]
+        success, error, role = roles_repo.get_role_by_name(role_name)
+        if not success or not role:
+            # If role not found with filter, return empty dict
+            roles = []
+        else:
+            roles = [role]
+    else:
+        # Get all roles when no filter or empty filter
+        success, error, roles = roles_repo.get_roles()
+        if not success:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                (False, f"Failed to get roles: {error}"),
+            )
+
+    # Build response
     response_info = {}
     for role in roles:
         role_data = get_role_response(role)
-        response_info[role.role_name] = schemas.GetRoleResponse.model_validate(
+        response_info[role.id] = schemas.GetRoleResponse.model_validate(
             role_data
         )
 
@@ -983,7 +1059,7 @@ def delete_role(
 
 
 @user_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES,},
     errors=[
         jsonrpc_errors.BadRequestError,
         jsonrpc_errors.NotFoundError,
@@ -1012,6 +1088,9 @@ def change_password(
     old_password = body.old_password
     new_password = body.new_password
 
+    # authentication: match user id
+    auth_match_user_id(user_id, auth_data, allow_admin=True)
+
     # Get user from database
     success, error, user = users_repo.get_user_by_id(user_id)
     if not success or not user:
@@ -1024,7 +1103,7 @@ def change_password(
     user_name = user.user_name
 
     # For non-admin users, validate old password
-    if user_name != Constant.DEFAULT_ADMIN_USERNAME:
+    if user_name != Constant.ADMIN_USERNAME:
         if not old_password:
             jsonrpc_errors.handle_error_bad_requests(
                 module_name,
@@ -1206,8 +1285,18 @@ def get_login_logs(
                 # If user not found in database
                 response_user_id = None
 
+        # Get project_id from user
+        response_project_id = Constant.DEFAULT_PROJECT_ID
+        if response_user_id:
+            success, error, log_user = users_repo.get_user_by_id(
+                response_user_id
+            )
+            if success and log_user:
+                response_project_id = log_user.project_id
+
         log_data = {
             "user_id": response_user_id,
+            "project_id": response_project_id,
             "user_name": log.user_name,
             "login_time": log.login_time.isoformat(),
             "ip_address": log.ip_address,
@@ -1240,6 +1329,7 @@ def get_user_response(user) -> dict:
 
     response_info = {
         "id": user.id,
+        "project_id": user.project_id,
         "user_name": user.user_name,
         "roles": roles,
         "is_enabled": user.is_enabled,
