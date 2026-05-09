@@ -4,7 +4,7 @@
 本章节定义了北向接口的错误返回格式。
 
 错误返回格式规范
---------------------
+^^^^^^^^^^^^^^^^
 
 错误格式分为两种:
 
@@ -67,7 +67,7 @@
         }
 
 错误码
---------------------
+^^^^^^
 
 - JSON-RPC标准错误码
 
@@ -131,3 +131,130 @@
      * - -503
        - Service Unavailable
        - 服务下线，不可用
+
+错误处理最佳实践
+~~~~~~~~~~~~~~~~
+
+通用错误处理流程
+^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+   def call_api(method, params):
+       try:
+           response = json_rpc_request(method, params)
+
+           if "error" in response and response["error"] is not None:
+               error_code = response["error"]["code"]
+               error_msg = response["error"]["message"]
+               error_details = response["error"].get("data", {})
+
+               # 根据错误码进行相应处理
+               if error_code == -401:
+                   # 需要重新登录
+                   login()
+               elif error_code == -403:
+                   # 权限不足
+                   log_permission_denied(error_msg)
+               else:
+                   # 其他错误
+                   handle_error(error_code, error_msg, error_details)
+               return None
+           else:
+               return response["result"]
+       except Exception as e:
+           # 网络错误等异常处理
+           handle_exception(e)
+           return None
+
+错误码分类
+^^^^^^^^^^
+
+1. **解析类错误 (-32700至-32600)**
+
+   这类错误表示请求本身有问题：
+
+   - JSON 格式错误
+   - 缺少必需字段
+   - 参数类型不匹配
+
+   **处理建议**：检查请求格式，确保JSON有效
+
+2. **方法类错误 (-32601至-32602)**
+
+   这类错误表示调用的方法或参数有误：
+
+   - 方法名拼写错误
+   - 参数格式不正确
+   - 缺少必需参数
+
+   **处理建议**：查阅API文档，验证方法名和参数
+
+3. **业务类错误 (-400至-503)**
+
+   这类错误表示业务逻辑问题：
+
+   - 认证失败 (-401)
+   - 权限不足 (-403)
+   - 资源不存在 (-404)
+   - 数据冲突 (-409)
+   - 服务不可用 (-503)
+
+   **处理建议**：根据具体错误码采取相应措施
+
+常见错误及解决方案
+^^^^^^^^^^^^^^^^^^
+
+常见错误码和解决方法：
+
+- **-32700** (Parse error) - 请求格式不是有效JSON，检查JSON格式
+- **-32600** (Invalid Request) - 请求不是有效的JSON RPC 2.0格式，检查结构
+- **-32601** (Method not found) - 调用的方法不存在，检查拼写
+- **-32602** (Invalid params) - 参数数量或格式不正确，验证参数
+- **-400** (Bad Request) - 请求参数非法，检查参数值
+- **-401** (Unauthorized) - 未认证或token已过期，重新登认证
+- **-403** (Forbidden) - 当前用户无权限，联系管理员
+- **-404** (Not Found) - 资源不存在，检查资源ID或名称
+- **-409** (Conflict) - 资源名称重复或依赖关系未满足，修改名称
+- **-500** (Internal Server Error) - 服务器内部错误，检查错误详情
+- **-503** (Service Unavailable) - 服务不可用或维护中，稍后重试
+
+调试技巧
+^^^^^^^^
+
+1. **启用请求日志**
+
+   .. code-block:: python
+
+      import json
+
+      # 记录完整的请求和响应
+      def log_request(method, params):
+          print(f"Request: {json.dumps({'method': method, 'params': params}, indent=2)}")
+
+      def log_response(response):
+          print(f"Response: {json.dumps(response, indent=2)}")
+
+2. **使用工具验证**
+
+   .. code-block:: text
+
+      • 使用 curl 或 Postman 测试API
+      • 使用 jsonschema 验证响应格式
+      • 启用详细日志记录所有网络交互
+
+3. **重试机制**
+
+   .. code-block:: python
+
+      import time
+
+      def call_api_with_retry(method, params, max_retries=3):
+          for attempt in range(max_retries):
+              try:
+                  return call_api(method, params)
+              except Exception as e:
+                  if attempt < max_retries - 1:
+                      time.sleep(2 ** attempt)  # 指数退避
+                  else:
+                      raise
