@@ -139,18 +139,18 @@ class TestClientLogin:
             del os.environ["QCOS_REFRESH_TOKEN"]
 
     @patch.object(Client, "call_json_rpc")
-    def test_get_current_user(self, mock_call_json_rpc):
-        """Test get_current_user method."""
+    def test_get_me(self, mock_call_json_rpc):
+        """Test get_me method."""
         mock_call_json_rpc.return_value = self.return_values
-        status_code, reason, text, result = client.get_current_user()
+        status_code, reason, text, result = client.get_me()
         assert status_code == 200
         mock_call_json_rpc.assert_called_once_with(
-            client.auth_url, "get_current_user_info", {}
+            client.auth_url, "get_me_info", {}
         )
 
     @patch.object(Client, "call_json_rpc")
-    def test_get_current_user_unauthorized(self, mock_call_json_rpc):
-        """Test get_current_user when not authenticated."""
+    def test_get_me_unauthorized(self, mock_call_json_rpc):
+        """Test get_me when not authenticated."""
         mock_call_json_rpc.return_value = (
             401,
             "Unauthorized",
@@ -158,7 +158,7 @@ class TestClientLogin:
             {},
         )
         client.set_token(None)
-        status_code, reason, text, result = client.get_current_user()
+        status_code, reason, text, result = client.get_me()
         assert status_code == 401
 
     @patch.object(Client, "call_json_rpc")
