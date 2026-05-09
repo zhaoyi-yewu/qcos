@@ -22,16 +22,17 @@ import re
 from sqlalchemy.orm import Session
 
 from wy_qcos.api.schemas import user as schemas
+from wy_qcos.api.schemas.user import LoginLog
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.db.repositories.user import UserRepository
 from wy_qcos.db.repositories.role import RoleRepository
+from wy_qcos.db.repositories.project import ProjectRepository
 from wy_qcos.user.permission_manager import PermissionManager
 
 logger = logging.getLogger(__name__)
 
 # Default admin user
-DEFAULT_ADMIN_USERNAME = Constant.DEFAULT_ADMIN_USERNAME
 DEFAULT_ADMIN_PASSWORD = (
     Config.ADMIN_PASSWORD
     if Config.ADMIN_PASSWORD
@@ -60,9 +61,11 @@ class UserManager:
         self._db_session = db_session
         self.users_repo: UserRepository | None = None
         self.roles_repo: RoleRepository | None = None
+        self.projects_repo: ProjectRepository | None = None
         if db_session:
             self.users_repo = UserRepository(db_session)
             self.roles_repo = RoleRepository(db_session)
+            self.projects_repo = ProjectRepository(db_session)
 
         self.all_api = all_api
         # Initialize permission manager for casbin access control
@@ -87,7 +90,7 @@ class UserManager:
         self.noauth_policies = self.fetch_default_policies(
             role=Constant.ROLE_ANY
         )
-        self.init_users()
+        self.init_db()
         self.load_role_permissions()
 
     def get_permissions_list(self, policies):
@@ -104,43 +107,127 @@ class UserManager:
             permission_list.append(policy[1])
         return permission_list
 
-    def init_users(self):
-        """Init users (idempotent - safe to run multiple times)."""
+    def init_db(self):
+        """Init database (idempotent - safe to run multiple times).
+
+        Creates default projects, roles, and admin user.
+        """
         # Skip if repos are not initialized (e.g., in tests)
-        if self.roles_repo is None or self.users_repo is None:
+        if (
+            self.projects_repo is None
+            or self.roles_repo is None
+            or self.users_repo is None
+        ):
             return
 
-        # Create admin role only if not exists
-        if not self.get_role(Constant.ROLE_ADMIN):
-            self.create_role(
-                Constant.ROLE_ADMIN,
-                permissions=self.get_permissions_list(
-                    self.get_default_policies(Constant.ROLE_ADMIN)
-                ),
-                description="Administrator with full permissions",
+        def init_projects(project_id, project_name):
+            """Initialize a project if not already exists.
+            
+            Creates a new project in the database if it doesn't already exist.
+            Logs success or failure of the operation.
+            
+            Args:
+                project_id: Unique identifier (UUID) for the project
+                project_name: Human-readable name of the project
+            
+            Returns:
+                None. Logs project status to logger.
+            """
+            success, _, existing_project = (
+                self.projects_repo.get_project_by_id(project_id)
             )
+            if not (success and existing_project):
+                success, error, project = (
+                    self.projects_repo.create_project(
+                        project_id, project_name
+                    )
+                )
+                if not success:
+                    error_msg = (
+                        f"Failed to create project: {project_name} "
+                        f"(id: {project_id}) Reason: {error}"
+                    )
+                    logger.error(error_msg)
+            else:
+                info_msg = (
+                    f"Project: {project_name} (id: {project_id}) "
+                    f"already exists"
+                )
+                logger.info(info_msg)
 
-        # Create user role only if not exists
-        if not self.get_role(Constant.ROLE_USER):
-            self.create_role(
-                Constant.ROLE_USER,
-                permissions=self.get_permissions_list(
-                    self.get_default_policies(Constant.ROLE_USER)
-                ),
-                description="Regular user with basic permissions",
-            )
+        def init_roles(role_name, description=""):
+            """Initialize a role if not already exists.
+            
+            Creates a new role with default permissions if it doesn't already exist.
+            Assigns permissions based on the role type (admin, user, etc).
+            
+            Args:
+                role_name: Name of the role to create
+                description: Optional description of the role's purpose
+            
+            Returns:
+                None. Created role is stored internally in roles_db.
+            """
+            if not self.get_role(role_name):
+                self.create_role(
+                    role_name,
+                    permissions=self.get_permissions_list(
+                        self.get_default_policies(role_name)
+                    ),
+                    description=description,
+                )
 
-        # Create default admin user only if not exists
-        if not self.get_user(DEFAULT_ADMIN_USERNAME):
-            self.create_user(
-                DEFAULT_ADMIN_USERNAME,
-                DEFAULT_ADMIN_PASSWORD,
-                [Constant.ROLE_ADMIN],
-                True,
-                False,
-                0,
-                description="Administrator with full permissions",
-            )
+        def init_users(user_name, project_id, role_names, password, description=""):
+            """Initialize a user if not already exists.
+            
+            Creates a new user in the specified project with assigned roles if the
+            user doesn't already exist. The user is created with the account enabled
+            but not locked, and no password expiry.
+            
+            Args:
+                user_name: Unique username for the user
+                project_id: Project ID (UUID) this user belongs to
+                role_names: List of role names to assign to the user
+                password: Initial password for the user
+                description: Optional description of the user's purpose
+            
+            Returns:
+                None. Created user is stored internally in users_db.
+            """
+            if not self.get_user(user_name):
+                self.create_user(
+                    project_id,
+                    user_name,
+                    password,
+                    role_names,
+                    True,
+                    False,
+                    0,
+                    description=description,
+                )
+
+        # init projects
+        init_projects(Constant.ADMIN_PROJECT_ID, Constant.ADMIN_PROJECT_NAME)
+        init_projects(Constant.DEFAULT_PROJECT_ID,
+                      Constant.DEFAULT_PROJECT_NAME)
+
+        # init roles
+        init_roles(Constant.ROLE_ADMIN,
+                   description="Administrator with full permissions")
+        init_roles(Constant.ROLE_USER,
+                   description="Regular user with basic permissions")
+
+        # init users
+        init_users(Constant.ADMIN_USERNAME, Constant.DEFAULT_PROJECT_ID,
+                   [Constant.ROLE_ADMIN],
+                   DEFAULT_ADMIN_PASSWORD,
+                   description="Administrator with full permissions")
+        init_users(Constant.ANONYMOUS_USERNAME,
+                   Constant.DEFAULT_PROJECT_ID,
+                   [Constant.ROLE_ADMIN],
+                   DEFAULT_ADMIN_PASSWORD,
+                   description="Anonymous user with full permissions "
+                               "(auth_mode=no)")
 
     def load_role_permissions(self):
         """Load all role permissions from database.
@@ -652,6 +739,7 @@ class UserManager:
 
     def create_user(
         self,
+        project_id: str,
         user_name: str,
         password: str,
         roles: list[str],
@@ -663,6 +751,7 @@ class UserManager:
         """Create user.
 
         Args:
+            project_id: project id (required, defaults to DEFAULT_PROJECT_ID)
             user_name: user name
             password: password
             roles: roles
@@ -674,6 +763,10 @@ class UserManager:
         Returns:
             created user
         """
+        # Enforce default project_id in backend
+        if not project_id:
+            project_id = Constant.DEFAULT_PROJECT_ID
+
         # Validate inputs
         self.validate_user_name(user_name)
         self.validate_password(password)
@@ -689,6 +782,7 @@ class UserManager:
 
         # Create in database
         create_request = schemas.CreateUserRequest(
+            project_id=project_id,
             user_name=user_name,
             password=password,
             roles=roles,
@@ -886,7 +980,6 @@ class UserManager:
             user_agent: user agent
         """
         # Create log entry
-        from wy_qcos.api.schemas.user import LoginLog
 
         log_entry = LoginLog(
             user_name=user_name,
@@ -988,7 +1081,6 @@ class UserManager:
         if (
             not hasattr(user, "password_expiry_days")
             or not user.password_expiry_days
-            or user.password_expiry_days <= 0
         ):
             return False
 
