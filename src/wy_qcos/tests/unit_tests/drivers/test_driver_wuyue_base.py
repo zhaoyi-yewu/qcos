@@ -583,3 +583,62 @@ class TestDriverWuyueBase:
 
         assert exception_raised is False
         assert exception_msg is None
+
+    @patch.object(DriverWuyueBase, "get_device_info")
+    def test_fetch_running_info_success(self, mock_get_device_info):
+        driver = DriverWuyueBase()
+        mock_get_device_info.return_value = (
+            True,
+            None,
+            {
+                "horizontalRelaxationTime": 132,
+                "doubleFidelity": 0.9,
+                "singleFidelity": 0.95,
+                "tweezersNum": 200,
+            },
+        )
+        result = driver.fetch_running_info()
+        assert "details" in result
+        assert result["details"]["horizontalRelaxationTime"] == 132
+        assert result["details"]["doubleFidelity"] == 0.9
+        assert result["details"]["singleFidelity"] == 0.95
+        assert result["details"]["tweezersNum"] == 200
+
+    @patch.object(DriverWuyueBase, "get_device_info")
+    def test_fetch_running_info_exception(self, mock_get_device_info):
+        driver = DriverWuyueBase()
+        mock_get_device_info.return_value = (False, "test error", None)
+        result = driver.fetch_running_info()
+        assert result["details"] == {}
+
+    @patch.object(DriverWuyueBase, "decrypt_by_private_key")
+    @patch.object(Library, "call_http_api")
+    def test_get_device_info(
+        self,
+        mock_call_http_api,
+        mock_decrypt_by_private_key,
+    ):
+        """Test get_device_info method with successful."""
+        mock_response = {"code": 1, "msg": "Success", "data": "encrypted_data"}
+
+        mock_call_http_api.return_value = (
+            HttpCode.SUCCESS_OK,
+            "Success",
+            json.dumps(mock_response),
+            MagicMock(),
+        )
+        mock_decrypt_by_private_key.return_value = mock_response
+
+        exception_raised = False
+        exception_msg = None
+        try:
+            success, err_msg, device_info = driver_wuyue_base.get_device_info()
+            assert success is True
+            assert err_msg == ""
+            assert device_info == "encrypted_data"
+        except ValueError as e:
+            exception_raised = True
+            exception_msg = str(e)
+
+        assert exception_raised is False
+        assert exception_msg is None
