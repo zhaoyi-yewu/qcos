@@ -59,7 +59,7 @@ services:
       API_SERVER_LISTEN_PORT: ${API_SERVER_LISTEN_PORT}
       QCOS_SERVER_IP: ${QCOS_SERVER_IP}
       QCOS_SERVER_PORT: ${QCOS_SERVER_PORT}
-      QCOS_ENABLE_VIRT: ${QCOS_ENABLE_VIRT}
+      QCOS_AUTH_MODE: ${QCOS_AUTH_MODE}
       QCOS_VIRTUAL_INSTANCE_ID: ${QCOS_VIRTUAL_INSTANCE_ID}
       LOCAL_CICD: ${LOCAL_CICD}
       PREFECT_API_URL: ${PREFECT_API_URL}
@@ -68,7 +68,7 @@ services:
       REDIS_SERVER_IP: ${REDIS_SERVER_IP}
       REDIS_SERVER_PORT: ${REDIS_SERVER_PORT}
       PYTHONPATH: /root/qcos-project/src
-    command: "-w http://${PREFECT_SERVER_API_HOST:-127.0.0.1}:${PREFECT_SERVER_PORT}/api"
+    command: "--db-migration --no-exit -w http://${PREFECT_SERVER_API_HOST:-127.0.0.1}:${PREFECT_SERVER_PORT}/api"
     logging:
       driver: "json-file"
       options:
