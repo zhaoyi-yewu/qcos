@@ -17,6 +17,7 @@
 
 import asyncio
 import json
+import time
 from unittest.mock import (
     AsyncMock,
     MagicMock,
@@ -82,9 +83,14 @@ class TestMetricsMiddleware:
                             "_extract_rpc_method",
                             return_value="getDriver",
                         ):
-                            response = await middleware.dispatch(
-                                request, call_next
-                            )
+                            with patch.object(
+                                time,
+                                "time",
+                                side_effect=[1000.0, 1000.5],
+                            ):
+                                response = await middleware.dispatch(
+                                    request, call_next
+                                )
 
         assert response.status_code == 200
         call_next.assert_awaited_once()
@@ -218,7 +224,12 @@ class TestMetricsMiddleware:
             with patch.object(
                 metrics_collector, "record_api_request"
             ) as mock_record_request:
-                response = await middleware.dispatch(request, call_next)
+                with patch.object(
+                    time,
+                    "time",
+                    side_effect=[1000.0, 1000.8],
+                ):
+                    response = await middleware.dispatch(request, call_next)
 
         assert response.status_code == 201
         expected_calls = [call(is_increment=True), call(is_increment=False)]
