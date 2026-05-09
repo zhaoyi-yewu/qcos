@@ -51,7 +51,6 @@ def run_decompose(source, target):
 
 @pytest.mark.usefixtures("global_configs")
 class TestDecomposer:
-
     @pytest.mark.smoke
     def test_decompose_basis_only(self):
         source = [
