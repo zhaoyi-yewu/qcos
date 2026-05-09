@@ -6,12 +6,12 @@ DEBUG = false
 MAX_JOBS = 10000
 # [GLOBAL CONFIG] max queued+running jobs
 MAX_QUEUED_JOBS = 1000
+# [GLOBAL CONFIG] authentication mode: "no" (default), "password", "virtual_instance"
+AUTH_MODE = "no"
 # [GLOBAL CONFIG] default venv base dir
 # VENV_DIR = "/var/lib/qcos/venv"
 
 [VIRT]
-# enable virtualization
-ENABLE_VIRT = false
 # [GLOBAL CONFIG] max jobs for virtual instance
 MAX_JOBS_PER_VIRTUAL_INSTANCE = 10
 # salt for password/encryption
@@ -64,7 +64,6 @@ REDIS_SERVER_PORT = 6379
 QCOS_DATABASE_CONNECTION_URL = "postgresql+pg8000://qcos:${password}@127.0.0.1:5432/qcos"
 
 [USERS]
-ENABLE_USER_MGMT = false
 PASSWORD_EXPIRY_DAYS = 90
 MAX_LOGIN_ATTEMPTS = 5
 MAX_LOGIN_LOGS = 10000
