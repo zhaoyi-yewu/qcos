@@ -16,16 +16,21 @@
 export PS1="(${QCOS_CONTAINER_NAME})[$(pwd)]$ "
 
 wait_for_url=""
+db_migration=false
+no_exit=false
+
 function usage {
     echo "Usage: $0 [OPTION] ..."
     echo "Entrypoint of QCOS container"
     echo ""
-    echo "  -w, --wait-for  Wait for url is ready"
-    echo "  -h, --help      Print this usage message"
+    echo "  -w, --wait-for      Wait for url is ready"
+    echo "  -m, --db-migration  Perform database migration before start qcos-api"
+    echo "  -n, --no-exit       Don't exit when qcos-api process exits (default: false)"
+    echo "  -h, --help          Print this usage message"
     echo ""
 }
 
-opts=$(getopt -o w:h --long wait-for:,help -- "$@")
+opts=$(getopt -o w:mnh --long wait-for:,db-migration,no-exit,help -- "$@")
 if [[ $? -ne 0 ]]; then
   exit 1
 fi
@@ -36,6 +41,8 @@ while true; do
   case "$1" in
     -h | --help )     usage ; exit 0;    shift ;;
     -w | --wait-for ) wait_for_url="$2"; shift 2 ;;
+    -m | --db-migration ) db_migration=true; shift ;;
+    -n | --no-exit ) no_exit=true; shift ;;
     -- ) shift; break ;;
     * )         break ;;
   esac
@@ -65,7 +72,9 @@ mkdir -p ${qcos_extra_config_file_dir}
 mkdir -p ${qcos_st_config_dir}
 
 # load venv
-source /var/lib/qcos/venv/default/bin/activate
+venv_dir="/var/lib/qcos/venv/default"
+venv_site_package_dir="${venv_dir}/lib/python3.11/site-packages"
+source ${venv_dir}/bin/activate
 
 # check if file /etc/qcos/qcos.conf exists and create it if not
 if [ -f "${qcos_config_file_path}" ]; then
@@ -75,15 +84,13 @@ else
   cp ${qcos_template_config_file_path} ${qcos_config_file_path}
 
   _DEBUG=${DEBUG:-false}
-  _ENABLE_VIRT=${QCOS_ENABLE_VIRT:-false}
-  _ENABLE_USER_MGMT=${ENABLE_USER_MGMT:-false}
+  _AUTH_MODE=${QCOS_AUTH_MODE:-no}
   python3 -c "
 def config(conf):
     conf['DEFAULT']['DEBUG'] = ${_DEBUG^}
     conf['DEFAULT']['MAX_JOBS'] = ${MAX_JOBS:-10000}
     conf['DEFAULT']['MAX_QUEUED_JOBS'] = ${MAX_QUEUED_JOBS:-1000}
-
-    conf['VIRT']['ENABLE_VIRT'] = ${_ENABLE_VIRT^}
+    conf['DEFAULT']['AUTH_MODE'] = '${_AUTH_MODE}'
     conf['VIRT']['MAX_JOBS_PER_VIRTUAL_INSTANCE'] = ${MAX_JOBS_PER_VIRTUAL_INSTANCE:-10}
     conf['VIRT']['PASSWORD_SALT'] = '${PASSWORD_SALT:-123456}'
 
@@ -103,7 +110,6 @@ def config(conf):
     conf['REDIS']['REDIS_SERVER_PORT'] = ${REDIS_SERVER_PORT:-6379}
 
     conf['DATABASE']['QCOS_DATABASE_CONNECTION_URL'] = '${QCOS_DATABASE_CONNECTION_URL:-fake}'
-    conf['USERS']['ENABLE_USER_MGMT'] = ${_ENABLE_USER_MGMT^}
 
     conf['LOG']['API_LOG_FILE'] = '${API_LOG_FILE:-/var/log/qcos/qcos-api.log}'
     conf['LOG']['LOG_FORMAT'] = '%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s'
@@ -146,6 +152,37 @@ if [ -n "${wait_for_url}" ]; then
   echo "url: ${wait_for_url} is ready"
 fi
 
+# perform database migration if requested
+if [ "${db_migration}" = true ]; then
+  echo "Starting database migration..."
+
+  # Get the init-db script
+  INIT_DB_SCRIPT="/root/qcos-project/build-scripts/init-db.sh"
+  DB_MIGRATION_DIR="/root/qcos-project/src/wy_qcos/db/migration"
+  if [ "${DEV,,}" = "false" ]; then
+    INIT_DB_SCRIPT="${venv_dir}/share/wy_qcos/scripts/init-db.sh"
+    DB_MIGRATION_DIR="${venv_dir}/share/wy_qcos/src/wy_qcos/db/migration"
+  fi
+
+  # Verify init-db.sh exists
+  if [ -f "${INIT_DB_SCRIPT}" ]; then
+    # Execute database migration and capture output
+    echo "Executing: ${INIT_DB_SCRIPT} --db-user postgres --db-qcos-password ****** -D ${DB_MIGRATION_DIR} -i -u"
+    migration_output=$(bash "${INIT_DB_SCRIPT}" --db-user postgres --db-qcos-password "${QCOS_DATABASE_PASSWORD}" -D "${DB_MIGRATION_DIR}" -i -u 2>&1)
+    migration_exit_code=$?
+
+    if [ ${migration_exit_code} -eq 0 ]; then
+      echo "Database migration completed successfully"
+      echo "${migration_output}"
+    else
+      echo "ERROR: Database migration failed. Reason: ${migration_output}"
+      # Continue anyway - qcos-api might still be able to start
+    fi
+  else
+    echo "ERROR: Database init script not found: ${INIT_DB_SCRIPT}"
+  fi
+fi
+
 # run QCOS under venv
 local_cicd=${LOCAL_CICD:-False}
 qcos_config_file_args="--config-file ${qcos_config_file_path} --config-dir ${qcos_extra_config_file_dir}"
@@ -154,11 +191,21 @@ if [ "${local_cicd,,}" = true ]; then
 fi
 
 # run qcos-api with max attempts
-MAX_ATTEMPTS=30
+MAX_ATTEMPTS=3
 SLEEP_INTERVAL=10
 count=0
 
 while [ $count -lt ${MAX_ATTEMPTS} ]; do
+  # Check if qcos-api is already running
+  if [ -f "/var/run/qcos/qcos-api.pid" ]; then
+    existing_pid=$(cat /var/run/qcos/qcos-api.pid)
+    if kill -0 ${existing_pid} 2>/dev/null; then
+      echo "[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: qcos-api is already running (PID: ${existing_pid})"
+      break
+    fi
+  fi
+
+  # run qcos-api
   echo "[$(date +'%Y-%m-%d %H:%M:%S')] Attempt $((count+1))/${MAX_ATTEMPTS}: Executing /usr/bin/qcos-api ${qcos_config_file_args}"
   /usr/bin/qcos-api ${qcos_config_file_args}
   if [ $? -eq 0 ]; then
@@ -166,13 +213,16 @@ while [ $count -lt ${MAX_ATTEMPTS} ]; do
     break
   fi
   count=$((count+1))
+  echo ${count} > /var/run/qcos/qcos-api-attempts.txt
   if [ $count -lt ${MAX_ATTEMPTS} ]; then
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] qcos-api execution failed, waiting ${SLEEP_INTERVAL} seconds to retry..."
     sleep ${SLEEP_INTERVAL}
   fi
 done
 if [ ${count} -ge ${MAX_ATTEMPTS} ]; then
-  echo "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: qcos-api failed after ${MAX_ATTEMPTS} attempts (total ${MAX_ATTEMPTS}*${SLEEP_INTERVAL}=${MAX_ATTEMPTS*SLEEP_INTERVAL} seconds)"
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: qcos-api failed after ${MAX_ATTEMPTS} attempts (total $((MAX_ATTEMPTS * SLEEP_INTERVAL)) seconds)"
 fi
 
-sleep infinity
+if [ "${no_exit}" = true ]; then
+  sleep infinity
+fi
