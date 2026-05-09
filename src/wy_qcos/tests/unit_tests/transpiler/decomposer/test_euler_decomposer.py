@@ -61,7 +61,7 @@ class TestEulerDecomposer:
     @pytest.mark.smoke
     def test_euler_zyz_decomposition(self):
         euler_decomposer.set_matrix(test_matrix)
-        phase, lam, theta, phi = euler_decomposer.euler_zyz_decomposition()
+        phase, theta, phi, lam = euler_decomposer.euler_zyz_decomposition()
         assert lam == pytest.approx(np.pi / 4)
         assert theta == pytest.approx(0)
         assert phi == pytest.approx(np.pi / 4)
@@ -69,7 +69,7 @@ class TestEulerDecomposer:
     @pytest.mark.smoke
     def test_reconstruct_from_zyz(self):
         U_reconstructed = euler_decomposer.reconstruct_from_zyz(
-            np.pi / 4, 0, np.pi / 4
+            0, np.pi / 4, np.pi / 4
         )
         U_reconstructed = U_reconstructed / (
             np.sqrt(2) / 2 - 1j * np.sqrt(2) / 2
@@ -80,7 +80,7 @@ class TestEulerDecomposer:
     @pytest.mark.smoke
     def test_euler_u3_decomposition(self):
         euler_decomposer.set_matrix(test_matrix)
-        phase, lam, theta, phi = euler_decomposer.euler_u3_decomposition()
+        phase, theta, phi, lam = euler_decomposer.euler_u3_decomposition()
         assert lam == pytest.approx(np.pi / 4)
         assert theta == pytest.approx(0)
         assert phi == pytest.approx(np.pi / 4)
@@ -88,7 +88,7 @@ class TestEulerDecomposer:
     @pytest.mark.smoke
     def test_reconstruct_from_u3(self):
         U_reconstructed = euler_decomposer.reconstruct_from_u3(
-            np.pi / 4, 0, np.pi / 4
+            0, np.pi / 4, np.pi / 4
         )
         result = np.allclose(U_reconstructed, test_matrix)
         assert result
@@ -96,119 +96,119 @@ class TestEulerDecomposer:
     @pytest.mark.smoke
     def test_run(self):
         euler_decomposer.set_matrix(test_matrix)
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(np.pi / 4)
         assert theta == pytest.approx(0)
         assert phi == pytest.approx(np.pi / 4)
 
     def test_h(self):
         euler_decomposer.set_matrix(H().to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(np.pi)
         assert theta == pytest.approx(np.pi / 2)
         assert phi == pytest.approx(0)
 
     def test_x(self):
         euler_decomposer.set_matrix(X().to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(-np.pi / 2)
         assert theta == pytest.approx(np.pi)
         assert phi == pytest.approx(np.pi / 2)
 
     def test_y(self):
         euler_decomposer.set_matrix(Y().to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(-np.pi)
         assert theta == pytest.approx(np.pi)
         assert phi == pytest.approx(np.pi)
 
     def test_z(self):
         euler_decomposer.set_matrix(Z().to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(np.pi / 2)
         assert theta == pytest.approx(0)
         assert phi == pytest.approx(np.pi / 2)
 
     def test_s(self):
         euler_decomposer.set_matrix(S().to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(np.pi / 4)
         assert theta == pytest.approx(0)
         assert phi == pytest.approx(np.pi / 4)
 
     def test_sdg(self):
         euler_decomposer.set_matrix(SDG().to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(-np.pi / 4)
         assert theta == pytest.approx(0)
         assert phi == pytest.approx(-np.pi / 4)
 
     def test_t(self):
         euler_decomposer.set_matrix(T().to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(np.pi / 8)
         assert theta == pytest.approx(0)
         assert phi == pytest.approx(np.pi / 8)
 
     def test_tdg(self):
         euler_decomposer.set_matrix(TDG().to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(-np.pi / 8)
         assert theta == pytest.approx(0)
         assert phi == pytest.approx(-np.pi / 8)
 
     def test_p(self):
         euler_decomposer.set_matrix(P(arg_value=np.pi).to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(np.pi / 2)
         assert theta == pytest.approx(0)
         assert phi == pytest.approx(np.pi / 2)
 
     def test_r(self):
         euler_decomposer.set_matrix(R(arg_value=[np.pi, np.pi]).to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(-np.pi / 2)
         assert theta == pytest.approx(np.pi)
         assert phi == pytest.approx(np.pi / 2)
 
     def test_rx(self):
         euler_decomposer.set_matrix(RX(arg_value=np.pi / 2).to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(np.pi / 2)
         assert theta == pytest.approx(np.pi / 2)
         assert phi == pytest.approx(-np.pi / 2)
 
     def test_ry(self):
         euler_decomposer.set_matrix(RY(arg_value=np.pi / 2).to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(0)
         assert theta == pytest.approx(np.pi / 2)
         assert phi == pytest.approx(0)
 
     def test_rz(self):
         euler_decomposer.set_matrix(RZ(arg_value=np.pi / 2).to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(np.pi / 4)
         assert theta == pytest.approx(0)
         assert phi == pytest.approx(np.pi / 4)
 
     def test_sx(self):
         euler_decomposer.set_matrix(SX().to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(np.pi / 2)
         assert theta == pytest.approx(np.pi / 2)
         assert phi == pytest.approx(-np.pi / 2)
 
     def test_sxdg(self):
         euler_decomposer.set_matrix(SXDG().to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(-np.pi / 2)
         assert theta == pytest.approx(np.pi / 2)
         assert phi == pytest.approx(np.pi / 2)
 
     def test_u1(self):
         euler_decomposer.set_matrix(U1(arg_value=[np.pi, np.pi]).to_matrix())
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(np.pi / 2)
         assert theta == pytest.approx(0)
         assert phi == pytest.approx(np.pi / 2)
@@ -217,7 +217,7 @@ class TestEulerDecomposer:
         euler_decomposer.set_matrix(
             U2(arg_value=[np.pi / 2, np.pi / 2]).to_matrix()
         )
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(np.pi / 2)
         assert theta == pytest.approx(np.pi / 2)
         assert phi == pytest.approx(np.pi / 2)
@@ -226,7 +226,7 @@ class TestEulerDecomposer:
         euler_decomposer.set_matrix(
             U3(arg_value=[np.pi / 2, np.pi / 2, np.pi / 2]).to_matrix()
         )
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(np.pi / 2)
         assert theta == pytest.approx(np.pi / 2)
         assert phi == pytest.approx(np.pi / 2)
@@ -235,7 +235,7 @@ class TestEulerDecomposer:
         euler_decomposer.set_matrix(
             U(arg_value=[np.pi / 4, np.pi / 4, np.pi / 4]).to_matrix()
         )
-        lam, theta, phi = euler_decomposer.run()
+        theta, phi, lam, phase = euler_decomposer.run()
         assert lam == pytest.approx(np.pi / 4)
         assert theta == pytest.approx(np.pi / 4)
         assert phi == pytest.approx(np.pi / 4)

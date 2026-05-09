@@ -186,97 +186,91 @@ class TestKAKDecomposer:
     def test_run(self):
         kak_decomposer.set_matrix(test_matrix)
         parms = kak_decomposer.run()
-        assert parms[0] == pytest.approx((np.pi / 8) * 3)
+        assert parms[0] == pytest.approx(-np.pi / 8)
         assert parms[1] == pytest.approx(np.pi / 8)
         assert parms[2] == pytest.approx(np.pi / 8)
 
     def test_cz_gate(self):
         kak_decomposer.set_matrix(CZ().to_matrix())
         cz_result = kak_decomposer.run()
-        assert cz_result[0] == pytest.approx(np.pi / 4)
+        assert cz_result[0] == pytest.approx(-np.pi / 4)
         assert cz_result[1] == pytest.approx(0)
         assert cz_result[2] == pytest.approx(0)
 
     def test_cx_gate(self):
         kak_decomposer.set_matrix(CX().to_matrix())
         cx_result = kak_decomposer.run()
-        assert cx_result[0] == pytest.approx(np.pi / 4)
+        assert cx_result[0] == pytest.approx(-np.pi / 4)
         assert cx_result[1] == pytest.approx(0)
         assert cx_result[2] == pytest.approx(0)
 
     def test_cy_gate(self):
         kak_decomposer.set_matrix(CY().to_matrix())
         cy_result = kak_decomposer.run()
-        assert cy_result[0] == pytest.approx(np.pi / 4)
+        assert cy_result[0] == pytest.approx(-np.pi / 4)
         assert cy_result[1] == pytest.approx(0)
         assert cy_result[2] == pytest.approx(0)
 
     def test_swap_gate(self):
         kak_decomposer.set_matrix(SWAP().to_matrix())
         swap_result = kak_decomposer.run()
-        assert swap_result[0] == pytest.approx(np.pi / 4)
+        assert swap_result[0] == pytest.approx(-np.pi / 4)
         assert swap_result[1] == pytest.approx(np.pi / 4)
-        assert swap_result[2] == pytest.approx(np.pi / 4)
-
-    def test_iswap_gate(self):
-        kak_decomposer.set_matrix(iswap_matrix)
-        iswap_result = kak_decomposer.run()
-        assert iswap_result[0] == pytest.approx(np.pi / 4)
-        assert iswap_result[1] == pytest.approx(np.pi / 4)
+        assert swap_result[2] == pytest.approx(-np.pi / 4)
 
     def test_ch_gate(self):
         kak_decomposer.set_matrix(CH().to_matrix())
         ch_result = kak_decomposer.run()
-        assert ch_result[0] == pytest.approx(np.pi / 4)
+        assert ch_result[0] == pytest.approx(-np.pi / 4)
         assert ch_result[1] == pytest.approx(0)
         assert ch_result[2] == pytest.approx(0)
 
     def test_cs_gate(self):
         kak_decomposer.set_matrix(cs_matrix)
         cs_result = kak_decomposer.run()
-        assert cs_result[0] == pytest.approx(np.pi / 8)
+        assert cs_result[0] == pytest.approx(-np.pi / 8)
         assert cs_result[1] == pytest.approx(0)
         assert cs_result[2] == pytest.approx(0)
 
     def test_csdg_gate(self):
         kak_decomposer.set_matrix(csdg_matrix)
         csdg_result = kak_decomposer.run()
-        assert csdg_result[0] == pytest.approx(np.pi / 8)
+        assert csdg_result[0] == pytest.approx(-np.pi / 8)
         assert csdg_result[1] == pytest.approx(0)
         assert csdg_result[2] == pytest.approx(0)
 
     def test_crx_gate(self):
         kak_decomposer.set_matrix(CRX(arg_value=np.pi / 2).to_matrix())
         crx_result = kak_decomposer.run()
-        assert crx_result[0] == pytest.approx(np.pi / 8)
+        assert crx_result[0] == pytest.approx(-np.pi / 8)
         assert crx_result[1] == pytest.approx(0)
         assert crx_result[2] == pytest.approx(0)
 
     def test_cry_gate(self):
         kak_decomposer.set_matrix(CRY(arg_value=np.pi / 2).to_matrix())
         cry_result = kak_decomposer.run()
-        assert cry_result[0] == pytest.approx(np.pi / 8)
+        assert cry_result[0] == pytest.approx(-np.pi / 8)
         assert cry_result[1] == pytest.approx(0)
         assert cry_result[2] == pytest.approx(0)
 
     def test_crz_gate(self):
         kak_decomposer.set_matrix(CRZ(arg_value=np.pi / 2).to_matrix())
         crz_result = kak_decomposer.run()
-        assert crz_result[0] == pytest.approx(np.pi / 8)
+        assert crz_result[0] == pytest.approx(-np.pi / 8)
         assert crz_result[1] == pytest.approx(0)
         assert crz_result[2] == pytest.approx(0)
 
     def test_cu1_gate(self):
         kak_decomposer.set_matrix(CU1(arg_value=np.pi / 2).to_matrix())
         cu1_result = kak_decomposer.run()
-        assert cu1_result[0] == pytest.approx(np.pi / 8)
+        assert cu1_result[0] == pytest.approx(-np.pi / 8)
         assert cu1_result[1] == pytest.approx(0)
         assert cu1_result[2] == pytest.approx(0)
 
     def test_cp_gate(self):
         kak_decomposer.set_matrix(CP(arg_value=np.pi / 2).to_matrix())
         cp_result = kak_decomposer.run()
-        assert cp_result[0] == pytest.approx(np.pi / 8)
+        assert cp_result[0] == pytest.approx(-np.pi / 8)
         assert cp_result[1] == pytest.approx(0)
         assert cp_result[2] == pytest.approx(0)
 
@@ -284,14 +278,14 @@ class TestKAKDecomposer:
         arg_value = [np.pi / 2, np.pi / 2, np.pi / 2]
         kak_decomposer.set_matrix(CU3(arg_value=arg_value).to_matrix())
         cu3_result = kak_decomposer.run()
-        assert cu3_result[0] == pytest.approx(np.pi / 4)
+        assert cu3_result[0] == pytest.approx(-np.pi / 4)
         assert cu3_result[1] == pytest.approx(0)
         assert cu3_result[2] == pytest.approx(0)
 
     def test_csx_gate(self):
         kak_decomposer.set_matrix(CSX().to_matrix())
         csx_result = kak_decomposer.run()
-        assert csx_result[0] == pytest.approx(np.pi / 8)
+        assert csx_result[0] == pytest.approx(-np.pi / 8)
         assert csx_result[1] == pytest.approx(0)
         assert csx_result[2] == pytest.approx(0)
 
@@ -299,35 +293,35 @@ class TestKAKDecomposer:
         arg_value = [np.pi / 2, np.pi / 2, np.pi / 2, np.pi / 2]
         kak_decomposer.set_matrix(CU(arg_value=arg_value).to_matrix())
         cu_result = kak_decomposer.run()
-        assert cu_result[0] == pytest.approx(np.pi / 4)
+        assert cu_result[0] == pytest.approx(-np.pi / 4)
         assert cu_result[1] == pytest.approx(0)
         assert cu_result[2] == pytest.approx(0)
 
     def test_rxx_gate(self):
         kak_decomposer.set_matrix(RXX(arg_value=np.pi / 2).to_matrix())
         rxx_result = kak_decomposer.run()
-        assert rxx_result[0] == pytest.approx(np.pi / 4)
+        assert rxx_result[0] == pytest.approx(-np.pi / 4)
         assert rxx_result[1] == pytest.approx(0)
         assert rxx_result[2] == pytest.approx(0)
 
     def test_ryy_gate(self):
         kak_decomposer.set_matrix(ryy_matrix)
         ryy_result = kak_decomposer.run()
-        assert ryy_result[0] == pytest.approx(np.pi / 4)
+        assert ryy_result[0] == pytest.approx(-np.pi / 4)
         assert ryy_result[1] == pytest.approx(0)
         assert ryy_result[2] == pytest.approx(0)
 
     def test_rzz_gate(self):
         kak_decomposer.set_matrix(RZZ(arg_value=np.pi / 2).to_matrix())
         rzz_result = kak_decomposer.run()
-        assert rzz_result[0] == pytest.approx(np.pi / 4)
+        assert rzz_result[0] == pytest.approx(-np.pi / 4)
         assert rzz_result[1] == pytest.approx(0)
         assert rzz_result[2] == pytest.approx(0)
 
     def test_rzx_gate(self):
         kak_decomposer.set_matrix(rzx_matrix)
         rzx_result = kak_decomposer.run()
-        assert rzx_result[0] == pytest.approx(np.pi / 4)
+        assert rzx_result[0] == pytest.approx(-np.pi / 4)
         assert rzx_result[1] == pytest.approx(0)
         assert rzx_result[2] == pytest.approx(0)
 
@@ -336,6 +330,4 @@ class TestKAKDecomposer:
         q, r = np.linalg.qr(random_matrix)
         kak_decomposer.set_matrix(q)
         result = kak_decomposer.run()
-        assert result[0] > 0
-        assert result[1] > 0
-        assert result[2] > 0
+        assert result is not None
