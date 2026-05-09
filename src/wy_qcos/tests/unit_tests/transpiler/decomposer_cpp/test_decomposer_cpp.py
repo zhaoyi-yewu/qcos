@@ -54,7 +54,6 @@ class TestDecomposer:
 
     @pytest.mark.smoke
     def test_decompose_basis_only(self):
-        d = Decomposer()
         source = [
             create_gate("rx", [0], [np.pi]),
             create_gate("ry", [0], [np.pi]),
@@ -73,7 +72,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_h_gate(self):
-        d = Decomposer()
         source = [
             create_gate("h", [0], []),
         ]
@@ -89,7 +87,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_y_gate(self):
-        d = Decomposer()
         source = [
             create_gate("y", [0], []),
         ]
@@ -103,7 +100,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_z_gate(self):
-        d = Decomposer()
         source = [
             create_gate("z", [0], []),
         ]
@@ -117,7 +113,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_s_gate(self):
-        d = Decomposer()
         source = [
             create_gate("s", [0], []),
         ]
@@ -131,7 +126,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_p_gate(self):
-        d = Decomposer()
         source = [
             create_gate("p", [0], [np.pi]),
         ]
@@ -145,7 +139,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_sdg_gate(self):
-        d = Decomposer()
         source = [
             create_gate("sdg", [0], []),
         ]
@@ -159,7 +152,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_t_gate(self):
-        d = Decomposer()
         source = [
             create_gate("t", [0], []),
         ]
@@ -173,7 +165,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_tdg_gate(self):
-        d = Decomposer()
         source = [
             create_gate("tdg", [0], []),
         ]
@@ -187,7 +178,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_sx_gate(self):
-        d = Decomposer()
         source = [
             create_gate("sx", [0], []),
         ]
@@ -201,7 +191,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_sxdg_gate(self):
-        d = Decomposer()
         source = [
             create_gate("sxdg", [0], []),
         ]
@@ -215,7 +204,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_cy_gate(self):
-        d = Decomposer()
         source = [
             create_gate("cy", [0, 1], []),
         ]
@@ -231,7 +219,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_cz_gate(self):
-        d = Decomposer()
         source = [
             create_gate("cz", [0, 1], []),
         ]
@@ -249,7 +236,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_ch_gate(self):
-        d = Decomposer()
         source = [
             create_gate("ch", [0, 1], []),
         ]
@@ -271,7 +257,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_swap_gate(self):
-        d = Decomposer()
         source = [
             create_gate("swap", [0, 1], []),
         ]
@@ -287,7 +272,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_crx_gate(self):
-        d = Decomposer()
         source = [
             create_gate("crx", [0, 1], [np.pi]),
         ]
@@ -306,7 +290,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_cry_gate(self):
-        d = Decomposer()
         source = [
             create_gate("cry", [0, 1], [np.pi]),
         ]
@@ -323,7 +306,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_crz_gate(self):
-        d = Decomposer()
         source = [
             create_gate("crz", [0, 1], [np.pi]),
         ]
@@ -340,7 +322,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_cu1_gate(self):
-        d = Decomposer()
         source = [
             create_gate("cu1", [0, 1], [np.pi]),
         ]
@@ -358,7 +339,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_cp_gate(self):
-        d = Decomposer()
         source = [
             create_gate("cp", [0, 1], [np.pi]),
         ]
@@ -376,7 +356,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_cu3_gate(self):
-        d = Decomposer()
         source = [
             create_gate("cu3", [0, 1], [np.pi, np.pi, np.pi]),
         ]
@@ -403,7 +382,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_csx_gate(self):
-        d = Decomposer()
         source = [
             create_gate("csx", [0, 1], []),
         ]
@@ -425,7 +403,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_cu_gate(self):
-        d = Decomposer()
         source = [
             create_gate("cu", [0, 1], [np.pi, np.pi, np.pi, np.pi]),
         ]
@@ -453,7 +430,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_rxx_gate(self):
-        d = Decomposer()
         source = [
             create_gate("rxx", [0, 1], [np.pi]),
         ]
@@ -477,7 +453,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_rzz_gate(self):
-        d = Decomposer()
         source = [
             create_gate("rzz", [0, 1], [np.pi]),
         ]
@@ -493,7 +468,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_ccx_gate(self):
-        d = Decomposer()
         source = [
             create_gate("ccx", [0, 1, 2], []),
         ]
@@ -523,7 +497,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_cswap_gate(self):
-        d = Decomposer()
         source = [
             create_gate("cswap", [0, 1, 2], []),
         ]
@@ -555,7 +528,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_rccx_gate(self):
-        d = Decomposer()
         source = [
             create_gate("rccx", [0, 1, 2], []),
         ]
@@ -579,7 +551,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_rc3x_gate(self):
-        d = Decomposer()
         source = [
             create_gate("rc3x", [0, 1, 2, 3], []),
         ]
@@ -633,7 +604,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_c3x_gate(self):
-        d = Decomposer()
         source = [
             create_gate("c3x", [0, 1, 2, 3], []),
         ]
@@ -685,7 +655,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_c3sqrtx_gate(self):
-        d = Decomposer()
         source = [
             create_gate("c3sqrtx", [0, 1, 2, 3], []),
         ]
@@ -788,7 +757,6 @@ class TestDecomposer:
         validate_ir_equals(source, result)
 
     def test_decompose_c4x_gate(self):
-        d = Decomposer()
         source = [
             create_gate("c4x", [0, 1, 2, 3, 4], []),
         ]

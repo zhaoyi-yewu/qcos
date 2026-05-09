@@ -1,3 +1,20 @@
+/*
+ * ----------------------------------------------------------------------
+ * Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+ *
+ * qcos is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions
+ * of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *          http://license.coscl.org.cn/MulanPSL2
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+ *      WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ * ----------------------------------------------------------------------
+ */
+
  #include "decomposer/equivalence_graph.h"
 
  #include <sstream>
@@ -846,75 +863,199 @@ vector<string> EquivalenceLibary = {
     ),
 };
 
-/* ================= ParamGate ================= */
+/* ============================================================
+ * ParamGate
+ * ============================================================ */
 
+/**
+ * @brief Compare two parameterized gates.
+ *
+ * Two ParamGate objects are considered equal if:
+ * - gate names are identical
+ * - qubit lists are identical
+ * - parameter lists are identical
+ *
+ * @param other Another ParamGate object
+ * @return true if fully identical
+ * @return false otherwise
+ */
 bool ParamGate::operator==(const ParamGate& other) const {
     return name == other.name &&
            qubits == other.qubits &&
            params == other.params;
 }
 
+/**
+ * @brief Compute hash value for ParamGate.
+ *
+ * Combines:
+ * - gate name hash
+ * - qubit hashes
+ * - parameter hashes
+ *
+ * Enables ParamGate to be used in:
+ * - std::unordered_map
+ * - std::unordered_set
+ *
+ * @param g Input gate
+ * @return Combined hash value
+ */
 size_t ParamGateHash::operator()(const ParamGate& g) const {
+
     std::hash<std::string> h;
+
     size_t res = h(g.name);
-    for (auto& q : g.qubits) res ^= h(q);
-    for (auto& p : g.params) res ^= h(p);
+
+    for (auto& q : g.qubits) {
+        res ^= h(q);
+    }
+
+    for (auto& p : g.params) {
+        res ^= h(p);
+    }
+
     return res;
 }
 
-/* ================= EquivalenceRule ================= */
+/* ============================================================
+ * EquivalenceRule
+ * ============================================================ */
 
+/**
+ * @brief Construct equivalence rule from DSL string.
+ *
+ * Example:
+ *   "cx(a,b)->h(b)|cz(a,b)|h(b)"
+ *
+ * The DSL is parsed into:
+ * - target gate
+ * - equivalent source gate sequence
+ *
+ * @param dsl DSL formatted equivalence rule
+ */
 EquivalenceRule::EquivalenceRule(const string& dsl) {
+
     auto parsed = parse_dsl(dsl);
+
     target = parsed.first;
     sources = parsed.second;
 }
 
+/**
+ * @brief Parse an equivalence DSL rule.
+ *
+ * DSL format:
+ *   target -> source1 | source2 | ...
+ *
+ * Example:
+ *   cx(a,b)->h(b)|cz(a,b)|h(b)
+ *
+ * @param dsl Input DSL string
+ * @return Parsed target gate and source sequence
+ */
 pair<ParamGate, vector<ParamGate>>
 EquivalenceRule::parse_dsl(const string& dsl) {
+
     auto pos = dsl.find("->");
+
     string lhs = dsl.substr(0, pos);
     string rhs = dsl.substr(pos + 2);
 
+    // Parse target gate
     ParamGate target = parse_gate_block(lhs);
 
+    // Parse source gates
     vector<ParamGate> sources;
+
     stringstream ss(rhs);
     string token;
 
     while (getline(ss, token, '|')) {
+
         if (!token.empty()) {
-            sources.push_back(parse_gate_block(token));
+            sources.push_back(
+                parse_gate_block(token));
         }
     }
 
     return {target, sources};
 }
 
+/**
+ * @brief Remove leading and trailing whitespace.
+ *
+ * Supported whitespace:
+ * - space
+ * - tab
+ * - newline
+ * - carriage return
+ *
+ * @param s Input string
+ * @return Trimmed string
+ */
 static inline string trim(const string& s) {
-    size_t start = s.find_first_not_of(" \t\n\r");
-    if (start == string::npos) return "";
 
-    size_t end = s.find_last_not_of(" \t\n\r");
+    size_t start =
+        s.find_first_not_of(" \t\n\r");
+
+    if (start == string::npos) {
+        return "";
+    }
+
+    size_t end =
+        s.find_last_not_of(" \t\n\r");
+
     return s.substr(start, end - start + 1);
 }
 
-ParamGate EquivalenceRule::parse_gate_block(const string& block_raw) {
+/**
+ * @brief Parse a single gate block.
+ *
+ * Example:
+ *   rx(theta)q0
+ *
+ * Parsed into:
+ * - name   = "rx"
+ * - params = {"theta"}
+ * - qubits = {"q0"}
+ *
+ * Supports nested parameter expressions:
+ *   u3(theta/2, sin(x), pi)
+ *
+ * @param block_raw Raw gate block string
+ * @return Parsed ParamGate object
+ *
+ * @throws std::runtime_error
+ * Thrown if:
+ * - parsing fails
+ * - parentheses mismatch
+ */
+ParamGate EquivalenceRule::parse_gate_block(
+    const string& block_raw) {
+
     string block = trim(block_raw);
 
     auto i = block.find("(");
 
-    if (i == string::npos)
+    if (i == string::npos) {
         throw runtime_error("parse error");
+    }
 
-    // ===== find matching ')' =====
+    // ------------------------------------------------
+    // Find matching closing parenthesis
+    // ------------------------------------------------
+
     int depth = 0;
     size_t j = string::npos;
 
     for (size_t k = i; k < block.size(); ++k) {
-        if (block[k] == '(')
+
+        if (block[k] == '(') {
+
             depth++;
-        else if (block[k] == ')') {
+
+        } else if (block[k] == ')') {
+
             depth--;
 
             if (depth == 0) {
@@ -924,146 +1065,293 @@ ParamGate EquivalenceRule::parse_gate_block(const string& block_raw) {
         }
     }
 
-    if (j == string::npos)
-        throw runtime_error("unmatched parentheses");
+    if (j == string::npos) {
+        throw runtime_error(
+            "unmatched parentheses");
+    }
 
-    string name = trim(block.substr(0, i));
-    string params_str = block.substr(i + 1, j - i - 1);
-    string qubits_str = block.substr(j + 1);
+    string name =
+        trim(block.substr(0, i));
 
-    vector<string> params, qubits;
+    string params_str =
+        block.substr(i + 1, j - i - 1);
+
+    string qubits_str =
+        block.substr(j + 1);
+
+    vector<string> params;
+    vector<string> qubits;
 
     string tmp;
 
-    // ===== split params by ',' but ignore commas inside parentheses =====
+    // ------------------------------------------------
+    // Split parameters by commas
+    //
+    // Ignore commas inside nested parentheses.
+    // ------------------------------------------------
+
     vector<string> param_tokens;
+
     depth = 0;
     string current;
 
     for (char c : params_str) {
-        if (c == '(')
+
+        if (c == '(') {
+
             depth++;
-        else if (c == ')')
+
+        } else if (c == ')') {
+
             depth--;
+        }
 
         if (c == ',' && depth == 0) {
-            param_tokens.push_back(trim(current));
+
+            param_tokens.push_back(
+                trim(current));
+
             current.clear();
+
         } else {
+
             current += c;
         }
     }
 
-    if (!current.empty())
-        param_tokens.push_back(trim(current));
-
-    for (auto& p : param_tokens) {
-        if (!p.empty())
-            params.push_back(p);
+    if (!current.empty()) {
+        param_tokens.push_back(
+            trim(current));
     }
 
-    // ===== qubits =====
+    // Remove empty parameters
+    for (auto& p : param_tokens) {
+
+        if (!p.empty()) {
+            params.push_back(p);
+        }
+    }
+
+    // ------------------------------------------------
+    // Parse qubit list
+    // ------------------------------------------------
+
     stringstream qs(qubits_str);
 
     while (getline(qs, tmp, ',')) {
+
         tmp = trim(tmp);
-        if (!tmp.empty())
+
+        if (!tmp.empty()) {
             qubits.push_back(tmp);
+        }
     }
 
     return {name, qubits, params};
 }
 
-/* ================= EquivalenceGraph ================= */
+/* ============================================================
+ * EquivalenceGraph
+ * ============================================================ */
 
+/**
+ * @brief Construct equivalence graph.
+ *
+ * Loads all equivalence rules from the global
+ * equivalence library and builds:
+ * - forward decomposition index
+ * - reverse dependency index
+ */
 EquivalenceGraph::EquivalenceGraph() {
+
     extern vector<string> EquivalenceLibary;
 
+    // Load all rules from DSL library
     for (auto& dsl : EquivalenceLibary) {
         rules.emplace_back(dsl);
     }
 
+    // Build graph indices
     for (auto& r : rules) {
-        forward_index[r.target.name].push_back(&r);
+
+        forward_index[r.target.name]
+            .push_back(&r);
+
         for (auto& s : r.sources) {
-            reverse_index[s.name].push_back(&r);
+            reverse_index[s.name]
+                .push_back(&r);
         }
     }
 }
 
-double EquivalenceGraph::rule_cost(const EquivalenceRule& rule) {
+/**
+ * @brief Compute decomposition rule cost.
+ *
+ * Current cost model:
+ *   cost = number of source gates
+ *
+ * Can later be extended to support:
+ * - weighted two-qubit gate cost
+ * - hardware-aware metrics
+ * - depth-aware optimization
+ *
+ * @param rule Input equivalence rule
+ * @return Rule cost
+ */
+double EquivalenceGraph::rule_cost(
+    const EquivalenceRule& rule) {
+
     return (double)rule.sources.size();
 }
 
-/* ================= Dijkstra ================= */
+/* ============================================================
+ * Dijkstra-based Optimal Decomposition Search
+ * ============================================================ */
 
+/**
+ * @brief Compute optimal decomposition rules.
+ *
+ * Uses reverse Dijkstra traversal starting from
+ * target gates.
+ *
+ * The algorithm searches for the minimum-cost
+ * decomposition path for each source gate.
+ *
+ * @param source Source gate set
+ * @param target Target gate set
+ *
+ * @return Mapping:
+ *   gate name -> optimal equivalence rule
+ */
 unordered_map<string, EquivalenceRule>
 EquivalenceGraph::get_optimal_decomposition_rule_dictionary(
     const vector<string>& source,
     const vector<string>& target
 ) {
+
     unordered_set<string> visited;
+
+    // Source gates still requiring decomposition
     unordered_set<string> left_source_gates;
 
     for (auto& s : source) {
-        if (find(target.begin(), target.end(), s) == target.end()) {
+
+        if (find(
+                target.begin(),
+                target.end(),
+                s) == target.end()) {
+
             left_source_gates.insert(s);
         }
     }
 
+    // Best known decomposition cost
     unordered_map<string, double> cost_map;
-    unordered_map<string, EquivalenceRule> optimal_rules;
 
-    using Node = tuple<double, int, string>;
-    priority_queue<Node, vector<Node>, greater<>> pq;
+    // Best decomposition rule
+    unordered_map<string, EquivalenceRule>
+        optimal_rules;
+
+    using Node =
+        tuple<double, int, string>;
+
+    priority_queue<
+        Node,
+        vector<Node>,
+        greater<>
+    > pq;
 
     int counter = 0;
 
+    // ------------------------------------------------
+    // Initialize target gates with zero cost
+    // ------------------------------------------------
+
     for (auto& g : target) {
+
         pq.emplace(0.0, counter++, g);
+
         visited.insert(g);
+
         cost_map[g] = 0.0;
     }
 
+    // ------------------------------------------------
+    // Reverse Dijkstra traversal
+    // ------------------------------------------------
+
     while (!pq.empty()) {
+
         auto [cost, _, gate] = pq.top();
+
         pq.pop();
 
         left_source_gates.erase(gate);
 
+        // All source gates resolved
         if (left_source_gates.empty()) {
             return optimal_rules;
         }
 
-        if (cost_map.find(gate) != cost_map.end() && cost_map[gate] < cost) {
+        // Skip outdated queue entries
+        if (cost_map.find(gate)
+                != cost_map.end() &&
+            cost_map[gate] < cost) {
+
             continue;
         }
 
-        if (reverse_index.find(gate) == reverse_index.end())
+        // No reverse dependency
+        if (reverse_index.find(gate)
+                == reverse_index.end()) {
+
             continue;
+        }
 
+        // Explore reverse rules
         for (auto* rule : reverse_index[gate]) {
-            bool ok = true;
-            double new_cost = rule_cost(*rule);
 
+            bool ok = true;
+
+            double new_cost =
+                rule_cost(*rule);
+
+            // All source gates must already
+            // have valid decomposition paths
             for (auto& s : rule->sources) {
+
                 if (!visited.count(s.name)) {
+
                     ok = false;
                     break;
                 }
+
                 new_cost += cost_map[s.name];
             }
 
-            if (!ok) continue;
+            if (!ok) {
+                continue;
+            }
 
-            if (cost_map.find(rule->target.name) == cost_map.end() ||
-                cost_map[rule->target.name] > new_cost) {
+            // Relaxation step
+            if (cost_map.find(rule->target.name)
+                    == cost_map.end() ||
+                cost_map[rule->target.name]
+                    > new_cost) {
 
-                cost_map[rule->target.name] = new_cost;
-                optimal_rules[rule->target.name] = *rule;
+                cost_map[rule->target.name] =
+                    new_cost;
 
-                pq.emplace(new_cost, counter++, rule->target.name);
-                visited.insert(rule->target.name);
+                optimal_rules[rule->target.name] =
+                    *rule;
+
+                pq.emplace(
+                    new_cost,
+                    counter++,
+                    rule->target.name);
+
+                visited.insert(
+                    rule->target.name);
             }
         }
     }
@@ -1071,33 +1359,94 @@ EquivalenceGraph::get_optimal_decomposition_rule_dictionary(
     return optimal_rules;
 }
 
-/* ================= 参数替换 ================= */
+/* ============================================================
+ * Parameter Substitution
+ * ============================================================ */
+
+/**
+ * @brief Escape regex special characters.
+ *
+ * Used when constructing regex replacement
+ * patterns for symbolic parameter substitution.
+ *
+ * @param s Input string
+ * @return Regex-safe escaped string
+ */
 static string regex_escape(const string& s) {
-    static const regex re(R"([.^$|()\\[*+?{\]])");
-    return regex_replace(s, re, R"(\$&)");
+
+    static const regex re(
+        R"([.^$|()\\[*+?{\]])");
+
+    return regex_replace(
+        s,
+        re,
+        R"(\$&)");
 }
 
+/**
+ * @brief Rewrite symbolic parameter expressions.
+ *
+ * Example:
+ *   theta -> pi / 2
+ *
+ * Parameters are substituted using regex-based
+ * symbolic replacement.
+ *
+ * Keys are sorted by descending length to avoid
+ * substring replacement conflicts.
+ *
+ * Example:
+ *   t1 should be replaced before t
+ *
+ * @param exprs Original expressions
+ * @param param_map Parameter substitution map
+ *
+ * @return Rewritten parameter expressions
+ */
 vector<string> EquivalenceGraph::rewrite_params(
     const vector<string>& exprs,
     const unordered_map<string, string>& param_map
 ) {
+
     vector<string> result;
 
-    // ---- 排序（防止 t / t1 冲突）----
-    vector<pair<string, string>> ordered(param_map.begin(), param_map.end());
-    sort(ordered.begin(), ordered.end(),
-         [](const auto& a, const auto& b) {
-             return a.first.size() > b.first.size();
-         });
+    // ------------------------------------------------
+    // Sort parameters by descending key length
+    // ------------------------------------------------
+
+    vector<pair<string, string>> ordered(
+        param_map.begin(),
+        param_map.end());
+
+    sort(
+        ordered.begin(),
+        ordered.end(),
+        [](const auto& a, const auto& b) {
+            return a.first.size() >
+                   b.first.size();
+        });
+
+    // ------------------------------------------------
+    // Rewrite each expression
+    // ------------------------------------------------
 
     for (const auto& expr : exprs) {
+
         string new_expr = expr;
 
         for (const auto& [k, v] : ordered) {
-            string pattern = "\\b" + regex_escape(k) + "\\b";
+
+            string pattern =
+                "\\b" +
+                regex_escape(k) +
+                "\\b";
+
             regex r(pattern);
 
-            new_expr = regex_replace(new_expr, r, "(" + v + ")");
+            new_expr = regex_replace(
+                new_expr,
+                r,
+                "(" + v + ")");
         }
 
         result.push_back(new_expr);
@@ -1106,164 +1455,357 @@ vector<string> EquivalenceGraph::rewrite_params(
     return result;
 }
 
-/* ================= 递归展开 ================= */
+/* ============================================================
+ * Recursive Gate Expansion
+ * ============================================================ */
 
-vector<ParamGate> EquivalenceGraph::expand_gate_recursive(
+/**
+ * @brief Recursively expand a gate decomposition.
+ *
+ * Expands a gate into target gates using:
+ * - decomposition rules
+ * - recursive traversal
+ * - memoization cache
+ *
+ * Features:
+ * - parameter substitution
+ * - qubit remapping
+ * - cycle detection
+ *
+ * @param gate Gate to expand
+ * @param rule_map Optimal decomposition rules
+ * @param target_set Allowed primitive gates
+ * @param cache Expansion cache
+ * @param path Current recursion path
+ *
+ * @return Fully expanded gate sequence
+ *
+ * @throws std::runtime_error
+ * Thrown if:
+ * - decomposition cycle detected
+ * - decomposition rule missing
+ * - parameter mismatch occurs
+ * - qubit mapping fails
+ */
+vector<ParamGate>
+EquivalenceGraph::expand_gate_recursive(
     const ParamGate& gate,
     const unordered_map<string, EquivalenceRule>& rule_map,
     const unordered_set<string>& target_set,
-    unordered_map<ParamGate, vector<ParamGate>, ParamGateHash>& cache,
-    unordered_set<ParamGate, ParamGateHash>& path
+    unordered_map<
+        ParamGate,
+        vector<ParamGate>,
+        ParamGateHash>& cache,
+    unordered_set<
+        ParamGate,
+        ParamGateHash>& path
 ) {
-    // -------- Target gate --------
+
+    // ------------------------------------------------
+    // Already primitive target gate
+    // ------------------------------------------------
+
     if (target_set.count(gate.name)) {
         return {gate};
     }
 
-    // -------- Cache --------
+    // ------------------------------------------------
+    // Cache lookup
+    // ------------------------------------------------
+
     auto cache_it = cache.find(gate);
+
     if (cache_it != cache.end()) {
         return cache_it->second;
     }
 
-    // -------- Cycle detection --------
+    // ------------------------------------------------
+    // Cycle detection
+    // ------------------------------------------------
+
     if (path.count(gate)) {
-        throw runtime_error("cycle detected at gate " + gate.name);
+
+        throw runtime_error(
+            "cycle detected at gate " +
+            gate.name);
     }
 
-    // -------- Rule lookup --------
+    // ------------------------------------------------
+    // Find decomposition rule
+    // ------------------------------------------------
+
     auto it = rule_map.find(gate.name);
+
     if (it == rule_map.end()) {
-        throw runtime_error("no rule for gate " + gate.name);
+
+        throw runtime_error(
+            "no rule for gate " +
+            gate.name);
     }
 
     const auto& rule = it->second;
-    const ParamGate& template_gate = rule.target;
 
-    // -------- Parameter binding --------
+    const ParamGate& template_gate =
+        rule.target;
+
+    // ------------------------------------------------
+    // Build parameter mapping
+    // ------------------------------------------------
+
     unordered_map<string, string> param_map;
 
     if (!template_gate.params.empty()) {
+
         if (gate.params.empty() ||
-            gate.params.size() != template_gate.params.size()) {
-            throw runtime_error("parameter mismatch for gate " + gate.name);
+            gate.params.size() !=
+                template_gate.params.size()) {
+
+            throw runtime_error(
+                "parameter mismatch for gate " +
+                gate.name);
         }
 
-        for (size_t i = 0; i < template_gate.params.size(); ++i) {
-            param_map[template_gate.params[i]] = gate.params[i];
+        for (size_t i = 0;
+             i < template_gate.params.size();
+             ++i) {
+
+            param_map[
+                template_gate.params[i]] =
+                gate.params[i];
         }
     }
 
-    // -------- Enter recursion --------
+    // ------------------------------------------------
+    // Enter recursion
+    // ------------------------------------------------
+
     path.insert(gate);
 
     vector<ParamGate> result;
 
-    // -------- Build qubit map --------
+    // ------------------------------------------------
+    // Build qubit mapping
+    // symbolic qubit -> physical qubit
+    // ------------------------------------------------
+
     unordered_map<string, string> qubit_map;
-    for (size_t i = 0; i < template_gate.qubits.size(); ++i) {
-        qubit_map[template_gate.qubits[i]] = gate.qubits[i];
+
+    for (size_t i = 0;
+         i < template_gate.qubits.size();
+         ++i) {
+
+        qubit_map[
+            template_gate.qubits[i]] =
+            gate.qubits[i];
     }
 
-    // -------- Expand sources --------
+    // ------------------------------------------------
+    // Expand source gates
+    // ------------------------------------------------
+
     for (const auto& s : rule.sources) {
 
-        // ---- Qubit mapping ----
+        // ---- Qubit remapping ----
+
         vector<string> mapped_qubits;
-        mapped_qubits.reserve(s.qubits.size());
+
+        mapped_qubits.reserve(
+            s.qubits.size());
 
         for (const auto& q : s.qubits) {
+
             auto qit = qubit_map.find(q);
+
             if (qit == qubit_map.end()) {
-                throw runtime_error("qubit mapping missing: " + q);
+
+                throw runtime_error(
+                    "qubit mapping missing: " + q);
             }
-            mapped_qubits.push_back(qit->second);
+
+            mapped_qubits.push_back(
+                qit->second);
         }
 
-        // ---- Parameter rewrite ----
-        vector<string> rewritten_params =
-            rewrite_params(s.params, param_map);
+        // ---- Rewrite parameters ----
 
-        // ---- Construct new gate（避免默认构造）----
+        vector<string> rewritten_params =
+            rewrite_params(
+                s.params,
+                param_map);
+
+        // ---- Construct substituted gate ----
+
         ParamGate g2{
             s.name,
             mapped_qubits,
             rewritten_params
         };
 
-        // ---- Recursive expand ----
-        auto sub = expand_gate_recursive(
-            g2, rule_map, target_set, cache, path
-        );
+        // ---- Recursive expansion ----
 
-        result.insert(result.end(), sub.begin(), sub.end());
+        auto sub = expand_gate_recursive(
+            g2,
+            rule_map,
+            target_set,
+            cache,
+            path);
+
+        result.insert(
+            result.end(),
+            sub.begin(),
+            sub.end());
     }
 
-    // -------- Exit recursion --------
+    // ------------------------------------------------
+    // Exit recursion
+    // ------------------------------------------------
+
     path.erase(gate);
 
+    // Cache result
     cache.emplace(gate, result);
+
     return result;
 }
 
-/* ================= Build Table ================= */
+/* ============================================================
+ * Build Full Decomposition Table
+ * ============================================================ */
 
+/**
+ * @brief Build fully expanded decomposition table.
+ *
+ * Produces:
+ * - complete decomposition lookup table
+ * - decomposition complexity statistics
+ *
+ * Features:
+ * - recursive gate expansion
+ * - decomposition caching
+ * - automatic excluded gate handling
+ *
+ * @param source Source gate set
+ * @param target Target primitive gate set
+ *
+ * @return Pair containing:
+ * - decomposition table
+ * - gate count statistics
+ */
 pair<
-    unordered_map<ParamGate, vector<ParamGate>, ParamGateHash>,
+    unordered_map<
+        ParamGate,
+        vector<ParamGate>,
+        ParamGateHash>,
     unordered_map<string, int>
 >
 EquivalenceGraph::build_full_decomposition_table(
     const vector<string>& source,
     const vector<string>& target
 ) {
+
+    // ------------------------------------------------
+    // Extend source gate set
+    // ------------------------------------------------
+
     vector<string> extended_source = source;
+
     extended_source.push_back("swap");
+
+    // ------------------------------------------------
+    // Extend target gate set
+    // ------------------------------------------------
 
     vector<string> new_target = target;
 
-    unordered_set<string> excluded_gates = {"measure", "reset", "sync", "move"};
+    unordered_set<string> excluded_gates = {
+        "measure",
+        "reset",
+        "sync",
+        "move"
+    };
 
     for (auto& g : excluded_gates) {
-        if (find(new_target.begin(), new_target.end(), g) == new_target.end()) {
+
+        if (find(
+                new_target.begin(),
+                new_target.end(),
+                g) == new_target.end()) {
+
             new_target.push_back(g);
         }
     }
 
-    auto rule_map = get_optimal_decomposition_rule_dictionary(extended_source, new_target);
+    // ------------------------------------------------
+    // Compute optimal decomposition rules
+    // ------------------------------------------------
 
-    unordered_set<string> target_set(new_target.begin(), new_target.end());
+    auto rule_map =
+        get_optimal_decomposition_rule_dictionary(
+            extended_source,
+            new_target);
 
-    unordered_map<ParamGate, vector<ParamGate>, ParamGateHash> table;
+    unordered_set<string> target_set(
+        new_target.begin(),
+        new_target.end());
+
+    // ------------------------------------------------
+    // Build decomposition table
+    // ------------------------------------------------
+
+    unordered_map<
+        ParamGate,
+        vector<ParamGate>,
+        ParamGateHash> table;
+
     unordered_map<string, int> count_map;
-    unordered_map<ParamGate, vector<ParamGate>, ParamGateHash> cache;
-    unordered_set<ParamGate, ParamGateHash> path;
+
+    unordered_map<
+        ParamGate,
+        vector<ParamGate>,
+        ParamGateHash> cache;
+
+    unordered_set<
+        ParamGate,
+        ParamGateHash> path;
 
     for (auto& name : extended_source) {
+
+        // Already primitive target gate
         if (target_set.count(name)) {
+
             count_map[name] = 1;
+
             continue;
         }
 
         auto it = rule_map.find(name);
-        if (it == rule_map.end())
+
+        if (it == rule_map.end()) {
             throw runtime_error("no rule");
+        }
 
-        ParamGate template_gate = it->second.target;
+        ParamGate template_gate =
+            it->second.target;
 
+        // Skip duplicate entries
         if (table.count(template_gate)) {
             continue;
         }
 
-        auto expanded = expand_gate_recursive(
-            template_gate,
-            rule_map,
-            target_set,
-            cache,
-            path
-        );
+        // Recursively expand decomposition
+        auto expanded =
+            expand_gate_recursive(
+                template_gate,
+                rule_map,
+                target_set,
+                cache,
+                path);
 
         table[template_gate] = expanded;
-        count_map[template_gate.name] = expanded.size() + 1;
+
+        // Simple complexity metric
+        count_map[template_gate.name] =
+            expanded.size() + 1;
     }
 
     return {table, count_map};
