@@ -3,68 +3,158 @@
 skinparam defaultFontName "Noto Sans CJK SC"
 skinparam dpi 300
 
-' 设置布局方向
+' 设置布局方向和样式
 top to bottom direction
+skinparam classBackgroundColor #E1F5FE
+skinparam classBorderColor #01579B
+skinparam arrowColor #01579B
 
-' define user
+' ============ 核心表 ============
+
+' Project 表 - 多租户隔离
+class Project {
+  {id}id: UUID (PK)
+  --
+  name: VARCHAR(100) UNIQUE
+  created_at: DATETIME
+  updated_at: DATETIME
+}
+
+' User 表 - 用户信息
 class User {
-  - id: int
-  - user_name: str
-  - hashed_password: str
-  - roles: list[str]
-  - is_active: bool
-  - is_locked: bool
-  - last_login: datetime
-  - password_changed_at: datetime
-  - locked_until: datetime
-  - password_expiry_days: int
-  - failed_login_attempts: int
-  - description: str
-  - created_at: datetime
-  - updated_at: datetime
+  {id}id: UUID (PK)
+  {id}project_id: UUID (FK) <<required>>
+  --
+  user_name: VARCHAR(50) UNIQUE UNIQUE
+  hashed_password: VARCHAR(255)
+  is_enabled: BOOLEAN (default: true)
+  is_locked: BOOLEAN (default: false)
+  last_login: DATETIME
+  password_changed_at: DATETIME
+  locked_until: DATETIME
+  password_expiry_days: INTEGER (default: 0)
+  failed_login_attempts: INTEGER (default: 0)
+  description: TEXT
+  created_at: DATETIME
+  updated_at: DATETIME
 }
 
-' define role
+' Role 表 - 角色定义
 class Role {
-  - id: int
-  - role_name: str
-  - permissions: list[str]
-  - description: str
-  - created_at: datetime
-  - updated_at: datetime
+  {id}id: UUID (PK)
+  --
+  role_name: VARCHAR(50) UNIQUE
+  permissions: JSON (权限列表)
+  description: TEXT
+  created_at: DATETIME
+  updated_at: DATETIME
 }
 
-' define user_role association
+' UserRole 表 - 用户-角色关联 (M:N)
 class UserRole {
-  - id: int
-  - user_id: int
-  - role_id: int
-  - created_at: datetime
+  {id}id: UUID (PK)
+  {id}user_id: UUID (FK)
+  {id}role_id: UUID (FK)
+  --
+  created_at: DATETIME
 }
 
-' define permission
-class Permission {
-  - sub: str
-  - obj: str
-  - act: str
+' ============ 审计表 ============
+
+' LoginLog 表 - 登录日志
+class LoginLog {
+  {id}id: UUID (PK)
+  --
+  user_name: VARCHAR(50) (index)
+  ip_address: VARCHAR(45)
+  login_time: DATETIME (default: now)
+  login_status: BOOLEAN
+  failure_reason: TEXT
+  user_agent: TEXT
 }
 
-' define permission manager
-class PermissionManager {
-  - enforcer: CasbinEnforcer
-  + enforce()
-  + add_policy()
-  + remove_policy()
+' TokenBlacklist 表 - 令牌撤销
+class TokenBlacklist {
+  {id}id: UUID (PK)
+  --
+  token_jti: VARCHAR(36) UNIQUE
+  expires_at: DATETIME
+  created_at: DATETIME
 }
 
-' relationships
-User --> UserRole : has many
-UserRole --> Role : belongs to
-Role --> Permission : has many
-PermissionManager --> Permission : manages
+' ============ 权限管理 ============
 
-' example roles
-Role : admin
-Role : user
+' Casbin 策略
+class CasbinPolicy {
+  note as N1
+    Casbin-based RBAC
+    ----
+    sub: 主体 (subject) - 角色名
+    obj: 对象 (object) - API路径
+    act: 动作 (action) - call
+  end note
+}
+
+' ============ 关系定义 ============
+
+' Project 和 User 的关系 (1:N)
+Project "1" --> "N" User : has many\n(多租户隔离)
+note on link : project_id\nForeign Key
+
+' User 和 UserRole 的关系 (1:N)
+User "1" --> "N" UserRole : has many
+note on link : user_id
+
+' Role 和 UserRole 的关系 (1:N)
+Role "1" --> "N" UserRole : has many
+note on link : role_id
+
+' LoginLog 记录用户登录
+User "1" --> "N" LoginLog : generates\n(登录日志)
+note on link : user_name
+
+' TokenBlacklist 管理令牌
+User "1" --> "N" TokenBlacklist : revokes\n(令牌撤销)
+note on link : JWT jti
+
+' Role 关联权限策略
+Role --> CasbinPolicy : defines\n(通过permissions)
+note on link : role_name作为subject
+
+' ============ 内置数据 ============
+
+note right of Project
+  **内置项目**
+  ----
+  • default project
+    (00000000-0000-4000-8000-000000000000)
+  • admin project
+    (00000000-0000-4000-8000-000000000001)
+end note
+
+note right of User
+  **内置用户**
+  ----
+  • admin / 123456
+    (管理员)
+  • anonymous / 123456
+    (仅auth_mode=no时)
+end note
+
+note right of Role
+  **内置角色**
+  ----
+  • admin
+    (具有所有权限)
+  • user
+    (基本权限)
+end note
+
+note bottom of UserRole
+  **多租户隔离**
+  用户只能在其所属项目内
+  访问相关的角色和权限
+  项目是隔离的最小单位
+end note
 
 @enduml
