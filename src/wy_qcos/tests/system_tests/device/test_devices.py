@@ -26,7 +26,7 @@ from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 class TestDevice:
     @classmethod
     def setup_class(cls):
-        cls.client = GLOBAL_CONFIGS["client"]
+        cls.admin_client = GLOBAL_CONFIGS["admin_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
@@ -37,13 +37,13 @@ class TestDevice:
 
     @pytest.mark.smoke
     def test_get_devices(self):
-        devices = StLibrary.get_devices(self.client)
+        devices = StLibrary.get_devices(self.admin_client)
         assert isinstance(devices, dict)
 
     @pytest.mark.smoke
     def test_get_device(self):
         device_name = "dummy"
-        device = StLibrary.get_device(self.client, device_name)
+        device = StLibrary.get_device(self.admin_client, device_name)
         assert isinstance(device, dict)
         assert isinstance(device["alias_name"], str)
         if device["configs"] is not None:
@@ -56,10 +56,10 @@ class TestDevice:
         assert device["status"] == Device.DEVICE_STATUS_ONLINE
 
     def test_get_devices_check_details(self):
-        devices = StLibrary.get_devices(self.client)
+        devices = StLibrary.get_devices(self.admin_client)
         assert isinstance(devices, dict)
         for device_name, device_info in devices.items():
-            device = StLibrary.get_device(self.client, device_name)
+            device = StLibrary.get_device(self.admin_client, device_name)
             _drvice_name = device["name"]
             assert device_name == _drvice_name
             assert isinstance(device["name"], str)
@@ -76,7 +76,7 @@ class TestDevice:
 
     def test_get_device_with_details(self):
         device_name = "dummy"
-        device = StLibrary.get_device(self.client, device_name, True)
+        device = StLibrary.get_device(self.admin_client, device_name, True)
         assert isinstance(device, dict)
         assert isinstance(device["alias_name"], str)
         if device["configs"] is not None:
