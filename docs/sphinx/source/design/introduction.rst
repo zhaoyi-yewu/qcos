@@ -41,7 +41,7 @@
 其中，量子计算操作系统重点承担多用户管理、多任务处理、系统整体管控及量子引擎运行等核心职责。
 而量子引擎的核心能力包括量子编译映射优化、量子比特校准、量子指令和时序的分发、量子计算结果的获取与纠错等能力。
 
-.. figure:: ../_static/design/qcos-eco-system.png
+.. figure:: ../_static/design/qcos-eco-system.svg
    :align: center
 
    量子计算操作系统在整个生态中所处的位置
