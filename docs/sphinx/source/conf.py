@@ -27,7 +27,7 @@ import shutil
 import sys
 import types
 
-import pydantic.functional_serializers
+import pydantic.functional_serializers  # Note: Don't delete this import
 from sphinx.ext import apidoc
 
 current_dir = os.path.split(os.path.realpath(__file__))[0]
@@ -55,6 +55,8 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.extlinks",
     "sphinx.ext.graphviz",
+    # "sphinx.ext.imgconverter",
+    "sphinxcontrib.rsvgconverter",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinx_rtd_theme",
