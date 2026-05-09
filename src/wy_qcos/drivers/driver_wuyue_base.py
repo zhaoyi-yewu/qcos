@@ -45,6 +45,7 @@ class DriverWuyueBase(DriverBase):
     # url path
     submit_path = "submit"
     query_task_path = "query_task"
+    query_param = "task/WuYue/queryParam"
 
     # task status
     # 1: submitted, 2: queuing,   3. computing,
@@ -85,6 +86,7 @@ class DriverWuyueBase(DriverBase):
             self.TASK_STAGE_GET_RESULTS: 95,
             self.TASK_STAGE_COMPLETE: 100,
         }
+        self.enable_device_monitor = True
 
     def init_driver(self):
         """Init driver."""
@@ -193,7 +195,7 @@ class DriverWuyueBase(DriverBase):
         src_code = data["source_code"]
         transpile_results = data["transpile_results"]
         final_code = self.convert_code(num_qubits, src_code, transpile_results)
-        logger.info(f"after converting, code is: {final_code}")
+        logger.info("after converting, code is: {final_code}")
 
         # 2. Prepare task data
         logger.info("2. prepare data")
@@ -511,7 +513,6 @@ class DriverWuyueBase(DriverBase):
                     and data[0]["outData"]["lineResult"] is not None
                 ):
                     result = data[0]["outData"]["lineResult"]
-
                 if task_status == self.task_status_failed:
                     success = True
                     realtime_status = {
@@ -520,7 +521,6 @@ class DriverWuyueBase(DriverBase):
                     }
                     err_msgs.append(f"Task failed: {task_status}")
                 elif task_status == self.task_status_completed:
-                    success = True
                     realtime_status = {
                         "task_status": data[0]["taskStatus"],
                         "result": result,
@@ -568,3 +568,71 @@ class DriverWuyueBase(DriverBase):
                 key: value for key, value in results_dict.items() if value != 0
             }
         return success, "\n".join(err_msg), results
+
+    def get_device_info(self):
+        """Get device info.
+
+        Returns:
+            device info
+        """
+        success = True
+        err_msgs = []
+        device_info = None
+
+        # Query param
+        url = f"http://{self.ip_addr}:{self.port}/{self.query_param}"
+        logger.info(f"query param url: {url}")
+
+        headers = self.default_headers
+        headers["clientId"] = self.client_id
+        raw_data = {
+            "clientId": self.client_id,
+            "engCode": self.eng_code,
+        }
+        raw_data["sign"] = self.prepare_sign(raw_data)
+        encrypted_data = self.encrypt_by_public_key(raw_data)
+        status_code, reason, text, r = Library.call_http_api(
+            url,
+            HttpMethod.POST,
+            data=encrypted_data,
+            headers=headers,
+            func_name="get_device_info",
+        )
+        logger.info(f"status_code: {status_code}")
+        if status_code == HttpCode.SUCCESS_OK:
+            response = self.decrypt_by_private_key(text)
+            err_code = response["code"]
+            err_msg = response["msg"]
+            logger.info(f"err_code: {err_code}, msg: {err_msg}")
+            if err_code == 1:
+                data = response["data"]
+                if data is None:
+                    success = False
+                    err_msgs.append("invalid data received")
+                    return success, "\n".join(err_msgs), None
+                device_info = data
+            else:
+                success = True
+                err_msgs.append(err_msg)
+        else:
+            success = False
+            err_msgs.append(reason)
+        return success, "\n".join(err_msgs), device_info
+
+    def fetch_running_info(self):
+        """Fetch running info.
+
+        Returns:
+            remote device running info
+        """
+        device_running_info = {}
+        success, err_msg, device_info = self.get_device_info()
+        if not success:
+            logger.debug(f"Failed to get device info: {err_msg}")
+            device_running_info["details"] = {}
+            return device_running_info
+
+        logger.info(f"Device info: {device_info}")
+        device_running_info["details"] = device_info
+
+        return device_running_info

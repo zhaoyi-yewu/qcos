@@ -330,7 +330,7 @@ class Constant:
     # device monitor engine property
     DEFAULT_DEVICE_MONITOR_RETRIES = 1000
     DEFAULT_DEVICE_MONITOR_RETRY_INTERVAL = 5
-    DEFAULT_DEVICE_MONITOR_INTERVAL = 5
+    DEFAULT_DEVICE_MONITOR_INTERVAL = 60
 
     # user management
     AUTH_MODE_KEY = "auth_mode"
