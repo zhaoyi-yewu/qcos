@@ -15,14 +15,14 @@
 
 # 1. 架构总览
 
-![架构图](https://gitee.com/OpenWuYue/qcos/raw/develop/docs/sphinx/source/_static/architecture.png)
+![架构图](https://gitee.com/OpenWuYue/qcos/raw/develop/docs/sphinx/source/_static/architecture.svg)
 
 # 2. 功能特性
 
 | | 功能 |
-|:-----------------------------------------------|:------------------------------------|
+|:-----------------------------------------------|:---------------------------------------------------|
 | <span style="white-space:nowrap;">交互方式</span> | 命令行、API、SDK、GUI（规划） |
-| <span style="white-space:nowrap;">系统服务</span> | 配置管理、日志管理、用户管理（规划）、权限管理（规划）、监控管理（规划） |
+| <span style="white-space:nowrap;">系统服务</span> | 配置管理、日志管理、用户管理、监控告警（规划） |
 | <span style="white-space:nowrap;">设备管理</span> | 校准操作（规划）、设备配置/查询 |
 | <span style="white-space:nowrap;">作业管理</span> | 作业提交、取消、删除、状态查询、结果查询 |
 | <span style="white-space:nowrap;">系统引擎</span> | QASM解析、逻辑门分解、量子比特映射、编译优化、线路聚合、线路拆分（规划）、量子纠错QEC（规划） |
