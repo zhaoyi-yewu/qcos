@@ -28,6 +28,7 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.common.qcos_version import QcosVersion
 from wy_qcos.db import database
+from wy_qcos.db.utils import db_utils
 from wy_qcos.drivers.device_manager import DeviceManager
 from wy_qcos.drivers.driver_manager import DriverManager
 from wy_qcos.log.logger import init_logger
@@ -215,7 +216,6 @@ class Server:
 
             # init user management module
             logger.info("Init user manager")
-            from wy_qcos.db.utils import db_utils  # TODO: to be unified
 
             with db_utils.create_db_session(db_engine) as db_session:
                 user_manager = UserManager(
