@@ -160,7 +160,7 @@ class TestGetUserMgmtStatus:
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
     def test_get_user_mgmt_status(self, mock_config):
         """Test getting user management status."""
-        mock_config.ENABLE_USER_MGMT = True
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
         mock_config.PASSWORD_EXPIRY_DAYS = 90
         mock_config.MAX_LOGIN_ATTEMPTS = 5
         mock_config.LOCKOUT_DURATION_MINUTES = 15
@@ -175,7 +175,7 @@ class TestGetUserMgmtStatus:
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
     def test_get_user_mgmt_status_disabled(self, mock_config):
         """Test getting user management status when disabled."""
-        mock_config.ENABLE_USER_MGMT = False
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_NO
         mock_config.PASSWORD_EXPIRY_DAYS = 0
 
         result = get_user_mgmt_status()
@@ -318,8 +318,9 @@ class TestGetUser:
         mock_users_repo.get_user_by_id.return_value = (True, None, user_obj)
 
         body = user_schemas.GetUserRequest(user_id="user-uuid-123")
+        auth_data = {"user_id": "user-uuid-123", "roles": ["admin"]}
 
-        result = get_user(body, None, users_repo=mock_users_repo)
+        result = get_user(body, auth_data, users_repo=mock_users_repo)
 
         assert result is not None
         assert result.user_name == "testuser"
@@ -403,8 +404,10 @@ class TestGetUsers:
 
         assert isinstance(result, dict)
         assert len(result) == 2
-        assert "user1" in result
-        assert "user2" in result
+        # Check that user names are in the response values
+        user_names = [user.user_name for user in result.values()]
+        assert "user1" in user_names
+        assert "user2" in user_names
 
 
 class TestUpdateUser:
@@ -545,7 +548,7 @@ class TestDeleteUser:
     def test_delete_admin_user(self, mock_user_manager):
         """Test deleting admin user (should fail)."""
         admin_user = user_schemas.User(
-            user_name=Constant.DEFAULT_ADMIN_USERNAME,
+            user_name=Constant.ADMIN_USERNAME,
             hashed_password=_s("hashed"),
             roles=["admin"],
             is_enabled=True,
@@ -714,8 +717,10 @@ class TestGetRoles:
 
         assert isinstance(result, dict)
         assert len(result) == 2
-        assert "admin" in result
-        assert "user" in result
+        # Check that role names are in the response values
+        role_names = [role.role_name for role in result.values()]
+        assert "admin" in role_names
+        assert "user" in role_names
 
 
 class TestUpdateRole:
@@ -905,8 +910,9 @@ class TestChangePassword:
             old_password=_s("old_password"),
             new_password=_s("new_password123"),
         )
+        auth_data = {"user_id": "user-uuid-123", "roles": ["user"]}
 
-        result = change_password(body, None, users_repo=mock_users_repo)
+        result = change_password(body, auth_data, users_repo=mock_users_repo)
 
         assert result is not None
         assert result.message == "Password changed successfully"
@@ -990,6 +996,11 @@ class TestGetLoginLogs:
             None,
             Mock(id="user-uuid-123"),
         )
+        mock_users_repo.get_user_by_id.return_value = (
+            True,
+            None,
+            Mock(id="user-uuid-123", project_id=Constant.DEFAULT_PROJECT_ID),
+        )
 
         body = user_schemas.GetLoginLogsRequest()
 
@@ -1017,6 +1028,11 @@ class TestGetLoginLogs:
             True,
             None,
             Mock(id="user-uuid-123"),
+        )
+        mock_users_repo.get_user_by_id.return_value = (
+            True,
+            None,
+            Mock(id="user-uuid-123", project_id=Constant.DEFAULT_PROJECT_ID),
         )
 
         body = user_schemas.GetLoginLogsRequest(limit=1, offset=0)
@@ -1053,6 +1069,11 @@ class TestGetLoginLogs:
             True,
             None,
             Mock(id="user-uuid-123"),
+        )
+        mock_users_repo.get_user_by_id.return_value = (
+            True,
+            None,
+            Mock(id="user-uuid-123", project_id=Constant.DEFAULT_PROJECT_ID),
         )
 
         body = user_schemas.GetLoginLogsRequest()
@@ -1251,7 +1272,7 @@ class TestErrorHandlingChains:
     def test_delete_admin_user_fails(self, mock_user_manager):
         """Test that deleting admin user fails."""
         admin_user = user_schemas.User(
-            user_name=Constant.DEFAULT_ADMIN_USERNAME,
+            user_name=Constant.ADMIN_USERNAME,
             hashed_password=_s("hashed"),
             roles=["admin"],
             is_enabled=True,
@@ -1354,6 +1375,8 @@ class TestUserStatusManagement:
         mock_request.app.state = Mock()
 
         disabled_user = user_schemas.User(
+            id="testuser-uuid",
+            project_id=Constant.DEFAULT_PROJECT_ID,
             user_name="testuser",
             hashed_password=_s("hashed"),
             roles=["user"],
@@ -1367,6 +1390,8 @@ class TestUserStatusManagement:
         mock_user_manager.get_user_by_id = Mock(
             return_value=(
                 user_schemas.User(
+                    id="testuser-uuid",
+                    project_id=Constant.DEFAULT_PROJECT_ID,
                     user_name="testuser",
                     hashed_password=_s("hashed"),
                     roles=["user"],
@@ -1410,6 +1435,8 @@ class TestUserStatusManagement:
         mock_request.app.state = Mock()
 
         locked_user = user_schemas.User(
+            id="testuser-uuid",
+            project_id=Constant.DEFAULT_PROJECT_ID,
             user_name="testuser",
             hashed_password=_s("hashed"),
             roles=["user"],
@@ -1423,6 +1450,8 @@ class TestUserStatusManagement:
         mock_user_manager.get_user_by_id = Mock(
             return_value=(
                 user_schemas.User(
+                    id="testuser-uuid",
+                    project_id=Constant.DEFAULT_PROJECT_ID,
                     user_name="testuser",
                     hashed_password=_s("hashed"),
                     roles=["user"],
@@ -1475,3 +1504,203 @@ class TestUserStatusManagement:
         mock_user_manager.get_user.return_value = disabled_user
 
         assert disabled_user.is_enabled is False
+
+
+class TestAuthModeIntegration:
+    """Test user management API with different auth modes."""
+
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
+    def test_get_user_mgmt_status_with_no_mode(self, mock_config):
+        """Test user management status with auth_mode=no."""
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_NO
+        mock_config.PASSWORD_EXPIRY_DAYS = 0
+
+        result = get_user_mgmt_status()
+
+        assert result.enabled is False
+
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
+    def test_get_user_mgmt_status_with_jwt_mode(self, mock_config):
+        """Test user management status with auth_mode=jwt."""
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
+        mock_config.PASSWORD_EXPIRY_DAYS = 90
+        mock_config.MAX_LOGIN_ATTEMPTS = 5
+        mock_config.LOCKOUT_DURATION_MINUTES = 15
+
+        result = get_user_mgmt_status()
+
+        assert result.enabled is True
+        assert result.password_expiry_days == 90
+
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
+    def test_get_user_mgmt_status_with_virtual_instance_mode(self, mock_config):
+        """Test user management status with auth_mode=virtual_instance."""
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_VIRTUAL_INSTANCE
+        mock_config.PASSWORD_EXPIRY_DAYS = 0
+
+        result = get_user_mgmt_status()
+
+        assert result.enabled is False
+
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
+    def test_create_user_with_auth_mode_no(self, mock_config):
+        """Test creating user when auth_mode=no (should still work)."""
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_NO
+        mock_config.PASSWORD_EXPIRY_DAYS = 0
+
+        mock_request = Mock()
+        mock_request.app = Mock()
+        mock_request.app.state = Mock()
+
+        mock_user_manager = Mock(spec=UserManager)
+        mock_user_manager.get_user.return_value = None
+        mock_user_manager.get_role.return_value = Mock(role_name="user")
+
+        mock_users_repo = Mock()
+        mock_users_repo.get_user_by_username.return_value = (False, None, None)
+        new_user = user_schemas.User(
+            user_name="testuser_no_auth",
+            hashed_password=_s("password123"),
+            roles=["user"],
+            is_enabled=True,
+            is_locked=False,
+            password_expiry_days=0,
+            password_changed_at=datetime.now(),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+        mock_users_repo.create_user.return_value = (True, None, new_user)
+        mock_roles_repo = Mock()
+        mock_roles_repo.get_role_by_name.return_value = (
+            True,
+            None,
+            Mock(role_name="user"),
+        )
+
+        body = user_schemas.CreateUserRequest(
+            user_name="testuser_no_auth",
+            password=_s("password123"),
+            roles=["user"],
+            is_enabled=True,
+            is_locked=False,
+        )
+
+        result = create_user(
+            body,
+            mock_request,
+            mock_user_manager,
+            users_repo=mock_users_repo,
+            roles_repo=mock_roles_repo,
+        )
+
+        assert result is not None
+        assert result.user_name == "testuser_no_auth"
+
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
+    def test_create_user_with_auth_mode_jwt(self, mock_config):
+        """Test creating user in JWT auth mode."""
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
+        mock_config.PASSWORD_EXPIRY_DAYS = 90
+
+        mock_request = Mock()
+        mock_request.app = Mock()
+        mock_request.app.state = Mock()
+
+        mock_user_manager = Mock(spec=UserManager)
+        mock_user_manager.get_user.return_value = None
+        mock_user_manager.get_role.return_value = Mock(role_name="user")
+
+        mock_users_repo = Mock()
+        mock_users_repo.get_user_by_username.return_value = (False, None, None)
+        new_user = user_schemas.User(
+            user_name="testuser_jwt",
+            hashed_password=_s("password123"),
+            roles=["user"],
+            is_enabled=True,
+            is_locked=False,
+            password_expiry_days=90,
+            password_changed_at=datetime.now(),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+        mock_users_repo.create_user.return_value = (True, None, new_user)
+        mock_roles_repo = Mock()
+        mock_roles_repo.get_role_by_name.return_value = (
+            True,
+            None,
+            Mock(role_name="user"),
+        )
+
+        body = user_schemas.CreateUserRequest(
+            user_name="testuser_jwt",
+            password=_s("password123"),
+            roles=["user"],
+            is_enabled=True,
+            is_locked=False,
+        )
+
+        result = create_user(
+            body,
+            mock_request,
+            mock_user_manager,
+            users_repo=mock_users_repo,
+            roles_repo=mock_roles_repo,
+        )
+
+        assert result is not None
+        assert result.user_name == "testuser_jwt"
+
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
+    def test_create_user_with_auth_mode_virtual_instance(self, mock_config):
+        """Test creating user in virtual_instance auth mode."""
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_VIRTUAL_INSTANCE
+        mock_config.PASSWORD_EXPIRY_DAYS = 0
+
+        mock_request = Mock()
+        mock_request.app = Mock()
+        mock_request.app.state = Mock()
+
+        mock_user_manager = Mock(spec=UserManager)
+        mock_user_manager.get_user.return_value = None
+        mock_user_manager.get_role.return_value = Mock(role_name="user")
+
+        mock_users_repo = Mock()
+        mock_users_repo.get_user_by_username.return_value = (False, None, None)
+        new_user = user_schemas.User(
+            user_name="testuser_virt",
+            hashed_password=_s("password123"),
+            roles=["user"],
+            is_enabled=True,
+            is_locked=False,
+            password_expiry_days=0,
+            password_changed_at=datetime.now(),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+        mock_users_repo.create_user.return_value = (True, None, new_user)
+        mock_roles_repo = Mock()
+        mock_roles_repo.get_role_by_name.return_value = (
+            True,
+            None,
+            Mock(role_name="user"),
+        )
+
+        body = user_schemas.CreateUserRequest(
+            user_name="testuser_virt",
+            password=_s("password123"),
+            roles=["user"],
+            is_enabled=True,
+            is_locked=False,
+        )
+
+        result = create_user(
+            body,
+            mock_request,
+            mock_user_manager,
+            users_repo=mock_users_repo,
+            roles_repo=mock_roles_repo,
+        )
+
+        assert result is not None
+        assert result.user_name == "testuser_virt"
+
