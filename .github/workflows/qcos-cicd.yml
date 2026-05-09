@@ -288,6 +288,17 @@ jobs:
       - build-qcos-cli-image
     runs-on: ubuntu-latest
     steps:
+      - name: Free spaces
+        uses: easimon/maximize-build-space@v10
+        with:
+          root-reserve-mb: 512
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -383,54 +394,6 @@ jobs:
       - run-st-qcos
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.QCOS_DOCKERHUB_TOKEN }}
-
-      - name: Download qcos-base Docker Image Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: qcos-base-image-artifact
-          path: ./build-scripts/images/
-
-      - name: Load qcos-base Docker Image
-        run: docker load -i ./build-scripts/images/qcos-base-amd64-dev.tar.xz
-
-      - name: Download qcos-sandbox Docker Image Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: qcos-sandbox-image-artifact
-          path: ./build-scripts/images/
-
-      - name: Load qcos-sandbox Docker Image
-        run: docker load -i ./build-scripts/images/qcos-sandbox-amd64-dev.tar.xz
-
-      - name: Download qcos Docker Image Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: qcos-image-artifact
-          path: ./build-scripts/images/
-
-      - name: Load qcos Docker Image
-        run: docker load -i ./build-scripts/images/qcos-amd64-dev.tar.xz
-
-      - name: Download qcos-cli Docker Image Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: qcos-cli-image-artifact
-          path: ./build-scripts/images/
-
-      - name: Load qcos-cli Docker Image
-        run: docker load -i ./build-scripts/images/qcos-cli-amd64-dev.tar.xz
-
       - name: Generate Docker Metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -447,14 +410,115 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern=latest
 
+      - name: Check Docker Metadata Tags
+        shell: bash
+        run: |
+          TAGS="${{ steps.meta.outputs.tags }}"
+          if [ -z "$TAGS" ]; then
+            echo "::warning::No Docker tags generated from metadata. Skipping push-docker-images steps."
+            echo "TAGS_EMPTY=true" >> $GITHUB_ENV
+          else
+            echo "Docker tags available: $TAGS"
+            echo "TAGS_EMPTY=false" >> $GITHUB_ENV
+          fi
+
+      - name: Free spaces
+        uses: easimon/maximize-build-space@v10
+        with:
+          root-reserve-mb: 512
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+
+      - name: Checkout Code
+        if: env.TAGS_EMPTY == 'false'
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        if: env.TAGS_EMPTY == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: env.TAGS_EMPTY == 'false'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.QCOS_DOCKERHUB_TOKEN }}
+
+      - name: Download and Load Docker Images
+        if: env.TAGS_EMPTY == 'false'
+        shell: bash
+        run: |
+          ARTIFACTS=(
+            "qcos-base-image-artifact:qcos-base-amd64-dev.tar.xz"
+            "qcos-sandbox-image-artifact:qcos-sandbox-amd64-dev.tar.xz"
+            "qcos-image-artifact:qcos-amd64-dev.tar.xz"
+            "qcos-cli-image-artifact:qcos-cli-amd64-dev.tar.xz"
+          )
+          
+          for artifact in "${ARTIFACTS[@]}"; do
+            IFS=':' read -r artifact_name file_name <<< "$artifact"
+            echo "Downloading $artifact_name..."
+            mkdir -p ./build-scripts/images/
+          done
+
+      - name: Download qcos-base Docker Image Artifact
+        if: env.TAGS_EMPTY == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: qcos-base-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos-base Docker Image
+        if: env.TAGS_EMPTY == 'false'
+        run: docker load -i ./build-scripts/images/qcos-base-amd64-dev.tar.xz
+
+      - name: Download qcos-sandbox Docker Image Artifact
+        if: env.TAGS_EMPTY == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: qcos-sandbox-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos-sandbox Docker Image
+        if: env.TAGS_EMPTY == 'false'
+        run: docker load -i ./build-scripts/images/qcos-sandbox-amd64-dev.tar.xz
+
+      - name: Download qcos Docker Image Artifact
+        if: env.TAGS_EMPTY == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: qcos-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos Docker Image
+        if: env.TAGS_EMPTY == 'false'
+        run: docker load -i ./build-scripts/images/qcos-amd64-dev.tar.xz
+
+      - name: Download qcos-cli Docker Image Artifact
+        if: env.TAGS_EMPTY == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: qcos-cli-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos-cli Docker Image
+        if: env.TAGS_EMPTY == 'false'
+        run: docker load -i ./build-scripts/images/qcos-cli-amd64-dev.tar.xz
+
       - name: Tag and Push docker images
+        if: env.TAGS_EMPTY == 'false'
         shell: bash
         env:
           ALL_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          cd ./build-scripts
           TAG_LIST=$(echo "$ALL_TAGS" | xargs)
-          echo "TAGS: $TAG_LIST"
+          
+          cd ./build-scripts
+          echo "Tags to push: $TAG_LIST"
           for full_tag in $TAG_LIST; do
             echo "Processing tag: $full_tag"
             tmp_image_name="${full_tag#*/}"
