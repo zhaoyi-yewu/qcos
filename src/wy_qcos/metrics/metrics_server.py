@@ -19,6 +19,7 @@ import asyncio
 import ipaddress
 import logging
 import socket
+import time
 from http import HTTPStatus
 from http.server import (
     BaseHTTPRequestHandler,
@@ -114,6 +115,8 @@ class MetricsServer:
         self._server = None
         self._shutdown_event = None
         self._server_task = None
+        self.max_retries = 5
+        self.retry_delay = 2
         try:
             self.ip_obj = ipaddress.ip_address(self.ip)
         except ValueError:
@@ -123,39 +126,57 @@ class MetricsServer:
             )
 
     def _create_server(self):
-        """Create HTTP server with IPv4/IPv6 support."""
+        """Create HTTP server with IPv4/IPv6 support.
+
+        Implements retry logic for handling TIME_WAIT socket state.
+        """
         is_ipv6 = isinstance(self.ip_obj, ipaddress.IPv6Address)
 
         class SpecificHTTPServer(HTTPServer):
             address_family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
 
-        try:
-            self._server = SpecificHTTPServer(
-                (self.ip, self.port),
-                PrometheusHandler,
-                bind_and_activate=False,
-            )
-            # Enable SO_REUSEADDR to allow the socket to be bound
-            # immediately after restart. This prevents "Address
-            # already in use" errors when the service restarts quickly
-            self._server.socket.setsockopt(
-                socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
-            )
-
-            if self.allow_dual_stack:
-                self._server.socket.setsockopt(
-                    socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, False
+        for attempt in range(self.max_retries):
+            try:
+                self._server = SpecificHTTPServer(
+                    (self.ip, self.port),
+                    PrometheusHandler,
+                    bind_and_activate=False,
                 )
-                logger.info("IPv6 Dual-Stack enabled")
-            self._server.server_bind()
-            self._server.server_activate()
-            logger.info(
-                f"Metrics server socket successfully bound to "
-                f"{self.ip}:{self.port}"
-            )
-        except OSError as e:
-            logger.error(f"Error creating metrics server: {e}")
-            raise
+                # Enable SO_REUSEADDR to allow the socket to be bound
+                # immediately after restart. This prevents "Address
+                # already in use" errors when the service restarts quickly
+                self._server.socket.setsockopt(
+                    socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
+                )
+
+                if self.allow_dual_stack:
+                    self._server.socket.setsockopt(
+                        socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, False
+                    )
+                    logger.info("IPv6 Dual-Stack enabled")
+
+                self._server.server_bind()
+                self._server.server_activate()
+                logger.info(
+                    f"Metrics server socket successfully bound to "
+                    f"{self.ip}:{self.port}"
+                )
+                return
+
+            except OSError as e:
+                if attempt < self.max_retries - 1:
+                    logger.warning(
+                        f"Failed to bind metrics server (attempt {attempt + 1}/"
+                        f"{self.max_retries}): {e}. "
+                        f"Retrying in {self.retry_delay} seconds..."
+                    )
+                    time.sleep(self.retry_delay)
+                else:
+                    logger.error(
+                        f"Failed to create metrics server after "
+                        f"{self.max_retries} attempts: {e}"
+                    )
+                    raise
 
     async def start(self):
         """Start the metrics server."""
@@ -180,7 +201,11 @@ class MetricsServer:
                 logger.info("Prometheus metrics server stopped")
 
         except OSError as e:
-            logger.error(f"Error running metrics server: {e}")
+            logger.error(
+                f"Error running metrics server on {self.ip}:{self.port}: {e}. "
+                f"The port may still be in TIME_WAIT state from a previous "
+                f"connection. Please wait a moment and try again."
+            )
             raise
         except Exception as e:
             logger.error(f"Unexpected error running metrics server: {e}")
