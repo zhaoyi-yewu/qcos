@@ -32,8 +32,8 @@ logger = logging.getLogger(__name__)
 class TestJob:
     @classmethod
     def setup_class(cls):
-        cls.client = GLOBAL_CONFIGS["client"]
-        cls.client.verbose = True
+        cls.admin_client = GLOBAL_CONFIGS["admin_client"]
+        cls.admin_client.verbose = True
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
@@ -62,12 +62,12 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        StLibrary.submit_job(self.client, job_info)
+        StLibrary.submit_job(self.admin_client, job_info)
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-            self.client, job_info, self.timeout, self.interval
+            self.admin_client, job_info, self.timeout, self.interval
         )
         if success:
-            StLibrary.delete_job(self.client, job_info["job_id"])
+            StLibrary.delete_job(self.admin_client, job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
                 == Constant.JOB_STATUS_COMPLETED
@@ -97,12 +97,12 @@ class TestJob:
             "callbacks": None,
             "dry_run": True,
         }
-        StLibrary.submit_job(self.client, job_info)
+        StLibrary.submit_job(self.admin_client, job_info)
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-            self.client, job_info, self.timeout, self.interval
+            self.admin_client, job_info, self.timeout, self.interval
         )
         if success:
-            StLibrary.delete_job(self.client, job_info["job_id"])
+            StLibrary.delete_job(self.admin_client, job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
                 == Constant.JOB_STATUS_COMPLETED
@@ -138,9 +138,9 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        StLibrary.submit_job(self.client, job_info)
+        StLibrary.submit_job(self.admin_client, job_info)
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-            self.client, job_info, self.timeout, self.interval
+            self.admin_client, job_info, self.timeout, self.interval
         )
         if success:
             profiling_results = job_results["result"]["results"][0].get(
@@ -163,7 +163,7 @@ class TestJob:
             assert isinstance(
                 profiling_results[Constant.PROFILING_TYPE_DRIVER_RUN], float
             )
-            StLibrary.delete_job(self.client, job_info["job_id"])
+            StLibrary.delete_job(self.admin_client, job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
                 == Constant.JOB_STATUS_COMPLETED
@@ -193,12 +193,12 @@ class TestJob:
             "callbacks": None,
             "dry_run": True,
         }
-        StLibrary.submit_job(self.client, job_info)
+        StLibrary.submit_job(self.admin_client, job_info)
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-            self.client, job_info, self.timeout, self.interval
+            self.admin_client, job_info, self.timeout, self.interval
         )
         if success:
-            StLibrary.delete_job(self.client, job_info["job_id"])
+            StLibrary.delete_job(self.admin_client, job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
                 == Constant.JOB_STATUS_COMPLETED
@@ -229,7 +229,7 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        StLibrary.submit_job(self.client, first_job_info)
+        StLibrary.submit_job(self.admin_client, first_job_info)
 
         second_job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
@@ -249,36 +249,36 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        StLibrary.submit_job(self.client, second_job_info)
+        StLibrary.submit_job(self.admin_client, second_job_info)
 
         result, err_msg, _ = StLibrary.get_job_status(
-            self.client, first_job_info["job_id"]
+            self.admin_client, first_job_info["job_id"]
         )
         if result is False:
             assert "RUNNING" in err_msg or "QUEUED" in err_msg
         result, err_msg, _ = StLibrary.get_job_status(
-            self.client, second_job_info["job_id"]
+            self.admin_client, second_job_info["job_id"]
         )
         if result is False:
             assert "RUNNING" in err_msg or "QUEUED" in err_msg
 
         time.sleep(20)
         result, err_msg, _ = StLibrary.get_job_status(
-            self.client, first_job_info["job_id"]
+            self.admin_client, first_job_info["job_id"]
         )
         if result is False:
             assert "RUNNING" in err_msg or "QUEUED" in err_msg
         result, err_msg, _ = StLibrary.get_job_status(
-            self.client, second_job_info["job_id"]
+            self.admin_client, second_job_info["job_id"]
         )
         if result is False:
             assert "RUNNING" in err_msg or "QUEUED" in err_msg
 
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-            self.client, first_job_info, self.timeout, self.interval
+            self.admin_client, first_job_info, self.timeout, self.interval
         )
         if success:
-            StLibrary.delete_job(self.client, first_job_info["job_id"])
+            StLibrary.delete_job(self.admin_client, first_job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
                 == Constant.JOB_STATUS_COMPLETED
@@ -290,10 +290,10 @@ class TestJob:
         assert success is True
 
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-            self.client, second_job_info, self.timeout, self.interval
+            self.admin_client, second_job_info, self.timeout, self.interval
         )
         if success:
-            StLibrary.delete_job(self.client, second_job_info["job_id"])
+            StLibrary.delete_job(self.admin_client, second_job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
                 == Constant.JOB_STATUS_COMPLETED
@@ -324,7 +324,7 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        StLibrary.submit_job(self.client, first_job_info)
+        StLibrary.submit_job(self.admin_client, first_job_info)
 
         second_job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
@@ -344,37 +344,37 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        StLibrary.submit_job(self.client, second_job_info)
+        StLibrary.submit_job(self.admin_client, second_job_info)
 
         result, err_msg, _ = StLibrary.get_job_status(
-            self.client, first_job_info["job_id"]
+            self.admin_client, first_job_info["job_id"]
         )
         if result is False:
             assert "RUNNING" in err_msg or "QUEUED" in err_msg
         result, err_msg, _ = StLibrary.get_job_status(
-            self.client, second_job_info["job_id"]
+            self.admin_client, second_job_info["job_id"]
         )
         if result is False:
             assert "RUNNING" in err_msg or "QUEUED" in err_msg
 
         time.sleep(3)
         result, err_msg, _ = StLibrary.get_job_status(
-            self.client, first_job_info["job_id"]
+            self.admin_client, first_job_info["job_id"]
         )
         if result is False:
             assert "RUNNING" in err_msg or "QUEUED" in err_msg
 
         result, err_msg, _ = StLibrary.get_job_status(
-            self.client, second_job_info["job_id"]
+            self.admin_client, second_job_info["job_id"]
         )
         if result is False:
             assert "RUNNING" in err_msg or "QUEUED" in err_msg
 
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-            self.client, first_job_info, self.timeout, self.interval
+            self.admin_client, first_job_info, self.timeout, self.interval
         )
         if success:
-            StLibrary.delete_job(self.client, first_job_info["job_id"])
+            StLibrary.delete_job(self.admin_client, first_job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
                 == Constant.JOB_STATUS_COMPLETED
@@ -386,10 +386,10 @@ class TestJob:
         assert success is True
 
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-            self.client, second_job_info, self.timeout, self.interval
+            self.admin_client, second_job_info, self.timeout, self.interval
         )
         if success:
-            StLibrary.delete_job(self.client, second_job_info["job_id"])
+            StLibrary.delete_job(self.admin_client, second_job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
                 == Constant.JOB_STATUS_COMPLETED
@@ -420,7 +420,7 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        StLibrary.submit_job(self.client, first_job_info)
+        StLibrary.submit_job(self.admin_client, first_job_info)
 
         second_job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
@@ -440,36 +440,36 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        StLibrary.submit_job(self.client, second_job_info)
+        StLibrary.submit_job(self.admin_client, second_job_info)
 
         result, err_msg, _ = StLibrary.get_job_status(
-            self.client, first_job_info["job_id"]
+            self.admin_client, first_job_info["job_id"]
         )
         if result is False:
             assert "RUNNING" in err_msg or "QUEUED" in err_msg
         result, err_msg, _ = StLibrary.get_job_status(
-            self.client, second_job_info["job_id"]
+            self.admin_client, second_job_info["job_id"]
         )
         if result is False:
             assert "RUNNING" in err_msg or "QUEUED" in err_msg
 
         time.sleep(1)
         result, err_msg, _ = StLibrary.get_job_status(
-            self.client, first_job_info["job_id"]
+            self.admin_client, first_job_info["job_id"]
         )
         if result is False:
             assert "RUNNING" in err_msg or "QUEUED" in err_msg
         result, err_msg, _ = StLibrary.get_job_status(
-            self.client, second_job_info["job_id"]
+            self.admin_client, second_job_info["job_id"]
         )
         if result is False:
             assert "RUNNING" in err_msg or "QUEUED" in err_msg
 
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-            self.client, first_job_info, self.timeout, self.interval
+            self.admin_client, first_job_info, self.timeout, self.interval
         )
         if success:
-            StLibrary.delete_job(self.client, first_job_info["job_id"])
+            StLibrary.delete_job(self.admin_client, first_job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
                 == Constant.JOB_STATUS_COMPLETED
@@ -481,10 +481,10 @@ class TestJob:
         assert success is True
 
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-            self.client, second_job_info, self.timeout, self.interval
+            self.admin_client, second_job_info, self.timeout, self.interval
         )
         if success:
-            StLibrary.delete_job(self.client, second_job_info["job_id"])
+            StLibrary.delete_job(self.admin_client, second_job_info["job_id"])
             terminal_statuses = {
                 Constant.JOB_STATUS_COMPLETED,
                 Constant.JOB_STATUS_FAILED,
