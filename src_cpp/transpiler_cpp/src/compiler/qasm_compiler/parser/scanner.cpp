@@ -106,18 +106,18 @@ std::optional<Token> Scanner::consumeWhitespaceAndComments() {
 
 Token Scanner::consumeName() {
   Token t(line, col);
-  std::stringstream name;
+  std::string name;
+  name.reserve(32);
+
   while (isFirstIdChar(ch) || isNum(ch)) {
-    name << ch;
+    name.push_back(ch);
     nextCh();
   }
 
-  t.str = name.str();
-  if (keywords.find(t.str) != keywords.end()) {
-    t.kind = keywords[t.str];
-  } else {
-    t.kind = Token::Kind::Identifier;
-  }
+  t.str = std::move(name);
+
+  auto it = keywords.find(t.str);
+  t.kind = (it != keywords.end()) ? it->second : Token::Kind::Identifier;
 
   t.endCol = col;
   t.endLine = line;
@@ -141,15 +141,17 @@ bool Scanner::isValidDigit(const uint8_t base, const char c) {
 }
 
 std::string Scanner::consumeNumberLiteral(const uint8_t base) {
-  std::stringstream ss;
+  std::string ss;
+  ss.reserve(32);
+
   while (isValidDigit(base, ch) || ch == '_') {
     if (ch != '_') {
-      ss << ch;
+      ss.push_back(ch);
     }
     nextCh();
   }
 
-  return ss.str();
+  return ss;
 }
 
 uint64_t Scanner::parseIntegerLiteral(const std::string& str,
@@ -210,29 +212,30 @@ Token Scanner::consumeNumberLiteral() {
       error("Float literals are only allowed in base 10");
     }
 
-    std::stringstream ss{};
-    ss << valBeforeDecimalSeparator;
+    std::string ss;
+    ss.reserve(valBeforeDecimalSeparator.size() + 32);
+    ss += valBeforeDecimalSeparator;
 
     if (ch == '.') {
-      ss << ch;
+      ss += ch;
       nextCh();
       const auto valAfterDecimalSeparator = consumeNumberLiteral(base);
-      ss << valAfterDecimalSeparator;
+      ss += valAfterDecimalSeparator;
     }
 
     if (ch == 'e' || ch == 'E') {
-      ss << ch;
+      ss += ch;
       nextCh();
       if (ch == '+' || ch == '-') {
-        ss << ch;
+        ss += ch;
         nextCh();
       }
       const auto valAfterExponent = consumeNumberLiteral(base);
-      ss << valAfterExponent;
+      ss += valAfterExponent;
     }
 
     try {
-      t.valReal = std::stod(ss.str());
+      t.valReal = std::stod(ss);
     } catch (std::invalid_argument&) {
       error("Unable to parse float literal");
     }
