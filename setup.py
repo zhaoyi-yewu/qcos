@@ -88,8 +88,14 @@ def get_files(base_dirs, dest_dir_prefix="",
 data_files = get_files(["etc/qcos", "samples"],
                        dest_dir_prefix="share/wy_qcos/",
                        exclude_dirs=["samples/qasm/benchpress"])  # too large
+
+# Add database migration files
+db_migration_files = get_files(["src/wy_qcos/db/migration"],
+                               dest_dir_prefix="share/wy_qcos/")
+data_files.extend(db_migration_files)
 data_files.append(("tests", ["src/wy_qcos/tests/pytest.ini"]))
 data_files.append(("share/wy_qcos/cicd/", ["cicd/run-tests.sh"]))
+data_files.append(("share/wy_qcos/scripts/", ["build-scripts/init-db.sh"]))
 setup(
     packages=find_packages(where="src"),
     include_package_data=True,
