@@ -27,14 +27,14 @@ from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 class TestVersion:
     @classmethod
     def setup_class(cls):
-        cls.client = GLOBAL_CONFIGS["client"]
+        cls.admin_client = GLOBAL_CONFIGS["admin_client"]
 
     @classmethod
     def teardown_class(cls):
         pass
 
     def test_version(self):
-        status_code, reason, text, result = self.client.version()
+        status_code, reason, text, result = self.admin_client.version()
         assert status_code == HttpCode.SUCCESS_OK
         json_results = json.loads(text)
         result = json_results["result"]
