@@ -18,7 +18,7 @@
 import pytest
 import jwt
 import logging
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, AsyncMock
 from datetime import datetime, timedelta
 
 from wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication import (
@@ -443,7 +443,7 @@ class TestAuth:
         self, mock_config, mock_decrypt_virtual_instance_id
     ):
         """Test authentication in virtual instance mode."""
-        mock_config.ENABLE_VIRT = True
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_VIRTUAL_INSTANCE
         mock_decrypt_virtual_instance_id.return_value = (
             True,
             None,
@@ -455,3 +455,272 @@ class TestAuth:
         auth_data = await auth(mock_request, x_qcos_virtual_instance_id="test")
         assert auth_data["device_names"] == ["dummy", "tiangong100"]
         assert auth_data["instance_id"] == "f5840120bca448628cad4d990b29d673"
+
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication.Config"
+    )
+    @pytest.mark.asyncio
+    @pytest.mark.smoke
+    async def test_auth_no_mode(
+        self, mock_config
+    ):
+        """Test authentication with auth_mode=no (no authentication)."""
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_NO
+
+        mock_request = Mock()
+        mock_user_manager = Mock(spec=UserManager)
+
+        auth_data = await auth(
+            mock_request, user_manager=mock_user_manager
+        )
+
+        assert auth_data is not None
+        assert auth_data["auth_method"] == "no"
+        assert auth_data["user_id"] == Constant.ANONYMOUS_USERNAME
+        assert Constant.ROLE_ADMIN in auth_data["roles"]
+        assert auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_NO
+
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication.Config"
+    )
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication"
+        ".oauth2_scheme"
+    )
+    @pytest.mark.asyncio
+    @pytest.mark.smoke
+    async def test_auth_jwt_mode_success(
+        self, mock_oauth2_scheme, mock_config
+    ):
+        """Test authentication with auth_mode=jwt (JWT token authentication)."""
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
+        mock_config.JWT_AUTH_SECRET_KEY = Config.JWT_AUTH_SECRET_KEY
+        mock_config.JWT_AUTH_ALGORITHM = Config.JWT_AUTH_ALGORITHM
+
+        # Create a valid JWT token
+        payload = {
+            "sub": "jwtuser",
+            "jti": "token-jti-789",
+            "exp": datetime.now().timestamp() + 3600,
+            "aud": JWT_AUDIENCE,
+        }
+        token = jwt.encode(
+            payload,
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.JWT_AUTH_ALGORITHM,
+        )
+
+        # Mock oauth2_scheme as an async callable
+        mock_oauth2_scheme.side_effect = AsyncMock(return_value=token)
+
+        # Create mock user manager and user
+        mock_user_manager = Mock(spec=UserManager)
+        user = user_schemas.User(
+            id="user-uuid-jwt",
+            project_id=Constant.DEFAULT_PROJECT_ID,
+            user_name="jwtuser",
+            hashed_password=_s("hashed_password"),
+            roles=["user"],
+            is_enabled=True,
+            is_locked=False,
+            password_expiry_days=90,
+            password_changed_at=datetime.now(),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            failed_login_attempts=0,
+        )
+        mock_user_manager.get_user_by_name.return_value = user
+        mock_user_manager.is_blacklisted.return_value = False
+        mock_user_manager.perms_enforce.return_value = True
+
+        # Create mock request
+        mock_request = Mock()
+        mock_request.url = Mock()
+        mock_request.url.path = "/v1/test/resource"
+
+        auth_data = await auth(mock_request, user_manager=mock_user_manager)
+
+        assert auth_data is not None
+        assert auth_data["auth_method"] == "jwt"
+        assert auth_data["user_name"] == "jwtuser"
+        assert auth_data["user_id"] == "user-uuid-jwt"
+        assert auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_JWT
+        assert "user" in auth_data["roles"]
+
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication.Config"
+    )
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication"
+        ".oauth2_scheme"
+    )
+    @pytest.mark.asyncio
+    async def test_auth_jwt_mode_no_token(
+        self, mock_oauth2_scheme, mock_config
+    ):
+        """Test authentication with auth_mode=jwt when no token provided."""
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
+
+        # Mock oauth2_scheme as an async callable that returns None
+        mock_oauth2_scheme.side_effect = AsyncMock(return_value=None)
+
+        mock_user_manager = Mock(spec=UserManager)
+
+        mock_request = Mock()
+        mock_request.url = Mock()
+        mock_request.url.path = "/v1/test/resource"
+
+        with pytest.raises(Exception):
+            await auth(mock_request, user_manager=mock_user_manager)
+
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication.Config"
+    )
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication"
+        ".oauth2_scheme"
+    )
+    @pytest.mark.asyncio
+    async def test_auth_jwt_mode_expired_token(
+        self, mock_oauth2_scheme, mock_config
+    ):
+        """Test authentication with expired JWT token."""
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
+
+        # Create an expired JWT token
+        payload = {
+            "sub": "jwtuser",
+            "jti": "token-jti-expired",
+            "exp": datetime.now().timestamp() - 3600,  # Expired 1 hour ago
+            "aud": JWT_AUDIENCE,
+        }
+        expired_token = jwt.encode(
+            payload,
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.JWT_AUTH_ALGORITHM,
+        )
+
+        # Mock oauth2_scheme as an async callable that returns expired token
+        mock_oauth2_scheme.side_effect = AsyncMock(return_value=expired_token)
+
+        mock_user_manager = Mock(spec=UserManager)
+
+        mock_request = Mock()
+        mock_request.url = Mock()
+        mock_request.url.path = "/v1/test/resource"
+
+        with pytest.raises(Exception):
+            await auth(mock_request, user_manager=mock_user_manager)
+
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication.Config"
+    )
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication"
+        ".oauth2_scheme"
+    )
+    @pytest.mark.asyncio
+    async def test_auth_jwt_mode_disabled_user(
+        self, mock_oauth2_scheme, mock_config
+    ):
+        """Test JWT authentication when user is disabled."""
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
+
+        # Create a valid JWT token
+        payload = {
+            "sub": "disableduser",
+            "jti": "token-jti-disabled",
+            "exp": datetime.now().timestamp() + 3600,
+            "aud": JWT_AUDIENCE,
+        }
+        token = jwt.encode(
+            payload,
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.JWT_AUTH_ALGORITHM,
+        )
+
+        # Mock oauth2_scheme as an async callable
+        mock_oauth2_scheme.side_effect = AsyncMock(return_value=token)
+
+        # Create mock user manager with disabled user
+        mock_user_manager = Mock(spec=UserManager)
+        disabled_user = user_schemas.User(
+            user_name="disableduser",
+            hashed_password=_s("hashed_password"),
+            roles=["user"],
+            is_enabled=False,  # User is disabled
+            is_locked=False,
+            password_expiry_days=90,
+            password_changed_at=datetime.now(),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            failed_login_attempts=0,
+        )
+        mock_user_manager.get_user_by_name.return_value = disabled_user
+        mock_user_manager.is_blacklisted.return_value = False
+
+        mock_request = Mock()
+        mock_request.url = Mock()
+        mock_request.url.path = "/v1/test/resource"
+
+        with pytest.raises(Exception):
+            await auth(mock_request, user_manager=mock_user_manager)
+
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication.Config"
+    )
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication"
+        ".oauth2_scheme"
+    )
+    @pytest.mark.asyncio
+    async def test_auth_jwt_mode_insufficient_permissions(
+        self, mock_oauth2_scheme, mock_config
+    ):
+        """Test JWT authentication when user lacks permissions."""
+        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
+
+        # Create a valid JWT token
+        payload = {
+            "sub": "restricteduser",
+            "jti": "token-jti-restricted",
+            "exp": datetime.now().timestamp() + 3600,
+            "aud": JWT_AUDIENCE,
+        }
+        token = jwt.encode(
+            payload,
+            Config.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.JWT_AUTH_ALGORITHM,
+        )
+
+        # Mock oauth2_scheme as an async callable
+        mock_oauth2_scheme.side_effect = AsyncMock(return_value=token)
+
+        # Create mock user manager
+        mock_user_manager = Mock(spec=UserManager)
+        user = user_schemas.User(
+            id="user-uuid-restricted",
+            project_id=Constant.DEFAULT_PROJECT_ID,
+            user_name="restricteduser",
+            hashed_password=_s("hashed_password"),
+            roles=["viewer"],
+            is_enabled=True,
+            is_locked=False,
+            password_expiry_days=90,
+            password_changed_at=datetime.now(),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            failed_login_attempts=0,
+        )
+        mock_user_manager.get_user_by_name.return_value = user
+        mock_user_manager.is_blacklisted.return_value = False
+        # User lacks permissions for the requested path
+        mock_user_manager.perms_enforce.return_value = False
+
+        mock_request = Mock()
+        mock_request.url = Mock()
+        mock_request.url.path = "/v1/admin/resource"
+
+        with pytest.raises(Exception):
+            await auth(mock_request, user_manager=mock_user_manager)
+
