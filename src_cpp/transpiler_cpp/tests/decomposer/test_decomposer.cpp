@@ -1,487 +1,569 @@
-#include <gtest/gtest.h>
 #include <cmath>
+#include <memory>
 #include <unordered_set>
+#include <vector>
+
+#include <gtest/gtest.h>
 
 #include "circuit/gate_operation.h"
 #include "decomposer/decomposer.h"
 
 using namespace qcos;
 
-// ===== helper =====
-void validate_gate_ir(const BaseOperation* op,
-                      const std::string& name,
-                      const std::vector<int>& targets,
-                      int qubit_count,
-                      bool is_two_qubit) {
-  EXPECT_EQ(op->name, name);
-  EXPECT_EQ(op->targets, targets);
-  EXPECT_EQ(op->targets.size(), qubit_count);
+/* ============================================================
+ * Helper Utilities
+ * ============================================================ */
 
-  if (is_two_qubit) {
-    EXPECT_EQ(op->operation_type, OperationType::DOUBLE_QUBIT_OPERATION);
+/**
+ * @brief Validate basic gate IR properties.
+ *
+ * Checks:
+ * - gate name
+ * - target qubits
+ * - qubit count
+ * - operation type
+ *
+ * @param op Gate operation pointer
+ * @param expected_name Expected gate name
+ * @param expected_targets Expected target qubits
+ * @param expected_qubit_count Expected qubit count
+ * @param expect_two_qubit Whether the gate is a two-qubit gate
+ */
+void ValidateGateIR(
+    const BaseOperation* op,
+    const std::string& expected_name,
+    const std::vector<int>& expected_targets,
+    int expected_qubit_count,
+    bool expect_two_qubit) {
+
+  ASSERT_NE(op, nullptr);
+
+  EXPECT_EQ(op->name, expected_name);
+  EXPECT_EQ(op->targets, expected_targets);
+  EXPECT_EQ(op->targets.size(), expected_qubit_count);
+
+  if (expect_two_qubit) {
+    EXPECT_EQ(
+        op->operation_type,
+        OperationType::DOUBLE_QUBIT_OPERATION);
   } else {
-    EXPECT_EQ(op->operation_type, OperationType::SINGLE_QUBIT_OPERATION);
+    EXPECT_EQ(
+        op->operation_type,
+        OperationType::SINGLE_QUBIT_OPERATION);
   }
 }
 
-void validate_ir_equals(const std::vector<std::unique_ptr<BaseOperation>>& a,
-                        const std::vector<std::unique_ptr<BaseOperation>>& b) {
-  ASSERT_EQ(a.size(), b.size());
+/**
+ * @brief Compare two IR operation sequences.
+ *
+ * Verifies:
+ * - gate names
+ * - target qubits
+ * - gate parameters
+ *
+ * @param lhs First IR sequence
+ * @param rhs Second IR sequence
+ */
+void ValidateIREquals(
+    const std::vector<std::unique_ptr<BaseOperation>>& lhs,
+    const std::vector<std::unique_ptr<BaseOperation>>& rhs) {
 
-  for (size_t i = 0; i < a.size(); ++i) {
-    EXPECT_EQ(a[i]->name, b[i]->name);
-    EXPECT_EQ(a[i]->targets, b[i]->targets);
-    EXPECT_EQ(a[i]->arg_value, b[i]->arg_value);
+  ASSERT_EQ(lhs.size(), rhs.size());
+
+  for (size_t i = 0; i < lhs.size(); ++i) {
+
+    EXPECT_EQ(lhs[i]->name, rhs[i]->name);
+    EXPECT_EQ(lhs[i]->targets, rhs[i]->targets);
+    EXPECT_EQ(lhs[i]->arg_value, rhs[i]->arg_value);
   }
 }
 
-// ===== test =====
+/**
+ * @brief Build unique gate-name list from a circuit.
+ *
+ * Used to generate the source gate set
+ * required by the decomposer.
+ *
+ * @param circuit Input circuit
+ * @return Unique gate name list
+ */
+std::vector<std::string> BuildGateNameList(
+    const std::vector<std::unique_ptr<BaseOperation>>& circuit) {
+
+  std::unordered_set<std::string> name_set;
+
+  for (const auto& op : circuit) {
+    name_set.insert(op->name);
+  }
+
+  return {
+      name_set.begin(),
+      name_set.end()
+  };
+}
+
+/* ============================================================
+ * Tests
+ * ============================================================ */
+
+/**
+ * @brief Test identity decomposition.
+ *
+ * Verifies that primitive basis gates remain unchanged
+ * when the target basis already contains them.
+ */
 TEST(DecomposerCppTest, DecomposeBasisOnly) {
-  Decomposer d;
 
-  // ===== source =====
+  Decomposer decomposer;
+
+  // ------------------------------------------------
+  // Build source circuit
+  // ------------------------------------------------
+
   std::vector<std::unique_ptr<BaseOperation>> source;
-  source.push_back(create_gate("rx", {0}, {M_PI}));
-  source.push_back(create_gate("ry", {0}, {M_PI}));
-  source.push_back(create_gate("rz", {0}, {M_PI}));
-  source.push_back(create_gate("cx", {0, 1}, {}));
 
-  // ===== target =====
-  std::vector<std::string> target = {"rx", "ry", "rz", "cx"};
+  source.push_back(
+      create_gate("rx", {0}, {M_PI}));
 
-  // ===== gate names =====
-  std::unordered_set<std::string> name_set;
-  for (const auto& op : source) {
-    name_set.insert(op->name);
-  }
-  std::vector<std::string> gate_name_list(name_set.begin(), name_set.end());
+  source.push_back(
+      create_gate("ry", {0}, {M_PI}));
 
-  // ===== rules =====
-  auto [table, usage] = d.get_decompose_rules(gate_name_list, target);
+  source.push_back(
+      create_gate("rz", {0}, {M_PI}));
 
-  // ⚠️ 关键：source 会被 move
-  auto result = d.apply_decompose_rules(source, table);
+  source.push_back(
+      create_gate("cx", {0, 1}, {}));
 
-  // ===== validate =====
-  validate_gate_ir(result[0].get(), "rx", {0}, 1, false);
-  validate_gate_ir(result[1].get(), "ry", {0}, 1, false);
-  validate_gate_ir(result[2].get(), "rz", {0}, 1, false);
-  validate_gate_ir(result[3].get(), "cx", {0, 1}, 2, true);
+  // ------------------------------------------------
+  // Target basis
+  // ------------------------------------------------
 
-  // ⚠️ source 已经被 move，不能再用
+  std::vector<std::string> target = {
+      "rx",
+      "ry",
+      "rz",
+      "cx"
+  };
+
+  // ------------------------------------------------
+  // Build decomposition rules
+  // ------------------------------------------------
+
+  auto gate_names = BuildGateNameList(source);
+
+  auto [table, usage] =
+      decomposer.get_decompose_rules(
+          gate_names,
+          target);
+
+  // ------------------------------------------------
+  // Apply decomposition
+  // ------------------------------------------------
+
+  auto result =
+      decomposer.apply_decompose_rules(
+          source,
+          table);
+
+  ASSERT_EQ(result.size(), 4);
+
+  // ------------------------------------------------
+  // Validate result
+  // ------------------------------------------------
+
+  ValidateGateIR(
+      result[0].get(),
+      "rx",
+      {0},
+      1,
+      false);
+
+  ValidateGateIR(
+      result[1].get(),
+      "ry",
+      {0},
+      1,
+      false);
+
+  ValidateGateIR(
+      result[2].get(),
+      "rz",
+      {0},
+      1,
+      false);
+
+  ValidateGateIR(
+      result[3].get(),
+      "cx",
+      {0, 1},
+      2,
+      true);
 }
 
+/**
+ * @brief Test H gate decomposition.
+ *
+ * Expected:
+ *   h -> ry + rx
+ */
 TEST(DecomposerCppTest, DecomposeHGate) {
-  Decomposer d;
 
-  // ===== source =====
+  Decomposer decomposer;
+
   std::vector<std::unique_ptr<BaseOperation>> source;
-  source.push_back(create_gate("h", {0}, {}));
 
-  // ===== target =====
-  std::vector<std::string> target = {"rx", "ry", "rz", "cx"};
+  source.push_back(
+      create_gate("h", {0}, {}));
 
-  // ===== gate name list =====
-  std::unordered_set<std::string> name_set;
-  for (const auto& op : source) {
-    name_set.insert(op->name);
-  }
-  std::vector<std::string> gate_name_list(name_set.begin(), name_set.end());
+  std::vector<std::string> target = {
+      "rx",
+      "ry",
+      "rz",
+      "cx"
+  };
 
-  // ===== rules =====
-  auto [table, usage] = d.get_decompose_rules(gate_name_list, target);
+  auto gate_names = BuildGateNameList(source);
 
-  // ===== apply =====
-  auto result = d.apply_decompose_rules(source, table);
+  auto [table, usage] =
+      decomposer.get_decompose_rules(
+          gate_names,
+          target);
 
-  // ===== assert size =====
+  auto result =
+      decomposer.apply_decompose_rules(
+          source,
+          table);
+
   ASSERT_EQ(result.size(), 2);
 
-  // ===== validate gate 0 =====
-  EXPECT_EQ(result[0]->name, "ry");
-  EXPECT_EQ(result[0]->targets, std::vector<int>({0}));
-  EXPECT_EQ(result[0]->targets.size(), 1);
-  EXPECT_EQ(result[0]->operation_type, OperationType::SINGLE_QUBIT_OPERATION);
+  ValidateGateIR(
+      result[0].get(),
+      "ry",
+      {0},
+      1,
+      false);
 
-  // ===== validate gate 1 =====
-  EXPECT_EQ(result[1]->name, "rx");
-  EXPECT_EQ(result[1]->targets, std::vector<int>({0}));
-  EXPECT_EQ(result[1]->targets.size(), 1);
-  EXPECT_EQ(result[1]->operation_type, OperationType::SINGLE_QUBIT_OPERATION);
+  ValidateGateIR(
+      result[1].get(),
+      "rx",
+      {0},
+      1,
+      false);
 }
 
+/**
+ * @brief Test phase gate decomposition.
+ *
+ * Expected:
+ *   p(theta) -> rz(theta)
+ */
 TEST(DecomposerCppTest, DecomposePGate) {
-  Decomposer d;
 
-  // ===== source =====
+  Decomposer decomposer;
+
   std::vector<std::unique_ptr<BaseOperation>> source;
-  source.push_back(create_gate("p", {0}, {M_PI}));
 
-  // ===== target =====
-  std::vector<std::string> target = {"rx", "ry", "rz", "cx"};
+  source.push_back(
+      create_gate("p", {0}, {M_PI}));
 
-  // ===== gate name list =====
-  std::unordered_set<std::string> name_set;
-  for (const auto& op : source) {
-    name_set.insert(op->name);
-  }
-  std::vector<std::string> gate_name_list(name_set.begin(), name_set.end());
+  std::vector<std::string> target = {
+      "rx",
+      "ry",
+      "rz",
+      "cx"
+  };
 
-  // ===== rules =====
-  auto [table, usage] = d.get_decompose_rules(gate_name_list, target);
+  auto gate_names = BuildGateNameList(source);
 
-  // ===== apply =====
-  auto result = d.apply_decompose_rules(source, table);
+  auto [table, usage] =
+      decomposer.get_decompose_rules(
+          gate_names,
+          target);
 
-  // ===== assert size =====
+  auto result =
+      decomposer.apply_decompose_rules(
+          source,
+          table);
+
   ASSERT_EQ(result.size(), 1);
 
-  // ===== validate gate 0 =====
-  EXPECT_EQ(result[0]->name, "rz");
-  EXPECT_EQ(result[0]->targets, std::vector<int>({0}));
-  EXPECT_EQ(result[0]->targets.size(), 1);
-  EXPECT_EQ(result[0]->operation_type, OperationType::SINGLE_QUBIT_OPERATION);
+  ValidateGateIR(
+      result[0].get(),
+      "rz",
+      {0},
+      1,
+      false);
 }
 
+/**
+ * @brief Test identity preservation for RY gate.
+ *
+ * Since RY already belongs to the target basis,
+ * decomposition should not modify it.
+ */
 TEST(DecomposerCppTest, DecomposeRYGate) {
-  Decomposer d;
 
-  // ===== source =====
+  Decomposer decomposer;
+
   std::vector<std::unique_ptr<BaseOperation>> source;
-  source.push_back(create_gate("ry", {0}, {M_PI}));
 
-  // ===== target =====
-  std::vector<std::string> target = {"rx", "ry", "rz", "cx"};
+  source.push_back(
+      create_gate("ry", {0}, {M_PI}));
 
-  // ===== gate name list =====
-  std::unordered_set<std::string> name_set;
-  for (const auto& op : source) {
-    name_set.insert(op->name);
-  }
-  std::vector<std::string> gate_name_list(name_set.begin(), name_set.end());
+  std::vector<std::string> target = {
+      "rx",
+      "ry",
+      "rz",
+      "cx"
+  };
 
-  // ===== rules =====
-  auto [table, usage] = d.get_decompose_rules(gate_name_list, target);
+  auto gate_names = BuildGateNameList(source);
 
-  // ===== apply =====
-  auto result = d.apply_decompose_rules(source, table);
+  auto [table, usage] =
+      decomposer.get_decompose_rules(
+          gate_names,
+          target);
 
-  // ===== assert size =====
+  auto result =
+      decomposer.apply_decompose_rules(
+          source,
+          table);
+
   ASSERT_EQ(result.size(), 1);
 
-  // ===== validate gate 0 =====
-  EXPECT_EQ(result[0]->name, "ry");
-  EXPECT_EQ(result[0]->targets, std::vector<int>({0}));
-  EXPECT_EQ(result[0]->targets.size(), 1);
-  EXPECT_EQ(result[0]->operation_type, OperationType::SINGLE_QUBIT_OPERATION);
+  ValidateGateIR(
+      result[0].get(),
+      "ry",
+      {0},
+      1,
+      false);
 }
 
-
+/**
+ * @brief Test CY gate decomposition.
+ *
+ * Expected:
+ *   cy ->
+ *     rz(-pi/2)
+ *     cx
+ *     rz(pi/2)
+ */
 TEST(DecomposerCppTest, DecomposeCYGate) {
-  Decomposer d;
 
-  // ===== source =====
+  Decomposer decomposer;
+
   std::vector<std::unique_ptr<BaseOperation>> source;
-  source.push_back(create_gate("cy", {0, 1}, {}));
 
-  // ===== target =====
-  std::vector<std::string> target = {"rx", "ry", "rz", "cx"};
+  source.push_back(
+      create_gate("cy", {0, 1}, {}));
 
-  // ===== gate name list =====
-  std::unordered_set<std::string> name_set;
-  for (const auto& op : source) {
-    name_set.insert(op->name);
-  }
-  std::vector<std::string> gate_name_list(name_set.begin(), name_set.end());
+  std::vector<std::string> target = {
+      "rx",
+      "ry",
+      "rz",
+      "cx"
+  };
 
-  // ===== rules =====
-  auto [table, usage] = d.get_decompose_rules(gate_name_list, target);
+  auto gate_names = BuildGateNameList(source);
 
-  // ===== apply =====
-  auto result = d.apply_decompose_rules(source, table);
+  auto [table, usage] =
+      decomposer.get_decompose_rules(
+          gate_names,
+          target);
 
-  // ===== assert size =====
+  auto result =
+      decomposer.apply_decompose_rules(
+          source,
+          table);
+
   ASSERT_EQ(result.size(), 3);
 
-  // ===== gate 0: rz(-pi/2) on qubit 1 =====
-  EXPECT_EQ(result[0]->name, "rz");
-  EXPECT_EQ(result[0]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[0]->targets.size(), 1);
-  EXPECT_EQ(result[0]->operation_type, OperationType::SINGLE_QUBIT_OPERATION);
+  // rz(-pi/2)
+  ValidateGateIR(
+      result[0].get(),
+      "rz",
+      {1},
+      1,
+      false);
+
   ASSERT_EQ(result[0]->arg_value.size(), 1);
-  EXPECT_NEAR(result[0]->arg_value[0], -M_PI / 2, 1e-9);
 
-  // ===== gate 1: cx(0,1) =====
-  EXPECT_EQ(result[1]->name, "cx");
-  EXPECT_EQ(result[1]->targets, std::vector<int>({0, 1}));
-  EXPECT_EQ(result[1]->targets.size(), 2);
-  EXPECT_EQ(result[1]->operation_type, OperationType::DOUBLE_QUBIT_OPERATION);
+  EXPECT_NEAR(
+      result[0]->arg_value[0],
+      -M_PI / 2,
+      1e-9);
 
-  // ===== gate 2: rz(pi/2) on qubit 1 =====
-  EXPECT_EQ(result[2]->name, "rz");
-  EXPECT_EQ(result[2]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[2]->targets.size(), 1);
-  EXPECT_EQ(result[2]->operation_type, OperationType::SINGLE_QUBIT_OPERATION);
+  // cx
+  ValidateGateIR(
+      result[1].get(),
+      "cx",
+      {0, 1},
+      2,
+      true);
+
+  // rz(pi/2)
+  ValidateGateIR(
+      result[2].get(),
+      "rz",
+      {1},
+      1,
+      false);
+
   ASSERT_EQ(result[2]->arg_value.size(), 1);
-  EXPECT_NEAR(result[2]->arg_value[0], M_PI / 2, 1e-9);
 
+  EXPECT_NEAR(
+      result[2]->arg_value[0],
+      M_PI / 2,
+      1e-9);
 }
 
+/**
+ * @brief Test CU3 gate decomposition.
+ *
+ * This test validates:
+ * - recursive decomposition
+ * - multi-level expansion
+ * - parameter propagation
+ * - target basis correctness
+ */
 TEST(DecomposerCppTest, DecomposeCU3Gate) {
-  Decomposer d;
 
-  // ===== source =====
+  Decomposer decomposer;
+
   std::vector<std::unique_ptr<BaseOperation>> source;
+
   source.push_back(
-      create_gate("cu3", {0, 1}, {M_PI, M_PI, M_PI}));
+      create_gate(
+          "cu3",
+          {0, 1},
+          {M_PI, M_PI, M_PI}));
 
-  // ===== target =====
-  std::vector<std::string> target = {"rx", "ry", "rz", "cx"};
+  std::vector<std::string> target = {
+      "rx",
+      "ry",
+      "rz",
+      "cx"
+  };
 
-  // ===== gate name list =====
-  std::unordered_set<std::string> name_set;
-  for (const auto& op : source) {
-    name_set.insert(op->name);
-  }
-  std::vector<std::string> gate_name_list(name_set.begin(), name_set.end());
+  auto gate_names = BuildGateNameList(source);
 
-  // ===== rules =====
-  auto [table, usage] = d.get_decompose_rules(gate_name_list, target);
+  auto [table, usage] =
+      decomposer.get_decompose_rules(
+          gate_names,
+          target);
 
-  // ===== apply =====
-  auto result = d.apply_decompose_rules(source, table);
+  auto result =
+      decomposer.apply_decompose_rules(
+          source,
+          table);
 
-  // ===== assert size =====
   ASSERT_EQ(result.size(), 14);
 
-  // ===== validate gate 0 =====
-  EXPECT_EQ(result[0]->name, "rz");
-  EXPECT_EQ(result[0]->targets, std::vector<int>({0}));
-  EXPECT_EQ(result[0]->targets.size(), 1);
-  EXPECT_EQ(result[0]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
+  // ------------------------------------------------
+  // Validate gate sequence structure
+  // ------------------------------------------------
 
-  // ===== validate gate 1 =====
-  EXPECT_EQ(result[1]->name, "rz");
-  EXPECT_EQ(result[1]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[1]->targets.size(), 1);
-  EXPECT_EQ(result[1]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
+  const std::vector<std::string> expected_names = {
+      "rz", "rz", "cx", "rz",
+      "rx", "rz", "rx", "rz",
+      "cx", "rz", "rx", "rz",
+      "rx", "rz"
+  };
 
-  // ===== validate gate 2 =====
-  EXPECT_EQ(result[2]->name, "cx");
-  EXPECT_EQ(result[2]->targets, std::vector<int>({0, 1}));
-  EXPECT_EQ(result[2]->targets.size(), 2);
-  EXPECT_EQ(result[2]->operation_type,
-            OperationType::DOUBLE_QUBIT_OPERATION);
+  for (size_t i = 0; i < expected_names.size(); ++i) {
 
-  // ===== validate gate 3 =====
-  EXPECT_EQ(result[3]->name, "rz");
-  EXPECT_EQ(result[3]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[3]->targets.size(), 1);
-  EXPECT_EQ(result[3]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
+    EXPECT_EQ(
+        result[i]->name,
+        expected_names[i]);
+  }
 
-  // ===== validate gate 4 =====
-  EXPECT_EQ(result[4]->name, "rx");
-  EXPECT_EQ(result[4]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[4]->targets.size(), 1);
-  EXPECT_EQ(result[4]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
+  // Validate CX locations
+  ValidateGateIR(
+      result[2].get(),
+      "cx",
+      {0, 1},
+      2,
+      true);
 
-  // ===== validate gate 5 =====
-  EXPECT_EQ(result[5]->name, "rz");
-  EXPECT_EQ(result[5]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[5]->targets.size(), 1);
-  EXPECT_EQ(result[5]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 6 =====
-  EXPECT_EQ(result[6]->name, "rx");
-  EXPECT_EQ(result[6]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[6]->targets.size(), 1);
-  EXPECT_EQ(result[6]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 7 =====
-  EXPECT_EQ(result[7]->name, "rz");
-  EXPECT_EQ(result[7]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[7]->targets.size(), 1);
-  EXPECT_EQ(result[7]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 8 =====
-  EXPECT_EQ(result[8]->name, "cx");
-  EXPECT_EQ(result[8]->targets, std::vector<int>({0, 1}));
-  EXPECT_EQ(result[8]->targets.size(), 2);
-  EXPECT_EQ(result[8]->operation_type,
-            OperationType::DOUBLE_QUBIT_OPERATION);
-
-  // ===== validate gate 9 =====
-  EXPECT_EQ(result[9]->name, "rz");
-  EXPECT_EQ(result[9]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[9]->targets.size(), 1);
-  EXPECT_EQ(result[9]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 10 =====
-  EXPECT_EQ(result[10]->name, "rx");
-  EXPECT_EQ(result[10]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[10]->targets.size(), 1);
-  EXPECT_EQ(result[10]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 11 =====
-  EXPECT_EQ(result[11]->name, "rz");
-  EXPECT_EQ(result[11]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[11]->targets.size(), 1);
-  EXPECT_EQ(result[11]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 12 =====
-  EXPECT_EQ(result[12]->name, "rx");
-  EXPECT_EQ(result[12]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[12]->targets.size(), 1);
-  EXPECT_EQ(result[12]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 13 =====
-  EXPECT_EQ(result[13]->name, "rz");
-  EXPECT_EQ(result[13]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[13]->targets.size(), 1);
-  EXPECT_EQ(result[13]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
+  ValidateGateIR(
+      result[8].get(),
+      "cx",
+      {0, 1},
+      2,
+      true);
 }
 
+/**
+ * @brief Test controlled-U gate decomposition.
+ *
+ * Verifies:
+ * - recursive expansion correctness
+ * - decomposition table correctness
+ * - generated target basis consistency
+ */
 TEST(DecomposerCppTest, DecomposeCUGate) {
-  Decomposer d;
 
-  // ===== source =====
+  Decomposer decomposer;
+
   std::vector<std::unique_ptr<BaseOperation>> source;
+
   source.push_back(
-      create_gate("cu", {0, 1}, {M_PI, M_PI, M_PI, M_PI}));
+      create_gate(
+          "cu",
+          {0, 1},
+          {M_PI, M_PI, M_PI, M_PI}));
 
-  // ===== target =====
-  std::vector<std::string> target = {"rx", "ry", "rz", "cx"};
+  std::vector<std::string> target = {
+      "rx",
+      "ry",
+      "rz",
+      "cx"
+  };
 
-  // ===== gate name list =====
-  std::unordered_set<std::string> name_set;
-  for (const auto& op : source) {
-    name_set.insert(op->name);
-  }
-  std::vector<std::string> gate_name_list(name_set.begin(), name_set.end());
+  auto gate_names = BuildGateNameList(source);
 
-  // ===== rules =====
-  auto [table, usage] = d.get_decompose_rules(gate_name_list, target);
+  auto [table, usage] =
+      decomposer.get_decompose_rules(
+          gate_names,
+          target);
 
-  // ===== apply =====
-  auto result = d.apply_decompose_rules(source, table);
+  auto result =
+      decomposer.apply_decompose_rules(
+          source,
+          table);
 
-  // ===== assert size =====
   ASSERT_EQ(result.size(), 15);
 
-  // ===== validate gate 0 =====
-  EXPECT_EQ(result[0]->name, "rz");
-  EXPECT_EQ(result[0]->targets, std::vector<int>({0}));
-  EXPECT_EQ(result[0]->targets.size(), 1);
-  EXPECT_EQ(result[0]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
+  // ------------------------------------------------
+  // Expected gate structure
+  // ------------------------------------------------
 
-  // ===== validate gate 1 =====
-  EXPECT_EQ(result[1]->name, "rz");
-  EXPECT_EQ(result[1]->targets, std::vector<int>({0}));
-  EXPECT_EQ(result[1]->targets.size(), 1);
-  EXPECT_EQ(result[1]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
+  const std::vector<std::string> expected_names = {
+      "rz", "rz", "rz", "cx",
+      "rz", "rx", "rz", "rx",
+      "rz", "cx", "rz", "rx",
+      "rz", "rx", "rz"
+  };
 
-  // ===== validate gate 2 =====
-  EXPECT_EQ(result[2]->name, "rz");
-  EXPECT_EQ(result[2]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[2]->targets.size(), 1);
-  EXPECT_EQ(result[2]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
+  for (size_t i = 0; i < expected_names.size(); ++i) {
 
-  // ===== validate gate 3 =====
-  EXPECT_EQ(result[3]->name, "cx");
-  EXPECT_EQ(result[3]->targets, std::vector<int>({0, 1}));
-  EXPECT_EQ(result[3]->targets.size(), 2);
-  EXPECT_EQ(result[3]->operation_type,
-            OperationType::DOUBLE_QUBIT_OPERATION);
+    EXPECT_EQ(
+        result[i]->name,
+        expected_names[i]);
+  }
 
-  // ===== validate gate 4 =====
-  EXPECT_EQ(result[4]->name, "rz");
-  EXPECT_EQ(result[4]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[4]->targets.size(), 1);
-  EXPECT_EQ(result[4]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
+  // Validate CX locations
+  ValidateGateIR(
+      result[3].get(),
+      "cx",
+      {0, 1},
+      2,
+      true);
 
-  // ===== validate gate 5 =====
-  EXPECT_EQ(result[5]->name, "rx");
-  EXPECT_EQ(result[5]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[5]->targets.size(), 1);
-  EXPECT_EQ(result[5]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 6 =====
-  EXPECT_EQ(result[6]->name, "rz");
-  EXPECT_EQ(result[6]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[6]->targets.size(), 1);
-  EXPECT_EQ(result[6]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 7 =====
-  EXPECT_EQ(result[7]->name, "rx");
-  EXPECT_EQ(result[7]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[7]->targets.size(), 1);
-  EXPECT_EQ(result[7]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 8 =====
-  EXPECT_EQ(result[8]->name, "rz");
-  EXPECT_EQ(result[8]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[8]->targets.size(), 1);
-  EXPECT_EQ(result[8]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 9 =====
-  EXPECT_EQ(result[9]->name, "cx");
-  EXPECT_EQ(result[9]->targets, std::vector<int>({0, 1}));
-  EXPECT_EQ(result[9]->targets.size(), 2);
-  EXPECT_EQ(result[9]->operation_type,
-            OperationType::DOUBLE_QUBIT_OPERATION);
-
-  // ===== validate gate 10 =====
-  EXPECT_EQ(result[10]->name, "rz");
-  EXPECT_EQ(result[10]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[10]->targets.size(), 1);
-  EXPECT_EQ(result[10]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 11 =====
-  EXPECT_EQ(result[11]->name, "rx");
-  EXPECT_EQ(result[11]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[11]->targets.size(), 1);
-  EXPECT_EQ(result[11]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 12 =====
-  EXPECT_EQ(result[12]->name, "rz");
-  EXPECT_EQ(result[12]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[12]->targets.size(), 1);
-  EXPECT_EQ(result[12]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 13 =====
-  EXPECT_EQ(result[13]->name, "rx");
-  EXPECT_EQ(result[13]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[13]->targets.size(), 1);
-  EXPECT_EQ(result[13]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
-
-  // ===== validate gate 14 =====
-  EXPECT_EQ(result[14]->name, "rz");
-  EXPECT_EQ(result[14]->targets, std::vector<int>({1}));
-  EXPECT_EQ(result[14]->targets.size(), 1);
-  EXPECT_EQ(result[14]->operation_type,
-            OperationType::SINGLE_QUBIT_OPERATION);
+  ValidateGateIR(
+      result[9].get(),
+      "cx",
+      {0, 1},
+      2,
+      true);
 }
