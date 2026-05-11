@@ -508,11 +508,12 @@ class DriverWuyueBase(DriverBase):
                 task_status = data[0]["taskStatus"]
                 logger.info(f"task_status: {task_status}")
                 result = None
-                if (
-                    data[0]["outData"] is not None
-                    and data[0]["outData"]["lineResult"] is not None
-                ):
-                    result = data[0]["outData"]["lineResult"]
+                out_data = data[0].get("outData")
+                if out_data is not None:
+                    line_result = out_data.get("lineResult")
+                    if line_result is not None:
+                        result = out_data.get("lineResult")
+
                 if task_status == self.task_status_failed:
                     success = True
                     realtime_status = {
