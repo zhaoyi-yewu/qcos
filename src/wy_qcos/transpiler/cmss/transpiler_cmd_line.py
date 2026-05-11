@@ -82,6 +82,7 @@ class CMSSTranspilerPerf:
         self.opt_level = [1]
         # mapping configs
         self.enable_mapping = True
+        self.na_mapping_type = "default"
         self.tech_type = []
         self.mapping_config_file = []
         self.mapping_info = []
@@ -237,6 +238,9 @@ class CMSSTranspilerPerf:
         )
         self.mapping_config_file = extra_configs["transpile"]["mapping"].get(
             "config_file", []
+        )
+        self.na_mapping_type = extra_configs["transpile"]["mapping"].get(
+            "na_mapping_type", "default"
         )
         if len(self.tech_type) != len(self.mapping_config_file):
             raise ValueError(
@@ -606,7 +610,9 @@ class CMSSTranspilerPerf:
                 trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
 
                 transpiler = TranspilerCmss(
-                    optimization_level=opt_level, enable_na_move=True
+                    optimization_level=opt_level,
+                    enable_na_move=True,
+                    na_mapping_type=self.na_mapping_type,
                 )
 
                 if len(base_gates) > 0:

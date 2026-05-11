@@ -43,6 +43,7 @@ class NA_ZAC_Route(ABC):
         self.qpu_config = None
         self.reuse = True
         self.dynamic_placement = True
+        self.initial_layout = None
 
     def prepare_data(self, qbit_num, gates, qpu_configs):
         """Prepare QPU configuration, gates and qubit num, build topo graph.
@@ -421,4 +422,4 @@ class NA_ZAC_Route(ABC):
 
         mapping_res = self.routing_asap(self.qubit_mapping, self.measure_op)
 
-        return mapping_res
+        return mapping_res, None

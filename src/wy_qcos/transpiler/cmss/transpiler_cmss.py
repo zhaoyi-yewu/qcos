@@ -58,6 +58,7 @@ class TranspilerCmss(TranspilerBase):
         self,
         optimization_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
         enable_na_move: bool = False,
+        na_mapping_type: str = "default",
         enable_mapping: bool = True,
     ):
         super().__init__()
@@ -89,6 +90,7 @@ class TranspilerCmss(TranspilerBase):
             # default optimization level
             "optimization_level": optimization_level,
             "enable_na_move": enable_na_move,
+            "na_mapping_type": na_mapping_type,
             "enable_mapping": enable_mapping,
             # sc_mapping options
             "sc_mapping_options": {},
@@ -97,6 +99,7 @@ class TranspilerCmss(TranspilerBase):
         self.transpiler_options_schema = {
             Optional("optimization_level"): int,
             Optional("enable_na_move"): bool,
+            Optional("na_mapping_type"): str,
             Optional("enable_mapping"): bool,
             Optional("sc_mapping_options"): SC_MAPPING_OPTIONS_SCHEMA,
         }
@@ -139,11 +142,14 @@ class TranspilerCmss(TranspilerBase):
         factory = MappingFactory()
 
         enable_na_move = self.transpiler_options.get("enable_na_move", False)
+        na_mapping_type = self.transpiler_options.get(
+            "na_mapping_type", "default"
+        )
         sc_mapping_options = self.transpiler_options.get(
             "sc_mapping_options", {}
         )
         mapper = factory.get_mapper_by_type(
-            trans_cfg_inst.get_tech_type(), enable_na_move
+            trans_cfg_inst.get_tech_type(), enable_na_move, na_mapping_type
         )
         if isinstance(mapper, EmptyRoute):
             mapping_dict = {}
