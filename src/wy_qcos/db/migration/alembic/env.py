@@ -105,7 +105,7 @@ def get_url_from_config():
     db_str = "QCOS_DATABASE_CONNECTION_URL"
 
     # 1. Try to get from environment variable first
-    print(f"[1/3] Attempting to read {db_str} from environment variable")
+    print(f"[1/2] Attempting to read {db_str} from environment variable")
     db_connection_url = os.environ.get(db_str, None)
     if db_connection_url:
         print(f"✓ Found {db_str} in environment variable")
@@ -117,7 +117,7 @@ def get_url_from_config():
 
     # 2. Try to get from TOML config file
     print(
-        f"[2/3] Attempting to read {db_str} from config file: "
+        f"[2/2] Attempting to read {db_str} from config file: "
         f"{qcos_config_file}"
     )
     if os.path.exists(qcos_config_file):
@@ -143,7 +143,7 @@ def get_url_from_config():
         print(f"✗ Config file not found: {qcos_config_file}")
 
     # 3. If still not found, raise error
-    print(f"[3/3] ERROR: Could not find {db_str}")
+    print(f"ERROR: Could not find {db_str}")
     raise Exception(
         f"Could not find '{db_str}'. Please:\n"
         f"  1. Set environment variable: export {db_str}='postgresql...'\n"
