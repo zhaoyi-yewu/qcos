@@ -61,6 +61,14 @@ convert_qasm_string_to_qcos_operations(std::string qasm_str) {
   int qubits_num = static_cast<int>(qc.getNqubits());
   std::vector<std::unique_ptr<qcos::BaseOperation>> operations;
   operations.reserve(ops.size());
+  operations = create_gates(ops);
+  return {std::move(operations), qubits_num};
+}
+
+std::vector<std::unique_ptr<qcos::BaseOperation>> create_gates(
+    const std::vector<std::unique_ptr<Operation>>& ops) {
+  std::vector<std::unique_ptr<qcos::BaseOperation>> operations;
+  operations.reserve(ops.size());
   for (const auto& op : ops) {
     std::vector<int> all_qubits;
     std::vector<double> arg_values = op->getParameter();
@@ -72,6 +80,7 @@ convert_qasm_string_to_qcos_operations(std::string qasm_str) {
       all_qubits.push_back(static_cast<int>(target));
     }
     std::unique_ptr<qcos::BaseOperation> operation = nullptr;
+    std::vector<std::unique_ptr<qcos::BaseOperation>> subOperations = {};
     switch (op->type) {
       // case otI:
       //   operation = create_gate("i", qreg[targets[0]].second);
@@ -284,15 +293,25 @@ convert_qasm_string_to_qcos_operations(std::string qasm_str) {
       case otMeasure:
         operation = create_gate("measure", all_qubits, arg_values);
         break;
+      case otCompound:
+        if (auto* compoundOp = dynamic_cast<CompoundOperation*>(op.get())) {
+          const auto& compoundOps = compoundOp->getOps();
+          subOperations = create_gates(compoundOps);
+        }
+        break;
       default:
         std::cerr << "Error:BaseOperation::create_gate" << std::endl;
     }
     if (operation) {
       operations.push_back(std::move(operation));
+    } else if (subOperations.size() > 0) {
+      operations.insert(operations.end(),
+                        std::make_move_iterator(subOperations.begin()),
+                        std::make_move_iterator(subOperations.end()));
     } else {
       std::cerr << "Warning: Failed to create gate for operation type: "
-                << static_cast<int>(op->type) << std::endl;
+                << op->name << std::endl;
     }
   }
-  return {std::move(operations), qubits_num};
+  return std::move(operations);
 }
