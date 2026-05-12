@@ -20,6 +20,17 @@ monitor_log_file = "/var/log/qcos/device_monitor_tiangong100.log"
 
 # [Optional] device manager log file path
 # mgr_log_file = /var/log/qcos/device_mgr_tiangong100.log
+# [Optional] log format string
+# log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
+
+# [Optional] log rotate, max_size (MB). default: 10MB
+# log_rotate_max_size_mb = 10
+
+# [Optional] log rotate, backup count. default: 10
+# log_rotate_backup_count = 10
+
+# [Optional] log rotate, compression. default: true
+# log_rotate_compression = true
 
 # [Optional] max queued jobs, -1 means unlimited
 max_queued_jobs = -1
