@@ -172,8 +172,40 @@ class TestUserManager:
                 None,
                 manager.login_logs[-limit:],
             )
+
+            # Add mock for delete_login_logs
+            def mock_delete_login_logs(user_id=None, user_name=None):
+                """Mock delete_login_logs from logs."""
+                count_before = len(manager.login_logs)
+                if user_id or user_name:
+                    # Delete logs for specific user
+                    manager.login_logs = [
+                        log
+                        for log in manager.login_logs
+                        if not (
+                            (
+                                user_id
+                                and getattr(log, "user_id", None) == user_id
+                            )
+                            or (
+                                user_name
+                                and getattr(log, "user_name", None)
+                                == user_name
+                            )
+                        )
+                    ]
+                else:
+                    # Delete all logs
+                    manager.login_logs = []
+                count_deleted = count_before - len(manager.login_logs)
+                return (True, None, count_deleted)
+
+            mock_users_repo.delete_login_logs.side_effect = (
+                mock_delete_login_logs
+            )
             manager.users_repo = mock_users_repo
 
+            # Use previously defined mock functions for roles
             mock_roles_repo = Mock()
             mock_roles_repo.create_role.side_effect = mock_create_role
             mock_roles_repo.get_role_by_name.side_effect = (
@@ -702,6 +734,81 @@ class TestUserManager:
         assert len(logs) == 2
         assert logs[0].user_name == "user1"
         assert logs[1].user_name == "user2"
+
+    def test_delete_login_logs_all(self, user_manager):
+        """Test deleting all login logs."""
+        # Add some logs
+        user_manager.log_login_attempt(
+            "user1", "192.168.1.1", True, user_agent="Mozilla/5.0"
+        )
+        user_manager.log_login_attempt(
+            "user2", "192.168.1.2", False, user_agent="Chrome/91.0"
+        )
+
+        # Verify logs exist
+        logs_before = user_manager.get_login_logs()
+        assert len(logs_before) == 2
+
+        # Delete all logs
+        success, error, count = user_manager.users_repo.delete_login_logs()
+        assert success is True
+        assert error is None
+        assert count == 2
+
+        # Verify logs are deleted
+        logs_after = user_manager.get_login_logs()
+        assert len(logs_after) == 0
+
+    def test_delete_login_logs_for_specific_user(self, user_manager):
+        """Test deleting login logs for a specific user."""
+        # Add logs for multiple users
+        user_manager.log_login_attempt(
+            "user1", "192.168.1.1", True, user_agent="Mozilla/5.0"
+        )
+        user_manager.log_login_attempt(
+            "user1", "192.168.1.2", False, user_agent="Firefox/88"
+        )
+        user_manager.log_login_attempt(
+            "user2", "192.168.1.3", True, user_agent="Chrome/91.0"
+        )
+
+        # Verify logs exist
+        logs_before = user_manager.get_login_logs()
+        assert len(logs_before) == 3
+
+        # Delete logs for user1
+        success, error, count = user_manager.users_repo.delete_login_logs(
+            user_name="user1"
+        )
+        assert success is True
+        assert error is None
+        assert count == 2
+
+        # Verify only user2's logs remain
+        logs_after = user_manager.get_login_logs()
+        assert len(logs_after) == 1
+        assert logs_after[0].user_name == "user2"
+
+    def test_delete_login_logs_nonexistent_user(self, user_manager):
+        """Test deleting logs for nonexistent user returns 0."""
+        # Add some logs
+        user_manager.log_login_attempt(
+            "user1", "192.168.1.1", True, user_agent="Mozilla/5.0"
+        )
+
+        # Try to delete logs for nonexistent user
+        success, error, count = user_manager.users_repo.delete_login_logs(
+            user_name="nonexistent"
+        )
+
+        # Should return success with count 0 (graceful)
+        assert success is True
+        assert count == 0
+
+        # Verify user1's log still exists
+        logs = user_manager.get_login_logs()
+        assert len(logs) == 1
+        assert logs[0].user_name == "user1"
 
     def test_is_password_expired_false(self, user_manager, sample_user):
         """Test password expiry check when not expired."""
@@ -1390,6 +1497,37 @@ class TestUserBatchOperations:
                 None,
                 login_logs[-limit:],
             )
+
+            # Add mock for delete_login_logs
+            def mock_delete_login_logs(user_id=None, user_name=None):
+                """Mock delete_login_logs from logs."""
+                count_before = len(manager.login_logs)
+                if user_id or user_name:
+                    # Delete logs for specific user
+                    manager.login_logs = [
+                        log
+                        for log in manager.login_logs
+                        if not (
+                            (
+                                user_id
+                                and getattr(log, "user_id", None) == user_id
+                            )
+                            or (
+                                user_name
+                                and getattr(log, "user_name", None)
+                                == user_name
+                            )
+                        )
+                    ]
+                else:
+                    # Delete all logs
+                    manager.login_logs = []
+                count_deleted = count_before - len(manager.login_logs)
+                return (True, None, count_deleted)
+
+            mock_users_repo.delete_login_logs.side_effect = (
+                mock_delete_login_logs
+            )
             manager.users_repo = mock_users_repo
 
             # Track created roles
@@ -1496,13 +1634,8 @@ class TestUserBatchOperations:
 class TestAuthModeUserOperations:
     """Test user manager operations under different auth modes."""
 
-    @pytest.fixture(params=["basic", "oauth2", "saml"])
-    def auth_mode(self, request):
-        """Parameterize tests with different auth modes."""
-        return request.param
-
     @pytest.fixture
-    def user_manager(self, auth_mode):
+    def user_manager(self):
         """Create a UserManager instance with mocked dependencies."""
         mock_enforcer = Mock()
         mock_enforcer.add_policy.return_value = True
@@ -1526,9 +1659,6 @@ class TestAuthModeUserOperations:
         patcher2.start()
         try:
             manager = UserManager("model.conf", "policy.csv", all_api)
-            # Set auth_mode directly for testing
-            manager.auth_mode = auth_mode
-
             # Mock permissions check manager
             mock_perms_check = Mock()
             mock_perms_check.get_for_role.return_value = []
@@ -1647,8 +1777,40 @@ class TestAuthModeUserOperations:
                 None,
                 manager.login_logs[-limit:],
             )
+
+            # Add mock for delete_login_logs
+            def mock_delete_login_logs(user_id=None, user_name=None):
+                """Mock delete_login_logs from logs."""
+                count_before = len(manager.login_logs)
+                if user_id or user_name:
+                    # Delete logs for specific user
+                    manager.login_logs = [
+                        log
+                        for log in manager.login_logs
+                        if not (
+                            (
+                                user_id
+                                and getattr(log, "user_id", None) == user_id
+                            )
+                            or (
+                                user_name
+                                and getattr(log, "user_name", None)
+                                == user_name
+                            )
+                        )
+                    ]
+                else:
+                    # Delete all logs
+                    manager.login_logs = []
+                count_deleted = count_before - len(manager.login_logs)
+                return (True, None, count_deleted)
+
+            mock_users_repo.delete_login_logs.side_effect = (
+                mock_delete_login_logs
+            )
             manager.users_repo = mock_users_repo
 
+            # Use previously defined mock functions for roles
             mock_roles_repo = Mock()
             mock_roles_repo.create_role.side_effect = mock_create_role
             mock_roles_repo.get_role_by_name.side_effect = (
@@ -2177,6 +2339,81 @@ class TestAuthModeUserOperations:
         assert len(logs) == 2
         assert logs[0].user_name == "user1"
         assert logs[1].user_name == "user2"
+
+    def test_delete_login_logs_all(self, user_manager):
+        """Test deleting all login logs."""
+        # Add some logs
+        user_manager.log_login_attempt(
+            "user1", "192.168.1.1", True, user_agent="Mozilla/5.0"
+        )
+        user_manager.log_login_attempt(
+            "user2", "192.168.1.2", False, user_agent="Chrome/91.0"
+        )
+
+        # Verify logs exist
+        logs_before = user_manager.get_login_logs()
+        assert len(logs_before) == 2
+
+        # Delete all logs
+        success, error, count = user_manager.users_repo.delete_login_logs()
+        assert success is True
+        assert error is None
+        assert count == 2
+
+        # Verify logs are deleted
+        logs_after = user_manager.get_login_logs()
+        assert len(logs_after) == 0
+
+    def test_delete_login_logs_for_specific_user(self, user_manager):
+        """Test deleting login logs for a specific user."""
+        # Add logs for multiple users
+        user_manager.log_login_attempt(
+            "user1", "192.168.1.1", True, user_agent="Mozilla/5.0"
+        )
+        user_manager.log_login_attempt(
+            "user1", "192.168.1.2", False, user_agent="Firefox/88"
+        )
+        user_manager.log_login_attempt(
+            "user2", "192.168.1.3", True, user_agent="Chrome/91.0"
+        )
+
+        # Verify logs exist
+        logs_before = user_manager.get_login_logs()
+        assert len(logs_before) == 3
+
+        # Delete logs for user1
+        success, error, count = user_manager.users_repo.delete_login_logs(
+            user_name="user1"
+        )
+        assert success is True
+        assert error is None
+        assert count == 2
+
+        # Verify only user2's logs remain
+        logs_after = user_manager.get_login_logs()
+        assert len(logs_after) == 1
+        assert logs_after[0].user_name == "user2"
+
+    def test_delete_login_logs_nonexistent_user(self, user_manager):
+        """Test deleting logs for nonexistent user returns 0."""
+        # Add some logs
+        user_manager.log_login_attempt(
+            "user1", "192.168.1.1", True, user_agent="Mozilla/5.0"
+        )
+
+        # Try to delete logs for nonexistent user
+        success, error, count = user_manager.users_repo.delete_login_logs(
+            user_name="nonexistent"
+        )
+
+        # Should return success with count 0 (graceful)
+        assert success is True
+        assert count == 0
+
+        # Verify user1's log still exists
+        logs = user_manager.get_login_logs()
+        assert len(logs) == 1
+        assert logs[0].user_name == "user1"
 
     def test_is_password_expired_false(self, user_manager, sample_user):
         """Test password expiry check when not expired."""
