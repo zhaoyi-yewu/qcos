@@ -35,9 +35,11 @@ from wy_qcos.common.cmss.gate_operation import (
     RXX,
     RZZ,
 )
+from wy_qcos.transpiler.cmss.decomposer.generate_su4_matrix import GenerateSU4
 from wy_qcos.transpiler.cmss.decomposer.kak_decomposer import KAKDecomposer
 
 kak_decomposer = KAKDecomposer()
+generate_su4 = GenerateSU4()
 test_matrix = np.array(
     [
         [1, 0, 0, 0],
@@ -326,8 +328,7 @@ class TestKAKDecomposer:
         assert rzx_result[2] == pytest.approx(0)
 
     def test_random_matrix(self):
-        random_matrix = np.random.randn(4, 4) + 1j * np.random.randn(4, 4)
-        q, r = np.linalg.qr(random_matrix)
-        kak_decomposer.set_matrix(q)
+        random_matrix = generate_su4.random_unitary(4)
+        kak_decomposer.set_matrix(random_matrix)
         result = kak_decomposer.run()
         assert result is not None
