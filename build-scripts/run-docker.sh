@@ -36,9 +36,61 @@ cd ${build_scripts_dir}
 docker-compose -f docker-compose-postgres.yaml down
 if [ "${DB_BACKEND,,}" = "postgres" ]; then
   docker-compose -f docker-compose-postgres.yaml up -d
-  docker exec -it postgres psql -U postgres -c "CREATE USER prefect WITH PASSWORD '${PREFECT_DATABASE_PASSWORD}';"
-  docker exec -it postgres psql -U postgres -c "CREATE DATABASE prefect WITH OWNER prefect;"
-  docker exec -it postgres psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE prefect TO prefect;"
+
+  # wait for postgres to be fully initialized and ready
+  echo "Waiting for PostgreSQL to be fully ready..."
+  max_attempts=60
+  attempt=0
+  while [ $attempt -lt $max_attempts ]; do
+    # first check if server is listening
+    if docker exec postgres pg_isready -U postgres > /dev/null 2>&1; then
+      # then verify database is actually responsive
+      if docker exec postgres psql -U postgres -c "SELECT 1" > /dev/null 2>&1; then
+        echo "PostgreSQL is fully initialized and ready"
+        break
+      fi
+    fi
+    attempt=$((attempt + 1))
+    if [ $((attempt % 10)) -eq 0 ]; then
+      echo "  Attempt $attempt/$max_attempts: PostgreSQL initializing..."
+    fi
+    sleep 1
+  done
+
+  if [ $attempt -eq $max_attempts ]; then
+    echo "ERROR: PostgreSQL failed to fully initialize within $max_attempts seconds"
+    echo "Try checking: docker logs postgres"
+    exit 1
+  fi
+
+  # Helper function to setup database user and permissions
+  setup_db_user() {
+    local user=$1
+    local password=$2
+    local db=$3
+
+    docker exec postgres psql -U postgres -c "CREATE USER ${user} WITH PASSWORD '${password}' INHERIT;" 2>/dev/null || \
+      echo "  Note: ${user} user may already exist"
+    docker exec postgres psql -U postgres -c "CREATE DATABASE ${db} WITH OWNER ${user};" 2>/dev/null || \
+      echo "  Note: ${db} database may already exist"
+    docker exec postgres psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE ${db} TO ${user};" 2>/dev/null
+    docker exec postgres psql -U postgres -d ${db} -c "ALTER SCHEMA public OWNER TO ${user};" 2>/dev/null
+    docker exec postgres psql -U postgres -d ${db} -c "GRANT ALL PRIVILEGES ON SCHEMA public TO ${user};" 2>/dev/null
+    docker exec postgres psql -U postgres -d ${db} -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${user};" 2>/dev/null
+    docker exec postgres psql -U postgres -d ${db} -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${user};" 2>/dev/null
+    docker exec postgres psql -U postgres -d ${db} -c "GRANT ALL ON ALL TABLES IN SCHEMA public TO ${user};" 2>/dev/null
+    docker exec postgres psql -U postgres -d ${db} -c "GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO ${user};" 2>/dev/null
+  }
+
+  # setup prefect
+  echo "Setting up prefect user and database..."
+  setup_db_user "prefect" "${PREFECT_DATABASE_PASSWORD}" "prefect"
+
+  # setup qcos
+  echo "Setting up qcos user and database..."
+  setup_db_user "qcos" "${QCOS_DATABASE_PASSWORD}" "qcos"
+
+  echo "PostgreSQL setup completed successfully"
 fi
 
 # start qcos
