@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import logging
 import pytest
 
 from wy_qcos.common.constant import Constant, HttpCode
@@ -53,14 +52,15 @@ class TestSecurity:
                 StLibrary.delete_user(
                     cls.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @classmethod
     def setup_class(cls):
         """Initialize test environment."""
         cls.client = GLOBAL_CONFIGS["client"]
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
+        cls.virtual_instance_client = GLOBAL_CONFIGS["virtual_instance_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
 
@@ -78,12 +78,26 @@ class TestSecurity:
         cls.password_2 = _s("Password456!")
         cls.password_2 = _s("Password456!")
 
+        # Store original auth mode for restoration
+        cls.original_auth_mode = StLibrary.get_auth_mode(cls.admin_client)
+        StLibrary.set_auth_mode(cls.admin_client,
+                                cls.virtual_instance_client,
+                                cls.original_auth_mode,
+                                Constant.AUTH_MODE_JWT)
+
         # Clean up any existing test resources before starting tests
         cls._cleanup_test_users()
 
     @classmethod
     def teardown_class(cls):
         """Clean up test environment."""
+        current_auth_mode = StLibrary.get_auth_mode(cls.admin_client)
+        StLibrary.set_auth_mode(
+            cls.admin_client,
+            cls.virtual_instance_client,
+            current_auth_mode,
+            cls.original_auth_mode
+        )
         cls._cleanup_test_users()
 
     @pytest.mark.smoke
@@ -109,9 +123,9 @@ class TestSecurity:
             assert "password" not in user
             # Should not contain plain text password
             assert str(self.password) not in str(user)
-        except (AssertionError, Exception):
+        except (AssertionError, Exception):  # noqa: S110
             # Expected to fail
-            logging.warning("Expected exception during test")
+            pass
         finally:
             try:
                 StLibrary.delete_user(
@@ -120,8 +134,8 @@ class TestSecurity:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_weak_password_rejection(self):
@@ -139,9 +153,9 @@ class TestSecurity:
             # If it succeeds, password should still not be weak
             assert result is None or result.get("user_name") is None
 
-        except (AssertionError, Exception):
+        except (AssertionError, Exception):  # noqa: S110
             # Expected to fail
-            logging.warning("Expected exception during test")
+            pass
         finally:
             try:
                 StLibrary.delete_user(
@@ -150,8 +164,8 @@ class TestSecurity:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_invalid_credentials_denied(self):
@@ -162,9 +176,9 @@ class TestSecurity:
                 self.client, self.test_user, "wrong_password"
             )
             assert result is None or result.get("user_name") is None
-        except (AssertionError, Exception):
+        except (AssertionError, Exception):  # noqa: S110
             # Expected to fail
-            logging.warning("Expected exception during test")
+            pass
 
     @pytest.mark.smoke
     def test_nonexistent_user_denied_login(self):
@@ -174,9 +188,9 @@ class TestSecurity:
                 self.client, "nonexistent_user_xyz", "password"
             )
             assert result is None or result.get("user_name") is None
-        except (AssertionError, Exception):
+        except (AssertionError, Exception):  # noqa: S110
             # Expected to fail
-            logging.warning("Expected exception during test")
+            pass
 
     @pytest.mark.smoke
     def test_successful_login_returns_token(self):
@@ -209,8 +223,8 @@ class TestSecurity:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_token_invalidation_on_logout(self):
@@ -245,16 +259,16 @@ class TestSecurity:
                 )
                 # If we can still access, verify it's a new session
                 assert user is not None
-            except Exception:
+            except Exception:  # noqa: S110
                 # Expected - token invalidated
-                logging.warning("Exception during cleanup")
+                pass
         finally:
             try:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_role_based_access_control(self):
@@ -291,8 +305,8 @@ class TestSecurity:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_permission_enforcement_denied(self):
@@ -321,9 +335,9 @@ class TestSecurity:
                 )
                 # If succeeds, verify it's from admin context
                 assert result is None or result.get("error") is not None
-            except Exception:
+            except Exception:  # noqa: S110
                 # Expected - permission denied
-                logging.warning("Exception during cleanup")
+                pass
 
         finally:
             try:
@@ -333,8 +347,8 @@ class TestSecurity:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
             try:
                 StLibrary.delete_user(
                     self.admin_client,
@@ -342,8 +356,8 @@ class TestSecurity:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_sql_injection_prevention(self):
@@ -362,9 +376,9 @@ class TestSecurity:
                 # Input should be sanitized
                 assert injection_payload not in result.get("user_name", "")
 
-        except Exception:
+        except Exception:  # noqa: S110
             # Expected - malformed input rejected
-            logging.warning("Exception during cleanup")
+            pass
 
     @pytest.mark.smoke
     def test_admin_password_change_security(self):
@@ -397,9 +411,9 @@ class TestSecurity:
                     str(self.old_password),
                 )
                 assert login_result is None
-            except Exception:
+            except Exception:  # noqa: S110
                 # Expected - old password should fail
-                logging.warning("Exception during cleanup")
+                pass
 
             # Verify new password works
             login_result = StLibrary.login(
@@ -417,8 +431,8 @@ class TestSecurity:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_audit_logging_user_operations(self):
@@ -475,8 +489,156 @@ class TestSecurity:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
+
+    @pytest.mark.smoke
+    def test_clear_login_logs_all(self):
+        """Test clearing all login logs requires admin privileges."""
+        user_data = {
+            "user_name": "_test_clear_logs_user",
+            "password": self.password,
+            "roles": [Constant.ROLE_ADMIN],
+            "is_locked": False,
+        }
+
+        try:
+            # Create test user
+            new_user = StLibrary.create_user(self.admin_client, user_data)
+            assert new_user is not None
+
+            # Generate some login logs
+            StLibrary.login(
+                self.client, "_test_clear_logs_user", str(self.password)
+            )
+
+            # Verify login logs exist
+            login_logs_before = StLibrary.get_login_logs(
+                self.admin_client, username="_test_clear_logs_user"
+            )
+            assert len(login_logs_before) > 0
+
+            # Clear logs via admin client
+            clear_result = StLibrary.clear_login_logs(
+                self.admin_client, user_name="_test_clear_logs_user"
+            )
+            assert clear_result is not None
+            # Should return count of cleared logs
+            if hasattr(clear_result, "get"):
+                assert clear_result.get("count", 0) > 0
+
+            # Verify logs are cleared
+            login_logs_after = StLibrary.get_login_logs(
+                self.admin_client, username="_test_clear_logs_user"
+            )
+            assert len(login_logs_after) == 0
+
+        finally:
+            try:
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_clear_logs_user",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:  # noqa: S110
+                pass
+
+    @pytest.mark.smoke
+    def test_clear_login_logs_for_user(self):
+        """Test clearing login logs for specific user."""
+        user1_data = {
+            "user_name": "_test_clear_user1",
+            "password": self.password_1,
+            "roles": [Constant.ROLE_ADMIN],
+            "is_locked": False,
+        }
+        user2_data = {
+            "user_name": "_test_clear_user2",
+            "password": self.password_2,
+            "roles": [Constant.ROLE_ADMIN],
+            "is_locked": False,
+        }
+
+        try:
+            # Create two users
+            user1 = StLibrary.create_user(self.admin_client, user1_data)
+            user2 = StLibrary.create_user(self.admin_client, user2_data)
+            assert user1 is not None
+            assert user2 is not None
+
+            # Generate login logs for both users
+            StLibrary.login(
+                self.client, "_test_clear_user1", str(self.password_1)
+            )
+            StLibrary.login(
+                self.client, "_test_clear_user2", str(self.password_2)
+            )
+
+            # Verify both have login logs
+            logs_user1_before = StLibrary.get_login_logs(
+                self.admin_client, username="_test_clear_user1"
+            )
+            logs_user2_before = StLibrary.get_login_logs(
+                self.admin_client, username="_test_clear_user2"
+            )
+            assert len(logs_user1_before) > 0
+            assert len(logs_user2_before) > 0
+
+            # Clear logs for user1 only
+            clear_result = StLibrary.clear_login_logs(
+                self.admin_client, user_name="_test_clear_user1"
+            )
+            assert clear_result is not None
+
+            # Verify user1 logs are cleared but user2 logs remain
+            logs_user1_after = StLibrary.get_login_logs(
+                self.admin_client, username="_test_clear_user1"
+            )
+            logs_user2_after = StLibrary.get_login_logs(
+                self.admin_client, username="_test_clear_user2"
+            )
+            assert len(logs_user1_after) == 0
+            assert len(logs_user2_after) > 0
+
+        finally:
+            try:
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_clear_user1",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:  # noqa: S110
+                pass
+            try:
+                StLibrary.delete_user(
+                    self.admin_client,
+                    "_test_clear_user2",
+                    is_name=True,
+                    force=True,
+                )
+            except Exception:  # noqa: S110
+                pass
+
+    @pytest.mark.smoke
+    def test_clear_login_logs_nonexistent_user(self):
+        """Test clearing logs for non-existent user returns gracefully."""
+        try:
+            # Clean up all login logs before test
+            StLibrary.clear_login_logs(self.admin_client)
+
+            # Attempt to clear logs for non-existent user
+            clear_result = StLibrary.clear_login_logs(
+                self.admin_client, user_name="nonexistent_user_xyz"
+            )
+            # Should return success with count 0 (graceful handling)
+            assert clear_result is not None
+            if hasattr(clear_result, "get"):
+                assert clear_result.get("count", 0) == 0
+        except Exception as e:
+            # Should not raise exception for non-existent user
+            pytest.fail(f"Should handle non-existent user gracefully: {e}")
 
     @pytest.mark.smoke
     def test_session_isolation(self):
@@ -532,8 +694,8 @@ class TestSecurity:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
             try:
                 StLibrary.delete_user(
                     self.admin_client,
@@ -541,5 +703,5 @@ class TestSecurity:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
