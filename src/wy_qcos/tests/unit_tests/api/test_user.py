@@ -20,7 +20,8 @@ from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
 
 from wy_qcos.api.posiq.routes_jsonrpc.user import (
-    get_user_mgmt_status,
+    get_user_mgmt,
+    set_user_mgmt,
     create_user,
     get_user,
     get_users,
@@ -33,6 +34,7 @@ from wy_qcos.api.posiq.routes_jsonrpc.user import (
     delete_role,
     change_password,
     get_login_logs,
+    clear_login_logs,
     get_user_response,
     get_role_response,
     _mask_hidden_fields,
@@ -154,33 +156,33 @@ class TestGetUserManager:
         assert result == mock_user_manager
 
 
-class TestGetUserMgmtStatus:
-    """Test cases for get_user_mgmt_status function."""
+class TestGetUserMgmt:
+    """Test cases for get_user_mgmt function."""
 
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
-    def test_get_user_mgmt_status(self, mock_config):
+    def test_get_user_mgmt(self, mock_config):
         """Test getting user management status."""
         mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
         mock_config.PASSWORD_EXPIRY_DAYS = 90
         mock_config.MAX_LOGIN_ATTEMPTS = 5
         mock_config.LOCKOUT_DURATION_MINUTES = 15
 
-        result = get_user_mgmt_status()
+        result = get_user_mgmt()
 
-        assert result.enabled is True
+        assert result.auth_mode == Constant.AUTH_MODE_JWT
         assert result.password_expiry_days == 90
         assert result.max_login_attempts == 5
         assert result.lockout_duration_minutes == 15
 
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
-    def test_get_user_mgmt_status_disabled(self, mock_config):
+    def test_get_user_mgmt_no_mode(self, mock_config):
         """Test getting user management status when disabled."""
         mock_config.AUTH_MODE = Constant.AUTH_MODE_NO
         mock_config.PASSWORD_EXPIRY_DAYS = 0
 
-        result = get_user_mgmt_status()
+        result = get_user_mgmt()
 
-        assert result.enabled is False
+        assert result.auth_mode == Constant.AUTH_MODE_NO
 
 
 class TestCreateUser:
@@ -1085,6 +1087,97 @@ class TestGetLoginLogs:
         assert result[0].login_time >= result[1].login_time
 
 
+class TestClearLoginLogs:
+    """Test cases for clear_login_logs function."""
+
+    def test_clear_login_logs_all(self):
+        """Test clearing all login logs."""
+        mock_users_repo = Mock()
+        mock_users_repo.delete_login_logs.return_value = (True, None, 42)
+
+        body = user_schemas.ClearLoginLogsRequest()
+
+        result = clear_login_logs(body, None, users_repo=mock_users_repo)
+
+        assert result is not None
+        assert result["count"] == 42
+        mock_users_repo.delete_login_logs.assert_called_once_with(
+            user_id=None, user_name=None
+        )
+
+    def test_clear_login_logs_for_user_id(self):
+        """Test clearing login logs for a specific user by ID."""
+        mock_users_repo = Mock()
+        mock_users_repo.delete_login_logs.return_value = (True, None, 10)
+
+        body = user_schemas.ClearLoginLogsRequest(
+            user_id="00000000-0000-4000-8000-000000000001"
+        )
+
+        result = clear_login_logs(body, None, users_repo=mock_users_repo)
+
+        assert result is not None
+        assert result["count"] == 10
+        mock_users_repo.delete_login_logs.assert_called_once_with(
+            user_id="00000000-0000-4000-8000-000000000001",
+            user_name=None,
+        )
+
+    def test_clear_login_logs_for_user_name(self):
+        """Test clearing login logs for a specific user by name."""
+        mock_users_repo = Mock()
+        mock_users_repo.get_user_by_username.return_value = (False, None, None)
+        mock_users_repo.delete_login_logs.return_value = (True, None, 5)
+
+        body = user_schemas.ClearLoginLogsRequest(user_name="testuser")
+
+        result = clear_login_logs(body, None, users_repo=mock_users_repo)
+
+        assert result is not None
+        assert result["count"] == 5
+        mock_users_repo.delete_login_logs.assert_called_once_with(
+            user_id=None, user_name="testuser"
+        )
+
+    def test_clear_login_logs_user_not_found(self):
+        """Test clearing logs when user is not found."""
+        mock_users_repo = Mock()
+        mock_users_repo.get_user_by_username.return_value = (False, None, None)
+        mock_users_repo.delete_login_logs.return_value = (True, None, 0)
+
+        body = user_schemas.ClearLoginLogsRequest(user_name="nonexistent")
+
+        result = clear_login_logs(body, None, users_repo=mock_users_repo)
+
+        assert result is not None
+        assert result["count"] == 0
+
+    def test_clear_login_logs_error(self):
+        """Test clear_login_logs when database error occurs."""
+        mock_users_repo = Mock()
+        mock_users_repo.delete_login_logs.return_value = (
+            False,
+            "Database error",
+            0,
+        )
+
+        body = user_schemas.ClearLoginLogsRequest()
+
+        with pytest.raises(Exception):
+            clear_login_logs(body, None, users_repo=mock_users_repo)
+
+    def test_clear_login_logs_both_parameters_error(self):
+        """Test that specifying both user_id and user_name raises error."""
+        from pydantic import ValidationError
+
+        # ClearLoginLogsRequest should reject both parameters
+        with pytest.raises(ValidationError):
+            user_schemas.ClearLoginLogsRequest(
+                user_id="00000000-0000-4000-8000-000000000001",
+                user_name="testuser",
+            )
+
+
 class TestBoundaryConditions:
     """Test cases for boundary conditions in user management."""
 
@@ -1510,39 +1603,37 @@ class TestAuthModeIntegration:
     """Test user management API with different auth modes."""
 
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
-    def test_get_user_mgmt_status_with_no_mode(self, mock_config):
+    def test_get_user_mgmt_with_no_mode(self, mock_config):
         """Test user management status with auth_mode=no."""
         mock_config.AUTH_MODE = Constant.AUTH_MODE_NO
         mock_config.PASSWORD_EXPIRY_DAYS = 0
 
-        result = get_user_mgmt_status()
+        result = get_user_mgmt()
 
-        assert result.enabled is False
+        assert result.auth_mode == Constant.AUTH_MODE_NO
 
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
-    def test_get_user_mgmt_status_with_jwt_mode(self, mock_config):
+    def test_get_user_mgmt_with_jwt_mode(self, mock_config):
         """Test user management status with auth_mode=jwt."""
         mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
         mock_config.PASSWORD_EXPIRY_DAYS = 90
-        mock_config.MAX_LOGIN_ATTEMPTS = 5
-        mock_config.LOCKOUT_DURATION_MINUTES = 15
 
-        result = get_user_mgmt_status()
+        result = get_user_mgmt()
 
-        assert result.enabled is True
+        assert result.auth_mode == Constant.AUTH_MODE_JWT
         assert result.password_expiry_days == 90
 
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
-    def test_get_user_mgmt_status_with_virtual_instance_mode(
+    def test_get_user_mgmt_with_virtual_instance_mode(
         self, mock_config
     ):
         """Test user management status with auth_mode=virtual_instance."""
         mock_config.AUTH_MODE = Constant.AUTH_MODE_VIRTUAL_INSTANCE
         mock_config.PASSWORD_EXPIRY_DAYS = 0
 
-        result = get_user_mgmt_status()
+        result = get_user_mgmt()
 
-        assert result.enabled is False
+        assert result.auth_mode == Constant.AUTH_MODE_VIRTUAL_INSTANCE
 
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
     def test_create_user_with_auth_mode_no(self, mock_config):
@@ -1705,3 +1796,90 @@ class TestAuthModeIntegration:
 
         assert result is not None
         assert result.user_name == "testuser_virt"
+
+
+class TestSetUserMgmt:
+    """Test cases for set_user_mgmt API endpoint."""
+
+    def test_set_user_mgmt_auth_mode_jwt(self):
+        """Test setting auth mode to jwt."""
+        body = user_schemas.SetUserMgmtRequest(auth_mode="jwt")
+
+        with patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config") as mock_config:
+            with patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
+            ) as mock_logger:
+                mock_config.AUTH_MODE = "no"
+                result = set_user_mgmt(body, auth_data={"user_id": "admin"})
+
+                assert result is not None
+                assert result.auth_mode == "jwt"
+
+    def test_set_user_mgmt_auth_mode_virtual_instance(self):
+        """Test setting auth mode to virtual_instance."""
+        body = user_schemas.SetUserMgmtRequest(auth_mode="virtual_instance")
+
+        with patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config") as mock_config:
+            with patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
+            ) as mock_logger:
+                mock_config.AUTH_MODE = "jwt"
+                result = set_user_mgmt(body, auth_data={"user_id": "admin"})
+
+                assert result is not None
+                assert result.auth_mode == "virtual_instance"
+
+    def test_set_user_mgmt_auth_mode_no(self):
+        """Test setting auth mode to no."""
+        body = user_schemas.SetUserMgmtRequest(auth_mode="no")
+
+        with patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config") as mock_config:
+            with patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
+            ) as mock_logger:
+                mock_config.AUTH_MODE = "jwt"
+                result = set_user_mgmt(body, auth_data={"user_id": "admin"})
+
+                assert result is not None
+                assert result.auth_mode == "no"
+
+    def test_set_user_mgmt_auth_mode_case_insensitive(self):
+        """Test setting auth mode with case-insensitive input."""
+        body = user_schemas.SetUserMgmtRequest(auth_mode="JWT")
+
+        with patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config") as mock_config:
+            with patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
+            ) as mock_logger:
+                mock_config.AUTH_MODE = "no"
+                result = set_user_mgmt(body, auth_data={"user_id": "admin"})
+
+                assert result is not None
+                # Should normalize to lowercase
+                assert result.auth_mode == "jwt"
+
+    def test_set_user_mgmt_auth_mode_invalid_mode(self):
+        """Test setting auth mode with invalid mode."""
+        body = user_schemas.SetUserMgmtRequest(auth_mode="invalid_mode")
+
+        with patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config"):
+            with pytest.raises(Exception):
+                set_user_mgmt(body, auth_data={"user_id": "admin"})
+
+    def test_set_user_mgmt_auth_mode_response_contains_auth_mode(self):
+        """Test that set_user_mgmt response contains auth_mode."""
+        body = user_schemas.SetUserMgmtRequest(auth_mode="jwt")
+
+        with patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config") as mock_config:
+            with patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
+            ) as mock_logger:
+                mock_config.AUTH_MODE = "no"
+                result = set_user_mgmt(body, auth_data={"user_id": "admin"})
+
+                # Verify response has expected fields
+                assert hasattr(result, "auth_mode")
+                assert result.auth_mode in ["no", "jwt", "virtual_instance"]
+                if hasattr(result, "message"):
+                    assert isinstance(result.message, str)
+
