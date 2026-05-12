@@ -370,6 +370,9 @@ class TestDriverWuyueBase:
                 {
                     "taskStatus": driver_wuyue_base.task_status_completed,
                     "outData": {"lineResult": json.dumps(test_result)},
+                    "execEndTime": 12345,
+                    "execStartTime": 12333,
+                    "timeConsume": "2.00",
                 }
             ],
         }
@@ -381,8 +384,8 @@ class TestDriverWuyueBase:
         )
 
         mock_decrypt_by_private_key.return_value = mock_response
-        success, err_msg, results = driver_wuyue_base.get_task_results(
-            "test_task_id"
+        success, err_msg, results, machine_time_info = (
+            driver_wuyue_base.get_task_results("test_task_id")
         )
         assert success is True
         assert err_msg == ""
@@ -390,6 +393,9 @@ class TestDriverWuyueBase:
         assert results["00"] == 10
         assert results["01"] == 11
         assert results["10"] == 9
+        assert machine_time_info["time_consume"] == "2.00"
+        assert machine_time_info["exec_end_time"] == 12345
+        assert machine_time_info["exec_start_time"] == 12333
 
     @patch.object(Library, "call_http_api")
     def test_get_task_results_http_error(self, mock_call_http_api):
@@ -559,7 +565,12 @@ class TestDriverWuyueBase:
 
         # Setup mock for get_task_results
         mock_get_results = MagicMock(
-            return_value=(True, None, {"result": "test_result"})
+            return_value=(
+                True,
+                None,
+                {"result": "test_result"},
+                {"exec_end_time": 12345},
+            )
         )
         mock_decrypt_by_private_key.return_value = mock_response
         driver_wuyue_base.get_task_results = mock_get_results
@@ -580,6 +591,7 @@ class TestDriverWuyueBase:
         except ValueError as e:
             exception_raised = True
             exception_msg = str(e)
+            print(exception_msg)
 
         assert exception_raised is False
         assert exception_msg is None
@@ -642,3 +654,15 @@ class TestDriverWuyueBase:
 
         assert exception_raised is False
         assert exception_msg is None
+
+    def test_construct_machine_time_info(self):
+        driver = DriverWuyueBase()
+        data = {
+            "execStartTime": 12345,
+            "execEndTime": None,
+            "timeConsume": "2.00",
+        }
+        machine_time_info = driver.construct_machine_time_info(data)
+        assert machine_time_info["exec_start_time"] == 12345
+        assert machine_time_info["exec_end_time"] is None
+        assert machine_time_info["time_consume"] == "2.00"

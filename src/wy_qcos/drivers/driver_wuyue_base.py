@@ -237,7 +237,9 @@ class DriverWuyueBase(DriverBase):
         # 5. Get task final result
         logger.info("5. get task results")
         self.set_progress_by_task(self.TASK_STAGE_GET_RESULTS)
-        success, err_msg, results = self.get_task_results(task_id)
+        success, err_msg, results, machine_time_info = self.get_task_results(
+            task_id
+        )
         if not success:
             raise ValueError(
                 f"Failed to get task results [{job_id}]: {err_msg}"
@@ -245,6 +247,7 @@ class DriverWuyueBase(DriverBase):
 
         # 7. Save results and set driver status to ONLINE
         self.set_results(job_id, data_index, results=results)
+        self.set_machine_time_info(job_id, data_index, machine_time_info)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
@@ -463,6 +466,25 @@ class DriverWuyueBase(DriverBase):
         raw_data["sign"] = self.prepare_sign(raw_data)
         return self.encrypt_by_public_key(raw_data)
 
+    def construct_machine_time_info(self, data: dict) -> dict:
+        """Construct machine time info.
+
+        Args:
+            data: response data
+
+        Returns:
+            machine_time_info
+        """
+        exec_start_time = data.get("execStartTime", None)
+        exec_end_time = data.get("execEndTime", None)
+        time_consume = data.get("timeConsume", None)
+        machine_time_info = {
+            "exec_start_time": exec_start_time,
+            "exec_end_time": exec_end_time,
+            "time_consume": time_consume,
+        }
+        return machine_time_info
+
     def get_task_realtime_result(self, task_id):
         """Get task realtime result.
 
@@ -513,18 +535,21 @@ class DriverWuyueBase(DriverBase):
                     line_result = out_data.get("lineResult")
                     if line_result is not None:
                         result = out_data.get("lineResult")
+                machine_time_info = self.construct_machine_time_info(data[0])
 
                 if task_status == self.task_status_failed:
                     success = True
                     realtime_status = {
                         "task_status": data[0]["taskStatus"],
                         "result": result,
+                        "machine_time_info": machine_time_info,
                     }
                     err_msgs.append(f"Task failed: {task_status}")
                 elif task_status == self.task_status_completed:
                     realtime_status = {
                         "task_status": data[0]["taskStatus"],
                         "result": result,
+                        "machine_time_info": machine_time_info,
                     }
                 else:
                     success = False
@@ -568,7 +593,8 @@ class DriverWuyueBase(DriverBase):
             results = {
                 key: value for key, value in results_dict.items() if value != 0
             }
-        return success, "\n".join(err_msg), results
+        machine_time_info = final_results.get("machine_time_info", None)
+        return success, "\n".join(err_msg), results, machine_time_info
 
     def get_device_info(self):
         """Get device info.

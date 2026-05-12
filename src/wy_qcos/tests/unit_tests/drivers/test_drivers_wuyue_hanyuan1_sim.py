@@ -160,6 +160,9 @@ class TestDriverWuyuehanyuanSim:
                 {
                     "taskStatus": driver_wy_hanyuan1_sim.task_status_completed,
                     "outData": json.dumps(test_result),
+                    "execEndTime": 12345,
+                    "execStartTime": 12333,
+                    "timeConsume": "2.00",
                 }
             ],
         }
@@ -171,8 +174,8 @@ class TestDriverWuyuehanyuanSim:
         )
 
         mock_decrypt_by_private_key.return_value = mock_response
-        success, err_msg, results = driver_wy_hanyuan1_sim.get_task_results(
-            "test_task_id"
+        success, err_msg, results, machine_time_info = (
+            driver_wy_hanyuan1_sim.get_task_results("test_task_id")
         )
         assert success is True
         assert err_msg == ""
@@ -180,3 +183,6 @@ class TestDriverWuyuehanyuanSim:
         assert results["00"] == 10
         assert results["01"] == 11
         assert results["10"] == 9
+        assert machine_time_info["time_consume"] == "2.00"
+        assert machine_time_info["exec_end_time"] == 12345
+        assert machine_time_info["exec_start_time"] == 12333

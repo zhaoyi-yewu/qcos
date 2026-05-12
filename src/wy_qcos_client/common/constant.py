@@ -133,6 +133,7 @@ class Constant:
     PROFILING_TYPE_DRIVER_PARSE = "driver:parse"
     PROFILING_TYPE_DRIVER_TRANSPILE = "driver:transpile"
     PROFILING_TYPE_DRIVER_RUN = "driver:run"
+    PROFILING_TYPE_MACHINE = "machine"
     PROFILING_TYPES = [
         PROFILING_TYPE_ALL,
         PROFILING_TYPE_CODE,
@@ -140,6 +141,7 @@ class Constant:
         PROFILING_TYPE_DRIVER_PARSE,
         PROFILING_TYPE_DRIVER_TRANSPILE,
         PROFILING_TYPE_DRIVER_RUN,
+        PROFILING_TYPE_MACHINE,
     ]
 
 
