@@ -1875,9 +1875,7 @@ class GetUserMgmt(ShowOne):
 
     def take_action(self, parsed_args):
         resource = self.group
-        status_code, reason, text, result = (
-            self.app.client.get_user_mgmt()
-        )
+        status_code, reason, text, result = self.app.client.get_user_mgmt()
         json_results = CommandHelper.check_results(
             resource, "get_user_mgmt", status_code, reason, text
         )

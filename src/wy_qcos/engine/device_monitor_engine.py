@@ -50,9 +50,7 @@ def device_monitor_flow(device_monitor_info):
     debug = global_configs.get("DEBUG", False)
     if "debug" in device_configs:
         debug = device_configs["debug"]
-    device_monitor_log_file = (
-        f"/var/log/qcos/device_monitor_{device_name}.log"
-    )
+    device_monitor_log_file = f"/var/log/qcos/device_monitor_{device_name}.log"
     if "monitor_log_file" in device_configs:
         device_monitor_log_file = device_configs["monitor_log_file"]
 

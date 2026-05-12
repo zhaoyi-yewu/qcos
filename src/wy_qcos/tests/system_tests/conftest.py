@@ -103,7 +103,9 @@ def global_configs(request):
     # Authenticate with virtual_instance credentials at the beginning
     # Create admin virtual instance ID with
     # device_names=["all"] and instance_id="all"
-    virtual_instance_client = Client(api_server_ip=api_host, api_server_port=api_port)
+    virtual_instance_client = Client(
+        api_server_ip=api_host, api_server_port=api_port
+    )
     admin_device_names = ["all"]
     admin_instance_id = "all"
     success, err_msg, admin_vi_id = Library.encrypt_virtual_instance_id(

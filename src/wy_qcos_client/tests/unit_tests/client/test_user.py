@@ -268,7 +268,9 @@ class TestSetUserMgmt:
         assert data["auth_mode"] == "jwt"
 
     @patch.object(Client, "call_json_rpc")
-    def test_set_user_mgmt_auth_mode_virtual_instance(self, mock_call_json_rpc):
+    def test_set_user_mgmt_auth_mode_virtual_instance(
+        self, mock_call_json_rpc
+    ):
         """Test set_user_mgmt with virtual_instance mode."""
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.set_user_mgmt(
@@ -294,7 +296,9 @@ class TestSetUserMgmt:
         assert data["auth_mode"] == "no"
 
     @patch.object(Client, "call_json_rpc")
-    def test_set_user_mgmt_auth_mode_case_insensitive(self, mock_call_json_rpc):
+    def test_set_user_mgmt_auth_mode_case_insensitive(
+        self, mock_call_json_rpc
+    ):
         """Test set_user_mgmt with case-insensitive input."""
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.set_user_mgmt(

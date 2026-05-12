@@ -40,17 +40,21 @@ class TestVirtualInstanceAuth:
         cls.virtual_instance_client = GLOBAL_CONFIGS["virtual_instance_client"]
         cls.client = GLOBAL_CONFIGS["client"]
         cls.api_host = GLOBAL_CONFIGS.get("api_host", "127.0.0.1")
-        cls.api_port = GLOBAL_CONFIGS.get("api_port", Config.API_SERVER_LISTEN_PORT)
+        cls.api_port = GLOBAL_CONFIGS.get(
+            "api_port", Config.API_SERVER_LISTEN_PORT
+        )
         cls.password_salt = GLOBAL_CONFIGS.get("password_salt", "")
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
 
         # Store original auth mode for restoration
         cls.original_auth_mode = StLibrary.get_auth_mode(cls.admin_client)
-        StLibrary.set_auth_mode(cls.admin_client,
-                                cls.virtual_instance_client,
-                                cls.original_auth_mode,
-                                Constant.AUTH_MODE_VIRTUAL_INSTANCE)
+        StLibrary.set_auth_mode(
+            cls.admin_client,
+            cls.virtual_instance_client,
+            cls.original_auth_mode,
+            Constant.AUTH_MODE_VIRTUAL_INSTANCE,
+        )
 
     @classmethod
     def teardown_class(cls):
@@ -60,18 +64,18 @@ class TestVirtualInstanceAuth:
             cls.admin_client,
             cls.virtual_instance_client,
             current_auth_mode,
-            cls.original_auth_mode
+            cls.original_auth_mode,
         )
 
     def _create_job_info(self, job_id, job_name, backend, description):
         """Create job info dictionary for testing.
-        
+
         Args:
             job_id: Unique job identifier
             job_name: Human readable job name
             backend: Backend device name
             description: Job description
-            
+
         Returns:
             Dictionary with job configuration
         """
@@ -96,7 +100,7 @@ class TestVirtualInstanceAuth:
 
     @pytest.mark.smoke
     def test_virtual_instance_auth_mode_switch_and_operations(self):
-        """Test switching to virtual_instance auth mode and performing operations."""
+        """Test switching to virtual_instance auth mode."""
         # Assumes auth_mode is already virtual_instance
         virtual_auth_client = self.virtual_instance_client
         try:
@@ -212,12 +216,16 @@ class TestVirtualInstanceAuth:
     @pytest.mark.smoke
     def test_auth_mode_get_and_restore(self):
         """Test getting auth mode and restoring it.
-        
+
         System operates in virtual_instance mode by default.
         """
         # Verify consistent responses from get_user_mgmt
-        status_code_1, _, text_1, _ = self.virtual_instance_client.get_user_mgmt()
-        status_code_2, _, text_2, _ = self.virtual_instance_client.get_user_mgmt()
+        status_code_1, _, text_1, _ = (
+            self.virtual_instance_client.get_user_mgmt()
+        )
+        status_code_2, _, text_2, _ = (
+            self.virtual_instance_client.get_user_mgmt()
+        )
 
         success_1, error_msg_1 = StLibrary.is_response_success(
             status_code_1, text_1
@@ -244,7 +252,7 @@ class TestVirtualInstanceAuth:
     @pytest.mark.smoke
     def test_virtual_instance_single_device_isolation(self):
         """Test virtual instance with single device isolation.
-        
+
         1. Create client with device_names=["dummy"] and instance_id="1"
         2. Verify can only list dummy device
         3. Verify can submit and list jobs for dummy backend
@@ -315,7 +323,7 @@ class TestVirtualInstanceAuth:
     @pytest.mark.smoke
     def test_virtual_instance_two_clients_different_devices(self):
         """Test 2 virtual instance clients with different device isolation.
-        
+
         1. Create 2 clients: one for dummy, one for qutip_sim
         2. Verify each client only sees its assigned device
         3. Verify job isolation
@@ -447,7 +455,7 @@ class TestVirtualInstanceAuth:
     @pytest.mark.smoke
     def test_virtual_instance_two_clients_multiple_devices(self):
         """Test 2 virtual instance clients with multiple devices each.
-        
+
         1. Create 2 clients with multi-device access
         2. Verify each client sees all assigned devices
         3. Verify job isolation with different instance IDs
@@ -460,13 +468,11 @@ class TestVirtualInstanceAuth:
             # Create client 1 with both devices
             device_names_1 = ["dummy", "qutip_sim"]
             instance_id_1 = "test_instance_3"
-            success, err_msg, vi_id_1 = (
-                Library.encrypt_virtual_instance_id(
-                    device_names_1,
-                    instance_id_1,
-                    salt=self.password_salt,
-                    encode=True,
-                )
+            success, err_msg, vi_id_1 = Library.encrypt_virtual_instance_id(
+                device_names_1,
+                instance_id_1,
+                salt=self.password_salt,
+                encode=True,
             )
             assert success is True
 
@@ -481,13 +487,11 @@ class TestVirtualInstanceAuth:
             # Create client 2 with both devices
             device_names_2 = ["dummy", "qutip_sim"]
             instance_id_2 = "test_instance_4"
-            success, err_msg, vi_id_2 = (
-                Library.encrypt_virtual_instance_id(
-                    device_names_2,
-                    instance_id_2,
-                    salt=self.password_salt,
-                    encode=True,
-                )
+            success, err_msg, vi_id_2 = Library.encrypt_virtual_instance_id(
+                device_names_2,
+                instance_id_2,
+                salt=self.password_salt,
+                encode=True,
             )
             assert success is True
 
@@ -499,7 +503,7 @@ class TestVirtualInstanceAuth:
                 "x-qcos-virtual-instance-id": vi_id_2,
             }
 
-            # Verify both clients see both devices if device listing is available
+            # Verify both clients see both devices if device is available
             devices_1 = StLibrary.get_devices(vi_client_1)
             if isinstance(devices_1, dict):
                 device_names_list_1 = sorted(devices_1.keys())
@@ -576,7 +580,7 @@ class TestVirtualInstanceAuth:
     @pytest.mark.smoke
     def test_virtual_instance_admin_list_all_devices(self):
         """Test virtual_instance admin (all/all) lists all devices.
-        
+
         Assumes auth_mode is already virtual_instance.
         """
         # Use the admin virtual_instance_client (all/all)
@@ -595,8 +599,8 @@ class TestVirtualInstanceAuth:
 
     @pytest.mark.smoke
     def test_virtual_instance_device_access_control(self):
-        """Test that virtual_instance client cannot submit job to unauthorized device.
-        
+        """Test that vi client cannot submit job to unauthorized device.
+
         1. Create client with device_names=["dummy"] (only dummy device)
         2. Attempt to submit job to qutip_sim (unauthorized device)
         3. Verify the submission fails with access denied error
@@ -643,26 +647,24 @@ class TestVirtualInstanceAuth:
 
             # This submission should fail with access denied error
             try:
-                result_dict = StLibrary.submit_job(vi_client, job_info)
+                StLibrary.submit_job(vi_client, job_info)
                 # If we reach here, the submission succeeded (unexpected)
                 # This would be a security issue
-                assert (
-                    False
-                ), "Job submission should have failed for unauthorized device"
+                assert False, (
+                    "Job submission should have failed for unauthorized device"
+                )
             except AssertionError as e:
                 # Expected: job submission fails with error
                 error_msg = str(e)
                 assert (
-                    "Unauthorized" in error_msg or "forbidden" in error_msg or
-                    "no such device" in error_msg.lower() or
-                    "not" in error_msg.lower() or "access" in error_msg.lower()
-                ), (
-                    "Expected access control error, "
-                    "got: {}".format(error_msg)
-                )
+                    "Unauthorized" in error_msg
+                    or "forbidden" in error_msg
+                    or "no such device" in error_msg.lower()
+                    or "not" in error_msg.lower()
+                    or "access" in error_msg.lower()
+                ), "Expected access control error, got: {}".format(error_msg)
 
         finally:
             # Cleanup
             if vi_client:
                 vi_client.request_headers = None
-

@@ -198,9 +198,7 @@ class GetUserMgmtRequest(BaseModel):
 class GetUserMgmtResponse(BaseModel):
     """Get user management status response."""
 
-    auth_mode: str = Field(
-        ..., description="User authentication mode"
-    )
+    auth_mode: str = Field(..., description="User authentication mode")
     password_expiry_days: int = Field(
         default=0, description="Password expiry days"
     )
@@ -217,16 +215,14 @@ class SetUserMgmtRequest(BaseModel):
 
     auth_mode: str = Field(
         ...,
-        description="Authentication mode: 'no', 'jwt', or 'virtual_instance'"
+        description="Authentication mode: 'no', 'jwt', or 'virtual_instance'",
     )
 
 
 class SetUserMgmtResponse(BaseModel):
     """Set user management response."""
 
-    auth_mode: str = Field(
-        ..., description="Updated authentication mode"
-    )
+    auth_mode: str = Field(..., description="Updated authentication mode")
     message: str = Field(..., description="Success message")
 
 

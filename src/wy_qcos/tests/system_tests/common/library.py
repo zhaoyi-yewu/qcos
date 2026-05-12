@@ -52,9 +52,7 @@ class StLibrary:
             if "error" in response_dict and response_dict["error"]:
                 error_dict = response_dict["error"]
                 error_msg = error_dict.get("message", "Unknown error")
-                error_details = (
-                    error_dict.get("data", {}).get("details", "")
-                )
+                error_details = error_dict.get("data", {}).get("details", "")
                 if error_details:
                     error_msg = f"{error_msg}: {error_details}"
                 return False, error_msg
@@ -556,8 +554,9 @@ class StLibrary:
         return current_auth_mode
 
     @staticmethod
-    def set_auth_mode(admin_client, virtual_instance_client,
-                      current_auth_mode, set_auth_mode):
+    def set_auth_mode(
+        admin_client, virtual_instance_client, current_auth_mode, set_auth_mode
+    ):
         """Set auth mode.
 
         Args:
@@ -569,12 +568,8 @@ class StLibrary:
         logger.info(f"Set to auth_mode: {set_auth_mode}")
         try:
             if current_auth_mode == Constant.AUTH_MODE_VIRTUAL_INSTANCE:
-                virtual_instance_client.set_user_mgmt(
-                    set_auth_mode
-                )
+                virtual_instance_client.set_user_mgmt(set_auth_mode)
             else:
-                admin_client.set_user_mgmt(
-                    set_auth_mode
-                )
+                admin_client.set_user_mgmt(set_auth_mode)
         except Exception:  # noqa: S110
             pass

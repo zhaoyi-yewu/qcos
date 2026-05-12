@@ -1624,9 +1624,7 @@ class TestAuthModeIntegration:
         assert result.password_expiry_days == 90
 
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
-    def test_get_user_mgmt_with_virtual_instance_mode(
-        self, mock_config
-    ):
+    def test_get_user_mgmt_with_virtual_instance_mode(self, mock_config):
         """Test user management status with auth_mode=virtual_instance."""
         mock_config.AUTH_MODE = Constant.AUTH_MODE_VIRTUAL_INSTANCE
         mock_config.PASSWORD_EXPIRY_DAYS = 0
@@ -1805,10 +1803,12 @@ class TestSetUserMgmt:
         """Test setting auth mode to jwt."""
         body = user_schemas.SetUserMgmtRequest(auth_mode="jwt")
 
-        with patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config") as mock_config:
+        with patch(
+            "wy_qcos.api.posiq.routes_jsonrpc.user.Config"
+        ) as mock_config:
             with patch(
                 "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
-            ) as mock_logger:
+            ):
                 mock_config.AUTH_MODE = "no"
                 result = set_user_mgmt(body, auth_data={"user_id": "admin"})
 
@@ -1819,10 +1819,12 @@ class TestSetUserMgmt:
         """Test setting auth mode to virtual_instance."""
         body = user_schemas.SetUserMgmtRequest(auth_mode="virtual_instance")
 
-        with patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config") as mock_config:
+        with patch(
+            "wy_qcos.api.posiq.routes_jsonrpc.user.Config"
+        ) as mock_config:
             with patch(
                 "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
-            ) as mock_logger:
+            ):
                 mock_config.AUTH_MODE = "jwt"
                 result = set_user_mgmt(body, auth_data={"user_id": "admin"})
 
@@ -1833,10 +1835,12 @@ class TestSetUserMgmt:
         """Test setting auth mode to no."""
         body = user_schemas.SetUserMgmtRequest(auth_mode="no")
 
-        with patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config") as mock_config:
+        with patch(
+            "wy_qcos.api.posiq.routes_jsonrpc.user.Config"
+        ) as mock_config:
             with patch(
                 "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
-            ) as mock_logger:
+            ):
                 mock_config.AUTH_MODE = "jwt"
                 result = set_user_mgmt(body, auth_data={"user_id": "admin"})
 
@@ -1847,10 +1851,12 @@ class TestSetUserMgmt:
         """Test setting auth mode with case-insensitive input."""
         body = user_schemas.SetUserMgmtRequest(auth_mode="JWT")
 
-        with patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config") as mock_config:
+        with patch(
+            "wy_qcos.api.posiq.routes_jsonrpc.user.Config"
+        ) as mock_config:
             with patch(
                 "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
-            ) as mock_logger:
+            ):
                 mock_config.AUTH_MODE = "no"
                 result = set_user_mgmt(body, auth_data={"user_id": "admin"})
 
@@ -1870,10 +1876,12 @@ class TestSetUserMgmt:
         """Test that set_user_mgmt response contains auth_mode."""
         body = user_schemas.SetUserMgmtRequest(auth_mode="jwt")
 
-        with patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config") as mock_config:
+        with patch(
+            "wy_qcos.api.posiq.routes_jsonrpc.user.Config"
+        ) as mock_config:
             with patch(
                 "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
-            ) as mock_logger:
+            ):
                 mock_config.AUTH_MODE = "no"
                 result = set_user_mgmt(body, auth_data={"user_id": "admin"})
 
@@ -1882,4 +1890,3 @@ class TestSetUserMgmt:
                 assert result.auth_mode in ["no", "jwt", "virtual_instance"]
                 if hasattr(result, "message"):
                     assert isinstance(result.message, str)
-

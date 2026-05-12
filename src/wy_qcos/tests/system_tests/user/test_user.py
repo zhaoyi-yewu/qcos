@@ -97,10 +97,12 @@ class TestUser:
 
         # Store original auth mode for restoration
         cls.original_auth_mode = StLibrary.get_auth_mode(cls.admin_client)
-        StLibrary.set_auth_mode(cls.admin_client,
-                                cls.virtual_instance_client,
-                                cls.original_auth_mode,
-                                Constant.AUTH_MODE_JWT)
+        StLibrary.set_auth_mode(
+            cls.admin_client,
+            cls.virtual_instance_client,
+            cls.original_auth_mode,
+            Constant.AUTH_MODE_JWT,
+        )
 
         # Initialize and clean up test resources
         cls._init_test_usernames()
@@ -115,7 +117,7 @@ class TestUser:
             cls.admin_client,
             cls.virtual_instance_client,
             current_auth_mode,
-            cls.original_auth_mode
+            cls.original_auth_mode,
         )
 
     @pytest.mark.smoke

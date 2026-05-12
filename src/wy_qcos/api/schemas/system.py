@@ -55,4 +55,3 @@ class SystemInfoResponse(BaseModel):
     total_jobs_count: int = Field(
         ..., description="Total number of jobs in the system"
     )
-
