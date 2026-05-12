@@ -91,10 +91,10 @@ def _mask_hidden_fields(obj: Any) -> Any:
 @user_api_v1.method(
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]}, errors=[]
 )
-def get_user_mgmt_status(
-    body: schemas.GetUserMgmtStatusRequest | None = None,
+def get_user_mgmt(
+    body: schemas.GetUserMgmtRequest | None = None,
     auth_data: dict | None = Depends(auth),
-) -> schemas.GetUserMgmtStatusResponse:
+) -> schemas.GetUserMgmtResponse:
     """Get user management status.
 
     Args:
@@ -104,20 +104,66 @@ def get_user_mgmt_status(
     Returns:
         User management status response
     """
-    func_name = "get_user_mgmt_status"
+    func_name = "get_user_mgmt"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     _response_info = {
-        "enabled": Config.AUTH_MODE == Constant.AUTH_MODE_JWT,
+        "auth_mode": Config.AUTH_MODE,
         "password_expiry_days": Config.PASSWORD_EXPIRY_DAYS
         if Config.PASSWORD_EXPIRY_DAYS
         else 0,
         "max_login_attempts": Config.MAX_LOGIN_ATTEMPTS,
         "lockout_duration_minutes": Config.LOCKOUT_DURATION_MINUTES,
     }
-    response_info = schemas.GetUserMgmtStatusResponse.model_validate(
+    response_info = schemas.GetUserMgmtResponse.model_validate(
         _response_info
     )
+    return response_info
+
+
+@user_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.BadRequestError],
+)
+def set_user_mgmt(
+    body: schemas.SetUserMgmtRequest,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.SetUserMgmtResponse:
+    """Set user management authentication mode.
+
+    Args:
+        body: request body with auth_mode
+        auth_data: auth data
+
+    Returns:
+        SetUserMgmtResponse with updated auth_mode
+    """
+    func_name = "set_user_mgmt"
+    logger.info(f"Call {func_name}: auth_mode={body.auth_mode}")
+
+    auth_mode = body.auth_mode.lower()
+    valid_modes = Constant.AUTH_MODES
+
+    if auth_mode not in valid_modes:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                f"Invalid auth_mode '{auth_mode}'. "
+                f"Must be one of: {', '.join(valid_modes)}"
+            ),
+        )
+
+    # Update Config dynamically
+    Config.AUTH_MODE = auth_mode
+    logger.info(f"Updated Config.AUTH_MODE to '{auth_mode}'")
+
+    _response_info = {
+        "auth_mode": Config.AUTH_MODE,
+        "message": f"Authentication mode updated to '{auth_mode}'",
+    }
+    response_info = schemas.SetUserMgmtResponse.model_validate(_response_info)
     return response_info
 
 
@@ -1309,6 +1355,75 @@ def get_login_logs(
         response_info.append(schemas.LoginLogResponse.model_validate(log_data))
 
     return response_info
+
+
+@user_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.BadRequestError],
+)
+def clear_login_logs(
+    body: schemas.ClearLoginLogsRequest | None = None,
+    auth_data: dict | None = Depends(auth),
+    users_repo: UserRepository = Depends(get_repository(UserRepository)),
+) -> dict:
+    """Clear login logs (all or for a specific user).
+
+    Args:
+        body: clear login logs request (contains user_id, user_name)
+        auth_data: auth data
+        users_repo: User repository dependency
+
+    Returns:
+        Dictionary with count of deleted logs
+
+    Note:
+        user_id and user_name are mutually exclusive. Only one can be provided.
+        If both are None, all login logs will be cleared.
+    """
+    func_name = "clear_login_logs"
+    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
+
+    user_id = None
+    user_name = None
+
+    if body:
+        # Validate that only one of user_id or user_name is provided
+        if body.user_id is not None and body.user_name is not None:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                (
+                    False,
+                    "Cannot specify both user_id and user_name. "
+                    "Please provide only one.",
+                ),
+            )
+
+        if body.user_id:
+            user_id = body.user_id
+        elif body.user_name:
+            user_name = body.user_name
+            # Query user by name to get user_id if exists
+            # If user doesn't exist, user_id will remain None
+            # and delete_login_logs will handle it gracefully
+            success, error, user = users_repo.get_user_by_username(user_name)
+            if success and user:
+                user_id = user.id
+
+    # Clear login logs from database
+    success, error, deleted_count = users_repo.delete_login_logs(
+        user_id=user_id, user_name=user_name
+    )
+
+    if not success:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (False, str(error) if error else "Failed to clear login logs"),
+        )
+
+    logger.info(f"Cleared {deleted_count} login log(s)")
+    return {"count": deleted_count}
 
 
 def get_user_response(user) -> dict:
