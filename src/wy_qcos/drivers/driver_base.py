@@ -143,6 +143,10 @@ class DriverBase:
             Optional("monitor_log_file"): str,
             Optional("mgr_log_file"): str,
             Optional("max_queued_jobs"): int,
+            Optional("log_format"): str,
+            Optional("log_rotate_max_size_mb"): int,
+            Optional("log_rotate_backup_count"): int,
+            Optional("log_rotate_compression"): bool,
         }
 
     def validate_driver(self):
