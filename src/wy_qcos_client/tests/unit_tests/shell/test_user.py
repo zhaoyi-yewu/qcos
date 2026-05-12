@@ -73,10 +73,10 @@ class TestGetUserMgmt:
         parser = cmd.get_parser("get-user-mgmt")
         assert parser is not None
 
-    @patch.object(Client, "get_user_mgmt_status")
-    def test_take_action(self, mock_get_user_mgmt_status):
+    @patch.object(Client, "get_user_mgmt")
+    def test_take_action(self, mock_get_user_mgmt):
         """Test GetUserMgmt take_action method."""
-        mock_get_user_mgmt_status.return_value = (
+        mock_get_user_mgmt.return_value = (
             200,
             "OK",
             jsonrpc_response,

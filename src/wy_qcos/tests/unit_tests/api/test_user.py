@@ -1806,9 +1806,7 @@ class TestSetUserMgmt:
         with patch(
             "wy_qcos.api.posiq.routes_jsonrpc.user.Config"
         ) as mock_config:
-            with patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
-            ):
+            with patch("wy_qcos.api.posiq.routes_jsonrpc.user.logger"):
                 mock_config.AUTH_MODE = "no"
                 result = set_user_mgmt(body, auth_data={"user_id": "admin"})
 
@@ -1822,9 +1820,7 @@ class TestSetUserMgmt:
         with patch(
             "wy_qcos.api.posiq.routes_jsonrpc.user.Config"
         ) as mock_config:
-            with patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
-            ):
+            with patch("wy_qcos.api.posiq.routes_jsonrpc.user.logger"):
                 mock_config.AUTH_MODE = "jwt"
                 result = set_user_mgmt(body, auth_data={"user_id": "admin"})
 
@@ -1838,9 +1834,7 @@ class TestSetUserMgmt:
         with patch(
             "wy_qcos.api.posiq.routes_jsonrpc.user.Config"
         ) as mock_config:
-            with patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
-            ):
+            with patch("wy_qcos.api.posiq.routes_jsonrpc.user.logger"):
                 mock_config.AUTH_MODE = "jwt"
                 result = set_user_mgmt(body, auth_data={"user_id": "admin"})
 
@@ -1854,9 +1848,7 @@ class TestSetUserMgmt:
         with patch(
             "wy_qcos.api.posiq.routes_jsonrpc.user.Config"
         ) as mock_config:
-            with patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
-            ):
+            with patch("wy_qcos.api.posiq.routes_jsonrpc.user.logger"):
                 mock_config.AUTH_MODE = "no"
                 result = set_user_mgmt(body, auth_data={"user_id": "admin"})
 
@@ -1879,9 +1871,7 @@ class TestSetUserMgmt:
         with patch(
             "wy_qcos.api.posiq.routes_jsonrpc.user.Config"
         ) as mock_config:
-            with patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.user.logger"
-            ):
+            with patch("wy_qcos.api.posiq.routes_jsonrpc.user.logger"):
                 mock_config.AUTH_MODE = "no"
                 result = set_user_mgmt(body, auth_data={"user_id": "admin"})
 
