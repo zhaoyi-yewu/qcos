@@ -18,6 +18,7 @@
 import pytest
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
+from uuid import uuid4
 from jose import JWTError
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
@@ -532,6 +533,14 @@ class TestLoginLogging:
             mock_users_repo = Mock()
             mock_users_repo.get_user.return_value = (False, None, None)
             mock_users_repo.create_user.return_value = (True, None, None)
+            # Mock get_user_by_username for project_id retrieval
+            mock_user_obj = Mock()
+            mock_user_obj.project_id = str(uuid4())
+            mock_users_repo.get_user_by_username.return_value = (
+                True,
+                None,
+                mock_user_obj,
+            )
 
             # Mock login log tracking
             def mock_create_login_log(
@@ -540,6 +549,7 @@ class TestLoginLogging:
                 success,
                 failure_reason=None,
                 user_agent=None,
+                project_id=None,
             ):
                 log = LoginLog(
                     user_name=user_name,
