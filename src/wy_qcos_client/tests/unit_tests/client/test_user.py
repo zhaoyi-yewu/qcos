@@ -208,3 +208,117 @@ class TestClientUser:
         call_args = mock_call_json_rpc.call_args[0][2]
         assert call_args["limit"] == 100
         assert call_args["offset"] == 0
+
+    @patch.object(Client, "call_json_rpc")
+    def test_clear_login_logs_all(self, mock_call_json_rpc):
+        """Test clear_login_logs method without user_id or user_name."""
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.clear_login_logs()
+        assert status_code == 200
+        mock_call_json_rpc.assert_called_once_with(
+            client.user_url, "clear_login_logs", {}
+        )
+
+    @patch.object(Client, "call_json_rpc")
+    def test_clear_login_logs_with_user_id(self, mock_call_json_rpc):
+        """Test clear_login_logs method with user_id."""
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.clear_login_logs(
+            user_id=self.user_id
+        )
+        assert status_code == 200
+        mock_call_json_rpc.assert_called_once_with(
+            client.user_url, "clear_login_logs", {"user_id": self.user_id}
+        )
+
+    @patch.object(Client, "call_json_rpc")
+    def test_clear_login_logs_with_user_name(self, mock_call_json_rpc):
+        """Test clear_login_logs method with user_name."""
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.clear_login_logs(
+            user_name="testuser"
+        )
+        assert status_code == 200
+        mock_call_json_rpc.assert_called_once_with(
+            client.user_url, "clear_login_logs", {"user_name": "testuser"}
+        )
+
+
+class TestSetUserMgmt:
+    """Test cases for set_user_mgmt method in Client."""
+
+    @classmethod
+    def setup_class(cls):
+        cls.return_values = (200, "OK", "text", "result")
+
+    @patch.object(Client, "call_json_rpc")
+    def test_set_user_mgmt_auth_mode_jwt(self, mock_call_json_rpc):
+        """Test set_user_mgmt with JWT auth mode."""
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.set_user_mgmt(
+            auth_mode="jwt"
+        )
+        assert status_code == 200
+        assert reason == "OK"
+        mock_call_json_rpc.assert_called_once()
+        call_args = mock_call_json_rpc.call_args[0]
+        assert call_args[0] == client.user_url
+        assert call_args[1] == "set_user_mgmt"
+        data = call_args[2]
+        assert data["auth_mode"] == "jwt"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_set_user_mgmt_auth_mode_virtual_instance(self, mock_call_json_rpc):
+        """Test set_user_mgmt with virtual_instance mode."""
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.set_user_mgmt(
+            auth_mode="virtual_instance"
+        )
+        assert status_code == 200
+        mock_call_json_rpc.assert_called_once()
+        call_args = mock_call_json_rpc.call_args[0]
+        data = call_args[2]
+        assert data["auth_mode"] == "virtual_instance"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_set_user_mgmt_auth_mode_no(self, mock_call_json_rpc):
+        """Test set_user_mgmt with no auth mode."""
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.set_user_mgmt(
+            auth_mode="no"
+        )
+        assert status_code == 200
+        mock_call_json_rpc.assert_called_once()
+        call_args = mock_call_json_rpc.call_args[0]
+        data = call_args[2]
+        assert data["auth_mode"] == "no"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_set_user_mgmt_auth_mode_case_insensitive(self, mock_call_json_rpc):
+        """Test set_user_mgmt with case-insensitive input."""
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.set_user_mgmt(
+            auth_mode="JWT"
+        )
+        assert status_code == 200
+        mock_call_json_rpc.assert_called_once()
+        call_args = mock_call_json_rpc.call_args[0]
+        data = call_args[2]
+        # Verify the mode is passed
+        assert data["auth_mode"] == "JWT"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_set_user_mgmt_auth_mode_invalid_mode(self, mock_call_json_rpc):
+        """Test set_user_mgmt with invalid auth mode."""
+        # Client doesn't validate, but the API will
+        mock_call_json_rpc.return_value = (
+            400,
+            "Bad Request",
+            "Invalid auth mode",
+            None,
+        )
+        status_code, reason, text, result = client.set_user_mgmt(
+            auth_mode="invalid_mode"
+        )
+        assert status_code == 400
+        assert reason == "Bad Request"
