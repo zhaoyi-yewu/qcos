@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import logging
 import json
 import pytest
 
@@ -48,22 +47,23 @@ class TestPermission:
                 StLibrary.delete_role(
                     cls.admin_client, role_name, is_name=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
         for username in cls.test_users:
             try:
                 StLibrary.delete_user(
                     cls.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @classmethod
     def setup_class(cls):
         """Initialize test environment."""
         cls.client = GLOBAL_CONFIGS["client"]
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
+        cls.virtual_instance_client = GLOBAL_CONFIGS["virtual_instance_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
 
@@ -74,12 +74,26 @@ class TestPermission:
         # Test data variables
         cls.password = _s("TestPassword123!")
 
+        # Store original auth mode for restoration
+        cls.original_auth_mode = StLibrary.get_auth_mode(cls.admin_client)
+        StLibrary.set_auth_mode(cls.admin_client,
+                                cls.virtual_instance_client,
+                                cls.original_auth_mode,
+                                Constant.AUTH_MODE_JWT)
+
         # Clean up any existing test resources before starting tests
         cls._cleanup_test_resources()
 
     @classmethod
     def teardown_class(cls):
         """Clean up test environment."""
+        current_auth_mode = StLibrary.get_auth_mode(cls.admin_client)
+        StLibrary.set_auth_mode(
+            cls.admin_client,
+            cls.virtual_instance_client,
+            current_auth_mode,
+            cls.original_auth_mode
+        )
         cls._cleanup_test_resources()
 
     @pytest.mark.smoke
@@ -147,15 +161,15 @@ class TestPermission:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
             try:
                 StLibrary.delete_role(
                     self.admin_client, "_test_read_only_role", is_name=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_permission_role_insufficient_permission(self):
@@ -218,8 +232,8 @@ class TestPermission:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
             try:
                 StLibrary.delete_role(
@@ -227,5 +241,5 @@ class TestPermission:
                     "_test_role_insufficient_permission",
                     is_name=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
