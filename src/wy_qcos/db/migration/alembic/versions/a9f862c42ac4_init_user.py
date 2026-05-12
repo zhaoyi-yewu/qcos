@@ -113,16 +113,21 @@ def upgrade() -> None:
     op.create_table(
         "login_logs",
         sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("project_id", sa.String(length=36), nullable=True),
         sa.Column("user_name", sa.String(length=50), nullable=False),
         sa.Column("ip_address", sa.String(length=45), nullable=False),
         sa.Column("login_time", sa.DateTime(), nullable=True),
         sa.Column("login_status", sa.Boolean(), nullable=False),
         sa.Column("failure_reason", sa.Text(), nullable=True),
         sa.Column("user_agent", sa.Text(), nullable=True),
+        sa.ForeignKeyConstraint(["project_id"], ["projects.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
         op.f("ix_login_logs_id"), "login_logs", ["id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_login_logs_project_id"), "login_logs", ["project_id"]
     )
     op.create_index(
         op.f("ix_login_logs_user_name"),
@@ -160,6 +165,7 @@ def downgrade() -> None:
     op.drop_table("token_blacklist")
 
     op.drop_index(op.f("ix_login_logs_user_name"), table_name="login_logs")
+    op.drop_index(op.f("ix_login_logs_project_id"), table_name="login_logs")
     op.drop_index(op.f("ix_login_logs_id"), table_name="login_logs")
     op.drop_table("login_logs")
 
