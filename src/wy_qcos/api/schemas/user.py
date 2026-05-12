@@ -76,7 +76,9 @@ class UserCreate(BaseModel):
         max_length=Constant.MAX_PASSWORD_LENGTH,
         description="Password",
     )
-    roles: list[str] = Field(default=["user"], description="User roles")
+    roles: list[str] = Field(
+        default=[Constant.ROLE_USER], description="User roles"
+    )
     is_locked: bool = Field(default=False, description="Is user locked")
     password_expiry_days: int | None = Field(
         default=None, description="Password expiry days"
@@ -189,15 +191,15 @@ class User(BaseModel):
         return value
 
 
-class GetUserMgmtStatusRequest(BaseModel):
+class GetUserMgmtRequest(BaseModel):
     """Get user management status request."""
 
 
-class GetUserMgmtStatusResponse(BaseModel):
+class GetUserMgmtResponse(BaseModel):
     """Get user management status response."""
 
-    enabled: bool = Field(
-        ..., description="Whether user management is enabled"
+    auth_mode: str = Field(
+        ..., description="User authentication mode"
     )
     password_expiry_days: int = Field(
         default=0, description="Password expiry days"
@@ -208,6 +210,24 @@ class GetUserMgmtStatusResponse(BaseModel):
     lockout_duration_minutes: int = Field(
         default=30, description="Lockout duration in minutes"
     )
+
+
+class SetUserMgmtRequest(BaseModel):
+    """Set user management request."""
+
+    auth_mode: str = Field(
+        ...,
+        description="Authentication mode: 'no', 'jwt', or 'virtual_instance'"
+    )
+
+
+class SetUserMgmtResponse(BaseModel):
+    """Set user management response."""
+
+    auth_mode: str = Field(
+        ..., description="Updated authentication mode"
+    )
+    message: str = Field(..., description="Success message")
 
 
 class CreateUserRequest(BaseModel):
@@ -231,7 +251,9 @@ class CreateUserRequest(BaseModel):
         description="Password",
         json_schema_extra={"is_sensitive": True},
     )
-    roles: list[str] = Field(default=["user"], description="User roles")
+    roles: list[str] = Field(
+        default=[Constant.ROLE_USER], description="User roles"
+    )
     password_expiry_days: int | None = Field(
         default=None, description="Password expiry days (optional)"
     )
@@ -576,3 +598,24 @@ class DeleteRoleResponse(BaseModel):
     """Delete role response."""
 
     role_name: str = Field(..., description="Role name")
+
+
+class ClearLoginLogsRequest(BaseModel):
+    """Clear login logs request."""
+
+    user_id: str | None = Field(
+        default=None, description="Clear logs for specific user ID (UUID)"
+    )
+    user_name: str | None = Field(
+        default=None, description="Clear logs for specific user name"
+    )
+
+    @model_validator(mode="after")
+    def validate_user_filter(self):
+        """Ensure user_id and user_name are mutually exclusive."""
+        if self.user_id is not None and self.user_name is not None:
+            raise ValueError(
+                "Cannot specify both user_id and user_name. "
+                "Please provide only one."
+            )
+        return self
