@@ -53,6 +53,8 @@
      - 量子工作引擎，包括：量子QASM/QUBO代码解析、转译、驱动调用、回调、聚合、性能评估等等
    * - src/wy_qcos/log
      - 日志配置模块
+   * - src/wy_qcos/metrics
+     - 系统监控模块
    * - src/wy_qcos/task_manager
      - 任务管理和调度
    * - src/wy_qcos/tests

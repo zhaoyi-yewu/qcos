@@ -1,0 +1,97 @@
+@startuml
+skinparam defaultFontName "Noto Sans CJK SC"
+skinparam dpi 300
+
+skinparam class {
+    BackgroundColor White
+    BorderColor Black
+    ArrowColor #555
+    FontSize 11
+    AttributeFontSize 10
+}
+
+class MetricsCollector {
+    + (singleton)
+    + job_metrics
+    + api_metrics
+    + system_health_metrics
+    + update_job_metrics(data)
+    + record_api_request(data)
+    + record_api_requests_in_progress(flag)
+    + update_system_health(data)
+    + get_system_health_status()
+    + get_metrics()
+    + get_content_type()
+}
+
+class JobMetrics {
+    - job_gauge
+    - current_values
+    + update(data)
+    + get_values()
+}
+
+class APIMetrics {
+    - requests_total
+    - in_progress
+    - duration
+    - timestamps
+    + record_api_request(data)
+    + increment_api_requests_in_progress()
+    + decrement_api_requests_in_progress()
+    + get_api_stats()
+}
+
+class SystemHealthMetrics {
+    - system_healthy
+    - heartbeat_timestamp
+    - component_health
+    + update(data)
+    + get_values()
+}
+
+MetricsCollector --> JobMetrics
+MetricsCollector --> APIMetrics
+MetricsCollector --> SystemHealthMetrics
+
+class MetricsScheduler {
+    - scheduler (AsyncIOScheduler)
+    - running
+    - interval
+    + start()
+    + stop()
+    + _job()
+}
+
+class MetricsTask {
+    + update_job_metrics()
+    + update_system_health_metrics()
+    + update_metrics_task_async()
+    + check_worker_health()
+    + check_prefect_health()
+    + check_fastapi_health()
+    + check_redis_health()
+}
+
+MetricsScheduler --> MetricsTask
+MetricsScheduler --> MetricsCollector : updates
+
+class MetricsMiddleware {
+    - EXCLUDED_PATHS
+    - MODULES
+    + dispatch(request, call_next)
+    + _normalize_endpoint(path)
+    + _extract_module(path)
+    + _extract_rpc_method(body)
+    + _restore_request_body(request, body)
+}
+
+MetricsMiddleware --> MetricsCollector : records
+
+class PrometheusHandler {
+    + do_GET()
+    + log_message(format, *args)
+}
+PrometheusHandler --> MetricsCollector
+
+@enduml
