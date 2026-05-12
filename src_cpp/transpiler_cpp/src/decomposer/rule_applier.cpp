@@ -16,14 +16,208 @@
  */
 
 #include <cmath>
+#include <cctype>
+#include <cstdlib>
 #include <functional>
 #include <stdexcept>
 #include <sstream>
+#include <unordered_set>
 
 #include "decomposer/rule_applier.h"
-#include "utils/exprtk.hpp"
 
 namespace qcos {
+
+namespace {
+
+enum class ExprTokenKind {
+  kNumber,
+  kVariable,
+  kOperator
+};
+
+struct ExprToken {
+  ExprTokenKind kind;
+  double value = 0.0;
+  std::string text;
+  char op = '\0';
+};
+
+int precedence(char op) {
+  if (op == '~') {
+    return 3;
+  }
+  return (op == '*' || op == '/') ? 2 : 1;
+}
+
+void push_operator(
+    std::vector<ExprToken>& output,
+    std::vector<char>& ops,
+    char op) {
+  while (!ops.empty() && ops.back() != '(' &&
+         precedence(ops.back()) >= precedence(op)) {
+    output.push_back({ExprTokenKind::kOperator, 0.0, {}, ops.back()});
+    ops.pop_back();
+  }
+  ops.push_back(op);
+}
+
+std::vector<ExprToken> compile_expr(const std::string& expr) {
+  std::vector<ExprToken> output;
+  std::vector<char> ops;
+  bool expect_operand = true;
+
+  for (size_t i = 0; i < expr.size();) {
+    const char c = expr[i];
+
+    if (std::isspace(static_cast<unsigned char>(c))) {
+      ++i;
+      continue;
+    }
+
+    if (std::isdigit(static_cast<unsigned char>(c)) || c == '.') {
+      char* end = nullptr;
+      const double value = std::strtod(expr.c_str() + i, &end);
+      output.push_back({ExprTokenKind::kNumber, value});
+      i = static_cast<size_t>(end - expr.c_str());
+      expect_operand = false;
+      continue;
+    }
+
+    if (std::isalpha(static_cast<unsigned char>(c)) || c == '_') {
+      size_t j = i + 1;
+      while (j < expr.size() &&
+             (std::isalnum(static_cast<unsigned char>(expr[j])) ||
+              expr[j] == '_')) {
+        ++j;
+      }
+      output.push_back({
+          ExprTokenKind::kVariable,
+          0.0,
+          expr.substr(i, j - i)});
+      i = j;
+      expect_operand = false;
+      continue;
+    }
+
+    if (c == '(') {
+      ops.push_back(c);
+      ++i;
+      expect_operand = true;
+      continue;
+    }
+
+    if (c == ')') {
+      while (!ops.empty() && ops.back() != '(') {
+        output.push_back({ExprTokenKind::kOperator, 0.0, {}, ops.back()});
+        ops.pop_back();
+      }
+      if (ops.empty()) {
+        throw std::runtime_error("Expr parse error: " + expr);
+      }
+      ops.pop_back();
+      ++i;
+      expect_operand = false;
+      continue;
+    }
+
+    if (c == '+' || c == '-' || c == '*' || c == '/') {
+      if (expect_operand) {
+        if (c == '+') {
+          ++i;
+          continue;
+        }
+        if (c == '-') {
+          ops.push_back('~');
+          ++i;
+          continue;
+        } else {
+          throw std::runtime_error("Expr parse error: " + expr);
+        }
+      }
+      push_operator(output, ops, c);
+      ++i;
+      expect_operand = true;
+      continue;
+    }
+
+    throw std::runtime_error("Expr parse error: " + expr);
+  }
+
+  while (!ops.empty()) {
+    if (ops.back() == '(') {
+      throw std::runtime_error("Expr parse error: " + expr);
+    }
+    output.push_back({ExprTokenKind::kOperator, 0.0, {}, ops.back()});
+    ops.pop_back();
+  }
+
+  return output;
+}
+
+double eval_compiled_expr(
+    const std::vector<ExprToken>& tokens,
+    const std::unordered_map<std::string, double>& env) {
+  std::vector<double> stack;
+  stack.reserve(tokens.size());
+
+  for (const auto& token : tokens) {
+    if (token.kind == ExprTokenKind::kNumber) {
+      stack.push_back(token.value);
+    } else if (token.kind == ExprTokenKind::kVariable) {
+      if (token.text == "pi") {
+        stack.push_back(M_PI);
+      } else if (token.text == "e") {
+        stack.push_back(M_E);
+      } else {
+        auto it = env.find(token.text);
+        if (it == env.end()) {
+          throw std::runtime_error("Unknown parameter: " + token.text);
+        }
+        stack.push_back(it->second);
+      }
+    } else {
+      if (token.op == '~') {
+        if (stack.empty()) {
+          throw std::runtime_error("Expr evaluation stack underflow");
+        }
+        stack.back() = -stack.back();
+        continue;
+      }
+
+      if (stack.size() < 2) {
+        throw std::runtime_error("Expr evaluation stack underflow");
+      }
+      const double rhs = stack.back();
+      stack.pop_back();
+      const double lhs = stack.back();
+      stack.pop_back();
+      switch (token.op) {
+        case '+':
+          stack.push_back(lhs + rhs);
+          break;
+        case '-':
+          stack.push_back(lhs - rhs);
+          break;
+        case '*':
+          stack.push_back(lhs * rhs);
+          break;
+        case '/':
+          stack.push_back(lhs / rhs);
+          break;
+        default:
+          throw std::runtime_error("Unknown expression operator");
+      }
+    }
+  }
+
+  if (stack.size() != 1) {
+    throw std::runtime_error("Expr evaluation error");
+  }
+
+  return stack.back();
+}
+
+}  // namespace
 
 /* ============================================================
  * Expression Evaluation
@@ -60,41 +254,17 @@ double RuleApplier::eval_expr(
     const std::string& expr,
     const std::unordered_map<std::string, double>& env) {
 
-  using symbol_table_t = exprtk::symbol_table<double>;
-  using expression_t   = exprtk::expression<double>;
-  using parser_t       = exprtk::parser<double>;
+  static thread_local std::unordered_map<
+      std::string,
+      std::vector<ExprToken>> expr_cache;
 
-  // Create mutable local environment
-  std::unordered_map<std::string, double> local_env = env;
+  auto it = expr_cache.find(expr);
 
-  symbol_table_t symbol_table;
-
-  // Register variables
-  for (auto& kv : local_env) {
-    symbol_table.add_variable(kv.first, kv.second);
+  if (it == expr_cache.end()) {
+    it = expr_cache.emplace(expr, compile_expr(expr)).first;
   }
 
-  // Add built-in constants such as:
-  // - pi
-  // - e
-  symbol_table.add_constants();
-
-  expression_t expression;
-  expression.register_symbol_table(symbol_table);
-
-  parser_t parser;
-
-  // Compile expression
-  if (!parser.compile(expr, expression)) {
-
-    throw std::runtime_error(
-        "Expr parse error: " +
-        expr +
-        " | " +
-        parser.error());
-  }
-
-  return expression.value();
+  return eval_compiled_expr(it->second, env);
 }
 
 /* ============================================================
@@ -432,6 +602,19 @@ RuleApplier::apply_with_decomposition_table(
     const DecompositionTable& table) {
 
   OpList result;
+  result.reserve(circuit.size());
+
+  struct TableEntry {
+    const ParamGate* target;
+    const std::vector<ParamGate>* sources;
+  };
+
+  std::unordered_map<std::string, std::vector<TableEntry>> table_index;
+  table_index.reserve(table.size());
+
+  for (const auto& item : table) {
+    table_index[item.first.name].push_back({&item.first, &item.second});
+  }
 
   // ------------------------------------------------
   // Iterate through circuit operations
@@ -441,18 +624,20 @@ RuleApplier::apply_with_decomposition_table(
 
     bool matched = false;
 
+    auto candidates_it = table_index.find(op->name);
+
+    if (candidates_it == table_index.end()) {
+      result.push_back(op->clone());
+      continue;
+    }
+
     // ------------------------------------------------
     // Search matching decomposition rule
     // ------------------------------------------------
 
-    for (const auto& [target, sources] : table) {
-
-      // ---- Gate name mismatch ----
-
-      if (target.name != op->name) {
-        continue;
-      }
-
+    for (const auto& entry : candidates_it->second) {
+      const auto& target = *entry.target;
+      const auto& sources = *entry.sources;
       // ---- Qubit count mismatch ----
 
       if (target.qubits.size() !=
@@ -475,6 +660,7 @@ RuleApplier::apply_with_decomposition_table(
 
       std::unordered_map<std::string, int>
           qubit_map;
+      qubit_map.reserve(target.qubits.size());
 
       for (size_t i = 0;
            i < target.qubits.size();
@@ -494,6 +680,7 @@ RuleApplier::apply_with_decomposition_table(
 
       std::unordered_map<std::string, double>
           env;
+      env.reserve(target.params.size() + 2);
 
       for (size_t i = 0;
            i < target.params.size();
@@ -515,6 +702,7 @@ RuleApplier::apply_with_decomposition_table(
         // ---- Qubit remapping ----
 
         std::vector<int> qubits;
+        qubits.reserve(g.qubits.size());
 
         for (const auto& q : g.qubits) {
 
@@ -530,6 +718,7 @@ RuleApplier::apply_with_decomposition_table(
         // ---- Parameter evaluation ----
 
         std::vector<double> params;
+        params.reserve(g.params.size());
 
         for (const auto& p : g.params) {
           params.push_back(eval_expr(p, env));
