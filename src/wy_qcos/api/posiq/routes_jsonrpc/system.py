@@ -23,6 +23,7 @@ from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import system_api_v1
 from wy_qcos.common import errors
+from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.task_manager import scheduler
 from .dependencies.authentication import auth
@@ -97,3 +98,4 @@ def system_info(
     _response_info = {"total_jobs_count": total_jobs_count}
     response_info = schemas.SystemInfoResponse.model_validate(_response_info)
     return response_info
+
