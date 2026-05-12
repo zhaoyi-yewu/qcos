@@ -1138,17 +1138,57 @@
 
 .. code-block:: shell
 
-   # 获取所有登录日志
-   qcos-cli list-login-logs
+    # 获取所有登录日志
+    qcos-cli list-login-logs
 
-   # 获取特定用户的登录日志
-   qcos-cli list-login-logs --user-name admin
+    # 获取特定用户的登录日志
+    qcos-cli list-login-logs --user-name admin
 
-   # 获取特定用户ID的登录日志，限制50条
-   qcos-cli list-login-logs --user-id 00000000-0000-4000-8000-000000000001 --limit 50
+    # 获取特定用户ID的登录日志，限制50条
+    qcos-cli list-login-logs --user-id 00000000-0000-4000-8000-000000000001 --limit 50
 
-   # 分页查询
-   qcos-cli list-login-logs --limit 20 --offset 40
+    # 分页查询
+    qcos-cli list-login-logs --limit 20 --offset 40
+
+登录日志清空
+***************
+
+清空用户登录日志的操作命令
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+    # 清空登录日志
+    usage: qcos-cli clear-login-logs [-h] [--user-id USER_ID] [--user-name USER_NAME] [--force]
+
+    Clear login logs.
+
+    options:
+      -h, --help            show this help message and exit
+      --user-id USER_ID     Clear logs for a specific user ID (UUID)
+      --user-name USER_NAME Clear logs for a specific user name
+      --force               Skip confirmation prompt
+
+    注意：--user-id 和 --user-name 不能同时指定，请只选择其中一个
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+    # 清空所有登录日志（需要确认）
+    qcos-cli clear-login-logs
+
+    # 清空所有登录日志（跳过确认）
+    qcos-cli clear-login-logs --force
+
+    # 清空特定用户的登录日志
+    qcos-cli clear-login-logs --user-name admin
+
+    # 清空特定用户ID的登录日志，跳过确认
+    qcos-cli clear-login-logs --user-id 00000000-0000-4000-8000-000000000001 --force
 
 角色管理命令
 ***************
