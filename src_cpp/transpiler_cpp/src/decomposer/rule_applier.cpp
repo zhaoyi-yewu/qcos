@@ -15,6 +15,8 @@
  * ----------------------------------------------------------------------
  */
 
+#include "decomposer/rule_applier.h"
+
 #include <cmath>
 #include <cctype>
 #include <cstdlib>
@@ -23,195 +25,388 @@
 #include <sstream>
 #include <unordered_set>
 
-#include "decomposer/rule_applier.h"
-
 namespace qcos {
 
 namespace {
 
+// Token types used in expression parsing
 enum class ExprTokenKind {
-  kNumber,
-  kVariable,
-  kOperator
+  kNumber,    // Numeric literal, e.g. 3.14
+  kVariable,  // Variable name, e.g. theta
+  kOperator   // Operator, e.g. + - * /
 };
 
+// Token representation for expression parsing
 struct ExprToken {
   ExprTokenKind kind;
+
+  // Used when kind == kNumber
   double value = 0.0;
+
+  // Used when kind == kVariable
   std::string text;
+
+  // Used when kind == kOperator
   char op = '\0';
 };
 
+// Return operator precedence
+//
+// Priority:
+//   ~  : unary minus
+//   * /: multiplication/division
+//   + -: addition/subtraction
 int precedence(char op) {
   if (op == '~') {
     return 3;
   }
+
   return (op == '*' || op == '/') ? 2 : 1;
 }
 
+// Push an operator into the operator stack
+//
+// Implements the Shunting-yard algorithm.
+// Operators with higher or equal precedence
+// are popped before inserting the new operator.
 void push_operator(
     std::vector<ExprToken>& output,
     std::vector<char>& ops,
     char op) {
-  while (!ops.empty() && ops.back() != '(' &&
+
+  while (!ops.empty() &&
+         ops.back() != '(' &&
          precedence(ops.back()) >= precedence(op)) {
-    output.push_back({ExprTokenKind::kOperator, 0.0, {}, ops.back()});
+
+    output.push_back({
+        ExprTokenKind::kOperator,
+        0.0,
+        {},
+        ops.back()});
+
     ops.pop_back();
   }
+
   ops.push_back(op);
 }
 
+// Compile an infix expression into Reverse Polish Notation (RPN)
+//
+// Example:
+//   Input:
+//     2*pi + theta/4
+//
+//   Output:
+//     2 pi * theta 4 / +
 std::vector<ExprToken> compile_expr(const std::string& expr) {
+
+  // Output RPN token sequence
   std::vector<ExprToken> output;
+
+  // Operator stack
   std::vector<char> ops;
+
+  // Indicates whether the parser currently expects an operand
+  //
+  // true:
+  //   expecting number / variable / '('
+  //
+  // false:
+  //   expecting operator
   bool expect_operand = true;
 
   for (size_t i = 0; i < expr.size();) {
+
     const char c = expr[i];
 
+    // Skip whitespace
     if (std::isspace(static_cast<unsigned char>(c))) {
       ++i;
       continue;
     }
 
-    if (std::isdigit(static_cast<unsigned char>(c)) || c == '.') {
+    // =========================================================
+    // Parse numeric literals
+    // =========================================================
+    if (std::isdigit(static_cast<unsigned char>(c)) ||
+        c == '.') {
+
       char* end = nullptr;
-      const double value = std::strtod(expr.c_str() + i, &end);
-      output.push_back({ExprTokenKind::kNumber, value});
+
+      // Parse floating-point number
+      const double value =
+          std::strtod(expr.c_str() + i, &end);
+
+      output.push_back({
+          ExprTokenKind::kNumber,
+          value});
+
       i = static_cast<size_t>(end - expr.c_str());
+
       expect_operand = false;
       continue;
     }
 
-    if (std::isalpha(static_cast<unsigned char>(c)) || c == '_') {
+    // =========================================================
+    // Parse variables
+    // =========================================================
+    if (std::isalpha(static_cast<unsigned char>(c)) ||
+        c == '_') {
+
       size_t j = i + 1;
+
+      // Variable names may contain:
+      //   letters
+      //   digits
+      //   underscores
       while (j < expr.size() &&
              (std::isalnum(static_cast<unsigned char>(expr[j])) ||
               expr[j] == '_')) {
         ++j;
       }
+
       output.push_back({
           ExprTokenKind::kVariable,
           0.0,
           expr.substr(i, j - i)});
+
       i = j;
+
       expect_operand = false;
       continue;
     }
 
+    // =========================================================
+    // Left parenthesis
+    // =========================================================
     if (c == '(') {
+
       ops.push_back(c);
+
       ++i;
+
       expect_operand = true;
       continue;
     }
 
+    // =========================================================
+    // Right parenthesis
+    // =========================================================
     if (c == ')') {
+
+      // Pop operators until matching '('
       while (!ops.empty() && ops.back() != '(') {
-        output.push_back({ExprTokenKind::kOperator, 0.0, {}, ops.back()});
+
+        output.push_back({
+            ExprTokenKind::kOperator,
+            0.0,
+            {},
+            ops.back()});
+
         ops.pop_back();
       }
+
+      // Missing matching '('
       if (ops.empty()) {
-        throw std::runtime_error("Expr parse error: " + expr);
+        throw std::runtime_error(
+            "Expr parse error: " + expr);
       }
+
+      // Remove '('
       ops.pop_back();
+
       ++i;
+
       expect_operand = false;
       continue;
     }
 
-    if (c == '+' || c == '-' || c == '*' || c == '/') {
+    // =========================================================
+    // Parse operators
+    // =========================================================
+    if (c == '+' || c == '-' ||
+        c == '*' || c == '/') {
+
+      // Unary operator handling
+      //
+      // Examples:
+      //   -x
+      //   +y
       if (expect_operand) {
+
+        // Unary plus is ignored
         if (c == '+') {
           ++i;
           continue;
         }
+
+        // Unary minus
         if (c == '-') {
+
+          // Use '~' internally for unary minus
           ops.push_back('~');
+
           ++i;
           continue;
-        } else {
-          throw std::runtime_error("Expr parse error: " + expr);
         }
+
+        throw std::runtime_error(
+            "Expr parse error: " + expr);
       }
+
+      // Binary operator
       push_operator(output, ops, c);
+
       ++i;
+
       expect_operand = true;
       continue;
     }
 
-    throw std::runtime_error("Expr parse error: " + expr);
+    // Invalid character
+    throw std::runtime_error(
+        "Expr parse error: " + expr);
   }
 
+  // Flush remaining operators
   while (!ops.empty()) {
+
+    // Unmatched '('
     if (ops.back() == '(') {
-      throw std::runtime_error("Expr parse error: " + expr);
+      throw std::runtime_error(
+          "Expr parse error: " + expr);
     }
-    output.push_back({ExprTokenKind::kOperator, 0.0, {}, ops.back()});
+
+    output.push_back({
+        ExprTokenKind::kOperator,
+        0.0,
+        {},
+        ops.back()});
+
     ops.pop_back();
   }
 
   return output;
 }
 
+// Evaluate a compiled RPN expression
+//
+// Input:
+//   tokens : compiled RPN tokens
+//   env    : variable environment
+//
+// Example:
+//   expr = "2*pi + theta"
+//   env = {theta: 1.5}
 double eval_compiled_expr(
     const std::vector<ExprToken>& tokens,
     const std::unordered_map<std::string, double>& env) {
+
+  // Evaluation stack
   std::vector<double> stack;
+
   stack.reserve(tokens.size());
 
   for (const auto& token : tokens) {
+
+    // =========================================================
+    // Numeric literal
+    // =========================================================
     if (token.kind == ExprTokenKind::kNumber) {
+
       stack.push_back(token.value);
-    } else if (token.kind == ExprTokenKind::kVariable) {
+    }
+
+    // =========================================================
+    // Variable lookup
+    // =========================================================
+    else if (token.kind == ExprTokenKind::kVariable) {
+
+      // Built-in constant pi
       if (token.text == "pi") {
+
         stack.push_back(M_PI);
-      } else if (token.text == "e") {
+      }
+
+      // Built-in constant e
+      else if (token.text == "e") {
+
         stack.push_back(M_E);
-      } else {
+      }
+
+      // User-defined variable
+      else {
+
         auto it = env.find(token.text);
+
         if (it == env.end()) {
-          throw std::runtime_error("Unknown parameter: " + token.text);
+          throw std::runtime_error(
+              "Unknown parameter: " + token.text);
         }
+
         stack.push_back(it->second);
       }
-    } else {
+    }
+
+    // =========================================================
+    // Operator evaluation
+    // =========================================================
+    else {
+
+      // Unary minus
       if (token.op == '~') {
+
         if (stack.empty()) {
-          throw std::runtime_error("Expr evaluation stack underflow");
+          throw std::runtime_error(
+              "Expr evaluation stack underflow");
         }
+
         stack.back() = -stack.back();
+
         continue;
       }
 
+      // Binary operators require two operands
       if (stack.size() < 2) {
-        throw std::runtime_error("Expr evaluation stack underflow");
+        throw std::runtime_error(
+            "Expr evaluation stack underflow");
       }
+
       const double rhs = stack.back();
       stack.pop_back();
+
       const double lhs = stack.back();
       stack.pop_back();
+
       switch (token.op) {
+
         case '+':
           stack.push_back(lhs + rhs);
           break;
+
         case '-':
           stack.push_back(lhs - rhs);
           break;
+
         case '*':
           stack.push_back(lhs * rhs);
           break;
+
         case '/':
           stack.push_back(lhs / rhs);
           break;
+
         default:
-          throw std::runtime_error("Unknown expression operator");
+          throw std::runtime_error(
+              "Unknown expression operator");
       }
     }
   }
 
+  // Final stack must contain exactly one value
   if (stack.size() != 1) {
-    throw std::runtime_error("Expr evaluation error");
+    throw std::runtime_error(
+        "Expr evaluation error");
   }
 
   return stack.back();

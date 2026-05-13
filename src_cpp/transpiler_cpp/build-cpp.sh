@@ -67,7 +67,7 @@ mkdir -p ${BUILD_DIR}
 
 cd ${BUILD_DIR}
 cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..
-cmake --build . -j${NPROC}
+cmake --build . --config ${BUILD_TYPE} -j${NPROC}
 
 # if in WuYueOs, copy .so and .pyi to wy_qcos/transpiler
 PARENT2_PATH="$(dirname "$(dirname "$PROJECT_ROOT")")"
@@ -77,8 +77,8 @@ if [[ "$PARENT2_DIR" == "WuYueOs" ]]; then
     TARGET_DIR="$PARENT2_PATH/src/wy_qcos/transpiler"
     mkdir -p "$TARGET_DIR"
     echo "Copying dist to $TARGET_DIR"
-    if [[ "$(uname -s)" == *"NT"* ]]; then
-        cp -r "${DIST_DIR}/Debug/." "$TARGET_DIR/"
+    if [[ -d "${DIST_DIR}/${BUILD_TYPE}" ]]; then
+        cp -r "${DIST_DIR}/${BUILD_TYPE}/." "$TARGET_DIR/"
     else
         cp -r "${DIST_DIR}/." "$TARGET_DIR/"
     fi
