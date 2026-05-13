@@ -10,17 +10,13 @@
 #         http://license.coscl.org.cn/MulanPSL2
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
 #     WITHOUT WARRANTIES OF ANY KIND,
-# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
-# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+#     EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+#     MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
 import asyncio
-import time
-from unittest.mock import (
-    AsyncMock,
-    patch,
-)
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -28,8 +24,17 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.metrics.metrics_scheduler import MetricsScheduler
 
 
+def run_async(coro):
+    """Helper to run async functions in sync tests."""
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
+
 class TestMetricsScheduler:
-    """Unit tests for MetricsScheduler."""
+    """Unit tests for MetricsScheduler (APScheduler-based)."""
 
     @pytest.fixture(autouse=True)
     def mock_logger(self):
@@ -45,102 +50,13 @@ class TestMetricsScheduler:
             scheduler._interval
             == Constant.DEFAULT_UPDATE_METRICS_INTERVAL_SECONDS
         )
-        assert scheduler._last_update_time == 0.0
-        assert isinstance(scheduler._update_lock, asyncio.Lock)
-        assert isinstance(scheduler._start_lock, asyncio.Lock)
-
-    def test_execute_update_when_not_running(self, mock_logger):
-        """Test _execute_update skips when scheduler is not running."""
-        scheduler = MetricsScheduler()
-        scheduler._running = False
-
-        async def run():
-            await scheduler._execute_update("test")
-
-        asyncio.run(run())
-        mock_logger.debug.assert_called_once()
-        assert (
-            "Skipping test update: scheduler is stopping/stopped"
-            in mock_logger.debug.call_args[0][0]
-        )
-
-    def test_execute_update_rate_limited(self, mock_logger):
-        """Test rate limiting skips update if called too soon."""
-        scheduler = MetricsScheduler()
-        scheduler._running = True
-        interval = Constant.DEFAULT_UPDATE_METRICS_INTERVAL_SECONDS
-        scheduler._interval = interval
-
-        scheduler._last_update_time = time.time() - interval - 10
-
-        async def run():
-            with patch(
-                "wy_qcos.metrics.metrics_scheduler.update_metrics_task_async",
-                new_callable=AsyncMock,
-            ) as mock_update:
-                # First update – should run
-                await scheduler._execute_update("first")
-                assert mock_update.called
-                # Second update – called immediately, should be rate limited
-                await scheduler._execute_update("second")
-                assert mock_update.call_count == 1
-
-        asyncio.run(run())
-
-        # Verify skip log
-        debug_calls = [call[0][0] for call in mock_logger.debug.call_args_list]
-        assert any("Skipping second update" in msg for msg in debug_calls)
-
-    def test_execute_update_success(self, mock_logger):
-        """Test successful metrics update."""
-        scheduler = MetricsScheduler()
-        scheduler._running = True
-        scheduler._last_update_time = 0.0
-
-        async def run():
-            with patch(
-                "wy_qcos.metrics.metrics_scheduler.update_metrics_task_async",
-                new_callable=AsyncMock,
-            ) as mock_update:
-                await scheduler._execute_update("test")
-                mock_update.assert_awaited_once()
-                assert scheduler._last_update_time > 0
-
-        asyncio.run(run())
-        assert mock_logger.debug.call_count >= 2
-
-    def test_execute_update_exception(self, mock_logger):
-        """Test exception during update is caught and logged."""
-        scheduler = MetricsScheduler()
-        scheduler._running = True
-        scheduler._last_update_time = 0.0
-
-        async def run():
-            with patch(
-                "wy_qcos.metrics.metrics_scheduler.update_metrics_task_async",
-                new_callable=AsyncMock,
-                side_effect=RuntimeError("update failed"),
-            ) as mock_update:
-                await scheduler._execute_update("test")
-                mock_update.assert_awaited_once()
-                assert scheduler._last_update_time > 0
-
-        asyncio.run(run())
-        mock_logger.error.assert_called_once()
-        assert (
-            "Error during metrics update (test): update failed"
-            in mock_logger.error.call_args[0][0]
-        )
 
     def test_start_already_running(self, mock_logger):
         """Test start returns early if scheduler already running."""
         scheduler = MetricsScheduler()
         scheduler._running = True
 
-        async def run():
-            await scheduler.start()
-
-        asyncio.run(run())
+        run_async(scheduler.start())
         mock_logger.debug.assert_called_with(
             "Metrics scheduler is already running"
         )
@@ -148,122 +64,116 @@ class TestMetricsScheduler:
 
     def test_start_stop_normal_flow(self, mock_logger):
         """Test normal start and stop flow with periodic updates."""
-        scheduler = MetricsScheduler()
-        scheduler._interval = 0.05
-
-        mock_update = AsyncMock()
-        with patch(
-            "wy_qcos.metrics.metrics_scheduler.update_metrics_task_async",
-            mock_update,
+        with (
+            patch(
+                "wy_qcos.metrics.metrics_scheduler.AsyncIOScheduler"
+            ) as mock_sched_class,
+            patch(
+                "wy_qcos.metrics.metrics_scheduler.update_metrics_task_async"
+            ) as mock_update,
         ):
+            mock_instance = MagicMock()
+            mock_sched_class.return_value = mock_instance
 
-            async def run():
-                task = asyncio.create_task(scheduler.start())
-                await asyncio.sleep(0.15)
-                await scheduler.stop()
-                await task
+            scheduler = MetricsScheduler()
+            scheduler._interval = 0.05
 
-            asyncio.run(run())
+            run_async(scheduler.start())
+            mock_instance.start.assert_called_once()
+            mock_instance.add_job.assert_called_once()
 
-        assert mock_update.await_count >= 3
-        mock_logger.info.assert_any_call(
-            f"Starting periodic metrics scheduler \
-            (interval: {scheduler._interval}s)"
+            # Simulate APScheduler triggering the _job coroutine n times
+            mock_update.side_effect = [None, None, None]
+            for _ in range(3):
+                run_async(scheduler._job())
+
+            run_async(scheduler.stop())
+            mock_instance.shutdown.assert_called_with(wait=True)
+
+        # start() calls update_metrics_task_async once for initial
+        assert mock_update.await_count >= 1
+
+        start_called = any(
+            "Starting periodic metrics scheduler" in c[0][0]
+            for c in mock_logger.info.call_args_list
         )
-        mock_logger.info.assert_any_call("Metrics scheduler stopped")
-        mock_logger.info.assert_any_call("Stopping metrics scheduler...")
-        assert scheduler._running is False
-
-    def test_start_handles_cancelled_error(self, mock_logger):
-        """Test CancelledError is caught and stops the scheduler cleanly."""
-        scheduler = MetricsScheduler()
-        scheduler._interval = 0.05
-
-        with patch(
-            "wy_qcos.metrics.metrics_scheduler.update_metrics_task_async",
-            new_callable=AsyncMock,
-        ):
-
-            async def run():
-                task = asyncio.create_task(scheduler.start())
-                await asyncio.sleep(0.1)
-                task.cancel()
-                await asyncio.sleep(0.05)
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-                assert scheduler._running is False
-
-            asyncio.run(run())
-
-        mock_logger.debug.assert_any_call("Scheduler loop cancelled")
-
-    def test_start_loop_exception_continues(self, mock_logger):
-        """Test that exception in loop does not crash, but continues."""
-        scheduler = MetricsScheduler()
-        scheduler._interval = 0.05
-
-        mock_update = AsyncMock()
-        mock_update.side_effect = [RuntimeError("init fail"), None, None]
-
-        with patch(
-            "wy_qcos.metrics.metrics_scheduler.update_metrics_task_async",
-            mock_update,
-        ):
-
-            async def run():
-                task = asyncio.create_task(scheduler.start())
-                await asyncio.sleep(0.15)
-                await scheduler.stop()
-                await task
-
-            asyncio.run(run())
-
-        mock_logger.error.assert_any_call(
-            "Error during metrics update (initial): init fail", exc_info=True
+        assert start_called
+        stop_called = any(
+            "Metrics scheduler stopped" in c[0][0]
+            for c in mock_logger.info.call_args_list
         )
-        assert mock_update.await_count >= 2
-        assert scheduler._running is False
+        assert stop_called
+
+    def test_scheduler_shutdown_error_handled(self, mock_logger):
+        """Test scheduler shutdown doesn't crash on errors."""
+        scheduler = MetricsScheduler()
+        scheduler._running = True
+
+        with patch(
+            "wy_qcos.metrics.metrics_scheduler.AsyncIOScheduler"
+        ) as mock_sched_class:
+            mock_instance = MagicMock()
+            mock_sched_class.return_value = mock_instance
+            mock_instance.shutdown.side_effect = RuntimeError("crash")
+
+            run_async(scheduler.stop())
+
+        mock_logger.warning.assert_called()
+        assert "shutdown" in mock_logger.warning.call_args[0][0].lower()
 
     def test_stop_when_not_running(self, mock_logger):
         """Test stop does nothing if scheduler already stopped."""
         scheduler = MetricsScheduler()
         scheduler._running = False
 
-        async def run():
-            await scheduler.stop()
-
-        asyncio.run(run())
+        run_async(scheduler.stop())
         mock_logger.debug.assert_called_with(
             "Metrics scheduler already stopped"
         )
 
-    def test_concurrent_execute_update_locks(self, mock_logger):
-        """Test that _execute_update respects the lock and rate limiting."""
+    def test_job_ignores_when_not_running(self, mock_logger):
+        """Test _job skips update when scheduler is stopping."""
         scheduler = MetricsScheduler()
-        scheduler._running = True
-        scheduler._interval = 0.2
+        scheduler._running = False
 
-        async def slow_update():
-            await asyncio.sleep(0.1)
-            return
-
+        mock_update = AsyncMock()
         with patch(
             "wy_qcos.metrics.metrics_scheduler.update_metrics_task_async",
-            new_callable=AsyncMock,
-            side_effect=slow_update,
+            mock_update,
         ):
+            run_async(scheduler._job())
 
-            async def run():
-                task1 = asyncio.create_task(scheduler._execute_update("first"))
-                await asyncio.sleep(0.02)
-                task2 = asyncio.create_task(
-                    scheduler._execute_update("second")
-                )
-                await asyncio.gather(task1, task2)
+        assert not mock_update.called
 
-            asyncio.run(run())
+    def test_job_success(self, mock_logger):
+        """Test _job calls update_metrics_task_async successfully."""
+        scheduler = MetricsScheduler()
+        scheduler._running = True
 
-        debug_msgs = [call[0][0] for call in mock_logger.debug.call_args_list]
-        assert any("Skipping second update" in msg for msg in debug_msgs)
+        mock_update = AsyncMock()
+        with patch(
+            "wy_qcos.metrics.metrics_scheduler.update_metrics_task_async",
+            mock_update,
+        ):
+            run_async(scheduler._job())
+
+        assert mock_update.await_count == 1
+
+    def test_job_logs_exception(self, mock_logger):
+        """Test _job logs error but does not crash on failure."""
+        scheduler = MetricsScheduler()
+        scheduler._running = True
+
+        mock_update = AsyncMock(side_effect=RuntimeError("job error"))
+        with patch(
+            "wy_qcos.metrics.metrics_scheduler.update_metrics_task_async",
+            mock_update,
+        ):
+            run_async(scheduler._job())
+
+        assert mock_update.await_count == 1
+        mock_logger.error.assert_called_once()
+        assert (
+            "Error during metrics update (periodic)"
+            in mock_logger.error.call_args[0][0]
+        )
