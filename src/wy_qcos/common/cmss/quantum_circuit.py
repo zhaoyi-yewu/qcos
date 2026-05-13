@@ -52,6 +52,11 @@ class QuantumCircuit:
         self.cregs: list[ClassicalRegister] = []
         self._global_phase: float = global_phase
         self._parameters = set()
+        # pulse scheduler 所需接口（对齐 qiskit QuantumCircuit）
+        self.instructions: list = []  # list[CircuitInstruction]
+        self.calibrations: dict = {}
+        # {gate_name: {((qubits,), params): Schedule}}
+        self.metadata: dict = {}
 
     @classmethod
     def from_ir(cls, ir: list[BaseOperation], num_qubits: int = 0):
