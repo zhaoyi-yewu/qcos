@@ -532,9 +532,7 @@ class DriverWuyueBase(DriverBase):
                 result = None
                 out_data = data[0].get("outData")
                 if out_data is not None:
-                    line_result = out_data.get("lineResult")
-                    if line_result is not None:
-                        result = out_data.get("lineResult")
+                    result = out_data
                 machine_time_info = self.construct_machine_time_info(data[0])
 
                 if task_status == self.task_status_failed:
@@ -587,14 +585,14 @@ class DriverWuyueBase(DriverBase):
             raise ValueError(
                 f"Failed to get task results [{task_id}]: {err_msg}"
             )
-        results = final_results.get("result", None)
-        if isinstance(results, str):
-            results_dict = json.loads(results)
-            results = {
-                key: value for key, value in results_dict.items() if value != 0
-            }
+        raw_results = final_results.get("result", None)
+        format_results = {
+            "line_results": raw_results.get("lineResult", {}),
+            "optimized_circuit": raw_results.get("optimization", ""),
+            "grid_info": raw_results.get("grid", ""),
+        }
         machine_time_info = final_results.get("machine_time_info", None)
-        return success, "\n".join(err_msg), results, machine_time_info
+        return success, "\n".join(err_msg), format_results, machine_time_info
 
     def get_device_info(self):
         """Get device info.

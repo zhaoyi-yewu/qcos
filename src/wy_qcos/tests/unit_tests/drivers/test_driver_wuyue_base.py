@@ -369,7 +369,11 @@ class TestDriverWuyueBase:
             "data": [
                 {
                     "taskStatus": driver_wuyue_base.task_status_completed,
-                    "outData": {"lineResult": json.dumps(test_result)},
+                    "outData": {
+                        "lineResult": test_result,
+                        "grid": "grid_info",
+                        "optimization": "optimization",
+                    },
                     "execEndTime": 12345,
                     "execStartTime": 12333,
                     "timeConsume": "2.00",
@@ -390,9 +394,11 @@ class TestDriverWuyueBase:
         assert success is True
         assert err_msg == ""
         assert len(results) == 3
-        assert results["00"] == 10
-        assert results["01"] == 11
-        assert results["10"] == 9
+        assert results["line_results"]["00"] == 10
+        assert results["line_results"]["01"] == 11
+        assert results["line_results"]["10"] == 9
+        assert results["grid_info"] == "grid_info"
+        assert results["optimized_circuit"] == "optimization"
         assert machine_time_info["time_consume"] == "2.00"
         assert machine_time_info["exec_end_time"] == 12345
         assert machine_time_info["exec_start_time"] == 12333
