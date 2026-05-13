@@ -42,7 +42,7 @@ class Constant:
     # Metrics server defaults
     DEFAULT_METRICS_SERVER_LISTEN_IP = ""
     DEFAULT_METRICS_SERVER_LISTEN_PORT = 19400
-    DEFAULT_UPDATE_METRICS_INTERVAL_SECONDS = 5
+    DEFAULT_UPDATE_METRICS_INTERVAL_SECONDS = 15
 
     # QCOS client-side server default IP and port
     DEFAULT_QCOS_SERVER_IP = "127.0.0.1"

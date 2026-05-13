@@ -246,7 +246,7 @@ class TestCheckWorkerHealth:
             healthy, msg = run_async(check_worker_health())
             assert not healthy and "no_online" in msg
 
-    def test_timeout(self):
+    def test_timeout_after_retry(self):
         mock_tm = MagicMock()
         mock_sc = MagicMock()
         mock_dm = MagicMock()
@@ -263,6 +263,34 @@ class TestCheckWorkerHealth:
             ms.device_manager = mock_dm
             healthy, msg = run_async(check_worker_health())
             assert not healthy and "timeout" in msg
+
+    @pytest.mark.slow
+    def test_retry_succeeds(self):
+        """Test that timeout on first attempt is tolerated with retry."""
+        mock_tm = MagicMock()
+        mock_sc = MagicMock()
+        mock_dm = MagicMock()
+
+        call_count = 0
+
+        def flaky_func(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise TimeoutError("Transient timeout")
+            worker = MagicMock()
+            worker.status = WorkerStatus.ONLINE
+            return [worker]
+
+        mock_sc.read_workers_for_work_pool = flaky_func
+        mock_tm._sync_client = mock_sc
+        mock_dm.get_devices.return_value = {"d1": {}}
+
+        with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
+            ms.get_task_manager.return_value = mock_tm
+            ms.device_manager = mock_dm
+            healthy, msg = run_async(check_worker_health())
+            assert healthy and msg == ""
 
     def test_error(self):
         mock_tm = MagicMock()
