@@ -81,7 +81,7 @@ class SubmitJobRequest(BaseModel):
     # Dry-run
     dry_run: bool = Field(default=False, description="Dry-run flag")
     # Creation date
-    creation_date: datetime | None = Field(
+    created_at: datetime | None = Field(
         default=None, description="Creation date"
     )
 
@@ -137,7 +137,7 @@ class SubmitJobResponse(BaseModel):
     # Callbacks
     callbacks: list | None = Field(default=None, description="Callbacks")
     # Creation date
-    creation_date: datetime = Field(description="Creation date")
+    created_at: datetime = Field(description="Creation date")
     # End date
     end_date: datetime | None = Field(default=None, description="End date")
 
@@ -195,7 +195,7 @@ class GetJobStatusResponse(BaseModel):
     # Progress
     progress: int | None = Field(default=-1, description="Progress")
     # Creation date
-    creation_date: datetime = Field(description="Creation date")
+    created_at: datetime = Field(description="Creation date")
     # End date
     end_date: datetime | None = Field(default=None, description="End date")
 
@@ -261,7 +261,7 @@ class GetJobResultsResponse(BaseModel):
         default=None, description="Results"
     )
     # Creation date
-    creation_date: datetime = Field(description="Creation date")
+    created_at: datetime = Field(description="Creation date")
     # End date
     end_date: datetime | None = Field(default=None, description="End date")
 
@@ -414,6 +414,6 @@ class UpdateJobResponse(BaseModel):
     # Callbacks
     callbacks: list | None = Field(default=None, description="Callbacks")
     # Creation date
-    creation_date: datetime = Field(description="Creation date")
+    created_at: datetime = Field(description="Creation date")
     # End date
     end_date: datetime | None = Field(default=None, description="End date")

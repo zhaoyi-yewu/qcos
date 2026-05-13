@@ -132,3 +132,21 @@ class GUID(TypeDecorator):
             else:
                 # hexstring
                 return "%.32x" % value.int
+
+
+class DictList(TypeDecorator):
+    """Dict list type."""
+
+    impl = CHAR(1024)
+
+    def process_bind_param(self, value, dialect):
+        """Process bind param."""
+        if value is None:
+            return None
+        return json.dumps(value)
+
+    def process_result_value(self, value, dialect):
+        """Process result value."""
+        if value is None:
+            return None
+        return json.loads(value)
