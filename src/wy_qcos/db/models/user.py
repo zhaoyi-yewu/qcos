@@ -159,6 +159,14 @@ class LoginLog(Base):
         index=True,
     )
 
+    # Foreign key to project (nullable)
+    project_id = Column(
+        String(36),
+        ForeignKey("projects.id"),
+        nullable=True,
+        index=True,
+    )
+
     # Login information
     user_name = Column(String(50), index=True, nullable=False)
     ip_address = Column(String(45), nullable=False)  # Support IPv6
@@ -170,6 +178,9 @@ class LoginLog(Base):
         Text, nullable=True
     )  # Reason for login failure if login_status is False
     user_agent = Column(Text, nullable=True)
+
+    # Relationships
+    project = relationship("Project", back_populates="login_logs")
 
 
 class TokenBlacklist(Base):
