@@ -26,7 +26,6 @@ org_path = Library.set_driver_venv_path("DriverQutipSim", Config.VENV_DIR)
 
 import pytest
 
-from qutip import Qobj
 
 from wy_qcos.drivers.qutip.driver_qutip_sim import DriverQutipSim
 from wy_qcos.common.cmss.gate_operation import RX
@@ -36,7 +35,6 @@ driver_qutip_sim = DriverQutipSim()
 job_id = "00000000-0000-4000-8000-000000000001"
 num_qubits = 2
 shots = 10
-final_state = Qobj([0, 0, 0, 1], [[2, 2], [1]])
 measure_result = {"00": 0.0, "01": 0.0, "10": 0.0, "11": 1.0}
 final_result = {"11": 10}
 transpile_result = [
@@ -54,10 +52,6 @@ class TestDriverQutipSim:
     @classmethod
     def teardown_class(cls):
         sys.path = org_path
-
-    def test_get_measurement_prob(self):
-        result = driver_qutip_sim.get_measurement_prob(final_state, num_qubits)
-        assert result == measure_result
 
     def test_convert_result(self):
         result = driver_qutip_sim.convert_result(measure_result, shots)

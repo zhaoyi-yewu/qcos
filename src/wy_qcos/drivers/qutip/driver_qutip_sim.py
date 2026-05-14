@@ -20,7 +20,7 @@ import time
 from loguru import logger
 from itertools import product
 
-from qutip import basis, expect, tensor
+from qutip import basis, tensor
 from qutip_qip.circuit import CircuitSimulator, QubitCircuit
 from schema import Optional
 
@@ -55,22 +55,22 @@ class DriverQutipSim(DriverBase):
             Optional("max_qubits"): int,
         }
 
-    def get_measurement_prob(self, final_states, num_qubit):
+    def get_measurement_prob(self, result, num_qubit):
         """Get measurement probability.
 
         Args:
-            final_states: final state
+            result: result
             num_qubit: qubit number
 
         Returns:
             measure results
         """
         measurement_results = {}
-        for bits in product([0, 1], repeat=num_qubit):
-            proj = tensor([basis(2, b) * basis(2, b).dag() for b in bits])
-            prob = expect(proj, final_states)
-            bit_str = "".join(map(str, bits))
-            measurement_results[bit_str] = prob
+        states = list(product([0, 1], repeat=num_qubit))
+        state_labels = ["".join(map(str, s)) for s in states]
+        probs = result.get_probabilities()
+        for state, prob in zip(state_labels, probs):
+            measurement_results[state] = prob
         return measurement_results
 
     def convert_result(self, results, shots):
@@ -249,8 +249,7 @@ class DriverQutipSim(DriverBase):
         sim = CircuitSimulator(qc, mode="state_vector_simulator")
         result = sim.run_statistics(state=initial_state)
 
-        final_dm = result.final_states[0]
-        state_probs = self.get_measurement_prob(final_dm, num_qubits)
+        state_probs = self.get_measurement_prob(result, num_qubits)
         count_probs = self.convert_result(state_probs, shots)
 
         sleep = self.driver_options.get("sleep", None)
