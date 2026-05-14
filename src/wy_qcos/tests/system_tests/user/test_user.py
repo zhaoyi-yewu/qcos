@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import logging
 import json
 import pytest
 
@@ -73,14 +72,15 @@ class TestUser:
                 StLibrary.delete_user(
                     cls.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @classmethod
     def setup_class(cls):
         """Initialize test environment."""
         cls.client = GLOBAL_CONFIGS["client"]
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
+        cls.virtual_instance_client = GLOBAL_CONFIGS["virtual_instance_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.max_login_attempts = GLOBAL_CONFIGS["max_login_attempts"]
@@ -95,6 +95,13 @@ class TestUser:
         cls.old_password = _s("OldPassword123!")
         cls.new_password = _s("NewPassword456!")
 
+        # Store original auth mode for restoration
+        cls.original_auth_mode = StLibrary.get_auth_mode(cls.admin_client)
+        StLibrary.set_auth_mode(cls.admin_client,
+                                cls.virtual_instance_client,
+                                cls.original_auth_mode,
+                                Constant.AUTH_MODE_JWT)
+
         # Initialize and clean up test resources
         cls._init_test_usernames()
         cls._cleanup_test_users()
@@ -103,6 +110,13 @@ class TestUser:
     def teardown_class(cls):
         """Clean up test environment."""
         cls._cleanup_test_users()
+        current_auth_mode = StLibrary.get_auth_mode(cls.admin_client)
+        StLibrary.set_auth_mode(
+            cls.admin_client,
+            cls.virtual_instance_client,
+            current_auth_mode,
+            cls.original_auth_mode
+        )
 
     @pytest.mark.smoke
     def test_get_current_test_user(self):
@@ -139,8 +153,8 @@ class TestUser:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_create_and_delete_user(self):
@@ -173,8 +187,8 @@ class TestUser:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_get_all_users(self):
@@ -227,8 +241,8 @@ class TestUser:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_user_enable_disable_workflow(self):
@@ -262,8 +276,8 @@ class TestUser:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_user_account_properties(self):
@@ -298,8 +312,8 @@ class TestUser:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_user_creation_and_login_flow(self):
@@ -342,8 +356,8 @@ class TestUser:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_user_role_assignment(self):
@@ -365,9 +379,9 @@ class TestUser:
             # Try to assign role if available
             try:
                 StLibrary.assign_role_to_user(self.client, username, "user")
-            except Exception:
+            except Exception:  # noqa: S110
                 # Role may not exist
-                logging.warning("Exception during cleanup")
+                pass
 
             # Verify user
             user = StLibrary.get_user(
@@ -381,8 +395,8 @@ class TestUser:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_user_description_field(self):
@@ -411,8 +425,8 @@ class TestUser:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_user_is_enabled_field(self):
@@ -452,8 +466,8 @@ class TestUser:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_user_is_locked_field(self):
@@ -492,8 +506,8 @@ class TestUser:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_update_user_is_enabled_field(self):
@@ -546,8 +560,8 @@ class TestUser:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_update_user_is_locked_field(self):
@@ -599,8 +613,8 @@ class TestUser:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_user_failed_login_attempts_field(self):
@@ -636,8 +650,8 @@ class TestUser:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_user_last_login_field(self):
@@ -677,8 +691,8 @@ class TestUser:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_user_password_expiry_days_field(self):
@@ -717,5 +731,5 @@ class TestUser:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
