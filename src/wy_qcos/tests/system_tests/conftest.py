@@ -66,13 +66,17 @@ def global_configs(request):
     GLOBAL_CONFIGS["samples_dir"] = f"{top_dir}/samples"
     GLOBAL_CONFIGS["etc_dir"] = f"{top_dir}/etc"
     GLOBAL_CONFIGS["env"] = env
-    api_server = config.get("ST_API_SERVER", {})
-    api_host = api_server.get("ST_API_SERVER_IP", "127.0.0.1")
-    api_port = api_server.get(
+    api_server_config = config.get("ST_API_SERVER", {})
+    api_host = api_server_config.get("ST_API_SERVER_IP", "127.0.0.1")
+    api_port = api_server_config.get(
         "ST_API_SERVER_PORT", Config.API_SERVER_LISTEN_PORT
     )
     GLOBAL_CONFIGS["timeout"] = 150
+    GLOBAL_CONFIGS["api_host"] = api_host
+    GLOBAL_CONFIGS["api_port"] = api_port
     GLOBAL_CONFIGS["interval"] = 5
+    virt_config = config.get("VIRT", {})
+    GLOBAL_CONFIGS["password_salt"] = virt_config.get("PASSWORD_SALT", "")
     GLOBAL_CONFIGS["max_login_attempts"] = Config.MAX_LOGIN_ATTEMPTS
     _admin_password = config["USERS"]["ADMIN_PASSWORD"]
     if Constant.ENCRYPTION_PREFIX in _admin_password:
@@ -95,8 +99,27 @@ def global_configs(request):
     )
     token = login_result["access_token"]
     admin_client.set_token(token)
+
+    # Authenticate with virtual_instance credentials at the beginning
+    # Create admin virtual instance ID with
+    # device_names=["all"] and instance_id="all"
+    virtual_instance_client = Client(api_server_ip=api_host, api_server_port=api_port)
+    admin_device_names = ["all"]
+    admin_instance_id = "all"
+    success, err_msg, admin_vi_id = Library.encrypt_virtual_instance_id(
+        admin_device_names,
+        admin_instance_id,
+        salt=Config.PASSWORD_SALT,
+        encode=True,
+    )
+    if success:
+        virtual_instance_client.request_headers = {
+            "x-qcos-virtual-instance-id": admin_vi_id,
+        }
+
     GLOBAL_CONFIGS["client"] = client
     GLOBAL_CONFIGS["admin_client"] = admin_client
+    GLOBAL_CONFIGS["virtual_instance_client"] = virtual_instance_client
 
     # load configs
     load_configs()
