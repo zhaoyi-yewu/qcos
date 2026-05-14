@@ -450,6 +450,59 @@
    # 获取系统信息
    qcos-cli system-info
 
+
+系统监控命令
+-------------
+
+系统监控指标相关查询命令，包括系统健康状态、API访问统计和作业统计
+
+*命令行参数*
+***************
+
+.. code-block:: shell
+
+    # 获取系统健康状态
+    usage: qcos-cli get-system-health [-h]
+
+    Get system health status.
+
+    options:
+      -h, --help  show this help message and exit
+
+.. code-block:: shell
+
+    # 获取API访问统计
+    usage: qcos-cli get-api-stats [-h]
+
+    Get API access statistics.
+
+    options:
+      -h, --help  show this help message and exit
+
+.. code-block:: shell
+
+    # 获取作业统计
+    usage: qcos-cli get-job-stats [-h]
+
+    Get job statistics.
+
+    options:
+      -h, --help  show this help message and exit
+
+*典型场景示例*
+***************
+
+.. code-block:: shell
+
+    # 获取系统健康状态，显示各组件的运行状态
+    qcos-cli get-system-health
+
+    # 获取API访问统计，包括总请求数、最近一小时和最近一天的请求数
+    qcos-cli get-api-stats
+
+    # 获取作业统计，包括总任务数、已完成、失败、运行中等各状态的任务数量
+    qcos-cli get-job-stats
+
 驱动命令
 -------------
 
