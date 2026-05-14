@@ -80,10 +80,12 @@ class TestSecurity:
 
         # Store original auth mode for restoration
         cls.original_auth_mode = StLibrary.get_auth_mode(cls.admin_client)
-        StLibrary.set_auth_mode(cls.admin_client,
-                                cls.virtual_instance_client,
-                                cls.original_auth_mode,
-                                Constant.AUTH_MODE_JWT)
+        StLibrary.set_auth_mode(
+            cls.admin_client,
+            cls.virtual_instance_client,
+            cls.original_auth_mode,
+            Constant.AUTH_MODE_JWT,
+        )
 
         # Clean up any existing test resources before starting tests
         cls._cleanup_test_users()
@@ -96,7 +98,7 @@ class TestSecurity:
             cls.admin_client,
             cls.virtual_instance_client,
             current_auth_mode,
-            cls.original_auth_mode
+            cls.original_auth_mode,
         )
         cls._cleanup_test_users()
 

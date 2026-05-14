@@ -115,9 +115,7 @@ def get_user_mgmt(
         "max_login_attempts": Config.MAX_LOGIN_ATTEMPTS,
         "lockout_duration_minutes": Config.LOCKOUT_DURATION_MINUTES,
     }
-    response_info = schemas.GetUserMgmtResponse.model_validate(
-        _response_info
-    )
+    response_info = schemas.GetUserMgmtResponse.model_validate(_response_info)
     return response_info
 
 
@@ -151,7 +149,7 @@ def set_user_mgmt(
             (
                 False,
                 f"Invalid auth_mode '{auth_mode}'. "
-                f"Must be one of: {', '.join(valid_modes)}"
+                f"Must be one of: {', '.join(valid_modes)}",
             ),
         )
 

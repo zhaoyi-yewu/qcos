@@ -56,7 +56,6 @@ from wy_qcos.transpiler.common.wirecut.cut_wire import (
 )
 
 
-
 class AggregationInput(RunInput):
     is_parent: bool
     sub_jobs: dict | None = None

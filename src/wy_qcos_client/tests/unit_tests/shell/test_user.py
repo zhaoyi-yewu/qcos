@@ -958,6 +958,7 @@ class TestSetUserMgmt:
 
     def test_get_parser(self):
         from wy_qcos_client.shell import SetUserMgmt
+
         cmd = SetUserMgmt(shell, None)
         parser = cmd.get_parser("set-user-mgmt")
         assert parser is not None
@@ -977,6 +978,7 @@ class TestSetUserMgmt:
             mock_response["result"],
         )
         from wy_qcos_client.shell import SetUserMgmt
+
         cmd = SetUserMgmt(shell, None)
         cmd.app = shell
         cmd.app.stdout = Mock()
@@ -990,7 +992,10 @@ class TestSetUserMgmt:
         """Test SetUserMgmt with virtual_instance auth mode."""
         mock_response = {
             "jsonrpc": "2.0",
-            "result": {"auth_mode": "virtual_instance", "message": "Auth mode updated"},
+            "result": {
+                "auth_mode": "virtual_instance",
+                "message": "Auth mode updated",
+            },
             "id": 0,
         }
         mock_set_user_mgmt.return_value = (
@@ -1000,6 +1005,7 @@ class TestSetUserMgmt:
             mock_response["result"],
         )
         from wy_qcos_client.shell import SetUserMgmt
+
         cmd = SetUserMgmt(shell, None)
         cmd.app = shell
         cmd.app.stdout = Mock()
@@ -1023,6 +1029,7 @@ class TestSetUserMgmt:
             mock_response["result"],
         )
         from wy_qcos_client.shell import SetUserMgmt
+
         cmd = SetUserMgmt(shell, None)
         cmd.app = shell
         cmd.app.stdout = Mock()

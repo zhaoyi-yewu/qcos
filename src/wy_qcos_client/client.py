@@ -452,7 +452,6 @@ class Client:
         )
         return status_code, reason, text, result
 
-
     # [Job]
     def submit_job(
         self,
