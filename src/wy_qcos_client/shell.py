@@ -2545,16 +2545,16 @@ class GetSystemHealth(Lister):
             resource, "get_system_health", status_code, reason, text
         )
 
-        if "components" not in json_results:
+        if "component_status" not in json_results:
             raise errors.GenericException(
-                "Invalid response format: 'components' field is missing"
+                "Invalid response format: 'component_status' field is missing"
             )
 
         header_list = ["SYSTEM", "STATUS"]
 
         stats_list = [
             {header_list[0]: key, header_list[1]: value}
-            for key, value in json_results["components"].items()
+            for key, value in json_results["component_status"].items()
         ]
 
         table_values = CommandHelper.get_table_list_data(
@@ -2562,7 +2562,9 @@ class GetSystemHealth(Lister):
         )
 
         overall_status = (
-            "online" if json_results.get("healthy", False) else "offline"
+            "online"
+            if json_results.get("system_healthy", False)
+            else "offline"
         )
         print(f"\nOverall System Status: {overall_status}")
         print(
@@ -2586,7 +2588,7 @@ class GetApiStats(Lister):
         resource = self.group
 
         status_code, reason, text, result = self.app.client.get_api_stats()
-        print(f"API access statistics:{text}")
+
         json_results = CommandHelper.check_results(
             resource, "get_api_stats", status_code, reason, text
         )

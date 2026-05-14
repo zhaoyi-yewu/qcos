@@ -31,6 +31,8 @@ from prometheus_client import (
     generate_latest,
 )
 
+from wy_qcos.common.constant import Constant
+
 logger = logging.getLogger(__name__)
 
 
@@ -87,26 +89,13 @@ class JobMetrics:
             )
 
     def __init__(self) -> None:
-        #  Prometheus metrics for job metrics
-        self.job_total = Gauge("jobs_total", "Total number of jobs")
-        self.job_completed_total = Gauge(
-            "jobs_completed_total", "Total number of completed jobs"
+        # Prometheus gauge with status label for job metrics
+
+        self.job_gauge = Gauge(
+            Constant.JOB_METRICS_FIELD_TOTAL,
+            "Total number of jobs by status",
+            ["status"],
         )
-        self.job_failed_total = Gauge(
-            "jobs_failed_total", "Total number of failed jobs"
-        )
-        self.job_running = Gauge(
-            "jobs_running", "Number of currently running jobs"
-        )
-        self.job_queued = Gauge("jobs_queued", "Number of queued jobs")
-        self.job_cancelling = Gauge(
-            "jobs_cancelling", "Number of cancelling jobs"
-        )
-        self.job_cancelled = Gauge(
-            "jobs_cancelled", "Number of cancelled jobs"
-        )
-        self.job_deleted = Gauge("jobs_deleted", "Number of deleted jobs")
-        self.job_unknown = Gauge("jobs_unknown", "Number of unknown jobs")
 
         # Lock to ensure atomicity of update operations
         self._lock = threading.Lock()
@@ -115,19 +104,34 @@ class JobMetrics:
         self._current_values = self.JobMetricsData()
 
     def update(self, data: JobMetricsData):
-        """Update Prometheus metrics."""
+        """Update Prometheus metrics by status."""
         with self._lock:
             self._current_values = data
 
-            self.job_total.set(data.total)
-            self.job_completed_total.set(data.completed)
-            self.job_failed_total.set(data.failed)
-            self.job_running.set(data.running)
-            self.job_queued.set(data.queued)
-            self.job_cancelling.set(data.cancelling)
-            self.job_cancelled.set(data.cancelled)
-            self.job_deleted.set(data.deleted)
-            self.job_unknown.set(data.unknown)
+            self.job_gauge.labels(
+                status=Constant.JOB_METRICS_FIELD_COMPLETED
+            ).set(data.completed)
+            self.job_gauge.labels(
+                status=Constant.JOB_METRICS_FIELD_FAILED
+            ).set(data.failed)
+            self.job_gauge.labels(
+                status=Constant.JOB_METRICS_FIELD_RUNNING
+            ).set(data.running)
+            self.job_gauge.labels(
+                status=Constant.JOB_METRICS_FIELD_QUEUED
+            ).set(data.queued)
+            self.job_gauge.labels(
+                status=Constant.JOB_METRICS_FIELD_CANCELLING
+            ).set(data.cancelling)
+            self.job_gauge.labels(
+                status=Constant.JOB_METRICS_FIELD_CANCELLED
+            ).set(data.cancelled)
+            self.job_gauge.labels(
+                status=Constant.JOB_METRICS_FIELD_DELETED
+            ).set(data.deleted)
+            self.job_gauge.labels(
+                status=Constant.JOB_METRICS_FIELD_UNKNOWN
+            ).set(data.unknown)
 
         logger.debug(f"Job metrics updated: {data}")
 
@@ -190,15 +194,16 @@ class SystemHealthMetrics:
             )
 
     def __init__(self) -> None:
-        self.system_online = Gauge(
-            "system_online", "System online status (1=online, 0=offline)"
+        self.system_healthy = Gauge(
+            Constant.SYSTEM_HEALTHY,
+            "System healthy status (1=online, 0=offline)",
         )
         self.heartbeat_timestamp_gauge = Gauge(
-            "system_heartbeat_timestamp",
+            Constant.HEARTBEAT_TIMESTAMP,
             "System heartbeat timestamp (Unix timestamp)",
         )
         self.component_health_gauge = Gauge(
-            "component_health_status",
+            Constant.COMPONENT_STATUS,
             "Component health status (1=healthy, 0=unhealthy)",
             ["component"],
         )
@@ -216,22 +221,22 @@ class SystemHealthMetrics:
         """
         with self._lock:
             self._current_values = data
-            self.system_online.set(1 if data.overall_healthy else 0)
+            self.system_healthy.set(1 if data.overall_healthy else 0)
             self.heartbeat_timestamp_gauge.set(data.heartbeat_timestamp)
 
             # Update component metrics
-            self.component_health_gauge.labels(component="worker").set(
-                1 if data.worker_healthy else 0
-            )
-            self.component_health_gauge.labels(component="prefect").set(
-                1 if data.prefect_healthy else 0
-            )
-            self.component_health_gauge.labels(component="fastapi").set(
-                1 if data.fastapi_healthy else 0
-            )
-            self.component_health_gauge.labels(component="redis").set(
-                1 if data.redis_healthy else 0
-            )
+            self.component_health_gauge.labels(
+                component=Constant.COMPONENT_NAME_WORKER
+            ).set(1 if data.worker_healthy else 0)
+            self.component_health_gauge.labels(
+                component=Constant.COMPONENT_NAME_PREFECT
+            ).set(1 if data.prefect_healthy else 0)
+            self.component_health_gauge.labels(
+                component=Constant.COMPONENT_NAME_FASTAPI
+            ).set(1 if data.fastapi_healthy else 0)
+            self.component_health_gauge.labels(
+                component=Constant.COMPONENT_NAME_REDIS
+            ).set(1 if data.redis_healthy else 0)
 
         logger.debug(f"System health metrics updated: {data}")
 
@@ -278,16 +283,16 @@ class APIMetrics:
 
     def __init__(self) -> None:
         self.api_requests_total = Counter(
-            "api_requests_total",
+            Constant.API_METRICS_REQUESTS_TOTAL,
             "Total API requests",
             ["module", "method", "endpoint", "status_code"],
         )
         self.api_requests_in_progress = Gauge(
-            "api_requests_in_progress",
+            Constant.API_METRICS_REQUESTS_IN_PROGRESS,
             "API requests currently being processed",
         )
         self.api_request_duration = Histogram(
-            "api_request_duration_seconds",
+            Constant.API_METRICS_REQUESTS_DURATION,
             "API request duration in seconds",
             ["module", "method", "endpoint"],
             buckets=(
