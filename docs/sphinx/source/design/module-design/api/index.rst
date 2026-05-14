@@ -19,4 +19,5 @@
    device
    auth
    user
+   metrics
    error
