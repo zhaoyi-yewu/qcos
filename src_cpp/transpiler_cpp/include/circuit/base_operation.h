@@ -54,7 +54,14 @@ class BaseOperation {
       std::string name_, std::vector<int> targets_,
       std::vector<double> arg_value_ = {},
       OperationType op_type_ = OperationType::SINGLE_QUBIT_OPERATION);
+  const std::vector<int>& getTargets() const { return targets; }
+  const std::vector<double>& getArgValue() const { return arg_value; }
 
+  void setTargets(const std::vector<int>& targets_) { targets = targets_; }
+
+  void setArgValue(const std::vector<double>& arg_value_) {
+    arg_value = arg_value_;
+  }
   std::string targets_to_string() const;
   std::string arg_value_to_string() const;
   std::string to_openqasm(const std::string& qubit_prefix = "q") const;

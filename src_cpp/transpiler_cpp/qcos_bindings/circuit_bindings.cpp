@@ -32,8 +32,10 @@ void bind_circuits(py::module_& m) {
            py::arg("operation_type"))
 
       .def_readonly("name", &BaseOperation::name)
-      .def_readonly("targets", &BaseOperation::targets)
-      .def_readonly("arg_value", &BaseOperation::arg_value)
+      .def_property("targets", &BaseOperation::getTargets,
+                    &BaseOperation::setTargets)
+      .def_property("arg_value", &BaseOperation::getArgValue,
+                    &BaseOperation::setArgValue)
       .def_readonly("operation_type", &BaseOperation::operation_type)
       .def("targets_to_string", &BaseOperation::targets_to_string)
       .def("arg_value_to_string", &BaseOperation::arg_value_to_string)
@@ -41,6 +43,11 @@ void bind_circuits(py::module_& m) {
            [](BaseOperation& self) {
              return self.name + "(targets=" + self.targets_to_string() +
                     ", arg_value=" + self.arg_value_to_string() + ")";
+           })
+      .def("__deepcopy__",
+           [](const BaseOperation& self, py::dict) {
+             return BaseOperation(self.name, self.targets, self.arg_value,
+                                  self.operation_type);
            })
       .def("to_openqasm",
            py::overload_cast<const std::string&>(&BaseOperation::to_openqasm,
@@ -53,6 +60,5 @@ void bind_circuits(py::module_& m) {
                     OperationType, bool>(),
            py::arg("name"), py::arg("targets"), py::arg("arg_value"),
            py::arg("operation_type"), py::arg("hermitian") = false)
-
       .def_readonly("hermitian", &GateOperation::hermitian);
 }

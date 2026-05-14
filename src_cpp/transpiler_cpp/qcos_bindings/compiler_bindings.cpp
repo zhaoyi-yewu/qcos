@@ -158,7 +158,7 @@ void bind_parser(py::module_& m) {
             Example:
                 >>> import high_performance
                 >>> qasm = "OPENQASM 2.0; qreg q[2]; h q[0]; cx q[0], q[1];"
-                >>> ops = high_performance.convert_qasm_string_to_qcos_operations(qasm)
+                >>> ops, num_qubits = high_performance.convert_qasm_string_to_qcos_operations(qasm)
                 >>> print(f"解析到 {len(ops)} 个操作")
         )",
         py::arg("qasm_str"));

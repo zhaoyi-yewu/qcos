@@ -54,10 +54,11 @@ std::vector<std::unique_ptr<Operation>> convert_qasm_string_to_operations(
   auto qc = QuantumComputation::fromQASM(qasm_str);
   return std::move(qc.getOps());
 }
-std::vector<std::unique_ptr<qcos::BaseOperation>>
+std::pair<std::vector<std::unique_ptr<qcos::BaseOperation>>, int>
 convert_qasm_string_to_qcos_operations(std::string qasm_str) {
   auto qc = QuantumComputation::fromQASM(qasm_str);
   const std::vector<std::unique_ptr<Operation>>& ops = qc.getOps();
+  int qubits_num = static_cast<int>(qc.getNqubits());
   std::vector<std::unique_ptr<qcos::BaseOperation>> operations;
   operations.reserve(ops.size());
   for (const auto& op : ops) {
@@ -143,11 +144,10 @@ convert_qasm_string_to_qcos_operations(std::string qasm_str) {
         operation =
             create_gate(Constant::TWO_QUBIT_GATE_RZX, all_qubits, arg_values);
         break;
-      // case otTOFFOLI:
-      //   operation =
-      //       create_gate(Constant::TWO_QUBIT_GATE_RYY, all_qubits,
-      //       arg_values);
-      //   break;
+      case otTOFFOLI:
+        operation = create_gate(Constant::THREE_QUBIT_GATE_CCX, all_qubits,
+                                arg_values);
+        break;
       case otU2:
         operation = create_gate(Constant::SINGLE_QUBIT_GATE_U2, all_qubits,
                                 arg_values);
@@ -294,5 +294,5 @@ convert_qasm_string_to_qcos_operations(std::string qasm_str) {
                 << static_cast<int>(op->type) << std::endl;
     }
   }
-  return operations;
+  return {std::move(operations), qubits_num};
 }
