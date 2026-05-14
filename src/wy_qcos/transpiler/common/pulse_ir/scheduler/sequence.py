@@ -65,7 +65,7 @@ def sequence(
     # find the measurement start time (assume measurement once)
     def _meas_start_time():
         _qubit_time_available = defaultdict(int)
-        for instruction in scheduled_circuit.data:
+        for instruction in scheduled_circuit.instructions:
             if isinstance(instruction.operation, Measure):
                 return _qubit_time_available[instruction.qubits[0]]
             for q in instruction.qubits:

@@ -152,7 +152,7 @@ def lower_gates(
     qubit_indices = {bit: idx for idx, bit in enumerate(circuit.qubits)}
     clbit_indices = {bit: idx for idx, bit in enumerate(circuit.clbits)}
 
-    for instruction in circuit.data:
+    for instruction in circuit.instructions:
         inst_qubits = [qubit_indices[qubit] for qubit in instruction.qubits]
 
         if any(q in qubit_mem_slots for q in inst_qubits):

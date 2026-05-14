@@ -40,7 +40,7 @@ class SchedulableCircuitLike(Protocol):
     """Circuit interface required by pulse scheduling."""
 
     name: str | None
-    data: list[CircuitInstructionLike]
+    instructions: list[CircuitInstructionLike]
     qubits: list[Any]
     clbits: list[Any]
     calibrations: dict[str, Any]
