@@ -116,6 +116,28 @@ DEVICE_LIST列出的设备名一致。 文件中section必须对应相关设备�
 
 .. code-block:: shell
 
+   # 创建Prefect Server数据库和账户（只对后端数据库为postgres数据库, 仅首次运行或需要重置数据库时执行）
+   psql -U postgres -c "CREATE USER prefect WITH PASSWORD '{PREFECT数据库账户密码}' INHERIT;"
+   psql -U postgres -c "CREATE DATABASE prefect WITH OWNER prefect;"
+   psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE prefect TO $prefect;"
+   psql -U postgres -d prefect -c "ALTER SCHEMA public OWNER TO prefect;"
+   psql -U postgres -d prefect -c "GRANT ALL PRIVILEGES ON SCHEMA public TO prefect;"
+   psql -U postgres -d prefect -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO prefect;"
+   psql -U postgres -d prefect -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO prefect;"
+   psql -U postgres -d prefect -c "GRANT ALL ON ALL TABLES IN SCHEMA public TO prefect;"
+   psql -U postgres -d prefect -c "GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO prefect;"
+
+   # 初始化QCOS数据库和账户（只对后端数据库为postgres数据库, 仅首次运行或需要重置数据库时执行）
+   psql -U postgres -c "CREATE USER qcos WITH PASSWORD '{QCOS数据库账户密码}' INHERIT;"
+   psql -U postgres -c "CREATE DATABASE qcos WITH OWNER qcos;"
+   psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE qcos TO qcos;"
+   psql -U postgres -d qcos -c "ALTER SCHEMA public OWNER TO qcos;"
+   psql -U postgres -d qcos -c "GRANT ALL PRIVILEGES ON SCHEMA public TO qcos;"
+   psql -U postgres -d qcos -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO qcos;"
+   psql -U postgres -d qcos -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO qcos;"
+   psql -U postgres -d qcos -c "GRANT ALL ON ALL TABLES IN SCHEMA public TO qcos;"
+   psql -U postgres -d qcos -c "GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO qcos;"
+
    # 启动Prefect Server服务
    prefect server start
 
@@ -125,7 +147,7 @@ DEVICE_LIST列出的设备名一致。 文件中section必须对应相关设备�
    # 启动postgresql服务
    systemctl start postgresql 或者 pg_ctl -D /var/lib/pgsql/data start
 
-   # 运行init-db.sh脚本初始化数据库
+   # 运行init-db.sh脚本初始化、迁移和升级数据库表结构
    cd build-scripts
    ./init-db.sh
 
