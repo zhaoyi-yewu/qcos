@@ -16,15 +16,51 @@
 # ----------------------------------------------------------------------
 
 import json
+import logging
 import time
 
 import wy_qcos.api.posiq.routes_jsonrpc.errors as jsonrpc_errors
 from wy_qcos.common.constant import Constant, HttpCode
 from wy_qcos.common.library import Library
 
+logger = logging.getLogger(__name__)
+
 
 class StLibrary:
     """ST Library."""
+
+    @staticmethod
+    def is_response_success(status_code, text):
+        """Check if call_json_rpc response is successful.
+
+        A successful response must satisfy:
+        1. status_code == 200
+        2. No error field in the JSON response
+
+        Args:
+            status_code: HTTP status code
+            text: Response text containing JSON
+
+        Returns:
+            Tuple of (success: bool, error_message: str)
+        """
+        if status_code != 200:
+            return False, f"HTTP status code is {status_code}, not 200"
+
+        try:
+            response_dict = json.loads(text)
+            if "error" in response_dict and response_dict["error"]:
+                error_dict = response_dict["error"]
+                error_msg = error_dict.get("message", "Unknown error")
+                error_details = (
+                    error_dict.get("data", {}).get("details", "")
+                )
+                if error_details:
+                    error_msg = f"{error_msg}: {error_details}"
+                return False, error_msg
+            return True, ""
+        except json.JSONDecodeError as e:
+            return False, f"Failed to parse JSON: {str(e)}"
 
     @staticmethod
     def submit_job(client, job_info):
@@ -472,3 +508,73 @@ class StLibrary:
         assert error_code == 0, msg
         logs = response.get("result", response)
         return logs
+
+    @staticmethod
+    def clear_login_logs(client, user_id=None, user_name=None):
+        """Clear login logs (all or for a specific user)."""
+        status_code, reason, text, result = client.clear_login_logs(
+            user_id=user_id, user_name=user_name
+        )
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Clear login logs failed: {status_code} {reason} {text}"
+        )
+        response = json.loads(text) if text else {}
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        msg = f"Clear login logs error: {error_code}"
+        assert error_code == 0, msg
+        result = response.get("result", response)
+        return result
+
+    @staticmethod
+    def get_auth_mode(admin_client):
+        """Get current authentication mode.
+
+        Args:
+            admin_client: Admin client for API calls
+
+        Returns:
+            The current auth mode
+        """
+        current_auth_mode = Constant.AUTH_MODE_NO
+        try:
+            status_code, _, text, _ = admin_client.get_user_mgmt()
+            if status_code == 200:
+                response_dict = json.loads(text)
+                result_dict = response_dict.get("result", {})
+                error_dict = response_dict.get("error", {})
+                error_details = error_dict.get("data", {}).get("details", "")
+                if error_dict and "Unauthorized access" in error_details:
+                    current_auth_mode = Constant.AUTH_MODE_VIRTUAL_INSTANCE
+                else:
+                    current_auth_mode = result_dict.get(
+                        "auth_mode", Constant.AUTH_MODE_NO
+                    )
+        except Exception:  # noqa: S110
+            pass
+        logger.info("Current auth_mode: {}".format(current_auth_mode))
+        return current_auth_mode
+
+    @staticmethod
+    def set_auth_mode(admin_client, virtual_instance_client,
+                      current_auth_mode, set_auth_mode):
+        """Set auth mode.
+
+        Args:
+            admin_client: Admin client for API calls
+            virtual_instance_client: Virtual instance client for API calls
+            current_auth_mode: current auth mode
+            set_auth_mode: auth mode to set
+        """
+        logger.info(f"Set to auth_mode: {set_auth_mode}")
+        try:
+            if current_auth_mode == Constant.AUTH_MODE_VIRTUAL_INSTANCE:
+                virtual_instance_client.set_user_mgmt(
+                    set_auth_mode
+                )
+            else:
+                admin_client.set_user_mgmt(
+                    set_auth_mode
+                )
+        except Exception:  # noqa: S110
+            pass
