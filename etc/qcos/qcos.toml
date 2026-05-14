@@ -6,16 +6,10 @@ DEBUG = false
 MAX_JOBS = 10000
 # [GLOBAL CONFIG] max queued+running jobs
 MAX_QUEUED_JOBS = 1000
-# [GLOBAL CONFIG] authentication mode: "no" (default), "password", "virtual_instance"
+# [GLOBAL CONFIG] authentication mode: "no" (default), "jwt", "virtual_instance"
 AUTH_MODE = "no"
 # [GLOBAL CONFIG] default venv base dir
 # VENV_DIR = "/var/lib/qcos/venv"
-
-[VIRT]
-# [GLOBAL CONFIG] max jobs for virtual instance
-MAX_JOBS_PER_VIRTUAL_INSTANCE = 10
-# salt for password/encryption
-PASSWORD_SALT = "123456"
 
 [API_SERVER]
 # API workers
@@ -75,6 +69,12 @@ JWT_AUTH_SECRET_KEY = "47pW_6k8A4iU1Z8-r8G2j4_xN9M5V3L7Q9p2X1Y4Z0A"
 JWT_AUTH_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+[VIRT]
+# [GLOBAL CONFIG] max jobs for virtual instance
+MAX_JOBS_PER_VIRTUAL_INSTANCE = 10
+# salt for password/encryption
+PASSWORD_SALT = "123456"
 
 [LOG]
 # api log file
