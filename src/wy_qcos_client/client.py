@@ -84,6 +84,8 @@ class Client:
 
         # JWT token storage
         self.access_token = None
+        # Custom request headers for virtual instance auth
+        self.request_headers = None
 
     @staticmethod
     def print_api_response(status_code, reason, text, result=None):
@@ -163,6 +165,10 @@ class Client:
         )
         if qcos_virtual_instance_id:
             headers["x-qcos-virtual-instance-id"] = qcos_virtual_instance_id
+
+        # Apply custom request headers if set
+        if self.request_headers:
+            headers.update(self.request_headers)
 
         # call http api
         jsonrpc_data = request(method_name, params={"body": data})
@@ -445,6 +451,7 @@ class Client:
             self.system_url, method_name, data=None
         )
         return status_code, reason, text, result
+
 
     # [Job]
     def submit_job(
@@ -763,10 +770,34 @@ class Client:
                 f"Role '{role_identifier}' not found"
             )
 
-    def get_user_mgmt_status(self):
-        """Get user management status."""
+    def get_user_mgmt(self):
+        """Get user management settings.
+
+        Returns:
+            status_code, reason, text, result
+        """
+        method_name = "get_user_mgmt"
         data = {}
-        return self.call_json_rpc(self.user_url, "get_user_mgmt_status", data)
+        status_code, reason, text, result = self.call_json_rpc(
+            self.user_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def set_user_mgmt(self, auth_mode):
+        """Set user management authentication mode.
+
+        Args:
+            auth_mode: Authentication mode ('no', 'jwt', or 'virtual_instance')
+
+        Returns:
+            status_code, reason, text, result
+        """
+        method_name = "set_user_mgmt"
+        data = {"auth_mode": auth_mode}
+        status_code, reason, text, result = self.call_json_rpc(
+            self.user_url, method_name, data
+        )
+        return status_code, reason, text, result
 
     def create_user(
         self,
@@ -942,6 +973,23 @@ class Client:
         if user_name:
             data["user_name"] = user_name
         return self.call_json_rpc(self.user_url, "get_login_logs", data)
+
+    def clear_login_logs(self, user_id=None, user_name=None):
+        """Clear login logs (all or for a specific user).
+
+        Args:
+            user_id: User ID (UUID) to clear logs for (optional)
+            user_name: User name to clear logs for (optional)
+
+        Returns:
+            Number of logs cleared
+        """
+        data = {}
+        if user_id:
+            data["user_id"] = user_id
+        if user_name:
+            data["user_name"] = user_name
+        return self.call_json_rpc(self.user_url, "clear_login_logs", data)
 
     # [Auth]
     def login(self, username, password):
