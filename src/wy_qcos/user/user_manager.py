@@ -988,15 +988,24 @@ class UserManager:
             failure_reason: reason for failure if not successful
             user_agent: user agent
         """
-        # Create log entry
+        # Get project_id from user if exists
+        project_id = None
+        if success:
+            # Only query user for successful logins to get project_id
+            success_query, _, user = self.users_repo.get_user_by_username(
+                user_name
+            )
+            if success_query and user:
+                project_id = user.project_id
 
+        # Create log entry
         log_entry = LoginLog(
             user_name=user_name,
             ip_address=ip_address,
             success=success,
             failure_reason=failure_reason,
             user_agent=user_agent,
-            timestamp=datetime.now(),
+            login_time=datetime.now(),
         )
 
         # Add to memory
@@ -1004,7 +1013,12 @@ class UserManager:
 
         # Save to database directly with user_name
         self.users_repo.create_login_log(
-            user_name, ip_address, success, failure_reason, user_agent
+            user_name,
+            ip_address,
+            success,
+            failure_reason,
+            user_agent,
+            project_id,
         )
 
         # Format login time in human-readable format
@@ -1043,6 +1057,28 @@ class UserManager:
             if success:
                 return logs
             return []
+
+    def clear_login_logs(
+        self, user_id: str | None = None, user_name: str | None = None
+    ) -> dict:
+        """Clear login logs (all or for a specific user).
+
+        Args:
+            user_id: User ID (UUID) to clear logs for (optional)
+            user_name: User name to clear logs for (optional)
+
+        Returns:
+            Dictionary with count of deleted logs
+        """
+        success, error, deleted_count = self.users_repo.delete_login_logs(
+            user_id=user_id, user_name=user_name
+        )
+
+        if not success:
+            logger.error(f"Failed to clear login logs: {error}")
+            return {"count": 0, "error": str(error)}
+
+        return {"count": deleted_count}
 
     def add_to_blacklist(self, token_jti: str, expires_at: datetime) -> None:
         """Add a token to the blacklist.
