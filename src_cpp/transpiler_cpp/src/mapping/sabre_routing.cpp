@@ -22,11 +22,26 @@
 #include <stdexcept>
 #include <vector>
 
+#include "mapping/sabre_mapping.h"
+
 namespace qcos {
+
+std::vector<GateOperation> sabre_routing(
+    const std::vector<GateOperation>& gates_list,
+    const std::vector<std::pair<int, int>>& coupling_list,
+    const std::vector<int>& initial_l2p, int extention_size, double weight,
+    double decay) {
+  SABRE sabre(coupling_list, extention_size, weight, decay);
+  sabre.execute(gates_list, initial_l2p);
+  return sabre.get_physical_gates();
+}
 
 SABRE::SABRE(const std::vector<std::pair<int, int>>& coupling_list,
              int extention_size, double weight, double decay)
-    : extention_size_(extention_size), weight_(weight), decay_(decay) {
+    : extention_size_(extention_size),
+      weight_(weight),
+      decay_(decay),
+      coupling_list_(coupling_list) {
   // Build physical coupling graph
   build_coupling_graph(coupling_list);
   // Initialize shortest-path distance matrix
@@ -94,6 +109,17 @@ int SABRE::get_qubit_num_from_ir(
 
 void SABRE::execute(const std::vector<GateOperation>& gates_list,
                     const std::vector<int>& initial_l2p) {
+  if (initial_l2p.empty()) {
+    execute_routing(gates_list,
+                    sabre_initial_mapping(gates_list, coupling_list_));
+    return;
+  }
+
+  execute_routing(gates_list, initial_l2p);
+}
+
+void SABRE::execute_routing(const std::vector<GateOperation>& gates_list,
+                            const std::vector<int>& initial_l2p) {
   int logic_qubit_num = get_qubit_num_from_ir(gates_list);
 
   // Node arena: all nodes owned here, stable pointers via reserve

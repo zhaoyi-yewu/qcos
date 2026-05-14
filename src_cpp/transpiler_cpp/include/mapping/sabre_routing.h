@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include <string>
 #include <vector>
 
 #include "circuit/gate_operation.h"
@@ -31,6 +30,28 @@ bool validate_routing(const SABRE& sabre,
                       const std::vector<GateOperation>& logical_gates,
                       const std::vector<GateOperation>& physical_gates,
                       std::vector<int>& initial_l2p);
+
+std::vector<int> sabre_initial_mapping(
+    const std::vector<GateOperation>& gates_list,
+    const std::vector<std::pair<int, int>>& coupling_list);
+
+/**
+ * @brief 使用SABRE算法对逻辑门序列执行routing。
+ * @param gates_list 待映射的逻辑门序列。
+ * @param coupling_list 物理耦合图边列表。
+ * @param initial_l2p 初始逻辑到物理映射，可为空。
+ *        当该参数为空时，函数内部会先调用 sabre_initial_mapping
+ *        生成初始映射，再继续执行 routing。
+ * @param extention_size 扩展集大小，用于 lookahead 成本计算，默认 20。
+ * @param weight 前沿层与扩展层成本权重，默认 0.5。
+ * @param decay SWAP 衰减系数，默认 0.001。
+ * @return std::vector<GateOperation> routing 后的物理门序列。
+ */
+std::vector<GateOperation> sabre_routing(
+    const std::vector<GateOperation>& gates_list,
+    const std::vector<std::pair<int, int>>& coupling_list,
+    const std::vector<int>& initial_l2p = {}, int extention_size = 20,
+    double weight = 0.5, double decay = 0.001);
 
 /**
  * @brief SABRE算法中的节点结构
@@ -110,20 +131,25 @@ class SABRE {
       const std::vector<GateOperation>& physical_gates,
       std::vector<int>& initial_l2p);
 
+  friend std::vector<int> sabre_initial_mapping(
+      const std::vector<GateOperation>& gates_list,
+      const std::vector<std::pair<int, int>>& coupling_list);
+
  private:
-  int phy_qubit_num_;                          ///< 物理量子比特总数
-  int extention_size_;                         ///< 扩展深度
-  double weight_;                              ///< 扩展层权重
-  double decay_;                               ///< SWAP衰减因子
-  std::vector<std::vector<int>> adj_list_;     ///< 物理耦合图邻接表
-  std::vector<std::vector<bool>> adj_matrix_;  ///< 邻接矩阵(O(1)查询)
-  std::vector<std::vector<int>> dist_;         ///< 最短路径距离矩阵
-  std::vector<int> cur_l2p_;                   ///< 当前逻辑到物理映射
-  std::vector<int> cur_p2l_;                   ///< 当前物理到逻辑映射
-  std::vector<Node*> front_layer_;             ///< 前沿层节点列表
-  std::vector<GateOperation> phy_exe_gates_;   ///< 映射后的物理门序列
-  std::vector<int> logic2phy_;                 ///< 最终逻辑到物理映射
-  std::vector<int> phy2logic_;                 ///< 最终物理到逻辑映射
+  int phy_qubit_num_;                               ///< 物理量子比特总数
+  int extention_size_;                              ///< 扩展深度
+  double weight_;                                   ///< 扩展层权重
+  double decay_;                                    ///< SWAP衰减因子
+  std::vector<std::pair<int, int>> coupling_list_;  ///< 物理耦合边列表
+  std::vector<std::vector<int>> adj_list_;          ///< 物理耦合图邻接表
+  std::vector<std::vector<bool>> adj_matrix_;       ///< 邻接矩阵(O(1)查询)
+  std::vector<std::vector<int>> dist_;              ///< 最短路径距离矩阵
+  std::vector<int> cur_l2p_;                        ///< 当前逻辑到物理映射
+  std::vector<int> cur_p2l_;                        ///< 当前物理到逻辑映射
+  std::vector<Node*> front_layer_;                  ///< 前沿层节点列表
+  std::vector<GateOperation> phy_exe_gates_;        ///< 映射后的物理门序列
+  std::vector<int> logic2phy_;                      ///< 最终逻辑到物理映射
+  std::vector<int> phy2logic_;                      ///< 最终物理到逻辑映射
 
   // 预分配的热路径缓冲区
   std::vector<std::pair<int, int>> candidate_swaps_;
@@ -199,6 +225,9 @@ class SABRE {
    */
   int get_qubit_num_from_ir(
       const std::vector<GateOperation>& gates_list) const;
+
+  void execute_routing(const std::vector<GateOperation>& gates_list,
+                       const std::vector<int>& initial_l2p);
 };
 
 }  // namespace qcos
