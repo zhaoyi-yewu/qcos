@@ -332,7 +332,6 @@ class QuantumComputation {
     ss << qasm;
     QuantumComputation qc{};
     qc.importOpenQASM(ss);
-    qc.initializeIOMapping();
     return qc;
   }
 
