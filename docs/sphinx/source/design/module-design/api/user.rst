@@ -159,7 +159,7 @@
              {
                "jsonrpc": "2.0",
                "result": {
-                 "user1": {
+                 "user1-uuid": {
                    "id": "uuid",
                    "user_name": "user1",
                    "roles": ["user"],
@@ -173,7 +173,7 @@
                    "created_at": "2026-04-08T16:39:15",
                    "updated_at": "2026-04-08T16:39:15"
                  },
-                 "user2": {
+                 "user2-uuid": {
                    "id": "uuid",
                    "user_name": "user2",
                    "roles": ["admin"],
@@ -534,7 +534,7 @@
                "method": "get_login_logs",
                "params": {
                  "body": {
-                   "user_id": "uuid or user_name (optional)",
+                   "user_id": "uuid (optional)",
                    "user_name": "string (optional)",
                    "start_time": "2026-04-01T00:00:00 (optional)",
                    "end_time": "2026-04-08T23:59:59 (optional)",
@@ -553,13 +553,55 @@
                  {
                    "user_name": "string",
                    "user_id": "uuid",
+                   "project_id": "uuid",
                    "login_time": "2026-04-08T16:39:15",
                    "ip_address": "192.168.1.1",
-                   "user_agent": "Mozilla/5.0...",
-                   "success": true,
+                   "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                   "login_status": true,
                    "failure_reason": null
                  }
                ],
+               "error": null,
+               "id": 1
+             }
+
+   * - **清空登录日志**
+     - **clear_login_logs**
+
+       URI: /v1/user/clear_login_logs
+
+       权限要求: ``ROLE_ADMIN``
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "method": "clear_login_logs",
+               "params": {
+                 "body": {
+                   "user_id": "uuid (optional)",
+                   "user_name": "string (optional)"
+                 }
+               }
+             }
+
+       **参数说明**:
+
+       - ``user_id`` (optional): 清空特定用户ID的登录日志
+       - ``user_name`` (optional): 清空特定用户名的登录日志
+       - 若两个参数都不指定，清空所有用户的登录日志
+       - 注意：``user_id`` 和 ``user_name`` 不能同时指定
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "result": {
+                 "count": 42
+               },
                "error": null,
                "id": 1
              }
@@ -574,6 +616,7 @@
 
 - **id** (uuid) - 用户全局唯一标识
 - **user_name** (string) - 用户名，用于登录和识别
+- **project_id** (uuid) - 用户所属项目的唯一标识
 - **roles** (array) - 用户角色列表，控制用户权限
 - **is_enabled** (boolean) - 用户是否启用
 - **is_locked** (boolean) - 用户是否被锁定（登录失败过多自动锁定）
@@ -584,6 +627,21 @@
 - **description** (string) - 用户描述信息
 - **created_at** (datetime) - 用户创建时间
 - **updated_at** (datetime) - 用户最后修改时间
+
+登录日志字段说明
+^^^^^^^^^^^^^^^^
+
+登录日志对象的关键字段：
+
+- **id** (uuid) - 登录日志的唯一标识
+- **user_name** (string) - 进行登录操作的用户名
+- **user_id** (uuid) - 用户的全局唯一标识
+- **project_id** (uuid) - 用户所属项目的唯一标识（可为 null）
+- **ip_address** (string) - 登录请求的 IP 地址（支持 IPv4 和 IPv6）
+- **login_time** (datetime) - 登录操作发生的时间戳
+- **login_status** (boolean) - 登录是否成功（true 为成功，false 为失败）
+- **failure_reason** (string) - 登录失败原因（仅当 login_status 为 false 时有值，可为 null）
+- **user_agent** (string) - 客户端用户代理信息（可为 null）
 
 角色权限说明
 ^^^^^^^^^^^^
@@ -597,80 +655,7 @@
 权限格式：``/v1/{module}/{operation}``
 
 示例：
+
 - ``/v1/device/get_device`` - 获取设备信息
 - ``/v1/job/submit_job`` - 提交作业
 - ``/v1/user/*`` - 用户管理所有操作
-
-最佳实践建议
-^^^^^^^^^^^^^^^^
-
-1. **用户生命周期管理**
-
-   .. code-block:: text
-
-      创建用户 -> 分配角色 -> 定期审计 -> 禁用/删除
-
-      • 创建新用户时设置合理的密码过期时间
-      • 定期检查 last_login 字段检测异常账户
-      • 未使用的账户应及时禁用而不是删除
-
-2. **密码策略**
-
-   .. code-block:: text
-
-      • 初始密码应临时且强制首次登录时修改
-      • 定期强制修改密码（建议90天）
-      • 实施密码复杂性检查
-      • 防止密码重复使用
-
-3. **账户安全**
-
-   .. code-block:: python
-
-      # 监控异常活动
-      def check_account_security(user_id):
-          login_logs = get_login_logs(user_id=user_id)
-
-          # 检查异常登录地点
-          ips = [log["ip_address"] for log in login_logs]
-          if has_unusual_ips(ips):
-              alert_security_team()
-
-          # 检查失败尝试
-          failures = [log for log in login_logs if not log["success"]]
-          if len(failures) > 5:
-              lock_user_account(user_id)
-
-4. **权限管理**
-
-   .. code-block:: text
-
-      最小权限原则：
-
-      • 为用户分配完成工作所需的最小权限
-      • 定期审查和更新用户权限
-      • 使用自定义角色为不同场景定制权限
-      • 记录所有权限变更用于审计
-
-5. **角色设计**
-
-   .. code-block:: python
-
-      # 推荐的角色划分
-      roles = {
-          "admin": [
-              "/v1/user/*",      # 用户管理
-              "/v1/device/*",    # 设备管理
-              "/v1/job/*",       # 作业管理
-              "/v1/system/*"     # 系统管理
-          ],
-          "operator": [
-              "/v1/device/get_device",      # 查看设备
-              "/v1/job/*"                   # 作业操作
-          ],
-          "viewer": [
-              "/v1/device/get_device",      # 仅查看设备
-              "/v1/job/get_jobs",           # 仅查看作业列表
-              "/v1/job/get_job_status"      # 仅查看作业状态
-          ]
-      }
