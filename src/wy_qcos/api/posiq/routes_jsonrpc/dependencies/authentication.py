@@ -193,7 +193,6 @@ async def auth(
             Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_NO,
             "user_id": Constant.ANONYMOUS_USERNAME,
             "roles": [Constant.ROLE_ADMIN],
-            "auth_method": "no",
         }
         return auth_data
 
@@ -224,7 +223,7 @@ async def auth(
                 "user_name": current_user.user_name,
                 "project_id": current_user.project_id,
                 "roles": user_roles,
-                "auth_method": "jwt",
+                "auth_mode": "jwt",
             }
 
         # Perform permission check
