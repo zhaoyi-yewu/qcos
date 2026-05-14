@@ -323,6 +323,7 @@ class UserRepository(BaseRepository):
         success: bool,
         failure_reason: str | None = None,
         user_agent: str | None = None,
+        project_id: str | None = None,
     ):
         """Create a login log entry with auto cleanup when logs exceeded."""
         try:
@@ -333,6 +334,7 @@ class UserRepository(BaseRepository):
                 "login_status": success,
                 "failure_reason": failure_reason,
                 "user_agent": user_agent,
+                "project_id": project_id,
             }
             log_success, error, log = self.create(LoginLog, **log_data)
             if log_success:
@@ -414,6 +416,86 @@ class UserRepository(BaseRepository):
         except Exception as e:
             logger.error(f"Exception while getting login logs: {e}")
             return False, e, None
+
+    def delete_login_logs(
+        self, user_id: str | None = None, user_name: str | None = None
+    ):
+        """Delete login logs (all or for a specific user).
+
+        Args:
+            user_id: User ID (UUID) to delete logs for (optional)
+            user_name: User name to delete logs for (optional)
+
+        Returns:
+            Tuple (success, error, count) where count is number of deleted logs
+        """
+        try:
+            query = select(LoginLog)
+
+            # Apply filters
+            if user_id:
+                # Get user by ID first
+                success, error, user = self.get_by_uuid(User, user_id)
+                if success and user:
+                    query = query.where(LoginLog.user_name == user.user_name)
+                else:
+                    # User not found, return success with count 0
+                    return True, None, 0
+
+            elif user_name:
+                # Check if user exists first
+                success, error, user = self.get_user_by_username(user_name)
+                if not success or not user:
+                    # User not found, return success with count 0
+                    return True, None, 0
+                query = query.where(LoginLog.user_name == user_name)
+
+            # First count how many logs will be deleted
+            count_query = select(func.count(LoginLog.id))
+
+            # Apply same filters to count query
+            if user_id:
+                success, error, user = self.get_by_uuid(User, user_id)
+                if success and user:
+                    count_query = count_query.where(
+                        LoginLog.user_name == user.user_name
+                    )
+
+            elif user_name:
+                count_query = count_query.where(
+                    LoginLog.user_name == user_name
+                )
+
+            # Get the count
+            count_result = self._db_session.execute(count_query)
+            deleted_count = count_result.scalar() or 0
+
+            # Delete the logs
+            delete_query = delete(LoginLog)
+
+            # Apply same filters to delete query
+            if user_id:
+                success, error, user = self.get_by_uuid(User, user_id)
+                if success and user:
+                    delete_query = delete_query.where(
+                        LoginLog.user_name == user.user_name
+                    )
+
+            elif user_name:
+                delete_query = delete_query.where(
+                    LoginLog.user_name == user_name
+                )
+
+            self._db_session.execute(delete_query)
+            self._db_session.commit()
+
+            logger.info(f"Deleted {deleted_count} login log(s)")
+            return True, None, deleted_count
+
+        except Exception as e:
+            logger.error(f"Exception while deleting login logs: {e}")
+            self.rollback()
+            return False, e, 0
 
     # ==================== Token Blacklist Operations ====================
 
