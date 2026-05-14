@@ -18,6 +18,7 @@
 # Don't import any other libraries
 from wy_qcos.common.qcos_version import QcosVersion
 
+
 _s = lambda x: x
 
 
@@ -422,6 +423,49 @@ class Constant:
 
     # Max memory for dynamic definition
     DD_MAX_MEMORY = 1024
+
+    # --- Metrics constants ---
+    # system metrics
+    # system stats field names
+    SYSTEM_HEALTHY = "system_healthy"
+    HEARTBEAT_TIMESTAMP = "heartbeat_timestamp"
+    # Component names
+    COMPONENT_NAME_FASTAPI = "fastapi"
+    COMPONENT_NAME_REDIS = "redis"
+    COMPONENT_NAME_PREFECT = "prefect"
+    COMPONENT_NAME_WORKER = "worker"
+    COMPONENT_NAMES = [
+        COMPONENT_NAME_FASTAPI,
+        COMPONENT_NAME_REDIS,
+        COMPONENT_NAME_PREFECT,
+        COMPONENT_NAME_WORKER,
+    ]
+
+    # Component status
+    COMPONENT_STATUS = "component_status"
+    COMPONENT_STATUS_ONLINE = "online"
+    COMPONENT_STATUS_OFFLINE = "offline"
+
+    # Job metrics
+    JOB_METRICS_FIELD_TOTAL = "total"
+    JOB_METRICS_FIELD_COMPLETED = JOB_STATUS_COMPLETED.lower()
+    JOB_METRICS_FIELD_FAILED = JOB_STATUS_FAILED.lower()
+    JOB_METRICS_FIELD_RUNNING = JOB_STATUS_RUNNING.lower()
+    JOB_METRICS_FIELD_QUEUED = JOB_STATUS_QUEUED.lower()
+    JOB_METRICS_FIELD_CANCELLING = JOB_STATUS_CANCELLING.lower()
+    JOB_METRICS_FIELD_CANCELLED = JOB_STATUS_CANCELLED.lower()
+    JOB_METRICS_FIELD_DELETED = JOB_STATUS_DELETED.lower()
+    JOB_METRICS_FIELD_UNKNOWN = JOB_STATUS_UNKNOWN.lower()
+
+    # API metrics
+    API_METRICS_REQUESTS_TOTAL = "api_requests_total"
+    API_METRICS_REQUESTS_IN_PROGRESS = "api_requests_in_progress"
+    API_METRICS_REQUESTS_DURATION = "api_request_duration"
+
+    # API stats field names
+    API_TOTAL_REQUESTS = "total_requests"
+    API_LAST_HOUR_REQUESTS = "last_hour_requests"
+    API_LAST_DAY_REQUESTS = "last_day_requests"
 
 
 class HttpHeaders:

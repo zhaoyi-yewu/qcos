@@ -43,13 +43,13 @@ class GetSystemHealthRequest(BaseModel):
 class GetSystemHealthResponse(BaseModel):
     """Get system health response."""
 
-    healthy: bool = Field(
+    system_healthy: bool = Field(
         ..., description="Overall system health status", examples=[True, False]
     )
     heartbeat_timestamp: float | None = Field(
         None, description="Last heartbeat timestamp", examples=[1234567890.123]
     )
-    components: dict[str, str] = Field(
+    component_status: dict[str, str] = Field(
         ...,
         description="Status of individual system components",
         examples=[{"fastapi": "online", "redis": "online"}],

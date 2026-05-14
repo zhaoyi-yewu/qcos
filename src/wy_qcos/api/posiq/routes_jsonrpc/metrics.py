@@ -52,19 +52,21 @@ def get_system_health(
     try:
         system_stats = metrics_collector.system_health_metrics.get_values()
         _response_info = {
-            "healthy": system_stats.overall_healthy,
-            "heartbeat_timestamp": system_stats.heartbeat_timestamp,
-            "components": {
-                "fastapi": "online"
+            Constant.SYSTEM_HEALTHY: system_stats.overall_healthy,
+            Constant.HEARTBEAT_TIMESTAMP: system_stats.heartbeat_timestamp,
+            Constant.COMPONENT_STATUS: {
+                Constant.COMPONENT_NAME_FASTAPI: Constant.COMPONENT_STATUS_ONLINE
                 if system_stats.fastapi_healthy
-                else "offline",
-                "redis": "online" if system_stats.redis_healthy else "offline",
-                "prefect": "online"
+                else Constant.COMPONENT_STATUS_OFFLINE,
+                Constant.COMPONENT_NAME_REDIS: Constant.COMPONENT_STATUS_ONLINE
+                if system_stats.redis_healthy
+                else Constant.COMPONENT_STATUS_OFFLINE,
+                Constant.COMPONENT_NAME_PREFECT: Constant.COMPONENT_STATUS_ONLINE
                 if system_stats.prefect_healthy
-                else "offline",
-                "worker": "online"
+                else Constant.COMPONENT_STATUS_OFFLINE,
+                Constant.COMPONENT_NAME_WORKER: Constant.COMPONENT_STATUS_ONLINE
                 if system_stats.worker_healthy
-                else "offline",
+                else Constant.COMPONENT_STATUS_OFFLINE,
             },
         }
         response_info = schemas.GetSystemHealthResponse.model_validate(
@@ -101,9 +103,15 @@ def get_api_stats(
         api_stats = metrics_collector.api_metrics.get_api_stats()
 
         _response_info = {
-            "total_requests": api_stats["total_requests"],
-            "last_hour_requests": api_stats["last_hour_requests"],
-            "last_day_requests": api_stats["last_day_requests"],
+            Constant.API_TOTAL_REQUESTS: api_stats[
+                Constant.API_TOTAL_REQUESTS
+            ],
+            Constant.API_LAST_HOUR_REQUESTS: api_stats[
+                Constant.API_LAST_HOUR_REQUESTS
+            ],
+            Constant.API_LAST_DAY_REQUESTS: api_stats[
+                Constant.API_LAST_DAY_REQUESTS
+            ],
         }
         response_info = schemas.GetApiStatsResponse.model_validate(
             _response_info
@@ -139,15 +147,15 @@ def get_job_stats(
         job_metrics_data = metrics_collector.job_metrics.get_values()
 
         _response_info = {
-            "total": job_metrics_data.total,
-            "completed": job_metrics_data.completed,
-            "failed": job_metrics_data.failed,
-            "running": job_metrics_data.running,
-            "queued": job_metrics_data.queued,
-            "cancelling": job_metrics_data.cancelling,
-            "cancelled": job_metrics_data.cancelled,
-            "deleted": job_metrics_data.deleted,
-            "unknown": job_metrics_data.unknown,
+            Constant.JOB_METRICS_FIELD_TOTAL: job_metrics_data.total,
+            Constant.JOB_METRICS_FIELD_COMPLETED: job_metrics_data.completed,
+            Constant.JOB_METRICS_FIELD_FAILED: job_metrics_data.failed,
+            Constant.JOB_METRICS_FIELD_RUNNING: job_metrics_data.running,
+            Constant.JOB_METRICS_FIELD_QUEUED: job_metrics_data.queued,
+            Constant.JOB_METRICS_FIELD_CANCELLING: job_metrics_data.cancelling,
+            Constant.JOB_METRICS_FIELD_CANCELLED: job_metrics_data.cancelled,
+            Constant.JOB_METRICS_FIELD_DELETED: job_metrics_data.deleted,
+            Constant.JOB_METRICS_FIELD_UNKNOWN: job_metrics_data.unknown,
         }
         response_info = schemas.GetJobStatsResponse.model_validate(
             _response_info
