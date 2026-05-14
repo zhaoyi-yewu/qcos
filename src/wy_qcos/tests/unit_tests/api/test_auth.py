@@ -389,7 +389,7 @@ class TestAuthUser:
         auth_data = {
             "user_id": "testuser",
             "roles": ["user", "admin"],
-            "auth_method": "jwt",
+            Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_JWT,
         }
 
         result = auth_user(mock_request, auth_data, mock_user_manager)
@@ -408,7 +408,7 @@ class TestAuthUser:
         auth_data = {
             "user_id": "testuser",
             "roles": [],
-            "auth_method": "jwt",
+            Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_JWT,
         }
 
         with pytest.raises(Exception):  # Should raise forbidden error
@@ -421,7 +421,7 @@ class TestAuthUser:
         auth_data = {
             "user_id": "testuser",
             "roles": ["user"],
-            "auth_method": "jwt",
+            Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_JWT,
         }
 
         mock_user_manager.perms_enforce.return_value = False
@@ -471,10 +471,10 @@ class TestAuth:
         auth_data = await auth(mock_request, user_manager=mock_user_manager)
 
         assert auth_data is not None
-        assert auth_data["auth_method"] == "no"
+        assert auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_NO
         assert auth_data["user_id"] == Constant.ANONYMOUS_USERNAME
         assert Constant.ROLE_ADMIN in auth_data["roles"]
-        assert auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_NO
+        assert auth_data["auth_mode"] == "no"
 
     @patch(
         "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication.Config"
@@ -535,7 +535,7 @@ class TestAuth:
         auth_data = await auth(mock_request, user_manager=mock_user_manager)
 
         assert auth_data is not None
-        assert auth_data["auth_method"] == "jwt"
+        assert auth_data["auth_mode"] == "jwt"
         assert auth_data["user_name"] == "jwtuser"
         assert auth_data["user_id"] == "user-uuid-jwt"
         assert auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_JWT
