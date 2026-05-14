@@ -45,6 +45,7 @@ class DriverWuyueHanyuan1Sim(DriverWuyueHanyuan1):
         self.supported_code_types = [Constant.CODE_TYPE_QASM2]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.max_qubits = 25
+        self.enable_device_monitor = False
 
     def get_task_realtime_result(self, task_id):
         """Get task realtime result.
