@@ -36,10 +36,14 @@ Error codes mappings and descriptions:
     +--------+----------+---------------------+-------------------------------+
 """
 
+import logging
+
 import fastapi_jsonrpc as jsonrpc
 from pydantic import BaseModel
 
 from wy_qcos.common.constant import HttpCode
+
+logger = logging.getLogger(__name__)
 
 
 class JsonRpcBaseError(jsonrpc.BaseError):
@@ -131,6 +135,7 @@ def handle_errors(err_cls, module_name, func_name, results, param_name, code):
     if code:
         error.CODE = code
     error.MESSAGE = f"[{module_name}] Failed to {func_name}"
+    logger.error(f"{error.MESSAGE}. {details}")
     raise error
 
 
