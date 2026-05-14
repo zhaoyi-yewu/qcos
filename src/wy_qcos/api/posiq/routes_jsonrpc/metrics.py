@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import logging
+
 from fastapi import Depends
 
 from wy_qcos.api import schemas
@@ -25,6 +26,7 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.metrics import metrics_collector
 
 from .dependencies.authentication import auth
+
 
 logger = logging.getLogger(__name__)
 module_name = "METRICS"
@@ -51,23 +53,24 @@ def get_system_health(
 
     try:
         system_stats = metrics_collector.system_health_metrics.get_values()
+        component_stats = {
+            Constant.COMPONENT_NAME_FASTAPI: Constant.COMPONENT_STATUS_ONLINE
+            if system_stats.fastapi_healthy
+            else Constant.COMPONENT_STATUS_OFFLINE,
+            Constant.COMPONENT_NAME_REDIS: Constant.COMPONENT_STATUS_ONLINE
+            if system_stats.redis_healthy
+            else Constant.COMPONENT_STATUS_OFFLINE,
+            Constant.COMPONENT_NAME_PREFECT: Constant.COMPONENT_STATUS_ONLINE
+            if system_stats.prefect_healthy
+            else Constant.COMPONENT_STATUS_OFFLINE,
+            Constant.COMPONENT_NAME_WORKER: Constant.COMPONENT_STATUS_ONLINE
+            if system_stats.worker_healthy
+            else Constant.COMPONENT_STATUS_OFFLINE,
+        }
         _response_info = {
             Constant.SYSTEM_HEALTHY: system_stats.overall_healthy,
             Constant.HEARTBEAT_TIMESTAMP: system_stats.heartbeat_timestamp,
-            Constant.COMPONENT_STATUS: {
-                Constant.COMPONENT_NAME_FASTAPI: Constant.COMPONENT_STATUS_ONLINE
-                if system_stats.fastapi_healthy
-                else Constant.COMPONENT_STATUS_OFFLINE,
-                Constant.COMPONENT_NAME_REDIS: Constant.COMPONENT_STATUS_ONLINE
-                if system_stats.redis_healthy
-                else Constant.COMPONENT_STATUS_OFFLINE,
-                Constant.COMPONENT_NAME_PREFECT: Constant.COMPONENT_STATUS_ONLINE
-                if system_stats.prefect_healthy
-                else Constant.COMPONENT_STATUS_OFFLINE,
-                Constant.COMPONENT_NAME_WORKER: Constant.COMPONENT_STATUS_ONLINE
-                if system_stats.worker_healthy
-                else Constant.COMPONENT_STATUS_OFFLINE,
-            },
+            Constant.COMPONENT_STATUS: component_stats,
         }
         response_info = schemas.GetSystemHealthResponse.model_validate(
             _response_info

@@ -56,9 +56,9 @@ class TestGetSystemHealth:
         mock_client = Mock(spec=Namespace)
         mock_get_system_health.return_value = (200, "OK", "text", None)
         mock_check_results.return_value = {
-            "healthy": True,
+            "system_healthy": True,
             "heartbeat_timestamp": 1234567890.0,
-            "components": {"fastapi": "online", "redis": "online"},
+            "component_status": {"fastapi": "online", "redis": "online"},
         }
         mock_get_table_list_data.return_value = None
         table_values = GetSystemHealth(shell, None).take_action(mock_client)
@@ -68,14 +68,14 @@ class TestGetSystemHealth:
     def test_take_action_invalid_response(self, mock_check_results):
         mock_client = Mock(spec=Namespace)
         mock_check_results.return_value = {
-            "healthy": True,
+            "system_healthy": True,
             "heartbeat_timestamp": 1234567890.0,
         }
         from wy_qcos_client.common import errors
 
         with pytest.raises(errors.GenericException) as exc_info:
             GetSystemHealth(shell, None).take_action(mock_client)
-        assert "'components' field is missing" in str(exc_info.value)
+        assert "'component_status' field is missing" in str(exc_info.value)
 
 
 class TestGetApiStats:

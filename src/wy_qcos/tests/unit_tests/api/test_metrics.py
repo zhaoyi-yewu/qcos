@@ -29,6 +29,7 @@ from wy_qcos.api.schemas import (
     GetJobStatsResponse,
     GetSystemHealthResponse,
 )
+from wy_qcos.common.constant import Constant
 
 
 class MockSystemHealthMetrics:
@@ -82,13 +83,13 @@ class TestGetSystemHealth:
             response = get_system_health(mock_client)
 
         assert isinstance(response, GetSystemHealthResponse)
-        assert response.healthy is True
+        assert response.system_healthy is True
         assert response.heartbeat_timestamp == 1715000000
-        assert response.components == {
-            "fastapi": "online",
-            "redis": "online",
-            "prefect": "online",
-            "worker": "online",
+        assert response.component_status == {
+            Constant.COMPONENT_NAME_FASTAPI: Constant.COMPONENT_STATUS_ONLINE,
+            Constant.COMPONENT_NAME_REDIS: Constant.COMPONENT_STATUS_ONLINE,
+            Constant.COMPONENT_NAME_PREFECT: Constant.COMPONENT_STATUS_ONLINE,
+            Constant.COMPONENT_NAME_WORKER: Constant.COMPONENT_STATUS_ONLINE,
         }
 
     def test_get_system_health_some_unhealthy(self):
@@ -112,12 +113,12 @@ class TestGetSystemHealth:
             response = get_system_health(mock_client)
 
         assert isinstance(response, GetSystemHealthResponse)
-        assert response.healthy is False
-        assert response.components == {
-            "fastapi": "online",
-            "redis": "offline",
-            "prefect": "online",
-            "worker": "offline",
+        assert response.system_healthy is False
+        assert response.component_status == {
+            Constant.COMPONENT_NAME_FASTAPI: Constant.COMPONENT_STATUS_ONLINE,
+            Constant.COMPONENT_NAME_REDIS: Constant.COMPONENT_STATUS_OFFLINE,
+            Constant.COMPONENT_NAME_PREFECT: Constant.COMPONENT_STATUS_ONLINE,
+            Constant.COMPONENT_NAME_WORKER: Constant.COMPONENT_STATUS_OFFLINE,
         }
 
     def test_get_system_health_all_unhealthy(self):
@@ -141,12 +142,12 @@ class TestGetSystemHealth:
             response = get_system_health(mock_client)
 
         assert isinstance(response, GetSystemHealthResponse)
-        assert response.healthy is False
-        assert response.components == {
-            "fastapi": "offline",
-            "redis": "offline",
-            "prefect": "offline",
-            "worker": "offline",
+        assert response.system_healthy is False
+        assert response.component_status == {
+            Constant.COMPONENT_NAME_FASTAPI: Constant.COMPONENT_STATUS_OFFLINE,
+            Constant.COMPONENT_NAME_REDIS: Constant.COMPONENT_STATUS_OFFLINE,
+            Constant.COMPONENT_NAME_PREFECT: Constant.COMPONENT_STATUS_OFFLINE,
+            Constant.COMPONENT_NAME_WORKER: Constant.COMPONENT_STATUS_OFFLINE,
         }
 
     def test_get_system_health_with_none_body(self):
@@ -162,7 +163,7 @@ class TestGetSystemHealth:
             response = get_system_health(None)
 
         assert isinstance(response, GetSystemHealthResponse)
-        assert response.healthy is True
+        assert response.system_healthy is True
 
 
 class TestGetApiStats:
@@ -175,9 +176,9 @@ class TestGetApiStats:
 
         def mock_get_api_stats():
             return {
-                "total_requests": mock_stats.total_requests,
-                "last_hour_requests": mock_stats.last_hour_requests,
-                "last_day_requests": mock_stats.last_day_requests,
+                Constant.API_TOTAL_REQUESTS: mock_stats.total_requests,
+                Constant.API_LAST_HOUR_REQUESTS: mock_stats.last_hour_requests,
+                Constant.API_LAST_DAY_REQUESTS: mock_stats.last_day_requests,
             }
 
         with patch(
@@ -198,9 +199,9 @@ class TestGetApiStats:
 
         def mock_get_api_stats():
             return {
-                "total_requests": 0,
-                "last_hour_requests": 0,
-                "last_day_requests": 0,
+                Constant.API_TOTAL_REQUESTS: 0,
+                Constant.API_LAST_HOUR_REQUESTS: 0,
+                Constant.API_LAST_DAY_REQUESTS: 0,
             }
 
         with patch(
@@ -222,9 +223,9 @@ class TestGetApiStats:
 
         def mock_get_api_stats():
             return {
-                "total_requests": mock_stats.total_requests,
-                "last_hour_requests": mock_stats.last_hour_requests,
-                "last_day_requests": mock_stats.last_day_requests,
+                Constant.API_TOTAL_REQUESTS: mock_stats.total_requests,
+                Constant.API_LAST_HOUR_REQUESTS: mock_stats.last_hour_requests,
+                Constant.API_LAST_DAY_REQUESTS: mock_stats.last_day_requests,
             }
 
         with patch(
