@@ -50,10 +50,26 @@ def device_monitor_flow(device_monitor_info):
     debug = global_configs.get("DEBUG", False)
     if "debug" in device_configs:
         debug = device_configs["debug"]
-    device_monitor_log_file = f"/var/log/qcos/device_monitor_{device_name}.log"
-    if "device_log_file" in device_configs:
+    device_monitor_log_file = (
+        f"/var/log/qcos/device_monitor_{device_name}.log"
+    )
+    if "monitor_log_file" in device_configs:
         device_monitor_log_file = device_configs["monitor_log_file"]
-    init_logger(log_file_path=device_monitor_log_file, debug=debug)
+
+    # Extract logging configuration parameters
+    log_format = device_configs.get("log_format")
+    log_rotate_max_size_mb = device_configs.get("log_rotate_max_size_mb")
+    log_rotate_backup_count = device_configs.get("log_rotate_backup_count")
+    log_rotate_compression = device_configs.get("log_rotate_compression")
+
+    init_logger(
+        log_file_path=device_monitor_log_file,
+        debug=debug,
+        log_format=log_format,
+        log_rotate_max_size_mb=log_rotate_max_size_mb,
+        log_rotate_backup_count=log_rotate_backup_count,
+        log_rotate_compression=log_rotate_compression,
+    )
     logger.info(
         f"Processing device monitor flow: job_engine. "
         f"device_name: {device_name}"
