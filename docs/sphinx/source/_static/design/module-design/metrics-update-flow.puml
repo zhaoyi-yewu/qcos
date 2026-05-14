@@ -1,0 +1,75 @@
+@startuml
+title Metrics Collection Architecture\n(Component Diagram)
+
+skinparam defaultFontName "Noto Sans CJK SC, SimHei, sans-serif"
+skinparam dpi 300
+
+left to right direction
+
+skinparam component {
+    BackgroundColor #F8F8FF
+    BorderColor #333
+    Shadowing true
+    FontSize 11
+}
+
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #555
+}
+
+' 调度器组件 (APScheduler)
+component "MetricsScheduler\n(APScheduler)" as Scheduler {
+    rectangle "_job() (interval)" as Sched
+}
+
+' 任务组件 (包含内部函数)
+component "MetricsTask" as Task {
+    rectangle "update_metrics_task_async()" as AsyncTask
+    rectangle "update_job_metrics()" as JobTask
+    rectangle "update_system_health_metrics()" as HealthTask
+}
+
+' 健康检查工作器 (统一为 rectangle)
+package "Health Check Workers" {
+    rectangle "check_worker_health()" as CWorker
+    rectangle "check_prefect_health()" as CPrefect
+    rectangle "check_fastapi_health()" as CFastAPI
+    rectangle "check_redis_health()" as CRedis
+}
+
+' Collector
+component "Metrics Collector" as Collector
+
+' JobStore 改为 database
+database "JobStore" as JobDB
+
+component "MetricsServer\n(Prometheus)" as MetricsServer
+
+package "Prometheus Server" {
+    component "GET /metrics" as PM
+}
+
+' 连接关系
+Sched --> AsyncTask : call\n(interval)
+Sched --> PM : provide
+
+AsyncTask --> JobTask : call
+AsyncTask --> HealthTask : call
+
+JobTask --> JobDB : get jobs \n& aggregate by status
+JobTask --> Collector : update job metrics
+
+' HealthTask 并发调用所有健康检查
+note bottom of HealthTask : Uses asyncio.gather\nwith return_exceptions=True
+HealthTask --> CWorker : call
+HealthTask --> CPrefect : call
+HealthTask --> CFastAPI : call
+HealthTask --> CRedis : call
+
+HealthTask --> Collector : update health metrics
+
+' MetricsServer 拉取指标
+MetricsServer --> Collector : call get_metrics()
+
+@enduml

@@ -15,4 +15,5 @@
    instruction-set
    aggregation-cutting
    user
+   metrics
    api/index.rst

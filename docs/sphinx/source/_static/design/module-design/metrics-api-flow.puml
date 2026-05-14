@@ -1,0 +1,42 @@
+@startuml
+skinparam defaultFontName "Noto Sans CJK SC"
+skinparam dpi 300
+
+left to right direction
+
+skinparam component {
+    BackgroundColor #F8F8FF
+    BorderColor #333
+    Shadowing true
+    FontSize 11
+}
+
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #555
+}
+
+component "Client" as Client
+
+package "QCOS API Server" {
+    component "MetricsMiddleware\n(BaseHTTPMiddleware)" as MW
+    component "FastAPI Router" as Router
+}
+
+component "Prometheus Server\n(port 19400)" as Prometheus
+
+Client --> MW : HTTP Request
+MW --> Router : Forward
+Router --> MW : Response
+
+package "MetricsCollector Internal" {
+    rectangle "Counter\n(api_requests_total)" as Counter
+    rectangle "Gauge\n(api_requests_in_progress)" as Gauge
+    rectangle "Histogram\n(api_request_duration)" as Histogram
+}
+
+MW --> Counter
+MW --> Gauge
+MW --> Histogram
+
+@enduml
