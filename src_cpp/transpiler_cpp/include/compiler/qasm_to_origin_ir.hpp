@@ -27,3 +27,5 @@ std::vector<std::unique_ptr<Operation>> convert_qasm_string_to_operations(
     std::string qasm_str);
 std::pair<std::vector<std::unique_ptr<qcos::BaseOperation>>, int>
 convert_qasm_string_to_qcos_operations(std::string qasm_str);
+std::vector<std::unique_ptr<qcos::BaseOperation>> create_gates(
+    const std::vector<std::unique_ptr<Operation>>& ops);
