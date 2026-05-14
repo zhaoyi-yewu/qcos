@@ -157,3 +157,13 @@ class TestDriverBase:
         with pytest.raises(NotImplementedError) as context:
             driver_base.fetch_configs()
         assert "fetch_configs" in str(context)
+
+    def test_machine_time_info(self):
+        machine_time_info = {
+            "exec_start_time": 12345,
+            "exec_end_time": None,
+            "time_consume": "2.00",
+        }
+        driver_base.set_machine_time_info("123", 0, machine_time_info)
+        machine_time = driver_base.get_machine_time_info("123", 0)
+        assert machine_time == machine_time_info

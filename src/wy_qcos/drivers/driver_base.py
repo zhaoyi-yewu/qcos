@@ -123,6 +123,8 @@ class DriverBase:
             # results from run(): fetches the results from quantum computer
             # format: {JOB_ID: {"results": RESULTS}}
             "results": {},
+            # format: {JOB_ID: {"machine_time_info": MACHINE_TIME_INFO}}
+            "machine_time_info": {},
         }
 
         # measurement results fetch mode
@@ -503,6 +505,46 @@ class DriverBase:
                 self.job_runtime_data["results"], job_id, default=None
             )
         return self.job_runtime_data["results"]
+
+    def set_machine_time_info(self, job_id, data_index, machine_time_info):
+        """Set machine time info.
+
+        Args:
+            job_id: job ID
+            data_index: code index
+            machine_time_info: machine_time_info
+        """
+        logger.info(f"set machine_time_info: {machine_time_info}")
+        if job_id not in self.job_runtime_data["machine_time_info"]:
+            self.job_runtime_data["machine_time_info"][job_id] = {}
+        self.job_runtime_data["machine_time_info"][job_id][data_index] = (
+            machine_time_info
+        )
+
+    def get_machine_time_info(self, job_id=None, data_index=None):
+        """Get machine_time_info.
+
+        Args:
+            job_id: job ID (Default value = None)
+            data_index: code index (Default value = None)
+
+        Returns:
+            machine_time_info
+        """
+        if job_id is not None:
+            if data_index is not None:
+                return Library.get_nested_dict_value(
+                    self.job_runtime_data["machine_time_info"],
+                    job_id,
+                    data_index,
+                    default=None,
+                )
+            return Library.get_nested_dict_value(
+                self.job_runtime_data["machine_time_info"],
+                job_id,
+                default=None,
+            )
+        return self.job_runtime_data["machine_time_info"]
 
     def get_default_data_type(self):
         """Get default data type.

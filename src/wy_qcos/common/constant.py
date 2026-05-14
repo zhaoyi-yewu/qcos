@@ -291,6 +291,7 @@ class Constant:
     PROFILING_TYPE_DRIVER_PARSE = "driver:parse"
     PROFILING_TYPE_DRIVER_TRANSPILE = "driver:transpile"
     PROFILING_TYPE_DRIVER_RUN = "driver:run"
+    PROFILING_TYPE_MACHINE = "machine"
     PROFILING_TYPES = [
         PROFILING_TYPE_ALL,
         PROFILING_TYPE_CODE,
@@ -298,6 +299,7 @@ class Constant:
         PROFILING_TYPE_DRIVER_PARSE,
         PROFILING_TYPE_DRIVER_TRANSPILE,
         PROFILING_TYPE_DRIVER_RUN,
+        PROFILING_TYPE_MACHINE,
     ]
     PROFILING_INFO = {
         PROFILING_TYPE_ALL: {"alias_name": "使能所有性能评估类型"},
@@ -306,6 +308,7 @@ class Constant:
         PROFILING_TYPE_DRIVER_PARSE: {"alias_name": "代码解析耗时"},
         PROFILING_TYPE_DRIVER_TRANSPILE: {"alias_name": "转译器耗时"},
         PROFILING_TYPE_DRIVER_RUN: {"alias_name": "后端运行耗时"},
+        PROFILING_TYPE_MACHINE: {"alias_name": "量子计算机运行耗时"},
     }
 
     # Callback types

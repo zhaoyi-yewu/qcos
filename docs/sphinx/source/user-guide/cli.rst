@@ -27,7 +27,7 @@
                               [--circuit-aggregation {None,internal,external}] [-n JOB_NAME] [--job-type {sampling,estimation}]
                               [--job-priority JOB_PRIORITY] [--description DESCRIPTION] [--shots SHOTS] [--backend BACKEND]
                               [--driver-options DRIVER_OPTIONS] [--transpiler TRANSPILER] [--transpiler-options TRANSPILER_OPTIONS]
-                              [--profiling [{all,code,scheduling,driver:parse,driver:transpile,driver:run} ...]] [--callbacks CALLBACKS] [-D]
+                              [--profiling [{all,code,scheduling,driver:parse,driver:transpile,driver:run,machine} ...]] [--callbacks CALLBACKS] [-D]
                               -f SOURCE_CODE_FILES [SOURCE_CODE_FILES ...]
 
    Submit job.
@@ -58,8 +58,8 @@
                            Set transpiler name. eg. cmss
      --transpiler-options TRANSPILER_OPTIONS
                            Set transpiler options
-     --profiling [{all,code,scheduling,driver:parse,driver:transpile,driver:run} ...]
-                           Profiling types: all,code,scheduling,driver:parse,driver:transpile,driver:run
+     --profiling [{all,code,scheduling,driver:parse,driver:transpile,driver:run,machine} ...]
+                           Profiling types: all,code,scheduling,driver:parse,driver:transpile,driver:run,machine
      --callbacks CALLBACKS
                            Callbacks list
      -D, --dry-run         Dry run

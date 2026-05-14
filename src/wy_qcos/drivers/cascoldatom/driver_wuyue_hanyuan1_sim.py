@@ -94,12 +94,14 @@ class DriverWuyueHanyuan1Sim(DriverWuyueHanyuan1):
                 result = None
                 if data[0]["outData"] is not None:
                     result = data[0]["outData"]
+                machine_time_info = self.construct_machine_time_info(data[0])
 
                 if task_status == self.task_status_failed:
                     success = True
                     realtime_status = {
                         "task_status": data[0]["taskStatus"],
                         "result": result,
+                        "machine_time_info": machine_time_info,
                     }
                     err_msgs.append(f"Task failed: {task_status}")
                 elif task_status == self.task_status_completed:
@@ -107,6 +109,7 @@ class DriverWuyueHanyuan1Sim(DriverWuyueHanyuan1):
                     realtime_status = {
                         "task_status": data[0]["taskStatus"],
                         "result": result,
+                        "machine_time_info": machine_time_info,
                     }
                 else:
                     success = False

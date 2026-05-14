@@ -799,7 +799,14 @@ def _run_code(
             job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_RUN] = (
                 profiling_time
             )
-
+        if (
+            Constant.PROFILING_TYPE_MACHINE in profiling_types
+            or Constant.PROFILING_TYPE_ALL in profiling_types
+        ):
+            machine_time_info = run_results.get("machine_time_info", None)
+            job_results["profiling"][Constant.PROFILING_TYPE_MACHINE] = (
+                machine_time_info
+            )
         # run: error handling
         err_msg = run_results.get("error", None)
         if err_msg:
@@ -1555,6 +1562,7 @@ def format_run_results(driver, job_id, data_index):
         results = driver.get_results(job_id, data_index)
         job_status = Constant.JOB_STATUS_COMPLETED
         end_date = Library.get_current_datetime()
+        machine_time_info = driver.get_machine_time_info(job_id, data_index)
     elif driver_results_fetch_mode == Constant.RESULTS_FETCH_MODE_ASYNC:
         # async mode: get results in the async set-job-results call
         job_status = Constant.JOB_STATUS_RUNNING
@@ -1562,7 +1570,7 @@ def format_run_results(driver, job_id, data_index):
     job_results["results"] = results
     job_results["metadata"]["status"] = job_status
     job_results["metadata"]["end_date"] = end_date
-
+    job_results["machine_time_info"] = machine_time_info
     return job_results
 
 
