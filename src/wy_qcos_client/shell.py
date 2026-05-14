@@ -1864,7 +1864,7 @@ class SetJobResults(Command):
 
 
 # User commands
-class GetUserMgmtStatus(ShowOne):
+class GetUserMgmt(ShowOne):
     """Get user management status."""
 
     group = QcosShell.CMD_GROUP_USER
@@ -1876,13 +1876,43 @@ class GetUserMgmtStatus(ShowOne):
     def take_action(self, parsed_args):
         resource = self.group
         status_code, reason, text, result = (
-            self.app.client.get_user_mgmt_status()
+            self.app.client.get_user_mgmt()
         )
         json_results = CommandHelper.check_results(
-            resource, "get_user_mgmt_status", status_code, reason, text
+            resource, "get_user_mgmt", status_code, reason, text
         )
         table_values = CommandHelper.get_table_data(json_results)
         return table_values
+
+
+class SetUserMgmt(Command):
+    """Set user management authentication mode."""
+
+    group = QcosShell.CMD_GROUP_USER
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--auth-mode",
+            dest="auth_mode",
+            required=True,
+            choices=["no", "jwt", "virtual_instance"],
+            help="Authentication mode: no, jwt, or virtual_instance",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        auth_mode = parsed_args.auth_mode
+
+        status_code, reason, text, result = self.app.client.set_user_mgmt(
+            auth_mode
+        )
+        json_results = CommandHelper.check_results(
+            resource, "set_user_mgmt", status_code, reason, text
+        )
+        print(f"Auth mode set to: {json_results.get('auth_mode')}")
+        print(f"Message: {json_results.get('message')}")
 
 
 class CreateUser(Command):
@@ -2494,9 +2524,10 @@ class GetLoginLogs(Lister):
         header_list = [
             "user_name",
             "user_id",
+            "project_id",
             "login_time",
             "ip_address",
-            "success",
+            "login_status",
             "failure_reason",
         ]
 
@@ -2527,115 +2558,87 @@ class GetLoginLogs(Lister):
         return table_values
 
 
-# Metrics commands
-class GetSystemHealth(Lister):
-    """Get system health status."""
+class ClearLoginLogs(Command):
+    """Clear login logs (all or for a specific user)."""
 
-    group = QcosShell.CMD_GROUP_METRICS
+    group = QcosShell.CMD_GROUP_USER
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--user-id",
+            type=str,
+            default=None,
+            help="User ID (UUID) to clear logs for",
+        )
+        parser.add_argument(
+            "--user-name",
+            type=str,
+            default=None,
+            help="User name to clear logs for",
+        )
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Force clear without confirmation",
+        )
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
 
-        status_code, reason, text, result = self.app.client.get_system_health()
-        json_results = CommandHelper.check_results(
-            resource, "get_system_health", status_code, reason, text
-        )
+        user_id = parsed_args.user_id
+        user_name = parsed_args.user_name
+        force = parsed_args.force
 
-        if "component_status" not in json_results:
-            raise errors.GenericException(
-                "Invalid response format: 'component_status' field is missing"
+        # Validate that only one of user_id or user_name is provided
+        if user_id is not None and user_name is not None:
+            raise errors.InvalidArguments(
+                "Cannot specify both user_id and user_name. "
+                "Please provide only one."
             )
 
-        header_list = ["SYSTEM", "STATUS"]
+        # Prepare message
+        if user_id:
+            msg = f"Clear login logs for user ID: {user_id}?"
+        elif user_name:
+            msg = f"Clear login logs for user: {user_name}?"
+        else:
+            msg = "Clear all login logs?"
 
-        stats_list = [
-            {header_list[0]: key, header_list[1]: value}
-            for key, value in json_results["component_status"].items()
-        ]
+        # Confirmation
+        if not force:
+            confirm = input(f"{msg} [y/N]: ")
+            if confirm.lower() != "y":
+                self.app.stdout.write("Operation cancelled\n")
+                return None
 
-        table_values = CommandHelper.get_table_list_data(
-            stats_list, header_list, is_dict=False
-        )
-
-        overall_status = (
-            "online"
-            if json_results.get("system_healthy", False)
-            else "offline"
-        )
-        print(f"\nOverall System Status: {overall_status}")
-        print(
-            f"Last Heartbeat: {json_results.get('heartbeat_timestamp', 'N/A')}"
-        )
-        print("\nComponent Details:")
-
-        return table_values
-
-
-class GetApiStats(Lister):
-    """Get API access statistics."""
-
-    group = QcosShell.CMD_GROUP_METRICS
-
-    def get_parser(self, prog_name):
-        parser = super().get_parser(prog_name)
-        return parser
-
-    def take_action(self, parsed_args):
-        resource = self.group
-
-        status_code, reason, text, result = self.app.client.get_api_stats()
+        # Call with keyword arguments
+        if user_id:
+            status_code, reason, text, result = (
+                self.app.client.clear_login_logs(user_id=user_id)
+            )
+        elif user_name:
+            status_code, reason, text, result = (
+                self.app.client.clear_login_logs(user_name=user_name)
+            )
+        else:
+            status_code, reason, text, result = (
+                self.app.client.clear_login_logs()
+            )
 
         json_results = CommandHelper.check_results(
-            resource, "get_api_stats", status_code, reason, text
+            resource, "clear_login_logs", status_code, reason, text
         )
 
-        header_list = ["API_METRICS", "COUNT"]
-
-        # Customize display field names
-
-        stats_list = [
-            {header_list[0]: key, header_list[1]: value}
-            for key, value in json_results.items()
-        ]
-
-        table_values = CommandHelper.get_table_list_data(
-            stats_list, header_list, is_dict=False
-        )
-        return table_values
-
-
-class GetJobStats(Lister):
-    """Get job statistics."""
-
-    group = QcosShell.CMD_GROUP_METRICS
-
-    def get_parser(self, prog_name):
-        parser = super().get_parser(prog_name)
-        return parser
-
-    def take_action(self, parsed_args):
-        resource = self.group
-
-        status_code, reason, text, result = self.app.client.get_job_stats()
-
-        json_results = CommandHelper.check_results(
-            resource, "get_job_stats", status_code, reason, text
-        )
-        header_list = ["JOB_METRICS", "COUNT"]
-
-        stats_list = [
-            {header_list[0]: key, header_list[1]: value}
-            for key, value in json_results.items()
-        ]
-
-        table_values = CommandHelper.get_table_list_data(
-            stats_list, header_list, is_dict=False
-        )
-        return table_values
+        if json_results:
+            self.app.stdout.write(
+                f"Cleared {json_results.get('count', 0)} log(s)\n"
+            )
+            return json_results
+        else:
+            self.app.stdout.write("No logs to clear or operation failed\n")
+            return None
 
 
 # Auth commands
@@ -2788,6 +2791,117 @@ class Whoami(ShowOne):
         return table_values
 
 
+# Metrics commands
+class GetSystemHealth(Lister):
+    """Get system health status."""
+
+    group = QcosShell.CMD_GROUP_METRICS
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+
+        status_code, reason, text, result = self.app.client.get_system_health()
+        json_results = CommandHelper.check_results(
+            resource, "get_system_health", status_code, reason, text
+        )
+
+        if "component_status" not in json_results:
+            raise errors.GenericException(
+                "Invalid response format: 'component_status' field is missing"
+            )
+
+        header_list = ["SYSTEM", "STATUS"]
+
+        stats_list = [
+            {header_list[0]: key, header_list[1]: value}
+            for key, value in json_results["component_status"].items()
+        ]
+
+        table_values = CommandHelper.get_table_list_data(
+            stats_list, header_list, is_dict=False
+        )
+
+        overall_status = (
+            "online"
+            if json_results.get("system_healthy", False)
+            else "offline"
+        )
+        print(f"\nOverall System Status: {overall_status}")
+        print(
+            f"Last Heartbeat: {json_results.get('heartbeat_timestamp', 'N/A')}"
+        )
+        print("\nComponent Details:")
+
+        return table_values
+
+
+class GetApiStats(Lister):
+    """Get API access statistics."""
+
+    group = QcosShell.CMD_GROUP_METRICS
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+
+        status_code, reason, text, result = self.app.client.get_api_stats()
+
+        json_results = CommandHelper.check_results(
+            resource, "get_api_stats", status_code, reason, text
+        )
+
+        header_list = ["API_METRICS", "COUNT"]
+
+        # Customize display field names
+
+        stats_list = [
+            {header_list[0]: key, header_list[1]: value}
+            for key, value in json_results.items()
+        ]
+
+        table_values = CommandHelper.get_table_list_data(
+            stats_list, header_list, is_dict=False
+        )
+        return table_values
+
+
+class GetJobStats(Lister):
+    """Get job statistics."""
+
+    group = QcosShell.CMD_GROUP_METRICS
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+
+        status_code, reason, text, result = self.app.client.get_job_stats()
+
+        json_results = CommandHelper.check_results(
+            resource, "get_job_stats", status_code, reason, text
+        )
+        header_list = ["JOB_METRICS", "COUNT"]
+
+        stats_list = [
+            {header_list[0]: key, header_list[1]: value}
+            for key, value in json_results.items()
+        ]
+
+        table_values = CommandHelper.get_table_list_data(
+            stats_list, header_list, is_dict=False
+        )
+        return table_values
+
+
 # Register commands
 command_manager = CommandManager("qcos")
 # version command
@@ -2823,7 +2937,8 @@ command_manager.add_command("list-devices", GetDevices)
 command_manager.add_command("get-transpiler", GetTranspiler)
 command_manager.add_command("list-transpilers", GetTranspilers)
 # user command
-command_manager.add_command("get-user-mgmt-status", GetUserMgmtStatus)
+command_manager.add_command("get-user-mgmt", GetUserMgmt)
+command_manager.add_command("set-user-mgmt", SetUserMgmt)
 command_manager.add_command("create-user", CreateUser)
 command_manager.add_command("get-user", GetUser)
 command_manager.add_command("list-users", GetUsers)
@@ -2831,6 +2946,7 @@ command_manager.add_command("update-user", UpdateUser)
 command_manager.add_command("delete-user", DeleteUser)
 command_manager.add_command("change-password", ChangePassword)
 command_manager.add_command("list-login-logs", GetLoginLogs)
+command_manager.add_command("clear-login-logs", ClearLoginLogs)
 command_manager.add_command("create-role", CreateRole)
 command_manager.add_command("get-role", GetRole)
 command_manager.add_command("list-roles", GetRoles)
