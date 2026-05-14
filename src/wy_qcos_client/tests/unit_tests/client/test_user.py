@@ -33,14 +33,14 @@ class TestClientUser:
         cls.return_values = (200, "OK", "text", "result")
 
     @patch.object(Client, "call_json_rpc")
-    def test_get_user_mgmt_status(self, mock_call_json_rpc):
-        """Test get_user_mgmt_status method."""
+    def test_get_user_mgmt(self, mock_call_json_rpc):
+        """Test get_user_mgmt method."""
         mock_call_json_rpc.return_value = self.return_values
-        status_code, reason, text, result = client.get_user_mgmt_status()
+        status_code, reason, text, result = client.get_user_mgmt()
         assert status_code == 200
         assert reason == "OK"
         mock_call_json_rpc.assert_called_once_with(
-            client.user_url, "get_user_mgmt_status", {}
+            client.user_url, "get_user_mgmt", {}
         )
 
     @patch.object(Client, "call_json_rpc")
