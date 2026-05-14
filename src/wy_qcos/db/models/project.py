@@ -46,3 +46,4 @@ class Project(Base):
 
     # Relationships
     users = relationship("User", back_populates="project")
+    login_logs = relationship("LoginLog", back_populates="project")
