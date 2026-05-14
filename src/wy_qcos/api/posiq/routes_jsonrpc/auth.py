@@ -671,7 +671,7 @@ async def refresh_token(
     errors=[jsonrpc_errors.UnauthorizedError],
 )
 def me(
-    body: schemas.GetUserMgmtStatusRequest | None = None,
+    body: schemas.GetUserMgmtRequest | None = None,
     auth_data: dict | None = Depends(auth),
     user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.GetUserResponse:
@@ -702,7 +702,27 @@ def me(
             (False, ["Authentication required"]),
         )
 
-    # Get current user
+    # Handle auth_mode=no case - return anonymous user info from auth_data
+    if auth_data.get(Constant.AUTH_MODE_KEY) == Constant.AUTH_MODE_NO:
+        now = datetime.now().isoformat()
+        response_info = {
+            "id": Constant.ANONYMOUS_USERNAME,
+            "project_id": Constant.DEFAULT_PROJECT_ID,
+            "user_name": Constant.ANONYMOUS_USERNAME,
+            "roles": auth_data.get("roles", []),
+            "is_enabled": True,
+            "is_locked": False,
+            "password_expiry_days": 0,
+            "last_login": None,
+            "password_changed_at": now,
+            "locked_until": None,
+            "description": "Anonymous user (no authentication mode)",
+            "created_at": now,
+            "updated_at": now,
+        }
+        return schemas.GetUserResponse.model_validate(response_info)
+
+    # Get current user from database (for JWT and virtual_instance modes)
     user_id = auth_data["user_id"]
     user = user_manager.get_user_by_id(user_id)
 
