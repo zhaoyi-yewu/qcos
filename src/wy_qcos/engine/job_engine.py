@@ -34,10 +34,10 @@ from prefect.artifacts import (
 from prefect.context import get_run_context
 from prefect.input import RunInput
 
-from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common import errors
 from wy_qcos.common.library import Library
+from wy_qcos.engine.common import init_logger
 from wy_qcos.engine.qubo import (
     subqubo,
     check_matrix,
@@ -55,30 +55,6 @@ from wy_qcos.transpiler.common.wirecut.cut_wire import (
     reconstruct_probability_distribution_wire_cut,
 )
 
-
-def init_logger(log_file_path, debug=False):
-    # Config Loguru
-    # pylint: disable=duplicate-code
-    # remove all
-    logger.remove()
-
-    # add logger: stdout
-    logger.add(
-        sys.stdout,
-        level="DEBUG" if debug else "INFO",
-        format=Constant.PREFECT_JOB_LOG_FORMAT,
-        colorize=True,
-    )
-
-    # add logger: log file
-    logger.add(
-        log_file_path,
-        level="DEBUG" if debug else "INFO",
-        rotation=f"{Config.LOG_ROTATE_MAX_SIZE_MB} MB",
-        compression="gz" if Config.LOG_ROTATE_COMPRESSION else None,
-        retention=Config.LOG_ROTATE_BACKUP_COUNT,
-        format=Constant.PREFECT_JOB_LOG_FORMAT,
-    )
 
 
 class AggregationInput(RunInput):
@@ -606,7 +582,21 @@ def job_flow(job_info):
     device_log_file = f"/var/log/qcos/device_{backend}.log"
     if "device_log_file" in device_configs:
         device_log_file = device_configs["device_log_file"]
-    init_logger(log_file_path=device_log_file, debug=debug)
+
+    # Extract logging configuration parameters
+    log_format = device_configs.get("log_format")
+    log_rotate_max_size_mb = device_configs.get("log_rotate_max_size_mb")
+    log_rotate_backup_count = device_configs.get("log_rotate_backup_count")
+    log_rotate_compression = device_configs.get("log_rotate_compression")
+
+    init_logger(
+        log_file_path=device_log_file,
+        debug=debug,
+        log_format=log_format,
+        log_rotate_max_size_mb=log_rotate_max_size_mb,
+        log_rotate_backup_count=log_rotate_backup_count,
+        log_rotate_compression=log_rotate_compression,
+    )
     logger.info(
         f"Processing work flow: job_engine. "
         f"job_id: {job_id}, job_info: {job_info}"
