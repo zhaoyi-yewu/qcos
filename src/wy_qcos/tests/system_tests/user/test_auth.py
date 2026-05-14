@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import logging
 import pytest
 
 from wy_qcos.common.constant import Constant
@@ -47,14 +46,15 @@ class TestAuth:
                 StLibrary.delete_user(
                     cls.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @classmethod
     def setup_class(cls):
         """Initialize test environment."""
         cls.client = GLOBAL_CONFIGS["client"]
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
+        cls.virtual_instance_client = GLOBAL_CONFIGS["virtual_instance_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
 
@@ -66,12 +66,26 @@ class TestAuth:
         cls.old_password = _s("OldPassword123!")
         cls.new_password = _s("NewPassword456!")
 
+        # Store original auth mode for restoration
+        cls.original_auth_mode = StLibrary.get_auth_mode(cls.admin_client)
+        StLibrary.set_auth_mode(cls.admin_client,
+                                cls.virtual_instance_client,
+                                cls.original_auth_mode,
+                                Constant.AUTH_MODE_JWT)
+
         # Clean up any existing test resources before starting tests
         cls._cleanup_test_users()
 
     @classmethod
     def teardown_class(cls):
         """Clean up test environment."""
+        current_auth_mode = StLibrary.get_auth_mode(cls.admin_client)
+        StLibrary.set_auth_mode(
+            cls.admin_client,
+            cls.virtual_instance_client,
+            current_auth_mode,
+            cls.original_auth_mode
+        )
         cls._cleanup_test_users()
 
     @pytest.mark.smoke
@@ -101,8 +115,8 @@ class TestAuth:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_login_with_invalid_credentials(self):
@@ -139,8 +153,8 @@ class TestAuth:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_login_and_get_user_info(self):
@@ -174,8 +188,8 @@ class TestAuth:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_multiple_login_sessions(self):
@@ -204,8 +218,8 @@ class TestAuth:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_change_password(self):
@@ -252,8 +266,8 @@ class TestAuth:
                     is_name=True,
                     force=True,
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_token_expiry_and_refresh(self):
@@ -288,8 +302,8 @@ class TestAuth:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_get_current_user(self):
@@ -319,8 +333,8 @@ class TestAuth:
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
 
     @pytest.mark.smoke
     def test_authentication_with_role_permission(self):
@@ -349,14 +363,13 @@ class TestAuth:
                 )
                 assert user_roles is not None
                 assert isinstance(user_roles, (dict, list))
-            except Exception:
-                # User may not have roles assigned yet
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
         finally:
             try:
                 # Login as admin to delete user
                 StLibrary.delete_user(
                     self.admin_client, username, is_name=True, force=True
                 )
-            except Exception:
-                logging.warning("Exception during cleanup")
+            except Exception:  # noqa: S110
+                pass
