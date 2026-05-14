@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 add_library(${LIB_TRANSPILER} STATIC
                             circuit/base_operation.cpp
+                            circuit/dag_circuit.cpp
                             circuit/dag_node.cpp
                             circuit/multi_graph.cpp
                             circuit/gate_operation.cpp
