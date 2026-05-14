@@ -15,10 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from loguru import logger
 
-from wy_qcos.common.constant import Constant, HttpCode, HttpMethod
-from wy_qcos.common.library import Library
+from wy_qcos.common.constant import Constant
 from wy_qcos.drivers.cascoldatom.driver_wuyue_hanyuan1 import (
     DriverWuyueHanyuan1,
 )
@@ -47,85 +45,23 @@ class DriverWuyueHanyuan1Sim(DriverWuyueHanyuan1):
         self.max_qubits = 25
         self.enable_device_monitor = False
 
-    def get_task_realtime_result(self, task_id):
-        """Get task realtime result.
+    def get_task_results(self, task_id):
+        """Get task results.
 
         Args:
-            task_id: task ID
+            task_id: task id
 
         Returns:
-            success or fail, error message, task status
+            success or fail, error message, task results
         """
-        success = True
-        err_msgs = []
-        realtime_status = None
-
-        query_data = self.prepare_query_task_data(task_id)
-        # Get task status
-        url = f"http://{self.ip_addr}:{self.port}/{self.query_task_path}"
-        logger.info(f"get task result url: {url}")
-        headers = self.default_headers
-        headers["clientId"] = self.client_id
-        status_code, reason, text, r = Library.call_http_api(
-            url,
-            HttpMethod.POST,
-            data=query_data,
-            headers=headers,
-            func_name="get_task_realtime_result",
+        # Get task results
+        success, err_msg, final_results = self.get_task_realtime_result(
+            task_id
         )
-        realtime_status = None
-        if status_code == HttpCode.SUCCESS_OK:
-            response = self.decrypt_by_private_key(text)
-            err_code = response["code"]
-            err_msg = response["msg"]
-            logger.info(f"err_code: {err_code}, msg: {err_msg}")
-            if err_code == 1:
-                data = response["data"]
-                if (
-                    data is None
-                    or data[0] is None
-                    or data[0]["taskStatus"] is None
-                ):
-                    success = False
-                    err_msgs.append("invalid data received")
-                    return success, "\n".join(err_msgs), None
-                task_status = data[0]["taskStatus"]
-                logger.info(f"task_status: {task_status}")
-                result = None
-                if data[0]["outData"] is not None:
-                    result = data[0]["outData"]
-                machine_time_info = self.construct_machine_time_info(data[0])
-
-                if task_status == self.task_status_failed:
-                    success = True
-                    realtime_status = {
-                        "task_status": data[0]["taskStatus"],
-                        "result": result,
-                        "machine_time_info": machine_time_info,
-                    }
-                    err_msgs.append(f"Task failed: {task_status}")
-                elif task_status == self.task_status_completed:
-                    success = True
-                    realtime_status = {
-                        "task_status": data[0]["taskStatus"],
-                        "result": result,
-                        "machine_time_info": machine_time_info,
-                    }
-                else:
-                    success = False
-                    realtime_status = {
-                        "task_status": data[0]["taskStatus"],
-                    }
-                    err_msgs.append(
-                        f"Task failed, task status : {task_status}"
-                    )
-            else:
-                realtime_status = {
-                    "task_status": self.task_status_failed,
-                }
-                success = True
-                err_msgs.append(err_msg)
-        else:
-            success = False
-            err_msgs.append(reason)
-        return success, "\n".join(err_msgs), realtime_status
+        if not success:
+            raise ValueError(
+                f"Failed to get task results [{task_id}]: {err_msg}"
+            )
+        results = final_results.get("result", None)
+        machine_time_info = final_results.get("machine_time_info", None)
+        return success, "\n".join(err_msg), results, machine_time_info

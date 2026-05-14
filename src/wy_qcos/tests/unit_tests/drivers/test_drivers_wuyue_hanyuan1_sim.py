@@ -159,7 +159,7 @@ class TestDriverWuyuehanyuanSim:
             "data": [
                 {
                     "taskStatus": driver_wy_hanyuan1_sim.task_status_completed,
-                    "outData": json.dumps(test_result),
+                    "outData": test_result,
                     "execEndTime": 12345,
                     "execStartTime": 12333,
                     "timeConsume": "2.00",
@@ -179,7 +179,7 @@ class TestDriverWuyuehanyuanSim:
         )
         assert success is True
         assert err_msg == ""
-        assert len(results) == 3
+        assert len(results) == 4
         assert results["00"] == 10
         assert results["01"] == 11
         assert results["10"] == 9
