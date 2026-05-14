@@ -36,7 +36,8 @@ from wy_qcos_client.shell import (
     GetRoles,
     ChangePassword,
     GetLoginLogs,
-    GetUserMgmtStatus,
+    ClearLoginLogs,
+    GetUserMgmt,
     Login,
     Logout,
     RefreshToken,
@@ -64,24 +65,24 @@ shell = QcosShell(DESCRIPTION, VERSION, command_manager)
 shell.client = Client()
 
 
-class TestGetUserMgmtStatus:
-    """Test cases for GetUserMgmtStatus command."""
+class TestGetUserMgmt:
+    """Test cases for GetUserMgmt command."""
 
     def test_get_parser(self):
-        cmd = GetUserMgmtStatus(shell, None)
-        parser = cmd.get_parser("get-user-mgmt-status")
+        cmd = GetUserMgmt(shell, None)
+        parser = cmd.get_parser("get-user-mgmt")
         assert parser is not None
 
     @patch.object(Client, "get_user_mgmt_status")
     def test_take_action(self, mock_get_user_mgmt_status):
-        """Test GetUserMgmtStatus take_action method."""
+        """Test GetUserMgmt take_action method."""
         mock_get_user_mgmt_status.return_value = (
             200,
             "OK",
             jsonrpc_response,
             {"result": {"enabled": True}},
         )
-        cmd = GetUserMgmtStatus(shell, None)
+        cmd = GetUserMgmt(shell, None)
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
@@ -639,6 +640,108 @@ class TestGetLoginLogs:
         assert result is not None
 
 
+class TestClearLoginLogs:
+    """Test cases for ClearLoginLogs command."""
+
+    def test_get_parser(self):
+        cmd = ClearLoginLogs(shell, None)
+        parser = cmd.get_parser("clear-login-logs")
+        assert parser is not None
+
+    @patch.object(Client, "clear_login_logs")
+    @patch("builtins.input", return_value="y")
+    def test_take_action_all_logs_with_confirmation(
+        self, mock_input, mock_clear_login_logs
+    ):
+        """Test ClearLoginLogs clearing all logs with user confirmation."""
+        mock_response = {
+            "jsonrpc": "2.0",
+            "result": {"count": 42},
+            "id": 0,
+        }
+        mock_clear_login_logs.return_value = (
+            200,
+            "OK",
+            json.dumps(mock_response),
+            mock_response["result"],
+        )
+        cmd = ClearLoginLogs(shell, None)
+        cmd.app = shell
+        cmd.app.stdout = Mock()
+        parsed_args = Mock()
+        parsed_args.user_id = None
+        parsed_args.user_name = None
+        parsed_args.force = False
+        result = cmd.take_action(parsed_args)
+        assert result is not None
+        mock_clear_login_logs.assert_called_once_with()
+
+    @patch.object(Client, "clear_login_logs")
+    def test_take_action_with_user_id_force(self, mock_clear_login_logs):
+        """Test ClearLoginLogs with user_id and force flag."""
+        mock_response = {
+            "jsonrpc": "2.0",
+            "result": {"count": 5},
+            "id": 0,
+        }
+        mock_clear_login_logs.return_value = (
+            200,
+            "OK",
+            json.dumps(mock_response),
+            mock_response["result"],
+        )
+        cmd = ClearLoginLogs(shell, None)
+        cmd.app = shell
+        cmd.app.stdout = Mock()
+        parsed_args = Mock()
+        parsed_args.user_id = user_id
+        parsed_args.user_name = None
+        parsed_args.force = True
+        result = cmd.take_action(parsed_args)
+        assert result is not None
+        mock_clear_login_logs.assert_called_once_with(user_id=user_id)
+
+    @patch.object(Client, "clear_login_logs")
+    def test_take_action_with_user_name_force(self, mock_clear_login_logs):
+        """Test ClearLoginLogs with user_name and force flag."""
+        mock_response = {
+            "jsonrpc": "2.0",
+            "result": {"count": 10},
+            "id": 0,
+        }
+        mock_clear_login_logs.return_value = (
+            200,
+            "OK",
+            json.dumps(mock_response),
+            mock_response["result"],
+        )
+        cmd = ClearLoginLogs(shell, None)
+        cmd.app = shell
+        cmd.app.stdout = Mock()
+        parsed_args = Mock()
+        parsed_args.user_id = None
+        parsed_args.user_name = "admin"
+        parsed_args.force = True
+        result = cmd.take_action(parsed_args)
+        assert result is not None
+        mock_clear_login_logs.assert_called_once_with(user_name="admin")
+
+    @patch.object(Client, "clear_login_logs")
+    @patch("builtins.input", return_value="n")
+    def test_take_action_user_cancel(self, mock_input, mock_clear_login_logs):
+        """Test ClearLoginLogs when user cancels operation."""
+        cmd = ClearLoginLogs(shell, None)
+        cmd.app = shell
+        cmd.app.stdout = Mock()
+        parsed_args = Mock()
+        parsed_args.user_id = None
+        parsed_args.user_name = None
+        parsed_args.force = False
+        cmd.take_action(parsed_args)
+        # Should return None when user cancels
+        mock_clear_login_logs.assert_not_called()
+
+
 class TestLogin:
     """Test cases for Login command."""
 
@@ -848,3 +951,82 @@ class TestWhoami:
         parsed_args = Mock()
         result = cmd.take_action(parsed_args)
         assert result is not None
+
+
+class TestSetUserMgmt:
+    """Test cases for SetUserMgmt command."""
+
+    def test_get_parser(self):
+        from wy_qcos_client.shell import SetUserMgmt
+        cmd = SetUserMgmt(shell, None)
+        parser = cmd.get_parser("set-user-mgmt")
+        assert parser is not None
+
+    @patch.object(Client, "set_user_mgmt")
+    def test_take_action_auth_mode_jwt(self, mock_set_user_mgmt):
+        """Test SetUserMgmt with JWT auth mode."""
+        mock_response = {
+            "jsonrpc": "2.0",
+            "result": {"auth_mode": "jwt", "message": "Auth mode updated"},
+            "id": 0,
+        }
+        mock_set_user_mgmt.return_value = (
+            200,
+            "OK",
+            json.dumps(mock_response),
+            mock_response["result"],
+        )
+        from wy_qcos_client.shell import SetUserMgmt
+        cmd = SetUserMgmt(shell, None)
+        cmd.app = shell
+        cmd.app.stdout = Mock()
+        parsed_args = Mock()
+        parsed_args.auth_mode = "jwt"
+        cmd.take_action(parsed_args)
+        mock_set_user_mgmt.assert_called_once_with("jwt")
+
+    @patch.object(Client, "set_user_mgmt")
+    def test_take_action_auth_mode_virtual_instance(self, mock_set_user_mgmt):
+        """Test SetUserMgmt with virtual_instance auth mode."""
+        mock_response = {
+            "jsonrpc": "2.0",
+            "result": {"auth_mode": "virtual_instance", "message": "Auth mode updated"},
+            "id": 0,
+        }
+        mock_set_user_mgmt.return_value = (
+            200,
+            "OK",
+            json.dumps(mock_response),
+            mock_response["result"],
+        )
+        from wy_qcos_client.shell import SetUserMgmt
+        cmd = SetUserMgmt(shell, None)
+        cmd.app = shell
+        cmd.app.stdout = Mock()
+        parsed_args = Mock()
+        parsed_args.auth_mode = "virtual_instance"
+        cmd.take_action(parsed_args)
+        mock_set_user_mgmt.assert_called_once_with("virtual_instance")
+
+    @patch.object(Client, "set_user_mgmt")
+    def test_take_action_auth_mode_no(self, mock_set_user_mgmt):
+        """Test SetUserMgmt with no auth mode."""
+        mock_response = {
+            "jsonrpc": "2.0",
+            "result": {"auth_mode": "no", "message": "Auth mode updated"},
+            "id": 0,
+        }
+        mock_set_user_mgmt.return_value = (
+            200,
+            "OK",
+            json.dumps(mock_response),
+            mock_response["result"],
+        )
+        from wy_qcos_client.shell import SetUserMgmt
+        cmd = SetUserMgmt(shell, None)
+        cmd.app = shell
+        cmd.app.stdout = Mock()
+        parsed_args = Mock()
+        parsed_args.auth_mode = "no"
+        cmd.take_action(parsed_args)
+        mock_set_user_mgmt.assert_called_once_with("no")
