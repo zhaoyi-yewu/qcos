@@ -25,8 +25,10 @@ from .auth import (
 )
 from .version import GetVersionRequest, GetVersionResponse
 from .user import (
-    GetUserMgmtStatusRequest,
-    GetUserMgmtStatusResponse,
+    GetUserMgmtRequest,
+    GetUserMgmtResponse,
+    SetUserMgmtRequest,
+    SetUserMgmtResponse,
     CreateUserRequest,
     CreateUserResponse,
     GetUserRequest,
