@@ -44,11 +44,13 @@
 系统启动时自动创建两个默认项目：
 
 1. **默认项目 (Default Project)**
+
    - 项目ID：``00000000-0000-4000-8000-000000000000``
    - 项目名：``default project``
    - 用途：一般用户和管理员的默认项目
 
 2. **管理项目 (Admin Project)** (保留)
+
    - 项目ID：``00000000-0000-4000-8000-000000000001``
    - 项目名：``admin project``
    - 用途：系统管理和内部使用
@@ -95,13 +97,15 @@
 系统启动时自动创建以下用户：
 
 1. **管理员用户 (Admin User)**
+
    - 用户名：``admin``
-   - 密码：``123456``（默认，应在生产环境修改）
+   - 密码：``123456`` （默认，应在生产环境修改）
    - 角色：``admin``
-   - 项目：``default`` (项目ID: 00000000-0000-4000-8000-000000000000)
+   - 项目：``default`` （项目ID: 00000000-0000-4000-8000-000000000000）
    - 描述：``Administrator with full permissions``
 
 2. **匿名用户 (Anonymous User)** (仅在 auth_mode=no 时使用)
+
    - 用户名：``anonymous``
    - 密码：``123456``
    - 角色：``admin``
@@ -114,16 +118,17 @@
 .. code-block:: sql
 
     CREATE TABLE roles (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id VARCHAR(36) PRIMARY KEY,
         role_name VARCHAR(50) UNIQUE NOT NULL,
         permissions JSON DEFAULT [],
         description TEXT,
-        created_at DATETIME,
-        updated_at DATETIME
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
 **关键字段说明：**
 
+- ``id``：角色ID，UUID格式，主键
 - ``role_name``：角色名称，业务唯一标识
 - ``permissions``：JSON格式存储的权限列表，存储API资源路径
 - ``description``：角色描述信息
@@ -133,11 +138,13 @@
 系统启动时自动创建以下角色：
 
 1. **管理员角色 (Admin Role)**
+
    - 角色名：``admin``
    - 描述：``Administrator with full permissions``
    - 权限：具有所有API访问权限（由Casbin策略定义）
 
 2. **普通用户角色 (User Role)**
+
    - 角色名：``user``
    - 描述：``Regular user with basic permissions``
    - 权限：基本的系统访问权限（由Casbin策略定义）
@@ -148,10 +155,11 @@
 .. code-block:: sql
 
     CREATE TABLE user_roles (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        role_id INTEGER NOT NULL,
-        created_at DATETIME,
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        role_id VARCHAR(36) NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (user_id, role_id),
         FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (role_id) REFERENCES roles(id)
     );
@@ -162,20 +170,25 @@
 .. code-block:: sql
 
     CREATE TABLE login_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id VARCHAR(36) PRIMARY KEY,
+        project_id VARCHAR(36),
         user_name VARCHAR(50) NOT NULL,
         ip_address VARCHAR(45) NOT NULL,
         login_time DATETIME,
-        login_status VARCHAR(20) NOT NULL,
+        login_status BOOLEAN NOT NULL,
+        failure_reason TEXT,
         user_agent TEXT,
-        FOREIGN KEY (user_name) REFERENCES users(user_name)
+        FOREIGN KEY (project_id) REFERENCES projects(id)
     );
 
 **关键字段说明：**
 
+- ``id``：登录日志ID，UUID格式，主键
+- ``project_id``：项目ID（外键，可为null），用户所属项目
 - ``ip_address``：支持IPv6格式（最大45字符）
-- ``login_status``：登录状态，包括 'success' 和 'failed'
-- ``user_agent``：客户端用户代理信息
+- ``login_status``：登录状态（boolean），true 表示成功，false 表示失败
+- ``failure_reason``：登录失败原因（仅当 login_status 为 false 时有值）
+- ``user_agent``：客户端用户代理信息（可为null）
 
 令牌黑名单表 (token_blacklist)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -183,14 +196,15 @@
 .. code-block:: sql
 
     CREATE TABLE token_blacklist (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id VARCHAR(36) PRIMARY KEY,
         token_jti VARCHAR(36) UNIQUE NOT NULL,
         expires_at DATETIME NOT NULL,
-        created_at DATETIME
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
 **关键字段说明：**
 
+- ``id``：黑名单记录ID，UUID格式，主键
 - ``token_jti``：JWT令牌的唯一标识符（UUID格式）
 - ``expires_at``：令牌过期时间，用于自动清理
 
@@ -343,16 +357,19 @@ UserManager
 **功能**：
 
 - ``-i, --init`` - 初始化数据库：
+
   - 创建 ``qcos`` 数据库用户（如不存在）
   - 创建 ``qcos`` 数据库（如不存在）
   - 使用 ``.env`` 文件中的 ``PASS`` 变量作为用户密码
 
 - ``-u, --upgrade`` - 升级数据库到指定版本：
+
   - 默认升级到最新版本 (head)
   - 运行 Alembic 迁移脚本
   - 创建所有数据库表和关系
 
 - ``-d, --downgrade`` - 降级数据库到指定版本：
+
   - 默认降级到基础版本 (base)
   - 用于回滚数据库变更
 
@@ -397,103 +414,30 @@ UserManager
 
 **3. 启动系统**
 
-数据库初始化完成后，系统启动时会自动执行以下初始化：
-
-.. code-block:: bash
-
-   # 启动QCOS服务
-   python -m wy_qcos.main
-
-**初始化顺序与自动创建**
-
-系统启动时，``UserManager.init_db()`` 会按以下顺序执行初始化（仅在数据库为空时执行一次）：
+数据库初始化完成后，系统启动时 ``UserManager.init_db()`` 会按以下顺序执行初始化（仅在数据库为空时执行一次）：
 
 1. **检查PostgreSQL连接** - 验证数据库连接是否正常
 2. **检查表是否存在** - 如果表已存在，则跳过初始化
-3. **创建项目** - 创建默认项目
-4. **创建角色** - 为项目创建默认角色
-5. **创建用户** - 创建管理员和匿名用户
+3. **创建默认项目**
 
-系统启动时，用户管理模块会执行以下初始化（必需db_session）：
+   - ``default project`` (ID: 00000000-0000-4000-8000-000000000000)
+   - ``admin project`` (ID: 00000000-0000-4000-8000-000000000001)
 
-**初始化顺序**：
+4. **创建默认角色**
 
-1. **项目初始化** - 创建默认项目
+   - ``admin`` - 管理员角色（所有API权限）
+   - ``user`` - 普通用户角色（基本系统权限）
 
-   - **默认项目 (default project)**
-     - ID: ``00000000-0000-4000-8000-000000000000``
-     - 用途：普通用户所在的默认项目
+5. **创建默认用户**
 
-   - **管理项目 (admin project)**
-     - ID: ``00000000-0000-4000-8000-000000000001``
-     - 用途：保留项目，通常不使用
-
-2. **角色初始化** - 为每个项目创建默认角色
-
-   在每个项目内创建以下角色：
-
-   - **admin** 角色
-     - 描述：``Administrator with full permissions``
-     - 权限：由Casbin策略定义的所有权限
-
-   - **user** 角色
-     - 描述：``Regular user with basic permissions``
-     - 权限：基本系统访问权限
-
-3. **用户初始化** - 创建默认用户
-
-   在默认项目 (default project) 内创建以下用户：
-
-   .. code-block:: text
-
-      用户名: admin
-      密码: 123456 (默认，应在生产环境修改)
-      项目: default project
-      角色: [admin]
-      启用: true
-      锁定: false
-      描述: Administrator with full permissions
-
-      用户名: anonymous
-      密码: 123456
-      项目: default project
-      角色: [admin]
-      启用: true
-      锁定: false
-      描述: Anonymous user with full permissions (auth_mode=no)
-
-**初始化代码** (在 ``UserManager.init_db()`` 中执行)：
-
-.. code-block:: python
-
-   # 初始化项目
-   init_projects(Constant.ADMIN_PROJECT_ID, Constant.ADMIN_PROJECT_NAME)
-   init_projects(Constant.DEFAULT_PROJECT_ID, Constant.DEFAULT_PROJECT_NAME)
-
-   # 初始化角色
-   init_roles(Constant.ROLE_ADMIN, description="Administrator with full permissions")
-   init_roles(Constant.ROLE_USER, description="Regular user with basic permissions")
-
-   # 初始化用户
-   init_users(
-       Constant.ADMIN_USERNAME,
-       Constant.DEFAULT_PROJECT_ID,
-       [Constant.ROLE_ADMIN],
-       DEFAULT_ADMIN_PASSWORD,  # 123456
-       description="Administrator with full permissions"
-   )
-   init_users(
-       Constant.ANONYMOUS_USERNAME,
-       Constant.DEFAULT_PROJECT_ID,
-       [Constant.ROLE_ADMIN],
-       DEFAULT_ADMIN_PASSWORD,
-       description="Anonymous user with full permissions (auth_mode=no)"
-   )
+   - 用户 ``admin`` / 密码 ``123456`` / 角色 ``admin``
+   - 用户 ``anonymous`` / 密码 ``123456`` / 角色 ``admin`` (仅在 AUTH_MODE=no 时使用)
 
 **常见问题**
 
 Q: 数据库初始化失败怎么办？
    A: 检查以下项目：
+
       - PostgreSQL服务是否已启动
       - ``PASS`` 环境变量是否正确设置
       - 数据库用户是否有足够权限
@@ -528,11 +472,13 @@ Q: 如何修改默认密码？
 **部署完成后**：
 
 1. 系统自动创建的默认用户：
+
    - 用户名: ``admin``
    - 密码: ``123456`` (⚠️ 生产环境必须修改)
    - 角色: ``admin`` (拥有所有权限)
 
 2. 立即采取的安全措施：
+
    - 修改管理员默认密码
    - 配置 JWT_AUTH_SECRET_KEY
    - 启用HTTPS
@@ -551,31 +497,7 @@ QCOS系统采用多租户架构，支持项目隔离。用户关联到特定的�
 - 为项目初始化默认角色和管理员用户
 - 查询和管理项目的用户和角色
 
-RBAC权限模型
-~~~~~~~~~~~~
-
-QCOS系统采用基于角色的访问控制（RBAC），用户可以被分配多个角色，每个角色拥有不同的权限。
-
-内置角色包括：
-
-- **user**：普通用户，具有基本的系统访问权限
-- **admin**：管理员，具有用户管理和系统配置权限
-
-权限通过Casbin策略文件定义，支持细粒度的访问控制。
-
-.. note::
-
-   **多租户隔离说明**：
-
-   - 每个用户必须属于一个项目
-   - 不同项目的用户权限完全隔离
-   - 项目管理员通过 ProjectRepository 进行项目级别管理
-
-.. plantuml:: ../../_static/design/module-design/user-role-er.puml
-   :caption: 用户角色关系图
-   :alt: 用户角色关系图
-   :width: 50%
-   :align: center
+相关实现详见 :ref:`rbac-权限模型` 部分。
 
 用户管理API使用示例
 -------------------------
@@ -613,6 +535,18 @@ QCOS系统采用基于角色的访问控制（RBAC），用户可以被分配多
        description="Updated test user"
    )
    print(f"Updated user: {result}")
+
+   # 查看登录日志
+   status_code, reason, text, result = client.get_login_logs(limit=50)
+   print(f"Login logs: {result}")
+
+   # 清空所有登录日志
+   status_code, reason, text, result = client.clear_login_logs()
+   print(f"Cleared all login logs: {result}")
+
+   # 清空特定用户的登录日志
+   status_code, reason, text, result = client.clear_login_logs(user_name="admin")
+   print(f"Cleared login logs for admin: {result}")
 
    # 删除用户
    status_code, reason, text, result = client.delete_user(user_id=result['id'])
@@ -752,13 +686,8 @@ QCOS为所有API方法提供了细粒度的权限控制，包括两部分：
 
 .. note::
 
-   **多租户隔离说明**：
-
-   - 每个用户必须属于一个项目
-   - 不同项目的用户权限完全隔离
-   - 项目管理员通过 ProjectRepository 进行项目级别管理
-   - 用户只能访问自己所在项目的资源
-
+   在多租户架构下，系统通过 project_id 字段在数据库层面实现租户隔离。
+   每个用户只能访问自己所在项目的资源，即使具有对应的角色权限。
 
 配置说明
 --------
@@ -783,6 +712,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
 **作用**：完全禁用用户认证和权限检查
 
 **效果**：
+
 - ✅ 所有API调用无需认证令牌
 - ✅ 系统自动使用 ``anonymous`` 用户身份
 - ✅ 所有用户被视为 ``admin`` 角色（具有所有权限）
@@ -790,6 +720,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
 - ✅ JWT令牌验证被跳过
 
 **使用场景**：
+
 - 本地开发环境
 - 内部测试和演示
 - 不需要鉴权的专网部署
@@ -823,6 +754,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
 **作用**：启用基于JWT令牌的身份认证
 
 **效果**：
+
 - ✅ 用户必须通过 ``login`` 接口获取JWT令牌
 - ✅ 所有API请求必须携带有效的访问令牌
 - ✅ 系统执行基于角色的权限检查 (RBAC)
@@ -870,12 +802,14 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
       client.set_token(new_access_token)
 
 **使用场景**：
+
 - 生产环境
 - 多用户系统
 - 需要权限隔离的部署
 - 需要审计日志的合规场景
 
 **默认用户**：
+
 - 用户名: ``admin``
 - 密码: ``123456`` (应在部署时修改)
 - 角色: ``admin``
@@ -916,6 +850,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
 **作用**：使用虚拟实例ID进行设备级别的认证和隔离
 
 **效果**：
+
 - ✅ 系统验证 ``x-qcos-virtual-instance-id`` 请求头
 - ✅ 虚拟实例ID包含加密的设备信息
 - ✅ 系统基于虚拟实例隔离设备访问权限
@@ -937,6 +872,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
     }
 
     特殊值:
+
     - device_names=["all"], instance_id="all" → admin权限
 
 **认证流程**：
@@ -984,6 +920,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
       └─ 解密失败 → Unauthorized ❌
 
 **使用场景**：
+
 - 云平台多租户隔离
 - 物理设备的虚拟化分配
 - SaaS环境中的资源隔离
@@ -1061,21 +998,25 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
 --------
 
 1. **生产环境部署**：
+
    - 使用强随机密钥作为JWT_SECRET_KEY
    - 启用HTTPS传输加密
    - 定期轮换密钥
 
 2. **密码策略**：
+
    - 要求密码包含大小写字母、数字和特殊字符
    - 设置合理的密码过期时间
    - 禁止使用常见弱密码
 
 3. **监控和审计**：
+
    - 监控异常登录行为
    - 定期审计用户权限分配
    - 保留足够的登录日志用于安全分析
 
 4. **数据保护**：
+
    - 定期备份用户数据
    - 实施数据库访问控制
    - 加密敏感数据存储
