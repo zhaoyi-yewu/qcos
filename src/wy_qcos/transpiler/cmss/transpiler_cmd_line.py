@@ -58,7 +58,7 @@ class TranspileParams:
         # mapping configs
         self.enable_mapping = True
         self.mapping_info = ()
-        self.mapping_options = {}
+        self.sc_mapping_options = {}
 
 
 class CMSSTranspilerPerf:
@@ -86,7 +86,7 @@ class CMSSTranspilerPerf:
         self.tech_type = []
         self.mapping_config_file = []
         self.mapping_info = []
-        self.mapping_options = []
+        self.sc_mapping_options = []
         self.gates_map = {
             "x": Constant.SINGLE_QUBIT_GATE_X,
             "y": Constant.SINGLE_QUBIT_GATE_Y,
@@ -111,7 +111,7 @@ class CMSSTranspilerPerf:
         opt_level,
         tech_type,
         config_file,
-        mapping_options,
+        sc_mapping_options,
     ):
         """Init output log head.
 
@@ -121,7 +121,7 @@ class CMSSTranspilerPerf:
             opt_level(int): The optimization level.
             tech_type(str): The technology type.
             config_file(str): The technology config file.
-            mapping_options(dict): The mapping options.
+            sc_mapping_options(dict): The mapping options.
         """
         if output_file_path:
             with open(output_file_path, "a", encoding="utf-8") as f:
@@ -131,7 +131,7 @@ class CMSSTranspilerPerf:
                     f"optimization level: {opt_level}\n"
                     f"technology type: {tech_type}\n"
                     f"technology config file: {config_file}\n"
-                    f"mapping options: {mapping_options}\n"
+                    f"mapping options: {sc_mapping_options}\n"
                     "--------------------------------------------------\n"
                 )
 
@@ -254,15 +254,15 @@ class CMSSTranspilerPerf:
         self.mapping_info = list(zip(self.tech_type, self.mapping_config_file))
 
         # mapping config
-        mapping_options = extra_configs["transpile"]["mapping"].get(
-            "mapping_options", []
+        sc_mapping_options = extra_configs["transpile"]["mapping"].get(
+            "sc_mapping_options", []
         )
-        for option in mapping_options:
+        for option in sc_mapping_options:
             if option == "":
-                self.mapping_options.append({})
+                self.sc_mapping_options.append({})
             else:
-                self.mapping_options.append(json.loads(option))
-        len_option = len(self.mapping_options)
+                self.sc_mapping_options.append(json.loads(option))
+        len_option = len(self.sc_mapping_options)
         if len_option > len(self.mapping_info):
             raise ValueError(
                 "mapping options should not be more than"
@@ -270,7 +270,7 @@ class CMSSTranspilerPerf:
                 " config file!"
             )
         for _ in range(len(self.mapping_info) - len_option):
-            self.mapping_options.append({})
+            self.sc_mapping_options.append({})
 
     def parse_file_args(self):
         """Parse input arguments from config file."""
@@ -325,14 +325,14 @@ class CMSSTranspilerPerf:
         self.init_transpile_params(extra_configs)
         self.parse_file_args()
 
-        # combinations of tech_type, mapping_config_file and mapping_options
+        # combinations of tech_type, mapping_config_file and sc_mapping_options
         combinations = list(
             itertools.product(
                 self.total_files,
                 self.base_gates,
                 self.opt_level,
                 self.mapping_info,
-                self.mapping_options,
+                self.sc_mapping_options,
             )
         )
 
@@ -342,7 +342,7 @@ class CMSSTranspilerPerf:
             params.tech_gates = cell[1]
             params.opt_level = cell[2]
             params.mapping_info = cell[3]
-            params.mapping_options = cell[4]
+            params.sc_mapping_options = cell[4]
             self.params_list.append(params)
             self.transpile_result[params] = None
 
@@ -363,7 +363,7 @@ class CMSSTranspilerPerf:
                     f"base_gates: {params.tech_gates}\n"
                     f"tech_type: {params.mapping_info[0]}\n"
                     f"config_file: {params.mapping_info[1]}\n"
-                    f"mapping_options: {params.mapping_options}\n"
+                    f"sc_mapping_options: {params.sc_mapping_options}\n"
                 )
                 runtime = self.cmss_transpiler_perf_exec(
                     input_file=params.file,
@@ -371,7 +371,7 @@ class CMSSTranspilerPerf:
                     base_gates=params.tech_gates,
                     tech_type=params.mapping_info[0],
                     config_file=params.mapping_info[1],
-                    mapping_options=params.mapping_options,
+                    sc_mapping_options=params.sc_mapping_options,
                 )
                 if params in transpile_all_result:
                     transpile_all_result[params].add_runtime(runtime)
@@ -560,7 +560,7 @@ class CMSSTranspilerPerf:
         base_gates: list = [],
         tech_type: str = "",
         config_file: str = "",
-        mapping_options: dict = {},
+        sc_mapping_options: dict = {},
     ):
         """cmss-transpiler performance test for single run.
 
@@ -570,7 +570,7 @@ class CMSSTranspilerPerf:
             base_gates (list): base gates for technology type
             tech_type (str): technology type
             config_file (str): config file path of technology type
-            mapping_options (dict): mapping options
+            sc_mapping_options (dict): mapping options
 
         Returns:
             TranspileRuntime: the runtime of phase of transpile
@@ -673,7 +673,7 @@ class CMSSTranspilerPerf:
                 opt_level,
                 tech_type,
                 config_file,
-                mapping_options,
+                sc_mapping_options,
             )
 
             # generate basis gates list
@@ -690,9 +690,9 @@ class CMSSTranspilerPerf:
             # optimize the transpiled gates
             if self.enable_transpiler:
                 with Timer() as tranpile_timer:
-                    if len(mapping_options) > 0:
+                    if len(sc_mapping_options) > 0:
                         transpiler.transpiler_options["sc_mapping_options"] = (
-                            mapping_options
+                            sc_mapping_options
                         )
                     transpiler.transpiler_options["enable_mapping"] = (
                         self.enable_mapping

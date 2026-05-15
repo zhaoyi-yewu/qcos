@@ -28,7 +28,8 @@ opt_level = [0, 1]
 [transpile.mapping]
 # 默认为true
 # enable_mapping = true
-# 拓扑类型, 当is_exec不为false时, 拓扑信息必须配置
+# 拓扑类型, superconducting/neutral_atom
+# 当is_exec不为false时, 拓扑信息必须配置
 tech_type = ["superconducting"]
 # 拓扑类型配置文件, 当is_exec不为false时， 必须配置，绝对路径或项目的相对路径
 config_file = ["./etc/qcos/conf.d/spinq_rpc.toml"]

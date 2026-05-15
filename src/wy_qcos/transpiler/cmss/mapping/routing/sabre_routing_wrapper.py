@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------
 
 from abc import ABC
-from loguru import logger
+from wy_qcos.transpiler.common.utils import trans_logger
 
 from wy_qcos.transpiler.common.errors import MappingException
 from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing import SABRE
@@ -161,10 +161,10 @@ class SABRERouting(ABC):
                 ]
             mapped_ir.append(gate)
 
-        logger.info(
+        trans_logger.log_debug(
             f"SABRE routing completed, "
             f"mapped_ir contains {len(mapped_ir)} gates"
         )
-        logger.info(f"final layout: {mapping_virtual_to_final}")
+        trans_logger.log_debug(f"final layout: {mapping_virtual_to_final}")
 
         return mapped_ir, mapping_virtual_to_final
