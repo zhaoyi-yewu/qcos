@@ -165,7 +165,7 @@ class GetDeviceOptionsResponse(BaseModel):
     Pydantic Model for Get Device Options Response.
     """
 
-    # get calibrate result detail
+    # get device options detail
     details: dict | None = Field(
         default=None, description="Get Device Options Response details"
     )
