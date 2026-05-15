@@ -98,5 +98,10 @@ class BaseOperation:
         # Build the qubit target part (e.g., q[0], q[1])
         targets_str = ", ".join(f"{qubit_prefix}[{t}]" for t in self.targets)
 
+        # Convert sync to barrier
+        name = self.name.lower()
+        if name == "sync":
+            name = "barrier"
+
         # Construct the full OpenQASM instruction
-        return f"{self.name}{arg_str} {targets_str};"
+        return f"{name}{arg_str} {targets_str};"
