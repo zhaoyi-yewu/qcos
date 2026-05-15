@@ -22,18 +22,47 @@ DIST_DIR=${PROJECT_ROOT}/dist
 
 NPROC=$(nproc 2>/dev/null || sysctl -n hw.ncpu)
 
-BUILD_TYPE=${1:-Release}
-if [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]]; then
-    echo "Invalid build type: $BUILD_TYPE"
-    echo "Usage: $0 [Release|Debug]"
-    exit 1
+BUILD_TYPE=Release
+FORCE_REBUILD=0
+
+for ARG in "$@"; do
+    case "$ARG" in
+        release|Release)
+            BUILD_TYPE=Release
+            ;;
+        debug|Debug)
+            BUILD_TYPE=Debug
+            ;;
+        rebuild|Rebuild)
+            FORCE_REBUILD=1
+            ;;
+        *)
+            echo "Invalid argument: $ARG"
+            echo "Usage: $0 [release|debug] [rebuild]"
+            echo "   or: $0 [rebuild] [release|debug]"
+            exit 1
+            ;;
+    esac
+done
+
+NEED_CLEAN_REBUILD=${FORCE_REBUILD}
+if [[ ! -d "${BUILD_DIR}" ]]; then
+    NEED_CLEAN_REBUILD=1
 fi
+
 echo "Build type: $BUILD_TYPE"
+if [[ "$NEED_CLEAN_REBUILD" == "1" ]]; then
+    echo "Build mode: clean rebuild"
+else
+    echo "Build mode: incremental"
+fi
 
 mkdir -p ${DIST_DIR}
 rm -rf ${DIST_DIR:?}/*
 
-rm -rf ${BUILD_DIR}
+if [[ "$NEED_CLEAN_REBUILD" == "1" ]]; then
+    rm -rf ${BUILD_DIR}
+fi
 mkdir -p ${BUILD_DIR}
 
 cd ${BUILD_DIR}
