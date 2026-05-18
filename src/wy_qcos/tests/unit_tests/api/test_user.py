@@ -162,10 +162,10 @@ class TestGetUserMgmt:
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
     def test_get_user_mgmt(self, mock_config):
         """Test getting user management status."""
-        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
-        mock_config.PASSWORD_EXPIRY_DAYS = 90
-        mock_config.MAX_LOGIN_ATTEMPTS = 5
-        mock_config.LOCKOUT_DURATION_MINUTES = 15
+        mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_JWT
+        mock_config.USERS.PASSWORD_EXPIRY_DAYS = 90
+        mock_config.USERS.MAX_LOGIN_ATTEMPTS = 5
+        mock_config.USERS.LOCKOUT_DURATION_MINUTES = 15
 
         result = get_user_mgmt()
 
@@ -177,8 +177,8 @@ class TestGetUserMgmt:
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
     def test_get_user_mgmt_no_mode(self, mock_config):
         """Test getting user management status when disabled."""
-        mock_config.AUTH_MODE = Constant.AUTH_MODE_NO
-        mock_config.PASSWORD_EXPIRY_DAYS = 0
+        mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_NO
+        mock_config.USERS.PASSWORD_EXPIRY_DAYS = 0
 
         result = get_user_mgmt()
 
@@ -1605,8 +1605,8 @@ class TestAuthModeIntegration:
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
     def test_get_user_mgmt_with_no_mode(self, mock_config):
         """Test user management status with auth_mode=no."""
-        mock_config.AUTH_MODE = Constant.AUTH_MODE_NO
-        mock_config.PASSWORD_EXPIRY_DAYS = 0
+        mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_NO
+        mock_config.USERS.PASSWORD_EXPIRY_DAYS = 0
 
         result = get_user_mgmt()
 
@@ -1615,8 +1615,8 @@ class TestAuthModeIntegration:
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
     def test_get_user_mgmt_with_jwt_mode(self, mock_config):
         """Test user management status with auth_mode=jwt."""
-        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
-        mock_config.PASSWORD_EXPIRY_DAYS = 90
+        mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_JWT
+        mock_config.USERS.PASSWORD_EXPIRY_DAYS = 90
 
         result = get_user_mgmt()
 
@@ -1626,8 +1626,8 @@ class TestAuthModeIntegration:
     @patch("wy_qcos.api.posiq.routes_jsonrpc.user.Config")
     def test_get_user_mgmt_with_virtual_instance_mode(self, mock_config):
         """Test user management status with auth_mode=virtual_instance."""
-        mock_config.AUTH_MODE = Constant.AUTH_MODE_VIRTUAL_INSTANCE
-        mock_config.PASSWORD_EXPIRY_DAYS = 0
+        mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_VIRTUAL_INSTANCE
+        mock_config.USERS.PASSWORD_EXPIRY_DAYS = 0
 
         result = get_user_mgmt()
 
