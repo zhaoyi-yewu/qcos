@@ -148,7 +148,7 @@ class TaskFlowManager(ABC):
             if device:
                 driver_name = device.get_driver().get_name()
             python_bin, python_path_env = Library.get_driver_venv(
-                driver_name, Config.VENV_DIR, add_default_env=True
+                driver_name, Config.DEFAULT.VENV_DIR, add_default_env=True
             )
 
             deployment_configs[device_name] = {
@@ -264,7 +264,7 @@ class TaskFlowManager(ABC):
             try:
                 print(
                     f"Check connection to prefect api: "
-                    f"{Config.PREFECT_API_URL} ... "
+                    f"{Config.PREFECT.PREFECT_API_URL} ... "
                 )
                 hello = self._sync_client.hello()
                 if hello and hello.status_code == HttpCode.SUCCESS_OK:
@@ -464,8 +464,8 @@ class TaskFlowManager(ABC):
                 }
                 device_monitor_info["name"] = device.get_name()
                 device_monitor_info["redis"] = {
-                    "ip": self.device_manager.config.REDIS_SERVER_IP,
-                    "port": self.device_manager.config.REDIS_SERVER_PORT,
+                    "ip": self.device_manager.config.REDIS.REDIS_SERVER_IP,
+                    "port": self.device_manager.config.REDIS.REDIS_SERVER_PORT,
                 }
 
                 args = {"device_monitor_info": device_monitor_info}
@@ -492,7 +492,7 @@ class TaskFlowManager(ABC):
 
         for setting in settings:
             prefect_configs[getattr(prefect_settings, setting)] = getattr(
-                Config, setting
+                Config.PREFECT, setting
             )
         prefect_settings.PREFECT_WORKER_ENABLE_CANCELLATION = True
 
@@ -707,7 +707,7 @@ class TaskFlowManager(ABC):
             flow_run_filter_kwargs["name"] = name_filter
 
         if (
-            Config.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+            Config.DEFAULT.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE
             and tags is not None
         ):
             tags_filter = FlowRunFilterTags(all_=tags)
@@ -1240,7 +1240,7 @@ class TaskFlowManager(ABC):
 
         # assign tags_filter if tags is not None
         if (
-            Config.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+            Config.DEFAULT.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE
             and tags is not None
         ):
             tags_filter = FlowRunFilterTags(all_=tags)

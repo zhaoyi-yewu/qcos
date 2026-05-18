@@ -123,9 +123,10 @@ class TaskScheduler(ABC):
         # check current all flows count exceed MAX_JOBS
         all_flows = self._task_manager.get_flow_runs_with_filters()
         all_flow_count = len(all_flows)
-        if all_flow_count >= Config.MAX_JOBS:
+        if all_flow_count >= Config.DEFAULT.MAX_JOBS:
             return None, (
-                f"Current job count exceeds max job limit: {Config.MAX_JOBS}"
+                f"Current job count exceeds max job limit: "
+                f"{Config.DEFAULT.MAX_JOBS}"
             )
         if all_flow_count >= Constant.FLOW_LIMIT:
             return None, (
@@ -134,7 +135,7 @@ class TaskScheduler(ABC):
             )
         # check max jobs of virtual_instance when AUTH_MODE is virtual_instance
         if (
-            Config.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE
+            Config.DEFAULT.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE
             and tags is not None
         ):
             virtual_instance_flows = (
@@ -143,14 +144,14 @@ class TaskScheduler(ABC):
             virtual_instance_flows_count = len(virtual_instance_flows)
             if (
                 virtual_instance_flows_count
-                >= Config.MAX_JOBS_PER_VIRTUAL_INSTANCE
+                >= Config.VIRT.MAX_JOBS_PER_VIRTUAL_INSTANCE
             ):
                 return (
                     None,
                     "The number of current jobs "
                     f"({virtual_instance_flows_count}) has exceeded the "
                     "maximum quota limit "
-                    f"({Config.MAX_JOBS_PER_VIRTUAL_INSTANCE}) for this "
+                    f"({Config.VIRT.MAX_JOBS_PER_VIRTUAL_INSTANCE}) for this "
                     "instance. "
                     "Please delete some existing jobs before creating "
                     "new ones",
@@ -164,10 +165,10 @@ class TaskScheduler(ABC):
             states=wait_states
         )
         wait_states_flow_count = len(wait_states_flows)
-        if wait_states_flow_count >= Config.MAX_QUEUED_JOBS:
+        if wait_states_flow_count >= Config.DEFAULT.MAX_QUEUED_JOBS:
             return None, (
                 f"Current queued job count exceeds "
-                f"max queued job limit: {Config.MAX_QUEUED_JOBS}"
+                f"max queued job limit: {Config.DEFAULT.MAX_QUEUED_JOBS}"
             )
 
         # get driver info
@@ -251,9 +252,10 @@ class TaskScheduler(ABC):
         # check current all flows count exceed MAX_JOBS
         all_flows = self._task_manager.get_flow_runs_with_filters()
         all_flow_count = len(all_flows)
-        if all_flow_count >= Config.MAX_JOBS:
+        if all_flow_count >= Config.DEFAULT.MAX_JOBS:
             return None, (
-                f"Current job count exceeds max job limit: {Config.MAX_JOBS}"
+                f"Current job count exceeds max job limit: "
+                f"{Config.DEFAULT.MAX_JOBS}"
             )
         if all_flow_count >= Constant.FLOW_LIMIT:
             return None, (
@@ -269,10 +271,10 @@ class TaskScheduler(ABC):
             states=wait_states
         )
         wait_states_flow_count = len(wait_states_flows)
-        if wait_states_flow_count >= Config.MAX_QUEUED_JOBS:
+        if wait_states_flow_count >= Config.DEFAULT.MAX_QUEUED_JOBS:
             return None, (
                 f"Current running+queued job count exceeds "
-                f"max queued job limit: {Config.MAX_QUEUED_JOBS}"
+                f"max queued job limit: {Config.DEFAULT.MAX_QUEUED_JOBS}"
             )
 
         # get driver info
@@ -306,8 +308,8 @@ class TaskScheduler(ABC):
             }
             device_mgr_info["device"] = {"configs": device.get_configs()}
             device_mgr_info["redis"] = {
-                "ip": self.device_manager.config.REDIS_SERVER_IP,
-                "port": self.device_manager.config.REDIS_SERVER_PORT,
+                "ip": self.device_manager.config.REDIS.REDIS_SERVER_IP,
+                "port": self.device_manager.config.REDIS.REDIS_SERVER_PORT,
             }
             device_mgr_info["global"] = {"configs": Config.get_configs()}
             succ, details = self._policy_handler.exec_manage_task(
