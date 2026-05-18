@@ -42,7 +42,7 @@ class DriverManager:
         module_dirs = Library.find_dirs(
             base_dir=base_dir, recursive=True, excludes=["*__pycache__"]
         )
-        venv_base_dir = Config.VENV_DIR
+        venv_base_dir = Config.DEFAULT.VENV_DIR
 
         def driver_venv_loader(module_name, venv_base_dir):
             """Driver env loader.
