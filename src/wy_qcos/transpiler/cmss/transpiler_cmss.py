@@ -309,8 +309,16 @@ class TranspilerCmss(TranspilerBase):
         opt_result_dict = {}
         with Timer() as optimize1_timer:
             for key, value in parse_result.items():
-                opt_result = optimize(value[1], opt_level=1)
-                opt_result_dict[key] = (value[0], opt_result)
+                # Neutral atom gate optimization needs to be done before
+                # mapping, because MOV gates after mapping affect optimization.
+                if enable_na_move:
+                    opt_result = optimize(value[1], opt_level=opt_level)
+                    opt_result_dict[key] = (value[0], opt_result)
+                else:
+                    opt_result = optimize(
+                        value[1], opt_level=min(1, opt_level)
+                    )
+                    opt_result_dict[key] = (value[0], opt_result)
         run_time.opt_time1 = optimize1_timer.elapsed
         trans_logger.log_perf(
             f"tranpiler(optimize firstly): {optimize1_timer.elapsed:.4f}s\n"
@@ -375,11 +383,16 @@ class TranspilerCmss(TranspilerBase):
 
             # secondly optimize
             with Timer() as optimize2_timer:
-                basis_gate_list = optimize(
-                    decomposer_circuit,
-                    opt_level,
-                    basis_gates=set(supp_basis_gates),
-                )
+                # The neutral atom circuit after mapped routing does not
+                # require a second gate optimization because MOV gate.
+                if enable_na_move:
+                    basis_gate_list = decomposer_circuit
+                else:
+                    basis_gate_list = optimize(
+                        decomposer_circuit,
+                        opt_level,
+                        basis_gates=set(supp_basis_gates),
+                    )
             run_time.opt_time2 = optimize2_timer.elapsed
             trans_logger.log_debug(f"final basis_gate_list: {basis_gate_list}")
             trans_logger.log_perf(
