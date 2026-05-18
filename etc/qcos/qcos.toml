@@ -51,10 +51,10 @@ REDIS_SERVER_IP = "127.0.0.1"
 REDIS_SERVER_PORT = 6379
 
 [DATABASE]
-# QCOS database configs
+# QCOS database connection URL (sqlite or postgresql)
 # eg:
-# nodb: fake,
-# pgsql db: "postgresql+pg8000://qcos:${password}@127.0.0.1:5432/qcos"
+# sqlite: "sqlite+aiosqlite:///var/qcos/db/qcos.db"
+# postgresql: "postgresql+pg8000://qcos:${password}@127.0.0.1:5432/qcos"
 QCOS_DATABASE_CONNECTION_URL = "postgresql+pg8000://qcos:${password}@127.0.0.1:5432/qcos"
 
 [USERS]
