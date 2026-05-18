@@ -129,6 +129,7 @@ suppress_warnings = [
     "autodoc.import_object",
     "config.misconfig",
     "ref.ref",
+    "ref.python",
 ]
 
 
@@ -178,7 +179,9 @@ myst_enable_extensions = [
 ]
 
 nitpicky = False
-nitpick_ignore = []
+nitpick_ignore = [
+    ("py:class", "GenericException"),
+]
 
 autodoc_inherit_docstrings = False
 autodoc_member_order = "bysource"
