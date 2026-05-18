@@ -308,6 +308,8 @@ std::vector<std::unique_ptr<qcos::BaseOperation>> create_gates(
       operations.insert(operations.end(),
                         std::make_move_iterator(subOperations.begin()),
                         std::make_move_iterator(subOperations.end()));
+    } else if (op->type == otCompound && subOperations.size() == 0) {
+      continue;
     } else {
       std::cerr << "Warning: Failed to create gate for operation type: "
                 << op->name << std::endl;
