@@ -1497,13 +1497,13 @@ class Library:
                 for field_name, field_info in data_obj.model_fields.items():
                     # Get json_schema_extra safely
                     extra = getattr(field_info, "json_schema_extra", None)
-
                     # Field name must exist in data
                     if field_name not in masked_data:
                         continue
-
                     value = masked_data[field_name]
-
+                    # Check if extra metadata exists before accessing it
+                    if extra is None:
+                        continue
                     is_sensitive = extra.get("sensitive", False)
                     is_db_connection_url = extra.get(
                         "db_connection_url", False

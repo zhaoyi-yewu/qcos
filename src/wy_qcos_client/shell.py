@@ -2527,6 +2527,7 @@ class GetLoginLogs(Lister):
             "login_time",
             "ip_address",
             "login_status",
+            "success",
             "failure_reason",
         ]
 
