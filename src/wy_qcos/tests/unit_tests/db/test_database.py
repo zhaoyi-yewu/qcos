@@ -161,17 +161,19 @@ class TestDatabaseDriverConnection:
 class TestInitDatabase:
     """Test init_database function."""
 
-    def test_init_database_with_fake_config(self):
-        """Test init_database with fake configuration."""
+    def test_init_database_with_invalid_url(self):
+        """Test init_database with invalid database URL."""
         with patch("wy_qcos.db.database.Config") as mock_config:
-            mock_config.QCOS_DATABASE_CONNECTION_URL = "fake"
-            result = init_database()
-            assert result is None
+            mock_config.DATABASE.QCOS_DATABASE_CONNECTION_URL = "invalid://url"
+            with pytest.raises((ValueError, Exception)):
+                init_database()
 
     def test_init_database_with_valid_url(self):
         """Test init_database with valid SQLite URL."""
         with patch("wy_qcos.db.database.Config") as mock_config:
-            mock_config.QCOS_DATABASE_CONNECTION_URL = "sqlite:///:memory:"
+            mock_config.DATABASE.QCOS_DATABASE_CONNECTION_URL = (
+                "sqlite:///:memory:"
+            )
             with patch.object(DatabaseDriver, "check_connection"):
                 result = init_database()
                 assert result is not None
@@ -179,7 +181,9 @@ class TestInitDatabase:
     def test_init_database_creates_driver(self):
         """Test init_database creates DatabaseDriver."""
         with patch("wy_qcos.db.database.Config") as mock_config:
-            mock_config.QCOS_DATABASE_CONNECTION_URL = "sqlite:///:memory:"
+            mock_config.DATABASE.QCOS_DATABASE_CONNECTION_URL = (
+                "sqlite:///:memory:"
+            )
             with patch(
                 "wy_qcos.db.database.DatabaseDriver"
             ) as mock_driver_class:
