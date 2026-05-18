@@ -66,19 +66,19 @@ def global_configs(request):
     GLOBAL_CONFIGS["samples_dir"] = f"{top_dir}/samples"
     GLOBAL_CONFIGS["etc_dir"] = f"{top_dir}/etc"
     GLOBAL_CONFIGS["env"] = env
-    api_server_config = config.get("ST_API_SERVER", {})
-    api_host = api_server_config.get("ST_API_SERVER_IP", "127.0.0.1")
-    api_port = api_server_config.get(
-        "ST_API_SERVER_PORT", Config.API_SERVER_LISTEN_PORT
+    api_host = config.get("ST_API_SERVER", {}).get(
+        "ST_API_SERVER_IP", Config.API_SERVER.API_SERVER_LISTEN_IP
+    )
+    api_port = config.get("ST_API_SERVER", {}).get(
+        "ST_API_SERVER_PORT", Config.API_SERVER.API_SERVER_LISTEN_PORT
     )
     GLOBAL_CONFIGS["timeout"] = 150
     GLOBAL_CONFIGS["api_host"] = api_host
     GLOBAL_CONFIGS["api_port"] = api_port
     GLOBAL_CONFIGS["interval"] = 5
-    virt_config = config.get("VIRT", {})
-    GLOBAL_CONFIGS["password_salt"] = virt_config.get("PASSWORD_SALT", "")
-    GLOBAL_CONFIGS["max_login_attempts"] = Config.MAX_LOGIN_ATTEMPTS
-    _admin_password = config["USERS"]["ADMIN_PASSWORD"]
+    GLOBAL_CONFIGS["password_salt"] = Config.VIRT.PASSWORD_SALT
+    GLOBAL_CONFIGS["max_login_attempts"] = Config.USERS.MAX_LOGIN_ATTEMPTS
+    _admin_password = config.get("USERS", {}).get("ADMIN_PASSWORD", "")
     if Constant.ENCRYPTION_PREFIX in _admin_password:
         success, err_msg, decrypted_value = Library.decrypt_text(
             _admin_password,
@@ -111,7 +111,7 @@ def global_configs(request):
     success, err_msg, admin_vi_id = Library.encrypt_virtual_instance_id(
         admin_device_names,
         admin_instance_id,
-        salt=Config.PASSWORD_SALT,
+        salt=Config.VIRT.PASSWORD_SALT,
         encode=True,
     )
     if success:
