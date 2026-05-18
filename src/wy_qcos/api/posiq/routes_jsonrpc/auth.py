@@ -102,7 +102,8 @@ async def login(
                 )
                 logger.info(
                     f"User '{username}' auto-unlocked - lockout period "
-                    f"({Config.LOCKOUT_DURATION_MINUTES} minutes) has expired"
+                    f"({Config.USERS.LOCKOUT_DURATION_MINUTES} mins) "
+                    "has expired"
                 )
 
                 # Persist auto-unlock to database immediately
@@ -276,17 +277,17 @@ async def login(
             # Not for disabled, locked, or expired password cases
             user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
             # Check if max login attempts exceeded
-            if user.failed_login_attempts >= Config.MAX_LOGIN_ATTEMPTS:
+            if user.failed_login_attempts >= Config.USERS.MAX_LOGIN_ATTEMPTS:
                 # Lock the user account
                 user.is_locked = True
                 user.locked_until = datetime.now() + timedelta(
-                    minutes=Config.LOCKOUT_DURATION_MINUTES
+                    minutes=Config.USERS.LOCKOUT_DURATION_MINUTES
                 )
                 login_failure_reason = (
                     f"Account locked due to "
                     f"{user.failed_login_attempts} failed login attempts. "
                     f"Please try again after "
-                    f"{Config.LOCKOUT_DURATION_MINUTES} minutes."
+                    f"{Config.USERS.LOCKOUT_DURATION_MINUTES} minutes."
                 )
                 logger.warning(
                     f"User '{username}' exceeded max login attempts "
@@ -320,7 +321,7 @@ async def login(
                     f"Failed login attempt "
                     f"#{user.failed_login_attempts} for "
                     f"user '{username}' - limit is "
-                    f"{Config.MAX_LOGIN_ATTEMPTS}"
+                    f"{Config.USERS.MAX_LOGIN_ATTEMPTS}"
                 )
                 # Update failed attempts count in database
                 try:
@@ -425,9 +426,9 @@ async def login(
         access_token=access_token,
         refresh_token=refresh_token,
         token_type=_s("bearer"),
-        expires_in=Config.ACCESS_TOKEN_EXPIRE_MINUTES
+        expires_in=Config.USERS.ACCESS_TOKEN_EXPIRE_MINUTES
         * 60,  # Convert minutes to seconds
-        refresh_expires_in=Config.REFRESH_TOKEN_EXPIRE_DAYS
+        refresh_expires_in=Config.USERS.REFRESH_TOKEN_EXPIRE_DAYS
         * 86400,  # Convert days to seconds
     )
 
@@ -468,8 +469,8 @@ def logout(
         try:
             payload = jwt.decode(
                 token,
-                Config.JWT_AUTH_SECRET_KEY,
-                algorithms=[Config.JWT_AUTH_ALGORITHM],
+                Config.USERS.JWT_AUTH_SECRET_KEY,
+                algorithms=[Config.USERS.JWT_AUTH_ALGORITHM],
                 audience=Constant.JWT_AUTH_AUDIENCE,
                 options={
                     "verify_exp": False
@@ -565,8 +566,8 @@ async def refresh_token(
     try:
         payload = jwt.decode(
             body.refresh_token,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithms=[Config.JWT_AUTH_ALGORITHM],
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithms=[Config.USERS.JWT_AUTH_ALGORITHM],
             audience=Constant.JWT_AUTH_AUDIENCE,
         )
     except jwt.ExpiredSignatureError:
@@ -659,9 +660,9 @@ async def refresh_token(
         access_token=access_token,
         refresh_token=refresh_token_new,
         token_type=_s("bearer"),
-        expires_in=Config.ACCESS_TOKEN_EXPIRE_MINUTES
+        expires_in=Config.USERS.ACCESS_TOKEN_EXPIRE_MINUTES
         * 60,  # Convert minutes to seconds
-        refresh_expires_in=Config.REFRESH_TOKEN_EXPIRE_DAYS
+        refresh_expires_in=Config.USERS.REFRESH_TOKEN_EXPIRE_DAYS
         * 86400,  # Convert days to seconds
     )
 
@@ -671,7 +672,6 @@ async def refresh_token(
     errors=[jsonrpc_errors.UnauthorizedError],
 )
 def me(
-    body: schemas.GetUserMgmtRequest | None = None,
     auth_data: dict | None = Depends(auth),
     user_manager: UserManager = Depends(get_user_manager),
 ) -> schemas.GetUserResponse:
@@ -681,7 +681,6 @@ def me(
     authenticated user based on their JWT token.
 
     Args:
-        body: Optional request body
         auth_data: Authentication data from current user
         user_manager: UserManager dependency for user operations
 
