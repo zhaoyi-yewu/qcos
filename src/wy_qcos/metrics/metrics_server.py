@@ -94,8 +94,8 @@ class MetricsServer:
 
     def __init__(
         self,
-        ip=Config.METRICS_SERVER_LISTEN_IP,
-        port=Config.METRICS_SERVER_LISTEN_PORT,
+        ip=None,
+        port=None,
     ):
         """Initialize metrics server.
 
@@ -109,7 +109,11 @@ class MetricsServer:
             port:
                 Listen port, default from Config
         """
-        self.port = port
+        self.port = (
+            port
+            if port is not None
+            else Config.METRICS_SERVER.METRICS_SERVER_LISTEN_PORT
+        )
         self.ip = ip if ip else "::"
         self.allow_dual_stack = False if ip else True
         self._server = None
