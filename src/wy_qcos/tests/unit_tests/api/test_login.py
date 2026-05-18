@@ -336,7 +336,7 @@ class TestLogin:
             created_at=datetime.now(),
             updated_at=datetime.now(),
             last_login=None,
-            failed_login_attempts=Config.MAX_LOGIN_ATTEMPTS - 1,
+            failed_login_attempts=Config.USERS.MAX_LOGIN_ATTEMPTS - 1,
         )
         mock_user_manager.get_user.return_value = user
         mock_request.app = Mock()
@@ -578,7 +578,7 @@ class TestLoginEnhanced:
             created_at=datetime.now(),
             updated_at=datetime.now(),
             last_login=None,
-            failed_login_attempts=Config.MAX_LOGIN_ATTEMPTS - 1,
+            failed_login_attempts=Config.USERS.MAX_LOGIN_ATTEMPTS - 1,
         )
         mock_user_manager.get_user.return_value = user
         mock_request.app.state._security_manager = Mock()
