@@ -34,8 +34,8 @@ logger = logging.getLogger(__name__)
 
 # Default admin user
 DEFAULT_ADMIN_PASSWORD = (
-    Config.ADMIN_PASSWORD
-    if Config.ADMIN_PASSWORD
+    Config.USERS.ADMIN_PASSWORD
+    if Config.USERS.ADMIN_PASSWORD
     else Constant.DEFAULT_ADMIN_PASSWORD
 )
 

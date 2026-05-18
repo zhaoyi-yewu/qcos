@@ -90,12 +90,12 @@ class SecurityManager:
             return False
 
         attempts = self.failed_attempts[user_name]
-        if len(attempts) < Config.MAX_LOGIN_ATTEMPTS:
+        if len(attempts) < Config.USERS.MAX_LOGIN_ATTEMPTS:
             return False
 
         last_attempt = attempts[-1]
         lockout_until = last_attempt + timedelta(
-            minutes=Config.LOCKOUT_DURATION_MINUTES
+            minutes=Config.USERS.LOCKOUT_DURATION_MINUTES
         )
 
         if datetime.now() < lockout_until:
@@ -164,13 +164,13 @@ class SecurityManager:
             )
         else:
             expire_timestamp = current_timestamp + (
-                Config.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+                Config.USERS.ACCESS_TOKEN_EXPIRE_MINUTES * 60
             )
         to_encode.update({"exp": expire_timestamp})
         encoded_jwt = jwt.encode(
             to_encode,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithm=Config.JWT_AUTH_ALGORITHM,
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.USERS.JWT_AUTH_ALGORITHM,
         )
         return encoded_jwt
 
@@ -189,13 +189,13 @@ class SecurityManager:
         # to support dynamic configuration changes
         current_timestamp = int(time.time())
         expire_timestamp = current_timestamp + (
-            Config.REFRESH_TOKEN_EXPIRE_DAYS * 86400
+            Config.USERS.REFRESH_TOKEN_EXPIRE_DAYS * 86400
         )
         to_encode.update({"exp": expire_timestamp, "type": "refresh"})
         encoded_jwt = jwt.encode(
             to_encode,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithm=Config.JWT_AUTH_ALGORITHM,
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.USERS.JWT_AUTH_ALGORITHM,
         )
         return encoded_jwt
 
@@ -214,8 +214,8 @@ class SecurityManager:
         try:
             payload = jwt.decode(
                 token,
-                Config.JWT_AUTH_SECRET_KEY,
-                algorithms=[Config.JWT_AUTH_ALGORITHM],
+                Config.USERS.JWT_AUTH_SECRET_KEY,
+                algorithms=[Config.USERS.JWT_AUTH_ALGORITHM],
             )
             return payload
         except JWTError as e:
