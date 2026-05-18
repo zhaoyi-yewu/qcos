@@ -20,7 +20,9 @@
 from wy_qcos.common.config import Config
 from wy_qcos.common.library import Library
 
-org_path = Library.set_driver_venv_path("DriverUQCMatrix2", Config.VENV_DIR)
+org_path = Library.set_driver_venv_path(
+    "DriverUQCMatrix2", Config.DEFAULT.VENV_DIR
+)
 
 import random
 import time
