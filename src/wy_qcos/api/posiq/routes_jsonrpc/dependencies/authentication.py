@@ -68,8 +68,8 @@ def decode_jwt_token(token: str) -> dict | None:
     try:
         payload = jwt.decode(
             token,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithms=[Config.JWT_AUTH_ALGORITHM],
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithms=[Config.USERS.JWT_AUTH_ALGORITHM],
             audience=Constant.JWT_AUTH_AUDIENCE,
             options={"verify_exp": True},
         )
@@ -188,7 +188,7 @@ async def auth(
     auth_data: dict[str, list[str] | str | None] | None = None
 
     # No authentication
-    if Config.AUTH_MODE == Constant.AUTH_MODE_NO:
+    if Config.DEFAULT.AUTH_MODE == Constant.AUTH_MODE_NO:
         auth_data = {
             Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_NO,
             "user_id": Constant.ANONYMOUS_USERNAME,
@@ -197,12 +197,12 @@ async def auth(
         return auth_data
 
     # Virtual instance authentication
-    if Config.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE:
+    if Config.DEFAULT.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE:
         auth_data = auth_virt(x_qcos_virtual_instance_id)
         return auth_data
 
     # JWT authentication (when user management is enabled)
-    if Config.AUTH_MODE == Constant.AUTH_MODE_JWT:
+    if Config.DEFAULT.AUTH_MODE == Constant.AUTH_MODE_JWT:
         # Extract token from Authorization header
         access_token = await oauth2_scheme(request)
 
@@ -258,7 +258,7 @@ def auth_virt(x_qcos_virtual_instance_id):
         success, err_msg, device_names, instance_id = (
             Library.decrypt_virtual_instance_id(
                 x_qcos_virtual_instance_id,
-                salt=Config.PASSWORD_SALT,
+                salt=Config.VIRT.PASSWORD_SALT,
                 encode=True,
             )
         )
