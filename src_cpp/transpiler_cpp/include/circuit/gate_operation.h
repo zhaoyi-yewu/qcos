@@ -34,6 +34,7 @@ class GateOperation : public BaseOperation {
                 std::vector<double> arg_value_ = {},
                 OperationType op_type_ = OperationType::SINGLE_QUBIT_OPERATION,
                 bool hermitian_ = true);
+  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q() const;
 
  private:
   void validate_params() const;
@@ -45,7 +46,6 @@ class H : public GateOperation {
  public:
   H(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -54,7 +54,6 @@ class X : public GateOperation {
  public:
   X(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
   virtual std::unique_ptr<BaseOperation> clone() const {
@@ -66,7 +65,6 @@ class Y : public GateOperation {
  public:
   Y(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -75,7 +73,6 @@ class Z : public GateOperation {
  public:
   Z(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -84,7 +81,6 @@ class S : public GateOperation {
  public:
   S(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -93,7 +89,6 @@ class SDG : public GateOperation {
  public:
   SDG(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -110,7 +105,6 @@ class TDG : public GateOperation {
  public:
   TDG(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -119,7 +113,6 @@ class P : public GateOperation {
  public:
   P(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -128,7 +121,6 @@ class R : public GateOperation {
  public:
   R(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -137,7 +129,6 @@ class RX : public GateOperation {
  public:
   RX(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -146,7 +137,6 @@ class RY : public GateOperation {
  public:
   RY(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -155,7 +145,6 @@ class RZ : public GateOperation {
  public:
   RZ(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -164,7 +153,6 @@ class SX : public GateOperation {
  public:
   SX(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -173,7 +161,6 @@ class SXDG : public GateOperation {
  public:
   SXDG(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -184,7 +171,6 @@ class CZ : public GateOperation {
   CZ(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
      OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -194,7 +180,6 @@ class CX : public GateOperation {
   CX(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
      OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -204,7 +189,6 @@ class CY : public GateOperation {
   CY(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
      OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -214,7 +198,6 @@ class SWAP : public GateOperation {
   SWAP(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
        OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -224,7 +207,6 @@ class ISWAP : public GateOperation {
   ISWAP(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
         OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -234,7 +216,6 @@ class CH : public GateOperation {
   CH(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
      OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -244,7 +225,6 @@ class CS : public GateOperation {
   CS(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
      OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -254,7 +234,6 @@ class CSDG : public GateOperation {
   CSDG(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
        OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -264,7 +243,6 @@ class CRX : public GateOperation {
   CRX(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -274,7 +252,6 @@ class CRY : public GateOperation {
   CRY(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -284,7 +261,6 @@ class CRZ : public GateOperation {
   CRZ(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -294,7 +270,6 @@ class CU1 : public GateOperation {
   CU1(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -304,7 +279,6 @@ class CP : public GateOperation {
   CP(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
      OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -314,7 +288,6 @@ class CU3 : public GateOperation {
   CU3(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -324,7 +297,6 @@ class CSX : public GateOperation {
   CSX(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -334,7 +306,6 @@ class CU : public GateOperation {
   CU(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
      OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -344,7 +315,6 @@ class ECR : public GateOperation {
   ECR(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -354,7 +324,6 @@ class DCX : public GateOperation {
   DCX(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -364,7 +333,6 @@ class RXX : public GateOperation {
   RXX(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -374,7 +342,6 @@ class RYY : public GateOperation {
   RYY(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -384,7 +351,6 @@ class RZZ : public GateOperation {
   RZZ(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -394,7 +360,6 @@ class RZX : public GateOperation {
   RZX(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::DOUBLE_QUBIT_OPERATION);
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 16> to_matrix() const;
   std::string to_string() const;
 };
@@ -476,7 +441,6 @@ class U1 : public GateOperation {
  public:
   U1(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -485,7 +449,6 @@ class U2 : public GateOperation {
  public:
   U2(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -494,7 +457,6 @@ class U3 : public GateOperation {
  public:
   U3(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
@@ -503,7 +465,6 @@ class U : public GateOperation {
  public:
   U(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
   std::vector<std::unique_ptr<BaseOperation>> default_decompose();
-  std::vector<std::unique_ptr<BaseOperation>> decompose_to_1q2q();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
 };
