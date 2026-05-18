@@ -43,15 +43,15 @@ class DeviceManager:
             Optional("device_max_qubits"): int,
         }
         self.redis_instance = redis.Redis(
-            host=config.REDIS_SERVER_IP,
-            port=config.REDIS_SERVER_PORT,
+            host=config.REDIS.REDIS_SERVER_IP,
+            port=config.REDIS.REDIS_SERVER_PORT,
             decode_responses=True,
         )
 
     def load_devices(self):
         """Scan and load drivers."""
         logger.info("Load devices ...")
-        devices = self.config.DEVICE_LIST
+        devices = self.config.DEVICES.DEVICE_LIST
         for device_name in devices:
             logger.info(f"Loading device: {device_name}")
             extra_configs = self.config.get_extra_configs()
@@ -119,8 +119,8 @@ class DeviceManager:
             try:
                 print(
                     f"Check connection to redis: "
-                    f"{self.config.REDIS_SERVER_IP}:"
-                    f"{self.config.REDIS_SERVER_PORT} ... "
+                    f"{self.config.REDIS.REDIS_SERVER_IP}:"
+                    f"{self.config.REDIS.REDIS_SERVER_PORT} ... "
                 )
                 self.redis_instance.ping()
                 return True, None, None
