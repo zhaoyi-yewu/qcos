@@ -21,7 +21,7 @@ from unittest.mock import patch, Mock
 import pytest
 
 from wy_qcos.common.config import Config
-from wy_qcos.common.library import Library
+from wy_qcos.common.library import _s, Library
 from wy_qcos.common.constant import Constant
 from wy_qcos.common import errors
 
@@ -62,8 +62,10 @@ class TestConfig:
         mock_config = {
             "DEFAULT": {
                 "debug": "false",
+            },
+            "VIRT": {
                 "password_salt": f"{Constant.ENCRYPTION_PREFIX}abc123",
-            }
+            },
         }
         mock_obj = Mock()
         mock_obj.unwrap.return_value = mock_config
@@ -94,7 +96,8 @@ class TestConfig:
         """Test get_configs without password masking."""
         configs = config.get_configs(mask_password=False)
         assert isinstance(configs, dict)
-        assert "DEBUG" in configs
+        assert "DEFAULT" in configs
+        assert "DEBUG" in configs["DEFAULT"]
 
     @patch.object(Library, "mask_password")
     def test_get_configs_with_mask(self, mock_mask):
@@ -125,7 +128,7 @@ class TestConfig:
 
         with pytest.raises(errors.GenericException) as exc:
             config.load_config_file("/config.toml")
-        assert "Can't find config key" in str(exc.value)
+        assert "Configuration validation error" in str(exc.value)
 
     @patch.object(Library, "read_toml_file")
     def test_load_config_file_valid_section_invalid_key(self, mock_read_toml):
@@ -135,8 +138,9 @@ class TestConfig:
         mock_obj.unwrap.return_value = mock_config
         mock_read_toml.return_value = (True, None, mock_obj)
 
-        with pytest.raises(errors.GenericException):
+        with pytest.raises(errors.GenericException) as exc:
             config.load_config_file("/config.toml")
+        assert "Configuration validation error" in str(exc.value)
 
     @patch.object(Library, "read_toml_file")
     def test_load_extra_config_not_in_valid_sections(self, mock_read_toml):
@@ -175,9 +179,9 @@ class TestConfig:
 
     def test_validate_device_list_duplicates(self):
         """Test that duplicate devices are removed."""
-        original_devices = Config.DEVICE_LIST
+        original_devices = Config.DEVICES.DEVICE_LIST
         try:
-            Config.DEVICE_LIST = ["device1", "device1", "device2"]
+            Config.DEVICES.DEVICE_LIST = ["device1", "device1", "device2"]
             with patch.object(Library, "remove_duplicates") as mock_remove:
                 with patch.object(Library, "validate_schema") as mock_validate:
                     mock_remove.return_value = ["device1", "device2"]
@@ -185,46 +189,46 @@ class TestConfig:
                     config.validate()
                     mock_remove.assert_called_once()
         finally:
-            Config.DEVICE_LIST = original_devices
+            Config.DEVICES.DEVICE_LIST = original_devices
 
     def test_validate_auth_mode_no(self):
         """Test validate succeeds with AUTH_MODE = no."""
-        original_auth_mode = Config.AUTH_MODE
+        original_auth_mode = Config.DEFAULT.AUTH_MODE
         try:
-            Config.AUTH_MODE = Constant.AUTH_MODE_NO
+            Config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_NO
             with patch.object(Library, "remove_duplicates") as mock_remove:
                 with patch.object(Library, "validate_schema") as mock_validate:
                     mock_remove.return_value = []
                     mock_validate.return_value = (True, None)
                     config.validate()  # Should not raise
         finally:
-            Config.AUTH_MODE = original_auth_mode
+            Config.DEFAULT.AUTH_MODE = original_auth_mode
 
     def test_validate_auth_mode_password(self):
         """Test validate succeeds with AUTH_MODE = jwt."""
-        original_auth_mode = Config.AUTH_MODE
+        original_auth_mode = Config.DEFAULT.AUTH_MODE
         try:
-            Config.AUTH_MODE = Constant.AUTH_MODE_JWT
+            Config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_JWT
             with patch.object(Library, "remove_duplicates") as mock_remove:
                 with patch.object(Library, "validate_schema") as mock_validate:
                     mock_remove.return_value = []
                     mock_validate.return_value = (True, None)
                     config.validate()  # Should not raise
         finally:
-            Config.AUTH_MODE = original_auth_mode
+            Config.DEFAULT.AUTH_MODE = original_auth_mode
 
     def test_validate_auth_mode_virtual_instance(self):
         """Test validate succeeds with AUTH_MODE = virtual_instance."""
-        original_auth_mode = Config.AUTH_MODE
+        original_auth_mode = Config.DEFAULT.AUTH_MODE
         try:
-            Config.AUTH_MODE = Constant.AUTH_MODE_VIRTUAL_INSTANCE
+            Config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_VIRTUAL_INSTANCE
             with patch.object(Library, "remove_duplicates") as mock_remove:
                 with patch.object(Library, "validate_schema") as mock_validate:
                     mock_remove.return_value = []
                     mock_validate.return_value = (True, None)
                     config.validate()  # Should not raise
         finally:
-            Config.AUTH_MODE = original_auth_mode
+            Config.DEFAULT.AUTH_MODE = original_auth_mode
 
     def test_get_configs_filters_private_attributes(self):
         """Test get_configs filters out private and magic attributes."""
@@ -239,5 +243,20 @@ class TestConfig:
         """Test show_info returns properly formatted string."""
         info = config.show_info()
         assert isinstance(info, str)
-        assert "[Configs]" in info
+        assert "[QCOS Configuration]" in info
         assert len(info) > 10
+
+    def test_show_info_sensitive_fields_masked(self):
+        """Test that show_info masks sensitive fields like passwords."""
+        Config.USERS.ADMIN_PASSWORD = _s("test_password_123")
+        Config.USERS.JWT_AUTH_SECRET_KEY = _s("test_secret_456")
+        Config.VIRT.PASSWORD_SALT = _s("test_salt_789")
+
+        info = config.show_info()
+
+        # Verify sensitive values are not in the output
+        assert "test_password_123" not in info
+        assert "test_secret_456" not in info
+        assert "test_salt_789" not in info
+        # Verify masked values are present
+        assert "****" in info
