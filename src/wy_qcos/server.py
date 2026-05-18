@@ -92,41 +92,39 @@ class Server:
         # read and parse config files
         if args.config_files is None:
             args.config_files = ["/etc/qcos/qcos.toml"]
-        if args.config_files:
-            for config_file in args.config_files:
-                Config.load_config_file(config_file)
+
+        for cf in args.config_files:
+            Config.load_config_file(cf)
 
         # read and parse config files under config dir
         if args.config_dir:
             config_files = Library.find_files(
                 args.config_dir, pattern="*.toml", recursive=True
             )
-            for config_file in config_files:
-                Config.load_config_file(config_file, extra_config=True)
+            for cf in config_files:
+                Config.load_config_file(cf, extra_config=True)
 
         # validate Config
         Config.validate()
 
         # load driver env configs
-        Config.load_driver_env_file(f"{Config.VENV_DIR}/venv-configs.toml")
-
-        # read command line arguments and override configs
-        if args.daemon:
-            Config.DAEMON = args.daemon
+        Config.load_driver_env_file(
+            f"{Config.DEFAULT.VENV_DIR}/venv-configs.toml"
+        )
 
         # config log level
         logger_level = logging.INFO
-        if Config.DEBUG:
+        if Config.DEFAULT.DEBUG:
             logger_level = logging.DEBUG
 
-        log_file = Config.API_LOG_FILE
+        log_file = Config.LOG.API_LOG_FILE
         self._stream_handlers = init_logger(
             logger_level,
             logfile=log_file,
-            max_bytes=Config.LOG_ROTATE_MAX_SIZE_MB * 1000000,
-            backup_count=Config.LOG_ROTATE_BACKUP_COUNT,
+            max_bytes=Config.LOG.LOG_ROTATE_MAX_SIZE_MB * 1000000,
+            backup_count=Config.LOG.LOG_ROTATE_BACKUP_COUNT,
             console=True,
-            compression=Config.LOG_ROTATE_COMPRESSION,
+            compression=Config.LOG.LOG_ROTATE_COMPRESSION,
             quiet=False,
         )
         logger.setLevel(logger_level)
@@ -140,7 +138,7 @@ class Server:
         # get log level
         logger_level = logging.INFO
         access_log = False
-        if Config.DEBUG:
+        if Config.DEFAULT.DEBUG:
             logger_level = logging.DEBUG
             # only show uvicorn access logs in debug mode
             access_log = True
@@ -149,23 +147,29 @@ class Server:
         # handlers here.
         try:
             _listen_ip = (
-                Config.API_SERVER_LISTEN_IP
-                if Config.API_SERVER_LISTEN_IP
+                Config.API_SERVER.API_SERVER_LISTEN_IP
+                if Config.API_SERVER.API_SERVER_LISTEN_IP
                 else "all IPs"
             )
             logger.info(f"Starting server, listening on '{_listen_ip}'")
 
             config = uvicorn.Config(
                 app,
-                host=Config.API_SERVER_LISTEN_IP,
-                port=Config.API_SERVER_LISTEN_PORT,
-                workers=Config.API_WORKERS,
+                host=Config.API_SERVER.API_SERVER_LISTEN_IP,
+                port=Config.API_SERVER.API_SERVER_LISTEN_PORT,
+                workers=Config.API_SERVER.API_WORKERS,
                 reload=False,
                 access_log=access_log,
                 lifespan="on",
-                ssl_certfile=Config.CERT_FILE if Config.USE_SSL else None,
-                ssl_keyfile=Config.KEY_FILE if Config.USE_SSL else None,
-                ssl_ca_certs=Config.CACERT_FILE if Config.USE_SSL else None,
+                ssl_certfile=Config.SSL.CERT_FILE
+                if Config.SSL.USE_SSL
+                else None,
+                ssl_keyfile=Config.SSL.KEY_FILE
+                if Config.SSL.USE_SSL
+                else None,
+                ssl_ca_certs=Config.SSL.CACERT_FILE
+                if Config.SSL.USE_SSL
+                else None,
             )
 
             # overwrite uvicorn loggers with our own logger
@@ -204,28 +208,29 @@ class Server:
             device_manager.load_devices()
             device_manager.init_devices()
 
+            # init database BEFORE starting multiprocessing
+            # (multiprocessing can reset Config in child processes)
+            logger.info("Initializing database...")
+            db_engine = database.init_database()
+            app.state._db_engine = db_engine
+
             # set driver manager, transpiler in scheduler and device manager
             scheduler.set_driver_manager(driver_manager)
             scheduler.set_transpiler_manager(transpiler_manager)
             scheduler.set_device_manager(device_manager)
             scheduler.start_taskmanager()
 
-            # init database
-            db_engine = database.init_database()
-            app.state._db_engine = db_engine
-
             # init user management module
             logger.info("Init user manager")
 
             with db_utils.create_db_session(db_engine) as db_session:
                 user_manager = UserManager(
-                    Config.ACCESS_CONTROL_MODEL_FILE,
-                    Config.ACCESS_CONTROL_POLICY_FILE,
+                    Config.USERS.ACCESS_CONTROL_MODEL_FILE,
+                    Config.USERS.ACCESS_CONTROL_POLICY_FILE,
                     all_api,
                     db_session,
                 )
                 app.state._user_manager = user_manager
-
                 # init security manager
                 logger.info("Init security manager")
                 security_manager = SecurityManager(user_manager)
