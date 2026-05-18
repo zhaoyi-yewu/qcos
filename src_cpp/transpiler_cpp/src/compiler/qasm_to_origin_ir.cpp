@@ -82,9 +82,8 @@ std::vector<std::unique_ptr<qcos::BaseOperation>> create_gates(
     std::unique_ptr<qcos::BaseOperation> operation = nullptr;
     std::vector<std::unique_ptr<qcos::BaseOperation>> subOperations = {};
     switch (op->type) {
-      // case otI:
-      //   operation = create_gate("i", qreg[targets[0]].second);
-      //   break;
+      case otI:
+        break;
       case otH:
         operation =
             create_gate(Constant::SINGLE_QUBIT_GATE_H, all_qubits, arg_values);
@@ -309,6 +308,8 @@ std::vector<std::unique_ptr<qcos::BaseOperation>> create_gates(
                         std::make_move_iterator(subOperations.begin()),
                         std::make_move_iterator(subOperations.end()));
     } else if (op->type == otCompound && subOperations.size() == 0) {
+      continue;
+    } else if (op->type == otI) {
       continue;
     } else {
       std::cerr << "Warning: Failed to create gate for operation type: "
