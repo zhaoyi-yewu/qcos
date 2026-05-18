@@ -356,9 +356,9 @@ class UserRepository(BaseRepository):
             count_query = select(func.count(LoginLog.id))
             count_result = self._db_session.execute(count_query).scalar()
 
-            if count_result and count_result > Config.MAX_LOGIN_LOGS:
+            if count_result and count_result > Config.USERS.MAX_LOGIN_LOGS:
                 # Calculate how many to delete
-                to_delete = count_result - Config.MAX_LOGIN_LOGS
+                to_delete = count_result - Config.USERS.MAX_LOGIN_LOGS
 
                 # Delete oldest records
                 delete_query = delete(LoginLog).where(
