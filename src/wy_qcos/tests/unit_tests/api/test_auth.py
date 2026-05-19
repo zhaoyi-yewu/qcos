@@ -460,7 +460,7 @@ class TestAuth:
         "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication.Config"
     )
     @pytest.mark.asyncio
-    @pytest.mark.asyncio
+    @pytest.mark.smoke
     async def test_auth_jwt_mode_valid_token(self, mock_config):
         """Test JWT authentication with valid token."""
         mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_NO

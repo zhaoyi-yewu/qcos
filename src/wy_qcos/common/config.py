@@ -150,7 +150,7 @@ class DatabaseSection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     QCOS_DATABASE_CONNECTION_URL: str = Field(
-        default="sqlite+aiosqlite:///var/qcos/db/qcos.db",
+        default="sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL",
         description="QCOS database connection URL (sqlite or postgresql)",
         json_schema_extra={"sensitive": True, "db_connection_url": True},
     )

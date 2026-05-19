@@ -53,9 +53,9 @@ REDIS_SERVER_PORT = 6379
 [DATABASE]
 # QCOS database connection URL (sqlite or postgresql)
 # eg:
-# sqlite: "sqlite+aiosqlite:///var/qcos/db/qcos.db"
 # postgresql: "postgresql+pg8000://qcos:${password}@127.0.0.1:5432/qcos"
-QCOS_DATABASE_CONNECTION_URL = "postgresql+pg8000://qcos:${password}@127.0.0.1:5432/qcos"
+# sqlite: "sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL"
+QCOS_DATABASE_CONNECTION_URL = "sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL"
 
 [USERS]
 PASSWORD_EXPIRY_DAYS = 90
