@@ -181,15 +181,6 @@ class OpenQasmParser final : public InstVisitor {
         throw;
       }
     }
-
-    // Finally, if we have a initial layout and output permutation specified,
-    // apply them.
-    if (!initialLayout.empty()) {
-      qc->initialLayout = initialLayout;
-    }
-    if (!outputPermutation.empty()) {
-      qc->outputPermutation = outputPermutation;
-    }
   }
 
   void visitVersionDeclaration(
@@ -845,6 +836,9 @@ class OpenQasmParser final : public InstVisitor {
     // we need to copy as we modify the string and need to return the original
     // string if we don't find a match.
     std::string gateIdentifier = identifier;
+    if (gates.find(identifier) == gates.end()) {
+      return {identifier, 0};
+    }
     size_t implicitControls = 0;
     while (!gateIdentifier.empty() && gateIdentifier[0] == 'c') {
       gateIdentifier = gateIdentifier.substr(1);
