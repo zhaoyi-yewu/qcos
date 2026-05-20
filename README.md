@@ -1,4 +1,4 @@
-# WUYUEQbit量子计算操作系统（QCOS）介绍
+# 五岳量子计算操作系统（QCOS）介绍
 
 [![qcos](https://img.shields.io/docker/v/qcos/qcos/latest?logo=docker&logoColor=2496ED&labelColor=white&label=qcos)](https://hub.docker.com/r/qcos/qcos-sandbox)
 [![qcos-cli](https://img.shields.io/docker/v/qcos/qcos-cli/latest?logo=docker&logoColor=2496ED&labelColor=white&label=qcos-cli)](https://hub.docker.com/r/qcos/qcos-sandbox)
@@ -11,11 +11,11 @@
 [![Documentation Status](https://img.shields.io/readthedocs/qcos/latest?logo=readthedocs)](https://qcos.readthedocs.io/zh-cn/latest/)
 [![License](https://img.shields.io/crates/l/efi_signer?logo=opensourceinitiative)](https://gitee.com/OpenWuYue/qcos/blob/develop/LICENSE)
 
-WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）是一款开源的通用量子计算操作系统，旨在为不同架构的量子计算机（如：超导、中性原子、离子阱、相干伊辛机等）提供统一的软件支持，推动量子计算的生态发展。
+五岳量子计算操作系统：QCOS（Quantum Computing Operating System）是一款开源的通用量子计算操作系统，旨在为不同架构的量子计算机（如：超导、中性原子、离子阱、相干伊辛机等）提供统一的软件支持，推动量子计算的生态发展。
 
 # 1. 架构总览
 
-![架构图](https://gitee.com/WUYUEQbit/qcos/raw/develop/docs/sphinx/source/_static/architecture.svg)
+![架构图](https://gitee.com/OpenWuYue/qcos/raw/develop/docs/sphinx/source/_static/architecture.svg)
 
 # 2. 功能特性
 
