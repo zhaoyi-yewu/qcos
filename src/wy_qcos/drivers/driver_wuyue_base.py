@@ -76,6 +76,7 @@ class DriverWuyueBase(DriverBase):
         self.password_secret = None
         self.password_pub_key = None
         self.password_pri_key = None
+        self.enable_device_monitor = True
 
         # task stages and percentages
         self.task_stages = {

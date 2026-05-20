@@ -1009,19 +1009,22 @@ class Library:
             request_func = requests.get
 
         for i in range(1, retries + 1):
-            r = request_func(
-                url,
-                headers=headers,
-                params=params,
-                data=data,
-                files=files,
-                json=json,
-                auth=auth,
-                verify=verify_ssl,
-                timeout=timeout,
-            )
-            if r.status_code in success_http_code:
-                break
+            try:
+                r = request_func(
+                    url,
+                    headers=headers,
+                    params=params,
+                    data=data,
+                    files=files,
+                    json=json,
+                    auth=auth,
+                    verify=verify_ssl,
+                    timeout=timeout,
+                )
+                if r.status_code in success_http_code:
+                    break
+            except Exception as e:
+                logger.error(f"HttpMethod excption info: {e}")
         return r.status_code, r.reason, r.text, r
 
     @staticmethod

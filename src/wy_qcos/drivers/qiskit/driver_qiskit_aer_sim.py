@@ -42,7 +42,6 @@ class DriverQiskitAerSim(DriverBase):
         self.supported_transpilers = [Constant.TRANSPILER_QISKIT]
         self.enable_circuit_aggregation = True
         self.max_qubits = 30
-        self.enable_device_monitor = False
         self._final_response = None
 
     def init_driver(self):

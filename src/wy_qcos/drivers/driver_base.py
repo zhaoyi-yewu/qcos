@@ -104,7 +104,7 @@ class DriverBase:
         # supported transpilers
         self.supported_transpilers = []
         # enable device monitor
-        self.enable_device_monitor = True
+        self.enable_device_monitor = False
         # enable device manager
         self.enable_device_mgr = False
         # task stage to track progress
