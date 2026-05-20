@@ -29,24 +29,25 @@ struct WireEndpoints {
   int output_id;
 };
 
-std::shared_ptr<DAGOpNode> make_op_node(const std::string& name,
+std::unique_ptr<DAGOpNode> make_op_node(const std::string& name,
                                         const std::vector<int>& qargs,
                                         int flag = 0) {
-  auto node = std::make_shared<DAGOpNode>(
+  auto node = std::make_unique<DAGOpNode>(
       std::shared_ptr<BaseOperation>(create_gate(name, qargs)), qargs);
   node->flag = flag;
   return node;
 }
 
 WireEndpoints add_wire(MultiGraph& graph, int wire) {
-  auto input = std::make_shared<DAGInNode>(wire);
-  auto output = std::make_shared<DAGOutNode>(wire);
-  auto [input_id, output_id] = graph.add_nodes(input, output);
+  auto input = std::make_unique<DAGInNode>(wire);
+  auto output = std::make_unique<DAGOutNode>(wire);
+  auto [input_id, output_id] =
+      graph.add_nodes(std::move(input), std::move(output));
   graph.add_edge(input_id, output_id, wire);
   return {input_id, output_id};
 }
 
-std::vector<int> node_ids(const std::vector<std::shared_ptr<DAGNode>>& nodes) {
+std::vector<int> node_ids(const std::vector<DAGNode*>& nodes) {
   std::vector<int> ids;
   ids.reserve(nodes.size());
   for (const auto& node : nodes) {
@@ -64,12 +65,12 @@ bool has_weighted_edge(const MultiGraph& graph, int src, int dst, int wire) {
   return false;
 }
 
-std::vector<int> topo_ids(const std::vector<std::shared_ptr<DAGNode>>& nodes) {
+std::vector<int> topo_ids(const std::vector<DAGNode*>& nodes) {
   return node_ids(nodes);
 }
 
 std::vector<std::vector<int>> normalize_run_ids(
-    const std::vector<std::vector<std::shared_ptr<DAGNode>>>& runs) {
+    const std::vector<std::vector<DAGNode*>>& runs) {
   std::vector<std::vector<int>> normalized;
   normalized.reserve(runs.size());
   for (const auto& run : runs) {
@@ -85,10 +86,10 @@ std::vector<std::vector<int>> normalize_run_ids(
   return normalized;
 }
 
-size_t run_width(const std::vector<std::shared_ptr<DAGNode>>& run) {
+size_t run_width(const std::vector<DAGNode*>& run) {
   std::vector<int> wires;
   for (const auto& node : run) {
-    auto op = std::dynamic_pointer_cast<DAGOpNode>(node);
+    auto* op = dynamic_cast<DAGOpNode*>(node);
     if (!op) {
       continue;
     }
@@ -103,8 +104,8 @@ size_t run_width(const std::vector<std::shared_ptr<DAGNode>>& run) {
 
 TEST(MultiGraphTest, AddAndAccess) {
   MultiGraph graph;
-  auto [in_id, out_id] = graph.add_nodes(std::make_shared<DAGInNode>(0),
-                                         std::make_shared<DAGOutNode>(0));
+  auto [in_id, out_id] = graph.add_nodes(std::make_unique<DAGInNode>(0),
+                                         std::make_unique<DAGOutNode>(0));
   const int h_id = graph.add_node(make_op_node("h", {0}, 11));
 
   EXPECT_EQ(in_id, 0);
@@ -113,15 +114,11 @@ TEST(MultiGraphTest, AddAndAccess) {
   EXPECT_EQ(graph.num_nodes(), 3);
   EXPECT_EQ(graph[h_id]->node_id(), h_id);
 
-  auto replacement = make_op_node("x", {0}, 12);
-  replacement->set_node_id(h_id);
-  graph[h_id] = replacement;
-
   const MultiGraph& const_graph = graph;
-  auto replaced = std::dynamic_pointer_cast<DAGOpNode>(const_graph[h_id]);
-  ASSERT_NE(replaced, nullptr);
-  EXPECT_EQ(replaced->name(), "x");
-  EXPECT_EQ(replaced->flag, 12);
+  auto* op = dynamic_cast<const DAGOpNode*>(const_graph[h_id]);
+  ASSERT_NE(op, nullptr);
+  EXPECT_EQ(op->name(), "h");
+  EXPECT_EQ(op->flag, 11);
 }
 
 TEST(MultiGraphTest, HasEdgeAndNodes) {
@@ -318,9 +315,9 @@ TEST(MultiGraphTest, LexTopoByKey) {
   int h2_id = graph.add_node(make_op_node("h", {1}, 82));
   graph.add_edge(x_id, h2_id, 0);
 
-  auto order = topo_ids(graph.lexicographical_topological_sort(
-      [](const std::shared_ptr<DAGNode>& node) {
-        if (auto op = std::dynamic_pointer_cast<DAGOpNode>(node)) {
+  auto order =
+      topo_ids(graph.lexicographical_topological_sort([](const DAGNode* node) {
+        if (auto* op = dynamic_cast<const DAGOpNode*>(node)) {
           return op->name();
         }
         return std::string();
@@ -337,7 +334,7 @@ TEST(MultiGraphTest, LexTopoSkipsInactive) {
   graph.remove_node_retain_edges(h_id);
 
   auto order = topo_ids(graph.lexicographical_topological_sort(
-      [](const std::shared_ptr<DAGNode>& node) { return node->sort_key(); }));
+      [](const DAGNode* node) { return node->sort_key(); }));
   std::sort(order.begin(), order.end());
   EXPECT_EQ(order, (std::vector<int>{wire0.input_id, wire0.output_id}));
 }
@@ -377,8 +374,8 @@ TEST(MultiGraphTest, CollectRunsChain) {
   graph.add_edge(x1, h3, 0);
   graph.add_edge(h3, wire0.output_id, 0);
 
-  auto runs = graph.collect_runs([](const std::shared_ptr<DAGNode>& node) {
-    auto op = std::dynamic_pointer_cast<DAGOpNode>(node);
+  auto runs = graph.collect_runs([](const DAGNode* node) {
+    auto* op = dynamic_cast<const DAGOpNode*>(node);
     return op && op->name() == "h";
   });
 
@@ -400,8 +397,8 @@ TEST(MultiGraphTest, CollectRunsTwoQubitBlock) {
   int h0 = graph.add_node(make_op_node("h", {0}, 106));
   graph.insert_node_on_in_edges_multiple(h0, {wire0.output_id});
 
-  auto runs = graph.collect_runs([](const std::shared_ptr<DAGNode>& node) {
-    auto op = std::dynamic_pointer_cast<DAGOpNode>(node);
+  auto runs = graph.collect_runs([](const DAGNode* node) {
+    auto* op = dynamic_cast<const DAGOpNode*>(node);
     return op && op->name() == "cx";
   });
 
@@ -425,8 +422,8 @@ TEST(MultiGraphTest, CollectRunsWideThreeWireBlock) {
   int h2 = graph.add_node(make_op_node("h", {2}, 110));
   graph.insert_node_on_in_edges_multiple(h2, {wire2.output_id});
 
-  auto runs = graph.collect_runs([](const std::shared_ptr<DAGNode>& node) {
-    auto op = std::dynamic_pointer_cast<DAGOpNode>(node);
+  auto runs = graph.collect_runs([](const DAGNode* node) {
+    auto* op = dynamic_cast<const DAGOpNode*>(node);
     return op && (op->name() == "h" || op->name() == "cx");
   });
 
@@ -455,8 +452,8 @@ TEST(MultiGraphTest, CollectRunsWideThreeWireBranch) {
   int h2 = graph.add_node(make_op_node("h", {2}, 115));
   graph.insert_node_on_in_edges_multiple(h2, {wire2.output_id});
 
-  auto runs = graph.collect_runs([](const std::shared_ptr<DAGNode>& node) {
-    auto op = std::dynamic_pointer_cast<DAGOpNode>(node);
+  auto runs = graph.collect_runs([](const DAGNode* node) {
+    auto* op = dynamic_cast<const DAGOpNode*>(node);
     return op && (op->name() == "h" || op->name() == "cx");
   });
 
@@ -486,8 +483,8 @@ TEST(MultiGraphTest, CollectRunsWideFourWireBlock) {
   int h3 = graph.add_node(make_op_node("h", {3}, 120));
   graph.insert_node_on_in_edges_multiple(h3, {wire3.output_id});
 
-  auto runs = graph.collect_runs([](const std::shared_ptr<DAGNode>& node) {
-    auto op = std::dynamic_pointer_cast<DAGOpNode>(node);
+  auto runs = graph.collect_runs([](const DAGNode* node) {
+    auto* op = dynamic_cast<const DAGOpNode*>(node);
     return op && (op->name() == "h" || op->name() == "cx");
   });
 
@@ -507,8 +504,8 @@ TEST(MultiGraphTest, CollectRunsSplitAtBranch) {
   graph.add_edge(h1, h2, 0);
   graph.add_edge(h1, h3, 1);
 
-  auto runs = graph.collect_runs([](const std::shared_ptr<DAGNode>& node) {
-    auto op = std::dynamic_pointer_cast<DAGOpNode>(node);
+  auto runs = graph.collect_runs([](const DAGNode* node) {
+    auto* op = dynamic_cast<const DAGOpNode*>(node);
     return op && op->name() == "h";
   });
 

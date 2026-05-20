@@ -11,9 +11,9 @@ add_library(${LIB_TRANSPILER} STATIC
                             circuit/multi_graph.cpp
                             circuit/gate_operation.cpp
                             circuit/quantum_circuit.cpp
-                            decomposer/equivalence_graph.cpp
-                            decomposer/rule_applier.cpp
-                            decomposer/decomposer.cpp
+                            # decomposer/equivalence_graph.cpp
+                            # decomposer/rule_applier.cpp
+                            # decomposer/decomposer.cpp
                             mapping/greedy_routing.cpp
                             mapping/sabre_routing.cpp
                             mapping/mcts_routing.cpp
