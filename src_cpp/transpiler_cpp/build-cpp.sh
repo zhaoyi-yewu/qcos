@@ -66,8 +66,8 @@ fi
 mkdir -p ${BUILD_DIR}
 
 cd ${BUILD_DIR}
-cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..
-cmake --build . --config ${BUILD_TYPE} -j${NPROC}
+cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
+make -j${NPROC}
 
 # if in WuYueOs, copy .so and .pyi to wy_qcos/transpiler
 PARENT2_PATH="$(dirname "$(dirname "$PROJECT_ROOT")")"

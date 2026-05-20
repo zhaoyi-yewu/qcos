@@ -1,6 +1,8 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.11)
 
-add_compile_options(/bigobj)
+if(MSVC)
+    add_compile_options(/bigobj)
+endif()
 
 add_library(${LIB_TRANSPILER} STATIC
                             circuit/base_operation.cpp
