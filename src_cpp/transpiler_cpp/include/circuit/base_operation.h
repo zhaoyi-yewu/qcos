@@ -18,6 +18,7 @@
 #pragma once
 #include <cmath>
 #include <iomanip>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
