@@ -1,0 +1,203 @@
+/*
+ * ----------------------------------------------------------------------
+ * Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+ *
+ * qcos is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions
+ * of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *          http://license.coscl.org.cn/MulanPSL2
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+ *      WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ * ----------------------------------------------------------------------
+ */
+
+#include "optimizer/inverse_cancellation.h"
+
+#include <stdexcept>
+#include <unordered_map>
+
+#include "circuit/dag_node.h"
+
+namespace qcos {
+
+namespace {
+
+bool is_gate_enabled(const std::string& gate_name,
+                     const std::optional<std::set<std::string>>& basis_gates) {
+  return !basis_gates || basis_gates->count(gate_name) > 0;
+}
+
+DAGOpNode* as_op_node(DAGNode* node) { return dynamic_cast<DAGOpNode*>(node); }
+
+}  // namespace
+
+InverseCancellation::InverseGateRule::InverseGateRule(GateOperation gate)
+    : gate_0(std::move(gate)) {}
+
+InverseCancellation::InverseGateRule::InverseGateRule(GateOperation gate_0_in,
+                                                      GateOperation gate_1_in)
+    : gate_0(std::move(gate_0_in)), gate_1(std::move(gate_1_in)) {}
+
+InverseCancellation::InverseCancellation(
+    const std::vector<InverseGateRule>& gates_to_cancel) {
+  for (const auto& gates : gates_to_cancel) {
+    if (!gates.is_pair()) {
+      if (!is_inverse(gates.gate_0)) {
+        throw std::invalid_argument("Gate " + gates.gate_0.name +
+                                    " is not self-inverse");
+      }
+      self_inverse_gate_names_.insert(gates.gate_0.name);
+      continue;
+    }
+
+    if (!is_inverse(gates.gate_0, gates.gate_1)) {
+      throw std::invalid_argument("Gate " + gates.gate_0.name + " and " +
+                                  gates.gate_1->name + " are not inverse.");
+    }
+    inverse_gate_pairs_.push_back(gates);
+    inverse_gate_pairs_names_.insert(gates.gate_0.name);
+    inverse_gate_pairs_names_.insert(gates.gate_1->name);
+  }
+}
+
+int InverseCancellation::run(
+    DAGCircuit& dag, const std::optional<std::set<std::string>>& basis_gates) {
+  int reduced = 0;
+  if (!self_inverse_gate_names_.empty()) {
+    reduced += run_on_self_inverse(dag, basis_gates);
+  }
+  if (!inverse_gate_pairs_.empty()) {
+    reduced += run_on_inverse_pairs(dag, basis_gates);
+  }
+  return reduced;
+}
+
+bool InverseCancellation::is_inverse(
+    const GateOperation& gate_0,
+    const std::optional<GateOperation>& gate_1) const {
+  if (!gate_1) {
+    return gate_0.hermitian;
+  }
+  if (gate_0.operation_type != gate_1->operation_type) {
+    return false;
+  }
+  if (gate_0.name == gate_1->name) {
+    return gate_0.hermitian;
+  }
+
+  static const std::unordered_map<std::string, std::string> kInversePairs = {
+      {"s", "sdg"}, {"sdg", "s"}, {"t", "tdg"}, {"tdg", "t"}};
+
+  auto iterator = kInversePairs.find(gate_0.name);
+  return iterator != kInversePairs.end() && iterator->second == gate_1->name;
+}
+
+int InverseCancellation::run_on_self_inverse(
+    DAGCircuit& dag,
+    const std::optional<std::set<std::string>>& basis_gates) const {
+  const auto op_counts = dag.count_ops();
+  int reduced = 0;
+
+  for (const auto& gate_name : self_inverse_gate_names_) {
+    auto count_iterator = op_counts.find(gate_name);
+    if (count_iterator == op_counts.end() || count_iterator->second <= 1 ||
+        !is_gate_enabled(gate_name, basis_gates)) {
+      continue;
+    }
+
+    auto gate_runs = dag.collect_runs({gate_name});
+    for (const auto& gate_cancel_run : gate_runs) {
+      std::vector<std::vector<DAGNode*>> partitions;
+      std::vector<DAGNode*> chunk;
+      const size_t max_index =
+          gate_cancel_run.empty() ? 0u : gate_cancel_run.size() - 1;
+
+      for (size_t index = 0; index < gate_cancel_run.size(); ++index) {
+        auto* current = as_op_node(gate_cancel_run[index]);
+        if (!current || current->name() != gate_name) {
+          if (!chunk.empty()) {
+            partitions.push_back(chunk);
+            chunk.clear();
+          }
+          continue;
+        }
+
+        chunk.push_back(gate_cancel_run[index]);
+        auto* next = index == max_index
+                         ? nullptr
+                         : as_op_node(gate_cancel_run[index + 1]);
+        const bool qargs_changed =
+            index == max_index || !next || current->qargs != next->qargs;
+        if (qargs_changed) {
+          partitions.push_back(chunk);
+          chunk.clear();
+        }
+      }
+
+      for (const auto& partition : partitions) {
+        const size_t keep_prefix = partition.size() % 2 == 0 ? 0u : 1u;
+        for (size_t index = keep_prefix; index < partition.size(); ++index) {
+          dag.remove_op_node(as_op_node(partition[index]));
+          ++reduced;
+        }
+      }
+    }
+  }
+
+  return reduced;
+}
+
+int InverseCancellation::run_on_inverse_pairs(
+    DAGCircuit& dag,
+    const std::optional<std::set<std::string>>& basis_gates) const {
+  const auto op_counts = dag.count_ops();
+  int reduced = 0;
+
+  for (const auto& pair : inverse_gate_pairs_) {
+    const auto& gate_0_name = pair.gate_0.name;
+    const auto& gate_1_name = pair.gate_1->name;
+    if (op_counts.find(gate_0_name) == op_counts.end() ||
+        op_counts.find(gate_1_name) == op_counts.end() ||
+        !is_gate_enabled(gate_0_name, basis_gates) ||
+        !is_gate_enabled(gate_1_name, basis_gates)) {
+      continue;
+    }
+
+    auto gate_cancel_runs = dag.collect_runs({gate_0_name, gate_1_name});
+    for (const auto& dag_nodes : gate_cancel_runs) {
+      size_t index = 0;
+      while (index + 1 < dag_nodes.size()) {
+        auto* first = as_op_node(dag_nodes[index]);
+        auto* second = as_op_node(dag_nodes[index + 1]);
+        if (!first || !second) {
+          ++index;
+          continue;
+        }
+
+        const bool same_qargs = first->qargs == second->qargs;
+        const bool ordered_match = same_qargs &&
+                                   first->name() == gate_0_name &&
+                                   second->name() == gate_1_name;
+        const bool reverse_match = same_qargs &&
+                                   first->name() == gate_1_name &&
+                                   second->name() == gate_0_name;
+        if (ordered_match || reverse_match) {
+          dag.remove_op_node(first);
+          dag.remove_op_node(second);
+          reduced += 2;
+          index += 2;
+          continue;
+        }
+        ++index;
+      }
+    }
+  }
+
+  return reduced;
+}
+
+}  // namespace qcos

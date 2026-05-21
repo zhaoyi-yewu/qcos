@@ -90,7 +90,7 @@ TEST(SabreInitialMappingTest, InitialMappingReducesSwaps) {
 
   // routing without initial mapping
   SABRE sabre_no_init(coupling_list);
-  sabre_no_init.execute(logical_circuit);
+  sabre_no_init.execute(logical_circuit, {0, 1, 2, 3});
   const auto& phys_no = sabre_no_init.get_physical_gates();
   size_t swaps_no = 0;
   for (const auto& g : phys_no)

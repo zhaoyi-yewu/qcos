@@ -9,6 +9,7 @@ add_executable(${TEST_NAME} test_main.cpp
                             test_dag_circuit.cpp
                             test_multi_graph.cpp
                             test_gate_operations.cpp
+                            test_inverse_cancellation.cpp
                             test_quantum_circuit.cpp
                             decomposer/test_decomposer.cpp
                             decomposer/test_decomposer_benchmark.cpp
