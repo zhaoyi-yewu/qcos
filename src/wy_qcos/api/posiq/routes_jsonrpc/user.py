@@ -17,7 +17,7 @@
 
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal, cast
 
 from fastapi import Depends, Request
 
@@ -108,12 +108,12 @@ def get_user_mgmt(
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     _response_info = {
-        "auth_mode": Config.AUTH_MODE,
-        "password_expiry_days": Config.PASSWORD_EXPIRY_DAYS
-        if Config.PASSWORD_EXPIRY_DAYS
+        "auth_mode": Config.DEFAULT.AUTH_MODE,
+        "password_expiry_days": Config.USERS.PASSWORD_EXPIRY_DAYS
+        if Config.USERS.PASSWORD_EXPIRY_DAYS
         else 0,
-        "max_login_attempts": Config.MAX_LOGIN_ATTEMPTS,
-        "lockout_duration_minutes": Config.LOCKOUT_DURATION_MINUTES,
+        "max_login_attempts": Config.USERS.MAX_LOGIN_ATTEMPTS,
+        "lockout_duration_minutes": Config.USERS.LOCKOUT_DURATION_MINUTES,
     }
     response_info = schemas.GetUserMgmtResponse.model_validate(_response_info)
     return response_info
@@ -154,11 +154,13 @@ def set_user_mgmt(
         )
 
     # Update Config dynamically
-    Config.AUTH_MODE = auth_mode
-    logger.info(f"Updated Config.AUTH_MODE to '{auth_mode}'")
+    Config.DEFAULT.AUTH_MODE = cast(
+        Literal["no", "jwt", "virtual_instance"], auth_mode
+    )
+    logger.info(f"Updated AUTH_MODE to '{auth_mode}'")
 
     _response_info = {
-        "auth_mode": Config.AUTH_MODE,
+        "auth_mode": Config.DEFAULT.AUTH_MODE,
         "message": f"Authentication mode updated to '{auth_mode}'",
     }
     response_info = schemas.SetUserMgmtResponse.model_validate(_response_info)
