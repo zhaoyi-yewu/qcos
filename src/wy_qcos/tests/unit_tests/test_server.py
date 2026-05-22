@@ -41,9 +41,9 @@ class TestServer:
         mock_args.config_files = []
         mock_args.config_dir = None
         mock_parser.parse_args.return_value = mock_args
-        Config.VEN_DIR = "/invalid_venv_dir"
+        Config.DEFAULT.VENV_DIR = "/invalid_venv_dir"
 
         server._parse_arguments(None)
         mock_load_driver_env_file.assert_called_once_with(
-            f"{Config.VENV_DIR}/venv-configs.toml"
+            f"{Config.DEFAULT.VENV_DIR}/venv-configs.toml"
         )

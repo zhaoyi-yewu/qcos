@@ -22,7 +22,9 @@ import sys
 from wy_qcos.common.config import Config
 from wy_qcos.common.library import Library
 
-org_path = Library.set_driver_venv_path("DriverQiskitQasmSim", Config.VENV_DIR)
+org_path = Library.set_driver_venv_path(
+    "DriverQiskitQasmSim", Config.DEFAULT.VENV_DIR
+)
 
 import logging
 from pathlib import Path
