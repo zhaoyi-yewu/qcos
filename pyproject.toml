@@ -27,7 +27,8 @@ authors = [
     {name = "Huang Yachao", email = "huangyachao_yewu@cmss.chinamobile.com"},
     {name = "Wang Jujun", email = "wangjujun_yewu@cmss.chinamobile.com"},
     {name = "Lian Wencong", email = "lianwencong_yewu@cmss.chinamobile.com"},
-    {name = "Xu Yu", email = "xuyu2_yewu@cmss.chinamobile.com"}
+    {name = "Xu Yu", email = "xuyu2_yewu@cmss.chinamobile.com"},
+    {name="Yang Yunhui", email = "yangyunhui_yewu@cmss.chinamobile.com"}
 ]
 keywords = ["qcos", "quantum", "operating", "system"]
 
@@ -54,6 +55,7 @@ dependencies = [
     "alembic==1.16.3",
     "annotated-types==0.7.0",
     "anyio==4.9.0",
+    "apscheduler==3.11.2",
     "argcomplete==3.6.2",
     "bcrypt==5.0.0",
     "click==8.1.8",

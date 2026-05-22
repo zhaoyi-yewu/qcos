@@ -3,6 +3,7 @@ aiohttp==3.12.13
 alembic==1.16.3
 annotated-types==0.7.0
 anyio==4.9.0
+apscheduler==3.11.2
 argcomplete==3.6.2
 bcrypt==5.0.0
 click==8.1.8
