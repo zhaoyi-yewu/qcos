@@ -26,6 +26,10 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+#ifndef M_E
+#define M_E 2.71828182845904523536
+#endif
+
 namespace qcos {
 
 enum class OperationType {
@@ -65,6 +69,10 @@ class BaseOperation {
   std::string targets_to_string() const;
   std::string arg_value_to_string() const;
   std::string to_openqasm(const std::string& qubit_prefix = "q") const;
+
+  virtual std::unique_ptr<BaseOperation> clone() const {
+    return std::make_unique<BaseOperation>(*this);
+  }
 };
 
 }  // namespace qcos
