@@ -10,6 +10,7 @@ add_executable(${TEST_NAME} test_main.cpp
                             test_multi_graph.cpp
                             test_gate_operations.cpp
                             test_quantum_circuit.cpp
+                            decomposer/test_decomposer.cpp
                             test_sabre_routing.cpp
                             test_sabre_mapping.cpp
                             test_qasm_to_origin_ir.cpp
