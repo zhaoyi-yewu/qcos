@@ -92,6 +92,7 @@ dependencies = [
     "PyJWT==2.12.1",
     "pytest==8.4.1",
     "pytest-cov==6.2.1",
+    "python-box==7.4.1",
     "python-jose==3.5.0",
     "python-socketio==5.12.1",
     "redis==7.1.0",
