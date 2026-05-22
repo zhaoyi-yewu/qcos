@@ -41,7 +41,7 @@ class TestVirtualInstanceAuth:
         cls.client = GLOBAL_CONFIGS["client"]
         cls.api_host = GLOBAL_CONFIGS.get("api_host", "127.0.0.1")
         cls.api_port = GLOBAL_CONFIGS.get(
-            "api_port", Config.API_SERVER_LISTEN_PORT
+            "api_port", Config.API_SERVER.API_SERVER_LISTEN_PORT
         )
         cls.password_salt = GLOBAL_CONFIGS.get("password_salt", "")
         cls.timeout = GLOBAL_CONFIGS["timeout"]
