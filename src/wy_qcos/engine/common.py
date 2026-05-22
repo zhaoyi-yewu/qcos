@@ -85,7 +85,7 @@ def init_logger(
     Args:
         log_file_path: Path to the log file
         debug: Enable debug logging level
-        log_format: Custom log format (defaults to Config.LOG_FORMAT)
+        log_format: Custom log format (defaults to Config.LOG.LOG_FORMAT)
                    Standard Python logging format string
         log_rotate_max_size_mb: Max size for log rotation in MB
         log_rotate_backup_count: Number of backup log files to retain
@@ -93,13 +93,13 @@ def init_logger(
     """
     # Use global Config as default if not provided
     if log_format is None:
-        log_format = Config.LOG_FORMAT
+        log_format = Config.LOG.LOG_FORMAT
     if log_rotate_max_size_mb is None:
-        log_rotate_max_size_mb = Config.LOG_ROTATE_MAX_SIZE_MB
+        log_rotate_max_size_mb = Config.LOG.LOG_ROTATE_MAX_SIZE_MB
     if log_rotate_backup_count is None:
-        log_rotate_backup_count = Config.LOG_ROTATE_BACKUP_COUNT
+        log_rotate_backup_count = Config.LOG.LOG_ROTATE_BACKUP_COUNT
     if log_rotate_compression is None:
-        log_rotate_compression = Config.LOG_ROTATE_COMPRESSION
+        log_rotate_compression = Config.LOG.LOG_ROTATE_COMPRESSION
 
     # Convert standard log format to loguru format
     loguru_format = convert_log_format_to_loguru(log_format)
