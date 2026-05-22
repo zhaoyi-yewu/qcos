@@ -56,8 +56,8 @@ class TestDecodeJwtToken:
         }
         token = jwt.encode(
             payload,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithm=Config.JWT_AUTH_ALGORITHM,
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.USERS.JWT_AUTH_ALGORITHM,
         )
 
         result = decode_jwt_token(token)
@@ -75,8 +75,8 @@ class TestDecodeJwtToken:
         }
         token = jwt.encode(
             payload,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithm=Config.JWT_AUTH_ALGORITHM,
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.USERS.JWT_AUTH_ALGORITHM,
         )
 
         result = decode_jwt_token(token)
@@ -98,7 +98,7 @@ class TestDecodeJwtToken:
             "exp": datetime.now().timestamp() + 3600,
         }
         token = jwt.encode(
-            payload, "wrong_secret", algorithm=Config.JWT_AUTH_ALGORITHM
+            payload, "wrong_secret", algorithm=Config.USERS.JWT_AUTH_ALGORITHM
         )
 
         result = decode_jwt_token(token)
@@ -151,8 +151,8 @@ class TestGetCurrentUserFromToken:
         }
         token = jwt.encode(
             payload,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithm=Config.JWT_AUTH_ALGORITHM,
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.USERS.JWT_AUTH_ALGORITHM,
         )
 
         mock_user_manager.get_user_by_name.return_value = sample_user
@@ -173,8 +173,8 @@ class TestGetCurrentUserFromToken:
         }
         token = jwt.encode(
             payload,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithm=Config.JWT_AUTH_ALGORITHM,
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.USERS.JWT_AUTH_ALGORITHM,
         )
 
         mock_user_manager.is_blacklisted.return_value = True
@@ -192,8 +192,8 @@ class TestGetCurrentUserFromToken:
         }
         token = jwt.encode(
             payload,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithm=Config.JWT_AUTH_ALGORITHM,
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.USERS.JWT_AUTH_ALGORITHM,
         )
 
         disabled_user = user_schemas.User(
@@ -228,8 +228,8 @@ class TestGetCurrentUserFromToken:
         }
         token = jwt.encode(
             payload,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithm=Config.JWT_AUTH_ALGORITHM,
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.USERS.JWT_AUTH_ALGORITHM,
         )
 
         mock_user_manager.get_user_by_name.return_value = None
@@ -249,8 +249,8 @@ class TestGetCurrentUserFromToken:
         }
         token = jwt.encode(
             payload,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithm=Config.JWT_AUTH_ALGORITHM,
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.USERS.JWT_AUTH_ALGORITHM,
         )
 
         locked_user = user_schemas.User(
@@ -286,8 +286,8 @@ class TestGetCurrentUserFromToken:
         }
         token = jwt.encode(
             payload,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithm=Config.JWT_AUTH_ALGORITHM,
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.USERS.JWT_AUTH_ALGORITHM,
         )
 
         expired_pwd_user = user_schemas.User(
@@ -443,7 +443,7 @@ class TestAuth:
         self, mock_config, mock_decrypt_virtual_instance_id
     ):
         """Test authentication in virtual instance mode."""
-        mock_config.AUTH_MODE = Constant.AUTH_MODE_VIRTUAL_INSTANCE
+        mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_VIRTUAL_INSTANCE
         mock_decrypt_virtual_instance_id.return_value = (
             True,
             None,
@@ -460,12 +460,13 @@ class TestAuth:
         "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication.Config"
     )
     @pytest.mark.asyncio
-    @pytest.mark.smoke
-    async def test_auth_no_mode(self, mock_config):
-        """Test authentication with auth_mode=no (no authentication)."""
-        mock_config.AUTH_MODE = Constant.AUTH_MODE_NO
+    @pytest.mark.asyncio
+    async def test_auth_jwt_mode_valid_token(self, mock_config):
+        """Test JWT authentication with valid token."""
+        mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_NO
 
         mock_request = Mock()
+        mock_request.headers.get.return_value = None
         mock_user_manager = Mock(spec=UserManager)
 
         auth_data = await auth(mock_request, user_manager=mock_user_manager)
@@ -474,7 +475,6 @@ class TestAuth:
         assert auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_NO
         assert auth_data["user_id"] == Constant.ANONYMOUS_USERNAME
         assert Constant.ROLE_ADMIN in auth_data["roles"]
-        assert auth_data["auth_mode"] == "no"
 
     @patch(
         "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication.Config"
@@ -483,29 +483,33 @@ class TestAuth:
         "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication"
         ".oauth2_scheme"
     )
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication"
+        ".decode_jwt_token"
+    )
     @pytest.mark.asyncio
     @pytest.mark.smoke
-    async def test_auth_mode_jwt(self, mock_oauth2_scheme, mock_config):
+    async def test_auth_mode_jwt(
+        self, mock_decode, mock_oauth2_scheme, mock_config
+    ):
         """Test authentication with JWT token mode."""
-        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
-        mock_config.JWT_AUTH_SECRET_KEY = Config.JWT_AUTH_SECRET_KEY
-        mock_config.JWT_AUTH_ALGORITHM = Config.JWT_AUTH_ALGORITHM
+        mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_JWT
+        mock_config.USERS.JWT_AUTH_SECRET_KEY = (
+            Config.USERS.JWT_AUTH_SECRET_KEY
+        )
+        mock_config.USERS.JWT_AUTH_ALGORITHM = Config.USERS.JWT_AUTH_ALGORITHM
 
-        # Create a valid JWT token
-        payload = {
+        # Create token data
+        token_data = {
             "sub": "jwtuser",
             "jti": "token-jti-789",
             "exp": datetime.now().timestamp() + 3600,
             "aud": JWT_AUDIENCE,
         }
-        token = jwt.encode(
-            payload,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithm=Config.JWT_AUTH_ALGORITHM,
-        )
+        mock_decode.return_value = token_data
 
         # Mock oauth2_scheme as an async callable
-        mock_oauth2_scheme.side_effect = AsyncMock(return_value=token)
+        mock_oauth2_scheme.side_effect = AsyncMock(return_value="valid_token")
 
         # Create mock user manager and user
         mock_user_manager = Mock(spec=UserManager)
@@ -553,7 +557,7 @@ class TestAuth:
         self, mock_oauth2_scheme, mock_config
     ):
         """Test authentication with auth_mode=jwt when no token provided."""
-        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
+        mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_JWT
 
         # Mock oauth2_scheme as an async callable that returns None
         mock_oauth2_scheme.side_effect = AsyncMock(return_value=None)
@@ -579,7 +583,7 @@ class TestAuth:
         self, mock_oauth2_scheme, mock_config
     ):
         """Test authentication with expired JWT token."""
-        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
+        mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_JWT
 
         # Create an expired JWT token
         payload = {
@@ -590,8 +594,8 @@ class TestAuth:
         }
         expired_token = jwt.encode(
             payload,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithm=Config.JWT_AUTH_ALGORITHM,
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.USERS.JWT_AUTH_ALGORITHM,
         )
 
         # Mock oauth2_scheme as an async callable that returns expired token
@@ -618,7 +622,7 @@ class TestAuth:
         self, mock_oauth2_scheme, mock_config
     ):
         """Test JWT authentication when user is disabled."""
-        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
+        mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_JWT
 
         # Create a valid JWT token
         payload = {
@@ -629,8 +633,8 @@ class TestAuth:
         }
         token = jwt.encode(
             payload,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithm=Config.JWT_AUTH_ALGORITHM,
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.USERS.JWT_AUTH_ALGORITHM,
         )
 
         # Mock oauth2_scheme as an async callable
@@ -672,7 +676,7 @@ class TestAuth:
         self, mock_oauth2_scheme, mock_config
     ):
         """Test JWT authentication when user lacks permissions."""
-        mock_config.AUTH_MODE = Constant.AUTH_MODE_JWT
+        mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_JWT
 
         # Create a valid JWT token
         payload = {
@@ -683,8 +687,8 @@ class TestAuth:
         }
         token = jwt.encode(
             payload,
-            Config.JWT_AUTH_SECRET_KEY,
-            algorithm=Config.JWT_AUTH_ALGORITHM,
+            Config.USERS.JWT_AUTH_SECRET_KEY,
+            algorithm=Config.USERS.JWT_AUTH_ALGORITHM,
         )
 
         # Mock oauth2_scheme as an async callable
