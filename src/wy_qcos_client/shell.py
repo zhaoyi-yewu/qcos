@@ -1400,7 +1400,8 @@ class GetJobResults(ShowOne):
             allowed_extensions = [".txt", ".json"]
             if file_ext not in allowed_extensions:
                 raise argparse.ArgumentTypeError(
-                    f"Invalid file format: {file_ext}"
+                    f"Invalid file format: {file_ext}, "
+                    "only {allowed_extensions} are allowed"
                 )
         return outfile
 

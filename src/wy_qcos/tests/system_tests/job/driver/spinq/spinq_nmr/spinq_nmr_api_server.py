@@ -27,6 +27,17 @@ sio = socketio.AsyncServer(cors_allowed_origins="*")
 app = web.Application()
 sio.attach(app)
 task_code = "S-260114-0005"
+options = None
+dev_running_info = {
+    "status": "online",
+    "details": {
+        "calibrate_info": {
+            "step": 0.1,
+            "shot": 800,
+        },
+        "device_options_info": {"shot_gap": 0},
+    },
+}
 
 
 def init_logging():
@@ -109,6 +120,49 @@ async def get_result_handler(request):
     return web.json_response(response_data)
 
 
+async def calibrate_handler(request):
+    """Calibrate handler."""
+    logger.info("calibrate device request received.")
+    response_data = {
+        "status": 200,
+        "msg": "",
+        "result": "calibrate request recvd.",
+        "taskErrMsg": None,
+    }
+    return web.json_response(response_data)
+
+
+async def set_device_options_handler(request):
+    """Set device options handler."""
+    logger.info("Set device options request received")
+    if request.body_exists:
+        data = await request.json()
+        options = data.get("options", None)
+        if options is not None and len(options) != 0:
+            dev_running_info["details"]["device_options_info"] = options
+            logger.info(f"options: {options}")
+
+    response_data = {
+        "status": 200,
+        "msg": "",
+        "result": "set device option request rcvd",
+        "taskErrMsg": None,
+    }
+    return web.json_response(response_data)
+
+
+async def fetch_running_info_handler(request):
+    """fetch_running_info_handler handler."""
+    logger.info("fetch_running_info_handlers request received.")
+    response_data = {
+        "status": 200,
+        "msg": "",
+        "result": dev_running_info,
+        "taskErrMsg": None,
+    }
+    return web.json_response(response_data)
+
+
 def main():
     init_logging()
 
@@ -118,6 +172,9 @@ def main():
         "/task/user/getTaskRunResultByTcode",
         get_result_handler,
     )
+    app.router.add_post("/calibrate", calibrate_handler)
+    app.router.add_post("/set_device_options", set_device_options_handler)
+    app.router.add_post("/fetch_running_info", fetch_running_info_handler)
     web.run_app(app, host="", port=18602)
 
 
