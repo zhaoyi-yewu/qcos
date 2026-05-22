@@ -96,15 +96,17 @@ class DatabaseDriver:
 
 def init_database():
     """Init database."""
-    if Config.QCOS_DATABASE_CONNECTION_URL == "fake":  # TODO: remove fake
-        logger.info("Skip init database without db config.")
-        return None
+    db_url = Config.DATABASE.QCOS_DATABASE_CONNECTION_URL
+    logger.info(f"Initializing database: {db_url}")
 
-    logger.info("Init database ...")
-    config_db_url = make_url(Config.QCOS_DATABASE_CONNECTION_URL)
-    db_driver = DatabaseDriver(config_db_url, config_db_url.database)
+    try:
+        config_db_url = make_url(db_url)
+        db_driver = DatabaseDriver(config_db_url, config_db_url.database)
 
-    db_engine = db_driver.create_engine()
-    db_driver.check_connection()
-    # db_driver.create_tables()  # TODO: don't create tables here
-    return db_engine
+        db_engine = db_driver.create_engine()
+        db_driver.check_connection()
+        logger.info("Database initialized successfully")
+        return db_engine
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}", exc_info=True)
+        raise
