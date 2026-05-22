@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 from wy_qcos.transpiler.high_performance import (
+    BaseOperation as BaseOperation_cpp,
     GateOperation as GateOperation_cpp,
     OperationType as OperationType_cpp,
     load_qasm_to_gate_list,
@@ -23,6 +24,7 @@ from wy_qcos.transpiler.high_performance import (
 from wy_qcos.common.cmss.gate_operation import (
     OperationType,
     GateOperation,
+    create_gate,
 )
 
 
@@ -67,9 +69,16 @@ def convert_ir_py2cpp(ir_py: list[GateOperation]):
             op_type = OperationType_cpp.SINGLE_QUBIT_OPERATION
         elif len(gate.targets) == 2:
             op_type = OperationType_cpp.DOUBLE_QUBIT_OPERATION
+        elif len(gate.targets) == 3:
+            op_type = OperationType_cpp.TRIPLE_QUBIT_OPERATION
+        elif len(gate.targets) == 4:
+            op_type = OperationType_cpp.FOUR_QUBIT_OPERATION
+        elif len(gate.targets) == 5:
+            op_type = OperationType_cpp.FIVE_QUBIT_OPERATION
         else:
-            raise ValueError("not support more than two qubits.")
-        gate_cpp = GateOperation_cpp(
+            if gate.name != "sync" and gate.name != "measure":
+                raise ValueError("not support more than two qubits.")
+        gate_cpp = BaseOperation_cpp(
             gate.name, gate.targets, gate.arg_value, op_type
         )
         ir_cpp.append(gate_cpp)
@@ -79,14 +88,10 @@ def convert_ir_py2cpp(ir_py: list[GateOperation]):
 def convert_ir_cpp2py(ir_cpp: list[GateOperation_cpp]):
     ir_py = []
     for gate in ir_cpp:
-        if len(gate.targets) == 1:
-            op_type = OperationType.SINGLE_QUBIT_OPERATION
-        elif len(gate.targets) == 2:
-            op_type = OperationType.DOUBLE_QUBIT_OPERATION
-        else:
-            raise ValueError("not support more than two qubits.")
-        gate_py = GateOperation(
-            gate.name, gate.targets, gate.arg_value, op_type.value
+        gate_py = create_gate(
+            gate.name,
+            gate.targets,
+            gate.arg_value,
         )
         ir_py.append(gate_py)
     return ir_py
