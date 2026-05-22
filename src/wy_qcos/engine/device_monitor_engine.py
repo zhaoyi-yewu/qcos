@@ -94,7 +94,12 @@ def device_monitor_flow(device_monitor_info):
 
     while True:
         # get running device info by driver
-        device_info = driver.fetch_running_info()
+        try:
+            device_info = driver.fetch_running_info()
+        except Exception as e:
+            logger.error(f"Fail to fetch running info. exception: {e}")
+            time.sleep(Constant.DEFAULT_DEVICE_MONITOR_INTERVAL)
+            continue
         device_info["timestamp"] = time.strftime(
             "%Y-%m-%d %H:%M:%S", time.localtime()
         )

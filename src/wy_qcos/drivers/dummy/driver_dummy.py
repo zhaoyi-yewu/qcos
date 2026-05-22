@@ -50,7 +50,6 @@ class DriverDummy(DriverBase):
         self.default_results_type = self.DATA_TYPE_GATE_SEQUENCE
         self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
         self.max_qubits = 10
-        self.enable_device_monitor = False
         # pylint: disable=duplicate-code
         self.extra_configs = {}
         self.driver_options_schema = {

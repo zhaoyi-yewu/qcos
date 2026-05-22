@@ -83,6 +83,7 @@ class DriverHanyuan1(DriverBase):
             self.TASK_STAGE_COMPLETE: 100,
         }
         self.enable_device_mgr = True
+        self.enable_device_monitor = True
 
     def init_driver(self):
         """Init driver."""

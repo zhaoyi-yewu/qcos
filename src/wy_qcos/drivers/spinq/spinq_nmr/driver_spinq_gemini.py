@@ -39,6 +39,7 @@ class DriverSpinQGemini(DriverSpinQNmr):
         self.max_qubits = 2
         self.platform_name = "gemini_vp"
         self.enable_device_mgr = True
+        self.enable_device_monitor = True
 
     def fetch_running_info(self):
         """Fetch running info.
