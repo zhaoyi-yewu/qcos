@@ -109,7 +109,7 @@ def config(conf):
     conf['REDIS']['REDIS_SERVER_IP'] = '${REDIS_SERVER_IP:-127.0.0.1}'
     conf['REDIS']['REDIS_SERVER_PORT'] = ${REDIS_SERVER_PORT:-6379}
 
-    conf['DATABASE']['QCOS_DATABASE_CONNECTION_URL'] = '${QCOS_DATABASE_CONNECTION_URL:-fake}'
+    conf['DATABASE']['QCOS_DATABASE_CONNECTION_URL'] = '${QCOS_DATABASE_CONNECTION_URL:-sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL}'
 
     conf['LOG']['API_LOG_FILE'] = '${API_LOG_FILE:-/var/log/qcos/qcos-api.log}'
     conf['LOG']['LOG_FORMAT'] = '%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s'
