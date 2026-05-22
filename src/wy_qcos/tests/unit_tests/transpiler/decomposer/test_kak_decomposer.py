@@ -328,7 +328,8 @@ class TestKAKDecomposer:
         assert rzx_result[2] == pytest.approx(0)
 
     def test_random_matrix(self):
-        random_matrix = generate_su4.random_unitary(4)
+        generate_su4.uniform()
+        random_matrix = generate_su4.matrix
         kak_decomposer.set_matrix(random_matrix)
         result = kak_decomposer.run()
         assert result is not None
