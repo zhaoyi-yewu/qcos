@@ -16,8 +16,8 @@
 # ----------------------------------------------------------------------
 
 from abc import ABC
-from wy_qcos.transpiler.common.utils import trans_logger
 
+from wy_qcos.transpiler.common.utils import trans_logger
 from wy_qcos.transpiler.common.errors import MappingException
 from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing import SABRE
 from wy_qcos.transpiler.cmss.mapping.utils.dg import DG
