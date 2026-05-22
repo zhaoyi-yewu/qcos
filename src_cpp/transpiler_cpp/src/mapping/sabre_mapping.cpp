@@ -69,11 +69,11 @@ std::vector<int> sabre_initial_mapping(
   std::reverse(reverse_gates.begin(), reverse_gates.end());
 
   // get initial mapping for reverse ir
-  sabre.execute(prefix_gates);
+  sabre.execute_routing(prefix_gates, {});
   std::vector<int> reverse_mapping = sabre.get_logic2phy();
 
   // get the initial mapping for original ir using reverse mapping
-  sabre.execute(reverse_gates, reverse_mapping);
+  sabre.execute_routing(reverse_gates, reverse_mapping);
   std::vector<int> mapping = sabre.get_logic2phy();
   return mapping;
 }
