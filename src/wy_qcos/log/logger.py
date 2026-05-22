@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -159,10 +159,14 @@ def init_logger(
             file_stream_handler = RotatingFileHandler(
                 logfile, maxBytes=max_bytes, backupCount=backup_count
             )
-        file_stream_handler.formatter = ColouredFormatter(Config.LOG_FORMAT)
+        file_stream_handler.formatter = ColouredFormatter(
+            Config.LOG.LOG_FORMAT
+        )
     if console:
         console_stream_handler = ColouredStreamHandler(sys.stdout)
-        console_stream_handler.formatter = ColouredFormatter(Config.LOG_FORMAT)
+        console_stream_handler.formatter = ColouredFormatter(
+            Config.LOG.LOG_FORMAT
+        )
     if quiet:
         file_stream_handler.addFilter(logging.Filter(name="user_facing"))
         console_stream_handler.addFilter(logging.Filter(name="user_facing"))
