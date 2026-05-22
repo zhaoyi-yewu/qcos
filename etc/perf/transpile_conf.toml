@@ -32,6 +32,11 @@ opt_level = [0, 1]
 tech_type = ["superconducting"]
 # 拓扑类型配置文件, 当is_exec不为false时， 必须配置，绝对路径或项目的相对路径
 config_file = ["./etc/qcos/conf.d/spinq_rpc.toml"]
+
+# 拓扑类型选择中性原子（neutral_atom）时，支持配置选择mapping算法
+# 支持的算法："default"、"ZAP"、"ZAC"
+# na_mapping_type = "default"
+
 # json格式的字符串，表示不同算法组合输入，默认不输入，
 # 但元素必须与tech_type和config_file一一对应
 # mapping_options = ["""

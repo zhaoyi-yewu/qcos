@@ -135,6 +135,11 @@
    # 4. 电路切割开启 （--driver-options '{"enable_wirecut":true}'）
    qcos-cli submit-job --code-type qasm --shots 10 --backend hanyuan1 --transpiler-options '{"enable_na_move": true}' --driver-options '{"enable_wirecut":true}' -f ./samples/qasm/2.0/wirecut/12_30.qasm
 
+   # 5. 支持不同mapping算法 （--transpiler-options '{"na_mapping_type": "ZAC\ZAP\default",）
+   qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 --transpiler-options '{"enable_na_move": true, "na_mapping_type": "ZAC"}' -f ./samples/qasm/2.0/rb.qasm
+   qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 --transpiler-options '{"enable_na_move": true, "na_mapping_type": "ZAP"}' -f ./samples/qasm/2.0/rb.qasm
+   qcos-cli submit-job --code-type qasm --shots 10 --dry-run --backend hanyuan1 --transpiler-options '{"enable_na_move": true, "na_mapping_type": "default"}' -f ./samples/qasm/2.0/rb.qasm
+
 - 光量子伊辛机
 
 .. code-block:: shell
