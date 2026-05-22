@@ -321,7 +321,7 @@ class CMSSTranspilerPerf:
     ):
         abs_config_path = Path(config_file).resolve()
         extra_configs = Config.get_extra_configs()
-        Config.load_config_file(abs_config_path, extra_config=True)
+        Config.load_config_file(str(abs_config_path), extra_config=True)
         self.init_transpile_params(extra_configs)
         self.parse_file_args()
 
