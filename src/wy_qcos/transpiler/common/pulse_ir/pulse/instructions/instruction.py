@@ -1,43 +1,58 @@
-# This code is part of Qiskit.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
-# (C) Copyright IBM 2019.
-#
-# This code is licensed under the Apache License, Version 2.0. You may
-# obtain a copy of this license in the LICENSE.txt file in the root directory
-# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
-#
-# Any modifications or derivative works of this code must retain this
-# copyright notice, and modified files need to carry a notice indicating
-# that they have been altered from the originals.
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+"""Instruction base class.
 
-"""
-``Instruction`` s are single operations within a :py:class:`~wy_qcos.pulse.Schedule`, and can be
-used the same way as :py:class:`~wy_qcos.pulse.Schedule` s.
+``Instruction`` objects are single operations within a
+:py:class:`~wy_qcos.pulse.Schedule` and can be used the same way as
+:py:class:`~wy_qcos.pulse.Schedule` objects.
 
 For example::
 
     duration = 10
     channel = DriveChannel(0)
     sched = Schedule()
-    sched += Delay(duration, channel)  # Delay is a specific subclass of Instruction
+    sched += Delay(
+        duration, channel
+    )  # Delay is a specific subclass of Instruction
 """
+
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from typing import cast
 
 from wy_qcos.transpiler.cmss.circuit.parameter import Parameter
-from wy_qcos.transpiler.cmss.circuit.parameterexpression import ParameterExpression
+from wy_qcos.transpiler.cmss.circuit.parameterexpression import (
+    ParameterExpression,
+)
 from wy_qcos.transpiler.common.pulse_ir.pulse.channels import Channel
 from wy_qcos.transpiler.common.pulse_ir.pulse.exceptions import PulseError
-from wy_qcos.transpiler.common.pulse_ir.utils.deprecate_pulse import deprecate_pulse_func
+from wy_qcos.transpiler.common.pulse_ir.utils.deprecate_pulse import (
+    deprecate_pulse_func,
+)
 
 
 # pylint: disable=bad-docstring-quotes
 
 
 class Instruction(ABC):
-    """The smallest schedulable unit: a single instruction. It has a fixed duration and specified
-    channels.
+    """The smallest schedulable unit.
+
+    An instruction has a fixed duration and a set of specified channels.
     """
 
     @deprecate_pulse_func
@@ -60,14 +75,15 @@ class Instruction(ABC):
         """Called after initialization to validate instruction data.
 
         Raises:
-            PulseError: If the input ``channels`` are not all of type :class:`Channel`.
+            PulseError: If the input ``channels`` are not all of type
+                :class:`Channel`.
         """
         for channel in self.channels:
             if not isinstance(channel, Channel):
                 raise PulseError(f"Expected a channel, got {channel} instead.")
 
     @property
-    def name(self) -> str:
+    def name(self) -> str | None:
         """Name of this instruction."""
         return self._name
 
@@ -95,7 +111,7 @@ class Instruction(ABC):
     @property
     def stop_time(self) -> int:
         """Relative end time of this instruction."""
-        return self.duration
+        return cast(int, self.duration)
 
     @property
     def duration(self) -> int | ParameterExpression:
@@ -103,12 +119,12 @@ class Instruction(ABC):
         raise NotImplementedError
 
     @property
-    def _children(self) -> tuple["Instruction", ...]:
+    def _children(self) -> tuple[Instruction, ...]:
         """Instruction has no child nodes."""
         return ()
 
     @property
-    def instructions(self) -> tuple[tuple[int, "Instruction"], ...]:
+    def instructions(self) -> tuple[tuple[int, Instruction], ...]:
         """Iterable for getting instructions from Schedule tree."""
         return tuple(self._instructions())
 
@@ -136,10 +152,12 @@ class Instruction(ABC):
             *channels: Supplied channels
         """
         if any(chan in self.channels for chan in channels):
-            return self.duration
+            return cast(int, self.duration)
         return 0
 
-    def _instructions(self, time: int = 0) -> Iterable[tuple[int, "Instruction"]]:
+    def _instructions(
+        self, time: int = 0
+    ) -> Iterable[tuple[int, Instruction]]:
         """Iterable for flattening Schedule tree.
 
         Args:
@@ -168,16 +186,21 @@ class Instruction(ABC):
         return Schedule((time, self), name=name)
 
     def insert(self, start_time: int, schedule, name: str | None = None):
-        """Return a new :class:`~wy_qcos.pulse.Schedule` with ``schedule`` inserted within
-        ``self`` at ``start_time``.
+        """Insert ``schedule`` into this instruction at ``start_time``.
+
+        This returns a new :class:`~wy_qcos.pulse.Schedule` containing both
+        objects.
 
         Args:
-            start_time: Time to insert the schedule schedule
-            schedule (Union['Schedule', 'Instruction']): Schedule or instruction to insert
-            name: Name of the new schedule. Defaults to name of self
+            start_time: Time to insert the schedule.
+            schedule (Union['Schedule', 'Instruction']): Schedule or
+                instruction to insert.
+            name: Name of the new schedule. Defaults to this instruction's
+                name.
 
         Returns:
-            Schedule: A new schedule with ``schedule`` inserted with this instruction at t=0.
+            Schedule: A new schedule with ``schedule`` inserted alongside
+                this instruction at t=0.
         """
         from wy_qcos.transpiler.common.pulse_ir.pulse.schedule import Schedule
 
@@ -186,15 +209,20 @@ class Instruction(ABC):
         return Schedule(self, (start_time, schedule), name=name)
 
     def append(self, schedule, name: str | None = None):
-        """Return a new :class:`~wy_qcos.pulse.Schedule` with ``schedule`` inserted at the
-        maximum time over all channels shared between ``self`` and ``schedule``.
+        """Append ``schedule`` after this instruction.
+
+        The insertion point is the maximum time over all channels shared by
+        ``self`` and ``schedule``.
 
         Args:
-            schedule (Union['Schedule', 'Instruction']): Schedule or instruction to be appended
-            name: Name of the new schedule. Defaults to name of self
+            schedule (Union['Schedule', 'Instruction']): Schedule or
+                instruction to append.
+            name: Name of the new schedule. Defaults to this instruction's
+                name.
 
         Returns:
-            Schedule: A new schedule with ``schedule`` a this instruction at t=0.
+            Schedule: A new schedule with ``schedule`` appended after this
+                instruction at t=0.
         """
         common_channels = set(self.channels) & set(schedule.channels)
         time = self.ch_stop_time(*common_channels)
@@ -226,23 +254,28 @@ class Instruction(ABC):
     def __eq__(self, other: object) -> bool:
         """Check if this Instruction is equal to the `other` instruction.
 
-        Equality is determined by the instruction sharing the same operands and channels.
+        Equality is determined by the instruction sharing the same operands
+        and channels.
         """
         if not isinstance(other, Instruction):
             return NotImplemented
-        return isinstance(other, type(self)) and self.operands == other.operands
+        return (
+            isinstance(other, type(self)) and self.operands == other.operands
+        )
 
     def __hash__(self) -> int:
         return hash((type(self), self.operands, self.name))
 
     def __add__(self, other):
-        """Return a new schedule with `other` inserted within `self` at `start_time`.
+        """Append ``other`` after this instruction.
 
         Args:
-            other (Union['Schedule', 'Instruction']): Schedule or instruction to be appended
+            other (Union['Schedule', 'Instruction']): Schedule or
+                instruction to append.
 
         Returns:
-            Schedule: A new schedule with ``schedule`` appended after this instruction at t=0.
+            Schedule: A new schedule with ``other`` appended after this
+                instruction at t=0.
         """
         return self.append(other)
 
@@ -250,10 +283,12 @@ class Instruction(ABC):
         """Return a new schedule which is the union of `self` and `other`.
 
         Args:
-            other (Union['Schedule', 'Instruction']): Schedule or instruction to union with
+            other (Union['Schedule', 'Instruction']): Schedule or
+                instruction to union with.
 
         Returns:
-            Schedule: A new schedule with ``schedule`` inserted with this instruction at t=0
+            Schedule: A new schedule with ``other`` inserted alongside this
+                instruction at t=0.
         """
         return self.insert(0, other)
 

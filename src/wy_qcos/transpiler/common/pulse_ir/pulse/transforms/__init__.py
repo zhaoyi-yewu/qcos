@@ -1,17 +1,23 @@
-# This code is part of Qiskit.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
-# (C) Copyright IBM 2021.
-#
-# This code is licensed under the Apache License, Version 2.0. You may
-# obtain a copy of this license in the LICENSE.txt file in the root directory
-# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
-#
-# Any modifications or derivative works of this code must retain this
-# copyright notice, and modified files need to carry a notice indicating
-# that they have been altered from the originals.
-r"""
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+r"""Pulse transforms.
+
 =================================================
-Pulse Transforms (:mod:`wy_qcos.transpiler.common.pulse_ir.pulse.transforms`)
+Pulse Transforms (:mod:`wy_qcos.transpiler.common.pulse_ir.pulse.transforms`).
 =================================================
 
 The pulse transforms provide transformation routines to reallocate and optimize
@@ -22,8 +28,9 @@ pulse programs for backends.
 Alignments
 ==========
 
-The alignment transforms define alignment policies of instructions in :obj:`.ScheduleBlock`.
-These transformations are called to create :obj:`.Schedule`\ s from :obj:`.ScheduleBlock`\ s.
+The alignment transforms define alignment policies of instructions in
+:obj:`.ScheduleBlock`. These transformations are called to create
+:obj:`.Schedule`\ s from :obj:`.ScheduleBlock`\ s.
 
 .. autosummary::
    :toctree: ../stubs/
@@ -44,8 +51,8 @@ These are all subtypes of the abstract base class :class:`AlignmentKind`.
 Canonicalization
 ================
 
-The canonicalization transforms convert schedules to a form amenable for execution on
-OpenPulse backends.
+The canonicalization transforms convert schedules to a form amenable for
+execution on OpenPulse backends.
 
 .. autofunction:: add_implicit_acquires
 .. autofunction:: align_measures
@@ -63,8 +70,8 @@ OpenPulse backends.
 DAG
 ===
 
-The DAG transforms create DAG representation of input program. This can be used for
-optimization of instructions and equality checks.
+The DAG transforms create a DAG representation of the input program.
+This can be used for instruction optimization and equality checks.
 
 .. autofunction:: block_to_dag
 

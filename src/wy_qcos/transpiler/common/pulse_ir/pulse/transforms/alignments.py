@@ -1,31 +1,45 @@
-# This code is part of Qiskit.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
-# (C) Copyright IBM 2021.
-#
-# This code is licensed under the Apache License, Version 2.0. You may
-# obtain a copy of this license in the LICENSE.txt file in the root directory
-# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
-#
-# Any modifications or derivative works of this code must retain this
-# copyright notice, and modified files need to carry a notice indicating
-# that they have been altered from the originals.
-"""A collection of passes to reallocate the timeslots of instructions according to context."""
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+"""Passes for reallocating instruction timeslots according to context."""
+
 from __future__ import annotations
 import abc
-from typing import Callable, Tuple
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
-from wy_qcos.transpiler.cmss.circuit.parameterexpression import ParameterExpression, ParameterValueType
+from wy_qcos.transpiler.cmss.circuit.parameterexpression import (
+    ParameterExpression,
+)
 from wy_qcos.transpiler.common.pulse_ir.pulse.exceptions import PulseError
-from wy_qcos.transpiler.common.pulse_ir.pulse.schedule import Schedule, ScheduleComponent
-from wy_qcos.transpiler.common.pulse_ir.pulse.utils import instruction_duration_validation
+from wy_qcos.transpiler.common.pulse_ir.pulse.schedule import (
+    Schedule,
+    ScheduleComponent,
+)
+from wy_qcos.transpiler.common.pulse_ir.pulse.utils import (
+    instruction_duration_validation,
+)
 
 
 class AlignmentKind(abc.ABC):
     """An abstract class for schedule alignment."""
 
-    def __init__(self, context_params: Tuple[ParameterValueType, ...]):
+    def __init__(self, context_params: tuple[Any, ...]):
         """Create new context."""
         self._context_params = tuple(context_params)
 
@@ -49,9 +63,11 @@ class AlignmentKind(abc.ABC):
     def is_sequential(self) -> bool:
         """Return ``True`` if this is sequential alignment context.
 
-        This information is used to evaluate DAG equivalency of two :class:`.ScheduleBlock`s.
+        This information is used to evaluate DAG equivalency of two
+        :class:`.ScheduleBlock` objects.
         When the context has two pulses in different channels,
-        a sequential context subtype intends to return following scheduling outcome.
+        a sequential context subtype intends to return the following
+        scheduling outcome.
 
         .. code-block:: text
 
@@ -61,7 +77,8 @@ class AlignmentKind(abc.ABC):
             D1: ────────────┤ pulse2 ├
                             └────────┘
 
-        On the other hand, parallel context with ``is_sequential=False`` returns
+        On the other hand, a parallel context with
+        ``is_sequential=False`` returns
 
         .. code-block:: text
 
@@ -71,12 +88,15 @@ class AlignmentKind(abc.ABC):
             D1: ┤ pulse2 ├
                 └────────┘
 
-        All subclasses must implement this method according to scheduling strategy.
+        All subclasses must implement this method according to their
+        scheduling strategy.
         """
         pass
 
     def __eq__(self, other: object) -> bool:
         """Check equality of two transforms."""
+        if not isinstance(other, AlignmentKind):
+            return False
         if type(self) is not type(other):
             return False
         if self._context_params != other._context_params:
@@ -120,9 +140,13 @@ class AlignLeft(AlignmentKind):
         return aligned
 
     @staticmethod
-    def _push_left_append(this: Schedule, other: ScheduleComponent) -> Schedule:
-        """Return ``this`` with ``other`` inserted at the maximum time over
-        all channels shared between ```this`` and ``other``.
+    def _push_left_append(
+        this: Schedule, other: ScheduleComponent
+    ) -> Schedule:
+        """Insert ``other`` into ``this`` at the latest shared-channel slot.
+
+        This chooses the maximum time over all channels shared between
+        ``this`` and ``other``.
 
         Args:
             this: Input schedule to which ``other`` will be inserted.
@@ -135,19 +159,25 @@ class AlignLeft(AlignmentKind):
         other_channels = set(other.channels)
         shared_channels = list(this_channels & other_channels)
         ch_slacks = [
-            this.stop_time - this.ch_stop_time(channel) + other.ch_start_time(channel)
+            this.stop_time
+            - this.ch_stop_time(channel)
+            + other.ch_start_time(channel)
             for channel in shared_channels
         ]
 
         if ch_slacks:
             slack_chan = shared_channels[np.argmin(ch_slacks)]
-            shared_insert_time = this.ch_stop_time(slack_chan) - other.ch_start_time(slack_chan)
+            shared_insert_time = this.ch_stop_time(
+                slack_chan
+            ) - other.ch_start_time(slack_chan)
         else:
             shared_insert_time = 0
 
         # Handle case where channels not common to both might actually start
         # after ``this`` has finished.
-        other_only_insert_time = other.ch_start_time(*(other_channels - this_channels))
+        other_only_insert_time = other.ch_start_time(
+            *(other_channels - this_channels)
+        )
         # Choose whichever is greatest.
         insert_time = max(shared_insert_time, other_only_insert_time)
 
@@ -187,12 +217,16 @@ class AlignRight(AlignmentKind):
         return aligned
 
     @staticmethod
-    def _push_right_prepend(this: Schedule, other: ScheduleComponent) -> Schedule:
-        """Return ``this`` with ``other`` inserted at the latest possible time
-        such that ``other`` ends before it overlaps with any of ``this``.
+    def _push_right_prepend(
+        this: Schedule, other: ScheduleComponent
+    ) -> Schedule:
+        """Insert ``other`` at the latest non-overlapping time in ``this``.
 
-        If required ``this`` is shifted  to start late enough so that there is room
-        to insert ``other``.
+        This ensures ``other`` ends before it overlaps with any part of
+        ``this``.
+
+        If required, ``this`` is shifted to start late enough so that
+        there is room to insert ``other``.
 
         Args:
            this: Input schedule to which ``other`` will be inserted.
@@ -205,7 +239,8 @@ class AlignRight(AlignmentKind):
         other_channels = set(other.channels)
         shared_channels = list(this_channels & other_channels)
         ch_slacks = [
-            this.ch_start_time(channel) - other.ch_stop_time(channel) for channel in shared_channels
+            this.ch_start_time(channel) - other.ch_stop_time(channel)
+            for channel in shared_channels
         ]
 
         if ch_slacks:
@@ -260,16 +295,18 @@ class AlignEquispaced(AlignmentKind):
     """Align instructions with equispaced interval within a specified duration.
 
     Instructions played on different channels are also arranged in a sequence.
-    This alignment is convenient to create dynamical decoupling sequences such as PDD.
+    This alignment is convenient for creating dynamical decoupling
+    sequences such as PDD.
     """
 
     def __init__(self, duration: int | ParameterExpression):
         """Create new equispaced context.
 
         Args:
-            duration: Duration of this context. This should be larger than the schedule duration.
-                If the specified duration is shorter than the schedule duration,
-                no alignment is performed and the input schedule is just returned.
+            duration: Duration of this context. This should be larger than
+                the schedule duration. If the specified duration is
+                shorter than the schedule duration, no alignment is
+                performed and the input schedule is just returned.
                 This duration can be parametrized.
         """
         super().__init__(context_params=(duration,))
@@ -332,21 +369,24 @@ class AlignFunc(AlignmentKind):
     fractional coordinate in [0, 1] within the specified duration.
 
     Instructions played on different channels are also arranged in a sequence.
-    This alignment is convenient to create dynamical decoupling sequences such as UDD.
+    This alignment is convenient for creating dynamical decoupling
+    sequences such as UDD.
 
-    For example, UDD sequence with 10 pulses can be specified with following function.
+    For example, a UDD sequence with 10 pulses can be specified with the
+    following function.
 
     .. code-block:: python
 
         import numpy as np
 
+
         def udd10_pos(j):
-            return np.sin(np.pi*j/(2*10 + 2))**2
+            return np.sin(np.pi * j / (2 * 10 + 2)) ** 2
 
     .. note::
 
-        This context cannot be QPY serialized because of the callable. If you use this context,
-        your program cannot be saved in QPY format.
+        This context cannot be QPY serialized because of the callable. If
+        you use this context, your program cannot be saved in QPY format.
 
     """
 
@@ -354,13 +394,16 @@ class AlignFunc(AlignmentKind):
         """Create new equispaced context.
 
         Args:
-            duration: Duration of this context. This should be larger than the schedule duration.
-                If the specified duration is shorter than the schedule duration,
-                no alignment is performed and the input schedule is just returned.
+            duration: Duration of this context. This should be larger than
+                the schedule duration. If the specified duration is
+                shorter than the schedule duration, no alignment is
+                performed and the input schedule is just returned.
                 This duration can be parametrized.
-            func: A function that takes an index of sub-schedule and returns the
-                fractional coordinate of of that sub-schedule. The returned value should be
-                defined within [0, 1]. The pulse index starts from 1.
+            func: A function that takes an index of sub-schedule and
+                returns the
+                fractional coordinate of that sub-schedule. The returned
+                value should be defined within [0, 1]. The pulse index
+                starts from 1.
         """
         super().__init__(context_params=(duration, func))
 
@@ -400,7 +443,10 @@ class AlignFunc(AlignmentKind):
             _t_center = self.duration * self.func(ind + 1)
             _t0 = int(_t_center - 0.5 * child.duration)
             if _t0 < 0 or _t0 > self.duration:
-                raise PulseError(f"Invalid schedule position t={_t0} is specified at index={ind}")
+                raise PulseError(
+                    f"Invalid schedule position t={_t0} is specified at "
+                    f"index={ind}"
+                )
             aligned.insert(_t0, child, inplace=True)
 
         return aligned

@@ -1,16 +1,21 @@
-# This code is part of Qiskit.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
-# (C) Copyright IBM 2020.
-#
-# This code is licensed under the Apache License, Version 2.0. You may
-# obtain a copy of this license in the LICENSE.txt file in the root directory
-# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
-#
-# Any modifications or derivative works of this code must retain this
-# copyright notice, and modified files need to carry a notice indicating
-# that they have been altered from the originals.
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+"""Compiler directives for pulse programs."""
 
-"""Directives are hints to the pulse compiler for how to process its input programs."""
 from __future__ import annotations
 
 from abc import ABC
@@ -18,7 +23,9 @@ from abc import ABC
 from wy_qcos.transpiler.common.pulse_ir.pulse import channels as chans
 from wy_qcos.transpiler.common.pulse_ir.pulse.instructions import instruction
 from wy_qcos.transpiler.common.pulse_ir.pulse.exceptions import PulseError
-from wy_qcos.transpiler.common.pulse_ir.utils.deprecate_pulse import deprecate_pulse_func
+from wy_qcos.transpiler.common.pulse_ir.utils.deprecate_pulse import (
+    deprecate_pulse_func,
+)
 
 
 class Directive(instruction.Instruction, ABC):
@@ -57,34 +64,49 @@ class RelativeBarrier(Directive):
 
     def __eq__(self, other: object) -> bool:
         """Verify two barriers are equivalent."""
-        return isinstance(other, type(self)) and set(self.channels) == set(other.channels)
+        return isinstance(other, type(self)) and set(self.channels) == set(
+            other.channels
+        )
 
 
 class TimeBlockade(Directive):
     """Pulse ``TimeBlockade`` directive.
 
-    This instruction is intended to be used internally within the pulse builder,
-    to convert :class:`.Schedule` into :class:`.ScheduleBlock`.
-    Because :class:`.ScheduleBlock` cannot take an absolute instruction time interval,
-    this directive helps the block representation to find the starting time of an instruction.
+    This instruction is intended for internal use within the pulse builder
+    when converting :class:`.Schedule` into :class:`.ScheduleBlock`.
+    Because :class:`.ScheduleBlock` cannot take an absolute instruction
+    time interval, this directive helps the block representation find an
+    instruction start time.
 
     Example:
-
         This schedule plays constant pulse at t0 = 120.
 
         .. code-block:: python
 
-            from wy_qcos.transpiler.common.pulse_ir.pulse import Schedule, Play, Constant, DriveChannel
+            from wy_qcos.transpiler.common.pulse_ir.pulse import (
+                Schedule,
+                Play,
+                Constant,
+                DriveChannel,
+            )
 
             schedule = Schedule()
             schedule.insert(120, Play(Constant(10, 0.1), DriveChannel(0)))
 
-        This schedule block is expected to be identical to above at a time of execution.
+        This schedule block is expected to be identical to the schedule
+        above at execution time.
 
         .. code-block:: python
 
-            from wy_qcos.transpiler.common.pulse_ir.pulse import ScheduleBlock, Play, Constant, DriveChannel
-            from wy_qcos.transpiler.common.pulse_ir.pulse.instructions import TimeBlockade
+            from wy_qcos.transpiler.common.pulse_ir.pulse import (
+                ScheduleBlock,
+                Play,
+                Constant,
+                DriveChannel,
+            )
+            from wy_qcos.transpiler.common.pulse_ir.pulse.instructions import (
+                TimeBlockade,
+            )
 
             block = ScheduleBlock()
             block.append(TimeBlockade(120, DriveChannel(0)))
@@ -94,7 +116,10 @@ class TimeBlockade(Directive):
 
         .. code-block:: python
 
-            from wy_qcos.transpiler.common.pulse_ir.pulse.transforms import block_to_schedule, remove_directives
+            from wy_qcos.transpiler.common.pulse_ir.pulse.transforms import (
+                block_to_schedule,
+                remove_directives,
+            )
 
             schedule = remove_directives(block_to_schedule(block))
 
@@ -103,10 +128,11 @@ class TimeBlockade(Directive):
 
         The TimeBlockade instruction behaves almost identically
         to :class:`~wy_qcos.pulse.instructions.Delay` instruction.
-        However, the TimeBlockade is just a compiler directive and must be removed before execution.
-        This may be done by :func:`~wy_qcos.pulse.transforms.remove_directives` transform.
-        Once these directives are removed, occupied timeslots are released and
-        user can insert another instruction without timing overlap.
+        However, ``TimeBlockade`` is only a compiler directive and must be
+        removed before execution. This may be done by the
+        :func:`~wy_qcos.pulse.transforms.remove_directives` transform. Once
+        these directives are removed, occupied timeslots are released and
+        the user can insert another instruction without timing overlap.
     """
 
     @deprecate_pulse_func
@@ -133,14 +159,13 @@ class TimeBlockade(Directive):
         """
         if not isinstance(self.duration, int):
             raise PulseError(
-                "TimeBlockade duration cannot be parameterized. Specify an integer duration value."
+                "TimeBlockade duration cannot be parameterized. Specify an "
+                "integer duration value."
             )
 
     @property
     def channel(self) -> chans.Channel:
-        """Return the :py:class:`~wy_qcos.pulse.channels.Channel` that this instruction is
-        scheduled on.
-        """
+        """Return the channel that this instruction is scheduled on."""
         return self.operands[1]
 
     @property

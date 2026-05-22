@@ -1,31 +1,53 @@
-# This code is part of Qiskit.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
-# (C) Copyright IBM 2021.
-#
-# This code is licensed under the Apache License, Version 2.0. You may
-# obtain a copy of this license in the LICENSE.txt file in the root directory
-# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
-#
-# Any modifications or derivative works of this code must retain this
-# copyright notice, and modified files need to carry a notice indicating
-# that they have been altered from the originals.
-"""Basic rescheduling functions which take schedule or instructions and return new schedules."""
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+"""Basic rescheduling functions.
+
+These helpers take schedules or instructions and return new schedules.
+"""
+
 from __future__ import annotations
 import typing
 import warnings
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Type
 
 import numpy as np
 
-from wy_qcos.transpiler.common.pulse_ir.pulse import channels as chans, exceptions, instructions
-from wy_qcos.transpiler.common.pulse_ir.pulse.channels import ClassicalIOChannel
+from wy_qcos.transpiler.common.pulse_ir.pulse import (
+    channels as chans,
+    exceptions,
+    instructions,
+)
+from wy_qcos.transpiler.common.pulse_ir.pulse.channels import (
+    ClassicalIOChannel,
+)
 from wy_qcos.transpiler.common.pulse_ir.pulse.exceptions import PulseError
-from wy_qcos.transpiler.common.pulse_ir.pulse.exceptions import UnassignedDurationError
-from wy_qcos.transpiler.common.pulse_ir.pulse.instruction_schedule_map import InstructionScheduleMap
+from wy_qcos.transpiler.common.pulse_ir.pulse.exceptions import (
+    UnassignedDurationError,
+)
+from wy_qcos.transpiler.common.pulse_ir.pulse.instruction_schedule_map import (
+    InstructionScheduleMap,
+)
 from wy_qcos.transpiler.common.pulse_ir.pulse.instructions import directives
-from wy_qcos.transpiler.common.pulse_ir.pulse.schedule import Schedule, ScheduleBlock, ScheduleComponent
+from wy_qcos.transpiler.common.pulse_ir.pulse.schedule import (
+    Schedule,
+    ScheduleBlock,
+    ScheduleComponent,
+)
 
 if typing.TYPE_CHECKING:
     from wy_qcos.transpiler.common.pulse_ir.pulse.library import Pulse  # pylint: disable=cyclic-import
@@ -42,14 +64,16 @@ def block_to_schedule(block: ScheduleBlock) -> Schedule:
 
     Raises:
         UnassignedDurationError: When any instruction duration is not assigned.
-        PulseError: When the alignment context duration is shorter than the schedule duration.
+        PulseError: When the alignment context duration is shorter than the
+            schedule duration.
 
     .. note:: This transform may insert barriers in between contexts.
     """
     if not block.is_schedulable():
         raise UnassignedDurationError(
-            "All instruction durations should be assigned before creating `Schedule`."
-            "Please check `.parameters` to find unassigned parameter objects."
+            "All instruction durations should be assigned before creating "
+            "`Schedule`. Please check `.parameters` to find unassigned "
+            "parameter objects."
         )
 
     schedule = Schedule.initialize_from(block)
@@ -58,12 +82,16 @@ def block_to_schedule(block: ScheduleBlock) -> Schedule:
         if isinstance(op_data, ScheduleBlock):
             context_schedule = block_to_schedule(op_data)
             if hasattr(op_data.alignment_context, "duration"):
-                # context may have local scope duration, e.g. EquispacedAlignment for 1000 dt
-                post_buffer = op_data.alignment_context.duration - context_schedule.duration
+                # Context may have a local-scope duration, for example an
+                # EquispacedAlignment with duration 1000 dt.
+                post_buffer = (
+                    op_data.alignment_context.duration
+                    - context_schedule.duration
+                )
                 if post_buffer < 0:
                     raise PulseError(
-                        f"ScheduleBlock {op_data.name} has longer duration than "
-                        "the specified context duration "
+                        f"ScheduleBlock {op_data.name} exceeds "
+                        "the specified context duration: "
                         f"{context_schedule.duration} > {op_data.duration}."
                     )
             else:
@@ -71,10 +99,15 @@ def block_to_schedule(block: ScheduleBlock) -> Schedule:
             schedule.append(context_schedule, inplace=True)
 
             # prevent interruption by following instructions.
-            # padding with delay instructions is no longer necessary, thanks to alignment context.
+            # Padding with delay instructions is no longer necessary because
+            # alignment contexts preserve the boundary.
             if post_buffer > 0:
-                context_boundary = instructions.RelativeBarrier(*op_data.channels)
-                schedule.append(context_boundary.shift(post_buffer), inplace=True)
+                context_boundary = instructions.RelativeBarrier(
+                    *op_data.channels
+                )
+                schedule.append(
+                    context_boundary.shift(post_buffer), inplace=True
+                )
         else:
             schedule.append(op_data, inplace=True)
 
@@ -104,7 +137,9 @@ def compress_pulses(schedules: list[Schedule]) -> list[Schedule]:
                     identical_pulse = existing_pulses[idx]
                     new_schedule.insert(
                         time,
-                        instructions.Play(identical_pulse, inst.channel, inst.name),
+                        instructions.Play(
+                            identical_pulse, inst.channel, inst.name
+                        ),
                         inplace=True,
                     )
                 else:
@@ -119,7 +154,9 @@ def compress_pulses(schedules: list[Schedule]) -> list[Schedule]:
 
 
 def flatten(program: Schedule) -> Schedule:
-    """Flatten (inline) any called nodes into a Schedule tree with no nested children.
+    """Flatten called nodes into a schedule tree with no nested children.
+
+    This inlines any called nodes into a flat schedule tree.
 
     Args:
         program: Pulse program to remove nested structure.
@@ -136,17 +173,23 @@ def flatten(program: Schedule) -> Schedule:
             flat_sched.insert(time, inst, inplace=True)
         return flat_sched
     else:
-        raise PulseError(f"Invalid input program {program.__class__.__name__} is specified.")
+        raise PulseError(
+            f"Invalid input program {program.__class__.__name__} is specified."
+        )
 
 
-def inline_subroutines(program: Schedule | ScheduleBlock) -> Schedule | ScheduleBlock:
-    """Recursively remove call instructions and inline the respective subroutine instructions.
+def inline_subroutines(
+    program: Schedule | ScheduleBlock,
+) -> Schedule | ScheduleBlock:
+    """Recursively remove call instructions and inline subroutines.
 
-    Assigned parameter values, which are stored in the parameter table, are also applied.
-    The subroutine is copied before the parameter assignment to avoid mutation problem.
+    Assigned parameter values stored in the parameter table are also
+    applied. The subroutine is copied before parameter assignment to avoid
+    mutation problems.
 
     Args:
-        program: A program which may contain the subroutine, i.e. ``Call`` instruction.
+        program: A program that may contain subroutines, that is,
+            ``Call`` instructions.
 
     Returns:
         A schedule without subroutine.
@@ -159,18 +202,21 @@ def inline_subroutines(program: Schedule | ScheduleBlock) -> Schedule | Schedule
     elif isinstance(program, ScheduleBlock):
         return _inline_block(program)
     else:
-        raise PulseError(f"Invalid program {program.__class__.__name__} is specified.")
+        raise PulseError(
+            f"Invalid program {program.__class__.__name__} is specified."
+        )
 
 
 def _inline_schedule(schedule: Schedule) -> Schedule:
     """A helper function to inline subroutine of schedule.
 
-    .. note:: If subroutine is ``ScheduleBlock`` it is converted into Schedule to get ``t0``.
+    .. note:: If the subroutine is a ``ScheduleBlock``, it is converted
+        into a ``Schedule`` to obtain ``t0``.
     """
     ret_schedule = Schedule.initialize_from(schedule)
     for t0, inst in schedule.children:
-        # note that schedule.instructions unintentionally flatten the nested schedule.
-        # this should be performed by another transformer node.
+        # Note that schedule.instructions unintentionally flatten nested
+        # schedules. This should be performed by another transformer node.
         if isinstance(inst, Schedule):
             # recursively inline the program
             inline_schedule = _inline_schedule(inst)
@@ -219,7 +265,10 @@ def remove_trivial_barriers(schedule: Schedule) -> Schedule:
     """
 
     def filter_func(inst):
-        return isinstance(inst[1], directives.RelativeBarrier) and len(inst[1].channels) < 2
+        return (
+            isinstance(inst[1], directives.RelativeBarrier)
+            and len(inst[1].channels) < 2
+        )
 
     return schedule.exclude(filter_func)
 
@@ -240,8 +289,9 @@ def align_measures(
     Minimum measurement wait time (to allow for calibration pulses) is enforced
     and may be set with ``max_calibration_duration``.
 
-    By default only instructions containing a :class:`.AcquireChannel` or :class:`.MeasureChannel`
-    will be shifted. If you wish to keep the relative timing of all instructions in the schedule set
+    By default only instructions containing a :class:`.AcquireChannel` or
+    :class:`.MeasureChannel` will be shifted. If you wish to keep the
+    relative timing of all instructions in the schedule, set
     ``align_all=True``.
 
     This method assumes that ``MeasureChannel(i)`` and ``AcquireChannel(i)``
@@ -260,17 +310,25 @@ def align_measures(
 
         sched = pulse.Schedule()
         sched.append(pulse.Play(pulse.Constant(10, 0.5), d0), inplace=True)
-        sched.append(pulse.Play(pulse.Constant(10, 1.), m0).shift(sched.duration), inplace=True)
-        sched.append(pulse.Acquire(20, a0, mem0).shift(sched.duration), inplace=True)
+        sched.append(
+            pulse.Play(pulse.Constant(10, 1.0), m0).shift(sched.duration),
+            inplace=True,
+        )
+        sched.append(
+            pulse.Acquire(20, a0, mem0).shift(sched.duration),
+            inplace=True,
+        )
 
         sched_shifted = sched << 20
 
-        aligned_sched, aligned_sched_shifted = transforms.align_measures([sched, sched_shifted])
+        aligned_sched, aligned_sched_shifted = transforms.align_measures(
+            [sched, sched_shifted]
+        )
 
         assert aligned_sched == aligned_sched_shifted
 
-    If it is desired to only shift acquisition and measurement stimulus instructions
-    set the flag ``align_all=False``:
+    If it is desired to shift only acquisition and measurement stimulus
+    instructions, set the flag ``align_all=False``:
 
     .. code-block::
 
@@ -281,19 +339,20 @@ def align_measures(
 
         assert aligned_sched != aligned_sched_shifted
 
-
     Args:
-        schedules: Collection of schedules to be aligned together
-        inst_map: Mapping of circuit operations to pulse schedules
-        cal_gate: The name of the gate to inspect for the calibration time
-        max_calibration_duration: If provided, inst_map and cal_gate will be ignored
+        schedules: Collection of schedules to align together.
+        inst_map: Mapping of circuit operations to pulse schedules.
+        cal_gate: Name of the gate to inspect for calibration time.
+        max_calibration_duration: If provided, ``inst_map`` and
+            ``cal_gate`` are ignored.
         align_time: If provided, this will be used as final align time.
-        align_all: Shift all instructions in the schedule such that they maintain
-            their relative alignment with the shifted acquisition instruction.
-            If ``False`` only the acquisition and measurement pulse instructions
-            will be shifted.
+        align_all: Shift all instructions in the schedule so they maintain
+            their relative alignment with the shifted acquisition
+            instruction. If ``False`` only the acquisition and measurement
+            pulse instructions are shifted.
+
     Returns:
-        The input list of schedules transformed to have their measurements aligned.
+        The input schedules transformed so their measurements are aligned.
 
     Raises:
         PulseError: If the provided alignment time is negative.
@@ -304,10 +363,15 @@ def align_measures(
         acquire_times = []
         for schedule in schedules:
             visited_channels = set()
-            qubit_first_acquire_times: dict[int, int] = defaultdict(lambda: None)
+            qubit_first_acquire_times: dict[int, int] = defaultdict(
+                lambda: None
+            )
 
             for time, inst in schedule.instructions:
-                if isinstance(inst, instructions.Acquire) and inst.channel not in visited_channels:
+                if (
+                    isinstance(inst, instructions.Acquire)
+                    and inst.channel not in visited_channels
+                ):
                     visited_channels.add(inst.channel)
                     qubit_first_acquire_times[inst.channel.index] = time
 
@@ -315,25 +379,31 @@ def align_measures(
         return acquire_times
 
     def get_max_calibration_duration(inst_map, cal_gate):
-        """Return the time needed to allow for readout discrimination calibration pulses."""
+        """Return time needed for readout discrimination calibration pulses."""
         # TODO (qiskit-terra #5472): fix behavior of this.
         max_calibration_duration = 0
         for qubits in inst_map.qubits_with_instruction(cal_gate):
             cmd = inst_map.get(cal_gate, qubits, np.pi, 0, np.pi)
-            max_calibration_duration = max(cmd.duration, max_calibration_duration)
+            max_calibration_duration = max(
+                cmd.duration, max_calibration_duration
+            )
         return max_calibration_duration
 
     if align_time is not None and align_time < 0:
         raise exceptions.PulseError("Align time cannot be negative.")
 
     first_acquire_times = get_first_acquire_times(schedules)
-    # Extract the maximum acquire in every schedule across all acquires in the schedule.
+    # Extract the maximum acquire in every schedule across all acquires.
     # If there are no acquires in the schedule default to 0.
-    max_acquire_times = [max(0, *times.values()) for times in first_acquire_times]
+    max_acquire_times = [
+        max(0, *times.values()) for times in first_acquire_times
+    ]
     if align_time is None:
         if max_calibration_duration is None:
             if inst_map:
-                max_calibration_duration = get_max_calibration_duration(inst_map, cal_gate)
+                max_calibration_duration = get_max_calibration_duration(
+                    inst_map, cal_gate
+                )
             else:
                 max_calibration_duration = 0
         align_time = max(max_calibration_duration, *max_acquire_times)
@@ -356,7 +426,9 @@ def align_measures(
             measurement_channels = {
                 chan.index
                 for chan in inst.channels
-                if isinstance(chan, (chans.MeasureChannel, chans.AcquireChannel))
+                if isinstance(
+                    chan, (chans.MeasureChannel, chans.AcquireChannel)
+                )
             }
             if measurement_channels:
                 sched_first_acquire_times = first_acquire_times[sched_idx]
@@ -369,9 +441,10 @@ def align_measures(
 
             if shift < 0:
                 warnings.warn(
-                    "The provided alignment time is scheduling an acquire instruction "
-                    "earlier than it was scheduled for in the original Schedule. "
-                    "This may result in an instruction being scheduled before t=0 and "
+                    "The provided alignment time schedules an acquire "
+                    "instruction earlier than in the original Schedule. "
+                    "This may result in an instruction being scheduled "
+                    "before t=0 and "
                     "an error being raised."
                 )
             new_schedule.insert(time + shift, inst, inplace=True)
@@ -381,12 +454,16 @@ def align_measures(
     return new_schedules
 
 
-def add_implicit_acquires(schedule: ScheduleComponent, meas_map: list[list[int]]) -> Schedule:
-    """Return a new schedule with implicit acquires from the measurement mapping replaced by
-    explicit ones.
+def add_implicit_acquires(
+    schedule: ScheduleComponent, meas_map: list[list[int]]
+) -> Schedule:
+    """Replace implicit acquires from the measurement mapping.
 
-    .. warning:: Since new acquires are being added, Memory Slots will be set to match the
-                 qubit index. This may overwrite your specification.
+    This returns a new schedule with implicit acquires replaced by explicit
+    ones.
+
+    .. warning:: Since new acquires are being added, Memory Slots are set to
+        match the qubit index. This may overwrite your specification.
 
     Args:
         schedule: Schedule to be aligned.
@@ -402,17 +479,19 @@ def add_implicit_acquires(schedule: ScheduleComponent, meas_map: list[list[int]]
         if isinstance(inst, instructions.Acquire):
             if inst.mem_slot and inst.mem_slot.index != inst.channel.index:
                 warnings.warn(
-                    "One of your acquires was mapped to a memory slot which didn't match"
+                    "One of your acquires was mapped to a memory slot that "
+                    "didn't match "
                     " the qubit index. I'm relabeling them to match."
                 )
 
-            # Get the label of all qubits that are measured with the qubit(s) in this instruction
+            # Get labels of all qubits measured with the qubit or qubits in
+            # this instruction.
             all_qubits = []
             for sublist in meas_map:
                 if inst.channel.index in sublist:
                     all_qubits.extend(sublist)
-            # Replace the old acquire instruction by a new one explicitly acquiring all qubits in
-            # the measurement group.
+            # Replace the old acquire instruction by a new one that
+            # explicitly acquires the full measurement group.
             for i in all_qubits:
                 explicit_inst = instructions.Acquire(
                     inst.duration,
@@ -438,18 +517,21 @@ def pad(
     channels: Iterable[chans.Channel] | None = None,
     until: int | None = None,
     inplace: bool = False,
-    pad_with: Type[instructions.Instruction] | None = None,
+    pad_with: type[instructions.Instruction] | None = None,
 ) -> Schedule:
-    """Pad the input Schedule with ``Delay``s on all unoccupied timeslots until
-    ``schedule.duration`` or ``until`` if not ``None``.
+    """Pad a schedule with ``Delay`` instructions on unoccupied timeslots.
+
+    Padding continues until ``schedule.duration`` or ``until`` if provided.
 
     Args:
         schedule: Schedule to pad.
         channels: Channels to pad. Defaults to all channels in
-            ``schedule`` if not provided. If the supplied channel is not a member
-            of ``schedule`` it will be added.
-        until: Time to pad until. Defaults to ``schedule.duration`` if not provided.
-        inplace: Pad this schedule by mutating rather than returning a new schedule.
+            ``schedule`` if not provided. If the supplied channel is not a
+            member of ``schedule`` it will be added.
+        until: Time to pad until. Defaults to ``schedule.duration`` if not
+            provided.
+        inplace: Pad this schedule by mutating rather than returning a new
+            schedule.
         pad_with: Pulse ``Instruction`` subclass to be used for padding.
             Default to :class:`~wy_qcos.pulse.instructions.Delay` instruction.
 
@@ -467,7 +549,8 @@ def pad(
             pad_cls = pad_with
         else:
             raise PulseError(
-                f"'{pad_with.__class__.__name__}' is not valid pulse instruction to pad with."
+                f"'{pad_with.__class__.__name__}' is not a valid pulse "
+                "instruction to pad with."
             )
     else:
         pad_cls = instructions.Delay
@@ -477,7 +560,9 @@ def pad(
             continue
 
         if channel not in schedule.channels:
-            schedule = schedule.insert(0, instructions.Delay(until, channel), inplace=inplace)
+            schedule = schedule.insert(
+                0, instructions.Delay(until, channel), inplace=inplace
+            )
             continue
 
         prev_time = 0
@@ -493,6 +578,8 @@ def pad(
                 to_pad.append((prev_time, min(t0, until) - prev_time))
             prev_time = t1
         for t0, duration in to_pad:
-            schedule = schedule.insert(t0, pad_cls(duration, channel), inplace=inplace)
+            schedule = schedule.insert(
+                t0, pad_cls(duration, channel), inplace=inplace
+            )
 
     return schedule

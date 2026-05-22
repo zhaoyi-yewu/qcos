@@ -1,47 +1,64 @@
-# This code is part of Qiskit.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
-# (C) Copyright IBM 2020.
-#
-# This code is licensed under the Apache License, Version 2.0. You may
-# obtain a copy of this license in the LICENSE.txt file in the root directory
-# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
-#
-# Any modifications or derivative works of this code must retain this
-# copyright notice, and modified files need to carry a notice indicating
-# that they have been altered from the originals.
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+"""Play instruction.
 
-"""An instruction to transmit a given pulse on a ``PulseChannel`` (i.e., those which support
-transmitted pulses, such as ``DriveChannel``).
+This transmits a pulse on a ``PulseChannel``, such as a
+``DriveChannel``.
 """
+
 from __future__ import annotations
 
 from wy_qcos.transpiler.cmss.circuit.parameter import Parameter
-from wy_qcos.transpiler.cmss.circuit.parameterexpression import ParameterExpression
+from wy_qcos.transpiler.cmss.circuit.parameterexpression import (
+    ParameterExpression,
+)
 from wy_qcos.transpiler.common.pulse_ir.pulse.channels import PulseChannel
 from wy_qcos.transpiler.common.pulse_ir.pulse.exceptions import PulseError
-from wy_qcos.transpiler.common.pulse_ir.pulse.instructions.instruction import Instruction
+from wy_qcos.transpiler.common.pulse_ir.pulse.instructions.instruction import (
+    Instruction,
+)
 from wy_qcos.transpiler.common.pulse_ir.pulse.library.pulse import Pulse
-from wy_qcos.transpiler.common.pulse_ir.utils.deprecate_pulse import deprecate_pulse_func
+from wy_qcos.transpiler.common.pulse_ir.utils.deprecate_pulse import (
+    deprecate_pulse_func,
+)
 
 
 class Play(Instruction):
     """This instruction is responsible for applying a pulse on a channel.
 
-    The pulse specifies the exact time dynamics of the output signal envelope for a limited
-    time. The output is modulated by a phase and frequency which are controlled by separate
-    instructions. The pulse duration must be fixed, and is implicitly given in terms of the
-    cycle time, dt, of the backend.
+    The pulse specifies the exact time dynamics of the output signal
+    envelope for a limited time. The output is modulated by phase and
+    frequency, which are controlled by separate instructions. The pulse
+    duration must be fixed and is implicitly given in terms of the
+    backend cycle time, ``dt``.
     """
 
     @deprecate_pulse_func
-    def __init__(self, pulse: Pulse, channel: PulseChannel, name: str | None = None):
+    def __init__(
+        self, pulse: Pulse, channel: PulseChannel, name: str | None = None
+    ):
         """Create a new pulse instruction.
 
         Args:
             pulse: A pulse waveform description, such as
-                   :py:class:`~wy_qcos.pulse.library.Waveform`.
+                :py:class:`~wy_qcos.pulse.library.Waveform`.
             channel: The channel to which the pulse is applied.
-            name: Name of the instruction for display purposes. Defaults to ``pulse.name``.
+            name: Name of the instruction for display purposes. Defaults
+                to ``pulse.name``.
         """
         if name is None:
             name = pulse.name
@@ -52,13 +69,19 @@ class Play(Instruction):
 
         Raises:
             PulseError: If pulse is not a Pulse type.
-            PulseError: If the input ``channel`` is not type :class:`PulseChannel`.
+            PulseError: If the input ``channel`` is not of type
+                :class:`PulseChannel`.
         """
         if not isinstance(self.pulse, Pulse):
-            raise PulseError("The `pulse` argument to `Play` must be of type `library.Pulse`.")
+            raise PulseError(
+                "The `pulse` argument to `Play` must be of type "
+                "`library.Pulse`."
+            )
 
         if not isinstance(self.channel, PulseChannel):
-            raise PulseError(f"Expected a pulse channel, got {self.channel} instead.")
+            raise PulseError(
+                f"Expected a pulse channel, got {self.channel} instead."
+            )
 
     @property
     def pulse(self) -> Pulse:
@@ -67,9 +90,7 @@ class Play(Instruction):
 
     @property
     def channel(self) -> PulseChannel:
-        """Return the :py:class:`~wy_qcos.pulse.channels.Channel` that this instruction is
-        scheduled on.
-        """
+        """Return the channel that this instruction is scheduled on."""
         return self.operands[1]
 
     @property
@@ -87,7 +108,8 @@ class Play(Instruction):
         """Parameters which determine the instruction behavior."""
         parameters: set[Parameter] = set()
 
-        # Note that Pulse.parameters returns dict rather than set for convention.
+        # Note that Pulse.parameters returns a dict rather than a set by
+        # convention.
         # We need special handling for Play instruction.
         for pulse_param_expr in self.pulse.parameters.values():
             if isinstance(pulse_param_expr, ParameterExpression):
