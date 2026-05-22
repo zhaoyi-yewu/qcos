@@ -46,8 +46,8 @@ from aiohttp import ClientTimeout, ClientError
 from collections import OrderedDict
 from cryptography.fernet import Fernet
 from datetime import datetime
-from pathlib import Path
 from http import HTTPStatus
+from pathlib import Path
 from schema import Schema
 from urllib.parse import urlparse
 
@@ -1466,12 +1466,69 @@ class Library:
         return True, None, decrypted_text
 
     @staticmethod
+    def mask_password_from_pydantic(data_obj, mask_value="*" * 8):
+        """Mask password from Pydantic model.
+
+        - sensitive=True: replace entire field with mask_value
+        - db_connection_url=True: mask password in URL
+        - no marker: return original value
+
+        Args:
+            data_obj: Pydantic data object
+            mask_value: Mask value, default "********"
+
+        Returns:
+            dict: Dictionary with masked sensitive values
+            (original dict unchanged)
+        """
+        try:
+            # Check if data_obj is None or not a Pydantic model
+            if data_obj is None:
+                return {}
+
+            # Get dictionary from Pydantic model
+            data_dict = data_obj.model_dump()
+
+            # Deep copy to avoid modifying original data
+            masked_data = copy.deepcopy(data_dict)
+
+            # Iterate over model fields to get metadata
+            if hasattr(data_obj, "model_fields"):
+                for field_name, field_info in data_obj.model_fields.items():
+                    # Get json_schema_extra safely
+                    extra = getattr(field_info, "json_schema_extra", None)
+
+                    # Field name must exist in data
+                    if field_name not in masked_data:
+                        continue
+
+                    value = masked_data[field_name]
+
+                    is_sensitive = extra.get("sensitive", False)
+                    is_db_connection_url = extra.get(
+                        "db_connection_url", False
+                    )
+                    if is_sensitive and is_db_connection_url:
+                        # db_connection_url=True: mask password in URL
+                        if isinstance(value, str) and "://" in value:
+                            masked_data[field_name] = (
+                                Library._mask_connection_url(value, mask_value)
+                            )
+                    # Check for sensitive marker
+                    elif is_sensitive:
+                        # sensitive=True: replace entire field with mask value
+                        masked_data[field_name] = mask_value
+            return masked_data
+        except Exception:
+            return {}
+
+    @staticmethod
     def mask_password(
         configs,
         password_replace="*" * 8,
-        keys_to_match=r"^(?:_.*|.*(password|secret|hidden).*)$",
+        keys_to_match=r"^(?:_.*|.*(password|secret|hidden|salt|.*connection_url).*)$",
     ):
-        """Mask password.
+        """Mask password and sensitive values.
 
         Args:
             configs: configs
@@ -1479,7 +1536,7 @@ class Library:
             keys_to_match: keys to be matched (regular expression)
 
         Returns:
-            replaced configs
+            replaced configs with masked sensitive values
         """
         configs = copy.deepcopy(configs)
         # if configs is dict
@@ -1489,7 +1546,13 @@ class Library:
                 # if key matches regex: keys_to_match
                 regex = re.compile(keys_to_match, re.IGNORECASE)
                 if regex.match(key):
-                    new_config[key] = password_replace
+                    # For connection URLs, mask the password in the URL string
+                    if isinstance(value, str) and "://" in value:
+                        new_config[key] = Library._mask_connection_url(
+                            value, password_replace
+                        )
+                    else:
+                        new_config[key] = password_replace
                 else:
                     # handle values recursively
                     new_config[key] = Library.mask_password(
@@ -1510,6 +1573,22 @@ class Library:
                 for item in configs
             )
         return configs
+
+    @staticmethod
+    def _mask_connection_url(url, mask_value="*" * 8):
+        """Mask password in database connection URL.
+
+        Args:
+            url: Connection URL string
+            mask_value: Value to replace password with
+
+        Returns:
+            URL string with masked password
+        """
+        # Pattern: scheme://user:password@host:port/db
+        # Replace password between : and @
+        pattern = r"(://[^:]+:)[^@]+(@)"
+        return re.sub(pattern, f"\\1{mask_value}\\2", url)
 
     @staticmethod
     def encrypt_virtual_instance_id(
