@@ -30,7 +30,7 @@ from wy_qcos.transpiler.common.utils import (
     Timer,
     TranspilePerfConstant as TPC,
 )
-from wy_qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
+from wy_qcos.transpiler.cmss.transpiler_cmss_for_cpp import TranspilerCmss
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.common.utils import (
     TranspileRuntime,
