@@ -27,6 +27,7 @@ develop-eggs
 .installed.cfg
 lib64
 *.zip
+*.pdb
 
 # Installer logs
 pip-log.txt
