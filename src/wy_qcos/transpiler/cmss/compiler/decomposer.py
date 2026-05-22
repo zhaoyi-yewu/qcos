@@ -45,7 +45,7 @@ def decompose_gates(ir: list, supp_basis_gates: list):
 def decompose_gates_to_1q2q(ir: list):
     gates = []
     for gate in ir:
-        if isinstance(gate, GateOperation):
+        if gate.name not in {"measure", "sync", "reset", "barrier"}:
             gates += gate.decompose_to_1q2q()
         else:
             gates += deepcopy([gate])
