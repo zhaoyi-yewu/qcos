@@ -47,6 +47,7 @@ __all__: list[str] = [
     "CppMCTSRouting",
     "DCX",
     "DOUBLE_QUBIT_OPERATION",
+    "Decomposer",
     "ECR",
     "FIVE_QUBIT_OPERATION",
     "FOUR_QUBIT_OPERATION",
@@ -63,6 +64,7 @@ __all__: list[str] = [
     "Operation",
     "OperationType",
     "P",
+    "ParamGate",
     "Pos",
     "R",
     "RC3X",
@@ -170,6 +172,7 @@ __all__: list[str] = [
     "ot_iSWAP",
     "ot_iSWAPdg",
     "sabre_initial_mapping",
+    "sabre_routing",
 ]
 
 class BaseOperation:
@@ -648,6 +651,15 @@ class DCX(GateOperation):
         list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
     ]: ...
 
+class Decomposer:
+    def __init__(self) -> None: ...
+    def apply_decompose_rules(
+        self, arg0: list[BaseOperation], arg1: dict[ParamGate, list[ParamGate]]
+    ) -> list: ...
+    def get_decompose_rules(
+        self, arg0: list[str], arg1: list[str]
+    ) -> tuple: ...
+
 class ECR(GateOperation):
     @typing.overload
     def __init__(
@@ -1112,6 +1124,12 @@ class P(GateOperation):
         list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
     ]: ...
 
+class ParamGate:
+    name: str
+    params: list[str]
+    qubits: list[str]
+    def __init__(self) -> None: ...
+
 class R(GateOperation):
     def __init__(
         self, targets: list[int], arg_value: list[float] = []
@@ -1344,6 +1362,12 @@ class SABRE:
             None
         """
 
+    def get_logic2phy(self) -> list[int]:
+        """Get the final logical-to-physical mapping after routing.
+
+        Returns:
+            list[int]: The index is logical qubit and value is physical qubit.
+        """
     def get_physical_gates(self) -> list[GateOperation]:
         """Get the sequence of mapped physical gates after routing.
 
