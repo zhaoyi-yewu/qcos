@@ -45,6 +45,14 @@ void GateOperation::validate_params() const {
   }
 }
 
+std::vector<std::unique_ptr<BaseOperation>> GateOperation::decompose_to_1q2q()
+    const {
+  std::vector<std::unique_ptr<BaseOperation>> result;
+  result.push_back(std::make_unique<GateOperation>(name, targets, arg_value,
+                                                   operation_type, hermitian));
+  return result;
+}
+
 H ::H(std::vector<int> targets_, std::vector<double> arg_value_)
     : GateOperation(Constant::SINGLE_QUBIT_GATE_H, std::move(targets_),
                     std::move(arg_value_),
@@ -60,11 +68,7 @@ std::vector<std::unique_ptr<BaseOperation>> H::default_decompose() {
   gates.push_back(std::make_unique<RX>(targets, rx_args));
   return gates;
 }
-std::vector<std::unique_ptr<BaseOperation>> H::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<H>(targets, arg_value));
-  return gates;
-}
+
 std::array<std::complex<double>, 4> H::to_matrix() const {
   const double inv_sqrt2 = 1.0 / std::sqrt(2.0);
   return {std::complex<double>(inv_sqrt2, 0.0),
@@ -91,12 +95,6 @@ std::vector<std::unique_ptr<BaseOperation>> X ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> X ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<X>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 4> X ::to_matrix() const {
   return {std::complex<double>(0.0, 0.0), std::complex<double>(1.0, 0.0),
           std::complex<double>(1.0, 0.0), std::complex<double>(0.0, 0.0)};
@@ -117,12 +115,6 @@ std::vector<std::unique_ptr<BaseOperation>> Y ::default_decompose() {
   std::vector<double> ry_args = {M_PI};
   gates.push_back(std::make_unique<RY>(targets, ry_args));
 
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> Y ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<Y>(targets, arg_value));
   return gates;
 }
 
@@ -157,12 +149,6 @@ std::vector<std::unique_ptr<BaseOperation>> Z ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> Z ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<Z>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 4> Z ::to_matrix() const {
   return {std::complex<double>(1.0, 0.0), std::complex<double>(0.0, 0.0),
           std::complex<double>(0.0, 0.0), std::complex<double>(-1.0, 0.0)};
@@ -177,16 +163,6 @@ S ::S(std::vector<int> targets_, std::vector<double> arg_value_)
     : GateOperation(Constant::SINGLE_QUBIT_GATE_S, std::move(targets_),
                     std::move(arg_value_),
                     OperationType::SINGLE_QUBIT_OPERATION, false) {}
-
-std::vector<std::unique_ptr<BaseOperation>> S::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-
-  // S门可以用RZ门实现，S = RZ(π/2)
-  std::vector<double> rz_args = {M_PI / 2.0};
-  gates.push_back(std::make_unique<RZ>(targets, rz_args));
-
-  return gates;
-}
 
 std::vector<std::unique_ptr<BaseOperation>> S ::default_decompose() {
   std::vector<std::unique_ptr<BaseOperation>> gates;
@@ -237,16 +213,6 @@ std::vector<std::unique_ptr<BaseOperation>> SDG ::default_decompose() {
   // RX(π/2)
   std::vector<double> rx2_args = {M_PI / 2.0};
   gates.push_back(std::make_unique<RX>(targets, rx2_args));
-
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> SDG::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-
-  // SDG 门可以用 RZ 门实现，SDG = RZ(-π/2)
-  std::vector<double> rz_args = {-M_PI / 2.0};
-  gates.push_back(std::make_unique<RZ>(targets, rz_args));
 
   return gates;
 }
@@ -304,12 +270,6 @@ std::vector<std::unique_ptr<BaseOperation>> P ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> P ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<P>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 4> P ::to_matrix() const {
   double lambda = arg_value.empty() ? 0.0 : arg_value[0];
   std::complex<double> phase = std::exp(std::complex<double>(0.0, lambda));
@@ -346,12 +306,6 @@ std::vector<std::unique_ptr<BaseOperation>> R ::default_decompose() {
     std::vector<double> rz2_args = {-phi};
     gates.push_back(std::make_unique<RZ>(targets, rz2_args));
   }
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> R ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<R>(targets, arg_value));
   return gates;
 }
 
@@ -398,12 +352,6 @@ std::vector<std::unique_ptr<BaseOperation>> TDG ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> TDG ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<TDG>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 4> TDG ::to_matrix() const {
   const double sqrt2_inv = 1.0 / std::sqrt(2.0);
   return {
@@ -424,12 +372,6 @@ RX ::RX(std::vector<int> targets_, std::vector<double> arg_value_)
                     OperationType::SINGLE_QUBIT_OPERATION, false) {}
 
 std::vector<std::unique_ptr<BaseOperation>> RX ::default_decompose() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<RX>(targets, arg_value));
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> RX ::decompose_to_1q2q() {
   std::vector<std::unique_ptr<BaseOperation>> gates;
   gates.push_back(std::make_unique<RX>(targets, arg_value));
   return gates;
@@ -463,12 +405,6 @@ std::vector<std::unique_ptr<BaseOperation>> RY ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> RY ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<RY>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 4> RY ::to_matrix() const {
   double theta = arg_value.empty() ? 0.0 : arg_value[0];
   double cos_theta_2 = std::cos(theta / 2.0);
@@ -491,12 +427,6 @@ RZ ::RZ(std::vector<int> targets_, std::vector<double> arg_value_)
                     OperationType::SINGLE_QUBIT_OPERATION, false) {}
 
 std::vector<std::unique_ptr<BaseOperation>> RZ ::default_decompose() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<RZ>(targets, arg_value));
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> RZ ::decompose_to_1q2q() {
   std::vector<std::unique_ptr<BaseOperation>> gates;
   gates.push_back(std::make_unique<RZ>(targets, arg_value));
   return gates;
@@ -553,12 +483,6 @@ std::vector<std::unique_ptr<BaseOperation>> SX ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> SX ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<SX>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 4> SX ::to_matrix() const {
   std::complex<double> elem(0.5, 0.5);        // 0.5 + 0.5i
   std::complex<double> elem_conj(0.5, -0.5);  // 0.5 - 0.5i
@@ -603,12 +527,6 @@ std::vector<std::unique_ptr<BaseOperation>> SXDG ::default_decompose() {
   s_gates2.clear();
   ;
 
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> SXDG ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<SXDG>(targets, arg_value));
   return gates;
 }
 
@@ -661,12 +579,6 @@ std::vector<std::unique_ptr<BaseOperation>> CZ ::default_decompose() {
   h_gates2.clear();
   ;
 
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> CZ ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<CZ>(targets, arg_value));
   return gates;
 }
 
@@ -740,12 +652,6 @@ std::vector<std::unique_ptr<BaseOperation>> CX ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> CX ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<CX>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 16> CX ::to_matrix() const {
   // CNOT 门的标准矩阵表示
   std::array<std::complex<double>, 16> cx_matrix = {
@@ -810,12 +716,6 @@ std::vector<std::unique_ptr<BaseOperation>> CY ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> CY ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<CY>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 16> CY ::to_matrix() const {
   // 受控Y门矩阵
   std::array<std::complex<double>, 16> cy_matrix = {
@@ -869,12 +769,6 @@ std::vector<std::unique_ptr<BaseOperation>> SWAP ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> SWAP ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<SWAP>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 16> SWAP ::to_matrix() const {
   // SWAP 门矩阵
   std::array<std::complex<double>, 16> swap_matrix = {
@@ -905,12 +799,6 @@ ISWAP ::ISWAP(std::vector<int> targets_, std::vector<double> arg_value_,
                     std::move(arg_value_), gate_type, false) {}
 
 std::vector<std::unique_ptr<BaseOperation>> ISWAP ::default_decompose() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<ISWAP>(targets, arg_value));
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> ISWAP ::decompose_to_1q2q() {
   std::vector<std::unique_ptr<BaseOperation>> gates;
   gates.push_back(std::make_unique<ISWAP>(targets, arg_value));
   return gates;
@@ -1046,12 +934,6 @@ std::vector<std::unique_ptr<BaseOperation>> CH ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> CH ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<CH>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 16> CH ::to_matrix() const {
   // 受控Hadamard门矩阵
   const double inv_sqrt2 = 1.0 / std::sqrt(2.0);
@@ -1097,12 +979,6 @@ std::vector<std::unique_ptr<BaseOperation>> CS ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> CS ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<CS>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 16> CS ::to_matrix() const {
   // 受控S门矩阵
   std::array<std::complex<double>, 16> cs_matrix = {
@@ -1134,12 +1010,6 @@ CSDG ::CSDG(std::vector<int> targets_, std::vector<double> arg_value_,
                     std::move(arg_value_), gate_type, false) {}
 
 std::vector<std::unique_ptr<BaseOperation>> CSDG ::default_decompose() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<CSDG>(targets, arg_value));
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> CSDG ::decompose_to_1q2q() {
   std::vector<std::unique_ptr<BaseOperation>> gates;
   gates.push_back(std::make_unique<CSDG>(targets, arg_value));
   return gates;
@@ -1219,12 +1089,6 @@ std::vector<std::unique_ptr<BaseOperation>> CRX ::default_decompose() {
   h_gates2.clear();
   ;
 
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> CRX ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<CRX>(targets, arg_value));
   return gates;
 }
 
@@ -1311,12 +1175,6 @@ std::vector<std::unique_ptr<BaseOperation>> CRY ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> CRY ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<CRY>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 16> CRY ::to_matrix() const {
   if (arg_value.empty()) {
     std::array<std::complex<double>, 16> identity = {
@@ -1389,12 +1247,6 @@ std::vector<std::unique_ptr<BaseOperation>> CRZ ::default_decompose() {
   std::vector<double> rz2_args = {theta / 2.0};
   gates.push_back(std::make_unique<RZ>(std::vector<int>{target}, rz2_args));
 
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> CRZ ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<CRZ>(targets, arg_value));
   return gates;
 }
 
@@ -1497,12 +1349,6 @@ std::vector<std::unique_ptr<BaseOperation>> CU1 ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> CU1 ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<CU1>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 16> CU1 ::to_matrix() const {
   if (arg_value.empty()) {
     std::array<std::complex<double>, 16> identity = {
@@ -1596,12 +1442,6 @@ std::vector<std::unique_ptr<BaseOperation>> CP ::default_decompose() {
   }
   p_target_pos_gates.clear();
 
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> CP ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<CP>(targets, arg_value));
   return gates;
 }
 
@@ -1716,12 +1556,6 @@ std::vector<std::unique_ptr<BaseOperation>> CU3 ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> CU3 ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<CU3>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 16> CU3 ::to_matrix() const {
   if (arg_value.size() < 3) {
     std::array<std::complex<double>, 16> identity = {
@@ -1819,12 +1653,6 @@ std::vector<std::unique_ptr<BaseOperation>> CSX ::default_decompose() {
   h_gates2.clear();
   ;
 
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> CSX ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<CSX>(targets, arg_value));
   return gates;
 }
 
@@ -1948,12 +1776,6 @@ std::vector<std::unique_ptr<BaseOperation>> CU ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> CU ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<CU>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 16> CU ::to_matrix() const {
   if (arg_value.size() < 4) {
     std::array<std::complex<double>, 16> identity = {
@@ -2023,12 +1845,6 @@ std::vector<std::unique_ptr<BaseOperation>> ECR ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> ECR ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<ECR>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 16> ECR ::to_matrix() const {
   // ECR 门矩阵 (Echoed Cross Resonance)
   const double inv_sqrt2 = 1.0 / std::sqrt(2.0);
@@ -2086,12 +1902,6 @@ std::vector<std::unique_ptr<BaseOperation>> DCX ::default_decompose() {
   // CX(q1, q0)
   gates.push_back(std::make_unique<CX>(std::vector<int>{q1, q0}));
 
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> DCX ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<DCX>(targets, arg_value));
   return gates;
 }
 
@@ -2193,12 +2003,6 @@ std::vector<std::unique_ptr<BaseOperation>> RXX ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> RXX ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<RXX>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 16> RXX ::to_matrix() const {
   if (arg_value.empty()) {
     std::array<std::complex<double>, 16> identity = {
@@ -2256,12 +2060,6 @@ RYY ::RYY(std::vector<int> targets_, std::vector<double> arg_value_,
                     std::move(arg_value_), gate_type, false) {}
 
 std::vector<std::unique_ptr<BaseOperation>> RYY ::default_decompose() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<RYY>(targets, arg_value));
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> RYY ::decompose_to_1q2q() {
   std::vector<std::unique_ptr<BaseOperation>> gates;
   gates.push_back(std::make_unique<RYY>(targets, arg_value));
   return gates;
@@ -2354,12 +2152,6 @@ std::vector<std::unique_ptr<BaseOperation>> RZZ ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> RZZ ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<RZZ>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 16> RZZ ::to_matrix() const {
   if (arg_value.empty()) {
     std::array<std::complex<double>, 16> identity = {
@@ -2418,12 +2210,6 @@ RZX ::RZX(std::vector<int> targets_, std::vector<double> arg_value_,
                     std::move(arg_value_), gate_type, false) {}
 
 std::vector<std::unique_ptr<BaseOperation>> RZX ::default_decompose() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<RZX>(targets, arg_value));
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> RZX ::decompose_to_1q2q() {
   std::vector<std::unique_ptr<BaseOperation>> gates;
   gates.push_back(std::make_unique<RZX>(targets, arg_value));
   return gates;
@@ -4047,12 +3833,6 @@ std::vector<std::unique_ptr<BaseOperation>> U1 ::default_decompose() {
   return gates;
 }
 
-std::vector<std::unique_ptr<BaseOperation>> U1 ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<U1>(targets, arg_value));
-  return gates;
-}
-
 std::array<std::complex<double>, 4> U1 ::to_matrix() const {
   double lambda = arg_value.empty() ? 0.0 : arg_value[0];
   std::complex<double> phase = std::exp(std::complex<double>(0.0, lambda));
@@ -4094,12 +3874,6 @@ std::vector<std::unique_ptr<BaseOperation>> U2 ::default_decompose() {
   std::vector<double> rz2_args = {phi + M_PI / 2.0};
   gates.push_back(std::make_unique<RZ>(targets, rz2_args));
 
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> U2 ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<U2>(targets, arg_value));
   return gates;
 }
 
@@ -4166,12 +3940,6 @@ std::vector<std::unique_ptr<BaseOperation>> U3 ::default_decompose() {
   std::vector<double> rz3_args = {phi + 3.0 * M_PI};
   gates.push_back(std::make_unique<RZ>(targets, rz3_args));
 
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> U3 ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<U3>(targets, arg_value));
   return gates;
 }
 
@@ -4242,12 +4010,6 @@ std::vector<std::unique_ptr<BaseOperation>> U ::default_decompose() {
   std::vector<double> rz3_args = {phi + 3.0 * M_PI};
   gates.push_back(std::make_unique<RZ>(targets, rz3_args));
 
-  return gates;
-}
-
-std::vector<std::unique_ptr<BaseOperation>> U ::decompose_to_1q2q() {
-  std::vector<std::unique_ptr<BaseOperation>> gates;
-  gates.push_back(std::make_unique<U>(targets, arg_value));
   return gates;
 }
 
