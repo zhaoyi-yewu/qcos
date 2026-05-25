@@ -503,4 +503,10 @@ void bind_circuits(py::module_& m) {
       .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
            py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
       .def("__repr__", [](const Reset& self) { return self.to_string(); });
+
+  m.def("create_gate", &create_gate, py::arg("name"),
+        py::arg("targets") = std::vector<int>(),
+        py::arg("arg_value") = std::vector<double>(),
+        py::arg("allow_undefined") = false,
+        "Create a gate or operation instance by name.");
 }
