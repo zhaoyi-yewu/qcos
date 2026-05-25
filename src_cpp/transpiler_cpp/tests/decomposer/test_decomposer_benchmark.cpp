@@ -78,8 +78,9 @@ class QasmDecomposerTest : public ::testing::Test {
    * @brief Benchmark QASM file path.
    */
   const std::string qasm_path_ =
-      "samples/qasm/2.0/test/"
-      "random_n100_d50000_clifford_197783.qasm";
+    std::string(TEST_DATA_DIR) +
+    "/qasm/2.0/benchmark/"
+    "random_n100_d50000_clifford_197783.qasm";
 
   /**
    * @brief Load QASM file into string.
