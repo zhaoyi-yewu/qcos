@@ -51,6 +51,14 @@ from wy_qcos.transpiler.cmss.compiler.openqasm3.parser import (
 from wy_qcos.transpiler.high_performance import (
     convert_qasm_string_to_qcos_operations,
 )
+from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing import sabre_routing
+from wy_qcos.transpiler.cmss.circuit.cpp_utils import (
+    convert_ir_cpp2py,
+    convert_ir_py2cpp,
+)
+from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
+    DEFAULT_SC_MAPPING_OPTIONS,
+)
 
 
 class TranspilerCmss(TranspilerBase):
@@ -175,21 +183,28 @@ class TranspilerCmss(TranspilerBase):
         if len(opt_result_dict) == 1:
             key, value = list(opt_result_dict.items())[0]
             mapping_dict[key] = value[0]
-            with Timer() as mapping_pre_timer:
-                mapper.prepare_data(value[0], value[1], qpu_cfg)
-            trans_logger.log_perf(
-                f"mapping(prepare_data): {mapping_pre_timer.elapsed:.4f}s\n"
+            routing_algorithm = sc_mapping_options.get(
+                "routing_algorithm",
+                DEFAULT_SC_MAPPING_OPTIONS["routing_algorithm"],
             )
-            with Timer() as mapping_exec_timer:
-                mapping_res, final_layout = mapper.execute_with_order()
+            if routing_algorithm == "sabre":
+                mapping_res = sabre_routing(value[1], qpu_cfg)
+            else:
+                with Timer() as mapping_pre_timer:
+                    mapper.prepare_data(value[0], value[1], qpu_cfg)
+                trans_logger.log_perf(
+                    f"mapping(prepare_data):{mapping_pre_timer.elapsed:.4f}s\n"
+                )
+                with Timer() as mapping_exec_timer:
+                    mapping_res, final_layout = mapper.execute_with_order()
 
-            final_layout_dict[key] = final_layout
-            init_layout_dict[key] = mapper.initial_layout
-            trans_logger.log_debug(f"after mapping: {mapping_res}")
-            trans_logger.log_perf(
-                "mapping(execute_with_order): "
-                f"{mapping_exec_timer.elapsed:.4f}s\n"
-            )
+                final_layout_dict[key] = final_layout
+                init_layout_dict[key] = mapper.initial_layout
+                trans_logger.log_debug(f"after mapping: {mapping_res}")
+                trans_logger.log_perf(
+                    "mapping(execute_with_order): "
+                    f"{mapping_exec_timer.elapsed:.4f}s\n"
+                )
             return (
                 mapping_res,
                 mapping_dict,
@@ -311,7 +326,11 @@ class TranspilerCmss(TranspilerBase):
         opt_result_dict = {}
         with Timer() as optimize1_timer:
             for key, value in parse_result.items():
-                opt_result = optimize(value[1], opt_level=min(1, opt_level))
+                circuit_to_optimize = convert_ir_cpp2py(value[1])
+                opt_result = optimize(
+                    circuit_to_optimize, opt_level=min(1, opt_level)
+                )
+                opt_result = convert_ir_py2cpp(opt_result)
                 opt_result_dict[key] = (value[0], opt_result)
         run_time.opt_time1 = optimize1_timer.elapsed
         trans_logger.log_perf(
@@ -422,8 +441,9 @@ class TranspilerCmss(TranspilerBase):
             basis_gates_dict = {}
             with Timer() as optimize2_timer:
                 for key, value in decomposer_dict.items():
+                    circuit_to_optimize = convert_ir_cpp2py(value)
                     basis_gates_dict[key] = optimize(
-                        value,
+                        circuit_to_optimize,
                         opt_level,
                         basis_gates=set(supp_basis_gates),
                     )
