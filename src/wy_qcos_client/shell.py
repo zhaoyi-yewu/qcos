@@ -1153,6 +1153,13 @@ class SubmitJob(Command):
             required=True,
             help="Source code file, files can be specified multiple times",
         )
+        parser.add_argument(
+            "--qec-options",
+            dest="qec_options",
+            type=str,
+            default=None,
+            help="Set qec options",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -1177,6 +1184,7 @@ class SubmitJob(Command):
         transpiler_options = parsed_args.transpiler_options
         profiling = parsed_args.profiling
         callbacks = parsed_args.callbacks
+        qec_options = parsed_args.qec_options
 
         # request capabilities
         status_code, reason, text, result = self.app.client.version(
@@ -1307,6 +1315,22 @@ class SubmitJob(Command):
                 )
             )
 
+        # Validate argument: qec_options
+        if qec_options:
+            try:
+                qec_options = json.loads(qec_options)
+            except json.decoder.JSONDecodeError as exc:
+                raise errors.InvalidArguments(
+                    "Invalid argument: qec_options"
+                ) from exc
+            CommandHelper.handle_invalid_arguments(
+                ClientLibrary.validate_schema(
+                    qec_options,
+                    args_schema.QEC_OPTIONS,
+                    allow_none=True,
+                )
+            )
+
         # Validate argument: callbacks
         callbacks_json = None
         if callbacks:
@@ -1340,6 +1364,7 @@ class SubmitJob(Command):
             profiling=profiling,
             callbacks=callbacks_json,
             dry_run=dry_run,
+            qec_options=qec_options,
         )
         results = CommandHelper.check_results(
             resource, "submit_job", status_code, reason, text

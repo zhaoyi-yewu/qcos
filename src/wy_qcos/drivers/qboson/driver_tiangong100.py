@@ -158,7 +158,15 @@ class DriverTiangong100(DriverQuboBase):
             remote transpiler configs
         """
 
-    def run(self, job_id, num_qubits, data, data_type, shots=1):
+    def run(
+        self,
+        job_id,
+        num_qubits,
+        data,
+        data_type,
+        shots=1,
+        qec_options=dict | None,
+    ):
         """Run job.
 
         Args:

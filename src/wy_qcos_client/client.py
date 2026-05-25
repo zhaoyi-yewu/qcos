@@ -493,6 +493,7 @@ class Client:
         profiling=None,
         callbacks=None,
         dry_run=False,
+        qec_options=dict | None,
     ):
         """Submit new job.
 
@@ -514,6 +515,7 @@ class Client:
             profiling: profiling types
             callbacks: callbacks
             dry_run: dry run
+            qec_options: qec options
 
         Returns:
             submit_job result
@@ -537,6 +539,7 @@ class Client:
             "profiling": profiling,
             "callbacks": callbacks,
             "dry_run": dry_run,
+            "qec_options": qec_options,
         }
 
         if job_id:

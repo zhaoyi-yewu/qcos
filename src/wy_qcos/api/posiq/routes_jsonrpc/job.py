@@ -82,6 +82,7 @@ def submit_job(
     driver_options = body.driver_options
     transpiler_name = body.transpiler
     transpiler_options = body.transpiler_options
+    qec_options = body.qec_options
     profiling = body.profiling
     callbacks = body.callbacks
     dry_run = body.dry_run
@@ -355,6 +356,29 @@ def submit_job(
             param_name="transpiler_options",
         )
 
+    # validate: qec_options
+    if qec_options:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            Library.validate_schema(
+                qec_options,
+                args_schema.QEC_OPTIONS,
+                allow_none=True,
+            ),
+        )
+        qec_options_schema = driver.get_qec_options_schema()
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            Library.validate_schema(
+                qec_options,
+                qec_options_schema,
+                allow_none=True,
+            ),
+            param_name="qec_options",
+        )
+
     # get supported_code_types
     supported_code_types = transpiler.get_supported_code_types()
     if supported_code_types is None or len(supported_code_types) == 0:
@@ -561,6 +585,7 @@ def submit_job(
         "dry_run": dry_run,
         "code_compression_level": code_compression_level,
         "tags": tags,
+        "qec_options": qec_options,
         "created_at": created_at,
         "updated_at": created_at,
         "started_at": started_at,

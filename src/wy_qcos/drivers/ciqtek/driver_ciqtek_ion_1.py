@@ -128,7 +128,15 @@ class DriverCiqtekIon1(DriverBase):
         if not success:
             raise ValueError(f"Authorize failed: {err_msg}")
 
-    def run(self, job_id, num_qubits, data, data_type, shots=1):
+    def run(
+        self,
+        job_id,
+        num_qubits,
+        data,
+        data_type,
+        shots=1,
+        qec_options=dict | None,
+    ):
         """Run job.
 
         Args:

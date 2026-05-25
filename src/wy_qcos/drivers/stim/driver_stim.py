@@ -1,0 +1,204 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
+import stim
+
+from loguru import logger
+from schema import Optional
+
+from wy_qcos.common.cmss.base_operation import (
+    BaseOperation,
+    OperationType,
+)
+from wy_qcos.common.constant import Constant
+from wy_qcos.drivers.device import Device
+from wy_qcos.drivers.driver_base import DriverBase
+from wy_qcos.qec.qec_factory import QecFactory
+
+
+class DriverStim(DriverBase):
+    """Stim QEC 专用驱动."""
+
+    def __init__(self):
+        super().__init__()
+        self.version = "0.0.1"
+        self.alias_name = "Stim驱动"
+        self.description = "Stim驱动"
+        self.transpiler = Constant.TRANSPILER_CMSS
+        self.supported_basis_gates = [
+            Constant.SINGLE_QUBIT_GATE_X,
+            Constant.SINGLE_QUBIT_GATE_Y,
+            Constant.SINGLE_QUBIT_GATE_Z,
+            Constant.SINGLE_QUBIT_GATE_H,
+            Constant.SINGLE_QUBIT_GATE_S,
+            Constant.TWO_QUBIT_GATE_CX,
+            Constant.TWO_QUBIT_GATE_CY,
+            Constant.TWO_QUBIT_GATE_CZ,
+            Constant.TWO_QUBIT_GATE_SWAP,
+            Constant.TWO_QUBIT_GATE_ISWAP,
+        ]
+        self.supported_transpilers = [Constant.TRANSPILER_CMSS]
+        self.default_results_type = self.DATA_TYPE_GATE_SEQUENCE
+        self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
+        self.max_qubits = 10
+        self.enable_device_monitor = False
+        # qec_options schema
+        self.qec_options_schema = {
+            "qec_code": str,
+            Optional("distance"): int,
+            Optional("phy_bit_num"): int,
+            Optional("logi_bit_num"): int,
+        }
+
+    def init_driver(self):
+        """Init driver."""
+        # pylint: disable=duplicate-code
+        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
+
+    def validate_driver_configs(self, configs):
+        """Validate driver configs.
+
+        Args:
+            configs: configs dictionary
+
+        Returns:
+            success, err_msgs
+        """
+        success = True
+        err_msg = None
+        return success, err_msg
+
+    def close_driver(self):
+        """Close driver."""
+
+    def fetch_configs(self):
+        """Fetch configs.
+
+        Returns:
+            remote transpiler configs
+        """
+
+    def validate_circuit(self, circuit: list):
+        """Validate circuit.
+
+        Args:
+        circuit: circuit
+
+        Returns:
+            true for succ and false for failure
+        """
+        for gate in circuit:
+            if not isinstance(gate, BaseOperation):
+                return False
+            if (
+                gate.operation_type != OperationType.SINGLE_QUBIT_OPERATION
+                and gate.operation_type != OperationType.DOUBLE_QUBIT_OPERATION
+            ):
+                continue
+            if gate.name not in self.supported_basis_gates:
+                return False
+        return True
+
+    def convert_circuit(self, raw_circuit: list, num_qubits: int):
+        """Convert to stim circuit.
+
+        Args:
+        raw_circuit: raw_circuit
+
+        Returns:
+            stim cricuit
+        """
+        circuit = stim.Circuit()
+        for gate in raw_circuit:
+            if (
+                gate.operation_type != OperationType.SINGLE_QUBIT_OPERATION
+                and gate.operation_type != OperationType.DOUBLE_QUBIT_OPERATION
+            ):
+                continue
+            circuit.append(gate.name.upper(), gate.targets)
+        return circuit
+
+    def run(
+        self,
+        job_id,
+        num_qubits,
+        data,
+        data_type,
+        shots=1,
+        qec_options=dict | None,
+    ):
+        """Run job.
+
+        Args:
+            job_id: job ID
+            num_qubits: number of qubits
+            data: data
+            data_type: data type
+            shots: shots (Default value = 1)
+        """
+        if qec_options is None:
+            raise ValueError("qec_options are needed for qec.")
+        qec_code_str = qec_options.get("qec_code", "")
+        if qec_code_str == "":
+            raise ValueError("qec_code is mandatory for qec.")
+
+        # pylint: disable=duplicate-code
+        data_index = data["index"]
+        logger.info(
+            f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
+            f"data_type: {data_type}, data: {data}"
+        )
+        self.set_progress_by_task(self.TASK_STAGE_START)
+        self.set_device_status(Device.DEVICE_STATUS_BUSY)
+        raw_circuit = data["transpile_results"]
+        valid = self.validate_circuit(raw_circuit, num_qubits)
+        if not valid:
+            raise ValueError("unsupported quantum circuit.")
+        circuit = self.convert_circuit(raw_circuit)
+        factory = QecFactory()
+        qec_code = factory.create(qec_code_str)
+        formatted_circuit = qec_code.validate_and_format_circuit(circuit)
+        qec_code.encode(formatted_circuit)
+        result = None
+        self.set_results(job_id, data_index, results=result)
+        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
+        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
+
+    def cancel(self, job_id):
+        """Cancel running job in driver.
+
+        Driver should clean up any resources of the job
+
+        Args:
+            job_id: job ID
+        """
+        logger.info(f"Cancel job: job_id: {job_id}")
+
+    def update_driver_options(self, driver_options):
+        """Update driver options.
+
+        Args:
+            driver_options: new driver options
+        """
+        self.driver_options.update(driver_options)
+        max_qubits_value = self.driver_options.get("max_qubits")
+        if max_qubits_value is not None:
+            self.set_max_qubits(max_qubits_value)
+
+    def get_qec_options_schema(self):
+        """Get qec options schema."""
+        return self.qec_options_schema

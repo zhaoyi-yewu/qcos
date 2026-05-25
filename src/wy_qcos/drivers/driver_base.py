@@ -420,6 +420,7 @@ class DriverBase:
         data,
         data_type=DATA_TYPE_GATE_SEQUENCE,
         shots=1,
+        qec_options=dict | None,
     ):
         """Run job.
 
@@ -429,6 +430,7 @@ class DriverBase:
             data: data
             data_type: data type (Default value = DATA_TYPE_GATE_SEQUENCE)
             shots: shots (Default value = 1)
+            qec_options: qec options
         """
         raise NotImplementedError(
             f"Driver: {self.__class__.__name__} must implement method: run"
@@ -441,6 +443,7 @@ class DriverBase:
         data,
         data_type=DATA_TYPE_GATE_SEQUENCE,
         shots=1,
+        qec_options=dict | None,
     ):
         """Dry-run job.
 

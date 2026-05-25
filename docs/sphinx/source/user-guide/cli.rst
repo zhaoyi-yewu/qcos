@@ -29,7 +29,7 @@
                               [--backend BACKEND] [--driver-options DRIVER_OPTIONS] [--transpiler TRANSPILER]
                               [--transpiler-options TRANSPILER_OPTIONS]
                               [--profiling [{all,code,queuing,scheduling,driver:parse,driver:transpile,driver:run,machine} ...]]
-                              [--callbacks CALLBACKS] [-D] -f SOURCE_CODE_FILES [SOURCE_CODE_FILES ...]
+                              [--callbacks CALLBACKS] [-D] [--qec-options QEC_OPTIONS] -f SOURCE_CODE_FILES [SOURCE_CODE_FILES ...]
 
    Submit job.
 
@@ -61,6 +61,8 @@
                            Set transpiler options
      --profiling [{all,code,queuing,scheduling,driver:parse,driver:transpile,driver:run,machine} ...]
                            Profiling types: all,code,queuing,scheduling,driver:parse,driver:transpile,driver:run,machine
+     --qec-options QEC_OPTIONS
+                           Set qec options
      --callbacks CALLBACKS
                            Callbacks list
      -D, --dry-run         Dry run
