@@ -40,7 +40,7 @@ config_file = ["./etc/qcos/conf.d/spinq_rpc.toml"]
 
 # json格式的字符串，表示不同算法组合输入，默认不输入，
 # 但元素必须与tech_type和config_file一一对应
-# mapping_options = ["""
+# sc_mapping_options = ["""
 #     {
 #             "routing_algorithm": "sc",
 #             "select_mode": ["KS", 2],
