@@ -292,7 +292,29 @@ std::vector<std::unique_ptr<qcos::BaseOperation>> create_gates(
         operation = create_gate("reset", all_qubits, arg_values);
         break;
       case otMeasure:
-        operation = create_gate("measure", all_qubits, arg_values);
+        if (all_qubits.empty()) {
+          std::cerr << "Error: Measure operation has no qubits specified."
+                    << std::endl;
+        } else if (all_qubits.size() == 1) {
+          operation = create_gate("measure", all_qubits, arg_values);
+        } else if (all_qubits.size() > 1) {
+          for (int qubit : all_qubits) {
+            std::vector<int> single_qubit{qubit};
+            std::vector<double> empty_params{};
+            std::unique_ptr<qcos::BaseOperation> measure_op =
+                create_gate("measure", single_qubit, empty_params);
+            if (measure_op) {
+              subOperations.push_back(std::move(measure_op));
+            } else {
+              std::cerr << "Error: Failed to create measure gate for qubit "
+                        << qubit << std::endl;
+            }
+          }
+        } else {
+          std::cerr
+              << "Error: Invalid number of qubits for measure operation: "
+              << all_qubits.size() << std::endl;
+        }
         break;
       case otCompound:
         if (auto* compoundOp = dynamic_cast<CompoundOperation*>(op.get())) {
