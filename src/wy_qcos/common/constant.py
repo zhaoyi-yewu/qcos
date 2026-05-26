@@ -18,7 +18,6 @@
 # Don't import any other libraries
 from wy_qcos.common.qcos_version import QcosVersion
 
-
 _s = lambda x: x
 
 
@@ -250,6 +249,7 @@ class Constant:
 
     # Transpiler
     TRANSPILER_CMSS = "cmss"
+    TRANSPILER_HIGH_PERFORMANCE_CMSS = "high_performance_cmss"
     TRANSPILER_QISKIT = "qiskit"
     TRANSPILER_DUMMY = "dummy"
     TRANSPILER_CMSS_QUBO = "cmss_qubo"

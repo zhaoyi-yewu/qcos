@@ -79,13 +79,11 @@ class TranspilerCmss(TranspilerBase):
             optimization_level < Constant.MIN_OPTIMIZATION_LEVEL
             or optimization_level > Constant.MAX_OPTIMIZATION_LEVEL
         ):
-            raise TranspilerException(
-                f"""
+            raise TranspilerException(f"""
                 optimization_level should be between
                 {Constant.MIN_OPTIMIZATION_LEVEL} and
                 {Constant.MAX_OPTIMIZATION_LEVEL}
-                """
-            )
+                """)
         self.transpiler_options = {
             # default optimization level
             "optimization_level": optimization_level,

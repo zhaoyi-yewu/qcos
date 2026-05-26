@@ -61,8 +61,8 @@ from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
 )
 
 
-class TranspilerCmss(TranspilerBase):
-    """Transpiler Class for CMSS."""
+class TranspilerHighPerformanceCmss(TranspilerBase):
+    """Transpiler Class for High Performance CMSS."""
 
     def __init__(
         self,
@@ -73,9 +73,9 @@ class TranspilerCmss(TranspilerBase):
     ):
         super().__init__()
         self.total_qubits = 0
-        self.name = Constant.TRANSPILER_CMSS
+        self.name = Constant.TRANSPILER_HIGH_PERFORMANCE_CMSS
         # alias name
-        self.alias_name = "五岳转译器"
+        self.alias_name = "五岳高性能转译器"
         # version
         self.version = "0.1"
         # supported code types
