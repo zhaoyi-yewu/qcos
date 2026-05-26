@@ -32,20 +32,20 @@ class SABRERouting(ABC):
 
     def __init__(
         self,
-        extention_size: int = 20,
+        extension_size: int = 20,
         weight: float = 0.5,
         decay: float = 0.001,
     ):
         """初始化SABRE路由算法.
 
         Args:
-            extention_size: 扩展集大小，用于前瞻策略. Defaults to 20.
+            extension_size: 扩展集大小，用于前瞻策略. Defaults to 20.
             weight: 用于组合基本和扩展启发式成本的权重参数.
                 Defaults to 0.5.
             decay: 用于减少频繁交换量子比特影响的衰减因子.
                 Defaults to 0.001.
         """
-        self.extention_size = extention_size
+        self.extension_size = extension_size
         self.weight = weight
         self.decay = decay
 
@@ -133,7 +133,7 @@ class SABRERouting(ABC):
         # 初始化SABRE算法
         sabre = SABRE(
             coupling_list=ag,
-            extention_size=self.extention_size,
+            extension_size=self.extension_size,
             weight=self.weight,
             decay=self.decay,
         )

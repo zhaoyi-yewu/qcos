@@ -39,7 +39,7 @@ def sabre_routing(
     ir: list,
     topology,
     initial_l2p: list[int] | None = None,
-    extention_size: int = 20,
+    extension_size: int = 20,
     weight: float = 0.5,
     decay: float = 0.001,
 ):
@@ -53,7 +53,7 @@ def sabre_routing(
             config.
         initial_l2p (list[int] | None, optional): Initial logical-to-physical
             mapping. Defaults to None.
-        extention_size (int, optional): Size of the lookahead set.
+        extension_size (int, optional): Size of the lookahead set.
             Defaults to 20.
         weight (float, optional): Weight between front-layer and lookahead
             heuristic terms. Defaults to 0.5.
@@ -78,7 +78,7 @@ def sabre_routing(
     if isinstance(first_op, BaseOperation):
         sabre = SABRE(
             coupling_list=coupling_list,
-            extention_size=extention_size,
+            extension_size=extension_size,
             weight=weight,
             decay=decay,
         )
@@ -90,7 +90,7 @@ def sabre_routing(
     ):
         initial_l2p = [] if initial_l2p is None else initial_l2p
         result = cpp_sabre_routing(
-            ir, coupling_list, initial_l2p, extention_size, weight, decay
+            ir, coupling_list, initial_l2p, extension_size, weight, decay
         )
         return result
     else:
@@ -117,7 +117,7 @@ class SABRE:
     def __init__(
         self,
         coupling_list: list | nx.Graph,
-        extention_size: int = 20,
+        extension_size: int = 20,
         weight: float = 0.5,
         decay: float = 0.001,
     ):
@@ -128,7 +128,7 @@ class SABRE:
         Args:
             coupling_list (list | nx.Graph): The coupling graph of the quantum
                 machine.
-            extention_size (int, optional): Size of the extention set used by
+            extension_size (int, optional): Size of the extension set used by
                 the lookahead strategy. Defaults to 20.
             weight (float, optional): Weight parameter for combining basic and
                 extended heuristic costs. Defaults to 0.5.
@@ -141,7 +141,7 @@ class SABRE:
             coupling_list
         )
         self.phy_qubit_num = self.coupling_graph.num_nodes()
-        self.extention_size = extention_size
+        self.extension_size = extension_size
         self.weight = weight
         self.decay = decay
 
@@ -427,7 +427,7 @@ class SABRE:
 
         front_layer = self.front_layer
         dist = self.dist
-        extention_size = self.extention_size
+        extension_size = self.extension_size
 
         # map from qubit -> gates that include the qubit
         front_qubit_gate_map = {}
@@ -449,7 +449,7 @@ class SABRE:
         # temporary queue to store nodes whose indegree is modified
         temp_indegree = {}
         extend_queue = deque(front_layer)
-        while len(extend_set) < extention_size and extend_queue:
+        while len(extend_set) < extension_size and extend_queue:
             node = extend_queue.popleft()
             for successor in node.edges:
                 if successor not in temp_indegree:

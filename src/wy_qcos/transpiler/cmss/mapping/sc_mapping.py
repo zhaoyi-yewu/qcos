@@ -52,7 +52,7 @@ DEFAULT_SC_MAPPING_OPTIONS = {
     # 深度评分衰减率
     "score_decay_rate_depth": 0.85,
     # SABRE算法参数
-    "sabre_extention_size": 20,
+    "sabre_extension_size": 20,
     "sabre_weight": 0.5,
     "sabre_decay": 0.001,
 }
@@ -80,7 +80,7 @@ SC_MAPPING_OPTIONS_SCHEMA = {
         Or(int, float), lambda x: 0 <= x <= 1
     ),
     # SABRE算法参数
-    Optional("sabre_extention_size"): And(int, lambda x: x > 0),
+    Optional("sabre_extension_size"): And(int, lambda x: x > 0),
     Optional("sabre_weight"): And(Or(int, float), lambda x: 0 <= x <= 1),
     Optional("sabre_decay"): And(Or(int, float), lambda x: 0 <= x <= 1),
 }
@@ -134,9 +134,9 @@ class SCRoute(ABC):
 
         # SABRE算法参数
         if routing_algorithm == "sabre":
-            routing_kwargs["extention_size"] = self.sc_mapping_options.get(
-                "sabre_extention_size",
-                DEFAULT_SC_MAPPING_OPTIONS["sabre_extention_size"],
+            routing_kwargs["extension_size"] = self.sc_mapping_options.get(
+                "sabre_extension_size",
+                DEFAULT_SC_MAPPING_OPTIONS["sabre_extension_size"],
             )
             routing_kwargs["weight"] = self.sc_mapping_options.get(
                 "sabre_weight",
