@@ -68,8 +68,7 @@ class QuantumCodeBase(ABC):
         """Encode a logical state into the physical qubit state.
 
         Args:
-            circuit: representing the quantum circuit that prepares the logical state
-                     to encode.
+            circuit: representing the quantum circuit
 
         Returns:
             encoded quantum circuit.
@@ -77,50 +76,27 @@ class QuantumCodeBase(ABC):
         raise NotImplementedError("encode() must be implemented by subclass")
 
     @abstractmethod
-    def decode(self, circuit: list) -> list:
-        """Decode the physical qubit state back to logical state.
+    def decode(self, circuit, **kwargs):
+        """Decode the syndrome.
 
         Args:
-            circuit: A list of objects representing
-                     the physical state circuit.
-
-        Returns:
-            A list of objects representing the decoded
-            logical state circuit.
+            circuit: quantum circuit
+            kwargs: optional args
         """
         raise NotImplementedError("decode() must be implemented by subclass")
 
     @abstractmethod
-    def correct(self, syndrome: list[int], circuit: list) -> list:
+    def correct(self, circuit, **kwargs):
         """Apply error correction based on the syndrome measurement.
 
         Args:
-            syndrome: The measured syndrome as a list of integers.
-            circuit: A list of objects representing
-                     the current physical state circuit.
+            circuit: quantum circuit
+            kwargs: optional args
 
         Returns:
-            A list of objects representing the corrected
-            physical state circuit.
+            corrected result
         """
         raise NotImplementedError("correct() must be implemented by subclass")
-
-    def measure_syndrome(self, circuit: list) -> list[int]:
-        """Measure the syndrome of the physical qubit state.
-
-        This is a default implementation that can be overridden by subclasses.
-
-        Args:
-            circuit: A list of objects representing
-                     the physical state circuit.
-
-        Returns:
-            The measured syndrome as a list of integers.
-        """
-        # Default implementation returns empty syndrome
-        raise NotImplementedError(
-            "measure_syndrome() must be implemented by subclass"
-        )
 
     def validate_and_format_circuit(self, circuit, num_qubits: int):
         """Validate and formatcircuit data.
@@ -130,56 +106,8 @@ class QuantumCodeBase(ABC):
             num_qubits: qubits num
 
         Returns:
-
+            quantum circuit
         """
         raise NotImplementedError(
             "validate_and_format_circuit() must be implemented by subclass"
         )
-
-    def run(
-        self,
-        gate_list: list,
-        inject_errors: list[dict] | None = None,
-    ) -> list:
-        """Run the complete error correction cycle.
-
-        This method performs encoding, optional error injection,
-        syndrome measurement, error correction, and decoding in sequence.
-
-        Args:
-            gate_list: A list of objects representing
-                       the quantum circuit that prepares the initial
-                       logical state.
-            inject_errors: inject_errors
-
-        Returns:
-            A list of objects representing the final
-            decoded logical state circuit.
-        """
-        # Step 0: Format and filter the input circuit
-        circuit = self.format_data(gate_list)
-
-        # Step 1: Encode the initial state
-        circuit = self.encode(circuit)
-
-        # Step 2: Inject errors if specified
-        if inject_errors:
-            for error_spec in inject_errors:
-                error_type = error_spec.get("error_type", "X")
-                qubit_index = error_spec.get("qubit_index", 0)
-                circuit = self.inject_error(
-                    circuit=circuit,
-                    qubit_index=qubit_index,
-                    error_type=error_type,
-                )
-
-        # Step 3: Measure syndrome
-        syndrome = self.measure_syndrome(circuit)
-
-        # Step 4: Apply error correction
-        circuit = self.correct(syndrome, circuit)
-
-        # Step 5: Decode the circuit
-        final_circuit = self.decode(circuit)
-
-        return final_circuit

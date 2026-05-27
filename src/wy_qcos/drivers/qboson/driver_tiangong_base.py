@@ -132,6 +132,7 @@ class DriverTiangongBase(DriverQuboBase):
             data: data
             data_type: data type
             shots: shots (Default value = 1)
+            qec_options: qec options
         """
         # pylint: disable=duplicate-code
         data_index = data["index"]
