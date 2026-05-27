@@ -34,6 +34,9 @@ GateOperation::GateOperation(std::string name_, std::vector<int> targets_,
 }
 
 void GateOperation::validate_params() const {
+  if (name == "sync") {
+    return;
+  }
   if (operation_type < OperationType::SINGLE_QUBIT_OPERATION) {
     throw std::invalid_argument("Unsupported operation type for gate: " +
                                 name);

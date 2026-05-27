@@ -216,6 +216,8 @@ class SABRE:
         # list storing the latest node acting on each logical qubit
         pre_nodes: list[Node | None] = [None for _ in range(logic_qubit_num)]
         for gate in gates_list:
+            if gate.name == "sync":
+                continue
             node = Node(gate)
             # in-degree of the node
             pre_number = 0

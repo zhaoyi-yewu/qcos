@@ -197,6 +197,9 @@ void SABRE::execute_routing(const std::vector<GateOperation>& gates_list,
   touched_indices_.reserve(extension_size_ * 4);
 
   for (const auto& gate : gates_list) {
+    if (gate.name == "sync") {
+      continue;
+    }
     node_pool.emplace_back(gate);
     Node* node = &node_pool.back();
     node->index = (int)node_pool.size() - 1;
