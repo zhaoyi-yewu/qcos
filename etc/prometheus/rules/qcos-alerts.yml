@@ -1,0 +1,110 @@
+groups:
+  - name: qcos-alerts
+    rules:
+      - alert: QcosServiceUnavailable
+        expr: system_healthy == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "QCOS服务不可用"
+          description: "QCOS系统心跳停止已达2分钟"
+
+      - alert: PrefectComponentDown
+        expr: component_status{component="prefect"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prefect组件异常"
+          description: "Prefect组件健康检查失败超过1分钟"
+
+      - alert: RedisComponentDown
+        expr: component_status{component="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis组件异常"
+          description: "Redis组件健康检查失败超过1分钟"
+
+      - alert: FastAPIComponentDown
+        expr: component_status{component="fastapi"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "FastAPI组件异常"
+          description: "FastAPI组件健康检查失败超过1分钟"
+
+      - alert: WorkerComponentDown
+        expr: component_status{component="worker"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Worker组件异常"
+          description: "Worker组件健康检查失败超过2分钟"
+
+      - alert: HeartbeatStale
+        expr: (time() - heartbeat_timestamp) > 300
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "心跳数据超时"
+          description: "QCOS服务心跳已超过5分钟未更新"
+
+      - alert: JobFailuresHigh
+        expr: delta(total{status="failed"}[10m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "任务失败率过高"
+          description: "最近10分钟内任务失败超过50个"
+
+      - alert: JobsQueueingHigh
+        expr: total{status="queued"} > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "任务队列堆积"
+          description: "当前排队中的任务超过50个"
+
+      - alert: JobsCancellingStuck
+        expr: total{status="cancelling"} > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "过多任务处于取消中状态"
+          description: "当前取消中的任务超过10个"
+
+      - alert: HighRequestErrorRate
+        expr: sum(rate(api_requests_total{status_code=~"5.."}[5m])) / sum(rate(api_requests_total[5m])) > 0.05
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API错误率过高"
+          description: "API 5xx错误率超过5%"
+
+      - alert: InProgressRequestsHigh
+        expr: api_requests_in_progress > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API并发请求过高"
+          description: "当前正在处理的API请求超过500个"
+
+      - alert: SlowApiRequests
+        expr: histogram_quantile(0.95, rate(api_request_duration_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API响应时间过长"
+          description: "API P95响应时间超过2秒"

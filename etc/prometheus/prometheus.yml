@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+rule_files:
+  - '/etc/prometheus/rules/*.yml'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['localhost:9093']
+
+scrape_configs:
+  - job_name: "qcos-metrics"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["localhost:19400"]
+        labels:
+          instance: "qcos-server"
+          service: "wuyue-qcos"
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          instance: "prometheus-server"
