@@ -16,7 +16,12 @@
 
 set -e
 
-PROJECT_ROOT=$(cd "$(dirname "$0")"; pwd)
+BASE_DIR=$(dirname "$0")
+BASE_DIR=$(readlink -f ${BASE_DIR})
+TOP_DIR=$(readlink -f ${BASE_DIR}/../..)
+
+PROJECT_ROOT=${TOP_DIR}/src_cpp/transpiler_cpp
+TARGET_DIR=${TOP_DIR}/src/wy_qcos/transpiler
 BUILD_DIR=${PROJECT_ROOT}/build
 DIST_DIR=${PROJECT_ROOT}/dist
 
@@ -69,18 +74,12 @@ cd ${BUILD_DIR}
 cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
 make -j${NPROC}
 
-# if in WuYueOs, copy .so and .pyi to wy_qcos/transpiler
-PARENT2_PATH="$(dirname "$(dirname "$PROJECT_ROOT")")"
-PARENT2_DIR="$(basename "$PARENT2_PATH")"
-
-if [[ "$PARENT2_DIR" == "WuYueOs" ]]; then
-    TARGET_DIR="$PARENT2_PATH/src/wy_qcos/transpiler"
-    mkdir -p "$TARGET_DIR"
-    echo "Copying dist to $TARGET_DIR"
-    if [[ -d "${DIST_DIR}/${BUILD_TYPE}" ]]; then
-        cp -r "${DIST_DIR}/${BUILD_TYPE}/." "$TARGET_DIR/"
-    else
-        cp -r "${DIST_DIR}/." "$TARGET_DIR/"
-    fi
-    echo "Copy done"
+# copy .so and .pyi to wy_qcos/transpiler
+mkdir -p "$TARGET_DIR"
+echo "Copying dist to $TARGET_DIR"
+if [[ -d "${DIST_DIR}/${BUILD_TYPE}" ]]; then
+    cp -r "${DIST_DIR}/${BUILD_TYPE}/." "$TARGET_DIR/"
+else
+    cp -r "${DIST_DIR}/." "$TARGET_DIR/"
 fi
+echo "Copy done"
