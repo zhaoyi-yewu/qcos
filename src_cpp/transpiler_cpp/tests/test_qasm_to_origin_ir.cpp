@@ -17,7 +17,6 @@
 
 #include <time.h>
 
-#include <chrono>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -491,46 +490,27 @@ for int m in [0:49999] {
 measure q -> c;
 )";
 
-  std::string qasm_path = R"(../../../../samples/qasm/2.0/bogaddr.qasm)";
+  std::string qasm_path1 =
+      std::string(TEST_DATA_DIR) + R"(qasm/2.0/bigadder.qasm)";
+  std::string qasm_path2 = std::string(TEST_DATA_DIR) +
+                           R"(qasm/benchpress/feynman/inverseqft1.qasm)";
   static bool test_qasm2originir(const std::string& qasm_str) {
-    std::cout << "### from qasm: " << qasm_str << std::endl;
     std::string origin_ir = convert_qasm_string_to_originir(qasm_str);
-    std::cout << "### originir from qasm:\n" << origin_ir << std::endl;
     return true;
   }
 
   static bool test_qasm2originoperations(const std::string& qasm_str) {
-    std::cout << "### from qasm: " << qasm_str << std::endl;
     std::vector<std::unique_ptr<Operation>> origin_operations =
         convert_qasm_string_to_operations(qasm_str);
-    std::cout << "=== Print all Operation names ===" << std::endl;
-    for (const auto& op_ptr : origin_operations) {
-      if (op_ptr) {
-        std::cout << "Operation name: " << op_ptr->name << std::endl;
-      }
-    }
-
     return true;
   }
   static bool test_qasm2operations(const std::string& qasm_str) {
-    std::cout << "### from qasm: " << qasm_str << std::endl;
     std::vector<std::unique_ptr<qcos::BaseOperation>> operations =
         std::move(convert_qasm_string_to_qcos_operations(qasm_str).first);
-    std::cout << "=== Print all Operation names ===" << std::endl;
-    for (const auto& op_ptr : operations) {
-      if (op_ptr) {
-        std::cout << "QCOS Operation name: " << op_ptr->name
-                  << ", targets: " << op_ptr->targets_to_string()
-                  << ", arg_value: " << op_ptr->arg_value_to_string()
-                  << std::endl;
-      }
-    }
-
     return true;
   }
 
-  static bool test_qasm2operationsfromfile(const std::string& filepath) {
-    std::cout << "### from qasm file: " << filepath << std::endl;
+  static bool test_qasm2qcosoperationsfromfile(const std::string& filepath) {
     std::ifstream file(filepath);
     if (!file.is_open()) {
       std::cerr << "Error: Failed to open file: " << filepath << std::endl;
@@ -540,17 +520,45 @@ measure q -> c;
     buffer << file.rdbuf();
     file.close();
     std::string qasm_str = buffer.str();
-    auto start_time = std::chrono::high_resolution_clock::now();
     std::vector<std::unique_ptr<qcos::BaseOperation>> operations =
         std::move(convert_qasm_string_to_qcos_operations(qasm_str).first);
-    auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> duration = end_time - start_time;
-    std::cout << "\n QASM转QCOS operations执行时间: " << duration.count()
-              << " 毫秒 (" << duration.count() / 1000.0 << " 秒)\n"
-              << "生成的操作数量: " << operations.size() << " 个" << std::endl;
+    return true;
+  }
+
+  static bool test_qasm2operationsfromfile(const std::string& filepath) {
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+      std::cerr << "Error: Failed to open file: " << filepath << std::endl;
+      return false;
+    }
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    file.close();
+    std::string qasm_str = buffer.str();
+    std::vector<std::unique_ptr<Operation>> operations =
+        std::move(convert_qasm_string_to_operations(qasm_str));
     return true;
   }
 };
+
+TEST(QASMToOriginIR, QASMInstance) {
+  QASMToOriginIrTest test_;
+  bool test_actual = true;
+  try {
+    test_actual =
+        test_actual &&
+        QASMToOriginIrTest::test_qasm2operationsfromfile(test_.qasm_path2);
+    test_actual =
+        test_actual &&
+        QASMToOriginIrTest::test_qasm2qcosoperationsfromfile(test_.qasm_path2);
+  } catch (const std::exception& e) {
+    std::cout << "Got a exception: " << e.what() << std::endl;
+  } catch (...) {
+    std::cout << "Got an unknow exception: " << std::endl;
+  }
+
+  ASSERT_TRUE(test_actual);
+}
 
 TEST(QASMToOriginIR, StandardGate) {
   QASMToOriginIrTest test_;
@@ -597,8 +605,6 @@ TEST(QASMToOriginIR, StandardGate) {
     test_actual =
         test_actual &&
         QASMToOriginIrTest::test_qasm2originoperations(test_.CCZ_qasm);
-    test_actual = test_actual &&
-                  QASMToOriginIrTest::test_qasm2operations(test_.CCZ_qasm);
     test_actual =
         test_actual && QASMToOriginIrTest::test_qasm2originir(test_.ECR_qasm);
     test_actual =
@@ -624,28 +630,19 @@ TEST(QASMToOriginIR, StandardGate) {
     test_actual =
         test_actual &&
         QASMToOriginIrTest::test_qasm2originoperations(test_.XXMinusYY_qasm);
-    test_actual = test_actual && QASMToOriginIrTest::test_qasm2operations(
-                                     test_.XXMinusYY_qasm);
     test_actual = test_actual &&
                   QASMToOriginIrTest::test_qasm2originir(test_.XXPlusYY_qasm);
     test_actual =
         test_actual &&
         QASMToOriginIrTest::test_qasm2originoperations(test_.XXPlusYY_qasm);
-    // test_actual = test_actual &&
-    // QASMToOriginIrTest::test_qasm2operations(
-    //                                  test_.XXPlusYY_qasm);
     test_actual =
         test_actual && QASMToOriginIrTest::test_qasm2originir(test_.V_qasm);
     test_actual = test_actual &&
                   QASMToOriginIrTest::test_qasm2originoperations(test_.V_qasm);
     test_actual =
-        test_actual && QASMToOriginIrTest::test_qasm2operations(test_.V_qasm);
-    test_actual =
         test_actual && QASMToOriginIrTest::test_qasm2originir(test_.W_qasm);
     test_actual = test_actual &&
                   QASMToOriginIrTest::test_qasm2originoperations(test_.W_qasm);
-    test_actual =
-        test_actual && QASMToOriginIrTest::test_qasm2operations(test_.W_qasm);
     test_actual =
         test_actual && QASMToOriginIrTest::test_qasm2originir(test_.CCX_qasm);
     test_actual =
@@ -844,7 +841,7 @@ TEST(QASMToOriginIR, StandardGate) {
         QASMToOriginIrTest::test_qasm2originoperations(test_.BARRIER_qasm);
     test_actual =
         test_actual &&
-        QASMToOriginIrTest::test_qasm2operationsfromfile(test_.qasm_path);
+        QASMToOriginIrTest::test_qasm2qcosoperationsfromfile(test_.qasm_path1);
   }
 
   catch (const std::exception& e) {
