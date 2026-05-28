@@ -315,16 +315,16 @@ class TestSCRoutingFactory:
     def test_factory_sabre_defaults(self):
         routing = SCRoutingFactory.create_routing("sabre")
         assert isinstance(routing, SABRERouting)
-        assert routing.extention_size == 20
+        assert routing.extension_size == 20
         assert routing.weight == 0.5
         assert routing.decay == 0.001
 
     def test_factory_sabre_custom(self):
         routing = SCRoutingFactory.create_routing(
-            "sabre", extention_size=10, weight=0.7, decay=0.02
+            "sabre", extension_size=10, weight=0.7, decay=0.02
         )
         assert isinstance(routing, SABRERouting)
-        assert routing.extention_size == 10
+        assert routing.extension_size == 10
         assert routing.weight == 0.7
         assert routing.decay == 0.02
 

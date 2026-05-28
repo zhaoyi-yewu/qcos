@@ -44,7 +44,7 @@ std::vector<int> sabre_initial_mapping(
  * @param initial_l2p 初始逻辑到物理映射，可为空。
  *        当该参数为空时，函数内部会先调用 sabre_initial_mapping
  *        生成初始映射，再继续执行 routing。
- * @param extention_size 扩展集大小，用于 lookahead 成本计算，默认 20。
+ * @param extension_size 扩展集大小，用于 lookahead 成本计算，默认 20。
  * @param weight 前沿层与扩展层成本权重，默认 0.5。
  * @param decay SWAP 衰减系数，默认 0.001。
  * @return std::vector<GateOperation> routing 后的物理门序列。
@@ -52,7 +52,7 @@ std::vector<int> sabre_initial_mapping(
 std::vector<GateOperation> sabre_routing(
     const std::vector<GateOperation>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<int>& initial_l2p = {}, int extention_size = 20,
+    const std::vector<int>& initial_l2p = {}, int extension_size = 20,
     double weight = 0.5, double decay = 0.001);
 
 /**
@@ -64,7 +64,7 @@ std::vector<GateOperation> sabre_routing(
 std::vector<std::unique_ptr<BaseOperation>> sabre_routing(
     const std::vector<std::unique_ptr<BaseOperation>>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<int>& initial_l2p = {}, int extention_size = 20,
+    const std::vector<int>& initial_l2p = {}, int extension_size = 20,
     double weight = 0.5, double decay = 0.001);
 
 /**
@@ -103,12 +103,12 @@ class SABRE {
   /**
    * @brief SABRE算法构造函数
    * @param coupling_list 量子芯片物理耦合关系，每个元素为一对物理量子比特编号
-   * @param extention_size 扩展集大小，用于lookahead成本计算，默认20
+   * @param extension_size 扩展集大小，用于lookahead成本计算，默认20
    * @param weight 前沿层与扩展层成本权重，默认0.5
    * @param decay 物理比特衰减系数，默认0.001
    */
   SABRE(const std::vector<std::pair<int, int>>& coupling_list,
-        int extention_size = 20, double weight = 0.5, double decay = 0.001);
+        int extension_size = 20, double weight = 0.5, double decay = 0.001);
 
   /**
    * @brief 执行SABRE算法，将逻辑量子门映射到物理量子门
@@ -151,7 +151,7 @@ class SABRE {
 
  private:
   int phy_qubit_num_;                               ///< 物理量子比特总数
-  int extention_size_;                              ///< 扩展深度
+  int extension_size_;                              ///< 扩展深度
   double weight_;                                   ///< 扩展层权重
   double decay_;                                    ///< SWAP衰减因子
   std::vector<std::pair<int, int>> coupling_list_;  ///< 物理耦合边列表

@@ -35,7 +35,7 @@ class SCRoutingFactory:
         Args:
             routing_algorithm: 路由算法名称，支持 "mct", "sc", "sabre"
             **kwargs: 路由算法的额外参数
-                - 对于SABRE算法：extention_size, weight, decay
+                - 对于SABRE算法：extension_size, weight, decay
                 - 对于MCTS算法：selec_times
 
         Returns:
@@ -53,11 +53,11 @@ class SCRoutingFactory:
             return routing
         elif routing_algorithm == "sabre":
             # 使用SABRE算法
-            extention_size = kwargs.get("extention_size", 20)
+            extension_size = kwargs.get("extension_size", 20)
             weight = kwargs.get("weight", 0.5)
             decay = kwargs.get("decay", 0.001)
             return SABRERouting(
-                extention_size=extention_size,
+                extension_size=extension_size,
                 weight=weight,
                 decay=decay,
             )

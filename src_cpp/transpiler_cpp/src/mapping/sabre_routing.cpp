@@ -30,9 +30,9 @@ namespace qcos {
 std::vector<GateOperation> sabre_routing(
     const std::vector<GateOperation>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<int>& initial_l2p, int extention_size, double weight,
+    const std::vector<int>& initial_l2p, int extension_size, double weight,
     double decay) {
-  SABRE sabre(coupling_list, extention_size, weight, decay);
+  SABRE sabre(coupling_list, extension_size, weight, decay);
   sabre.execute(gates_list, initial_l2p);
   return sabre.get_physical_gates();
 }
@@ -40,7 +40,7 @@ std::vector<GateOperation> sabre_routing(
 std::vector<std::unique_ptr<BaseOperation>> sabre_routing(
     const std::vector<std::unique_ptr<BaseOperation>>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<int>& initial_l2p, int extention_size, double weight,
+    const std::vector<int>& initial_l2p, int extension_size, double weight,
     double decay) {
   std::vector<GateOperation> gate_ops;
   gate_ops.reserve(gates_list.size());
@@ -55,7 +55,7 @@ std::vector<std::unique_ptr<BaseOperation>> sabre_routing(
 
   // execute SABRE routing on GateOperations
   std::vector<GateOperation> routed_gate_ops = sabre_routing(
-      gate_ops, coupling_list, initial_l2p, extention_size, weight, decay);
+      gate_ops, coupling_list, initial_l2p, extension_size, weight, decay);
 
   // convert routed GateOperation back to BaseOperation
   std::vector<std::unique_ptr<BaseOperation>> routed_ops;
@@ -68,8 +68,8 @@ std::vector<std::unique_ptr<BaseOperation>> sabre_routing(
 }
 
 SABRE::SABRE(const std::vector<std::pair<int, int>>& coupling_list,
-             int extention_size, double weight, double decay)
-    : extention_size_(extention_size),
+             int extension_size, double weight, double decay)
+    : extension_size_(extension_size),
       weight_(weight),
       decay_(decay),
       coupling_list_(coupling_list) {
@@ -194,7 +194,7 @@ void SABRE::execute_routing(const std::vector<GateOperation>& gates_list,
   // Pre-allocate temp_indegree buffer
   temp_indegree_.assign(gates_list.size(), -1);
   touched_indices_.clear();
-  touched_indices_.reserve(extention_size_ * 4);
+  touched_indices_.reserve(extension_size_ * 4);
 
   for (const auto& gate : gates_list) {
     node_pool.emplace_back(gate);
@@ -382,12 +382,12 @@ void SABRE::heuristic_cost(const std::vector<int>& logic2phy, double& h_total,
   touched_indices_.clear();
 
   std::vector<Node*> bfs_queue;
-  bfs_queue.reserve(extention_size_ + front_layer_.size());
+  bfs_queue.reserve(extension_size_ + front_layer_.size());
   bfs_queue.insert(bfs_queue.end(), front_layer_.begin(), front_layer_.end());
   int queue_pos = 0;
   e_count = 0;
 
-  while (e_count < extention_size_ && queue_pos < (int)bfs_queue.size()) {
+  while (e_count < extension_size_ && queue_pos < (int)bfs_queue.size()) {
     Node* node = bfs_queue[queue_pos++];
     for (auto* successor : node->edges) {
       int idx = successor->index;

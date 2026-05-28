@@ -1314,7 +1314,7 @@ class SABRE:
     def __init__(
         self,
         coupling_list: list[tuple[int, int]],
-        extention_size: int = 20,
+        extension_size: int = 20,
         weight: float = 0.5,
         decay: float = 0.001,
     ) -> None:
@@ -1323,7 +1323,7 @@ class SABRE:
         Args:
             coupling_list (list[tuple[int, int]]): Physical qubit connectivity
                 graph.
-            extention_size (int, optional): Size of the lookahead set.
+            extension_size (int, optional): Size of the lookahead set.
                 Defaults to 20.
             weight (float, optional): Weight between front layer and lookahead
                 cost. Defaults to 0.5.
@@ -1617,7 +1617,7 @@ def sabre_routing(
     gates_list: list[BaseOperation],
     coupling_list: list[tuple[int, int]],
     initial_l2p: list[int] = ...,
-    extention_size: typing.SupportsInt = ...,
+    extension_size: typing.SupportsInt = ...,
     weight: typing.SupportsFloat = ...,
     decay: typing.SupportsFloat = ...,
 ) -> list[BaseOperation]:
