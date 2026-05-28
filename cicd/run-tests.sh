@@ -45,6 +45,7 @@ function usage {
     echo "Run QCOS's test suite(s)"
     echo ""
     echo "  -p, --pep8                        Run PEP8 coding style check"
+    echo "  -b  --build-cpp                   Run cpp code build"
     echo "  -u, --unit-test TEST_CASES        Run unit tests (QCOS)"
     echo "  -c, --coverage  TEST_CASES        Run unit tests and generate code coverage report (QCOS)"
     echo "  -j, --client-unit-test TEST_CASES Run unit tests (QCOS CLIENT)"
@@ -57,7 +58,7 @@ function usage {
     echo ""
 }
 
-opts=$(getopt -o pu:c:j:e:s:m:h --long pep8,unit-test:,coverage:,client-unit-test:,client-coverage:,system-test:pytest-mark:,help -- "$@")
+opts=$(getopt -o pbu:c:j:e:s:m:h --long pep8,build-cpp,unit-test:,coverage:,client-unit-test:,client-coverage:,system-test:pytest-mark:,help -- "$@")
 if [[ $? -ne 0 ]]; then
   exit 1
 fi
@@ -69,6 +70,7 @@ LANGUAGE=en_US:en
 LC_ALL=C
 
 pep8=false
+build_cpp=false
 unit_test=""
 coverage=""
 client_unit_test=""
@@ -76,6 +78,7 @@ client_coverage=""
 system_test=""
 pytest_mark=""
 pep8_success=-1
+build_cpp_success=-1
 unit_test_success=-1
 coverage_success=-1
 client_unit_test_success=-1
@@ -87,6 +90,7 @@ while true; do
   case "$1" in
     -h | --help )        usage ; exit 0; shift ;;
     -p | --pep8 )        pep8=true;      shift ;;
+    -b | --build-cpp )   build_cpp=true; shift ;;
     -u | --unit-test )   unit_test="$2"; shift 2;;
     -c | --coverage )    coverage="$2";  shift 2;;
     -j | --client-unit-test ) client_unit_test="$2"; shift 2;;
@@ -99,9 +103,9 @@ while true; do
 done
 
 # check user input options
-if [ "$pep8" = false ] && [ -z "$unit_test" ] && [ -z "$coverage" ] \
-  && [ -z "$client_unit_test" ] && [ -z "$client_coverage" ] \
-  && [ -z "$system_test" ]; then
+if [ "$pep8" = false ] && [ "$build_cpp" = false ] && [ -z "$unit_test" ] \
+  && [ -z "$coverage" ]  && [ -z "$client_unit_test" ] \
+  && [ -z "$client_coverage" ] && [ -z "$system_test" ]; then
   echo -e "Error: Invalid arguments\n"
   usage
   exit 1
@@ -112,6 +116,13 @@ function run_pep8 {
   echo "[Running pep8 check]"
   ${wrapper} "${TOP_DIR}/cicd/code-formatter.sh"
   pep8_success=$?
+  echo
+}
+
+function run_build_cpp {
+  echo "[Running cpp build]"
+  ${wrapper} "${TOP_DIR}/src_cpp/transpiler_cpp/build-cpp.sh"
+  build_cpp_success=$?
   echo
 }
 
@@ -267,6 +278,9 @@ function run_tests {
   if [ "$pep8" = true ]; then
     run_pep8
   fi
+  if [ "$build_cpp" = true ]; then
+    run_build_cpp
+  fi
   if [ -n "$unit_test" ]; then
     run_unit_tests $unit_test $pytest_mark
   fi
@@ -287,6 +301,7 @@ function run_tests {
 function print_report {
   failure=false
   pep8_result="N/A"
+  build_cpp_result="N/A"
   unit_test_result="N/A"
   coverage_result="N/A"
   client_unit_test_result="N/A"
@@ -297,6 +312,12 @@ function print_report {
     pep8_result="SUCCESS"
   elif [ $pep8_success -gt 0 ]; then
     pep8_result="FAILURE"
+    failure=true
+  fi
+  if [ $build_cpp_success -eq 0 ]; then
+    build_cpp_result="SUCCESS"
+  elif [ $build_cpp_success -gt 0 ]; then
+    build_cpp_result="FAILURE"
     failure=true
   fi
   if [ $unit_test_success -eq 0 ]; then
@@ -332,6 +353,7 @@ function print_report {
 
   echo "[QCOS Test Results]"
   echo "Python PEP8 coding style check    : [$pep8_result]"
+  echo "Cpp code build check              : [$build_cpp_result]"
   echo "Unit tests check (QCOS)           : [$unit_test_result]"
   echo "Code coverage check (QCOS)        : [$coverage_result]"
   echo "Unit tests check (QCOS CLIENT)    : [$client_unit_test_result]"
