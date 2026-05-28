@@ -17,8 +17,10 @@
 
 #pragma once
 
+#include <memory>
 #include <vector>
 
+#include "circuit/base_operation.h"
 #include "circuit/gate_operation.h"
 
 namespace qcos {
@@ -49,6 +51,18 @@ std::vector<int> sabre_initial_mapping(
  */
 std::vector<GateOperation> sabre_routing(
     const std::vector<GateOperation>& gates_list,
+    const std::vector<std::pair<int, int>>& coupling_list,
+    const std::vector<int>& initial_l2p = {}, int extention_size = 20,
+    double weight = 0.5, double decay = 0.001);
+
+/**
+ * @brief SABRE routing 的 BaseOperation 版本接口。
+ * 
+ * 内部实现会将 BaseOperation 转换为 GateOperation，执行 routing 后再
+ * 转换回 BaseOperation。
+ */
+std::vector<std::unique_ptr<BaseOperation>> sabre_routing(
+    const std::vector<std::unique_ptr<BaseOperation>>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
     const std::vector<int>& initial_l2p = {}, int extention_size = 20,
     double weight = 0.5, double decay = 0.001);

@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "mapping/sabre_mapping.h"
+#include "mapping/sabre_utils.h"
 
 namespace qcos {
 
@@ -34,6 +35,36 @@ std::vector<GateOperation> sabre_routing(
   SABRE sabre(coupling_list, extention_size, weight, decay);
   sabre.execute(gates_list, initial_l2p);
   return sabre.get_physical_gates();
+}
+
+std::vector<std::unique_ptr<BaseOperation>> sabre_routing(
+    const std::vector<std::unique_ptr<BaseOperation>>& gates_list,
+    const std::vector<std::pair<int, int>>& coupling_list,
+    const std::vector<int>& initial_l2p, int extention_size, double weight,
+    double decay) {
+  std::vector<GateOperation> gate_ops;
+  gate_ops.reserve(gates_list.size());
+  // convert BaseOperation to GateOperation
+  for (const auto& op : gates_list) {
+    if (op == nullptr) {
+      throw std::invalid_argument(
+          "SABRE routing does not accept null BaseOperation pointers");
+    }
+    gate_ops.push_back(to_gate_operation(*op));
+  }
+
+  // execute SABRE routing on GateOperations
+  std::vector<GateOperation> routed_gate_ops = sabre_routing(
+      gate_ops, coupling_list, initial_l2p, extention_size, weight, decay);
+
+  // convert routed GateOperation back to BaseOperation
+  std::vector<std::unique_ptr<BaseOperation>> routed_ops;
+  routed_ops.reserve(routed_gate_ops.size());
+  for (const auto& op : routed_gate_ops) {
+    routed_ops.push_back(restore_base_operation(op));
+  }
+
+  return routed_ops;
 }
 
 SABRE::SABRE(const std::vector<std::pair<int, int>>& coupling_list,
