@@ -45,7 +45,9 @@ InverseCancellation::InverseGateRule::InverseGateRule(GateOperation gate_0_in,
 InverseCancellation::InverseCancellation(
     const std::vector<InverseGateRule>& gates_to_cancel) {
   for (const auto& gates : gates_to_cancel) {
+    // 判断是否为自反门
     if (!gates.is_pair()) {
+      // 判断 gate_0 是否为自反门
       if (!is_inverse(gates.gate_0)) {
         throw std::invalid_argument("Gate " + gates.gate_0.name +
                                     " is not self-inverse");
@@ -54,6 +56,7 @@ InverseCancellation::InverseCancellation(
       continue;
     }
 
+    // 判断 gate_0 和 gate_1 是否互逆
     if (!is_inverse(gates.gate_0, gates.gate_1)) {
       throw std::invalid_argument("Gate " + gates.gate_0.name + " and " +
                                   gates.gate_1->name + " are not inverse.");
@@ -68,9 +71,11 @@ int InverseCancellation::run(
     DAGCircuit& dag, const std::optional<std::set<std::string>>& basis_gates) {
   int reduced = 0;
   if (!self_inverse_gate_names_.empty()) {
+    // 处理自反门的成对消除逻辑
     reduced += run_on_self_inverse(dag, basis_gates);
   }
   if (!inverse_gate_pairs_.empty()) {
+    // 处理互逆门的成对消除逻辑
     reduced += run_on_inverse_pairs(dag, basis_gates);
   }
   return reduced;
@@ -89,6 +94,8 @@ bool InverseCancellation::is_inverse(
     return gate_0.hermitian;
   }
 
+  // 目前仅支持 s, sdg, t, tdg 这两对显式互逆门
+  // 其他门可通过设置 hermitian=true 来实现自反门对消。
   static const std::unordered_map<std::string, std::string> kInversePairs = {
       {"s", "sdg"}, {"sdg", "s"}, {"t", "tdg"}, {"tdg", "t"}};
 
@@ -104,14 +111,18 @@ int InverseCancellation::run_on_self_inverse(
 
   for (const auto& gate_name : self_inverse_gate_names_) {
     auto count_iterator = op_counts.find(gate_name);
+    // 如果电路中没有这个门，或者这个门只出现了一次（无法成对消去），则跳过。
     if (count_iterator == op_counts.end() || count_iterator->second <= 1 ||
         !is_gate_enabled(gate_name, basis_gates)) {
       continue;
     }
 
+    // 收集所有同名门的连续串
     auto gate_runs = dag.collect_runs({gate_name});
     for (const auto& gate_cancel_run : gate_runs) {
+      // partition 用于将连续串切分成若干段，每段内门的 qargs 都相同
       std::vector<std::vector<DAGNode*>> partitions;
+      // chunk 用于临时存储当前段的节点，遇到 qargs 变化或串尾时就切分出一段。
       std::vector<DAGNode*> chunk;
       const size_t max_index =
           gate_cancel_run.empty() ? 0u : gate_cancel_run.size() - 1;
@@ -130,6 +141,8 @@ int InverseCancellation::run_on_self_inverse(
         auto* next = index == max_index
                          ? nullptr
                          : as_op_node(gate_cancel_run[index + 1]);
+        // 当 qargs
+        // 变化时切分出一段，保证每段内的门都作用在同一组量子位上，才可成对消去。
         const bool qargs_changed =
             index == max_index || !next || current->qargs != next->qargs;
         if (qargs_changed) {
@@ -139,6 +152,7 @@ int InverseCancellation::run_on_self_inverse(
       }
 
       for (const auto& partition : partitions) {
+        // 如果分区内的门数量为奇数，则保留第一个门，其余门成对消去。
         const size_t keep_prefix = partition.size() % 2 == 0 ? 0u : 1u;
         for (size_t index = keep_prefix; index < partition.size(); ++index) {
           dag.remove_op_node(as_op_node(partition[index]));
@@ -178,6 +192,7 @@ int InverseCancellation::run_on_inverse_pairs(
           continue;
         }
 
+        // 只有当两个门作用在同一组量子位上时才可成对消去。
         const bool same_qargs = first->qargs == second->qargs;
         const bool ordered_match = same_qargs &&
                                    first->name() == gate_0_name &&
