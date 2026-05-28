@@ -27,7 +27,9 @@ from wy_qcos.transpiler.common.utils import (
     TranspileRuntime,
     trans_logger,
 )
-from wy_qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
+from wy_qcos.transpiler.cmss.transpiler_cmss_for_cpp import (
+    TranspilerHighPerformanceCmss,
+)
 from wy_qcos.transpiler.cmss.transpiler_cmd_line import (
     CMSSTranspilerPerf,
     TranspileParams,
@@ -188,10 +190,10 @@ class TestTranspilerCmdLine:
 
     def test_cmss_transpiler_perf_exec_by_na(self):
         with patch(
-            "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerCmss"
-        ) as MockTranspilerCmss:
+            "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerHighPerformanceCmss"
+        ) as MockTranspilerHighPerformanceCmss:
             mock_transpiler = MagicMock()
-            MockTranspilerCmss.return_value = mock_transpiler
+            MockTranspilerHighPerformanceCmss.return_value = mock_transpiler
             mock_transpiler.parse.return_value = {"000": (1, ["x"])}
             mock_transpiler.transpile.return_value = (
                 "transpiled_circuit",
@@ -214,10 +216,10 @@ class TestTranspilerCmdLine:
 
     def test_cmss_transpiler_perf_exec_by_sc(self):
         with patch(
-            "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerCmss"
-        ) as MockTranspilerCmss:
+            "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerHighPerformanceCmss"
+        ) as MockTranspilerHighPerformanceCmss:
             mock_transpiler = MagicMock()
-            MockTranspilerCmss.return_value = mock_transpiler
+            MockTranspilerHighPerformanceCmss.return_value = mock_transpiler
             mock_transpiler.parse.return_value = {"000": (1, ["x"])}
             mock_transpiler.transpile.return_value = (
                 "transpiled_circuit",
@@ -240,10 +242,10 @@ class TestTranspilerCmdLine:
 
     def test_cmss_transpiler_perf_exec_by_non(self):
         with patch(
-            "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerCmss"
-        ) as MockTranspilerCmss:
+            "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerHighPerformanceCmss"
+        ) as MockTranspilerHighPerformanceCmss:
             mock_transpiler = MagicMock()
-            MockTranspilerCmss.return_value = mock_transpiler
+            MockTranspilerHighPerformanceCmss.return_value = mock_transpiler
             mock_transpiler.parse.return_value = {"000": (1, ["x"])}
             mock_transpiler.transpile.return_value = (
                 "transpiled_circuit",
@@ -274,7 +276,7 @@ class TestTranspilerCmdLine:
             input_file=input_file, output_file=""
         )
         qasm_data = perf.read_qasm_from_file(str(file_path))
-        transpiler = TranspilerCmss()
+        transpiler = TranspilerHighPerformanceCmss()
         src_code_info = {"000": qasm_data}
         parse_result = transpiler.parse(src_code_info)
         perf.parse_results[file_path] = list(parse_result.values())[0]

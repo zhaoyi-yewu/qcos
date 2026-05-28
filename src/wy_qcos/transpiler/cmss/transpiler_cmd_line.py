@@ -30,7 +30,9 @@ from wy_qcos.transpiler.common.utils import (
     Timer,
     TranspilePerfConstant as TPC,
 )
-from wy_qcos.transpiler.cmss.transpiler_cmss_for_cpp import TranspilerCmss
+from wy_qcos.transpiler.cmss.transpiler_cmss_for_cpp import (
+    TranspilerHighPerformanceCmss,
+)
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.common.utils import (
     TranspileRuntime,
@@ -609,7 +611,7 @@ class CMSSTranspilerPerf:
                 trans_cfg_inst.set_tech_type(tech_type)
                 trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
 
-                transpiler = TranspilerCmss(
+                transpiler = TranspilerHighPerformanceCmss(
                     optimization_level=opt_level,
                     enable_na_move=True,
                     na_mapping_type=self.na_mapping_type,
@@ -636,7 +638,9 @@ class CMSSTranspilerPerf:
                 trans_cfg_inst.set_tech_type(tech_type)
                 trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
 
-                transpiler = TranspilerCmss(optimization_level=opt_level)
+                transpiler = TranspilerHighPerformanceCmss(
+                    optimization_level=opt_level
+                )
                 if len(base_gates) > 0:
                     expected_basis_gates = []
                     for gate in base_gates:
@@ -651,7 +655,9 @@ class CMSSTranspilerPerf:
                         Constant.TWO_QUBIT_GATE_CX,
                     ]
             else:
-                transpiler = TranspilerCmss(optimization_level=opt_level)
+                transpiler = TranspilerHighPerformanceCmss(
+                    optimization_level=opt_level
+                )
                 if len(base_gates) > 0:
                     expected_basis_gates = []
                     for gate in base_gates:
