@@ -274,7 +274,7 @@
    # 查看作业结果
    usage: qcos-cli get-job-results [-h] [-f {json,shell,table,value,yaml}] [-c COLUMN] [--noindent] [--prefix PREFIX]
                                    [--max-width <integer>] [--fit-width] [--print-empty]
-                                   [--outfile OUTFILE]
+                                   [--output-file OUTPUT_FILE]
                                    job_id
 
    Get job results.
@@ -297,7 +297,8 @@
    qcos-cli get-job-results 00000000-0000-4000-8000-000000000001
 
    # 获取作业结果，并保存为result.txt
-   qcos-cli get-job-results --outfile "result.txt" 00000000-0000-4000-8000-000000000001
+   qcos-cli get-job-results --output-file "result.txt" 
+   qcos-cli get-job-results 00000000-0000-4000-8000-000000000001 -f yaml --output-file a.txt -y
 
    # 获取所有作业列表
    qcos-cli list-jobs

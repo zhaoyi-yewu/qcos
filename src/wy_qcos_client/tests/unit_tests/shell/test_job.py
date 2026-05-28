@@ -208,7 +208,7 @@ class TestGetJobResults:
 
         mock_client = Mock(spec=Namespace)
         mock_client.job_id = job_id
-        mock_client.outfile = None
+        mock_client.output_file = None
         table_values = get_job_results.take_action(mock_client)
         assert table_values is None
 
@@ -230,7 +230,7 @@ class TestGetJobResults:
 
         mock_client = Mock(spec=Namespace)
         mock_client.job_id = job_id
-        mock_client.outfile = "result.txt"
+        mock_client.output_file = "result.txt"
         table_values = get_job_results.take_action(mock_client)
         assert table_values is None
         assert os.path.exists("result.txt") is True
