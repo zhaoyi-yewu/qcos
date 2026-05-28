@@ -18,6 +18,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <stdexcept>
+
 #include "circuit/gate_operation.h"
 #include "mapping/greedy_routing.h"
 #include "mapping/sabre_mapping.h"
@@ -25,6 +27,46 @@
 
 namespace py = pybind11;
 using namespace qcos;
+
+namespace {
+
+/**
+ * @brief 绑定 high_performance.sabre_routing 的 C++ BaseOperation 入口。
+ * 
+ * @param gates_list_raw Python 侧传入的 BaseOperation 对象列表。
+ * @param coupling_list 物理耦合图边列表。
+ * @param initial_l2p 初始逻辑到物理映射。
+ * @param extention_size 扩展集大小。
+ * @param weight 前沿层与扩展层成本权重。
+ * @param decay SWAP 衰减系数。
+ * @return py::list 路由后的 BaseOperation 对象列表。
+ */
+py::list bind_cpp_sabre_routing(
+    const std::vector<qcos::BaseOperation*>& gates_list_raw,
+    const std::vector<std::pair<int, int>>& coupling_list,
+    const std::vector<int>& initial_l2p, int extention_size, double weight,
+    double decay) {
+  std::vector<std::unique_ptr<qcos::BaseOperation>> gates_list;
+  gates_list.reserve(gates_list_raw.size());
+  for (auto* op : gates_list_raw) {
+    if (op == nullptr) {
+      throw std::invalid_argument(
+          "sabre_routing received a null BaseOperation");
+    }
+    gates_list.push_back(op->clone());
+  }
+
+  auto routed_ops = qcos::sabre_routing(gates_list, coupling_list, initial_l2p,
+                                        extention_size, weight, decay);
+
+  py::list py_list;
+  for (auto& op : routed_ops) {
+    py_list.append(std::move(op));
+  }
+  return py_list;
+}
+
+}  // namespace
 
 void bind_mapping(py::module_& m) {
   py::class_<SABRE>(m, "SABRE", "SABRE quantum routing algorithm")
@@ -109,7 +151,7 @@ Returns:
     list[int]: The initial logical-to-physical mapping.
 )pbdoc");
 
-  m.def("sabre_routing", &qcos::sabre_routing, py::arg("gates_list"),
+  m.def("sabre_routing", &bind_cpp_sabre_routing, py::arg("gates_list"),
         py::arg("coupling_list"), py::arg("initial_l2p") = std::vector<int>{},
         py::arg("extention_size") = 20, py::arg("weight") = 0.5,
         py::arg("decay") = 0.001,
@@ -117,7 +159,7 @@ Returns:
 Execute SABRE routing.
 
 Args:
-    gates_list (list[GateOperation]): Logical gate sequence.
+    gates_list (list[BaseOperation]): Logical operation sequence.
     coupling_list (list[tuple[int, int]]): Physical qubit coupling list.
     initial_l2p (list[int], optional): Initial logical-to-physical mapping.
         When empty, SABRE computes the initial mapping internally.
@@ -129,6 +171,6 @@ Args:
     decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
 
 Returns:
-    list[GateOperation]: The routed physical gate sequence.
+    list[BaseOperation]: The routed physical operation sequence.
 )pbdoc");
 }

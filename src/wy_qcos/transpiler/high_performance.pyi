@@ -1592,6 +1592,14 @@ def load_qasm_to_gate_list(filename: str) -> list[GateOperation]:
         list[GateOperation]: 解析得到的门操作列表
     """
 
+def create_gate(
+    name: str,
+    targets: list[int] = ...,
+    arg_value: list[float] = ...,
+    allow_undefined: bool = ...,
+) -> BaseOperation:
+    """根据名称创建门或操作对象."""
+
 def sabre_initial_mapping(
     gates_list: list[GateOperation], coupling_list: list[tuple[int, int]]
 ) -> list[int]:
@@ -1604,6 +1612,16 @@ def sabre_initial_mapping(
     Returns:
         list[int]: The initial logical-to-physical mapping.
     """
+
+def sabre_routing(
+    gates_list: list[BaseOperation],
+    coupling_list: list[tuple[int, int]],
+    initial_l2p: list[int] = ...,
+    extention_size: typing.SupportsInt = ...,
+    weight: typing.SupportsFloat = ...,
+    decay: typing.SupportsFloat = ...,
+) -> list[BaseOperation]:
+    """Execute SABRE routing for BaseOperation lists."""
 
 DOUBLE_QUBIT_OPERATION: (
     OperationType  # value = <OperationType.DOUBLE_QUBIT_OPERATION: 2>
