@@ -21,82 +21,8 @@ from collections import deque
 import networkx as nx
 import rustworkx as rx
 
-from wy_qcos.common.cmss.base_operation import BaseOperation
 from wy_qcos.common.cmss.gate_operation import SWAP
 from wy_qcos.common.cmss.gate_operation import GateOperation
-from wy_qcos.transpiler.cmss.mapping.utils.sabre_utils import (
-    normalize_topology,
-)
-from wy_qcos.transpiler.high_performance import (
-    BaseOperation as CppBaseOperation,
-)
-from wy_qcos.transpiler.high_performance import (
-    sabre_routing as cpp_sabre_routing,
-)
-
-
-def sabre_routing(
-    ir: list,
-    topology,
-    initial_l2p: list[int] | None = None,
-    extension_size: int = 20,
-    weight: float = 0.5,
-    decay: float = 0.001,
-):
-    """Route a single circuit with SABRE.
-
-    Args:
-        ir (list): A single-circuit IR list containing either Python cmss
-            BaseOperation objects or C++ high_performance BaseOperation
-            objects.
-        topology (Topology): Topology edges or a qpu_cfg-style topology
-            config.
-        initial_l2p (list[int] | None, optional): Initial logical-to-physical
-            mapping. Defaults to None.
-        extension_size (int, optional): Size of the lookahead set.
-            Defaults to 20.
-        weight (float, optional): Weight between front-layer and lookahead
-            heuristic terms. Defaults to 0.5.
-        decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
-
-    Returns:
-        list: The routed physical gate sequence.
-    """
-    if not isinstance(ir, list):
-        raise TypeError(
-            "Ir must be a single-circuit list of BaseOperation instances"
-        )
-
-    # convert topology(qpu_cfg, nx.Graph, dict, or list) to coupling list
-    coupling_list = normalize_topology(topology)
-
-    if len(ir) == 0:
-        return ir
-
-    first_op = ir[0]
-    # python version SABRE routing
-    if isinstance(first_op, BaseOperation):
-        sabre = SABRE(
-            coupling_list=coupling_list,
-            extension_size=extension_size,
-            weight=weight,
-            decay=decay,
-        )
-        sabre.execute(ir, initial_l2p)
-        return sabre.phy_exe_gates
-    # C++ version SABRE routing
-    elif CppBaseOperation is not None and isinstance(
-        first_op, CppBaseOperation
-    ):
-        initial_l2p = [] if initial_l2p is None else initial_l2p
-        result = cpp_sabre_routing(
-            ir, coupling_list, initial_l2p, extension_size, weight, decay
-        )
-        return result
-    else:
-        raise TypeError(
-            "Ir must be a single-circuit list of BaseOperation instances"
-        )
 
 
 class Node:

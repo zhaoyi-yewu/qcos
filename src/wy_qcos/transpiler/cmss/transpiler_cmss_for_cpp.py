@@ -17,6 +17,7 @@
 
 from schema import Optional
 
+from wy_qcos.common.cmss.base_operation import BaseOperation
 from wy_qcos.transpiler.common.utils import (
     TranspileRuntime,
     Timer,
@@ -50,8 +51,9 @@ from wy_qcos.transpiler.cmss.compiler.openqasm3.parser import (
 )
 from wy_qcos.transpiler.high_performance import (
     convert_qasm_string_to_qcos_operations,
+    BaseOperation as CppBaseOperation,
+    sabre_routing as cpp_sabre_routing,
 )
-from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing import sabre_routing
 from wy_qcos.transpiler.cmss.circuit.cpp_utils import (
     convert_ir_cpp2py,
     convert_ir_py2cpp,
@@ -59,6 +61,10 @@ from wy_qcos.transpiler.cmss.circuit.cpp_utils import (
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     DEFAULT_SC_MAPPING_OPTIONS,
 )
+from wy_qcos.transpiler.cmss.mapping.utils.sabre_utils import (
+    normalize_topology,
+)
+from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing import SABRE
 
 
 class TranspilerHighPerformanceCmss(TranspilerBase):
@@ -459,3 +465,44 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             mapping_dict = None
 
         return basis_gate_list, mapping_dict
+
+
+def sabre_routing(
+    ir: list,
+    topology,
+    initial_l2p: list[int] | None = None,
+    extension_size: int = 20,
+    weight: float = 0.5,
+    decay: float = 0.001,
+):
+    """Route a single circuit with SABRE."""
+    if not isinstance(ir, list):
+        raise TypeError(
+            "Ir must be a single-circuit list of BaseOperation instances"
+        )
+
+    coupling_list = normalize_topology(topology)
+
+    if len(ir) == 0:
+        return ir
+
+    first_op = ir[0]
+    if isinstance(first_op, BaseOperation):
+        sabre = SABRE(
+            coupling_list=coupling_list,
+            extension_size=extension_size,
+            weight=weight,
+            decay=decay,
+        )
+        sabre.execute(ir, initial_l2p)
+        return sabre.phy_exe_gates
+
+    if CppBaseOperation is not None and isinstance(first_op, CppBaseOperation):
+        initial_l2p = [] if initial_l2p is None else initial_l2p
+        return cpp_sabre_routing(
+            ir, coupling_list, initial_l2p, extension_size, weight, decay
+        )
+
+    raise TypeError(
+        "Ir must be a single-circuit list of BaseOperation instances"
+    )
