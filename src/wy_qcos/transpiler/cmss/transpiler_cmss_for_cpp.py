@@ -27,7 +27,6 @@ from wy_qcos.transpiler.cmss.compiler.decomposer import (
     decompose_gates_to_1q2q,
 )
 from wy_qcos.transpiler.cmss.decomposer.decomposer import Decomposer
-from wy_qcos.transpiler.cmss.compiler.parser import compile
 from wy_qcos.transpiler.cmss.mapping.aggregate.hierachy_tree import (
     HierarchyTree,
     get_block,
@@ -48,6 +47,9 @@ from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.transpiler_base import TranspilerBase
 from wy_qcos.transpiler.cmss.compiler.openqasm3.parser import (
     parse as openqasm3_parse,
+)
+from wy_qcos.transpiler.high_performance import (
+    convert_qasm_string_to_qcos_operations,
 )
 
 
@@ -79,13 +81,11 @@ class TranspilerCmss(TranspilerBase):
             optimization_level < Constant.MIN_OPTIMIZATION_LEVEL
             or optimization_level > Constant.MAX_OPTIMIZATION_LEVEL
         ):
-            raise TranspilerException(
-                f"""
+            raise TranspilerException(f"""
                 optimization_level should be between
                 {Constant.MIN_OPTIMIZATION_LEVEL} and
                 {Constant.MAX_OPTIMIZATION_LEVEL}
-                """
-            )
+                """)
         self.transpiler_options = {
             # default optimization level
             "optimization_level": optimization_level,
@@ -265,7 +265,9 @@ class TranspilerCmss(TranspilerBase):
                     Constant.CODE_TYPE_QASM,
                     Constant.CODE_TYPE_QASM2,
                 ]:
-                    num_qubits, parse_result = compile(value)
+                    parse_result, num_qubits = (
+                        convert_qasm_string_to_qcos_operations(value)
+                    )
                 else:
                     circuit = openqasm3_parse(value)
                     num_qubits = circuit.num_qubits

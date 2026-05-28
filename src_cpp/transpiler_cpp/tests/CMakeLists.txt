@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.11)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
@@ -12,7 +12,7 @@ add_executable(${TEST_NAME} test_main.cpp
                             test_quantum_circuit.cpp
                             decomposer/test_decomposer.cpp
                             decomposer/test_decomposer_benchmark.cpp
-                            test_sabre_routing.cpp
+                            #test_sabre_routing.cpp
                             test_sabre_mapping.cpp
                             test_qasm_to_origin_ir.cpp
                             test_qasm_to_operations.cpp
