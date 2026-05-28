@@ -1,29 +1,44 @@
-# This code is part of Qiskit.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
-# (C) Copyright IBM 2021.
-#
-# This code is licensed under the Apache License, Version 2.0. You may
-# obtain a copy of this license in the LICENSE.txt file in the root directory
-# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
-#
-# Any modifications or derivative works of this code must retain this
-# copyright notice, and modified files need to carry a notice indicating
-# that they have been altered from the originals.
-"""A collection of set of transforms."""
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+"""A collection of transforms."""
 
-# TODO: replace this with proper pulse transformation passes. Qiskit-terra/#6121
+# TODO: replace this with proper pulse transformation passes.
+# Qiskit-terra/#6121
 
-from typing import Union, Iterable, Tuple
+from collections.abc import Iterable
+from typing import TypeAlias, cast
 
 from wy_qcos.transpiler.common.pulse_ir.pulse.instructions import Instruction
-from wy_qcos.transpiler.common.pulse_ir.pulse.schedule import ScheduleBlock, Schedule
-from wy_qcos.transpiler.common.pulse_ir.pulse.transforms import canonicalization
+from wy_qcos.transpiler.common.pulse_ir.pulse.schedule import (
+    ScheduleBlock,
+    Schedule,
+)
+from wy_qcos.transpiler.common.pulse_ir.pulse.transforms import (
+    canonicalization,
+)
 
-InstructionSched = Union[Tuple[int, Instruction], Instruction]
+InstructionSched: TypeAlias = tuple[int, Instruction] | Instruction
 
 
 def target_qobj_transform(
-    sched: Union[ScheduleBlock, Schedule, InstructionSched, Iterable[InstructionSched]],
+    sched: ScheduleBlock
+    | Schedule
+    | InstructionSched
+    | Iterable[InstructionSched],
     remove_directives: bool = True,
 ) -> Schedule:
     """A basic pulse program transformation for OpenPulse API execution.
@@ -35,12 +50,15 @@ def target_qobj_transform(
     Returns:
         Transformed program for execution.
     """
-    if not isinstance(sched, Schedule):
-        # convert into schedule representation
-        if isinstance(sched, ScheduleBlock):
-            sched = canonicalization.block_to_schedule(sched)
-        else:
-            sched = Schedule(*_format_schedule_component(sched))
+    if isinstance(sched, ScheduleBlock):
+        sched = canonicalization.block_to_schedule(sched)
+    elif isinstance(sched, Schedule):
+        pass
+    else:
+        schedule_component = cast(
+            InstructionSched | Iterable[InstructionSched], sched
+        )
+        sched = Schedule(*_format_schedule_component(schedule_component))
 
     # remove subroutines, i.e. Call instructions
     sched = canonicalization.inline_subroutines(sched)
@@ -55,17 +73,17 @@ def target_qobj_transform(
     return sched
 
 
-def _format_schedule_component(sched: Union[InstructionSched, Iterable[InstructionSched]]):
+def _format_schedule_component(
+    sched: InstructionSched | Iterable[InstructionSched],
+):
     """A helper function to convert instructions into list of instructions."""
     # TODO remove schedule initialization with *args, Qiskit-terra/#5093
-
-    try:
-        sched = list(sched)
-        # (t0, inst), or list of it
-        if isinstance(sched[0], int):
-            # (t0, inst) tuple
-            return [tuple(sched)]
-        else:
-            return sched
-    except TypeError:
+    if (
+        isinstance(sched, tuple)
+        and len(sched) == 2
+        and isinstance(sched[0], int)
+    ):
         return [sched]
+    if isinstance(sched, Iterable) and not isinstance(sched, Instruction):
+        return list(sched)
+    return [sched]

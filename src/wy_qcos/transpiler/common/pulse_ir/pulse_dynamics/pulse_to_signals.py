@@ -19,6 +19,7 @@
 
 from collections.abc import Callable
 import functools
+import math
 from warnings import warn
 
 import numpy as np
@@ -161,30 +162,36 @@ class InstructionToSignals:
         Returns:
             A list of :class:`.DiscreteSignal` instances.
         """
-        signals, phases, frequency_shifts, phase_accumulations = {}, {}, {}, {}
+        signals: dict[str, DiscreteSignal] = {}
+        phases: dict[str, float] = {}
+        frequency_shifts: dict[str, float] = {}
+        phase_accumulations: dict[str, float] = {}
 
         if self._channels is not None:
             schedule = schedule.filter(
                 channels=[self._get_channel(ch) for ch in self._channels]
             )
 
-        for chan in schedule.channels:
-            phases[chan.name] = 0.0
-            frequency_shifts[chan.name] = 0.0
-            phase_accumulations[chan.name] = 0.0
+        for channel in schedule.channels:
+            phases[channel.name] = 0.0
+            frequency_shifts[channel.name] = 0.0
+            phase_accumulations[channel.name] = 0.0
 
-            carrier_freq = self._carriers.get(chan.name, 0.0)
+            carrier_freq = self._carriers.get(channel.name, 0.0)
 
-            signals[chan.name] = DiscreteSignal(
+            signals[channel.name] = DiscreteSignal(
                 samples=[],
                 dt=self._dt,
-                name=chan.name,
+                name=channel.name,
                 carrier_freq=carrier_freq,
             )
 
         for start_sample, inst in schedule.instructions:
             # get channel name if instruction has it
-            chan = inst.channel.name if hasattr(inst, "channel") else None
+            chan_name = inst.channel.name if hasattr(inst, "channel") else None
+
+            if chan_name is None:
+                continue
 
             if isinstance(inst, Play):
                 # get the instruction samples
@@ -198,42 +205,48 @@ class InstructionToSignals:
                 times = self._dt * (
                     start_sample + np.arange(len(inst_samples))
                 )
-                samples = inst_samples * unp.exp(
-                    2.0j * np.pi * frequency_shifts[chan] * times
-                    + 1.0j * phases[chan]
-                    + 2.0j * np.pi * phase_accumulations[chan]
+                phase_argument = (
+                    2.0 * math.pi * frequency_shifts[chan_name] * times
+                    + phases[chan_name]
+                    + 2.0 * math.pi * phase_accumulations[chan_name]
                 )
-                signals[chan].add_samples(start_sample, samples)
+                samples = inst_samples * unp.exp(1.0j * phase_argument)
+                signals[chan_name].add_samples(start_sample, samples)
 
             if isinstance(inst, ShiftPhase):
-                phases[chan] += inst.phase
+                phases[chan_name] += inst.phase
 
             if isinstance(inst, SetPhase):
-                phases[chan] = inst.phase
+                phases[chan_name] = inst.phase
 
             if isinstance(inst, ShiftFrequency):
-                frequency_shifts[chan] = (
-                    frequency_shifts[chan] + inst.frequency
+                frequency_shifts[chan_name] = (
+                    frequency_shifts[chan_name] + inst.frequency
                 )
-                phase_accumulations[chan] = (
-                    phase_accumulations[chan]
+                phase_accumulations[chan_name] = (
+                    phase_accumulations[chan_name]
                     - inst.frequency * start_sample * self._dt
                 )
-                _nyquist_warn(frequency_shifts[chan], self._dt, chan)
+                _nyquist_warn(frequency_shifts[chan_name], self._dt, chan_name)
 
             if isinstance(inst, SetFrequency):
-                phase_accumulations[chan] = phase_accumulations[chan] - (
+                phase_accumulations[chan_name] = phase_accumulations[
+                    chan_name
+                ] - (
                     (
                         inst.frequency
-                        - (frequency_shifts[chan] + signals[chan].carrier_freq)
+                        - (
+                            frequency_shifts[chan_name]
+                            + signals[chan_name].carrier_freq
+                        )
                     )
                     * start_sample
                     * self._dt
                 )
-                frequency_shifts[chan] = (
-                    inst.frequency - signals[chan].carrier_freq
+                frequency_shifts[chan_name] = (
+                    inst.frequency - signals[chan_name].carrier_freq
                 )
-                _nyquist_warn(frequency_shifts[chan], self._dt, chan)
+                _nyquist_warn(frequency_shifts[chan_name], self._dt, chan_name)
 
         # ensure all signals have the same number of samples
         max_duration = 0

@@ -1,37 +1,50 @@
-# This code is part of Qiskit.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
-# (C) Copyright IBM 2020.
-#
-# This code is licensed under the Apache License, Version 2.0. You may
-# obtain a copy of this license in the LICENSE.txt file in the root directory
-# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
-#
-# Any modifications or derivative works of this code must retain this
-# copyright notice, and modified files need to carry a notice indicating
-# that they have been altered from the originals.
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+"""Frequency instructions.
 
-"""Frequency instructions module. These instructions allow the user to manipulate
-the frequency of a channel.
+These instructions allow the user to manipulate the frequency of a channel.
 """
-from typing import Optional, Union, Tuple
 
-from wy_qcos.transpiler.cmss.circuit.parameterexpression import ParameterExpression
+from wy_qcos.transpiler.cmss.circuit.parameterexpression import (
+    ParameterExpression,
+)
 from wy_qcos.transpiler.common.pulse_ir.pulse.channels import PulseChannel
-from wy_qcos.transpiler.common.pulse_ir.pulse.instructions.instruction import Instruction
+from wy_qcos.transpiler.common.pulse_ir.pulse.instructions.instruction import (
+    Instruction,
+)
 from wy_qcos.transpiler.common.pulse_ir.pulse.exceptions import PulseError
-from wy_qcos.transpiler.common.pulse_ir.utils.deprecate_pulse import deprecate_pulse_func
+from wy_qcos.transpiler.common.pulse_ir.utils.deprecate_pulse import (
+    deprecate_pulse_func,
+)
 
 
 class SetFrequency(Instruction):
-    r"""Set the channel frequency. This instruction operates on ``PulseChannel`` s.
-    A ``PulseChannel`` creates pulses of the form
+    r"""Set the channel frequency.
+
+    This instruction operates on ``PulseChannel`` objects. A
+    ``PulseChannel`` creates pulses of the form
 
     .. math::
         Re[\exp(i 2\pi f jdt + \phi) d_j].
 
-    Here, :math:`f` is the frequency of the channel. The instruction ``SetFrequency`` allows
-    the user to set the value of :math:`f`. All pulses that are played on a channel
-    after SetFrequency has been called will have the corresponding frequency.
+    Here, :math:`f` is the channel frequency. The instruction
+    ``SetFrequency`` lets the user set the value of :math:`f`. All pulses
+    played on a channel after calling ``SetFrequency`` will use the new
+    frequency.
 
     The duration of SetFrequency is 0.
     """
@@ -39,9 +52,9 @@ class SetFrequency(Instruction):
     @deprecate_pulse_func
     def __init__(
         self,
-        frequency: Union[float, ParameterExpression],
+        frequency: float | ParameterExpression,
         channel: PulseChannel,
-        name: Optional[str] = None,
+        name: str | None = None,
     ):
         """Creates a new set channel frequency instruction.
 
@@ -56,25 +69,26 @@ class SetFrequency(Instruction):
         """Called after initialization to validate instruction data.
 
         Raises:
-            PulseError: If the input ``channel`` is not type :class:`PulseChannel`.
+            PulseError: If the input ``channel`` is not of type
+                :class:`PulseChannel`.
         """
         if not isinstance(self.channel, PulseChannel):
-            raise PulseError(f"Expected a pulse channel, got {self.channel} instead.")
+            raise PulseError(
+                f"Expected a pulse channel, got {self.channel} instead."
+            )
 
     @property
-    def frequency(self) -> Union[float, ParameterExpression]:
+    def frequency(self) -> float | ParameterExpression:
         """New frequency."""
         return self.operands[0]
 
     @property
     def channel(self) -> PulseChannel:
-        """Return the :py:class:`~wy_qcos.pulse.channels.Channel` that this instruction is
-        scheduled on.
-        """
+        """Return the channel that this instruction is scheduled on."""
         return self.operands[1]
 
     @property
-    def channels(self) -> Tuple[PulseChannel]:
+    def channels(self) -> tuple[PulseChannel]:
         """Returns the channels that this schedule uses."""
         return (self.channel,)
 
@@ -90,9 +104,9 @@ class ShiftFrequency(Instruction):
     @deprecate_pulse_func
     def __init__(
         self,
-        frequency: Union[float, ParameterExpression],
+        frequency: float | ParameterExpression,
         channel: PulseChannel,
-        name: Optional[str] = None,
+        name: str | None = None,
     ):
         """Creates a new shift frequency instruction.
 
@@ -107,25 +121,26 @@ class ShiftFrequency(Instruction):
         """Called after initialization to validate instruction data.
 
         Raises:
-            PulseError: If the input ``channel`` is not type :class:`PulseChannel`.
+            PulseError: If the input ``channel`` is not of type
+                :class:`PulseChannel`.
         """
         if not isinstance(self.channel, PulseChannel):
-            raise PulseError(f"Expected a pulse channel, got {self.channel} instead.")
+            raise PulseError(
+                f"Expected a pulse channel, got {self.channel} instead."
+            )
 
     @property
-    def frequency(self) -> Union[float, ParameterExpression]:
+    def frequency(self) -> float | ParameterExpression:
         """Frequency shift from the set frequency."""
         return self.operands[0]
 
     @property
     def channel(self) -> PulseChannel:
-        """Return the :py:class:`~wy_qcos.pulse.channels.Channel` that this instruction is
-        scheduled on.
-        """
+        """Return the channel that this instruction is scheduled on."""
         return self.operands[1]
 
     @property
-    def channels(self) -> Tuple[PulseChannel]:
+    def channels(self) -> tuple[PulseChannel]:
         """Returns the channels that this schedule uses."""
         return (self.channel,)
 

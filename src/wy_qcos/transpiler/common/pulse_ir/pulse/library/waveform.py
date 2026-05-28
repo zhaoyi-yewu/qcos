@@ -1,16 +1,21 @@
-# This code is part of Qiskit.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
-# (C) Copyright IBM 2020.
-#
-# This code is licensed under the Apache License, Version 2.0. You may
-# obtain a copy of this license in the LICENSE.txt file in the root directory
-# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
-#
-# Any modifications or derivative works of this code must retain this
-# copyright notice, and modified files need to carry a notice indicating
-# that they have been altered from the originals.
-
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
 """A pulse that is described by complex-valued sample points."""
+
 from __future__ import annotations
 from typing import Any
 
@@ -18,12 +23,16 @@ import numpy as np
 
 from wy_qcos.transpiler.common.pulse_ir.pulse.exceptions import PulseError
 from wy_qcos.transpiler.common.pulse_ir.pulse.library.pulse import Pulse
-from wy_qcos.transpiler.common.pulse_ir.utils.deprecate_pulse import deprecate_pulse_func
+from wy_qcos.transpiler.common.pulse_ir.utils.deprecate_pulse import (
+    deprecate_pulse_func,
+)
 
 
 class Waveform(Pulse):
-    """A pulse specified completely by complex-valued samples; each sample is played for the
-    duration of the backend cycle-time, dt.
+    """A pulse specified completely by complex-valued samples.
+
+    Each sample is played for the duration of the backend cycle time,
+    ``dt``.
     """
 
     @deprecate_pulse_func
@@ -40,16 +49,17 @@ class Waveform(Pulse):
             samples: Complex array of the samples in the pulse envelope.
             name: Unique name to identify the pulse.
             epsilon: Pulse sample norm tolerance for clipping.
-                If any sample's norm exceeds unity by less than or equal to epsilon
-                it will be clipped to unit norm. If the sample
-                norm is greater than 1+epsilon an error will be raised.
+                If any sample's norm exceeds unity by less than or equal to
+                ``epsilon``, it will be clipped to unit norm. If the sample
+                norm is greater than ``1 + epsilon``, an error is raised.
             limit_amplitude: Passed to parent Pulse
         """
-
-        super().__init__(duration=len(samples), name=name, limit_amplitude=limit_amplitude)
-        samples = np.asarray(samples, dtype=np.complex128)
+        super().__init__(
+            duration=len(samples), name=name, limit_amplitude=limit_amplitude
+        )
+        sample_array: np.ndarray = np.asarray(samples, dtype=np.complex128)
         self.epsilon = epsilon
-        self._samples = self._clip(samples, epsilon=epsilon)
+        self._samples = self._clip(sample_array, epsilon=epsilon)
 
     @property
     def samples(self) -> np.ndarray:
@@ -57,22 +67,23 @@ class Waveform(Pulse):
         return self._samples
 
     def _clip(self, samples: np.ndarray, epsilon: float = 1e-7) -> np.ndarray:
-        """If samples are within epsilon of unit norm, clip sample by reducing norm by (1-epsilon).
+        """Clip samples that are within epsilon of unit norm.
 
-        If difference is greater than epsilon error is raised.
+        If the difference is greater than ``epsilon``, an error is raised.
 
         Args:
             samples: Complex array of the samples in the pulse envelope.
             epsilon: Pulse sample norm tolerance for clipping.
-                If any sample's norm exceeds unity by less than or equal to epsilon
-                it will be clipped to unit norm. If the sample
-                norm is greater than 1+epsilon an error will be raised.
+                If any sample's norm exceeds unity by less than or equal to
+                ``epsilon``, it will be clipped to unit norm. If the sample
+                norm is greater than ``1 + epsilon``, an error is raised.
 
         Returns:
             Clipped pulse samples.
 
         Raises:
-            PulseError: If there exists a pulse sample with a norm greater than 1+epsilon.
+            PulseError: If there exists a pulse sample with a norm greater
+                than ``1 + epsilon``.
         """
         samples_norm = np.abs(samples)
         to_clip = (samples_norm > 1.0) & (samples_norm <= 1.0 + epsilon)
@@ -101,7 +112,8 @@ class Waveform(Pulse):
         if np.any(samples_norm > 1.0) and self._limit_amplitude:
             amp = np.max(samples_norm)
             raise PulseError(
-                f"Pulse contains sample with norm {amp} greater than 1+epsilon."
+                f"Pulse contains sample with norm {amp} greater than "
+                "1+epsilon."
                 " This can be overruled by setting Pulse.limit_amplitude."
             )
 
@@ -122,7 +134,9 @@ class Waveform(Pulse):
         return (
             super().__eq__(other)
             and self.samples.shape == other.samples.shape
-            and np.allclose(self.samples, other.samples, rtol=0, atol=self.epsilon)
+            and np.allclose(
+                self.samples, other.samples, rtol=0, atol=self.epsilon
+            )
         )
 
     def __hash__(self) -> int:
