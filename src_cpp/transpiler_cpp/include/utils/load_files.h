@@ -16,10 +16,12 @@
  */
 
 #pragma once
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "circuit/base_operation.h"
 #include "circuit/gate_operation.h"
 
 namespace qcos {
@@ -59,5 +61,18 @@ double parse_qasm_param(const std::string& s);
  * @return std::vector<GateOperation> 返回解析得到的门操作列表
  */
 std::vector<GateOperation> load_qasm_to_gate_list(const std::string& filename);
+
+/**
+ * @brief 将QASM文件加载为多态操作对象列表
+ *
+ * 支持单量子比特门和双量子比特门
+ * 忽略注释、OPENQASM声明、寄存器声明等非门操作行
+ *
+ * @param filename QASM文件路径
+ * @return std::vector<std::shared_ptr<BaseOperation>>
+ * 返回解析得到的操作对象列表
+ */
+std::vector<std::shared_ptr<BaseOperation>> load_qasm_to_ir(
+    const std::string& filename);
 
 }  // namespace qcos

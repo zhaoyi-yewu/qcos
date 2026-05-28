@@ -139,4 +139,54 @@ std::vector<GateOperation> load_qasm_to_gate_list(
   return gate_list;
 }
 
+std::vector<std::shared_ptr<BaseOperation>> load_qasm_to_ir(
+    const std::string& filename) {
+  std::vector<std::shared_ptr<BaseOperation>> ir;
+  std::ifstream file(filename);
+
+  if (!file.is_open()) {
+    std::cerr << "无法打开 QASM 文件: " << filename << std::endl;
+    return ir;
+  }
+
+  static const std::regex single_gate_regex(
+      R"(^([a-z0-9]+)\s*(?:\(([^)]*)\))?\s+q\[([0-9]+)\];)",
+      std::regex_constants::optimize);
+  static const std::regex double_gate_regex(
+      R"(^([a-z0-9]+)\s+q\[([0-9]+)\],\s*q\[([0-9]+)\];)",
+      std::regex_constants::optimize);
+
+  std::string line;
+  while (std::getline(file, line)) {
+    line.erase(0, line.find_first_not_of(" \t\r\n"));
+    auto last = line.find_last_not_of(" \t\r\n");
+    if (last != std::string::npos) line.erase(last + 1);
+
+    if (line.empty() || line.find("OPENQASM") == 0 ||
+        line.find("include") == 0 || line.find("qreg") == 0 ||
+        line.find("creg") == 0 || line.find("//") == 0) {
+      continue;
+    }
+
+    std::smatch match;
+    if (std::regex_search(line, match, double_gate_regex)) {
+      ir.push_back(std::shared_ptr<BaseOperation>(
+          create_gate(match[1].str(),
+                      std::vector<int>{std::stoi(match[2].str()),
+                                       std::stoi(match[3].str())},
+                      std::vector<double>{}, true)));
+    } else if (std::regex_search(line, match, single_gate_regex)) {
+      std::vector<double> params;
+      if (match[2].matched && !match[2].str().empty()) {
+        params.push_back(parse_qasm_param(match[2].str()));
+      }
+      ir.push_back(std::shared_ptr<BaseOperation>(create_gate(
+          match[1].str(), std::vector<int>{std::stoi(match[3].str())}, params,
+          true)));
+    }
+  }
+  file.close();
+  return ir;
+}
+
 }  // namespace qcos
