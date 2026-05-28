@@ -25,23 +25,22 @@
 
 namespace qcos {
 
-std::shared_ptr<DAGNode> MultiGraph::clone_node(
-    const std::shared_ptr<DAGNode>& node) {
-  if (auto op = std::dynamic_pointer_cast<DAGOpNode>(node)) {
-    auto copy = std::make_shared<DAGOpNode>(op->op, op->qargs, op->cargs);
+std::unique_ptr<DAGNode> MultiGraph::clone_node(const DAGNode* node) {
+  if (auto op = dynamic_cast<const DAGOpNode*>(node)) {
+    auto copy = std::make_unique<DAGOpNode>(op->op, op->qargs, op->cargs);
     copy->flag = op->flag;
     return copy;
   }
-  if (auto in = std::dynamic_pointer_cast<DAGInNode>(node)) {
-    return std::make_shared<DAGInNode>(in->wire());
+  if (auto in = dynamic_cast<const DAGInNode*>(node)) {
+    return std::make_unique<DAGInNode>(in->wire());
   }
-  if (auto out = std::dynamic_pointer_cast<DAGOutNode>(node)) {
-    return std::make_shared<DAGOutNode>(out->wire());
+  if (auto out = dynamic_cast<const DAGOutNode*>(node)) {
+    return std::make_unique<DAGOutNode>(out->wire());
   }
   throw std::invalid_argument("Unsupported DAGNode subtype");
 }
 
-int MultiGraph::add_node(std::shared_ptr<DAGNode> node) {
+int MultiGraph::add_node(std::unique_ptr<DAGNode> node) {
   int id = static_cast<int>(slots_.size());
   slots_.push_back({std::move(node), {}, {}, true});
   slots_.back().node->set_node_id(id);
@@ -49,8 +48,8 @@ int MultiGraph::add_node(std::shared_ptr<DAGNode> node) {
   return id;
 }
 
-std::pair<int, int> MultiGraph::add_nodes(std::shared_ptr<DAGNode> first,
-                                          std::shared_ptr<DAGNode> second) {
+std::pair<int, int> MultiGraph::add_nodes(std::unique_ptr<DAGNode> first,
+                                          std::unique_ptr<DAGNode> second) {
   return {add_node(std::move(first)), add_node(std::move(second))};
 }
 
@@ -73,42 +72,46 @@ bool MultiGraph::has_edge(int src, int dst) const {
   return false;
 }
 
-std::shared_ptr<DAGNode>& MultiGraph::operator[](int id) {
-  return slots_[id].node;
+DAGNode* MultiGraph::operator[](int id) {
+  if (id < 0 || id >= static_cast<int>(slots_.size()) || !slots_[id].active) {
+    return nullptr;
+  }
+  return slots_[id].node.get();
 }
 
-const std::shared_ptr<DAGNode>& MultiGraph::operator[](int id) const {
-  return slots_[id].node;
+const DAGNode* MultiGraph::operator[](int id) const {
+  if (id < 0 || id >= static_cast<int>(slots_.size()) || !slots_[id].active) {
+    return nullptr;
+  }
+  return slots_[id].node.get();
 }
 
-std::vector<std::shared_ptr<DAGNode>> MultiGraph::nodes() const {
-  std::vector<std::shared_ptr<DAGNode>> result;
+std::vector<DAGNode*> MultiGraph::nodes() const {
+  std::vector<DAGNode*> result;
   result.reserve(num_active_);
   for (const auto& slot : slots_) {
     if (slot.active) {
-      result.push_back(slot.node);
+      result.push_back(slot.node.get());
     }
   }
   return result;
 }
 
-std::vector<std::shared_ptr<DAGNode>> MultiGraph::successors(
-    int node_id) const {
-  std::vector<std::shared_ptr<DAGNode>> result;
+std::vector<DAGNode*> MultiGraph::successors(int node_id) const {
+  std::vector<DAGNode*> result;
   for (const auto& edge : slots_[node_id].out_edges) {
     if (slots_[edge.target].active) {
-      result.push_back(slots_[edge.target].node);
+      result.push_back(slots_[edge.target].node.get());
     }
   }
   return result;
 }
 
-std::vector<std::shared_ptr<DAGNode>> MultiGraph::predecessors(
-    int node_id) const {
-  std::vector<std::shared_ptr<DAGNode>> result;
+std::vector<DAGNode*> MultiGraph::predecessors(int node_id) const {
+  std::vector<DAGNode*> result;
   for (const auto& edge : slots_[node_id].in_edges) {
     if (slots_[edge.target].active) {
-      result.push_back(slots_[edge.target].node);
+      result.push_back(slots_[edge.target].node.get());
     }
   }
   return result;
@@ -145,33 +148,33 @@ std::vector<std::tuple<int, int, int>> MultiGraph::out_edges(
   return result;
 }
 
-std::shared_ptr<DAGNode> MultiGraph::find_first_successor_by_edge(
+DAGNode* MultiGraph::find_first_successor_by_edge(
     int node_id, const std::function<bool(int)>& predicate) const {
   for (const auto& edge : slots_[node_id].out_edges) {
     if (slots_[edge.target].active && predicate(edge.wire)) {
-      return slots_[edge.target].node;
+      return slots_[edge.target].node.get();
     }
   }
   return nullptr;
 }
 
-std::vector<std::shared_ptr<DAGNode>> MultiGraph::find_predecessors_by_edge(
+std::vector<DAGNode*> MultiGraph::find_predecessors_by_edge(
     int node_id, const std::function<bool(int)>& predicate) const {
-  std::vector<std::shared_ptr<DAGNode>> result;
+  std::vector<DAGNode*> result;
   for (const auto& edge : slots_[node_id].in_edges) {
     if (slots_[edge.target].active && predicate(edge.wire)) {
-      result.push_back(slots_[edge.target].node);
+      result.push_back(slots_[edge.target].node.get());
     }
   }
   return result;
 }
 
-std::vector<std::shared_ptr<DAGNode>> MultiGraph::find_successors_by_edge(
+std::vector<DAGNode*> MultiGraph::find_successors_by_edge(
     int node_id, const std::function<bool(int)>& predicate) const {
-  std::vector<std::shared_ptr<DAGNode>> result;
+  std::vector<DAGNode*> result;
   for (const auto& edge : slots_[node_id].out_edges) {
     if (slots_[edge.target].active && predicate(edge.wire)) {
-      result.push_back(slots_[edge.target].node);
+      result.push_back(slots_[edge.target].node.get());
     }
   }
   return result;
@@ -250,7 +253,6 @@ void MultiGraph::remove_node_retain_edges(int node_id) {
   slots_[node_id].in_edges.clear();
   slots_[node_id].out_edges.clear();
   slots_[node_id].active = false;
-  slots_[node_id].node.reset();
   --num_active_;
 }
 
@@ -297,10 +299,8 @@ std::vector<int> MultiGraph::topo_order() const {
   return order;
 }
 
-std::vector<std::shared_ptr<DAGNode>>
-MultiGraph::lexicographical_topological_sort(
-    const std::function<std::string(const std::shared_ptr<DAGNode>&)>& key)
-    const {
+std::vector<DAGNode*> MultiGraph::lexicographical_topological_sort(
+    const std::function<std::string(const DAGNode*)>& key) const {
   std::unordered_map<int, int> in_degree;
   for (size_t index = 0; index < slots_.size(); ++index) {
     if (slots_[index].active) {
@@ -310,8 +310,8 @@ MultiGraph::lexicographical_topological_sort(
   }
 
   auto cmp = [&](int lhs, int rhs) {
-    const auto lhs_key = key(slots_[lhs].node);
-    const auto rhs_key = key(slots_[rhs].node);
+    const auto lhs_key = key(slots_[lhs].node.get());
+    const auto rhs_key = key(slots_[rhs].node.get());
     if (lhs_key == rhs_key) {
       return lhs > rhs;
     }
@@ -324,12 +324,12 @@ MultiGraph::lexicographical_topological_sort(
     }
   }
 
-  std::vector<std::shared_ptr<DAGNode>> result;
+  std::vector<DAGNode*> result;
   result.reserve(num_active_);
   while (!pq.empty()) {
     int current = pq.top();
     pq.pop();
-    result.push_back(slots_[current].node);
+    result.push_back(slots_[current].node.get());
     for (const auto& edge : slots_[current].out_edges) {
       --in_degree[edge.target];
       if (in_degree[edge.target] == 0) {
@@ -394,23 +394,22 @@ std::vector<int> MultiGraph::dag_longest_path() const {
   return path;
 }
 
-std::vector<std::vector<std::shared_ptr<DAGNode>>> MultiGraph::collect_runs(
-    const std::function<bool(const std::shared_ptr<DAGNode>&)>& filter_fn)
-    const {
-  std::vector<std::vector<std::shared_ptr<DAGNode>>> runs;
+std::vector<std::vector<DAGNode*>> MultiGraph::collect_runs(
+    const std::function<bool(const DAGNode*)>& filter_fn) const {
+  std::vector<std::vector<DAGNode*>> runs;
   std::unordered_set<int> visited;
 
   for (int node_id : topo_order()) {
-    if (visited.count(node_id) || !filter_fn(slots_[node_id].node)) {
+    if (visited.count(node_id) || !filter_fn(slots_[node_id].node.get())) {
       continue;
     }
 
-    std::vector<std::shared_ptr<DAGNode>> run;
+    std::vector<DAGNode*> run;
     int current = node_id;
     while (current >= 0 && !visited.count(current) &&
-           filter_fn(slots_[current].node)) {
+           filter_fn(slots_[current].node.get())) {
       visited.insert(current);
-      run.push_back(slots_[current].node);
+      run.push_back(slots_[current].node.get());
 
       int next = -1;
       std::unordered_set<int> active_successors;
@@ -421,7 +420,7 @@ std::vector<std::vector<std::shared_ptr<DAGNode>>> MultiGraph::collect_runs(
       }
       if (active_successors.size() == 1) {
         int candidate = *active_successors.begin();
-        if (filter_fn(slots_[candidate].node)) {
+        if (filter_fn(slots_[candidate].node.get())) {
           next = candidate;
         }
       }

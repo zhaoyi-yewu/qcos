@@ -37,14 +37,14 @@ std::shared_ptr<BaseOperation> make_gate(const std::string& name,
 }
 
 std::vector<std::vector<std::string>> normalize_run_signatures(
-    const std::set<std::vector<std::shared_ptr<DAGNode>>>& runs) {
+    const std::set<std::vector<DAGNode*>>& runs) {
   std::vector<std::vector<std::string>> normalized;
   normalized.reserve(runs.size());
   for (const auto& run : runs) {
     std::vector<std::string> signature;
     signature.reserve(run.size());
     for (const auto& node : run) {
-      auto op = std::dynamic_pointer_cast<DAGOpNode>(node);
+      auto* op = dynamic_cast<DAGOpNode*>(node);
       std::string entry = op->name() + "[";
       for (size_t index = 0; index < op->qargs.size(); ++index) {
         if (index > 0) {
@@ -67,7 +67,7 @@ std::vector<std::vector<std::string>> normalize_run_signatures(
   return normalized;
 }
 
-std::vector<int> node_ids(const std::vector<std::shared_ptr<DAGNode>>& nodes) {
+std::vector<int> node_ids(const std::vector<DAGNode*>& nodes) {
   std::vector<int> ids;
   ids.reserve(nodes.size());
   for (const auto& node : nodes) {
@@ -76,26 +76,24 @@ std::vector<int> node_ids(const std::vector<std::shared_ptr<DAGNode>>& nodes) {
   return ids;
 }
 
-std::vector<std::string> node_labels(
-    const std::vector<std::shared_ptr<DAGNode>>& nodes) {
+std::vector<std::string> node_labels(const std::vector<DAGNode*>& nodes) {
   std::vector<std::string> labels;
   labels.reserve(nodes.size());
   for (const auto& node : nodes) {
-    if (std::dynamic_pointer_cast<DAGInNode>(node)) {
+    if (dynamic_cast<DAGInNode*>(node)) {
       labels.push_back("in");
       continue;
     }
-    if (std::dynamic_pointer_cast<DAGOutNode>(node)) {
+    if (dynamic_cast<DAGOutNode*>(node)) {
       labels.push_back("out");
       continue;
     }
-    labels.push_back(std::dynamic_pointer_cast<DAGOpNode>(node)->name());
+    labels.push_back(dynamic_cast<DAGOpNode*>(node)->name());
   }
   return labels;
 }
 
-std::vector<std::string> op_names(
-    const std::vector<std::shared_ptr<DAGOpNode>>& nodes) {
+std::vector<std::string> op_names(const std::vector<DAGOpNode*>& nodes) {
   std::vector<std::string> labels;
   labels.reserve(nodes.size());
   for (const auto& node : nodes) {
@@ -116,14 +114,14 @@ std::string qargs_signature(const std::vector<int>& qargs) {
   return signature;
 }
 
-std::string node_signature(const std::shared_ptr<DAGNode>& node) {
-  if (auto in = std::dynamic_pointer_cast<DAGInNode>(node)) {
+std::string node_signature(DAGNode* node) {
+  if (auto* in = dynamic_cast<DAGInNode*>(node)) {
     return "in[" + std::to_string(in->wire()) + "]";
   }
-  if (auto out = std::dynamic_pointer_cast<DAGOutNode>(node)) {
+  if (auto* out = dynamic_cast<DAGOutNode*>(node)) {
     return "out[" + std::to_string(out->wire()) + "]";
   }
-  auto op = std::dynamic_pointer_cast<DAGOpNode>(node);
+  auto* op = dynamic_cast<DAGOpNode*>(node);
   return op->name() + qargs_signature(op->qargs);
 }
 
@@ -139,8 +137,7 @@ normalize_edge_signatures(const std::vector<DAGCircuit::EdgeTriple>& edges) {
   return normalized;
 }
 
-bool contains_node_id(const std::set<std::shared_ptr<DAGNode>>& nodes,
-                      int node_id) {
+bool contains_node_id(const std::set<DAGNode*>& nodes, int node_id) {
   for (const auto& node : nodes) {
     if (node && node->node_id() == node_id) {
       return true;
@@ -241,11 +238,11 @@ TEST(DAGCircuitTest, LongestPath) {
 
   auto path = dag.longest_path();
   ASSERT_EQ(path.size(), 5u);
-  EXPECT_NE(std::dynamic_pointer_cast<DAGInNode>(path[0]), nullptr);
-  EXPECT_EQ(std::dynamic_pointer_cast<DAGOpNode>(path[1])->name(), "h");
-  EXPECT_EQ(std::dynamic_pointer_cast<DAGOpNode>(path[2])->name(), "cx");
-  EXPECT_EQ(std::dynamic_pointer_cast<DAGOpNode>(path[3])->name(), "h");
-  EXPECT_NE(std::dynamic_pointer_cast<DAGOutNode>(path[4]), nullptr);
+  EXPECT_NE(dynamic_cast<DAGInNode*>(path[0]), nullptr);
+  EXPECT_EQ(dynamic_cast<DAGOpNode*>(path[1])->name(), "h");
+  EXPECT_EQ(dynamic_cast<DAGOpNode*>(path[2])->name(), "cx");
+  EXPECT_EQ(dynamic_cast<DAGOpNode*>(path[3])->name(), "h");
+  EXPECT_NE(dynamic_cast<DAGOutNode*>(path[4]), nullptr);
 }
 
 TEST(DAGCircuitTest, SuccessorsAndPredecessors) {
@@ -260,11 +257,9 @@ TEST(DAGCircuitTest, SuccessorsAndPredecessors) {
   auto node1_successors = dag.successors(node1);
   auto node1_predecessors = dag.predecessors(node1);
   EXPECT_EQ(node1_successors.size(), 1u);
-  EXPECT_EQ(std::dynamic_pointer_cast<DAGOpNode>(node1_successors[0])->name(),
-            "cx");
+  EXPECT_EQ(dynamic_cast<DAGOpNode*>(node1_successors[0])->name(), "cx");
   EXPECT_EQ(node1_predecessors.size(), 1u);
-  EXPECT_NE(std::dynamic_pointer_cast<DAGInNode>(node1_predecessors[0]),
-            nullptr);
+  EXPECT_NE(dynamic_cast<DAGInNode*>(node1_predecessors[0]), nullptr);
 
   auto node3_successors = dag.successors(node3);
   auto node3_predecessors = dag.predecessors(node3);
@@ -301,7 +296,7 @@ TEST(DAGCircuitTest, CountOpsAndNodesOnWire) {
 
   auto wire0_nodes = dag.nodes_on_wire(0, true);
   EXPECT_EQ(wire0_nodes.size(), 2u);
-  EXPECT_NE(std::dynamic_pointer_cast<DAGOpNode>(wire0_nodes[0]), nullptr);
+  EXPECT_NE(dynamic_cast<DAGOpNode*>(wire0_nodes[0]), nullptr);
 }
 
 TEST(DAGCircuitTest, IrToDagCircuitToDagAndBack) {
@@ -339,8 +334,8 @@ TEST(DAGCircuitTest, TwoQubitOpsToDagAndEdges) {
 
   int op_to_op_edges = 0;
   for (const auto& edge : dag.edges()) {
-    if (std::dynamic_pointer_cast<DAGOpNode>(edge.src) &&
-        std::dynamic_pointer_cast<DAGOpNode>(edge.dst)) {
+    if (dynamic_cast<DAGOpNode*>(edge.src) &&
+        dynamic_cast<DAGOpNode*>(edge.dst)) {
       ++op_to_op_edges;
     }
   }
@@ -551,13 +546,12 @@ TEST(DAGCircuitTest, TopologicalOpNodesRespectCustomKey) {
   dag.apply_operation_back(make_gate("x", {0}));
   dag.apply_operation_back(make_gate("h", {1}));
 
-  auto custom =
-      dag.topological_op_nodes([](const std::shared_ptr<DAGNode>& current) {
-        if (auto op = std::dynamic_pointer_cast<DAGOpNode>(current)) {
-          return op->name() == "x" ? std::string("z") : std::string("a");
-        }
-        return current->sort_key();
-      });
+  auto custom = dag.topological_op_nodes([](const DAGNode* current) {
+    if (auto* op = dynamic_cast<const DAGOpNode*>(current)) {
+      return op->name() == "x" ? std::string("z") : std::string("a");
+    }
+    return current->sort_key();
+  });
 
   EXPECT_EQ(op_names(dag.topological_op_nodes()),
             (std::vector<std::string>{"x", "h"}));
@@ -829,7 +823,7 @@ TEST(DAGCircuitTest, EdgesReturnAllEdgesAndSubsetEdges) {
                 {"in[1]", "h[1]", 1},
             }));
 
-  std::vector<std::shared_ptr<DAGNode>> subset = {cx};
+  std::vector<DAGNode*> subset = {cx};
   EXPECT_EQ(normalize_edge_signatures(dag.edges(&subset)),
             (std::vector<std::tuple<std::string, std::string, int>>{
                 {"cx[0,1]", "out[0]", 0},

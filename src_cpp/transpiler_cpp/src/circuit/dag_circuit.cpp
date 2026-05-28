@@ -75,11 +75,14 @@ void DAGCircuit::add_wire(int wire) {
   }
   wires_set_.insert(wire);
 
-  auto input_node = std::make_shared<DAGInNode>(wire);
-  auto output_node = std::make_shared<DAGOutNode>(wire);
-  auto [input_id, output_id] = multi_graph_.add_nodes(input_node, output_node);
-  input_map[wire] = input_node;
-  output_map[wire] = output_node;
+  auto input_node = std::make_unique<DAGInNode>(wire);
+  auto output_node = std::make_unique<DAGOutNode>(wire);
+  DAGInNode* input_ptr = input_node.get();
+  DAGOutNode* output_ptr = output_node.get();
+  auto [input_id, output_id] =
+      multi_graph_.add_nodes(std::move(input_node), std::move(output_node));
+  input_map[wire] = input_ptr;
+  output_map[wire] = output_ptr;
   // 每条量子线初始只有input->output一条直连边，后续门节点都插入到这条线上。
   multi_graph_.add_edge(input_id, output_id, wire);
 }
@@ -167,13 +170,14 @@ void DAGCircuit::deparameterize_all_rz(double tolerance) {
   }
 }
 
-std::shared_ptr<DAGOpNode> DAGCircuit::apply_operation_back(
-    std::shared_ptr<BaseOperation> op, std::vector<int> qargs) {
+DAGOpNode* DAGCircuit::apply_operation_back(std::shared_ptr<BaseOperation> op,
+                                            std::vector<int> qargs) {
   if (qargs.empty()) {
     qargs = op->targets;
   }
-  auto node = std::make_shared<DAGOpNode>(op, qargs);
-  int node_id = multi_graph_.add_node(node);
+  auto node = std::make_unique<DAGOpNode>(op, qargs);
+  DAGOpNode* node_ptr = node.get();
+  int node_id = multi_graph_.add_node(std::move(node));
   increment_op(op);
 
   std::vector<int> output_ids;
@@ -183,16 +187,17 @@ std::shared_ptr<DAGOpNode> DAGCircuit::apply_operation_back(
   }
   // 从每条量子线的输出端向前插入，相当于把门追加到线路尾部。
   multi_graph_.insert_node_on_in_edges_multiple(node_id, output_ids);
-  return node;
+  return node_ptr;
 }
 
-std::shared_ptr<DAGOpNode> DAGCircuit::apply_operation_front(
-    std::shared_ptr<BaseOperation> op, std::vector<int> qargs) {
+DAGOpNode* DAGCircuit::apply_operation_front(std::shared_ptr<BaseOperation> op,
+                                             std::vector<int> qargs) {
   if (qargs.empty()) {
     qargs = op->targets;
   }
-  auto node = std::make_shared<DAGOpNode>(op, qargs);
-  int node_id = multi_graph_.add_node(node);
+  auto node = std::make_unique<DAGOpNode>(op, qargs);
+  DAGOpNode* node_ptr = node.get();
+  int node_id = multi_graph_.add_node(std::move(node));
   increment_op(op);
 
   std::vector<int> input_ids;
@@ -202,7 +207,7 @@ std::shared_ptr<DAGOpNode> DAGCircuit::apply_operation_front(
   }
   // 从每条量子线的输入端向后插入，相当于把门压到线路最前面。
   multi_graph_.insert_node_on_out_edges_multiple(node_id, input_ids);
-  return node;
+  return node_ptr;
 }
 
 int DAGCircuit::size() const {
@@ -218,18 +223,17 @@ int DAGCircuit::depth() const {
 
 int DAGCircuit::width() const { return static_cast<int>(wires_set_.size()); }
 
-std::vector<std::shared_ptr<DAGNode>> DAGCircuit::nodes_on_wire(
-    int wire, bool only_ops) {
+std::vector<DAGNode*> DAGCircuit::nodes_on_wire(int wire, bool only_ops) {
   auto iterator = input_map.find(wire);
   if (iterator == input_map.end()) {
     throw std::invalid_argument("The given wire " + std::to_string(wire) +
                                 " is not present in the circuit");
   }
 
-  std::vector<std::shared_ptr<DAGNode>> result;
-  auto current = std::static_pointer_cast<DAGNode>(iterator->second);
+  std::vector<DAGNode*> result;
+  DAGNode* current = iterator->second;
   while (current) {
-    if (!only_ops || std::dynamic_pointer_cast<DAGOpNode>(current)) {
+    if (!only_ops || dynamic_cast<DAGOpNode*>(current)) {
       result.push_back(current);
     }
     current = multi_graph_.find_first_successor_by_edge(
@@ -239,48 +243,42 @@ std::vector<std::shared_ptr<DAGNode>> DAGCircuit::nodes_on_wire(
   return result;
 }
 
-std::vector<std::shared_ptr<DAGNode>> DAGCircuit::topological_nodes(
-    std::function<std::string(const std::shared_ptr<DAGNode>&)> key) {
+std::vector<DAGNode*> DAGCircuit::topological_nodes(
+    std::function<std::string(const DAGNode*)> key) {
   if (!key) {
     // 默认排序键用于在拓扑序存在多解时给出稳定输出。
-    key = [](const std::shared_ptr<DAGNode>& current) {
-      return current->sort_key();
-    };
+    key = [](const DAGNode* current) { return current->sort_key(); };
   }
   return multi_graph_.lexicographical_topological_sort(key);
 }
 
-std::vector<std::shared_ptr<DAGOpNode>> DAGCircuit::topological_op_nodes(
-    std::function<std::string(const std::shared_ptr<DAGNode>&)> key) {
-  std::vector<std::shared_ptr<DAGOpNode>> result;
+std::vector<DAGOpNode*> DAGCircuit::topological_op_nodes(
+    std::function<std::string(const DAGNode*)> key) {
+  std::vector<DAGOpNode*> result;
   for (const auto& current : topological_nodes(std::move(key))) {
-    if (auto op_node = std::dynamic_pointer_cast<DAGOpNode>(current)) {
+    if (auto* op_node = dynamic_cast<DAGOpNode*>(current)) {
       result.push_back(op_node);
     }
   }
   return result;
 }
 
-std::shared_ptr<DAGNode> DAGCircuit::node(int node_id) {
-  return multi_graph_[node_id];
-}
+DAGNode* DAGCircuit::node(int node_id) { return multi_graph_[node_id]; }
 
-std::vector<std::shared_ptr<DAGNode>> DAGCircuit::nodes() {
-  return multi_graph_.nodes();
-}
+std::vector<DAGNode*> DAGCircuit::nodes() { return multi_graph_.nodes(); }
 
-std::vector<std::shared_ptr<DAGOpNode>> DAGCircuit::op_nodes() {
-  std::vector<std::shared_ptr<DAGOpNode>> result;
+std::vector<DAGOpNode*> DAGCircuit::op_nodes() {
+  std::vector<DAGOpNode*> result;
   for (const auto& current : multi_graph_.nodes()) {
-    if (auto op_node = std::dynamic_pointer_cast<DAGOpNode>(current)) {
+    if (auto* op_node = dynamic_cast<DAGOpNode*>(current)) {
       result.push_back(op_node);
     }
   }
   return result;
 }
 
-std::vector<std::shared_ptr<DAGOpNode>> DAGCircuit::two_qubit_ops() {
-  std::vector<std::shared_ptr<DAGOpNode>> result;
+std::vector<DAGOpNode*> DAGCircuit::two_qubit_ops() {
+  std::vector<DAGOpNode*> result;
   for (const auto& current : op_nodes()) {
     if (current->qargs.size() == 2) {
       result.push_back(current);
@@ -289,8 +287,8 @@ std::vector<std::shared_ptr<DAGOpNode>> DAGCircuit::two_qubit_ops() {
   return result;
 }
 
-std::vector<std::shared_ptr<DAGOpNode>> DAGCircuit::multi_qubit_ops() {
-  std::vector<std::shared_ptr<DAGOpNode>> result;
+std::vector<DAGOpNode*> DAGCircuit::multi_qubit_ops() {
+  std::vector<DAGOpNode*> result;
   for (const auto& current : op_nodes()) {
     if (current->qargs.size() >= 3) {
       result.push_back(current);
@@ -299,38 +297,36 @@ std::vector<std::shared_ptr<DAGOpNode>> DAGCircuit::multi_qubit_ops() {
   return result;
 }
 
-std::vector<std::shared_ptr<DAGNode>> DAGCircuit::longest_path() {
-  std::vector<std::shared_ptr<DAGNode>> result;
+std::vector<DAGNode*> DAGCircuit::longest_path() {
+  std::vector<DAGNode*> result;
   for (int node_id : multi_graph_.dag_longest_path()) {
     // 将图内部的id路径转换成节点对象。
-    result.push_back(multi_graph_[node_id]);
+    if (auto* current = multi_graph_[node_id]) {
+      result.push_back(current);
+    }
   }
   return result;
 }
 
-std::vector<std::shared_ptr<DAGNode>> DAGCircuit::successors(
-    const std::shared_ptr<DAGNode>& node) {
+std::vector<DAGNode*> DAGCircuit::successors(const DAGNode* node) {
   return multi_graph_.successors(node->node_id());
 }
 
-std::vector<std::shared_ptr<DAGNode>> DAGCircuit::predecessors(
-    const std::shared_ptr<DAGNode>& node) {
+std::vector<DAGNode*> DAGCircuit::predecessors(const DAGNode* node) {
   return multi_graph_.predecessors(node->node_id());
 }
 
-bool DAGCircuit::is_successor(const std::shared_ptr<DAGNode>& node,
-                              const std::shared_ptr<DAGNode>& node_succ) {
+bool DAGCircuit::is_successor(const DAGNode* node, const DAGNode* node_succ) {
   return multi_graph_.has_edge(node->node_id(), node_succ->node_id());
 }
 
-bool DAGCircuit::is_predecessor(const std::shared_ptr<DAGNode>& node,
-                                const std::shared_ptr<DAGNode>& node_pred) {
+bool DAGCircuit::is_predecessor(const DAGNode* node,
+                                const DAGNode* node_pred) {
   return multi_graph_.has_edge(node_pred->node_id(), node->node_id());
 }
 
-std::set<std::shared_ptr<DAGNode>> DAGCircuit::ancestors(
-    const std::shared_ptr<DAGNode>& node) {
-  std::set<std::shared_ptr<DAGNode>> result;
+std::set<DAGNode*> DAGCircuit::ancestors(const DAGNode* node) {
+  std::set<DAGNode*> result;
   std::queue<int> queue;
   std::unordered_set<int> visited;
 
@@ -344,7 +340,9 @@ std::set<std::shared_ptr<DAGNode>> DAGCircuit::ancestors(
     if (!visited.insert(current).second) {
       continue;
     }
-    result.insert(multi_graph_[current]);
+    if (auto* current_node = multi_graph_[current]) {
+      result.insert(current_node);
+    }
     for (int predecessor_id : multi_graph_.predecessor_indices(current)) {
       queue.push(predecessor_id);
     }
@@ -352,9 +350,8 @@ std::set<std::shared_ptr<DAGNode>> DAGCircuit::ancestors(
   return result;
 }
 
-std::set<std::shared_ptr<DAGNode>> DAGCircuit::descendants(
-    const std::shared_ptr<DAGNode>& node) {
-  std::set<std::shared_ptr<DAGNode>> result;
+std::set<DAGNode*> DAGCircuit::descendants(const DAGNode* node) {
+  std::set<DAGNode*> result;
   std::queue<int> queue;
   std::unordered_set<int> visited;
 
@@ -367,7 +364,9 @@ std::set<std::shared_ptr<DAGNode>> DAGCircuit::descendants(
     if (!visited.insert(current).second) {
       continue;
     }
-    result.insert(multi_graph_[current]);
+    if (auto* current_node = multi_graph_[current]) {
+      result.insert(current_node);
+    }
     for (int successor_id : multi_graph_.successor_indices(current)) {
       queue.push(successor_id);
     }
@@ -375,26 +374,27 @@ std::set<std::shared_ptr<DAGNode>> DAGCircuit::descendants(
   return result;
 }
 
-void DAGCircuit::remove_op_node(const std::shared_ptr<DAGOpNode>& node) {
+void DAGCircuit::remove_op_node(DAGOpNode* node) {
   if (!node) {
     throw std::invalid_argument(
         "The method remove_op_node only works on DAGOpNodes.");
   }
+  auto op = node->op;
   multi_graph_.remove_node_retain_edges(node->node_id());
-  decrement_op(node->op);
+  decrement_op(op);
   node->flag = -1;
 }
 
-std::set<std::vector<std::shared_ptr<DAGNode>>> DAGCircuit::collect_runs(
+std::set<std::vector<DAGNode*>> DAGCircuit::collect_runs(
     const std::vector<std::string>& namelist) {
   const std::unordered_set<std::string> name_set(namelist.begin(),
                                                  namelist.end());
-  auto filter_fn = [&name_set](const std::shared_ptr<DAGNode>& current) {
-    auto op_node = std::dynamic_pointer_cast<DAGOpNode>(current);
+  auto filter_fn = [&name_set](const DAGNode* current) {
+    auto* op_node = dynamic_cast<const DAGOpNode*>(current);
     return op_node && name_set.count(op_node->op->name) > 0;
   };
 
-  std::set<std::vector<std::shared_ptr<DAGNode>>> result;
+  std::set<std::vector<DAGNode*>> result;
   for (auto& run : multi_graph_.collect_runs(filter_fn)) {
     // 用set去重，避免同一串连续门因不同遍历入口重复返回。
     result.insert(std::move(run));
@@ -463,15 +463,19 @@ DAGCircuit DAGCircuit::two_qubit_ops_to_dag() {
 }
 
 std::vector<DAGCircuit::EdgeTriple> DAGCircuit::edges(
-    const std::vector<std::shared_ptr<DAGNode>>* nodes_ptr) {
-  std::vector<std::shared_ptr<DAGNode>> target_nodes =
+    const std::vector<DAGNode*>* nodes_ptr) {
+  std::vector<DAGNode*> target_nodes =
       nodes_ptr ? *nodes_ptr : multi_graph_.nodes();
 
   std::vector<EdgeTriple> result;
   for (const auto& current : target_nodes) {
     for (const auto& [src, dst, wire] :
          multi_graph_.out_edges(current->node_id())) {
-      result.push_back({multi_graph_[src], multi_graph_[dst], wire});
+      auto* src_node = multi_graph_[src];
+      auto* dst_node = multi_graph_[dst];
+      if (src_node && dst_node) {
+        result.push_back({src_node, dst_node, wire});
+      }
     }
   }
   return result;

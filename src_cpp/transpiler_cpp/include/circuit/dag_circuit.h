@@ -43,9 +43,9 @@ class DAGCircuit {
    */
   struct EdgeTriple {
     /// 边的源节点
-    std::shared_ptr<DAGNode> src;
+    DAGNode* src;
     /// 边的目标节点
-    std::shared_ptr<DAGNode> dst;
+    DAGNode* dst;
     /// 边关联的线路编号
     int wire;
   };
@@ -96,19 +96,19 @@ class DAGCircuit {
    * @brief 在线路尾部插入一个门操作
    * @param op 待插入门操作
    * @param qargs 作用线路列表，留空时使用 op->targets
-   * @return std::shared_ptr<DAGOpNode> 新增门操作对应的 DAG 节点
+   * @return DAGOpNode* 新增门操作对应的 DAG 节点
    */
-  std::shared_ptr<DAGOpNode> apply_operation_back(
-      std::shared_ptr<BaseOperation> op, std::vector<int> qargs = {});
+  DAGOpNode* apply_operation_back(std::shared_ptr<BaseOperation> op,
+                                  std::vector<int> qargs = {});
 
   /**
    * @brief 在线路头部插入一个门操作
    * @param op 待插入门操作
    * @param qargs 作用线路列表，留空时使用 op->targets
-   * @return std::shared_ptr<DAGOpNode> 新增门操作对应的 DAG 节点
+   * @return DAGOpNode* 新增门操作对应的 DAG 节点
    */
-  std::shared_ptr<DAGOpNode> apply_operation_front(
-      std::shared_ptr<BaseOperation> op, std::vector<int> qargs = {});
+  DAGOpNode* apply_operation_front(std::shared_ptr<BaseOperation> op,
+                                   std::vector<int> qargs = {});
 
   /**
    * @brief 返回 DAG 中的门操作数量
@@ -132,79 +132,76 @@ class DAGCircuit {
    * @brief 返回某条线路上的节点序列
    * @param wire 线路编号
    * @param only_ops 为 true 时仅返回门操作对应节点
-   * @return std::vector<std::shared_ptr<DAGNode>> 线路上的节点列表
+   * @return std::vector<DAGNode*> 线路上的节点列表
    */
-  std::vector<std::shared_ptr<DAGNode>> nodes_on_wire(int wire,
-                                                      bool only_ops = false);
+  std::vector<DAGNode*> nodes_on_wire(int wire, bool only_ops = false);
 
   /**
    * @brief 按给定排序键返回全部节点的字典序拓扑序
    * @param key 自定义排序键函数，留空时使用节点默认排序键
-   * @return std::vector<std::shared_ptr<DAGNode>> 拓扑有序的节点列表
+   * @return std::vector<DAGNode*> 拓扑有序的节点列表
    */
-  std::vector<std::shared_ptr<DAGNode>> topological_nodes(
-      std::function<std::string(const std::shared_ptr<DAGNode>&)> key = {});
+  std::vector<DAGNode*> topological_nodes(
+      std::function<std::string(const DAGNode*)> key = {});
 
   /**
    * @brief 按给定排序键返回全部门操作的字典序拓扑序
    * @param key 自定义排序键函数，留空时使用节点默认排序键
-   * @return std::vector<std::shared_ptr<DAGOpNode>> 拓扑有序的门操作列表
+   * @return std::vector<DAGOpNode*> 拓扑有序的门操作列表
    */
-  std::vector<std::shared_ptr<DAGOpNode>> topological_op_nodes(
-      std::function<std::string(const std::shared_ptr<DAGNode>&)> key = {});
+  std::vector<DAGOpNode*> topological_op_nodes(
+      std::function<std::string(const DAGNode*)> key = {});
 
   /**
    * @brief 通过节点 id 访问节点对象
    * @param node_id 节点编号
-   * @return std::shared_ptr<DAGNode> 节点对象，若节点已删除则可能为空
+   * @return DAGNode* 节点对象，若节点已删除则为空
    */
-  std::shared_ptr<DAGNode> node(int node_id);
+  DAGNode* node(int node_id);
 
   /**
    * @brief 返回当前所有活跃节点
-   * @return std::vector<std::shared_ptr<DAGNode>> 活跃节点列表
+   * @return std::vector<DAGNode*> 活跃节点列表
    */
-  std::vector<std::shared_ptr<DAGNode>> nodes();
+  std::vector<DAGNode*> nodes();
 
   /**
    * @brief 返回当前所有活跃门操作
-   * @return std::vector<std::shared_ptr<DAGOpNode>> 门操作列表
+   * @return std::vector<DAGOpNode*> 门操作列表
    */
-  std::vector<std::shared_ptr<DAGOpNode>> op_nodes();
+  std::vector<DAGOpNode*> op_nodes();
 
   /**
    * @brief 返回所有双量子位门操作
-   * @return std::vector<std::shared_ptr<DAGOpNode>> 双量子位门操作列表
+   * @return std::vector<DAGOpNode*> 双量子位门操作列表
    */
-  std::vector<std::shared_ptr<DAGOpNode>> two_qubit_ops();
+  std::vector<DAGOpNode*> two_qubit_ops();
 
   /**
    * @brief 返回所有三量子位及以上的门操作
-   * @return std::vector<std::shared_ptr<DAGOpNode>> 多量子位门操作列表
+   * @return std::vector<DAGOpNode*> 多量子位门操作列表
    */
-  std::vector<std::shared_ptr<DAGOpNode>> multi_qubit_ops();
+  std::vector<DAGOpNode*> multi_qubit_ops();
 
   /**
    * @brief 返回 DAG 中的一条最长路径
-   * @return std::vector<std::shared_ptr<DAGNode>> 最长路径节点列表
+   * @return std::vector<DAGNode*> 最长路径节点列表
    */
-  std::vector<std::shared_ptr<DAGNode>> longest_path();
+  std::vector<DAGNode*> longest_path();
 
   /**
    * @brief 返回指定节点的直接后继节点
    * @param node 查询起点
-   * @return std::vector<std::shared_ptr<DAGNode>> 后继节点列表
+   * @return std::vector<DAGNode*> 后继节点列表
    */
-  std::vector<std::shared_ptr<DAGNode>> successors(
-      const std::shared_ptr<DAGNode>& node);
+  std::vector<DAGNode*> successors(const DAGNode* node);
 
   /**
    * @brief 返回指定节点的直接前驱节点
    * @param node 查询目标
-   * @return std::vector<std::shared_ptr<DAGNode>> 前驱节点列表
+   * @return std::vector<DAGNode*> 前驱节点列表
    */
-  std::vector<std::shared_ptr<DAGNode>> predecessors(
-      const std::shared_ptr<DAGNode>& node);
+  std::vector<DAGNode*> predecessors(const DAGNode* node);
 
   /**
    * @brief 判断一个节点是否是另一个节点的直接后继
@@ -213,8 +210,7 @@ class DAGCircuit {
    * @return true node_succ 是 node 的直接后继
    * @return false node_succ 不是 node 的直接后继
    */
-  bool is_successor(const std::shared_ptr<DAGNode>& node,
-                    const std::shared_ptr<DAGNode>& node_succ);
+  bool is_successor(const DAGNode* node, const DAGNode* node_succ);
 
   /**
    * @brief 判断一个节点是否是另一个节点的直接前驱
@@ -223,37 +219,34 @@ class DAGCircuit {
    * @return true node_pred 是 node 的直接前驱
    * @return false node_pred 不是 node 的直接前驱
    */
-  bool is_predecessor(const std::shared_ptr<DAGNode>& node,
-                      const std::shared_ptr<DAGNode>& node_pred);
+  bool is_predecessor(const DAGNode* node, const DAGNode* node_pred);
 
   /**
    * @brief 返回指定节点的全部祖先节点
    * @param node 目标节点
-   * @return std::set<std::shared_ptr<DAGNode>> 祖先节点集合
+   * @return std::set<DAGNode*> 祖先节点集合
    */
-  std::set<std::shared_ptr<DAGNode>> ancestors(
-      const std::shared_ptr<DAGNode>& node);
+  std::set<DAGNode*> ancestors(const DAGNode* node);
 
   /**
    * @brief 返回指定节点的全部后代节点
    * @param node 起始节点
-   * @return std::set<std::shared_ptr<DAGNode>> 后代节点集合
+   * @return std::set<DAGNode*> 后代节点集合
    */
-  std::set<std::shared_ptr<DAGNode>> descendants(
-      const std::shared_ptr<DAGNode>& node);
+  std::set<DAGNode*> descendants(const DAGNode* node);
 
   /**
    * @brief 删除一个门操作节点，并在同一 wire 上保留连通性
    * @param node 待删除的门操作节点
    */
-  void remove_op_node(const std::shared_ptr<DAGOpNode>& node);
+  void remove_op_node(DAGOpNode* node);
 
   /**
    * @brief 收集所有由给定门名组成的连续运行段
    * @param namelist 允许出现在运行段中的门名列表
-   * @return std::set<std::vector<std::shared_ptr<DAGNode>>> 运行段集合
+   * @return std::set<std::vector<DAGNode*>> 运行段集合
    */
-  std::set<std::vector<std::shared_ptr<DAGNode>>> collect_runs(
+  std::set<std::vector<DAGNode*>> collect_runs(
       const std::vector<std::string>& namelist);
 
   /**
@@ -296,7 +289,7 @@ class DAGCircuit {
    * @return std::vector<EdgeTriple> 出边三元组列表
    */
   std::vector<EdgeTriple> edges(
-      const std::vector<std::shared_ptr<DAGNode>>* nodes_ptr = nullptr);
+      const std::vector<DAGNode*>* nodes_ptr = nullptr);
 
   /**
    * @brief 返回底层多重图对象
@@ -312,19 +305,17 @@ class DAGCircuit {
 
   /**
    * @brief 返回输入节点映射
-   * @return const std::map<int, std::shared_ptr<DAGInNode>>& wire
+   * @return const std::map<int, DAGInNode*>& wire
    * 到输入节点的映射
    */
-  const std::map<int, std::shared_ptr<DAGInNode>>& get_input_map() const {
-    return input_map;
-  }
+  const std::map<int, DAGInNode*>& get_input_map() const { return input_map; }
 
   /**
    * @brief 返回输出节点映射
-   * @return const std::map<int, std::shared_ptr<DAGOutNode>>& wire
+   * @return const std::map<int, DAGOutNode*>& wire
    * 到输出节点的映射
    */
-  const std::map<int, std::shared_ptr<DAGOutNode>>& get_output_map() const {
+  const std::map<int, DAGOutNode*>& get_output_map() const {
     return output_map;
   }
 
@@ -358,8 +349,8 @@ class DAGCircuit {
 
   std::vector<int> qubits_;
   std::set<int> wires_set_;
-  std::map<int, std::shared_ptr<DAGInNode>> input_map;
-  std::map<int, std::shared_ptr<DAGOutNode>> output_map;
+  std::map<int, DAGInNode*> input_map;
+  std::map<int, DAGOutNode*> output_map;
   MultiGraph multi_graph_;
   std::unordered_map<std::string, int> op_names_;
 };

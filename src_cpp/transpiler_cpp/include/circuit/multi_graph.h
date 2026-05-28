@@ -49,7 +49,7 @@ class MultiGraph {
    * @param node 待加入图中的节点对象
    * @return int 新节点 id
    */
-  int add_node(std::shared_ptr<DAGNode> node);
+  int add_node(std::unique_ptr<DAGNode> node);
 
   /**
    * @brief 成对追加两个节点并返回两个节点 id
@@ -57,8 +57,8 @@ class MultiGraph {
    * @param second 第二个节点
    * @return std::pair<int, int> 节点 id 对，顺序与参数一致
    */
-  std::pair<int, int> add_nodes(std::shared_ptr<DAGNode> first,
-                                std::shared_ptr<DAGNode> second);
+  std::pair<int, int> add_nodes(std::unique_ptr<DAGNode> first,
+                                std::unique_ptr<DAGNode> second);
 
   /**
    * @brief 在两个已存在节点之间添加一条有向边
@@ -84,38 +84,38 @@ class MultiGraph {
   int num_nodes() const { return num_active_; }
 
   /**
-   * @brief 通过节点 id 访问节点对象，可用于原地替换
+   * @brief 通过节点 id 访问当前活跃节点对象
    * @param id 节点 id
-   * @return std::shared_ptr<DAGNode>& 节点共享指针引用
+   * @return DAGNode* 节点裸指针，节点无效或已删除时返回 nullptr
    */
-  std::shared_ptr<DAGNode>& operator[](int id);
+  DAGNode* operator[](int id);
 
   /**
-   * @brief 通过节点 id 只读访问节点对象
+   * @brief 通过节点 id 只读访问当前活跃节点对象
    * @param id 节点 id
-   * @return const std::shared_ptr<DAGNode>& 节点共享指针常量引用
+   * @return const DAGNode* 节点裸指针，节点无效或已删除时返回 nullptr
    */
-  const std::shared_ptr<DAGNode>& operator[](int id) const;
+  const DAGNode* operator[](int id) const;
 
   /**
    * @brief 返回图中的全部活跃节点
-   * @return std::vector<std::shared_ptr<DAGNode>> 节点列表
+   * @return std::vector<DAGNode*> 节点列表
    */
-  std::vector<std::shared_ptr<DAGNode>> nodes() const;
+  std::vector<DAGNode*> nodes() const;
 
   /**
    * @brief 返回给定节点的所有后继节点
    * @param node_id 节点 id
-   * @return std::vector<std::shared_ptr<DAGNode>> 后继节点列表
+   * @return std::vector<DAGNode*> 后继节点列表
    */
-  std::vector<std::shared_ptr<DAGNode>> successors(int node_id) const;
+  std::vector<DAGNode*> successors(int node_id) const;
 
   /**
    * @brief 返回给定节点的所有前驱节点
    * @param node_id 节点 id
-   * @return std::vector<std::shared_ptr<DAGNode>> 前驱节点列表
+   * @return std::vector<DAGNode*> 前驱节点列表
    */
-  std::vector<std::shared_ptr<DAGNode>> predecessors(int node_id) const;
+  std::vector<DAGNode*> predecessors(int node_id) const;
 
   /**
    * @brief 返回给定节点的所有后继节点 id
@@ -142,27 +142,27 @@ class MultiGraph {
    * @brief 在后继节点中返回第一条满足线路谓词的节点
    * @param node_id 起始节点 id
    * @param predicate 边线路过滤条件
-   * @return std::shared_ptr<DAGNode> 首个满足条件的后继节点，找不到时为空
+   * @return DAGNode* 首个满足条件的后继节点，找不到时为空
    */
-  std::shared_ptr<DAGNode> find_first_successor_by_edge(
+  DAGNode* find_first_successor_by_edge(
       int node_id, const std::function<bool(int)>& predicate) const;
 
   /**
    * @brief 返回所有满足线路谓词的前驱节点
    * @param node_id 节点 id
    * @param predicate 边线路过滤条件
-   * @return std::vector<std::shared_ptr<DAGNode>> 匹配的前驱节点列表
+   * @return std::vector<DAGNode*> 匹配的前驱节点列表
    */
-  std::vector<std::shared_ptr<DAGNode>> find_predecessors_by_edge(
+  std::vector<DAGNode*> find_predecessors_by_edge(
       int node_id, const std::function<bool(int)>& predicate) const;
 
   /**
    * @brief 返回所有满足线路谓词的后继节点
    * @param node_id 节点 id
    * @param predicate 边线路过滤条件
-   * @return std::vector<std::shared_ptr<DAGNode>> 匹配的后继节点列表
+   * @return std::vector<DAGNode*> 匹配的后继节点列表
    */
-  std::vector<std::shared_ptr<DAGNode>> find_successors_by_edge(
+  std::vector<DAGNode*> find_successors_by_edge(
       int node_id, const std::function<bool(int)>& predicate) const;
 
   /**
@@ -190,11 +190,10 @@ class MultiGraph {
   /**
    * @brief 按给定 key 执行字典序拓扑排序
    * @param key 将节点映射为排序键的函数
-   * @return std::vector<std::shared_ptr<DAGNode>> 排序后的节点列表
+   * @return std::vector<DAGNode*> 排序后的节点列表
    */
-  std::vector<std::shared_ptr<DAGNode>> lexicographical_topological_sort(
-      const std::function<std::string(const std::shared_ptr<DAGNode>&)>& key)
-      const;
+  std::vector<DAGNode*> lexicographical_topological_sort(
+      const std::function<std::string(const DAGNode*)>& key) const;
 
   /**
    * @brief 计算 DAG 中最长路径长度，单位为边数
@@ -211,18 +210,17 @@ class MultiGraph {
   /**
    * @brief 收集所有连续的匹配运行段
    * @param filter_fn 节点过滤函数，返回 true 表示该节点可加入运行段
-   * @return std::vector<std::vector<std::shared_ptr<DAGNode>>> 运行段列表
+   * @return std::vector<std::vector<DAGNode*>> 运行段列表
    */
-  std::vector<std::vector<std::shared_ptr<DAGNode>>> collect_runs(
-      const std::function<bool(const std::shared_ptr<DAGNode>&)>& filter_fn)
-      const;
+  std::vector<std::vector<DAGNode*>> collect_runs(
+      const std::function<bool(const DAGNode*)>& filter_fn) const;
 
  private:
   /**
    * @brief 节点槽位，集中保存节点对象及其局部邻接信息
    */
   struct NodeSlot {
-    std::shared_ptr<DAGNode> node;
+    std::unique_ptr<DAGNode> node;
     std::vector<Edge> out_edges;
     std::vector<Edge> in_edges;
     bool active = false;
@@ -237,10 +235,9 @@ class MultiGraph {
   /**
    * @brief 复制一个 DAGNode 对象
    * @param node 待复制节点
-   * @return std::shared_ptr<DAGNode> 复制后的新节点
+   * @return std::unique_ptr<DAGNode> 复制后的新节点
    */
-  static std::shared_ptr<DAGNode> clone_node(
-      const std::shared_ptr<DAGNode>& node);
+  static std::unique_ptr<DAGNode> clone_node(const DAGNode* node);
 
   std::vector<NodeSlot> slots_;
   int num_active_ = 0;
