@@ -29,6 +29,17 @@ mkdir -p /var/qcos/db/postgresql
 rm -rf /etc/qcos/prefect/profiles.toml
 mkdir -p /etc/qcos/postgres
 cp -r ${QCOS_LOCAL_SRC_DIR}/build-scripts/postgres /etc/qcos/
+mkdir -p /etc/prometheus
+cp -r ${QCOS_LOCAL_SRC_DIR}/etc/prometheus /etc/prometheus
+mkdir -p /etc/grafana/
+cp -r ${QCOS_LOCAL_SRC_DIR}/etc/grafana /etc/grafana
+mkdir -p /etc/alertmanager
+cp -r ${QCOS_LOCAL_SRC_DIR}/etc/alertmanager /etc/alertmanager
+if [ -n "${SMTP_HOST}" ] && [ -n "${ALERT_RECEIVE_EMAIL}" ]; then
+  export SMTP_HOST SMTP_PORT SMTP_FROM SMTP_AUTH_USER SMTP_AUTH_PASSWORD ALERT_RECEIVE_EMAIL
+  envsubst < /etc/alertmanager/alertmanager.yml > /etc/alertmanager/alertmanager.yml.tmp && mv /etc/alertmanager/alertmanager.yml.tmp /etc/alertmanager/alertmanager.yml
+fi
+
 
 cd ${build_scripts_dir}
 
@@ -105,4 +116,10 @@ else
   docker-compose -f docker-compose-dev.yaml down
   docker-compose -f docker-compose-dev.yaml up -d
   echo "Run QCOS bash: docker exec -it qcos-dev bash"
+fi
+
+# start metrics
+docker-compose -f docker-compose-metrics.yaml down
+if [ "${ENABLE_METRICS,,}" = "true" ]; then
+  docker-compose -f docker-compose-metrics.yaml up -d
 fi
