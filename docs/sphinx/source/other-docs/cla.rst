@@ -1,50 +1,180 @@
-贡献者协议
-=================
+WUYUEQbit项目个人贡献者许可协议
+===============================
+The Project of WUYUEQbit
+Individual Contributor License Agreement
+WUYUEQbit项目个人贡献者许可协议
 
-感谢您有兴趣为五岳纪元量子计算操作系统OpenWuYue-QCOS（以下简称OpenWuYue-QCOS）或其任何关联公司托管或管理的项目贡献软件代码。
+2026-5-14 updated
 
-为了阐明任何个人或实体的贡献授予的知识产权许可，OpenWuYue-QCOS必须有一份由每个贡献者签署的贡献者许可协议（“CLA”）存档，表明同意以下许可条款。
+Thank you for your interest in the WUYUEQbit Project (the “Project”) incubated
+and hosted by the OpenAtom Foundation (the “Foundation”). The Foundation is on
+behalf of the Project, and is also the legal entity that is making this
+Agreement with you.
+非常感谢您对开放原子开源基金会（“基金会”）孵化和托管的WUYUEQbit 项目（“本项目”）
+的关注！ 基金会是代表本项目并与您签订本协议的法人实体。
 
-此版本的贡献者许可协议允许个人向适用项目提交贡献。请在签署前仔细阅读本文件，在对协议项下条款均无异议的前提下，签署本协议。
+In order to clarify the rights granted with Contributions from any person or
+entity, the Project must have a Contributor License Agreement (the “Agreement”
+or “CLA”) on file that has been signed by each Contributor, indicating
+agreement to the license terms below. This Agreement is for Your protection as
+a Contributor as well as the protection of the Project and its users; it does
+not change Your rights to use Your own Contributions for any other purpose.
+为明确由任何实体就“贡献”授予的知识产权许可，本项目的每个贡献者须签署一份《贡献
+者许可协议》（“本协议”或“CLA”）并交由基金会存档，表明其同意如下许可条款。本协
+议将贵方作为贡献者进行保护，且同时也保护本项目及其用户；但不会改变贵方为其他目
+的使用贵方所拥有的“贡献”的权利。
 
-对于您现在和未来提交给OpenWuYue-QCOS的贡献，您接受并同意以下条款和条件。
+This version of the Agreement allows an individual to submit Contributions to
+the Project, and to grant copyright and patent licenses to the Foundation.
+本版本的本协议允许个人向本项目提交“贡献”，并向基金会授予著作权和专利许可。
 
-除此处授予OpenWuYue-QCOS和OpenWuYue-QCOS分发的软件的接收者的许可外，您保留对您的贡献的所有权利、所有权和利益。
+Please read this CLA carefully before completing and signing it, and keep a
+copy for Your records.
+请在填写和签署本协议之前请仔细阅读本协议内容，并保留一份CLA副本作为贵方的记录。
 
-定义。
+The rights that You grant to us under these terms are effective on the date You
+first submitted a Contribution to this Project, even if Your submission took
+place before the date You agreed to these terms and conditions. Except for the
+license granted herein to the Project and recipients of the Work distributed by
+the Project, You reserve all rights, title and interest in and to Your
+Contributions.
+贵方根据这些条款授予我们的权利自贵方首次向本项目提交“贡献”之日起生效，即使贵方的
+提交是在贵方同意这些条款和条件之前进行的。除本协议授予本项目和本项目所分发“本作
+品”的接收者的许可外，贵方保留对您的“贡献”中的所有权利、产权和利益。
 
-“您”（或“您的”）是指与OpenWuYue-QCOS签订本协议的著作权人或著作权人授权的法人。
+1.Definitions.
+定义
 
-对于法人实体，做出贡献的实体以及控制该实体、受该实体控制或与该实体共同控制的所有其他实体均被视为单一贡献者。
+“Project” refers to the WUYUEQbit Project incubated and hosted by the
+Foundation, which may be accessed at the address as listed in Appendix A.
+“本项目”是指基金会孵化和托管的，可通过附录A中所列的地址访问的WUYUEQbit项目。
 
-就本定义而言，“控制”是指 (i) 通过合同或其他方式直接或间接导致该实体的指示或管理的权力，或 (ii) 百分之五十 (50%) 的所有权或更多已发行股份，或 (iii) 该实体的实益所有权。
+“Contributor” or “You” (or “Your”) shall mean the individual copyright owner or
+individual authorized by the copyright owner that is making this agreement with
+the Foundation, and voluntarily submits a Contribution to the Project.
+“贡献者”或“贵方”/“您”系指与基金会订立本协议并自愿向本项目提交“贡献”的著作权人或
+经著作权人授权的自然人。
 
-“贡献”是指您有意提交给OpenWuYue-QCOS以纳入OpenWuYue-QCOS拥有或管理的任何产品或项目（即“作品”），包括但不限于任何程序、代码、文字、图片、图形、文档或者其他作品。
+“Contribution” shall mean the code, documentation, or any original work of
+authorship, including a modification of or addition to an existing work, that
+is intentionally submitted by You  for inclusion in the work of the Project
+(the “Work”). For the purposes of this definition, “submitted” means any form
+of electronic, verbal, or written communication sent to the Project or its
+representatives, including but not limited to communication on electronic
+mailing lists, source code control systems, and issue tracking systems that
+are managed by, or on behalf of, the Project for the purpose of discussing and
+improving the Work, but excluding communication that is conspicuously marked
+or otherwise designated in writing by You as “Not a Contribution”.
+“贡献”系指由贵方提交以并入本项目作品（“本作品”）之中的代码、文档或其他原创作品，
+包括任何对现有作品的修改或补充。本条款定义的“提交”系指以电子、口头或书面交流任
+意形式发送给本项目或其代表，包括但不限于为讨论和改进“本作品”目的，在由本项目或
+其代表管理的电子邮件列表、源代码控制系统以及问题跟踪系统上进行的通信，但不包括
+由贵方明确标记或以其他形式书面指定为“非贡献”的通信内容。
 
-就本定义而言，“提交”是指发送给OpenWuYue-QCOS或其代表的任何形式的电子或书面通讯，包括但不限于电子邮件列表中的通讯、源代码控制系统和由OpenWuYue-QCOS管理或代表OpenWuYue-QCOS管理的问题跟踪系统，用于讨论和改进作品。
+2. Contributor Grant of Copyright License.
+著作权许可的授予
 
-授予版权许可。
+Subject to the terms and conditions of this Agreement, You hereby grant to the
+Project, and to all who directly or indirectly receive of the Work a perpetual,
+non-exclusive, worldwide, no-charge, royalty-free, irrevocable copyright
+license to reproduce, prepare derivative works of, publicly display, publicly
+perform, sublicense, and distribute Your Contribution and derivative works
+thereof.
+贵方基于本协议的条款及条件，特此授予本项目和所有直接或间接接收“本作品”的一方永
+久的、非排他的、全球性的、免交易费的、免许可费的、不可撤销的著作权许可，以复制
+、修改、准备衍生作品、公开展示、公开运行、分许可和分发贵方的“贡献”及其衍生作品。
 
-在遵守本协议的条款和条件的前提下，您特此授予OpenWuYue-QCOS和OpenWuYue-QCOS分发的软件的接收者永久的、全球范围内的、非排他性的、免费的、免版税的、不可撤销的版权许可，以复制、准备衍生作品、公开展示、公开表演、再许可和分发您的贡献和此类衍生作品。
+3. Contributor Grant of Patent License
+专利权许可的授予
 
-授予专利许可。
+Subject to the terms and conditions of this Agreement, You hereby grant to the
+Project, and to all who directly or indirectly receive of the Work, a
+perpetual, non-exclusive, worldwide, no-charge, royalty-free, irrevocable
+(except as stated in this section) patent license to make, have made, use,
+offer to sell, sell, import, and otherwise transfer the Work; provided,
+however, that such license applies only to those patent claims licensable by
+You that are necessarily infringed by Your Contribution(s) alone or by
+combination of Your Contribution(s) with the Work to which such Contribution(s)
+were submitted. If any entity institutes patent litigation against You or any
+other entity (including a cross-claim or counterclaim in a lawsuit) alleging
+that You or such other entity has directly or contributory infringed a patent
+as a result of some act of making, having made, using, offering to sell,
+selling, or importing Your Contribution, or the combination of Your
+Contribution with the Work to which You submitted the Contribution, then any
+patent license granted by You under this CLA to the entity instituting patent
+litigation shall terminate as of the date such litigation is filed.
+基于本协议，贵方特此授予本项目和所有直接或间接接收“本作品”的一方永久的、全球性的
+、非排他的、免交易费的、免许可费的、不可撤销的（本条款下述情形除外）专利许可，以
+制造、委托制造、使用、许诺销售、销售、进口和以其他方式转移“本作品”。该专利许可仅
+及于贵方有权授予且将因贵方“贡献”本身、或因贵方“贡献”与其被提交到的“本作品”的结合
+所必然侵犯的专利权利要求。如果任何实体针对贵方或其他实体提起专利诉讼（包括诉讼中
+的交叉诉讼或反诉），指控贵方“贡献”或前述结合构成专利的直接侵权或帮助侵权，则任何
+根据本协议就该“贡献”或“本作品”授予该实体的专利许可自该实体提起该诉讼之日起终止。
 
-在遵守本协议的条款和条件的前提下，您特此授予OpenWuYue-QCOS和OpenWuYue-QCOS分发的软件的接收者一项永久的、全球范围内的、非独占的、免费的、免版税的、不可撤销的（除非本节另有规定）专利制作、制作、使用、提议出售、销售、进口和以其他方式转让作品的许可，其中此类许可仅适用于您可许可的那些专利权利要求，但您的贡献单独或由您对提交此类贡献的作品的贡献。如果任何实体对您或任何其他实体提起专利诉讼（包括诉讼中的交叉索赔或反诉），声称您的贡献或您贡献的作品构成直接或共同的专利侵权，则授予的任何专利许可根据本协议向该实体提供的该贡献或工作应在提起此类诉讼之日终止。
+Apart from the licenses granted in section 2 & 3, You reserve all right, title
+and interest in and to Your Contribution.
+除了第2条和第3条中授予的许可外，贵方保留对您的贡献的所有权利、产权和利益。
 
-您声明您在法律上有权授予上述许可。
+4. You represent that You are legally entitled to grant the licenses in section
+2 and 3. If Your employer (s) has rights to Your Contribution, You represent
+that You have received permission to submit Your Contribution on behalf of that
+employer, that Your employer has waived such rights for Your Contribution to
+the Project, or that Your employer has executed a separate Organization
+Contributor License Agreement with the Foundation.
+贵方承诺，贵方有权授予第2条和第3条中的许可。如果您的雇主对您的“贡献”享有权利，
+您承诺您的雇主已授权您提交该“贡献”，您的雇主已放弃您对本项目的“贡献”的该等权利，
+或您的雇主已与基金会单独订立了《法人贡献者许可协议》。
 
-您声明您的每一项贡献都是您的原创作品。
+5. You represent that Your Contribution is Your original work (see section 7
+for submissions on behalf of others). You represent that Your submission of
+Your Contribution includes complete details of any third-party license or other
+restriction (including, but not limited to, related copyrights, patents and
+trademarks) of which You are personally aware and which are associated with any
+part of Your Contribution.
+贵方承诺，您的“贡献”是您的原创作品（代表他人提交见第7条）。贵方承诺，您提交的“贡
+献”包括您个人知道并与您“贡献”的任何部分相关的任何第三方许可或其他限制（包括但不
+限于相关著作权、专利和商标）的完整详细信息。
 
-您声明您提交的投稿包括您个人知晓且与您投稿的任何部分相关的任何第三方许可或其他限制（包括但不限于相关专利和商标）的完整详细信息。
+6. You are not expected to provide support for Your Contributions, except to
+the extent You desire to provide support. You may provide support for free,
+for a fee, or not at all. Unless required by applicable law or agreed to in
+writing, You provide Your Contribution on an “AS IS” BASIS, WITHOUT
+WARRANTIES OF ANY KIND, either express or implied, including, without
+limitation, any warranties or conditions of TITLE, NON-INFRINGEMENT,
+MERCHANTABILITY, or FITNESS FOR A PARTICULAR PURPOSE.
+除非贵方自愿，否则贵方无需为您的“贡献”提供支持服务。贵方可以提供免费或收费支持
+服务，也可以完全不提供支持服务。除非适用法律另有规定或另有书面约定，您“按原样”
+提供您的“贡献”，而不对其提供任何类型的担保或条件，无论明示还是默示，包括但不限
+于产权、不侵权、适销性或特定目的适用性的担保或条件。
 
-您不应为您的贡献提供支持，除非您希望提供支持。您可以免费、收费或根本不提供支持。
+7. Should You wish to submit work that is not Your original work, You may
+submit it to the Project separately from Your Contribution, identifying the
+complete details of its origin and of any license or other restriction
+(including, but not limited to, related copyrights, patents and trademarks)
+of which You are aware, and conspicuously marking the work to show it has been
+submitted on behalf of a third party and the name of that party.
+如果贵方拟提交非贵方原创作品，贵方可以将该部分内容与贵方“贡献”进行区分后提交给
+本项目，并根据贵方所知标识该部分内容的来源以及任何许可或其他限制（包括但不限于
+相关专利、商标和许可协议）的完整细节，并以显著方式注明该作品系“代第三方提交”并
+注明第三方名称。
 
-除非适用法律要求或书面同意，否则您按“原样”提供您的贡献，不提供任何明示或暗示的保证或条件，包括但不限于标题、非侵权、适销性或特定用途的适用性。
+8. You agree to notify the Project of any facts or circumstances of which You
+become aware that would make these representations inaccurate in any respect in
+time.
+贵方同意在您获悉任何可能导致上述承诺不准确的事实或情况之时将及时通知本项目。
 
-如果您希望提交非您原创的作品，您可以将其与任何投稿分开提交给OpenWuYue-QCOS，注明其来源和任何许可或其他限制（包括但不限于相关专利、商标）的完整详细信息和许可协议），并在显着位置将作品标记为“代表第三方提交：[此处命名]”。
 
-您同意将您知悉的任何会使这些陈述在任何方面不准确的事实或情况通知OpenWuYue-QCOS。
+Full name姓名:
+Email邮箱:
+Account name 账号名称(Gitee/GitHub/AtomGit):
+Signature签名:
+Date日期:
 
-本协议将受中华人民共和国法律管辖并按其解释，但不包括被称为法律冲突的法律体系。双方明确同意不适用《联合国国际货物销售合同公约》。
 
-根据本协议产生的任何法律诉讼或程序将由OpenWuYue-QCOS所在地的法院提起，双方在此不可撤销地同意其中的属人管辖权和地点。
+
+
+Appendix A: Address of the WUYUEQbit Project
+附录A：WUYUEQbit项目地址
+
+https://atomgit.com/WUYUEQbit
+https://gitee.com/WUYUEQbit
