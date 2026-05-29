@@ -13,6 +13,7 @@ add_library(${LIB_TRANSPILER} STATIC
                             circuit/quantum_circuit.cpp
                             optimizer/adjacent_optimization.cpp
                             optimizer/inverse_cancellation.cpp
+                            optimizer/subcircuit_rewrite.cpp
                             decomposer/equivalence_graph.cpp
                             decomposer/rule_applier.cpp
                             decomposer/decomposer.cpp
