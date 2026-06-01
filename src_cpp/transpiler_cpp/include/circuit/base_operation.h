@@ -71,8 +71,8 @@ class BaseOperation {
   std::string arg_value_to_string() const;
   std::string to_openqasm(const std::string& qubit_prefix = "q") const;
 
-  virtual std::unique_ptr<BaseOperation> clone() const {
-    return std::make_unique<BaseOperation>(*this);
+  virtual std::shared_ptr<BaseOperation> clone() const {
+    return std::make_shared<BaseOperation>(*this);
   }
 };
 
