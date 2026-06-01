@@ -18,15 +18,14 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "decomposer/decomposer.h"
 #include "circuit/base_operation.h"
+#include "decomposer/decomposer.h"
 #include "decomposer/equivalence_graph.h"
 
 namespace py = pybind11;
 using namespace qcos;
 
 void bind_decomposer(py::module_& m) {
-
   // =========================
   // ParamGate
   // =========================
@@ -43,49 +42,43 @@ void bind_decomposer(py::module_& m) {
       .def(py::init<>())
 
       // -------- get_decompose_rules --------
-      .def(
-          "get_decompose_rules",
-          [](Decomposer& self,
-             const std::vector<std::string>& source,
-             const std::vector<std::string>& target) {
+      .def("get_decompose_rules",
+           [](Decomposer& self, const std::vector<std::string>& source,
+              const std::vector<std::string>& target) {
+             auto result = self.get_decompose_rules(source, target);
 
-            auto result = self.get_decompose_rules(source, target);
+             const auto& table = result.first;
+             const auto& stats = result.second;
 
-            const auto& table = result.first;
-            const auto& stats = result.second;
+             py::dict py_table;
 
-            py::dict py_table;
+             for (const auto& [key, value] : table) {
+               py_table[py::cast(key)] = py::cast(value);
+             }
 
-            for (const auto& [key, value] : table) {
-              py_table[py::cast(key)] = py::cast(value);
-            }
-
-            return py::make_tuple(py_table, stats);
-          })
+             return py::make_tuple(py_table, stats);
+           })
 
       // -------- apply_decompose_rules --------
-      .def(
-          "apply_decompose_rules",
-          [](Decomposer& self,
-             const std::vector<BaseOperation*>& circuit_raw,
-             const Decomposer::DecompositionTable& table) {
+      .def("apply_decompose_rules",
+           [](Decomposer& self, const std::vector<BaseOperation*>& circuit_raw,
+              const Decomposer::DecompositionTable& table) {
+             // Python -> C++ clone
+             std::vector<std::shared_ptr<BaseOperation>> circuit;
+             circuit.reserve(circuit_raw.size());
 
-            // Python -> C++ clone
-            std::vector<std::unique_ptr<BaseOperation>> circuit;
-            circuit.reserve(circuit_raw.size());
+             for (auto* ptr : circuit_raw) {
+               circuit.push_back(ptr->clone());
+             }
 
-            for (auto* ptr : circuit_raw) {
-              circuit.push_back(ptr->clone());
-            }
+             auto result = self.apply_decompose_rules(circuit, table);
 
-            auto result = self.apply_decompose_rules(circuit, table);
+             // C++ -> Python（move）
+             py::list py_list;
+             for (auto& op : result) {
+               py_list.append(std::move(op));
+             }
 
-            // C++ -> Python（move）
-            py::list py_list;
-            for (auto& op : result) {
-              py_list.append(std::move(op));
-            }
-
-            return py_list;
-          });
+             return py_list;
+           });
 }

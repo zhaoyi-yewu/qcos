@@ -17,12 +17,12 @@
 
 #include "decomposer/rule_applier.h"
 
-#include <cmath>
 #include <cctype>
+#include <cmath>
 #include <cstdlib>
 #include <functional>
-#include <stdexcept>
 #include <sstream>
+#include <stdexcept>
 #include <unordered_set>
 
 namespace qcos {
@@ -69,20 +69,11 @@ int precedence(char op) {
 // Implements the Shunting-yard algorithm.
 // Operators with higher or equal precedence
 // are popped before inserting the new operator.
-void push_operator(
-    std::vector<ExprToken>& output,
-    std::vector<char>& ops,
-    char op) {
-
-  while (!ops.empty() &&
-         ops.back() != '(' &&
+void push_operator(std::vector<ExprToken>& output, std::vector<char>& ops,
+                   char op) {
+  while (!ops.empty() && ops.back() != '(' &&
          precedence(ops.back()) >= precedence(op)) {
-
-    output.push_back({
-        ExprTokenKind::kOperator,
-        0.0,
-        {},
-        ops.back()});
+    output.push_back({ExprTokenKind::kOperator, 0.0, {}, ops.back()});
 
     ops.pop_back();
   }
@@ -99,7 +90,6 @@ void push_operator(
 //   Output:
 //     2 pi * theta 4 / +
 std::vector<ExprToken> compile_expr(const std::string& expr) {
-
   // Output RPN token sequence
   std::vector<ExprToken> output;
 
@@ -116,7 +106,6 @@ std::vector<ExprToken> compile_expr(const std::string& expr) {
   bool expect_operand = true;
 
   for (size_t i = 0; i < expr.size();) {
-
     const char c = expr[i];
 
     // Skip whitespace
@@ -128,18 +117,13 @@ std::vector<ExprToken> compile_expr(const std::string& expr) {
     // =========================================================
     // Parse numeric literals
     // =========================================================
-    if (std::isdigit(static_cast<unsigned char>(c)) ||
-        c == '.') {
-
+    if (std::isdigit(static_cast<unsigned char>(c)) || c == '.') {
       char* end = nullptr;
 
       // Parse floating-point number
-      const double value =
-          std::strtod(expr.c_str() + i, &end);
+      const double value = std::strtod(expr.c_str() + i, &end);
 
-      output.push_back({
-          ExprTokenKind::kNumber,
-          value});
+      output.push_back({ExprTokenKind::kNumber, value});
 
       i = static_cast<size_t>(end - expr.c_str());
 
@@ -150,9 +134,7 @@ std::vector<ExprToken> compile_expr(const std::string& expr) {
     // =========================================================
     // Parse variables
     // =========================================================
-    if (std::isalpha(static_cast<unsigned char>(c)) ||
-        c == '_') {
-
+    if (std::isalpha(static_cast<unsigned char>(c)) || c == '_') {
       size_t j = i + 1;
 
       // Variable names may contain:
@@ -165,10 +147,7 @@ std::vector<ExprToken> compile_expr(const std::string& expr) {
         ++j;
       }
 
-      output.push_back({
-          ExprTokenKind::kVariable,
-          0.0,
-          expr.substr(i, j - i)});
+      output.push_back({ExprTokenKind::kVariable, 0.0, expr.substr(i, j - i)});
 
       i = j;
 
@@ -180,7 +159,6 @@ std::vector<ExprToken> compile_expr(const std::string& expr) {
     // Left parenthesis
     // =========================================================
     if (c == '(') {
-
       ops.push_back(c);
 
       ++i;
@@ -193,23 +171,16 @@ std::vector<ExprToken> compile_expr(const std::string& expr) {
     // Right parenthesis
     // =========================================================
     if (c == ')') {
-
       // Pop operators until matching '('
       while (!ops.empty() && ops.back() != '(') {
-
-        output.push_back({
-            ExprTokenKind::kOperator,
-            0.0,
-            {},
-            ops.back()});
+        output.push_back({ExprTokenKind::kOperator, 0.0, {}, ops.back()});
 
         ops.pop_back();
       }
 
       // Missing matching '('
       if (ops.empty()) {
-        throw std::runtime_error(
-            "Expr parse error: " + expr);
+        throw std::runtime_error("Expr parse error: " + expr);
       }
 
       // Remove '('
@@ -224,16 +195,13 @@ std::vector<ExprToken> compile_expr(const std::string& expr) {
     // =========================================================
     // Parse operators
     // =========================================================
-    if (c == '+' || c == '-' ||
-        c == '*' || c == '/') {
-
+    if (c == '+' || c == '-' || c == '*' || c == '/') {
       // Unary operator handling
       //
       // Examples:
       //   -x
       //   +y
       if (expect_operand) {
-
         // Unary plus is ignored
         if (c == '+') {
           ++i;
@@ -242,7 +210,6 @@ std::vector<ExprToken> compile_expr(const std::string& expr) {
 
         // Unary minus
         if (c == '-') {
-
           // Use '~' internally for unary minus
           ops.push_back('~');
 
@@ -250,8 +217,7 @@ std::vector<ExprToken> compile_expr(const std::string& expr) {
           continue;
         }
 
-        throw std::runtime_error(
-            "Expr parse error: " + expr);
+        throw std::runtime_error("Expr parse error: " + expr);
       }
 
       // Binary operator
@@ -264,24 +230,17 @@ std::vector<ExprToken> compile_expr(const std::string& expr) {
     }
 
     // Invalid character
-    throw std::runtime_error(
-        "Expr parse error: " + expr);
+    throw std::runtime_error("Expr parse error: " + expr);
   }
 
   // Flush remaining operators
   while (!ops.empty()) {
-
     // Unmatched '('
     if (ops.back() == '(') {
-      throw std::runtime_error(
-          "Expr parse error: " + expr);
+      throw std::runtime_error("Expr parse error: " + expr);
     }
 
-    output.push_back({
-        ExprTokenKind::kOperator,
-        0.0,
-        {},
-        ops.back()});
+    output.push_back({ExprTokenKind::kOperator, 0.0, {}, ops.back()});
 
     ops.pop_back();
   }
@@ -298,22 +257,18 @@ std::vector<ExprToken> compile_expr(const std::string& expr) {
 // Example:
 //   expr = "2*pi + theta"
 //   env = {theta: 1.5}
-double eval_compiled_expr(
-    const std::vector<ExprToken>& tokens,
-    const std::unordered_map<std::string, double>& env) {
-
+double eval_compiled_expr(const std::vector<ExprToken>& tokens,
+                          const std::unordered_map<std::string, double>& env) {
   // Evaluation stack
   std::vector<double> stack;
 
   stack.reserve(tokens.size());
 
   for (const auto& token : tokens) {
-
     // =========================================================
     // Numeric literal
     // =========================================================
     if (token.kind == ExprTokenKind::kNumber) {
-
       stack.push_back(token.value);
     }
 
@@ -321,27 +276,22 @@ double eval_compiled_expr(
     // Variable lookup
     // =========================================================
     else if (token.kind == ExprTokenKind::kVariable) {
-
       // Built-in constant pi
       if (token.text == "pi") {
-
         stack.push_back(M_PI);
       }
 
       // Built-in constant e
       else if (token.text == "e") {
-
         stack.push_back(M_E);
       }
 
       // User-defined variable
       else {
-
         auto it = env.find(token.text);
 
         if (it == env.end()) {
-          throw std::runtime_error(
-              "Unknown parameter: " + token.text);
+          throw std::runtime_error("Unknown parameter: " + token.text);
         }
 
         stack.push_back(it->second);
@@ -352,13 +302,10 @@ double eval_compiled_expr(
     // Operator evaluation
     // =========================================================
     else {
-
       // Unary minus
       if (token.op == '~') {
-
         if (stack.empty()) {
-          throw std::runtime_error(
-              "Expr evaluation stack underflow");
+          throw std::runtime_error("Expr evaluation stack underflow");
         }
 
         stack.back() = -stack.back();
@@ -368,8 +315,7 @@ double eval_compiled_expr(
 
       // Binary operators require two operands
       if (stack.size() < 2) {
-        throw std::runtime_error(
-            "Expr evaluation stack underflow");
+        throw std::runtime_error("Expr evaluation stack underflow");
       }
 
       const double rhs = stack.back();
@@ -379,7 +325,6 @@ double eval_compiled_expr(
       stack.pop_back();
 
       switch (token.op) {
-
         case '+':
           stack.push_back(lhs + rhs);
           break;
@@ -397,16 +342,14 @@ double eval_compiled_expr(
           break;
 
         default:
-          throw std::runtime_error(
-              "Unknown expression operator");
+          throw std::runtime_error("Unknown expression operator");
       }
     }
   }
 
   // Final stack must contain exactly one value
   if (stack.size() != 1) {
-    throw std::runtime_error(
-        "Expr evaluation error");
+    throw std::runtime_error("Expr evaluation error");
   }
 
   return stack.back();
@@ -448,10 +391,8 @@ double eval_compiled_expr(
 double RuleApplier::eval_expr(
     const std::string& expr,
     const std::unordered_map<std::string, double>& env) {
-
-  static thread_local std::unordered_map<
-      std::string,
-      std::vector<ExprToken>> expr_cache;
+  static thread_local std::unordered_map<std::string, std::vector<ExprToken>>
+      expr_cache;
 
   auto it = expr_cache.find(expr);
 
@@ -498,10 +439,8 @@ double RuleApplier::eval_expr(
  * - unknown qubit mapping appears
  */
 RuleApplier::OpList RuleApplier::apply_one_rule(
-    const BaseOperation& op,
-    const ParamGate& target,
+    const BaseOperation& op, const ParamGate& target,
     const std::vector<ParamGate>& sources) {
-
   // ------------------------------------------------
   // Validate qubit count
   // ------------------------------------------------
@@ -542,7 +481,7 @@ RuleApplier::OpList RuleApplier::apply_one_rule(
 
   // Add mathematical constants
   env["pi"] = M_PI;
-  env["e"]  = M_E;
+  env["e"] = M_E;
 
   OpList result;
 
@@ -551,16 +490,13 @@ RuleApplier::OpList RuleApplier::apply_one_rule(
   // ------------------------------------------------
 
   for (const auto& src : sources) {
-
     // ---- Qubit remapping ----
 
     std::vector<int> qubits;
 
     for (const auto& q : src.qubits) {
-
       if (!qubit_map.count(q)) {
-        throw std::runtime_error(
-            "Unknown qubit: " + q);
+        throw std::runtime_error("Unknown qubit: " + q);
       }
 
       qubits.push_back(qubit_map[q]);
@@ -576,8 +512,7 @@ RuleApplier::OpList RuleApplier::apply_one_rule(
 
     // ---- Construct decomposed gate ----
 
-    result.push_back(
-        create_gate(src.name, qubits, params));
+    result.push_back(create_gate(src.name, qubits, params));
   }
 
   return result;
@@ -596,12 +531,9 @@ RuleApplier::OpList RuleApplier::apply_one_rule(
  * @param src Source operation vector
  * @return Cloned operation vector
  */
-static std::vector<std::unique_ptr<BaseOperation>>
-clone_vector(
-    const std::vector<
-        std::unique_ptr<BaseOperation>>& src) {
-
-  std::vector<std::unique_ptr<BaseOperation>> dst;
+static std::vector<std::shared_ptr<BaseOperation>> clone_vector(
+    const std::vector<std::shared_ptr<BaseOperation>>& src) {
+  std::vector<std::shared_ptr<BaseOperation>> dst;
 
   for (const auto& op : src) {
     dst.push_back(op->clone());
@@ -638,36 +570,26 @@ clone_vector(
  * Thrown if a required decomposition rule
  * cannot be found.
  */
-std::vector<std::unique_ptr<BaseOperation>>
-RuleApplier::apply_path(
-    const std::vector<OpPtr>& circuit,
-    const std::vector<std::string>& target,
-    const std::unordered_map<
-        std::string,
-        EquivalenceRule>& rule_dict) {
-
+std::vector<std::shared_ptr<BaseOperation>> RuleApplier::apply_path(
+    const std::vector<OpPtr>& circuit, const std::vector<std::string>& target,
+    const std::unordered_map<std::string, EquivalenceRule>& rule_dict) {
   // ------------------------------------------------
   // Build target gate lookup set
   // ------------------------------------------------
 
-  std::unordered_set<std::string> target_set(
-      target.begin(),
-      target.end());
+  std::unordered_set<std::string> target_set(target.begin(), target.end());
 
-  using OpVec =
-      std::vector<std::unique_ptr<BaseOperation>>;
+  using OpVec = std::vector<std::shared_ptr<BaseOperation>>;
 
   // Memoization cache:
   // gate signature -> decomposed result
   std::unordered_map<std::string, OpVec> cache;
 
   // ------------------------------------------------
-  // Generate unique gate signature
+  // Generate shared gate signature
   // ------------------------------------------------
 
-  auto make_signature =
-      [](const BaseOperation& op) {
-
+  auto make_signature = [](const BaseOperation& op) {
     std::ostringstream oss;
 
     oss << op.name << "|";
@@ -691,7 +613,6 @@ RuleApplier::apply_path(
 
   std::function<OpVec(const BaseOperation&)> decompose =
       [&](const BaseOperation& gate) -> OpVec {
-
     std::string sig = make_signature(gate);
 
     // ---- Cache hit ----
@@ -705,7 +626,6 @@ RuleApplier::apply_path(
     // ---- Already target gate ----
 
     if (target_set.count(gate.name)) {
-
       result.push_back(gate.clone());
 
       cache[sig] = clone_vector(result);
@@ -716,25 +636,18 @@ RuleApplier::apply_path(
     // ---- Missing decomposition rule ----
 
     if (!rule_dict.count(gate.name)) {
-
-      throw std::runtime_error(
-          "No rule for gate: " + gate.name);
+      throw std::runtime_error("No rule for gate: " + gate.name);
     }
 
-    const auto& rule =
-        rule_dict.at(gate.name);
+    const auto& rule = rule_dict.at(gate.name);
 
     // ---- Apply decomposition rule ----
 
-    auto expanded = apply_one_rule(
-        gate,
-        rule.target,
-        rule.sources);
+    auto expanded = apply_one_rule(gate, rule.target, rule.sources);
 
     // ---- Recursively expand sub-gates ----
 
     for (const auto& op : expanded) {
-
       auto sub = decompose(*op);
 
       for (auto& x : sub) {
@@ -756,7 +669,6 @@ RuleApplier::apply_path(
   OpVec final_result;
 
   for (const auto& gate : circuit) {
-
     auto part = decompose(*gate);
 
     for (auto& op : part) {
@@ -791,11 +703,8 @@ RuleApplier::apply_path(
  *
  * @return Decomposed circuit
  */
-RuleApplier::OpList
-RuleApplier::apply_with_decomposition_table(
-    const std::vector<OpPtr>& circuit,
-    const DecompositionTable& table) {
-
+RuleApplier::OpList RuleApplier::apply_with_decomposition_table(
+    const std::vector<OpPtr>& circuit, const DecompositionTable& table) {
   OpList result;
   result.reserve(circuit.size());
 
@@ -816,7 +725,6 @@ RuleApplier::apply_with_decomposition_table(
   // ------------------------------------------------
 
   for (const auto& op : circuit) {
-
     bool matched = false;
 
     auto candidates_it = table_index.find(op->name);
@@ -835,15 +743,13 @@ RuleApplier::apply_with_decomposition_table(
       const auto& sources = *entry.sources;
       // ---- Qubit count mismatch ----
 
-      if (target.qubits.size() !=
-          op->targets.size()) {
+      if (target.qubits.size() != op->targets.size()) {
         continue;
       }
 
       // ---- Parameter count mismatch ----
 
-      if (target.params.size() !=
-          op->arg_value.size()) {
+      if (target.params.size() != op->arg_value.size()) {
         continue;
       }
 
@@ -853,16 +759,11 @@ RuleApplier::apply_with_decomposition_table(
       // Build qubit mapping
       // ------------------------------------------------
 
-      std::unordered_map<std::string, int>
-          qubit_map;
+      std::unordered_map<std::string, int> qubit_map;
       qubit_map.reserve(target.qubits.size());
 
-      for (size_t i = 0;
-           i < target.qubits.size();
-           ++i) {
-
-        qubit_map[target.qubits[i]] =
-            op->targets[i];
+      for (size_t i = 0; i < target.qubits.size(); ++i) {
+        qubit_map[target.qubits[i]] = op->targets[i];
       }
 
       // ------------------------------------------------
@@ -873,38 +774,29 @@ RuleApplier::apply_with_decomposition_table(
       // runtime gate arguments.
       // ------------------------------------------------
 
-      std::unordered_map<std::string, double>
-          env;
+      std::unordered_map<std::string, double> env;
       env.reserve(target.params.size() + 2);
 
-      for (size_t i = 0;
-           i < target.params.size();
-           ++i) {
-
-        env[target.params[i]] =
-            op->arg_value[i];
+      for (size_t i = 0; i < target.params.size(); ++i) {
+        env[target.params[i]] = op->arg_value[i];
       }
 
       env["pi"] = M_PI;
-      env["e"]  = M_E;
+      env["e"] = M_E;
 
       // ------------------------------------------------
       // Expand decomposed source gates
       // ------------------------------------------------
 
       for (const auto& g : sources) {
-
         // ---- Qubit remapping ----
 
         std::vector<int> qubits;
         qubits.reserve(g.qubits.size());
 
         for (const auto& q : g.qubits) {
-
           if (!qubit_map.count(q)) {
-
-            throw std::runtime_error(
-                "Unknown qubit: " + q);
+            throw std::runtime_error("Unknown qubit: " + q);
           }
 
           qubits.push_back(qubit_map[q]);
@@ -921,8 +813,7 @@ RuleApplier::apply_with_decomposition_table(
 
         // ---- Construct decomposed gate ----
 
-        result.push_back(
-            create_gate(g.name, qubits, params));
+        result.push_back(create_gate(g.name, qubits, params));
       }
 
       break;
@@ -940,4 +831,4 @@ RuleApplier::apply_with_decomposition_table(
   return result;
 }
 
-} // namespace qcos
+}  // namespace qcos
