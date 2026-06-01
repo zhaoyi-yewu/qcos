@@ -25,7 +25,7 @@ std::string convert_qasm_to_originir(std::string file_path);
 std::string convert_qasm_string_to_originir(std::string qasm_str);
 std::vector<std::unique_ptr<Operation>> convert_qasm_string_to_operations(
     std::string qasm_str);
-std::pair<std::vector<std::unique_ptr<qcos::BaseOperation>>, int>
+std::pair<std::vector<std::shared_ptr<qcos::BaseOperation>>, int>
 convert_qasm_string_to_qcos_operations(std::string qasm_str);
-std::vector<std::unique_ptr<qcos::BaseOperation>> create_gates(
+std::vector<std::shared_ptr<qcos::BaseOperation>> create_gates(
     const std::vector<std::unique_ptr<Operation>>& ops);
