@@ -21,7 +21,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include "utils/operation_utils.h"
+#include "circuit/gate_operation.h"
 
 namespace qcos {
 
@@ -98,7 +98,7 @@ int EquivalencePass::replace_equivalence_circuits(
 
         if (enabled_templates.count("h-z-h") > 0 && first->name() == "h" &&
             second->name() == "z" && third->name() == "h") {
-          rewritten_ir.push_back(make_gate("x", targets));
+          rewritten_ir.push_back(create_gate("x", targets));
           reduced += 2;
           index += 3;
           continue;
@@ -106,7 +106,7 @@ int EquivalencePass::replace_equivalence_circuits(
 
         if (enabled_templates.count("h-x-h") > 0 && first->name() == "h" &&
             second->name() == "x" && third->name() == "h") {
-          rewritten_ir.push_back(make_gate("z", targets));
+          rewritten_ir.push_back(create_gate("z", targets));
           reduced += 2;
           index += 3;
           continue;
@@ -116,7 +116,7 @@ int EquivalencePass::replace_equivalence_circuits(
             second->name() == "ry" && third->name() == "x" &&
             !second->op->arg_value.empty()) {
           rewritten_ir.push_back(
-              make_gate("ry", targets, {-second->op->arg_value[0]}));
+              create_gate("ry", targets, {-second->op->arg_value[0]}));
           reduced += 2;
           index += 3;
           continue;

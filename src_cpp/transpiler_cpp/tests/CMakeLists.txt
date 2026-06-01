@@ -13,6 +13,7 @@ add_executable(${TEST_NAME} test_main.cpp
                             test_inverse_cancellation.cpp
                             test_quantum_circuit.cpp
                             test_subcircuit_rewrite.cpp
+                            test_template.cpp
                             decomposer/test_decomposer.cpp
                             decomposer/test_decomposer_benchmark.cpp
                             #test_sabre_routing.cpp

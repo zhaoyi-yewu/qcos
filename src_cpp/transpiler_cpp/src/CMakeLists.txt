@@ -14,6 +14,7 @@ add_library(${LIB_TRANSPILER} STATIC
                             optimizer/adjacent_optimization.cpp
                             optimizer/inverse_cancellation.cpp
                             optimizer/subcircuit_rewrite.cpp
+                            optimizer/template.cpp
                             decomposer/equivalence_graph.cpp
                             decomposer/rule_applier.cpp
                             decomposer/decomposer.cpp

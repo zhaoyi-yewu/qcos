@@ -23,8 +23,8 @@
 #include <vector>
 
 #include "circuit/dag_circuit.h"
+#include "circuit/gate_operation.h"
 #include "optimizer/subcircuit_rewrite.h"
-#include "utils/operation_utils.h"
 
 using namespace qcos;
 
@@ -46,7 +46,7 @@ TEST(EquivalencePassTest, RewritesFixedTemplates) {
 
   {
     std::vector<std::shared_ptr<BaseOperation>> ir = {
-        make_gate("h", {0}), make_gate("z", {0}), make_gate("h", {0})};
+        create_gate("h", {0}), create_gate("z", {0}), create_gate("h", {0})};
     DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
     EXPECT_EQ(optimizer.run(dag), 2);
@@ -57,7 +57,7 @@ TEST(EquivalencePassTest, RewritesFixedTemplates) {
 
   {
     std::vector<std::shared_ptr<BaseOperation>> ir = {
-        make_gate("h", {0}), make_gate("x", {0}), make_gate("h", {0})};
+        create_gate("h", {0}), create_gate("x", {0}), create_gate("h", {0})};
     DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
     EXPECT_EQ(optimizer.run(dag), 2);
@@ -68,7 +68,8 @@ TEST(EquivalencePassTest, RewritesFixedTemplates) {
 
   {
     std::vector<std::shared_ptr<BaseOperation>> ir = {
-        make_gate("x", {1}), make_gate("ry", {1}, {0.1}), make_gate("x", {1})};
+        create_gate("x", {1}), create_gate("ry", {1}, {0.1}),
+        create_gate("x", {1})};
     DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
     EXPECT_EQ(optimizer.run(dag), 2);
@@ -83,8 +84,8 @@ TEST(EquivalencePassTest, RewritesFixedTemplates) {
 TEST(EquivalencePassTest, RewritesMultipleTemplatesInOnePass) {
   EquivalencePass optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
-      make_gate("h", {0}), make_gate("x", {0}), make_gate("h", {0}),
-      make_gate("h", {1}), make_gate("z", {1}), make_gate("h", {1})};
+      create_gate("h", {0}), create_gate("x", {0}), create_gate("h", {0}),
+      create_gate("h", {1}), create_gate("z", {1}), create_gate("h", {1})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
   EXPECT_EQ(optimizer.run(dag), 4);
@@ -99,8 +100,9 @@ TEST(EquivalencePassTest, RewritesMultipleTemplatesInOnePass) {
 TEST(EquivalencePassTest, HonorsBasisFilter) {
   EquivalencePass optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
-      make_gate("h", {0}), make_gate("x", {0}),         make_gate("h", {0}),
-      make_gate("x", {1}), make_gate("ry", {1}, {0.1}), make_gate("x", {1})};
+      create_gate("h", {0}),         create_gate("x", {0}),
+      create_gate("h", {0}),         create_gate("x", {1}),
+      create_gate("ry", {1}, {0.1}), create_gate("x", {1})};
 
   DAGCircuit dag_hxh = DAGCircuit::ir_to_dag(ir);
   EXPECT_EQ(optimizer.run(dag_hxh, std::set<std::string>{"h", "x", "z"}), 2);
@@ -122,7 +124,7 @@ TEST(EquivalencePassTest, HonorsBasisFilter) {
 TEST(EquivalencePassTest, DoesNotRewriteAcrossDifferentTargets) {
   EquivalencePass optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
-      make_gate("h", {0}), make_gate("z", {1}), make_gate("h", {0})};
+      create_gate("h", {0}), create_gate("z", {1}), create_gate("h", {0})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
   EXPECT_EQ(optimizer.run(dag), 0);
