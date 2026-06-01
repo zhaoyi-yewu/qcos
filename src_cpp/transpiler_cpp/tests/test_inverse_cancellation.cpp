@@ -25,18 +25,9 @@
 #include "circuit/dag_circuit.h"
 #include "circuit/gate_operation.h"
 #include "optimizer/inverse_cancellation.h"
+#include "utils/operation_utils.h"
 
 using namespace qcos;
-
-namespace {
-
-std::shared_ptr<BaseOperation> make_gate(
-    const std::string& name, const std::vector<int>& targets,
-    const std::vector<double>& args = {}) {
-  return std::shared_ptr<BaseOperation>(create_gate(name, targets, args));
-}
-
-}  // namespace
 
 TEST(InverseCancellationTest, CancelsSelfInverseGates) {
   InverseCancellation optimizer(

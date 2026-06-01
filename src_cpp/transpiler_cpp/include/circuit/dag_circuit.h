@@ -194,14 +194,14 @@ class DAGCircuit {
    * @param node 查询起点
    * @return std::vector<DAGNode*> 后继节点列表
    */
-  std::vector<DAGNode*> successors(const DAGNode* node);
+  std::vector<DAGNode*> successors(const DAGNode* node) const;
 
   /**
    * @brief 返回指定节点的直接前驱节点
    * @param node 查询目标
    * @return std::vector<DAGNode*> 前驱节点列表
    */
-  std::vector<DAGNode*> predecessors(const DAGNode* node);
+  std::vector<DAGNode*> predecessors(const DAGNode* node) const;
 
   /**
    * @brief 判断一个节点是否是另一个节点的直接后继

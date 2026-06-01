@@ -308,11 +308,11 @@ std::vector<DAGNode*> DAGCircuit::longest_path() {
   return result;
 }
 
-std::vector<DAGNode*> DAGCircuit::successors(const DAGNode* node) {
+std::vector<DAGNode*> DAGCircuit::successors(const DAGNode* node) const {
   return multi_graph_.successors(node->node_id());
 }
 
-std::vector<DAGNode*> DAGCircuit::predecessors(const DAGNode* node) {
+std::vector<DAGNode*> DAGCircuit::predecessors(const DAGNode* node) const {
   return multi_graph_.predecessors(node->node_id());
 }
 
