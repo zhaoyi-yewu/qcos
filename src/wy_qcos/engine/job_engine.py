@@ -290,7 +290,7 @@ def driver_run(job_info, driver, num_qubits, data):
         shots = job_data.get("shots", Constant.DEFAULT_SHOTS)
         dry_run = job_data.get("dry_run", False)
         data_type = driver.get_default_data_type()
-        qec_options = job_info.get("qec_options", None)
+        qec_options = job_data.get("qec_options", None)
         if dry_run:
             driver.dry_run(
                 job_id,

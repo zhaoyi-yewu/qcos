@@ -15,8 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import numpy as np
 import stim
 
+from collections import Counter
 from loguru import logger
 from schema import Optional
 
@@ -117,8 +119,8 @@ class DriverStim(DriverBase):
         """Convert to stim circuit.
 
         Args:
-        raw_circuit: raw_circuit
-        num_qubits: num of qubits
+            raw_circuit: raw_circuit
+            num_qubits: num of qubits
 
         Returns:
             stim cricuit
@@ -126,12 +128,25 @@ class DriverStim(DriverBase):
         circuit = stim.Circuit()
         for gate in raw_circuit:
             if (
-                gate.operation_type != OperationType.SINGLE_QUBIT_OPERATION
-                and gate.operation_type != OperationType.DOUBLE_QUBIT_OPERATION
+                gate.operation_type == OperationType.SINGLE_QUBIT_OPERATION.value
+                or gate.operation_type == OperationType.DOUBLE_QUBIT_OPERATION.value
             ):
-                continue
-            circuit.append(gate.name.upper(), gate.targets)
+                logger.info(f"gate: {gate}, gate.name :{gate.name}")
+                circuit.append(gate.name.upper(), gate.targets)
         return circuit
+
+    def format_result(self, logic_res: list) -> dict:
+        """format_result.
+
+        Args:
+            logic_res: logical result
+            num_qubits: num of qubits
+
+        Returns:
+            formatted result (dict)
+        """
+        count_dict = Counter(logic_res)
+        return {str(k): v for k, v in count_dict.items()}
 
     def run(
         self,
@@ -167,22 +182,29 @@ class DriverStim(DriverBase):
         self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_device_status(Device.DEVICE_STATUS_BUSY)
         raw_circuit = data["transpile_results"]
-        valid = self.validate_circuit(raw_circuit, num_qubits)
+        valid = self.validate_circuit(raw_circuit)
         if not valid:
             raise ValueError("unsupported quantum circuit.")
-        circuit = self.convert_circuit(raw_circuit)
+
+        circuit = self.convert_circuit(raw_circuit, num_qubits)
+        logger.info(f"driver: circuit {circuit}")
         factory = QecFactory()
         qec_code = factory.create(qec_code_str)
-        formatted_circuit = qec_code.validate_and_format_circuit(circuit)
-        qec_code.encode(formatted_circuit)
+        formatted_circuit = qec_code.validate_and_format_circuit(circuit, num_qubits)
+        logger.info(f"formatted_circuit: {formatted_circuit}")
+        encodded_circuit = qec_code.encode(formatted_circuit)
+        logger.info(f"encodded_circuit: {encodded_circuit}")
 
-        dem = formatted_circuit.detector_error_model()
-        det_sampler = formatted_circuit.compile_detector_sampler()
-        dets, obs = det_sampler.sample(shots=shots, separate_observables=True)
-        pred = qec_code.decode(formatted_circuit, dem=dem, det=dets)
-        qec_code.correct(formatted_circuit, pred=pred, obs=obs)
+        sampler = encodded_circuit.compile_sampler()
+        samples = sampler.sample(shots=shots)
+        qec_code.compute_samples(formatted_circuit, samples)
+        
+        err_pos = qec_code.decode(formatted_circuit)
+        corrected_bits = qec_code.correct(formatted_circuit, err_pos=err_pos)
+        logic_res = qec_code.logical_measure(formatted_circuit, corrected_bits)
+        logger.info(f"logic_res: {logic_res}")
 
-        result = None
+        result = self.format_result(logic_res)
         self.set_results(job_id, data_index, results=result)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)

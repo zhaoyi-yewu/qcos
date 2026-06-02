@@ -15,7 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import pymatching
+import logging
+import numpy as np
 import stim
 
 from wy_qcos.qec.quantum_code_base import QuantumCodeBase
@@ -27,14 +28,16 @@ from wy_qcos.common.cmss.gate_operation import (
     GateOperation,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class ShorStrategy:
     def __init__(self):
         """Initialize the Shor Strategy."""
         # 9 bits for correcting
         self._n_data = 9
-        # 6 bits for ancilla
-        self._n_ancilla = 6
+        # 0 bits for ancilla (use MPP instead)
+        self._n_ancilla = 0
         # Shor can only correct 1 logical bit
         self._n_logical = 1
 
@@ -46,11 +49,12 @@ class ShorStrategy:
         """
         return {
             "Z": [(0, 1), (1, 2), (3, 4), (4, 5), (6, 7), (7, 8)],
-            "X": [(0, 3, 6), (1, 4, 7)],
+            "X": [(0, 3, 6), (1, 4, 7), (2, 5, 8)],
         }
 
-    def format_circuit(self, circuit):
-        raise NotImplementedError
+    def validate_and_format_circuit(self, circuit):
+        raise NotImplementedError(
+            "validate_and_format_circuit() must be implemented by subclass")
 
     def encode(self, circuit):
         """Encode circuit.
@@ -60,147 +64,252 @@ class ShorStrategy:
         """
         raise NotImplementedError("encode() must be implemented by subclass")
 
-    def decode(self, **kwargs):
+    def decode(self):
         raise NotImplementedError("decode() must be implemented by subclass")
 
     def correct(self, **kwargs):
         raise NotImplementedError("correct() must be implemented by subclass")
 
+    def compute_samples(self, samples: list):
+        """compute samles to get raw bits and syndrome
 
+        Args:
+            samples: samples data
+        """
+        raise NotImplementedError("compute_samples() must be implemented by subclass")
+    
 class ShorStimStrategy(ShorStrategy):
-    """ShorStimStrategy, usint Stim circuit to process qec codes."""
+    """ShorStimStrategy, using Stim circuit to process qec codes."""
 
     def __init__(self):
         """Initialize the Shor Stim Strategy."""
-        super.__init__()
+        super().__init__()
+        self.syndrome = []
+        self.raw_bits = []
 
-    def format_circuit(self, circuit):
-        """Validate the circuit data for Shor code.
-
-        This method filters the stim.Circuit to keep only single-qubit gates
+    def validate_and_format_circuit(self, circuit):
+        """Validate and formate raw circuit.
 
         Args:
-            circuit: stim.Circuit
+            circuit: raw circuit.
 
         Returns:
-            stim.Circuit
+            formatted_circuit.
         """
         formatted_circuit = stim.Circuit()
         for gate in circuit:
-            if stim.gate_data(gate).is_annotation:
-                continue
-            if not stim.gate_data(gate).is_single_qubit_gate():
-                raise ValueError("Unexpected circuit input.")
+            gate_name = gate.name
+            gate_info = stim.gate_data(gate_name)
+            if not gate_info.is_single_qubit_gate:
+                raise ValueError(
+                    f"Unexpected multi-qubit gate input: {gate_name}, only single-qubit gates allowed."
+                )
             formatted_circuit.append(gate)
         return formatted_circuit
 
-    def _detect_x_errors(
-        self, data_bit: int, ancilla_bit: int, encoded_circuit: stim.Circuit
-    ):
-        encoded_circuit.append("CX", [data_bit, ancilla_bit])
-        encoded_circuit.append("CX", [data_bit + 1, ancilla_bit])
-        encoded_circuit.append("M", [ancilla_bit])
-        encoded_circuit.append("DETECTOR", [stim.target_rec(-1)])
-
-        encoded_circuit.append("CX", [data_bit + 1, ancilla_bit + 1])
-        encoded_circuit.append("CX", [data_bit + 2, ancilla_bit + 1])
-        encoded_circuit.append("M", [ancilla_bit + 1])
-        encoded_circuit.append("DETECTOR", [stim.target_rec(-1)])
-
-    def _detect_z_errors(
-        self, data_bit: int, ancilla_bit: int, encoded_circuit: stim.Circuit
-    ):
-        encoded_circuit.append("H", [ancilla_bit])
-        for q in range(data_bit, data_bit + 6):
-            encoded_circuit.append("CX", [ancilla_bit, q])
-        encoded_circuit.append("H", [ancilla_bit])
-        encoded_circuit.append("M", [ancilla_bit])
-        encoded_circuit.append("DETECTOR", [stim.target_rec(-1)])
-
-    def encode(self, circuit: stim.Circuit):
-        """Encode circuit.
-
+    def encode(self, circuit: stim.Circuit) -> stim.Circuit:
+        """Encode 1 logical qubit into 9 physical qubits using standard Shor code.
         Args:
-            circuit: quantum circuit.
+            circuit: raw stim circuit.
 
         Returns:
-            encoded circuit.
+            encoded stim circuit.
         """
-        # init
         encoded_circuit = stim.Circuit()
-        data_qbits = list(range(self._n_data))
-        anc_qubits = list(range(self._n_data, self._n_data + self._n_ancilla))
-        encoded_circuit.append("R", data_qbits)
-        encoded_circuit.append("R", anc_qubits)
 
-        # phase repetition
-        for qbit in [0, 1, 2]:
-            encoded_circuit.append("H", qbit)
-            encoded_circuit.append("CX", [qbit, qbit + 3])
-            encoded_circuit.append("CX", [qbit, qbit + 6])
+        # init
+        data = list(range(9))
+        anc_z = list(range(9, 15))
+        anc_x = list(range(15, 18))
+        all_q = data + anc_z + anc_x
 
-        # bit repetition
-        for qbit in [0, 3, 6]:
-            encoded_circuit.append("CX", [qbit, qbit + 1])
-            encoded_circuit.append("CX", [qbit, qbit + 2])
+        encoded_circuit.append("R", all_q)
+        encoded_circuit.append("TICK")
 
-        stabilizers = self.get_stabilizers()
-        z_stabilizers = stabilizers.get("Z", [])
-        for block in z_stabilizers:
-            pair1 = block[0]
-            pair2 = block[1]
-            ctrl = pair1[0]
-            target1 = pair1[1]
-            target2 = pair2[1]
-            encoded_circuit.append("CX", [ctrl, target1])
-            encoded_circuit.append("CX", [ctrl, target2])
+        # phase-flip: H[0] → CX[0,3]CX[0,6]
+        encoded_circuit.append("H", [0])
+        encoded_circuit.append("TICK")
+        encoded_circuit.append("CX", [0, 3, 0, 6])
+        encoded_circuit.append("TICK")
+
+        # bit-flip: CX in every block
+        encoded_circuit.append("CX", [0, 1, 0, 2])
+        encoded_circuit.append("CX", [3, 4, 3, 5])
+        encoded_circuit.append("CX", [6, 7, 6, 8])
+        encoded_circuit.append("TICK")
 
         # apply logical gate
         for gate in circuit:
-            encoded_circuit.append(gate.name, [0, 3, 6])
+            gate_name = gate.name
+            if gate_name == "X":
+                encoded_circuit.append("Z", [0, 3, 6])
+            elif gate_name == "Z":
+                encoded_circuit.append("X", data)
+            elif gate_name == "Y":
+                encoded_circuit.append("Z", [0, 3, 6])
+                encoded_circuit.append("X", data)
+            elif gate_name == "H":
+                raise ValueError(
+                    "Logical H gate for Shor code requires non-transversal implementation"
+                )
+            elif gate_name == "S":
+                encoded_circuit.append("S", [0, 3, 6])
+            else:
+                raise ValueError(f"Unsupported logical gate: {gate_name}")
+        encoded_circuit.append("TICK")
 
-        # add noise
-        encoded_circuit.append("DEPOLARIZE1", range(self._n_logical), 0.001)
-        encoded_circuit.append("DEPOLARIZE2", range(self._n_logical), 0.003)
+        # apply random noise
+        noise_prob = 0.01
+        encoded_circuit.append("X_ERROR", data, noise_prob)
+        encoded_circuit.append("TICK")
 
-        # detect X errors
-        self._detect_x_errors(0, 9, encoded_circuit)
-        self._detect_x_errors(3, 11, encoded_circuit)
-        self._detect_x_errors(6, 13, encoded_circuit)
+        # Z stablizers: Z₀Z₁, Z₁Z₂, Z₃Z₄, Z₄Z₅, Z₆Z₇, Z₇Z₈
+        z_stablizers = self.get_stabilizers().get("Z")
+        #[(0, 1), (1, 2), (3, 4), (4, 5), (6, 7), (7, 8)]
+        for idx, (a, b) in enumerate(z_stablizers):
+            anc = anc_z[idx]
+            encoded_circuit.append("CX", [a, anc, b, anc])
+            encoded_circuit.append("M", [anc])
+            encoded_circuit.append("R", [anc])
+            encoded_circuit.append("TICK")
 
-        # detect Z errors
-        self._detect_z_errors(0, 15, encoded_circuit)
-        self._detect_z_errors(3, 16, encoded_circuit)
+        # X stablizers: X₀X₃X₆, X₁X₄X₇, X₂X₅X₈
+        x_stablizers = self.get_stabilizers().get("X")
+        # x_triples = [(0, 3, 6), (1, 4, 7), (2, 5, 8)]
+        for idx, (a, b, c) in enumerate(x_stablizers):
+            anc = anc_x[idx]
+            encoded_circuit.append("H", [anc])
+            encoded_circuit.append("CX", [anc, a, anc, b, anc, c])
+            encoded_circuit.append("H", [anc])
+            encoded_circuit.append("M", [anc])
+            encoded_circuit.append("R", [anc])
+            encoded_circuit.append("TICK")
 
-        encoded_circuit.append("M", range(self._n_data))
-        # logical observable
-        encoded_circuit.append(
-            "OBSERVABLE_INCLUDE",
-            [
-                stim.target_rec(-9),
-                stim.target_rec(-6),
-                stim.target_rec(-3),
-            ],
-            0,
-        )
+        # reverse bit-flip
+        encoded_circuit.append("CX", [6, 7, 6, 8])
+        encoded_circuit.append("CX", [3, 4, 3, 5])
+        encoded_circuit.append("CX", [0, 1, 0, 2])
+        encoded_circuit.append("TICK")
+
+        # reverse phase-flip
+        encoded_circuit.append("CX", [0, 3, 0, 6])
+        encoded_circuit.append("TICK")
+
+        # reverse H
+        encoded_circuit.append("H", [0])
+        encoded_circuit.append("TICK")
+
+        # measure
+        encoded_circuit.append("M", data)
         return encoded_circuit
 
     def correct(self, **kwargs):
-        obs = kwargs.get("obs", None)
-        pred = kwargs.get("pred", None)
-        if obs is None or pred is None:
-            return None
-        corrected_result = obs ^ pred
-        raise corrected_result
+        """Correct raw_bits.
+        Args:
+            kwargs: kwargs.
 
-    def decode(self, **kwargs):
-        dem = kwargs.get("dem", None)
-        syndrome = kwargs.get("syndrome", None)
-        if dem is None or syndrome is None:
+        Returns:
+            corrected bits.
+        """
+        err_pos = kwargs.get("err_pos", None)
+        if err_pos is None:
             return None
-        matching = pymatching.Matching.from_detector_error_model(dem)
-        pred = matching.decode_batch(syndrome)
-        return pred
+
+        raw_bits = np.asarray(self.raw_bits, dtype=np.int8)
+        err_pos = np.asarray(err_pos, dtype=np.int8)
+        orig_ndim = raw_bits.ndim
+
+        if orig_ndim == 1:
+            rb = raw_bits[np.newaxis, :]
+            ep = err_pos[np.newaxis, :]
+        else:
+            rb = raw_bits
+            ep = err_pos
+
+        corrected = rb.copy()
+        mask = ep == 1
+        corrected[mask] ^= 1
+
+        if orig_ndim == 1:
+            return corrected[0]
+        return corrected
+
+    def decode(self):
+        """Decode syndrome.
+
+        Returns:
+            err_pos.
+        """
+        syndrome = np.asarray(self.syndrome, dtype=np.int8)
+        orig_ndim = syndrome.ndim
+
+        if orig_ndim == 1:
+            syn = syndrome[np.newaxis, :]
+        else:
+            syn = syndrome
+
+        n = syn.shape[0]
+        z_syn = syn[:, :6]
+        err_pos = np.zeros((n, 9), dtype=np.int8)
+
+        def block_x_decode(s0, s1):
+            res = np.full_like(s0, -1, dtype=np.int8)
+            res[(s0 == 1) & (s1 == 0)] = 0
+            res[(s0 == 1) & (s1 == 1)] = 1
+            res[(s0 == 0) & (s1 == 1)] = 2
+            return res
+
+        off0 = block_x_decode(z_syn[:, 0], z_syn[:, 1])
+        mask0 = off0 != -1
+        err_pos[mask0, 0 + off0[mask0]] = 1
+
+        off1 = block_x_decode(z_syn[:, 2], z_syn[:, 3])
+        mask1 = off1 != -1
+        err_pos[mask1, 3 + off1[mask1]] = 1
+
+        off2 = block_x_decode(z_syn[:, 4], z_syn[:, 5])
+        mask2 = off2 != -1
+        err_pos[mask2, 6 + off2[mask2]] = 1
+
+        if orig_ndim == 1:
+            return err_pos[0]
+        return err_pos
+
+    def logical_measure(self, bits):
+        """Get logical value
+
+        Args:
+            bits: corrected bits
+
+        Returns:
+            logical measure
+        """
+        bits = np.asarray(bits, dtype=np.int8)
+        orig_ndim = bits.ndim
+
+        if orig_ndim == 1:
+            b = bits[np.newaxis, :]
+        else:
+            b = bits
+
+        logical = b[:, 0].copy()
+
+        if orig_ndim == 1:
+            return int(logical[0])
+        return logical
+
+    def compute_samples(self, samples: list):
+        """compute samles to get raw bits and syndrome
+
+        Args:
+            samples: samples data
+        """
+        samples = np.asarray(samples)
+        samples = np.atleast_2d(samples)
+        z_syn = samples[:, 0:6] 
+        x_syn = samples[:, 6:9]
+        self.syndrome = np.concatenate([z_syn, x_syn], axis=1)
+        self.raw_bits = samples[:, 9:18]
 
 
 class ShorQuantumCircuitStrategy(ShorStrategy):
@@ -208,9 +317,9 @@ class ShorQuantumCircuitStrategy(ShorStrategy):
 
     def __init__(self):
         """Initialize the Shor Stim Strategy."""
-        super.__init__()
+        super().__init__()
 
-    def format_circuit(self, circuit):
+    def validate_and_format_circuit(self, circuit):
         """Validate the circuit data for Shor code.
 
         This method filters the BaseOperation list to keep only GateOperation
@@ -231,8 +340,8 @@ class ShorQuantumCircuitStrategy(ShorStrategy):
             if isinstance(op, GateOperation):
                 # Check if it's a single-qubit gate (operation_type == 1)
                 if (
-                    op.operation_type
-                    != OperationType.SINGLE_QUBIT_OPERATION.value
+                        op.operation_type
+                        != OperationType.SINGLE_QUBIT_OPERATION.value
                 ):
                     raise ValueError("Unexpected circuit input.")
                 formatted_circuit.append(op)
@@ -254,11 +363,16 @@ class ShorQuantumCircuitStrategy(ShorStrategy):
         """
         raise NotImplementedError("correct() must be implemented by subclass")
 
-    def decode(self, **kwargs):
+    def decode(self):
         """Decode circuit.
+        """
+        raise NotImplementedError("decode() must be implemented by subclass")
+
+    def logical_measure(self, bits):
+        """Get logical value.
 
         Args:
-            kwargs: optional args
+            bits: quantum bits value
         """
         raise NotImplementedError("decode() must be implemented by subclass")
 
@@ -273,22 +387,14 @@ class ShorCode(QuantumCodeBase):
     Attributes:
         name: Name of the code ("ShorCode").
         n_physical: Number of physical qubits (9).
-        n_logical: Number of logical qubits (1).
+        n_logical: Number of physical qubits (1).
         distance: Code distance (3).
     """
 
     strategies = {}
-
     def __init__(self):
         """Initialize the Shor code."""
         super().__init__(name="ShorCode")
-        # 9 bits for correcting
-        self._n_data = 9
-        # 6 bits for ancilla
-        self._n_ancilla = 6
-        # Shor can only correct 1 logical bit
-        self._n_logical = 1
-        self._distance = 3
 
     @classmethod
     def register(cls, circuit_type):
@@ -330,14 +436,14 @@ class ShorCode(QuantumCodeBase):
         # Create an encoded circuit
         return self._get_strategy(circuit).encode(circuit)
 
-    def decode(self, circuit, **kwargs):
+    def decode(self, circuit):
         """Decode the syndrome.
 
         Args:
             circuit: quantum circuit
             kwargs: optional args
         """
-        return self._get_strategy(circuit).decode(kwargs)
+        return self._get_strategy(circuit).decode()
 
     def correct(self, circuit, **kwargs):
         """Apply error correction based on the syndrome measurement.
@@ -349,7 +455,27 @@ class ShorCode(QuantumCodeBase):
         Returns:
             Correctted results
         """
-        return self._get_strategy(circuit).correct(kwargs)
+        return self._get_strategy(circuit).correct(**kwargs)
+
+    def logical_measure(self, circuit, bits):
+        """Get logical value
+
+        Args:
+            circuit: quantum circuit
+            bits: corrected bits
+
+        Returns:
+            logical measure
+        """
+        return self._get_strategy(circuit).logical_measure(bits)
+
+    def compute_samples(self, circuit, samples: list):
+        """compute samles to get raw bits and syndrome
+
+        Args:
+            samples: samples data
+        """
+        return self._get_strategy(circuit).compute_samples(samples)
 
 
 ShorCode.register(stim.Circuit)(ShorStimStrategy)

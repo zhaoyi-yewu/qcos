@@ -207,6 +207,12 @@
 
    # 夸父 超导量子计算机 真实运行
    qcos-cli submit-job --code-type qasm --shots 1024 --backend quafu -f ./samples/qasm/2.0/simple-qasm.qasm
+- stim 驱动 (量子纠错用)
+
+.. code-block:: shell
+
+   qcos-cli submit-job --code-type qasm2 --shots 100 --backend stim --transpiler-options '{"enable_mapping": false}' --qec-options '{"qec_code": "shor", "distance": 3, "phy_bit_num": 9, "logi_bit_num": 1}' -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
+
 
 更新作业
 ***************
