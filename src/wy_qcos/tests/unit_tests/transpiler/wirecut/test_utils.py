@@ -30,6 +30,7 @@ from wy_qcos.transpiler.common.wirecut.utils import (
     attribute_state,
     generate_subcircuits_for_execute,
     generate_config_circuits_for_one_subcircuit,
+    result_process,
 )
 from wy_qcos.transpiler.common.wirecut.prepare_data import to_basic_init
 
@@ -267,3 +268,194 @@ class TestUtils(unittest.TestCase):
         sign, eff_state = attribute_state(3, ("Y", "Z"))
         assert isinstance(sign, int)
         assert isinstance(eff_state, int)
+
+
+class TestResultProcess(unittest.TestCase):
+    """Test result_process function."""
+
+    def test_result_process_count_mode_basic(self):
+        """Test result_process with force_prob=False for count array."""
+        distribution_dict = {"00": 100, "01": 50, "10": 30, "11": 20}
+        result = result_process(distribution_dict, force_prob=False)
+
+        assert isinstance(result, np.ndarray)
+        assert len(result) == 4  # 2^2 for 2 qubits
+        assert result[0] == 100  # "00" = 0
+        assert result[1] == 50  # "01" = 1
+        assert result[2] == 30  # "10" = 2
+        assert result[3] == 20  # "11" = 3
+        assert sum(result) == 200
+
+    def test_result_process_probability_mode_basic(self):
+        """Test result_process with force_prob=True for probability array."""
+        distribution_dict = {"00": 100, "01": 50, "10": 30, "11": 20}
+        result = result_process(distribution_dict, force_prob=True)
+
+        assert isinstance(result, np.ndarray)
+        assert len(result) == 4
+        assert abs(sum(result) - 1.0) < 1e-10
+        assert abs(result[0] - 0.5) < 1e-10  # 100/200
+        assert abs(result[1] - 0.25) < 1e-10  # 50/200
+        assert abs(result[2] - 0.15) < 1e-10  # 30/200
+        assert abs(result[3] - 0.10) < 1e-10  # 20/200
+
+    def test_result_process_single_state(self):
+        """Test result_process with only one measurement outcome."""
+        distribution_dict = {"0": 1000}
+        result_count = result_process(distribution_dict, force_prob=False)
+        result_prob = result_process(distribution_dict, force_prob=True)
+
+        assert len(result_count) == 2  # 2^1 for 1 qubit
+        assert result_count[0] == 1000
+        assert result_count[1] == 0
+        assert len(result_prob) == 2
+        assert abs(result_prob[0] - 1.0) < 1e-10
+        assert abs(result_prob[1]) < 1e-10
+
+    def test_result_process_three_qubits(self):
+        """Test result_process with 3 qubits (8 possible states)."""
+        distribution_dict = {
+            "000": 50,
+            "001": 30,
+            "010": 20,
+            "011": 40,
+            "100": 10,
+            "101": 25,
+            "110": 15,
+            "111": 10,
+        }
+        result_count = result_process(distribution_dict, force_prob=False)
+        result_prob = result_process(distribution_dict, force_prob=True)
+
+        assert len(result_count) == 8  # 2^3
+        assert sum(result_count) == 200
+        assert abs(sum(result_prob) - 1.0) < 1e-10
+        # Verify specific positions
+        assert result_count[0] == 50  # "000" = 0
+        assert result_count[7] == 10  # "111" = 7
+
+    def test_result_process_sparse_states(self):
+        """Test result_process with sparse measurement outcomes."""
+        distribution_dict = {"0000": 100, "0111": 50, "1111": 25}  # 4 qubits
+        result = result_process(distribution_dict, force_prob=False)
+
+        assert len(result) == 16  # 2^4
+        assert result[0] == 100  # "0000" = 0
+        assert result[7] == 50  # "0111" = 7
+        assert result[15] == 25  # "1111" = 15
+        assert sum(result[1:7]) == 0
+        assert sum(result[8:14]) == 0
+
+    def test_result_process_empty_result_states(self):
+        """Test result_process with some zero-count states not in dict."""
+        distribution_dict = {"00": 500, "11": 500}  # Missing "01" and "10"
+        result = result_process(distribution_dict, force_prob=False)
+
+        assert len(result) == 4
+        assert result[0] == 500  # "00"
+        assert result[1] == 0  # "01" not in dict
+        assert result[2] == 0  # "10" not in dict
+        assert result[3] == 500  # "11"
+
+    def test_result_probability_normalization(self):
+        """Test that probabilities sum to 1 with high precision."""
+        distribution_dict = {
+            "000": 1,
+            "001": 2,
+            "010": 4,
+            "011": 8,
+            "100": 16,
+            "101": 32,
+            "110": 64,
+            "111": 128,
+        }
+        result = result_process(distribution_dict, force_prob=True)
+
+        total = sum(result)
+        assert abs(total - 1.0) < 1e-10
+        # Check relative proportions
+        assert abs(result[7] / result[0] - 128) < 1e-10
+
+    def test_result_process_large_shots(self):
+        """Test result_process with large shot counts."""
+        distribution_dict = {"0": 1000000, "1": 1000000}
+        result = result_process(distribution_dict, force_prob=False)
+
+        assert len(result) == 2
+        assert result[0] == 1000000
+        assert result[1] == 1000000
+        assert sum(result) == 2000000
+
+        result_prob = result_process(distribution_dict, force_prob=True)
+        assert abs(result_prob[0] - 0.5) < 1e-10
+        assert abs(result_prob[1] - 0.5) < 1e-10
+
+    def test_result_process_qubit_count_detection(self):
+        """Test that qubit count is correctly detected from state string."""
+        # 1 qubit
+        result_1q = result_process({"0": 10, "1": 5}, False)
+        assert len(result_1q) == 2
+
+        # 2 qubits
+        result_2q = result_process({"00": 10, "01": 5}, False)
+        assert len(result_2q) == 4
+
+        # 4 qubits
+        result_4q = result_process({"0000": 10, "0001": 5}, False)
+        assert len(result_4q) == 16
+
+    @patch("wy_qcos.transpiler.common.wirecut.utils.logger")
+    def test_result_process_zero_shots_warning(self, mock_logger):
+        """Test result_process behavior with zero total shots."""
+        distribution_dict = {"00": 0, "01": 0}
+        # This may cause division by zero warning
+        try:
+            result = result_process(distribution_dict, force_prob=True)
+            # If it doesn't raise, check for warning
+            # The function may produce NaN or inf
+            assert np.isnan(result).any() or np.isinf(result).any()
+        except (ZeroDivisionError, FloatingPointError):
+            # Expected behavior if division by zero occurs
+            pass
+
+    @patch("wy_qcos.transpiler.common.wirecut.utils.logger")
+    def test_result_process_verification_logs(self, mock_logger):
+        """Test that verification logs are triggered when appropriate."""
+        # Normal case - no verification logs expected
+        distribution_dict = {"00": 100, "01": 50}
+        result_process(distribution_dict, force_prob=False)
+        mock_logger.debug.assert_not_called()
+
+    def test_result_process_type_consistency(self):
+        """Test that return types are consistent."""
+        distribution_dict = {"0": 100, "1": 100}
+
+        result_count = result_process(distribution_dict, force_prob=False)
+        result_prob = result_process(distribution_dict, force_prob=True)
+
+        assert isinstance(result_count, np.ndarray)
+        assert isinstance(result_prob, np.ndarray)
+        assert result_count.dtype == float
+        assert result_prob.dtype == float
+        assert result_count.shape == result_prob.shape
+
+    def test_result_process_fractional_probabilities(self):
+        """Test result_process with inputs that produce frac. probabilities."""
+        distribution_dict = {"0": 1, "1": 2}
+        result = result_process(distribution_dict, force_prob=True)
+
+        assert abs(result[0] - 1 / 3) < 1e-10
+        assert abs(result[1] - 2 / 3) < 1e-10
+        assert abs(sum(result) - 1.0) < 1e-10
+
+    def test_result_process_all_same_state(self):
+        """Test result_process when all measurements collapse to one state."""
+        distribution_dict = {"000": 10000}
+        result_count = result_process(distribution_dict, force_prob=False)
+        result_prob = result_process(distribution_dict, force_prob=True)
+
+        assert len(result_count) == 8
+        assert result_count[0] == 10000
+        assert sum(result_count[1:]) == 0
+        assert abs(result_prob[0] - 1.0) < 1e-10
+        assert abs(sum(result_prob[1:])) < 1e-10
