@@ -21,6 +21,7 @@
 #include <chrono>
 #include <cmath>
 #include <iostream>
+#include <set>
 #include <unordered_map>
 
 namespace qcos {
@@ -64,15 +65,72 @@ bool qubit_in_qargs(const std::vector<int>& qargs, int qubit) {
 }  // namespace
 
 CliffordRzOptimization::CliffordRzOptimization(bool verbose)
-    : single_qubit_gate_templates_(generate_single_qubit_gate_templates()),
+    : hadamard_templates_(generate_hadamard_gate_templates()),
+      single_qubit_gate_templates_(generate_single_qubit_gate_templates()),
       cnot_ctrl_template_(generate_cnot_ctrl_templates()),
       cnot_targ_template_(generate_cnot_targ_templates()),
       verbose_(verbose) {}
 
 int CliffordRzOptimization::reduce_hadamard_gates(
-    DAGCircuit&, const std::optional<std::set<std::string>>&) {
-  // TODO: 实现 Hadamard 等价替换，当前为占位函数
-  return 0;
+    DAGCircuit& dag, const std::optional<std::set<std::string>>& basis_gates) {
+  const auto op_counts = dag.count_ops();
+  auto h_it = op_counts.find("h");
+  if (h_it == op_counts.end() || h_it->second <= 1) {
+    return 0;
+  }
+
+  std::vector<const OptimizingTemplate*> templates;
+  if (basis_gates) {
+    templates = filter_templates_by_basis(
+        hadamard_templates_,
+        intersect_basis_with_counts(*basis_gates, op_counts));
+  } else {
+    templates.reserve(hadamard_templates_.size());
+    for (const auto& tpl : hadamard_templates_) {
+      templates.push_back(&tpl);
+    }
+  }
+
+  if (templates.empty()) {
+    return 0;
+  }
+
+  int reduced = 0;
+  for (const OptimizingTemplate* tpl : templates) {
+    // 遍历当前 DAG 中所有门节点，对每个节点尝试模板匹配与替换
+    for (DAGOpNode* node : dag.topological_op_nodes()) {
+      if (!node || node->flag == -1) continue;
+
+      auto mapping = tpl->compare(dag, node, node->qargs[0]);
+      if (mapping.empty()) continue;
+
+      // 从匹配节点对中提取 block_nodes 和 qubit_mapping
+      std::vector<DAGOpNode*> block_nodes;
+      std::unordered_map<int, int> qubit_mapping;
+
+      for (const auto& [t_id, c_node] : mapping) {
+        block_nodes.push_back(c_node);
+        // 从模板节点和电路节点的 qargs 对应关系重建 qubit_mapping
+        const DAGNode* t_node_raw = tpl->template_dag_.node(t_id);
+        const auto* t_op = dynamic_cast<const DAGOpNode*>(t_node_raw);
+        if (t_op) {
+          for (size_t i = 0; i < t_op->qargs.size(); i++) {
+            qubit_mapping[t_op->qargs[i]] = c_node->qargs[i];
+          }
+        }
+      }
+
+      // 用 replacement DAG 替换匹配节点块
+      if (tpl->replacement_dag_.has_value()) {
+        dag.replace_block_with_dag(block_nodes, *tpl->replacement_dag_,
+                                   qubit_mapping);
+      }
+
+      reduced += tpl->weight_;
+    }
+  }
+
+  return reduced;
 }
 
 DAGOpNode* CliffordRzOptimization::get_next_node_on_specific_qubit(

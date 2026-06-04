@@ -224,6 +224,66 @@ void MultiGraph::insert_node_on_out_edges_multiple(
   }
 }
 
+void MultiGraph::insert_node_on_out_edge(int new_node_id, int source_id,
+                                         int wire) {
+  std::vector<Edge>& out_edges = slots_[source_id].out_edges;
+  for (std::vector<Edge>::iterator it = out_edges.begin();
+       it != out_edges.end(); ++it) {
+    if (it->wire != wire) {
+      continue;
+    }
+    int old_target = it->target;
+
+    // 移除旧边 source -> old_target（两个方向各删一条）
+    out_edges.erase(it);
+    std::vector<Edge>& target_in = slots_[old_target].in_edges;
+    target_in.erase(std::remove_if(target_in.begin(), target_in.end(),
+                                   [source_id, wire](const Edge& e) {
+                                     return e.target == source_id &&
+                                            e.wire == wire;
+                                   }),
+                    target_in.end());
+
+    // 添加 source -> new_node
+    slots_[source_id].out_edges.push_back({new_node_id, wire});
+    slots_[new_node_id].in_edges.push_back({source_id, wire});
+    // 添加 new_node -> old_target
+    slots_[new_node_id].out_edges.push_back({old_target, wire});
+    slots_[old_target].in_edges.push_back({new_node_id, wire});
+    break;
+  }
+}
+
+void MultiGraph::insert_node_on_in_edge(int new_node_id, int target_id,
+                                        int wire) {
+  std::vector<Edge>& in_edges = slots_[target_id].in_edges;
+  for (std::vector<Edge>::iterator it = in_edges.begin(); it != in_edges.end();
+       ++it) {
+    if (it->wire != wire) {
+      continue;
+    }
+    int old_source = it->target;
+
+    // 移除旧边 old_source -> target（两个方向各删一条）
+    in_edges.erase(it);
+    std::vector<Edge>& source_out = slots_[old_source].out_edges;
+    source_out.erase(std::remove_if(source_out.begin(), source_out.end(),
+                                    [target_id, wire](const Edge& e) {
+                                      return e.target == target_id &&
+                                             e.wire == wire;
+                                    }),
+                     source_out.end());
+
+    // 添加 old_source -> new_node
+    slots_[old_source].out_edges.push_back({new_node_id, wire});
+    slots_[new_node_id].in_edges.push_back({old_source, wire});
+    // 添加 new_node -> target
+    slots_[new_node_id].out_edges.push_back({target_id, wire});
+    slots_[target_id].in_edges.push_back({new_node_id, wire});
+    break;
+  }
+}
+
 void MultiGraph::remove_node_retain_edges(int node_id) {
   for (const auto& in_edge : slots_[node_id].in_edges) {
     for (const auto& out_edge : slots_[node_id].out_edges) {

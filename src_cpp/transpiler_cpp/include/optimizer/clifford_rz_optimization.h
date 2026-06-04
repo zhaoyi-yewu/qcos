@@ -106,6 +106,7 @@ class CliffordRzOptimization {
   /// 优化步骤执行顺序
   std::vector<int> routine_ = {1, 2, 3};
 
+  std::vector<OptimizingTemplate> hadamard_templates_;
   std::vector<OptimizingTemplate> single_qubit_gate_templates_;
   std::vector<OptimizingTemplate> cnot_ctrl_template_;
   std::vector<OptimizingTemplate> cnot_targ_template_;

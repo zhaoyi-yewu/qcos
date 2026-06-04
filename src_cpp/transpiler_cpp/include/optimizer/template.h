@@ -69,6 +69,12 @@ class OptimizingTemplate {
 std::vector<OptimizingTemplate> generate_single_qubit_gate_templates();
 
 /**
+ * @brief 生成 Hadamard 门优化模板集合
+ * @return std::vector<OptimizingTemplate> 模板列表
+ */
+std::vector<OptimizingTemplate> generate_hadamard_gate_templates();
+
+/**
  * @brief 生成从控制比特开始的 CNOT 优化模板集合
  * @return std::vector<OptimizingTemplate> 模板列表
  */
