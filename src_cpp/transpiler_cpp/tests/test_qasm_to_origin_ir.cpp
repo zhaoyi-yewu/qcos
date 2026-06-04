@@ -505,8 +505,8 @@ measure q -> c;
     return true;
   }
   static bool test_qasm2operations(const std::string& qasm_str) {
-    std::vector<std::unique_ptr<qcos::BaseOperation>> operations =
-        std::move(convert_qasm_string_to_qcos_operations(qasm_str).first);
+    std::vector<std::shared_ptr<qcos::BaseOperation>> operations =
+        convert_qasm_string_to_qcos_operations(qasm_str).first;
     return true;
   }
 
@@ -520,8 +520,8 @@ measure q -> c;
     buffer << file.rdbuf();
     file.close();
     std::string qasm_str = buffer.str();
-    std::vector<std::unique_ptr<qcos::BaseOperation>> operations =
-        std::move(convert_qasm_string_to_qcos_operations(qasm_str).first);
+    std::vector<std::shared_ptr<qcos::BaseOperation>> operations =
+        convert_qasm_string_to_qcos_operations(qasm_str).first;
     return true;
   }
 

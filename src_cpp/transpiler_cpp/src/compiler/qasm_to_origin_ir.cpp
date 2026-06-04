@@ -54,20 +54,20 @@ std::vector<std::unique_ptr<Operation>> convert_qasm_string_to_operations(
   auto qc = QuantumComputation::fromQASM(qasm_str);
   return std::move(qc.getOps());
 }
-std::pair<std::vector<std::unique_ptr<qcos::BaseOperation>>, int>
+std::pair<std::vector<std::shared_ptr<qcos::BaseOperation>>, int>
 convert_qasm_string_to_qcos_operations(std::string qasm_str) {
   auto qc = QuantumComputation::fromQASM(qasm_str);
   const std::vector<std::unique_ptr<Operation>>& ops = qc.getOps();
   int qubits_num = static_cast<int>(qc.getNqubits());
-  std::vector<std::unique_ptr<qcos::BaseOperation>> operations;
+  std::vector<std::shared_ptr<qcos::BaseOperation>> operations;
   operations.reserve(ops.size());
   operations = create_gates(ops);
-  return {std::move(operations), qubits_num};
+  return {operations, qubits_num};
 }
 
-std::vector<std::unique_ptr<qcos::BaseOperation>> create_gates(
+std::vector<std::shared_ptr<qcos::BaseOperation>> create_gates(
     const std::vector<std::unique_ptr<Operation>>& ops) {
-  std::vector<std::unique_ptr<qcos::BaseOperation>> operations;
+  std::vector<std::shared_ptr<qcos::BaseOperation>> operations;
   operations.reserve(ops.size());
   for (const auto& op : ops) {
     std::vector<int> all_qubits;
@@ -79,8 +79,8 @@ std::vector<std::unique_ptr<qcos::BaseOperation>> create_gates(
     for (const auto& target : op->getTargets()) {
       all_qubits.push_back(static_cast<int>(target));
     }
-    std::unique_ptr<qcos::BaseOperation> operation = nullptr;
-    std::vector<std::unique_ptr<qcos::BaseOperation>> subOperations = {};
+    std::shared_ptr<qcos::BaseOperation> operation = nullptr;
+    std::vector<std::shared_ptr<qcos::BaseOperation>> subOperations = {};
     switch (op->type) {
       case otI:
         break;
@@ -301,7 +301,7 @@ std::vector<std::unique_ptr<qcos::BaseOperation>> create_gates(
           for (int qubit : all_qubits) {
             std::vector<int> single_qubit{qubit};
             std::vector<double> empty_params{};
-            std::unique_ptr<qcos::BaseOperation> measure_op =
+            std::shared_ptr<qcos::BaseOperation> measure_op =
                 create_gate("measure", single_qubit, empty_params);
             if (measure_op) {
               subOperations.push_back(std::move(measure_op));
