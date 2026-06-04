@@ -811,7 +811,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
 **默认用户**：
 
 - 用户名: ``admin``
-- 密码: ``123456`` (应在部署时修改)
+- 密码: ``123456`` (在部署时建议修改为强密码)
 - 角色: ``admin``
 
 **配置示例**：
@@ -992,7 +992,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
     QCOS_DATABASE_CONNECTION_URL=postgresql+psycopg2://prefect:${password}@127.0.0.1:5432/qcos
     ACCESS_CONTROL_MODEL_FILE=/etc/qcos/roles/casbin_model.conf
     ACCESS_CONTROL_POLICY_FILE=/etc/qcos/roles/policy.conf
-    ADMIN_PASSWORD=your-admin-password      # 默认管理员密码（可选）
+    ADMIN_PASSWORD=your-admin-password      # 默认管理员密码（可选），推荐强密码
 
 安全建议
 --------
