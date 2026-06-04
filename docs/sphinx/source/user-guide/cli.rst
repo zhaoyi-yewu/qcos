@@ -281,6 +281,12 @@
 
    positional arguments:
      job_id        Job ID
+     output-file   save job results to file
+
+   output formatters:
+     output formatter options
+     -f {csv,json,table,value,yaml}, --format {csv,json,table,value,yaml}
+                           the output format, defaults to table
 
    options:
      -h, --help            show this help message and exit
@@ -297,8 +303,7 @@
    qcos-cli get-job-results 00000000-0000-4000-8000-000000000001
 
    # 获取作业结果，并保存为result.txt
-   qcos-cli get-job-results --output-file "result.txt" 
-   qcos-cli get-job-results 00000000-0000-4000-8000-000000000001 -f yaml --output-file a.txt -y
+   qcos-cli get-job-results 00000000-0000-4000-8000-000000000001 -f yaml --output-file result.txt -y
 
    # 获取所有作业列表
    qcos-cli list-jobs

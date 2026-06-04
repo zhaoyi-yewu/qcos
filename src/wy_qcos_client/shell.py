@@ -27,6 +27,7 @@ from cliff.command import Command
 from cliff.commandmanager import CommandManager
 from cliff.lister import Lister
 from cliff.show import ShowOne
+from io import StringIO
 
 from .client import Client
 from .common import args_schema, errors
@@ -1376,61 +1377,54 @@ class GetJobResults(ShowOne):
 
     group = QcosShell.CMD_GROUP_JOB
 
-    def validate_file(self, output_file: str):
-        """Validate file.
-
-        Args:
-            output_file: output file name
-
-        Returns:
-            output file name
-        """
-        if os.path.exists(output_file):
-            if os.path.isfile(output_file):
-                raise argparse.ArgumentTypeError(
-                    f"Error: file: {output_file} existed"
-                )
-            else:
-                raise argparse.ArgumentTypeError(
-                    f"Error: {output_file} is not a file"
-                )
-
-        file_ext = os.path.splitext(output_file)[1].lower()
-        if file_ext:
-            allowed_extensions = [".txt", ".json"]
-            if file_ext not in allowed_extensions:
-                raise argparse.ArgumentTypeError(
-                    f"Invalid file format: {file_ext}, "
-                    f"only {allowed_extensions} are allowed"
-                )
-        return output_file
-
-    def save_file(self, output_file: str, job_results):
+    def save_file(
+        self,
+        output_file: str,
+        assume_override: bool,
+        file_content: str,
+        fmt_name: str,
+    ):
         """Save job_results to file.
 
         Args:
             output_file: output file name
-            job_results: job results
+            assume_override: assume override
+            file_content: file content
+            fmt_name: fmt name
         """
-        file_dir = os.path.dirname(output_file)
-        try:
-            if file_dir and not os.path.exists(file_dir):
-                os.makedirs(file_dir, exist_ok=True)
-        except Exception as e:
-            raise Exception(f"Failed to create dir: {file_dir}, {str(e)}")
+        if os.path.isdir(output_file):
+            raise errors.InvalidArguments(
+                f"{output_file} is a directory, please specify a file path"
+            )
+        if os.path.exists(output_file) and not assume_override:
+            confirm = input("File exists, need to override this file? (y/n) ")
+            _confirm = confirm.lower().strip()
+            if _confirm not in ("y", "yes"):
+                print(
+                    "File exists and do not override it, "
+                    f"abort saving result to {output_file}."
+                )
+                return
 
-        file_ext = os.path.splitext(output_file)[1].lower()
+        file_dir = os.path.dirname(os.path.abspath(output_file))
+        if file_dir and not os.path.exists(file_dir):
+            try:
+                os.makedirs(file_dir, exist_ok=True)
+            except Exception as e:
+                raise errors.InvalidArguments(
+                    f"Error: Failed to create directory {file_dir}: {e}"
+                )
+
         try:
-            if file_ext == ".txt":
-                with open(output_file, "w", encoding="utf-8") as f:
-                    f.write(str(job_results))
-            elif file_ext == ".json":
-                with open(output_file, "w", encoding="utf-8") as f:
-                    json.dump(job_results, f)
-        except PermissionError:
-            raise PermissionError(f"Permission Denied：{output_file}")
+            with open(output_file, "w", encoding="utf-8") as f:
+                f.write(file_content)
         except Exception as e:
-            raise Exception(f"Save File error：{str(e)}")
+            raise errors.GenericException(f"Error: Write file failed: {e}")
+        print(
+            f"Job results (format: {fmt_name}) are output to file: "
+            f"{output_file} successfully."
+        )
+        return
 
     def get_parser(self, prog_name):
         """Get parser for this command.
@@ -1446,7 +1440,6 @@ class GetJobResults(ShowOne):
         parser.add_argument(
             "--output-file",
             dest="output_file",
-            type=self.validate_file,
             default=None,
             help="Output file",
         )
@@ -1454,7 +1447,7 @@ class GetJobResults(ShowOne):
             "-y",
             "--yes",
             default=False,
-            dest="override_file",
+            dest="assume_override",
             action="store_true",
             help="Override the file",
         )
@@ -1472,7 +1465,7 @@ class GetJobResults(ShowOne):
         resource = self.group
         job_id = parsed_args.job_id
         output_file = parsed_args.output_file
-        override_file = parsed_args.override_file
+        assume_override = parsed_args.assume_override
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(
@@ -1496,9 +1489,23 @@ class GetJobResults(ShowOne):
                         key = f"{k} [{index}]"
                         json_results[key] = v
                 index += 1
-        if output_file is not None:
-            self.save_file(output_file, json_results)
+
         table_values = CommandHelper.get_table_data(json_results)
+        if table_values is None:
+            raise errors.GenericException("Table values is None.")
+
+        if output_file is not None:
+            fmt_name = getattr(parsed_args, "formatter", "table")
+            formatter = self._formatter_plugins[fmt_name].obj
+            headers, rows = table_values
+            buf = StringIO()
+            formatter.emit_one(headers, rows, buf, parsed_args)
+            file_content = buf.getvalue()
+            self.save_file(
+                output_file, assume_override, file_content, fmt_name
+            )
+            return (), ()
+
         return table_values
 
 

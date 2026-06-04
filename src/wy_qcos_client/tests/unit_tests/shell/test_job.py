@@ -17,7 +17,10 @@
 
 import argparse
 import json
+import io
 import os
+import sys
+
 from argparse import Namespace
 from unittest.mock import patch, Mock
 
@@ -204,19 +207,23 @@ class TestGetJobResults:
         mock_check_results.return_value = response
         mock_get_job_results.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
-        mock_get_table_data.return_value = None
+        mock_get_table_data.return_value = (
+            ("ID", "Name", "Status", "CreateTime"),
+            ("job-001", "test-job", "running", "2026-05-29 10:00:00"),
+        )
 
         mock_client = Mock(spec=Namespace)
         mock_client.job_id = job_id
         mock_client.output_file = None
+        mock_client.assume_override = False
         table_values = get_job_results.take_action(mock_client)
-        assert table_values is None
+        assert table_values != ((), ())
 
     @patch.object(CommandHelper, "get_table_data")
     @patch.object(CommandHelper, "handle_invalid_arguments")
     @patch.object(Client, "get_job_results")
     @patch.object(CommandHelper, "check_results")
-    def test_take_action_save_file(
+    def test_take_action_save_txt_file_succ_1(
         self,
         mock_check_results,
         mock_get_job_results,
@@ -226,42 +233,132 @@ class TestGetJobResults:
         mock_check_results.return_value = response
         mock_get_job_results.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
-        mock_get_table_data.return_value = None
+        mock_get_table_data.return_value = (
+            ("ID", "Name", "Status", "CreateTime"),
+            ("job-001", "test-job", "running", "2026-05-29 10:00:00"),
+        )
 
         mock_client = Mock(spec=Namespace)
         mock_client.job_id = job_id
         mock_client.output_file = "result.txt"
+        mock_client.assume_override = True
+        mock_client.max_width = 16
+        mock_client.fit_width = False
+        mock_client.formatter = "table"
+
         table_values = get_job_results.take_action(mock_client)
-        assert table_values is None
+        assert table_values == ((), ())
         assert os.path.exists("result.txt") is True
         os.remove("result.txt")
 
-    def test_validate_file(self):
-        with pytest.raises(argparse.ArgumentTypeError) as e:
-            get_job_results.validate_file("a.doc")
-        assert "Invalid file format" in str(e)
+    @patch.object(CommandHelper, "get_table_data")
+    @patch.object(CommandHelper, "handle_invalid_arguments")
+    @patch.object(Client, "get_job_results")
+    @patch.object(CommandHelper, "check_results")
+    def test_take_action_save_txt_file_succ_2(
+        self,
+        mock_check_results,
+        mock_get_job_results,
+        mock_handle_invalid_arguments,
+        mock_get_table_data,
+    ):
+        mock_check_results.return_value = response
+        mock_get_job_results.return_value = iter([None, None, None, None])
+        mock_handle_invalid_arguments.return_value = None
+        mock_get_table_data.return_value = (
+            ("ID", "Name", "Status", "CreateTime"),
+            ("job-001", "test-job", "running", "2026-05-29 10:00:00"),
+        )
 
-        get_job_results.validate_file("results.txt")
-        get_job_results.validate_file("results.json")
+        mock_client = Mock(spec=Namespace)
+        mock_client.job_id = job_id
+        mock_client.output_file = "result.doc"
+        mock_client.assume_override = True
+        mock_client.max_width = 16
+        mock_client.fit_width = False
+        mock_client.formatter = "table"
 
-        get_job_results.save_file("results.txt", None)
-        assert os.path.exists("results.txt") is True
-        get_job_results.save_file("results.json", None)
-        assert os.path.exists("results.json") is True
+        table_values = get_job_results.take_action(mock_client)
+        assert table_values == ((), ())
+        assert os.path.exists("result.doc") is True
+        os.remove("result.doc")
 
-        with pytest.raises(argparse.ArgumentTypeError) as e:
-            get_job_results.validate_file("results.txt")
-        assert "Error: file: results.txt existed" in str(e)
+    @patch.object(CommandHelper, "get_table_data")
+    @patch.object(CommandHelper, "handle_invalid_arguments")
+    @patch.object(Client, "get_job_results")
+    @patch.object(CommandHelper, "check_results")
+    def test_take_action_save_txt_file_succ_3(
+        self,
+        mock_check_results,
+        mock_get_job_results,
+        mock_handle_invalid_arguments,
+        mock_get_table_data,
+    ):
+        mock_check_results.return_value = response
+        mock_get_job_results.return_value = iter([None, None, None, None])
+        mock_handle_invalid_arguments.return_value = None
+        mock_get_table_data.return_value = (
+            ("ID", "Name", "Status", "CreateTime"),
+            ("job-001", "test-job", "running", "2026-05-29 10:00:00"),
+        )
 
-        with pytest.raises(argparse.ArgumentTypeError) as e:
-            get_job_results.validate_file("results.json")
-        assert "Error: file: results.json existed" in str(e)
+        mock_client = Mock(spec=Namespace)
+        mock_client.job_id = job_id
+        mock_client.output_file = "./result/result.doc"
+        mock_client.assume_override = True
+        mock_client.max_width = 16
+        mock_client.fit_width = False
+        mock_client.formatter = "table"
 
-        with pytest.raises(argparse.ArgumentTypeError) as e:
-            get_job_results.validate_file("./")
-        assert "Error: ./ is not a file" in str(e)
-        os.remove("results.txt")
-        os.remove("results.json")
+        table_values = get_job_results.take_action(mock_client)
+        assert table_values == ((), ())
+        assert os.path.exists("./result/result.doc") is True
+        os.remove("./result/result.doc")
+
+    @patch("builtins.input")
+    @patch.object(CommandHelper, "get_table_data")
+    @patch.object(CommandHelper, "handle_invalid_arguments")
+    @patch.object(Client, "get_job_results")
+    @patch.object(CommandHelper, "check_results")
+    def test_take_action_save_txt_file_fail(
+        self,
+        mock_check_results,
+        mock_get_job_results,
+        mock_handle_invalid_arguments,
+        mock_get_table_data,
+        mock_input,
+    ):
+        mock_check_results.return_value = response
+        mock_get_job_results.return_value = iter([None, None, None, None])
+        mock_handle_invalid_arguments.return_value = None
+        mock_get_table_data.return_value = (
+            ("ID", "Name", "Status", "CreateTime"),
+            ("job-001", "test-job", "running", "2026-05-29 10:00:00"),
+        )
+
+        mock_client = Mock(spec=Namespace)
+        mock_client.job_id = job_id
+        mock_client.output_file = "result.txt"
+        mock_client.assume_override = True
+        mock_client.max_width = 16
+        mock_client.fit_width = False
+        mock_client.formatter = "table"
+
+        table_values = get_job_results.take_action(mock_client)
+        assert table_values == ((), ())
+        assert os.path.exists("result.txt") is True
+
+        captured_stdout = io.StringIO()
+        sys.stdout = captured_stdout
+        mock_client.assume_override = False
+        mock_get_job_results.return_value = iter([None, None, None, None])
+        mock_input.return_value = "n"
+        table_values = get_job_results.take_action(mock_client)
+        output = captured_stdout.getvalue().strip()
+        assert table_values == ((), ())
+        assert os.path.exists("result.txt") is True
+        assert "File exists and do not override it, abort saving" in output
+        os.remove("result.txt")
 
 
 class TestGetJobs:
