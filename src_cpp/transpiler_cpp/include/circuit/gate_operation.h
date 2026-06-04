@@ -38,9 +38,6 @@ class GateOperation : public BaseOperation {
 
  private:
   void validate_params() const;
-  std::shared_ptr<BaseOperation> clone() const override {
-    return std::make_unique<GateOperation>(*this);
-  }
 };
 class H : public GateOperation {
  public:
@@ -56,9 +53,6 @@ class X : public GateOperation {
   std::vector<std::shared_ptr<BaseOperation>> default_decompose();
   std::array<std::complex<double>, 4> to_matrix() const;
   std::string to_string() const;
-  virtual std::shared_ptr<BaseOperation> clone() const {
-    return std::make_unique<X>(*this);
-  }
 };
 
 class Y : public GateOperation {

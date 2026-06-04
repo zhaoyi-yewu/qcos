@@ -72,13 +72,6 @@ void bind_decomposer(py::module_& m) {
              }
 
              auto result = self.apply_decompose_rules(circuit, table);
-
-             // C++ -> Python（move）
-             py::list py_list;
-             for (auto& op : result) {
-               py_list.append(std::move(op));
-             }
-
-             return py_list;
+             return result;
            });
 }

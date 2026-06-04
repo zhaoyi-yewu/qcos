@@ -518,29 +518,6 @@ RuleApplier::OpList RuleApplier::apply_one_rule(
   return result;
 }
 
-/* ============================================================
- * Clone Helper
- * ============================================================ */
-
-/**
- * @brief Deep-copy a vector of operations.
- *
- * Uses BaseOperation::clone() to preserve
- * polymorphic operation types.
- *
- * @param src Source operation vector
- * @return Cloned operation vector
- */
-static std::vector<std::shared_ptr<BaseOperation>> clone_vector(
-    const std::vector<std::shared_ptr<BaseOperation>>& src) {
-  std::vector<std::shared_ptr<BaseOperation>> dst;
-
-  for (const auto& op : src) {
-    dst.push_back(op->clone());
-  }
-
-  return dst;
-}
 
 /* ============================================================
  * Recursive Path Expansion
@@ -611,44 +588,44 @@ std::vector<std::shared_ptr<BaseOperation>> RuleApplier::apply_path(
   // Recursive decomposition function
   // ------------------------------------------------
 
-  std::function<OpVec(const BaseOperation&)> decompose =
-      [&](const BaseOperation& gate) -> OpVec {
-    std::string sig = make_signature(gate);
+  std::function<OpVec(const OpPtr&)> decompose =
+      [&](const OpPtr& gate) -> OpVec {
+    std::string sig = make_signature(*gate);
 
     // ---- Cache hit ----
 
     if (cache.count(sig)) {
-      return clone_vector(cache[sig]);
+      return cache[sig];
     }
 
     OpVec result;
 
     // ---- Already target gate ----
 
-    if (target_set.count(gate.name)) {
-      result.push_back(gate.clone());
+    if (target_set.count(gate->name)) {
+      result.push_back(gate);
 
-      cache[sig] = clone_vector(result);
+      cache[sig] = result;
 
       return result;
     }
 
     // ---- Missing decomposition rule ----
 
-    if (!rule_dict.count(gate.name)) {
-      throw std::runtime_error("No rule for gate: " + gate.name);
+    if (!rule_dict.count(gate->name)) {
+      throw std::runtime_error("No rule for gate: " + gate->name);
     }
 
-    const auto& rule = rule_dict.at(gate.name);
+    const auto& rule = rule_dict.at(gate->name);
 
     // ---- Apply decomposition rule ----
 
-    auto expanded = apply_one_rule(gate, rule.target, rule.sources);
+    auto expanded = apply_one_rule(*gate, rule.target, rule.sources);
 
     // ---- Recursively expand sub-gates ----
 
     for (const auto& op : expanded) {
-      auto sub = decompose(*op);
+      auto sub = decompose(op);
 
       for (auto& x : sub) {
         result.push_back(std::move(x));
@@ -657,7 +634,7 @@ std::vector<std::shared_ptr<BaseOperation>> RuleApplier::apply_path(
 
     // ---- Store into cache ----
 
-    cache[sig] = clone_vector(result);
+    cache[sig] = result;
 
     return result;
   };
@@ -669,7 +646,7 @@ std::vector<std::shared_ptr<BaseOperation>> RuleApplier::apply_path(
   OpVec final_result;
 
   for (const auto& gate : circuit) {
-    auto part = decompose(*gate);
+    auto part = decompose(gate);
 
     for (auto& op : part) {
       final_result.push_back(std::move(op));
@@ -730,7 +707,7 @@ RuleApplier::OpList RuleApplier::apply_with_decomposition_table(
     auto candidates_it = table_index.find(op->name);
 
     if (candidates_it == table_index.end()) {
-      result.push_back(op->clone());
+      result.push_back(op);
       continue;
     }
 
@@ -824,7 +801,7 @@ RuleApplier::OpList RuleApplier::apply_with_decomposition_table(
     // ------------------------------------------------
 
     if (!matched) {
-      result.push_back(op->clone());
+      result.push_back(op);
     }
   }
 
