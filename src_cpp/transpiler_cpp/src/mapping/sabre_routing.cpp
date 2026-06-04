@@ -37,8 +37,8 @@ std::vector<GateOperation> sabre_routing(
   return sabre.get_physical_gates();
 }
 
-std::vector<std::unique_ptr<BaseOperation>> sabre_routing(
-    const std::vector<std::unique_ptr<BaseOperation>>& gates_list,
+std::vector<std::shared_ptr<BaseOperation>> sabre_routing(
+    const std::vector<std::shared_ptr<BaseOperation>>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
     const std::vector<int>& initial_l2p, int extension_size, double weight,
     double decay) {
@@ -58,7 +58,7 @@ std::vector<std::unique_ptr<BaseOperation>> sabre_routing(
       gate_ops, coupling_list, initial_l2p, extension_size, weight, decay);
 
   // convert routed GateOperation back to BaseOperation
-  std::vector<std::unique_ptr<BaseOperation>> routed_ops;
+  std::vector<std::shared_ptr<BaseOperation>> routed_ops;
   routed_ops.reserve(routed_gate_ops.size());
   for (const auto& op : routed_gate_ops) {
     routed_ops.push_back(restore_base_operation(op));

@@ -32,7 +32,7 @@ namespace {
 
 /**
  * @brief 绑定 high_performance.sabre_routing 的 C++ BaseOperation 入口。
- * 
+ *
  * @param gates_list_raw Python 侧传入的 BaseOperation 对象列表。
  * @param coupling_list 物理耦合图边列表。
  * @param initial_l2p 初始逻辑到物理映射。
@@ -46,7 +46,7 @@ py::list bind_cpp_sabre_routing(
     const std::vector<std::pair<int, int>>& coupling_list,
     const std::vector<int>& initial_l2p, int extension_size, double weight,
     double decay) {
-  std::vector<std::unique_ptr<qcos::BaseOperation>> gates_list;
+  std::vector<std::shared_ptr<qcos::BaseOperation>> gates_list;
   gates_list.reserve(gates_list_raw.size());
   for (auto* op : gates_list_raw) {
     if (op == nullptr) {

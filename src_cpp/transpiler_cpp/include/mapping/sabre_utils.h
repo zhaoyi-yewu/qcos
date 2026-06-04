@@ -26,7 +26,7 @@ namespace qcos {
 
 GateOperation to_gate_operation(const BaseOperation& op);
 
-std::unique_ptr<BaseOperation> restore_base_operation(
+std::shared_ptr<BaseOperation> restore_base_operation(
     const GateOperation& routed_op);
 
 }  // namespace qcos

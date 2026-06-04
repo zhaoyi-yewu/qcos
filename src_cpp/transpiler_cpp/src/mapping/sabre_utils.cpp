@@ -52,7 +52,7 @@ GateOperation to_gate_operation(const BaseOperation& op) {
   return GateOperation(op.name, op.targets, op.arg_value, operation_type);
 }
 
-std::unique_ptr<BaseOperation> restore_base_operation(
+std::shared_ptr<BaseOperation> restore_base_operation(
     const GateOperation& routed_op) {
   // 恢复特殊门为 BaseOperation, 其他门保持 GateOperation
   try {
@@ -63,7 +63,7 @@ std::unique_ptr<BaseOperation> restore_base_operation(
     }
     return restored;
   } catch (const std::runtime_error&) {
-    return std::make_unique<GateOperation>(
+    return std::make_shared<GateOperation>(
         routed_op.name, routed_op.targets, routed_op.arg_value,
         routed_op.operation_type, routed_op.hermitian);
   }

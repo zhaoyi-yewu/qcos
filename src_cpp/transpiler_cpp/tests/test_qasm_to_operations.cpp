@@ -47,7 +47,7 @@ class QASMToOperationsTest {
     file.close();
     std::string qasm_str = buffer.str();
     std::vector<std::shared_ptr<qcos::BaseOperation>> operations =
-        std::move(convert_qasm_string_to_qcos_operations(qasm_str).first);
+        convert_qasm_string_to_qcos_operations(qasm_str).first;
     return true;
   }
 };
