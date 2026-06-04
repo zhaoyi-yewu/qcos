@@ -201,7 +201,7 @@ class TestTranspilerNaMapping:
         assert len(na.ag.nodes) == 8
         assert na.gates == value[1]
         assert na.qbit_num == value[0]
-        assert na.mapping_qubit_storage is None
+        assert na.logical_to_storage is None
 
     def test_execute_with_order(self):
         src_code_info = {"000": self.simple_data}
@@ -220,7 +220,7 @@ class TestTranspilerNaMapping:
         na.prepare_data(value[0], value[1], qpu_cfg)
         mapping_res, _ = na.execute_with_order()
 
-        assert len(na.mapping_qubit_storage) == na.qbit_num
+        assert len(na.logical_to_storage) == na.qbit_num
         assert mapping_res is not None
         assert mapping_res[0].name == "x"
         assert mapping_res[-1].name == "measure"
@@ -242,7 +242,7 @@ class TestTranspilerNaMapping:
         na.prepare_data(value[0], value[1], qpu_cfg)
         mapping_res = na.execute_with_opt()
 
-        assert len(na.mapping_qubit_storage) == na.qbit_num
+        assert len(na.logical_to_storage) == na.qbit_num
         assert mapping_res is not None
         assert mapping_res[0].name == "x"
         assert mapping_res[-1].name == "measure"
@@ -264,7 +264,7 @@ class TestTranspilerNaMapping:
         na.prepare_data(value[0], value[1], qpu_cfg)
         order_mapping_res, _ = na.execute_with_order()
 
-        assert len(na.mapping_qubit_storage) == na.qbit_num
+        assert len(na.logical_to_storage) == na.qbit_num
         assert order_mapping_res is not None
         assert order_mapping_res[0].name == "x"
         assert order_mapping_res[-1].name == "measure"
@@ -286,7 +286,7 @@ class TestTranspilerNaMapping:
         na.prepare_data(value[0], value[1], qpu_cfg)
 
         opt_mapping_res = na.execute_with_opt()
-        assert len(na.mapping_qubit_storage) == na.qbit_num
+        assert len(na.logical_to_storage) == na.qbit_num
         assert opt_mapping_res is not None
         assert opt_mapping_res[0].name == "x"
         assert opt_mapping_res[-1].name == "measure"
@@ -311,7 +311,7 @@ class TestTranspilerNaMapping:
         res.append(Move(targets=[0], arg_value=["P144", "P100"]))
         opt = Move(targets=[0], arg_value=["P100", "P155"])
         na.op_occupied.add("P100")
-        na.qubit_op_pos[0] = "P100"
+        na.logical_to_op[0] = "P100"
         result = na.add_put(res, opt)
         assert len(result) == 0
 
@@ -332,7 +332,7 @@ class TestTranspilerNaMapping:
         na.prepare_data(value[0], value[1], qpu_cfg)
         mapping_res, _ = na.execute_with_order()
 
-        assert len(na.mapping_qubit_storage) == na.qbit_num
+        assert len(na.logical_to_storage) == na.qbit_num
         assert mapping_res is not None
         assert mapping_res[0].name == "h"
         assert mapping_res[-1].name == "measure"

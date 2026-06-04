@@ -30,7 +30,7 @@ class NASingleRoute(ABC):
 
     def __init__(self):
         self.qids = None
-        self.mapping_qubit_storage = None
+        self.logical_to_storage = None
         self.qbit_num = None
         self.gates = None
         self.ag = None
@@ -78,7 +78,7 @@ class NASingleRoute(ABC):
             if k in self.storage_area:
                 err_dict[k] = v
         sq = sorted(err_dict.items(), key=lambda e: e[1])[: self.qbit_num]
-        self.mapping_qubit_storage = {
+        self.logical_to_storage = {
             a: b[0] for a, b in zip(range(self.qbit_num), sq)
         }
         self.qids = [int(q[0][1:]) for q in sq]
@@ -98,7 +98,7 @@ class NASingleRoute(ABC):
                     f"Gate {gate.name} must have exactly one target"
                 )
             gate.targets = [
-                int(self.mapping_qubit_storage[q][1:]) for q in gate.targets
+                int(self.logical_to_storage[q][1:]) for q in gate.targets
             ]
             if gate.name == "measure":
                 measure.append(gate)
@@ -119,7 +119,7 @@ class NARoute(ABC):
 
     def __init__(self):
         self.qids = None
-        self.mapping_qubit_storage = None
+        self.logical_to_storage = None
         self.qbit_num = None
         self.gates = None
         self.ag = None
@@ -244,11 +244,11 @@ class NARoute(ABC):
 
             dg：量子线路拓扑
             dg_opt：dg的深拷贝，用以将处理后的节点删除，并寻找新的可执行节点
-            mapping_qubit_storage(dict{logical_q: storage_p})：逻辑比特与存储区
+            logical_to_storage(dict{logical_q: storage_p})：逻辑比特与存储区
             物理位置的映射（目前逻辑比特与存储区一一对应，方便维护）.
-            qubit_op_pos(dict{logical_q: op_p | -1})：逻辑比特与操作区位置的
+            logical_to_op(dict{logical_q: op_p | -1})：逻辑比特与操作区位置的
             映射（-1=不在操作区）.
-            op_qubit_pos(dict{op_p: logical_q | -1})：操作区位置与逻辑比特的
+            op_to_logical(dict{op_p: logical_q | -1})：操作区位置与逻辑比特的
             映射（-1=操作区位置为空）.
             op_occupied(set(op_p))：操作区已占用的位置集合.
             free_edges(set((op_p, op_p)))：两端都空闲的边集合.
@@ -264,11 +264,11 @@ class NARoute(ABC):
             if k in self.storage_area:
                 err_dict[k] = v
         sq = sorted(err_dict.items(), key=lambda e: e[1])[: self.qbit_num]
-        self.mapping_qubit_storage = {
+        self.logical_to_storage = {
             a: b[0] for a, b in zip(range(self.qbit_num), sq)
         }
-        self.qubit_op_pos = {a: -1 for a in range(self.qbit_num)}
-        self.op_qubit_pos = {a: -1 for a in self.operate_area}
+        self.logical_to_op = {a: -1 for a in range(self.qbit_num)}
+        self.op_to_logical = {a: -1 for a in self.operate_area}
         self.op_occupied = set()
         self.free_edges = {tuple(sorted(e)) for e in self.ag.edges()}
         self.locked = set()
@@ -306,12 +306,12 @@ class NARoute(ABC):
         Args:
             o: 操作区位置
         """
-        q = self.op_qubit_pos[o]
+        q = self.op_to_logical[o]
         self.res.append(
-            Move(targets=[q], arg_value=[o, self.mapping_qubit_storage[q]])
+            Move(targets=[q], arg_value=[o, self.logical_to_storage[q]])
         )
-        self.qubit_op_pos[q] = -1
-        self.op_qubit_pos[o] = -1
+        self.logical_to_op[q] = -1
+        self.op_to_logical[o] = -1
         self.op_occupied.remove(o)
         for nxt in self.ag.neighbors(o):
             if nxt not in self.op_occupied:
@@ -325,10 +325,10 @@ class NARoute(ABC):
             o: 操作区位置
         """
         self.res.append(
-            Move(targets=[q], arg_value=[self.mapping_qubit_storage[q], o])
+            Move(targets=[q], arg_value=[self.logical_to_storage[q], o])
         )  # f"put {q} {o}")
-        self.qubit_op_pos[q] = o
-        self.op_qubit_pos[o] = q
+        self.logical_to_op[q] = o
+        self.op_to_logical[o] = q
         self.op_occupied.add(o)
         for nxt in self.ag.neighbors(o):
             self.free_edges.discard(tuple(sorted((o, nxt))))
@@ -340,12 +340,12 @@ class NARoute(ABC):
             o1: 操作区起始位置
             o2: 操作区目标位置
         """
-        q = self.op_qubit_pos[o1]
-        # f"mov {self.op_qubit_pos[o1]} {o2}")
+        q = self.op_to_logical[o1]
+        # f"mov {self.op_to_logical[o1]} {o2}")
         self.res.append(Move(targets=[q], arg_value=[o1, o2]))
-        self.qubit_op_pos[q] = o2
-        self.op_qubit_pos[o1] = -1
-        self.op_qubit_pos[o2] = q
+        self.logical_to_op[q] = o2
+        self.op_to_logical[o1] = -1
+        self.op_to_logical[o2] = q
         self.op_occupied.remove(o1)
         self.op_occupied.add(o2)
         for nxt in self.ag.neighbors(o1):
@@ -367,7 +367,7 @@ class NARoute(ABC):
                 all_q.add(q)
         ohas = self.op_occupied.copy()
         for o in ohas:
-            if self.op_qubit_pos[o] not in all_q:
+            if self.op_to_logical[o] not in all_q:
                 self.back(o)
 
     def get_empty_neighbor(self, p):
@@ -483,8 +483,8 @@ class NARoute(ABC):
         for node in remain:
             # 不能执行的两比特门，对应比特需要放回存储区
             for q in node["qubits"]:
-                if self.qubit_op_pos[q] != -1:
-                    self.back(self.qubit_op_pos[q])
+                if self.logical_to_op[q] != -1:
+                    self.back(self.logical_to_op[q])
         for node in nodes:
             if node in remain:
                 continue
@@ -505,7 +505,10 @@ class NARoute(ABC):
         for node in nodes:
             # 每个两比特门判断当前两个比特的位置是否符合要求
             qubits = node["qubits"]
-            p1, p2 = self.qubit_op_pos[qubits[0]], self.qubit_op_pos[qubits[1]]
+            p1, p2 = (
+                self.logical_to_op[qubits[0]],
+                self.logical_to_op[qubits[1]],
+            )
             if p1 != -1 and p2 != -1:
                 # 均在操作区
                 if not self.mov_to_neighbors(p1, p2):
@@ -578,12 +581,12 @@ class NARoute(ABC):
             if t.operation_type == -2 and t.targets[0] == q:
                 # 若有直接相邻的back操作，且作用在同一比特上，可消除
                 op = t.arg_value[0]
-                p = self.qubit_op_pos[q]
+                p = self.logical_to_op[q]
                 self.op_occupied.remove(p)
                 self.op_occupied.add(op)
-                self.op_qubit_pos[p] = -1
-                self.op_qubit_pos[op] = q
-                self.qubit_op_pos[q] = op
+                self.op_to_logical[p] = -1
+                self.op_to_logical[op] = q
+                self.logical_to_op[q] = op
                 return res[:i] + res[i + 1 :]
             i -= 1
         res.append(opt)
@@ -694,7 +697,7 @@ class NARoute(ABC):
         self.res += self.measure
 
         # 遍历比特门，将逻辑量子比特映射到物理量子比特.
-        operator_list = self.mapping_qubit_storage
+        operator_list = self.logical_to_storage
         for gate in self.res:
             if gate.name == "move":
                 pid = gate.arg_value[1]
@@ -741,7 +744,7 @@ class NARoute(ABC):
         self.res += self.measure
 
         # 遍历比特门，将逻辑量子比特映射到物理量子比特.
-        operator_list = deepcopy(self.mapping_qubit_storage)
+        operator_list = deepcopy(self.logical_to_storage)
         for gate in self.res:
             if gate.name == "move":
                 pid = gate.arg_value[1]
