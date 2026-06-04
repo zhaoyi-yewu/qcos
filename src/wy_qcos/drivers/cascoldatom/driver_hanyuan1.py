@@ -67,7 +67,7 @@ class DriverHanyuan1(DriverBase):
         ]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_aggregation = True
-        self.max_qubits = 10
+        self.max_qubits = 100
         self.server_host: str | None = None
         self.server_port: int | None = None
         self.base_url: str | None = None

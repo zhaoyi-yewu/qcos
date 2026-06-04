@@ -4,7 +4,7 @@ driver = "DriverHanyuan1"
 description = "中科酷原-汉原1(hanyuan1)"
 
 # [Optional] max qubits of device
-# device_max_qubits = 10
+# device_max_qubits = 100
 
 # [Optional] debug
 # debug = false
