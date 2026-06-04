@@ -1405,54 +1405,88 @@ static string regex_escape(const string& s) {
  */
 vector<string> EquivalenceGraph::rewrite_params(
     const vector<string>& exprs,
-    const unordered_map<string, string>& param_map
-) {
+    const unordered_map<string, string>& param_map) {
 
-    vector<string> result;
+  vector<string> result;
+
+  // --------------------------------------------------
+  // Sort parameters by descending key length.
+  //
+  // Example:
+  //   "theta1" should be replaced before "theta".
+  // --------------------------------------------------
+
+  vector<pair<string, string>> ordered(
+      param_map.begin(),
+      param_map.end());
+
+  sort(
+      ordered.begin(),
+      ordered.end(),
+      [](const auto& a, const auto& b) {
+        return a.first.size() > b.first.size();
+      });
+
+  // --------------------------------------------------
+  // Rewrite expressions.
+  //
+  // Use a two-phase replacement:
+  //
+  //   1. Replace parameter names with temporary tokens
+  //   2. Replace temporary tokens with final values
+  //
+  // This avoids recursive replacement inside newly
+  // substituted expressions.
+  // --------------------------------------------------
+
+  for (const auto& expr : exprs) {
+
+    string rewritten = expr;
+
+    unordered_map<string, string> temp_values;
+
+    int temp_index = 0;
 
     // ------------------------------------------------
-    // Sort parameters by descending key length
+    // Phase 1:
+    // Replace parameter names with temporary tokens.
     // ------------------------------------------------
 
-    vector<pair<string, string>> ordered(
-        param_map.begin(),
-        param_map.end());
+    for (const auto& [key, value] : ordered) {
 
-    sort(
-        ordered.begin(),
-        ordered.end(),
-        [](const auto& a, const auto& b) {
-            return a.first.size() >
-                   b.first.size();
-        });
+      const string temp_token =
+          "__TMP_" + to_string(temp_index++) + "__";
 
-    // ------------------------------------------------
-    // Rewrite each expression
-    // ------------------------------------------------
+      temp_values[temp_token] = value;
 
-    for (const auto& expr : exprs) {
+      const string pattern =
+          "\\b" +
+          regex_escape(key) +
+          "\\b";
 
-        string new_expr = expr;
-
-        for (const auto& [k, v] : ordered) {
-
-            string pattern =
-                "\\b" +
-                regex_escape(k) +
-                "\\b";
-
-            regex r(pattern);
-
-            new_expr = regex_replace(
-                new_expr,
-                r,
-                "(" + v + ")");
-        }
-
-        result.push_back(new_expr);
+      rewritten = regex_replace(
+          rewritten,
+          regex(pattern),
+          temp_token);
     }
 
-    return result;
+    // ------------------------------------------------
+    // Phase 2:
+    // Replace temporary tokens with actual values.
+    // ------------------------------------------------
+
+    for (const auto& [temp_token, value] : temp_values) {
+
+      rewritten = regex_replace(
+          rewritten,
+          regex(temp_token),
+          "(" + value + ")");
+    }
+
+    result.push_back(rewritten);
+  }
+
+  return result;
 }
 
 /* ============================================================
