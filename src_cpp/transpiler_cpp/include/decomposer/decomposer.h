@@ -17,14 +17,14 @@
 #pragma once
 
 #include <memory>
-#include <vector>
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "circuit/base_operation.h"
-#include "decomposer/rule_applier.h"
 #include "decomposer/equivalence_graph.h"
+#include "decomposer/rule_applier.h"
 
 namespace qcos {
 
@@ -42,9 +42,8 @@ namespace qcos {
  */
 class Decomposer {
  public:
-
   /// Alias for quantum operation pointer
-  using OpPtr = std::unique_ptr<BaseOperation>;
+  using OpPtr = std::shared_ptr<BaseOperation>;
 
   /// Alias for operation list
   using OpList = std::vector<OpPtr>;
@@ -59,10 +58,7 @@ class Decomposer {
    *   CX -> {H, CZ, H}
    */
   using DecompositionTable =
-      std::unordered_map<
-          ParamGate,
-          std::vector<ParamGate>,
-          ParamGateHash>;
+      std::unordered_map<ParamGate, std::vector<ParamGate>, ParamGateHash>;
 
   /**
    * @brief Statistics of gate usage during decomposition.
@@ -73,7 +69,6 @@ class Decomposer {
   using UsageStats = std::unordered_map<std::string, int>;
 
  public:
-
   /**
    * @brief Construct a decomposer.
    *
@@ -99,8 +94,7 @@ class Decomposer {
    * - decomposition table
    * - gate usage statistics
    */
-  std::pair<DecompositionTable, UsageStats>
-  get_decompose_rules(
+  std::pair<DecompositionTable, UsageStats> get_decompose_rules(
       const std::vector<std::string>& source,
       const std::vector<std::string>& target);
 
@@ -118,19 +112,17 @@ class Decomposer {
    *
    * @return Fully decomposed circuit
    */
-  OpList apply_decompose_rules(
-      const std::vector<OpPtr>& circuit,
-      const DecompositionTable& table);
+  OpList apply_decompose_rules(const std::vector<OpPtr>& circuit,
+                               const DecompositionTable& table);
 
  private:
-
   /**
    * @brief Shared equivalence graph instance.
    *
    * Stores all equivalence relationships and
    * decomposition search logic.
    */
-  static std::unique_ptr<EquivalenceGraph> graph_;
+  static std::shared_ptr<EquivalenceGraph> graph_;
 
   /**
    * @brief Rule application engine.

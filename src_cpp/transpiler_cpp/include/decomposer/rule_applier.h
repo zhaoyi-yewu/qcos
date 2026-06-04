@@ -16,10 +16,10 @@
  */
 #pragma once
 
-#include <vector>
 #include <memory>
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "circuit/base_operation.h"
 #include "circuit/gate_operation.h"
@@ -40,9 +40,8 @@ namespace qcos {
  */
 class RuleApplier {
  public:
-
   /// Alias for quantum operation pointer
-  using OpPtr = std::unique_ptr<BaseOperation>;
+  using OpPtr = std::shared_ptr<BaseOperation>;
 
   /// Alias for operation list
   using OpList = std::vector<OpPtr>;
@@ -54,10 +53,7 @@ class RuleApplier {
    *   gate -> decomposed gate sequence
    */
   using DecompositionTable =
-      std::unordered_map<
-          ParamGate,
-          std::vector<ParamGate>,
-          ParamGateHash>;
+      std::unordered_map<ParamGate, std::vector<ParamGate>, ParamGateHash>;
 
   /**
    * @brief Apply a single decomposition rule.
@@ -80,10 +76,8 @@ class RuleApplier {
    *
    * @return Expanded operation sequence
    */
-  OpList apply_one_rule(
-      const BaseOperation& op,
-      const ParamGate& target,
-      const std::vector<ParamGate>& sources);
+  OpList apply_one_rule(const BaseOperation& op, const ParamGate& target,
+                        const std::vector<ParamGate>& sources);
 
   /**
    * @brief Apply recursive decomposition path expansion.
@@ -120,12 +114,10 @@ class RuleApplier {
    *
    * @return Decomposed circuit
    */
-  OpList apply_with_decomposition_table(
-      const std::vector<OpPtr>& circuit,
-      const DecompositionTable& table);
+  OpList apply_with_decomposition_table(const std::vector<OpPtr>& circuit,
+                                        const DecompositionTable& table);
 
  private:
-
   /**
    * @brief Evaluate a parameter expression.
    *
@@ -141,9 +133,8 @@ class RuleApplier {
    *
    * @return Evaluated numeric result
    */
-  double eval_expr(
-      const std::string& expr,
-      const std::unordered_map<std::string, double>& env);
+  double eval_expr(const std::string& expr,
+                   const std::unordered_map<std::string, double>& env);
 };
 
-} // namespace qcos
+}  // namespace qcos

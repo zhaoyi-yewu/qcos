@@ -34,7 +34,7 @@ namespace qcos {
  * Using a static instance avoids rebuilding
  * equivalence rules multiple times.
  */
-std::unique_ptr<EquivalenceGraph> Decomposer::graph_ = nullptr;
+std::shared_ptr<EquivalenceGraph> Decomposer::graph_ = nullptr;
 
 // ==========================================
 // Constructor
@@ -52,7 +52,7 @@ std::unique_ptr<EquivalenceGraph> Decomposer::graph_ = nullptr;
  */
 Decomposer::Decomposer() {
   if (!graph_) {
-    graph_ = std::make_unique<EquivalenceGraph>();
+    graph_ = std::make_shared<EquivalenceGraph>();
   }
 }
 
@@ -82,21 +82,14 @@ Decomposer::Decomposer() {
  * @throws std::runtime_error
  * Thrown if the equivalence graph is not initialized.
  */
-std::pair<
-    Decomposer::DecompositionTable,
-    Decomposer::UsageStats>
-Decomposer::get_decompose_rules(
-    const std::vector<std::string>& source,
-    const std::vector<std::string>& target) {
-
+std::pair<Decomposer::DecompositionTable, Decomposer::UsageStats>
+Decomposer::get_decompose_rules(const std::vector<std::string>& source,
+                                const std::vector<std::string>& target) {
   if (!graph_) {
-    throw std::runtime_error(
-        "EquivalenceGraph not initialized");
+    throw std::runtime_error("EquivalenceGraph not initialized");
   }
 
-  return graph_->build_full_decomposition_table(
-      source,
-      target);
+  return graph_->build_full_decomposition_table(source, target);
 }
 
 // ==========================================
@@ -119,16 +112,11 @@ Decomposer::get_decompose_rules(
  *
  * @return Fully decomposed circuit
  */
-Decomposer::OpList
-Decomposer::apply_decompose_rules(
-    const std::vector<OpPtr>& circuit,
-    const DecompositionTable& table) {
-
+Decomposer::OpList Decomposer::apply_decompose_rules(
+    const std::vector<OpPtr>& circuit, const DecompositionTable& table) {
   // Directly apply the decomposition table
   // without additional conversion.
-  return applier_.apply_with_decomposition_table(
-      circuit,
-      table);
+  return applier_.apply_with_decomposition_table(circuit, table);
 }
 
 }  // namespace qcos
