@@ -1376,26 +1376,26 @@ class GetJobResults(ShowOne):
 
     group = QcosShell.CMD_GROUP_JOB
 
-    def validate_file(self, outfile: str):
+    def validate_file(self, output_file: str):
         """Validate file.
 
         Args:
-            outfile: output file name
+            output_file: output file name
 
         Returns:
             output file name
         """
-        if os.path.exists(outfile):
-            if os.path.isfile(outfile):
+        if os.path.exists(output_file):
+            if os.path.isfile(output_file):
                 raise argparse.ArgumentTypeError(
-                    f"Error: file: {outfile} existed"
+                    f"Error: file: {output_file} existed"
                 )
             else:
                 raise argparse.ArgumentTypeError(
-                    f"Error: {outfile} is not a file"
+                    f"Error: {output_file} is not a file"
                 )
 
-        file_ext = os.path.splitext(outfile)[1].lower()
+        file_ext = os.path.splitext(output_file)[1].lower()
         if file_ext:
             allowed_extensions = [".txt", ".json"]
             if file_ext not in allowed_extensions:
@@ -1403,32 +1403,32 @@ class GetJobResults(ShowOne):
                     f"Invalid file format: {file_ext}, "
                     f"only {allowed_extensions} are allowed"
                 )
-        return outfile
+        return output_file
 
-    def save_file(self, outfile: str, job_results):
+    def save_file(self, output_file: str, job_results):
         """Save job_results to file.
 
         Args:
-            outfile: output file name
+            output_file: output file name
             job_results: job results
         """
-        file_dir = os.path.dirname(outfile)
+        file_dir = os.path.dirname(output_file)
         try:
             if file_dir and not os.path.exists(file_dir):
                 os.makedirs(file_dir, exist_ok=True)
         except Exception as e:
             raise Exception(f"Failed to create dir: {file_dir}, {str(e)}")
 
-        file_ext = os.path.splitext(outfile)[1].lower()
+        file_ext = os.path.splitext(output_file)[1].lower()
         try:
             if file_ext == ".txt":
-                with open(outfile, "w", encoding="utf-8") as f:
+                with open(output_file, "w", encoding="utf-8") as f:
                     f.write(str(job_results))
             elif file_ext == ".json":
-                with open(outfile, "w", encoding="utf-8") as f:
+                with open(output_file, "w", encoding="utf-8") as f:
                     json.dump(job_results, f)
         except PermissionError:
-            raise PermissionError(f"Permission Denied：{outfile}")
+            raise PermissionError(f"Permission Denied：{output_file}")
         except Exception as e:
             raise Exception(f"Save File error：{str(e)}")
 
@@ -1444,11 +1444,19 @@ class GetJobResults(ShowOne):
         parser = super().get_parser(prog_name)
         parser.add_argument("job_id", type=str, help="Job ID")
         parser.add_argument(
-            "--outfile",
-            dest="outfile",
+            "--output-file",
+            dest="output_file",
             type=self.validate_file,
             default=None,
             help="Output file",
+        )
+        parser.add_argument(
+            "-y",
+            "--yes",
+            default=False,
+            dest="override_file",
+            action="store_true",
+            help="Override the file",
         )
         return parser
 
@@ -1463,7 +1471,8 @@ class GetJobResults(ShowOne):
         """
         resource = self.group
         job_id = parsed_args.job_id
-        outfile = parsed_args.outfile
+        output_file = parsed_args.output_file
+        override_file = parsed_args.override_file
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(
@@ -1487,8 +1496,8 @@ class GetJobResults(ShowOne):
                         key = f"{k} [{index}]"
                         json_results[key] = v
                 index += 1
-        if outfile is not None:
-            self.save_file(outfile, json_results)
+        if output_file is not None:
+            self.save_file(output_file, json_results)
         table_values = CommandHelper.get_table_data(json_results)
         return table_values
 
