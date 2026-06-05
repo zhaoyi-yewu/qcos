@@ -30,7 +30,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from wy_qcos.db.models.base import Base
+from wy_qcos.db.models.base import Base, GUID
 
 
 class User(Base):
@@ -40,17 +40,17 @@ class User(Base):
 
     # Primary key: UUID
     id = Column(
-        String(36),
+        GUID,
         primary_key=True,
-        default=lambda: str(uuid.uuid4()),
+        default=uuid.uuid4,
         index=True,
     )
 
-    # Foreign key to project (default: admin project)
+    # Foreign key to project (default: default project)
     project_id = Column(
-        String(36),
+        GUID,
         ForeignKey("projects.id"),
-        default="00000000-0000-4000-8000-000000000001",
+        default=uuid.UUID("00000000-0000-4000-8000-000000000000"),
         nullable=False,
         index=True,
     )
@@ -60,10 +60,10 @@ class User(Base):
 
     # FastAPI-Users base fields (password management)
     hashed_password = Column(String(255), nullable=False)
-    is_enabled = Column(Boolean, default=True)
+    is_enabled = Column(Boolean, nullable=False, default=True)
 
     # Extended fields from existing model
-    is_locked = Column(Boolean, default=False)
+    is_locked = Column(Boolean, nullable=False, default=False)
     last_login = Column(DateTime, nullable=True)
     password_changed_at = Column(DateTime, default=datetime.now)
     locked_until = Column(DateTime, nullable=True)
@@ -102,9 +102,9 @@ class Role(Base):
 
     # Primary key: UUID
     id = Column(
-        String(36),
+        GUID,
         primary_key=True,
-        default=lambda: str(uuid.uuid4()),
+        default=uuid.uuid4,
         index=True,
     )
 
@@ -128,15 +128,15 @@ class UserRole(Base):
 
     # Primary key: UUID
     id = Column(
-        String(36),
+        GUID,
         primary_key=True,
-        default=lambda: str(uuid.uuid4()),
+        default=uuid.uuid4,
         index=True,
     )
 
     # Foreign keys
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    role_id = Column(String(36), ForeignKey("roles.id"), nullable=False)
+    user_id = Column(GUID, ForeignKey("users.id"), nullable=False)
+    role_id = Column(GUID, ForeignKey("roles.id"), nullable=False)
 
     # Creation timestamp
     created_at = Column(DateTime, default=datetime.now)
@@ -153,15 +153,15 @@ class LoginLog(Base):
 
     # Primary key: UUID
     id = Column(
-        String(36),
+        GUID,
         primary_key=True,
-        default=lambda: str(uuid.uuid4()),
+        default=uuid.uuid4,
         index=True,
     )
 
     # Foreign key to project (nullable)
     project_id = Column(
-        String(36),
+        GUID,
         ForeignKey("projects.id"),
         nullable=True,
         index=True,
@@ -190,9 +190,9 @@ class TokenBlacklist(Base):
 
     # Primary key: UUID
     id = Column(
-        String(36),
+        GUID,
         primary_key=True,
-        default=lambda: str(uuid.uuid4()),
+        default=uuid.uuid4,
         index=True,
     )
 

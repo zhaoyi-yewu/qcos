@@ -22,7 +22,6 @@ from datetime import datetime
 from sqlalchemy import (
     Column,
     DateTime,
-    func,
     TypeDecorator,
     String,
     inspect,
@@ -63,12 +62,8 @@ class BaseTable(Base):
 
     __abstract__ = True
 
-    created_at = Column(DateTime, server_default=func.current_timestamp())
-    updated_at = Column(
-        DateTime,
-        server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
-    )
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
 
     __mapper_args__ = {"eager_defaults": True}
 
@@ -133,20 +128,22 @@ class GUID(TypeDecorator):
                 # hexstring
                 return "%.32x" % value.int
 
-
-class DictList(TypeDecorator):
-    """Dict list type."""
-
-    impl = CHAR(1024)
-
-    def process_bind_param(self, value, dialect):
-        """Process bind param."""
-        if value is None:
-            return None
-        return json.dumps(value)
-
     def process_result_value(self, value, dialect):
-        """Process result value."""
+        """Process result value - convert database value to UUID object."""
         if value is None:
-            return None
-        return json.loads(value)
+            return value
+        elif dialect.name == Constant.DB_DIALECT_POSTGRESQL:
+            return uuid.UUID(value) if isinstance(value, str) else value
+        else:
+            if not isinstance(value, uuid.UUID):
+                return uuid.UUID(
+                    "%.8s-%.4s-%.4s-%.4s-%.12s"
+                    % (
+                        value[:8],
+                        value[8:12],
+                        value[12:16],
+                        value[16:20],
+                        value[20:32],
+                    )
+                )
+            return value

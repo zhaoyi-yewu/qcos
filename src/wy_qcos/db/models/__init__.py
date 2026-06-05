@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------
 
 from .base import Base
-from .base import ArrayType, GUID, DictList
+from .base import ArrayType, GUID
 from .project import Project
 from .user import User
 from .user import Role
