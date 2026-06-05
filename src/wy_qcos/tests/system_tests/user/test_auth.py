@@ -28,14 +28,14 @@ class TestAuth:
     """User authentication system tests."""
 
     test_usernames = [
-        "_test_login_user",
-        "_test_logout_user",
-        "_test_login_userinfo",
-        "_test_multi_login",
-        "_test_user_change_pwd",
-        "_test_token_refresh",
-        "_test_get_user",
-        "_test_role_auth",
+        "test_login_user",
+        "test_logout_user",
+        "test_login_userinfo",
+        "test_multi_login",
+        "test_user_change_pwd",
+        "test_token_refresh",
+        "test_get_user",
+        "test_role_auth",
     ]
 
     @classmethod
@@ -94,7 +94,7 @@ class TestAuth:
     def test_login_success(self):
         """Test successful login."""
         # Create test user
-        username = "_test_login_user"
+        username = "test_login_user"
         password = _s("TestPassword123!")
         user_data = {
             "user_name": username,
@@ -103,22 +103,13 @@ class TestAuth:
             "is_locked": False,
         }
 
-        try:
-            StLibrary.create_user(self.admin_client, user_data)
-            result = StLibrary.login(self.client, username, str(password))
-            assert result is not None
-            if "access_token" in result:
-                assert isinstance(result["access_token"], str)
-                assert len(result["access_token"]) > 0
-            assert result["user_name"] == username
-        finally:
-            try:
-                # Login as admin to delete user
-                StLibrary.delete_user(
-                    self.admin_client, username, is_name=True, force=True
-                )
-            except Exception:  # noqa: S110
-                pass
+        StLibrary.create_user(self.admin_client, user_data)
+        result = StLibrary.login(self.client, username, str(password))
+        assert result is not None
+        if "access_token" in result:
+            assert isinstance(result["access_token"], str)
+            assert len(result["access_token"]) > 0
+        assert result["user_name"] == username
 
     @pytest.mark.smoke
     def test_login_with_invalid_credentials(self):
@@ -130,7 +121,7 @@ class TestAuth:
     def test_logout_success(self):
         """Test successful logout."""
         # Create test user
-        username = "_test_logout_user"
+        username = "test_logout_user"
         password = _s("TestPassword123!")
         user_data = {
             "user_name": username,
@@ -139,30 +130,19 @@ class TestAuth:
             "is_locked": False,
         }
 
-        try:
-            StLibrary.create_user(self.admin_client, user_data)
-            login_result = StLibrary.login(
-                self.client, username, str(password)
-            )
-            assert login_result is not None
+        StLibrary.create_user(self.admin_client, user_data)
+        login_result = StLibrary.login(self.client, username, str(password))
+        assert login_result is not None
 
-            # Then logout
-            self.client.set_token(login_result["access_token"])
-            StLibrary.logout(self.client)
-        finally:
-            try:
-                # Login as admin to delete user
-                StLibrary.delete_user(
-                    self.admin_client, username, is_name=True, force=True
-                )
-            except Exception:  # noqa: S110
-                pass
+        # Then logout
+        self.client.set_token(login_result["access_token"])
+        StLibrary.logout(self.client)
 
     @pytest.mark.smoke
     def test_login_and_get_user_info(self):
         """Test getting user info after login."""
         # Create test user
-        username = "_test_login_userinfo"
+        username = "test_login_userinfo"
         password = _s("TestPassword123!")
         user_data = {
             "user_name": username,
@@ -171,33 +151,20 @@ class TestAuth:
             "is_locked": False,
         }
 
-        try:
-            StLibrary.create_user(self.admin_client, user_data)
-            login_result = StLibrary.login(
-                self.client, username, str(password)
-            )
-            assert login_result["user_name"] == username
-
-            # Get user info
-            user = StLibrary.get_user(
-                self.admin_client, username, is_name=True
-            )
-            assert user is not None
-            assert user["user_name"] == username
-            assert isinstance(user["is_enabled"], bool)
-        finally:
-            try:
-                StLibrary.delete_user(
-                    self.admin_client, username, is_name=True, force=True
-                )
-            except Exception:  # noqa: S110
-                pass
+        StLibrary.create_user(self.admin_client, user_data)
+        login_result = StLibrary.login(self.client, username, str(password))
+        assert login_result["user_name"] == username
+        # Get user info
+        user = StLibrary.get_user(self.admin_client, username, is_name=True)
+        assert user is not None
+        assert user["user_name"] == username
+        assert isinstance(user["is_enabled"], bool)
 
     @pytest.mark.smoke
     def test_multiple_login_sessions(self):
         """Test multiple login sessions."""
         # Create test user
-        username = "_test_multi_login"
+        username = "test_multi_login"
         password = _s("TestPassword123!")
         user_data = {
             "user_name": username,
@@ -206,76 +173,52 @@ class TestAuth:
             "is_locked": False,
         }
 
-        try:
-            StLibrary.create_user(self.admin_client, user_data)
-            result1 = StLibrary.login(self.client, username, str(password))
-            assert result1 is not None
-
-            # Second login
-            result2 = StLibrary.login(self.client, username, str(password))
-            assert result2 is not None
-        finally:
-            try:
-                # Login as admin to delete user
-                StLibrary.delete_user(
-                    self.admin_client, username, is_name=True, force=True
-                )
-            except Exception:  # noqa: S110
-                pass
+        StLibrary.create_user(self.admin_client, user_data)
+        result1 = StLibrary.login(self.client, username, str(password))
+        assert result1 is not None
+        # Second login
+        result2 = StLibrary.login(self.client, username, str(password))
+        assert result2 is not None
 
     @pytest.mark.smoke
     def test_change_password(self):
         """Test password change by user self."""
         # Create a new user for testing
         user_data = {
-            "user_name": "_test_user_change_pwd",
+            "user_name": "test_user_change_pwd",
             "password": self.old_password,
             "roles": [Constant.ROLE_ADMIN],
             "is_locked": False,
         }
 
-        try:
-            new_user = StLibrary.create_user(self.admin_client, user_data)
-            assert new_user["user_name"] == "_test_user_change_pwd"
+        new_user, _ = StLibrary.create_user(self.admin_client, user_data)
+        assert new_user["user_name"] == "test_user_change_pwd"
 
-            login_result = StLibrary.login(
-                self.client, "_test_user_change_pwd", str(self.old_password)
-            )
-            self.client.set_token(login_result["access_token"])
+        login_result = StLibrary.login(
+            self.client, "test_user_change_pwd", str(self.old_password)
+        )
+        self.client.set_token(login_result["access_token"])
 
-            # Change password
-            StLibrary.change_password(
-                self.client,
-                "_test_user_change_pwd",
-                str(self.old_password),
-                str(self.new_password),
-                is_name=True,
-            )
+        # Change password
+        StLibrary.change_password(
+            self.client,
+            "test_user_change_pwd",
+            str(self.old_password),
+            str(self.new_password),
+            is_name=True,
+        )
 
-            # Verify password change by login with new password
-            login_result = StLibrary.login(
-                self.client, "_test_user_change_pwd", str(self.new_password)
-            )
-            assert login_result["user_name"] == "_test_user_change_pwd"
-
-        finally:
-            # Clean up test user
-            try:
-                # Login as admin to delete user
-                StLibrary.delete_user(
-                    self.admin_client,
-                    "_test_user_change_pwd",
-                    is_name=True,
-                    force=True,
-                )
-            except Exception:  # noqa: S110
-                pass
+        # Verify password change by login with new password
+        login_result = StLibrary.login(
+            self.client, "test_user_change_pwd", str(self.new_password)
+        )
+        assert login_result["user_name"] == "test_user_change_pwd"
 
     @pytest.mark.smoke
     def test_token_expiry_and_refresh(self):
         """Test token expiry and refresh."""
         # Create test user
-        username = "_test_token_refresh"
+        username = "test_token_refresh"
         password = _s("TestPassword123!")
         user_data = {
             "user_name": username,
@@ -284,34 +227,23 @@ class TestAuth:
             "is_locked": False,
         }
 
-        try:
-            StLibrary.create_user(self.admin_client, user_data)
+        StLibrary.create_user(self.admin_client, user_data)
 
-            # Logout admin and login to get token
-            login_result = StLibrary.login(
-                self.client, username, str(password)
-            )
-            assert login_result is not None
+        # Logout admin and login to get token
+        login_result = StLibrary.login(self.client, username, str(password))
+        assert login_result is not None
 
-            # Verify token exists
-            if "access_token" in login_result:
-                access_token = login_result["access_token"]
-                assert isinstance(access_token, str)
-                assert len(access_token) > 0
-        finally:
-            try:
-                # Login as admin to delete user
-                StLibrary.delete_user(
-                    self.admin_client, username, is_name=True, force=True
-                )
-            except Exception:  # noqa: S110
-                pass
+        # Verify token exists
+        if "access_token" in login_result:
+            access_token = login_result["access_token"]
+            assert isinstance(access_token, str)
+            assert len(access_token) > 0
 
     @pytest.mark.smoke
     def test_get_current_user(self):
         """Test getting current user info."""
         # Create test user
-        username = "_test_get_user"
+        username = "test_get_user"
         password = _s("TestPassword123!")
         user_data = {
             "user_name": username,
@@ -320,29 +252,17 @@ class TestAuth:
             "is_locked": False,
         }
 
-        try:
-            StLibrary.create_user(self.admin_client, user_data)
-
-            # Logout admin and login
-            login_result = StLibrary.login(
-                self.client, username, str(password)
-            )
-            assert login_result is not None
-            assert login_result["user_name"] == username
-        finally:
-            try:
-                # Login as admin to delete user
-                StLibrary.delete_user(
-                    self.admin_client, username, is_name=True, force=True
-                )
-            except Exception:  # noqa: S110
-                pass
+        StLibrary.create_user(self.admin_client, user_data)
+        # Logout admin and login
+        login_result = StLibrary.login(self.client, username, str(password))
+        assert login_result is not None
+        assert login_result["user_name"] == username
 
     @pytest.mark.smoke
     def test_authentication_with_role_permission(self):
         """Test authentication with role permissions."""
         # Create test user
-        username = "_test_role_auth"
+        username = "test_role_auth"
         password = _s("TestPassword123!")
         user_data = {
             "user_name": username,
@@ -351,27 +271,14 @@ class TestAuth:
             "is_locked": False,
         }
 
+        StLibrary.create_user(self.admin_client, user_data)
+        # Logout admin and login as test user
+        result = StLibrary.login(self.client, username, str(password))
+        assert result is not None
+        # Get user roles
         try:
-            StLibrary.create_user(self.admin_client, user_data)
-
-            # Logout admin and login as test user
-            result = StLibrary.login(self.client, username, str(password))
-            assert result is not None
-
-            # Get user roles
-            try:
-                user_roles = StLibrary.get_user_roles(
-                    self.admin_client, username
-                )
-                assert user_roles is not None
-                assert isinstance(user_roles, (dict, list))
-            except Exception:  # noqa: S110
-                pass
-        finally:
-            try:
-                # Login as admin to delete user
-                StLibrary.delete_user(
-                    self.admin_client, username, is_name=True, force=True
-                )
-            except Exception:  # noqa: S110
-                pass
+            user_roles = StLibrary.get_user_roles(self.admin_client, username)
+            assert user_roles is not None
+            assert isinstance(user_roles, (dict, list))
+        except Exception:  # noqa: S110
+            pass

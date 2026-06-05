@@ -40,6 +40,18 @@ class TestVersion:
         result = json_results["result"]
         assert result["version"] == QcosVersion.VERSION
         assert result["api_version"] == Constant.API_VERSION_V1
+        assert not result.get("capabilities", None)
+
+        # with option: details
+        status_code, reason, text, result = self.admin_client.version(
+            details=True
+        )
+        assert status_code == HttpCode.SUCCESS_OK
+        json_results = json.loads(text)
+        result = json_results["result"]
+        assert result["version"] == QcosVersion.VERSION
+        assert result["api_version"] == Constant.API_VERSION_V1
+        assert result.get("capabilities", None)
         assert not result["capabilities"]["drivers"]["DriverDummy"][
             "driver_options"
         ]["enable_wirecut"]

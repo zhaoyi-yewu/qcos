@@ -143,6 +143,10 @@ class TestJob:
             self.admin_client, job_info, self.timeout, self.interval
         )
         if success:
+            assert (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_COMPLETED
+            )
             profiling_results = job_results["result"]["results"][0].get(
                 "profiling", {}
             )
@@ -163,15 +167,11 @@ class TestJob:
             assert isinstance(
                 profiling_results[Constant.PROFILING_TYPE_DRIVER_RUN], float
             )
-            StLibrary.delete_job(self.admin_client, job_info["job_id"])
-            assert (
-                job_results["result"]["job_status"]
-                == Constant.JOB_STATUS_COMPLETED
-            )
         else:
             logger.warning(
                 f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
             )
+        StLibrary.delete_job(self.admin_client, job_info["job_id"])
         assert success is True
 
     def test_submit_job_wirecut(self):
