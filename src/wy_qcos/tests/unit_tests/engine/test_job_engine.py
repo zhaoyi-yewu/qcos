@@ -684,6 +684,8 @@ class TestJobEngine:
         """Test run_circuit_code when qubit count is within limit."""
         mock_driver = Mock()
         mock_driver.get_max_qubits.return_value = 2
+        mock_driver.get_enable_wirecut.return_value = False
+        mock_driver.get_wirecut_qubit_width.return_value = 2
         mock_driver.get_name.return_value = "TestDevice"
         mock_transpiler = Mock()
         mock_transpiler.parse.return_value = {
@@ -741,6 +743,8 @@ class TestJobEngine:
         # Mock compile to return 10 qubits (exceeds 5 limit)
         mock_driver = Mock()
         mock_driver.get_max_qubits.return_value = 2
+        mock_driver.get_enable_wirecut.return_value = False
+        mock_driver.get_wirecut_qubit_width.return_value = 1
         mock_driver.get_name.return_value = "TestDevice"
         mock_transpiler = Mock()
         mock_transpiler.parse.return_value = {
@@ -800,6 +804,8 @@ class TestJobEngine:
         """Test successful circuit cutting execution."""
         mock_driver = Mock()
         mock_driver.get_max_qubits.return_value = 2
+        mock_driver.get_enable_wirecut.return_value = True
+        mock_driver.get_wirecut_qubit_width.return_value = 2
         mock_driver.get_name.return_value = "TestDevice"
         mock_transpiler = Mock()
         # Mock subcircuit generation
@@ -872,6 +878,8 @@ class TestJobEngine:
         """Test circuit cutting when a subcircuit execution fails."""
         mock_driver = Mock()
         mock_driver.get_max_qubits.return_value = 2
+        mock_driver.get_enable_wirecut.return_value = True
+        mock_driver.get_wirecut_qubit_width.return_value = 4
         mock_driver.get_name.return_value = "TestDevice"
         mock_transpiler = Mock()
         # Mock subcircuit generation

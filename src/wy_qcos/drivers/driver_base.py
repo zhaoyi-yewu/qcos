@@ -135,9 +135,13 @@ class DriverBase:
         self.driver_options = {
             "max_qubits": 10,
             "enable_wirecut": False,
+            "wirecut_qubit_width": 0,
         }
         # driver_options schema
-        self.driver_options_schema = {Optional("enable_wirecut"): bool}
+        self.driver_options_schema = {
+            Optional("enable_wirecut"): bool,
+            Optional("wirecut_qubit_width"): int,
+        }
         # default driver_config schema
         self.default_driver_config_schema = {
             Optional("debug"): bool,
@@ -602,6 +606,14 @@ class DriverBase:
             bool: enable wirecut
         """
         return self.driver_options["enable_wirecut"]
+
+    def get_wirecut_qubit_width(self):
+        """Get wirecut qubit width.
+
+        Returns:
+            int: wirecut qubit width
+        """
+        return self.driver_options["wirecut_qubit_width"]
 
     def get_driver_options(self):
         """Get driver options.
