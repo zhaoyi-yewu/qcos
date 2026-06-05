@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import logging
+import uuid
 from datetime import datetime
 from typing import Any, Literal, cast
 
@@ -24,14 +25,8 @@ from fastapi import Depends, Request
 from wy_qcos.api.schemas import user as schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import user_api_v1
-from wy_qcos.common import args_schema
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.config import Config
-from wy_qcos.common.library import Library
-from wy_qcos.db.models.user import User as UserModel
-from wy_qcos.db.repositories.user import UserRepository
-from wy_qcos.db.repositories.role import RoleRepository
-from wy_qcos.db.utils.db_utils import get_repository
 from .dependencies.authentication import auth, auth_match_user_id
 
 
@@ -175,8 +170,6 @@ def create_user(
     body: schemas.CreateUserRequest,
     request: Request,
     auth_data: dict | None = Depends(auth),
-    users_repo: UserRepository = Depends(get_repository(UserRepository)),
-    roles_repo: RoleRepository = Depends(get_repository(RoleRepository)),
 ) -> schemas.CreateUserResponse:
     """Create a new user.
 
@@ -184,8 +177,6 @@ def create_user(
         body: user creation request
         request: request object
         auth_data: auth data
-        users_repo: User repository dependency
-        roles_repo: Role repository dependency
 
     Returns:
         Create user response
@@ -198,120 +189,36 @@ def create_user(
     roles = body.roles
     description = body.description
 
-    # Set project_id to default if not provided
-    project_id = body.project_id or Constant.DEFAULT_PROJECT_ID
-    # Update body with resolved project_id for later use
-    body.project_id = project_id
+    # Ensure project_id is set to proper UUID type
+    # If None, convert to DEFAULT_PROJECT_ID as UUID object
+    if body.project_id is None:
+        body.project_id = uuid.UUID(Constant.DEFAULT_PROJECT_ID)
 
-    # Validate user name length
-    if len(user_name) < Constant.MIN_USER_LENGTH:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (
-                False,
-                f"User name '{user_name}' is too short "
-                f"(minimum {Constant.MIN_USER_LENGTH} characters)",
-            ),
-        )
+    # Get user manager from request state
+    user_manager = get_user_manager(request)
 
-    if len(user_name) > Constant.MAX_USER_LENGTH:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (
-                False,
-                f"User name '{user_name}' is too long "
-                f"(maximum {Constant.MAX_USER_LENGTH} characters)",
-            ),
-        )
-
-    # valid user name schema
-    jsonrpc_errors.handle_error_bad_requests(
-        module_name,
-        func_name,
-        Library.validate_schema(user_name, args_schema.NAME_SCHEMA),
-    )
-
-    # Validate password length
-    if len(password) < Constant.MIN_PASSWORD_LENGTH:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (
-                False,
-                f"Password is too short "
-                f"(minimum {Constant.MIN_PASSWORD_LENGTH} characters)",
-            ),
-        )
-
-    if len(password) > Constant.MAX_PASSWORD_LENGTH:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (
-                False,
-                f"Password is too long "
-                f"(maximum {Constant.MAX_PASSWORD_LENGTH} characters)",
-            ),
-        )
-
-    # Check if user already exists using database
-    success, error, existing_user = users_repo.get_user_by_username(user_name)
-    if success and existing_user:
-        jsonrpc_errors.handle_error_conflict(
-            module_name,
-            func_name,
-            (False, f"User '{user_name}' already exists"),
-        )
-
-    # Validate roles using database
-    for role_name in roles:
-        success, error, role = roles_repo.get_role_by_name(role_name)
-        if not success or not role:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (False, f"Role '{role_name}' does not exist"),
-            )
-
-    if description and len(description) > Constant.MAX_DESCRIPTION_LENGTH:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (
-                False,
-                f"Description is too long "
-                f"(maximum {Constant.MAX_DESCRIPTION_LENGTH} characters)",
-            ),
-        )
-
-    # Create user using database
+    # Create user using UserManager (which handles all validations
+    # and permission reloading)
     user = None
     try:
-        success, error, user = users_repo.create_user(body)
-        if not success or not user:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (False, str(error) if error else "Failed to create user"),
-            )
-
-        # Reload permission policies after creating new user with roles
-        if user and roles:
-            user_manager = get_user_manager(request)
-            if user_manager:
-                reload_success = user_manager.reload_role_permissions_from_db()
-                if reload_success:
-                    logger.info(
-                        f"Successfully reloaded permission policies from "
-                        f"database after creating user '{user.user_name}'"
-                    )
-                else:
-                    logger.warning(
-                        f"Failed to reload permission policies from "
-                        f"database after creating user '{user.user_name}'"
-                    )
+        user = user_manager.create_user(
+            project_id=str(body.project_id),
+            user_name=user_name,
+            password=password,
+            roles=roles,
+            is_enabled=body.is_enabled,
+            is_locked=body.is_locked,
+            password_expiry_days=body.password_expiry_days,
+            description=description,
+            user_id=str(body.user_id) if body.user_id else None,
+        )
+    except ValueError as e:
+        # UserManager validation errors
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (False, str(e)),
+        )
     except Exception as e:
         jsonrpc_errors.handle_error_bad_requests(
             module_name,
@@ -330,15 +237,15 @@ def create_user(
 )
 def get_user(
     body: schemas.GetUserRequest,
+    request: Request,
     auth_data: dict | None = Depends(auth),
-    users_repo: UserRepository = Depends(get_repository(UserRepository)),
 ) -> schemas.GetUserResponse:
     """Get user information by ID.
 
     Args:
         body: get user request (contains user_id)
+        request: request object
         auth_data: auth data
-        users_repo: User repository dependency
 
     Returns:
         Get user response
@@ -346,21 +253,39 @@ def get_user(
     func_name = "get_user"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    user_id = body.user_id
+    user_id = str(body.user_id)
 
-    # authentication: match user id
+    # Authentication: match user id
     auth_match_user_id(user_id, auth_data, allow_admin=True)
 
-    success, error, user = users_repo.get_user_by_id(user_id)
-    if not success or not user:
-        jsonrpc_errors.handle_error_not_found(
-            module_name,
-            func_name,
-            (False, f"User with ID '{user_id}' not found"),
-        )
+    # Get user manager from request state
+    user_manager = get_user_manager(request)
 
-    _response_info = get_user_response(user)
-    response_info = schemas.GetUserResponse.model_validate(_response_info)
+    # Get user using UserManager
+    try:
+        user = user_manager.get_user_by_id(user_id)
+        if not user:
+            jsonrpc_errors.handle_error_not_found(
+                module_name,
+                func_name,
+                (False, f"User with ID '{user_id}' not found"),
+            )
+
+        _response_info = get_user_response(user)
+        response_info = schemas.GetUserResponse.model_validate(_response_info)
+    except ValueError as e:
+        # UserManager validation errors
+        error_msg = str(e)
+        logger.warning(f"Error getting user {user_id}: {error_msg}")
+        jsonrpc_errors.handle_error_not_found(
+            module_name, func_name, (False, error_msg)
+        )
+    except Exception as e:
+        # Handle other unexpected errors
+        logger.error(f"Unexpected error getting user {user_id}: {str(e)}")
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, str(e))
+        )
     return response_info
 
 
@@ -368,19 +293,19 @@ def get_user(
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]}, errors=[]
 )
 def get_users(
+    request: Request,
     body: schemas.GetUsersRequest | None = None,
     auth_data: dict | None = Depends(auth),
-    users_repo: UserRepository = Depends(get_repository(UserRepository)),
 ) -> dict[str, schemas.GetUserResponse]:
     """Get users with optional filtering.
 
     Args:
+        request: request object
         body: get users request with optional filter dict
         auth_data: auth data
-        users_repo: User repository dependency
 
     Returns:
-        Dictionary of users keyed by user_name
+        Dictionary of users keyed by user_id
 
     Filter example:
         {"user_name": "admin"} - filter by user_name
@@ -388,37 +313,23 @@ def get_users(
     func_name = "get_users"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    users = []
+    # Get user manager from request state
+    user_manager = get_user_manager(request)
+
     # Extract filter conditions from request body
     filter_conditions = None
-    if body and body.filters:
+    if body:
         filter_conditions = body.filters
 
-    # Apply filtering logic
-    if filter_conditions and "user_name" in filter_conditions:
-        # Filter by user_name: fetch single user
-        user_name = filter_conditions["user_name"]
-        success, error, user = users_repo.get_user_by_username(user_name)
-        if not success or not user:
-            # If user not found with filter, return empty dict
-            users = []
-        else:
-            users = [user]
-    else:
-        # Get all users when no filter or empty filter
-        success, error, users = users_repo.get_users()
-        if not success:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (False, f"Failed to get users: {error}"),
-            )
+    # Get users from UserManager with optional filtering
+    users_dict = user_manager.get_users(filters=filter_conditions)
+    users = list(users_dict.values()) if users_dict else []
 
     # Build response
     response_info = {}
     for user in users:
         user_data = get_user_response(user)
-        response_info[user.id] = schemas.GetUserResponse.model_validate(
+        response_info[str(user.id)] = schemas.GetUserResponse.model_validate(
             user_data
         )
 
@@ -433,8 +344,6 @@ def update_user(
     body: schemas.UpdateUserRequest,
     request: Request,
     auth_data: dict | None = Depends(auth),
-    users_repo: UserRepository = Depends(get_repository(UserRepository)),
-    roles_repo: RoleRepository = Depends(get_repository(RoleRepository)),
 ) -> schemas.UpdateUserResponse:
     """Update user information by ID.
 
@@ -442,8 +351,6 @@ def update_user(
         body: user update request (contains user_id)
         request: request object
         auth_data: auth data
-        users_repo: User repository dependency
-        roles_repo: Role repository dependency
 
     Returns:
         Update user response
@@ -451,111 +358,35 @@ def update_user(
     func_name = "update_user"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    user_id = body.user_id
+    user_id = str(body.user_id)
     roles = body.roles
     is_enabled = body.is_enabled
     is_locked = body.is_locked
     password_expiry_days = body.password_expiry_days
     description = body.description
 
-    # Get user from database
-    success, error, user = users_repo.get_user_by_id(user_id)
-    if not success or not user:
-        jsonrpc_errors.handle_error_not_found(
+    # Get user manager from request state
+    user_manager = get_user_manager(request)
+
+    # Update user using UserManager (which handles all validations,
+    # unlocking, permission reloading, and database updates)
+    user = None
+    try:
+        user = user_manager.update_user(
+            user_id=user_id,
+            roles=roles,
+            is_enabled=is_enabled,
+            is_locked=is_locked,
+            password_expiry_days=password_expiry_days,
+            description=description,
+        )
+    except ValueError as e:
+        # UserManager validation errors
+        jsonrpc_errors.handle_error_bad_requests(
             module_name,
             func_name,
-            (False, f"User with ID '{user_id}' not found"),
+            (False, str(e)),
         )
-
-    # Validate roles using database
-    if roles:
-        for role_name in roles:
-            success, error, role = roles_repo.get_role_by_name(role_name)
-            if not success or not role:
-                jsonrpc_errors.handle_error_bad_requests(
-                    module_name,
-                    func_name,
-                    (False, f"Role '{role_name}' does not exist"),
-                )
-
-    # Update user in database
-    user = None
-    roles_changed = False
-    try:
-        # If unlocking user, handle it specially to ensure
-        # locked_until and failed_login_attempts are cleared
-        if is_locked is not None and is_locked is False:
-            try:
-                success, error, user = users_repo.update(
-                    UserModel,
-                    user_id,
-                    is_locked=False,
-                    locked_until=None,
-                    failed_login_attempts=0,
-                )
-                if not success or not user:
-                    logger.warning(
-                        f"Update returned: success={success}, error={error}"
-                    )
-                else:
-                    logger.debug(
-                        f"Successfully cleared locked_until and "
-                        f"failed_login_attempts for user {user_id}"
-                    )
-            except Exception as e:
-                logger.error(
-                    f"Failed to clear locked fields via update: {e}",
-                    exc_info=True,
-                )
-                jsonrpc_errors.handle_error_bad_requests(
-                    module_name,
-                    func_name,
-                    (False, f"Failed to unlock user: {str(e)}"),
-                )
-        else:
-            # Normal update for non-unlock cases
-            # Create update request with only provided fields
-            update_data: dict[str, Any] = {"user_id": user_id}
-            if roles is not None:
-                update_data["roles"] = roles
-                roles_changed = True
-            if is_enabled is not None:
-                update_data["is_enabled"] = is_enabled
-            if is_locked is not None:
-                update_data["is_locked"] = is_locked
-            if password_expiry_days is not None:
-                update_data["password_expiry_days"] = password_expiry_days
-            if description is not None:
-                update_data["description"] = description
-
-            update_request = schemas.UpdateUserRequest(**update_data)
-            success, error, user = users_repo.update_user(
-                user_id, update_request
-            )
-            if not success or not user:
-                jsonrpc_errors.handle_error_bad_requests(
-                    module_name,
-                    func_name,
-                    (False, str(error) if error else "Failed to update user"),
-                )
-
-        # Reload permission policies if user roles were updated
-        if roles_changed and user:
-            user_manager = get_user_manager(request)
-            if user_manager and user_manager.permission_manager:
-                # Reload policies from database since role permissions
-                # are now updated in DB
-                reload_success = user_manager.reload_role_permissions_from_db()
-                if reload_success:
-                    logger.info(
-                        f"Successfully reloaded permission policies after "
-                        f"updating roles for user '{user.user_name}'"
-                    )
-                else:
-                    logger.warning(
-                        f"Failed to reload permission policies after "
-                        f"updating roles for user '{user.user_name}'"
-                    )
     except Exception as e:
         jsonrpc_errors.handle_error_bad_requests(
             module_name,
@@ -578,106 +409,60 @@ def update_user(
 )
 def delete_user(
     body: schemas.DeleteUserRequest,
+    request: Request,
     auth_data: dict | None = Depends(auth),
-    users_repo: UserRepository = Depends(get_repository(UserRepository)),
 ) -> schemas.DeleteUserResponse:
     """Delete user by ID.
 
     Args:
         body: delete user request (contains user_id and optional force flag)
+        request: FastAPI request object
         auth_data: auth data
-        users_repo: User repository dependency
 
     Returns:
         Delete user response
+
+    Note:
+        Non-force delete: fails if user has associated jobs
+        Force delete: cascades deletion of jobs (from Prefect and database)
     """
     func_name = "delete_user"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    user_id = body.user_id
+    user_id = str(body.user_id)
     force = body.force
 
-    # Get user from database
-    success, error, user = users_repo.get_user_by_id(user_id)
-    if not success or not user:
-        jsonrpc_errors.handle_error_not_found(
-            module_name,
-            func_name,
-            (False, f"User with ID '{user_id}' not found"),
-        )
+    # Get user manager from request state
+    user_manager = get_user_manager(request)
 
-    user_name = user.user_name
-    user_project_id = user.project_id
-
-    # Don't allow deletion of admin user
-    if user_name == Constant.ADMIN_USERNAME:
-        jsonrpc_errors.handle_error_conflict(
-            module_name, func_name, (False, "Cannot delete admin user")
-        )
-
-    # Delete user from database
+    # Delete user using UserManager
     try:
-        if force:
-            # Force delete: cascade delete all related resources
-            # TODO (zhaoyi): to be implemented, delete related jobs
-            pass
+        deleted_user = user_manager.delete_user(user_id=user_id, force=force)
+        user_name = deleted_user.user_name
+        user_project_id = deleted_user.project_id
 
-        success, error = users_repo.delete_user_by_id(user_id)
-        if not success:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (False, str(error) if error else "Failed to delete user"),
-            )
-
-        # Invalidate all active tokens for this user
-        # Get all active login logs for the user and blacklist their tokens
-        try:
-            # Retrieve login logs to find active sessions
-            success_logs, error_logs, logs = users_repo.get_login_logs(
-                user_id=user_id, limit=10000
-            )
-
-            if success_logs and logs:
-                # Note: We cannot directly get tokens from login logs
-                # since they are not stored. However, we can notify
-                # the system that this user's tokens are no longer valid
-                # by marking all their tokens as invalidated (this would
-                # require a separate mechanism)
-                logger.warning(
-                    f"User '{user_name}' (ID: {user_id}) has been "
-                    f"deleted. All their active sessions should be "
-                    f"invalidated."
-                )
-
-            # Optional: Add a marker in the database to indicate
-            # user deletion. This can be used to reject any subsequent
-            # token validations for this user
-            logger.info(
-                f"User '{user_name}' (ID: {user_id}) deletion "
-                f"completed. Tokens will be rejected on next "
-                f"validation attempt."
-            )
-
-        except Exception as e:
-            logger.warning(
-                f"Could not fully invalidate user tokens during deletion: {e}"
-            )
-
-    except Exception as e:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (False, str(e)),
+        _response_info = {
+            "id": user_id,
+            "project_id": user_project_id,
+            "user_name": user_name,
+            "deleted_at": datetime.now().isoformat(),
+        }
+        response_info = schemas.DeleteUserResponse.model_validate(
+            _response_info
         )
-
-    _response_info = {
-        "id": user_id,
-        "project_id": user_project_id,
-        "user_name": user_name,
-        "deleted_at": datetime.now().isoformat(),
-    }
-    response_info = schemas.DeleteUserResponse.model_validate(_response_info)
+    except ValueError as e:
+        # UserManager validation errors
+        error_msg = str(e)
+        logger.warning(f"Error deleting user {user_id}: {error_msg}")
+        jsonrpc_errors.handle_error_conflict(
+            module_name, func_name, (False, error_msg)
+        )
+    except Exception as e:
+        # Handle other unexpected errors
+        logger.error(f"Unexpected error deleting user {user_id}: {str(e)}")
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, str(e))
+        )
     return response_info
 
 
@@ -693,7 +478,6 @@ def create_role(
     body: schemas.CreateRoleRequest,
     request: Request,
     auth_data: dict | None = Depends(auth),
-    roles_repo: RoleRepository = Depends(get_repository(RoleRepository)),
 ) -> schemas.CreateRoleResponse:
     """Create a new role.
 
@@ -701,7 +485,6 @@ def create_role(
         body: role creation request
         request: request object
         auth_data: auth data
-        roles_repo: Role repository dependency
 
     Returns:
         Create role response
@@ -710,94 +493,37 @@ def create_role(
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
     role_name = body.role_name
+    permissions = body.permissions
     description = body.description
 
-    # Validate role name length
-    if len(role_name) < Constant.MIN_ROLE_LENGTH:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (
-                False,
-                f"Role name '{role_name}' is too short "
-                f"(minimum {Constant.MIN_ROLE_LENGTH} characters)",
-            ),
-        )
+    # Get user manager from request state
+    user_manager = get_user_manager(request)
 
-    if len(role_name) > Constant.MAX_ROLE_LENGTH:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (
-                False,
-                f"Role name '{role_name}' is too long "
-                f"(maximum {Constant.MAX_ROLE_LENGTH} characters)",
-            ),
-        )
-
-    # valid role name schema
-    jsonrpc_errors.handle_error_bad_requests(
-        module_name,
-        func_name,
-        Library.validate_schema(role_name, args_schema.NAME_SCHEMA),
-    )
-
-    # Validate description length
-    if description and len(description) > Constant.MAX_DESCRIPTION_LENGTH:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (
-                False,
-                f"Description is too long "
-                f"(maximum {Constant.MAX_DESCRIPTION_LENGTH} characters)",
-            ),
-        )
-
-    # Check if role already exists using database
-    success, error, existing_role = roles_repo.get_role_by_name(role_name)
-    if success and existing_role:
-        jsonrpc_errors.handle_error_conflict(
-            module_name,
-            func_name,
-            (False, f"Role '{role_name}' already exists"),
-        )
-
-    # Create role using database
-    role = None
+    # Create role using UserManager
     try:
-        success, error, role = roles_repo.create_role(body)
-        if not success or not role:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (False, str(error) if error else "Failed to create role"),
-            )
-
-        # Reload permission policies after creating new role with permissions
-        if role and body.permissions:
-            user_manager = get_user_manager(request)
-            if user_manager:
-                reload_success = user_manager.reload_role_permissions_from_db()
-                if reload_success:
-                    logger.info(
-                        f"Successfully reloaded permission policies from "
-                        f"database after creating role '{role.role_name}'"
-                    )
-                else:
-                    logger.warning(
-                        f"Failed to reload permission policies from "
-                        f"database after creating role '{role.role_name}'"
-                    )
-    except Exception as e:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (False, str(e)),
+        role = user_manager.create_role(
+            role_name=role_name,
+            permissions=permissions,
+            description=description,
         )
 
-    _response_info = get_role_response(role)
-    response_info = schemas.CreateRoleResponse.model_validate(_response_info)
+        _response_info = get_role_response(role)
+        response_info = schemas.CreateRoleResponse.model_validate(
+            _response_info
+        )
+    except ValueError as e:
+        # UserManager validation errors
+        error_msg = str(e)
+        logger.warning(f"Error creating role {role_name}: {error_msg}")
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name, func_name, (False, error_msg)
+        )
+    except Exception as e:
+        # Handle other unexpected errors
+        logger.error(f"Unexpected error creating role {role_name}: {str(e)}")
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, str(e))
+        )
     return response_info
 
 
@@ -807,15 +533,15 @@ def create_role(
 )
 def get_role(
     body: schemas.GetRoleRequest,
+    request: Request,
     auth_data: dict | None = Depends(auth),
-    roles_repo: RoleRepository = Depends(get_repository(RoleRepository)),
 ) -> schemas.GetRoleResponse:
     """Get role information by ID.
 
     Args:
         body: get role request (contains role_id)
+        request: FastAPI request object
         auth_data: auth data
-        roles_repo: Role repository dependency
 
     Returns:
         Get role response
@@ -823,19 +549,36 @@ def get_role(
     func_name = "get_role"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    role_id = body.role_id
+    role_id = str(body.role_id)
 
-    # Get role from database
-    success, error, role = roles_repo.get_role_by_id(role_id)
-    if not success or not role:
+    # Get user manager from request state
+    user_manager = get_user_manager(request)
+
+    try:
+        # Get role using UserManager
+        role = user_manager.get_role_by_id(role_id)
+        if not role:
+            jsonrpc_errors.handle_error_not_found(
+                module_name,
+                func_name,
+                (False, f"Role with ID '{role_id}' not found"),
+            )
+
+        _response_info = get_role_response(role)
+        response_info = schemas.GetRoleResponse.model_validate(_response_info)
+    except ValueError as e:
+        # UserManager validation errors
+        error_msg = str(e)
+        logger.warning(f"Error getting role {role_id}: {error_msg}")
         jsonrpc_errors.handle_error_not_found(
-            module_name,
-            func_name,
-            (False, f"Role with ID '{role_id}' not found"),
+            module_name, func_name, (False, error_msg)
         )
-
-    _response_info = get_role_response(role)
-    response_info = schemas.GetRoleResponse.model_validate(_response_info)
+    except Exception as e:
+        # Handle other unexpected errors
+        logger.error(f"Unexpected error getting role {role_id}: {str(e)}")
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, str(e))
+        )
     return response_info
 
 
@@ -843,19 +586,19 @@ def get_role(
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]}, errors=[]
 )
 def get_roles(
+    request: Request,
     body: schemas.GetRolesRequest | None = None,
     auth_data: dict | None = Depends(auth),
-    roles_repo: RoleRepository = Depends(get_repository(RoleRepository)),
 ) -> dict[str, schemas.GetRoleResponse]:
     """Get roles with optional filtering.
 
     Args:
+        request: request object
         body: get roles request with optional filter dict
         auth_data: auth data
-        roles_repo: Role repository dependency
 
     Returns:
-        Dictionary of roles keyed by role name
+        Dictionary of roles keyed by role ID
 
     Filter example:
         {"role_name": "admin"} - filter by role_name
@@ -863,37 +606,23 @@ def get_roles(
     func_name = "get_roles"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    roles = []
+    # Get user manager from request state
+    user_manager = get_user_manager(request)
+
     # Extract filter conditions from request body
     filter_conditions = None
-    if body and body.filters:
+    if body:
         filter_conditions = body.filters
 
-    # Apply filtering logic
-    if filter_conditions and "role_name" in filter_conditions:
-        # Filter by role_name: fetch single role
-        role_name = filter_conditions["role_name"]
-        success, error, role = roles_repo.get_role_by_name(role_name)
-        if not success or not role:
-            # If role not found with filter, return empty dict
-            roles = []
-        else:
-            roles = [role]
-    else:
-        # Get all roles when no filter or empty filter
-        success, error, roles = roles_repo.get_roles()
-        if not success:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (False, f"Failed to get roles: {error}"),
-            )
+    # Get roles from UserManager with optional filtering
+    roles_dict = user_manager.get_roles(filters=filter_conditions)
+    roles = list(roles_dict.values()) if roles_dict else []
 
     # Build response
     response_info = {}
     for role in roles:
         role_data = get_role_response(role)
-        response_info[role.id] = schemas.GetRoleResponse.model_validate(
+        response_info[str(role.id)] = schemas.GetRoleResponse.model_validate(
             role_data
         )
 
@@ -912,7 +641,6 @@ def update_role(
     body: schemas.UpdateRoleRequest,
     request: Request,
     auth_data: dict | None = Depends(auth),
-    roles_repo: RoleRepository = Depends(get_repository(RoleRepository)),
 ) -> schemas.UpdateRoleResponse:
     """Update role information by ID.
 
@@ -920,7 +648,6 @@ def update_role(
         body: role update request (contains role_id)
         request: request object
         auth_data: auth data
-        roles_repo: Role repository dependency
 
     Returns:
         Update role response
@@ -928,65 +655,41 @@ def update_role(
     func_name = "update_role"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    role_id = body.role_id
+    role_id = str(body.role_id)
     permissions = body.permissions
     description = body.description
 
-    # Get role from database
-    success, error, role = roles_repo.get_role_by_id(role_id)
-    if not success or not role:
-        jsonrpc_errors.handle_error_not_found(
-            module_name,
-            func_name,
-            (False, f"Role with ID '{role_id}' not found"),
-        )
+    # Get user manager from request state
+    user_manager = get_user_manager(request)
 
-    # Update role in database
-    role = None
+    # Update role using UserManager
     try:
-        # Create update request with only provided fields
-        update_data: dict[str, Any] = {}
-        if permissions is not None:
-            update_data["permissions"] = permissions
-        if description is not None:
-            update_data["description"] = description
-
-        update_request = schemas.UpdateRoleRequest(
-            role_id=role_id, **update_data
+        role = user_manager.update_role(
+            role_id=role_id,
+            permissions=permissions,
+            description=description,
         )
-        success, error, role = roles_repo.update_role(role_id, update_request)
-        if not success or not role:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (False, str(error) if error else "Failed to update role"),
-            )
 
-        # Reload permission policies if permissions were updated
-        if permissions is not None and role:
-            user_manager = get_user_manager(request)
-            if user_manager:
-                reload_success = user_manager.reload_role_permissions_from_db()
-                if reload_success:
-                    logger.info(
-                        f"Successfully reloaded permission policies from "
-                        f"database after updating role '{role.role_name}'"
-                    )
-                else:
-                    logger.warning(
-                        f"Failed to reload permission policies from "
-                        f"database after updating role '{role.role_name}'"
-                    )
-    except Exception as e:
+        _response_info = get_role_response(role)
+        response_info = schemas.UpdateRoleResponse.model_validate(
+            _response_info
+        )
+        return response_info
+    except ValueError as e:
+        # UserManager validation errors
+        error_msg = str(e)
+        logger.warning(f"Error updating role {role_id}: {error_msg}")
         jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (False, str(e)),
+            module_name, func_name, (False, error_msg)
         )
-
-    _response_info = get_role_response(role)
-    response_info = schemas.UpdateRoleResponse.model_validate(_response_info)
-    return response_info
+        raise
+    except Exception as e:
+        # Handle other unexpected errors
+        logger.error(f"Unexpected error updating role {role_id}: {str(e)}")
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, str(e))
+        )
+        raise
 
 
 @user_api_v1.method(
@@ -1001,8 +704,6 @@ def delete_role(
     body: schemas.DeleteRoleRequest,
     request: Request,
     auth_data: dict | None = Depends(auth),
-    roles_repo: RoleRepository = Depends(get_repository(RoleRepository)),
-    users_repo: UserRepository = Depends(get_repository(UserRepository)),
 ) -> schemas.DeleteRoleResponse:
     """Delete role by ID.
 
@@ -1010,8 +711,6 @@ def delete_role(
         body: delete role request (contains role_id)
         request: request object
         auth_data: auth data
-        roles_repo: Role repository dependency
-        users_repo: User repository dependency
 
     Returns:
         Delete role response
@@ -1019,88 +718,34 @@ def delete_role(
     func_name = "delete_role"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    role_id = body.role_id
+    role_id = str(body.role_id)
 
-    # Get role from database
-    success, error, role = roles_repo.get_role_by_id(role_id)
-    if not success or not role:
-        jsonrpc_errors.handle_error_not_found(
-            module_name,
-            func_name,
-            (False, f"Role with ID '{role_id}' not found"),
-        )
+    # Get user manager from request state
+    user_manager = get_user_manager(request)
 
-    role_name = role.role_name
-
-    # Don't allow deletion of admin role
-    if role_name == Constant.ROLE_ADMIN:
-        jsonrpc_errors.handle_error_conflict(
-            module_name, func_name, (False, "Cannot delete admin role")
-        )
-
-    # Check if any users are using this role
-    success, error, users = users_repo.get_users()
-    if success:
-        users_using_role = []
-        for user in users:
-            # Get roles safely from ORM model
-            user_roles = []
-            if hasattr(user, "get_role_names"):
-                user_roles = user.get_role_names()
-            elif hasattr(user, "roles") and isinstance(user.roles, list):
-                user_roles = user.roles
-
-            if role_name in user_roles:
-                users_using_role.append(user)
-
-        if users_using_role:
-            user_names = [user.user_name for user in users_using_role]
-            jsonrpc_errors.handle_error_conflict(
-                module_name,
-                func_name,
-                (
-                    False,
-                    f"Cannot delete role '{role_name}' because it is being "
-                    f"used by users: {', '.join(user_names)}",
-                ),
-            )
-
-    # Delete role from database
+    # Delete role using UserManager
     try:
-        success, error = roles_repo.delete_role_by_id(role_id)
-        if not success:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (False, str(error) if error else "Failed to delete role"),
-            )
-
-        # Reload/clear permission policies after role deletion
-        user_manager = get_user_manager(request)
-        if user_manager:
-            reload_success = user_manager.reload_role_permissions_from_db()
-            if reload_success:
-                logger.info(
-                    f"Successfully reloaded permission policies after "
-                    f"deleting role '{role_name}'"
-                )
-            else:
-                logger.warning(
-                    f"Failed to reload permission policies after "
-                    f"deleting role '{role_name}'"
-                )
-    except Exception as e:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (False, str(e)),
+        role = user_manager.delete_role(role_id=role_id)
+        _response_info = {
+            "role_name": role.role_name,
+            "deleted_at": datetime.now().isoformat(),
+        }
+        response_info = schemas.DeleteRoleResponse.model_validate(
+            _response_info
         )
-
-    _response_info = {
-        "role_name": role_name,
-        "deleted_at": datetime.now().isoformat(),
-    }
-    response_info = schemas.DeleteRoleResponse.model_validate(_response_info)
+    except ValueError as e:
+        # UserManager validation errors
+        error_msg = str(e)
+        logger.warning(f"Error deleting role {role_id}: {error_msg}")
+        jsonrpc_errors.handle_error_conflict(
+            module_name, func_name, (False, error_msg)
+        )
+    except Exception as e:
+        # Handle other unexpected errors
+        logger.error(f"Unexpected error deleting role {role_id}: {str(e)}")
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, str(e))
+        )
     return response_info
 
 
@@ -1116,15 +761,15 @@ def delete_role(
 )
 def change_password(
     body: schemas.ChangePasswordRequest,
+    request: Request,
     auth_data: dict | None = Depends(auth),
-    users_repo: UserRepository = Depends(get_repository(UserRepository)),
 ) -> schemas.ChangePasswordResponse:
     """Change user password by ID.
 
     Args:
         body: password change request (contains user_id)
+        request: request object
         auth_data: auth data
-        users_repo: User repository dependency
 
     Returns:
         Change password response
@@ -1132,95 +777,51 @@ def change_password(
     func_name = "change_password"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    user_id = body.user_id
+    user_id = str(body.user_id)
     old_password = body.old_password
     new_password = body.new_password
 
-    # authentication: match user id
+    # Authentication: match user id
     auth_match_user_id(user_id, auth_data, allow_admin=True)
 
-    # Get user from database
-    success, error, user = users_repo.get_user_by_id(user_id)
-    if not success or not user:
-        jsonrpc_errors.handle_error_not_found(
-            module_name,
-            func_name,
-            (False, f"User with ID '{user_id}' not found"),
-        )
+    # Get user manager from request state
+    user_manager = get_user_manager(request)
 
-    user_name = user.user_name
-
-    # For non-admin users, validate old password
-    if user_name != Constant.ADMIN_USERNAME:
-        if not old_password:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (False, "Old password is required for non-admin users"),
-            )
-        if not UserRepository.verify_password(
-            old_password or "", user.hashed_password
-        ):
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name, func_name, (False, "Incorrect old password")
-            )
-
-    # Validate new password length
-    if len(new_password) < Constant.MIN_PASSWORD_LENGTH:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (
-                False,
-                f"New password is too short "
-                f"(minimum {Constant.MIN_PASSWORD_LENGTH} characters)",
-            ),
-        )
-
-    if len(new_password) > Constant.MAX_PASSWORD_LENGTH:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (
-                False,
-                f"New password is too long "
-                f"(maximum {Constant.MAX_PASSWORD_LENGTH} characters)",
-            ),
-        )
-
-    # Update password in database
+    # Change password using UserManager
     try:
-        # Use PasswordChangeRequest which supports password field
-        password_change = schemas.PasswordChangeRequest(
-            user_id=user_id, password=new_password
+        user = user_manager.change_password(
+            user_id=user_id,
+            old_password=old_password,
+            new_password=new_password,
         )
-
-        success, error, updated_user = users_repo.update_user(
-            user_id, password_change
+        _response_info = {
+            "user_name": user.user_name,
+            "password_changed_at": user.password_changed_at.isoformat(),
+            "message": "Password changed successfully",
+        }
+        response_info = schemas.ChangePasswordResponse.model_validate(
+            _response_info
         )
-        if not success or not updated_user:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (False, str(error) if error else "Failed to change password"),
-            )
-        user = updated_user
-    except Exception as e:
+        return response_info
+    except ValueError as e:
+        # UserManager validation errors
+        error_msg = str(e)
+        logger.warning(
+            f"Error changing password for user {user_id}: {error_msg}"
+        )
         jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (False, str(e)),
+            module_name, func_name, (False, error_msg)
         )
-
-    _response_info = {
-        "user_name": user_name,
-        "password_changed_at": user.password_changed_at.isoformat(),
-        "message": "Password changed successfully",
-    }
-    response_info = schemas.ChangePasswordResponse.model_validate(
-        _response_info
-    )
-    return response_info
+        raise
+    except Exception as e:
+        # Handle other unexpected errors
+        logger.error(
+            f"Unexpected error changing password for user {user_id}: {str(e)}"
+        )
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, str(e))
+        )
+        raise
 
 
 @user_api_v1.method(
@@ -1228,17 +829,17 @@ def change_password(
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.BadRequestError],
 )
 def get_login_logs(
+    request: Request,
     body: schemas.GetLoginLogsRequest | None = None,
     auth_data: dict | None = Depends(auth),
-    users_repo: UserRepository = Depends(get_repository(UserRepository)),
 ) -> list[schemas.LoginLogResponse]:
     """Get login logs by user ID or user_name.
 
     Args:
+        request: request object
         body: get login logs request (contains user_id, user_name,
               limit, offset)
         auth_data: auth data
-        users_repo: User repository dependency
 
     Returns:
         List of login logs in descending order by login_time
@@ -1246,115 +847,73 @@ def get_login_logs(
     Note:
         user_id and user_name are mutually exclusive. Only one can be provided.
         If both are None, all login logs will be returned.
+        Use limit=-1 to retrieve all logs without any limit restriction.
     """
     func_name = "get_login_logs"
     logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
 
-    # Parse time filters
+    # Parse parameters
+    user_id = None
+    user_name = None
     start_time = None
     end_time = None
-    user_id = None
+    limit = 100
+    offset = 0
 
     if body:
-        # Validate that only one of user_id or user_name is provided
-        if body.user_id is not None and body.user_name is not None:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (
-                    False,
-                    "Cannot specify both user_id and user_name. "
-                    "Please provide only one.",
-                ),
-            )
-
         if body.user_id:
-            user_id = body.user_id
-        elif body.user_name:
-            # Query user by name to get user_id, raise error if not found
-            success, error, user = users_repo.get_user_by_username(
-                body.user_name
-            )
-            if not success or not user:
-                jsonrpc_errors.handle_error_not_found(
-                    module_name,
-                    func_name,
-                    (False, f"User '{body.user_name}' not found"),
-                )
-            user_id = user.id
-
+            user_id = str(body.user_id)
+        if body.user_name:
+            user_name = body.user_name
         if body.start_time:
             start_time = datetime.fromisoformat(body.start_time)
         if body.end_time:
             end_time = datetime.fromisoformat(body.end_time)
-        limit = body.limit if body.limit is not None else 100
-        offset = body.offset if body.offset is not None else 0
-    else:
-        limit = 100
-        offset = 0
+        if body.limit is not None:
+            limit = body.limit
+        if body.offset is not None:
+            offset = body.offset
 
-    # Get login logs from database
-    success, error, logs = users_repo.get_login_logs(
-        user_id=user_id,
-        start_time=start_time,
-        end_time=end_time,
-        limit=limit,
-        offset=offset,
-    )
+    # Get user manager from request state
+    user_manager = get_user_manager(request)
 
-    if not success:
+    # Get login logs using UserManager
+    try:
+        logs_data = user_manager.get_login_logs(
+            user_id=user_id,
+            user_name=user_name,
+            start_time=start_time,
+            end_time=end_time,
+            limit=limit,
+            offset=offset,
+        )
+        # Convert to response format
+        response_info = [
+            schemas.LoginLogResponse.model_validate(log_data)
+            for log_data in logs_data
+        ]
+        return response_info
+    except ValueError as e:
+        # UserManager validation errors
+        error_msg = str(e)
+        logger.warning(f"Error getting login logs: {error_msg}")
         # Check if error is due to user not found
-        if "not found" in str(error).lower():
+        if "not found" in error_msg.lower():
             jsonrpc_errors.handle_error_not_found(
-                module_name,
-                func_name,
-                (False, str(error) if error else "User not found"),
+                module_name, func_name, (False, error_msg)
             )
         else:
             jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (False, str(error) if error else "Failed to get login logs"),
+                module_name, func_name, (False, error_msg)
             )
-
-    # Convert to response format
-    response_info = []
-    for log in logs:
-        # When user_id is not specified, need to get it from username
-        response_user_id = user_id
-        if response_user_id is None:
-            # Query user by username to get user_id
-            success, error, log_user = users_repo.get_user_by_username(
-                log.user_name
-            )
-            if success and log_user:
-                response_user_id = log_user.id
-            else:
-                # If user not found in database
-                response_user_id = None
-
-        # Get project_id from user
-        response_project_id = Constant.DEFAULT_PROJECT_ID
-        if response_user_id:
-            success, error, log_user = users_repo.get_user_by_id(
-                response_user_id
-            )
-            if success and log_user:
-                response_project_id = log_user.project_id
-
-        log_data = {
-            "user_id": response_user_id,
-            "project_id": response_project_id,
-            "user_name": log.user_name,
-            "login_time": log.login_time.isoformat(),
-            "ip_address": log.ip_address,
-            "user_agent": log.user_agent,
-            "success": log.login_status,
-            "failure_reason": log.failure_reason,
-        }
-        response_info.append(schemas.LoginLogResponse.model_validate(log_data))
-
-    return response_info
+        raise
+    except Exception as e:
+        # Handle other unexpected errors
+        logger.error(f"Unexpected error getting login logs: {str(e)}")
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, str(e))
+        )
+        raise
 
 
 @user_api_v1.method(
@@ -1362,16 +921,16 @@ def get_login_logs(
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.BadRequestError],
 )
 def clear_login_logs(
+    request: Request,
     body: schemas.ClearLoginLogsRequest | None = None,
     auth_data: dict | None = Depends(auth),
-    users_repo: UserRepository = Depends(get_repository(UserRepository)),
 ) -> dict:
     """Clear login logs (all or for a specific user).
 
     Args:
+        request: request object
         body: clear login logs request (contains user_id, user_name)
         auth_data: auth data
-        users_repo: User repository dependency
 
     Returns:
         Dictionary with count of deleted logs
@@ -1387,43 +946,36 @@ def clear_login_logs(
     user_name = None
 
     if body:
-        # Validate that only one of user_id or user_name is provided
-        if body.user_id is not None and body.user_name is not None:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (
-                    False,
-                    "Cannot specify both user_id and user_name. "
-                    "Please provide only one.",
-                ),
-            )
-
         if body.user_id:
-            user_id = body.user_id
-        elif body.user_name:
+            user_id = str(body.user_id)
+        if body.user_name:
             user_name = body.user_name
-            # Query user by name to get user_id if exists
-            # If user doesn't exist, user_id will remain None
-            # and delete_login_logs will handle it gracefully
-            success, error, user = users_repo.get_user_by_username(user_name)
-            if success and user:
-                user_id = user.id
 
-    # Clear login logs from database
-    success, error, deleted_count = users_repo.delete_login_logs(
-        user_id=user_id, user_name=user_name
-    )
+    # Get user manager from request state
+    user_manager = get_user_manager(request)
 
-    if not success:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (False, str(error) if error else "Failed to clear login logs"),
+    # Clear login logs using UserManager
+    try:
+        result = user_manager.clear_login_logs(
+            user_id=user_id, user_name=user_name
         )
-
-    logger.info(f"Cleared {deleted_count} login log(s)")
-    return {"count": deleted_count}
+        logger.info(f"Cleared {result['count']} login log(s)")
+        return result
+    except ValueError as e:
+        # UserManager validation errors
+        error_msg = str(e)
+        logger.warning(f"Error clearing login logs: {error_msg}")
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name, func_name, (False, error_msg)
+        )
+        raise
+    except Exception as e:
+        # Handle other unexpected errors
+        logger.error(f"Unexpected error clearing login logs: {str(e)}")
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, str(e))
+        )
+        raise
 
 
 def get_user_response(user) -> dict:
@@ -1445,12 +997,16 @@ def get_user_response(user) -> dict:
         roles = user.roles
 
     response_info = {
-        "id": user.id,
-        "project_id": user.project_id,
+        "id": str(user.id) if isinstance(user.id, uuid.UUID) else user.id,
+        "project_id": str(user.project_id)
+        if isinstance(user.project_id, uuid.UUID)
+        else user.project_id,
         "user_name": user.user_name,
         "roles": roles,
-        "is_enabled": user.is_enabled,
-        "is_locked": user.is_locked,
+        "is_enabled": user.is_enabled
+        if user.is_enabled is not None
+        else False,
+        "is_locked": user.is_locked if user.is_locked is not None else False,
         "last_login": user.last_login.isoformat() if user.last_login else None,
         "password_expiry_days": user.password_expiry_days,
         "password_changed_at": user.password_changed_at.isoformat(),
@@ -1474,7 +1030,7 @@ def get_role_response(role) -> dict:
         role response
     """
     response_info = {
-        "id": role.id,
+        "id": str(role.id) if isinstance(role.id, uuid.UUID) else role.id,
         "role_name": role.role_name,
         "permissions": role.permissions,
         "description": role.description,

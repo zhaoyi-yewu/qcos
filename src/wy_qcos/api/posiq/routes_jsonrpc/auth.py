@@ -29,9 +29,6 @@ from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import _s
 from wy_qcos.user.user_manager import UserManager
-from wy_qcos.db.models.user import User as UserModel
-from wy_qcos.db.repositories.user import UserRepository
-from wy_qcos.db.utils.db_utils import get_repository
 from .dependencies.authentication import (
     auth,
     get_user_manager,
@@ -48,7 +45,6 @@ async def login(
     request: Request,
     body: schemas.LoginRequest,
     user_manager: UserManager = Depends(get_user_manager),
-    users_repo: UserRepository = Depends(get_repository(UserRepository)),
 ) -> schemas.LoginResponse:
     """Authenticate user and return JWT token.
 
@@ -59,7 +55,6 @@ async def login(
         request: HTTP request object
         body: Login request containing username and password
         user_manager: UserManager dependency for user operations
-        users_repo: User repository dependency for database operations
 
     Returns:
         LoginResponse containing JWT access token and expiration info
@@ -107,30 +102,16 @@ async def login(
                 )
 
                 # Persist auto-unlock to database immediately
-                try:
-                    success, error, updated_user = users_repo.update(
-                        UserModel,
-                        user.id,
-                        is_locked=False,
-                        locked_until=None,
-                        failed_login_attempts=0,
+                if user_manager.auto_unlock_user(str(user.id)):
+                    logger.info(
+                        f"User '{username}' auto-unlock state "
+                        "persisted to database"
                     )
-                    if success:
-                        logger.info(
-                            f"User '{username}' auto-unlock state "
-                            "persisted to database"
-                        )
-                        # Update in-memory user object if returned
-                        if updated_user:
-                            user = updated_user
-                    else:
-                        logger.warning(
-                            f"Failed to persist auto-unlock state to "
-                            f"database: {error}"
-                        )
-                except Exception as e:
+                    # Update in-memory user object
+                    user = user_manager.get_user_by_id(str(user.id))
+                else:
                     logger.warning(
-                        f"Failed to persist auto-unlock state to database: {e}"
+                        "Failed to persist auto-unlock state to database"
                     )
 
                 # Continue with password validation
@@ -193,27 +174,16 @@ async def login(
                     f"{user.failed_login_attempts}"
                 )
                 # Persist the updated counter
-                try:
-                    success, error, updated_user = users_repo.update(
-                        UserModel,
-                        user.id,
-                        failed_login_attempts=user.failed_login_attempts,
+                if user_manager.increment_failed_login_attempts(str(user.id)):
+                    logger.debug(
+                        f"Updated failed_login_attempts to "
+                        f"{(user.failed_login_attempts or 0) + 1} for locked "
+                        f"user '{username}'"
                     )
-                    if success:
-                        logger.debug(
-                            f"Updated failed_login_attempts to "
-                            f"{user.failed_login_attempts} for locked "
-                            f"user '{username}'"
-                        )
-                    else:
-                        logger.warning(
-                            f"Failed to update failed_login_attempts "
-                            f"for locked user: {error}"
-                        )
-                except Exception as e:
+                else:
                     logger.warning(
-                        f"Failed to update failed_login_attempts for "
-                        f"locked user: {e}"
+                        "Failed to update failed_login_attempts "
+                        "for locked user"
                     )
                 # Set login_failure_type to "forbidden"
                 # to indicate locked status
@@ -295,26 +265,13 @@ async def login(
                     f"locked until {user.locked_until}."
                 )
                 # Update database with locked status
-                try:
-                    success, error, updated_user = users_repo.update(
-                        UserModel,
-                        user.id,
-                        is_locked=True,
-                        locked_until=user.locked_until,
+                if user_manager.lock_user(str(user.id), user.locked_until):
+                    logger.info(
+                        f"User '{username}' locked in database until "
+                        f"{user.locked_until}"
                     )
-                    if success:
-                        logger.info(
-                            f"User '{username}' locked in database until "
-                            f"{user.locked_until}"
-                        )
-                    else:
-                        logger.error(
-                            f"Failed to lock user account in database: {error}"
-                        )
-                except Exception as e:
-                    logger.error(
-                        f"Failed to lock user account in database: {e}"
-                    )
+                else:
+                    logger.error("Failed to lock user account in database")
             else:
                 # Still within limit - update failed attempts in database
                 logger.debug(
@@ -324,29 +281,15 @@ async def login(
                     f"{Config.USERS.MAX_LOGIN_ATTEMPTS}"
                 )
                 # Update failed attempts count in database
-                try:
-                    # Create a minimal update to persist failed_login_attempts
-                    # We need to update through the update method
-                    success, error, updated_user = users_repo.update(
-                        UserModel,
-                        user.id,
-                        failed_login_attempts=user.failed_login_attempts,
+                if user_manager.increment_failed_login_attempts(str(user.id)):
+                    logger.debug(
+                        f"Updated failed_login_attempts to "
+                        f"{(user.failed_login_attempts or 0) + 1} for "
+                        f"user '{username}'"
                     )
-                    if success:
-                        logger.debug(
-                            f"Updated failed_login_attempts to "
-                            f"{user.failed_login_attempts} for "
-                            f"user '{username}'"
-                        )
-                    else:
-                        logger.warning(
-                            f"Failed to update "
-                            f"failed_login_attempts in database: {error}"
-                        )
-                except Exception as e:
+                else:
                     logger.warning(
-                        f"Failed to update "
-                        f"failed_login_attempts in database: {e}"
+                        "Failed to update failed_login_attempts in database"
                     )
         # Log failed login attempt
         user_manager.log_login_attempt(
@@ -391,27 +334,13 @@ async def login(
     user.failed_login_attempts = 0
 
     # Persist successful login to database
-    try:
-        # Update login info using the repo's update method
-        success, error, updated_user = users_repo.update(
-            UserModel,
-            user.id,
-            failed_login_attempts=0,
-            last_login=user.last_login,
-            is_locked=False,
-            locked_until=None,
+    if user_manager.update_successful_login(str(user.id)):
+        logger.debug(
+            f"Updated user login info for user '{username}' on "
+            f"successful login"
         )
-        if success:
-            logger.debug(
-                f"Updated user login info for user '{username}' on "
-                f"successful login"
-            )
-        else:
-            logger.warning(
-                f"Failed to update user login info in database: {error}"
-            )
-    except Exception as e:
-        logger.warning(f"Failed to update user login info in database: {e}")
+    else:
+        logger.warning("Failed to update user login info in database")
 
     # Log successful login attempt
     user_manager.log_login_attempt(
@@ -704,9 +633,10 @@ def me(
     # Handle auth_mode=no case - return anonymous user info from auth_data
     if auth_data.get(Constant.AUTH_MODE_KEY) == Constant.AUTH_MODE_NO:
         now = datetime.now().isoformat()
+        project_id = auth_data.get("project_id", Constant.DEFAULT_PROJECT_ID)
         response_info = {
-            "id": Constant.ANONYMOUS_USERNAME,
-            "project_id": Constant.DEFAULT_PROJECT_ID,
+            "id": Constant.ANONYMOUS_USER_ID,
+            "project_id": project_id,
             "user_name": Constant.ANONYMOUS_USERNAME,
             "roles": auth_data.get("roles", []),
             "is_enabled": True,
@@ -735,9 +665,12 @@ def me(
     # Build response - get roles from user_roles association table
     roles = user.get_role_names()
 
+    # Get project_id from auth_data
+    project_id = auth_data.get("project_id", Constant.DEFAULT_PROJECT_ID)
+
     response_info = {
         "id": user.id,
-        "project_id": user.project_id,
+        "project_id": project_id,
         "user_name": user.user_name,
         "roles": roles,
         "is_enabled": user.is_enabled,
