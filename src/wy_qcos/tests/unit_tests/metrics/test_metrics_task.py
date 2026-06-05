@@ -572,8 +572,20 @@ class TestUpdateMetricsTaskAsync:
             await asyncio.sleep(15)
 
         with patch(
-            "wy_qcos.metrics.metrics_task.update_job_metrics", side_effect=slow
+            "wy_qcos.metrics.metrics_task.update_job_metrics",
+            side_effect=slow,
         ):
+            with patch(
+                "wy_qcos.metrics.metrics_task.update_system_health_metrics",
+                side_effect=slow,
+            ):
+                run_async(update_metrics_task_async())
+
+    def test_system_health_timeout_only(self):
+        async def slow():
+            await asyncio.sleep(16)
+
+        with patch("wy_qcos.metrics.metrics_task.update_job_metrics"):
             with patch(
                 "wy_qcos.metrics.metrics_task.update_system_health_metrics",
                 side_effect=slow,

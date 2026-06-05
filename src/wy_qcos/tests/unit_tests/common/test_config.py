@@ -20,6 +20,13 @@ from pathlib import Path
 from unittest.mock import patch, Mock
 import pytest
 
+from schema import Schema, SchemaError
+
+from wy_qcos.common.args_schema import (
+    CALLBACKS_SCHEMA,
+    NAME_SCHEMA,
+    is_valid_url,
+)
 from wy_qcos.common.config import Config
 from wy_qcos.common.library import _s, Library
 from wy_qcos.common.constant import Constant
@@ -260,3 +267,35 @@ class TestConfig:
         assert "test_salt_789" not in info
         # Verify masked values are present
         assert "****" in info
+
+    def test_args_schema_is_valid_url_invalid_scheme(self):
+        assert is_valid_url("ftp://example.com", {"http", "https"}) is False
+
+    def test_args_schema_name_schema_invalid_characters(self):
+        with pytest.raises(SchemaError):
+            NAME_SCHEMA.validate("invalid name")
+
+    def test_args_schema_callbacks_schema_valid(self):
+        result = Schema(CALLBACKS_SCHEMA).validate([
+            {
+                "name": "cb1",
+                "type": Constant.CALLBACK_TYPES[0],
+                "method": "post",
+                "url": "https://example.com/callback",
+                "headers": {"token": "x"},
+                "retries": 1,
+                "timeout": 3,
+            }
+        ])
+        assert result[0]["name"] == "cb1"
+
+    def test_args_schema_callbacks_schema_invalid_url(self):
+        with pytest.raises(SchemaError):
+            Schema(CALLBACKS_SCHEMA).validate([
+                {
+                    "name": "cb1",
+                    "type": Constant.CALLBACK_TYPES[0],
+                    "method": "POST",
+                    "url": "not_a_url",
+                }
+            ])

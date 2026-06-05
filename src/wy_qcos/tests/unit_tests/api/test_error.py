@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -17,6 +17,7 @@
 
 import pytest
 
+from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.errors import (
     handle_error_bad_requests,
     BadRequestError,
@@ -81,3 +82,49 @@ class TestError:
         with pytest.raises(ServiceUnavailableError) as e:
             handle_error_service_unavailable(module_name, func_name, results)
         assert "ServiceUnavailableError" in str(e)
+
+    def test_handle_errors_success_returns_none(self):
+        assert (
+            jsonrpc_errors.handle_errors(
+                BadRequestError,
+                module_name,
+                func_name,
+                (True, "ok"),
+                None,
+                None,
+            )
+            is None
+        )
+
+    def test_handle_errors_with_param_name_and_code(self):
+        with pytest.raises(BadRequestError) as exc_info:
+            jsonrpc_errors.handle_errors(
+                BadRequestError,
+                module_name,
+                func_name,
+                (False, "invalid"),
+                "field",
+                1234,
+            )
+        assert exc_info.value.CODE == 1234
+        assert "field: invalid" in str(exc_info.value)
+
+    def test_jsonrpc_base_error_data_model_str_and_repr(self):
+        data_model = jsonrpc_errors.JsonRpcBaseError.DataModel(
+            details="detail msg"
+        )
+        assert data_model.model_dump() == {"details": "detail msg"}
+        assert str(data_model) == "detail msg"
+        assert repr(data_model) == "detail msg"
+
+    def test_handle_errors_with_list_error_message(self):
+        with pytest.raises(BadRequestError) as exc_info:
+            jsonrpc_errors.handle_errors(
+                BadRequestError,
+                module_name,
+                func_name,
+                (False, ["err1", "err2"]),
+                "payload",
+                None,
+            )
+        assert "payload: err1;err2" in str(exc_info.value)

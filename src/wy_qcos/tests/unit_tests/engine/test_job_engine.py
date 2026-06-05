@@ -19,40 +19,40 @@ import numpy as np
 import pytest
 
 from datetime import datetime
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.drivers.driver_base import DriverBase
 from wy_qcos.drivers.dummy.driver_dummy import DriverDummy
 from wy_qcos.engine.job_engine import (
+    _run_code,
+    counts_to_probs,
+    create_src_code_info,
+    driver_cancel,
+    driver_run,
+    flow_parse,
+    flow_run_driver,
+    flow_task_monitor,
+    flow_transpile,
+    format_error_results,
+    format_run_results,
+    get_external_aggregated_results,
+    get_internal_aggregated_results,
+    get_src_code_cnt,
     init_driver,
     init_transpiler,
     job_flow,
-    driver_cancel,
+    parse,
+    probs_to_dict,
     register_signals,
-    _run_code,
+    run_circuit_code,
+    run_circuit_cutting_code,
     run_code,
     run_qubo_code,
     run_subqubo_code,
-    run_circuit_code,
-    run_circuit_cutting_code,
-    counts_to_probs,
-    probs_to_dict,
-    flow_parse,
-    flow_transpile,
-    flow_task_monitor,
-    flow_run_driver,
-    create_src_code_info,
-    update_src_code_info,
-    get_src_code_cnt,
-    get_internal_aggregated_results,
-    get_external_aggregated_results,
-    format_run_results,
-    format_error_results,
     task_monitor,
-    parse,
     transpile,
-    driver_run,
+    update_src_code_info,
 )
 from wy_qcos.engine.job_engine import SourceCodeInfo
 from wy_qcos.transpiler.transpiler_base import TranspilerBase
@@ -128,9 +128,7 @@ class TestJobEngine:
         driver_info = {"module_name": "name", "class_name": "DriverDummy"}
         mock_importlib.return_value = DriverDummy
         mock_getattr.return_value = DriverDummy
-
         mock_validate_driver_configs.return_value = iter([True, "err_msg"])
-
         driver = init_driver.fn
         return_value = driver(driver_info, None, None, {"data": {}})
         assert return_value["driver"] is None
@@ -140,9 +138,8 @@ class TestJobEngine:
             "module_name": "name",
             "class_name": "TranspilerDummy",
         }
-
-        transpiler = init_transpiler.fn
-        return_value = transpiler(transpiler_info, None)
+        transpiler_inst = init_transpiler.fn
+        return_value = transpiler_inst(transpiler_info, None)
         assert return_value["transpiler"] is None
 
     def test_create_src_code_info_with_none_aggregation(self):
@@ -190,7 +187,6 @@ class TestJobEngine:
         result = get_external_aggregated_results(
             self.job_results, self.mapping_dict
         )
-
         assert len(result["sub_results"]) == 1
 
     def test_driver_cancel(self):
@@ -211,7 +207,7 @@ class TestJobEngine:
     ):
         mock_flow_parse.return_value = iter([{"parsed_src_code": "v"}, 233])
         mock_flow_transpile.return_value = ({}, 466)
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(ValueError) as exc_info:
             _run_code(
                 0,
                 {"0-0": self.simple_data},
@@ -219,7 +215,9 @@ class TestJobEngine:
                 DriverBase(),
                 TranspilerBase(),
             )
-        assert str(e.value) == "unexpected transpile_results or num_qubits"
+        assert (
+            str(exc_info.value) == "unexpected transpile_results or num_qubits"
+        )
 
         mock_flow_parse.return_value = iter([{"parsed_src_code": "v"}, 233])
         mock_flow_transpile.return_value = (
@@ -374,7 +372,6 @@ class TestJobEngine:
         src_code_index = f"{job_id}-{source_code_index}"
         simple_qubo_matrix = np.array([[1, 0.5], [0.5, 2]])
         src_code_dict = {src_code_index: simple_qubo_matrix}
-
         job_info = {
             "data": {
                 "job_id": job_id,
@@ -392,11 +389,7 @@ class TestJobEngine:
         mock_check_matrix.return_value = (True, "")
         mock_ising_matrix.return_value = np.array([[0, 1], [1, 0]])
         mock_scale_matrix.return_value = np.array([[0, 1], [1, 0]])
-        mock_get_spins_num.return_value = (
-            [1, 1],
-            [0, 1, 2],
-            2,
-        )
+        mock_get_spins_num.return_value = ([1, 1], [0, 1, 2], 2)
         expected_results = {"results": "test_results"}
         mock_run_code.return_value = (
             expected_results,
@@ -458,11 +451,7 @@ class TestJobEngine:
         mock_check_matrix.return_value = (True, "")
         mock_ising_matrix.return_value = np.array([[0, 1], [1, 0]])
         mock_scale_matrix.return_value = np.array([[0, 1], [1, 0]])
-        mock_get_spins_num.return_value = (
-            [3, 3],
-            [0, 3, 6],
-            6,
-        )
+        mock_get_spins_num.return_value = ([3, 3], [0, 3, 6], 6)
         processed_results = {"results": "processed_results"}
         mock_process_solution.return_value = processed_results
         expected_results = {"results": "subqubo_results"}
@@ -548,10 +537,7 @@ class TestJobEngine:
         mock_check_bit_width.assert_called_once()
 
     @patch("wy_qcos.engine.job_engine._run_code")
-    def test_run_subqubo_code_normal_flow(
-        self,
-        mock_run_code,
-    ):
+    def test_run_subqubo_code_normal_flow(self, mock_run_code):
         job_id = "00000000-0000-4000-8000-000000000001"
         source_code_index = 0
         src_code_index = f"{job_id}-{source_code_index}"
@@ -598,29 +584,24 @@ class TestJobEngine:
         assert transpiler == mock_transpiler
 
     def test_counts_to_probs_basic(self):
-        """Test basic counts to probabilities conversion."""
         count_dict = {"00": 500, "11": 500}
         probs = counts_to_probs(count_dict)
-
-        assert len(probs) == 4  # 2 qubits -> 4 states
-        assert probs[0] == 0.5  # state 00
-        assert probs[3] == 0.5  # state 11
-        assert probs[1] == 0.0  # state 01
-        assert probs[2] == 0.0  # state 10
+        assert len(probs) == 4
+        assert probs[0] == 0.5
+        assert probs[3] == 0.5
+        assert probs[1] == 0.0
+        assert probs[2] == 0.0
 
     def test_counts_to_probs_empty_dict(self):
-        """Test conversion with empty count dictionary."""
         probs = counts_to_probs({})
         assert len(probs) == 0
 
     def test_counts_to_probs_all_zeros(self):
-        """Test conversion with all zero counts."""
         probs = counts_to_probs({"00": 0, "01": 0})
         assert len(probs) == 4
         assert all(p == 0.0 for p in probs)
 
     def test_counts_to_probs_three_qubits(self):
-        """Test conversion for 3-qubit counts."""
         count_dict = {"000": 250, "111": 750}
         probs = counts_to_probs(count_dict)
         assert len(probs) == 8
@@ -628,10 +609,8 @@ class TestJobEngine:
         assert probs[7] == 0.75
 
     def test_probs_to_dict_basic(self):
-        """Test basic probability array to dictionary conversion."""
         prob_array = [0.5, 0.0, 0.0, 0.5]
         result = probs_to_dict(prob_array)
-
         assert len(result) == 2
         assert result["00"] == 0.5
         assert result["11"] == 0.5
@@ -639,28 +618,23 @@ class TestJobEngine:
         assert "10" not in result
 
     def test_probs_to_dict_empty_array(self):
-        """Test conversion with empty probability array."""
         result = probs_to_dict([])
         assert not result
 
     def test_probs_to_dict_none_array(self):
-        """Test conversion with None input."""
         result = probs_to_dict(None)
         assert not result
 
     def test_probs_to_dict_with_small_values(self):
-        """Test conversion that filters out very small probabilities."""
-        prob_array = [0.5, 1e-13, 1e-12, 0.5]  # 1e-12 is at threshold
+        prob_array = [0.5, 1e-13, 1e-12, 0.5]
         result = probs_to_dict(prob_array)
         assert len(result) == 2
         assert result["00"] == 0.5
         assert result["11"] == 0.5
 
     def test_probs_to_dict_with_non_power_of_two(self):
-        """Test conversion with array length not power of two."""
-        prob_array = [0.3, 0.3, 0.4]  # 3 elements
+        prob_array = [0.3, 0.3, 0.4]
         result = probs_to_dict(prob_array)
-        # Should pad to 4 elements (2 qubits)
         assert len(result) == 3
         assert result["00"] == 0.3
         assert result["01"] == 0.3
@@ -668,7 +642,6 @@ class TestJobEngine:
 
     @patch("wy_qcos.engine.job_engine._run_code")
     def test_run_circuit_code_within_limit(self, mock_run_code):
-        """Test run_circuit_code when qubit count is within limit."""
         mock_driver = Mock()
         mock_driver.get_max_qubits.return_value = 2
         mock_driver.get_enable_wirecut.return_value = False
@@ -678,8 +651,6 @@ class TestJobEngine:
         mock_transpiler.parse.return_value = {
             "00000000-0000-4000-8000-000000000001-0": (2, None)
         }
-
-        # Mock _run_code to return test results
         expected_results = {
             "results": {"00": 0.5, "11": 0.5},
             "metadata": {"status": "COMPLETED"},
@@ -706,7 +677,6 @@ class TestJobEngine:
             },
             "device": "test_device",
         }
-        # Run the function
         results, driver, transpiler, mapping = run_circuit_code(
             source_code_index,
             src_code_dict,
@@ -714,8 +684,6 @@ class TestJobEngine:
             mock_driver,
             mock_transpiler,
         )
-
-        # Verify
         assert results == expected_results
         assert driver == mock_driver
         assert transpiler == mock_transpiler
@@ -726,8 +694,6 @@ class TestJobEngine:
     def test_run_circuit_code_exceeds_limit_no_wirecut(
         self, mock_format_error
     ):
-        """Test run_circuit_code when qubit count exceeds limit."""
-        # Mock compile to return 10 qubits (exceeds 5 limit)
         mock_driver = Mock()
         mock_driver.get_max_qubits.return_value = 2
         mock_driver.get_enable_wirecut.return_value = False
@@ -753,14 +719,11 @@ class TestJobEngine:
             },
             "device": "test_device",
         }
-
-        # Mock format_error_results
         expected_error_result = {
             "results": None,
             "metadata": {"status": "FAILED", "error": "Qubit limit exceeded"},
         }
         mock_format_error.return_value = expected_error_result
-        # Run the function
         results, driver, transpiler, mapping = run_circuit_code(
             source_code_index,
             src_code_dict,
@@ -768,8 +731,6 @@ class TestJobEngine:
             mock_driver,
             mock_transpiler,
         )
-
-        # Verify
         assert driver == mock_driver
         assert transpiler == mock_transpiler
         assert mapping is None
@@ -788,88 +749,12 @@ class TestJobEngine:
     def test_run_circuit_cutting_code_success(
         self, mock_reconstruct, mock_run_code, mock_generate_subs
     ):
-        """Test successful circuit cutting execution."""
         mock_driver = Mock()
         mock_driver.get_max_qubits.return_value = 2
         mock_driver.get_enable_wirecut.return_value = True
         mock_driver.get_wirecut_qubit_width.return_value = 2
         mock_driver.get_name.return_value = "TestDevice"
         mock_transpiler = Mock()
-        # Mock subcircuit generation
-        mock_cut_wire = Mock()
-        mock_generate_subs.return_value = (
-            {},  # topo_subcircuits
-            ["subcircuit1", "subcircuit2"],  # subcircuits
-            mock_cut_wire,
-        )
-        source_code_index = 0
-        src_code_dict = {"00000000-0000-4000-8000-000000000001-0": "value"}
-        job_info = {
-            "data": {
-                "job_id": "00000000-0000-4000-8000-000000000001",
-                "code_type": Constant.CODE_TYPE_QASM,
-                "driver_options": {},
-                "transpiler_options": None,
-            },
-            "driver": {"module_name": "test", "class_name": "TestDriver"},
-            "transpiler": {
-                "module_name": "test",
-                "class_name": "TestTranspiler",
-            },
-            "device": "test_device",
-        }
-        # Mock subcircuit execution
-        sub_results = [{"00": 0.6, "11": 0.4}, {"00": 0.3, "11": 0.7}]
-        mock_run_code.return_value = (
-            {"results": sub_results[0], "metadata": {"status": "COMPLETED"}},
-            mock_driver,
-            mock_transpiler,
-            {},
-        )
-
-        # Mock probability reconstruction
-        reconstructed_probs = np.array([0.45, 0.0, 0.0, 0.55])
-        mock_reconstruct.return_value = (reconstructed_probs, {})
-        num_qubits = 2
-
-        # Run the function
-        results, driver, transpiler, _ = run_circuit_cutting_code(
-            source_code_index,
-            src_code_dict,
-            num_qubits,
-            job_info,
-            mock_driver,
-            mock_transpiler,
-        )
-
-        # Verify
-        assert results["num_qubits"] == 2
-        assert "results" in results
-        assert results["metadata"]["status"] == "COMPLETED"
-        assert driver == mock_driver
-        assert transpiler == mock_transpiler
-
-        # Verify calls
-        mock_generate_subs.assert_called_once()
-        assert mock_run_code.call_count == 2
-        mock_reconstruct.assert_called_once()
-
-    @patch(
-        "wy_qcos.engine.job_engine."
-        "generate_all_variant_subcircuits_for_execute"
-    )
-    @patch("wy_qcos.engine.job_engine._run_code")
-    def test_run_circuit_cutting_code_subcircuit_failed(
-        self, mock_run_code, mock_generate_subs
-    ):
-        """Test circuit cutting when a subcircuit execution fails."""
-        mock_driver = Mock()
-        mock_driver.get_max_qubits.return_value = 2
-        mock_driver.get_enable_wirecut.return_value = True
-        mock_driver.get_wirecut_qubit_width.return_value = 4
-        mock_driver.get_name.return_value = "TestDevice"
-        mock_transpiler = Mock()
-        # Mock subcircuit generation
         mock_cut_wire = Mock()
         mock_generate_subs.return_value = (
             {},
@@ -892,7 +777,69 @@ class TestJobEngine:
             },
             "device": "test_device",
         }
-        # Mock first subcircuit to fail
+        sub_results = [{"00": 0.6, "11": 0.4}, {"00": 0.3, "11": 0.7}]
+        mock_run_code.return_value = (
+            {"results": sub_results[0], "metadata": {"status": "COMPLETED"}},
+            mock_driver,
+            mock_transpiler,
+            {},
+        )
+        reconstructed_probs = np.array([0.45, 0.0, 0.0, 0.55])
+        mock_reconstruct.return_value = (reconstructed_probs, {})
+        num_qubits = 2
+        results, driver, transpiler, _ = run_circuit_cutting_code(
+            source_code_index,
+            src_code_dict,
+            num_qubits,
+            job_info,
+            mock_driver,
+            mock_transpiler,
+        )
+        assert results["num_qubits"] == 2
+        assert "results" in results
+        assert results["metadata"]["status"] == "COMPLETED"
+        assert driver == mock_driver
+        assert transpiler == mock_transpiler
+        mock_generate_subs.assert_called_once()
+        assert mock_run_code.call_count == 2
+        mock_reconstruct.assert_called_once()
+
+    @patch(
+        "wy_qcos.engine.job_engine."
+        "generate_all_variant_subcircuits_for_execute"
+    )
+    @patch("wy_qcos.engine.job_engine._run_code")
+    def test_run_circuit_cutting_code_subcircuit_failed(
+        self, mock_run_code, mock_generate_subs
+    ):
+        mock_driver = Mock()
+        mock_driver.get_max_qubits.return_value = 2
+        mock_driver.get_enable_wirecut.return_value = True
+        mock_driver.get_wirecut_qubit_width.return_value = 4
+        mock_driver.get_name.return_value = "TestDevice"
+        mock_transpiler = Mock()
+        mock_cut_wire = Mock()
+        mock_generate_subs.return_value = (
+            {},
+            ["subcircuit1", "subcircuit2"],
+            mock_cut_wire,
+        )
+        source_code_index = 0
+        src_code_dict = {"00000000-0000-4000-8000-000000000001-0": "value"}
+        job_info = {
+            "data": {
+                "job_id": "00000000-0000-4000-8000-000000000001",
+                "code_type": Constant.CODE_TYPE_QASM,
+                "driver_options": {},
+                "transpiler_options": None,
+            },
+            "driver": {"module_name": "test", "class_name": "TestDriver"},
+            "transpiler": {
+                "module_name": "test",
+                "class_name": "TestTranspiler",
+            },
+            "device": "test_device",
+        }
         failed_result = {
             "results": None,
             "metadata": {"status": "FAILED", "error": "Subcircuit error"},
@@ -904,8 +851,6 @@ class TestJobEngine:
             {},
         )
         num_qubits = 2
-
-        # Run the function
         results, _, _, _ = run_circuit_cutting_code(
             source_code_index,
             src_code_dict,
@@ -914,10 +859,8 @@ class TestJobEngine:
             mock_driver,
             mock_transpiler,
         )
-
-        # Verify
         assert results == failed_result
-        mock_run_code.assert_called_once()  # Only called once before failure
+        mock_run_code.assert_called_once()
 
     @patch("wy_qcos.engine.job_engine.parse.submit")
     def test_flow_parse(self, mock_parse):
@@ -1036,3 +979,215 @@ class TestJobEngine:
             self.src_code_info.aggregation_type
             == Constant.AGGREGATION_TYPE_NONE
         )
+
+    @patch("wy_qcos.engine.job_engine.format_error_results")
+    @patch("wy_qcos.engine.job_engine.init_driver.submit")
+    def test_run_code_driver_init_error(
+        self, mock_init_driver, mock_format_error
+    ):
+        mock_init_driver.return_value.result.return_value = {
+            "driver": None,
+            "error": ValueError("init failed"),
+        }
+        mock_format_error.return_value = {"metadata": {"status": "FAILED"}}
+        results, driver, transpiler, mapping = run_code(
+            0,
+            {"job-0": "code"},
+            {
+                "data": {
+                    "code_type": Constant.CODE_TYPE_QASM,
+                    "driver_options": {},
+                    "transpiler_options": None,
+                },
+                "driver": {"module_name": "m", "class_name": "C"},
+                "transpiler": {"module_name": "m", "class_name": "T"},
+                "device": {},
+            },
+            None,
+            None,
+            {"driver": None},
+        )
+        assert results["metadata"]["status"] == "FAILED"
+        assert driver is None
+        assert transpiler is None
+        assert mapping is None
+
+    @patch("wy_qcos.engine.job_engine.format_error_results")
+    @patch("wy_qcos.engine.job_engine.init_transpiler.submit")
+    def test_run_code_transpiler_init_error(
+        self, mock_init_transpiler, mock_format_error
+    ):
+        mock_driver = Mock(spec=DriverBase)
+        mock_driver.name = "Driver"
+        mock_init_transpiler.return_value.result.return_value = {
+            "transpiler": None,
+            "error": ValueError("transpiler failed"),
+        }
+        mock_format_error.return_value = {"metadata": {"status": "FAILED"}}
+        results, driver, transpiler, mapping = run_code(
+            0,
+            {"job-0": "code"},
+            {
+                "data": {
+                    "code_type": Constant.CODE_TYPE_QASM,
+                    "driver_options": {},
+                    "transpiler_options": None,
+                },
+                "driver": {"module_name": "m", "class_name": "C"},
+                "transpiler": {"module_name": "m", "class_name": "T"},
+                "device": {},
+            },
+            mock_driver,
+            None,
+            {"driver": mock_driver},
+        )
+        assert results["metadata"]["status"] == "FAILED"
+        assert driver == mock_driver
+        assert transpiler is None
+        assert mapping is None
+
+    @patch("wy_qcos.engine.job_engine.format_error_results")
+    @patch("wy_qcos.engine.job_engine.check_matrix")
+    def test_run_qubo_code_check_matrix_error(
+        self, mock_check_matrix, mock_format_error
+    ):
+        mock_driver = Mock()
+        mock_driver.get_max_qubits.return_value = 5
+        mock_driver.get_enable_subqubo.return_value = False
+        mock_driver.get_enable_prec_reduce.return_value = True
+        qubo_matrix = np.array([[1, 2], [2, 3]])
+        job_id = "00000000-0000-4000-8000-000000000001"
+        mock_check_matrix.return_value = (False, "bad matrix")
+        mock_format_error.return_value = {"metadata": {"status": "FAILED"}}
+        results, _, _, _ = run_qubo_code(
+            0,
+            {f"{job_id}-0": qubo_matrix},
+            {"data": {"job_id": job_id}},
+            mock_driver,
+            Mock(),
+        )
+        assert results["metadata"]["status"] == "FAILED"
+
+    @patch("wy_qcos.engine.job_engine.format_error_results")
+    @patch("wy_qcos.engine.job_engine.check_matrix")
+    @patch("wy_qcos.engine.job_engine.check_qubo_matrix_bit_width")
+    def test_run_qubo_code_width_error_with_message(
+        self,
+        mock_check_width,
+        mock_check_matrix,
+        mock_format_error,
+    ):
+        mock_driver = Mock()
+        mock_driver.get_max_qubits.return_value = 5
+        mock_driver.get_enable_subqubo.return_value = False
+        mock_driver.get_enable_prec_reduce.return_value = True
+        qubo_matrix = np.array([[1, 2], [2, 3]])
+        job_id = "00000000-0000-4000-8000-000000000001"
+        mock_check_matrix.return_value = (True, "")
+        mock_check_width.return_value = (False, "width error")
+        mock_format_error.return_value = {"metadata": {"status": "FAILED"}}
+        results, _, _, _ = run_qubo_code(
+            0,
+            {f"{job_id}-0": qubo_matrix},
+            {"data": {"job_id": job_id}},
+            mock_driver,
+            Mock(),
+        )
+        assert results["metadata"]["status"] == "FAILED"
+
+    @patch("wy_qcos.engine.job_engine.format_error_results")
+    @patch("wy_qcos.engine.job_engine.check_matrix")
+    @patch("wy_qcos.engine.job_engine.check_qubo_matrix_bit_width")
+    def test_run_qubo_code_width_error_prec_reduce_disabled(
+        self,
+        mock_check_width,
+        mock_check_matrix,
+        mock_format_error,
+    ):
+        mock_driver = Mock()
+        mock_driver.get_max_qubits.return_value = 5
+        mock_driver.get_enable_subqubo.return_value = False
+        mock_driver.get_enable_prec_reduce.return_value = False
+        qubo_matrix = np.array([[1, 2], [2, 3]])
+        job_id = "00000000-0000-4000-8000-000000000001"
+        mock_check_matrix.return_value = (True, "")
+        mock_check_width.return_value = (False, "")
+        mock_format_error.return_value = {"metadata": {"status": "FAILED"}}
+        results, _, _, _ = run_qubo_code(
+            0,
+            {f"{job_id}-0": qubo_matrix},
+            {"data": {"job_id": job_id}},
+            mock_driver,
+            Mock(),
+        )
+        assert results["metadata"]["status"] == "FAILED"
+
+    @patch("wy_qcos.engine.job_engine.format_error_results")
+    @patch("wy_qcos.engine.job_engine._run_code")
+    def test_run_subqubo_code_size_below_threshold(
+        self, mock_run_code, mock_format_error
+    ):
+        mock_driver = Mock()
+        mock_format_error.return_value = {"metadata": {"status": "FAILED"}}
+        results, _, _, _ = run_subqubo_code(
+            4,
+            100,
+            0,
+            {"00000000-0000-4000-8000-000000000001-0": np.array([[1]])},
+            {"data": {"job_id": "00000000-0000-4000-8000-000000000001"}},
+            mock_driver,
+            Mock(),
+        )
+        assert results["metadata"]["status"] == "FAILED"
+        mock_run_code.assert_not_called()
+
+    @patch("wy_qcos.engine.job_engine.format_error_results")
+    def test_run_circuit_code_compile_error(self, mock_format_error):
+        mock_driver = Mock()
+        mock_driver.get_max_qubits.return_value = 2
+        mock_driver.get_enable_wirecut.return_value = False
+        mock_transpiler = Mock()
+        mock_transpiler.parse.side_effect = Exception("compile failed")
+        mock_format_error.return_value = {"metadata": {"status": "FAILED"}}
+        results, _, _, mapping = run_circuit_code(
+            0,
+            {"00000000-0000-4000-8000-000000000001-0": "value"},
+            {
+                "data": {
+                    "job_id": "00000000-0000-4000-8000-000000000001",
+                    "code_type": Constant.CODE_TYPE_QASM,
+                }
+            },
+            mock_driver,
+            mock_transpiler,
+        )
+        assert results["metadata"]["status"] == "FAILED"
+        assert mapping is None
+
+    @patch("wy_qcos.engine.job_engine.format_error_results")
+    @patch(
+        "wy_qcos.engine.job_engine."
+        "generate_all_variant_subcircuits_for_execute"
+    )
+    def test_run_circuit_cutting_code_generate_error(
+        self, mock_generate, mock_format_error
+    ):
+        mock_generate.side_effect = Exception("generate failed")
+        mock_format_error.return_value = {"metadata": {"status": "FAILED"}}
+        mock_driver = Mock()
+        mock_driver.get_max_qubits.return_value = 2
+        results, _, _, mapping = run_circuit_cutting_code(
+            0,
+            {"00000000-0000-4000-8000-000000000001-0": "value"},
+            10,
+            {
+                "data": {
+                    "job_id": "00000000-0000-4000-8000-000000000001",
+                    "code_type": Constant.CODE_TYPE_QASM,
+                }
+            },
+            mock_driver,
+            Mock(),
+        )
+        assert results["metadata"]["status"] == "FAILED"
+        assert mapping is None

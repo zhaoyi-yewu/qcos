@@ -420,21 +420,87 @@ class TestUpdateProject:
         assert result.name == "new_name"
 
     def test_update_project_not_found(self):
-        """Test updating non-existent project."""
-        mock_projects_repo = Mock()
+        """Test update project when project not found."""
         project_id = str(uuid.uuid4())
-        mock_projects_repo.get_project_by_id.return_value = (
-            False,
-            f"Can't find project: {project_id}",
-            None,
-        )
-
         body = project_schemas.UpdateProjectRequest(
             project_id=project_id, project_name="new_name"
         )
-
+        mock_project_manager = Mock()
+        mock_project_manager.update_project.side_effect = ValueError(
+            "not found"
+        )
+        mock_request = Mock()
+        mock_request.app = Mock()
+        mock_request.app.state = Mock()
+        mock_request.app.state._project_manager = mock_project_manager
         with pytest.raises(Exception):
-            update_project(body, None, mock_projects_repo)
+            update_project(body, mock_request)
+
+    def test_update_project_conflict(self):
+        """Test update project with conflicting name."""
+        project_id = str(uuid.uuid4())
+        body = project_schemas.UpdateProjectRequest(
+            project_id=project_id, project_name="existing_name"
+        )
+        mock_project_manager = Mock()
+        mock_project_manager.update_project.side_effect = ValueError(
+            "already exists"
+        )
+        mock_request = Mock()
+        mock_request.app = Mock()
+        mock_request.app.state = Mock()
+        mock_request.app.state._project_manager = mock_project_manager
+        with pytest.raises(Exception):
+            update_project(body, mock_request)
+
+    def test_delete_project_success(self):
+        """Test successful project deletion."""
+        project_id = str(uuid.uuid4())
+        project = Project(
+            id=project_id,
+            name="to_delete",
+            description="To delete",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+        body = project_schemas.DeleteProjectRequest(project_id=project_id)
+        mock_project_manager = Mock()
+        mock_project_manager.delete_project.return_value = project
+        mock_request = Mock()
+        mock_request.app = Mock()
+        mock_request.app.state = Mock()
+        mock_request.app.state._project_manager = mock_project_manager
+        result = delete_project(body, mock_request)
+        assert result is not None
+        assert result.name == "to_delete"
+
+    def test_delete_project_reserved_error(self):
+        """Test delete reserved project raises error."""
+        project_id = str(uuid.uuid4())
+        body = project_schemas.DeleteProjectRequest(project_id=project_id)
+        mock_project_manager = Mock()
+        mock_project_manager.delete_project.side_effect = ValueError(
+            "reserved project"
+        )
+        mock_request = Mock()
+        mock_request.app = Mock()
+        mock_request.app.state = Mock()
+        mock_request.app.state._project_manager = mock_project_manager
+        with pytest.raises(Exception):
+            delete_project(body, mock_request)
+
+    def test_get_projects_with_exception(self):
+        """Test get_projects with unexpected exception."""
+        mock_project_manager = Mock()
+        mock_project_manager.get_projects.side_effect = Exception(
+            "Database error"
+        )
+        mock_request = Mock()
+        mock_request.app = Mock()
+        mock_request.app.state = Mock()
+        mock_request.app.state._project_manager = mock_project_manager
+        with pytest.raises(Exception):
+            get_projects(mock_request)
 
     def test_update_project_duplicate_name(self):
         """Test updating project to duplicate name."""

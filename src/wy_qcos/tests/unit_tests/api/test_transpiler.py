@@ -74,3 +74,44 @@ class TestTranspiler:
         mock_client = TranspilerBase()
         response = _get_transpiler_info(mock_client)
         assert response["name"] is None
+
+    @patch.object(TranspilerManager, "get_transpilers")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    def test_get_transpilers_with_entries(
+        self, mock_get_transpiler_manager, mock_get_transpilers
+    ):
+        transpiler = Mock(spec=TranspilerBase)
+        transpiler.name = Constant.TRANSPILER_DUMMY
+        transpiler.alias_name = "Dummy"
+        transpiler.enable = True
+        transpiler.supported_code_types = [Constant.CODE_TYPE_QASM]
+        transpiler.get_version.return_value = "1.0"
+
+        transpiler_manager = Mock(spec=TranspilerManager)
+        transpiler_manager.get_transpilers.return_value = {
+            Constant.TRANSPILER_DUMMY: transpiler
+        }
+        mock_get_transpiler_manager.return_value = transpiler_manager
+        mock_get_transpilers.return_value = {
+            Constant.TRANSPILER_DUMMY: transpiler
+        }
+
+        response = get_transpilers(None)
+
+        assert Constant.TRANSPILER_DUMMY in response
+        assert response[Constant.TRANSPILER_DUMMY].name == (
+            Constant.TRANSPILER_DUMMY
+        )
+
+    @patch.object(TranspilerManager, "get_transpiler")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    def test_get_transpiler_not_found(
+        self, mock_get_transpiler_manager, mock_get_transpiler
+    ):
+        mock_get_transpiler_manager.return_value = TranspilerManager()
+        mock_get_transpiler.return_value = None
+        mock_client = Mock(spec=GetTranspilerRequest)
+        mock_client.name = "missing"
+
+        with pytest.raises(Exception):
+            get_transpiler(mock_client)

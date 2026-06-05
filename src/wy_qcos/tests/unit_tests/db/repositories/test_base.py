@@ -283,8 +283,6 @@ class TestBaseRepository:
         self, base_repository, in_memory_db
     ):
         """Test get_by_attr with duplicate records when unique=True."""
-        # This test creates a scenario where get_by_attr finds multiple records
-        # when unique=True, which should return an error
         try:
             for i in range(2):
                 user = User(
@@ -296,12 +294,62 @@ class TestBaseRepository:
                 in_memory_db.add(user)
             in_memory_db.commit()
 
-            # Query by a non-unique attribute while expecting unique
             success, error, result = base_repository.get_by_attr(
                 User, "is_enabled", True, unique=True
             )
-            # Should fail because multiple records are found
             assert success is False
             assert error is not None
         except Exception as e:
             print(f"Expected behavior: {e}")
+
+    def test_count_success(self, base_repository, in_memory_db):
+        """Test count method."""
+        for i in range(3):
+            user = User(
+                id=str(uuid.uuid4()),
+                user_name=f"countuser{i}",
+                hashed_password=_s("hash"),
+                is_enabled=True,
+            )
+            in_memory_db.add(user)
+        in_memory_db.commit()
+        count = base_repository.count(User)
+        assert count == 3
+
+    def test_count_by_attr_success(self, base_repository, sample_user):
+        """Test count_by_attr method."""
+        count = base_repository.count_by_attr(User, "user_name", "testuser")
+        assert count == 1
+
+    def test_count_by_attr_empty(self, base_repository):
+        """Test count_by_attr with no matches."""
+        count = base_repository.count_by_attr(User, "user_name", "nonexistent")
+        assert count == 0
+
+    def test_count_with_filters_success(self, base_repository, in_memory_db):
+        """Test count_with_filters method."""
+        for i in range(3):
+            user = User(
+                id=str(uuid.uuid4()),
+                user_name=f"filteruser{i}",
+                hashed_password=_s("hash"),
+                is_enabled=True,
+            )
+            in_memory_db.add(user)
+        in_memory_db.commit()
+        count = base_repository.count_with_filters(User, {"is_enabled": True})
+        assert count >= 3
+
+    def test_count_with_filters_empty(self, base_repository):
+        """Test count_with_filters with no matches."""
+        count = base_repository.count_with_filters(User, {"is_enabled": False})
+        assert count == 0
+
+    def test_flush_success(self, base_repository):
+        """Test flush method."""
+        base_repository.flush()
+
+    def test_refresh_success(self, base_repository, sample_user):
+        """Test refresh method."""
+        base_repository.refresh(sample_user)
+        assert sample_user.user_name == "testuser"

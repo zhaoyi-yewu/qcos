@@ -19,6 +19,7 @@ import pytest
 
 from unittest.mock import Mock, patch
 
+from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.device import (
     calibrate_device,
     get_calibrate_results,
@@ -26,6 +27,7 @@ from wy_qcos.api.posiq.routes_jsonrpc.device import (
     get_devices,
     set_device_options,
     get_device_options,
+    _get_device_info,
 )
 from wy_qcos.api.schemas import (
     GetDeviceRequest,
@@ -210,3 +212,94 @@ class TestDevice:
         response_info = get_device_options(mock_client)
         assert response_info is not None
         assert response_info.details is not None
+
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.device.validate_virtual_instance")
+    @patch.object(DeviceManager, "get_devices")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_get_devices_skip_unauthorized_device(
+        self,
+        mock_get_device_manager,
+        mock_get_devices,
+        mock_validate_virtual_instance,
+    ):
+        mock_get_devices.return_value = {
+            "device_a": Device("device_a", DriverDummy())
+        }
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        mock_validate_virtual_instance.return_value = (False, "forbidden")
+
+        response_info = get_devices(None, {"dummy": "auth"})
+        assert response_info == {}
+
+    def test_get_device_info_hides_configs_for_virtual_instance_user(self):
+        device = Device("dummy", DriverDummy())
+        device.configs = {"password": "secret"}
+        device.details = {"key": "value"}
+        auth_data = {
+            Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_VIRTUAL_INSTANCE,
+            "is_super_admin": False,
+            "is_project_admin": False,
+        }
+
+        response = _get_device_info(device, auth_data, details=False)
+        assert "configs" not in response
+        assert "details" not in response
+
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.device."
+        "jsonrpc_errors.handle_error_not_found"
+    )
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.device.validate_virtual_instance")
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_get_device_not_found_by_virtual_instance_validation(
+        self,
+        mock_get_device_manager,
+        mock_get_device,
+        mock_validate_virtual_instance,
+        mock_handle_error_not_found,
+    ):
+        mock_get_device.return_value = Device("dummy", DriverDummy())
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        mock_validate_virtual_instance.return_value = (False, "forbidden")
+        mock_handle_error_not_found.side_effect = jsonrpc_errors.NotFoundError(
+            data={"details": "missing"}
+        )
+
+        mock_client = Mock(spec=GetDeviceRequest)
+        mock_client.name = self.dummy
+        mock_client.details = False
+
+        with pytest.raises(jsonrpc_errors.NotFoundError):
+            get_device(mock_client, {"dummy": "auth"})
+
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.device."
+        "jsonrpc_errors.handle_error_not_found"
+    )
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_get_calibrate_results_device_not_found(
+        self,
+        mock_get_device_manager,
+        mock_get_device,
+        mock_handle_error_not_found,
+    ):
+        mock_get_device.return_value = None
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        mock_handle_error_not_found.side_effect = jsonrpc_errors.NotFoundError(
+            data={"details": "missing"}
+        )
+
+        mock_client = Mock(spec=GetCalibrateResultRequest)
+        mock_client.device_name = self.dummy
+        mock_client.method = "get_calibrate_results"
+
+        with pytest.raises(jsonrpc_errors.NotFoundError):
+            get_calibrate_results(mock_client)

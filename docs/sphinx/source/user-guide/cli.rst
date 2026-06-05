@@ -25,10 +25,11 @@
    # 作业提交
    usage: qcos-cli submit-job [-h] [--code-type {qasm,qasm2,qasm3,qubo}] [--job-id JOB_ID]
                               [--circuit-aggregation {None,internal,external}] [-n JOB_NAME] [--job-type {sampling,estimation}]
-                              [--job-priority JOB_PRIORITY] [--description DESCRIPTION] [--shots SHOTS] [--backend BACKEND]
-                              [--driver-options DRIVER_OPTIONS] [--transpiler TRANSPILER] [--transpiler-options TRANSPILER_OPTIONS]
-                              [--profiling [{all,code,scheduling,driver:parse,driver:transpile,driver:run,machine} ...]] [--callbacks CALLBACKS] [-D]
-                              -f SOURCE_CODE_FILES [SOURCE_CODE_FILES ...]
+                              [--job-priority JOB_PRIORITY] [--description DESCRIPTION] [--shots SHOTS]
+                              [--backend BACKEND] [--driver-options DRIVER_OPTIONS] [--transpiler TRANSPILER]
+                              [--transpiler-options TRANSPILER_OPTIONS]
+                              [--profiling [{all,code,queuing,scheduling,driver:parse,driver:transpile,driver:run,machine} ...]]
+                              [--callbacks CALLBACKS] [-D] -f SOURCE_CODE_FILES [SOURCE_CODE_FILES ...]
 
    Submit job.
 
@@ -55,11 +56,11 @@
      --driver-options DRIVER_OPTIONS
                            Set driver options
      --transpiler TRANSPILER
-                           Set transpiler name. eg. cmss
+                           Set transpiler name.
      --transpiler-options TRANSPILER_OPTIONS
                            Set transpiler options
-     --profiling [{all,code,scheduling,driver:parse,driver:transpile,driver:run,machine} ...]
-                           Profiling types: all,code,scheduling,driver:parse,driver:transpile,driver:run,machine
+     --profiling [{all,code,queuing,scheduling,driver:parse,driver:transpile,driver:run,machine} ...]
+                           Profiling types: all,code,queuing,scheduling,driver:parse,driver:transpile,driver:run,machine
      --callbacks CALLBACKS
                            Callbacks list
      -D, --dry-run         Dry run
