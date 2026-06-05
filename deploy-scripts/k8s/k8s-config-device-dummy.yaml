@@ -145,7 +145,7 @@ data:
 
     [DEVICES]
     # DEVICE_LIST example:
-    # DEVICE_LIST = ["dummy", "hanyuan1", "wy-hanyuan1", "wy-hanyuan1-sim", "tiangong100", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim"]
+    # DEVICE_LIST = ["dummy", "hanyuan1", "wy-hanyuan1", "wy-hanyuan1-sim", "hanyuan1-pulse", "tiangong100", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim"]
     DEVICE_LIST = ["dummy"]
 
   dummy.toml: |
