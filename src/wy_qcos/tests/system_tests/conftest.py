@@ -21,7 +21,7 @@ import pprint
 import pytest
 from pathlib import Path
 
-from wy_qcos.common.constant import Constant
+from wy_qcos.common.constant import Constant, HttpCode
 from wy_qcos_client.client import Client
 from wy_qcos.common.library import Library, _s
 from wy_qcos.common.config import Config
@@ -92,32 +92,24 @@ def global_configs(request):
     GLOBAL_CONFIGS["admin_password"] = admin_password
 
     # Authenticate with admin credentials at the beginning
-    client = Client(api_server_ip=api_host, api_server_port=api_port)
-    admin_client = Client(api_server_ip=api_host, api_server_port=api_port)
-    login_result = StLibrary.login(
-        admin_client, admin_user, str(admin_password)
-    )
-    token = login_result["access_token"]
-    admin_client.set_token(token)
+    client = None
+    admin_client = None
+    virtual_instance_client = None
 
-    # Authenticate with virtual_instance credentials at the beginning
-    # Create admin virtual instance ID with
-    # device_names=["all"] and instance_id="all"
-    virtual_instance_client = Client(
-        api_server_ip=api_host, api_server_port=api_port
+    # try login when auth_mode is unknown
+    client, admin_client, virtual_instance_client = get_client(
+        api_host, api_port, admin_user, admin_password
     )
-    admin_device_names = ["all"]
-    admin_instance_id = "all"
-    success, err_msg, admin_vi_id = Library.encrypt_virtual_instance_id(
-        admin_device_names,
-        admin_instance_id,
-        salt=Config.VIRT.PASSWORD_SALT,
-        encode=True,
+
+    # set auth_mode to 'no' (admin)
+    set_auth_mode(
+        admin_client, virtual_instance_client, auth_mode=Constant.AUTH_MODE_NO
     )
-    if success:
-        virtual_instance_client.request_headers = {
-            "x-qcos-virtual-instance-id": admin_vi_id,
-        }
+
+    # login again to make sure all clients are authenticated
+    client, admin_client, virtual_instance_client = get_client(
+        api_host, api_port, admin_user, admin_password
+    )
 
     GLOBAL_CONFIGS["client"] = client
     GLOBAL_CONFIGS["admin_client"] = admin_client
@@ -125,9 +117,87 @@ def global_configs(request):
 
     # load configs
     load_configs()
+
     # print configs for debug purpose when test fails
     print("\nGLOBAL_CONFIGS:")
     pprint.PrettyPrinter().pprint(GLOBAL_CONFIGS)
+
+
+def get_client(api_host, api_port, admin_user, admin_password):
+    """Get client object."""
+    client = None
+    admin_client = None
+    virtual_instance_client = None
+    try:
+        client = Client(api_server_ip=api_host, api_server_port=api_port)
+    except Exception:  # noqa: S110
+        pass
+
+    try:
+        admin_client = Client(api_server_ip=api_host, api_server_port=api_port)
+        login_result = StLibrary.login(
+            admin_client, admin_user, str(admin_password)
+        )
+        token = login_result["access_token"]
+        admin_client.set_token(token)
+    except Exception:  # noqa: S110
+        pass
+
+    # Authenticate with virtual_instance credentials at the beginning
+    # Create admin virtual instance ID with
+    # device_names=["all"] and instance_id="all"
+    try:
+        virtual_instance_client = Client(
+            api_server_ip=api_host, api_server_port=api_port
+        )
+        admin_device_names = ["all"]
+        admin_instance_id = "all"
+        success, err_msg, admin_vi_id = Library.encrypt_virtual_instance_id(
+            admin_device_names,
+            admin_instance_id,
+            salt=Config.VIRT.PASSWORD_SALT,
+            encode=True,
+        )
+        if success:
+            virtual_instance_client.request_headers = {
+                "x-qcos-virtual-instance-id": admin_vi_id,
+            }
+    except Exception:  # noqa: S110
+        pass
+    return client, admin_client, virtual_instance_client
+
+
+def set_auth_mode(
+    admin_client, virtual_instance_client, auth_mode=Constant.AUTH_MODE_NO
+):
+    """Set auth mode.
+
+    Args:
+        admin_client (Client): Admin client object.
+        virtual_instance_client (Client): Virtual client object.
+        auth_mode (str, optional): Auth mode. Defaults to "no".
+    """
+    status_code, reason, text, result = admin_client.set_user_mgmt(auth_mode)
+    if status_code != HttpCode.SUCCESS_OK:
+        raise Exception(status_code, reason, text)
+    auth_results = json.loads(text)
+    use_auth_virtual_instance = False
+    error = auth_results.get("error", {})
+    if error:
+        if "Failed to auth" in error.get("message", ""):
+            use_auth_virtual_instance = True
+        else:
+            raise Exception(status_code, reason, text)
+    if use_auth_virtual_instance:
+        status_code, reason, text, result = (
+            virtual_instance_client.set_user_mgmt(auth_mode)
+        )
+        if status_code != HttpCode.SUCCESS_OK:
+            raise Exception(status_code, reason, text)
+        auth_results = json.loads(text)
+        error = auth_results.get("error", {})
+        if error:
+            raise Exception(status_code, reason, text)
 
 
 def load_configs():
