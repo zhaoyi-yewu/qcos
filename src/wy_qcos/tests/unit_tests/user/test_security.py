@@ -541,6 +541,11 @@ class TestLoginLogging:
                 None,
                 mock_user_obj,
             )
+            mock_users_repo.get_user_by_id.return_value = (
+                True,
+                None,
+                mock_user_obj,
+            )
 
             # Mock login log tracking
             def mock_create_login_log(
@@ -554,20 +559,28 @@ class TestLoginLogging:
                 log = LoginLog(
                     user_name=user_name,
                     ip_address=ip_address,
-                    success=success,
+                    login_status=success,
                     failure_reason=failure_reason,
                     user_agent=user_agent,
-                    timestamp=datetime.now(),
+                    login_time=datetime.now(),
                 )
                 login_logs.append(log)
 
             mock_users_repo.create_login_log.side_effect = (
                 mock_create_login_log
             )
-            mock_users_repo.get_login_logs.side_effect = lambda limit=100: (
-                True,
-                None,
-                login_logs[-limit:],
+            mock_users_repo.get_login_logs.side_effect = (
+                lambda user_id=None,
+                start_time=None,
+                end_time=None,
+                limit=100,
+                offset=0: (
+                    True,
+                    None,
+                    login_logs[offset : offset + limit]
+                    if limit > 0
+                    else login_logs[offset:],
+                )
             )
             manager.users_repo = mock_users_repo
 

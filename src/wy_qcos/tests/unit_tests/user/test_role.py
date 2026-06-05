@@ -193,12 +193,12 @@ class TestUserManagerRoles:
     def test_get_roles(self, user_manager):
         """Test getting all roles."""
         # Create test roles
-        user_manager.create_role(
+        role1 = user_manager.create_role(
             "role1",
             ["/version", "/v1/device/get_device", "/v1/device/get_devices"],
             "First test role",
         )
-        user_manager.create_role(
+        role2 = user_manager.create_role(
             "role2",
             ["/version", "/v1/device/get_device", "/v1/device/get_devices"],
             "Second test role",
@@ -207,10 +207,11 @@ class TestUserManagerRoles:
         roles = user_manager.get_roles()
 
         assert isinstance(roles, dict)
-        assert "role1" in roles
-        assert "role2" in roles
-        assert roles["role1"].role_name == "role1"
-        assert roles["role2"].role_name == "role2"
+        # Roles are keyed by role ID, not role name
+        assert str(role1.id) in roles
+        assert str(role2.id) in roles
+        assert roles[str(role1.id)].role_name == "role1"
+        assert roles[str(role2.id)].role_name == "role2"
 
     def test_update_role_success(self, user_manager):
         """Test successful role update."""
@@ -222,8 +223,12 @@ class TestUserManagerRoles:
 
         updated_role = user_manager.update_role(
             "testrole",
-            ["/version", "/v1/device/get_device", "/v1/device/get_devices"],
-            "Updated description",
+            permissions=[
+                "/version",
+                "/v1/device/get_device",
+                "/v1/device/get_devices",
+            ],
+            description="Updated description",
         )
 
         assert updated_role.role_name == "testrole"
@@ -239,7 +244,7 @@ class TestUserManagerRoles:
         with pytest.raises(ValueError, match="not found"):
             user_manager.update_role(
                 "nonexistent",
-                [
+                permissions=[
                     "/version",
                     "/v1/device/get_device",
                     "/v1/device/get_devices",
@@ -256,8 +261,12 @@ class TestUserManagerRoles:
 
         updated_role = user_manager.update_role(
             "testrole",
-            ["/version", "/v1/device/get_device", "/v1/device/get_devices"],
-            None,  # Don't update description
+            permissions=[
+                "/version",
+                "/v1/device/get_device",
+                "/v1/device/get_devices",
+            ],
+            description=None,  # Don't update description
         )
 
         assert updated_role.role_name == "testrole"
@@ -280,12 +289,12 @@ class TestUserManagerRoles:
 
         updated_role = user_manager.update_role(
             "testrole",
-            [
+            permissions=[
                 "/version",
                 "/v1/device/get_device",
                 "/v1/device/get_devices",
             ],  # Don't update permissions
-            "Updated description",
+            description="Updated description",
         )
 
         assert updated_role.role_name == "testrole"
@@ -408,7 +417,7 @@ class TestRolePermissionIntegration:
         # Update role with additional permissions
         updated_role = user_manager.update_role(
             "limited_role",
-            [
+            permissions=[
                 "/version",
                 "/v1/device/get_device",
                 "/v1/device/get_devices",
