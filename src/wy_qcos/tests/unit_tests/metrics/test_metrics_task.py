@@ -151,13 +151,31 @@ class TestUpdateJobMetrics:
             ]
         ]
 
+        # Mock job repository
+        mock_job_repo = MagicMock()
+        mock_job_repo.count.return_value = 9
+        mock_job_repo.count_by_attr.side_effect = [
+            2,  # completed
+            1,  # failed
+            1,  # running
+            1,  # queued
+            1,  # cancelling
+            1,  # cancelled
+            1,  # deleted
+            1,  # unknown
+        ]
+
         with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
             ms.aget_jobs = AsyncMock(return_value=(responses, None))
             with patch.object(metrics_collector, "update_job_metrics") as mu:
-                run_async(update_job_metrics())
-                data = mu.call_args.kwargs["data"]
-                assert data.total == 9
-                assert data.completed == 2
+                with patch(
+                    "wy_qcos.metrics.metrics_task.get_job_repo_singleton",
+                    return_value=mock_job_repo,
+                ):
+                    run_async(update_job_metrics())
+                    data = mu.call_args.kwargs["data"]
+                    assert data.total == 9
+                    assert data.completed == 2
 
     def test_empty(self):
         with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
@@ -191,7 +209,7 @@ class TestCheckWorkerHealth:
 
         with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
             ms.get_task_manager.return_value = mock_tm
-            ms.device_manager = mock_dm
+            ms.get_device_manager.return_value = mock_dm
             healthy, msg = run_async(check_worker_health())
             assert healthy and msg == ""
 
@@ -225,7 +243,7 @@ class TestCheckWorkerHealth:
 
         with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
             ms.get_task_manager.return_value = mock_tm
-            ms.device_manager = mock_dm
+            ms.get_device_manager.return_value = mock_dm
             healthy, msg = run_async(check_worker_health())
             assert not healthy and "no_workers" in msg
 
@@ -242,7 +260,7 @@ class TestCheckWorkerHealth:
 
         with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
             ms.get_task_manager.return_value = mock_tm
-            ms.device_manager = mock_dm
+            ms.get_device_manager.return_value = mock_dm
             healthy, msg = run_async(check_worker_health())
             assert not healthy and "no_online" in msg
 
@@ -260,7 +278,7 @@ class TestCheckWorkerHealth:
 
         with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
             ms.get_task_manager.return_value = mock_tm
-            ms.device_manager = mock_dm
+            ms.get_device_manager.return_value = mock_dm
             healthy, msg = run_async(check_worker_health())
             assert not healthy and "timeout" in msg
 
@@ -288,7 +306,7 @@ class TestCheckWorkerHealth:
 
         with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
             ms.get_task_manager.return_value = mock_tm
-            ms.device_manager = mock_dm
+            ms.get_device_manager.return_value = mock_dm
             healthy, msg = run_async(check_worker_health())
             assert healthy and msg == ""
 
@@ -305,7 +323,7 @@ class TestCheckWorkerHealth:
 
         with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
             ms.get_task_manager.return_value = mock_tm
-            ms.device_manager = mock_dm
+            ms.get_device_manager.return_value = mock_dm
             healthy, msg = run_async(check_worker_health())
             assert not healthy and "error:" in msg
 
