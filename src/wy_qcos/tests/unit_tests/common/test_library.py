@@ -385,7 +385,7 @@ class TestLibrary:
 
     def test_encrypt_virtual_instance_id(self):
         """Test encrypt_virtual_instance_id."""
-        uuid_str = "5eb2cc2b195242aeb2d60cf4907a606b"
+        uuid_str = "10000000-0000-4000-8000-000000000101"
         success, _, _ = library.encrypt_virtual_instance_id("dummy", uuid_str)
         assert success is True
         success, _, _ = library.encrypt_virtual_instance_id(
@@ -1350,8 +1350,9 @@ class TestLibrary:
 
     def test_encrypt_virtual_instance_id_with_list(self):
         """Test encrypt_virtual_instance_id with device list."""
+        instance_id = "10000000-0000-4000-8000-000000000101"
         success, _, vid = Library.encrypt_virtual_instance_id(
-            ["device1", "device2"], "uuid-string"
+            ["device1", "device2"], instance_id
         )
         assert success is True
         assert "device1+device2" in vid
@@ -1863,8 +1864,9 @@ class TestLibrary:
 
     def test_decrypt_virtual_instance_id_with_encode(self):
         """Test decrypt_virtual_instance_id with base64 encoding."""
+        instance_id = "10000000-0000-4000-8000-000000000101"
         success, _, vid = Library.encrypt_virtual_instance_id(
-            ["device1"], "uuid-string", salt="salt", encode=True
+            ["device1"], instance_id, salt="salt", encode=True
         )
         assert success is True
         success2, error, devices, instance_id = (

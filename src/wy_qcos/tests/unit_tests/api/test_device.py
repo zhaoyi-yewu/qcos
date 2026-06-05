@@ -149,9 +149,9 @@ class TestDevice:
             == 0.8440000000000001
         )
 
-    @patch.object(TaskScheduler, "add_manage_job")
-    def test_calibrate(self, mock_add_manage_job):
-        mock_add_manage_job.return_value = None
+    @patch.object(TaskScheduler, "submit_manage_job")
+    def test_calibrate(self, mock_submit_manage_job):
+        mock_submit_manage_job.return_value = None
         mock_client = Mock(spec=CalibrateDeviceRequest)
         mock_client.device_name = self.dummy
         mock_client.method = "calibrate_device"
@@ -179,12 +179,12 @@ class TestDevice:
         assert response_info is not None
         assert response_info.details is not None
 
-    @patch.object(TaskScheduler, "add_manage_job")
+    @patch.object(TaskScheduler, "submit_manage_job")
     def test_set_device_options(
         self,
-        mock_add_manage_job,
+        mock_submit_manage_job,
     ):
-        mock_add_manage_job.return_value = None
+        mock_submit_manage_job.return_value = None
         mock_client = Mock(spec=SetDeviceOptionsRequest)
         mock_client.device_name = self.dummy
         mock_client.method = "set_device_options"

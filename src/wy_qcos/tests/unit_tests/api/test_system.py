@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -15,12 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from wy_qcos.api.posiq.routes_jsonrpc.system import ping, system_info
 from wy_qcos.api.schemas import PingRequest
-from wy_qcos.common.constant import Constant
-from wy_qcos.task_manager import TaskScheduler
 from wy_qcos.tests.unit_tests.task_manager.constant_for_test import (
     ConstantForTest,
 )
@@ -37,17 +35,9 @@ class TestSystem:
         response_info = ping(mock_client)
         assert response_info.message == "message"
 
-    @patch.object(TaskScheduler, "get_jobs")
-    def test_system_info(self, mock_get_jobs):
-        mock_get_jobs.return_value = iter([
-            [
-                {
-                    "job_status": Constant.JOB_STATUS_RUNNING,
-                    "id": self.job_id,
-                    "progress": 50,
-                }
-            ],
-            None,
-        ])
-        response_info = system_info(None, None)
+    def test_system_info(self):
+        # system_info uses job_repo.get_jobs_count() which returns an int
+        mock_job_repo = Mock()
+        mock_job_repo.get_jobs_count.return_value = 1
+        response_info = system_info(None, None, job_repo=mock_job_repo)
         assert response_info.total_jobs_count == 1

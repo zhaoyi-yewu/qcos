@@ -25,8 +25,8 @@ This test module covers:
 """
 
 import pytest
-from unittest.mock import Mock
 from datetime import datetime
+from unittest.mock import Mock
 
 from wy_qcos.api.posiq.routes_jsonrpc.user import (
     create_user,
@@ -89,22 +89,10 @@ class TestRBAC:
         mock_request.app.state = Mock()
         mock_request.app.state._user_manager = mock_user_manager
 
-        mock_users_repo = Mock()
-        mock_users_repo.get_user_by_username.return_value = (False, None, None)
-        mock_users_repo.create_user.return_value = (True, None, created_user)
-        mock_roles_repo = Mock()
-        mock_roles_repo.get_role_by_name.return_value = (
-            True,
-            None,
-            admin_role,
-        )
-
         result = create_user(
             body,
             mock_request,
             None,
-            users_repo=mock_users_repo,
-            roles_repo=mock_roles_repo,
         )
 
         assert result is not None
@@ -144,22 +132,10 @@ class TestRBAC:
         mock_request.app.state = Mock()
         mock_request.app.state._user_manager = mock_user_manager
 
-        mock_users_repo = Mock()
-        mock_users_repo.get_user_by_username.return_value = (False, None, None)
-        mock_users_repo.create_user.return_value = (True, None, created_user)
-        mock_roles_repo = Mock()
-        mock_roles_repo.get_role_by_name.return_value = (
-            True,
-            None,
-            viewer_role,
-        )
-
         result = create_user(
             body,
             mock_request,
             None,
-            users_repo=mock_users_repo,
-            roles_repo=mock_roles_repo,
         )
 
         assert result is not None
@@ -214,14 +190,17 @@ class TestRBAC:
             description="Limited to devices",
         )
 
-        mock_roles_repo = Mock()
-        mock_roles_repo.get_roles.return_value = (
-            True,
-            None,
-            [admin_role, operator_role],
-        )
+        mock_user_manager.get_roles.return_value = {
+            "admin": admin_role,
+            "operator": operator_role,
+        }
 
-        roles = get_roles(None, None, roles_repo=mock_roles_repo)
+        mock_request = Mock()
+        mock_request.app = Mock()
+        mock_request.app.state = Mock()
+        mock_request.app.state._user_manager = mock_user_manager
+
+        roles = get_roles(mock_request)
 
         # Find roles by name in the response
         admin_roles = [r for r in roles.values() if r.role_name == "admin"]
@@ -513,12 +492,18 @@ class TestUserPermissionIntegration:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        mock_users_repo = Mock()
-        mock_users_repo.get_user_by_id.return_value = (True, None, admin_user)
+        mock_user_manager.get_user_by_id.return_value = admin_user
 
-        body = user_schemas.GetUserRequest(user_id="admin-uuid")
-        auth_data = {"user_id": "admin-uuid", "roles": ["admin"]}
-        result = get_user(body, auth_data, users_repo=mock_users_repo)
+        admin_uuid = "00000000-0000-4000-8000-000000000001"
+        body = user_schemas.GetUserRequest(user_id=admin_uuid)
+
+        mock_request = Mock()
+        mock_request.app = Mock()
+        mock_request.app.state = Mock()
+        mock_request.app.state._user_manager = mock_user_manager
+
+        auth_data = {"user_id": admin_uuid, "roles": ["admin"]}
+        result = get_user(body, mock_request, auth_data)
 
         assert result is not None
         assert "admin" in result.roles
@@ -536,16 +521,18 @@ class TestUserPermissionIntegration:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        mock_users_repo = Mock()
-        mock_users_repo.get_user_by_id.return_value = (
-            True,
-            None,
-            limited_user,
-        )
+        mock_user_manager.get_user_by_id.return_value = limited_user
 
-        body = user_schemas.GetUserRequest(user_id="operator-uuid")
-        auth_data = {"user_id": "operator-uuid", "roles": ["operator"]}
-        result = get_user(body, auth_data, users_repo=mock_users_repo)
+        operator_uuid_str = "00000000-0000-4000-8000-000000000002"
+        body = user_schemas.GetUserRequest(user_id=operator_uuid_str)
+
+        mock_request = Mock()
+        mock_request.app = Mock()
+        mock_request.app.state = Mock()
+        mock_request.app.state._user_manager = mock_user_manager
+
+        auth_data = {"user_id": operator_uuid_str, "roles": ["operator"]}
+        result = get_user(body, mock_request, auth_data)
 
         assert result is not None
         assert "operator" in result.roles
