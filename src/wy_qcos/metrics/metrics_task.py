@@ -19,17 +19,19 @@ import asyncio
 import logging
 import threading
 import time
-from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
 import redis.asyncio as async_redis
 from prefect.client.schemas.objects import WorkerStatus
+from sqlalchemy.orm import Session
 
 from wy_qcos.common.constant import (
     Constant,
     HttpCode,
 )
+from wy_qcos.db.models import Job
+from wy_qcos.db.repositories.job import JobRepository
 from wy_qcos.metrics import metrics_collector
 from wy_qcos.task_manager import scheduler
 
@@ -42,9 +44,92 @@ WORKER_CHECK_RETRY_DELAY = 2.0
 REDIS_CHECK_TIMEOUT = 2.0
 METRICS_TOTAL_TIMEOUT = 15.0
 
+_db_session = None
+_job_repo = None
 _redis_client = None
 _worker_check_executor = None
 _executor_lock = threading.Lock()
+_app = None
+
+
+def set_app(app):
+    """Set FastAPI app instance for accessing app.state._db_engine.
+
+    Args:
+        app: FastAPI application instance
+    """
+    global _app
+    _app = app
+    logger.debug("FastAPI app instance set for metrics task")
+
+
+def init_metrics_singletons():
+    """Initialize all metrics singletons (db_session and job_repo)."""
+    logger.debug("Initializing metrics singletons")
+    try:
+        # Initialize db_session first
+        get_db_session_singleton()
+        # Then initialize job_repo
+        get_job_repo_singleton()
+        logger.info("Metrics singletons initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize metrics singletons: {e}")
+        raise
+
+
+def get_db_session_singleton():
+    """Get or initialize singleton database session.
+
+    Initialize once per process and reuse throughout process lifetime.
+
+    Returns:
+        Database session
+    """
+    global _db_session
+    if _db_session is None:
+        logger.debug("Initializing singleton database session")
+        if _app is None:
+            raise RuntimeError(
+                "FastAPI app not initialized. "
+                "Call set_app() from metrics_task first."
+            )
+        db_engine = _app.state._db_engine
+        if db_engine is None:
+            raise RuntimeError(
+                "Database engine not initialized in app.state._db_engine"
+            )
+        # Create SQLAlchemy session directly (not using context manager)
+        _db_session = Session(db_engine, expire_on_commit=False)
+        logger.debug("Created singleton database session")
+    return _db_session
+
+
+def get_job_repo_singleton():
+    """Get or initialize singleton job repository.
+
+    Returns:
+        JobRepository instance
+    """
+    global _job_repo
+    if _job_repo is None:
+        db_session = get_db_session_singleton()
+        _job_repo = JobRepository(db_session)
+        logger.debug("Initialized singleton job repository")
+    return _job_repo
+
+
+def clear_db_session():
+    """Clear the singleton database session."""
+    global _db_session, _job_repo
+    if _db_session is not None:
+        try:
+            _db_session.close()
+            logger.debug("Closed database session")
+        except Exception as e:
+            logger.debug(f"Error closing database session: {e}")
+
+    _db_session = None
+    _job_repo = None
 
 
 def _get_worker_check_executor():
@@ -143,42 +228,55 @@ def require_sync_client(func):
 
 
 async def update_job_metrics():
-    """Update job metrics from task scheduler."""
-    logger.debug("Getting jobs asynchronously")
+    """Update job metrics from database using singleton session."""
+    logger.debug("Querying job metrics from database")
 
     try:
-        # used async get_jobs
-        responses, err = await scheduler.aget_jobs()
+        # Use singleton job repository (initialized once per process)
+        job_repo = get_job_repo_singleton()
 
-        if responses:
-            total = len(responses)
+        # Count jobs by status using database queries (more efficient)
+        total = job_repo.count(Job)
+        completed = job_repo.count_by_attr(
+            Job, "job_status", Constant.JOB_STATUS_COMPLETED
+        )
+        failed = job_repo.count_by_attr(
+            Job, "job_status", Constant.JOB_STATUS_FAILED
+        )
+        running = job_repo.count_by_attr(
+            Job, "job_status", Constant.JOB_STATUS_RUNNING
+        )
+        queued = job_repo.count_by_attr(
+            Job, "job_status", Constant.JOB_STATUS_QUEUED
+        )
+        cancelling = job_repo.count_by_attr(
+            Job, "job_status", Constant.JOB_STATUS_CANCELLING
+        )
+        cancelled = job_repo.count_by_attr(
+            Job, "job_status", Constant.JOB_STATUS_CANCELLED
+        )
+        deleted = job_repo.count_by_attr(
+            Job, "job_status", Constant.JOB_STATUS_DELETED
+        )
+        unknown = job_repo.count_by_attr(
+            Job, "job_status", Constant.JOB_STATUS_UNKNOWN
+        )
 
-            status_counts = Counter(job.get("job_status") for job in responses)
+        data = metrics_collector.job_metrics.JobMetricsData(
+            total=total,
+            completed=completed,
+            failed=failed,
+            running=running,
+            queued=queued,
+            cancelling=cancelling,
+            cancelled=cancelled,
+            deleted=deleted,
+            unknown=unknown,
+        )
 
-            completed = status_counts.get(Constant.JOB_STATUS_COMPLETED, 0)
-            failed = status_counts.get(Constant.JOB_STATUS_FAILED, 0)
-            running = status_counts.get(Constant.JOB_STATUS_RUNNING, 0)
-            queued = status_counts.get(Constant.JOB_STATUS_QUEUED, 0)
-            cancelling = status_counts.get(Constant.JOB_STATUS_CANCELLING, 0)
-            cancelled = status_counts.get(Constant.JOB_STATUS_CANCELLED, 0)
-            deleted = status_counts.get(Constant.JOB_STATUS_DELETED, 0)
-            unknown = status_counts.get(Constant.JOB_STATUS_UNKNOWN, 0)
-
-            data = metrics_collector.job_metrics.JobMetricsData(
-                total=total,
-                completed=completed,
-                failed=failed,
-                running=running,
-                queued=queued,
-                cancelling=cancelling,
-                cancelled=cancelled,
-                deleted=deleted,
-                unknown=unknown,
-            )
-
-            metrics_collector.update_job_metrics(data=data)
+        metrics_collector.update_job_metrics(data=data)
     except Exception as e:
-        logger.error(f"Error updating job metrics: {e}", exc_info=True)
+        logger.error(f"Error updating job metrics from database: {e}")
 
 
 @require_sync_client
@@ -188,7 +286,7 @@ async def check_worker_health(sync_client=None) -> tuple[bool, str]:
     Check if there is at least one online worker in all work pools,
     execute concurrently with timeout.
     """
-    device_names = list(scheduler.device_manager.get_devices().keys())
+    device_names = list(scheduler.get_device_manager().get_devices().keys())
     if not device_names:
         return False, "No devices configured"
 
