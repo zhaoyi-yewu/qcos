@@ -149,11 +149,27 @@ class DriverDummy(DriverBase):
         sleep = self.driver_options.get("sleep", None)
         if sleep:
             self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
+            # Get progress range: TASK_STAGE_WAIT_TASK to TASK_STAGE_COMPLETE
+            wait_task_progress = self.task_stages.get(
+                self.TASK_STAGE_WAIT_TASK, 50
+            )
+            complete_progress = self.task_stages.get(
+                self.TASK_STAGE_COMPLETE, 100
+            )
+            progress_range = complete_progress - wait_task_progress
+
             sleep_count = 1
             while sleep_count <= sleep:
                 logger.info(f"sleep: {sleep_count} / {sleep}")
-                time.sleep(1)
+
+                # Calculate progress within wait_task to complete range
+                progress_ratio = sleep_count / sleep
+                current_progress = int(
+                    wait_task_progress + progress_ratio * progress_range
+                )
+                self.set_progress(current_progress)
                 sleep_count += 1
+                time.sleep(1)
 
         # dummy driver results
         result = self.get_fake_results(num_qubits, shots, data)

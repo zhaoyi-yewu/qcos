@@ -15,23 +15,17 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import asyncio
 import copy
-from datetime import datetime
 import importlib
 import numpy as np
+import os
 import signal
-import sys
 import time
+from datetime import datetime
 from typing import Any
 
 from loguru import logger
 from prefect import flow, task, pause_flow_run
-from prefect.artifacts import (
-    create_progress_artifact,
-    update_progress_artifact,
-)
-from prefect.context import get_run_context
 from prefect.input import RunInput
 
 from wy_qcos.common.constant import Constant
@@ -55,6 +49,7 @@ from wy_qcos.transpiler.common.wirecut.cut_wire import (
     reconstruct_probability_distribution_wire_cut,
 )
 from wy_qcos.db.utils import db_utils
+from wy_qcos.db.database import init_database
 
 
 class AggregationInput(RunInput):
@@ -181,6 +176,13 @@ def init_transpiler(transpiler_class_info, transpiler_options):
 def task_monitor(monitor_info):
     driver = None
     last_job_progress = 0
+    job_id = monitor_info.get("job_id")
+    db_engine = monitor_info.get("db_engine")
+
+    if not job_id or not db_engine:
+        logger.warning("job_id or db_engine not found in monitor_info")
+        return
+
     while monitor_info["running"]:
         if not driver:
             driver = monitor_info["driver"]
@@ -192,11 +194,11 @@ def task_monitor(monitor_info):
                 )
             )
             if last_job_progress != job_progress:
-                # update flow
-                update_progress(monitor_info["artifact_id"], job_progress)
+                # update job progress to database
+                update_progress(job_id, db_engine, job_progress)
             last_job_progress = job_progress
         time.sleep(1)
-    update_progress(monitor_info["artifact_id"], 100)
+    update_progress(job_id, db_engine, 100)
 
 
 @task(persist_result=False)
@@ -322,21 +324,34 @@ def register_signals(job_id, monitor):
             frame: frame
         """
         logger.info(f"Received sigterm, cancelling job: {job_id} ...")
+
+        # Update job status to CANCELLED in database
+        try:
+            db_engine = monitor.get("db_engine")
+            job_status = Constant.JOB_STATUS_CANCELLING
+            db_utils.db_update_job(job_id, db_engine, job_status=job_status)
+        except Exception as e:
+            logger.error(
+                f"Failed to update job status to CANCELLING: {str(e)}"
+            )
+
         driver = monitor["driver"]
         driver_cancel(job_id, driver)
-        sys.exit(0)
+
+        os._exit(1)  # force to exit when user cancelled a job
 
     signal.signal(signal.SIGTERM, handle_sigterm)
 
 
-def update_progress(artifact_id, progress):
-    """Update progress.
+def update_progress(job_id, db_engine, progress):
+    """Update job progress to database.
 
     Args:
-        artifact_id: artifact id
-        progress: progress
+        job_id: job ID
+        db_engine: database engine instance
+        progress: progress value (0-100)
     """
-    update_progress_artifact(artifact_id=artifact_id, progress=progress)
+    db_utils.db_update_job(job_id, db_engine, progress=progress)
 
 
 def create_src_code_info(job_data):
@@ -509,10 +524,10 @@ def get_external_aggregated_results(job_results, mapping_dict):
             "profiling": job_results["profiling"],
         }
         # TODO(all) workaround code, need to improve it.
-        end_time = single_result["metadata"]["end_date"]
+        end_time = single_result["metadata"]["ended_at"]
         if isinstance(end_time, datetime):
             new_time = end_time.isoformat()
-            single_result["metadata"]["end_date"] = new_time
+            single_result["metadata"]["ended_at"] = new_time
         new_id = job_id.rsplit("-", 1)[0]
         sub_results[new_id] = single_result
 
@@ -522,10 +537,10 @@ def get_external_aggregated_results(job_results, mapping_dict):
 
 @flow(
     persist_result=True,
-    on_failure=[Library.job_callback],
-    on_crashed=[Library.job_callback],
-    on_cancellation=[Library.job_callback],
-    on_completion=[db_utils.job_callback],
+    on_failure=[db_utils.db_job_callback],
+    on_crashed=[db_utils.db_job_callback],
+    on_cancellation=[db_utils.db_job_callback],
+    on_completion=[db_utils.db_job_callback],
 )
 def job_flow(job_info):
     """Job flow.
@@ -560,6 +575,7 @@ def job_flow(job_info):
     Returns:
         results
     """
+    worker_started_at = Library.get_current_datetime()
     job_data = job_info["data"]
     job_id = job_data["job_id"]
     global_configs = job_info["global"]["configs"]
@@ -567,8 +583,17 @@ def job_flow(job_info):
     backend = job_data["backend"]
     profiling_code_start = 0
     callbacks = job_data.get("callbacks", None)
+    job_enqueue_at = datetime.fromisoformat(job_data["job_enqueue_at"])
+    profiling_scheduling_duration = job_data["job_schedule_duration"]
     monitor_info = {
-        "artifact_id": None,
+        "job_id": job_id,
+        "configs": global_configs,
+        "device_configs": device_configs,
+        "callbacks": callbacks,
+        "user": {
+            "project_id": job_data.get("project_id", None),
+            "user_id": job_data.get("user_id", None),
+        },
         "running": True,
         "driver": None,
         "source_code_index": 0,
@@ -598,9 +623,26 @@ def job_flow(job_info):
         log_rotate_backup_count=log_rotate_backup_count,
         log_rotate_compression=log_rotate_compression,
     )
-    logger.info(
-        f"Processing work flow: job_engine. "
-        f"job_id: {job_id}, job_info: {job_info}"
+    logger.info(f"Processing work flow: job_engine. job_id: {job_id}")
+    logger.debug(f"Job details: job_id: {job_id}, job_info: {job_info}")
+
+    # init db engine
+    try:
+        db_url = global_configs["DATABASE"]["QCOS_DATABASE_CONNECTION_URL"]
+        db_engine = init_database(db_url)
+        monitor_info["db_engine"] = db_engine
+        db_utils.set_db_engine(db_engine)
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {str(e)}")
+        db_engine = None
+
+    # update job status to RUNNING and set started_at
+    db_utils.db_update_job(
+        job_id,
+        db_engine,
+        job_status=Constant.JOB_STATUS_RUNNING,
+        started_at=worker_started_at,
+        progress=-1,
     )
 
     # register signals for job cancelling
@@ -615,8 +657,6 @@ def job_flow(job_info):
         profiling_code_start = time.time()
 
     # start task-monitor
-    artifact_id = create_progress_artifact(progress=0.0, key=job_id)
-    monitor_info["artifact_id"] = artifact_id
     flow_task_monitor(monitor_info)
 
     # handle aggregation jobs
@@ -666,13 +706,30 @@ def job_flow(job_info):
         source_code_index += len(src_code_dict)
         # profiling: job
         if profiling_types and (
+            Constant.PROFILING_TYPE_SCHEDULING in profiling_types
+            or Constant.PROFILING_TYPE_ALL in profiling_types
+        ):
+            job_results["profiling"][Constant.PROFILING_TYPE_SCHEDULING] = (
+                round(profiling_scheduling_duration, 5)
+            )
+        if profiling_types and (
+            Constant.PROFILING_TYPE_QUEUING in profiling_types
+            or Constant.PROFILING_TYPE_ALL in profiling_types
+        ):
+            profiling_queuing_duration = (
+                worker_started_at - job_enqueue_at
+            ).total_seconds()
+            job_results["profiling"][Constant.PROFILING_TYPE_QUEUING] = round(
+                profiling_queuing_duration, 5
+            )
+        if profiling_types and (
             Constant.PROFILING_TYPE_CODE in profiling_types
             or Constant.PROFILING_TYPE_ALL in profiling_types
         ):
             profiling_code_end = time.time()
             profiling_code_duration = profiling_code_end - profiling_code_start
-            job_results["profiling"][Constant.PROFILING_TYPE_CODE] = (
-                profiling_code_duration
+            job_results["profiling"][Constant.PROFILING_TYPE_CODE] = round(
+                profiling_code_duration, 5
             )
 
         # handle job aggregation
@@ -691,11 +748,6 @@ def job_flow(job_info):
                 job_results, mapping_dict
             )
             job_results_list.extend(aggregated_res)
-
-    # handle completed/failed callbacks
-    if callbacks:
-        context = get_run_context()
-        run_job_callback(context, job_results_list)
 
     # set monitor_info
     monitor_info["running"] = False
@@ -745,8 +797,8 @@ def _run_code(
         src_code_dict, transpiler, profiling_types, code_type
     )
     if profiling_time:
-        job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_PARSE] = (
-            profiling_time
+        job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_PARSE] = round(
+            profiling_time, 5
         )
 
     # parser: error handling
@@ -766,7 +818,7 @@ def _run_code(
     )
     if profiling_time:
         job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_TRANSPILE] = (
-            profiling_time
+            round(profiling_time, 5)
         )
 
     # transpile: error handling
@@ -799,15 +851,18 @@ def _run_code(
 
         if profiling_time:
             job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_RUN] = (
-                profiling_time
+                round(profiling_time, 5)
             )
         if (
             Constant.PROFILING_TYPE_MACHINE in profiling_types
             or Constant.PROFILING_TYPE_ALL in profiling_types
         ):
+            profiling_queuing_duration = None
             machine_time_info = run_results.get("machine_time_info", None)
+            if machine_time_info:
+                profiling_queuing_duration = round(machine_time_info, 5)
             job_results["profiling"][Constant.PROFILING_TYPE_MACHINE] = (
-                machine_time_info
+                profiling_queuing_duration
             )
         # run: error handling
         err_msg = run_results.get("error", None)
@@ -1605,7 +1660,7 @@ def format_run_results(driver, job_id, data_index):
         formatted results
     """
     results = None
-    end_date = None
+    ended_at = None
     job_status = None
     driver_results_fetch_mode = None
 
@@ -1617,7 +1672,7 @@ def format_run_results(driver, job_id, data_index):
         "metadata": {
             "results_fetch_mode": driver_results_fetch_mode,
             "status": None,
-            "end_date": None,
+            "ended_at": None,
         },
         "error": None,
     }
@@ -1626,7 +1681,7 @@ def format_run_results(driver, job_id, data_index):
         # sync mode: get results immediately
         results = driver.get_results(job_id, data_index)
         job_status = Constant.JOB_STATUS_COMPLETED
-        end_date = Library.get_current_datetime()
+        ended_at = Library.get_current_datetime().isoformat()
         machine_time_info = driver.get_machine_time_info(job_id, data_index)
     elif driver_results_fetch_mode == Constant.RESULTS_FETCH_MODE_ASYNC:
         # async mode: get results in the async set-job-results call
@@ -1634,7 +1689,7 @@ def format_run_results(driver, job_id, data_index):
 
     job_results["results"] = results
     job_results["metadata"]["status"] = job_status
-    job_results["metadata"]["end_date"] = end_date
+    job_results["metadata"]["ended_at"] = ended_at
     job_results["machine_time_info"] = machine_time_info
     return job_results
 
@@ -1660,7 +1715,7 @@ def format_error_results(driver, err_cls, err_msg):
         "metadata": {
             "results_fetch_mode": driver_results_fetch_mode,
             "status": None,
-            "end_date": None,
+            "ended_at": None,
         },
         "profiling": {},
         "error": None,
@@ -1668,31 +1723,12 @@ def format_error_results(driver, err_cls, err_msg):
 
     err = err_cls(err_msg)
     job_results["metadata"]["status"] = Constant.JOB_STATUS_FAILED
-    job_results["metadata"]["end_date"] = Library.get_current_datetime()
+    job_results["metadata"]["ended_at"] = (
+        Library.get_current_datetime().isoformat()
+    )
     job_results["error"] = {
         "code": err.get_error_code(),
         "message": err.get_err_msgs(),
     }
     logger.error(f"{driver}: {err}")
     return job_results
-
-
-def run_job_callback(context, job_results_list):
-    """Run job_callback.
-
-    Args:
-        context: context
-        job_results_list: list of job results
-    """
-    current_flow = context.flow
-    current_flow_run = context.flow_run
-    current_flow_state = current_flow_run.state
-    _job_results_list = asyncio.run(
-        Library.job_callback(
-            current_flow,
-            current_flow_run,
-            current_flow_state,
-            results=job_results_list,
-        )
-    )
-    return _job_results_list

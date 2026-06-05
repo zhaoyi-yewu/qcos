@@ -89,7 +89,7 @@ class DriverBase:
         # transpiler type
         self.transpiler = Constant.TRANSPILER_CMSS
         # supported code types
-        self.supported_code_types = None
+        self.supported_code_types = []
         # quantum computer technology type
         self.tech_type = None
         # enable circuit aggregation or not

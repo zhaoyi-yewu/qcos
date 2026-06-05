@@ -15,32 +15,30 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import asyncio
 import logging
-from abc import ABC
-
-import inspect
-from prefect import exceptions as prefect_exceptions
 
 from wy_qcos.common import errors
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
+from wy_qcos.db.repositories.job import JobRepository
+from wy_qcos.db.utils.db_utils import create_db_session
 from .task_manager import TaskFlowManager
 
 logger = logging.getLogger(__name__)
 
 
-class TaskScheduler(ABC):
+class TaskScheduler:
     """Task scheduler."""
 
     def __init__(self):
         """Init TaskScheduler."""
         self._task_manager = TaskFlowManager()
         self._policy_handler = PrioritySchedulingPolicy(self._task_manager)
-        self.driver_manager = None
-        self.transpiler_manager = None
-        self.device_manager = None
+        self._transpiler_manager = None
+        self._driver_manager = None
+        self._device_manager = None
+        self._db_engine = None
 
     def start_taskmanager(self):
         """Start TaskManager."""
@@ -52,7 +50,7 @@ class TaskScheduler(ABC):
         Args:
             driver_manager: driver manager
         """
-        self.driver_manager = driver_manager
+        self._driver_manager = driver_manager
         self._task_manager.set_driver_manager(driver_manager)
 
     def get_task_manager(self):
@@ -69,7 +67,7 @@ class TaskScheduler(ABC):
         Returns:
             driver manager
         """
-        return self.driver_manager
+        return self._driver_manager
 
     def set_transpiler_manager(self, transpiler_manager):
         """Set transpiler manager.
@@ -77,7 +75,7 @@ class TaskScheduler(ABC):
         Args:
             transpiler_manager: transpiler manager
         """
-        self.transpiler_manager = transpiler_manager
+        self._transpiler_manager = transpiler_manager
 
     def get_transpiler_manager(self):
         """Get transpiler manager.
@@ -85,7 +83,7 @@ class TaskScheduler(ABC):
         Returns:
             transpiler manager
         """
-        return self.transpiler_manager
+        return self._transpiler_manager
 
     def set_device_manager(self, device_manager):
         """Set device manager.
@@ -93,8 +91,16 @@ class TaskScheduler(ABC):
         Args:
             device_manager: device manager
         """
-        self.device_manager = device_manager
+        self._device_manager = device_manager
         self._task_manager.set_device_manager(device_manager)
+
+    def set_db_engine(self, db_engine):
+        """Set database engine.
+
+        Args:
+            db_engine: database engine
+        """
+        self._db_engine = db_engine
 
     def get_device_manager(self):
         """Get device manager.
@@ -102,60 +108,27 @@ class TaskScheduler(ABC):
         Returns:
             device manager
         """
-        return self.device_manager
+        return self._device_manager
 
-    def add(self, job_info, tags=None):
-        """Add job to scheduler.
+    def submit(self, job_info, tags=None, extra_job_data_info={}):
+        """Submit job to scheduler.
 
         Args:
             job_info: job info
             tags: prefect flow tags
+            extra_job_data_info: extra job data info
 
         Returns:
-            added job info, error messages
+            submitted job info, error messages
         """
-        # check Job UUID
-        if job_info.job_id:
-            exist = self.has_job(job_info.job_id)
-            if exist:
-                return None, f"Job uuid is already existed: {job_info.job_id}"
-
         # check current all flows count exceed MAX_JOBS
         all_flows = self._task_manager.get_flow_runs_with_filters()
         all_flow_count = len(all_flows)
-        if all_flow_count >= Config.DEFAULT.MAX_JOBS:
-            return None, (
-                f"Current job count exceeds max job limit: "
-                f"{Config.DEFAULT.MAX_JOBS}"
-            )
         if all_flow_count >= Constant.FLOW_LIMIT:
             return None, (
-                f"Current job count exceeds max flow limit: "
+                f"Current flow count exceeds max flow limit: "
                 f"{Constant.FLOW_LIMIT}"
             )
-        # check max jobs of virtual_instance when AUTH_MODE is virtual_instance
-        if (
-            Config.DEFAULT.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE
-            and tags is not None
-        ):
-            virtual_instance_flows = (
-                self._task_manager.get_flow_runs_with_filters(tags=tags)
-            )
-            virtual_instance_flows_count = len(virtual_instance_flows)
-            if (
-                virtual_instance_flows_count
-                >= Config.VIRT.MAX_JOBS_PER_VIRTUAL_INSTANCE
-            ):
-                return (
-                    None,
-                    "The number of current jobs "
-                    f"({virtual_instance_flows_count}) has exceeded the "
-                    "maximum quota limit "
-                    f"({Config.VIRT.MAX_JOBS_PER_VIRTUAL_INSTANCE}) for this "
-                    "instance. "
-                    "Please delete some existing jobs before creating "
-                    "new ones",
-                )
 
         # check current queued+running flows count exceed MAX_QUEUED_JOBS
         wait_states = self._task_manager.convert_to_prefect_states(
@@ -173,7 +146,7 @@ class TaskScheduler(ABC):
 
         # get driver info
         backend = job_info.backend
-        device = self.device_manager.get_device(backend)
+        device = self._device_manager.get_device(backend)
         if not device:
             err_msg = f"Backend: '{backend}' is not found"
             logger.error(err_msg)
@@ -183,14 +156,18 @@ class TaskScheduler(ABC):
             logger.error(err_msg)
             return None, f"Execute work flow failed: {err_msg}"
 
-        pool_wait_states_flows = self._task_manager.get_flow_runs_with_filters(
-            states=wait_states, pool_name=backend
+        pool_wait_states_flows_count = len(
+            self._task_manager.get_flow_runs_with_filters(
+                states=wait_states, pool_name=backend
+            )
         )
-        pool_wait_states_flows_count = len(pool_wait_states_flows)
         device_max_queued_jobs = device.get_max_queued_jobs()
-        if (
-            device_max_queued_jobs == 0 and pool_wait_states_flows_count > 0
-        ) or (
+
+        # Check device queue limit (only if max_queued_jobs is set to >= 0)
+        if device_max_queued_jobs == 0:
+            if pool_wait_states_flows_count > 0:
+                return None, "Device does not allow queued jobs"
+        elif (
             device_max_queued_jobs > 0
             and pool_wait_states_flows_count >= device_max_queued_jobs
         ):
@@ -208,7 +185,7 @@ class TaskScheduler(ABC):
         transpiler_module_name = None
         transpiler_class_name = None
         transpiler_name = driver.get_transpiler()
-        transpiler = self.transpiler_manager.get_transpiler(transpiler_name)
+        transpiler = self._transpiler_manager.get_transpiler(transpiler_name)
         if transpiler:
             transpiler_module_name = transpiler.get_module_name()
             transpiler_class_name = transpiler.get_class_name()
@@ -219,6 +196,7 @@ class TaskScheduler(ABC):
             deployment = self._task_manager.get_deployment(deployment_name)
             job_json_info = {}
             job_json_info["data"] = job_info.model_dump()
+            job_json_info["data"].update(extra_job_data_info)
             job_json_info["driver"] = {
                 "module_name": driver_module_name,
                 "class_name": driver_class_name,
@@ -231,32 +209,27 @@ class TaskScheduler(ABC):
             job_json_info["device"] = {"configs": device.get_configs()}
             job_json_info["global"] = {"configs": Config.get_configs()}
 
-            job_id = self._policy_handler.exec_task(
+            flow_run_id = self._policy_handler.exec_task(
                 deployment, job_json_info, tags=tags
             )
-            res = {"job_id": job_id}
+            res = {"flow_run_id": flow_run_id}
             return res, None
         except Exception as e:
             logger.error(f"Prefect execute flow error: {str(e)}")
             raise errors.WorkFlowError(e)
 
-    def add_manage_job(self, job_info):
-        """Add manage job to scheduler.
+    def submit_manage_job(self, job_info):
+        """Submit manage job to scheduler.
 
         Args:
             job_info: job info
 
         Returns:
-            added job info, error messages
+            submitted job info, error messages
         """
         # check current all flows count exceed MAX_JOBS
         all_flows = self._task_manager.get_flow_runs_with_filters()
         all_flow_count = len(all_flows)
-        if all_flow_count >= Config.DEFAULT.MAX_JOBS:
-            return None, (
-                f"Current job count exceeds max job limit: "
-                f"{Config.DEFAULT.MAX_JOBS}"
-            )
         if all_flow_count >= Constant.FLOW_LIMIT:
             return None, (
                 f"Current job count exceeds max flow limit: "
@@ -279,7 +252,7 @@ class TaskScheduler(ABC):
 
         # get driver info
         backend = job_info.device_name
-        device = self.device_manager.get_device(backend)
+        device = self._device_manager.get_device(backend)
         if not device:
             err_msg = f"Backend: '{backend}' is not found"
             logger.error(err_msg)
@@ -308,14 +281,14 @@ class TaskScheduler(ABC):
             }
             device_mgr_info["device"] = {"configs": device.get_configs()}
             device_mgr_info["redis"] = {
-                "ip": self.device_manager.config.REDIS.REDIS_SERVER_IP,
-                "port": self.device_manager.config.REDIS.REDIS_SERVER_PORT,
+                "ip": self._device_manager.config.REDIS.REDIS_SERVER_IP,
+                "port": self._device_manager.config.REDIS.REDIS_SERVER_PORT,
             }
             device_mgr_info["global"] = {"configs": Config.get_configs()}
-            succ, details = self._policy_handler.exec_manage_task(
+            success, details = self._policy_handler.exec_manage_task(
                 deployment, device_mgr_info
             )
-            if succ:
+            if success:
                 return details
             else:
                 logger.error(f"exec manage task error details: {details}")
@@ -324,272 +297,226 @@ class TaskScheduler(ABC):
             logger.error(f"Prefect execute flow error: {str(e)}")
             raise errors.WorkFlowError(e)
 
-    def get_result_by_id(self, job_id, tags=None):
-        """Get result by job id.
+    def delete_flows(self, flow_run_ids):
+        """Delete flows.
 
         Args:
-            job_id: job id
-            tags: prefect flow tags
-
-        Returns:
-            flow info
-        """
-        try:
-            state, parameters, results, error_message = (
-                self._task_manager.get_task_flow_result(job_id, tags)
-            )
-            state = self._task_manager.convert_to_qcos_state(state)
-            job_status = self.get_job_status(state, results, parameters)
-            artifact = self._task_manager.get_job_artifact(job_id)
-            response = {
-                "job_status": job_status,
-                "parameters": parameters,
-                "results": results,
-                "artifact": artifact,
-                "error_message": error_message,
-            }
-            return response, None
-        except prefect_exceptions.ObjectNotFound as e:
-            err_msg = f"Job: '{job_id}' is not found"
-            logger.warning(err_msg)
-            raise errors.NotFound(err_msg) from e
-        except Exception as e:
-            logger.error(f"Prefect execute flow error: {str(e)}")
-            raise errors.WorkFlowError(e)
-
-    def has_job(self, job_id):
-        """Check if flow exists.
-
-        Args:
-            job_id: job id
-
-        Returns:
-            if flow exists
-        """
-        return self._task_manager.has_flow(job_id)
-
-    def get_jobs(self, tags=None):
-        """Get job list.
-
-        Args:
-            tags: prefect flow tags
-
-        Returns:
-            job list
-        """
-        try:
-            flow_list = self._task_manager.get_task_flow_list(tags=tags)
-            for flow in flow_list:
-                flow["job_status"] = self.get_job_status(
-                    flow["state"], flow["results"], flow["parameters"]
-                )
-            return flow_list, None
-        except Exception as e:
-            logger.error(f"Prefect execute flow error: {str(e)}")
-            raise errors.WorkFlowError(e)
-
-    async def aget_jobs(self, tags=None):
-        """Asynchronously get job list.
-
-        This method is designed to be used in async contexts to avoid
-        coroutine object issues when accessing state.result().
-
-        Args:
-            tags: prefect flow tags
-
-        Returns:
-            job list
-        """
-        try:
-            # Use run_in_executor to safely call the synchronous method
-            # in an async context without event loop conflicts
-            loop = asyncio.get_running_loop()
-            flow_list = await loop.run_in_executor(
-                None, lambda: self._task_manager.get_task_flow_list(tags=tags)
-            )
-
-            # Process results to handle any potential coroutines
-            for flow in flow_list:
-                # If results is a coroutine, await it
-                if flow["results"] and inspect.iscoroutine(flow["results"]):
-                    flow["results"] = await flow["results"]
-
-                # Set job status
-                flow["job_status"] = self.get_job_status(
-                    flow["state"], flow["results"], flow["parameters"]
-                )
-
-            return flow_list, None
-        except Exception as e:
-            logger.error(f"Prefect async execute flow error: {str(e)}")
-            raise errors.WorkFlowError(e)
-
-    def delete_jobs(self, ids, tags=None):
-        """Delete jobs.
-
-        Args:
-            ids: job id list
-            tags: prefect flow tags
+            flow_run_ids: flow run id list
 
         Returns:
             flow list
         """
-        flow_list = self._task_manager.delete_task_flow_run(ids, tags=tags)
-        for flow in flow_list:
-            flow["job_status"] = self.get_job_status(flow["state"], None, None)
+        flow_list = self._task_manager.delete_flow_runs(flow_run_ids)
         return flow_list
 
-    def cancel_jobs(self, ids, tags=None):
+    def cancel_flows(self, flow_run_ids, tags=None):
         """Cancel jobs.
 
         Args:
-            ids: job id list
+            flow_run_ids: flow run id list
             tags: prefect flow tags
 
         Returns:
             flow list
         """
-        flow_list = self._task_manager.cancel_task_flow_run(ids, tags=tags)
-        for flow in flow_list:
-            flow["job_status"] = self.get_job_status(flow["state"], None, None)
+        flow_list = self._task_manager.cancel_flow_runs(
+            flow_run_ids, tags=tags
+        )
         return flow_list
 
-    def update_job(
+    def update_flow(
         self,
-        job_id,
+        flow_run_id,
         name=None,
         parameters=None,
         variables=None,
-        tags=None,
     ):
         """Update job.
 
         Args:
-            job_id: job id
+            flow_run_id: flow run id
             name: job name (Default value = None)
             parameters: job parameters (Default value = None)
             variables: job variables
-            tags: prefect flow tags
 
         Returns:
             if flow exists
         """
         res = None
         err_msg = None
-        # 1 Get flow run
-        flow_run = self._task_manager.get_task_flow_run(job_id, tags)
+        # 1. Get flow run
+        flow_run = self._task_manager.get_flow_run(flow_run_id)
         if flow_run is None:
-            err_msg = f"Job: '{job_id}' is not found"
+            err_msg = f"Flow: '{flow_run_id}' is not found"
             return None, f"Execute update job failed: {err_msg}"
         job_priority = parameters.get("job_priority")
-        # 2 Get flow parameters
+        # 2. Get flow parameters
         flow_parameters = flow_run.parameters
         job_json_info = flow_parameters["job_info"]
         if job_json_info["data"]["job_priority"] == job_priority:
             res, err_msg = self._task_manager.update_flow(
-                job_id, name, parameters, variables
+                flow_run_id, name, parameters, variables
             )
             if res is False:
                 return res, err_msg
         else:
-            # 3 Delete task
-            self._task_manager.delete_task_flow_run([job_id], tags)
-            # 4 Update parameters and resubmit the task
+            # 3. Delete task
+            self._task_manager.delete_flow_runs([flow_run_id])
+            # 4. Update parameters and resubmit the task
             job_json_info["data"]["job_priority"] = job_priority
             backend = job_json_info["data"]["backend"]
             try:
                 deployment_name = backend
                 deployment = self._task_manager.get_deployment(deployment_name)
-                """
-                flow_info = self._task_manager.get_flow_info_by_backend(
-                    backend
-                )
-                """
-                device = self.device_manager.get_device(backend)
+                device = self._device_manager.get_device(backend)
                 device_name = device.get_name()
                 tags = [f"{device_name}"]
-                job_id = self._policy_handler.exec_task(
+                flow_run_id = self._policy_handler.exec_task(
                     deployment, job_json_info, tags
                 )
             except errors.WorkFlowError as e:
                 logger.error(f"Prefect execute update flow error: {str(e)}")
                 raise errors.WorkFlowError(e)
-        # 5 Get flow run again
-        flow_run = self._task_manager.get_task_flow_run(job_id)
+        # 5. Get flow run again
+        flow_run = self._task_manager.get_flow_run(flow_run_id, tags)
+        if flow_run is None:
+            err_msg = f"Flow: '{flow_run_id}' not found after update"
+            return None, f"Execute update flow_run failed: {err_msg}"
+        if flow_run.parameters is None:
+            err_msg = f"Flow: '{flow_run_id}' parameters are None"
+            return None, f"Execute update flow_run failed: {err_msg}"
         response_info = flow_run.parameters["job_info"]["data"]
         response_info["job_status"] = Constant.JOB_STATUS_QUEUED
+        response_info["flow_run_id"] = flow_run_id
         return response_info, None
 
-    def run_callbacks(self, data, callbacks):
-        """Run callbacks for job.
+    def process_unfinished_jobs(self):
+        """Process unfinished jobs in database.
 
-        Args:
-            data: data to send
-            callbacks: callbacks
+        Checks all jobs in database. If job_status is not one of the
+        final states (COMPLETED, CANCELLED, DELETED, FAILED), sets it to
+        FAILED. This handles jobs that may have been interrupted or left
+        in intermediate states during system restart.
         """
-        return self._task_manager.run_callbacks(data, callbacks)
+        if self._db_engine is None:
+            logger.warning(
+                "Database engine not initialized, skipping unfinished jobs"
+            )
+            return
+
+        try:
+            with create_db_session(self._db_engine) as db_session:
+                job_repo = JobRepository(db_session)
+                success, error, job_records = job_repo.get_jobs()
+
+                if not success or not job_records:
+                    if error:
+                        logger.warning(f"Failed to fetch jobs: {error}")
+                    return
+
+                # Define expected final job states
+                final_states = {
+                    Constant.JOB_STATUS_COMPLETED,
+                    Constant.JOB_STATUS_CANCELLED,
+                    Constant.JOB_STATUS_DELETED,
+                    Constant.JOB_STATUS_FAILED,
+                }
+
+                # Process unfinished jobs
+                unfinished_count = 0
+                for job_record in job_records:
+                    if job_record.job_status not in final_states:
+                        logger.info(
+                            f"Setting unfinished job {job_record.id} "
+                            f"(status: {job_record.job_status}) to FAILED"
+                        )
+                        job_record.job_status = Constant.JOB_STATUS_FAILED
+                        unfinished_count += 1
+
+                # Commit changes if any jobs were updated
+                if unfinished_count > 0:
+                    try:
+                        db_session.commit()
+                        logger.info(
+                            f"Processed {unfinished_count} unfinished jobs, "
+                            f"set status to FAILED"
+                        )
+                    except Exception as commit_err:
+                        db_session.rollback()
+                        logger.error(
+                            f"Failed to commit unfinished jobs update: "
+                            f"{str(commit_err)}"
+                        )
+        except Exception as e:
+            logger.error(f"Error processing unfinished jobs: {str(e)}")
 
     def process_callbacks(self):
-        """Process unfinished callbacks."""
-        flow_runs = self._task_manager.get_flow_runs_with_filters()
-        for flow_run in flow_runs:
-            # TODO (zhaoyi): improve callback when restart
-            asyncio.run(
-                Library.job_callback(
-                    None, flow_run, flow_run.state, results=None
-                )
-            )
+        """Process unfinished callbacks from database.
 
-    @staticmethod
-    def get_job_status(job_status, flow_results, flow_parameters):
-        """Get job status by combining flow state and user defined task status.
-
-        Args:
-            job_status: job status
-            flow_results: flow results
-            flow_parameters: parameters
-
-        Returns:
-            job status
+        Reads job records where callbacks are not empty and
+        is_callback_success is False, then executes the callbacks.
+        Updates is_callback_success to True on successful execution.
         """
-        job_status = job_status.upper()
-        final_job_status = job_status
-        flow_results_status = None
-        flow_parameters_status = None
+        if self._db_engine is None:
+            logger.warning(
+                "Database engine not initialized, skipping callbacks"
+            )
+            return
 
-        # get job_status from flow_results
-        if flow_results:
-            for flow_result in flow_results:
-                metadata = flow_result.get("metadata", None)
-                if metadata:
-                    _flow_results_status = metadata.get("status", None)
-                    if _flow_results_status == Constant.JOB_STATUS_RUNNING:
-                        flow_results_status = _flow_results_status
-                        break
-                    if _flow_results_status == Constant.JOB_STATUS_FAILED:
-                        flow_results_status = _flow_results_status
-                        break
+        try:
+            with create_db_session(self._db_engine) as db_session:
+                job_repo = JobRepository(db_session)
+                success, error, job_records = job_repo.get_jobs()
 
-        # get job_status from user-defined parameters
-        if flow_parameters:
-            updated_job_info = flow_parameters.get("updated_job_info", None)
-            if updated_job_info:
-                results = updated_job_info.get("results", None)
-                if results:
-                    for result in results:
-                        metadata = result.get("metadata", {})
-                        _job_status = metadata.get("status", None)
-                        flow_parameters_status = _job_status
+                if not success or not job_records:
+                    if error:
+                        logger.warning(f"Failed to fetch jobs: {error}")
+                    return
 
-        # determine final job_status
-        if flow_parameters_status:
-            final_job_status = flow_parameters_status
-        elif flow_results_status:
-            final_job_status = flow_results_status
-        return final_job_status
+                # Filter jobs with callbacks and failed callback success
+                for job_record in job_records:
+                    job_status = job_record.job_status
+                    backend = job_record.backend
+                    callbacks = job_record.callbacks
+                    is_callback_success = job_record.is_callback_success
+                    results = job_record.results
+
+                    # Skip if no callbacks configured
+                    if not callbacks:
+                        continue
+
+                    # Execute callbacks if needed
+                    if not is_callback_success:
+                        logger.info(
+                            f"Processing callbacks for job: {job_record.id}"
+                        )
+                        user = {
+                            "project_id": str(job_record.project_id),
+                            "user_id": str(job_record.user_id),
+                        }
+                        try:
+                            callback_success = Library.job_callback(
+                                str(job_record.id),
+                                job_status,
+                                backend,
+                                results,
+                                callbacks,
+                                user=user,
+                            )
+                            # Update is_callback_success
+                            job_record.is_callback_success = callback_success
+                            db_session.commit()
+                            db_session.refresh(job_record)
+                        except Exception as e:
+                            logger.error(
+                                f"Error processing callbacks for "
+                                f"job {job_record.id}: {str(e)}"
+                            )
+        except Exception as e:
+            logger.error(f"Error processing callbacks: {str(e)}")
 
 
-class PrioritySchedulingPolicy(ABC):
+class PrioritySchedulingPolicy:
     """Priority Scheduling Policy."""
 
     def __init__(self, task_manager: TaskFlowManager):
@@ -604,22 +531,20 @@ class PrioritySchedulingPolicy(ABC):
             tags: prefect flow tags
 
         Returns:
-            job uuid
+            flow run id
         """
-        priority = self.calculate_priority(job_info)
-        pool_name = None
-        if tags is not None:
-            pool_name = tags[0]
+        priority = job_info["data"]["job_priority"]
+        pool_name = job_info["data"]["backend"]
 
         deployment_id = deployment["deploy_id"]
         work_queue_name = f"{pool_name}_{priority}"
-        job_run_id = self._task_manager.run_task_flow(
+        flow_run_id = self._task_manager.run_flow(
             deployment_id,
             {"job_info": job_info},
             tags=tags,
             work_queue_name=work_queue_name,
         )
-        return job_run_id
+        return flow_run_id
 
     def exec_manage_task(self, deployment, device_mgr_info):
         """Execute task.
@@ -633,20 +558,9 @@ class PrioritySchedulingPolicy(ABC):
         """
         deployment_id = deployment["deploy_id"]
         work_queue_name = "default"
-        succ, details = self._task_manager.run_manage_task_flow(
+        success, details = self._task_manager.run_manage_task_flow(
             deployment_id,
             {"device_mgr_info": device_mgr_info},
             work_queue_name=work_queue_name,
         )
-        return succ, details
-
-    def calculate_priority(self, job_info):
-        """Calculate priority.
-
-        Args:
-            job_info: job info
-
-        Returns:
-            job priority
-        """
-        return job_info["data"]["job_priority"]
+        return success, details

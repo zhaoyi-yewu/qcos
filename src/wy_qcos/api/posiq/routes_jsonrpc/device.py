@@ -25,7 +25,7 @@ from wy_qcos.api.posiq.routes_jsonrpc.routes import device_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.task_manager import scheduler
-from .dependencies.authentication import auth
+from .dependencies.authentication import auth, validate_virtual_instance
 
 logger = logging.getLogger(__name__)
 module_name = "DEVICE"
@@ -62,9 +62,12 @@ def _get_device_info(device, auth_data=None, details=False):
         and auth_data[Constant.AUTH_MODE_KEY]
         == Constant.AUTH_MODE_VIRTUAL_INSTANCE
     ):
-        # only admin user can access to config info
-        # remove config info in device_info for non-admin user
-        _device_info.pop("configs")
+        if (not auth_data.get("is_super_admin")) or (
+            not auth_data.get("is_project_admin")
+        ):
+            # only admin user can access to config info
+            # remove config info in device_info for non-admin user
+            _device_info.pop("configs")
     if not details:
         _device_info.pop("details")
 
@@ -94,13 +97,9 @@ def get_devices(
     devices = device_manager.get_devices()
     response_info = {}
     for device_name, device in sorted(devices.items()):
-        if (
-            auth_data is not None
-            and auth_data[Constant.AUTH_MODE_KEY]
-            == Constant.AUTH_MODE_VIRTUAL_INSTANCE
-        ):
-            if device_name not in auth_data["device_names"]:
-                continue
+        success, _ = validate_virtual_instance(auth_data, backend=device_name)
+        if not success:
+            continue
         _response_info = _get_device_info(device, auth_data)
         response_info[device_name] = schemas.GetDeviceResponse.model_validate(
             _response_info
@@ -131,14 +130,8 @@ def get_device(
     device_name = body.name
     device_manager = scheduler.get_device_manager()
     device = device_manager.get_device(device_name)
-    if (
-        auth_data is not None
-        and auth_data[Constant.AUTH_MODE_KEY]
-        == Constant.AUTH_MODE_VIRTUAL_INSTANCE
-    ):
-        if device_name not in auth_data["device_names"]:
-            device = None
-    if not device:
+    success, _ = validate_virtual_instance(auth_data, backend=device_name)
+    if not success:
         jsonrpc_errors.handle_error_not_found(
             module_name,
             func_name,
@@ -167,7 +160,7 @@ def calibrate_device(
     logger.info(f"Call {func_name}: {body}")
 
     body.method = func_name
-    details = scheduler.add_manage_job(body)
+    details = scheduler.submit_manage_job(body)
     _response_info = {"details": details}
     response_info = schemas.CalibrateDeviceResponse.model_validate(
         _response_info
@@ -227,7 +220,7 @@ def set_device_options(
     func_name = "set_device_options"
     logger.info(f"Call {func_name}: {body}")
     body.method = func_name
-    details = scheduler.add_manage_job(body)
+    details = scheduler.submit_manage_job(body)
     _response_info = {"details": details}
     response_info = schemas.SetDeviceOptionsResponse.model_validate(
         _response_info

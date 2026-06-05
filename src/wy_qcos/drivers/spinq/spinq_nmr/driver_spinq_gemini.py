@@ -51,11 +51,11 @@ class DriverSpinQGemini(DriverSpinQNmr):
         if self._nmr_conn_str is None:
             self.fetch_configs()
         url = f"{self._nmr_conn_str}/fetch_running_info"
-        succ, err_msg, result = self.send_request_and_process_response(
+        success, err_msg, result = self.send_request_and_process_response(
             None, url, "fetch_running_info"
         )
         if (
-            succ
+            success
             and result is not None
             and isinstance(result, dict)
             and len(result) != 0
@@ -71,7 +71,7 @@ class DriverSpinQGemini(DriverSpinQNmr):
             url: http url
             func_name: func_name
         """
-        logger.info(f"url: {url}, data: {data}")
+        logger.debug(f"url: {url}, data: {data}")
         status_code, reason, text, r = Library.call_http_api(
             url,
             HttpMethod.POST,
@@ -81,13 +81,13 @@ class DriverSpinQGemini(DriverSpinQNmr):
         )
         success = True
         err_msg = []
-        logger.info(f"code: {status_code}, text: {text}")
+        logger.debug(f"code: {status_code}, text: {text}")
         if status_code == HttpCode.SUCCESS_OK:
             response = json.loads(text)
             result = response.get("result", None)
             if result is None:
                 success = False
-            logger.info(f"result: {result}")
+            logger.debug(f"result: {result}")
             return success, "\n".join(err_msg), result
         else:
             err_msg.append(reason)

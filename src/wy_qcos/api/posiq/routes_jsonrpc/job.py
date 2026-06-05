@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import logging
+import time
 from datetime import datetime
 
 from fastapi import Depends
@@ -23,14 +24,19 @@ from fastapi import Depends
 from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import job_api_v1
+from wy_qcos.db.models import Job
 from wy_qcos.db.repositories.job import JobRepository
-from wy_qcos.db.utils.db_utils import get_repository
+from wy_qcos.db.utils.db_utils import get_db_filters, get_repository
 from wy_qcos.common import args_schema, errors
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.task_manager import scheduler
-from .dependencies.authentication import auth
+from .dependencies.authentication import (
+    auth,
+    fill_project_user_id,
+    validate_virtual_instance,
+)
 
 logger = logging.getLogger(__name__)
 module_name = "JOB"
@@ -60,6 +66,7 @@ def submit_job(
         job info
     """
     func_name = "submit_job"
+    logger.info(f"Call {func_name}: {body.job_id}")
     logger.debug(f"Call {func_name}: {body}")
 
     source_code = body.source_code
@@ -78,6 +85,8 @@ def submit_job(
     profiling = body.profiling
     callbacks = body.callbacks
     dry_run = body.dry_run
+    code_compress_level = body.code_compress_level
+    tags = body.tags
 
     # validate: code_type
     code_type = code_type.lower()
@@ -207,20 +216,44 @@ def submit_job(
         ),
     )
 
+    # validate: code_compress_level
+    jsonrpc_errors.handle_error_bad_requests(
+        module_name,
+        func_name,
+        Library.validate_values_range(
+            code_compress_level,
+            "code_compress_level",
+            0,
+            9,
+        ),
+    )
+
+    # validate: tags
+    if tags is not None:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            Library.validate_schema(tags, args_schema.TAGS_SCHEMA)
+            if not isinstance(tags, list)
+            else (True, None),
+        )
+
+    # set job_status
+    job_status = Constant.JOB_STATUS_QUEUED
+    body.job_status = job_status
+
     # get device
     device_manger = scheduler.get_device_manager()
     devices = device_manger.get_devices()
 
+    # validate auth of virtual instance
+    jsonrpc_errors.handle_error_bad_requests(
+        module_name,
+        func_name,
+        validate_virtual_instance(auth_data, backend=backend),
+    )
+
     # validate: backend
-    if (
-        auth_data is not None
-        and auth_data[Constant.AUTH_MODE_KEY]
-        == Constant.AUTH_MODE_VIRTUAL_INSTANCE
-    ):
-        if backend not in auth_data["device_names"]:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name, func_name, (False, f"no such device: {backend}")
-            )
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
         func_name,
@@ -358,57 +391,162 @@ def submit_job(
             Library.validate_schema(callbacks, args_schema.CALLBACKS_SCHEMA),
         )
 
-    # generate creation_date
+    # generate created_at
     created_at = Library.get_current_datetime()
     body.created_at = created_at
-    end_date = None
+    started_at = None
+    ended_at = None
 
-    if Config.QCOS_DATABASE_CONNECTION_URL != "fake":
-        success, e, job_record = job_repo.create_job(body)
+    # Extract user_id and project_id from auth_data if available
+    fill_project_user_id(body, auth_data)
+
+    # Begin transaction and create job record in database
+    job_record = None
+    try:
+        # check max job count is reached
+        all_jobs_count = job_repo.get_jobs_count()
+        if all_jobs_count >= Config.DEFAULT.MAX_JOBS:
+            jsonrpc_errors.handle_error_internal_server(
+                module_name,
+                func_name,
+                (
+                    False,
+                    f"Current job count exceeds max job limit: "
+                    f"{Config.DEFAULT.MAX_JOBS}",
+                ),
+            )
+
+        # check max job count is reached per user/virtual instance
+        filters = {
+            "user_id": body.user_id,
+        }
+        user_jobs_count = job_repo.get_jobs_count(filters=filters)
+        if user_jobs_count >= Config.USERS.MAX_JOBS:
+            jsonrpc_errors.handle_error_internal_server(
+                module_name,
+                func_name,
+                (
+                    False,
+                    f"Current job count exceeds max job limit per user: "
+                    f"{Config.USERS.MAX_JOBS}",
+                ),
+            )
+
+        # Check if job_id already exists
+        if body.job_id:
+            success, _, existing_job = job_repo.get_job_by_uuid(body.job_id)
+            if success and existing_job:
+                jsonrpc_errors.handle_error_internal_server(
+                    module_name,
+                    func_name,
+                    (False, f"Job ID already exists: {body.job_id}"),
+                )
+
+        # Create job record in database without auto commit
+        success, e, job_record = job_repo.create_job(body, auto_commit=False)
         if not success or e:
             jsonrpc_errors.handle_error_internal_server(
                 module_name,
                 func_name,
-                (False, "Failed to insert db: " + str(e)),
+                (False, f"Failed to create job record: {str(e)}"),
             )
-        # update job id by db if empty
-        if not job_id:
-            body.job_id = job_record.id
+        # Verify job_record is not None after creation
+        if not job_record:
+            jsonrpc_errors.handle_error_internal_server(
+                module_name,
+                func_name,
+                (False, "Job record is None after creation"),
+            )
+    except Exception as db_err:
+        jsonrpc_errors.handle_error_internal_server(
+            module_name,
+            func_name,
+            (False, f"Database error: {str(db_err)}"),
+        )
+
+    # update job id by db if empty
+    if not job_id:
+        body.job_id = job_record.id
+
+    # auto schedule
+    job_scheduling_at = time.time()
+    # TODO(zhaoyi): auto schedule
+    job_schedule_duration = time.time() - job_scheduling_at
+    extra_job_data_info = {"job_schedule_duration": job_schedule_duration}
 
     # submit job
     res = {}
     err = None
     try:
-        device_name = device.get_name()
-        tags = [f"{device_name}"]
-        if (
-            auth_data is not None
-            and auth_data[Constant.AUTH_MODE_KEY]
-            == Constant.AUTH_MODE_VIRTUAL_INSTANCE
-        ):
-            virtual_instance_id = auth_data["instance_id"]
-            tags.extend([f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"])
-        res, err = scheduler.add(
-            body,
-            tags=tags,
+        res, err = scheduler.submit(
+            body, extra_job_data_info=extra_job_data_info
         )
+        # Extract flow_run_id from scheduler response and update job record
+        if res and "flow_run_id" in res:
+            job_record.flow_run_id = res["flow_run_id"]
 
+        # Scheduler succeeded - commit DB transaction
+        if not err:
+            try:
+                job_repo.commit()
+                # Refresh to ensure object has latest committed data
+                job_repo.refresh(job_record)
+                logger.debug(
+                    f"Committed job record {job_record.id} "
+                    "after scheduler success"
+                )
+            except Exception as commit_err:
+                logger.error(f"Failed to commit transaction: {commit_err}")
+                job_repo.rollback()
+                jsonrpc_errors.handle_error_internal_server(
+                    module_name,
+                    func_name,
+                    (False, f"Transaction commit failed: {commit_err}"),
+                )
     except errors.WorkFlowError as e:
+        # Rollback DB transaction if scheduler.submit fails
+        try:
+            job_repo.rollback()
+            if job_record:
+                logger.warning(
+                    f"Rolled back job record {job_record.id} "
+                    f"due to scheduler error: {str(e)}"
+                )
+            else:
+                logger.warning(
+                    f"Rolled back transaction due to scheduler error: {str(e)}"
+                )
+        except Exception as rollback_err:
+            logger.error(f"Failed to rollback transaction: {rollback_err}")
         jsonrpc_errors.handle_error_internal_server(
             module_name, func_name, (False, str(e))
         )
-
-    # handle submit response
+    # handle submit response - scheduler returned error
     if err:
+        # Rollback DB transaction
+        try:
+            job_repo.rollback()
+            if job_record:
+                logger.warning(
+                    f"Rolled back job record {job_record.id} "
+                    f"due to scheduler error: {err}"
+                )
+            else:
+                logger.warning(
+                    f"Rolled back transaction due to scheduler error: {err}"
+                )
+        except Exception as rollback_err:
+            logger.error(f"Failed to rollback transaction: {rollback_err}")
         jsonrpc_errors.handle_error_internal_server(
             module_name, func_name, (False, err)
         )
-
     _response_info = {
-        "job_id": res["job_id"],
+        "job_id": body.job_id,
         "job_name": job_name,
+        "project_id": body.project_id,
+        "user_id": body.user_id,
         "job_type": job_type,
-        "job_status": Constant.JOB_STATUS_UNKNOWN,
+        "job_status": job_status,
         "job_priority": job_priority,
         "code_type": code_type,
         "source_code": source_code,
@@ -421,8 +559,12 @@ def submit_job(
         "profiling": profiling,
         "callbacks": callbacks,
         "dry_run": dry_run,
+        "code_compress_level": code_compress_level,
+        "tags": tags,
         "created_at": created_at,
-        "end_date": end_date,
+        "updated_at": created_at,
+        "started_at": started_at,
+        "ended_at": ended_at,
     }
     response_info = schemas.SubmitJobResponse.model_validate(_response_info)
     return response_info
@@ -435,12 +577,14 @@ def submit_job(
 def get_job_status(
     body: schemas.GetJobStatusRequest,
     auth_data: dict | None = Depends(auth),
+    job_repo: JobRepository = Depends(get_repository(JobRepository)),
 ) -> schemas.GetJobStatusResponse:
     """Get job status.
 
     Args:
         body(schemas.GetJobStatusRequest): job_id: job ID
         auth_data: auth data
+        job_repo: job repository
 
     Returns:
         job status
@@ -450,47 +594,22 @@ def get_job_status(
 
     job_id = body.job_id
 
-    # query job status
-    response = {}
-    try:
-        tags = None
-        if (
-            auth_data is not None
-            and auth_data[Constant.AUTH_MODE_KEY]
-            == Constant.AUTH_MODE_VIRTUAL_INSTANCE
-        ):
-            virtual_instance_id = auth_data["instance_id"]
-            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
-        response, _ = scheduler.get_result_by_id(job_id, tags=tags)
-    except errors.NotFound:
-        # check if job exists
+    # query job record from database with user filters
+    db_filters = get_db_filters(
+        auth_data, allow_super_admin=True, allow_project_admin=True
+    )
+    success, error, job_record = job_repo.get_job_by_uuid(
+        job_id, filters=db_filters
+    )
+    if not success or job_record is None:
         jsonrpc_errors.handle_error_not_found(
             module_name, func_name, (False, f"Job: '{job_id}' is not found")
         )
-    except errors.WorkFlowError as e:
-        jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, str(e))
-        )
 
-    # handle job results errors
-    if response.get("error_message"):
-        jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, response["error_message"])
-        )
+    # construct response from database record
+    _response_info = job_record.asdict()
+    _response_info["job_id"] = _response_info.pop("id", job_id)
 
-    # get job_status
-    job_status = response.get("job_status")
-    progress = response.get("artifact", {}).get("progress", -1)
-
-    # construct response
-    _response_info = {
-        "job_id": job_id,
-        "job_status": job_status,
-        "progress": progress,
-    }
-    parameters = response.get("parameters", None)
-    results = response.get("results", None)
-    _response_info = merge_results(_response_info, parameters, results=results)
     response_info = schemas.GetJobStatusResponse.model_validate(_response_info)
     return response_info
 
@@ -502,12 +621,14 @@ def get_job_status(
 def get_job_results(
     body: schemas.GetJobResultsRequest,
     auth_data: dict | None = Depends(auth),
+    job_repo: JobRepository = Depends(get_repository(JobRepository)),
 ) -> schemas.GetJobResultsResponse:
     """Get job results.
 
     Args:
         body(schemas.GetJobResultsRequest): job_id: job ID
         auth_data: auth data
+        job_repo: job repository
 
     Returns:
         job results
@@ -517,47 +638,22 @@ def get_job_results(
 
     job_id = body.job_id
 
-    # query job results
-    response = {}
-    try:
-        tags = None
-        if (
-            auth_data is not None
-            and auth_data[Constant.AUTH_MODE_KEY]
-            == Constant.AUTH_MODE_VIRTUAL_INSTANCE
-        ):
-            virtual_instance_id = auth_data["instance_id"]
-            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
-        response, _ = scheduler.get_result_by_id(job_id, tags=tags)
-    except errors.NotFound:
-        # check if job exists
+    # query job record from database with user filters
+    db_filters = get_db_filters(
+        auth_data, allow_super_admin=True, allow_project_admin=True
+    )
+    success, error, job_record = job_repo.get_job_by_uuid(
+        job_id, filters=db_filters
+    )
+    if not success or job_record is None:
         jsonrpc_errors.handle_error_not_found(
             module_name, func_name, (False, f"Job: '{job_id}' is not found")
         )
-    except errors.WorkFlowError as e:
-        jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, str(e))
-        )
 
-    # handle job results errors
-    if response.get("error_message"):
-        jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, response["error_message"])
-        )
+    # construct response from database record
+    _response_info = job_record.asdict()
+    _response_info["job_id"] = _response_info.pop("id", job_id)
 
-    # existing results reported by driver
-    job_status = response.get("job_status")
-    parameters = response.get("parameters", None)
-    results = response.get("results", None)
-    progress = response.get("artifact", {}).get("progress", -1)
-
-    # construct response
-    _response_info = {
-        "job_id": job_id,
-        "job_status": job_status,
-        "progress": progress,
-    }
-    _response_info = merge_results(_response_info, parameters, results=results)
     response_info = schemas.GetJobResultsResponse.model_validate(
         _response_info
     )
@@ -570,51 +666,42 @@ def get_job_results(
 )
 def get_jobs(
     body: schemas.GetJobsRequest | None = None,
+    filters: dict | None = None,
     auth_data: dict | None = Depends(auth),
+    job_repo: JobRepository = Depends(get_repository(JobRepository)),
 ) -> list[schemas.GetJobStatusResponse]:
-    """Get job list.
+    """Get job list with optional filtering.
 
     Args:
-        body(schemas.GetJobsRequest): job_id: job ID
+        body(schemas.GetJobsRequest): job requests body
+        filters: filters
         auth_data: auth data
+        job_repo: job repository
 
     Returns:
-        job list
+        job list sorted by created_at in descending order
     """
     func_name = "get_jobs"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: body={body}, filters: {filters}")
 
-    # query jobs' results
-    responses = []
-    try:
-        tags = None
-        if (
-            auth_data is not None
-            and auth_data[Constant.AUTH_MODE_KEY]
-            == Constant.AUTH_MODE_VIRTUAL_INSTANCE
-        ):
-            virtual_instance_id = auth_data["instance_id"]
-            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
-        responses, err = scheduler.get_jobs(tags=tags)
-    except errors.WorkFlowError as e:
-        jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, str(e))
-        )
+    # Query job record from database with user filters
+    db_filters = get_db_filters(auth_data, filters=filters)
+    success, error, job_records = job_repo.get_jobs(db_filters)
+    if not success or job_records is None:
+        return []
 
-    # construct response
+    # Sort by created_at in descending order
+    job_records = sorted(
+        job_records,
+        key=lambda x: x.created_at if x.created_at else "",
+        reverse=True,
+    )
+
+    # Construct response
     response_list = []
-    for response in responses:
-        job_status = response.get("job_status")
-        _response_info = {
-            "job_id": response.get("id"),
-            "job_status": job_status,
-            "progress": response.get("progress"),
-        }
-        parameters = response.get("parameters", None)
-        results = response.get("results", None)
-        _response_info = merge_results(
-            _response_info, parameters, results=results
-        )
+    for job_record in job_records:
+        _response_info = job_record.asdict()
+        _response_info["job_id"] = _response_info.pop("id")
         response_info = schemas.GetJobStatusResponse.model_validate(
             _response_info
         )
@@ -625,15 +712,118 @@ def get_jobs(
 @job_api_v1.method(
     openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
 )
+def update_job(
+    body: schemas.UpdateJobRequest,
+    auth_data: dict | None = Depends(auth),
+    job_repo: JobRepository = Depends(get_repository(JobRepository)),
+) -> schemas.UpdateJobResponse:
+    """Update job.
+
+    Args:
+        body(schemas.UpdateJobsRequest): job info
+        auth_data: auth data
+        job_repo: job repository
+
+    Returns:
+        update job param
+    """
+    func_name = "update_job"
+    logger.info(f"Call {func_name}: {body}")
+
+    job_id = body.job_id
+    updated = False
+
+    # query job record from database with user filters
+    db_filters = get_db_filters(
+        auth_data, allow_super_admin=True, allow_project_admin=True
+    )
+    success, error, job_record = job_repo.get_job_by_uuid(
+        job_id, filters=db_filters
+    )
+    if not success or job_record is None:
+        jsonrpc_errors.handle_error_not_found(
+            module_name, func_name, (False, f"Job: '{job_id}' is not found")
+        )
+
+    try:
+        # Validate job_priority with scheduler before modifying database
+        if body.job_priority is not None:
+            # check job status
+            if job_record.job_status != Constant.JOB_STATUS_QUEUED:
+                err_msg = (
+                    f"Job: '{job_id}' is not in QUEUED state. Can't update_job"
+                )
+                jsonrpc_errors.handle_error_internal_server(
+                    module_name, func_name, (False, err_msg)
+                )
+
+            # Call scheduler first to validate before modifying DB
+            parameters = {
+                "job_priority": body.job_priority,
+            }
+            try:
+                flow_run, err = scheduler.update_flow(
+                    flow_run_id=job_record.flow_run_id, parameters=parameters
+                )
+            except errors.WorkFlowError as e:
+                jsonrpc_errors.handle_error_internal_server(
+                    module_name, func_name, (False, str(e))
+                )
+            if err is not None:
+                jsonrpc_errors.handle_error_internal_server(
+                    module_name, func_name, (False, err)
+                )
+            job_record.flow_run_id = flow_run["flow_run_id"]
+            updated = True
+
+        # Only update database after scheduler succeeded
+        # (or for fields that don't depend on scheduler)
+        if body.job_name is not None:
+            job_record.job_name = body.job_name
+            updated = True
+        if body.description is not None:
+            job_record.description = body.description
+            updated = True
+        if body.job_priority is not None:
+            job_record.job_priority = body.job_priority
+            updated = True
+
+        if updated:
+            job_record.updated_at = Library.get_current_datetime()
+
+        # Commit database changes
+        job_repo.commit()
+        job_repo.refresh(job_record)
+
+    except Exception as e:
+        # Rollback transaction on any error
+        job_repo.rollback()
+        logger.error(f"Failed to update job {job_id}: {str(e)}")
+        # Re-raise the exception
+        raise
+
+    # construct response from database record
+    _response_info = job_record.asdict()
+    _response_info["job_id"] = _response_info.pop("id")
+
+    response_info = schemas.UpdateJobResponse.model_validate(_response_info)
+    return response_info
+
+
+@job_api_v1.method(
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
+)
 def cancel_jobs(
     body: schemas.CancelJobsRequest,
     auth_data: dict | None = Depends(auth),
+    job_repo: JobRepository = Depends(get_repository(JobRepository)),
 ) -> list[schemas.CancelJobsResponse]:
     """Cancel job.
 
     Args:
         body(schemas.CancelJobsRequest): job_ids: job IDs
         auth_data: auth data
+        job_repo: job repository
 
     Returns:
         cancelled jobs info
@@ -645,23 +835,31 @@ def cancel_jobs(
 
     # get unique job_ids
     job_ids = list(dict.fromkeys(job_ids))
+    flow_run_id_dict = {}
+    flow_run_id_list = []
 
-    tags = None
-    if (
-        auth_data is not None
-        and auth_data[Constant.AUTH_MODE_KEY]
-        == Constant.AUTH_MODE_VIRTUAL_INSTANCE
-    ):
-        virtual_instance_id = auth_data["instance_id"]
-        tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
+    # Get job run ids
+    for job_id in job_ids:
+        # query job record from database with user filters
+        db_filters = get_db_filters(
+            auth_data, allow_super_admin=True, allow_project_admin=True
+        )
+        success, error, job_record = job_repo.get_job_by_uuid(
+            job_id, filters=db_filters
+        )
+        if success and job_record:
+            flow_run_id_dict[job_record.flow_run_id] = job_id
+            flow_run_id_list.append(job_record.flow_run_id)
+
     # cancel jobs
-    success_list = scheduler.cancel_jobs(job_ids, tags=tags)
-    # construct response
+    cancelled_flow_run_list = scheduler.cancel_flows(flow_run_id_list)
+
+    # construct response using flow_run_id_dict to map back to job_ids
     response_info = [
         schemas.CancelJobsResponse(
-            job_id=job.get("id"), job_status=job.get("state")
+            job_id=flow_run_id_dict.get(flow_run_info.get("flow_run_id"))
         )
-        for job in success_list
+        for flow_run_info in cancelled_flow_run_list
     ]
     return response_info
 
@@ -672,12 +870,14 @@ def cancel_jobs(
 def delete_jobs(
     body: schemas.DeleteJobsRequest,
     auth_data: dict | None = Depends(auth),
+    job_repo: JobRepository = Depends(get_repository(JobRepository)),
 ) -> list[schemas.DeleteJobsResponse]:
     """Delete job.
 
     Args:
-        body(schemas.DeleteJobsRequest): job_ids: job IDs
+        body(schemas.DeleteJobsRequest): job_ids: job IDs, force: force delete
         auth_data: auth data
+        job_repo: job repository
 
     Returns:
         deleted jobs info
@@ -686,25 +886,100 @@ def delete_jobs(
     logger.info(f"Call {func_name}: {body}")
 
     job_ids = body.job_ids
+    force = body.force
 
     # get unique job_ids
     job_ids = list(dict.fromkeys(job_ids))
-    tags = None
-    if (
-        auth_data is not None
-        and auth_data[Constant.AUTH_MODE_KEY]
-        == Constant.AUTH_MODE_VIRTUAL_INSTANCE
-    ):
-        virtual_instance_id = auth_data["instance_id"]
-        tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
-    # delete jobs
-    success_list = scheduler.delete_jobs(job_ids, tags=tags)
-    # construct response
+    flow_run_id_dict = {}
+    flow_run_id_list = []
+
+    # Update job status to DELETING in database
+    for job_id in job_ids:
+        # query job record from database with user filters
+        db_filters = get_db_filters(
+            auth_data, allow_super_admin=True, allow_project_admin=True
+        )
+        success, error, job_record = job_repo.get_job_by_uuid(
+            job_id, filters=db_filters
+        )
+        if success and job_record:
+            flow_run_id_dict[job_record.flow_run_id] = job_id
+            flow_run_id_list.append(job_record.flow_run_id)
+            job_record.job_status = Constant.JOB_STATUS_DELETING
+            try:
+                job_repo.commit()
+                job_repo.refresh(job_record)
+            except Exception as e:
+                job_repo.rollback()
+                logger.warning(
+                    f"Failed to update job {job_id} status to DELETING: {e}"
+                )
+
+    # delete jobs from scheduler
+    try:
+        if force:
+            # Force delete: directly delete without waiting for scheduler
+            logger.info(f"Force deleting {len(flow_run_id_list)} jobs")
+        deleted_flow_run_list = scheduler.delete_flows(flow_run_id_list)
+    except Exception as e:
+        # If scheduler delete fails, rollback database changes
+        if not force:
+            jsonrpc_errors.handle_error_internal_server(
+                module_name,
+                func_name,
+                (False, f"Failed to delete jobs: {str(e)}"),
+            )
+        else:
+            logger.warning(f"Force delete failed (non-critical): {str(e)}")
+            deleted_flow_run_list = []
+
+    # Handle scheduler returned error
+    if not deleted_flow_run_list and not force:
+        jsonrpc_errors.handle_error_internal_server(
+            module_name,
+            func_name,
+            (False, "No jobs are deleted, jobs may in RUNNING state"),
+        )
+
+    # If force delete and no jobs returned from scheduler, construct response
+    # from remaining flow_run_ids and delete from database anyway
+    if force and not deleted_flow_run_list:
+        deleted_flow_run_list = [
+            {"flow_run_id": fid, "state": Constant.JOB_STATUS_DELETED}
+            for fid in flow_run_id_list
+        ]
+        logger.info(
+            f"Force delete: scheduler returned empty, "
+            f"deleting {len(deleted_flow_run_list)} jobs from database anyway"
+        )
+
+    # Delete jobs from database
+    for flow_run_info in deleted_flow_run_list:
+        flow_run_id = flow_run_info["flow_run_id"]
+        job_id = flow_run_id_dict[flow_run_id]
+        if job_id is not None:
+            try:
+                success, error = job_repo.delete_by_uuid(Job, str(job_id))
+                if not success or error:
+                    logger.warning(
+                        f"Failed to delete job {job_id} from database: {error}"
+                    )
+                else:
+                    logger.info(
+                        f"Successfully deleted job {job_id} from database"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"Error deleting job {job_id} from database: {str(e)}"
+                )
+
+    # construct response using flow_run_id_dict to map back to job_ids
     response_info = [
         schemas.DeleteJobsResponse(
-            job_id=job.get("id"), job_status=job.get("state")
+            job_id=flow_run_id_dict.get(flow_run_info.get("flow_run_id")),
+            job_status=flow_run_info.get("state"),
         )
-        for job in success_list
+        for flow_run_info in deleted_flow_run_list
     ]
     return response_info
 
@@ -716,18 +991,21 @@ def delete_jobs(
 def set_job_results(
     body: schemas.SetJobResultsRequest,
     auth_data: dict | None = Depends(auth),
+    job_repo: JobRepository = Depends(get_repository(JobRepository)),
 ) -> schemas.SetJobResultsResponse:
     """Set job results for existing job.
 
     Args:
         body(schemas.SetJobResultsRequest): job_id: job ID
         auth_data: auth data
+        job_repo: job repository
     """
     func_name = "set_job_results"
     logger.info(f"Call {func_name}: {body}")
 
     job_id = body.job_id
     new_results = body.results
+    db_new_results = []
 
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
@@ -735,276 +1013,117 @@ def set_job_results(
         Library.validate_schema(new_results, args_schema.SOURCE_SET_RESULTS),
     )
 
-    # get existing job results
-    response = {}
-    try:
-        tags = None
-        if (
-            auth_data is not None
-            and auth_data[Constant.AUTH_MODE_KEY]
-            == Constant.AUTH_MODE_VIRTUAL_INSTANCE
-        ):
-            virtual_instance_id = auth_data["instance_id"]
-            tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
-        response, err = scheduler.get_result_by_id(job_id, tags)
-    except errors.NotFound:
-        # check if job exists
+    # query job record from database with user filters
+    db_filters = get_db_filters(
+        auth_data, allow_super_admin=True, allow_project_admin=True
+    )
+    success, error, job_record = job_repo.get_job_by_uuid(
+        job_id, filters=db_filters
+    )
+    if not success or job_record is None:
         jsonrpc_errors.handle_error_not_found(
             module_name, func_name, (False, f"Job: '{job_id}' is not found")
         )
-    except errors.WorkFlowError as e:
-        jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, str(e))
-        )
 
-    job_status = response["job_status"]
-    if job_status not in [
-        Constant.JOB_STATUS_RUNNING,
-        Constant.JOB_STATUS_COMPLETED,
-    ]:
-        err_msg = (
-            f"Job: '{job_id}' is not in RUNNING or COMPLETED state. "
-            f"Can't {func_name}"
-        )
-        jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, err_msg)
-        )
+    # get source_code list from job_record
+    source_code_list = job_record.source_code or []
 
-    # handle job status errors
-    if response.get("error_message"):
-        jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, response["error_message"])
-        )
+    # get count in source code list
+    source_code_list_count = len(source_code_list)
 
-    parameters = response.get("parameters", None)
-    source_code: list = Library.get_nested_dict_value(
-        parameters, "job_info", "data", "source_code", default=[]
+    # get ended_at
+    ended_at = Library.get_current_datetime()
+    ended_at_str = (
+        ended_at.isoformat() if isinstance(ended_at, datetime) else ended_at
     )
 
-    # copy existing results and updated using new_results
-    existing_results = response.get("results", None)
-    if not existing_results:
-        existing_results = []
-        for _ in range(len(source_code)):
-            existing_results.append({
-                "metadata": {},
-                "profiling": {},
-                "results": {},
-                "status": Constant.JOB_STATUS_UNKNOWN,
-            })
-
-    # get end_date
-    end_date = Library.get_current_datetime()
-
     # check length of new results/errors
-    if new_results and len(new_results) != len(existing_results):
+    if new_results and len(new_results) != source_code_list_count:
         jsonrpc_errors.handle_error_internal_server(
             module_name,
             func_name,
             (
                 False,
                 "Length of new results should be the same as "
-                "the length of the existing results",
+                "the length of the source code list",
             ),
         )
 
     # update results/errors
-    i = 0
     is_failed = False
-    for result in existing_results:
+    for i in range(source_code_list_count):
         new_result = new_results[i]
+        # Extract callback_success if present
+        callback_success = new_result.pop("is_callback_success", True)
+        db_new_result = {
+            "metadata": {
+                "results_fetch_mode": Constant.RESULTS_FETCH_MODE_SET,
+                "status": Constant.JOB_STATUS_UNKNOWN,
+                "ended_at": ended_at_str,
+                "is_callback_success": callback_success,
+            },
+        }
         if "code" in new_result:
             # failed and set error message
-            result["error"] = new_result
-            result["metadata"]["status"] = Constant.JOB_STATUS_FAILED
+            db_new_result["error"] = new_result
+            db_new_result["metadata"]["status"] = Constant.JOB_STATUS_FAILED
             is_failed = True
         else:
             # success and set new results
-            result.update(new_result)
-            result["metadata"]["status"] = Constant.JOB_STATUS_COMPLETED
-        result["metadata"]["end_date"] = end_date
-        i += 1
+            db_new_result.update(new_result)
+            db_new_result["metadata"]["status"] = Constant.JOB_STATUS_COMPLETED
+        db_new_results.append(db_new_result)
     job_status = (
         Constant.JOB_STATUS_FAILED
         if is_failed
         else Constant.JOB_STATUS_COMPLETED
     )
 
-    updated_parameters = {
-        "updated_job_info": {"results": existing_results, "end_date": end_date}
-    }
-
-    # updated parameters
-    if parameters:
-        parameters.update(updated_parameters)
-
-    # update job using updated_parameters
-    success, err_msg = scheduler.update_job(job_id, parameters=parameters)
-    if not success:
+    # update job record in database
+    job_record.job_status = job_status
+    job_record.results = db_new_results
+    job_record.ended_at = ended_at
+    job_record.updated_at = Library.get_current_datetime()
+    try:
+        job_repo.commit()
+        job_repo.refresh(job_record)
+    except Exception as e:
+        job_repo.rollback()
         jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, err_msg)
+            module_name, func_name, (False, str(e))
         )
 
-    # run callbacks
-    callbacks = Library.get_nested_dict_value(
-        parameters, "job_info", "data", "callbacks", default=None
-    )
+    # get backend from job_record
+    backend = job_record.backend
 
-    # construct response
-    backend = Library.get_nested_dict_value(
-        parameters, "job_info", "data", "backend", default=None
-    )
+    # run callbacks
+    callbacks = job_record.callbacks
+
+    # Run callbacks using Library.job_callback
+    if callbacks:
+        # user info
+        user = {
+            "project_id": str(job_record.project_id),
+            "user_id": str(job_record.user_id),
+        }
+        success = Library.job_callback(
+            str(job_id),
+            job_status,
+            backend,
+            db_new_results,
+            callbacks,
+            user=user,
+        )
+        if not success:
+            logger.warning(f"Job callback execution failed for job {job_id}")
 
     _response_info = {
         "job_id": job_id,
         "job_status": job_status,
         "backend": backend,
-        "results": existing_results,
     }
-
-    success, err_msg = scheduler.run_callbacks(_response_info, callbacks)
-    if not success:
-        jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, err_msg)
-        )
 
     response_info = schemas.SetJobResultsResponse.model_validate(
         _response_info
     )
-    return response_info
-
-
-@job_api_v1.method(
-    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
-)
-def update_job(
-    body: schemas.UpdateJobRequest,
-    auth_data: dict | None = Depends(auth),
-) -> schemas.UpdateJobResponse:
-    """Update job.
-
-    Args:
-        body(schemas.UpdateJobsRequest): job info
-        auth_data: auth data
-
-    Returns:
-        update job param
-    """
-    func_name = "update_job"
-    logger.info(f"Call {func_name}: {body}")
-
-    parameters = {"job_id": body.job_id, "job_priority": body.job_priority}
-
-    job_id = body.job_id
-
-    tags = None
-    if (
-        auth_data is not None
-        and auth_data[Constant.AUTH_MODE_KEY]
-        == Constant.AUTH_MODE_VIRTUAL_INSTANCE
-    ):
-        virtual_instance_id = auth_data["instance_id"]
-        tags = [f"{Constant.VID_TAGS_PREFIX}:{virtual_instance_id}"]
-    try:
-        response, err = scheduler.get_result_by_id(job_id, tags)
-    except errors.NotFound:
-        # check if job exists
-        jsonrpc_errors.handle_error_not_found(
-            module_name, func_name, (False, f"Job: '{job_id}' is not found")
-        )
-    except errors.WorkFlowError as e:
-        jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, str(e))
-        )
-
-    job_status = response["job_status"]
-    if job_status != Constant.JOB_STATUS_QUEUED:
-        err_msg = f"Job: '{job_id}' is not in QUEUED state. Can't {func_name}"
-        jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, err_msg)
-        )
-
-    # update job
-    try:
-        job, err = scheduler.update_job(
-            job_id=job_id,
-            parameters=parameters,
-            tags=tags,
-        )
-    except errors.WorkFlowError as e:
-        jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, str(e))
-        )
-    if err is not None:
-        jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, err)
-        )
-
-    # construct response
-    _response_info = {
-        "job_id": job.get("job_id"),
-        "job_name": job.get("job_status"),
-        "job_type": job.get("job_type"),
-        "job_status": job.get("job_status"),
-        "job_priority": job.get("job_priority"),
-        "code_type": job.get("code_type"),
-        "source_code": job.get("source_code"),
-        "description": job.get("description"),
-        "backend": job.get("backend"),
-        "driver_options": job.get("driver_options"),
-        "transpiler": job.get("transpiler"),
-        "transpiler_options": job.get("transpiler_options"),
-        "shots": job.get("shots"),
-        "profiling": job.get("profiling"),
-        "callbacks": job.get("callbacks"),
-        "dry_run": job.get("dry_run"),
-        "created_at": job.get("created_at"),
-        "end_date": job.get("end_date"),
-    }
-    response_info = schemas.UpdateJobResponse.model_validate(_response_info)
-    return response_info
-
-
-def merge_results(response_info, parameters, results=None):
-    """Merge results.
-
-    Args:
-        response_info: response info
-        parameters: parameters from prefect
-        results: results from prefect (Default value = None)
-
-    Returns:
-        new response info
-    """
-    end_date = None
-    if parameters:
-        job_info = parameters.get("job_info", None)
-        if job_info:
-            response_info.update(job_info.get("data", {}))
-        updated_job_info = parameters.get("updated_job_info", None)
-        if updated_job_info:
-            # get end_date
-            _end_date = updated_job_info.get("end_date", None)
-            if _end_date:
-                if isinstance(_end_date, str):
-                    _end_date = datetime.fromisoformat(_end_date)
-                end_date = _end_date
-            # update results if new results exists in updated_job_info
-            updated_results = updated_job_info.get("results", None)
-            if updated_results:
-                results = updated_results
-        response_info["results"] = results
-        if response_info["results"]:
-            for result in response_info["results"]:
-                _end_date = Library.get_nested_dict_value(
-                    result, "metadata", "end_date", default=None
-                )
-                if isinstance(_end_date, str):
-                    _end_date = datetime.fromisoformat(_end_date)
-                if _end_date and end_date:
-                    end_date = max(end_date, _end_date)
-                elif _end_date:
-                    end_date = _end_date
-    if end_date:
-        response_info["end_date"] = end_date.isoformat()
     return response_info
