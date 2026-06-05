@@ -129,6 +129,7 @@ class Constant:
     # Profiling types
     PROFILING_TYPE_ALL = "all"
     PROFILING_TYPE_CODE = "code"
+    PROFILING_TYPE_QUEUING = "queuing"
     PROFILING_TYPE_SCHEDULING = "scheduling"
     PROFILING_TYPE_DRIVER_PARSE = "driver:parse"
     PROFILING_TYPE_DRIVER_TRANSPILE = "driver:transpile"
@@ -137,6 +138,7 @@ class Constant:
     PROFILING_TYPES = [
         PROFILING_TYPE_ALL,
         PROFILING_TYPE_CODE,
+        PROFILING_TYPE_QUEUING,
         PROFILING_TYPE_SCHEDULING,
         PROFILING_TYPE_DRIVER_PARSE,
         PROFILING_TYPE_DRIVER_TRANSPILE,

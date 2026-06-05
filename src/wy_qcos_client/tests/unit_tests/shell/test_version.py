@@ -45,6 +45,7 @@ class TestVersion:
     @patch.object(CommandHelper, "check_results")
     def test_take_action(self, mock_check_results, mock_version):
         mock_client = Mock(spec=Namespace)
+        mock_client.details = False
         mock_version.return_value = -1, None, None, None
         mock_check_results.return_value = {
             "capabilities": {
@@ -59,5 +60,6 @@ class TestVersion:
             "api_version": "0.1.0",
             "supported_api_versions": "0.1.0",
             "platform_version": "1.0.0",
+            "auth_mode": "no",
         }
         assert version.take_action(mock_client) is None

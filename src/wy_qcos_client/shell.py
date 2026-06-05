@@ -48,6 +48,7 @@ class QcosShell(App):
     CMD_GROUP_SYSTEM = "System"
     CMD_GROUP_AUTH = "Auth"
     CMD_GROUP_USER = "User"
+    CMD_GROUP_PROJECT = "Project"
     CMD_GROUP_DRIVER = "Driver"
     CMD_GROUP_DEVICE = "Device"
     CMD_GROUP_TRANSPILER = "Transpiler"
@@ -59,6 +60,7 @@ class QcosShell(App):
         CMD_GROUP_SYSTEM,
         CMD_GROUP_AUTH,
         CMD_GROUP_USER,
+        CMD_GROUP_PROJECT,
         CMD_GROUP_DRIVER,
         CMD_GROUP_DEVICE,
         CMD_GROUP_TRANSPILER,
@@ -458,6 +460,11 @@ class Version(Command):
             parser
         """
         parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--details",
+            action="store_true",
+            help="include detailed capabilities information",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -468,27 +475,31 @@ class Version(Command):
         """
         resource = self.group
 
-        status_code, reason, text, result = self.app.client.version()
+        status_code, reason, text, result = self.app.client.version(
+            details=parsed_args.details
+        )
         json_results = CommandHelper.check_results(
             resource, "version", status_code, reason, text
         )
-        caps = json_results["capabilities"]
         print(f"Server version: {json_results['version']}")
         print(f"API version: {json_results['api_version']}")
         print(
             f"Supported API versions: {json_results['supported_api_versions']}"
         )
         print(f"Platform version: {json_results['platform_version']}")
-        print("Capabilities:")
-        print(f"  job_types: {', '.join(sorted(caps['job_types']))}")
-        print(f"  profiling: {caps['profiling']}")
-        print(f"  tech_types: {caps['tech_types']}")
-        print(f"  drivers: {caps['drivers']}")
-        print(f"  transpilers: {caps['transpilers']}")
-        print(
-            "  driver_transpiler_mappings: "
-            f"{caps['driver_transpiler_mappings']}"
-        )
+        print(f"Auth mode: {json_results['auth_mode']}")
+        caps = json_results.get("capabilities", None)
+        if caps:
+            print("Capabilities:")
+            print(f"  job_types: {', '.join(sorted(caps['job_types']))}")
+            print(f"  profiling: {caps['profiling']}")
+            print(f"  tech_types: {caps['tech_types']}")
+            print(f"  drivers: {caps['drivers']}")
+            print(f"  transpilers: {caps['transpilers']}")
+            print(
+                "  driver_transpiler_mappings: "
+                f"{caps['driver_transpiler_mappings']}"
+            )
 
 
 # Driver commands
@@ -637,6 +648,13 @@ class GetDevice(ShowOne):
         """
         parser = super().get_parser(prog_name)
         parser.add_argument("device_name", type=str, help="Device name")
+        parser.add_argument(
+            "--details",
+            dest="details",
+            action="store_true",
+            default=False,
+            help="Show detailed device information",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -647,9 +665,10 @@ class GetDevice(ShowOne):
         """
         resource = self.group
         device_name = parsed_args.device_name
+        details = parsed_args.details
 
         status_code, reason, text, result = self.app.client.get_device(
-            device_name
+            device_name, details=details
         )
         json_results = CommandHelper.check_results(
             resource, "get_device", status_code, reason, text
@@ -1160,7 +1179,9 @@ class SubmitJob(Command):
         callbacks = parsed_args.callbacks
 
         # request capabilities
-        status_code, reason, text, result = self.app.client.version()
+        status_code, reason, text, result = self.app.client.version(
+            details=True
+        )
         json_results = CommandHelper.check_results(
             resource, "version", status_code, reason, text
         )
@@ -1524,6 +1545,40 @@ class GetJobs(Lister):
             parser
         """
         parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--all-projects",
+            dest="all_projects",
+            action="store_true",
+            help="All projects",
+        )
+        parser.add_argument(
+            "--all-users",
+            dest="all_users",
+            action="store_true",
+            help="All users from same projects",
+        )
+        parser.add_argument(
+            "--project-id",
+            dest="project_id",
+            type=str,
+            default=None,
+            help="Filter by project ID",
+        )
+        parser.add_argument(
+            "--user-id",
+            dest="user_id",
+            type=str,
+            default=None,
+            help="Filter by user ID",
+        )
+        parser.add_argument(
+            "--job-ids",
+            dest="job_ids",
+            nargs="*",
+            type=str,
+            default=[],
+            help="Filter by job IDs (space-separated)",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -1534,6 +1589,7 @@ class GetJobs(Lister):
         """
         resource = self.group
         header_list = [
+            "project_id",
             "job_id",
             "job_name",
             "job_status",
@@ -1541,12 +1597,50 @@ class GetJobs(Lister):
             "backend",
             "job_type",
             "shots",
-            "creation_date",
-            "end_date",
+            "created_at",
+            "started_at",
+            "ended_at",
         ]
 
+        # Validate arguments
+        # Validate project_id if provided
+        if parsed_args.project_id:
+            CommandHelper.handle_invalid_arguments(
+                ClientLibrary.validate_values_uuid(
+                    parsed_args.project_id, "project_id"
+                )
+            )
+
+        # Validate user_id if provided
+        if parsed_args.user_id:
+            CommandHelper.handle_invalid_arguments(
+                ClientLibrary.validate_values_uuid(
+                    parsed_args.user_id, "user_id"
+                )
+            )
+
+        # Validate job_ids if provided
+        if parsed_args.job_ids:
+            for job_id in parsed_args.job_ids:
+                CommandHelper.handle_invalid_arguments(
+                    ClientLibrary.validate_values_uuid(job_id, "job_id")
+                )
+
         # call api
-        status_code, reason, text, result = self.app.client.get_jobs()
+        filters = {}
+        if parsed_args.all_projects:
+            filters["all_projects"] = parsed_args.all_projects
+        if parsed_args.all_users:
+            filters["all_users"] = parsed_args.all_users
+        if parsed_args.project_id:
+            filters["project_id"] = parsed_args.project_id
+        if parsed_args.user_id:
+            filters["user_id"] = parsed_args.user_id
+        if parsed_args.job_ids:
+            filters["job_ids"] = parsed_args.job_ids
+        status_code, reason, text, result = self.app.client.get_jobs(
+            filters=filters
+        )
         json_results = CommandHelper.check_results(
             resource, "get_jobs", status_code, reason, text
         )
@@ -1678,6 +1772,14 @@ class DeleteJobs(Command):
             action="store_true",
             help="Answer yes for all question",
         )
+        parser.add_argument(
+            "-f",
+            "--force",
+            default=False,
+            dest="force",
+            action="store_true",
+            help="Force delete jobs regardless of status",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -1689,6 +1791,7 @@ class DeleteJobs(Command):
         resource = self.group
         job_ids = parsed_args.job_ids
         assume_yes = parsed_args.assume_yes
+        force = parsed_args.force
 
         job_id_list = []
         if job_ids.lower() == "all":
@@ -1725,7 +1828,7 @@ class DeleteJobs(Command):
 
         # call api
         status_code, reason, text, result = self.app.client.delete_jobs(
-            job_id_list
+            job_id_list, force=force
         )
         json_results = CommandHelper.check_results(
             resource, "delete_job", status_code, reason, text
@@ -1764,10 +1867,24 @@ class UpdateJob(Command):
         parser = super().get_parser(prog_name)
         parser.add_argument(dest="job_id", type=str, help="Job uuid")
         parser.add_argument(
+            "--job-name",
+            dest="job_name",
+            type=str,
+            default=None,
+            help="Set job name",
+        )
+        parser.add_argument(
+            "--description",
+            dest="description",
+            type=str,
+            default=None,
+            help="Set job description",
+        )
+        parser.add_argument(
             "--job-priority",
             dest="job_priority",
             type=int,
-            default=f"{Constant.DEFAULT_JOB_PRIORITY}",
+            default=None,
             help="Set job priority. Values: 1-10, Default: 5. "
             "Highest priority: 1, Lowest Priority: 10",
         )
@@ -1781,6 +1898,8 @@ class UpdateJob(Command):
         """
         resource = self.group
         job_id = parsed_args.job_id
+        job_name = parsed_args.job_name
+        description = parsed_args.description
         job_priority = parsed_args.job_priority
 
         # Validate argument: job_id
@@ -1789,34 +1908,55 @@ class UpdateJob(Command):
                 ClientLibrary.validate_values_uuid(job_id, "job_id")
             )
 
-        # Validate argument: job_priority
-        CommandHelper.handle_invalid_arguments(
-            ClientLibrary.validate_values_range(
-                job_priority,
-                "job_priority",
-                Constant.MIN_JOB_PRIORITY,
-                Constant.MAX_JOB_PRIORITY,
+        # Validate: at least one optional parameter must be set
+        if not any([job_name, description, job_priority]):
+            raise errors.InvalidArguments(
+                "At least one optional parameter (--job-name, --description, "
+                "--job-priority) must be set"
             )
-        )
+
+        # Validate argument: job_name
+        if job_name:
+            CommandHelper.handle_invalid_arguments(
+                ClientLibrary.validate_schema(
+                    job_name, args_schema.NAME_SCHEMA, allow_none=True
+                )
+            )
+
+        # Validate argument: description
+        if description:
+            CommandHelper.handle_invalid_arguments(
+                ClientLibrary.validate_values_length(
+                    description,
+                    "description",
+                    Constant.MIN_DESCRIPTION_LENGTH,
+                    Constant.MAX_DESCRIPTION_LENGTH,
+                    allow_none=True,
+                )
+            )
+
+        # Validate argument: job_priority
+        if job_priority:
+            CommandHelper.handle_invalid_arguments(
+                ClientLibrary.validate_values_range(
+                    job_priority,
+                    "job_priority",
+                    Constant.MIN_JOB_PRIORITY,
+                    Constant.MAX_JOB_PRIORITY,
+                )
+            )
 
         # call api
         status_code, reason, text, result = self.app.client.update_job(
-            job_id=job_id, job_priority=job_priority
+            job_id=job_id,
+            job_name=job_name,
+            description=description,
+            job_priority=job_priority,
         )
-        json_results = CommandHelper.check_results(
+        CommandHelper.check_results(
             resource, "update_job", status_code, reason, text
         )
-
-        # print results
-        job = json_results["job_id"]
-        if job:
-            print(
-                f"The following job {job} priority will be "
-                f"updated to {job_priority}"
-            )
-        else:
-            if not json_results:
-                print("Job not found")
+        print("Job updated successfully")
 
 
 class SetJobResults(Command):
@@ -1940,6 +2080,11 @@ class CreateUser(Command):
         parser.add_argument("user_name", type=str, help="User name")
         parser.add_argument("password", type=str, help="Password")
         parser.add_argument(
+            "--project-id",
+            type=str,
+            help="Project ID (UUID, optional, defaults to DEFAULT_PROJECT_ID)",
+        )
+        parser.add_argument(
             "--role-name",
             action="append",
             dest="role_names",
@@ -1996,6 +2141,7 @@ class CreateUser(Command):
             parsed_args.password_expiry_days,
             is_enabled,
             is_locked,
+            parsed_args.project_id,
         )
         json_results = CommandHelper.check_results(
             resource, "create_user", status_code, reason, text
@@ -2657,6 +2803,177 @@ class ClearLoginLogs(Command):
             return None
 
 
+# Project commands
+class CreateProject(Command):
+    """Create project."""
+
+    group = QcosShell.CMD_GROUP_PROJECT
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument("project_name", type=str, help="Project name")
+        parser.add_argument(
+            "--description",
+            dest="description",
+            type=str,
+            default=None,
+            help="Project description",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+
+        # Validate argument: description
+        CommandHelper.handle_invalid_arguments(
+            ClientLibrary.validate_values_length(
+                parsed_args.description,
+                "description",
+                Constant.MIN_DESCRIPTION_LENGTH,
+                Constant.MAX_DESCRIPTION_LENGTH,
+                allow_none=True,
+            )
+        )
+
+        status_code, reason, text, result = self.app.client.create_project(
+            parsed_args.project_name,
+            parsed_args.description,
+        )
+        json_results = CommandHelper.check_results(
+            resource, "create_project", status_code, reason, text
+        )
+        print(f"Project created: {json_results['name']}")
+        print(f"Project ID: {json_results['id']}")
+
+
+class UpdateProject(Command):
+    """Update project by ID."""
+
+    group = QcosShell.CMD_GROUP_PROJECT
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument("project_id", type=str, help="Project ID (UUID)")
+        parser.add_argument(
+            "--name", type=str, dest="name", help="New project name"
+        )
+        parser.add_argument(
+            "--description",
+            dest="description",
+            type=str,
+            default=None,
+            help="New project description",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        project_id = parsed_args.project_id
+        name = parsed_args.name
+        description = parsed_args.description
+
+        # Validate argument: description
+        CommandHelper.handle_invalid_arguments(
+            ClientLibrary.validate_values_length(
+                description,
+                "description",
+                Constant.MIN_DESCRIPTION_LENGTH,
+                Constant.MAX_DESCRIPTION_LENGTH,
+                allow_none=True,
+            )
+        )
+
+        status_code, reason, text, result = self.app.client.update_project(
+            project_id, name, description
+        )
+        CommandHelper.check_results(
+            resource, "update_project", status_code, reason, text
+        )
+        print(f"Project updated: {parsed_args.project_id}")
+
+
+class GetProject(ShowOne):
+    """Get project by ID."""
+
+    group = QcosShell.CMD_GROUP_PROJECT
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument("project_id", type=str, help="Project ID (UUID)")
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        status_code, reason, text, result = self.app.client.get_project(
+            parsed_args.project_id
+        )
+        json_results = CommandHelper.check_results(
+            resource, "get_project", status_code, reason, text
+        )
+        table_values = CommandHelper.get_table_data(json_results)
+        return table_values
+
+
+class DeleteProject(Command):
+    """Delete project by ID."""
+
+    group = QcosShell.CMD_GROUP_PROJECT
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument("project_id", type=str, help="Project ID (UUID)")
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        status_code, reason, text, result = self.app.client.delete_project(
+            parsed_args.project_id
+        )
+        CommandHelper.check_results(
+            resource, "delete_project", status_code, reason, text
+        )
+        print(f"Project deleted: {parsed_args.project_id}")
+
+
+class GetProjects(Lister):
+    """Get projects with optional filtering.
+
+    Examples:
+        list-projects                       # List all projects
+        list-projects --name default        # Filter by project name
+    """
+
+    group = QcosShell.CMD_GROUP_PROJECT
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--name", type=str, dest="name", help="Filter projects by name"
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        header_list = ["id", "name", "description", "created_at", "updated_at"]
+
+        filters = None
+        if parsed_args.name:
+            filters = {"name": parsed_args.name}
+
+        status_code, reason, text, result = self.app.client.get_projects(
+            filters=filters
+        )
+        json_results = CommandHelper.check_results(
+            resource, "get_projects", status_code, reason, text
+        )
+        table_values = CommandHelper.get_table_list_data(
+            json_results, header_list, is_dict=True
+        )
+        if not json_results:
+            self.app.stdout.write("No projects found\n")
+        return table_values
+
+
 # Auth commands
 class Login(Command):
     """User login to get JWT token."""
@@ -2952,6 +3269,12 @@ command_manager.add_command("list-devices", GetDevices)
 # transpiler command
 command_manager.add_command("get-transpiler", GetTranspiler)
 command_manager.add_command("list-transpilers", GetTranspilers)
+# project command
+command_manager.add_command("create-project", CreateProject)
+command_manager.add_command("get-project", GetProject)
+command_manager.add_command("list-projects", GetProjects)
+command_manager.add_command("update-project", UpdateProject)
+command_manager.add_command("delete-project", DeleteProject)
 # user command
 command_manager.add_command("get-user-mgmt", GetUserMgmt)
 command_manager.add_command("set-user-mgmt", SetUserMgmt)

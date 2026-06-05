@@ -68,8 +68,9 @@ response = {
         "shots": 100,
         "dry_run": False,
         "progress": -1,
-        "creation_date": "2025-11-25T16:02:33.182619",
-        "end_date": None,
+        "created_at": "2025-11-25T16:02:33.182619",
+        "started_at": None,
+        "ended_at": None,
     },
     "id": 0,
 }
@@ -376,6 +377,11 @@ class TestGetJobs:
         mock_get_table_data.return_value = None
         mock_check_results.return_value = None
         mock_client = Mock(spec=Namespace)
+        mock_client.project_id = None
+        mock_client.user_id = None
+        mock_client.job_ids = None
+        mock_client.all_projects = False
+        mock_client.all_users = False
         table_values = get_jobs.take_action(mock_client)
         assert table_values is None
 
@@ -434,6 +440,7 @@ class TestDeleteJobs:
         mock_client = Mock(spec=Namespace)
         mock_client.job_ids = "all"
         mock_client.assume_yes = "DMA"
+        mock_client.force = False
         delete_jobs.take_action(mock_client)
 
         mock_client.job_ids = "NO"
@@ -487,6 +494,8 @@ class TestUpdateJob:
         mock_client = Mock(spec=Namespace)
         mock_client.job_id = job_id
         mock_client.job_priority = Constant.DEFAULT_JOB_PRIORITY
+        mock_client.job_name = None
+        mock_client.description = None
 
         assert update_job.take_action(mock_client) is None
 
