@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import copy
+import json
 
 from loguru import logger
 from smbprotocol import smbclient
@@ -27,8 +28,7 @@ from wy_qcos.drivers.device import Device
 from wy_qcos.drivers.driver_base import DriverBase
 
 
-
-class DriverHanyuan1MC(DriverBase):
+class DriverHanyuan1Pulse(DriverBase):
     """五岳中科酷原-汉原1 中性原子驱动, 后端为汉原原生测控系统.
 
     Wuyue Cascoldatom Hanyuan1 driver
@@ -37,8 +37,8 @@ class DriverHanyuan1MC(DriverBase):
     def __init__(self):
         super().__init__()
         self.version = "0.0.1"
-        self.alias_name = "中科酷原-汉原1-MC 中性原子驱动"
-        self.description = "中科酷原-汉原1-MC 中性原子驱动"
+        self.alias_name = "中科酷原-汉原1-Pulse 中性原子驱动"
+        self.description = "中科酷原-汉原1-Pulse 中性原子驱动"
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_NEUTRAL_ATOM
         self.supported_basis_gates = [
@@ -60,7 +60,8 @@ class DriverHanyuan1MC(DriverBase):
         self.ip_address = "192.168.1.100"
         self.port = 445
         self.user = "user"
-        self.pwd = "123456"
+        self.pwd = ""
+        self.shared_name = "shared_name"
 
     def init_driver(self):
         """Init driver."""
@@ -85,6 +86,7 @@ class DriverHanyuan1MC(DriverBase):
             "port": int,
             "user": str,
             "pwd": str,
+            "shared_name": str,
         })
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema
@@ -94,7 +96,13 @@ class DriverHanyuan1MC(DriverBase):
             self.port = configs.get("port", 445)
             self.user = configs.get("user", "user")
             self.pwd = configs.get("pwd", "123456")
-            with smbclient.open_session(self.ip_addr, username=self.user, password=self.pwd, port=self.port):
+            self.shared_name = configs.get("shared_name", "shared_name")
+            with smbclient.open_session(
+                self.ip_addr,
+                username=self.user,
+                password=self.pwd,
+                port=self.port,
+            ):
                 pass
         else:
             _err_msg = "\n".join(err_msgs)
@@ -120,7 +128,10 @@ class DriverHanyuan1MC(DriverBase):
         for gate in transpile_results:
             single_pulse = {}
             single_pulse["time"] = time
-            if gate.operation_type == OperationType.SINGLE_QUBIT_OPERATION.value:
+            if (
+                gate.operation_type
+                == OperationType.SINGLE_QUBIT_OPERATION.value
+            ):
                 single_pulse["type"] = 2
                 if len(gate.arg_value) == 0:
                     logger.warning("wrong arg value parameter")
@@ -130,12 +141,21 @@ class DriverHanyuan1MC(DriverBase):
                 if len(gate.arg_value) >= 2:
                     phase = gate.arg_value[1]
                     continue
-                param_lst = [gate.targets[0], round(degree, 6), round(phase, 6), 0, 0]
+                param_lst = [
+                    gate.targets[0],
+                    round(degree, 6),
+                    round(phase, 6),
+                    0,
+                    0,
+                ]
                 single_pulse["param"] = param_lst
                 pulse_data.append(single_pulse)
                 time = time + 1
                 qubit_id_list.extend(gate.targets)
-            if gate.operation_type == OperationType.DOUBLE_QUBIT_OPERATION.value:
+            if (
+                gate.operation_type
+                == OperationType.DOUBLE_QUBIT_OPERATION.value
+            ):
                 single_pulse["type"] = 3
                 if len(gate.arg_value) == 0:
                     logger.warning("wrong arg value parameter")
@@ -145,14 +165,24 @@ class DriverHanyuan1MC(DriverBase):
                 if len(gate.arg_value) >= 2:
                     phase = gate.arg_value[1]
                     continue
-                param_lst = [gate.targets[0], round(degree, 6), round(phase, 6), 0, 0, 0, gate.targets[1]]
+                param_lst = [
+                    gate.targets[0],
+                    round(degree, 6),
+                    round(phase, 6),
+                    0,
+                    0,
+                    0,
+                    gate.targets[1],
+                ]
                 single_pulse["param"] = param_lst
                 pulse_data.append(single_pulse)
                 time = time + 1
                 qubit_id_list.extend(gate.targets)
         return pulse_data, qubit_id_list
 
-    def _generate_qubit_map(self, transpile_results: list, qubit_id_list: list) -> list:
+    def _generate_qubit_map(
+        self, transpile_results: list, qubit_id_list: list
+    ) -> list:
         """Generate qubit map.
 
         Args:
@@ -167,7 +197,7 @@ class DriverHanyuan1MC(DriverBase):
         for gate in transpile_results:
             if gate.operation_type == OperationType.MEASURE.value:
                 meas_qubit_list.extend(gate.targets)
-            
+
             for value in qubit_id_list:
                 if value in meas_qubit_list:
                     qubit_map.append([value, 0, 0, 1])
@@ -175,7 +205,13 @@ class DriverHanyuan1MC(DriverBase):
                     qubit_map.append([value, 0, 0, 0])
         return qubit_map
 
-    def _prepare_data(self, task_id: str, transpile_results: list, shots: int, num_qubits: int):
+    def _prepare_data(
+        self,
+        task_id: str,
+        transpile_results: list,
+        shots: int,
+        num_qubits: int,
+    ):
         """Prepare data.
 
         Args:
@@ -196,9 +232,20 @@ class DriverHanyuan1MC(DriverBase):
             "RepeatTime": shots,
             "Mode": "circuit",
         }
-        task_data["Pulse"], qubit_id_list= self._generate_pulse(transpile_results)
-        task_data["QubitMap"] = self._generate_qubit_map(transpile_results, qubit_id_list)
+        task_data["Pulse"], qubit_id_list = self._generate_pulse(
+            transpile_results
+        )
+        task_data["QubitMap"] = self._generate_qubit_map(
+            transpile_results, qubit_id_list
+        )
         return task_data
+
+    def _reset_and_reconnect(self):
+        smbclient.reset_connection_cache()
+        with smbclient.open_session(
+            self.ip_addr, username=self.user, password=self.pwd, port=self.port
+        ):
+            pass
 
     def submit_task(self, task_data):
         """submit_task.
@@ -209,7 +256,75 @@ class DriverHanyuan1MC(DriverBase):
         Returns:
             qubit map data
         """
+        remote_dir_path = rf"\\\\{self.ip_address}\\{self.shared_name}"
+        if not smbclient.path.exists(remote_dir_path):
+            smbclient.mkdir(remote_dir_path)
+        remote_full_path = rf"{remote_dir_path}\\datatest.txt"
+        json_str = json.dumps(task_data, ensure_ascii=False)
+        succ = True
+        err_msg = None
+        try:
+            with smbclient.open_file(remote_full_path, "wb") as f:
+                f.write(json_str.encode("utf-8"))
+        except (ConnectionResetError, smbclient.SMBException):
+            self._reset_and_reconnect()
+            with smbclient.open_file(remote_full_path, "wb") as f:
+                f.write(json_str.encode("utf-8"))
+        except Exception as e:
+            succ = False
+            err_msg = str(e)
+            logger.error(f"Exception while submitting task: {e}")
 
+        return succ, err_msg
+
+    def get_task_result(self, task_id):
+        """Get task result.
+
+        Args:
+            task_id: task id
+
+        Returns:
+            True if get result, False otherwise
+        """
+        remote_dir_path = rf"\\\\{self.ip_address}\\{self.shared_name}"
+        if not smbclient.path.exists(remote_dir_path):
+            smbclient.mkdir(remote_dir_path)
+        remote_full_path = rf"{remote_dir_path}\\dataout.txt"
+        succ = True
+        err_msg = None
+        content = None
+        try:
+            with smbclient.open_file(remote_full_path, "rb") as f:
+                content = f.read().decode("utf-8")
+        except (ConnectionResetError, smbclient.SMBException):
+            self._reset_and_reconnect()
+            with smbclient.open_file(remote_full_path, "rb") as f:
+                content = f.read().decode("utf-8")
+        except Exception as e:
+            succ = False
+            err_msg = str(e)
+            logger.error(f"Exception while getting task result: {e}")
+            return succ, err_msg, None
+
+        result_data = json.loads(content)
+        if not isinstance(result_data, dict):
+            logger.error("Error format.")
+            return False, None, None
+        file_task_id = result_data.get("TaskID", "")
+        if file_task_id != task_id:
+            logger.info("Unexpected task id, continue waiting.")
+            succ = False
+            return False, None, None
+        raw_result = result_data.get("Result2", [])
+        return succ, err_msg, raw_result
+
+    def format_result(self, raw_results: list, shots: int) -> dict:
+        result = {}
+        for item in raw_results:
+            key = item["Type"]
+            val = item["Percent"] * shots
+            result[key] = val
+        return result
 
     def run(self, job_id, num_qubits, data, data_type, shots=1):
         """Run job.
@@ -236,7 +351,9 @@ class DriverHanyuan1MC(DriverBase):
         transpile_results = data["transpile_results"]
         self.set_progress_by_task(self.TASK_STAGE_PREPARE_DATA)
         task_id = f"{job_id}-{data_index}"
-        task_data = self._prepare_data(task_id, transpile_results, shots, num_qubits)
+        task_data = self._prepare_data(
+            task_id, transpile_results, shots, num_qubits
+        )
 
         # 2. Submit Task
         logger.info("2. Submit Task")
@@ -245,30 +362,30 @@ class DriverHanyuan1MC(DriverBase):
         if not success:
             raise ValueError(f"Failed to submit task: {err_msg}")
 
-        # 4. Wait for task_status is completed or failed
-        logger.info("4. wait for task_status=completed")
+        # 3. Get Result
+        logger.info("3. wait for task_status=completed")
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
         task_id = f"{job_id}-{data_index}"
-        success, err_msg, results = Library.loop_with_timeout(
-            self.check_task_status,
+        success, err_msg, raw_results = Library.loop_with_timeout(
+            self.get_task_result,
             3600,
-            5,
+            10,
             task_id,
-            expect_task_status=[
-                self.task_status_completed,
-                self.task_status_failed,
-            ],
         )
         if not success:
-            raise ValueError(f"Failed to wait for task [{job_id}]: {err_msg}")
-
-        if results is None or results != self.task_status_completed:
             raise ValueError(
-                f"Failed to wait for task [{job_id}]: {err_msg},"
-                f"task status:{results}"
+                f"Failed to get task [{job_id}] result: {err_msg}"
             )
 
-        # 7. Save results and set driver status to ONLINE
+        if raw_results is None or len(raw_results) == 0:
+            raise ValueError(
+                "Failed to getting job result. Result is None or empty"
+            )
+
+        # 4. Formate Result
+        results = self.format_result(raw_results, shots)
+
+        # 5. Save results and set driver status to ONLINE
         self.set_results(job_id, data_index, results=results)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
