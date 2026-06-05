@@ -96,7 +96,7 @@ class PrefectSection(BaseModel):
         default="http://127.0.0.1:4200/api", description="Prefect API URL"
     )
     PREFECT_SERVER_DATABASE_CONNECTION_URL: str = Field(
-        default="sqlite+aiosqlite:///var/qcos/db/prefect.db",
+        default="sqlite+aiosqlite:////var/qcos/db/prefect.db?timeout=30&journal_mode=WAL",
         description="Prefect database connection URL",
         json_schema_extra={"sensitive": True, "db_connection_url": True},
     )
@@ -170,6 +170,9 @@ class UsersSection(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    MAX_JOBS: int = Field(
+        default=100, ge=1, description="Maximum jobs per user/virtual instance"
+    )
     PASSWORD_EXPIRY_DAYS: int = Field(
         default=90, ge=0, description="Password expiry days (0 = never expire)"
     )
@@ -221,9 +224,6 @@ class VirtSection(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    MAX_JOBS_PER_VIRTUAL_INSTANCE: int = Field(
-        default=10, ge=1, description="Maximum jobs per virtual instance"
-    )
     PASSWORD_SALT: str = Field(
         default="123456",
         description="Salt for password/encryption",
@@ -395,12 +395,12 @@ class Config:
             if isinstance(value, str) and value.startswith(
                 Constant.ENCRYPTION_PREFIX
             ):
-                success, err_msg, decrypted_value = Library.decrypt_text(
+                _success, _err_msg, decrypted_value = Library.decrypt_text(
                     value,
                     encryption_prefix=Constant.ENCRYPTION_PREFIX,
                     fernet_key=Constant.DEFAULT_FERNET_KEY,
                 )
-                if not success:
+                if not _success:
                     raise errors.GenericException(
                         f"Can't decrypt text: {value} ({section_key})"
                     )
@@ -472,9 +472,13 @@ class Config:
 
                 cls.initialize()  # Update section attributes
             except (ValueError, ValidationError) as e:
-                # Add debug info to help diagnose loading issues
+                # Extract and format validation errors
+                err_list = e.errors() if hasattr(e, "errors") else []
+                err_msgs = ", ".join([
+                    f"{err['msg']} {','.join(err['loc'])}" for err in err_list
+                ])
                 raise errors.GenericException(
-                    f"Configuration validation error: {str(e)}"
+                    f"Configuration validation error: [{e.title}] {err_msgs}"
                 )
 
     @classmethod

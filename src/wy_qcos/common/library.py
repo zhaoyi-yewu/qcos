@@ -772,13 +772,12 @@ class Library:
             if str(uuid_obj) != value:
                 err_msg = (
                     f"Invalid params: {param_name}={value}. "
-                    f"reason: UUID version error"
+                    f"reason: Invalid UUID version"
                 )
                 return False, [err_msg]
         except ValueError:
             err_msg = (
-                f"Invalid params: {param_name}={value}. "
-                f"reason: UUID value error"
+                f"Invalid params: {param_name}={value}. reason: Invalid UUID"
             )
             return False, [err_msg]
         return True, None
@@ -1024,7 +1023,9 @@ class Library:
                 if r.status_code in success_http_code:
                     break
             except Exception as e:
-                logger.error(f"HttpMethod excption info: {e}")
+                logger.debug(f"HttpMethod exception info: {e}")
+        if r is None:
+            return HttpCode.TIMEOUT_ERROR, "Connection failed", None, None
         return r.status_code, r.reason, r.text, r
 
     @staticmethod
@@ -1232,7 +1233,7 @@ class Library:
             retries = callback.get("retries", 3)
             timeout = callback.get("timeout", 10)
             if url:
-                _success, err_msg, text, result = Library.call_http_api(
+                status_code, err_msg, text, result = Library.call_http_api(
                     url,
                     method,
                     data=json.dumps(data),
@@ -1241,7 +1242,7 @@ class Library:
                     retries=retries,
                     timeout=timeout,
                 )
-                if not _success:
+                if status_code != HttpCode.SUCCESS_OK:
                     success = False
             else:
                 success = False
@@ -1609,6 +1610,13 @@ class Library:
             success, error message, virtual instance id
         """
         new_uuid = None
+        if uuid_str and uuid_str != "all":
+            success, err_msgs = Library.validate_values_uuid(
+                uuid_str, "instance_id"
+            )
+            if not success:
+                return False, "\n".join(err_msgs), None
+
         try:
             device_names = "+".join(device_names_list)
             uuid_salt_str = f"{device_names}|{uuid_str}|{salt}"
@@ -1643,7 +1651,7 @@ class Library:
         """
         err_msg = None
         try:
-            if encode is True:
+            if encode:
                 virtual_instance_id = base64.b64decode(
                     virtual_instance_id
                 ).decode("utf-8")
@@ -1673,98 +1681,36 @@ class Library:
             return False, err_msg, None, None
 
     @staticmethod
-    async def job_callback(flow, flow_run, state, results=None):
+    def job_callback(job_id, job_status, backend, results, callbacks, user={}):
         """Job callback.
 
         Args:
-            flow: flow
-            flow_run: flow run
-            state: flow state
-            results: flow results
+            job_id: job id
+            job_status: job status
+            backend: backend
+            results: job results
+            callbacks: callbacks
+            user: user related info
         """
-        job_id = flow_run.name  # use name as job uuid
-        job_status = Constant.JOB_STATUS_COMPLETED
-        is_failed = False
-        flow_state_name = state.name.upper()
-        parameters = flow_run.parameters
-        error_results = None
-        callback_success = True
-        callbacks = Library.get_nested_dict_value(
-            parameters, "job_info", "data", "callbacks", default=None
-        )
-        backend = Library.get_nested_dict_value(
-            parameters, "job_info", "data", "backend", default=None
-        )
-
         if not callbacks:
-            return
-
-        if flow_state_name in Constant.PREFECT_WAIT_STATES:
-            return
-
-        if flow_state_name in [
-            Constant.PREFECT_STATE_RUNNING,
-            Constant.PREFECT_STATE_COMPLETED,
-        ]:
-            if results is None:
-                results = await flow_run.state.result()
-        else:
-            error_details = None
-            results = None
-            is_failed = True
-            if flow_state_name == Constant.PREFECT_STATE_CANCELLING:
-                job_status = Constant.JOB_STATUS_CANCELLED
-            try:
-                await flow_run.state.result()
-            except Exception as e:
-                error_details = f"{e.__class__.__name__}: {str(e)}"
-
-            error_results = {
-                "code": -HttpCode.INTERNAL_SERVER_ERROR,
-                "message": "[JOB] Running failed in job engine",
-                "data": {"details": error_details},
-            }
-
-        if results:
-            for result in results:
-                status = Library.get_nested_dict_value(
-                    result, "metadata", "status", default=None
-                )
-                if status != Constant.JOB_STATUS_COMPLETED:
-                    is_failed = True
-                _callback_success = Library.get_nested_dict_value(
-                    result, "metadata", "callback_success", default=False
-                )
-                if not _callback_success:
-                    callback_success = False
-
-        if not callback_success:
-            # run callbacks
-            # if job_info contains callback list and driver is in sync mode
-            # run async callback
-            if is_failed:
-                job_status = Constant.JOB_STATUS_FAILED
-
-            data = {
-                "job_id": job_id,
-                "job_status": job_status,
-                "backend": backend,
-            }
-            if results:
-                data["results"] = results
-            if error_results:
-                data["error"] = error_results
-
-            success, err_msg = await Library.async_run_callbacks(
-                data, callbacks
-            )
-            if success:
-                for result in results:
-                    result["metadata"]["callback_success"] = True
-            else:
-                logger.error(f"Callback Error: {err_msg}")
-
-            return results
+            return True
+        project_id = None
+        user_id = None
+        if user:
+            project_id = user.get("project_id", None)
+            user_id = user.get("user_id", None)
+        data = {
+            "project_id": project_id,
+            "user_id": user_id,
+            "job_id": job_id,
+            "job_status": job_status,
+            "backend": backend,
+            "results": results,
+        }
+        success, err_msg = Library.run_callbacks(data, callbacks)
+        if not success:
+            logger.error(f"Job: {job_id} callback error: {err_msg}")
+        return success
 
 
 def _s(secret):
