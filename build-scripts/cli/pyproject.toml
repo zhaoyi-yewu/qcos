@@ -56,11 +56,11 @@ dependencies = [
 qcos-cli = "wy_qcos_client.shell:main"
 
 [project.urls]
-"Homepage" = "https://gitee.com/OpenWuYue/qcos"
+"Homepage" = "https://gitee.com/WUYUEQbit/qcos"
 "Documentation" = "https://qcos.readthedocs.io"
-"Changelog" = "https://gitee.com/OpenWuYue/qcos/blob/develop/CHANGELOG.md"
-"Issue Tracker" = "https://gitee.com/OpenWuYue/qcos/issues"
-"Source" = "https://gitee.com/OpenWuYue/qcos"
+"Changelog" = "https://gitee.com/WUYUEQbit/qcos/blob/develop/CHANGELOG.md"
+"Issue Tracker" = "https://gitee.com/WUYUEQbit/qcos/issues"
+"Source" = "https://gitee.com/WUYUEQbit/qcos"
 
 [tool.poetry.dependencies]
 

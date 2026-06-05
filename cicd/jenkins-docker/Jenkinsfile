@@ -482,7 +482,7 @@ services:
     environment:
       - PREFECT_SERVER_API_HOST=0.0.0.0
       - PREFECT_API_URL=http://127.0.0.1:4200/api
-      - PREFECT_SERVER_DATABASE_CONNECTION_URL=sqlite+aiosqlite:////var/qcos/prefect.db
+      - PREFECT_SERVER_DATABASE_CONNECTION_URL=sqlite+aiosqlite:////var/qcos/db/prefect.db?timeout=30&journal_mode=WAL
       - PREFECT_API_DATABASE_TIMEOUT=60
       - NO_PROXY=127.0.0.1,localhost,0.0.0.0
       - no_proxy=127.0.0.1,localhost,0.0.0.0
@@ -494,7 +494,7 @@ services:
     environment:
       - PYTHONPATH=/root/qcos-project/src
       - PREFECT_API_URL=http://127.0.0.1:4200/api
-      - PREFECT_SERVER_DATABASE_CONNECTION_URL=sqlite+aiosqlite:////var/qcos/prefect.db
+      - PREFECT_SERVER_DATABASE_CONNECTION_URL=sqlite+aiosqlite:////var/qcos/db/prefect.db?timeout=30&journal_mode=WAL
       - NO_PROXY=127.0.0.1,localhost,0.0.0.0
       - no_proxy=127.0.0.1,localhost,0.0.0.0
       # Limit device count to avoid Worker concurrency locking Prefect SQLite and event loop conflicts
