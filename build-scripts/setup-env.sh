@@ -25,7 +25,26 @@ if ! [ -f "${env_file}" ]; then
     exit 1
 fi
 source ${cwd}/version
+
+# Expand all environment variables in .env file
+# First source .env to get the raw values
 source ${env_file}
+
+# Then expand all variables that contain nested variable references
+# by re-exporting them with eval echo
+while IFS='=' read -r key value; do
+    # Skip empty lines and comments
+    [[ -z "$key" || "$key" =~ ^# ]] && continue
+
+    # Get current value of this variable from the environment
+    current_value=$(eval echo "\${${key}}")
+
+    # If it's different from the source, it means it has variables to expand
+    if [[ -n "$current_value" ]]; then
+        # Export the expanded value
+        export "${key}=${current_value}"
+    fi
+done < "${env_file}"
 
 # local variables
 export QCOS_LOCAL_SRC_DIR="${top_dir}"
