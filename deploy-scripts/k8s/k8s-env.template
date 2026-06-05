@@ -37,6 +37,18 @@ export QCOS_VIRTUAL_INSTANCE_ID=
 # eg. export QCOS_VIRTUAL_INSTANCE_ID=YWxsfGFsbHwzMmFk
 export QCOS_ADMIN_VIRTUAL_INSTANCE_ID=
 
+# Postgres configures
+#DB_BACKEND: sqlite, postgres
+export DB_BACKEND=postgres
+export POSTGRES_ADMIN_PASSWORD=PgDbAdmin123
+
+# QCOS database configs
+# pg: postgresql+pg8000://qcos:${QCOS_DATABASE_PASSWORD}@127.0.0.1:5432/qcos
+# sqlite: "sqlite:////var/qcos/db/qcos.db"
+export QCOS_DATABASE_PASSWORD=123456
+export QCOS_DATABASE_CONNECTION_URL=postgresql+pg8000://qcos:${QCOS_DATABASE_PASSWORD}@prefect-server.${QCOS_NAMESPACE}:5432/qcos
+#QCOS_DATABASE_CONNECTION_URL=sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL
+
 # K8s volumes
 # [REQUIRED] make sure the following two K8s PVCs exist before creating qcos pod
 export K8S_CODE_DATA_PVC="code-data-pvc"
@@ -47,7 +59,8 @@ export K8S_DATABASE_PVC="database-pvc"
 # [Optional] The IP address that prefect-server listen on, eg: 192.168.0.1
 export PREFECT_SERVER_API_HOST=
 export PREFECT_SERVER_PORT=4200
-export PREFECT_SERVER_DATABASE_CONNECTION_URL=sqlite+aiosqlite:////tmp/prefect.db
+# export PREFECT_SERVER_DATABASE_CONNECTION_URL=sqlite+aiosqlite:////tmp/prefect.db?timeout=30&journal_mode=WAL
+export PREFECT_SERVER_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect:${PREFECT_DATABASE_PASSWORD}@prefect-server.${QCOS_NAMESPACE}:5432/prefect
 
 # Redis configures
 # [Optional] The IP address that redis listen on, eg: 192.168.0.1

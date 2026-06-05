@@ -52,6 +52,7 @@ classifiers = [
 dependencies = [
     # requirements
     "aiohttp==3.12.13",
+    "aiomysql==0.2.0",
     "alembic==1.16.3",
     "annotated-types==0.7.0",
     "anyio==4.9.0",
@@ -97,6 +98,7 @@ dependencies = [
     "python-box==7.4.1",
     "python-jose==3.5.0",
     "python-socketio==5.12.1",
+    "PyYAML==6.0.3",
     "redis==7.1.0",
     "requests==2.32.5",
     "rustworkx==0.17.1",
@@ -137,11 +139,11 @@ qcos-transpiler = "wy_qcos.transpiler.cmss.transpiler_cmd_line:main"
 qiskit-transpiler = "wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd:main"
 
 [project.urls]
-"Homepage" = "https://gitee.com/OpenWuYue/qcos"
+"Homepage" = "https://gitee.com/WUYUEQbit/qcos"
 "Documentation" = "https://qcos.readthedocs.io"
-"Changelog" = "https://gitee.com/OpenWuYue/qcos/blob/develop/CHANGELOG.md"
-"Issue Tracker" = "https://gitee.com/OpenWuYue/qcos/issues"
-"Source" = "https://gitee.com/OpenWuYue/qcos"
+"Changelog" = "https://gitee.com/WUYUEQbit/qcos/blob/develop/CHANGELOG.md"
+"Issue Tracker" = "https://gitee.com/WUYUEQbit/qcos/issues"
+"Source" = "https://gitee.com/WUYUEQbit/qcos"
 
 [tool.poetry.dependencies]
 
