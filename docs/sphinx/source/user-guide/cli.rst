@@ -77,7 +77,7 @@
    qcos-cli submit-job --code-type qasm --shots 10 --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
 
    # 使用profiling进行模块性能测量
-   qcos-cli submit-job --code-type qasm --shots 10 --profiling scheduling driver:parse driver:transpile driver:run --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
+   qcos-cli submit-job --code-type qasm --shots 10 --profiling queuing scheduling driver:parse driver:transpile driver:run --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
 
    # 使用callbacks进行回调
    qcos-cli submit-job --code-type qasm --shots 10 --callbacks '[{"name":"callback","type":"results","method":"post","timeout":4,"retries":3,"headers":{"Content-Type": "application/json","user_id":"qcos"},"url":"http://127.0.0.1:8088/v1/job/set_job_results"}]' --backend dummy -f ./samples/qasm/2.0/simple-qasm.qasm
@@ -215,7 +215,7 @@
 .. code-block:: shell
 
    # 作业更新
-   usage: qcos-cli update-job [-h] [--job-priority JOB_PRIORITY] job_id
+   usage: qcos-cli update-job [-h] [--job-name JOB_NAME] [--description DESCRIPTION] [--job-priority JOB_PRIORITY] job_id
 
    Update job.
 
@@ -224,6 +224,10 @@
 
    options:
      -h, --help            show this help message and exit
+     --job-name JOB_NAME
+                           Set job name
+     --description DESCRIPTION
+                           Set job description
      --job-priority JOB_PRIORITY
                            Set job priority. Values: 1-10, Default: 5. Highest priority: 1, Lowest Priority: 10
 
@@ -233,7 +237,7 @@
 
 .. code-block:: shell
 
-   qcos-cli update-job --job-priority 3 00000000-0000-4000-8000-000000000001
+   qcos-cli update-job --job-name "My Updated Job" --description "Updated description" --job-priority 3 00000000-0000-4000-8000-000000000001
 
 
 查询作业
@@ -247,25 +251,23 @@
 .. code-block:: shell
 
    # 查询作业列表
-   usage: qcos-cli list-jobs [-h] [-f {csv,json,table,value,yaml}] [-c COLUMN] [--quote {all,minimal,none,nonnumeric}] [--noindent]
-                            [--max-width <integer>] [--fit-width] [--print-empty] [--sort-column SORT_COLUMN] [--sort-ascending | --sort-descending]
+   usage: qcos-cli list-jobs [-h] [-f {csv,json,table,value,yaml}] [-c COLUMN] [--quote {all,minimal,none,nonnumeric}]
+   [--noindent] [--max-width <integer>] [--fit-width] [--print-empty] [--sort-column SORT_COLUMN]
+   [--sort-ascending | --sort-descending] [--all-projects] [--all-users] [--project-id PROJECT_ID]
+   [--user-id USER_ID] [--job-ids [JOB_IDS ...]]
 
    Get jobs.
 
    options:
-     -h, --help            show this help message and exit
-
-   output formatters:
-     output formatter options
-
-     -f {csv,json,table,value,yaml}, --format {csv,json,table,value,yaml}
-                           the output format, defaults to table
-     -c COLUMN, --column COLUMN
-                           specify the column(s) to include, can be repeated to show multiple columns
-     --sort-column SORT_COLUMN
-                           specify the column(s) to sort the data (columns specified first have a priority, non-existing columns are ignored), can be repeated
-     --sort-ascending      sort the column(s) in ascending order
-     --sort-descending     sort the column(s) in descending order
+   -h, --help            show this help message and exit
+   --all-projects        All projects
+   --all-users           All users from same projects
+   --project-id PROJECT_ID
+   Filter by project ID
+   --user-id USER_ID
+   Filter by user ID
+   --job-ids [JOB_IDS ...]
+   Filter by job IDs (space-separated)
 
 .. code-block:: shell
 
@@ -306,6 +308,12 @@
 
 .. code-block:: shell
 
+   # 获取所有作业列表
+   qcos-cli list-jobs
+
+   # 获取所有作业列表 (带job id列表过滤参数)
+   qcos-cli list-jobs --job-ids 8d0da177-8d8e-4882-a6b5-2c2bf6140fcb 7b960693-0a1f-4e44-b824-3edc51b57227
+
    # 获取作业状态
    qcos-cli get-job-status 00000000-0000-4000-8000-000000000001
 
@@ -314,9 +322,6 @@
 
    # 获取作业结果，并保存为result.txt
    qcos-cli get-job-results 00000000-0000-4000-8000-000000000001 -f yaml --output-file result.txt -y
-
-   # 获取所有作业列表
-   qcos-cli list-jobs
 
 作业删除和取消
 *************************
@@ -329,16 +334,18 @@
 .. code-block:: shell
 
    # 删除作业
-   usage: qcos-cli delete-jobs [-h] [-y] job_ids
+   usage: qcos-cli delete-jobs [-h] [-y] [-f] job_ids
 
    Delete jobs.
 
    positional arguments:
-     job_ids  Job IDs
+   job_ids  Job IDs
 
    options:
-     -h, --help       show this help message and exit
-     -y, --yes        Answer yes for all question
+   -h, --help       show this help message and exit
+   -y, --yes        Answer yes for all question
+   -f, --force      Force delete jobs regardless of status
+
 
 .. code-block:: shell
 
@@ -359,14 +366,18 @@
 
 .. code-block:: shell
 
-   # 取消作业
-   qcos-cli cancel-jobs 00000000-0000-4000-8000-000000000001
-   qcos-cli cancel-jobs -y all
-
    # 删除作业
    qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
    qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002
    qcos-cli delete-jobs -y all
+
+   # 强制删除作业
+   qcos-cli delete-jobs -f -y all
+
+   # 取消作业
+   qcos-cli cancel-jobs 00000000-0000-4000-8000-000000000001
+   qcos-cli cancel-jobs -y all
+
 
 作业结果设置（回调）
 ******************************
@@ -400,6 +411,9 @@
    qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}'
 
    # 设置多作业结果（针对多源代码作业）
+   qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}' '{"results": {"01":200}, "num_qubits": 2}'
+
+   # 设置多作业结果（针对多源代码作业, 第2个结果带错误）
    qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}' '{"code": -104, "message": "error test"}'
 
 版本命令
@@ -730,6 +744,7 @@
    # 获取设备信息详情
    qcos-cli get-device dummy
 
+
 认证命令
 ----------------------
 
@@ -875,6 +890,167 @@
 
    # 查询当前认证用户
    qcos-cli whoami
+
+
+项目管理命令
+----------------------
+
+项目管理命令包含项目的创建、查询、更新和删除等操作。
+
+项目创建
+***************
+
+创建项目的操作命令
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 创建项目
+   usage: qcos-cli create-project [-h] project_name
+
+   Create project.
+
+   positional arguments:
+     project_name  Project name
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 创建一个基础项目
+   qcos-cli create-project my-project
+
+   # 创建一个带描述的项目
+   qcos-cli create-project quantum-proj --description "Quantum Computing Project"
+
+项目列表查询
+***************
+
+查询项目列表的操作命令
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 查询项目列表
+   usage: qcos-cli list-projects [-h] [-f {csv,json,table,value,yaml}] [-c COLUMN] [--quote {all,minimal,none,nonnumeric}] [--noindent]
+                                 [--max-width <integer>] [--fit-width] [--print-empty] [--sort-column SORT_COLUMN] [--sort-ascending | --sort-descending]
+                                 [--name NAME]
+
+   Get projects with optional filtering. Examples: list-projects # List all projects list-projects --name default # Filter by project name
+
+   options:
+     -h, --help            show this help message and exit
+     --name NAME   Filter projects by name
+
+   output formatters:
+     output formatter options
+
+     -f {csv,json,table,value,yaml}, --format {csv,json,table,value,yaml}
+                           the output format, defaults to table
+     -c COLUMN, --column COLUMN
+                           specify the column(s) to include, can be repeated to show multiple columns
+     --sort-column SORT_COLUMN
+                           specify the column(s) to sort the data (columns specified first have a priority, non-existing columns are ignored), can be repeated
+     --sort-ascending      sort the column(s) in ascending order
+     --sort-descending     sort the column(s) in descending order
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 查询所有项目列表
+   qcos-cli list-projects
+
+项目详情查询
+***************
+
+查询项目详情的操作命令
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 查询项目详情
+   usage: qcos-cli get-project [-h] [-f {json,shell,table,value,yaml}] [-c COLUMN] [--noindent] [--prefix PREFIX] [--max-width <integer>]
+                               [--fit-width] [--print-empty]
+                               project_id
+
+   Get project by ID.
+
+   positional arguments:
+     project_id    Project ID (UUID)
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 查询项目 my-project 的详情
+   qcos-cli get-project 00000000-0000-4000-8000-000000000001
+
+项目信息更新
+***************
+
+更新项目的操作命令
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 更新项目
+   usage: qcos-cli update-project [-h] [--name NAME] [--description DESCRIPTION] project_id
+
+   Update project by ID.
+
+   positional arguments:
+     project_id    Project ID (UUID)
+
+   options:
+     -h, --help            show this help message and exit
+     --name NAME   New project name
+     --description DESCRIPTION New project description
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 使用UUID更新项目
+   qcos-cli update-project 00000000-0000-4000-8000-000000000001 --description "New description"
+
+项目删除
+***************
+
+删除项目的操作命令
+
+*命令行参数*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 删除项目
+   usage: qcos-cli delete-project [-h] project_id
+
+   Delete project by ID.
+
+   positional arguments:
+     project_id  Project ID (UUID)
+
+*典型场景示例*
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 删除项目 my-project
+   qcos-cli delete-project 00000000-0000-4000-8000-000000000001
 
 
 用户管理命令

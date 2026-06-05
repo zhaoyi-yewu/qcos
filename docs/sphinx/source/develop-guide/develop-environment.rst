@@ -30,13 +30,13 @@ Fork QCOS代码仓库
 ---------------------------
 
 使用自己的gitee账户登陆，进入下列QCOS项目网址，并按右上角的Fork按钮进行“分支拷贝”
-https://gitee.com/OpenWuYue/
+https://gitee.com/WUYUEQbit/
 
 签署贡献者许可协议(CLA)
 ---------------------------
 
 进入下列项目网址，按照提示进行CLA协议签署
-https://gitee.com/organizations/OpenWuYue/cla/qcos
+https://gitee.com/organizations/WUYUEQbit/cla/qcos
 
 源码拉取与环境初始化
 ---------------------------

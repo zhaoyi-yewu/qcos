@@ -15,9 +15,9 @@
      - 返回值
 
    * - **获取用户管理状态**
-     - **get_user_mgmt_status**
+     - **get_user_mgmt**
 
-       URI: /v1/user/get_user_mgmt_status
+       URI: /v1/user/get_user_mgmt
      - .. container:: table-code-small-font
 
           .. code-block:: json
@@ -25,7 +25,7 @@
              {
                "jsonrpc": "2.0",
                "id": 1,
-               "method": "get_user_mgmt_status",
+               "method": "get_user_mgmt",
                "params": {
                  "body": null
                }
@@ -37,7 +37,7 @@
               {
                 "jsonrpc": "2.0",
                 "result": {
-                  "enabled": true,
+                  "auth_mode": "jwt",
                   "password_expiry_days": 90,
                   "max_login_attempts": 5,
                   "lockout_duration_minutes": 30
@@ -45,6 +45,38 @@
                 "error": null,
                 "id": 1
               }
+
+   * - **设置用户管理模式**
+     - **set_user_mgmt**
+
+       URI: /v1/user/set_user_mgmt
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "method": "set_user_mgmt",
+               "params": {
+                 "body": {
+                   "auth_mode": "jwt"
+                 }
+               }
+             }
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "result": {
+                 "auth_mode": "jwt",
+                 "message": "Authentication mode updated to 'jwt'"
+               },
+               "error": null,
+               "id": 1
+             }
 
    * - **创建用户**
      - **create_user**
@@ -78,11 +110,12 @@
                 "jsonrpc": "2.0",
                 "result": {
                   "id": "uuid",
+                  "project_id": "uuid",
                   "user_name": "string",
                   "roles": ["user"],
                   "is_enabled": true,
                   "is_locked": false,
-                  "last_login": "2026-04-08T16:39:15",
+                  "last_login": null,
                   "password_expiry_days": 90,
                   "password_changed_at": "2026-04-08T16:39:15",
                   "locked_until": null,
@@ -108,7 +141,7 @@
                "method": "get_user",
                "params": {
                  "body": {
-                   "user_id": "uuid or user_name"
+                   "user_id": "uuid"
                  }
                }
              }
@@ -120,11 +153,12 @@
                 "jsonrpc": "2.0",
                 "result": {
                   "id": "uuid",
+                  "project_id": "uuid",
                   "user_name": "string",
                   "roles": ["user"],
                   "is_enabled": true,
                   "is_locked": false,
-                  "last_login": "2026-04-08T16:39:15",
+                  "last_login": null,
                   "password_expiry_days": 90,
                   "password_changed_at": "2026-04-08T16:39:15",
                   "locked_until": null,
@@ -206,7 +240,7 @@
                "method": "update_user",
                "params": {
                  "body": {
-                   "user_id": "uuid or user_name",
+                   "user_id": "uuid",
                    "roles": ["admin"],
                    "is_enabled": true,
                    "is_locked": false,
@@ -223,21 +257,22 @@
                 "jsonrpc": "2.0",
                 "result": {
                   "id": "uuid",
+                  "project_id": "uuid",
                   "user_name": "string",
                   "roles": ["admin"],
                   "is_enabled": true,
                   "is_locked": false,
-                  "last_login": "2026-04-08T16:39:15",
+                  "last_login": null,
                   "password_expiry_days": 90,
                   "password_changed_at": "2026-04-08T16:39:15",
                   "locked_until": null,
                   "description": "string",
                   "created_at": "2026-04-08T16:39:15",
                   "updated_at": "2026-04-08T16:39:15"
-                 },
-                 "error": null,
-                 "id": 1
-                }
+                },
+                "error": null,
+                "id": 1
+              }
 
    * - **删除用户**
      - **delete_user**
@@ -253,7 +288,7 @@
                "method": "delete_user",
                "params": {
                  "body": {
-                   "user_id": "uuid or user_name",
+                   "user_id": "uuid",
                    "force": false
                  }
                }
@@ -464,7 +499,7 @@
                "method": "lock_user",
                "params": {
                  "body": {
-                   "user_id": "uuid or user_name",
+                   "user_name": "string",
                    "action": "lock or unlock"
                  }
                }
@@ -499,7 +534,7 @@
                "method": "change_password",
                "params": {
                  "body": {
-                   "user_id": "uuid or user_name",
+                   "user_id": "uuid",
                    "old_password": "string",
                    "new_password": "string"
                  }
