@@ -17,8 +17,8 @@
 
 from uuid import UUID
 import logging
-
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from wy_qcos.db.models import Job
 from wy_qcos.db.repositories import BaseRepository
@@ -33,25 +33,129 @@ class JobRepository(BaseRepository):
     def __init__(self, db_session: Session) -> None:
         super().__init__(db_session)
 
-    def create_job(self, job_create: schemas.SubmitJobRequest):
-        """Create a new job."""
-        job_create_dict = job_create.model_dump()
-        if job_create_dict.get("job_id"):
-            job_create_dict["id"] = job_create_dict.get("job_id")
-        del job_create_dict["job_id"]
-        return self.create(Job, **job_create_dict)
+    def create_job(
+        self, job_create: schemas.SubmitJobRequest, auto_commit: bool = True
+    ):
+        """Create a new job.
 
-    def get_job_by_uuid(self, job_id: UUID):
-        return self.get_by_uuid(Job, str(job_id))
+        Args:
+            job_create: Job creation request data
+            auto_commit: If True, automatically commit the transaction.
+                        If False, only add to session (requires manual commit).
+                        In both cases, flush is called to populate object IDs.
 
-    def get_jobs(self):
-        return self.get_all(Job)
+        Returns:
+            Tuple[bool, Exception|None, Job|None]: (success, error, job_record)
+        """
+        try:
+            job_create_dict = job_create.model_dump()
+            if job_create_dict.get("job_id"):
+                job_create_dict["id"] = job_create_dict.get("job_id")
+            del job_create_dict["job_id"]
+            db_record = Job(**job_create_dict)
+            self._db_session.add(db_record)
 
-    def update_job(
+            # Flush to ensure object is in session
+            # (populates auto-generated fields like ID)
+            self._db_session.flush()
+
+            if auto_commit:
+                self._db_session.commit()
+                self._db_session.refresh(db_record)
+
+            return True, None, db_record
+        except IntegrityError as e:
+            error_msg = None
+            error_str = str(e).lower()
+            if "duplicate key" in error_str:
+                error_msg = "Job ID already exists"
+            elif "foreign key constraint" in error_str:
+                error_msg = "Invalid project or user reference"
+            else:
+                error_msg = "Database constraint violation"
+            return False, error_msg, None
+        except Exception as e:
+            return False, f"Database error: {e}", None
+
+    def get_job_by_uuid(self, job_id: UUID, filters={}):
+        """Get job by uuid.
+
+        Args:
+            job_id: UUID
+            filters: db filters
+
+        Returns:
+            job records by uuid with filters
+        """
+        return self.get_by_uuid(Job, str(job_id), filters=filters)
+
+    def get_jobs(self, filters: dict | None = None):
+        """Get jobs with optional filtering.
+
+        Args:
+            filters: Dictionary with filter conditions. Supported keys are
+                'id', 'uuid', 'project_id', 'user_id', 'job_status',
+                'code_type', 'backend', 'job_name', 'is_callback_success'.
+
+        Example::
+
+            # No filter - get all jobs
+            success, error, jobs = self.get_jobs()
+
+            # Single filter
+            success, error, jobs = self.get_jobs(filters={"project_id": "xxx"})
+
+            # Multiple filters (AND condition)
+            success, error, jobs = self.get_jobs(
+                filters={
+                    "project_id": "xxx",
+                    "user_id": "yyy",
+                    "job_status": "COMPLETED",
+                }
+            )
+
+        Returns:
+            Tuple[bool, Exception|None, list[Job]|None]
+        """
+        return self.get_all(Job, filters=filters)
+
+    def get_jobs_count(self, filters: dict | None = None) -> int:
+        """Get count of jobs with optional filtering.
+
+        Args:
+            filters: Dictionary with filter conditions. Supported keys are
+                'project_id', 'user_id', 'job_status', 'code_type',
+                'backend', 'job_name', 'is_callback_success'.
+
+        Example::
+
+            # Get total jobs count
+            count = self.count_jobs()
+
+            # Count jobs with specific status
+            count = self.count_jobs(filters={"job_status": "COMPLETED"})
+
+            # Multiple filters (AND condition)
+            count = self.count_jobs(
+                filters={"project_id": "xxx", "job_status": "QUEUED"}
+            )
+
+        Returns:
+            Count of matching jobs, returns 0 on error
+        """
+        return self.count_with_filters(Job, filters=filters)
+
+    def update_job_results(
         self, job_id: UUID, job_update: schemas.SetJobResultsRequest
     ):
-        """Update a job."""
-        job_update_dict = job_update.model_dump()
+        """Update a job.
+
+        Only updates fields that are explicitly set
+        (non-None values are included).
+        None values are excluded to prevent overwriting existing data.
+        """
+        # Exclude None values to avoid overwriting existing fields
+        job_update_dict = job_update.model_dump(exclude_none=True)
         del job_update_dict["job_id"]
         job_update_dict["id"] = job_id
 

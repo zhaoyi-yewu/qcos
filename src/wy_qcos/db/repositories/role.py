@@ -73,10 +73,18 @@ class RoleRepository(BaseRepository):
             logger.error(f"Exception while getting role by name: {e}")
             return False, e, None
 
-    def get_roles(self):
-        """Get all roles."""
+    def get_roles(self, filters: dict | None = None):
+        """Get all roles with optional filtering.
+
+        Args:
+            filters: Dictionary with filter conditions
+                    (e.g., {'role_name': 'admin'})
+
+        Returns:
+            Tuple of (success, error, roles)
+        """
         try:
-            success, error, roles = self.get_all(Role)
+            success, error, roles = self.get_all(Role, filters=filters)
             if success:
                 return True, None, roles
             else:
