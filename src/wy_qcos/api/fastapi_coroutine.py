@@ -25,6 +25,7 @@ import fastapi_jsonrpc as jsonrpc
 
 from wy_qcos.metrics.metrics_server import MetricsServer
 from wy_qcos.metrics.metrics_scheduler import MetricsScheduler
+from wy_qcos.metrics.metrics_task import set_app, init_metrics_singletons
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +99,12 @@ async def app_lifespan(app: jsonrpc.API):
     Yields:
         None
     """
+    # Pass app instance to metrics_task for accessing app.state._db_engine
+    set_app(app)
+
+    # Initialize metrics singletons (db_session, job_repo) once at startup
+    init_metrics_singletons()
+
     manager = BackgroundServiceManager()
 
     # Register metrics schedule

@@ -45,6 +45,9 @@ transpiler_api_v1 = jsonrpc.Entrypoint(
 user_api_v1 = jsonrpc.Entrypoint(
     f"{BASE_ENDPOINT}/user", common_dependencies=[Depends(auth)]
 )
+project_api_v1 = jsonrpc.Entrypoint(
+    f"{BASE_ENDPOINT}/project", common_dependencies=[Depends(auth)]
+)
 metrics_api_v1 = jsonrpc.Entrypoint(
     f"{BASE_ENDPOINT}/metrics", common_dependencies=[Depends(auth)]
 )
@@ -57,6 +60,7 @@ all_api_v1 = [
     transpiler_api_v1,
     job_api_v1,
     user_api_v1,
+    project_api_v1,
     system_api_v1,
     metrics_api_v1,
 ]

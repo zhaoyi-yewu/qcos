@@ -40,7 +40,9 @@ def _get_driver_info(driver, transpiler):
     Returns:
         device_info
     """
-    supported_code_types = transpiler.get_supported_code_types()
+    supported_code_types = []
+    if transpiler:
+        supported_code_types = transpiler.get_supported_code_types()
     if supported_code_types is None or len(supported_code_types) == 0:
         supported_code_types = driver.get_supported_code_types()
     driver.set_supported_code_types(supported_code_types)

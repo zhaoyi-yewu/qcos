@@ -50,9 +50,21 @@ class JsonRpcBaseError(jsonrpc.BaseError):
     """JsonRpc Base Error."""
 
     class DataModel(BaseModel):
-        """Data Model."""
+        """Data Model - returns only details value when serialized."""
 
         details: str
+
+        def model_dump(self, **kwargs):
+            """Override to return only details value instead of dict."""
+            return {"details": self.details}
+
+        def __str__(self):
+            """Return details string directly."""
+            return self.details
+
+        def __repr__(self):
+            """Return details string directly."""
+            return self.details
 
 
 class BadRequestError(JsonRpcBaseError):

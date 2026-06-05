@@ -16,9 +16,11 @@
 # ----------------------------------------------------------------------
 
 import logging
+from typing import Any
 
 from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc.routes import base_api
+from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.qcos_version import QcosVersion
 from wy_qcos.task_manager import scheduler
@@ -41,49 +43,59 @@ def version(
     func_name = "version"
     logger.info(f"Call {func_name}: {body}")
 
-    driver_name_mapping = {}
-    transpiler_name_mappings = {}
-    driver_transpiler_mappings = {}
-    driver_manager = scheduler.get_driver_manager()
-    drivers = driver_manager.get_drivers()
-    transpiler_manager = scheduler.get_transpiler_manager()
-    for driver_name, driver in drivers.items():
-        driver_name_mapping[driver_name] = {
-            "supported_code_types": driver.get_supported_code_types(),
-            "description": driver.get_description(),
-            "driver_options": driver.get_driver_options(),
-        }
-        if driver_name not in driver_transpiler_mappings:
-            driver_transpiler_mappings[driver_name] = set()
-        transpiler_names = driver.get_supported_transpilers()
-        for transpiler_name in transpiler_names:
-            if transpiler_name not in transpiler_name_mappings:
-                transpiler = transpiler_manager.get_transpiler(transpiler_name)
-                transpiler_alias_name = transpiler.get_alias_name()
-                supported_code_types = transpiler.get_supported_code_types()
-                transpiler_name_mappings[transpiler_name] = {
-                    "alias_name": transpiler_alias_name,
-                    "supported_code_types": supported_code_types,
-                }
-            driver_transpiler_mappings[driver_name].add(transpiler_name)
-
-    capabilities = {
-        "job_types": Constant.JOB_TYPES,
-        "drivers": driver_name_mapping,
-        "transpilers": transpiler_name_mappings,
-        "tech_types": Constant.TECH_TYPE_INFO,
-        "profiling": Constant.PROFILING_INFO,
-        "driver_transpiler_mappings": driver_transpiler_mappings,
-    }
-
-    _response_info = {
+    # Build basic response
+    _response_info: dict[str, Any] = {
         "version": QcosVersion.VERSION,
         "api_version": Constant.API_VERSION_V1,
         "supported_api_versions": [
             {"version": Constant.API_VERSION_V1, "status": "CURRENT"}
         ],
         "platform_version": Constant.PLATFORM_VERSION,
-        "capabilities": capabilities,
+        "auth_mode": Config.DEFAULT.AUTH_MODE,
     }
+
+    # Only include detailed capabilities if details=True
+    if body.details:
+        driver_name_mapping = {}
+        transpiler_name_mappings = {}
+        driver_transpiler_mappings = {}
+        driver_manager = scheduler.get_driver_manager()
+        drivers = driver_manager.get_drivers()
+        transpiler_manager = scheduler.get_transpiler_manager()
+        for driver_name, driver in drivers.items():
+            driver_name_mapping[driver_name] = {
+                "supported_code_types": driver.get_supported_code_types(),
+                "description": driver.get_description(),
+                "driver_options": driver.get_driver_options(),
+            }
+            if driver_name not in driver_transpiler_mappings:
+                driver_transpiler_mappings[driver_name] = set()
+            transpiler_names = driver.get_supported_transpilers()
+            for transpiler_name in transpiler_names:
+                if transpiler_name not in transpiler_name_mappings:
+                    transpiler = transpiler_manager.get_transpiler(
+                        transpiler_name
+                    )
+                    if not transpiler:
+                        continue
+                    transpiler_alias_name = transpiler.get_alias_name()
+                    supported_code_types = (
+                        transpiler.get_supported_code_types()
+                    )
+                    transpiler_name_mappings[transpiler_name] = {
+                        "alias_name": transpiler_alias_name,
+                        "supported_code_types": supported_code_types,
+                    }
+                driver_transpiler_mappings[driver_name].add(transpiler_name)
+
+        _response_info["capabilities"] = {
+            "job_types": Constant.JOB_TYPES,
+            "drivers": driver_name_mapping,
+            "transpilers": transpiler_name_mappings,
+            "tech_types": Constant.TECH_TYPE_INFO,
+            "profiling": Constant.PROFILING_INFO,
+            "driver_transpiler_mappings": driver_transpiler_mappings,
+        }
+
     response_info = schemas.GetVersionResponse.model_validate(_response_info)
     return response_info
