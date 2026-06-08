@@ -51,7 +51,11 @@ class Constant:
     # REDIS server default IP and port
     DEFAULT_REDIS_SERVER_IP = "127.0.0.1"
     DEFAULT_REDIS_SERVER_PORT = 6379
-    DEVICE_RUNNING_INFO_REDIS_CHANNEL_SUFFIX = "/device_running_info"
+    REDIS_CHANNEL_QCOS_PREFIX = "/qcos"
+    REDIS_CHANNEL_DEVICE_RUNNING_INFO_PREFIX = (
+        f"{REDIS_CHANNEL_QCOS_PREFIX}/device_running_info"
+    )
+    REDIS_CHANNEL_JOB_AGG_PREFIX = f"{REDIS_CHANNEL_QCOS_PREFIX}/job_agg"
 
     # DATABASE
     DB_DIALECT_POSTGRESQL = "postgresql"
@@ -89,6 +93,7 @@ class Constant:
         AGGREGATION_TYPE_INTERNAL,
         AGGREGATION_TYPE_EXTERNAL,
     ]
+    JOB_AGG_FLOW_PAUSE_WAIT_TIMEOUT = 10
 
     # File types
     FILE_TYPE_QASM = ".qasm"
@@ -418,7 +423,7 @@ class Constant:
     )
 
     # Shots
-    DEFAULT_SHOTS = 1
+    DEFAULT_SHOTS = 10
     MIN_SHOTS = 1
     MAX_SHOTS = 10240
 
