@@ -25,6 +25,7 @@ from pydantic import (
     model_validator,
 )
 
+from .base import UuidMixin
 from wy_qcos.common.constant import Constant
 
 
@@ -114,13 +115,16 @@ class UserUpdate(BaseModel):
 
 
 # Internal models for routes_jsonrpc/user.py
-class User(BaseModel):
+class User(UuidMixin):
     """User model.
 
     Note: roles are stored in user_roles association table, not in
     users table. The get_role_names() method on the User ORM model
     retrieves them dynamically.
     """
+
+    _uuid_fields = ["id", "project_id"]
+    _uuid_convert_mode = "to_str_with_int"
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -166,27 +170,6 @@ class User(BaseModel):
     description: str | None = Field(
         default=None, description="User description"
     )
-
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects and integers to strings."""
-        if isinstance(data, dict):
-            for field in ["id", "project_id"]:
-                if field in data:
-                    if isinstance(data[field], uuid.UUID):
-                        data[field] = str(data[field])
-                    elif isinstance(data[field], int):
-                        # Convert integer ID to UUID
-                        data[field] = str(uuid.UUID(int=data[field]))
-        return data
-
-    @field_serializer("id", "project_id", when_used="json")
-    def serialize_uuids(self, value) -> str:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, uuid.UUID):
-            return str(value)
-        return value
 
     @model_validator(mode="after")
     def populate_roles_from_orm(self):
@@ -288,8 +271,11 @@ class CreateUserRequest(BaseModel):
     )
 
 
-class CreateUserResponse(BaseModel):
+class CreateUserResponse(UuidMixin):
     """Create user response."""
+
+    _uuid_fields = ["id", "project_id"]
+    _uuid_convert_mode = "to_str_with_int"
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -317,27 +303,6 @@ class CreateUserResponse(BaseModel):
     created_at: str = Field(..., description="Creation timestamp")
     updated_at: str = Field(..., description="Update timestamp")
 
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects and integers to strings."""
-        if isinstance(data, dict):
-            for field in ["id", "project_id"]:
-                if field in data:
-                    if isinstance(data[field], uuid.UUID):
-                        data[field] = str(data[field])
-                    elif isinstance(data[field], int):
-                        # Convert integer ID to UUID
-                        data[field] = str(uuid.UUID(int=data[field]))
-        return data
-
-    @field_serializer("id", "project_id", when_used="json")
-    def serialize_uuids(self, value) -> str:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, uuid.UUID):
-            return str(value)
-        return value
-
 
 class GetUserRequest(BaseModel):
     """Get user request by ID."""
@@ -345,8 +310,11 @@ class GetUserRequest(BaseModel):
     user_id: uuid.UUID = Field(..., description="User ID (UUID)")
 
 
-class GetUserResponse(BaseModel):
+class GetUserResponse(UuidMixin):
     """Get user response."""
+
+    _uuid_fields = ["id", "project_id"]
+    _uuid_convert_mode = "to_uuid_with_int"
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -373,33 +341,6 @@ class GetUserResponse(BaseModel):
     )
     created_at: str = Field(..., description="User creation timestamp")
     updated_at: str = Field(..., description="User last updated timestamp")
-
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects and integers to strings."""
-        if isinstance(data, dict):
-            for field in ["id", "project_id"]:
-                if field in data:
-                    if isinstance(data[field], uuid.UUID):
-                        pass  # Keep as UUID
-                    elif isinstance(data[field], str):
-                        # Convert string to UUID
-                        try:
-                            data[field] = uuid.UUID(data[field])
-                        except (ValueError, AttributeError):
-                            pass
-                    elif isinstance(data[field], int):
-                        # Convert integer ID to UUID
-                        data[field] = uuid.UUID(int=data[field])
-        return data
-
-    @field_serializer("id", "project_id", when_used="json")
-    def serialize_uuids(self, value) -> str:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, uuid.UUID):
-            return str(value)
-        return value
 
 
 class GetUsersRequest(BaseModel):
@@ -436,8 +377,11 @@ class PasswordChangeRequest(UpdateUserRequest):
     password: str | None = Field(default=None, description="New password")
 
 
-class UpdateUserResponse(BaseModel):
+class UpdateUserResponse(UuidMixin):
     """Update user response."""
+
+    _uuid_fields = ["id", "project_id"]
+    _uuid_convert_mode = "to_uuid_with_int"
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -465,29 +409,6 @@ class UpdateUserResponse(BaseModel):
     created_at: str = Field(..., description="Creation timestamp")
     updated_at: str = Field(..., description="Update timestamp")
 
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects and integers."""
-        if isinstance(data, dict):
-            for field in ["id", "project_id"]:
-                if field in data:
-                    if isinstance(data[field], str):
-                        try:
-                            data[field] = uuid.UUID(data[field])
-                        except (ValueError, AttributeError):
-                            pass
-                    elif isinstance(data[field], int):
-                        data[field] = uuid.UUID(int=data[field])
-        return data
-
-    @field_serializer("id", "project_id", when_used="json")
-    def serialize_uuids(self, value) -> str:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, uuid.UUID):
-            return str(value)
-        return value
-
 
 class DeleteUserRequest(BaseModel):
     """Delete user request by ID."""
@@ -499,8 +420,11 @@ class DeleteUserRequest(BaseModel):
     )
 
 
-class DeleteUserResponse(BaseModel):
+class DeleteUserResponse(UuidMixin):
     """Delete user response."""
+
+    _uuid_fields = ["id", "project_id"]
+    _uuid_convert_mode = "to_uuid_with_int"
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -508,29 +432,6 @@ class DeleteUserResponse(BaseModel):
     project_id: uuid.UUID = Field(..., description="Project ID (UUID)")
     user_name: str = Field(..., description="User name")
     deleted_at: str = Field(..., description="Deletion timestamp")
-
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects and integers."""
-        if isinstance(data, dict):
-            for field in ["id", "project_id"]:
-                if field in data:
-                    if isinstance(data[field], str):
-                        try:
-                            data[field] = uuid.UUID(data[field])
-                        except (ValueError, AttributeError):
-                            pass
-                    elif isinstance(data[field], int):
-                        data[field] = uuid.UUID(int=data[field])
-        return data
-
-    @field_serializer("id", "project_id", when_used="json")
-    def serialize_uuids(self, value) -> str:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, uuid.UUID):
-            return str(value)
-        return value
 
 
 class LockUserRequest(BaseModel):
@@ -631,8 +532,11 @@ class GetLoginLogsRequest(BaseModel):
         return self
 
 
-class LoginLogResponse(BaseModel):
+class LoginLogResponse(UuidMixin):
     """Login log response."""
+
+    _uuid_fields = ["user_id", "project_id"]
+    _uuid_convert_mode = "to_str_with_int"
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -647,30 +551,12 @@ class LoginLogResponse(BaseModel):
         default=None, description="Failed reason if login failed"
     )
 
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects and integers to strings."""
-        if isinstance(data, dict):
-            for field in ["user_id", "project_id"]:
-                if field in data and data[field] is not None:
-                    if isinstance(data[field], uuid.UUID):
-                        data[field] = str(data[field])
-                    elif isinstance(data[field], int):
-                        # Convert integer ID to UUID
-                        data[field] = str(uuid.UUID(int=data[field]))
-        return data
 
-    @field_serializer("user_id", "project_id", when_used="json")
-    def serialize_uuids(self, value) -> str | None:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, uuid.UUID):
-            return str(value)
-        return value
-
-
-class Role(BaseModel):
+class Role(UuidMixin):
     """Role model."""
+
+    _uuid_fields = ["id"]
+    _uuid_convert_mode = "to_str_with_int"
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -682,26 +568,6 @@ class Role(BaseModel):
     description: str | None = Field(
         default=None, description="Role description"
     )
-
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects and integers to strings."""
-        if isinstance(data, dict):
-            if "id" in data:
-                if isinstance(data["id"], uuid.UUID):
-                    data["id"] = str(data["id"])
-                elif isinstance(data["id"], int):
-                    # Convert integer ID to UUID
-                    data["id"] = str(uuid.UUID(int=data["id"]))
-        return data
-
-    @field_serializer("id", when_used="json")
-    def serialize_uuid(self, value) -> str:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, uuid.UUID):
-            return str(value)
-        return value
 
 
 class CreateRoleRequest(BaseModel):
@@ -722,8 +588,11 @@ class CreateRoleRequest(BaseModel):
     )
 
 
-class CreateRoleResponse(BaseModel):
+class CreateRoleResponse(UuidMixin):
     """Create role response."""
+
+    _uuid_fields = ["id"]
+    _uuid_convert_mode = "to_str_with_int"
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -733,26 +602,6 @@ class CreateRoleResponse(BaseModel):
     description: str | None = Field(
         default=None, description="Role description"
     )
-
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects and integers to strings."""
-        if isinstance(data, dict):
-            if "id" in data:
-                if isinstance(data["id"], uuid.UUID):
-                    data["id"] = str(data["id"])
-                elif isinstance(data["id"], int):
-                    # Convert integer ID to UUID
-                    data["id"] = str(uuid.UUID(int=data["id"]))
-        return data
-
-    @field_serializer("id", when_used="json")
-    def serialize_uuid(self, value) -> str:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, uuid.UUID):
-            return str(value)
-        return value
 
 
 class GetRoleRequest(BaseModel):
@@ -761,8 +610,11 @@ class GetRoleRequest(BaseModel):
     role_id: uuid.UUID = Field(..., description="Role ID (UUID)")
 
 
-class GetRoleResponse(BaseModel):
+class GetRoleResponse(UuidMixin):
     """Get role response."""
+
+    _uuid_fields = ["id"]
+    _uuid_convert_mode = "to_str_with_int"
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -772,26 +624,6 @@ class GetRoleResponse(BaseModel):
     description: str | None = Field(
         default=None, description="Role description"
     )
-
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects and integers to strings."""
-        if isinstance(data, dict):
-            if "id" in data:
-                if isinstance(data["id"], uuid.UUID):
-                    data["id"] = str(data["id"])
-                elif isinstance(data["id"], int):
-                    # Convert integer ID to UUID
-                    data["id"] = str(uuid.UUID(int=data["id"]))
-        return data
-
-    @field_serializer("id", when_used="json")
-    def serialize_uuid(self, value) -> str:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, uuid.UUID):
-            return str(value)
-        return value
 
 
 class GetRolesRequest(BaseModel):

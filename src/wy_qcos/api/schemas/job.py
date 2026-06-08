@@ -22,18 +22,20 @@ from pydantic import (
     BaseModel,
     Field,
     ConfigDict,
-    model_validator,
-    field_serializer,
 )
 
+from .base import UuidMixin
 from wy_qcos.common.constant import Constant
 
 
-class SubmitJobRequest(BaseModel):
+class SubmitJobRequest(UuidMixin):
     """Submit Job Request.
 
     Pydantic Model for Submit Job Request.
     """
+
+    _uuid_fields = ["job_id", "project_id", "user_id"]
+    _uuid_convert_mode = "to_uuid"
 
     # Project ID (optional, from auth_data)
     project_id: UUID | None = Field(default=None, description="Project ID")
@@ -118,36 +120,15 @@ class SubmitJobRequest(BaseModel):
         default=None, description="Updated date"
     )
 
-    # ...existing code...
 
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuid_strings(cls, data):
-        """Convert UUID string fields to UUID objects."""
-        if isinstance(data, dict):
-            for field_name in ["job_id", "project_id", "user_id"]:
-                if field_name in data and data[field_name] is not None:
-                    value = data[field_name]
-                    if isinstance(value, str):
-                        try:
-                            data[field_name] = UUID(value)
-                        except (ValueError, TypeError):
-                            pass
-        return data
-
-    @field_serializer("job_id", "project_id", "user_id", when_used="json")
-    def serialize_uuids(self, value) -> str | None:
-        """Serialize UUID to string for JSON output."""
-        if isinstance(value, UUID):
-            return str(value)
-        return value
-
-
-class SubmitJobResponse(BaseModel):
+class SubmitJobResponse(UuidMixin):
     """Submit Job Response.
 
     Pydantic Model for Submit Job Response.
     """
+
+    _uuid_fields = ["job_id", "project_id", "user_id"]
+    _uuid_convert_mode = "to_uuid"
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -218,28 +199,6 @@ class SubmitJobResponse(BaseModel):
     # Ended at
     ended_at: datetime | None = Field(default=None, description="Ended at")
 
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuid_strings(cls, data):
-        """Convert UUID string fields to UUID objects."""
-        if isinstance(data, dict):
-            for field_name in ["job_id", "project_id", "user_id"]:
-                if field_name in data and data[field_name] is not None:
-                    value = data[field_name]
-                    if isinstance(value, str):
-                        try:
-                            data[field_name] = UUID(value)
-                        except (ValueError, TypeError):
-                            pass
-        return data
-
-    @field_serializer("job_id", "project_id", "user_id", when_used="json")
-    def serialize_uuids(self, value) -> str | None:
-        """Serialize UUID to string for JSON output."""
-        if isinstance(value, UUID):
-            return str(value)
-        return value
-
 
 class GetJobStatusRequest(BaseModel):
     """Get Job Status Request.
@@ -251,11 +210,13 @@ class GetJobStatusRequest(BaseModel):
     job_id: UUID = Field(description="Job ID")
 
 
-class GetJobStatusResponse(BaseModel):
+class GetJobStatusResponse(UuidMixin):
     """Get Job Status Response.
 
     Pydantic Model for Get Job Status Response.
     """
+
+    _uuid_fields = ["job_id", "project_id", "user_id"]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -322,23 +283,6 @@ class GetJobStatusResponse(BaseModel):
     # Ended date
     ended_at: datetime | None = Field(default=None, description="Ended date")
 
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects to strings."""
-        if isinstance(data, dict):
-            for field in ["job_id", "project_id", "user_id"]:
-                if field in data and isinstance(data[field], UUID):
-                    data[field] = str(data[field])
-        return data
-
-    @field_serializer("job_id", "project_id", "user_id", when_used="json")
-    def serialize_uuids(self, value) -> str | None:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, UUID):
-            return str(value)
-        return value
-
 
 class GetJobResultsRequest(BaseModel):
     """Get Job Results Request.
@@ -350,11 +294,13 @@ class GetJobResultsRequest(BaseModel):
     job_id: UUID = Field(description="Job ID")
 
 
-class GetJobResultsResponse(BaseModel):
+class GetJobResultsResponse(UuidMixin):
     """Get Job Results Response.
 
     Pydantic Model for Get Job Results Response.
     """
+
+    _uuid_fields = ["job_id", "project_id", "user_id"]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -423,23 +369,6 @@ class GetJobResultsResponse(BaseModel):
     # Ended date
     ended_at: datetime | None = Field(default=None, description="Ended date")
 
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects to strings."""
-        if isinstance(data, dict):
-            for field in ["job_id", "project_id", "user_id"]:
-                if field in data and isinstance(data[field], UUID):
-                    data[field] = str(data[field])
-        return data
-
-    @field_serializer("job_id", "project_id", "user_id", when_used="json")
-    def serialize_uuids(self, value) -> str | None:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, UUID):
-            return str(value)
-        return value
-
 
 class GetJobsRequest(BaseModel):
     """Get Jobs Request.
@@ -458,32 +387,18 @@ class CancelJobsRequest(BaseModel):
     job_ids: list[UUID] = Field(description="Job IDs to cancel")
 
 
-class CancelJobsResponse(BaseModel):
+class CancelJobsResponse(UuidMixin):
     """Cancel Jobs Response.
 
     Pydantic Model for Cancel Jobs Response.
     """
 
+    _uuid_fields = ["job_id"]
+
     model_config = ConfigDict(from_attributes=True)
 
     # Job ID
     job_id: UUID = Field(description="Job ID")
-
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects to strings."""
-        if isinstance(data, dict):
-            if "job_id" in data and isinstance(data["job_id"], UUID):
-                data["job_id"] = str(data["job_id"])
-        return data
-
-    @field_serializer("job_id", when_used="json")
-    def serialize_uuid(self, value) -> str:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, UUID):
-            return str(value)
-        return value
 
 
 class DeleteJobsRequest(BaseModel):
@@ -500,11 +415,13 @@ class DeleteJobsRequest(BaseModel):
     )
 
 
-class DeleteJobsResponse(BaseModel):
+class DeleteJobsResponse(UuidMixin):
     """Delete Jobs Response.
 
     Pydantic Model for Delete Jobs Response.
     """
+
+    _uuid_fields = ["job_id"]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -512,22 +429,6 @@ class DeleteJobsResponse(BaseModel):
     job_id: UUID = Field(description="Job ID")
     # Job status
     job_status: str = Field(description="Job status")
-
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects to strings."""
-        if isinstance(data, dict):
-            if "job_id" in data and isinstance(data["job_id"], UUID):
-                data["job_id"] = str(data["job_id"])
-        return data
-
-    @field_serializer("job_id", when_used="json")
-    def serialize_uuid(self, value) -> str:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, UUID):
-            return str(value)
-        return value
 
 
 class SetJobResultsRequest(BaseModel):
@@ -554,11 +455,13 @@ class SetJobResultsRequest(BaseModel):
     )
 
 
-class SetJobResultsResponse(BaseModel):
+class SetJobResultsResponse(UuidMixin):
     """Set Job Results Response.
 
     Pydantic Model for Set Job Results Response.
     """
+
+    _uuid_fields = ["job_id"]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -568,22 +471,6 @@ class SetJobResultsResponse(BaseModel):
     backend: str = Field(description="Backend device name")
     # Job status
     job_status: str = Field(description="Job status")
-
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects to strings."""
-        if isinstance(data, dict):
-            if "job_id" in data and isinstance(data["job_id"], UUID):
-                data["job_id"] = str(data["job_id"])
-        return data
-
-    @field_serializer("job_id", when_used="json")
-    def serialize_uuid(self, value) -> str:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, UUID):
-            return str(value)
-        return value
 
 
 class UpdateJobRequest(BaseModel):
@@ -608,11 +495,13 @@ class UpdateJobRequest(BaseModel):
     )
 
 
-class UpdateJobResponse(BaseModel):
+class UpdateJobResponse(UuidMixin):
     """Update Job Response.
 
     Pydantic Model for Update Job Response.
     """
+
+    _uuid_fields = ["job_id", "project_id", "user_id"]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -680,20 +569,3 @@ class UpdateJobResponse(BaseModel):
     )
     # Ended date
     ended_at: datetime | None = Field(default=None, description="Ended date")
-
-    @model_validator(mode="before")
-    @classmethod
-    def convert_uuids(cls, data):
-        """Convert UUID objects to strings."""
-        if isinstance(data, dict):
-            for field in ["job_id", "project_id", "user_id"]:
-                if field in data and isinstance(data[field], UUID):
-                    data[field] = str(data[field])
-        return data
-
-    @field_serializer("job_id", "project_id", "user_id", when_used="json")
-    def serialize_uuids(self, value) -> str | None:
-        """Serialize UUID objects to strings."""
-        if isinstance(value, UUID):
-            return str(value)
-        return value
