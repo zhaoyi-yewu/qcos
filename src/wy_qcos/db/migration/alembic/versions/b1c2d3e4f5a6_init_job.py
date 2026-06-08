@@ -50,7 +50,7 @@ def upgrade() -> None:
         sa.Column("code_type", sa.String(length=32), nullable=False),
         sa.Column("source_code", sa.JSON(), nullable=True),
         sa.Column(
-            "code_compress_level",
+            "code_compression_level",
             sa.Integer(),
             nullable=True,
             server_default="0",
