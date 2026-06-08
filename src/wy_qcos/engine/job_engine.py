@@ -17,6 +17,8 @@
 
 import copy
 import importlib
+import json
+
 import numpy as np
 import os
 import signal
@@ -24,9 +26,11 @@ import time
 from datetime import datetime
 from typing import Any
 
+import redis
 from loguru import logger
 from prefect import flow, task, pause_flow_run
 from prefect.input import RunInput
+from prefect.runtime import flow_run
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.common import errors
@@ -60,7 +64,8 @@ class AggregationInput(RunInput):
 
 class SourceCodeInfo:
     aggregation_type: str
-    src_code_list: list[dict]
+    src_code_list: list[dict] = []
+    sub_flow_list: list[str] = []
 
 
 @task(persist_result=False)
@@ -178,6 +183,7 @@ def task_monitor(monitor_info):
     last_job_progress = 0
     job_id = monitor_info.get("job_id")
     db_engine = monitor_info.get("db_engine")
+    agg_sub_job_list = monitor_info.get("agg_sub_job_list")
 
     if not job_id or not db_engine:
         logger.warning("job_id or db_engine not found in monitor_info")
@@ -196,9 +202,18 @@ def task_monitor(monitor_info):
             if last_job_progress != job_progress:
                 # update job progress to database
                 update_progress(job_id, db_engine, job_progress)
+                # update agg sub job progress to database
+                if agg_sub_job_list:
+                    for sub_job_id in agg_sub_job_list:
+                        update_progress(sub_job_id, db_engine, job_progress)
             last_job_progress = job_progress
         time.sleep(1)
+    # update job progress to database
     update_progress(job_id, db_engine, 100)
+    # update agg sub job progress to database
+    if agg_sub_job_list:
+        for sub_job_id in agg_sub_job_list:
+            update_progress(sub_job_id, db_engine, 100)
 
 
 @task(persist_result=False)
@@ -408,13 +423,16 @@ def update_src_code_info(src_code_info, aggregation_info):
 
     src_code_map = src_code_info.src_code_list[length - 1]
     src_code_info.src_code_list.pop()
-    for key, value in aggregation_info.sub_jobs.items():
-        if len(src_code_map) >= Constant.MAX_AGGREGATION_JOBS:
+    for job_id, job_value in aggregation_info.sub_jobs.items():
+        if len(src_code_map) > Constant.MAX_AGGREGATION_JOBS:
+            # Unreachable code
             src_code_info.src_code_list.append(src_code_map)
             src_code_map.clear()
             continue
-        src_code = value["job_info"]["data"]["source_code"][0]
-        src_code_map[key + "-0"] = src_code
+        src_code = job_value["job_info"]["data"]["source_code"][0]
+        src_code_map[job_id + "-0"] = src_code
+        flow_run_id = job_value["job_info"]["data"]["flow_run_id"]
+        src_code_info.sub_flow_list.append(flow_run_id)
 
     if len(src_code_map) != 0:
         src_code_info.src_code_list.append(src_code_map)
@@ -482,6 +500,9 @@ def get_internal_aggregated_results(job_results, mapping_dict):
         single_result = copy.deepcopy(job_results)
         single_result["results"] = item
         single_result["num_qubits"] = len(next(iter(item.keys())))
+        single_result["metadata"]["circuit_aggregation"] = (
+            Constant.AGGREGATION_TYPE_INTERNAL
+        )
 
         aggregated_results.append(single_result)
 
@@ -518,16 +539,14 @@ def get_external_aggregated_results(job_results, mapping_dict):
             job_results["num_qubits"] = len(next(iter(value.keys())))
             continue
         single_result = {
-            "results": value,
+            "results": copy.deepcopy(value),
             "num_qubits": len(next(iter(value.keys()))),
-            "metadata": job_results["metadata"],
-            "profiling": job_results["profiling"],
+            "metadata": copy.deepcopy(job_results["metadata"]),
+            "profiling": copy.deepcopy(job_results["profiling"]),
         }
-        # TODO(all) workaround code, need to improve it.
-        end_time = single_result["metadata"]["ended_at"]
-        if isinstance(end_time, datetime):
-            new_time = end_time.isoformat()
-            single_result["metadata"]["ended_at"] = new_time
+        single_result["metadata"]["circuit_aggregation"] = (
+            Constant.AGGREGATION_TYPE_EXTERNAL
+        )
         new_id = job_id.rsplit("-", 1)[0]
         sub_results[new_id] = single_result
 
@@ -536,7 +555,7 @@ def get_external_aggregated_results(job_results, mapping_dict):
 
 
 @flow(
-    persist_result=True,
+    persist_result=False,
     on_failure=[db_utils.db_job_callback],
     on_crashed=[db_utils.db_job_callback],
     on_cancellation=[db_utils.db_job_callback],
@@ -581,12 +600,13 @@ def job_flow(job_info):
     global_configs = job_info["global"]["configs"]
     device_configs = job_info["device"]["configs"]
     backend = job_data["backend"]
-    profiling_code_start = 0
+    flow_run_id = flow_run.id
     callbacks = job_data.get("callbacks", None)
     job_enqueue_at = datetime.fromisoformat(job_data["job_enqueue_at"])
     profiling_scheduling_duration = job_data["job_schedule_duration"]
     monitor_info = {
         "job_id": job_id,
+        "flow_run_id": flow_run_id,
         "configs": global_configs,
         "device_configs": device_configs,
         "callbacks": callbacks,
@@ -594,10 +614,15 @@ def job_flow(job_info):
             "project_id": job_data.get("project_id", None),
             "user_id": job_data.get("user_id", None),
         },
+        "redis": {
+            "ip": global_configs["REDIS"].get("REDIS_SERVER_IP", None),
+            "port": global_configs["REDIS"].get("REDIS_SERVER_PORT", None),
+        },
         "running": True,
         "driver": None,
         "source_code_index": 0,
         "source_code_count": 0,
+        "agg_sub_job_list": [],
         "progress": -1,
     }
 
@@ -649,12 +674,7 @@ def job_flow(job_info):
     register_signals(job_id, monitor_info)
 
     # record parse start_time
-    profiling_types = job_data.get("profiling", [])
-    if profiling_types and (
-        Constant.PROFILING_TYPE_CODE in profiling_types
-        or Constant.PROFILING_TYPE_ALL in profiling_types
-    ):
-        profiling_code_start = time.time()
+    profiling_code_start = time.time()
 
     # start task-monitor
     flow_task_monitor(monitor_info)
@@ -663,21 +683,47 @@ def job_flow(job_info):
     aggregation_info = None
     src_code_info = create_src_code_info(job_data)
     if src_code_info.aggregation_type == Constant.AGGREGATION_TYPE_EXTERNAL:
-        # TODO(jidalong) handle timeout
         # circuit_aggregation(multi) tag flow run will automatically paused
         # here waiting for aggregation_info generated by task manager
-        aggregation_info = pause_flow_run(wait_for_input=AggregationInput)
-        logger.info(
+        redis_instance = redis.Redis(
+            host=monitor_info["redis"]["ip"],
+            port=monitor_info["redis"]["port"],
+            decode_responses=True,
+        )
+        # publish agg flow by redis
+        channel_name = f"{Constant.REDIS_CHANNEL_JOB_AGG_PREFIX}/{flow_run_id}"
+        flow_agg_info = {
+            "flow_run_id": flow_run_id,
+            "aggregation_type": src_code_info.aggregation_type,
+            "cancel": False,
+        }
+        redis_instance.publish(channel_name, json.dumps(flow_agg_info))
+        aggregation_info = pause_flow_run(
+            wait_for_input=AggregationInput, poll_interval=1
+        )
+
+        # handle sub job which is unexpected
+        # should be processed in db_job_callback
+        if not aggregation_info.is_parent:
+            return None
+
+        logger.debug(
             f"Process aggregation sub job, aggregation_info: "
             f"{aggregation_info}"
         )
 
-        # handle sub job
-        if not aggregation_info.is_parent:
-            monitor_info["source_code_count"] = 1
-            monitor_info["progress"] = 100
-            monitor_info["running"] = False
-            return aggregation_info.sub_results
+        # update job_status and worker_started_at for agg sub jobs
+        for sub_job_id, sub_info_info in aggregation_info.sub_jobs.items():
+            db_utils.db_update_job(
+                sub_job_id,
+                db_engine,
+                job_status=Constant.JOB_STATUS_RUNNING,
+                started_at=worker_started_at,
+                progress=-1,
+            )
+            monitor_info["agg_sub_job_list"].append(sub_job_id)
+
+        # update src_code_info
         src_code_info = update_src_code_info(src_code_info, aggregation_info)
 
     # run source codes
@@ -705,36 +751,30 @@ def job_flow(job_info):
         )
         source_code_index += len(src_code_dict)
         # profiling: job
-        if profiling_types and (
-            Constant.PROFILING_TYPE_SCHEDULING in profiling_types
-            or Constant.PROFILING_TYPE_ALL in profiling_types
-        ):
-            job_results["profiling"][Constant.PROFILING_TYPE_SCHEDULING] = (
-                round(profiling_scheduling_duration, 5)
-            )
-        if profiling_types and (
-            Constant.PROFILING_TYPE_QUEUING in profiling_types
-            or Constant.PROFILING_TYPE_ALL in profiling_types
-        ):
-            profiling_queuing_duration = (
-                worker_started_at - job_enqueue_at
-            ).total_seconds()
-            job_results["profiling"][Constant.PROFILING_TYPE_QUEUING] = round(
-                profiling_queuing_duration, 5
-            )
-        if profiling_types and (
-            Constant.PROFILING_TYPE_CODE in profiling_types
-            or Constant.PROFILING_TYPE_ALL in profiling_types
-        ):
-            profiling_code_end = time.time()
-            profiling_code_duration = profiling_code_end - profiling_code_start
-            job_results["profiling"][Constant.PROFILING_TYPE_CODE] = round(
-                profiling_code_duration, 5
-            )
+        job_results["profiling"][Constant.PROFILING_TYPE_SCHEDULING] = round(
+            profiling_scheduling_duration, 5
+        )
+        profiling_queuing_duration = (
+            worker_started_at - job_enqueue_at
+        ).total_seconds()
+        job_results["profiling"][Constant.PROFILING_TYPE_QUEUING] = round(
+            profiling_queuing_duration, 5
+        )
+        profiling_code_end = time.time()
+        profiling_code_duration = profiling_code_end - profiling_code_start
+        job_results["profiling"][Constant.PROFILING_TYPE_CODE] = round(
+            profiling_code_duration, 5
+        )
 
         # handle job aggregation
-        if src_code_info.aggregation_type == Constant.AGGREGATION_TYPE_NONE:
-            job_results_list.append(job_results)
+        if (
+            src_code_info.aggregation_type
+            == Constant.AGGREGATION_TYPE_INTERNAL
+        ):
+            aggregated_res = get_internal_aggregated_results(
+                job_results, mapping_dict
+            )
+            job_results_list.extend(aggregated_res)
         elif (
             src_code_info.aggregation_type
             == Constant.AGGREGATION_TYPE_EXTERNAL
@@ -744,13 +784,21 @@ def job_flow(job_info):
             )
             job_results_list.append(aggregated_res)
         else:
-            aggregated_res = get_internal_aggregated_results(
-                job_results, mapping_dict
-            )
-            job_results_list.extend(aggregated_res)
+            job_results_list.append(job_results)
 
     # set monitor_info
     monitor_info["running"] = False
+
+    # cancel all agg sub-flows
+    # results of sub-flows will be handled by _db_update_job
+    if src_code_info.aggregation_type == Constant.AGGREGATION_TYPE_EXTERNAL:
+        channel_name = f"{Constant.REDIS_CHANNEL_JOB_AGG_PREFIX}/{flow_run_id}"
+        flow_agg_info = {
+            "flow_run_id": flow_run_id,
+            "cancel": True,
+            "sub_flow_list": src_code_info.sub_flow_list,
+        }
+        redis_instance.publish(channel_name, json.dumps(flow_agg_info))
 
     return job_results_list
 
@@ -780,8 +828,6 @@ def _run_code(
     num_qubits = None
     job_data = job_info["data"]
     code_type = job_data["code_type"]
-    profiling_types = job_data.get("profiling", [])
-    profiling_types = [] if profiling_types is None else profiling_types
     mapping_dict = None
 
     job_results = {
@@ -794,12 +840,11 @@ def _run_code(
 
     # [flow_parse]
     parse_results, profiling_time = flow_parse(
-        src_code_dict, transpiler, profiling_types, code_type
+        src_code_dict, transpiler, code_type
     )
-    if profiling_time:
-        job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_PARSE] = round(
-            profiling_time, 5
-        )
+    job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_PARSE] = round(
+        profiling_time, 5
+    )
 
     # parser: error handling
     err_msg = parse_results.get("error", None)
@@ -814,12 +859,10 @@ def _run_code(
         parse_results["parsed_src_code"],
         transpiler,
         driver,
-        profiling_types,
     )
-    if profiling_time:
-        job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_TRANSPILE] = (
-            round(profiling_time, 5)
-        )
+    job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_TRANSPILE] = round(
+        profiling_time, 5
+    )
 
     # transpile: error handling
     err_msg = transpile_task_results.get("error", None)
@@ -846,24 +889,20 @@ def _run_code(
         }
 
         run_results, profiling_time = flow_run_driver(
-            job_info, num_qubits, driver, data, profiling_types
+            job_info, num_qubits, driver, data
         )
 
-        if profiling_time:
-            job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_RUN] = (
-                round(profiling_time, 5)
-            )
-        if (
-            Constant.PROFILING_TYPE_MACHINE in profiling_types
-            or Constant.PROFILING_TYPE_ALL in profiling_types
-        ):
-            profiling_queuing_duration = None
-            machine_time_info = run_results.get("machine_time_info", None)
-            if machine_time_info:
-                profiling_queuing_duration = round(machine_time_info, 5)
-            job_results["profiling"][Constant.PROFILING_TYPE_MACHINE] = (
-                profiling_queuing_duration
-            )
+        job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_RUN] = round(
+            profiling_time, 5
+        )
+        profiling_queuing_duration = None
+        machine_time_info = run_results.get("machine_time_info", None)
+        if machine_time_info:
+            profiling_queuing_duration = round(machine_time_info, 5)
+        job_results["profiling"][Constant.PROFILING_TYPE_MACHINE] = (
+            profiling_queuing_duration
+        )
+
         # run: error handling
         err_msg = run_results.get("error", None)
         if err_msg:
@@ -1516,27 +1555,19 @@ def probs_to_dict(prob_array):
     return result
 
 
-def flow_parse(src_code_dict, transpiler, profiling_types, code_type):
+def flow_parse(src_code_dict, transpiler, code_type):
     """Flow: parse.
 
     Args:
         src_code_dict: src_code_dict
         transpiler: transpiler
-        profiling_types: profiling types
         code_type(str): code_type
 
     Returns:
         results, profiling_time
     """
-    profiling_start = 0
-    profiling_end = 0
-
     # record parse start_time
-    if (
-        Constant.PROFILING_TYPE_DRIVER_PARSE in profiling_types
-        or Constant.PROFILING_TYPE_ALL in profiling_types
-    ):
-        profiling_start = time.time()
+    profiling_start = time.time()
 
     # parser
     parse_task = parse.submit(
@@ -1546,38 +1577,24 @@ def flow_parse(src_code_dict, transpiler, profiling_types, code_type):
         wait_for=[init_driver, init_transpiler],
     )
     parse_task_result = parse_task.result()
-
-    if (
-        Constant.PROFILING_TYPE_DRIVER_PARSE in profiling_types
-        or Constant.PROFILING_TYPE_ALL in profiling_types
-    ):
-        profiling_end = time.time()
-
+    profiling_end = time.time()
     profiling_time = profiling_end - profiling_start
     return parse_task_result, profiling_time
 
 
-def flow_transpile(parsed_src_code, transpiler, driver, profiling_types):
+def flow_transpile(parsed_src_code, transpiler, driver):
     """Flow: transpile.
 
     Args:
         parsed_src_code: parsed_src_code
         transpiler: transpiler
         driver: driver
-        profiling_types: profiling types
 
     Returns:
         results, profiling_time
     """
-    profiling_start = 0
-    profiling_end = 0
-
     # record transpile start_time
-    if (
-        Constant.PROFILING_TYPE_DRIVER_TRANSPILE in profiling_types
-        or Constant.PROFILING_TYPE_ALL in profiling_types
-    ):
-        profiling_start = time.time()
+    profiling_start = time.time()
 
     # transpile codes
     transpile_task = transpile.submit(
@@ -1589,11 +1606,7 @@ def flow_transpile(parsed_src_code, transpiler, driver, profiling_types):
     transpile_task_results = transpile_task.result()
 
     # record transpile end_time
-    if (
-        Constant.PROFILING_TYPE_DRIVER_TRANSPILE in profiling_types
-        or Constant.PROFILING_TYPE_ALL in profiling_types
-    ):
-        profiling_end = time.time()
+    profiling_end = time.time()
     profiling_time = profiling_end - profiling_start
     return transpile_task_results, profiling_time
 
@@ -1607,7 +1620,7 @@ def flow_task_monitor(monitor_info):
     task_monitor.submit(monitor_info)
 
 
-def flow_run_driver(job_info, num_qubits, driver, data, profiling_types):
+def flow_run_driver(job_info, num_qubits, driver, data):
     """Flow: run driver.
 
     Args:
@@ -1615,21 +1628,13 @@ def flow_run_driver(job_info, num_qubits, driver, data, profiling_types):
         num_qubits: number of qubits
         driver: driver
         data: data
-        profiling_types: profiling types
 
     Returns:
         results, profiling_time
     """
     # call run() in driver
-    profiling_start = 0
-    profiling_end = 0
-
     # record driver_run start_time
-    if (
-        Constant.PROFILING_TYPE_DRIVER_RUN in profiling_types
-        or Constant.PROFILING_TYPE_ALL in profiling_types
-    ):
-        profiling_start = time.time()
+    profiling_start = time.time()
 
     wait_for = [init_driver, transpile]
 
@@ -1640,12 +1645,7 @@ def flow_run_driver(job_info, num_qubits, driver, data, profiling_types):
     run_task_results = run_task.result()
 
     # record driver_run end_time
-    if (
-        Constant.PROFILING_TYPE_DRIVER_RUN in profiling_types
-        or Constant.PROFILING_TYPE_ALL in profiling_types
-    ):
-        profiling_end = time.time()
-
+    profiling_end = time.time()
     profiling_time = profiling_end - profiling_start
     return run_task_results, profiling_time
 
