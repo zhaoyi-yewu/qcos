@@ -1,0 +1,34 @@
+@startuml circuit-aggregation-overview
+' 总体概览：三种聚合模式的对比
+skinparam defaultFontName "Noto Sans CJK SC"
+skinparam dpi 300
+skinparam backgroundcolor #FFFFFF
+
+package "None模式 (无聚合)" {
+    [1个Job] --> [多个源码]
+    [多个源码] --> [独立执行]
+    [独立执行] --> [多个results]
+    [多个results] --> [返回列表]
+}
+
+package "Internal模式 (任务内聚合)" {
+    [1个Job] --> [多个源码]
+    [多个源码] --> [分组聚合]
+    [分组聚合] --> [聚合执行]
+    [聚合执行] --> [分割结果]
+    [分割结果] --> [多个results]
+}
+
+package "External模式 (任务间聚合)" {
+    [Parent Job] --> [暂停]
+    [暂停] --> [Task Manager匹配]
+    [Task Manager匹配] --> [收集Sub Jobs]
+    [收集Sub Jobs] --> [恢复Parent]
+    [恢复Parent] --> [聚合编译执行]
+    [聚合编译执行] --> [分割结果]
+    [分割结果] --> [Parent+Sub结果]
+    [Parent+Sub结果] --> [取消Sub Flows]
+}
+
+@enduml
+

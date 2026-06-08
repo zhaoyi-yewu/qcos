@@ -1,0 +1,87 @@
+@startuml circuit-aggregation-detailed
+' 统一全局字体，确保中文正常显示
+skinparam defaultFontName "Noto Sans CJK SC"
+skinparam dpi 300
+
+' 时序图展示External模式的三方协议
+participant "User" as user
+participant "JobEngine\n(Parent Flow)" as parent
+participant "TaskManager" as tm
+participant "JobEngine\n(Sub Flows)" as sub
+participant "Redis" as redis
+participant "Database" as db
+
+autonumber
+
+== Phase 1: Submit Jobs ==
+user -> parent: submit(Job, circuit_aggregation=external)
+user -> sub: submit multiple jobs (matching backend/pool)
+activate sub
+activate parent
+
+== Phase 2: Parent Preparation ==
+parent -> parent: create_src_code_info()
+parent -> redis: publish(flow_run_id, flow_agg_info)
+activate redis
+
+== Phase 3: Parent Pause ==
+parent -> parent: pause_flow_run(AggregationInput)
+note right of parent: Blocks here, waiting for\naggregation_info
+
+tm -> redis: subscribe(REDIS_CHANNEL_JOB_AGG_PREFIX/*)
+tm -> tm: receive flow_run_id from Redis
+deactivate redis
+
+== Phase 4: TaskManager Matching ==
+tm -> tm: query SCHEDULED flows with tag=external
+tm -> tm: filter by backend, work_pool_name
+tm -> tm: collect matching sub jobs\n(≤ MAX_AGGREGATION_JOBS)
+activate tm
+
+== Phase 5: Parent Resumption ==
+tm -> tm: poll Parent until PAUSED state
+tm -> tm: build aggregation_params\n{is_parent: true, sub_jobs: {...}}
+tm -> parent: resume_flow_run(aggregation_params)
+deactivate tm
+parent -> parent: aggregation_info = pause返回值
+
+== Phase 6: Update & Merge Codes ==
+parent -> parent: update_src_code_info()
+parent -> parent: merge Parent + Sub source codes
+parent -> parent: track sub_flow_list
+
+== Phase 7: Compile & Execute ==
+parent -> parent: run_code(merged_src_code_dict)
+parent -> parent: transpile + execute aggregated circuit
+parent -> parent: get job_results (combined measurement)
+
+== Phase 8: Split Results ==
+parent -> parent: get_external_aggregated_results()
+parent -> parent: use mapping_dict to split results
+parent -> parent: results[0] → Parent result
+parent -> parent: results[1..N] → sub_results
+
+== Phase 9: Cleanup ==
+parent -> redis: publish(cancel=True, sub_flow_list)
+activate redis
+tm -> parent: (no need to wait)
+tm -> sub: cancel_flow_run(sub_flow_ids)
+deactivate tm
+deactivate redis
+
+== Phase 10: Result Processing ==
+parent -> db: db_job_callback(parent_result\nwith sub_results)
+sub -> db: db_job_callback(sub_result)\n(via callback)
+deactivate sub
+deactivate parent
+
+note over parent, sub
+分割结果说明：
+- mapping_dict: {parent_job_id: qubit_count1, sub_job_id1: qubit_count2, ...}
+- split_dict()按qubit边界分割bitstring测量结果
+- 第一个(Parent)保留在job_results中
+- 其余(Sub)组织为sub_results: {job_id: result}
+end note
+
+@enduml
+
