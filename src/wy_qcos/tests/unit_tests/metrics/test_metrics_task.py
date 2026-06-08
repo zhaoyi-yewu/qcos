@@ -164,13 +164,14 @@ class TestUpdateJobMetrics:
             1,  # deleted
             1,  # unknown
         ]
+        mock_session = MagicMock()
 
         with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
             ms.aget_jobs = AsyncMock(return_value=(responses, None))
             with patch.object(metrics_collector, "update_job_metrics") as mu:
                 with patch(
-                    "wy_qcos.metrics.metrics_task.get_job_repo_singleton",
-                    return_value=mock_job_repo,
+                    "wy_qcos.metrics.metrics_task.get_job_repo",
+                    return_value=(mock_job_repo, mock_session),
                 ):
                     run_async(update_job_metrics())
                     data = mu.call_args.kwargs["data"]
