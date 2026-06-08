@@ -33,9 +33,9 @@ debug = false
 # [Optional] max queued jobs, -1 means unlimited
 max_queued_jobs = -1
 
-ip_address = "192.168.1.100"
+ip_address = "127.0.0.1"
 port = 445
 # file folder shared name
-shared_name = "shared_name"
-user = "user"
-pwd = "123456"
+shared_dir = "shared_dir"
+username = "username"
+passowrd = ""

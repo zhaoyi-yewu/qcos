@@ -19,16 +19,17 @@ import copy
 import json
 
 from loguru import logger
+from typing import Any
 import smbclient
 
 from wy_qcos.common.cmss.base_operation import OperationType
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.drivers.device import Device
-from wy_qcos.drivers.driver_base import DriverBase
+from wy_qcos.drivers.driver_pulse_base import DriverPulseBase
 
 
-class DriverHanyuan1Pulse(DriverBase):
+class DriverHanyuan1Pulse(DriverPulseBase):
     """五岳中科酷原-汉原1 中性原子驱动, 后端为汉原原生测控系统.
 
     Wuyue Cascoldatom Hanyuan1 driver
@@ -57,15 +58,11 @@ class DriverHanyuan1Pulse(DriverBase):
             self.TASK_STAGE_GET_RESULTS: 95,
             self.TASK_STAGE_COMPLETE: 100,
         }
-        self.ip_address = "192.168.1.100"
+        self.ip_address = "127.0.0.1"
         self.port = 445
-        self.user = "user"
-        self.pwd = ""
-        self.shared_name = "shared_name"
-
-    def init_driver(self):
-        """Init driver."""
-        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
+        self.username = "username"
+        self.password = ""
+        self.shared_dir = "shared_dir"
 
     def validate_driver_configs(self, configs):
         """Validate driver configs.
@@ -84,33 +81,34 @@ class DriverHanyuan1Pulse(DriverBase):
         driver_config_schema.update({
             "ip_address": str,
             "port": int,
-            "user": str,
-            "pwd": str,
-            "shared_name": str,
+            "username": str,
+            "password": str,
+            "shared_dir": str,
         })
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema
         )
         if _success:
-            self.ip_addr = configs.get("ip_address", "192.168.1.100")
+            self.ip_address = configs.get("ip_address", "127.0.0.1")
             self.port = configs.get("port", 445)
-            self.user = configs.get("user", "user")
-            self.pwd = configs.get("pwd", "123456")
-            self.shared_name = configs.get("shared_name", "shared_name")
-            smbclient.register_session(
-                self.ip_addr,
-                username=self.user,
-                password=self.pwd,
-                port=self.port,
-            )
+            self.username = configs.get("username", "username")
+            self.password = configs.get("password", "password")
+            self.shared_dir = configs.get("shared_dir", "shared_dir")
+            try:
+                smbclient.register_session(
+                    server=self.ip_address,
+                    username=self.username,
+                    password=self.password,
+                    port=self.port,
+                )
+            except Exception as e:
+                _err_msg = "\n".join(str(e))
+                err_msg = f"smbclient register_session error: {_err_msg}"
         else:
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
             success = False
         return success, err_msg
-
-    def close_driver(self):
-        """Close driver."""
 
     def _generate_pulse(self, transpile_results: list) -> tuple[list, list]:
         """Generate pulse data.
@@ -125,7 +123,7 @@ class DriverHanyuan1Pulse(DriverBase):
         time = 0
         qubit_id_list = []
         for gate in transpile_results:
-            single_pulse = {}
+            single_pulse: dict[str, Any] = {}
             single_pulse["time"] = time
             if (
                 gate.operation_type
@@ -155,23 +153,17 @@ class DriverHanyuan1Pulse(DriverBase):
                 gate.operation_type
                 == OperationType.DOUBLE_QUBIT_OPERATION.value
             ):
-                single_pulse["type"] = 3
-                if len(gate.arg_value) == 0:
-                    logger.warning("wrong arg value parameter")
-                    continue
-                phase = 0
-                degree = gate.arg_value[0]
-                if len(gate.arg_value) >= 2:
-                    phase = gate.arg_value[1]
-                    continue
+                single_pulse["type"] = 4
                 param_lst = [
                     gate.targets[0],
-                    round(degree, 6),
-                    round(phase, 6),
-                    0,
-                    0,
-                    0,
                     gate.targets[1],
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
                 ]
                 single_pulse["param"] = param_lst
                 pulse_data.append(single_pulse)
@@ -196,12 +188,13 @@ class DriverHanyuan1Pulse(DriverBase):
         for gate in transpile_results:
             if gate.operation_type == OperationType.MEASURE.value:
                 meas_qubit_list.extend(gate.targets)
+                logger.info(f"meas_qubit_list: {meas_qubit_list}")
 
-            for value in qubit_id_list:
-                if value in meas_qubit_list:
-                    qubit_map.append([value, 0, 0, 1])
-                else:
-                    qubit_map.append([value, 0, 0, 0])
+                for value in qubit_id_list:
+                    if value in meas_qubit_list:
+                        qubit_map.append([value, 0, 0, 1])
+                    else:
+                        qubit_map.append([value, 0, 0, 0])
         return qubit_map
 
     def _prepare_data(
@@ -240,10 +233,20 @@ class DriverHanyuan1Pulse(DriverBase):
         return task_data
 
     def _reset_and_reconnect(self):
-        smbclient.reset_connection_cache()
-        smbclient.register_session(
-            self.ip_address, username=self.user, password=self.pwd, port=self.port
-        )
+        succ = True
+        err_msg = None
+        try:
+            smbclient.reset_connection_cache()
+            smbclient.register_session(
+                server=self.ip_address,
+                username=self.username,
+                password=self.password,
+                port=self.port,
+            )
+        except Exception as e:
+            succ = False
+            err_msg = f"smbclient register_session error: {str(e)}"
+        return succ, err_msg
 
     def submit_task(self, task_data):
         """submit_task.
@@ -254,19 +257,43 @@ class DriverHanyuan1Pulse(DriverBase):
         Returns:
             qubit map data
         """
-        remote_dir_path = rf"\\\\{self.ip_address}\\{self.shared_name}"
-        if not smbclient.path.exists(remote_dir_path):
-            smbclient.mkdir(remote_dir_path)
+        remote_dir_path = rf"\\\\{self.ip_address}\\{self.shared_dir}"
+        if not smbclient.path.exists(
+            path=remote_dir_path,
+            username=self.username,
+            password=self.password,
+            port=self.port,
+        ):
+            smbclient.mkdir(
+                path=remote_dir_path,
+                username=self.username,
+                password=self.password,
+                port=self.port,
+            )
         remote_full_path = rf"{remote_dir_path}\\datatest.txt"
         json_str = json.dumps(task_data, ensure_ascii=False)
         succ = True
         err_msg = None
         try:
-            with smbclient.open_file(remote_full_path, "wb") as f:
+            with smbclient.open_file(
+                path=remote_full_path,
+                mode="wb",
+                username=self.username,
+                password=self.password,
+                port=self.port,
+            ) as f:
                 f.write(json_str.encode("utf-8"))
-        except ConnectionResetError as e:
-            self._reset_and_reconnect()
-            with smbclient.open_file(remote_full_path, "wb") as f:
+        except ConnectionResetError:
+            succ, err_msg = self._reset_and_reconnect()
+            if not succ:
+                return succ, err_msg
+            with smbclient.open_file(
+                path=remote_full_path,
+                mode="wb",
+                username=self.username,
+                password=self.password,
+                port=self.port,
+            ) as f:
                 f.write(json_str.encode("utf-8"))
         except Exception as e:
             succ = False
@@ -284,19 +311,43 @@ class DriverHanyuan1Pulse(DriverBase):
         Returns:
             True if get result, False otherwise
         """
-        remote_dir_path = rf"\\\\{self.ip_address}\\{self.shared_name}"
-        if not smbclient.path.exists(remote_dir_path):
-            smbclient.mkdir(remote_dir_path)
+        remote_dir_path = rf"\\\\{self.ip_address}\\{self.shared_dir}"
+        if not smbclient.path.exists(
+            path=remote_dir_path,
+            username=self.username,
+            password=self.password,
+            port=self.port,
+        ):
+            smbclient.mkdir(
+                path=remote_dir_path,
+                username=self.username,
+                password=self.password,
+                port=self.port,
+            )
         remote_full_path = rf"{remote_dir_path}\\dataout.txt"
         succ = True
         err_msg = None
         content = None
         try:
-            with smbclient.open_file(remote_full_path, "rb") as f:
+            with smbclient.open_file(
+                path=remote_full_path,
+                mode="rb",
+                username=self.username,
+                password=self.password,
+                port=self.port,
+            ) as f:
                 content = f.read().decode("utf-8")
-        except ConnectionResetError as e:
-            self._reset_and_reconnect()
-            with smbclient.open_file(remote_full_path, "rb") as f:
+        except ConnectionResetError:
+            succ, err_msg = self._reset_and_reconnect()
+            if not succ:
+                return succ, err_msg
+            with smbclient.open_file(
+                path=remote_full_path,
+                mode="rb",
+                username=self.username,
+                password=self.password,
+                port=self.port,
+            ) as f:
                 content = f.read().decode("utf-8")
         except Exception as e:
             succ = False
@@ -356,7 +407,7 @@ class DriverHanyuan1Pulse(DriverBase):
         # 2. Submit Task
         logger.info("2. Submit Task")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
-        success, err_msg = self.submit_tasks(task_data)
+        success, err_msg = self.submit_task(task_data)
         if not success:
             raise ValueError(f"Failed to submit task: {err_msg}")
 
@@ -387,22 +438,3 @@ class DriverHanyuan1Pulse(DriverBase):
         self.set_results(job_id, data_index, results=results)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
-
-    def cancel(self, job_id):
-        """Cancel running job in driver.
-
-        Driver should clean up any resources of the job
-
-        Args:
-            job_id: job ID
-        """
-        logger.info(f"Cancel job: job_id: {job_id}")
-
-    def fetch_running_info(self):
-        """Fetch running info.
-
-        Returns:
-            remote device running info
-        """
-        device_running_info = {"status": "online"}
-        return device_running_info

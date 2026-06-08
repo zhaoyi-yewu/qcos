@@ -49,7 +49,7 @@ class TestDriverHanyuan1:
             Constant.TRANSPILER_CMSS
         ]
         assert driver_hanyuan1.enable_circuit_aggregation is True
-        assert driver_hanyuan1.max_qubits == 10
+        assert driver_hanyuan1.max_qubits == 100
         assert driver_hanyuan1.use_zmq is False
 
     @patch.object(DriverHanyuan1, "init_zerorpc_client")
