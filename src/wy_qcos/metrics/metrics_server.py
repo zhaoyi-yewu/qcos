@@ -152,6 +152,9 @@ class MetricsServer:
                 self._server.socket.setsockopt(
                     socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
                 )
+                self._server.socket.setsockopt(
+                    socket.SOL_SOCKET, socket.SO_REUSEPORT, 1
+                )
 
                 if self.allow_dual_stack:
                     self._server.socket.setsockopt(
