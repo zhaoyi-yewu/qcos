@@ -16,7 +16,10 @@
 # ----------------------------------------------------------------------
 
 import asyncio
+import json
 import pytest
+import threading
+import time
 import unittest
 from unittest import mock
 from unittest.mock import patch, Mock, AsyncMock
@@ -633,3 +636,456 @@ class TestTaskFlowManager(unittest.TestCase):
 
         assert result == ["flow"]
         mock_client.read_flow_runs.assert_called_once()
+
+    # --- Aggregation-related test cases ---
+
+    def test_run_flow_by_client_with_internal_aggregation(self):
+        """Test run_flow_by_client sets internal aggregation tag."""
+        mock_client = AsyncMock()
+        mock_flow = Mock(id="flow-id")
+        mock_client.create_flow_run_from_deployment.return_value = mock_flow
+        self.task_manager._client = mock_client
+        args = {
+            "job_info": {
+                "data": {
+                    "job_id": "job-id",
+                    "circuit_aggregation": (
+                        Constant.AGGREGATION_TYPE_INTERNAL
+                    ),
+                }
+            }
+        }
+
+        result = asyncio.run(
+            self.task_manager.run_flow_by_client(
+                "deploy-id",
+                args,
+                tags=None,
+                work_queue_name="queue-1",
+            )
+        )
+
+        assert result == "flow-id"
+        kwargs = mock_client.create_flow_run_from_deployment.call_args.kwargs
+        assert kwargs["tags"] == [Constant.AGGREGATION_TYPE_INTERNAL]
+
+    def test_run_flow_by_client_with_external_aggregation_no_extra_tags(
+        self,
+    ):
+        """Test sets external aggregation tag without extra tags."""
+        mock_client = AsyncMock()
+        mock_flow = Mock(id="flow-id")
+        mock_client.create_flow_run_from_deployment.return_value = mock_flow
+        self.task_manager._client = mock_client
+        args = {
+            "job_info": {
+                "data": {
+                    "job_id": "job-id",
+                    "circuit_aggregation": (
+                        Constant.AGGREGATION_TYPE_EXTERNAL
+                    ),
+                }
+            }
+        }
+
+        result = asyncio.run(
+            self.task_manager.run_flow_by_client(
+                "deploy-id",
+                args,
+                tags=None,
+                work_queue_name="queue-1",
+            )
+        )
+
+        assert result == "flow-id"
+        kwargs = mock_client.create_flow_run_from_deployment.call_args.kwargs
+        assert kwargs["tags"] == [Constant.AGGREGATION_TYPE_EXTERNAL]
+
+    def test_run_flow_by_client_with_none_aggregation(self):
+        """Test sets no aggregation tag when aggregation is None."""
+        mock_client = AsyncMock()
+        mock_flow = Mock(id="flow-id")
+        mock_client.create_flow_run_from_deployment.return_value = mock_flow
+        self.task_manager._client = mock_client
+        args = {
+            "job_info": {
+                "data": {
+                    "job_id": "job-id",
+                    "circuit_aggregation": None,
+                }
+            }
+        }
+
+        result = asyncio.run(
+            self.task_manager.run_flow_by_client(
+                "deploy-id",
+                args,
+                tags=None,
+                work_queue_name="queue-1",
+            )
+        )
+
+        assert result == "flow-id"
+        kwargs = mock_client.create_flow_run_from_deployment.call_args.kwargs
+        assert kwargs["tags"] is None
+
+    def test_run_flow_by_client_with_internal_agg_and_extra_tags(self):
+        """Test merges internal aggregation tag with extra tags."""
+        mock_client = AsyncMock()
+        mock_flow = Mock(id="flow-id")
+        mock_client.create_flow_run_from_deployment.return_value = mock_flow
+        self.task_manager._client = mock_client
+        args = {
+            "job_info": {
+                "data": {
+                    "job_id": "job-id",
+                    "circuit_aggregation": (
+                        Constant.AGGREGATION_TYPE_INTERNAL
+                    ),
+                }
+            }
+        }
+
+        result = asyncio.run(
+            self.task_manager.run_flow_by_client(
+                "deploy-id",
+                args,
+                tags=["extra_tag"],
+                work_queue_name="queue-1",
+            )
+        )
+
+        assert result == "flow-id"
+        kwargs = mock_client.create_flow_run_from_deployment.call_args.kwargs
+        assert kwargs["tags"] == [
+            Constant.AGGREGATION_TYPE_INTERNAL,
+            "extra_tag",
+        ]
+
+    def test_run_flow_by_client_sets_job_enqueue_at(self):
+        """Test run_flow_by_client sets job_enqueue_at timestamp."""
+        mock_client = AsyncMock()
+        mock_flow = Mock(id="flow-id")
+        mock_client.create_flow_run_from_deployment.return_value = mock_flow
+        self.task_manager._client = mock_client
+        args = {
+            "job_info": {
+                "data": {
+                    "job_id": "job-id",
+                    "circuit_aggregation": None,
+                }
+            }
+        }
+
+        asyncio.run(
+            self.task_manager.run_flow_by_client(
+                "deploy-id",
+                args,
+                tags=None,
+                work_queue_name="queue-1",
+            )
+        )
+
+        kwargs = mock_client.create_flow_run_from_deployment.call_args.kwargs
+        assert "job_enqueue_at" in kwargs["parameters"]["job_info"]["data"]
+
+    @patch.object(TaskFlowManager, "get_flow_run")
+    @patch.object(TaskFlowManager, "get_flow_runs_with_filters")
+    def test_process_aggregation_job_subscribes_and_processes(
+        self, mock_get_flow_runs, mock_get_flow_run
+    ):
+        """Test starts subscription thread and processes agg messages."""
+        mock_redis = Mock()
+        mock_pubsub = Mock()
+        mock_redis.pubsub.return_value = mock_pubsub
+
+        # Simulate one aggregation message then stop
+
+        def mock_listen_side_effect():
+            yield {"type": "psubscribe", "pattern": None, "data": None}
+            yield {
+                "type": "pmessage",
+                "pattern": "qcos/job_agg/*",
+                "channel": "qcos/job_agg/flow-1",
+                "data": json.dumps({
+                    "flow_run_id": "flow-run-id-1",
+                    "aggregation_type": Constant.AGGREGATION_TYPE_EXTERNAL,
+                    "cancel": False,
+                }),
+            }
+            # Stop the thread after processing
+            raise StopIteration()
+
+        mock_pubsub.listen.side_effect = mock_listen_side_effect
+        mock_pubsub.psubscribe.return_value = None
+
+        mock_flow_run = Mock()
+        mock_flow_run.id = "flow-run-id-1"
+        mock_flow_run.state_name = "Paused"
+        mock_flow_run.work_pool_name = "dummy"
+        mock_flow_run.parameters = {
+            "job_info": {
+                "data": {
+                    "backend": "dummy",
+                    "circuit_aggregation": (
+                        Constant.AGGREGATION_TYPE_EXTERNAL
+                    ),
+                }
+            }
+        }
+        mock_get_flow_run.return_value = mock_flow_run
+        mock_get_flow_runs.return_value = []
+
+        mock_sync_client = Mock()
+        self.task_manager._sync_client = mock_sync_client
+        mock_sync_client.resume_flow_run.return_value = None
+
+        # Replace redis_instance temporarily
+        original_redis = self.task_manager.redis_instance
+        self.task_manager.redis_instance = mock_redis
+
+        try:
+            asyncio.run(self.task_manager.process_aggregation_job())
+        except StopIteration:
+            pass
+        finally:
+            self.task_manager.redis_instance = original_redis
+
+        mock_redis.pubsub.assert_called_once()
+        mock_pubsub.psubscribe.assert_called_once()
+
+    def test_process_aggregation_job_cancel_message(self):
+        """Test process_aggregation_job handles cancel messages."""
+        mock_redis = Mock()
+        mock_pubsub = Mock()
+        mock_redis.pubsub.return_value = mock_pubsub
+
+        cancel_event = threading.Event()
+
+        def mock_listen_side_effect():
+            yield {"type": "psubscribe", "pattern": None, "data": None}
+            yield {
+                "type": "pmessage",
+                "pattern": "qcos/job_agg/*",
+                "channel": "qcos/job_agg/flow-1",
+                "data": json.dumps({
+                    "flow_run_id": "flow-run-id-1",
+                    "cancel": True,
+                    "sub_flow_list": ["sub-flow-1", "sub-flow-2"],
+                }),
+            }
+            cancel_event.wait(timeout=5)
+            raise StopIteration()
+
+        mock_pubsub.listen.side_effect = mock_listen_side_effect
+        mock_pubsub.psubscribe.return_value = None
+
+        mock_sync_client = Mock()
+        self.task_manager._sync_client = mock_sync_client
+
+        original_redis = self.task_manager.redis_instance
+        self.task_manager.redis_instance = mock_redis
+
+        try:
+            asyncio.run(self.task_manager.process_aggregation_job())
+            # Wait for the aggregation thread to process the cancel message
+            for _ in range(50):
+                if mock_sync_client.set_flow_run_state.call_count >= 2:
+                    break
+                time.sleep(0.1)
+            cancel_event.set()
+        except StopIteration:
+            pass
+        finally:
+            self.task_manager.redis_instance = original_redis
+
+        # Cancel should call set_flow_run_state for each sub flow
+        assert mock_sync_client.set_flow_run_state.call_count == 2
+
+    @patch.object(TaskFlowManager, "get_flow_run")
+    @patch.object(TaskFlowManager, "get_flow_runs_with_filters")
+    def test_process_aggregation_job_filters_sub_jobs_by_backend(
+        self, mock_get_flow_runs, mock_get_flow_run
+    ):
+        """Test only aggregates sub jobs with same backend and pool."""
+        mock_redis = Mock()
+        mock_pubsub = Mock()
+        mock_redis.pubsub.return_value = mock_pubsub
+
+        def mock_listen_side_effect():
+            yield {"type": "psubscribe", "pattern": None, "data": None}
+            yield {
+                "type": "pmessage",
+                "pattern": "qcos/job_agg/*",
+                "channel": "qcos/job_agg/flow-1",
+                "data": json.dumps({
+                    "flow_run_id": "flow-run-id-1",
+                    "aggregation_type": Constant.AGGREGATION_TYPE_EXTERNAL,
+                    "cancel": False,
+                }),
+            }
+            raise StopIteration()
+
+        mock_pubsub.listen.side_effect = mock_listen_side_effect
+        mock_pubsub.psubscribe.return_value = None
+
+        # Parent flow on backend "dummy", pool "dummy"
+        mock_parent_flow = Mock()
+        mock_parent_flow.id = "flow-run-id-1"
+        mock_parent_flow.state_name = "Paused"
+        mock_parent_flow.work_pool_name = "dummy"
+        mock_parent_flow.parameters = {
+            "job_info": {
+                "data": {
+                    "backend": "dummy",
+                    "circuit_aggregation": (
+                        Constant.AGGREGATION_TYPE_EXTERNAL
+                    ),
+                }
+            }
+        }
+        mock_get_flow_run.return_value = mock_parent_flow
+
+        # Sub flow on same backend (should be included)
+        mock_sub_flow_1 = Mock()
+        mock_sub_flow_1.name = "sub-job-1"
+        mock_sub_flow_1.id = "sub-flow-id-1"
+        mock_sub_flow_1.work_pool_name = "dummy"
+        mock_sub_flow_1.parameters = {
+            "job_info": {
+                "data": {
+                    "backend": "dummy",
+                    "circuit_aggregation": (
+                        Constant.AGGREGATION_TYPE_EXTERNAL
+                    ),
+                }
+            }
+        }
+
+        # Sub flow on different backend (should be excluded)
+        mock_sub_flow_2 = Mock()
+        mock_sub_flow_2.name = "sub-job-2"
+        mock_sub_flow_2.id = "sub-flow-id-2"
+        mock_sub_flow_2.work_pool_name = "other_pool"
+        mock_sub_flow_2.parameters = {
+            "job_info": {
+                "data": {
+                    "backend": "other_backend",
+                    "circuit_aggregation": (
+                        Constant.AGGREGATION_TYPE_EXTERNAL
+                    ),
+                }
+            }
+        }
+        mock_get_flow_runs.return_value = [mock_sub_flow_1, mock_sub_flow_2]
+
+        mock_sync_client = Mock()
+        self.task_manager._sync_client = mock_sync_client
+        mock_sync_client.resume_flow_run.return_value = None
+
+        original_redis = self.task_manager.redis_instance
+        self.task_manager.redis_instance = mock_redis
+
+        try:
+            asyncio.run(self.task_manager.process_aggregation_job())
+        except StopIteration:
+            pass
+        finally:
+            self.task_manager.redis_instance = original_redis
+
+        # Verify resume_flow_run was called with is_parent=True
+        # and only matching sub jobs
+        if mock_sync_client.resume_flow_run.called:
+            call_kwargs = mock_sync_client.resume_flow_run.call_args.kwargs
+            run_input = call_kwargs.get("run_input", {})
+            assert run_input.get("is_parent") is True
+            # Only sub-job-1 should be in sub_jobs (same backend/pool)
+            sub_jobs = run_input.get("sub_jobs", {})
+            assert "sub-job-1" in sub_jobs
+            assert "sub-job-2" not in sub_jobs
+
+    @patch.object(TaskFlowManager, "get_flow_run")
+    def test_process_aggregation_job_max_aggregation_limit(
+        self, mock_get_flow_run
+    ):
+        """Test respects MAX_AGGREGATION_JOBS limit when selecting sub jobs."""
+        mock_redis = Mock()
+        mock_pubsub = Mock()
+        mock_redis.pubsub.return_value = mock_pubsub
+
+        def mock_listen_side_effect():
+            yield {"type": "psubscribe", "pattern": None, "data": None}
+            yield {
+                "type": "pmessage",
+                "pattern": "qcos/job_agg/*",
+                "channel": "qcos/job_agg/flow-1",
+                "data": json.dumps({
+                    "flow_run_id": "flow-run-id-1",
+                    "aggregation_type": Constant.AGGREGATION_TYPE_EXTERNAL,
+                    "cancel": False,
+                }),
+            }
+            raise StopIteration()
+
+        mock_pubsub.listen.side_effect = mock_listen_side_effect
+        mock_pubsub.psubscribe.return_value = None
+
+        mock_parent_flow = Mock()
+        mock_parent_flow.id = "flow-run-id-1"
+        mock_parent_flow.state_name = "Paused"
+        mock_parent_flow.work_pool_name = "dummy"
+        mock_parent_flow.parameters = {
+            "job_info": {
+                "data": {
+                    "backend": "dummy",
+                    "circuit_aggregation": (
+                        Constant.AGGREGATION_TYPE_EXTERNAL
+                    ),
+                }
+            }
+        }
+        mock_get_flow_run.return_value = mock_parent_flow
+
+        # Create more sub jobs than MAX_AGGREGATION_JOBS
+        sub_flows = []
+        for i in range(Constant.MAX_AGGREGATION_JOBS + 3):
+            mock_sub = Mock()
+            mock_sub.name = f"sub-job-{i}"
+            mock_sub.id = f"sub-flow-id-{i}"
+            mock_sub.work_pool_name = "dummy"
+            mock_sub.parameters = {
+                "job_info": {
+                    "data": {
+                        "backend": "dummy",
+                        "circuit_aggregation": (
+                            Constant.AGGREGATION_TYPE_EXTERNAL
+                        ),
+                    }
+                }
+            }
+            sub_flows.append(mock_sub)
+
+        with patch.object(
+            TaskFlowManager,
+            "get_flow_runs_with_filters",
+            return_value=sub_flows,
+        ):
+            mock_sync_client = Mock()
+            self.task_manager._sync_client = mock_sync_client
+            mock_sync_client.resume_flow_run.return_value = None
+
+            original_redis = self.task_manager.redis_instance
+            self.task_manager.redis_instance = mock_redis
+
+            try:
+                asyncio.run(self.task_manager.process_aggregation_job())
+            except StopIteration:
+                pass
+            finally:
+                self.task_manager.redis_instance = original_redis
+
+            if mock_sync_client.resume_flow_run.called:
+                call_kwargs = mock_sync_client.resume_flow_run.call_args.kwargs
+                run_input = call_kwargs.get("run_input", {})
+                sub_jobs = run_input.get("sub_jobs", {})
+                assert len(sub_jobs) <= Constant.MAX_AGGREGATION_JOBS

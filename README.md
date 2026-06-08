@@ -30,7 +30,7 @@
 
 # 3. 安装使用
 
-官方已适配操作系统：BCLinux 21.10U4
+官方已适配操作系统：BCLinux 21.10U4、OpenEuler 24.03 (LTS)
 
 **ReadTheDocs在线文档:** [https://qcos.readthedocs.io](https://qcos.readthedocs.io)
 

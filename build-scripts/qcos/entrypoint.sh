@@ -53,6 +53,7 @@ qcos_template_base_dir=/etc/qcos-template
 # qcos configs
 qcos_config_file_path=/etc/qcos/qcos.toml
 qcos_extra_config_file_dir=/etc/qcos/conf.d
+qcos_template_config_dir=${qcos_template_base_dir}/conf.d
 qcos_template_config_file_path=${qcos_template_base_dir}/qcos.toml
 # roles configs
 qcos_roles_config_dir=/etc/qcos/roles
@@ -126,6 +127,18 @@ config(conf)
 with open(config_file, 'w', encoding='utf-8') as f:
     tomlkit.dump(conf, f)
   "
+fi
+
+# Sync extra config files from template dir (only copy if not exists)
+echo "Sync QCOS extra config dir: ${qcos_extra_config_file_dir} ..."
+if [ -d "${qcos_template_config_dir}" ]; then
+  for template_file in ${qcos_template_config_dir}/*; do
+    filename=$(basename "${template_file}")
+    if [ ! -f "${qcos_extra_config_file_dir}/${filename}" ]; then
+      echo "  Copying new config: ${filename}"
+      cp "${template_file}" "${qcos_extra_config_file_dir}/${filename}"
+    fi
+  done
 fi
 
 # check if dir /etc/qcos/roles exists and create it if not
