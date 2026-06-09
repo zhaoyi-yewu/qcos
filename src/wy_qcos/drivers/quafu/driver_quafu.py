@@ -51,7 +51,8 @@ class DriverQuafu(DriverBase):
             "Ling",
             "Shenglian",
         ]
-        self.transpiler = Constant.TRANSPILER_CMSS
+        self.chip_name = None
+        self.transpiler = Constant.TRANSPILER_DUMMY
         self.tech_type = Constant.TECH_TYPE_SUPERCONDUCTING
         self.supported_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_H,
@@ -63,8 +64,8 @@ class DriverQuafu(DriverBase):
         self.enable_circuit_aggregation = False
         self.max_qubits = 84
         self.default_data_type = DriverBase.DATA_TYPE_QASM2
-        self.supported_code_types = [Constant.CODE_TYPE_QASM2]
-        self.supported_transpilers = [Constant.TRANSPILER_CMSS]
+        self.supported_code_types = [Constant.CODE_TYPE_QASM]
+        self.supported_transpilers = [Constant.TRANSPILER_DUMMY]
 
     def init_driver(self):
         """Init driver."""
@@ -98,6 +99,7 @@ class DriverQuafu(DriverBase):
         driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
         driver_config_schema.update({
             "token": str,
+            "chip_name": str,
             "transpiler": {
                 "qpu_configs": {
                     "qubits": int,
@@ -117,6 +119,7 @@ class DriverQuafu(DriverBase):
     def fetch_configs(self):
         """Fetch configs."""
         extra_configs = self.get_configs()
+        self.chip_name = extra_configs.get("chip_name", "")
         self.token = extra_configs.get("token", "")
         self.tmgr = Task(self.token)
 
@@ -188,14 +191,14 @@ class DriverQuafu(DriverBase):
         logger.info("2. submit task")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
         task = {
-            "chip": "Dongling",  # chip name
+            "chip": self.chip_name,  # chip name
             "name": job_id,  # task name
             "circuit": final_code,  # circuit written in OpenQASM2.0
-            "shots": 1024,  # an integer multiple of 1024
+            "shots": shots,  # an integer multiple of 1024
             "options": {
-                "compiler": None,  # defaults to 'quarkcircuit'
+                "compiler": "quarkcircuit",  # defaults to 'quarkcircuit'
                 "correct": False,  # readout error correction
-                "open_dd": None,  # dynamial decoupling,  # defaults to None
+                "open_dd": None,  # dynamical decoupling, defaults to None
                 "target_qubits": [],  # [0, 1]
             },
         }
@@ -222,9 +225,7 @@ class DriverQuafu(DriverBase):
             raise ValueError(f"failed to get task {task_id} result")
 
         # 5. Normalize results
-        results = _results
         logger.info("5. normalize results")
-        self.set_results(job_id, data_index, results=results)
         results = self.convert_results(_results)
         self.set_results(job_id, data_index, results=results)
 
