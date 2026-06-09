@@ -60,6 +60,7 @@ def upgrade() -> None:
         sa.Column("transpiler", sa.String(length=32), nullable=True),
         sa.Column("transpiler_options", sa.JSON(), nullable=True),
         sa.Column("circuit_aggregation", sa.String(length=32), nullable=True),
+        sa.Column("qec_options", sa.JSON(), nullable=True),
         sa.Column("shots", sa.Integer(), nullable=False),
         sa.Column(
             "progress", sa.Integer(), nullable=True, server_default="-1"

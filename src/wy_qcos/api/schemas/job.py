@@ -68,6 +68,10 @@ class SubmitJobRequest(BaseModel):
     circuit_aggregation: str | None = Field(
         default=None, description="Circuit aggregation: internal, multi"
     )
+    # QEC options
+    qec_options: dict | None = Field(
+        default=None, description="QEC (Quantum Error Correction) options"
+    )
     # Job ID
     job_id: UUID | None = Field(default=None, description="Job ID")
     # Job name
@@ -187,6 +191,10 @@ class SubmitJobResponse(BaseModel):
     circuit_aggregation: str | None = Field(
         default=None, description="Circuit aggregation: internal, multi"
     )
+    # QEC options
+    qec_options: dict | None = Field(
+        default=None, description="QEC (Quantum Error Correction) options"
+    )
     # Profiling
     profiling: list | None = Field(default=None, description="Profiling")
     # Shots
@@ -284,6 +292,10 @@ class GetJobStatusResponse(BaseModel):
     # Circuit aggregation: internal, multi
     circuit_aggregation: str | None = Field(
         default=None, description="Circuit aggregation: internal, multi"
+    )
+    # QEC options
+    qec_options: dict | None = Field(
+        default=None, description="QEC (Quantum Error Correction) options"
     )
     # Shots
     shots: int = Field(description="Shots")
@@ -383,6 +395,10 @@ class GetJobResultsResponse(BaseModel):
     # Circuit aggregation: internal, multi
     circuit_aggregation: str | None = Field(
         default=None, description="Circuit aggregation: internal, multi"
+    )
+    # QEC options
+    qec_options: dict | None = Field(
+        default=None, description="QEC (Quantum Error Correction) options"
     )
     # Shots
     shots: int = Field(description="Shots")
@@ -639,6 +655,10 @@ class UpdateJobResponse(BaseModel):
     # Circuit aggregation: internal, multi
     circuit_aggregation: str | None = Field(
         default=None, description="Circuit aggregation: internal, multi"
+    )
+    # QEC options
+    qec_options: dict | None = Field(
+        default=None, description="QEC (Quantum Error Correction) options"
     )
     # Shots
     shots: int = Field(description="Shots")
