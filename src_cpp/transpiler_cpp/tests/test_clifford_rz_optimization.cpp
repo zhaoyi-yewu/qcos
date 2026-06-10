@@ -17,6 +17,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <memory>
 #include <string>
 #include <vector>
@@ -422,4 +423,171 @@ TEST(ReduceHadamardGatesTest, BasisWithoutH_ReturnsZero) {
   const auto counts = dag.count_ops();
   EXPECT_EQ(counts.at("h"), 2);
   EXPECT_EQ(counts.at("sdg"), 1);
+}
+
+// ===========================
+// merge_rotations 测试
+// ===========================
+
+/*
+ *      ┌───┐           ┌───┐┌─────────┐                  ┌───┐
+ * q_0: ┤ H ├───────────┤ X ├┤ Rz(0.3) ├──■─────────■─────┤ H ├──
+ *      ├───┤┌─────────┐└─┬─┘└─────────┘┌─┴─┐     ┌─┴─┐┌──└───┘─┐┌───┐
+ * q_1: ┤ H ├┤ Rz(0.1) ├──■───────■─────┤ X ├──■──┤ X ├┤ Rz(0.4)├┤ H ├
+ *      ├───┤├─────────┤        ┌─┴─┐   ├───┤┌─┴─┐└───┘└────────┘└───┘
+ * q_2: ┤ H ├┤ Rz(0.2) ├────────┤ X ├───┤ H ├┤ X ├───────────────
+ *      └───┘└─────────┘        └───┘   └───┘└───┘
+ * H 门在 q2 和 q0 上将块分割，Rz(0.1) 和 Rz(0.4) 不在同一块中，
+ * 优化结果为 0（与 Python 版行为一致）。
+ */
+TEST(MergeRotationsTest, HGateSplitsBlockOnOtherQubits) {
+  CliffordRzOptimization optimizer;
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}),         create_gate("h", {1}),
+      create_gate("h", {2}),         create_gate("rz", {1}, {0.1}),
+      create_gate("rz", {2}, {0.2}), create_gate("cx", {1, 0}),
+      create_gate("rz", {0}, {0.3}), create_gate("cx", {1, 2}),
+      create_gate("cx", {0, 1}),     create_gate("h", {2}),
+      create_gate("cx", {1, 2}),     create_gate("cx", {0, 1}),
+      create_gate("rz", {1}, {0.4}), create_gate("h", {0}),
+      create_gate("h", {1})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  EXPECT_EQ(optimizer.merge_rotations(dag), 0);
+}
+
+/*
+ *                                      ┌─────────┐┌───┐
+ * q_0: ─────────────■───────────────■──┤ Rz(0.3) ├┤ X ├
+ *      ┌─────────┐┌─┴─┐┌─────────┐┌─┴─┐├─────────┤└─┬─┘
+ * q_1: ┤ Rz(0.1) ├┤ X ├┤ Rz(0.2) ├┤ X ├┤ Rz(0.4) ├──■──
+ *      └─────────┘└───┘└─────────┘└───┘└─────────┘
+ * 优化后 Rz(0.1) 和 Rz(0.4) 同级项式，合并为 Rz(0.5)：
+ *                                      ┌─────────┐┌───┐
+ * q_0: ─────────────■───────────────■──┤ Rz(0.3) ├┤ X ├
+ *      ┌─────────┐┌─┴─┐┌─────────┐┌─┴─┐└─────────┘└─┬─┘
+ * q_1: ┤ Rz(0.5) ├┤ X ├┤ Rz(0.2) ├┤ X ├─────────────■──
+ *      └─────────┘└───┘└─────────┘└───┘
+ */
+TEST(MergeRotationsTest, PhasePolynomialMergesRzAcrossCx) {
+  CliffordRzOptimization optimizer;
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("rz", {1}, {0.1}), create_gate("cx", {0, 1}),
+      create_gate("rz", {1}, {0.2}), create_gate("cx", {0, 1}),
+      create_gate("rz", {0}, {0.3}), create_gate("rz", {1}, {0.4}),
+      create_gate("cx", {1, 0})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  EXPECT_EQ(optimizer.merge_rotations(dag), 1);
+  auto nodes = rz_nodes(dag);
+  ASSERT_EQ(nodes.size(), 3u);
+  EXPECT_NEAR(nodes[0]->op->arg_value[0], 0.5, 1e-9);
+  EXPECT_NEAR(nodes[1]->op->arg_value[0], 0.2, 1e-9);
+  EXPECT_NEAR(nodes[2]->op->arg_value[0], 0.3, 1e-9);
+}
+
+/*
+ * X 翻转常数项，改变后继 Rz 的符号。
+ * Rz(0.1) 与 Rz(0.4) 合并为 Rz(-0.3)，
+ * Rz(0.2) 与 Rz(0.5) 合并为 Rz(0.7)。
+ *                                           ┌─────────┐┌───┐┌─────────┐
+ * q_0: ──────────────────■───────────────■──┤ Rz(0.3) ├┤ X ├┤ Rz(0.5) ├
+ *      ┌─────────┐┌───┐┌─┴─┐┌─────────┐┌─┴─┐├─────────┤└─┬─┘└─────────┘
+ * q_1: ┤ Rz(0.1) ├┤ X ├┤ X ├┤ Rz(0.2) ├┤ X ├┤ Rz(0.4) ├──■─────────────
+ *      └─────────┘└───┘└───┘└─────────┘└───┘└─────────┘
+ *                                            ┌─────────┐┌───┐
+ * q_0: ───────────────────■───────────────■──┤ Rz(0.3) ├┤ X ├
+ *      ┌──────────┐┌───┐┌─┴─┐┌─────────┐┌─┴─┐└─────────┘└─┬─┘
+ * q_1: ┤ Rz(-0.3) ├┤ X ├┤ X ├┤ Rz(0.7) ├┤ X ├─────────────■──
+ *      └──────────┘└───┘└───┘└─────────┘└───┘
+ */
+TEST(MergeRotationsTest, XGateFlipsConstantTerm) {
+  CliffordRzOptimization optimizer;
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("rz", {1}, {0.1}), create_gate("x", {1}),
+      create_gate("cx", {0, 1}),     create_gate("rz", {1}, {0.2}),
+      create_gate("cx", {0, 1}),     create_gate("rz", {0}, {0.3}),
+      create_gate("rz", {1}, {0.4}), create_gate("cx", {1, 0}),
+      create_gate("rz", {0}, {0.5})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  EXPECT_EQ(optimizer.merge_rotations(dag), 2);
+  auto nodes = rz_nodes(dag);
+  ASSERT_EQ(nodes.size(), 3u);
+  EXPECT_NEAR(nodes[0]->op->arg_value[0], -0.3, 1e-9);
+  EXPECT_NEAR(nodes[1]->op->arg_value[0], 0.7, 1e-9);
+  EXPECT_NEAR(nodes[2]->op->arg_value[0], 0.3, 1e-9);
+}
+
+/*
+ * Rz(0.1) 与 Rz(0.4) 同单项式合并为 Rz(0.5)。
+ *                 ┌───┐┌─────────┐
+ * q_0: ───────────┤ X ├┤ Rz(0.3) ├──■────■─────────────
+ *      ┌─────────┐└─┬─┘└─────────┘┌─┴─┐┌─┴─┐┌─────────┐
+ * q_1: ┤ Rz(0.1) ├──■───────■─────┤ X ├┤ X ├┤ Rz(0.4) ├
+ *      ├─────────┤        ┌─┴─┐   └───┘└───┘└─────────┘
+ * q_2: ┤ Rz(0.2) ├────────┤ X ├────────────────────────
+ *      └─────────┘        └───┘
+ *                 ┌───┐┌─────────┐
+ * q_0: ───────────┤ X ├┤ Rz(0.3) ├──■────■────
+ *      ┌─────────┐└─┬─┘└─────────┘┌─┴─┐┌─┴─┐
+ * q_1: ┤ Rz(0.5) ├──■───────■─────┤ X ├┤ X ├──
+ *      ├─────────┤        ┌─┴─┐   └───┘└───┘
+ * q_2: ┤ Rz(0.2) ├────────┤ X ├─────────────
+ *      └─────────┘        └───┘
+ *
+ */
+TEST(MergeRotationsTest, AdjacentCxCancelsAndMergesRz) {
+  CliffordRzOptimization optimizer;
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("rz", {1}, {0.1}), create_gate("rz", {2}, {0.2}),
+      create_gate("cx", {1, 0}),     create_gate("rz", {0}, {0.3}),
+      create_gate("cx", {1, 2}),     create_gate("cx", {0, 1}),
+      create_gate("cx", {0, 1}),     create_gate("rz", {1}, {0.4})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  EXPECT_EQ(optimizer.merge_rotations(dag), 1);
+  auto nodes = rz_nodes(dag);
+  ASSERT_EQ(nodes.size(), 3u);
+  // 拓扑序: Rz(0.1) on q1 → Rz(0.3) on q0 → Rz(0.2) on q2
+  EXPECT_NEAR(nodes[0]->op->arg_value[0], 0.5, 1e-9);  // Rz on q1
+  EXPECT_NEAR(nodes[1]->op->arg_value[0], 0.3, 1e-9);  // Rz on q0
+  EXPECT_NEAR(nodes[2]->op->arg_value[0], 0.2, 1e-9);  // Rz on q2
+}
+
+/*
+ * basis_gates 只包含 {rz, cx}，X 不在集合中。
+ * 第一个 Rz(0.1) 被 X 隔开，无法与后面的 Rz 合并。
+ *
+ *                                           ┌─────────┐┌───┐┌─────────┐
+ * q_0: ──────────────────■───────────────■──┤ Rz(0.3) ├┤ X ├┤ Rz(0.5) ├
+ *      ┌─────────┐┌───┐┌─┴─┐┌─────────┐┌─┴─┐├─────────┤└─┬─┘└─────────┘
+ * q_1: ┤ Rz(0.1) ├┤ X ├┤ X ├┤ Rz(0.2) ├┤ X ├┤ Rz(0.4) ├──■─────────────
+ *      └─────────┘└───┘└───┘└─────────┘└───┘└─────────┘
+ *
+ * 优化后 Rz(0.2) 和 Rz(0.4) 合并为 Rz(0.7)，Rz(0.1) 保留：
+ *                                           ┌─────────┐┌───┐
+ * q_0: ──────────────────■───────────────■──┤ Rz(0.3) ├┤ X ├
+ *      ┌─────────┐┌───┐┌─┴─┐┌─────────┐┌─┴─┐├─────────┤└─┬─┘
+ * q_1: ┤ Rz(0.1) ├┤ X ├┤ X ├┤ Rz(0.7) ├┤ X ├┤ Rz(0.4) ├──■──
+ *      └─────────┘└───┘└───┘└─────────┘└───┘└─────────┘
+ */
+TEST(MergeRotationsTest, BasisFilterExcludesXGate) {
+  CliffordRzOptimization optimizer;
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("rz", {1}, {0.1}), create_gate("x", {1}),
+      create_gate("cx", {0, 1}),     create_gate("rz", {1}, {0.2}),
+      create_gate("cx", {0, 1}),     create_gate("rz", {0}, {0.3}),
+      create_gate("rz", {1}, {0.4}), create_gate("cx", {1, 0}),
+      create_gate("rz", {0}, {0.5})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  EXPECT_EQ(optimizer.merge_rotations(dag, std::set<std::string>{"rz", "cx"}),
+            1);
+  auto nodes = rz_nodes(dag);
+  ASSERT_EQ(nodes.size(), 4u);
+  EXPECT_NEAR(nodes[0]->op->arg_value[0], 0.1, 1e-9);
+  EXPECT_NEAR(nodes[1]->op->arg_value[0], 0.7, 1e-9);
+  EXPECT_NEAR(nodes[2]->op->arg_value[0], 0.3, 1e-9);
+  EXPECT_NEAR(nodes[3]->op->arg_value[0], 0.4, 1e-9);
 }

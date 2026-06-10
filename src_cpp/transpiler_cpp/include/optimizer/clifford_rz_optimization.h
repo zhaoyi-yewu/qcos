@@ -79,6 +79,16 @@ class CliffordRzOptimization {
       const std::optional<std::set<std::string>>& basis_gates = std::nullopt);
 
   /**
+   * @brief 使用相位多项式方法合并 Rz 门
+   * @param dag 待优化的 DAG
+   * @param basis_gates 可选 basis gate 过滤集合
+   * @return int 删除的门数量
+   */
+  int merge_rotations(
+      DAGCircuit& dag,
+      const std::optional<std::set<std::string>>& basis_gates = std::nullopt);
+
+  /**
    * @brief 执行完整的 Clifford + Rz 优化流程
    * @param dag 待优化的 DAG
    * @param basis_gates 可选 basis gate 过滤集合
@@ -101,10 +111,22 @@ class CliffordRzOptimization {
         &CliffordRzOptimization::cancel_single_qubit_gates}},
       {3,
        {"cancel_two_qubit_gates",
-        &CliffordRzOptimization::cancel_two_qubit_gates}}};
+        &CliffordRzOptimization::cancel_two_qubit_gates}},
+      {4,
+       {"merge_rotations",
+        &CliffordRzOptimization::merge_rotations}}};
 
   /// 优化步骤执行顺序
-  std::vector<int> routine_ = {1, 2, 3};
+  std::vector<int> routine_ = {1, 2, 3, 4};
+
+  /**
+   * @brief 使用相位多项式解析 CNOT-Rz 子电路，合并相同单项式的 Rz 门
+   * @param node_list 子电路节点列表（仅含 cx、rz、x 门）
+   * @param dag 所属 DAG，用于删除节点
+   * @return int 删除的 Rz 门数量
+   */
+  int parse_cnot_rz_circuit(const std::vector<DAGOpNode*>& node_list,
+                            DAGCircuit& dag);
 
   std::vector<OptimizingTemplate> hadamard_templates_;
   std::vector<OptimizingTemplate> single_qubit_gate_templates_;
