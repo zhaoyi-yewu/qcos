@@ -21,17 +21,11 @@
 #include <unordered_map>
 #include <utility>
 
-#include "circuit/gate_operation.h"
+#include "utils/operation_utils.h"
 
 namespace qcos {
 
 namespace {
-
-std::shared_ptr<BaseOperation> make_gate(
-    const std::string& name, const std::vector<int>& targets,
-    const std::vector<double>& args = {}) {
-  return std::shared_ptr<BaseOperation>(create_gate(name, targets, args));
-}
 
 bool contains_all(const std::unordered_map<std::string, int>& op_counts,
                   const std::set<std::string>& gates) {

@@ -23,18 +23,12 @@
 #include <vector>
 
 #include "circuit/dag_circuit.h"
-#include "circuit/gate_operation.h"
 #include "optimizer/subcircuit_rewrite.h"
+#include "utils/operation_utils.h"
 
 using namespace qcos;
 
 namespace {
-
-std::shared_ptr<BaseOperation> make_gate(
-    const std::string& name, const std::vector<int>& targets,
-    const std::vector<double>& args = {}) {
-  return std::shared_ptr<BaseOperation>(create_gate(name, targets, args));
-}
 
 std::vector<std::string> node_names(const std::vector<DAGOpNode*>& nodes) {
   std::vector<std::string> names;
