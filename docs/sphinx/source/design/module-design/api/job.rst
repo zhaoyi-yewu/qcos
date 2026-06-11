@@ -36,12 +36,12 @@
                    "source_code": ["源代码"],
                    // 作业描述 [可选]
                    "description": "description",
-                   // 量子硬件插件名称 [可选]
+                   // 量子后端硬件名称
                    "backend": "dummy",
                    // 转译器名称 [可选]
                    "transpiler": "cmss",
                    // 转译器配置参数 [可选]
-                   "transpiler_info": {},
+                   "transpiler_options": {},
                    // 作业类型: estimation [可选]
                    "job_type": "",
                    // 作业调度优先级1-10 [可选]
@@ -53,6 +53,10 @@
                    "profiling": ["driver:transpile"],
                    // 模拟运行
                    "dry_run": false,
+                   // 代码压缩等级 0-9 [可选]，0: 不压缩，9: 最高压缩
+                   "code_compress_level": 0,
+                   // 作业标签列表 [可选]，用于分类和过滤
+                   "tags": ["tag1", "tag2"],
                    // 作业结束后, 回调通知结果
                    "callbacks": [
                      {
@@ -90,16 +94,25 @@
                  "backend": "dummy",
                  "transpiler": "cmss",
                  // 可选, 转译器配置参数
-                 "transpiler_info": {},
+                 "transpiler_options": {},
                  "shots": 2,
                  // 进行性能测试的模块列表 [可选]
                  "profiling": ["driver:transpile"],
                  // 模拟运行
                  "dry_run": false,
-                 // 作业开始日期
-                 "creation_date": "2025-07-15T14:58:55.283302"
-                 // 作业结束日期
-                 "end_date": null,
+                 // 代码压缩等级 0-9 [可选]
+                 "code_compress_level": 0,
+                 // 作业标签列表 [可选]
+                 "tags": ["tag1", "tag2"],
+                 // 作业创建日期
+                 "created_at": "2025-07-15T14:58:55.283302",
+                 // 作业更新日期 [可选]
+                 "updated_at": "2025-07-15T14:59:00.000000",
+                 // 作业开始日期 [可选]
+                 "started_at": null,
+                 // 作业结束日期 [可选]
+                 "ended_at": null,
+                 // 回调通知
                  "callbacks": [
                    {
                      "name": "callback",
@@ -109,8 +122,8 @@
                    }
                  ],
                },
-               // 可选, 有错误时会出现, 具体格式参照<错误返回>
-               "error": {}
+             // 可选, 有错误时会出现, 具体格式参照<错误返回>
+             "error": {}
              }
 
    * - **查询作业状态**
@@ -154,13 +167,20 @@
                  "backend": "dummy",
                  "transpiler": "cmss",
                  // 转译器配置参数 [可选]
-                 "transpiler_info": {},
+                 "transpiler_options": {},
                  "shots": 2,
-                 "progress": 100,
-                 // 作业开始日期
-                 "creation_date":"2025-07-15T14:53:00.412438",
-                 // 作业结束日期
-                 "end_date":"2025-07-15T14:53:43.355531"},
+                 // 进行性能测试的模块列表 [可选]
+                 "profiling": ["driver:transpile"],
+                 // 模拟运行
+                 "dry_run": false,
+                 // 作业创建日期
+                 "created_at": "2025-07-15T14:53:00.412438",
+                 // 作业更新日期 [可选]
+                 "updated_at": "2025-07-15T14:53:30.000000",
+                 // 作业开始日期 [可选]
+                 "started_at": "2025-07-15T14:53:15.000000",
+                 // 作业结束日期 [可选]
+                 "ended_at": "2025-07-15T14:53:43.355531"
                },
                // 有错误时会出现, 具体格式参照<错误返回>
                "error": {}
@@ -210,13 +230,17 @@
                  "backend": "dummy",
                  "transpiler": "cmss",
                  // 转译器配置参数
-                 "transpiler_info": {},
+                 "transpiler_options": {},
                  "shots": 100,
                  "progress": 100,
-                 // 作业开始日期
-                 "creation_date": "2025-07-15T14:53:00.412438",
-                 // 作业结束日期
-                 "end_date": "2025-07-15T14:53:43.355531"},
+                 // 作业创建日期
+                 "created_at": "2025-07-15T14:53:00.412438",
+                 // 作业更新日期 [可选]
+                 "updated_at": "2025-07-15T14:53:30.000000",
+                 // 作业开始日期 [可选]
+                 "started_at": "2025-07-15T14:53:15.000000",
+                 // 作业结束日期 [可选]
+                 "ended_at": "2025-07-15T14:53:43.355531",
                  "results": [
                    {
                      "metadata": {},
@@ -244,7 +268,14 @@
                "id": 1,
                "method": "get_jobs",
                "params": {
-                 "filters": {}  // 过滤
+                 // 可选过滤参数
+                 "filters": {
+                   "all_projects": true,             // [可选] 选择所有项目, 只有管理员可用
+                   "all_users": true,                // [可选] 选择项目下所有用户, 只有管理员可用
+                   "project_id": "project-uuid",     // [可选] 按项目ID过滤
+                   "user_id": "user-uuid",           // [可选] 按用户ID过滤
+                   "job_ids": ["id1", "id2"],        // [可选] 按任务ID列表过滤
+                 }
                }
              }
 
@@ -267,10 +298,14 @@
                  "transpiler": "cmss",
                  "shots": 2,
                  "progress": 100,
+                 // 代码压缩等级
+                 "code_compress_level": 0,
+                 // 作业标签列表
+                 "tags": ["tag1", "tag2"],
                  // 作业开始日期
-                 "creation_date": "2025-07-15T14:53:00.412438",
+                 "created_at": "2025-07-15T14:53:00.412438",
                  // 作业结束日期
-                 "end_date":"2025-07-15T14:53:43.355531"},
+                 "ended_at":"2025-07-15T14:53:43.355531",
                }],
                // 有错误时会出现, 具体格式参照<错误返回>
                "error": {}
@@ -366,8 +401,14 @@
                "method": "set_job_results",
                "params": {
                  "body": {
-                   "job_id": "00000000-0000-4000-8000-000000000001",
-                   "results": [{"01": 0}]
+                    "job_id": "00000000-0000-4000-8000-000000000001",
+                    // 设置作业结果列表
+                    "results": [
+                      {
+                        "results": {"00": 10, "11": 5},
+                        "num_qubits": 2
+                      }
+                    ]
                  }
                }
              }
@@ -382,7 +423,7 @@
                "result": {
                  "job_id": "00000000-0000-4000-8000-000000000001",
                  "backend": "dummy",
-                 "job_status": "COMPLETED",
+                 "job_status": "COMPLETED"
                },
                // 有错误时会出现, 具体格式参照<错误返回>
                "error": {}
@@ -403,6 +444,10 @@
                "params": {
                  "body": {
                    "job_id": "00000000-0000-4000-8000-000000000001",
+                   // 作业名称 [可选]
+                   "job_name": "updated-job-name",
+                   // 作业描述 [可选]
+                   "description": "updated description",
                    // 作业调度优先级1-10 [可选]
                    // 最高优先级：1， 最低优先级：10
                    "job_priority": 10,
@@ -427,7 +472,7 @@
                  // 作业调度优先级1-10
                  // 最高优先级：1， 最低优先级：10
                  "job_priority": 10,
-                 // 代码类型: qasm, qasm2, qasm3,qubo
+                 // 代码类型: qasm, qasm2, qasm3, qubo
                  "code_type": "qasm",
                  "source_code": ["源代码"],
                  // 作业描述
@@ -435,16 +480,21 @@
                  "backend": "dummy",
                  "transpiler": "cmss",
                  // 转译器配置参数
-                 "transpiler_info": {},
+                 "transpiler_options": {},
                  "shots": 2,
                  // 进行性能测试的模块列表
                  "profiling": ["driver:transpile"],
                  // 模拟运行
                  "dry_run": false,
-                 // 作业开始日期
-                 "creation_date": "2025-07-15T14:58:55.283302"
-                 // 作业结束日期
-                 "end_date": null,
+                 // 作业创建日期
+                 "created_at": "2025-07-15T14:58:55.283302",
+                 // 作业更新日期 [可选]
+                 "updated_at": "2025-07-15T14:59:00.000000",
+                 // 作业开始日期 [可选]
+                 "started_at": null,
+                 // 作业结束日期 [可选]
+                 "ended_at": null,
+                 // 回调通知
                  "callbacks": [
                    {
                      "name": "callback",
@@ -458,11 +508,26 @@
 
 .. note::
 
-   - code_type中: qasm代表不区分qasm版本, 即source_code内容可以是qasm v1或者qasm v2或者qasm v3。由转译器自行判断qasm版本以及是否支持
-   - 当code_type为qasm, qasm2, qasm3时, source_code格式为: ["代码字符串"], schema为: [str]
+   - code_type中：qasm代表不区分qasm版本，即source_code内容可以是qasm v1或者qasm v2或者qasm v3。由转译器自行判断qasm版本以及是否支持
+   - 当code_type为qasm、qasm2、qasm3时，source_code格式为: ["代码字符串"]，schema为: [str]
 
-     当code_type为qubo时, source_code格式为: [[[整型/浮点, ...],[整型/浮点, ...]]], schema为: [[[int/float]]]
-   - "results": ["result": XXX]中的XXX值由驱动driver设置, 格式由驱动定义，上层不做格式约束
+     当code_type为qubo时，source_code格式为: [[[整型/浮点, ...],[整型/浮点, ...]]]，schema为: [[[int/float]]]
+   - "results"：["result": XXX]中的XXX值由驱动driver设置，格式由驱动定义，上层不做格式约束
+   - code_compress_level：代码压缩等级（0-9），0不压缩，9最高压缩。推荐值5-7，可平衡压缩率和解压缩时间
+   - tags：作业标签列表，用于分类、分组和过滤作业
+   - 数据库过滤支持：``get_jobs`` 接口支持多条件过滤，支持的字段：
+
+     +------------------+-------------------------------------------+
+     | 过滤字段         | 说明                                      |
+     +==================+===========================================+
+     | all_projects     | [可选] 选择所有项目, 只有管理员可用       |
+     | all_users        | [可选] 选择项目下所有用户, 只有管理员可用 |
+     | project_id       | 项目ID（AND 逻辑）                        |
+     +------------------+-------------------------------------------+
+     | user_id          | 用户ID（AND 逻辑）                        |
+     +------------------+-------------------------------------------+
+     | job_ids          | 作业ID列表（IN 操作符）                   |
+     +------------------+-------------------------------------------+
    - 回调的body:
 
      成功示例
@@ -477,11 +542,11 @@
              "backend": "dummy",
              "results": [
                {
-                 "metadata": {
-                   "results_fetch_mode": "sync",
-                   "status": "COMPLETED",
-                   "end_date": "2025-08-05 11:21:06.106873"
-                 },
+                  "metadata": {
+                    "results_fetch_mode": "sync",
+                    "status": "COMPLETED",
+                    "ended_at": "2025-08-05T11:21:06.106873"
+                  },
                  "profiling": {},
                  "results": {
                    "00": 10
@@ -507,7 +572,7 @@
                  "metadata": {
                    "results_fetch_mode": "sync",
                    "status": "FAILED",
-                   "end_date": "2025-08-05 11:20:32.369681"
+                   "ended_at": "2025-08-05T11:20:32.369681"
                  },
                  "error": {
                    "code": -102,
@@ -528,66 +593,66 @@
         .. code-block:: json
 
            {
-               "jsonrpc": "2.0",
-               "result": {
-                   "job_id": "f177f9c6-238e-4f20-a658-a325fd0e3f2b",
-                   "job_name": "t2",
-                   "job_status": "COMPLETED",
-                   "code_type": "qasm",
-                   "source_code": [
-                     "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\n\nmeasure q -> c;\n\n",
-                     "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\n\nmeasure q -> c;\n\n"
-                   ],
-                   "backend": "dummy",
-                   "driver_options": null,
-                   "transpiler": "cmss",
-                   "transpiler_options": null,
-                   "enable_circuit_aggregation": false,
-                   "job_priority": 5,
-                   "description": null,
-                   "shots": 104,
-                   "dry_run": true,
-                   "results": [
-                     {
-                       "results": {
-                         "00": 95,
-                         "11": 9
-                       },
-                       "num_qubits": 2,
-                       "metadata": {
-                         "results_fetch_mode": "sync",
-                         "status": "COMPLETED",
-                         "end_date": "2025-08-18T16:36:08.446082"
-                       },
-                       "profiling": {
-                         "driver:parse": 0.036981821060180667,
-                         "driver:transpile": 0.018097877502441407,
-                         "driver:run": 0.018996477127075197
-                       }
+             "jsonrpc": "2.0",
+             "result": {
+                 "job_id": "f177f9c6-238e-4f20-a658-a325fd0e3f2b",
+                 "job_name": "t2",
+                 "job_status": "COMPLETED",
+                 "code_type": "qasm",
+                 "source_code": [
+                   "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\n\nmeasure q -> c;\n\n",
+                   "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\n\nmeasure q -> c;\n\n"
+                 ],
+                 "backend": "dummy",
+                 "driver_options": null,
+                 "transpiler": "cmss",
+                 "transpiler_options": null,
+                 "enable_circuit_aggregation": false,
+                 "job_priority": 5,
+                 "description": null,
+                 "shots": 104,
+                 "dry_run": true,
+                 "results": [
+                   {
+                     "results": {
+                       "00": 95,
+                       "11": 9
                      },
-                     {
-                       "results": {
-                         "00": 101,
-                         "01": 1,
-                         "11": 2
-                       },
-                       "num_qubits": 2,
-                       "metadata": {
-                         "results_fetch_mode": "sync",
-                         "status": "COMPLETED",
-                         "end_date": "2025-08-18T16:36:08.530882"
-                       },
-                       "profiling": {
-                         "driver:parse": 0.03369569778442383,
-                         "driver:transpile": 0.016620397567749025,
-                         "driver:run": 0.017986774444580079
-                       }
+                     "num_qubits": 2,
+                     "metadata": {
+                       "results_fetch_mode": "sync",
+                       "status": "COMPLETED",
+                       "ended_at": "2025-08-18T16:36:08.446082"
+                     },
+                     "profiling": {
+                       "driver:parse": 0.036981821060180667,
+                       "driver:transpile": 0.018097877502441407,
+                       "driver:run": 0.018996477127075197
                      }
-                   ],
-                   "creation_date": "2025-08-18T16:36:01.647565",
-                   "end_date": "2025-08-18T16:36:08.530882"
-               },
-               "id": 1
+                   },
+                   {
+                     "results": {
+                       "00": 101,
+                       "01": 1,
+                       "11": 2
+                     },
+                     "num_qubits": 2,
+                     "metadata": {
+                       "results_fetch_mode": "sync",
+                       "status": "COMPLETED",
+                       "ended_at": "2025-08-18T16:36:08.530882"
+                     },
+                     "profiling": {
+                       "driver:parse": 0.03369569778442383,
+                       "driver:transpile": 0.016620397567749025,
+                       "driver:run": 0.017986774444580079
+                     }
+                   }
+                 ],
+                 "created_at": "2025-08-18T16:36:01.647565",
+                 "ended_at": "2025-08-18T16:36:08.530882"
+             },
+             "id": 1
            }
 
    - QUBO返回值示例
@@ -649,7 +714,7 @@
                    "metadata": {
                      "results_fetch_mode": "sync",
                      "status": "COMPLETED",
-                     "end_date": "2025-08-05T11:26:18.318860"
+                     "ended_at": "2025-08-05T11:26:18.318860"
                    },
                    "profiling": {},
                    "results": [
@@ -707,8 +772,8 @@
                    ]
                  }
                ],
-               "creation_date": "2025-08-05T11:26:01.980783",
-               "end_date": "2025-08-05T11:26:18.318860"
+               "created_at": "2025-08-05T11:26:01.980783",
+               "ended_at": "2025-08-05T11:26:18.318860"
              },
              "id":1
            }
@@ -726,8 +791,8 @@
 - **RUNNING** - 运行中，正在硬件或模拟器上执行
 - **COMPLETED** - 已完成，获取结果使用 get_job_results
 - **FAILED** - 执行失败，查看错误信息了解失败原因
-- **CANCELLED** - 已取消，用户主动取消的作业
 - **CANCELLING** - 取消中，正在处理取消请求
+- **CANCELLED** - 已取消，用户主动取消的作业
 - **DELETED** - 已删除，作业记录已被清除
 
 作业参数详解
@@ -752,11 +817,23 @@
 +------------------------+----------+----------------------------------------------+
 | shots                  | int      | 测量次数，影响统计精度                       |
 +------------------------+----------+----------------------------------------------+
+| code_compress_level    | int      | 代码压缩等级(0-9)，0不压缩，9最高压缩        |
++------------------------+----------+----------------------------------------------+
+| tags                   | array    | 任务标签列表[可选]，用于分类和过滤任务       |
++------------------------+----------+----------------------------------------------+
 | dry_run                | boolean  | 模拟运行，不使用真实硬件资源                 |
 +------------------------+----------+----------------------------------------------+
 | profiling              | array    | 性能评估类型，可用于分析运行时间分布         |
 +------------------------+----------+----------------------------------------------+
 | callbacks              | array    | 回调通知配置，作业完成时推送结果             |
++------------------------+----------+----------------------------------------------+
+| created_at             | datetime | 作业创建时间，系统自动生成                   |
++------------------------+----------+----------------------------------------------+
+| updated_at             | datetime | 作业更新时间 [可选]，每次状态变化时更新      |
++------------------------+----------+----------------------------------------------+
+| started_at             | datetime | 作业开始执行时间 [可选]                      |
++------------------------+----------+----------------------------------------------+
+| ended_at               | datetime | 作业结束执行时间 [可选]                      |
 +------------------------+----------+----------------------------------------------+
 
 代码类型说明
@@ -810,14 +887,16 @@
       measure q -> c;
       """
 
-      # 步骤2: 提交作业
+      # 步骤2: 提交作业，包含新参数
       job = submit_job(
           code_type="qasm2",
           source_code=[qasm_code],
           backend="dummy",
           transpiler="cmss",
           shots=1000,
-          job_priority=5
+          job_priority=5,
+          code_compress_level=5,    # 中等压缩等级
+          tags=["exp1", "circuit1"]  # 作业标签
       )
 
       # 步骤3: 轮询等待完成
@@ -831,26 +910,34 @@
       if status["job_status"] == "COMPLETED":
           results = get_job_results(job["job_id"])
 
-2. **批量作业管理**
+2. **批量作业管理与高级过滤**
 
    .. code-block:: python
 
-      # 提交多个相关作业
-      job_ids = []
-      for i in range(10):
-          job = submit_job(
-              code_type="qasm2",
-              source_code=[generate_circuit(i)],
-              backend="dummy",
-              job_priority=5 + (i % 5)  # 交错优先级
-          )
-          job_ids.append(job["job_id"])
+      # 查询特定项目的已完成作业
+      completed_jobs = get_jobs(filters={
+          "project_id": "project-uuid",
+          "job_status": "COMPLETED"
+      })
 
-      # 等待所有作业完成
-      completed = []
-      for job_id in job_ids:
-          result = get_job_results(job_id)
-          completed.append(result)
+      # 按标签过滤（API 返回结果包含 tags）
+      all_jobs = get_jobs(filters={
+          "project_id": "project-uuid"
+      })
+      filtered = [j for j in all_jobs
+                  if "exp1" in j.get("tags", [])]
+
+      # 按 job_ids 列表批量查询
+      specific_jobs = get_jobs(filters={
+          "job_ids": ["id1", "id2", "id3"]
+      })
+
+      # 复杂查询：特定用户在特定项目的作业
+      user_project_jobs = get_jobs(filters={
+          "project_id": "project-uuid",
+          "user_id": "user-uuid",
+          "job_status": "QUEUED"
+      })
 
 3. **错误处理和重试**
 
@@ -867,24 +954,23 @@
                   else:
                       raise
 
-      # 处理失败作业
       def handle_failed_job(job_id):
           job = get_job_status(job_id)
           if job["job_status"] == "FAILED":
-              # 检查失败原因
               results = get_job_results(job_id)
               for result in results["results"]:
                   if "error" in result:
-                      print(f"Error: {result['error']['message']}")
+                      msg = result.get("error", {}).get("message", "")
+                      print(f"Error: {msg}")
 
 4. **性能优化**
 
-   .. code-block:: text
-
-      • 使用 dry_run=true 测试代码正确性（不消耗资源）
-      • 启用 profiling 分析各阶段耗时
-      • 对于长流程，使用 callbacks 异步获取结果
-      • 批量提交相关作业以提高资源利用率
+  -  使用 ``dry_run=true`` 测试代码（不消耗资源）
+  -  启用 ``profiling`` 分析运行时间分布
+  -  设置合理的 ``code_compress_level`` （推荐5-7）
+  -  使用 ``tags`` 对相关作业进行分组管理
+  -  批量提交相关作业提高资源利用率
+  -  利用 ``filters`` 进行高效的作业查询
 
 5. **回调通知配置**
 
@@ -895,18 +981,20 @@
               "name": "webhook",
               "type": "results",
               "method": "post",
-              "url": "http://your-server/webhook/job-completed"
+              "url": "http://server/webhook/callback"
           }
       ]
 
       job = submit_job(
           source_code=[qasm_code],
           callbacks=callbacks,
+          code_compress_level=5,
+          tags=["important"],
           ...
       )
 
       # 服务器端接收回调
-      # POST /webhook/job-completed
+      # POST /webhook/callback
       # Body: {
       #   "job_id": "xxx",
       #   "job_status": "COMPLETED",

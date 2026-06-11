@@ -12,13 +12,21 @@
 --------
 
 1. **用户认证**：支持用户名密码认证，使用bcrypt算法进行密码哈希
-2. **权限管理**：基于角色的访问控制（RBAC），支持多角色分配
-3. **会话管理**：JWT令牌机制，支持令牌刷新和黑名单管理
-4. **安全审计**：登录日志记录，支持安全事件追踪
-5. **账户安全**：账户锁定、密码过期策略、登录失败限制
+2. **用户管理**：支持用户的创建、查询、更新和删除等操作，并支持用户与角色的绑定管理
+3. **角色管理**：基于角色的访问控制（RBAC），支持角色的创建、查询、更新和删除等操作
+4. **权限管理**：支持角色和权限的定义和管理，基于Casbin实现细粒度的权限控制
+5. **会话管理**：JWT令牌机制，支持令牌刷新和黑名单管理
+6. **安全审计**：登录日志记录，支持安全事件追踪
+7. **账户安全**：账户锁定、密码过期策略、登录失败限制
 
 数据模型设计
 ~~~~~~~~~~~~~~
+
+.. plantuml:: ../../_static/design/module-design/user-role-er.puml
+   :caption: 用户管理数据库表ER图
+   :alt: 用户管理数据库表ER图
+   :width: 80%
+   :align: center
 
 项目表 (projects)
 ~~~~~~~~~~~~~~~~~
@@ -398,7 +406,7 @@ UserManager
 .. code-block:: bash
 
    # 数据库连接配置
-   QCOS_DATABASE_CONNECTION_URL=postgresql+psycopg2://qcos:${PASS}@localhost:5432/qcos
+   QCOS_DATABASE_CONNECTION_URL=postgresql+pg8000://qcos:${PASS}@localhost:5432/qcos
 
    # 用户管理配置
    AUTH_MODE=jwt
@@ -857,6 +865,25 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
 - ✅ 无需用户级别的密码认证
 - ✅ 适用于云环境中的资源隔离
 
+**虚拟实例ID加密编码**：
+
+使用encrypt-virtual-instance-id.py工具生成虚拟实例ID, 在HTTP header中
+带入x-qcos-virtual-instance-id: {encrypted-data}, 就可以进行认证，无需
+事先创建用户。其中:
+1. salt参数是加密的盐值，必须与系统配置的PASSWORD_SALT一致
+2. device_name参数是设备名称，可以指定一个或多个设备， 示例中为dummy和qutip_sim两个设备
+
+.. code-block:: shell
+
+    ./bin/encrypt-virtual-instance-id.py -e -s 123456 -dn dummy qutip_sim -i 00000000-0000-4000-8000-000000000123
+    [Input]
+    device_name: dummy, qutip_sim
+    instance_id: 00000000-0000-4000-8000-000000000123, salt: 123456
+
+    [Output]
+    virtual_instance_id: ZHVtbXkrcXV0aXBfc2ltfDAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDEyM3w5NzQ5
+    export QCOS_VIRTUAL_INSTANCE_ID=ZHVtbXkrcXV0aXBfc2ltfDAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDEyM3w5NzQ5
+
 **虚拟实例ID格式**：
 
 虚拟实例ID是一个加密的令牌，包含：
@@ -989,7 +1016,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
     PASSWORD_EXPIRY_DAYS=90                 # 密码过期天数（0表示永不过期）
 
     # 数据库和权限配置
-    QCOS_DATABASE_CONNECTION_URL=postgresql+psycopg2://prefect:${password}@127.0.0.1:5432/qcos
+    QCOS_DATABASE_CONNECTION_URL=postgresql+pg8000://prefect:${password}@127.0.0.1:5432/qcos
     ACCESS_CONTROL_MODEL_FILE=/etc/qcos/roles/casbin_model.conf
     ACCESS_CONTROL_POLICY_FILE=/etc/qcos/roles/policy.conf
     ADMIN_PASSWORD=your-admin-password      # 默认管理员密码（可选），推荐强密码

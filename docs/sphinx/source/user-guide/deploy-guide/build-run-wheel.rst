@@ -63,7 +63,7 @@
 
    # 设置系统环境变量（临时生效，如需永久生效请写入/etc/profile或~/.bashrc）
    export PREFECT_SERVER_API_HOST="127.0.0.1"
-   export PREFECT_SERVER_DATABASE_CONNECTION_URL="sqlite+aiosqlite:////var/qcos/db/prefect.db"
+   export PREFECT_SERVER_DATABASE_CONNECTION_URL="postgresql+asyncpg://qcos:${password}@127.0.0.1:5432/qcos"
    export PREFECT_API_URL="http://127.0.0.1:4200/api"
    export PREFECT_LOCAL_STORAGE_PATH="/var/qcos/storage"
    export PREFECT_API_DEFAULT_LIMIT=100000

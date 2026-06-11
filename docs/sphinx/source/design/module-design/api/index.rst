@@ -18,6 +18,7 @@
    transpiler
    device
    auth
+   project
    user
    metrics
    error
