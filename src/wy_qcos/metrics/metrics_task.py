@@ -17,8 +17,10 @@
 
 import asyncio
 import logging
+import threading
 import time
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
 import redis.asyncio as async_redis
@@ -31,14 +33,36 @@ from wy_qcos.common.constant import (
 from wy_qcos.metrics import metrics_collector
 from wy_qcos.task_manager import scheduler
 
+
 logger = logging.getLogger(__name__)
 
 PREFECT_CHECK_TIMEOUT = 3.0
-WORKER_CHECK_TIMEOUT = 3.0
+WORKER_CHECK_TIMEOUT = 5.0
+WORKER_CHECK_RETRY_DELAY = 2.0
 REDIS_CHECK_TIMEOUT = 2.0
-METRICS_TOTAL_TIMEOUT = 10.0
+METRICS_TOTAL_TIMEOUT = 15.0
 
 _redis_client = None
+_worker_check_executor = None
+_executor_lock = threading.Lock()
+
+
+def _get_worker_check_executor():
+    global _worker_check_executor
+    if _worker_check_executor is None:
+        with _executor_lock:
+            if _worker_check_executor is None:
+                _worker_check_executor = ThreadPoolExecutor(
+                    max_workers=32, thread_name_prefix="worker-check"
+                )
+    return _worker_check_executor
+
+
+async def _aclose_worker_check_executor():
+    global _worker_check_executor
+    if _worker_check_executor is not None:
+        _worker_check_executor.shutdown(wait=True)
+        _worker_check_executor = None
 
 
 async def get_redis_client():
@@ -64,14 +88,19 @@ async def clear_redis_client():
             logger.debug(f"Error closing Redis client: {e}")
         finally:
             _redis_client = None
+    await _aclose_worker_check_executor()
 
 
-async def call_sync_with_timeout(func, timeout=3.0, *args, **kwargs):
+async def call_sync_with_timeout(
+    func, timeout=3.0, executor=None, *args, **kwargs
+):
     """Execute a synchronous function in a thread pool with a timeout.
 
     Args:
         func (callable): The synchronous function to execute.
         timeout (float, optional): Timeout in seconds. Defaults to 3.0.
+        executor (ThreadPoolExecutor, optional): Thread pool executor.
+            If None, the default executor will be used.
         *args: Arguments to pass to the function.
         **kwargs: Keyword arguments to pass to the function.
 
@@ -81,7 +110,7 @@ async def call_sync_with_timeout(func, timeout=3.0, *args, **kwargs):
     loop = asyncio.get_running_loop()
     try:
         return await asyncio.wait_for(
-            loop.run_in_executor(None, partial(func, *args, **kwargs)),
+            loop.run_in_executor(executor, partial(func, *args, **kwargs)),
             timeout=timeout,
         )
     except asyncio.TimeoutError:
@@ -157,41 +186,56 @@ async def check_worker_health(sync_client=None) -> tuple[bool, str]:
     """Check worker health.
 
     Check if there is at least one online worker in all work pools,
-    execute concurrently with timeout
+    execute concurrently with timeout.
     """
     device_names = list(scheduler.device_manager.get_devices().keys())
     if not device_names:
         return False, "No devices configured"
 
     async def check_single_device(device_name):
-        """Check single device.
+        """Check single device with retry on timeout.
 
         Args:
             device_name (str): Device name
+
         Returns:
             (device_name, status_str)
-
         """
-        try:
-            workers = await call_sync_with_timeout(
-                sync_client.read_workers_for_work_pool,
-                timeout=WORKER_CHECK_TIMEOUT,
-                work_pool_name=device_name,
-            )
-            if not workers:
-                return device_name, "no_workers"
-            online_workers = [
-                w for w in workers if w.status == WorkerStatus.ONLINE
-            ]
-            if not online_workers:
-                return device_name, "no_online"
-            return device_name, "ok"
-        except TimeoutError:
-            logger.warning(f"Timeout checking workers for {device_name}")
-            return device_name, "timeout"
-        except Exception as e:
-            logger.warning(f"Error checking workers for {device_name}: {e}")
-            return device_name, f"error:{str(e)}"
+        worker_executor = _get_worker_check_executor()
+
+        for attempt in range(2):
+            try:
+                workers = await call_sync_with_timeout(
+                    sync_client.read_workers_for_work_pool,
+                    timeout=WORKER_CHECK_TIMEOUT,
+                    executor=worker_executor,
+                    work_pool_name=device_name,
+                )
+
+                if not workers:
+                    return device_name, "no_workers"
+                online_workers = [
+                    w for w in workers if w.status == WorkerStatus.ONLINE
+                ]
+                if not online_workers:
+                    return device_name, "no_online"
+                return device_name, "ok"
+            except TimeoutError:
+                if attempt == 0:
+                    logger.warning(
+                        f"First timeout checking workers for {device_name}, "
+                        f"retrying after {WORKER_CHECK_RETRY_DELAY}s"
+                    )
+                    await asyncio.sleep(WORKER_CHECK_RETRY_DELAY)
+                    continue
+
+                logger.warning(f"All retries timeout for {device_name}")
+                return device_name, "timeout"
+            except Exception as e:
+                logger.warning(
+                    f"Error checking workers for {device_name}: {e}"
+                )
+                return device_name, f"error:{str(e)}"
 
     results = await asyncio.gather(*[
         check_single_device(d) for d in device_names
