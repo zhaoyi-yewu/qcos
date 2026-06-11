@@ -100,14 +100,13 @@ class TestLogin:
             "test_refresh_token"
         )
         mock_request.app.state._security_manager = mock_security_manager
+        mock_request.app.state._user_manager = mock_user_manager
 
         body = auth_schemas.LoginRequest(
             username="testuser", password=_s("password123")
         )
 
-        result = await login(
-            mock_request, body, mock_user_manager, mock_users_repo
-        )
+        result = await login(mock_request, body, mock_user_manager)
 
         assert result is not None
         assert result.access_token == _s("test_jwt_token")
@@ -123,13 +122,14 @@ class TestLogin:
         mock_request.app = Mock()
         mock_request.app.state = Mock()
         mock_request.app.state._security_manager = Mock()
+        mock_request.app.state._user_manager = mock_user_manager
 
         body = auth_schemas.LoginRequest(
             username="nonexistent", password=_s("password123")
         )
 
         with pytest.raises(Exception):  # Should raise UnauthorizedError
-            await login(mock_request, body, mock_user_manager, mock_users_repo)
+            await login(mock_request, body, mock_user_manager)
 
     @pytest.mark.asyncio
     async def test_login_wrong_password(
@@ -139,13 +139,14 @@ class TestLogin:
         mock_request.app = Mock()
         mock_request.app.state = Mock()
         mock_request.app.state._security_manager = Mock()
+        mock_request.app.state._user_manager = mock_user_manager
 
         body = auth_schemas.LoginRequest(
             username="testuser", password=_s("wrong_password")
         )
 
         with pytest.raises(Exception):  # Should raise UnauthorizedError
-            await login(mock_request, body, mock_user_manager, mock_users_repo)
+            await login(mock_request, body, mock_user_manager)
 
     @pytest.mark.asyncio
     async def test_login_disabled_user(
@@ -169,13 +170,14 @@ class TestLogin:
         mock_request.app = Mock()
         mock_request.app.state = Mock()
         mock_request.app.state._security_manager = Mock()
+        mock_request.app.state._user_manager = mock_user_manager
 
         body = auth_schemas.LoginRequest(
             username="disableduser", password=_s("password123")
         )
 
         with pytest.raises(Exception):  # Should raise ForbiddenError
-            await login(mock_request, body, mock_user_manager, mock_users_repo)
+            await login(mock_request, body, mock_user_manager)
 
     @pytest.mark.asyncio
     async def test_login_locked_user(
@@ -200,13 +202,14 @@ class TestLogin:
         mock_request.app = Mock()
         mock_request.app.state = Mock()
         mock_request.app.state._security_manager = Mock()
+        mock_request.app.state._user_manager = mock_user_manager
 
         body = auth_schemas.LoginRequest(
             username="lockeduser", password=_s("password123")
         )
 
         with pytest.raises(Exception):  # Should raise ForbiddenError
-            await login(mock_request, body, mock_user_manager, mock_users_repo)
+            await login(mock_request, body, mock_user_manager)
 
     @pytest.mark.asyncio
     async def test_login_locked_user_with_correct_password(
@@ -231,6 +234,7 @@ class TestLogin:
         mock_request.app = Mock()
         mock_request.app.state = Mock()
         mock_request.app.state._security_manager = Mock()
+        mock_request.app.state._user_manager = mock_user_manager
         mock_request.client = Mock()
         mock_request.client.host = "192.168.1.1"
         mock_request.headers = {"user-agent": "Mozilla/5.0"}
@@ -241,7 +245,7 @@ class TestLogin:
 
         # Even with correct password, locked user should not be able to login
         with pytest.raises(Exception):  # Should raise ForbiddenError
-            await login(mock_request, body, mock_user_manager, mock_users_repo)
+            await login(mock_request, body, mock_user_manager)
 
     @pytest.mark.asyncio
     async def test_login_auto_unlock_expired_lockout(
@@ -264,8 +268,7 @@ class TestLogin:
             - timedelta(minutes=1),  # Lockout expired
         )
         mock_user_manager.get_user.return_value = locked_user
-        mock_request.app = Mock()
-        mock_request.app.state = Mock()
+        mock_user_manager.get_user_by_id.return_value = locked_user
         mock_security_manager = Mock()
         mock_security_manager.create_access_token.return_value = (
             "test_jwt_token"
@@ -274,6 +277,7 @@ class TestLogin:
             "test_refresh_token"
         )
         mock_request.app.state._security_manager = mock_security_manager
+        mock_request.app.state._user_manager = mock_user_manager
         mock_request.client = Mock()
         mock_request.client.host = "192.168.1.1"
         mock_request.headers = {"user-agent": "Mozilla/5.0"}
@@ -284,9 +288,7 @@ class TestLogin:
         )
 
         # Should succeed because lockout period has expired
-        result = await login(
-            mock_request, body, mock_user_manager, mock_users_repo
-        )
+        result = await login(mock_request, body, mock_user_manager)
         assert result is not None
         assert result.access_token == _s("test_jwt_token")
 
@@ -318,7 +320,7 @@ class TestLogin:
         )
 
         with pytest.raises(Exception):  # Should raise ForbiddenError
-            await login(mock_request, body, mock_user_manager, mock_users_repo)
+            await login(mock_request, body)
 
     @pytest.mark.asyncio
     async def test_login_max_attempts_exceeded(
@@ -353,7 +355,7 @@ class TestLogin:
 
         # Should fail and potentially lock account
         with pytest.raises(Exception):  # Should raise UnauthorizedError
-            await login(mock_request, body, mock_user_manager, mock_users_repo)
+            await login(mock_request, body)
 
 
 class TestLogout:
@@ -516,20 +518,20 @@ class TestLoginEnhanced:
             locked_until=datetime.now() - timedelta(minutes=5),  # Expired
         )
         mock_user_manager.get_user.return_value = locked_user
+        mock_user_manager.get_user_by_id.return_value = locked_user
         mock_security_manager = Mock(spec=SecurityManager)
         mock_security_manager.create_access_token.return_value = "test_token"
         mock_security_manager.create_refresh_token.return_value = (
             "refresh_token"
         )
         mock_request.app.state._security_manager = mock_security_manager
+        mock_request.app.state._user_manager = mock_user_manager
 
         body = auth_schemas.LoginRequest(
             username="testuser", password=_s("password123")
         )
 
-        result = await login(
-            mock_request, body, mock_user_manager, mock_users_repo
-        )
+        result = await login(mock_request, body, mock_user_manager)
         assert result is not None
         assert result.access_token == _s("test_token")
 
@@ -560,7 +562,7 @@ class TestLoginEnhanced:
         )
 
         with pytest.raises(Exception):
-            await login(mock_request, body, mock_user_manager, mock_users_repo)
+            await login(mock_request, body)
 
     @pytest.mark.asyncio
     async def test_login_max_attempts_locks_account(
@@ -588,7 +590,7 @@ class TestLoginEnhanced:
         )
 
         with pytest.raises(Exception):
-            await login(mock_request, body, mock_user_manager, mock_users_repo)
+            await login(mock_request, body)
 
 
 class TestLoginMissingScenarios:
@@ -656,13 +658,14 @@ class TestLoginMissingScenarios:
         mock_user_manager.get_user.return_value = locked_user
         mock_security_manager = Mock(spec=SecurityManager)
         mock_request.app.state._security_manager = mock_security_manager
+        mock_request.app.state._user_manager = mock_user_manager
 
         body = auth_schemas.LoginRequest(
             username="lockeduser", password=_s("wrong_password")
         )
 
         with pytest.raises(Exception) as exc_info:
-            await login(mock_request, body, mock_user_manager, mock_users_repo)
+            await login(mock_request, body, mock_user_manager)
 
         assert (
             "locked" in str(exc_info.value).lower()
@@ -697,14 +700,14 @@ class TestLoginMissingScenarios:
         mock_user_manager.get_user.return_value = locked_user
         mock_security_manager = Mock(spec=SecurityManager)
         mock_request.app.state._security_manager = mock_security_manager
+        mock_request.app.state._user_manager = mock_user_manager
 
         body = auth_schemas.LoginRequest(
             username="lockeduser", password=_s("wrong_password")
         )
 
         with pytest.raises(Exception):
-            await login(mock_request, body, mock_user_manager, mock_users_repo)
-
+            await login(mock_request, body, mock_user_manager)
         assert mock_user_manager.log_login_attempt.called
 
 

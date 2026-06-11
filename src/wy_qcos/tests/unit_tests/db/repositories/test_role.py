@@ -212,11 +212,12 @@ class TestRoleRepositoryCRUD:
         """Test update role when initial get returns not success."""
         with patch.object(role_repository, "get_by_uuid") as mock_get:
             mock_get.return_value = (False, "Not found", None)
+            role_id = "00000000-0000-0000-0000-000000000001"
             update_request = UpdateRoleRequest(
-                role_id="id", permissions=["read"]
+                role_id=role_id, permissions=["read"]
             )
             success, error, updated = role_repository.update_role(
-                "id", update_request
+                role_id, update_request
             )
             assert success is False
 

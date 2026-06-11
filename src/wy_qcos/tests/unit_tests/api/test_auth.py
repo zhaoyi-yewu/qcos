@@ -317,8 +317,25 @@ class TestGetCurrentUserFromToken:
 class TestAuthVirt:
     """Test cases for auth_virt function."""
 
+    @pytest.fixture
+    def mock_user_manager(self):
+        """Create a mock user manager."""
+        mock = Mock(spec=UserManager)
+        mock.get_user_by_name.return_value = user_schemas.User(
+            user_name=Constant.ANONYMOUS_USERNAME,
+            hashed_password=_s("hashed"),
+            roles=[Constant.ROLE_ADMIN],
+            is_enabled=True,
+            is_locked=False,
+            password_expiry_days=0,
+            password_changed_at=datetime.now(),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+        return mock
+
     @patch.object(Library, "decrypt_virtual_instance_id")
-    def test_auth_virt_success(self, mock_decrypt):
+    def test_auth_virt_success(self, mock_decrypt, mock_user_manager):
         """Test successful virtual instance authentication."""
         mock_decrypt.return_value = (
             True,
@@ -327,14 +344,14 @@ class TestAuthVirt:
             "instance-123",
         )
 
-        result = auth_virt("encrypted-instance-id")
+        result = auth_virt("encrypted-instance-id", mock_user_manager)
 
         assert result is not None
         assert result["device_names"] == ["device1", "device2"]
         assert result["instance_id"] == "instance-123"
 
     @patch.object(Library, "decrypt_virtual_instance_id")
-    def test_auth_virt_admin_user(self, mock_decrypt):
+    def test_auth_virt_admin_user(self, mock_decrypt, mock_user_manager):
         """Test virtual instance authentication for admin user."""
         mock_decrypt.return_value = (
             True,
@@ -343,17 +360,21 @@ class TestAuthVirt:
             "all",
         )
 
-        result = auth_virt("admin-encrypted-instance-id")
+        result = auth_virt("admin-encrypted-instance-id", mock_user_manager)
 
-        assert result is None  # Admin user returns None
+        assert result is not None
+        assert result["is_super_admin"] is True
+        assert result["allow_all_devices"] is True
 
-    def test_auth_virt_no_instance_id(self):
+    def test_auth_virt_no_instance_id(self, mock_user_manager):
         """Test virtual instance authentication with no instance ID."""
         with pytest.raises(Exception):  # Should raise unauthorized error
-            auth_virt(None)
+            auth_virt(None, mock_user_manager)
 
     @patch.object(Library, "decrypt_virtual_instance_id")
-    def test_auth_virt_decryption_failure(self, mock_decrypt):
+    def test_auth_virt_decryption_failure(
+        self, mock_decrypt, mock_user_manager
+    ):
         """Test virtual instance authentication with decryption failure."""
         mock_decrypt.return_value = (
             False,
@@ -363,7 +384,7 @@ class TestAuthVirt:
         )
 
         with pytest.raises(Exception):  # Should raise unauthorized error
-            auth_virt("invalid-encrypted-instance-id")
+            auth_virt("invalid-encrypted-instance-id", mock_user_manager)
 
 
 class TestAuthUser:
@@ -433,6 +454,24 @@ class TestAuthUser:
 class TestAuth:
     """Test cases for main auth function."""
 
+    @pytest.fixture
+    def mock_user_manager(self):
+        """Create a mock user manager."""
+        mock = Mock(spec=UserManager)
+        mock.get_user_by_name.return_value = user_schemas.User(
+            user_name=Constant.ANONYMOUS_USERNAME,
+            hashed_password=_s("hashed"),
+            roles=[Constant.ROLE_ADMIN],
+            is_enabled=True,
+            is_locked=False,
+            password_expiry_days=0,
+            password_changed_at=datetime.now(),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+        mock.perms_enforce.return_value = True
+        return mock
+
     @patch.object(Library, "decrypt_virtual_instance_id")
     @patch(
         "wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication.Config"
@@ -440,7 +479,7 @@ class TestAuth:
     @pytest.mark.asyncio
     @pytest.mark.smoke
     async def test_auth_virt_mode(
-        self, mock_config, mock_decrypt_virtual_instance_id
+        self, mock_config, mock_decrypt_virtual_instance_id, mock_user_manager
     ):
         """Test authentication in virtual instance mode."""
         mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_VIRTUAL_INSTANCE
@@ -452,7 +491,14 @@ class TestAuth:
         )
         # Create a mock request object
         mock_request = Mock()
-        auth_data = await auth(mock_request, x_qcos_virtual_instance_id="test")
+        mock_request.app = Mock()
+        mock_request.app.state = Mock()
+        mock_request.app.state._user_manager = mock_user_manager
+        auth_data = await auth(
+            mock_request,
+            x_qcos_virtual_instance_id="test",
+            user_manager=mock_user_manager,
+        )
         assert auth_data["device_names"] == ["dummy", "tiangong100"]
         assert auth_data["instance_id"] == "f5840120bca448628cad4d990b29d673"
 
@@ -473,7 +519,7 @@ class TestAuth:
 
         assert auth_data is not None
         assert auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_NO
-        assert auth_data["user_id"] == Constant.ANONYMOUS_USERNAME
+        assert auth_data["user_id"] == Constant.ANONYMOUS_USER_ID
         assert Constant.ROLE_ADMIN in auth_data["roles"]
 
     @patch(
@@ -493,6 +539,8 @@ class TestAuth:
         self, mock_decode, mock_oauth2_scheme, mock_config
     ):
         """Test authentication with JWT token mode."""
+        from uuid import UUID
+
         mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_JWT
         mock_config.USERS.JWT_AUTH_SECRET_KEY = (
             Config.USERS.JWT_AUTH_SECRET_KEY
@@ -513,8 +561,9 @@ class TestAuth:
 
         # Create mock user manager and user
         mock_user_manager = Mock(spec=UserManager)
+        user_id = UUID("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
         user = user_schemas.User(
-            id="user-uuid-jwt",
+            id=user_id,
             project_id=Constant.DEFAULT_PROJECT_ID,
             user_name="jwtuser",
             hashed_password=_s("hashed_password"),
@@ -541,7 +590,7 @@ class TestAuth:
         assert auth_data is not None
         assert auth_data["auth_mode"] == "jwt"
         assert auth_data["user_name"] == "jwtuser"
-        assert auth_data["user_id"] == "user-uuid-jwt"
+        assert str(auth_data["user_id"]) == str(user_id)
         assert auth_data[Constant.AUTH_MODE_KEY] == Constant.AUTH_MODE_JWT
         assert "user" in auth_data["roles"]
 
@@ -676,6 +725,8 @@ class TestAuth:
         self, mock_oauth2_scheme, mock_config
     ):
         """Test JWT authentication when user lacks permissions."""
+        from uuid import UUID
+
         mock_config.DEFAULT.AUTH_MODE = Constant.AUTH_MODE_JWT
 
         # Create a valid JWT token
@@ -696,8 +747,9 @@ class TestAuth:
 
         # Create mock user manager
         mock_user_manager = Mock(spec=UserManager)
+        user_id = UUID("b2c3d4e5-f678-9abc-def0-123456789abc")
         user = user_schemas.User(
-            id="user-uuid-restricted",
+            id=user_id,
             project_id=Constant.DEFAULT_PROJECT_ID,
             user_name="restricteduser",
             hashed_password=_s("hashed_password"),

@@ -57,7 +57,7 @@ class TestVersion:
         )
 
         # Call version function
-        body = GetVersionRequest()
+        body = GetVersionRequest(details=True)
         result = version(body)
 
         # Verify result
@@ -84,7 +84,7 @@ class TestVersion:
             mock_transpiler_manager
         )
 
-        body = GetVersionRequest()
+        body = GetVersionRequest(details=True)
         result = version(body)
 
         assert isinstance(result, GetVersionResponse)
@@ -116,7 +116,7 @@ class TestVersion:
             mock_transpiler_manager
         )
 
-        body = GetVersionRequest()
+        body = GetVersionRequest(details=True)
         result = version(body)
 
         assert isinstance(result, GetVersionResponse)
@@ -172,7 +172,7 @@ class TestVersion:
             mock_transpiler_manager
         )
 
-        body = GetVersionRequest()
+        body = GetVersionRequest(details=True)
         result = version(body)
 
         assert isinstance(result, GetVersionResponse)
@@ -187,3 +187,47 @@ class TestVersion:
             "shared_transpiler"
             in result.capabilities["driver_transpiler_mappings"]["driver2"]
         )
+
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.version.scheduler")
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.version.QcosVersion")
+    def test_version_without_details(self, mock_qcos_version, mock_scheduler):
+        """Test version retrieval without details parameter."""
+        # Mock QcosVersion
+        mock_qcos_version.VERSION = "1.0.0"
+
+        # Mock driver manager and drivers
+        mock_driver = Mock()
+        mock_driver.get_supported_code_types.return_value = ["QASM"]
+        mock_driver.get_description.return_value = "Test driver"
+        mock_driver.get_driver_options.return_value = {"option1": "value1"}
+        mock_driver.get_supported_transpilers.return_value = ["transpiler1"]
+
+        mock_driver_manager = Mock()
+        mock_driver_manager.get_drivers.return_value = {"driver1": mock_driver}
+
+        # Mock transpiler manager and transpilers
+        mock_transpiler = Mock()
+        mock_transpiler.get_alias_name.return_value = "Transpiler Alias"
+        mock_transpiler.get_supported_code_types.return_value = ["QASM"]
+
+        mock_transpiler_manager = Mock()
+        mock_transpiler_manager.get_transpiler.return_value = mock_transpiler
+
+        # Setup scheduler mocks
+        mock_scheduler.get_driver_manager.return_value = mock_driver_manager
+        mock_scheduler.get_transpiler_manager.return_value = (
+            mock_transpiler_manager
+        )
+
+        # Call version function without details parameter
+        body = GetVersionRequest()
+        result = version(body)
+
+        # Verify result
+        assert isinstance(result, GetVersionResponse)
+        assert result.version == "1.0.0"
+        assert result.api_version == Constant.API_VERSION_V1
+        # capabilities should be None when details=False (default)
+        assert result.capabilities is None
+        # auth_mode should be present
+        assert result.auth_mode is not None
