@@ -19,7 +19,7 @@ import copy
 import json
 
 from loguru import logger
-from smbprotocol import smbclient
+import smbclient
 
 from wy_qcos.common.cmss.base_operation import OperationType
 from wy_qcos.common.constant import Constant
@@ -97,13 +97,12 @@ class DriverHanyuan1Pulse(DriverBase):
             self.user = configs.get("user", "user")
             self.pwd = configs.get("pwd", "123456")
             self.shared_name = configs.get("shared_name", "shared_name")
-            with smbclient.open_session(
+            smbclient.register_session(
                 self.ip_addr,
                 username=self.user,
                 password=self.pwd,
                 port=self.port,
-            ):
-                pass
+            )
         else:
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
@@ -242,10 +241,9 @@ class DriverHanyuan1Pulse(DriverBase):
 
     def _reset_and_reconnect(self):
         smbclient.reset_connection_cache()
-        with smbclient.open_session(
-            self.ip_addr, username=self.user, password=self.pwd, port=self.port
-        ):
-            pass
+        smbclient.register_session(
+            self.ip_address, username=self.user, password=self.pwd, port=self.port
+        )
 
     def submit_task(self, task_data):
         """submit_task.
@@ -266,7 +264,7 @@ class DriverHanyuan1Pulse(DriverBase):
         try:
             with smbclient.open_file(remote_full_path, "wb") as f:
                 f.write(json_str.encode("utf-8"))
-        except (ConnectionResetError, smbclient.SMBException):
+        except ConnectionResetError as e:
             self._reset_and_reconnect()
             with smbclient.open_file(remote_full_path, "wb") as f:
                 f.write(json_str.encode("utf-8"))
@@ -296,7 +294,7 @@ class DriverHanyuan1Pulse(DriverBase):
         try:
             with smbclient.open_file(remote_full_path, "rb") as f:
                 content = f.read().decode("utf-8")
-        except (ConnectionResetError, smbclient.SMBException):
+        except ConnectionResetError as e:
             self._reset_and_reconnect()
             with smbclient.open_file(remote_full_path, "rb") as f:
                 content = f.read().decode("utf-8")
