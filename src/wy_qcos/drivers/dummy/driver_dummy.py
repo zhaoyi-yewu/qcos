@@ -45,7 +45,10 @@ class DriverDummy(DriverBase):
             Constant.SINGLE_QUBIT_GATE_RY,
             Constant.TWO_QUBIT_GATE_CZ,
         ]
-        self.supported_transpilers = [Constant.TRANSPILER_CMSS]
+        self.supported_transpilers = [
+            Constant.TRANSPILER_CMSS,
+            Constant.TRANSPILER_HIGH_PERFORMANCE_CMSS,
+        ]
         self.enable_circuit_aggregation = True
         self.default_results_type = self.DATA_TYPE_GATE_SEQUENCE
         self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
