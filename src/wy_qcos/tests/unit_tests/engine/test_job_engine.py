@@ -15,15 +15,13 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import asyncio
 import numpy as np
 import pytest
 
 from datetime import datetime
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
+from unittest.mock import Mock, patch, MagicMock
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.common.library import Library
 from wy_qcos.drivers.driver_base import DriverBase
 from wy_qcos.drivers.dummy.driver_dummy import DriverDummy
 from wy_qcos.engine.job_engine import (
@@ -32,7 +30,6 @@ from wy_qcos.engine.job_engine import (
     job_flow,
     driver_cancel,
     register_signals,
-    update_progress,
     _run_code,
     run_code,
     run_qubo_code,
@@ -56,7 +53,6 @@ from wy_qcos.engine.job_engine import (
     parse,
     transpile,
     driver_run,
-    run_job_callback,
 )
 from wy_qcos.engine.job_engine import SourceCodeInfo
 from wy_qcos.transpiler.transpiler_base import TranspilerBase
@@ -114,7 +110,7 @@ class TestJobEngine:
                 "00000000-0000-4000-8000-000000000002-0": "00",
                 "00000000-0000-4000-8000-000000000003-0": "11",
             },
-            "metadata": {"end_date": datetime.now()},
+            "metadata": {"ended_at": datetime.now()},
             "profiling": {},
         }
         cls.mapping_dict = {
@@ -206,12 +202,6 @@ class TestJobEngine:
             is None
         )
 
-    @patch("wy_qcos.engine.job_engine.update_progress_artifact")
-    def test_update_progress(self, mock_update_progress_artifact):
-        mock_update_progress_artifact.return_value = None
-        assert update_progress("id", "progress") is None
-
-    # test _run_code
     @pytest.mark.smoke
     @patch("wy_qcos.engine.job_engine.flow_run_driver")
     @patch("wy_qcos.engine.job_engine.flow_transpile")
@@ -248,7 +238,6 @@ class TestJobEngine:
             TranspilerBase(),
         )
 
-    # test run_code for qasm
     @patch("wy_qcos.engine.job_engine.init_driver.submit")
     @patch("wy_qcos.engine.job_engine.init_transpiler.submit")
     @patch("wy_qcos.engine.job_engine.run_circuit_code")
@@ -311,7 +300,6 @@ class TestJobEngine:
         mock_init_transpiler.assert_called_once()
         mock_run_circuit_code.assert_called_once()
 
-    # test run_code for qubo
     @patch("wy_qcos.engine.job_engine.init_driver.submit")
     @patch("wy_qcos.engine.job_engine.init_transpiler.submit")
     @patch("wy_qcos.engine.job_engine.run_qubo_code")
@@ -678,7 +666,6 @@ class TestJobEngine:
         assert result["01"] == 0.3
         assert result["10"] == 0.4
 
-    # Test run_circuit_code function
     @patch("wy_qcos.engine.job_engine._run_code")
     def test_run_circuit_code_within_limit(self, mock_run_code):
         """Test run_circuit_code when qubit count is within limit."""
@@ -978,26 +965,6 @@ class TestJobEngine:
         results = format_error_results(driver, mock_client, 0)
         assert results["results"] is None
 
-    @patch.object(Library, "async_run_callbacks")
-    @patch.object(Library, "get_nested_dict_value")
-    def test_job_callback(
-        self, mock_get_nested_dict_value, mock_async_run_callbacks
-    ):
-        mock_get_nested_dict_value.return_value = "value"
-        mock_async_run_callbacks.return_value = None, None
-        flow_run = Mock()
-        state = Mock()
-        state.name = Constant.PREFECT_STATE_CANCELLING
-        flow_run.name = self.job_data["job_id"]
-        flow_run.parameters = "parameters"
-        flow_run.state = Mock()
-        assert (
-            asyncio.run(
-                Library.job_callback("flow", flow_run, state, results=[])
-            )
-            is None
-        )
-
     @patch("wy_qcos.engine.job_engine.update_progress")
     def test_task_monitor(self, mock_update_progress):
         mock_update_progress.return_value = None
@@ -1024,14 +991,12 @@ class TestJobEngine:
 
     @patch("wy_qcos.engine.job_engine.init_logger")
     @patch("wy_qcos.engine.job_engine.register_signals")
-    @patch("wy_qcos.engine.job_engine.create_progress_artifact")
     @patch("wy_qcos.engine.job_engine.flow_task_monitor")
     @patch("wy_qcos.engine.job_engine.run_code")
     def test_job_flow(
         self,
         mock_run_code,
         mock_flow_task_monitor,
-        mock_create_progress_artifact,
         mock_register_signals,
         mock_init_logger,
     ):
@@ -1044,7 +1009,6 @@ class TestJobEngine:
         mock_init_logger.return_value = None
         mock_flow_task_monitor.return_value = None
         mock_register_signals.return_values = None
-        mock_create_progress_artifact.return_value = self.artifact_id
         self.src_code_info.aggregation_type = Constant.AGGREGATION_TYPE_NONE
         raw_job_flow_func = job_flow.__wrapped__
         self.job_info["data"]["circuit_aggregation"] = None
@@ -1058,6 +1022,8 @@ class TestJobEngine:
         self.job_info["data"]["code_type"] = Constant.CODE_TYPE_QASM
         self.job_info["data"]["driver_options"] = {}
         self.job_info["data"]["backend"] = "dummy"
+        self.job_info["data"]["job_enqueue_at"] = datetime.now().isoformat()
+        self.job_info["data"]["job_schedule_duration"] = 0
         self.job_info["global"] = {"configs": {}}
         self.job_info["device"] = {"configs": {}}
         job_results_list = raw_job_flow_func(self.job_info)
@@ -1066,26 +1032,7 @@ class TestJobEngine:
         )
         assert job_results_list[0] == self.job_results
         mock_run_code.assert_called_once()
-        mock_create_progress_artifact.assert_called_once()
         assert (
             self.src_code_info.aggregation_type
             == Constant.AGGREGATION_TYPE_NONE
         )
-
-    def test_run_job_callback(self):
-        mock_job_callback = AsyncMock()
-        Library.job_callback = mock_job_callback
-
-        mock_flow = Mock()
-        mock_flow.name = "test_flow"
-        mock_flow_run = Mock()
-        mock_flow_run.id = "flow_run_123"
-        mock_state = Mock()
-        mock_state.name = "Completed"
-        mock_flow_run.state = mock_state
-        mock_context = Mock()
-        mock_context.flow = mock_flow
-        mock_context.flow_run = mock_flow_run
-
-        job_results_list = None
-        _job_results_list = run_job_callback(mock_context, job_results_list)
