@@ -31,8 +31,16 @@ logger = logging.getLogger(__name__)
 @pytest.mark.usefixtures("global_configs")
 @pytest.mark.driver
 class TestJob:
+    """Test Job."""
+
+    test_job_names = [
+        "test_tiangong_submit_job",
+        "test_submit_job_enable_subqubo",
+    ]
+
     @classmethod
     def setup_class(cls):
+        """Initialize test environment."""
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
@@ -42,9 +50,15 @@ class TestJob:
         )
         cls.tiangong_process.start()
 
+        # Initialize and clean up test resources
+        StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
+
     @classmethod
     def teardown_class(cls):
-        print("Stop tiangong server")
+        """Clean up test environment."""
+        StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
+
+        print("Stop tiangong100 server")
         cls.tiangong_process.terminate()
 
     @pytest.mark.smoke

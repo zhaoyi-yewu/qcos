@@ -32,8 +32,15 @@ logger = logging.getLogger(__name__)
 @pytest.mark.usefixtures("global_configs")
 @pytest.mark.driver
 class TestJob:
+    """Test Job."""
+
+    test_job_names = [
+        "test_ciqtek_ion_1_submit_job",
+    ]
+
     @classmethod
     def setup_class(cls):
+        """Initialize test environment."""
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
@@ -41,8 +48,13 @@ class TestJob:
         cls.ion_1_process = multiprocessing.Process(target=main, daemon=True)
         cls.ion_1_process.start()
 
+        # Initialize and clean up test resources
+        StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
+
     @classmethod
     def teardown_class(cls):
+        """Clean up test environment."""
+        StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
         print("Stop ION TRAP server")
         cls.ion_1_process.terminate()
 

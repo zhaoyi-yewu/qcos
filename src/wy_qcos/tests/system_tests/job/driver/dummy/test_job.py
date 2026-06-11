@@ -30,17 +30,50 @@ logger = logging.getLogger(__name__)
 @pytest.mark.usefixtures("global_configs")
 @pytest.mark.driver
 class TestJob:
+    """Test Job."""
+
+    test_job_names = [
+        "test_submit_job",
+        "test_submit_job_dry_run",
+        "test_submit_job_profiling",
+        "test_submit_job_wirecut",
+        "test_submit_two_same_priority_jobs_1",
+        "test_submit_two_same_priority_jobs_2",
+        "test_submit_two_different_priority_jobs_1",
+        "test_submit_two_diff_priority_jobs_2",
+        "test_submit_two_diff_device_jobs_1",
+        "test_submit_two_diff_device_jobs_2",
+    ]
+
     @classmethod
     def setup_class(cls):
+        """Initialize test environment."""
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
-        cls.admin_client.verbose = True
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
 
+        # Initialize and clean up test resources
+        StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
+
     @classmethod
     def teardown_class(cls):
-        pass
+        """Clean up test environment."""
+        StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
+
+    @staticmethod
+    def assert_default_results(job_results):
+        assert "result" in job_results
+        assert "results" in job_results["result"]
+        assert isinstance(job_results["result"]["results"], list)
+        assert len(job_results["result"]["results"]) == 1
+        results_0 = job_results["result"]["results"][0]
+        r_00 = results_0["results"].get("00", 0)
+        r_01 = results_0["results"].get("01", 0)
+        r_10 = results_0["results"].get("10", 0)
+        r_11 = results_0["results"].get("11", 0)
+        assert r_00 + r_01 + r_10 + r_11 == Constant.DEFAULT_SHOTS
+        assert results_0["num_qubits"] == 2
 
     @pytest.mark.smoke
     def test_submit_job(self):
@@ -67,6 +100,7 @@ class TestJob:
             self.admin_client, job_info, self.timeout, self.interval
         )
         if success:
+            self.assert_default_results(job_results)
             StLibrary.delete_job(self.admin_client, job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
@@ -102,6 +136,7 @@ class TestJob:
             self.admin_client, job_info, self.timeout, self.interval
         )
         if success:
+            self.assert_default_results(job_results)
             StLibrary.delete_job(self.admin_client, job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
@@ -374,6 +409,7 @@ class TestJob:
             self.admin_client, first_job_info, self.timeout, self.interval
         )
         if success:
+            self.assert_default_results(job_results)
             StLibrary.delete_job(self.admin_client, first_job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
@@ -389,6 +425,7 @@ class TestJob:
             self.admin_client, second_job_info, self.timeout, self.interval
         )
         if success:
+            self.assert_default_results(job_results)
             StLibrary.delete_job(self.admin_client, second_job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
@@ -413,7 +450,7 @@ class TestJob:
             "backend": Constant.DEVICE_DUMMY,
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": None,
-            "driver_options": {"sleep": 30},
+            "driver_options": {"sleep": 10},
             "transpiler": Constant.TRANSPILER_CMSS,
             "transpiler_options": None,
             "profiling": None,
@@ -433,7 +470,7 @@ class TestJob:
             "backend": "qutip_sim",
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": None,
-            "driver_options": {"sleep": 30},
+            "driver_options": {"sleep": 10},
             "transpiler": Constant.TRANSPILER_CMSS,
             "transpiler_options": None,
             "profiling": None,
@@ -469,6 +506,7 @@ class TestJob:
             self.admin_client, first_job_info, self.timeout, self.interval
         )
         if success:
+            self.assert_default_results(job_results)
             StLibrary.delete_job(self.admin_client, first_job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
@@ -484,6 +522,7 @@ class TestJob:
             self.admin_client, second_job_info, self.timeout, self.interval
         )
         if success:
+            self.assert_default_results(job_results)
             StLibrary.delete_job(self.admin_client, second_job_info["job_id"])
             terminal_statuses = {
                 Constant.JOB_STATUS_COMPLETED,
