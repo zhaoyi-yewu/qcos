@@ -57,6 +57,7 @@ class Job(BaseTable):
     transpiler = Column(String(32))
     transpiler_options = Column(JSON, default=dict)
     circuit_aggregation = Column(String(32))
+    qec_options = Column(JSON, default=dict)
     shots = Column(Integer)
     progress = Column(Integer, default=-1)
     profiling = Column(JSON, default=list)
