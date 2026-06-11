@@ -44,8 +44,6 @@ WORKER_CHECK_RETRY_DELAY = 2.0
 REDIS_CHECK_TIMEOUT = 2.0
 METRICS_TOTAL_TIMEOUT = 15.0
 
-_db_session = None
-_job_repo = None
 _redis_client = None
 _worker_check_executor = None
 _executor_lock = threading.Lock()
@@ -63,31 +61,10 @@ def set_app(app):
     logger.debug("FastAPI app instance set for metrics task")
 
 
-def init_metrics_singletons():
-    """Initialize all metrics singletons (db_session and job_repo)."""
-    logger.debug("Initializing metrics singletons")
+def init_metrics():
+    """Initialize metrics module (verify app and db engine are available)."""
+    logger.debug("Initializing metrics module")
     try:
-        # Initialize db_session first
-        get_db_session_singleton()
-        # Then initialize job_repo
-        get_job_repo_singleton()
-        logger.info("Metrics singletons initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize metrics singletons: {e}")
-        raise
-
-
-def get_db_session_singleton():
-    """Get or initialize singleton database session.
-
-    Initialize once per process and reuse throughout process lifetime.
-
-    Returns:
-        Database session
-    """
-    global _db_session
-    if _db_session is None:
-        logger.debug("Initializing singleton database session")
         if _app is None:
             raise RuntimeError(
                 "FastAPI app not initialized. "
@@ -98,38 +75,60 @@ def get_db_session_singleton():
             raise RuntimeError(
                 "Database engine not initialized in app.state._db_engine"
             )
-        # Create SQLAlchemy session directly (not using context manager)
-        _db_session = Session(db_engine, expire_on_commit=False)
-        logger.debug("Created singleton database session")
-    return _db_session
+        logger.info("Metrics module initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize metrics module: {e}")
+        raise
 
 
-def get_job_repo_singleton():
-    """Get or initialize singleton job repository.
+def get_db_session():
+    """Create a new database session.
+
+    Creates a fresh session each time to ensure connection resilience.
+    If DB connection is lost, the next call will create a new session
+    that can establish a fresh connection via the connection pool.
 
     Returns:
-        JobRepository instance
+        Database session
     """
-    global _job_repo
-    if _job_repo is None:
-        db_session = get_db_session_singleton()
-        _job_repo = JobRepository(db_session)
-        logger.debug("Initialized singleton job repository")
-    return _job_repo
+    logger.debug("Creating new database session")
+    if _app is None:
+        raise RuntimeError(
+            "FastAPI app not initialized. "
+            "Call set_app() from metrics_task first."
+        )
+    db_engine = _app.state._db_engine
+    if db_engine is None:
+        raise RuntimeError(
+            "Database engine not initialized in app.state._db_engine"
+        )
+    # Create fresh session each time (not keeping reference)
+    session = Session(db_engine, expire_on_commit=False)
+    logger.debug("Created new database session")
+    return session
+
+
+def get_job_repo():
+    """Create a new job repository with a fresh database session.
+
+    Returns a tuple of (repository, session) so caller can manage
+    the session lifecycle.
+
+    Returns:
+        Tuple of (JobRepository instance, Session instance)
+    """
+    session = get_db_session()
+    repo = JobRepository(session)
+    logger.debug("Created new job repository with fresh session")
+    return repo, session
 
 
 def clear_db_session():
-    """Clear the singleton database session."""
-    global _db_session, _job_repo
-    if _db_session is not None:
-        try:
-            _db_session.close()
-            logger.debug("Closed database session")
-        except Exception as e:
-            logger.debug(f"Error closing database session: {e}")
+    """No longer needed since sessions are not cached.
 
-    _db_session = None
-    _job_repo = None
+    Kept for backward compatibility.
+    """
+    logger.debug("clear_db_session() called (sessions not cached)")
 
 
 def _get_worker_check_executor():
@@ -228,37 +227,39 @@ def require_sync_client(func):
 
 
 async def update_job_metrics():
-    """Update job metrics from database using singleton session."""
+    """Update job metrics from database using fresh session per call."""
     logger.debug("Querying job metrics from database")
 
+    repo = None
+    session = None
     try:
-        # Use singleton job repository (initialized once per process)
-        job_repo = get_job_repo_singleton()
+        # Create fresh job repository and session for this operation
+        repo, session = get_job_repo()
 
         # Count jobs by status using database queries (more efficient)
-        total = job_repo.count(Job)
-        completed = job_repo.count_by_attr(
+        total = repo.count(Job)
+        completed = repo.count_by_attr(
             Job, "job_status", Constant.JOB_STATUS_COMPLETED
         )
-        failed = job_repo.count_by_attr(
+        failed = repo.count_by_attr(
             Job, "job_status", Constant.JOB_STATUS_FAILED
         )
-        running = job_repo.count_by_attr(
+        running = repo.count_by_attr(
             Job, "job_status", Constant.JOB_STATUS_RUNNING
         )
-        queued = job_repo.count_by_attr(
+        queued = repo.count_by_attr(
             Job, "job_status", Constant.JOB_STATUS_QUEUED
         )
-        cancelling = job_repo.count_by_attr(
+        cancelling = repo.count_by_attr(
             Job, "job_status", Constant.JOB_STATUS_CANCELLING
         )
-        cancelled = job_repo.count_by_attr(
+        cancelled = repo.count_by_attr(
             Job, "job_status", Constant.JOB_STATUS_CANCELLED
         )
-        deleted = job_repo.count_by_attr(
+        deleted = repo.count_by_attr(
             Job, "job_status", Constant.JOB_STATUS_DELETED
         )
-        unknown = job_repo.count_by_attr(
+        unknown = repo.count_by_attr(
             Job, "job_status", Constant.JOB_STATUS_UNKNOWN
         )
 
@@ -277,6 +278,14 @@ async def update_job_metrics():
         metrics_collector.update_job_metrics(data=data)
     except Exception as e:
         logger.error(f"Error updating job metrics from database: {e}")
+    finally:
+        # Always close session
+        if session is not None:
+            try:
+                session.close()
+                logger.debug("Closed database session after metrics update")
+            except Exception as e:
+                logger.debug(f"Error closing database session: {e}")
 
 
 @require_sync_client
