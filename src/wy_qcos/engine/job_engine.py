@@ -1196,12 +1196,16 @@ def run_circuit_code(
     job_results = {}
     job_id = job_info["data"]["job_id"]
     code_type = job_info["data"]["code_type"]
+    # device's max support qubits
     max_qubits = driver.get_max_qubits()
     enable_wirecut = driver.get_enable_wirecut()
+    # wirecut qubit width
+    wirecut_qubit_width = driver.get_wirecut_qubit_width()
     logger.info(f"driver max qubits: {max_qubits}")
     src_code = src_code_dict[f"{job_id}-{source_code_index}"]
     try:
         parse_result = transpiler.parse(src_code_dict, code_type)
+        # number of qubits in the circuit
         num_qubits = parse_result[f"{job_id}-{source_code_index}"][0]
     except Exception as e:
         err_msg = f"Src code: {src_code} compile failed: {str(e)}"
@@ -1213,8 +1217,9 @@ def run_circuit_code(
             transpiler,
             None,
         )
-    if num_qubits > max_qubits:
-        if not enable_wirecut:
+    if not enable_wirecut:
+        # Check if current circuit qubits exceeds device max support qubits
+        if num_qubits > max_qubits:
             driver_name = driver.get_name()
             err_msg = (
                 f"The current circuit is {num_qubits}-bit, exceeding Device "
@@ -1229,24 +1234,63 @@ def run_circuit_code(
                 transpiler,
                 None,
             )
-        job_results, driver, transpiler, mapping_dict = (
-            run_circuit_cutting_code(
+        # Run the circuit
+        else:
+            job_results, driver, transpiler, mapping_dict = _run_code(
                 source_code_index,
                 src_code_dict,
-                num_qubits,
                 job_info,
                 driver,
                 transpiler,
             )
-        )
     else:
-        job_results, driver, transpiler, mapping_dict = _run_code(
-            source_code_index,
-            src_code_dict,
-            job_info,
-            driver,
-            transpiler,
-        )
+        # Check if wirecut qubit width exceeds device max support qubits
+        if wirecut_qubit_width > max_qubits:
+            err_msg = (
+                f"The current device: {driver_name}'s {max_qubits}-bit limit "
+                f"and wirecut qubit width is {wirecut_qubit_width}. Consider "
+                f"setting wirecut qubit width less than or equal to device's "
+                f"max support qubits."
+            )
+            return (
+                format_error_results(
+                    driver,
+                    errors.JobEngineWirecutQubitLimitExceededError,
+                    err_msg,
+                ),
+                driver,
+                transpiler,
+                None,
+            )
+        # Check if wirecut qubit width exceeds current circuit qubits
+        elif wirecut_qubit_width > num_qubits:
+            err_msg = (
+                f"The current circuit is {num_qubits}-bit, and wirecut qubit "
+                f"width is {wirecut_qubit_width}. Consider setting wirecut "
+                f"qubit width less than or equal to circuit's qubits."
+            )
+            return (
+                format_error_results(
+                    driver,
+                    errors.JobEngineWirecutQubitLimitExceededError,
+                    err_msg,
+                ),
+                driver,
+                transpiler,
+                None,
+            )
+        # Run the circuit cutting
+        else:
+            job_results, driver, transpiler, mapping_dict = (
+                run_circuit_cutting_code(
+                    source_code_index,
+                    src_code_dict,
+                    num_qubits,
+                    job_info,
+                    driver,
+                    transpiler,
+                )
+            )
     return job_results, driver, transpiler, mapping_dict
 
 
@@ -1274,6 +1318,25 @@ def run_circuit_cutting_code(
     job_id = job_info["data"]["job_id"]
     src_code = src_code_dict[f"{job_id}-{source_code_index}"]
     max_qubits = driver.get_max_qubits()
+    wirecut_qubit_width = driver.get_wirecut_qubit_width()
+    # If wirecut qubit width is not set, set it to max qubits.
+    if wirecut_qubit_width == 0:
+        wirecut_qubit_width = max_qubits
+    # If wirecut qubit width is less than 2, return error since it's
+    # meaningless to cut circuit into subcircuits with 1 or 0 qubit.
+    elif wirecut_qubit_width < 2:
+        err_msg = (
+            f"wirecut qubit width is {wirecut_qubit_width} and should "
+            f"be greater than 2"
+        )
+        return (
+            format_error_results(
+                driver, errors.JobEngineWirecutQubitLimitExceededError, err_msg
+            ),
+            driver,
+            transpiler,
+            None,
+        )
     is_complete_reconstruction = True
     max_memory = 2 ** (num_qubits)
     if num_qubits > Constant.COMPLETE_RECONSTRUCTION_THRESHOLD:
@@ -1283,7 +1346,7 @@ def run_circuit_cutting_code(
     try:
         _, subcircuits, cut_wire = (
             generate_all_variant_subcircuits_for_execute(
-                max_subcircuit_width=max_qubits,
+                max_subcircuit_width=wirecut_qubit_width,
                 qasm=src_code,
                 max_memory=max_memory,
                 is_complete_reconstruction=is_complete_reconstruction,

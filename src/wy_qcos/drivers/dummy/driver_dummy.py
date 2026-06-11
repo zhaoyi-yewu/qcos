@@ -59,6 +59,7 @@ class DriverDummy(DriverBase):
             Optional("sleep"): int,
             Optional("enable_wirecut"): bool,
             Optional("max_qubits"): int,
+            Optional("wirecut_qubit_width"): int,
         }
 
     def init_driver(self):

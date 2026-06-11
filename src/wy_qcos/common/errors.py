@@ -165,3 +165,11 @@ class JobEngineCompileError(BaseException):
     module_name = "JobEngine"
     error_code = -111
     err_type = "Compile Error"
+
+
+class JobEngineWirecutQubitLimitExceededError(BaseException):
+    """Job Engine: Wirecut Qubit Limit Exceeded Error."""
+
+    module_name = "JobEngine"
+    error_code = -112
+    err_type = "Wirecut Qubit Limit Exceeded Error"
