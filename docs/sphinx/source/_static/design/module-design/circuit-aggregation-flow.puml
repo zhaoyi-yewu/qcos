@@ -1,0 +1,112 @@
+@startuml circuit-aggregation-flow
+' 统一全局字体，确保中文正常显示
+skinparam defaultFontName "Noto Sans CJK SC"
+skinparam dpi 300
+
+' 使用活动图，展示三种聚合模式的流程选择
+skinparam backgroundcolor #FFFFFF
+skinparam defaultTextAlignment center
+skinparam ArrowColor #000000
+skinparam activity {
+  BorderColor #000000
+  BackgroundColor #FFFFFF
+  CornerRadius 5
+}
+
+start
+
+:提交任务（Job）;
+:检查circuit_aggregation参数;
+
+if (聚合类型?) then (None|无聚合)
+
+  :【None模式】;
+  :create_src_code_info();
+  :  aggregation_type = NONE;
+  :遍历每个源码;
+  :src_code_list = [{job_id-0: code0}, ...];
+  repeat :run_code(src_code_dict);
+  :  执行单个源码;
+  :  返回单个job_results;
+  repeat while (是否还有源码?)
+  :job_results → job_results_list;
+
+else if (Internal|内聚合) then
+
+  :【Internal模式】;
+  :create_src_code_info();
+  :  aggregation_type = internal;
+  :按MAX_AGGREGATION_JOBS分组;
+  :src_code_list = [{src0..n}, ...];
+  repeat :run_code(src_code_dict);
+  :  编译多个源码 → 聚合线路;
+  :  执行聚合线路 → 获得结果;
+  repeat while (是否还有组?)
+  :get_internal_aggregated_results();
+  :  使用mapping_dict记录;
+  :  split_dict()分割bitstring;
+  :  为每个源码创建副本;
+  :aggregated_results → extend;
+
+else (External|外聚合)
+
+  :【External模式】;
+  :关键：多Flow协调;
+
+  group task_manager
+    :process_aggregation_job();
+    :  启动监听线程;
+    :  订阅Redis消息;
+  end group
+
+  group parent_flow
+    :create_src_code_info();
+    :  aggregation_type = external;
+    :发送flow_agg_info(flow_run_id);
+    :  → Redis通知Task Manager;
+    :pause_flow_run(AggregationInput);
+    :  阻塞等待aggregation_info;
+  end group
+
+  group task_manager_match
+    :查询SCHEDULED Flow;
+    :  with tags=[external];
+    :过滤匹配条件;
+    :  √ backend相同;
+    :  √ work_pool_name相同;
+    :  √ 数量 < MAX_AGGREGATION_JOBS;
+    :构建aggregation_params;
+    :轮询等待Parent进PAUSED;
+    :resume_flow_run(aggregation_params);
+    :  → Parent恢复执行;
+  end group
+
+  group parent_continue
+    :aggregation_info = pause返回值;
+    :update_src_code_info();
+    :  合并Sub源码;
+    :  追踪sub_flow_list;
+    :run_code(Parent+Sub源码);
+    :  聚合编译 → 执行 → 获结果;
+    :get_external_aggregated_results();
+    :  第一个(Parent) → results;
+    :  其余(Sub) → sub_results;
+  end group
+
+  group cleanup
+    :发送cancel=True到Redis;
+    :Task Manager取消Sub Flow;
+    :Sub结果via db_callback;
+  end group
+
+  :merged job_results;
+
+endif
+
+:返回job_results_list;
+:数据库更新处理;
+
+stop
+
+@enduml
+
