@@ -103,6 +103,10 @@ class Constant:
     MIN_ROLE_LENGTH = 2
     MAX_ROLE_LENGTH = 64
 
+    # Project length
+    MIN_PROJECT_LENGTH = 2
+    MAX_PROJECT_LENGTH = 64
+
     # Description length
     MIN_DESCRIPTION_LENGTH = 1
     MAX_DESCRIPTION_LENGTH = 255
@@ -281,12 +285,14 @@ class Constant:
     # Results fetch mode
     RESULTS_FETCH_MODE_SYNC = "sync"
     RESULTS_FETCH_MODE_ASYNC = "async"
+    RESULTS_FETCH_MODE_SET = "set"
     RESULTS_FETCH_ASYNC_RETRIES = 3
     RESULTS_FETCH_ASYNC_TIMEOUT = 30
 
     # Profiling types
     PROFILING_TYPE_ALL = "all"
     PROFILING_TYPE_CODE = "code"
+    PROFILING_TYPE_QUEUING = "queuing"
     PROFILING_TYPE_SCHEDULING = "scheduling"
     PROFILING_TYPE_DRIVER_PARSE = "driver:parse"
     PROFILING_TYPE_DRIVER_TRANSPILE = "driver:transpile"
@@ -295,6 +301,7 @@ class Constant:
     PROFILING_TYPES = [
         PROFILING_TYPE_ALL,
         PROFILING_TYPE_CODE,
+        PROFILING_TYPE_QUEUING,
         PROFILING_TYPE_SCHEDULING,
         PROFILING_TYPE_DRIVER_PARSE,
         PROFILING_TYPE_DRIVER_TRANSPILE,
@@ -304,6 +311,7 @@ class Constant:
     PROFILING_INFO = {
         PROFILING_TYPE_ALL: {"alias_name": "使能所有性能评估类型"},
         PROFILING_TYPE_CODE: {"alias_name": "作业中单代码执行耗时"},
+        PROFILING_TYPE_QUEUING: {"alias_name": "作业排队耗时"},
         PROFILING_TYPE_SCHEDULING: {"alias_name": "调度器耗时"},
         PROFILING_TYPE_DRIVER_PARSE: {"alias_name": "代码解析耗时"},
         PROFILING_TYPE_DRIVER_TRANSPILE: {"alias_name": "转译器耗时"},
@@ -324,6 +332,11 @@ class Constant:
     MAX_JOB_PRIORITY = 10
     MAX_JOB_WORKER = 1
     DEFAULT_AGGREGATION_JOB_INTERVAL = 10
+
+    # Code compress level
+    DEFAULT_CODE_COMPRESS_LEVEL = 0
+    MIN_CODE_COMPRESS_LEVEL = 0
+    MAX_CODE_COMPRESS_LEVEL = 9
 
     # job engine property
     DEFAULT_JOB_POOL_TYPE = "process"
@@ -349,7 +362,11 @@ class Constant:
     DEFAULT_PROJECT_NAME = "default project"
     ADMIN_USERNAME = "admin"
     DEFAULT_ADMIN_PASSWORD = _s("123456")
+    DEFAULT_VIRTUAL_INSTANCE_PASSWORD = _s("111111")
+    ANONYMOUS_USER_ID = "00000000-0000-4000-8000-000000000000"
     ANONYMOUS_USERNAME = "anonymous"
+    INVALID_PROJECT_ID = "00000000-0000-0000-0000-000000000000"
+    INVALID_USER_ID = "00000000-0000-0000-0000-000000000000"
     ENV_VAR_ACCESS_TOKEN = _s("QCOS_ACCESS_TOKEN")
     JWT_AUTH_AUDIENCE = "qcos-api"
     ROLE_ADMIN = "admin"
@@ -365,6 +382,7 @@ class Constant:
     JOB_STATUS_COMPLETED = "COMPLETED"
     JOB_STATUS_CANCELLING = "CANCELLING"
     JOB_STATUS_CANCELLED = "CANCELLED"
+    JOB_STATUS_DELETING = "DELETING"
     JOB_STATUS_DELETED = "DELETED"
     JOB_STATUSES = [
         JOB_STATUS_UNKNOWN,
@@ -374,6 +392,7 @@ class Constant:
         JOB_STATUS_COMPLETED,
         JOB_STATUS_CANCELLING,
         JOB_STATUS_CANCELLED,
+        JOB_STATUS_DELETING,
         JOB_STATUS_DELETED,
     ]
 

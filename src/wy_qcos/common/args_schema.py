@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -60,6 +60,7 @@ SOURCE_RESULTS_ERROR = {  # error messages
     "message": str,
 }
 SOURCE_SET_RESULTS = [Or(SOURCE_RESULTS_SUCCESS, SOURCE_RESULTS_ERROR)]
+TAGS_SCHEMA = [str]
 
 CALLBACKS_SCHEMA = [
     {

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -19,10 +19,15 @@
 encrypt-virtual-instance-id.py -- encrypt/decrypt virtual instance id
 
 Encryption example:
-./encrypt-virtual-instance-id.py -e -s 1234 -dn dummy -i 1234567890
+  normal virtual-instance:
+  ./encrypt-virtual-instance-id.py -e -s 1234 -dn dummy -i 00000000-0000-4000-8000-000000000123
+  ./encrypt-virtual-instance-id.py -e -s 123456 -dn dummy qutip_sim -i 00000000-0000-4000-8000-000000000123
+
+  admin virtual-instance:
+  ./encrypt-virtual-instance-id.py -e -s 123456 -dn all -i all
 
 Decryption example:
-./encrypt-virtual-instance-id.py -d -s 1234 -vi ZHVtbXl8MTIzNDU2Nzg5MHwzNGNk
+./encrypt-virtual-instance-id.py -d -s 123456 -vi ZHVtbXkrcXV0aXBfc2ltfDAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDEyM3w5NzQ5
 """
 
 import sys
@@ -67,7 +72,7 @@ USAGE
                                      help="device names")
         encryption_mode.add_argument("-i", "--instance-id",
                                      dest="instance_id",
-                                     help="instance id")
+                                     help="instance id (uuid)")
 
         decryption_mode = parser.add_argument_group("Decryption mode")
         decryption_mode.add_argument("-vi", "--virtual-instance-id",
@@ -113,7 +118,8 @@ USAGE
             if success:
                 print("[Input]")
                 print(f"device_name: {', '.join(device_names)}")
-                print(f"instance_id: {instance_id}, salt: {salt}")
+                print(f"instance_id: {instance_id}")
+                print(f"salt: {salt}")
                 print("")
                 print("[Output]")
                 print(f"virtual_instance_id: {virtual_instance_id}")
