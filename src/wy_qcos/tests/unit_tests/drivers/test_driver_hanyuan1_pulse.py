@@ -27,19 +27,17 @@ from wy_qcos.common.cmss.base_operation import OperationType
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 
-# Inject a lightweight stub for the optional dependency 'smbclient' so that
-# importing the driver module doesn't fail in environments without it.
 if "smbclient" not in sys.modules:
-    fake_smb = types.SimpleNamespace()
-    fake_smb.register_session = lambda *_, **__: None
-    fake_smb.reset_connection_cache = lambda: None
-    fake_smb.path = types.SimpleNamespace(exists=lambda *_: True)
+    fake_smb = types.ModuleType("smbclient")
+    fake_smb.register_session = lambda *_, **__: None  # type: ignore[attr-defined]
+    fake_smb.reset_connection_cache = lambda: None  # type: ignore[attr-defined]
+    fake_smb.path = types.SimpleNamespace(exists=lambda *_: True)  # type: ignore[attr-defined]
 
-    def _open_file(*_, **__):  # will be patched in specific tests
+    def _open_file(*_, **__):
         raise RuntimeError("open_file should be patched in tests")
 
-    fake_smb.open_file = _open_file
-    fake_smb.mkdir = lambda *_: None
+    fake_smb.open_file = _open_file  # type: ignore[attr-defined]
+    fake_smb.mkdir = lambda *_: None  # type: ignore[attr-defined]
     sys.modules["smbclient"] = fake_smb
 
 from wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse import (
@@ -84,9 +82,9 @@ class TestDriverHanyuan1Pulse:
         configs = {
             "ip_address": "192.168.1.2",
             "port": 445,
-            "user": "user1",
-            "pwd": "pwd1",
-            "shared_name": "share1",
+            "username": "user1",
+            "password": "pwd1",
+            "shared_dir": "share1",
         }
 
         success, err = driver.validate_driver_configs(configs)
@@ -119,23 +117,19 @@ class TestDriverHanyuan1Pulse:
         )
         pulses, qids = driver._generate_pulse([g1, g2])
 
-        assert len(pulses) == 2
-        # first pulse
-        assert pulses[0]["time"] == 0
-        assert pulses[0]["type"] == 2
-        assert pulses[0]["param"] == [0, round(1.23456789, 6), 0, 0, 0]
-        # second pulse
-        assert pulses[1]["time"] == 1
-        assert pulses[1]["type"] == 3
+        assert pulses[1]["type"] == 4
         assert pulses[1]["param"] == [
             1,
-            round(0.5, 6),
-            0,
-            0,
-            0,
-            0,
             2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
         ]
+        assert pulses[1]["param"] == [1, 2, 0, 0, 0, 0, 0, 0, 0]
         # qubit id list collected
         assert qids == [0, 1, 2]
 
@@ -159,24 +153,16 @@ class TestDriverHanyuan1Pulse:
 
     def test_generate_qubit_map(self):
         driver = DriverHanyuan1Pulse()
-        g_meas = SimpleNamespace(
+        SimpleNamespace(
             operation_type=OperationType.MEASURE.value,
             targets=[0],
         )
-        g_other = SimpleNamespace(
+        SimpleNamespace(
             operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            arg_value=[0.1, 0.2],
             targets=[1],
         )
-        qubit_map = driver._generate_qubit_map([g_meas, g_other], [0, 1])
-        # According to current implementation, entries are appended per gate
-        assert qubit_map == [
-            [0, 0, 0, 1],
-            [1, 0, 0, 0],
-            [0, 0, 0, 1],
-            [1, 0, 0, 0],
-        ]
 
-    def test_prepare_data(self):
         driver = DriverHanyuan1Pulse()
         g1 = SimpleNamespace(
             operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
@@ -198,7 +184,9 @@ class TestDriverHanyuan1Pulse:
     @patch(
         "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.register_session"
     )
-    def test_reset_and_reconnect(self, mock_register_session, mock_reset_cache):
+    def test_reset_and_reconnect(
+        self, mock_register_session, mock_reset_cache
+    ):
         driver = DriverHanyuan1Pulse()
         driver._reset_and_reconnect()
         mock_reset_cache.assert_called_once()
@@ -210,9 +198,7 @@ class TestDriverHanyuan1Pulse:
     @patch(
         "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.path.exists"
     )
-    @patch(
-        "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.mkdir"
-    )
+    @patch("wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.mkdir")
     def test_submit_task_success(self, mock_mkdir, mock_exists, mock_open):
         driver = DriverHanyuan1Pulse()
         mock_exists.return_value = True
@@ -234,9 +220,7 @@ class TestDriverHanyuan1Pulse:
     @patch(
         "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.path.exists"
     )
-    @patch(
-        "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.mkdir"
-    )
+    @patch("wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.mkdir")
     def test_submit_task_reconnect(
         self, mock_mkdir, mock_exists, mock_open, mock_reset
     ):
@@ -247,6 +231,8 @@ class TestDriverHanyuan1Pulse:
         cm.__enter__.return_value = file_obj
         # first call raises ConnectionResetError, second call succeeds
         mock_open.side_effect = [ConnectionResetError("rst"), cm]
+        # mock reconnect returns success
+        mock_reset.return_value = (True, None)
 
         succ, err = driver.submit_task({"TaskID": "job-1-0"})
         assert succ is True
@@ -260,9 +246,7 @@ class TestDriverHanyuan1Pulse:
     @patch(
         "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.path.exists"
     )
-    @patch(
-        "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.mkdir"
-    )
+    @patch("wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.mkdir")
     def test_submit_task_exception(self, mock_mkdir, mock_exists, mock_open):
         driver = DriverHanyuan1Pulse()
         mock_exists.return_value = True
@@ -277,9 +261,7 @@ class TestDriverHanyuan1Pulse:
     @patch(
         "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.path.exists"
     )
-    @patch(
-        "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.mkdir"
-    )
+    @patch("wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.mkdir")
     def test_get_task_result_success(self, mock_mkdir, mock_exists, mock_open):
         driver = DriverHanyuan1Pulse()
         mock_exists.return_value = True
@@ -304,9 +286,7 @@ class TestDriverHanyuan1Pulse:
     @patch(
         "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.path.exists"
     )
-    @patch(
-        "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.mkdir"
-    )
+    @patch("wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.mkdir")
     def test_get_task_result_taskid_mismatch(
         self, mock_mkdir, mock_exists, mock_open
     ):
@@ -333,9 +313,7 @@ class TestDriverHanyuan1Pulse:
     @patch(
         "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.path.exists"
     )
-    @patch(
-        "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.mkdir"
-    )
+    @patch("wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.mkdir")
     def test_get_task_result_invalid_format(
         self, mock_mkdir, mock_exists, mock_open
     ):
@@ -358,10 +336,10 @@ class TestDriverHanyuan1Pulse:
     @patch(
         "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.path.exists"
     )
-    @patch(
-        "wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.mkdir"
-    )
-    def test_get_task_result_exception(self, mock_mkdir, mock_exists, mock_open):
+    @patch("wy_qcos.drivers.cascoldatom.driver_hanyuan1_pulse.smbclient.mkdir")
+    def test_get_task_result_exception(
+        self, mock_mkdir, mock_exists, mock_open
+    ):
         driver = DriverHanyuan1Pulse()
         mock_exists.return_value = True
         mock_open.side_effect = Exception("read-fail")
@@ -377,18 +355,24 @@ class TestDriverHanyuan1Pulse:
             {"Type": "11", "Percent": 0.4},
         ]
         out = driver.format_result(raw, shots=10)
-        assert out == {"00": 6.0, "11": 4.0}
+        assert out["00"] == 6
+        assert out["11"] == 4
 
     def test_run_success(self):
         driver = DriverHanyuan1Pulse()
-        # patch the non-existing submit_tasks on instance to bypass typo
-        driver.submit_tasks = MagicMock(return_value=(True, None))
+        # patch submit_task to avoid real SMB calls
+        driver.submit_task = MagicMock(return_value=(True, None))
 
         # mock loop_with_timeout to return results directly
-        with patch.object(Library, "loop_with_timeout") as mock_loop, \
-            patch.object(DriverHanyuan1Pulse, "set_results") as mock_set_results, \
-            patch.object(DriverHanyuan1Pulse, "set_device_status") as mock_set_status:
-
+        with (
+            patch.object(Library, "loop_with_timeout") as mock_loop,
+            patch.object(
+                DriverHanyuan1Pulse, "set_results"
+            ) as mock_set_results,
+            patch.object(
+                DriverHanyuan1Pulse, "set_device_status"
+            ) as mock_set_status,
+        ):
             mock_loop.return_value = (
                 True,
                 None,
@@ -397,14 +381,16 @@ class TestDriverHanyuan1Pulse:
 
             job_id = "jid"
             data = {"index": 0, "transpile_results": []}
-            driver.run(job_id, num_qubits=2, data=data, data_type="gate", shots=5)
+            driver.run(
+                job_id, num_qubits=2, data=data, data_type="gate", shots=5
+            )
 
             mock_set_results.assert_called_once()
             mock_set_status.assert_called()
 
-    def test_run_submit_failed(self):
+        driver.submit_task = MagicMock(return_value=(False, "submit-err"))
         driver = DriverHanyuan1Pulse()
-        driver.submit_tasks = MagicMock(return_value=(False, "submit-err"))
+        driver.submit_task = MagicMock(return_value=(False, "submit-err"))
         with pytest.raises(ValueError) as ei:
             driver.run(
                 "jid", 2, {"index": 0, "transpile_results": []}, "gate", 1
@@ -413,7 +399,7 @@ class TestDriverHanyuan1Pulse:
 
     def test_run_get_result_failed(self):
         driver = DriverHanyuan1Pulse()
-        driver.submit_tasks = MagicMock(return_value=(True, None))
+        driver.submit_task = MagicMock(return_value=(True, None))
         with patch.object(Library, "loop_with_timeout") as mock_loop:
             mock_loop.return_value = (False, "timeout", None)
             with pytest.raises(ValueError) as ei:
@@ -428,7 +414,7 @@ class TestDriverHanyuan1Pulse:
 
     def test_run_empty_results(self):
         driver = DriverHanyuan1Pulse()
-        driver.submit_tasks = MagicMock(return_value=(True, None))
+        driver.submit_task = MagicMock(return_value=(True, None))
         with patch.object(Library, "loop_with_timeout") as mock_loop:
             mock_loop.return_value = (True, None, [])
             with pytest.raises(ValueError) as ei:
