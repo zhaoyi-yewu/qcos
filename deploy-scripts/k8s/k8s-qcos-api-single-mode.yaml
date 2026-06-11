@@ -61,7 +61,9 @@ spec:
           value: "${PREFECT_API_URL}"
         - name: PREFECT_SERVER_DATABASE_CONNECTION_URL
           value: "${PREFECT_SERVER_DATABASE_CONNECTION_URL}"
-          #value: "sqlite+aiosqlite:////var/qcos/db/prefect.db"
+          #value: "sqlite+aiosqlite:////var/qcos/db/prefect.db?timeout=30&journal_mode=WAL"
+        - name: PREFECT_SERVER_ANALYTICS_ENABLED
+          value: "false"
         - name: PREFECT_API_DATABASE_TIMEOUT
           value: "30"
         - name: PREFECT_LOCAL_STORAGE_PATH
@@ -242,29 +244,49 @@ spec:
         - name: QCOS_CONTAINER_NAME
           value: "${QCOS_CONTAINER_NAME}"
         - name: API_SERVER_LISTEN_IP
-          value: "${QCOS_API_SERVER_IP}"
+          value: ${API_SERVER_LISTEN_IP}
         - name: API_SERVER_LISTEN_PORT
-          value: "${QCOS_API_SERVER_PORT}"
+          value: ${API_SERVER_LISTEN_PORT}
         - name: QCOS_SERVER_IP
-          value: "${QCOS_SERVER_IP}"
+          value: ${QCOS_SERVER_IP}
         - name: QCOS_SERVER_PORT
-          value: "${QCOS_SERVER_PORT}"
+          value: ${QCOS_SERVER_PORT}
         - name: QCOS_AUTH_MODE
-          value: "${QCOS_AUTH_MODE}"
+          value: ${QCOS_AUTH_MODE}
+        - name: QCOS_DATABASE_CONNECTION_URL
+          value: ${QCOS_DATABASE_CONNECTION_URL}
         - name: QCOS_VIRTUAL_INSTANCE_ID
-          value: "${QCOS_ADMIN_VIRTUAL_INSTANCE_ID}"
-        - name: LOCAL_CICD
-          value: "${LOCAL_CICD}"
+          value: ${QCOS_VIRTUAL_INSTANCE_ID}
+        - name: DEVICE_LIST
+          value: ${DEVICE_LIST}
+        - name: MAX_JOBS
+          value: ${MAX_JOBS}
+        - name: MAX_QUEUED_JOBS
+          value: ${MAX_QUEUED_JOBS}
+        - name: MAX_JOBS_PER_USER
+          value: ${MAX_JOBS_PER_USER}
+        - name: PASSWORD_SALT
+          value: ${PASSWORD_SALT}
+        - name: API_LOG_FILE
+          value: ${API_LOG_FILE}
         - name: PREFECT_API_URL
-          value: "${PREFECT_API_URL}"
+          value: ${PREFECT_API_URL:-http://127.0.0.1:4200/api}
         - name: PREFECT_SERVER_DATABASE_CONNECTION_URL
-          value: "${PREFECT_SERVER_DATABASE_CONNECTION_URL}"
+          value: ${PREFECT_SERVER_DATABASE_CONNECTION_URL:-sqlite+aiosqlite:////var/qcos/db/prefect.db?timeout=30&journal_mode=WAL}
         - name: PREFECT_LOCAL_STORAGE_PATH
-          value: "${PREFECT_LOCAL_STORAGE_PATH}"
+          value: ${PREFECT_LOCAL_STORAGE_PATH:-/var/qcos/storage}
+        - name: PREFECT_WORKER_QUERY_SECONDS
+          value: ${PREFECT_WORKER_QUERY_SECONDS:-1}
+        - name: PREFECT_WORKER_PREFETCH_SECONDS
+          value: ${PREFECT_WORKER_PREFETCH_SECONDS:-1}
+        - name: PREFECT_WORKER_HEARTBEAT_SECONDS
+          value: ${PREFECT_WORKER_HEARTBEAT_SECONDS:-30}
+        - name: PREFECT_LOGGING_LEVEL
+          value: ${PREFECT_LOGGING_LEVEL:-INFO}
         - name: REDIS_SERVER_IP
-          value: "${REDIS_SERVER_IP}"
+          value: ${REDIS_SERVER_IP}
         - name: REDIS_SERVER_PORT
-          value: "${REDIS_SERVER_PORT}"
+          value: ${REDIS_SERVER_PORT}
         resources:
           requests:
             cpu: "1000m"

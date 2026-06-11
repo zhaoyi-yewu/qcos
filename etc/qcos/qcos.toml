@@ -22,6 +22,62 @@ API_SERVER_LISTEN_IP = ""
 # API server listen port
 API_SERVER_LISTEN_PORT = 18400
 
+[USERS]
+# max jobs (per user, all status)
+MAX_JOBS = 100
+# password expiry days, 0: never expired
+PASSWORD_EXPIRY_DAYS = 90
+# max login attempts before lockout
+MAX_LOGIN_ATTEMPTS = 5
+# max login logs per user
+MAX_LOGIN_LOGS = 10000
+# lockout duration in minutes after reaching max login attempts
+LOCKOUT_DURATION_MINUTES = 30
+# access control model
+ACCESS_CONTROL_MODEL_FILE = "/etc/qcos/roles/casbin_model.conf"
+# access control policy file
+ACCESS_CONTROL_POLICY_FILE = "/etc/qcos/roles/policy.conf"
+# admin user password (hashed with PASSWORD_SALT)
+ADMIN_PASSWORD = "++gAAAAABpt8fIFNquoHfkm0jqDAtQWKit9f1y7Ns479NBgzSGCUvwhlJcrUaL0CU0qkXX9OQpDFXNzCUU1dR37-HqqTFIevAWqQ=="
+# jwt secret key for authentication
+JWT_AUTH_SECRET_KEY = "47pW_6k8A4iU1Z8-r8G2j4_xN9M5V3L7Q9p2X1Y4Z0A"
+# jwt auth algorithm
+JWT_AUTH_ALGORITHM = "HS256"
+# jwt access token expire minutes
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# jwt refresh token expire days
+REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+[VIRT]
+# salt for password/encryption
+PASSWORD_SALT = "123456"
+
+[DATABASE]
+# QCOS database connection URL (sqlite or postgresql)
+# eg:
+# postgresql: "postgresql+pg8000://qcos:${password}@127.0.0.1:5432/qcos"
+# sqlite: "sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL"
+QCOS_DATABASE_CONNECTION_URL = "postgresql+pg8000://qcos:${QCOS_DATABASE_PASSWORD}@127.0.0.1:5432/qcos"
+
+[REDIS]
+# redis server ip
+REDIS_SERVER_IP = "127.0.0.1"
+# redis server port
+REDIS_SERVER_PORT = 6379
+
+[PREFECT]
+PREFECT_API_URL = "http://127.0.0.1:4200/api"
+# QCOS database configs
+# eg:
+# pgsql: "postgresql+asyncpg://prefect:${password}@127.0.0.1:5432/qcos"
+# sqlite: "sqlite+aiosqlite:////var/qcos/db/prefect.db?timeout=30&journal_mode=WAL"
+PREFECT_SERVER_DATABASE_CONNECTION_URL = "postgresql+asyncpg://prefect:${PREFECT_DATABASE_PASSWORD}@127.0.0.1:5432/prefect"
+PREFECT_WORKER_QUERY_SECONDS = 2
+PREFECT_WORKER_PREFETCH_SECONDS = 2
+PREFECT_WORKER_HEARTBEAT_SECONDS = 30
+PREFECT_LOCAL_STORAGE_PATH = "/var/qcos/storage"
+PREFECT_LOGGING_LEVEL = "INFO"
+
 [METRICS_SERVER]
 # metrics server listen ip.
 # listen on all IPv4+IPv6 address (Default): METRICS_SERVER_LISTEN_IP = ""
@@ -30,51 +86,6 @@ API_SERVER_LISTEN_PORT = 18400
 METRICS_SERVER_LISTEN_IP = ""
 # API server listen port
 METRICS_SERVER_LISTEN_PORT = 19400
-
-[PREFECT]
-PREFECT_API_URL = "http://127.0.0.1:4200/api"
-# QCOS database configs
-# eg:
-# sqlite: "sqlite+aiosqlite:///var/qcos/db/prefect.db"
-# pgsql: "postgresql+asyncpg://prefect:${password}@127.0.0.1:5432/qcos"
-PREFECT_SERVER_DATABASE_CONNECTION_URL = "postgresql+asyncpg://prefect:${password}@127.0.0.1:5432/qcos"
-PREFECT_WORKER_QUERY_SECONDS = 2
-PREFECT_WORKER_PREFETCH_SECONDS = 2
-PREFECT_WORKER_HEARTBEAT_SECONDS = 30
-PREFECT_LOCAL_STORAGE_PATH = "/var/qcos/storage"
-PREFECT_LOGGING_LEVEL = "INFO"
-
-[REDIS]
-# redis server ip
-REDIS_SERVER_IP = "127.0.0.1"
-# redis server port
-REDIS_SERVER_PORT = 6379
-
-[DATABASE]
-# QCOS database connection URL (sqlite or postgresql)
-# eg:
-# postgresql: "postgresql+pg8000://qcos:${password}@127.0.0.1:5432/qcos"
-# sqlite: "sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL"
-QCOS_DATABASE_CONNECTION_URL = "sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL"
-
-[USERS]
-PASSWORD_EXPIRY_DAYS = 90
-MAX_LOGIN_ATTEMPTS = 5
-MAX_LOGIN_LOGS = 10000
-LOCKOUT_DURATION_MINUTES = 30
-ACCESS_CONTROL_MODEL_FILE = "/etc/qcos/roles/casbin_model.conf"
-ACCESS_CONTROL_POLICY_FILE = "/etc/qcos/roles/policy.conf"
-ADMIN_PASSWORD = "++gAAAAABpt8fIFNquoHfkm0jqDAtQWKit9f1y7Ns479NBgzSGCUvwhlJcrUaL0CU0qkXX9OQpDFXNzCUU1dR37-HqqTFIevAWqQ=="
-JWT_AUTH_SECRET_KEY = "47pW_6k8A4iU1Z8-r8G2j4_xN9M5V3L7Q9p2X1Y4Z0A"
-JWT_AUTH_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 7
-
-[VIRT]
-# [GLOBAL CONFIG] max jobs for virtual instance
-MAX_JOBS_PER_VIRTUAL_INSTANCE = 10
-# salt for password/encryption
-PASSWORD_SALT = "123456"
 
 [LOG]
 # api log file
