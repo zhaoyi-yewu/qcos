@@ -29,6 +29,11 @@ using namespace qcos;
 
 namespace {
 
+/**
+ * @brief 收集 DAG 中所有 Rz 节点，按拓扑序返回
+ * @param dag 目标 DAG
+ * @return Rz 节点列表
+ */
 std::vector<DAGOpNode*> rz_nodes(DAGCircuit& dag) {
   std::vector<DAGOpNode*> nodes;
   for (DAGOpNode* node : dag.topological_op_nodes()) {
@@ -213,4 +218,208 @@ TEST(CliffordRzOptimizationTest,
   const auto counts = dag.count_ops();
   EXPECT_EQ(counts.size(), 1u);
   EXPECT_EQ(counts.at("cx"), 1);
+}
+
+// ===========================
+// reduce_hadamard_gates 测试
+// ===========================
+
+/*
+ * 模板 tpl[0]: H(0) S(0) H(0) → SDG(0) H(0) SDG(0), weight=1。
+ *
+ *      ┌───┐┌───┐┌───┐          ┌─────┐┌───┐┌─────┐
+ * q_0: ┤ H ├┤ S ├┤ H ├  →  q_0: ┤ Sdg ├┤ H ├┤ Sdg ├
+ *      └───┘└───┘└───┘          └─────┘└───┘└─────┘
+ */
+TEST(ReduceHadamardGatesTest, HSH_To_SdgHSdg) {
+  CliffordRzOptimization optimizer;
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("s", {0}), create_gate("h", {0})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  EXPECT_EQ(optimizer.reduce_hadamard_gates(dag), 1);
+  const auto counts = dag.count_ops();
+  EXPECT_EQ(counts.at("h"), 1);
+  EXPECT_EQ(counts.at("sdg"), 2);
+  EXPECT_EQ(counts.count("s"), 0u);
+}
+
+/*
+ * 模板 tpl[1]: H(0) SDG(0) H(0) → S(0) H(0) S(0), weight=1。
+ *
+ *      ┌───┐┌─────┐┌───┐          ┌───┐┌───┐┌───┐
+ * q_0: ┤ H ├┤ Sdg ├┤ H ├  →  q_0: ┤ S ├┤ H ├┤ S ├
+ *      └───┘└─────┘└───┘          └───┘└───┘└───┘
+ */
+TEST(ReduceHadamardGatesTest, HSdgH_To_SHS) {
+  CliffordRzOptimization optimizer;
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("sdg", {0}), create_gate("h", {0})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  EXPECT_EQ(optimizer.reduce_hadamard_gates(dag), 1);
+  const auto counts = dag.count_ops();
+  EXPECT_EQ(counts.at("h"), 1);
+  EXPECT_EQ(counts.at("s"), 2);
+  EXPECT_EQ(counts.count("sdg"), 0u);
+}
+
+/*
+ * 模板 tpl[2]: H(0) H(1) CX(0,1) H(0) H(1) → CX(1,0), weight=4。
+ *
+ *      ┌───┐     ┌───┐          ┌───┐
+ * q_0: ┤ H ├──■──┤ H ├  →  q_0: ┤ X ├
+ *      ├───┤┌─┴─┐├───┤          └─┬─┘
+ * q_1: ┤ H ├┤ X ├┤ H ├  →  q_1:  ─■─
+ *      └───┘└───┘└───┘
+ */
+TEST(ReduceHadamardGatesTest, HH_CX_HH_To_SwappedCX) {
+  CliffordRzOptimization optimizer;
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("h", {1}), create_gate("cx", {0, 1}),
+      create_gate("h", {0}), create_gate("h", {1})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  EXPECT_EQ(optimizer.reduce_hadamard_gates(dag), 4);
+  const auto counts = dag.count_ops();
+  EXPECT_EQ(counts.count("h"), 0u);
+  EXPECT_EQ(counts.at("cx"), 1);
+  auto nodes = dag.topological_op_nodes();
+  ASSERT_EQ(nodes.size(), 1u);
+  EXPECT_EQ(nodes[0]->name(), "cx");
+  EXPECT_EQ(nodes[0]->qargs, (std::vector<int>{1, 0}));
+}
+
+/*
+ * 模板 tpl[2] 在量子位 [1,2] 上，验证 CX 方向正确翻转。
+ *
+ *      ┌───┐     ┌───┐          ┌───┐
+ * q_1: ┤ H ├──■──┤ H ├  →  q_1: ┤ X ├
+ *      ├───┤┌─┴─┐├───┤          └─┬─┘
+ * q_2: ┤ H ├┤ X ├┤ H ├  →  q_2:  ─■─
+ *      └───┘└───┘└───┘
+ */
+TEST(ReduceHadamardGatesTest, HH_CX_HH_OnQubits12) {
+  CliffordRzOptimization optimizer;
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {1}), create_gate("h", {2}), create_gate("cx", {1, 2}),
+      create_gate("h", {1}), create_gate("h", {2})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  EXPECT_EQ(optimizer.reduce_hadamard_gates(dag), 4);
+  auto nodes = dag.topological_op_nodes();
+  ASSERT_EQ(nodes.size(), 1u);
+  EXPECT_EQ(nodes[0]->name(), "cx");
+  EXPECT_EQ(nodes[0]->qargs, (std::vector<int>{2, 1}));
+}
+
+/*
+ * 模板 tpl[2]，电路 CX 方向为 (2,1)，验证结果翻转为 (1,2)。
+ */
+TEST(ReduceHadamardGatesTest, HH_CX21_HH_To_SwappedCX) {
+  CliffordRzOptimization optimizer;
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {1}), create_gate("h", {2}), create_gate("cx", {2, 1}),
+      create_gate("h", {1}), create_gate("h", {2})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  EXPECT_EQ(optimizer.reduce_hadamard_gates(dag), 4);
+  auto nodes = dag.topological_op_nodes();
+  ASSERT_EQ(nodes.size(), 1u);
+  EXPECT_EQ(nodes[0]->name(), "cx");
+  EXPECT_EQ(nodes[0]->qargs, (std::vector<int>{1, 2}));
+}
+
+/*
+ * 模板 tpl[3]: H(1) S(1) CX(0,1) SDG(1) H(1) → SDG(1) CX(0,1) S(1), weight=2。
+ *
+ * Before:                            After:
+ * q_0: ────────────■────────────      q_0:  ────────■───────
+ *      ┌───┐┌───┐┌─┴─┐┌────┐┌───┐          ┌─────┐┌─┴─┐┌───┐
+ * q_1: ┤ H ├┤ S ├┤ X ├┤Sdg ├┤ H ├  →  q_1: ┤ Sdg ├┤ X ├┤ S ├
+ *      └───┘└───┘└───┘└────┘└───┘          └─────┘└───┘└───┘
+ */
+TEST(ReduceHadamardGatesTest, H_S_CX_Sdg_H_To_Sdg_CX_S) {
+  CliffordRzOptimization optimizer;
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {1}), create_gate("s", {1}), create_gate("cx", {0, 1}),
+      create_gate("sdg", {1}), create_gate("h", {1})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  EXPECT_EQ(optimizer.reduce_hadamard_gates(dag), 2);
+  const auto counts = dag.count_ops();
+  EXPECT_EQ(counts.at("sdg"), 1);
+  EXPECT_EQ(counts.at("cx"), 1);
+  EXPECT_EQ(counts.at("s"), 1);
+  EXPECT_EQ(counts.count("h"), 0u);
+}
+
+/*
+ * 模板 tpl[4]: H(1) SDG(1) CX(0,1) S(1) H(1) → S(1) CX(0,1) SDG(1), weight=2。
+ *
+ * Before:                           After:
+ * q_0: ─────────────■────────────     q_0: ───────■─────────
+ *      ┌───┐┌────┐┌─┴─┐┌───┐┌───┐          ┌───┐┌─┴─┐┌─────┐
+ * q_1: ┤ H ├┤Sdg ├┤ X ├┤ S ├┤ H ├  →  q_1: ┤ S ├┤ X ├┤ Sdg ├
+ *      └───┘└────┘└───┘└───┘└───┘          └───┘└───┘└─────┘
+ */
+TEST(ReduceHadamardGatesTest, H_Sdg_CX_S_H_To_S_CX_Sdg) {
+  CliffordRzOptimization optimizer;
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {1}), create_gate("sdg", {1}),
+      create_gate("cx", {0, 1}), create_gate("s", {1}), create_gate("h", {1})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  EXPECT_EQ(optimizer.reduce_hadamard_gates(dag), 2);
+  const auto counts = dag.count_ops();
+  EXPECT_EQ(counts.at("s"), 1);
+  EXPECT_EQ(counts.at("cx"), 1);
+  EXPECT_EQ(counts.at("sdg"), 1);
+  EXPECT_EQ(counts.count("h"), 0u);
+}
+
+/*
+ * 复合模板测试，一个电路同时匹配多个模板。
+ *
+ *      ┌───┐┌─────┐┌───┐
+ * q_0: ┤ H ├┤ Sdg ├┤ H ├
+ *      ├───┤└┬───┬┘├───┤
+ * q_1: ┤ H ├─┤ X ├─┤ H ├
+ *      ├───┤ └─┬─┘ ├───┤
+ * q_2: ┤ H ├───■───┤ H ├
+ *      └───┘       └───┘
+ *
+ * basis_gates = {h, sdg, s, cx} 时，所有模板可用：tpl[1] 匹配 qubit 0（减
+ * 1）， tpl[2] 匹配 qubit 1,2（减 4），合计减 5。
+ */
+TEST(ReduceHadamardGatesTest, CombinedTemplatesWithBasisAllGates) {
+  CliffordRzOptimization optimizer;
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("sdg", {0}),
+      create_gate("h", {0}), create_gate("h", {1}),
+      create_gate("h", {2}), create_gate("cx", {2, 1}),
+      create_gate("h", {1}), create_gate("h", {2})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  EXPECT_EQ(optimizer.reduce_hadamard_gates(
+                dag, std::set<std::string>{"h", "sdg", "s", "cx"}),
+            5);
+}
+
+/*
+ * basis_gates 不包含 h，所有模板都无法使用，应返回 0。
+ */
+TEST(ReduceHadamardGatesTest, BasisWithoutH_ReturnsZero) {
+  CliffordRzOptimization optimizer;
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("sdg", {0}), create_gate("h", {0})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  EXPECT_EQ(optimizer.reduce_hadamard_gates(
+                dag, std::set<std::string>{"sdg", "s", "cx"}),
+            0);
+  // 门数不变
+  const auto counts = dag.count_ops();
+  EXPECT_EQ(counts.at("h"), 2);
+  EXPECT_EQ(counts.at("sdg"), 1);
 }

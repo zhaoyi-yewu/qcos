@@ -143,6 +143,8 @@ class DAGCircuit {
    */
   std::vector<DAGNode*> topological_nodes(
       std::function<std::string(const DAGNode*)> key = {});
+  std::vector<const DAGNode*> topological_nodes(
+      std::function<std::string(const DAGNode*)> key = {}) const;
 
   /**
    * @brief 按给定排序键返回全部门操作的字典序拓扑序
@@ -151,6 +153,8 @@ class DAGCircuit {
    */
   std::vector<DAGOpNode*> topological_op_nodes(
       std::function<std::string(const DAGNode*)> key = {});
+  std::vector<const DAGOpNode*> topological_op_nodes(
+      std::function<std::string(const DAGNode*)> key = {}) const;
 
   /**
    * @brief 通过节点 id 访问节点对象
@@ -158,6 +162,7 @@ class DAGCircuit {
    * @return DAGNode* 节点对象，若节点已删除则为空
    */
   DAGNode* node(int node_id);
+  const DAGNode* node(int node_id) const;
 
   /**
    * @brief 返回当前所有活跃节点
@@ -242,6 +247,21 @@ class DAGCircuit {
   void remove_op_node(DAGOpNode* node);
 
   /**
+   * @brief 将一组节点替换为一个子电路 DAG
+   *
+   * 删除 block_nodes 中的节点（保留同 wire 连通性），
+   * 然后将 replacement_dag 按拓扑序插入到原位置。
+   *
+   * @param block_nodes 待删除的节点块
+   * @param replacement_dag 替换子电路
+   * @param qubit_mapping replacement_dag 的 wire -> 当前 circuit wire 的映射
+   */
+  void replace_block_with_dag(
+      const std::vector<DAGOpNode*>& block_nodes,
+      const DAGCircuit& replacement_dag,
+      const std::unordered_map<int, int>& qubit_mapping);
+
+  /**
    * @brief 收集所有由给定门名组成的连续运行段
    * @param namelist 允许出现在运行段中的门名列表
    * @return std::set<std::vector<DAGNode*>> 运行段集合
@@ -321,13 +341,6 @@ class DAGCircuit {
 
   std::string name;
 
- private:
-  /**
-   * @brief 为单条线路创建输入节点、输出节点及直连边
-   * @param wire 线路编号
-   */
-  void add_wire(int wire);
-
   /**
    * @brief 增加某类门操作的计数
    * @param op 待统计的操作对象
@@ -339,6 +352,13 @@ class DAGCircuit {
    * @param op 待统计的操作对象
    */
   void decrement_op(const std::shared_ptr<BaseOperation>& op);
+
+ private:
+  /**
+   * @brief 为单条线路创建输入节点、输出节点及直连边
+   * @param wire 线路编号
+   */
+  void add_wire(int wire);
 
   /**
    * @brief 根据操作列表构建 DAG 主体结构

@@ -252,6 +252,18 @@ std::vector<DAGNode*> DAGCircuit::topological_nodes(
   return multi_graph_.lexicographical_topological_sort(key);
 }
 
+std::vector<const DAGNode*> DAGCircuit::topological_nodes(
+    std::function<std::string(const DAGNode*)> key) const {
+  if (!key) {
+    key = [](const DAGNode* current) { return current->sort_key(); };
+  }
+  std::vector<const DAGNode*> result;
+  for (DAGNode* node : multi_graph_.lexicographical_topological_sort(key)) {
+    result.push_back(node);
+  }
+  return result;
+}
+
 std::vector<DAGOpNode*> DAGCircuit::topological_op_nodes(
     std::function<std::string(const DAGNode*)> key) {
   std::vector<DAGOpNode*> result;
@@ -263,7 +275,21 @@ std::vector<DAGOpNode*> DAGCircuit::topological_op_nodes(
   return result;
 }
 
+std::vector<const DAGOpNode*> DAGCircuit::topological_op_nodes(
+    std::function<std::string(const DAGNode*)> key) const {
+  std::vector<const DAGOpNode*> result;
+  for (const DAGNode* current : topological_nodes(std::move(key))) {
+    if (auto* op_node = dynamic_cast<const DAGOpNode*>(current)) {
+      result.push_back(op_node);
+    }
+  }
+  return result;
+}
+
 DAGNode* DAGCircuit::node(int node_id) { return multi_graph_[node_id]; }
+const DAGNode* DAGCircuit::node(int node_id) const {
+  return multi_graph_[node_id];
+}
 
 std::vector<DAGNode*> DAGCircuit::nodes() { return multi_graph_.nodes(); }
 
@@ -383,6 +409,86 @@ void DAGCircuit::remove_op_node(DAGOpNode* node) {
   multi_graph_.remove_node_retain_edges(node->node_id());
   decrement_op(op);
   node->flag = -1;
+}
+
+void DAGCircuit::replace_block_with_dag(
+    const std::vector<DAGOpNode*>& block_nodes,
+    const DAGCircuit& replacement_dag,
+    const std::unordered_map<int, int>& qubit_mapping) {
+  if (block_nodes.empty()) {
+    return;
+  }
+
+  // lambda：判断 qubit 是否在节点的 qargs 中
+  auto qubit_in_qargs = [](const std::vector<int>& qargs, int qubit) {
+    return std::find(qargs.begin(), qargs.end(), qubit) != qargs.end();
+  };
+
+  // 收集 block 涉及的 wires 和 node_id 集合
+  std::unordered_set<int> matched_ids;
+  std::set<int> all_wires;
+  for (const auto* node : block_nodes) {
+    matched_ids.insert(node->node_id());
+    for (int q : node->qargs) {
+      all_wires.insert(q);
+    }
+  }
+
+  // 找每条 wire 上 block 的外部前驱节点
+  // input_boundary: wire -> pred_node_id, 每个wire上的外部前驱节点
+  std::unordered_map<int, int> input_boundary;
+
+  for (int q : all_wires) {
+    for (const auto* node : block_nodes) {
+      if (!qubit_in_qargs(node->qargs, q)) continue;
+
+      auto preds = multi_graph_.find_predecessors_by_edge(
+          node->node_id(), [q](int w) { return w == q; });
+      for (const DAGNode* pred : preds) {
+        // 找到外部前驱节点，放入input_boundary
+        if (matched_ids.find(pred->node_id()) == matched_ids.end()) {
+          input_boundary[q] = pred->node_id();
+        }
+      }
+    }
+  }
+
+  // 删除 block 内所有节点
+  for (auto* node : block_nodes) {
+    remove_op_node(node);
+  }
+
+  // 插入 replacement DAG
+  auto repl_nodes = replacement_dag.topological_op_nodes();
+  // 每条 wire 上当前的插入点（新节点插入到此节点之后）
+  std::unordered_map<int, int> insert_after = input_boundary;
+
+  for (const DAGOpNode* repl_node : repl_nodes) {
+    // 将 replacement 中的 wire 映射到电路 wire
+    std::vector<int> mapped_qargs;
+    mapped_qargs.reserve(repl_node->qargs.size());
+    for (int q : repl_node->qargs) {
+      mapped_qargs.push_back(qubit_mapping.at(q));
+    }
+
+    // 创建新节点
+    auto new_op =
+        create_gate(repl_node->name(), mapped_qargs, repl_node->op->arg_value);
+    auto new_node = std::make_unique<DAGOpNode>(new_op, mapped_qargs);
+    int new_id = multi_graph_.add_node(std::move(new_node));
+    increment_op(new_op);
+
+    // 在每条作用 wire 上，插入到当前插入点之后
+    for (int circuit_wire : mapped_qargs) {
+      multi_graph_.insert_node_on_out_edge(
+          new_id, insert_after.at(circuit_wire), circuit_wire);
+    }
+
+    // 更新插入点
+    for (int circuit_wire : mapped_qargs) {
+      insert_after[circuit_wire] = new_id;
+    }
+  }
 }
 
 std::set<std::vector<DAGNode*>> DAGCircuit::collect_runs(

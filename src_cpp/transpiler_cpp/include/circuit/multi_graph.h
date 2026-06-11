@@ -182,6 +182,22 @@ class MultiGraph {
                                          const std::vector<int>& source_ids);
 
   /**
+   * @brief 将新节点插入到指定源节点在指定线路的出边之后
+   * @param new_node_id 新节点 id
+   * @param source_id 源节点 id
+   * @param wire 指定线路
+   */
+  void insert_node_on_out_edge(int new_node_id, int source_id, int wire);
+
+  /**
+   * @brief 将新节点插入到指定目标节点在指定线路的入边之前
+   * @param new_node_id 新节点 id
+   * @param target_id 目标节点 id
+   * @param wire 指定线路
+   */
+  void insert_node_on_in_edge(int new_node_id, int target_id, int wire);
+
+  /**
    * @brief 删除节点，并按同一 wire 直连其前驱和后继
    * @param node_id 待删除节点 id
    */

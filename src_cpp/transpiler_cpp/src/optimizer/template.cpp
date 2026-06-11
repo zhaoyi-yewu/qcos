@@ -170,6 +170,119 @@ std::unordered_map<int, DAGOpNode*> OptimizingTemplate::compare(
 }
 
 /*
+ * Hadamard 门优化模板。
+ * 每个模板包含 template DAG 和 replacement DAG，
+ * 匹配后用 replacement 替换 template，减少 H 门数量。
+ *
+ * 模板列表:
+ *   tpl[0]: H(0) S(0) H(0) → SDG(0) H(0) SDG(0), weight=1
+ *   tpl[1]: H(0) SDG(0) H(0) → S(0) H(0) S(0), weight=1
+ *   tpl[2]: H(0) H(1) CX(0,1) H(0) H(1) → CX(1,0), weight=4
+ *   tpl[3]: H(1) S(1) CX(0,1) SDG(1) H(1) → SDG(1) CX(0,1) S(1), weight=2
+ *   tpl[4]: H(1) SDG(1) CX(0,1) S(1) H(1) → S(1) CX(0,1) SDG(1), weight=2
+ */
+std::vector<OptimizingTemplate> generate_hadamard_gate_templates() {
+  std::vector<OptimizingTemplate> templates;
+
+  /*
+   * tpl[0]: H(0) S(0) H(0) → SDG(0) H(0) SDG(0), weight=1
+   *
+   *      ┌───┐┌───┐┌───┐              ┌─────┐┌───┐┌─────┐
+   * q_0: ┤ H ├┤ S ├┤ H ├  ────→  q_0: ┤ Sdg ├┤ H ├┤ Sdg ├
+   *      └───┘└───┘└───┘              └─────┘└───┘└─────┘
+   */
+  {
+    std::vector<std::shared_ptr<BaseOperation>> tpl_ir = {
+        create_gate("h", {0}), create_gate("s", {0}), create_gate("h", {0})};
+    std::vector<std::shared_ptr<BaseOperation>> rpl_ir = {
+        create_gate("sdg", {0}), create_gate("h", {0}),
+        create_gate("sdg", {0})};
+    templates.emplace_back(DAGCircuit::ir_to_dag(tpl_ir),
+                           DAGCircuit::ir_to_dag(rpl_ir), 0, 1);
+  }
+
+  /*
+   * tpl[1]: H(0) SDG(0) H(0) → S(0) H(0) S(0), weight=1
+   *
+   *      ┌───┐┌─────┐┌───┐              ┌───┐┌───┐┌───┐
+   * q_0: ┤ H ├┤ Sdg ├┤ H ├  ────→  q_0: ┤ S ├┤ H ├┤ S ├
+   *      └───┘└─────┘└───┘              └───┘└───┘└───┘
+   */
+  {
+    std::vector<std::shared_ptr<BaseOperation>> tpl_ir = {
+        create_gate("h", {0}), create_gate("sdg", {0}), create_gate("h", {0})};
+    std::vector<std::shared_ptr<BaseOperation>> rpl_ir = {
+        create_gate("s", {0}), create_gate("h", {0}), create_gate("s", {0})};
+    templates.emplace_back(DAGCircuit::ir_to_dag(tpl_ir),
+                           DAGCircuit::ir_to_dag(rpl_ir), 0, 1);
+  }
+
+  /*
+   * tpl[2]: H(0) H(1) CX(0,1) H(0) H(1) → CX(1,0), weight=4
+   *
+   *      ┌───┐     ┌───┐          ┌───┐
+   * q_0: ┤ H ├──■──┤ H ├  →  q_0: ┤ X ├
+   *      ├───┤┌─┴─┐├───┤          └─┬─┘
+   * q_1: ┤ H ├┤ X ├┤ H ├  →  q_1:  ─■─
+   *      └───┘└───┘└───┘
+   */
+  {
+    std::vector<std::shared_ptr<BaseOperation>> tpl_ir = {
+        create_gate("h", {0}), create_gate("h", {1}),
+        create_gate("cx", {0, 1}), create_gate("h", {0}),
+        create_gate("h", {1})};
+    std::vector<std::shared_ptr<BaseOperation>> rpl_ir = {
+        create_gate("cx", {1, 0})};
+    templates.emplace_back(DAGCircuit::ir_to_dag(tpl_ir),
+                           DAGCircuit::ir_to_dag(rpl_ir), 0, 4);
+  }
+
+  /*
+   * tpl[3]: H(1) S(1) CX(0,1) SDG(1) H(1) → SDG(1) CX(0,1) S(1), weight=2
+   *
+   * Before:                             After:
+   * q_0: ────────────■─────────────      q_0: ─────────■───────
+   *      ┌───┐┌───┐┌─┴─┐┌─────┐┌───┐          ┌─────┐┌─┴─┐┌───┐
+   * q_1: ┤ H ├┤ S ├┤ X ├┤ Sdg ├┤ H ├  →  q_1: ┤ Sdg ├┤ X ├┤ S ├
+   *      └───┘└───┘└───┘└─────┘└───┘          └─────┘└───┘└───┘
+   */
+  {
+    std::vector<std::shared_ptr<BaseOperation>> tpl_ir = {
+        create_gate("h", {1}), create_gate("s", {1}),
+        create_gate("cx", {0, 1}), create_gate("sdg", {1}),
+        create_gate("h", {1})};
+    std::vector<std::shared_ptr<BaseOperation>> rpl_ir = {
+        create_gate("sdg", {1}), create_gate("cx", {0, 1}),
+        create_gate("s", {1})};
+    templates.emplace_back(DAGCircuit::ir_to_dag(tpl_ir),
+                           DAGCircuit::ir_to_dag(rpl_ir), 0, 2);
+  }
+
+  /*
+   * tpl[4]: H(1) SDG(1) CX(0,1) S(1) H(1) → S(1) CX(0,1) SDG(1), weight=2
+   *
+   * Before:                               After:
+   * q_0: ──────────────■─────────────    q_0: ───────■─────────
+   *      ┌───┐┌─────┐┌─┴─┐┌───┐┌───┐          ┌───┐┌─┴─┐┌─────┐
+   * q_1: ┤ H ├┤ Sdg ├┤ X ├┤ S ├┤ H ├  →  q_1: ┤ S ├┤ X ├┤ Sdg ├
+   *      └───┘└─────┘└───┘└───┘└───┘          └───┘└───┘└─────┘
+   */
+  {
+    std::vector<std::shared_ptr<BaseOperation>> tpl_ir = {
+        create_gate("h", {1}), create_gate("sdg", {1}),
+        create_gate("cx", {0, 1}), create_gate("s", {1}),
+        create_gate("h", {1})};
+    std::vector<std::shared_ptr<BaseOperation>> rpl_ir = {
+        create_gate("s", {1}), create_gate("cx", {0, 1}),
+        create_gate("sdg", {1})};
+    templates.emplace_back(DAGCircuit::ir_to_dag(tpl_ir),
+                           DAGCircuit::ir_to_dag(rpl_ir), 0, 2);
+  }
+
+  return templates;
+}
+
+/*
  * 单量子比特 Rz 交换模板。
  * Rz 门可以跨过这些模版，用于 cancel_single_qubit_gates。
  * 模板无 replacement（仅用于模式匹配，不做替换）。
