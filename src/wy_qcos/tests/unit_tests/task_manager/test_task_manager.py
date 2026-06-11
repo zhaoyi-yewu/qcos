@@ -1089,3 +1089,451 @@ class TestTaskFlowManager(unittest.TestCase):
                 run_input = call_kwargs.get("run_input", {})
                 sub_jobs = run_input.get("sub_jobs", {})
                 assert len(sub_jobs) <= Constant.MAX_AGGREGATION_JOBS
+
+    @patch.object(TaskFlowManager, "get_prefect_configs")
+    @patch(
+        "wy_qcos.task_manager.task_manager.prefect_settings.temporary_settings"
+    )
+    @patch("wy_qcos.task_manager.task_manager.get_client")
+    @patch("asyncio.new_event_loop")
+    @patch.object(TaskFlowManager, "check_connection")
+    def test_start_happy_path(
+        self,
+        mock_check_connection,
+        mock_new_event_loop,
+        mock_get_client,
+        mock_temp_settings,
+        mock_get_prefect_configs,
+    ):
+        """Test start() with normal flow."""
+        # Configure mock event loop
+        mock_loop = Mock()
+        mock_loop.is_running.return_value = False
+        mock_new_event_loop.return_value = mock_loop
+
+        # Configure mock clients
+        mock_sync_client = Mock()
+        mock_async_client = AsyncMock()
+        mock_get_client.side_effect = [mock_async_client, mock_sync_client]
+
+        # Configure mock temp settings context manager
+        mock_temp_settings.return_value.__enter__ = Mock(return_value=None)
+        mock_temp_settings.return_value.__exit__ = Mock(return_value=None)
+
+        # Configure mock prefect configs
+        mock_get_prefect_configs.return_value = {}
+
+        # Configure mock devices
+        mock_device = Mock()
+        mock_device.get_name.return_value = "test_device"
+        mock_driver = Mock()
+        mock_driver.enable_device_monitor = True
+        mock_driver.enable_device_mgr = True
+        mock_device.get_driver.return_value = mock_driver
+
+        mock_device_manager = Mock()
+        mock_device_manager.get_devices.return_value = {
+            "test_device": mock_device
+        }
+        self.task_manager.set_device_manager(mock_device_manager)
+
+        # Mock all methods called within start()
+        with patch.object(
+            self.task_manager, "create_pools", new=AsyncMock()
+        ) as mock_create_pools:
+            with patch.object(
+                self.task_manager, "create_queues", new=AsyncMock()
+            ) as mock_create_queues:
+                with patch.object(
+                    self.task_manager,
+                    "delete_task_flow_by_name",
+                ) as mock_delete_flow:
+                    with patch.object(
+                        self.task_manager,
+                        "generate_deployment_configs",
+                        return_value={"test_device": {"pool_name": "p"}},
+                    ) as mock_gen_deploy:
+                        with patch.object(
+                            self.task_manager,
+                            "create_deployments",
+                            new=AsyncMock(
+                                return_value={
+                                    "test_device": {"deploy_id": "123"}
+                                }
+                            ),
+                        ) as mock_create_deploy:
+                            with patch.object(
+                                self.task_manager, "kill_workers"
+                            ) as mock_kill:
+                                with patch.object(
+                                    self.task_manager, "start_workers"
+                                ) as mock_start_w:
+                                    with patch.object(
+                                        self.task_manager,
+                                        "wait_workers",
+                                        new=AsyncMock(),
+                                    ) as mock_wait:
+                                        with patch.object(
+                                            self.task_manager,
+                                            "process_aggregation_job",
+                                            new=AsyncMock(),
+                                        ) as mock_proc_agg:
+                                            with patch.object(
+                                                self.task_manager,
+                                                "run_device_monitor",
+                                            ) as mock_run_monitor:
+                                                # Execute start
+                                                self.task_manager.start()
+
+        # Verify calls
+        assert mock_get_prefect_configs.called
+        mock_temp_settings.assert_called_once()
+        mock_get_client.assert_has_calls([
+            mock.call(),
+            mock.call(sync_client=True),
+        ])
+        mock_new_event_loop.assert_called_once()
+        assert self.task_manager._client == mock_async_client
+        assert self.task_manager._sync_client == mock_sync_client
+        assert self.task_manager.loop == mock_loop
+
+        # Verify create_pools called with device names
+        mock_create_pools.assert_any_call(
+            pool_names=mock_device_manager.get_devices().keys()
+        )
+        # Verify create_pools called with monitor device names
+        mock_create_pools.assert_any_call(pool_names=["test_device_monitor"])
+        # Verify create_pools called with manager device names
+        mock_create_pools.assert_any_call(pool_names=["test_device_mgr"])
+        # Verify create_queues called
+        mock_create_queues.assert_called_once_with(
+            queue_names=mock_device_manager.get_devices().keys()
+        )
+        # Verify delete_task_flow_by_name called
+        mock_delete_flow.assert_called_once_with("device-monitor-flow")
+        # Verify generate_deployment_configs called
+        mock_gen_deploy.assert_called_once_with(
+            mock_device_manager.get_devices().keys()
+        )
+        # Verify create_deployments called
+        mock_create_deploy.assert_called_once()
+        # Verify kill_workers called
+        mock_kill.assert_called_once()
+        # Verify start_workers called
+        mock_start_w.assert_called_once()
+        # Verify wait_workers called
+        mock_wait.assert_called_once()
+        # Verify process_aggregation_job called
+        mock_proc_agg.assert_called_once()
+        # Verify run_device_monitor called
+        mock_run_monitor.assert_called_once()
+
+        # Verify loop.run_until_complete was called appropriately
+        assert mock_loop.run_until_complete.call_count >= 5
+
+    @patch.object(TaskFlowManager, "get_prefect_configs")
+    @patch(
+        "wy_qcos.task_manager.task_manager.prefect_settings.temporary_settings"
+    )
+    @patch("wy_qcos.task_manager.task_manager.get_client")
+    @patch("asyncio.new_event_loop")
+    @patch.object(TaskFlowManager, "check_connection")
+    def test_start_no_devices(
+        self,
+        mock_check_connection,
+        mock_new_event_loop,
+        mock_get_client,
+        mock_temp_settings,
+        mock_get_prefect_configs,
+    ):
+        """Test start() with no devices."""
+        # Configure mock event loop
+        mock_loop = Mock()
+        mock_loop.is_running.return_value = False
+        mock_new_event_loop.return_value = mock_loop
+
+        # Configure mock clients
+        mock_sync_client = Mock()
+        mock_async_client = AsyncMock()
+        mock_get_client.side_effect = [mock_async_client, mock_sync_client]
+
+        # Configure mock temp settings context manager
+        mock_temp_settings.return_value.__enter__ = Mock(return_value=None)
+        mock_temp_settings.return_value.__exit__ = Mock(return_value=None)
+
+        # Configure mock prefect configs
+        mock_get_prefect_configs.return_value = {}
+
+        # Configure mock device manager with no devices
+        mock_device_manager = Mock()
+        mock_device_manager.get_devices.return_value = {}
+        self.task_manager.set_device_manager(mock_device_manager)
+
+        with patch.object(self.task_manager, "create_pools", new=AsyncMock()):
+            with patch.object(
+                self.task_manager, "create_queues", new=AsyncMock()
+            ) as mock_create_queues:
+                with patch.object(
+                    self.task_manager,
+                    "generate_deployment_configs",
+                    return_value={},
+                ) as mock_gen_deploy:
+                    with patch.object(
+                        self.task_manager,
+                        "create_deployments",
+                        new=AsyncMock(return_value={}),
+                    ) as mock_create_deploy:
+                        with patch.object(
+                            self.task_manager, "kill_workers"
+                        ) as mock_kill:
+                            with patch.object(
+                                self.task_manager, "start_workers"
+                            ) as mock_start_w:
+                                with patch.object(
+                                    self.task_manager,
+                                    "wait_workers",
+                                    new=AsyncMock(),
+                                ) as mock_wait:
+                                    with patch.object(
+                                        self.task_manager,
+                                        "process_aggregation_job",
+                                        new=AsyncMock(),
+                                    ) as mock_proc_agg:
+                                        with patch.object(
+                                            self.task_manager,
+                                            "run_device_monitor",
+                                        ) as mock_run_monitor:
+                                            self.task_manager.start()
+
+        # With no devices, create_pools should not be called for device pools
+        # (but may be called for empty monitor/mgr lists)
+        mock_create_queues.assert_not_called()
+        mock_gen_deploy.assert_called_once_with(set())
+        mock_create_deploy.assert_called_once_with({})
+        mock_kill.assert_called_once()
+        mock_start_w.assert_called_once()
+        mock_wait.assert_called_once()
+        mock_proc_agg.assert_called_once()
+        mock_run_monitor.assert_called_once()
+
+    @patch.object(TaskFlowManager, "get_prefect_configs")
+    @patch(
+        "wy_qcos.task_manager.task_manager.prefect_settings.temporary_settings"
+    )
+    @patch("wy_qcos.task_manager.task_manager.get_client")
+    @patch("asyncio.new_event_loop")
+    @patch.object(TaskFlowManager, "check_connection")
+    def test_start_with_devices_no_monitor(
+        self,
+        mock_check_connection,
+        mock_new_event_loop,
+        mock_get_client,
+        mock_temp_settings,
+        mock_get_prefect_configs,
+    ):
+        """Test start() with devices that have monitor and mgr disabled."""
+        # Configure mock event loop
+        mock_loop = Mock()
+        mock_new_event_loop.return_value = mock_loop
+
+        # Configure mock clients
+        mock_sync_client = Mock()
+        mock_async_client = AsyncMock()
+        mock_get_client.side_effect = [mock_async_client, mock_sync_client]
+
+        # Configure mock temp settings context manager
+        mock_temp_settings.return_value.__enter__ = Mock(return_value=None)
+        mock_temp_settings.return_value.__exit__ = Mock(return_value=None)
+
+        # Configure mock prefect configs
+        mock_get_prefect_configs.return_value = {}
+
+        # Configure mock devices with monitor and mgr disabled
+        mock_device = Mock()
+        mock_device.get_name.return_value = "test_device"
+        mock_driver = Mock()
+        mock_driver.enable_device_monitor = False
+        mock_driver.enable_device_mgr = False
+        mock_device.get_driver.return_value = mock_driver
+
+        mock_device_manager = Mock()
+        mock_device_manager.get_devices.return_value = {
+            "test_device": mock_device
+        }
+        self.task_manager.set_device_manager(mock_device_manager)
+
+        with patch.object(
+            self.task_manager, "create_pools", new=AsyncMock()
+        ) as mock_create_pools:
+            with patch.object(
+                self.task_manager, "create_queues", new=AsyncMock()
+            ) as mock_create_queues:
+                with patch.object(
+                    self.task_manager,
+                    "generate_deployment_configs",
+                    return_value={"test_device": {"pool_name": "p"}},
+                ) as mock_gen_deploy:
+                    with patch.object(
+                        self.task_manager,
+                        "create_deployments",
+                        new=AsyncMock(
+                            return_value={"test_device": {"deploy_id": "123"}}
+                        ),
+                    ) as mock_create_deploy:
+                        with patch.object(
+                            self.task_manager, "kill_workers"
+                        ) as mock_kill:
+                            with patch.object(
+                                self.task_manager, "start_workers"
+                            ) as mock_start_w:
+                                with patch.object(
+                                    self.task_manager,
+                                    "wait_workers",
+                                    new=AsyncMock(),
+                                ) as mock_wait:
+                                    with patch.object(
+                                        self.task_manager,
+                                        "process_aggregation_job",
+                                        new=AsyncMock(),
+                                    ) as mock_proc_agg:
+                                        with patch.object(
+                                            self.task_manager,
+                                            "run_device_monitor",
+                                        ) as mock_run_monitor:
+                                            self.task_manager.start()
+
+        # Verify create_pools for device names only (no monitor/mgr pools)
+        mock_create_pools.assert_called_once_with(
+            pool_names=mock_device_manager.get_devices().keys()
+        )
+        mock_create_queues.assert_called_once_with(
+            queue_names=mock_device_manager.get_devices().keys()
+        )
+        mock_gen_deploy.assert_called_once()
+        mock_create_deploy.assert_called_once()
+        mock_kill.assert_called_once()
+        mock_start_w.assert_called_once()
+        mock_wait.assert_called_once()
+        mock_proc_agg.assert_called_once()
+        mock_run_monitor.assert_called_once()
+
+    @patch.object(TaskFlowManager, "get_prefect_configs")
+    @patch(
+        "wy_qcos.task_manager.task_manager.prefect_settings.temporary_settings"
+    )
+    @patch("wy_qcos.task_manager.task_manager.get_client")
+    @patch("asyncio.new_event_loop")
+    @patch.object(TaskFlowManager, "check_connection")
+    def test_start_with_multiple_devices(
+        self,
+        mock_check_connection,
+        mock_new_event_loop,
+        mock_get_client,
+        mock_temp_settings,
+        mock_get_prefect_configs,
+    ):
+        """Test start() with multiple devices."""
+        mock_loop = Mock()
+        mock_new_event_loop.return_value = mock_loop
+
+        mock_sync_client = Mock()
+        mock_async_client = AsyncMock()
+        mock_get_client.side_effect = [mock_async_client, mock_sync_client]
+
+        mock_temp_settings.return_value.__enter__ = Mock(return_value=None)
+        mock_temp_settings.return_value.__exit__ = Mock(return_value=None)
+
+        mock_get_prefect_configs.return_value = {}
+
+        # Device 1: has both monitor and mgr
+        device1 = Mock()
+        device1.get_name.return_value = "device_a"
+        driver1 = Mock()
+        driver1.enable_device_monitor = True
+        driver1.enable_device_mgr = True
+        device1.get_driver.return_value = driver1
+
+        # Device 2: has only monitor
+        device2 = Mock()
+        device2.get_name.return_value = "device_b"
+        driver2 = Mock()
+        driver2.enable_device_monitor = True
+        driver2.enable_device_mgr = False
+        device2.get_driver.return_value = driver2
+
+        # Device 3: has neither
+        device3 = Mock()
+        device3.get_name.return_value = "device_c"
+        driver3 = Mock()
+        driver3.enable_device_monitor = False
+        driver3.enable_device_mgr = False
+        device3.get_driver.return_value = driver3
+
+        mock_device_manager = Mock()
+        mock_device_manager.get_devices.return_value = {
+            "device_a": device1,
+            "device_b": device2,
+            "device_c": device3,
+        }
+        self.task_manager.set_device_manager(mock_device_manager)
+
+        with patch.object(
+            self.task_manager, "create_pools", new=AsyncMock()
+        ) as mock_create_pools:
+            with patch.object(
+                self.task_manager, "create_queues", new=AsyncMock()
+            ) as mock_create_queues:
+                with patch.object(
+                    self.task_manager,
+                    "generate_deployment_configs",
+                    return_value={
+                        "device_a": {"pool_name": "a"},
+                        "device_b": {"pool_name": "b"},
+                        "device_c": {"pool_name": "c"},
+                    },
+                ):
+                    with patch.object(
+                        self.task_manager,
+                        "create_deployments",
+                        new=AsyncMock(
+                            return_value={
+                                "device_a": {"deploy_id": "1"},
+                                "device_b": {"deploy_id": "2"},
+                                "device_c": {"deploy_id": "3"},
+                            }
+                        ),
+                    ):
+                        with patch.object(self.task_manager, "kill_workers"):
+                            with patch.object(
+                                self.task_manager, "start_workers"
+                            ):
+                                with patch.object(
+                                    self.task_manager,
+                                    "wait_workers",
+                                    new=AsyncMock(),
+                                ):
+                                    with patch.object(
+                                        self.task_manager,
+                                        "process_aggregation_job",
+                                        new=AsyncMock(),
+                                    ):
+                                        with patch.object(
+                                            self.task_manager,
+                                            "run_device_monitor",
+                                        ):
+                                            self.task_manager.start()
+
+        # Verify create_pools calls
+        mock_create_pools.assert_any_call(
+            pool_names={"device_a", "device_b", "device_c"}
+        )
+        mock_create_pools.assert_any_call(
+            pool_names=["device_a_monitor", "device_b_monitor"]
+        )
+        mock_create_pools.assert_any_call(
+            pool_names=["device_a_mgr", "device_b_mgr"]
+        )
+
+        mock_create_queues.assert_called_once_with(
+            queue_names={"device_a", "device_b", "device_c"}
+        )
