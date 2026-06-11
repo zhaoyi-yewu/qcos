@@ -55,8 +55,9 @@ response = {
         "shots": 100,
         "dry_run": False,
         "progress": -1,
-        "creation_date": "2025-11-25T16:02:33.182619",
-        "end_date": None,
+        "created_at": "2025-11-25T16:02:33.182619",
+        "started_at": None,
+        "ended_at": None,
     },
     "id": 0,
 }

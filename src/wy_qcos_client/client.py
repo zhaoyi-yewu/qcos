@@ -20,8 +20,8 @@ import logging
 import os
 import uuid
 
+import jsonrpcclient
 import requests
-from jsonrpcclient import Ok, parse, request
 
 from .common import errors
 from .common.client_library import ClientLibrary
@@ -79,6 +79,7 @@ class Client:
         self.transpiler_url = f"{endpoint_url}/transpiler"
         self.job_url = f"{endpoint_url}/job"
         self.user_url = f"{endpoint_url}/user"
+        self.project_url = f"{endpoint_url}/project"
         self.system_url = f"{endpoint_url}/system"
         self.metrics_url = f"{endpoint_url}/metrics"
 
@@ -123,13 +124,23 @@ class Client:
         """Clear stored JWT token."""
         self.access_token = None
 
-    def call_json_rpc(self, url, method_name, data=None, params=None):
+    def call_json_rpc(
+        self,
+        url,
+        method_name,
+        body_data=None,
+        filters=None,
+        fields=None,
+        params=None,
+    ):
         """Call json-rpc.
 
         Args:
             url: json-rpc url
             method_name: json-rpc method
-            data: json-rpc data (Default value = None)
+            body_data: json-rpc data (Default value = None)
+            filters: json-rpc filters
+            fields: json-rpc fields
             params: json-rpc params (Default value = None)
         """
         status_code = None
@@ -171,7 +182,14 @@ class Client:
             headers.update(self.request_headers)
 
         # call http api
-        jsonrpc_data = request(method_name, params={"body": data})
+        data_params = {}
+        if body_data:
+            data_params["body"] = body_data
+        if filters:
+            data_params["filters"] = filters
+        if fields:
+            data_params["fields"] = fields
+        jsonrpc_data = jsonrpcclient.request(method_name, params=data_params)
         try:
             status_code, reason, text, result = ClientLibrary.call_http_api(
                 url,
@@ -203,8 +221,8 @@ class Client:
         Args:
             jsonrpc_response: json-rpc response
         """
-        parsed = parse(jsonrpc_response)
-        if isinstance(parsed, Ok):
+        parsed = jsonrpcclient.parse(jsonrpc_response)
+        if isinstance(parsed, jsonrpcclient.Ok):
             return True, parsed
         return False, parsed
 
@@ -220,8 +238,11 @@ class Client:
             raise errors.InvalidArguments("\n".join(err_msg))
 
     # [version]
-    def version(self):
+    def version(self, details=False):
         """Get all api versions and capabilities.
+
+        Args:
+            details: Whether to include detailed capabilities information
 
         Returns:
             Version
@@ -230,7 +251,7 @@ class Client:
 
         # construct data and call json rpc
         status_code, reason, text, result = self.call_json_rpc(
-            self.version_url, method_name, {}
+            self.version_url, method_name, {"details": details}
         )
         return status_code, reason, text, result
 
@@ -245,7 +266,7 @@ class Client:
 
         # construct data and call json rpc
         status_code, reason, text, result = self.call_json_rpc(
-            self.driver_url, method_name, data=None
+            self.driver_url, method_name, body_data=None
         )
         return status_code, reason, text, result
 
@@ -280,7 +301,7 @@ class Client:
 
         # construct data and call json rpc
         status_code, reason, text, result = self.call_json_rpc(
-            self.device_url, method_name, data=None
+            self.device_url, method_name, body_data=None
         )
         return status_code, reason, text, result
 
@@ -395,7 +416,7 @@ class Client:
 
         # construct data and call json rpc
         status_code, reason, text, result = self.call_json_rpc(
-            self.transpiler_url, method_name, data=None
+            self.transpiler_url, method_name, body_data=None
         )
         return status_code, reason, text, result
 
@@ -448,7 +469,7 @@ class Client:
 
         # construct data and call json rpc
         status_code, reason, text, result = self.call_json_rpc(
-            self.system_url, method_name, data=None
+            self.system_url, method_name, body_data=None
         )
         return status_code, reason, text, result
 
@@ -571,18 +592,21 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def get_jobs(self):
+    def get_jobs(self, filters=None):
         """Get job status.
 
+        Args:
+            filters: filters
+
         Returns:
-             job status
+            job status
         """
         method_name = "get_jobs"
 
         # construct data and call json rpc
         data = {}
         status_code, reason, text, result = self.call_json_rpc(
-            self.job_url, method_name, data
+            self.job_url, method_name, data, filters=filters
         )
         return status_code, reason, text, result
 
@@ -610,11 +634,12 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def delete_jobs(self, job_ids):
+    def delete_jobs(self, job_ids, force=False):
         """Delete jobs.
 
         Args:
             job_ids: job IDs
+            force: force delete jobs regardless of status
 
         Returns:
             jobs
@@ -628,7 +653,7 @@ class Client:
             )
 
         # construct data and call json rpc
-        data = {"job_ids": job_ids}
+        data = {"job_ids": job_ids, "force": force}
         status_code, reason, text, result = self.call_json_rpc(
             self.job_url, method_name, data
         )
@@ -659,12 +684,14 @@ class Client:
         return status_code, reason, text, result
 
     def update_job(
-        self, job_id=None, job_priority=Constant.DEFAULT_JOB_PRIORITY
+        self, job_id=None, job_name=None, description=None, job_priority=None
     ):
         """Update job.
 
         Args:
             job_id: job uuid
+            job_name: job name (optional)
+            description: job description (optional)
             job_priority: job priority. Values: 1-10, Default: 5.
                           Highest priority: 1, Lowest Priority: 10
 
@@ -674,10 +701,17 @@ class Client:
         method_name = "update_job"
 
         # construct data and call json rpc
-        data = {"job_priority": job_priority}
+        data = {}
 
         if job_id:
             data["job_id"] = str(job_id)
+        if job_name:
+            data["job_name"] = job_name
+        if description:
+            data["description"] = description
+        if job_priority:
+            data["job_priority"] = job_priority
+
         status_code, reason, text, result = self.call_json_rpc(
             self.job_url, method_name, data
         )
@@ -722,6 +756,15 @@ class Client:
                 # Get the first (and only) user_id key
                 for user_id in users_info.keys():
                     return user_id
+
+            if "error" in users_data and users_data["error"]:
+                error_info = users_data["error"]
+                err_msg = (
+                    f"{error_info['message']}: "
+                    f"{error_info.get('data', {}).get('details', '')}.\n"
+                    "You may query by user uuid instead of user name."
+                )
+                raise errors.GenericException(err_msg)
 
             raise errors.GenericException(
                 f"User '{user_identifier}' not found"
@@ -807,6 +850,7 @@ class Client:
         password_expiry_days=None,
         is_enabled=True,
         is_locked=True,
+        project_id=None,
     ):
         """Create user."""
         data = {
@@ -824,6 +868,8 @@ class Client:
             data["is_enabled"] = is_enabled
         if is_locked is not None:
             data["is_locked"] = is_locked
+        if project_id is not None:
+            data["project_id"] = project_id
         return self.call_json_rpc(self.user_url, "create_user", data)
 
     def get_user(self, user_id):
@@ -990,6 +1036,70 @@ class Client:
             data["user_name"] = user_name
         return self.call_json_rpc(self.user_url, "clear_login_logs", data)
 
+    # [Project]
+    def create_project(self, project_name, description=None):
+        """Create project.
+
+        Args:
+            project_name: Project name
+            description: Project description (optional)
+
+        Returns:
+            Create project response
+        """
+        data = {"project_name": project_name}
+        if description is not None:
+            data["description"] = description
+        return self.call_json_rpc(self.project_url, "create_project", data)
+
+    def get_project(self, project_id):
+        """Get project by ID.
+
+        Args:
+            project_id: Project ID (UUID)
+        """
+        data = {"project_id": project_id}
+        return self.call_json_rpc(self.project_url, "get_project", data)
+
+    def get_projects(self, filters=None):
+        """Get projects with optional filtering.
+
+        Args:
+            filters: Optional filter conditions dictionary,
+                e.g. {"name": "default"}
+
+        Returns:
+            Dictionary of projects keyed by project ID
+        """
+        data = {}
+        if filters:
+            data["filters"] = filters
+        return self.call_json_rpc(self.project_url, "get_projects", data)
+
+    def update_project(self, project_id, project_name=None, description=None):
+        """Update project by ID.
+
+        Args:
+            project_id: Project ID (UUID)
+            project_name: New project name (optional)
+            description: New project description (optional)
+        """
+        data = {"project_id": project_id}
+        if project_name is not None:
+            data["project_name"] = project_name
+        if description is not None:
+            data["description"] = description
+        return self.call_json_rpc(self.project_url, "update_project", data)
+
+    def delete_project(self, project_id):
+        """Delete project by ID.
+
+        Args:
+            project_id: Project ID (UUID)
+        """
+        data = {"project_id": project_id}
+        return self.call_json_rpc(self.project_url, "delete_project", data)
+
     # [Auth]
     def login(self, username, password):
         """User login to get JWT tokens.
@@ -1115,7 +1225,7 @@ class Client:
         """
         method_name = "get_system_health"
         status_code, reason, text, result = self.call_json_rpc(
-            self.metrics_url, method_name, data=None
+            self.metrics_url, method_name, body_data=None
         )
         return status_code, reason, text, result
 
@@ -1128,7 +1238,7 @@ class Client:
         """
         method_name = "get_api_stats"
         status_code, reason, text, result = self.call_json_rpc(
-            self.metrics_url, method_name, data=None
+            self.metrics_url, method_name, body_data=None
         )
         return status_code, reason, text, result
 
@@ -1140,6 +1250,6 @@ class Client:
         """
         method_name = "get_job_stats"
         status_code, reason, text, result = self.call_json_rpc(
-            self.metrics_url, method_name, data=None
+            self.metrics_url, method_name, body_data=None
         )
         return status_code, reason, text, result

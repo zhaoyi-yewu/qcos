@@ -51,6 +51,7 @@ class TestGetDevice:
     ):
         mock_client = Mock(spec=Namespace)
         mock_client.device_name = "device"
+        mock_client.details = False
         mock_get_device.return_value = iter([None, None, None, None])
         mock_get_table_data.return_value = None
         mock_check_results.return_value = None

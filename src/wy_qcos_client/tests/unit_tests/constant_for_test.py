@@ -38,8 +38,9 @@ class ConstantForTest:
                 "profiling": Constant.PROFILING_TYPES,
                 "callbacks": [],
                 "dry_run": True,
-                "creation_date": ClientLibrary.get_current_datetime(),
-                "end_date": ClientLibrary.get_current_datetime(),
+                "created_at": ClientLibrary.get_current_datetime(),
+                "started_at": ClientLibrary.get_current_datetime(),
+                "ended_at": ClientLibrary.get_current_datetime(),
             }
         }
     }
@@ -57,8 +58,9 @@ class ConstantForTest:
         "profiling": Constant.PROFILING_TYPES,
         "callbacks": [],
         "dry_run": True,
-        "creation_date": ClientLibrary.get_current_datetime(),
-        "end_date": ClientLibrary.get_current_datetime(),
+        "created_at": ClientLibrary.get_current_datetime(),
+        "started_at": ClientLibrary.get_current_datetime(),
+        "ended_at": ClientLibrary.get_current_datetime(),
     }
     flow_info = {
         "deploy_name": Constant.DRIVER_DUMMY,

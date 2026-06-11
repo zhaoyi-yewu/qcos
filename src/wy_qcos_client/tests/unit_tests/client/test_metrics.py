@@ -43,7 +43,7 @@ class TestClient:
         assert text == "text"
         assert result == {"healthy": True}
         mock_call_json_rpc.assert_called_once_with(
-            client.metrics_url, "get_system_health", data=None
+            client.metrics_url, "get_system_health", body_data=None
         )
 
     @patch.object(Client, "call_json_rpc")
@@ -84,7 +84,7 @@ class TestClient:
             "last_day_requests": 500,
         }
         mock_call_json_rpc.assert_called_once_with(
-            client.metrics_url, "get_api_stats", data=None
+            client.metrics_url, "get_api_stats", body_data=None
         )
 
     @patch.object(Client, "call_json_rpc")
@@ -137,7 +137,7 @@ class TestClient:
             "unknown": 0,
         }
         mock_call_json_rpc.assert_called_once_with(
-            client.metrics_url, "get_job_stats", data=None
+            client.metrics_url, "get_job_stats", body_data=None
         )
 
     @patch.object(Client, "call_json_rpc")

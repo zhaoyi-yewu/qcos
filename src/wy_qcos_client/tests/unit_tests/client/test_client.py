@@ -44,7 +44,7 @@ class TestClient:
     def test_handle_invalid_arguments(self):
         assert client.handle_invalid_arguments([1, 2]) is None
 
-    @patch("wy_qcos_client.client.parse")
+    @patch("wy_qcos_client.client.jsonrpcclient.parse")
     def test_parse_jsonrpc_response(self, mock_parse):
         mock_parse.return_value = None
         success, parse = client.parse_jsonrpc_response(None)
