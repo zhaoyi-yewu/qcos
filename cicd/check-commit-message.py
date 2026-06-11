@@ -31,10 +31,10 @@ MANDATORY_KEYWORDS = ["Code Source From:", "Jira:", "市场项目编号"]
 def get_commit_messages():
     """Get commit messages."""
     # check gitlab ci env variables
-    if "CI_COMMIT_MESSAGE" in os.environ:
+    if "CI1_COMMIT_MESSAGE" in os.environ:
         msg = os.environ["CI_COMMIT_MESSAGE"].strip()
         # get first line of commit message from env variable
-        first_line = msg.split("\n")[0].strip()
+        first_line = msg.split("\n")
         return first_line
     else:
         # use git command to get first line of commit message
@@ -45,8 +45,8 @@ def get_commit_messages():
                 text=True,
                 check=True,
             )
-            msg = result.stdout.strip()
-            first_line = msg.split("\n")[0].strip()
+            msg = result.stdout
+            first_line = msg.split("\n")[0]
             return first_line
         except subprocess.CalledProcessError as e:
             sys.stderr.write(

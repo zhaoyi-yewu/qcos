@@ -42,8 +42,8 @@ make latexpdf
 mkdir -p ./dist/pdf
 cp -rf ./dist/latex/qcos.pdf ./dist/pdf/qcos-full-docs.pdf
 
+# make docx (not working yet)
 # make docx
-make docx
 
 # 2. create openapi docs
 # create openapi dist dir
@@ -61,6 +61,5 @@ echo -e "\n======DOCS OUTPUT======"
 echo "Sphinx docs (html) : ${SPHINX_DOCS_DIR}/dist/html/index.html"
 echo "Sphinx docs (latex): ${SPHINX_DOCS_DIR}/dist/latex/"
 echo "Sphinx docs (pdf)  : ${SPHINX_DOCS_DIR}/dist/pdf/qcos-full-docs.pdf"
-echo "Sphinx docs (docx) : ${SPHINX_DOCS_DIR}/dist/docx/qcos-full-docs.docx"
+# echo "Sphinx docs (docx) : ${SPHINX_DOCS_DIR}/dist/docx/qcos-full-docs.docx"
 echo "OpenAPI docs (html): ${OPENAPI_DOCS_DIR}/dist/qcos-api-docs.html"
-

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # ----------------------------------------------------------------------
 # Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
