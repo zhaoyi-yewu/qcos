@@ -327,17 +327,17 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
         opt_level = self.transpiler_options.get(
             "optimization_level", Constant.DEFAULT_OPTIMIZATION_LEVEL
         )
-        # parse dict, key: job_id, value: (num_qubits, circuit)
+        # parse dict, job_id: str, cir_info: tuple(num_qubits, circuit)
         # optimize gates list firstly for better decomposed efficiency.
         opt_result_dict = {}
         with Timer() as optimize1_timer:
-            for key, value in parse_result.items():
-                circuit_to_optimize = convert_ir_cpp2py(value[1])
+            for job_id, cir_info in parse_result.items():
+                circuit_to_optimize = convert_ir_cpp2py(cir_info[1])
                 opt_result = optimize(
                     circuit_to_optimize, opt_level=min(1, opt_level)
                 )
                 opt_result = convert_ir_py2cpp(opt_result)
-                opt_result_dict[key] = (value[0], opt_result)
+                opt_result_dict[job_id] = (cir_info[0], opt_result)
         run_time.opt_time1 = optimize1_timer.elapsed
         trans_logger.log_perf(
             f"tranpiler(optimize firstly): {optimize1_timer.elapsed:.4f}s\n"
@@ -353,9 +353,9 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             # decompose gate to 1q2q gates for mapping
             dp_result_dict = {}
             with Timer() as decompose_1q2q_timer:
-                for key, value in opt_result_dict.items():
-                    decomposed_gates = decompose_gates_to_1q2q(value[1])
-                    dp_result_dict[key] = (value[0], decomposed_gates)
+                for job_id, cir_info in opt_result_dict.items():
+                    decomposed_gates = decompose_gates_to_1q2q(cir_info[1])
+                    dp_result_dict[job_id] = (cir_info[0], decomposed_gates)
             run_time.decompose_1q2q_time = decompose_1q2q_timer.elapsed
             trans_logger.log_perf(
                 "tranpiler(decomposing firstly): "
@@ -434,9 +434,9 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
 
             decomposer_dict = {}
             with Timer() as applier_timer:
-                for key, value in opt_result_dict.items():
-                    decomposer_dict[key] = decomposer.apply_decompose_rules(
-                        value[1], decompose_rules_dict
+                for job_id, cir_info in opt_result_dict.items():
+                    decomposer_dict[job_id] = decomposer.apply_decompose_rules(
+                        cir_info[1], decompose_rules_dict
                     )
             run_time.decompose_apply_time = applier_timer.elapsed
             trans_logger.log_perf(
@@ -446,9 +446,9 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             # secondly optimize
             basis_gates_dict = {}
             with Timer() as optimize2_timer:
-                for key, value in decomposer_dict.items():
-                    circuit_to_optimize = convert_ir_cpp2py(value)
-                    basis_gates_dict[key] = optimize(
+                for job_id, ir in decomposer_dict.items():
+                    circuit_to_optimize = convert_ir_cpp2py(ir)
+                    basis_gates_dict[job_id] = optimize(
                         circuit_to_optimize,
                         opt_level,
                         basis_gates=set(supp_basis_gates),
