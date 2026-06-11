@@ -18,6 +18,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from wy_qcos.db.models.base import GUID
 
 
 # revision identifiers, used by Alembic.
@@ -33,8 +34,9 @@ def upgrade() -> None:
     # projects)
     op.create_table(
         "projects",
-        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("id", GUID(), nullable=False),
         sa.Column("name", sa.String(length=100), nullable=False),
+        sa.Column("description", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=True),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
@@ -48,12 +50,12 @@ def upgrade() -> None:
     # user_roles association table)
     op.create_table(
         "users",
-        sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("project_id", sa.String(length=36), nullable=False),
+        sa.Column("id", GUID(), nullable=False),
+        sa.Column("project_id", GUID(), nullable=False),
         sa.Column("user_name", sa.String(length=50), nullable=False),
         sa.Column("hashed_password", sa.String(length=255), nullable=False),
-        sa.Column("is_enabled", sa.Boolean(), nullable=True),
-        sa.Column("is_locked", sa.Boolean(), nullable=True),
+        sa.Column("is_enabled", sa.Boolean(), nullable=False),
+        sa.Column("is_locked", sa.Boolean(), nullable=False),
         sa.Column("last_login", sa.DateTime(), nullable=True),
         sa.Column("password_changed_at", sa.DateTime(), nullable=True),
         sa.Column("locked_until", sa.DateTime(), nullable=True),
@@ -62,7 +64,9 @@ def upgrade() -> None:
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=True),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(["project_id"], ["projects.id"]),
+        sa.ForeignKeyConstraint(
+            ["project_id"], ["projects.id"], ondelete="RESTRICT"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_users_id"), "users", ["id"], unique=False)
@@ -74,7 +78,7 @@ def upgrade() -> None:
     # ...existing code...
     op.create_table(
         "roles",
-        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("id", GUID(), nullable=False),
         sa.Column("role_name", sa.String(length=50), nullable=False),
         sa.Column("permissions", sa.JSON(), nullable=True),
         sa.Column("description", sa.Text(), nullable=True),
@@ -90,12 +94,12 @@ def upgrade() -> None:
     # Create user_roles table (many-to-many association table)
     op.create_table(
         "user_roles",
-        sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("user_id", sa.String(length=36), nullable=False),
-        sa.Column("role_id", sa.String(length=36), nullable=False),
+        sa.Column("id", GUID(), nullable=False),
+        sa.Column("user_id", GUID(), nullable=False),
+        sa.Column("role_id", GUID(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(["role_id"], ["roles.id"]),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["role_id"], ["roles.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -112,15 +116,17 @@ def upgrade() -> None:
     # Create login_logs table
     op.create_table(
         "login_logs",
-        sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("project_id", sa.String(length=36), nullable=True),
+        sa.Column("id", GUID(), nullable=False),
+        sa.Column("project_id", GUID(), nullable=True),
         sa.Column("user_name", sa.String(length=50), nullable=False),
         sa.Column("ip_address", sa.String(length=45), nullable=False),
         sa.Column("login_time", sa.DateTime(), nullable=True),
         sa.Column("login_status", sa.Boolean(), nullable=False),
         sa.Column("failure_reason", sa.Text(), nullable=True),
         sa.Column("user_agent", sa.Text(), nullable=True),
-        sa.ForeignKeyConstraint(["project_id"], ["projects.id"]),
+        sa.ForeignKeyConstraint(
+            ["project_id"], ["projects.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -139,7 +145,7 @@ def upgrade() -> None:
     # Create token_blacklist table
     op.create_table(
         "token_blacklist",
-        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("id", GUID(), nullable=False),
         sa.Column("token_jti", sa.String(length=36), nullable=False),
         sa.Column("expires_at", sa.DateTime(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=True),

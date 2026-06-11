@@ -18,10 +18,10 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, DateTime
+from sqlalchemy import Column, String, DateTime, Text
 from sqlalchemy.orm import relationship
 
-from wy_qcos.db.models.base import Base
+from wy_qcos.db.models.base import Base, GUID
 
 
 class Project(Base):
@@ -31,14 +31,17 @@ class Project(Base):
 
     # Primary key: UUID
     id = Column(
-        String(36),
+        GUID,
         primary_key=True,
-        default=lambda: str(uuid.uuid4()),
+        default=uuid.uuid4,
         index=True,
     )
 
     # Project name
     name = Column(String(100), unique=True, index=True, nullable=False)
+
+    # Description
+    description = Column(Text, nullable=True)
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.now)
