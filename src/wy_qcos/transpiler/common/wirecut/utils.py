@@ -19,6 +19,8 @@ import numpy as np
 import copy
 import itertools
 
+from loguru import logger
+
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.common.cmss.gate_operation import H, S, SDG, X
@@ -245,3 +247,39 @@ def asign_probability(measured_results, measure_configs):
                 accumulated_prob += coef * instance_prob
         config_results_map[measure_config] = accumulated_prob
     return config_results_map
+
+
+def result_process(distribution_dict, force_prob):
+    """Convert a counting dictionary into an array.
+
+    Args:
+        distribution_dict: Probability Distribution Dictionary
+        force_prob: Convert to probability
+
+    Returns:
+        Counting or probability in array form
+    """
+    sample_state = list(distribution_dict.keys())[0]
+    qubit_count = len(sample_state)
+
+    total_shots = sum(distribution_dict.values())
+    count_array = np.zeros(2**qubit_count, dtype=float)
+
+    # Fill the array
+    for state, count in distribution_dict.items():
+        count_array[int(state, 2)] = count
+
+    # vertify the transform
+    if abs(sum(count_array) - total_shots) > 1:
+        logger.debug(
+            f"转换可能有误: 转换后计数={sum(count_array)}, "
+            f"原始计数={total_shots}"
+        )
+
+    if not force_prob:
+        return count_array
+    else:
+        probability = count_array / total_shots
+        if abs(sum(probability) - 1) >= 1e-10:
+            logger.warning(f"概率总和不等于1: {sum(probability)}")
+        return probability
