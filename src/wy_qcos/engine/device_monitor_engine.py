@@ -107,7 +107,8 @@ def device_monitor_flow(device_monitor_info):
 
         # publish device info by redis
         channel_name = (
-            device_name + Constant.DEVICE_RUNNING_INFO_REDIS_CHANNEL_SUFFIX
+            f"{Constant.REDIS_CHANNEL_DEVICE_RUNNING_INFO_PREFIX}/"
+            f"{device_name}"
         )
         redis_instance.publish(channel_name, device_info_json)
 

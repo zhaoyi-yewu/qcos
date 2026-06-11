@@ -189,7 +189,8 @@ class DeviceManager:
         """Subscribe device info by redis."""
         pubsub = redis_instance.pubsub()
         running_info_channel = (
-            device.name + Constant.DEVICE_RUNNING_INFO_REDIS_CHANNEL_SUFFIX
+            f"{Constant.REDIS_CHANNEL_DEVICE_RUNNING_INFO_PREFIX}/"
+            f"{device.name}"
         )
         pubsub.subscribe(running_info_channel)
         for message in pubsub.listen():
