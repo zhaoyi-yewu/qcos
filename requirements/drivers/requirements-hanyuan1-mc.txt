@@ -1,0 +1,3 @@
+# Vendor drivers dependencies
+# hanyuan1-mc driver only
+smbprotocol=1.16.1

@@ -1,0 +1,41 @@
+[hanyuan1_mc]
+alias_name = "中科酷原-汉原1-MC"
+driver = "DriverHanyuan1MC"
+description = "中科酷原-汉原1-MC(hanyuan1_mc)"
+
+# [Optional] max qubits of device
+# device_max_qubits = 100
+
+# [Optional] debug
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_hanyuan1_mc.log
+
+# [Optional] device monitor log file path
+# monitor_log_file = /var/log/qcos/device_montior_hanyuan1_mc.log
+
+# [Optional] device manager log file path
+# mgr_log_file = /var/log/qcos/device_mgr_hanyuan1_mc.log
+
+# [Optional] log format string
+# log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
+
+# [Optional] log rotate, max_size (MB). default: 10MB
+# log_rotate_max_size_mb = 10
+
+# [Optional] log rotate, backup count. default: 10
+# log_rotate_backup_count = 10
+
+# [Optional] log rotate, compression. default: true
+# log_rotate_compression = true
+
+# [Optional] max queued jobs, -1 means unlimited
+max_queued_jobs = -1
+
+ip_address = "192.168.1.100"
+port = 445
+# file folder shared name
+shared_name = "shared_name"
+user = "user"
+pwd = "123456"
