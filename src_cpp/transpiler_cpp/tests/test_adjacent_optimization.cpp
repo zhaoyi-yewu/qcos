@@ -23,16 +23,17 @@
 #include <vector>
 
 #include "circuit/dag_circuit.h"
+#include "circuit/gate_operation.h"
 #include "optimizer/adjacent_optimization.h"
-#include "utils/operation_utils.h"
 
 using namespace qcos;
 
 TEST(AdjacentPhaseOptPassTest, MergesAdjacentParameterizedPhaseGates) {
   AdjacentPhaseOptPass optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
-      make_gate("rx", {0}, {M_PI / 2.0}), make_gate("rx", {0}, {M_PI / 4.0}),
-      make_gate("ry", {0}, {M_PI / 3.0})};
+      create_gate("rx", {0}, {M_PI / 2.0}),
+      create_gate("rx", {0}, {M_PI / 4.0}),
+      create_gate("ry", {0}, {M_PI / 3.0})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
   EXPECT_EQ(optimizer.run(dag), 1);
@@ -51,7 +52,8 @@ TEST(AdjacentPhaseOptPassTest, MergesAdjacentParameterizedPhaseGates) {
 TEST(AdjacentPhaseOptPassTest, HonorsBasisFilterForParameterizedPhaseGates) {
   AdjacentPhaseOptPass optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
-      make_gate("rx", {0}, {M_PI / 2.0}), make_gate("rx", {0}, {M_PI / 4.0})};
+      create_gate("rx", {0}, {M_PI / 2.0}),
+      create_gate("rx", {0}, {M_PI / 4.0})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
   EXPECT_EQ(optimizer.run(dag, std::set<std::string>{"ry"}), 0);
@@ -63,8 +65,8 @@ TEST(AdjacentPhaseOptPassTest, HonorsBasisFilterForParameterizedPhaseGates) {
 TEST(AdjacentPhaseOptPassTest,
      ParameterizesAndDeparameterizesDiscreteRzPhaseGates) {
   AdjacentPhaseOptPass optimizer;
-  std::vector<std::shared_ptr<BaseOperation>> ir = {make_gate("s", {0}),
-                                                    make_gate("s", {0})};
+  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("s", {0}),
+                                                    create_gate("s", {0})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
   EXPECT_EQ(optimizer.run(dag), 1);

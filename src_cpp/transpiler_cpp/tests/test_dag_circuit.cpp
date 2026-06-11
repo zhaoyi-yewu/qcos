@@ -28,14 +28,6 @@ namespace {
 
 constexpr double kPi = 3.14159265358979323846;
 
-std::shared_ptr<BaseOperation> make_gate(const std::string& name,
-                                         const std::vector<int>& targets,
-                                         const std::vector<double>& args = {},
-                                         bool allow_undefined = false) {
-  return std::shared_ptr<BaseOperation>(
-      create_gate(name, targets, args, allow_undefined));
-}
-
 std::vector<std::vector<std::string>> normalize_run_signatures(
     const std::set<std::vector<DAGNode*>>& runs) {
   std::vector<std::vector<std::string>> normalized;
@@ -149,12 +141,12 @@ bool contains_node_id(const std::set<DAGNode*>& nodes, int node_id) {
 DAGCircuit build_five_qubit_chain() {
   DAGCircuit dag;
   dag.add_qubits(5);
-  dag.apply_operation_back(make_gate("h", {0}));
-  dag.apply_operation_back(make_gate("cx", {0, 1}));
-  dag.apply_operation_back(make_gate("cx", {1, 2}));
-  dag.apply_operation_back(make_gate("cx", {2, 3}));
-  dag.apply_operation_back(make_gate("cx", {3, 4}));
-  dag.apply_operation_back(make_gate("h", {4}));
+  dag.apply_operation_back(create_gate("h", {0}));
+  dag.apply_operation_back(create_gate("cx", {0, 1}));
+  dag.apply_operation_back(create_gate("cx", {1, 2}));
+  dag.apply_operation_back(create_gate("cx", {2, 3}));
+  dag.apply_operation_back(create_gate("cx", {3, 4}));
+  dag.apply_operation_back(create_gate("h", {4}));
   return dag;
 }
 
@@ -172,14 +164,14 @@ TEST(DAGCircuitTest, ApplyOperationBack) {
   DAGCircuit dag;
   dag.add_qubits(1);
   EXPECT_EQ(dag.get_multi_graph().num_nodes(), 2);
-  dag.apply_operation_back(make_gate("x", {0}));
+  dag.apply_operation_back(create_gate("x", {0}));
   EXPECT_EQ(dag.get_multi_graph().num_nodes(), 3);
 }
 
 TEST(DAGCircuitTest, ApplyOperationFront) {
   DAGCircuit dag;
   dag.add_qubits(1);
-  dag.apply_operation_front(make_gate("x", {0}));
+  dag.apply_operation_front(create_gate("x", {0}));
   EXPECT_EQ(dag.get_multi_graph().num_nodes(), 3);
 }
 
@@ -190,13 +182,13 @@ TEST(DAGCircuitTest, SizeDepthWidth) {
   EXPECT_EQ(dag.depth(), 0);
   EXPECT_EQ(dag.width(), 3);
 
-  dag.apply_operation_back(make_gate("x", {0}));
-  dag.apply_operation_back(make_gate("h", {1}));
+  dag.apply_operation_back(create_gate("x", {0}));
+  dag.apply_operation_back(create_gate("h", {1}));
   EXPECT_EQ(dag.size(), 2);
   EXPECT_EQ(dag.depth(), 1);
 
-  dag.apply_operation_back(make_gate("h", {0}));
-  dag.apply_operation_front(make_gate("h", {0}));
+  dag.apply_operation_back(create_gate("h", {0}));
+  dag.apply_operation_front(create_gate("h", {0}));
   EXPECT_EQ(dag.size(), 4);
   EXPECT_EQ(dag.depth(), 3);
 }
@@ -204,9 +196,9 @@ TEST(DAGCircuitTest, SizeDepthWidth) {
 TEST(DAGCircuitTest, TopologicalNodes) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  dag.apply_operation_back(make_gate("h", {0}));
-  dag.apply_operation_back(make_gate("cx", {0, 1}));
-  dag.apply_operation_back(make_gate("h", {1}));
+  dag.apply_operation_back(create_gate("h", {0}));
+  dag.apply_operation_back(create_gate("cx", {0, 1}));
+  dag.apply_operation_back(create_gate("h", {1}));
 
   auto nodes = dag.topological_nodes();
   auto op_nodes = dag.topological_op_nodes();
@@ -221,10 +213,10 @@ TEST(DAGCircuitTest, TopologicalNodes) {
 TEST(DAGCircuitTest, TwoAndMultiQubitOps) {
   DAGCircuit dag;
   dag.add_qubits(3);
-  dag.apply_operation_back(make_gate("x", {0}));
-  dag.apply_operation_back(make_gate("h", {1}));
-  dag.apply_operation_back(make_gate("cx", {0, 1}));
-  dag.apply_operation_back(make_gate("ccx", {0, 1, 2}));
+  dag.apply_operation_back(create_gate("x", {0}));
+  dag.apply_operation_back(create_gate("h", {1}));
+  dag.apply_operation_back(create_gate("cx", {0, 1}));
+  dag.apply_operation_back(create_gate("ccx", {0, 1, 2}));
   EXPECT_EQ(dag.two_qubit_ops().size(), 1u);
   EXPECT_EQ(dag.multi_qubit_ops().size(), 1u);
 }
@@ -232,9 +224,9 @@ TEST(DAGCircuitTest, TwoAndMultiQubitOps) {
 TEST(DAGCircuitTest, LongestPath) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  dag.apply_operation_back(make_gate("h", {0}));
-  dag.apply_operation_back(make_gate("cx", {0, 1}));
-  dag.apply_operation_back(make_gate("h", {1}));
+  dag.apply_operation_back(create_gate("h", {0}));
+  dag.apply_operation_back(create_gate("cx", {0, 1}));
+  dag.apply_operation_back(create_gate("h", {1}));
 
   auto path = dag.longest_path();
   ASSERT_EQ(path.size(), 5u);
@@ -248,11 +240,11 @@ TEST(DAGCircuitTest, LongestPath) {
 TEST(DAGCircuitTest, SuccessorsAndPredecessors) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  auto node1 = dag.apply_operation_back(make_gate("h", {0}));
-  auto node2 = dag.apply_operation_back(make_gate("h", {1}));
-  auto node3 = dag.apply_operation_back(make_gate("cx", {0, 1}));
-  auto node4 = dag.apply_operation_back(make_gate("h", {0}));
-  auto node5 = dag.apply_operation_back(make_gate("h", {1}));
+  auto node1 = dag.apply_operation_back(create_gate("h", {0}));
+  auto node2 = dag.apply_operation_back(create_gate("h", {1}));
+  auto node3 = dag.apply_operation_back(create_gate("cx", {0, 1}));
+  auto node4 = dag.apply_operation_back(create_gate("h", {0}));
+  auto node5 = dag.apply_operation_back(create_gate("h", {1}));
 
   auto node1_successors = dag.successors(node1);
   auto node1_predecessors = dag.predecessors(node1);
@@ -274,8 +266,8 @@ TEST(DAGCircuitTest, SuccessorsAndPredecessors) {
 TEST(DAGCircuitTest, RemoveOpNode) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  auto node1 = dag.apply_operation_back(make_gate("h", {0}));
-  auto node2 = dag.apply_operation_back(make_gate("cx", {0, 1}));
+  auto node1 = dag.apply_operation_back(create_gate("h", {0}));
+  auto node2 = dag.apply_operation_back(create_gate("cx", {0, 1}));
   EXPECT_EQ(dag.node_counter(), 6);
   dag.remove_op_node(node1);
   EXPECT_EQ(dag.node_counter(), 5);
@@ -286,9 +278,9 @@ TEST(DAGCircuitTest, RemoveOpNode) {
 TEST(DAGCircuitTest, CountOpsAndNodesOnWire) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  dag.apply_operation_front(make_gate("h", {0}));
-  dag.apply_operation_front(make_gate("h", {1}));
-  dag.apply_operation_back(make_gate("cx", {0, 1}));
+  dag.apply_operation_front(create_gate("h", {0}));
+  dag.apply_operation_front(create_gate("h", {1}));
+  dag.apply_operation_back(create_gate("cx", {0, 1}));
 
   auto counts = dag.count_ops();
   EXPECT_EQ(counts["h"], 2);
@@ -301,15 +293,15 @@ TEST(DAGCircuitTest, CountOpsAndNodesOnWire) {
 
 TEST(DAGCircuitTest, IrToDagCircuitToDagAndBack) {
   std::vector<std::shared_ptr<BaseOperation>> ir = {
-      make_gate("h", {0}), make_gate("cx", {0, 1}), make_gate("h", {1})};
+      create_gate("h", {0}), create_gate("cx", {0, 1}), create_gate("h", {1})};
 
   auto dag = DAGCircuit::ir_to_dag(ir);
   EXPECT_EQ(dag.op_nodes().size(), 3u);
 
   QuantumCircuit circuit(2);
-  circuit.append(make_gate("h", {0}));
-  circuit.append(make_gate("cx", {0, 1}));
-  circuit.append(make_gate("h", {1}));
+  circuit.append(create_gate("h", {0}));
+  circuit.append(create_gate("cx", {0, 1}));
+  circuit.append(create_gate("h", {1}));
   auto dag_from_circuit = DAGCircuit::circuit_to_dag(circuit);
   EXPECT_EQ(dag_from_circuit.op_nodes().size(), 3u);
 
@@ -321,11 +313,11 @@ TEST(DAGCircuitTest, IrToDagCircuitToDagAndBack) {
 TEST(DAGCircuitTest, TwoQubitOpsToDagAndEdges) {
   DAGCircuit dag;
   dag.add_qubits(3);
-  dag.apply_operation_front(make_gate("h", {0}));
-  dag.apply_operation_front(make_gate("h", {1}));
-  dag.apply_operation_front(make_gate("h", {2}));
-  dag.apply_operation_back(make_gate("cx", {0, 1}));
-  dag.apply_operation_back(make_gate("cx", {1, 2}));
+  dag.apply_operation_front(create_gate("h", {0}));
+  dag.apply_operation_front(create_gate("h", {1}));
+  dag.apply_operation_front(create_gate("h", {2}));
+  dag.apply_operation_back(create_gate("cx", {0, 1}));
+  dag.apply_operation_back(create_gate("cx", {1, 2}));
 
   auto new_dag = dag.two_qubit_ops_to_dag();
   EXPECT_EQ(new_dag.get_input_map().size(), 3u);
@@ -345,8 +337,8 @@ TEST(DAGCircuitTest, TwoQubitOpsToDagAndEdges) {
 TEST(DAGCircuitTest, ParameterizeAndDeparameterizeRz) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  dag.apply_operation_back(make_gate("s", {0}));
-  dag.apply_operation_back(make_gate("tdg", {1}));
+  dag.apply_operation_back(create_gate("s", {0}));
+  dag.apply_operation_back(create_gate("tdg", {1}));
   dag.parameterize_all_rz();
 
   auto ops = dag.topological_op_nodes();
@@ -363,7 +355,7 @@ TEST(DAGCircuitTest, ParameterizeAndDeparameterizeRz) {
 TEST(DAGCircuitTest, DeparameterizeIdentityRemovesNode) {
   DAGCircuit dag;
   dag.add_qubits(1);
-  dag.apply_operation_back(make_gate("rz", {0}, {0.0}));
+  dag.apply_operation_back(create_gate("rz", {0}, {0.0}));
   EXPECT_EQ(dag.size(), 1);
   dag.deparameterize_all_rz();
   EXPECT_EQ(dag.size(), 0);
@@ -372,9 +364,9 @@ TEST(DAGCircuitTest, DeparameterizeIdentityRemovesNode) {
 TEST(DAGCircuitTest, CollectRunsAndAncestry) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  auto h0 = dag.apply_operation_back(make_gate("h", {0}));
-  auto h1 = dag.apply_operation_back(make_gate("h", {0}));
-  auto cx = dag.apply_operation_back(make_gate("cx", {0, 1}));
+  auto h0 = dag.apply_operation_back(create_gate("h", {0}));
+  auto h1 = dag.apply_operation_back(create_gate("h", {0}));
+  auto cx = dag.apply_operation_back(create_gate("cx", {0, 1}));
 
   auto runs = dag.collect_runs({"h"});
   EXPECT_EQ(runs.size(), 1u);
@@ -389,8 +381,8 @@ TEST(DAGCircuitTest, CollectRunsAndAncestry) {
 TEST(DAGCircuitTest, CollectRunsTwoAdjacentCx) {
   DAGCircuit dag;
   dag.add_qubits(3);
-  dag.apply_operation_back(make_gate("cx", {0, 1}));
-  dag.apply_operation_back(make_gate("cx", {1, 2}));
+  dag.apply_operation_back(create_gate("cx", {0, 1}));
+  dag.apply_operation_back(create_gate("cx", {1, 2}));
 
   EXPECT_EQ(normalize_run_signatures(dag.collect_runs({"cx"})),
             (std::vector<std::vector<std::string>>{{"cx[0,1]"}, {"cx[1,2]"}}));
@@ -399,10 +391,10 @@ TEST(DAGCircuitTest, CollectRunsTwoAdjacentCx) {
 TEST(DAGCircuitTest, CollectRunsWideThreeWireBlock) {
   DAGCircuit dag;
   dag.add_qubits(3);
-  dag.apply_operation_back(make_gate("h", {0}));
-  dag.apply_operation_back(make_gate("cx", {0, 1}));
-  dag.apply_operation_back(make_gate("cx", {1, 2}));
-  dag.apply_operation_back(make_gate("h", {2}));
+  dag.apply_operation_back(create_gate("h", {0}));
+  dag.apply_operation_back(create_gate("cx", {0, 1}));
+  dag.apply_operation_back(create_gate("cx", {1, 2}));
+  dag.apply_operation_back(create_gate("h", {2}));
 
   EXPECT_EQ(normalize_run_signatures(dag.collect_runs({"h", "cx"})),
             (std::vector<std::vector<std::string>>{
@@ -412,11 +404,11 @@ TEST(DAGCircuitTest, CollectRunsWideThreeWireBlock) {
 TEST(DAGCircuitTest, CollectRunsWideThreeWireBranch) {
   DAGCircuit dag;
   dag.add_qubits(3);
-  dag.apply_operation_back(make_gate("h", {0}));
-  dag.apply_operation_back(make_gate("cx", {0, 1}));
-  dag.apply_operation_back(make_gate("cx", {1, 2}));
-  dag.apply_operation_back(make_gate("h", {1}));
-  dag.apply_operation_back(make_gate("h", {2}));
+  dag.apply_operation_back(create_gate("h", {0}));
+  dag.apply_operation_back(create_gate("cx", {0, 1}));
+  dag.apply_operation_back(create_gate("cx", {1, 2}));
+  dag.apply_operation_back(create_gate("h", {1}));
+  dag.apply_operation_back(create_gate("h", {2}));
 
   EXPECT_EQ(normalize_run_signatures(dag.collect_runs({"h", "cx"})),
             (std::vector<std::vector<std::string>>{
@@ -426,11 +418,11 @@ TEST(DAGCircuitTest, CollectRunsWideThreeWireBranch) {
 TEST(DAGCircuitTest, CollectRunsWideFourWireBlock) {
   DAGCircuit dag;
   dag.add_qubits(4);
-  dag.apply_operation_back(make_gate("h", {0}));
-  dag.apply_operation_back(make_gate("cx", {0, 1}));
-  dag.apply_operation_back(make_gate("cx", {1, 2}));
-  dag.apply_operation_back(make_gate("cx", {2, 3}));
-  dag.apply_operation_back(make_gate("h", {3}));
+  dag.apply_operation_back(create_gate("h", {0}));
+  dag.apply_operation_back(create_gate("cx", {0, 1}));
+  dag.apply_operation_back(create_gate("cx", {1, 2}));
+  dag.apply_operation_back(create_gate("cx", {2, 3}));
+  dag.apply_operation_back(create_gate("h", {3}));
 
   EXPECT_EQ(normalize_run_signatures(dag.collect_runs({"h", "cx"})),
             (std::vector<std::vector<std::string>>{
@@ -440,9 +432,9 @@ TEST(DAGCircuitTest, CollectRunsWideFourWireBlock) {
 TEST(DAGCircuitTest, CollectRunsOnlyExtendsForward) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  dag.apply_operation_back(make_gate("h", {0}));
-  dag.apply_operation_back(make_gate("h", {1}));
-  dag.apply_operation_back(make_gate("cx", {0, 1}));
+  dag.apply_operation_back(create_gate("h", {0}));
+  dag.apply_operation_back(create_gate("h", {1}));
+  dag.apply_operation_back(create_gate("cx", {0, 1}));
 
   EXPECT_EQ(
       normalize_run_signatures(dag.collect_runs({"h", "cx"})),
@@ -491,8 +483,8 @@ TEST(DAGCircuitTest, ApplyOperationBackUsesTargetsAndUpdatesCounts) {
   DAGCircuit dag;
   dag.add_qubits(2);
 
-  auto x = dag.apply_operation_back(make_gate("x", {0}));
-  auto cx = dag.apply_operation_back(make_gate("cx", {0, 1}));
+  auto x = dag.apply_operation_back(create_gate("x", {0}));
+  auto cx = dag.apply_operation_back(create_gate("cx", {0, 1}));
 
   ASSERT_NE(x, nullptr);
   ASSERT_NE(cx, nullptr);
@@ -508,8 +500,8 @@ TEST(DAGCircuitTest, ApplyOperationFrontPrependsOperations) {
   DAGCircuit dag;
   dag.add_qubits(1);
 
-  auto x = dag.apply_operation_back(make_gate("x", {0}));
-  auto h = dag.apply_operation_front(make_gate("h", {0}));
+  auto x = dag.apply_operation_back(create_gate("x", {0}));
+  auto h = dag.apply_operation_front(create_gate("h", {0}));
 
   ASSERT_NE(x, nullptr);
   ASSERT_NE(h, nullptr);
@@ -522,8 +514,8 @@ TEST(DAGCircuitTest, ApplyOperationFrontPrependsOperations) {
 TEST(DAGCircuitTest, NodesOnWireReturnsAllNodesAndOnlyOps) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  dag.apply_operation_front(make_gate("h", {0}));
-  dag.apply_operation_back(make_gate("cx", {0, 1}));
+  dag.apply_operation_front(create_gate("h", {0}));
+  dag.apply_operation_back(create_gate("cx", {0, 1}));
 
   EXPECT_EQ(node_labels(dag.nodes_on_wire(0, false)),
             (std::vector<std::string>{"in", "h", "cx", "out"}));
@@ -543,8 +535,8 @@ TEST(DAGCircuitTest, NodesOnWireRejectsUnknownWire) {
 TEST(DAGCircuitTest, TopologicalOpNodesRespectCustomKey) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  dag.apply_operation_back(make_gate("x", {0}));
-  dag.apply_operation_back(make_gate("h", {1}));
+  dag.apply_operation_back(create_gate("x", {0}));
+  dag.apply_operation_back(create_gate("h", {1}));
 
   auto custom = dag.topological_op_nodes([](const DAGNode* current) {
     if (auto* op = dynamic_cast<const DAGOpNode*>(current)) {
@@ -561,8 +553,8 @@ TEST(DAGCircuitTest, TopologicalOpNodesRespectCustomKey) {
 TEST(DAGCircuitTest, NodeNodesAndOpNodesReflectActiveGraphState) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  auto h = dag.apply_operation_back(make_gate("h", {0}));
-  auto cx = dag.apply_operation_back(make_gate("cx", {0, 1}));
+  auto h = dag.apply_operation_back(create_gate("h", {0}));
+  auto cx = dag.apply_operation_back(create_gate("cx", {0, 1}));
 
   EXPECT_EQ(dag.node(h->node_id()), h);
   EXPECT_EQ(dag.nodes().size(), 6u);
@@ -610,9 +602,9 @@ TEST(DAGCircuitTest, AncestorsAndDescendantsTraverseTransitively) {
 TEST(DAGCircuitTest, RemoveOpNodeRetainsConnectivityAndClearsNodeSlot) {
   DAGCircuit dag;
   dag.add_qubits(1);
-  auto h = dag.apply_operation_back(make_gate("h", {0}));
-  auto x = dag.apply_operation_back(make_gate("x", {0}));
-  auto z = dag.apply_operation_back(make_gate("z", {0}));
+  auto h = dag.apply_operation_back(create_gate("h", {0}));
+  auto x = dag.apply_operation_back(create_gate("x", {0}));
+  auto z = dag.apply_operation_back(create_gate("z", {0}));
 
   dag.remove_op_node(x);
 
@@ -632,15 +624,15 @@ TEST(DAGCircuitTest, RemoveOpNodeRejectsNullptr) {
 TEST(DAGCircuitTest, RenameOpAcceptsPhaseConversionsAndUpdatesCounts) {
   DAGCircuit dag;
   dag.add_qubits(1);
-  auto node = dag.apply_operation_back(make_gate("rz", {0}, {kPi / 2.0}));
-  auto s = make_gate("s", {0});
+  auto node = dag.apply_operation_back(create_gate("rz", {0}, {kPi / 2.0}));
+  auto s = create_gate("s", {0});
 
   dag.rename_op(node->op, s);
   node->op = s;
   EXPECT_EQ(dag.count_ops().count("rz"), 0u);
   EXPECT_EQ(dag.count_ops().at("s"), 1);
 
-  auto rz = make_gate("rz", {0}, {kPi / 2.0});
+  auto rz = create_gate("rz", {0}, {kPi / 2.0});
   dag.rename_op(node->op, rz);
   node->op = rz;
   EXPECT_EQ(dag.count_ops().count("s"), 0u);
@@ -650,23 +642,23 @@ TEST(DAGCircuitTest, RenameOpAcceptsPhaseConversionsAndUpdatesCounts) {
 TEST(DAGCircuitTest, RenameOpRejectsInvalidConversionOrMissingOp) {
   DAGCircuit dag;
   dag.add_qubits(1);
-  auto node = dag.apply_operation_back(make_gate("x", {0}));
+  auto node = dag.apply_operation_back(create_gate("x", {0}));
 
-  EXPECT_THROW(dag.rename_op(node->op, make_gate("h", {0})),
+  EXPECT_THROW(dag.rename_op(node->op, create_gate("h", {0})),
                std::invalid_argument);
-  EXPECT_THROW(
-      dag.rename_op(make_gate("rz", {0}, {kPi / 4.0}), make_gate("t", {0})),
-      std::invalid_argument);
+  EXPECT_THROW(dag.rename_op(create_gate("rz", {0}, {kPi / 4.0}),
+                             create_gate("t", {0})),
+               std::invalid_argument);
 }
 
 TEST(DAGCircuitTest, ParameterizeAllRzConvertsEveryPhaseGateOnFiveQubits) {
   DAGCircuit dag;
   dag.add_qubits(5);
-  dag.apply_operation_back(make_gate("s", {0}));
-  dag.apply_operation_back(make_gate("t", {1}));
-  dag.apply_operation_back(make_gate("sdg", {2}));
-  dag.apply_operation_back(make_gate("tdg", {3}));
-  dag.apply_operation_back(make_gate("z", {4}));
+  dag.apply_operation_back(create_gate("s", {0}));
+  dag.apply_operation_back(create_gate("t", {1}));
+  dag.apply_operation_back(create_gate("sdg", {2}));
+  dag.apply_operation_back(create_gate("tdg", {3}));
+  dag.apply_operation_back(create_gate("z", {4}));
 
   dag.parameterize_all_rz();
 
@@ -684,8 +676,8 @@ TEST(DAGCircuitTest, ParameterizeAllRzConvertsEveryPhaseGateOnFiveQubits) {
 TEST(DAGCircuitTest, ParameterizeAllRzSkipsNonPhaseGates) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  dag.apply_operation_back(make_gate("x", {0}));
-  dag.apply_operation_back(make_gate("h", {1}));
+  dag.apply_operation_back(create_gate("x", {0}));
+  dag.apply_operation_back(create_gate("h", {1}));
 
   dag.parameterize_all_rz();
 
@@ -698,11 +690,11 @@ TEST(DAGCircuitTest, ParameterizeAllRzSkipsNonPhaseGates) {
 TEST(DAGCircuitTest, DeparameterizeAllRzConvertsIdentityAndQuarterTurns) {
   DAGCircuit dag;
   dag.add_qubits(5);
-  dag.apply_operation_back(make_gate("rz", {0}, {0.0}));
-  dag.apply_operation_back(make_gate("rz", {1}, {kPi / 4.0}));
-  dag.apply_operation_back(make_gate("rz", {2}, {kPi / 2.0}));
-  dag.apply_operation_back(make_gate("rz", {3}, {kPi}));
-  dag.apply_operation_back(make_gate("rz", {4}, {-kPi / 4.0}));
+  dag.apply_operation_back(create_gate("rz", {0}, {0.0}));
+  dag.apply_operation_back(create_gate("rz", {1}, {kPi / 4.0}));
+  dag.apply_operation_back(create_gate("rz", {2}, {kPi / 2.0}));
+  dag.apply_operation_back(create_gate("rz", {3}, {kPi}));
+  dag.apply_operation_back(create_gate("rz", {4}, {-kPi / 4.0}));
 
   dag.deparameterize_all_rz();
 
@@ -716,14 +708,14 @@ TEST(DAGCircuitTest, DeparameterizeAllRzConvertsIdentityAndQuarterTurns) {
 TEST(DAGCircuitTest, DeparameterizeAllRzHonorsTolerance) {
   DAGCircuit loose;
   loose.add_qubits(1);
-  loose.apply_operation_back(make_gate("rz", {0}, {kPi / 4.0 + 5e-9}));
+  loose.apply_operation_back(create_gate("rz", {0}, {kPi / 4.0 + 5e-9}));
   loose.deparameterize_all_rz(1e-8);
   EXPECT_EQ(op_names(loose.topological_op_nodes()),
             (std::vector<std::string>{"t"}));
 
   DAGCircuit strict;
   strict.add_qubits(1);
-  strict.apply_operation_back(make_gate("rz", {0}, {kPi / 4.0 + 5e-9}));
+  strict.apply_operation_back(create_gate("rz", {0}, {kPi / 4.0 + 5e-9}));
   strict.deparameterize_all_rz(1e-10);
   EXPECT_EQ(op_names(strict.topological_op_nodes()),
             (std::vector<std::string>{"rz"}));
@@ -732,8 +724,8 @@ TEST(DAGCircuitTest, DeparameterizeAllRzHonorsTolerance) {
 TEST(DAGCircuitTest, CountOpsTracksRenamesAndRemovals) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  auto s = dag.apply_operation_back(make_gate("s", {0}));
-  auto cx = dag.apply_operation_back(make_gate("cx", {0, 1}));
+  auto s = dag.apply_operation_back(create_gate("s", {0}));
+  auto cx = dag.apply_operation_back(create_gate("cx", {0, 1}));
 
   dag.parameterize_all_rz();
   dag.remove_op_node(cx);
@@ -755,8 +747,8 @@ TEST(DAGCircuitTest, IrToDagHandlesEmptyInput) {
 
 TEST(DAGCircuitTest, CircuitToDagPreservesExplicitCircuitWidth) {
   QuantumCircuit circuit(5);
-  circuit.append(make_gate("h", {0}));
-  circuit.append(make_gate("cx", {0, 1}));
+  circuit.append(create_gate("h", {0}));
+  circuit.append(create_gate("cx", {0, 1}));
 
   auto dag = DAGCircuit::circuit_to_dag(circuit);
 
@@ -769,8 +761,8 @@ TEST(DAGCircuitTest, CircuitToDagPreservesExplicitCircuitWidth) {
 TEST(DAGCircuitTest, DagToCircuitPreservesIdleQubitsByDefault) {
   DAGCircuit dag;
   dag.add_qubits(5);
-  dag.apply_operation_back(make_gate("h", {0}));
-  dag.apply_operation_back(make_gate("cx", {0, 1}));
+  dag.apply_operation_back(create_gate("h", {0}));
+  dag.apply_operation_back(create_gate("cx", {0, 1}));
 
   auto circuit = dag.dag_to_circuit();
 
@@ -781,7 +773,7 @@ TEST(DAGCircuitTest, DagToCircuitPreservesIdleQubitsByDefault) {
 TEST(DAGCircuitTest, DagToCircuitHonorsExplicitWidth) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  dag.apply_operation_back(make_gate("h", {0}));
+  dag.apply_operation_back(create_gate("h", {0}));
 
   auto circuit = dag.dag_to_circuit(7);
 
@@ -792,26 +784,26 @@ TEST(DAGCircuitTest, DagToCircuitHonorsExplicitWidth) {
 TEST(DAGCircuitTest, TwoQubitOpsToDagFiltersAndCopies) {
   DAGCircuit dag;
   dag.add_qubits(5);
-  dag.apply_operation_back(make_gate("h", {0}));
-  dag.apply_operation_back(make_gate("cx", {0, 1}));
-  dag.apply_operation_back(make_gate("ccx", {1, 2, 3}));
-  dag.apply_operation_back(make_gate("cx", {3, 4}));
+  dag.apply_operation_back(create_gate("h", {0}));
+  dag.apply_operation_back(create_gate("cx", {0, 1}));
+  dag.apply_operation_back(create_gate("ccx", {1, 2, 3}));
+  dag.apply_operation_back(create_gate("cx", {3, 4}));
 
   auto filtered = dag.two_qubit_ops_to_dag();
 
   EXPECT_EQ(filtered.width(), 5);
   EXPECT_EQ(op_names(filtered.topological_op_nodes()),
             (std::vector<std::string>{"cx", "cx"}));
-  dag.apply_operation_back(make_gate("cx", {1, 2}));
+  dag.apply_operation_back(create_gate("cx", {1, 2}));
   EXPECT_EQ(filtered.size(), 2);
 }
 
 TEST(DAGCircuitTest, EdgesReturnAllEdgesAndSubsetEdges) {
   DAGCircuit dag;
   dag.add_qubits(2);
-  dag.apply_operation_back(make_gate("h", {0}));
-  dag.apply_operation_back(make_gate("h", {1}));
-  auto cx = dag.apply_operation_back(make_gate("cx", {0, 1}));
+  dag.apply_operation_back(create_gate("h", {0}));
+  dag.apply_operation_back(create_gate("h", {1}));
+  auto cx = dag.apply_operation_back(create_gate("cx", {0, 1}));
 
   EXPECT_EQ(normalize_edge_signatures(dag.edges()),
             (std::vector<std::tuple<std::string, std::string, int>>{
