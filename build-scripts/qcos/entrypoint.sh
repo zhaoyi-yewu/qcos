@@ -190,6 +190,11 @@ if [ "${local_cicd,,}" = true ]; then
   qcos_config_file_args="--config-file ${qcos_config_file_path} --config-file ${qcos_st_config_file_path} --config-dir ${qcos_st_config_dir}"
 fi
 
+# Apply sysctl kernel tuning for qcos-api
+sysctl -w net.ipv4.tcp_tw_reuse=1
+sysctl -w net.ipv4.tcp_timestamps=1
+sysctl -w net.ipv4.tcp_fin_timeout=30
+
 # run qcos-api with max attempts
 MAX_ATTEMPTS=3
 SLEEP_INTERVAL=10
