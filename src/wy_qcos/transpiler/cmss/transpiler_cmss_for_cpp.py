@@ -39,9 +39,6 @@ from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
 )
 
 from wy_qcos.transpiler.cmss.mapping.utils import dg_swap_opt
-from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import (
-    optimize,
-)
 from wy_qcos.transpiler.common.errors import TranspilerException
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.transpiler_base import TranspilerBase
@@ -53,10 +50,7 @@ from wy_qcos.transpiler.high_performance import (
     Decomposer,
     BaseOperation as CppBaseOperation,
     sabre_routing as cpp_sabre_routing,
-)
-from wy_qcos.transpiler.cmss.circuit.cpp_utils import (
-    convert_ir_cpp2py,
-    convert_ir_py2cpp,
+    optimize,
 )
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     DEFAULT_SC_MAPPING_OPTIONS,
@@ -332,11 +326,7 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
         opt_result_dict = {}
         with Timer() as optimize1_timer:
             for job_id, cir_info in parse_result.items():
-                circuit_to_optimize = convert_ir_cpp2py(cir_info[1])
-                opt_result = optimize(
-                    circuit_to_optimize, opt_level=min(1, opt_level)
-                )
-                opt_result = convert_ir_py2cpp(opt_result)
+                opt_result = optimize(cir_info[1], opt_level=min(1, opt_level))
                 opt_result_dict[job_id] = (cir_info[0], opt_result)
         run_time.opt_time1 = optimize1_timer.elapsed
         trans_logger.log_perf(
@@ -447,9 +437,8 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             basis_gates_dict = {}
             with Timer() as optimize2_timer:
                 for job_id, ir in decomposer_dict.items():
-                    circuit_to_optimize = convert_ir_cpp2py(ir)
                     basis_gates_dict[job_id] = optimize(
-                        circuit_to_optimize,
+                        ir,
                         opt_level,
                         basis_gates=set(supp_basis_gates),
                     )
