@@ -174,6 +174,50 @@ class StLibrary:
         return False, err_msg, None
 
     @staticmethod
+    def get_jobs(client, filters=None):
+        """Get jobs with optional filtering.
+
+        Args:
+            client: API client
+            filters: optional filter dict
+
+        Returns:
+            Dict mapping job_id to job info
+        """
+        status_code, reason, text, result = client.get_jobs(filters=filters)
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Get jobs failed: {status_code} {reason} {text}"
+        )
+        response = json.loads(text) if text else {}
+        error = response.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == 0, f"Get jobs error: {error_code}"
+        job_list = response.get("result", [])
+        jobs = {}
+        for job_info in job_list:
+            job_id = job_info.get("job_id")
+            if job_id:
+                jobs[job_id] = job_info
+        return jobs
+
+    @staticmethod
+    def cleanup_test_jobs(client, test_job_names):
+        """Clean up test jobs by job_name.
+
+        Args:
+            client: API client
+            test_job_names: list of job names to clean up
+        """
+        try:
+            jobs = StLibrary.get_jobs(client)
+            for job_id, job_info in jobs.items():
+                job_name = job_info.get("job_name", "")
+                if job_name in test_job_names:
+                    StLibrary.delete_job(client, job_id)
+        except Exception:  # noqa: S110
+            pass
+
+    @staticmethod
     def delete_job(client, job_id):
         status_code, reason, text, response = client.delete_jobs([job_id])
         assert status_code == HttpCode.SUCCESS_OK
