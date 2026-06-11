@@ -1,0 +1,151 @@
+[quafu]
+alias_name = "夸父 超导驱动"
+driver = "DriverQuafu"
+description = "夸父 超导驱动"
+
+# [Optional] debug
+# debug = false
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_quafu.log
+device_log_file = "/var/log/qcos/device_quafu.log"
+
+# [Optional] device monitor log file path
+# monitor_log_file = /var/log/qcos/device_monitor_quafu.log
+monitor_log_file = "/var/log/qcos/device_monitor_quafu.log"
+
+# [Optional] device manager log file path
+# mgr_log_file = /var/log/qcos/device_quafu.log
+# [Optional] log format string
+# log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
+
+# [Optional] log rotate, max_size (MB). default: 10MB
+# log_rotate_max_size_mb = 10
+
+# [Optional] log rotate, backup count. default: 10
+# log_rotate_backup_count = 10
+
+# [Optional] log rotate, compression. default: true
+# log_rotate_compression = true
+
+# [Optional] max queued jobs, -1 means unlimited
+max_queued_jobs = -1
+
+token = ""
+[quafu.transpiler.qpu_configs]
+qubits = 84
+
+coupler_map.CZ0_7 = ["Q0", "Q7"]
+coupler_map.CZ1_7 = ["Q1", "Q7"]
+coupler_map.CZ1_8 = ["Q1", "Q8"]
+coupler_map.CZ2_8 = ["Q2", "Q8"]
+coupler_map.CZ2_9 = ["Q2", "Q9"]
+coupler_map.CZ3_9 = ["Q3", "Q9"]
+coupler_map.CZ3_10 = ["Q3", "Q10"]
+coupler_map.CZ4_10 = ["Q4", "Q10"]
+coupler_map.CZ4_11 = ["Q4", "Q11"]
+coupler_map.CZ5_11 = ["Q5", "Q11"]
+coupler_map.CZ5_12 = ["Q5", "Q12"]
+coupler_map.CZ6_12 = ["Q6", "Q12"]
+coupler_map.CZ6_13 = ["Q6", "Q13"]
+coupler_map.CZ7_14 = ["Q7", "Q14"]
+coupler_map.CZ8_15 = ["Q8", "Q15"]
+coupler_map.CZ9_16 = ["Q9", "Q16"]
+coupler_map.CZ10_17 = ["Q10", "Q17"]
+coupler_map.CZ11_18 = ["Q11", "Q18"]
+coupler_map.CZ12_19 = ["Q12", "Q19"]
+coupler_map.CZ13_20 = ["Q13", "Q20"]
+coupler_map.CZ14_21 = ["Q14", "Q21"]
+coupler_map.CZ15_21 = ["Q15", "Q21"]
+coupler_map.CZ15_22 = ["Q15", "Q22"]
+coupler_map.CZ16_22 = ["Q16", "Q22"]
+coupler_map.CZ16_23 = ["Q16", "Q23"]
+coupler_map.CZ17_23 = ["Q17", "Q23"]
+coupler_map.CZ17_24 = ["Q17", "Q24"]
+coupler_map.CZ18_24 = ["Q18", "Q24"]
+coupler_map.CZ18_25 = ["Q18", "Q25"]
+coupler_map.CZ19_25 = ["Q19", "Q25"]
+coupler_map.CZ19_26 = ["Q19", "Q26"]
+coupler_map.CZ20_26 = ["Q20", "Q26"]
+coupler_map.CZ20_27 = ["Q20", "Q27"]
+coupler_map.CZ21_28 = ["Q21", "Q28"]
+coupler_map.CZ22_29 = ["Q22", "Q29"]
+coupler_map.CZ23_30 = ["Q23", "Q30"]
+coupler_map.CZ24_31 = ["Q24", "Q31"]
+coupler_map.CZ25_32 = ["Q25", "Q32"]
+coupler_map.CZ26_33 = ["Q26", "Q33"]
+coupler_map.CZ27_34 = ["Q27", "Q34"]
+coupler_map.CZ28_35 = ["Q28", "Q35"]
+coupler_map.CZ29_35 = ["Q29", "Q35"]
+coupler_map.CZ29_36 = ["Q29", "Q36"]
+coupler_map.CZ30_36 = ["Q30", "Q36"]
+coupler_map.CZ30_37 = ["Q30", "Q37"]
+coupler_map.CZ31_37 = ["Q31", "Q37"]
+coupler_map.CZ31_38 = ["Q31", "Q38"]
+coupler_map.CZ32_38 = ["Q32", "Q38"]
+coupler_map.CZ32_39 = ["Q32", "Q39"]
+coupler_map.CZ33_39 = ["Q33", "Q39"]
+coupler_map.CZ33_40 = ["Q33", "Q40"]
+coupler_map.CZ34_40 = ["Q34", "Q40"]
+coupler_map.CZ34_41 = ["Q34", "Q41"]
+coupler_map.CZ35_42 = ["Q35", "Q42"]
+coupler_map.CZ36_43 = ["Q36", "Q43"]
+coupler_map.CZ37_44 = ["Q37", "Q44"]
+coupler_map.CZ38_45 = ["Q38", "Q45"]
+coupler_map.CZ39_46 = ["Q39", "Q46"]
+coupler_map.CZ40_47 = ["Q40", "Q47"]
+coupler_map.CZ41_48 = ["Q41", "Q48"]
+coupler_map.CZ42_49 = ["Q42", "Q49"]
+coupler_map.CZ43_49 = ["Q43", "Q49"]
+coupler_map.CZ43_50 = ["Q43", "Q50"]
+coupler_map.CZ44_50 = ["Q44", "Q50"]
+coupler_map.CZ44_51 = ["Q44", "Q51"]
+coupler_map.CZ45_51 = ["Q45", "Q51"]
+coupler_map.CZ45_52 = ["Q45", "Q52"]
+coupler_map.CZ46_52 = ["Q46", "Q52"]
+coupler_map.CZ46_53 = ["Q46", "Q53"]
+coupler_map.CZ47_53 = ["Q47", "Q53"]
+coupler_map.CZ47_54 = ["Q47", "Q54"]
+coupler_map.CZ48_54 = ["Q48", "Q54"]
+coupler_map.CZ48_55 = ["Q48", "Q55"]
+coupler_map.CZ49_56 = ["Q49", "Q56"]
+coupler_map.CZ50_57 = ["Q50", "Q57"]
+coupler_map.CZ51_58 = ["Q51", "Q58"]
+coupler_map.CZ52_59 = ["Q52", "Q59"]
+coupler_map.CZ53_60 = ["Q53", "Q60"]
+coupler_map.CZ54_61 = ["Q54", "Q61"]
+coupler_map.CZ55_62 = ["Q55", "Q62"]
+coupler_map.CZ56_63 = ["Q56", "Q63"]
+coupler_map.CZ57_63 = ["Q57", "Q63"]
+coupler_map.CZ57_64 = ["Q57", "Q64"]
+coupler_map.CZ58_64 = ["Q58", "Q64"]
+coupler_map.CZ58_65 = ["Q58", "Q65"]
+coupler_map.CZ59_65 = ["Q59", "Q65"]
+coupler_map.CZ59_66 = ["Q59", "Q66"]
+coupler_map.CZ60_66 = ["Q60", "Q66"]
+coupler_map.CZ60_67 = ["Q60", "Q67"]
+coupler_map.CZ61_67 = ["Q61", "Q67"]
+coupler_map.CZ61_68 = ["Q61", "Q68"]
+coupler_map.CZ62_68 = ["Q62", "Q68"]
+coupler_map.CZ62_69 = ["Q62", "Q69"]
+coupler_map.CZ63_70 = ["Q63", "Q70"]
+coupler_map.CZ64_71 = ["Q64", "Q71"]
+coupler_map.CZ65_72 = ["Q65", "Q72"]
+coupler_map.CZ66_73 = ["Q66", "Q73"]
+coupler_map.CZ67_74 = ["Q67", "Q74"]
+coupler_map.CZ68_75 = ["Q68", "Q75"]
+coupler_map.CZ69_76 = ["Q69", "Q76"]
+coupler_map.CZ70_77 = ["Q70", "Q77"]
+coupler_map.CZ71_77 = ["Q71", "Q77"]
+coupler_map.CZ71_78 = ["Q71", "Q78"]
+coupler_map.CZ72_78 = ["Q72", "Q78"]
+coupler_map.CZ72_79 = ["Q72", "Q79"]
+coupler_map.CZ73_79 = ["Q73", "Q79"]
+coupler_map.CZ73_80 = ["Q73", "Q80"]
+coupler_map.CZ74_80 = ["Q74", "Q80"]
+coupler_map.CZ74_81 = ["Q74", "Q81"]
+coupler_map.CZ75_81 = ["Q75", "Q81"]
+coupler_map.CZ75_82 = ["Q75", "Q82"]
+coupler_map.CZ76_82 = ["Q76", "Q82"]
+coupler_map.CZ76_83 = ["Q76", "Q83"]

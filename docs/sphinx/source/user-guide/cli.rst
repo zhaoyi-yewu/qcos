@@ -194,6 +194,13 @@
    # 幺正量子 真实运行
    qcos-cli submit-job --code-type qasm3 --shots 100 --backend uqc_matrix2 --transpiler-options '{"enable_mapping": false}' -f ./samples/qasm/3.0/simple-qasm-1-bit.qasm
 
+- 夸父 超导量子计算机
+
+.. code-block:: shell
+
+   # 夸父 超导量子计算机 真实运行
+   qcos-cli submit-job --code-type qasm --shots 1024 --backend quafu -f ./samples/qasm/2.0/simple-qasm.qasm
+
 更新作业
 ***************
 
