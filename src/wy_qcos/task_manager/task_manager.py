@@ -16,16 +16,17 @@
 # ----------------------------------------------------------------------
 
 import asyncio
+import json
 import logging
 import multiprocessing
 import os
-
 import setproctitle
 import threading
 from time import sleep
 from pathlib import Path
 from typing import Any
 
+import redis
 from prefect import get_client, settings as prefect_settings
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.objects import WorkerStatus, StateType
@@ -63,8 +64,11 @@ class TaskFlowManager:
         self.driver_manager = None
         self.device_manager = None
         self.deployments = {}
-        self.parent_aggregation_jobs = []
-        self.aggregation_jobs = {}
+        self.redis_instance = redis.Redis(
+            host=Config.REDIS.REDIS_SERVER_IP,
+            port=Config.REDIS.REDIS_SERVER_PORT,
+            decode_responses=True,
+        )
 
     @staticmethod
     def convert_to_qcos_state(state):
@@ -734,8 +738,14 @@ class TaskFlowManager:
         """
         job_id = str(args["job_info"]["data"].get("job_id", "Unknown"))
         prefect_tags = None
-        if args["job_info"]["data"]["circuit_aggregation"]:
-            prefect_tags = [args["job_info"]["data"]["circuit_aggregation"]]
+        circuit_aggregation = args["job_info"]["data"].get(
+            "circuit_aggregation", Constant.AGGREGATION_TYPE_NONE
+        )
+        if circuit_aggregation:
+            if circuit_aggregation == Constant.AGGREGATION_TYPE_INTERNAL:
+                prefect_tags = [Constant.AGGREGATION_TYPE_INTERNAL]
+            elif circuit_aggregation == Constant.AGGREGATION_TYPE_EXTERNAL:
+                prefect_tags = [Constant.AGGREGATION_TYPE_EXTERNAL]
         if tags is not None:
             if prefect_tags is not None:
                 prefect_tags.extend(tags)
@@ -1090,85 +1100,85 @@ class TaskFlowManager:
     async def process_aggregation_job(self):
         """Process aggregation job."""
 
-        def _update_aggregation_job(parent_id):
-            try:
-                # update sub jobs results into memory by parent job id
-                state, parameters, results, error_message = (
-                    self.get_flow_result(parent_id)
-                )
-                if (
-                    state.upper() == Constant.PREFECT_STATE_COMPLETED
-                    and results is not None
-                ):
-                    if results[0]["sub_results"] is not None:
-                        for job_id, sub_results in results[0][
-                            "sub_results"
-                        ].items():
-                            self.aggregation_jobs[job_id] = [sub_results]
-            except Exception as e:
-                logger.error(f"Prefect get aggregation job error: {str(e)}")
+        def _cancel_aggregation_job(flow_run_ids):
+            """Cancel aggregation job."""
+            cancelling_state = State(type=StateType.CANCELLING)
+            for flow_run_id in flow_run_ids:
+                try:
+                    self._sync_client.set_flow_run_state(
+                        flow_run_id, state=cancelling_state, force=True
+                    )
+                except Exception as e:
+                    logger.error(f"Prefect cancel flow run error: {str(e)}")
 
         def _process_aggregation_job(flow_run):
-            # 1.check current job is parent job or sub job
-            aggregation_parm = {}
-            if self.aggregation_jobs.get(flow_run.name):
-                # 2.get sub job results stored in memory
-                aggregation_parm["is_parent"] = False
-                aggregation_parm["sub_results"] = self.aggregation_jobs.get(
-                    flow_run.name
+            """Process aggregation job."""
+            aggregation_params = {}
+            # 1. get sub jobs which can aggregated with parent job
+            sub_jobs = {}
+            states = [StateType.SCHEDULED]
+            tags = [Constant.AGGREGATION_TYPE_EXTERNAL]
+            flow_runs = self.get_flow_runs_with_filters(states, tags)
+            for sub_flow_run in flow_runs:
+                if (
+                    sub_flow_run.parameters["job_info"]["data"][
+                        "circuit_aggregation"
+                    ]
+                    == Constant.AGGREGATION_TYPE_EXTERNAL
+                    and flow_run.parameters["job_info"]["data"]["backend"]
+                    == sub_flow_run.parameters["job_info"]["data"]["backend"]
+                    and sub_flow_run.work_pool_name == flow_run.work_pool_name
+                    and len(sub_jobs) < Constant.MAX_AGGREGATION_JOBS
+                ):
+                    sub_jobs[sub_flow_run.name] = sub_flow_run.parameters
+                    sub_jobs[sub_flow_run.name]["job_info"]["data"][
+                        "flow_run_id"
+                    ] = str(sub_flow_run.id)
+            aggregation_params["is_parent"] = True
+            aggregation_params["sub_jobs"] = sub_jobs
+
+            # 2. make sure flow is in PAUSED state, not in RUNNING state
+            is_flow_run_paused = False
+            for i in range(Constant.JOB_AGG_FLOW_PAUSE_WAIT_TIMEOUT):
+                flow_run_state = flow_run.state_name.lower()
+                if flow_run_state == Constant.PREFECT_STATE_PAUSED.lower():
+                    is_flow_run_paused = True
+                    break
+                flow_run = self.get_flow_run(flow_run.id)
+                sleep(1)
+
+            # 3. resume flow run and send sub job info(aggregation_parm)
+            if is_flow_run_paused:
+                self._sync_client.resume_flow_run(
+                    flow_run.id, run_input=aggregation_params
                 )
-                self.aggregation_jobs.pop(flow_run.name)
-            else:
-                # 3.get sub jobs which can aggregated with parent job
-                sub_jobs = {}
 
-                states = [StateType.SCHEDULED]
-                tags = [Constant.AGGREGATION_TYPE_EXTERNAL]
-                flow_runs = self.get_flow_runs_with_filters(states, tags)
-                for sub_flow_run in flow_runs:
-                    if (
-                        sub_flow_run.parameters["job_info"]["data"][
-                            "circuit_aggregation"
-                        ]
-                        == Constant.AGGREGATION_TYPE_EXTERNAL
-                        and flow_run.parameters["job_info"]["data"]["backend"]
-                        == sub_flow_run.parameters["job_info"]["data"][
-                            "backend"
-                        ]
-                        and sub_flow_run.work_pool_name
-                        == flow_run.work_pool_name
-                    ):
-                        if len(sub_jobs) >= Constant.MAX_AGGREGATION_JOBS:
-                            break
-                        sub_jobs[sub_flow_run.name] = sub_flow_run.parameters
-
-                aggregation_parm["is_parent"] = True
-                aggregation_parm["sub_jobs"] = sub_jobs
-                # 4.record parent id in order to update related sub jobs result
-                self.parent_aggregation_jobs.append(flow_run.name)
-
-            # 5.resume flow run and send sub job info(aggregation_parm)
-            self._sync_client.resume_flow_run(
-                flow_run.id, run_input=aggregation_parm
-            )
-
-        def _process_aggregation_jobs():
-            while True:
-                # 1.periodic update sub jobs result
-                for parent_id in self.parent_aggregation_jobs:
-                    _update_aggregation_job(parent_id)
-
-                # 2.periodic get paused flow runs
-                # which are aggregation jobs running currently
-                states = [StateType.PAUSED]
-                tags = [Constant.AGGREGATION_TYPE_EXTERNAL]
-                flow_runs = self.get_flow_runs_with_filters(states, tags)
-
-                for flow_run in flow_runs:
-                    _process_aggregation_job(flow_run)
-                sleep(Constant.DEFAULT_AGGREGATION_JOB_INTERVAL)
+        def _subscribe_aggregation_jobs(redis_instance):
+            """Subscribe aggregation jobs by redis."""
+            pubsub = redis_instance.pubsub()
+            job_agg_channel = f"{Constant.REDIS_CHANNEL_JOB_AGG_PREFIX}/*"
+            pubsub.psubscribe(job_agg_channel)
+            for message in pubsub.listen():
+                if message.get("type") == "pmessage":
+                    jobs_agg_info = json.loads(message.get("data"))
+                    flow_run_id = jobs_agg_info["flow_run_id"]
+                    need_cancel = jobs_agg_info.get("cancel", False)
+                    if need_cancel:
+                        # cancel all agg jobs
+                        # results will be handled in job_engine:db_job_callback
+                        sub_flow_run_ids = jobs_agg_info.get(
+                            "sub_flow_list", []
+                        )
+                        if sub_flow_run_ids:
+                            _cancel_aggregation_job(sub_flow_run_ids)
+                    else:
+                        flow_run = self.get_flow_run(flow_run_id)
+                        if flow_run:
+                            _process_aggregation_job(flow_run)
 
         aggregation_thread = threading.Thread(
-            target=_process_aggregation_jobs, daemon=True
+            target=_subscribe_aggregation_jobs,
+            args=(self.redis_instance,),
+            daemon=True,
         )
         aggregation_thread.start()
