@@ -11,6 +11,7 @@
 - 初步支持监控功能：暴露设备状态监控、作业状态监控等监控数据，可对接Prometheus等监控系统
 - 支持QCOS独立数据库，主要存储用户信息、作业信息，数据库后端可对接PostgreSQL、sqlite等关系型数据库
 - get-jobs接口支持过滤project_id, user_id, job_id列表
+- 新增汉原脉冲驱动
 
 ### 变更功能
 
