@@ -1201,6 +1201,74 @@ class TestUserManager:
 
         return manager
 
+    def test_get_user_by_id_fallback_to_user_name(self, user_manager):
+        """Test get_user_by_id falls back to username lookup."""
+        user_manager.create_user(
+            Constant.DEFAULT_PROJECT_ID,
+            "fallback_user",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
+        )
+
+        user = user_manager.get_user_by_id("fallback_user")
+
+        assert user is not None
+        assert user.user_name == "fallback_user"
+
+    def test_clear_login_logs_with_both_parameters(self, user_manager):
+        """Test clear_login_logs rejects both user_id and user_name."""
+        with pytest.raises(ValueError, match="Cannot specify both"):
+            user_manager.clear_login_logs("id-1", "user1")
+
+    def test_clear_login_logs_repo_failure(self, user_manager):
+        """Test clear_login_logs returns simplified response."""
+        user_manager.users_repo.delete_login_logs.return_value = (
+            False,
+            "delete failed",
+            0,
+        )
+
+        result = user_manager.clear_login_logs()
+
+        assert result == {"count": 0}
+
+    def test_auto_unlock_user_success(self, user_manager):
+        """Test auto_unlock_user success path."""
+        user_manager.users_repo.update.return_value = (True, None, Mock())
+
+        result = user_manager.auto_unlock_user("user-id")
+
+        assert result is True
+
+    def test_increment_failed_login_attempts_success(self, user_manager):
+        """Test increment_failed_login_attempts success path."""
+        user = Mock(failed_login_attempts=1)
+        user_manager.get_user_by_id = Mock(return_value=user)
+        user_manager.users_repo.update.return_value = (True, None, Mock())
+
+        result = user_manager.increment_failed_login_attempts("user-id")
+
+        assert result is True
+
+    def test_lock_user_success(self, user_manager):
+        """Test lock_user success path."""
+        user_manager.users_repo.update.return_value = (True, None, Mock())
+
+        result = user_manager.lock_user("user-id", datetime.now())
+
+        assert result is True
+
+    def test_update_successful_login_success(self, user_manager):
+        """Test update_successful_login success path."""
+        user_manager.users_repo.update.return_value = (True, None, Mock())
+
+        result = user_manager.update_successful_login("user-id")
+
+        assert result is True
+
     def test_get_all_users(self, user_manager_with_users):
         """Test getting all users."""
         users = user_manager_with_users.get_users()
@@ -1641,3 +1709,304 @@ class TestUserManager:
         assert "multi_user2" in user_role_users
         assert "multi_user1" in admin_role_users
         assert "multi_user3" in admin_role_users
+
+    def test_validate_user_name_edge_cases(self, user_manager):
+        """Test username validation with edge cases."""
+        user_manager.validate_user_name("a" * Constant.MIN_USER_LENGTH)
+        user_manager.validate_user_name("a" * Constant.MAX_USER_LENGTH)
+
+    def test_validate_user_name_boundary_violations(self, user_manager):
+        """Test username validation boundary violations."""
+        with pytest.raises(ValueError, match="too short"):
+            user_manager.validate_user_name(
+                "a" * (Constant.MIN_USER_LENGTH - 1)
+            )
+        with pytest.raises(ValueError, match="too long"):
+            user_manager.validate_user_name(
+                "a" * (Constant.MAX_USER_LENGTH + 1)
+            )
+
+    def test_validate_password_boundary(self, user_manager):
+        """Test password validation at boundaries."""
+        user_manager.validate_password(_s("a" * Constant.MIN_PASSWORD_LENGTH))
+        user_manager.validate_password(_s("a" * Constant.MAX_PASSWORD_LENGTH))
+
+    def test_perms_delete_role_for_user(self, user_manager):
+        """Test permission deletion for user's role."""
+        user_manager.create_role("test_role", ["/version"])
+        user_manager.create_user(
+            Constant.DEFAULT_PROJECT_ID,
+            "test_perms_user",
+            _s("password123"),
+            ["test_role"],
+            True,
+            False,
+            90,
+        )
+        result = user_manager.perms_delete_role_for_user("test_perms_user")
+        assert result is not None
+
+    def test_perms_add_role_for_user(self, user_manager):
+        """Test permission addition for user's role."""
+        user_manager.create_role("test_role", ["/version"])
+        user_manager.create_user(
+            Constant.DEFAULT_PROJECT_ID,
+            "test_perms_user_add",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
+        )
+        result = user_manager.perms_add_role_for_user(
+            "test_perms_user_add", "test_role"
+        )
+        assert result is not None
+
+    def test_fetch_default_policies(self, user_manager):
+        """Test fetching default policies."""
+        admin_policies = user_manager.fetch_default_policies("admin")
+        user_policies = user_manager.fetch_default_policies("user")
+        assert isinstance(admin_policies, list)
+        assert isinstance(user_policies, list)
+        assert len(admin_policies) > 0
+        assert len(user_policies) > 0
+
+    def test_load_role_permissions(self, user_manager):
+        """Test loading role permissions into casbin."""
+        assert user_manager.load_role_permissions() is None
+
+    def test_get_user_by_id_with_valid_id(self, user_manager):
+        """Test getting user by ID."""
+        user = user_manager.create_user(
+            Constant.DEFAULT_PROJECT_ID,
+            "id_test_user",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
+        )
+        assert hasattr(user, "id")
+        retrieved = user_manager.get_user_by_id(str(user.id))
+        assert retrieved is not None
+        assert retrieved.user_name == "id_test_user"
+
+    def test_create_role_with_description_none(self, user_manager):
+        """Test creating role with None description."""
+        role = user_manager.create_role(
+            "role_no_desc",
+            ["/version", "/v1/device/get_device"],
+        )
+        assert role.role_name == "role_no_desc"
+        assert role.description is None or role.description == ""
+
+    def test_update_user_partial_parameters(self, user_manager):
+        """Test updating user with only some parameters."""
+        user_manager.create_user(
+            Constant.DEFAULT_PROJECT_ID,
+            "partial_user",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
+            "Original description",
+        )
+        updated = user_manager.update_user(
+            "partial_user",
+            None,
+            None,
+            None,
+            None,
+            "Updated description",
+        )
+        assert updated.description == "Updated description"
+        assert updated.roles == ["user"]
+
+    def test_clear_login_logs_empty(self, user_manager):
+        """Test clearing empty login logs."""
+        result = user_manager.clear_login_logs()
+        assert result["count"] == 0
+
+    def test_get_role_with_empty_roles_db(self, user_manager):
+        """Test getting non-existent role."""
+        user_manager.roles_db.clear()
+        role = user_manager.get_role("nonexistent_role_xyz")
+        assert role is None
+
+    def test_permissions_validation_empty_list(self, user_manager):
+        """Test validating empty permissions list."""
+        user_manager.validate_permissions([])
+
+    def test_user_lock_state_transitions(self, user_manager):
+        """Test various user lock state transitions."""
+        user_manager.create_user(
+            Constant.DEFAULT_PROJECT_ID,
+            "lock_test_user",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
+        )
+        updated = user_manager.update_user(
+            "lock_test_user",
+            None,
+            None,
+            True,
+        )
+        assert updated.is_locked is True
+
+    def test_multiple_role_delete_cascade(self, user_manager):
+        """Test deleting a role used by multiple users."""
+        user_manager.create_role("cascade_role", ["/version"])
+        user_manager.create_user(
+            Constant.DEFAULT_PROJECT_ID,
+            "cascade_user1",
+            _s("password123"),
+            ["cascade_role"],
+            True,
+            False,
+            90,
+        )
+        user_manager.create_user(
+            Constant.DEFAULT_PROJECT_ID,
+            "cascade_user2",
+            _s("password456"),
+            ["cascade_role"],
+            True,
+            False,
+            90,
+        )
+        deleted_role = user_manager.delete_role("cascade_role")
+        assert deleted_role.role_name == "cascade_role"
+
+    def test_change_password_requires_old_password_for_non_admin(
+        self, user_manager
+    ):
+        """Test non-admin password change requires old password."""
+        user = user_manager.create_user(
+            Constant.DEFAULT_PROJECT_ID,
+            "pwd_user",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
+        )
+
+        with pytest.raises(ValueError, match="Old password is required"):
+            user_manager.change_password(str(user.id), None, _s("newpassword"))
+
+    def test_change_password_wrong_old_password(self, user_manager):
+        """Test wrong old password branch."""
+        user = user_manager.create_user(
+            Constant.DEFAULT_PROJECT_ID,
+            "pwd_user2",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
+        )
+
+        with patch(
+            "wy_qcos.user.user_manager.UserRepository.verify_password",
+            return_value=False,
+        ):
+            with pytest.raises(ValueError, match="Incorrect old password"):
+                user_manager.change_password(
+                    str(user.id),
+                    _s("wrong_old"),
+                    _s("newpassword"),
+                )
+
+    def test_change_password_admin_without_old_password(self, user_manager):
+        """Test admin can change password without old password."""
+        admin_user = user_manager.get_user("admin")
+
+        result = user_manager.change_password(
+            str(admin_user.id),
+            None,
+            _s("new_admin_password"),
+        )
+
+        assert result.user_name == "admin"
+
+    def test_delete_user_force_no_jobs(self, user_manager):
+        """Test force delete when no jobs exist."""
+        user = user_manager.create_user(
+            Constant.DEFAULT_PROJECT_ID,
+            "force_user",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
+        )
+        user_manager.job_repo = Mock()
+        user_manager.job_repo.get_jobs.return_value = (True, None, [])
+
+        deleted = user_manager.delete_user(str(user.id), force=True)
+
+        assert deleted.user_name == "force_user"
+
+    def test_delete_user_with_jobs_without_force(self, user_manager):
+        """Test non-force delete blocked by jobs."""
+        user = user_manager.create_user(
+            Constant.DEFAULT_PROJECT_ID,
+            "job_blocked_user",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
+        )
+        user_manager.job_repo = Mock()
+        user_manager.job_repo.get_jobs.return_value = (
+            True,
+            None,
+            [Mock(), Mock()],
+        )
+
+        with pytest.raises(ValueError, match="associated job"):
+            user_manager.delete_user(str(user.id), force=False)
+
+    def test_get_login_logs_with_user_name_filter(self, user_manager):
+        """Test get_login_logs user_name conversion path."""
+        user = user_manager.create_user(
+            Constant.DEFAULT_PROJECT_ID,
+            "log_filter_user",
+            _s("password123"),
+            ["user"],
+            True,
+            False,
+            90,
+        )
+        user_manager.login_logs.append(
+            LoginLog(
+                user_name="log_filter_user",
+                ip_address="127.0.0.1",
+                login_status=True,
+                failure_reason=None,
+                user_agent="pytest",
+                login_time=datetime.now(),
+            )
+        )
+
+        logs = user_manager.get_login_logs(user_name="log_filter_user")
+
+        assert len(logs) == 1
+        assert str(logs[0].user_id) == str(user.id)
+
+    def test_blacklist_helpers(self, user_manager):
+        """Test blacklist helper methods."""
+        user_manager.users_repo.add_to_blacklist.return_value = (True, None)
+        user_manager.users_repo.is_blacklisted.return_value = True
+        user_manager.users_repo.cleanup_blacklist.return_value = None
+
+        user_manager.add_to_blacklist("token-1", datetime.now())
+        assert user_manager.is_blacklisted("token-1") is True
+        user_manager._cleanup_blacklist()
+        user_manager.users_repo.cleanup_blacklist.assert_called()

@@ -1258,6 +1258,7 @@ def run_circuit_code(
     enable_wirecut = driver.get_enable_wirecut()
     # wirecut qubit width
     wirecut_qubit_width = driver.get_wirecut_qubit_width()
+    driver_name = driver.get_name()
     logger.info(f"driver max qubits: {max_qubits}")
     src_code = src_code_dict[f"{job_id}-{source_code_index}"]
     try:
@@ -1277,7 +1278,6 @@ def run_circuit_code(
     if not enable_wirecut:
         # Check if current circuit qubits exceeds device max support qubits
         if num_qubits > max_qubits:
-            driver_name = driver.get_name()
             err_msg = (
                 f"The current circuit is {num_qubits}-bit, exceeding Device "
                 f"{driver_name}'s {max_qubits}-bit limit. Consider using "
@@ -1376,6 +1376,8 @@ def run_circuit_cutting_code(
     src_code = src_code_dict[f"{job_id}-{source_code_index}"]
     max_qubits = driver.get_max_qubits()
     wirecut_qubit_width = driver.get_wirecut_qubit_width()
+    if not isinstance(wirecut_qubit_width, int):
+        wirecut_qubit_width = 0
     # If wirecut qubit width is not set, set it to max qubits.
     if wirecut_qubit_width == 0:
         wirecut_qubit_width = max_qubits

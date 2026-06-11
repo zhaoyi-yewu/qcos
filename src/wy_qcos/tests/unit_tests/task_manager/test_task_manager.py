@@ -423,3 +423,213 @@ class TestTaskFlowManager(unittest.TestCase):
         )
         assert succ
         assert details is None
+
+    def test_create_pool_existing(self):
+        mock_client = AsyncMock()
+        existing_pool = Mock()
+        existing_pool.name = "pool1"
+        mock_client.read_work_pools.return_value = [existing_pool]
+        self.task_manager._client = mock_client
+
+        asyncio.run(self.task_manager.create_pool("pool1", 1))
+
+        mock_client.create_work_pool.assert_not_called()
+
+    def test_create_queues_existing(self):
+        mock_client = AsyncMock()
+        existing_queue = Mock()
+        existing_queue.name = "queue_1"
+        mock_client.read_work_queues.return_value = [existing_queue]
+        self.task_manager._client = mock_client
+
+        asyncio.run(self.task_manager.create_queues(["queue"]))
+
+        assert mock_client.create_work_queue.call_count == (
+            Constant.MAX_JOB_PRIORITY - 1
+        )
+
+    def test_run_flow_when_loop_running(self):
+        self.task_manager.loop = Mock()
+        self.task_manager.loop.is_running.return_value = True
+        future = Mock()
+        future.result.return_value = "flow-id"
+
+        with patch(
+            "wy_qcos.task_manager.task_manager."
+            "asyncio.run_coroutine_threadsafe",
+            return_value=future,
+        ):
+            result = self.task_manager.run_flow(
+                "deploy-id",
+                {"job_info": {"data": {"job_id": "job-id"}}},
+            )
+
+        assert result == "flow-id"
+
+    def test_run_manage_task_flow_when_loop_running(self):
+        self.task_manager.loop = Mock()
+        self.task_manager.loop.is_running.return_value = True
+        future = Mock()
+        future.result.return_value = (True, {"a": 1})
+
+        with patch(
+            "wy_qcos.task_manager.task_manager."
+            "asyncio.run_coroutine_threadsafe",
+            return_value=future,
+        ):
+            success, details = self.task_manager.run_manage_task_flow(
+                "deploy-id",
+                {"device_mgr_info": {"method": "x"}},
+            )
+
+        assert success is True
+        assert details == {"a": 1}
+
+    def test_get_flow_run_id_by_job_id_found(self):
+        mock_client = Mock()
+        mock_flow = Mock(id="flow-id")
+        mock_client.read_flow_runs.return_value = [mock_flow]
+        self.task_manager._sync_client = mock_client
+
+        assert (
+            self.task_manager.get_flow_run_id_by_job_id("job-id") == "flow-id"
+        )
+
+    def test_run_flow_by_client_with_tags_and_aggregation(self):
+        mock_client = AsyncMock()
+        mock_flow = Mock(id="flow-id")
+        mock_client.create_flow_run_from_deployment.return_value = mock_flow
+        self.task_manager._client = mock_client
+        args = {
+            "job_info": {
+                "data": {
+                    "job_id": "job-id",
+                    "circuit_aggregation": Constant.AGGREGATION_TYPE_EXTERNAL,
+                }
+            }
+        }
+
+        result = asyncio.run(
+            self.task_manager.run_flow_by_client(
+                "deploy-id",
+                args,
+                tags=["extra"],
+                work_queue_name="queue-1",
+            )
+        )
+
+        assert result == "flow-id"
+        kwargs = mock_client.create_flow_run_from_deployment.call_args.kwargs
+        assert kwargs["tags"] == [Constant.AGGREGATION_TYPE_EXTERNAL, "extra"]
+
+    def test_run_manage_task_flow_by_client_get_device_options(self):
+        mock_client = AsyncMock()
+        self.task_manager._client = mock_client
+        mock_device = Mock()
+        mock_device.get_device_options_info.return_value = {"opt": 1}
+        mock_dm = Mock()
+        mock_dm.get_devices.return_value = {"dummy": mock_device}
+        self.task_manager.device_manager = mock_dm
+        args = {
+            "device_mgr_info": {
+                "method": "get_device_options",
+                "device_name": "dummy",
+            }
+        }
+
+        succ, details = asyncio.run(
+            self.task_manager.run_manage_task_flow_by_client(
+                ConstantForTest.deployment_id,
+                args,
+                work_queue_name=None,
+            )
+        )
+
+        assert succ is True
+        assert details == {"opt": 1}
+
+    def test_get_flow_result_by_client_completed(self):
+        mock_client = Mock()
+        mock_state = Mock()
+        mock_state.is_final.return_value = True
+        mock_state.name = Constant.PREFECT_STATE_COMPLETED
+        mock_state.result.return_value = {"ok": True}
+        mock_flow = Mock(state=mock_state, parameters={"a": 1})
+        mock_client.read_flow_run.return_value = mock_flow
+        self.task_manager._sync_client = mock_client
+
+        state, parameters, result, err = (
+            self.task_manager.get_flow_result_by_client("flow-id")
+        )
+        assert state == Constant.PREFECT_STATE_COMPLETED
+        assert parameters == {"a": 1}
+        assert result == {"ok": True}
+        assert err is None
+
+    def test_get_flow_list_by_client_filters_invalid_and_monitor(self):
+        monitor_flow = Mock()
+        monitor_flow.name = Constant.DEVICE_MONITOR_PREFIX + "abc"
+        invalid_flow = Mock()
+        invalid_flow.name = "not-uuid"
+        completed_flow = Mock()
+        completed_flow.name = ConstantForTest.job_id
+        completed_flow.state = Mock()
+        completed_flow.state.name = Constant.PREFECT_STATE_COMPLETED
+        completed_flow.state.result.return_value = {"done": True}
+        completed_flow.parameters = {"x": 1}
+
+        with patch.object(
+            self.task_manager,
+            "get_flow_runs_with_filters",
+            return_value=[monitor_flow, invalid_flow, completed_flow],
+        ):
+            result = self.task_manager.get_flow_list_by_client(tags=None)
+
+        assert len(result) == 1
+        assert result[0]["id"] == ConstantForTest.job_id
+        assert result[0]["results"] == {"done": True}
+
+    def test_get_flow_run_object_not_found(self):
+        mock_client = Mock()
+        mock_client.read_flow_run.side_effect = Exception("boom")
+        self.task_manager._sync_client = mock_client
+
+        assert self.task_manager.get_flow_run("flow-id") is None
+
+    def test_delete_flow_runs_success_and_skip_running(self):
+        mock_client = Mock()
+        running_flow = Mock()
+        running_flow.state = Mock(name="state")
+        running_flow.state.name = Constant.PREFECT_STATE_RUNNING
+        done_flow = Mock()
+        done_flow.state = Mock(name="state")
+        done_flow.state.name = Constant.PREFECT_STATE_COMPLETED
+        mock_client.read_flow_run.side_effect = [running_flow, done_flow]
+        self.task_manager._sync_client = mock_client
+
+        result = self.task_manager.delete_flow_runs(["run", "done"])
+
+        assert result == [
+            {"flow_run_id": "done", "state": Constant.JOB_STATUS_DELETED}
+        ]
+
+    def test_delete_task_flow_by_name_not_found(self):
+        mock_client = Mock()
+        mock_client.read_flows.return_value = []
+        self.task_manager._sync_client = mock_client
+
+        assert self.task_manager.delete_task_flow_by_name("missing") is None
+
+    def test_get_flow_runs_with_filters_pool_name(self):
+        mock_client = Mock()
+        mock_client.read_flow_runs.return_value = ["flow"]
+        self.task_manager._sync_client = mock_client
+
+        result = self.task_manager.get_flow_runs_with_filters(
+            states=["RUNNING"],
+            tags=["tag1"],
+            pool_name="pool1",
+        )
+
+        assert result == ["flow"]
+        mock_client.read_flow_runs.assert_called_once()

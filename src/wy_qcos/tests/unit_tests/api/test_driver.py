@@ -102,3 +102,68 @@ class TestDriver:
         transpiler = TranspilerCmss()
         _driver_info = _get_driver_info(mock_client, transpiler)
         assert _driver_info["name"] is None
+
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.driver._get_driver_info")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    @patch.object(DriverManager, "get_drivers")
+    @patch.object(TaskScheduler, "get_driver_manager")
+    def test_get_drivers_with_entries(
+        self,
+        mock_get_driver_manager,
+        mock_get_drivers,
+        mock_get_transpiler_manager,
+        mock_get_driver_info,
+    ):
+        transpiler = Mock(spec=TranspilerBase)
+        transpiler_manager = Mock(spec=TranspilerManager)
+        transpiler_manager.get_transpiler.return_value = transpiler
+
+        driver = DriverDummy()
+        driver.transpiler = Constant.TRANSPILER_CMSS
+
+        mock_get_drivers.return_value = {self.dummy: driver}
+        mock_get_driver_manager.return_value = DriverManager()
+        mock_get_transpiler_manager.return_value = transpiler_manager
+        mock_get_driver_info.return_value = response_info
+
+        response = get_drivers(None)
+        assert self.dummy in response
+        assert response[self.dummy].name == self.dummy
+        mock_get_driver_info.assert_called_once_with(driver, transpiler)
+
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.driver."
+        "jsonrpc_errors.handle_error_not_found"
+    )
+    @patch.object(DriverManager, "get_driver")
+    @patch.object(TaskScheduler, "get_driver_manager")
+    def test_get_driver_not_found(
+        self,
+        mock_get_driver_manager,
+        mock_get_driver,
+        mock_handle_error_not_found,
+    ):
+        mock_get_driver.return_value = None
+        mock_get_driver_manager.return_value = DriverManager()
+        mock_handle_error_not_found.side_effect = RuntimeError("not found")
+
+        mock_client = Mock()
+        mock_client.name = "missing_driver"
+
+        with pytest.raises(RuntimeError, match="not found"):
+            get_driver(mock_client)
+
+        mock_handle_error_not_found.assert_called_once()
+
+    @patch.object(DriverBase, "set_supported_code_types")
+    @patch.object(DriverBase, "get_supported_code_types")
+    def test_get_driver_info_fallback_driver_code_types(
+        self,
+        mock_get_supported_code_types,
+        mock_set_supported_code_types,
+    ):
+        mock_get_supported_code_types.return_value = ["openqasm"]
+        driver = DriverBase()
+        _driver_info = _get_driver_info(driver, None)
+        mock_set_supported_code_types.assert_called_once_with(["openqasm"])
+        assert _driver_info["supported_code_types"] == ["openqasm"]
