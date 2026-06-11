@@ -32,6 +32,12 @@ module_name = "driver_uqc"
 deps_filepaths = ["./drivers/requirements-uqc.txt"]
 envs = ["python3"]
 
+[DriverQuafu]
+module_name = "driver_quafu"
+deps_filepaths = ["./drivers/requirements-quafu.txt"]
+envs = ["python3"]
+no_deps = true
+
 [qiskit]
 deps_filepaths = ["./drivers/requirements-qiskit.txt"]
 envs = ["python3"]

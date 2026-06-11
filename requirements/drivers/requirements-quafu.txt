@@ -1,0 +1,4 @@
+# Vendor drivers dependencies
+# quafu driver only
+quarkstudio==7.1.8
+requests==2.32.5
