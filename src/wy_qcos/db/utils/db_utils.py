@@ -206,12 +206,9 @@ async def db_job_callback(
         "data",
         default={},
     )
+    profiling_types = data.get("profiling", [])
     callbacks = data.get("callbacks", [])
     backend = data.get("backend", None)
-    user = {
-        "project_id": data.get("project_id", {}),
-        "user_id": data.get("user_id", {}),
-    }
 
     # Get db_engine from global state
     db_engine = get_db_engine()
@@ -275,7 +272,9 @@ async def db_job_callback(
 
     # Determine overall job_status from individual results,
     overall_job_status = db_job_status
+    progress = None
     if overall_job_status in [Constant.JOB_STATUS_COMPLETED]:
+        progress = 100
         for result in results:
             meta_data = result.get("metadata", {})
             result_status = meta_data.get(
@@ -284,12 +283,98 @@ async def db_job_callback(
             if result_status == Constant.JOB_STATUS_FAILED:
                 overall_job_status = Constant.JOB_STATUS_FAILED
 
+    # Retrieve results from agg sub-jobs
+    all_results = {}
+    for result in results:
+        sub_results = result.pop("sub_results", {})
+        if sub_results:
+            for sub_job_id, sub_result in sub_results.items():
+                if not isinstance(sub_result, list):
+                    sub_result = [sub_result]
+                all_results[sub_job_id] = sub_result
+        if job_id not in all_results:
+            all_results[job_id] = []
+        all_results[job_id].append(result)
+
+    job_repo = None
+    # create db session for agg jobs
+    if len(all_results) > 1:
+        with create_db_session(db_engine) as db_session:
+            job_repo = JobRepository(db_session)
+
+    for _job_id, _results in all_results.items():
+        _profiling_types = []
+        if job_id == _job_id:
+            # parent agg job or single job
+            user = {
+                "project_id": data.get("project_id", {}),
+                "user_id": data.get("user_id", {}),
+            }
+            callbacks_info = {
+                "is_run_callbacks": is_run_callbacks,
+                "callbacks": callbacks,
+                "backend": backend,
+                "user": user,
+            }
+            _profiling_types = profiling_types
+        else:
+            # sub agg job
+            # fetch agg job from database
+            if job_repo:
+                # Get the job record
+                success, error, job_record = job_repo.get_job_by_uuid(_job_id)
+                if not success or job_record is None:
+                    logger.error(
+                        f"Fetch agg job error {_job_id}: job not found"
+                    )
+                    continue
+                user = {
+                    "project_id": str(job_record.project_id),
+                    "user_id": str(job_record.user_id),
+                }
+                callbacks_info = {
+                    "is_run_callbacks": is_run_callbacks,
+                    "callbacks": job_record.callbacks,
+                    "backend": job_record.backend,
+                    "user": user,
+                }
+                _profiling_types = job_record.profiling
+
+        # handle profiling types
+        for _result in _results:
+            if _profiling_types:
+                if Constant.PROFILING_TYPE_ALL in _profiling_types:
+                    continue
+                for _profiling_type in Constant.PROFILING_TYPES:
+                    if _profiling_type == Constant.PROFILING_TYPE_ALL:
+                        continue
+                    if _profiling_type not in _profiling_types:
+                        if _profiling_type in _result["profiling"]:
+                            del _result["profiling"][_profiling_type]
+            else:
+                _result["profiling"] = {}
+
+        # update database for job
+        _db_update_job(
+            db_engine,
+            _job_id,
+            overall_job_status,
+            _results,
+            progress=progress,
+            callbacks_info=callbacks_info,
+        )
+
+
+def _db_update_job(
+    db_engine, job_id, job_status, results, progress=None, callbacks_info=None
+):
     try:
         db_update_job(
             job_id,
             db_engine,
-            job_status=overall_job_status,
+            job_status=job_status,
             job_results=results,
+            progress=progress,
             ended_at=Library.get_current_datetime().isoformat(),
         )
     except Exception as e:
@@ -298,11 +383,16 @@ async def db_job_callback(
             f"failed to update job status: {str(e)}"
         )
 
+    is_run_callbacks = callbacks_info.get("is_run_callbacks", False)
+    backend = callbacks_info.get("backend", None)
+    callbacks = callbacks_info.get("callbacks", [])
+    user = callbacks_info.get("user", {})
+
     if is_run_callbacks:
         run_callbacks(
             job_id,
             db_engine,
-            overall_job_status,
+            job_status,
             backend,
             results,
             callbacks,
