@@ -23,12 +23,11 @@ source ${build_scripts_dir}/setup-env.sh
 export QCOS_LOCAL_SRC_DIR="${top_dir}"
 
 # copy config files
+mkdir -p /etc/qcos/
 mkdir -p /etc/qcos/prefect
 mkdir -p /var/qcos/db
 mkdir -p /var/qcos/db/postgresql
-rm -rf /etc/qcos/prefect/profiles.toml
 mkdir -p /etc/qcos/postgres
-cp -r ${QCOS_LOCAL_SRC_DIR}/build-scripts/postgres /etc/qcos/
 mkdir -p /etc/prometheus
 cp -r ${QCOS_LOCAL_SRC_DIR}/etc/prometheus /etc/prometheus
 mkdir -p /etc/grafana/
@@ -40,6 +39,11 @@ if [ -n "${SMTP_HOST}" ] && [ -n "${ALERT_RECEIVE_EMAIL}" ]; then
   envsubst < /etc/alertmanager/alertmanager.yml > /etc/alertmanager/alertmanager.yml.tmp && mv /etc/alertmanager/alertmanager.yml.tmp /etc/alertmanager/alertmanager.yml
 fi
 
+# copy postgresql config files
+rm -rf /etc/qcos/prefect/profiles.toml
+if [ ! -f /etc/qcos/postgres/postgresql.conf ]; then
+  cp -r ${QCOS_LOCAL_SRC_DIR}/etc/postgres/postgresql.conf /etc/qcos/postgres/
+fi
 
 cd ${build_scripts_dir}
 
@@ -71,6 +75,7 @@ if [ "${DB_BACKEND,,}" = "postgres" ]; then
   if [ $attempt -eq $max_attempts ]; then
     echo "ERROR: PostgreSQL failed to fully initialize within $max_attempts seconds"
     echo "Try checking: docker logs postgres"
+    docker logs postgres
     exit 1
   fi
 
