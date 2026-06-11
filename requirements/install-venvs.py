@@ -15,9 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-"""
-Install venv environments
-"""
+"""Install venv environments."""
 
 import os
 import shutil
@@ -42,7 +40,6 @@ def load_driver_env_file(config_file, envs=None, skip_env_list=None):
     Returns:
         configs: config data
     """
-
     driver_deps_file_path = Path(config_file).parent
     _configs = {}
     configs = {}
@@ -163,6 +160,10 @@ def install_venv(configs, venv_base_dir, debug=True, dry_run=False):
             """
             cmds.append(cmd)
         else:
+            no_deps_cmd = ""
+            no_deps_option = driver_info.get("no_deps", False)
+            if no_deps_option:
+                no_deps_cmd = "--no-deps"
             deps_path_list = driver_info["deps_filepaths"]
             deps_path_args = f"-r {' -r '.join(deps_path_list)}"
             envs = driver_info.get("envs", [])
@@ -173,7 +174,7 @@ def install_venv(configs, venv_base_dir, debug=True, dry_run=False):
                   echo -e "\\nInstalling venv: {driver_class}"
                   {env} -m venv {driver_venv_dir}
                   source {driver_venv_dir}/bin/activate
-                  pip3 --no-cache-dir install --prefer-binary {deps_path_args}
+                  pip3 install --no-cache-dir {no_deps_cmd} --prefer-binary {deps_path_args}
                   deactivate
                 else
                   echo -e "\\nInstalling venv: {driver_class} - skipped"
@@ -194,8 +195,7 @@ def install_venv(configs, venv_base_dir, debug=True, dry_run=False):
 
 
 def main(argv=None):
-    """main"""
-
+    """Main function."""
     if argv is None:
         argv = sys.argv
     else:
