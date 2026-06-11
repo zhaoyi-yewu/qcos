@@ -50,6 +50,7 @@ from wy_qcos.engine.job_engine import (
     run_code,
     run_qubo_code,
     run_subqubo_code,
+    split_dict,
     task_monitor,
     transpile,
     update_src_code_info,
@@ -99,10 +100,20 @@ class TestJobEngine:
         cls.aggregation_info = MagicMock()
         cls.aggregation_info.sub_jobs = {
             "00000000-0000-4000-8000-000000000002-0": {
-                "job_info": {"data": {"source_code": cls.simple_data}}
+                "job_info": {
+                    "data": {
+                        "source_code": [cls.simple_data],
+                        "flow_run_id": "flow-run-0002",
+                    }
+                }
             },
             "00000000-0000-4000-8000-000000000003-0": {
-                "job_info": {"data": {"source_code": cls.simple_data}}
+                "job_info": {
+                    "data": {
+                        "source_code": [cls.simple_data],
+                        "flow_run_id": "flow-run-0003",
+                    }
+                }
             },
         }
         cls.job_results = {
@@ -868,7 +879,6 @@ class TestJobEngine:
         result, _ = flow_parse(
             {},
             TranspilerBase(),
-            Constant.PROFILING_TYPES,
             Constant.CODE_TYPE_QASM2,
         )
         assert isinstance(result, Mock) is True
@@ -876,9 +886,7 @@ class TestJobEngine:
     @patch("wy_qcos.engine.job_engine.transpile.submit")
     def test_flow_transpile(self, mock_transpile):
         mock_transpile.return_value = Mock()
-        result, _ = flow_transpile(
-            "", TranspilerBase(), DriverBase(), Constant.PROFILING_TYPES
-        )
+        result, _ = flow_transpile("", TranspilerBase(), DriverBase())
         assert isinstance(result, Mock) is True
 
     @patch("wy_qcos.engine.job_engine.task_monitor.submit")
@@ -889,9 +897,7 @@ class TestJobEngine:
     @patch("wy_qcos.engine.job_engine.driver_run.submit")
     def test_flow_run_driver(self, mock_driver_run):
         mock_driver_run.return_value = Mock()
-        result, _ = flow_run_driver(
-            {}, 6, DriverBase(), {}, Constant.PROFILING_TYPES
-        )
+        result, _ = flow_run_driver({}, 6, DriverBase(), {})
         assert isinstance(result, Mock) is True
 
     @patch.object(DriverBase, "get_results")
@@ -967,7 +973,14 @@ class TestJobEngine:
         self.job_info["data"]["backend"] = "dummy"
         self.job_info["data"]["job_enqueue_at"] = datetime.now().isoformat()
         self.job_info["data"]["job_schedule_duration"] = 0
-        self.job_info["global"] = {"configs": {}}
+        self.job_info["global"] = {
+            "configs": {
+                "REDIS": {
+                    "REDIS_SERVER_IP": "127.0.0.1",
+                    "REDIS_SERVER_PORT": 6379,
+                }
+            }
+        }
         self.job_info["device"] = {"configs": {}}
         job_results_list = raw_job_flow_func(self.job_info)
         assert len(job_results_list) == len(
@@ -1163,6 +1176,329 @@ class TestJobEngine:
         )
         assert results["metadata"]["status"] == "FAILED"
         assert mapping is None
+
+    # --- Aggregation-related test cases ---
+
+    def test_create_src_code_info_with_internal_aggregation(self):
+        """Test create_src_code_info with internal aggregation type."""
+        job_data = {
+            "job_id": "00000000-0000-4000-8000-000000000001",
+            "source_code": [self.simple_data, self.simple_data],
+            "circuit_aggregation": Constant.AGGREGATION_TYPE_INTERNAL,
+        }
+        result = create_src_code_info(job_data)
+        assert result.aggregation_type == Constant.AGGREGATION_TYPE_INTERNAL
+        assert len(result.src_code_list) == 1
+        assert len(result.src_code_list[0]) == 2
+
+    def test_create_src_code_info_with_external_aggregation(self):
+        """Test create_src_code_info with external aggregation type."""
+        job_data = {
+            "job_id": "00000000-0000-4000-8000-000000000001",
+            "source_code": [self.simple_data],
+            "circuit_aggregation": Constant.AGGREGATION_TYPE_EXTERNAL,
+        }
+        result = create_src_code_info(job_data)
+        assert result.aggregation_type == Constant.AGGREGATION_TYPE_EXTERNAL
+        assert len(result.src_code_list) == 1
+
+    def test_create_src_code_info_exceeds_max_aggregation_jobs(self):
+        """Test create_src_code_info when codes exceed MAX_AGGREGATION_JOBS.
+
+        Note: Due to src_code_map.clear() clearing the same object
+        reference already appended to the list, the first batch gets
+        cleared and remaining items fill it. The skipped item at the
+        boundary is lost (continue skips it without adding).
+        Both list entries point to the same dict object.
+        """
+        num_codes = Constant.MAX_AGGREGATION_JOBS + 3
+        job_data = {
+            "job_id": "00000000-0000-4000-8000-000000000001",
+            "source_code": [self.simple_data] * num_codes,
+            "circuit_aggregation": Constant.AGGREGATION_TYPE_INTERNAL,
+        }
+        result = create_src_code_info(job_data)
+        assert result.aggregation_type == Constant.AGGREGATION_TYPE_INTERNAL
+        # Due to clear() on same reference, src_code_list has 2 entries
+        # both pointing to the same dict with remaining items
+        assert len(result.src_code_list) == 2
+        # Items after the MAX_AGGREGATION_JOBS boundary (skipped one)
+        # remain in the dict, and the dict is appended twice
+        assert (
+            len(result.src_code_list[0])
+            == num_codes - Constant.MAX_AGGREGATION_JOBS - 1
+        )
+
+    def test_create_src_code_info_none_aggregation_multiple_codes(self):
+        """Test create_src_code_info with None agg and multi source codes."""
+        job_data = {
+            "job_id": "00000000-0000-4000-8000-000000000001",
+            "source_code": [self.simple_data, self.simple_data],
+            "circuit_aggregation": None,
+        }
+        result = create_src_code_info(job_data)
+        assert result.aggregation_type == Constant.AGGREGATION_TYPE_NONE
+        # Each source code gets its own dict in separate list items
+        assert len(result.src_code_list) == 2
+        assert len(result.src_code_list[0]) == 1
+        assert len(result.src_code_list[1]) == 1
+
+    def test_update_src_code_info_with_sub_jobs(self):
+        """Test update_src_code_info merges sub job source codes."""
+        src_code_info = SourceCodeInfo()
+        src_code_info.aggregation_type = Constant.AGGREGATION_TYPE_EXTERNAL
+        src_code_info.src_code_list = [
+            {"00000000-0000-4000-8000-000000000001-0": self.simple_data}
+        ]
+        src_code_info.sub_flow_list = []
+        aggregation_info = MagicMock()
+        aggregation_info.sub_jobs = {
+            "00000000-0000-4000-8000-000000000002-0": {
+                "job_info": {
+                    "data": {
+                        "source_code": ["sub_code_1"],
+                        "flow_run_id": "flow-run-0002",
+                    }
+                }
+            },
+            "00000000-0000-4000-8000-000000000003-0": {
+                "job_info": {
+                    "data": {
+                        "source_code": ["sub_code_2"],
+                        "flow_run_id": "flow-run-0003",
+                    }
+                }
+            },
+        }
+        result = update_src_code_info(src_code_info, aggregation_info)
+        assert len(result.src_code_list) == 1
+        # Original code + 2 sub job codes
+        assert len(result.src_code_list[0]) == 3
+        assert (
+            "00000000-0000-4000-8000-000000000001-0" in result.src_code_list[0]
+        )
+        # update_src_code_info appends "-0" to the sub job key
+        assert (
+            "00000000-0000-4000-8000-000000000002-0-0"
+            in result.src_code_list[0]
+        )
+        assert (
+            "00000000-0000-4000-8000-000000000003-0-0"
+            in result.src_code_list[0]
+        )
+        # sub_flow_list should contain flow run ids
+        assert "flow-run-0002" in result.sub_flow_list
+        assert "flow-run-0003" in result.sub_flow_list
+
+    def test_update_src_code_info_empty_src_code_list(self):
+        """Test update_src_code_info raises ValueError on empty list."""
+        src_code_info = SourceCodeInfo()
+        src_code_info.src_code_list = []
+        with pytest.raises(ValueError, match="unexpected input"):
+            update_src_code_info(src_code_info, MagicMock())
+
+    def test_split_dict_basic(self):
+        """Test split_dict splits keys by specified lengths."""
+        orig_dict = {
+            "0011": 100,
+            "1100": 200,
+        }
+        split_len = [2, 2]
+        result = split_dict(orig_dict, split_len)
+        assert len(result) == 2
+        assert result[0] == {"00": 100, "11": 200}
+        assert result[1] == {"11": 100, "00": 200}
+
+    def test_split_dict_unequal_lengths(self):
+        """Test split_dict with unequal split lengths."""
+        orig_dict = {
+            "00101": 50,
+            "11010": 150,
+        }
+        split_len = [2, 3]
+        result = split_dict(orig_dict, split_len)
+        assert len(result) == 2
+        assert result[0] == {"00": 50, "11": 150}
+        assert result[1] == {"101": 50, "010": 150}
+
+    def test_get_internal_aggregated_results_metadata(self):
+        """Test sets AGGREGATION_TYPE_INTERNAL in metadata."""
+        job_results = {
+            "results": {"0011": 500, "1100": 300},
+            "metadata": {"ended_at": datetime.now()},
+            "profiling": {},
+        }
+        mapping_dict = {
+            "job-1-0": 2,
+            "job-2-0": 2,
+        }
+        result = get_internal_aggregated_results(job_results, mapping_dict)
+        assert len(result) == 2
+        for item in result:
+            assert (
+                item["metadata"]["circuit_aggregation"]
+                == Constant.AGGREGATION_TYPE_INTERNAL
+            )
+
+    def test_get_external_aggregated_results_metadata(self):
+        """Test sets AGGREGATION_TYPE_EXTERNAL in sub_results metadata."""
+        job_results = {
+            "results": {"0011": 500, "1100": 300},
+            "metadata": {"ended_at": datetime.now()},
+            "profiling": {},
+        }
+        mapping_dict = {
+            "job-1-0": 2,
+            "job-2-0": 2,
+        }
+        result = get_external_aggregated_results(job_results, mapping_dict)
+        # parent job results kept
+        assert result["results"] is not None
+        assert result["num_qubits"] == 2
+        # sub_results should contain 1 entry (second mapping)
+        assert len(result["sub_results"]) == 1
+        for sub_id, sub_res in result["sub_results"].items():
+            assert (
+                sub_res["metadata"]["circuit_aggregation"]
+                == Constant.AGGREGATION_TYPE_EXTERNAL
+            )
+
+    def test_get_internal_aggregated_results_none_mapping_dict(self):
+        """Test  raises ValueError when mapping_dict is None."""
+        job_results = {"results": {"00": 1}, "metadata": {}}
+        with pytest.raises(ValueError, match="mapping_dict is none"):
+            get_internal_aggregated_results(job_results, None)
+
+    def test_get_external_aggregated_results_none_mapping_dict(self):
+        """Test raises ValueError when mapping_dict is None."""
+        job_results = {"results": {"00": 1}, "metadata": {}}
+        with pytest.raises(ValueError, match="mapping_dict is none"):
+            get_external_aggregated_results(job_results, None)
+
+    def test_get_external_aggregated_results_single_mapping(self):
+        """Test  with a single mapping entry in mapping_dict."""
+        job_results = {
+            "results": {"00": 500, "01": 300},
+            "metadata": {"ended_at": datetime.now()},
+            "profiling": {},
+        }
+        mapping_dict = {
+            "job-1-0": 2,
+        }
+        result = get_external_aggregated_results(job_results, mapping_dict)
+        # Single mapping: parent keeps results, no sub_results
+        assert result["results"] == {"00": 500, "01": 300}
+        assert result["num_qubits"] == 2
+        assert (
+            result.get("sub_results") is None
+            or len(result["sub_results"]) == 0
+        )
+
+    @patch("wy_qcos.engine.job_engine.update_progress")
+    def test_task_monitor_with_agg_sub_job_list(self, mock_update_progress):
+        """Test task_monitor updates progress for agg sub jobs."""
+        mock_update_progress.return_value = None
+        mock_driver = Mock()
+        mock_driver.get_progress.return_value = 50
+        monitor_info = {
+            "running": False,
+            "driver": mock_driver,
+            "progress": 30,
+            "source_code_count": 2,
+            "job_id": "parent-job-id",
+            "db_engine": Mock(),
+            "agg_sub_job_list": ["sub-job-1", "sub-job-2"],
+        }
+        task_monitor.fn(monitor_info)
+        # When running=False, it should set progress to 100
+        # for both parent and sub jobs
+        assert mock_update_progress.call_count >= 3
+
+    @patch("wy_qcos.engine.job_engine.init_logger")
+    @patch("wy_qcos.engine.job_engine.register_signals")
+    @patch("wy_qcos.engine.job_engine.flow_task_monitor")
+    @patch("wy_qcos.engine.job_engine.run_code")
+    def test_job_flow_with_internal_aggregation(
+        self,
+        mock_run_code,
+        mock_flow_task_monitor,
+        mock_register_signals,
+        mock_init_logger,
+    ):
+        """Test job_flow with internal aggregation type."""
+        internal_mapping_dict = {
+            "00000000-0000-4000-8000-000000000001-0": 1,
+            "00000000-0000-4000-8000-000000000001-1": 1,
+        }
+        internal_job_results = {
+            "results": {"00": 500, "11": 500},
+            "metadata": {"ended_at": datetime.now()},
+            "profiling": {},
+        }
+        mock_run_code.return_value = (
+            internal_job_results,
+            None,
+            None,
+            internal_mapping_dict,
+        )
+        mock_init_logger.return_value = None
+        mock_flow_task_monitor.return_value = None
+        mock_register_signals.return_values = None
+        raw_job_flow_func = job_flow.__wrapped__
+        job_info = {
+            "data": {
+                "job_id": "00000000-0000-4000-8000-000000000001",
+                "source_code": [self.simple_data, self.simple_data],
+                "circuit_aggregation": Constant.AGGREGATION_TYPE_INTERNAL,
+                "code_type": Constant.CODE_TYPE_QASM,
+                "driver_options": {},
+                "backend": "dummy",
+                "job_enqueue_at": datetime.now().isoformat(),
+                "job_schedule_duration": 0,
+                "profiling": [
+                    Constant.PROFILING_TYPE_CODE,
+                    Constant.PROFILING_TYPE_SCHEDULING,
+                ],
+            },
+            "driver": {
+                "module_name": "wy_qcos.drivers.dummy.driver_dummy",
+                "class_name": "DriverDummy",
+            },
+            "transpiler": {
+                "module_name": "wy_qcos.transpiler.cmss.transpiler_cmss",
+                "class_name": "TranspilerCmss",
+            },
+            "global": {
+                "configs": {
+                    "REDIS": {
+                        "REDIS_SERVER_IP": "127.0.0.1",
+                        "REDIS_SERVER_PORT": 6379,
+                    }
+                }
+            },
+            "device": {"configs": {}},
+        }
+        job_results_list = raw_job_flow_func(job_info)
+        # Internal aggregation should produce extended results
+        assert isinstance(job_results_list, list)
+        mock_run_code.assert_called_once()
+
+    def test_get_src_code_cnt_multiple_dicts(self):
+        """Test get_src_code_cnt with multiple dicts in src_code_list."""
+        src_code_info = SourceCodeInfo()
+        src_code_info.src_code_list = [
+            {"key1": "val1", "key2": "val2"},
+            {"key3": "val3"},
+        ]
+        result = get_src_code_cnt(src_code_info)
+        assert result == 3
+
+    def test_get_src_code_cnt_empty_list(self):
+        """Test get_src_code_cnt with empty src_code_list."""
+        src_code_info = SourceCodeInfo()
+        src_code_info.src_code_list = []
+        result = get_src_code_cnt(src_code_info)
+        assert result == 0
 
     @patch("wy_qcos.engine.job_engine.format_error_results")
     @patch(
