@@ -111,6 +111,7 @@ dependencies = [
     "sqlalchemy-adapter==1.9.0",
     "sqlalchemy-utils==0.42.1",
     "starlette==0.50.0",
+    "stim==1.16.0",
     "tomlkit==0.13.3",
     "typing-inspection==0.4.1",
     "typing_extensions==4.15.0",

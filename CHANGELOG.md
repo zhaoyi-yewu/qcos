@@ -12,6 +12,7 @@
 - 支持QCOS独立数据库，主要存储用户信息、作业信息，数据库后端可对接PostgreSQL、sqlite等关系型数据库
 - get-jobs接口支持过滤project_id, user_id, job_id列表
 - 新增汉原脉冲驱动
+- 初步支持QEC Shor码(基于Stim仿真器)
 
 ### 变更功能
 
