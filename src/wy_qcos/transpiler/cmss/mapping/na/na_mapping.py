@@ -30,7 +30,7 @@ class NASingleRoute(ABC):
 
     def __init__(self):
         self.qids = None
-        self.mapping = None
+        self.mapping_qubit_storage = None
         self.qbit_num = None
         self.gates = None
         self.ag = None
@@ -78,7 +78,9 @@ class NASingleRoute(ABC):
             if k in self.storage_area:
                 err_dict[k] = v
         sq = sorted(err_dict.items(), key=lambda e: e[1])[: self.qbit_num]
-        self.mapping = {a: b[0] for a, b in zip(range(self.qbit_num), sq)}
+        self.mapping_qubit_storage = {
+            a: b[0] for a, b in zip(range(self.qbit_num), sq)
+        }
         self.qids = [int(q[0][1:]) for q in sq]
 
     def execute_with_order(self):
@@ -95,7 +97,9 @@ class NASingleRoute(ABC):
                     f"invalid targets num: {len(gate.targets)}, "
                     f"Gate {gate.name} must have exactly one target"
                 )
-            gate.targets = [int(self.mapping[q][1:]) for q in gate.targets]
+            gate.targets = [
+                int(self.mapping_qubit_storage[q][1:]) for q in gate.targets
+            ]
             if gate.name == "measure":
                 measure.append(gate)
                 continue
@@ -115,7 +119,7 @@ class NARoute(ABC):
 
     def __init__(self):
         self.qids = None
-        self.mapping = None
+        self.mapping_qubit_storage = None
         self.qbit_num = None
         self.gates = None
         self.ag = None
@@ -235,14 +239,21 @@ class NARoute(ABC):
     def get_init_mapping(self):
         """比特初始映射及映射表构建.
 
-        dg：量子线路拓扑
-        dg_opt：dg的深拷贝，用以将处理后的节点删除，并寻找新的可执行节点
-        mapping：比特所处存储区位置（目前比特与存储区一一对应，方便维护）
-        oloc：比特对应的操作区位置，若不在操作区则为-1
-        oqloc：操作区中的比特，若不存在则为-1
-        ohas：操作区包含的所有比特
-        locked：锁定的量子比特（这些比特不能再移动位置）
-        res：最终映射后的指令集列表
+        Description:
+            完成DAG图的构建后，进行比特初始映射及映射表构建.
+
+            dg：量子线路拓扑
+            dg_opt：dg的深拷贝，用以将处理后的节点删除，并寻找新的可执行节点
+            mapping_qubit_storage(dict{logical_q: storage_p})：逻辑比特与存储区
+            物理位置的映射（目前逻辑比特与存储区一一对应，方便维护）.
+            qubit_op_pos(dict{logical_q: op_p | -1})：逻辑比特与操作区位置的
+            映射（-1=不在操作区）.
+            op_qubit_pos(dict{op_p: logical_q | -1})：操作区位置与逻辑比特的
+            映射（-1=操作区位置为空）.
+            op_occupied(set(op_p))：操作区已占用的位置集合.
+            free_edges(set((op_p, op_p)))：两端都空闲的边集合.
+            locked(set(op_p))：上锁的操作区位置（不可再移动）.
+            res：最终映射后的指令集列表.
         """
         self.dg, self.measure, self.node_indices = self.get_rx_dag()
 
@@ -253,10 +264,13 @@ class NARoute(ABC):
             if k in self.storage_area:
                 err_dict[k] = v
         sq = sorted(err_dict.items(), key=lambda e: e[1])[: self.qbit_num]
-        self.mapping = {a: b[0] for a, b in zip(range(self.qbit_num), sq)}
-        self.oloc = {a: -1 for a in range(self.qbit_num)}
-        self.oqloc = {a: -1 for a in self.operate_area}
-        self.ohas = set()
+        self.mapping_qubit_storage = {
+            a: b[0] for a, b in zip(range(self.qbit_num), sq)
+        }
+        self.qubit_op_pos = {a: -1 for a in range(self.qbit_num)}
+        self.op_qubit_pos = {a: -1 for a in self.operate_area}
+        self.op_occupied = set()
+        self.free_edges = {tuple(sorted(e)) for e in self.ag.edges()}
         self.locked = set()
         self.res = []
 
@@ -275,7 +289,7 @@ class NARoute(ABC):
             dis (int): 与现有的比特间的距离至少为dis
         """
         disable_pos = set()
-        for o in self.ohas:
+        for o in self.op_occupied:
             # 将操作区中已有比特以及与该比特距离小于dis的比特全部排除
             disable_pos.add(o)
             for nxt in self.ag.shortest_length[o]:
@@ -292,11 +306,16 @@ class NARoute(ABC):
         Args:
             o: 操作区位置
         """
-        q = self.oqloc[o]
-        self.res.append(Move(targets=[q], arg_value=[o, self.mapping[q]]))
-        self.oloc[q] = -1
-        self.oqloc[o] = -1
-        self.ohas.remove(o)
+        q = self.op_qubit_pos[o]
+        self.res.append(
+            Move(targets=[q], arg_value=[o, self.mapping_qubit_storage[q]])
+        )
+        self.qubit_op_pos[q] = -1
+        self.op_qubit_pos[o] = -1
+        self.op_occupied.remove(o)
+        for nxt in self.ag.neighbors(o):
+            if nxt not in self.op_occupied:
+                self.free_edges.add(tuple(sorted((o, nxt))))
 
     def put(self, q, o):
         """将比特移到操作区，并更新映射表.
@@ -306,11 +325,13 @@ class NARoute(ABC):
             o: 操作区位置
         """
         self.res.append(
-            Move(targets=[q], arg_value=[self.mapping[q], o])
+            Move(targets=[q], arg_value=[self.mapping_qubit_storage[q], o])
         )  # f"put {q} {o}")
-        self.oloc[q] = o
-        self.oqloc[o] = q
-        self.ohas.add(o)
+        self.qubit_op_pos[q] = o
+        self.op_qubit_pos[o] = q
+        self.op_occupied.add(o)
+        for nxt in self.ag.neighbors(o):
+            self.free_edges.discard(tuple(sorted((o, nxt))))
 
     def mov(self, o1, o2):
         """将比特从存取区的某一位置移到另一位置，并更新映射表.
@@ -319,14 +340,19 @@ class NARoute(ABC):
             o1: 操作区起始位置
             o2: 操作区目标位置
         """
-        q = self.oqloc[o1]
-        # f"mov {self.oqloc[o1]} {o2}")
+        q = self.op_qubit_pos[o1]
+        # f"mov {self.op_qubit_pos[o1]} {o2}")
         self.res.append(Move(targets=[q], arg_value=[o1, o2]))
-        self.oloc[q] = o2
-        self.oqloc[o1] = -1
-        self.oqloc[o2] = q
-        self.ohas.remove(o1)
-        self.ohas.add(o2)
+        self.qubit_op_pos[q] = o2
+        self.op_qubit_pos[o1] = -1
+        self.op_qubit_pos[o2] = q
+        self.op_occupied.remove(o1)
+        self.op_occupied.add(o2)
+        for nxt in self.ag.neighbors(o1):
+            if nxt not in self.op_occupied:
+                self.free_edges.add(tuple(sorted((o1, nxt))))
+        for nxt in self.ag.neighbors(o2):
+            self.free_edges.discard(tuple(sorted((o2, nxt))))
 
     def pre_back(self, nodes):
         """将操作区中不属于当前可执行门的比特移回存储区.
@@ -339,9 +365,9 @@ class NARoute(ABC):
             qubits = node["qubits"]
             for q in qubits:
                 all_q.add(q)
-        ohas = self.ohas.copy()
+        ohas = self.op_occupied.copy()
         for o in ohas:
-            if self.oqloc[o] not in all_q:
+            if self.op_qubit_pos[o] not in all_q:
                 self.back(o)
 
     def get_empty_neighbor(self, p):
@@ -351,7 +377,7 @@ class NARoute(ABC):
             p: 操作区位置
         """
         n = set(self.ag.neighbors(p))
-        n -= n & self.ohas
+        n -= n & self.op_occupied
         if len(n) > 0:
             return list(n)[0]
         return -1
@@ -434,15 +460,15 @@ class NARoute(ABC):
             q1: 比特1
             q2: 比特2
         """
-        # 从硬件拓扑图中找到一条边，该边的两个节点都还未放入比特
-        for a, b in self.ag.edges():
-            if a not in self.ohas and b not in self.ohas:
-                self.put(q1, a)
-                self.put(q2, b)
-                self.locked.add(a)
-                self.locked.add(b)
-                return True
-        return False
+        if not self.free_edges:
+            return False
+        a, b = next(iter(self.free_edges))
+        self.free_edges.discard((a, b))
+        self.put(q1, a)
+        self.put(q2, b)
+        self.locked.add(a)
+        self.locked.add(b)
+        return True
 
     def execute_multi_nodes(self, nodes):
         """执行两比特门.
@@ -457,8 +483,8 @@ class NARoute(ABC):
         for node in remain:
             # 不能执行的两比特门，对应比特需要放回存储区
             for q in node["qubits"]:
-                if self.oloc[q] != -1:
-                    self.back(self.oloc[q])
+                if self.qubit_op_pos[q] != -1:
+                    self.back(self.qubit_op_pos[q])
         for node in nodes:
             if node in remain:
                 continue
@@ -479,7 +505,7 @@ class NARoute(ABC):
         for node in nodes:
             # 每个两比特门判断当前两个比特的位置是否符合要求
             qubits = node["qubits"]
-            p1, p2 = self.oloc[qubits[0]], self.oloc[qubits[1]]
+            p1, p2 = self.qubit_op_pos[qubits[0]], self.qubit_op_pos[qubits[1]]
             if p1 != -1 and p2 != -1:
                 # 均在操作区
                 if not self.mov_to_neighbors(p1, p2):
@@ -512,15 +538,17 @@ class NARoute(ABC):
     def overlap(self, nd1, nd2):
         """判断两个单比特节点包含的门列表是否满足nd2为nd1的后缀.
 
+        Description:
+            若nd2为nd1的后缀, 则在执行nd1的所有单比特门时, 可在适当位置将nd2的
+            比特放入操作区，后续单比特门可一起执行, 节省操作步骤.
+            如nd1比特为Q1, 包含[H, X], nd2比特为Q2包含[X].
+            一般执行顺序为: PUT Q1; H Q1; X Q1; BACK Q1; PUT Q2; X Q2.
+            优化顺序: PUT Q1; H Q1; PUT Q2; X Q1 Q2.
+
         Args:
             nd1: 节点1
             nd2: 节点2
         """
-        # 若nd2为nd1的后缀，则在执行nd1的所有单比特门时，可在适当
-        # 位置将nd2的比特放入操作区，后续单比特门可一起执行。
-        # 如nd1比特为Q1，包含[H, X], nd2比特为Q2包含[X].
-        # 一般执行顺序为：PUT Q1; H Q1; X Q1; BACK Q1; PUT Q2; X Q2.
-        # 优化顺序：PUT Q1; H Q1; PUT Q2; X Q1 Q2.
         gt1 = self.dg.nodes[nd1]["gate"]
         gt2 = self.dg.nodes[nd2]["gate"]
         if len(gt1) < len(gt2):
@@ -550,12 +578,12 @@ class NARoute(ABC):
             if t.operation_type == -2 and t.targets[0] == q:
                 # 若有直接相邻的back操作，且作用在同一比特上，可消除
                 op = t.arg_value[0]
-                p = self.oloc[q]
-                self.ohas.remove(p)
-                self.ohas.add(op)
-                self.oqloc[p] = -1
-                self.oqloc[op] = q
-                self.oloc[q] = op
+                p = self.qubit_op_pos[q]
+                self.op_occupied.remove(p)
+                self.op_occupied.add(op)
+                self.op_qubit_pos[p] = -1
+                self.op_qubit_pos[op] = q
+                self.qubit_op_pos[q] = op
                 return res[:i] + res[i + 1 :]
             i -= 1
         res.append(opt)
@@ -630,10 +658,10 @@ class NARoute(ABC):
             if len(self.dg.get_node_data(node)["qubits"]) == 1:
                 if comm > 1:
                     continue
-                if qubits[0] not in self.ohas and comm == 1:
+                if qubits[0] not in self.op_occupied and comm == 1:
                     continue
 
-                if qubits[0] in self.ohas:
+                if qubits[0] in self.op_occupied:
                     comm = 1
 
                 # pylint: disable=invalid-sequence-index
@@ -646,7 +674,7 @@ class NARoute(ABC):
                 # 如果为两比特门，添加到可执行列表中
                 # （两比特门默认均为CX，可一起执行）
                 multi_qubits.update(set(qubits))
-                comm = max(comm, len(multi_qubits & self.ohas))
+                comm = max(comm, len(multi_qubits & self.op_occupied))
                 multi_nodes.append(node)
         if comm <= 1:
             if execute_node is not None:
@@ -666,7 +694,7 @@ class NARoute(ABC):
         self.res += self.measure
 
         # 遍历比特门，将逻辑量子比特映射到物理量子比特.
-        operator_list = self.mapping
+        operator_list = self.mapping_qubit_storage
         for gate in self.res:
             if gate.name == "move":
                 pid = gate.arg_value[1]
@@ -713,7 +741,7 @@ class NARoute(ABC):
         self.res += self.measure
 
         # 遍历比特门，将逻辑量子比特映射到物理量子比特.
-        operator_list = deepcopy(self.mapping)
+        operator_list = deepcopy(self.mapping_qubit_storage)
         for gate in self.res:
             if gate.name == "move":
                 pid = gate.arg_value[1]
