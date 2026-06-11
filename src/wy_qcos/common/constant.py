@@ -333,10 +333,10 @@ class Constant:
     MAX_JOB_WORKER = 1
     DEFAULT_AGGREGATION_JOB_INTERVAL = 10
 
-    # Code compress level
-    DEFAULT_CODE_COMPRESS_LEVEL = 0
-    MIN_CODE_COMPRESS_LEVEL = 0
-    MAX_CODE_COMPRESS_LEVEL = 9
+    # Code compression level
+    DEFAULT_CODE_COMPRESSION_LEVEL = 0
+    MIN_CODE_COMPRESSION_LEVEL = 0
+    MAX_CODE_COMPRESSION_LEVEL = 9
 
     # job engine property
     DEFAULT_JOB_POOL_TYPE = "process"

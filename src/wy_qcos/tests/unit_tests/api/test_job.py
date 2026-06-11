@@ -172,7 +172,7 @@ class TestJob:
         mock_client.dry_run = False
         mock_client.project_id = None
         mock_client.user_id = None
-        mock_client.code_compress_level = 0
+        mock_client.code_compression_level = 0
         mock_client.tags = None
 
         response = submit_job(mock_client, None, job_repo=mock_job_repo)
@@ -211,7 +211,7 @@ class TestJob:
         mock_client.profiling = None
         mock_client.callbacks = None
         mock_client.dry_run = False
-        mock_client.code_compress_level = 0
+        mock_client.code_compression_level = 0
         mock_client.tags = None
 
         with pytest.raises(BadRequestError):
@@ -241,7 +241,7 @@ class TestJob:
         mock_client.profiling = None
         mock_client.callbacks = None
         mock_client.dry_run = False
-        mock_client.code_compress_level = 0
+        mock_client.code_compression_level = 0
         mock_client.tags = None
 
         with pytest.raises(BadRequestError):

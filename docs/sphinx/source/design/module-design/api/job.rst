@@ -513,7 +513,7 @@
 
      当code_type为qubo时，source_code格式为: [[[整型/浮点, ...],[整型/浮点, ...]]]，schema为: [[[int/float]]]
    - "results"：["result": XXX]中的XXX值由驱动driver设置，格式由驱动定义，上层不做格式约束
-   - code_compress_level：代码压缩等级（0-9），0不压缩，9最高压缩。推荐值5-7，可平衡压缩率和解压缩时间
+   - code_compression_level：代码压缩等级（0-9），0不压缩，9最高压缩。推荐值5-7，可平衡压缩率和解压缩时间
    - tags：作业标签列表，用于分类、分组和过滤作业
    - 数据库过滤支持：``get_jobs`` 接口支持多条件过滤，支持的字段：
 
@@ -817,7 +817,7 @@
 +------------------------+----------+----------------------------------------------+
 | shots                  | int      | 测量次数，影响统计精度                       |
 +------------------------+----------+----------------------------------------------+
-| code_compress_level    | int      | 代码压缩等级(0-9)，0不压缩，9最高压缩        |
+| code_compression_level | int      | 代码压缩等级(0-9)，0不压缩，9最高压缩        |
 +------------------------+----------+----------------------------------------------+
 | tags                   | array    | 任务标签列表[可选]，用于分类和过滤任务       |
 +------------------------+----------+----------------------------------------------+
@@ -895,7 +895,7 @@
           transpiler="cmss",
           shots=1000,
           job_priority=5,
-          code_compress_level=5,    # 中等压缩等级
+          code_compression_level=5,    # 中等压缩等级
           tags=["exp1", "circuit1"]  # 作业标签
       )
 
@@ -967,7 +967,7 @@
 
   -  使用 ``dry_run=true`` 测试代码（不消耗资源）
   -  启用 ``profiling`` 分析运行时间分布
-  -  设置合理的 ``code_compress_level`` （推荐5-7）
+  -  设置合理的 ``code_compression_level`` （推荐5-7）
   -  使用 ``tags`` 对相关作业进行分组管理
   -  批量提交相关作业提高资源利用率
   -  利用 ``filters`` 进行高效的作业查询
@@ -988,7 +988,7 @@
       job = submit_job(
           source_code=[qasm_code],
           callbacks=callbacks,
-          code_compress_level=5,
+          code_compression_level=5,
           tags=["important"],
           ...
       )

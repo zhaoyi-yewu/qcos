@@ -85,7 +85,7 @@ def submit_job(
     profiling = body.profiling
     callbacks = body.callbacks
     dry_run = body.dry_run
-    code_compress_level = body.code_compress_level
+    code_compression_level = body.code_compression_level
     tags = body.tags
 
     # validate: code_type
@@ -216,13 +216,13 @@ def submit_job(
         ),
     )
 
-    # validate: code_compress_level
+    # validate: code_compression_level
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
         func_name,
         Library.validate_values_range(
-            code_compress_level,
-            "code_compress_level",
+            code_compression_level,
+            "code_compression_level",
             0,
             9,
         ),
@@ -559,7 +559,7 @@ def submit_job(
         "profiling": profiling,
         "callbacks": callbacks,
         "dry_run": dry_run,
-        "code_compress_level": code_compress_level,
+        "code_compression_level": code_compression_level,
         "tags": tags,
         "created_at": created_at,
         "updated_at": created_at,

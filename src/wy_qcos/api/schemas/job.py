@@ -94,13 +94,14 @@ class SubmitJobRequest(BaseModel):
     callbacks: list | None = Field(default=None, description="Callbacks")
     # Dry-run
     dry_run: bool = Field(default=False, description="Dry-run flag")
-    # Code compress level
-    code_compress_level: int = Field(
-        default=Constant.DEFAULT_CODE_COMPRESS_LEVEL,
-        ge=Constant.MIN_CODE_COMPRESS_LEVEL,
-        le=Constant.MAX_CODE_COMPRESS_LEVEL,
+    # Code compression level
+    code_compression_level: int = Field(
+        default=Constant.DEFAULT_CODE_COMPRESSION_LEVEL,
+        ge=Constant.MIN_CODE_COMPRESSION_LEVEL,
+        le=Constant.MAX_CODE_COMPRESSION_LEVEL,
         description="Code compression level. range: 0-9, Default: 0. "
-        "Max compress level: 9, Min compress level: 1, No compress: 0",
+        "Max compression level: 9, Min compression level: 1, "
+        "No compression: 0",
     )
     # Tags
     tags: list | None = Field(default=None, description="Tags list")
@@ -194,8 +195,8 @@ class SubmitJobResponse(BaseModel):
     callbacks: list | None = Field(default=None, description="Callbacks")
     # Dry-run flag
     dry_run: bool = Field(default=False, description="Dry-run flag")
-    # Code compress level
-    code_compress_level: int = Field(
+    # Code compression level
+    code_compression_level: int = Field(
         default=0, ge=0, le=9, description="Code compression level, range 0-9"
     )
     # Tags
@@ -288,8 +289,8 @@ class GetJobStatusResponse(BaseModel):
     shots: int = Field(description="Shots")
     # Dry-run
     dry_run: bool = Field(description="Dry-run flag")
-    # Code compress level
-    code_compress_level: int = Field(
+    # Code compression level
+    code_compression_level: int = Field(
         default=0, ge=0, le=9, description="Code compression level, range 0-9"
     )
     # Tags
