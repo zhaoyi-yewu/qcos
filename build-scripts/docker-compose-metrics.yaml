@@ -1,0 +1,76 @@
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
+version: '3'
+services:
+  prometheus:
+    image: ${REGISTRY}${PROMETHEUS_IMAGE_NAME}:${PROMETHEUS_IMAGE_VERSION}
+    container_name: prometheus
+    restart: unless-stopped
+    network_mode: "host"
+    volumes:
+      - /etc/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - /etc/prometheus/rules:/etc/prometheus/rules
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.listen-address=:${PROMETHEUS_PORT:-9090}'
+    environment:
+      - METRICS_TARGET=${METRICS_TARGET:-host.docker.internal:19400}
+  alertmanager:
+    image: ${REGISTRY}${ALERTMANAGER_IMAGE_NAME}:${ALERTMANAGER_IMAGE_VERSION}
+    container_name: alertmanager
+    restart: unless-stopped
+    network_mode: "host"
+    volumes:
+      - /etc/alertmanager/:/etc/alertmanager/
+      - /etc/alertmanager-data:/alertmanager-data
+
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager-data'
+      - '--web.listen-address=:${ALERTMANAGER_PORT:-9093}'
+    depends_on:
+      - prometheus
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+  grafana:
+    image: ${REGISTRY}${GRAFANA_IMAGE_NAME}:${GRAFANA_IMAGE_VERSION}
+    container_name: grafana
+    restart: unless-stopped
+    network_mode: "host"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - /etc/grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=${GF_SERVER_ROOT_URL:-http://localhost:3000}
+      - TZ=Asia/Shanghai
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
