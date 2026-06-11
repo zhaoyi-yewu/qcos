@@ -34,6 +34,7 @@ from wy_qcos.drivers.driver_manager import DriverManager
 from wy_qcos.log.logger import init_logger
 from wy_qcos.task_manager import scheduler
 from wy_qcos.transpiler.transpiler_manager import TranspilerManager
+from wy_qcos.user.project_manager import ProjectManager
 from wy_qcos.user.security_manager import SecurityManager
 from wy_qcos.user.user_manager import UserManager
 
@@ -218,12 +219,17 @@ class Server:
             scheduler.set_driver_manager(driver_manager)
             scheduler.set_transpiler_manager(transpiler_manager)
             scheduler.set_device_manager(device_manager)
+            scheduler.set_db_engine(db_engine)
             scheduler.start_taskmanager()
 
             # init user management module
             logger.info("Init user manager")
 
             with db_utils.create_db_session(db_engine) as db_session:
+                # init project manager
+                project_manager = ProjectManager(db_session)
+                app.state._project_manager = project_manager
+                # init user manager
                 user_manager = UserManager(
                     Config.USERS.ACCESS_CONTROL_MODEL_FILE,
                     Config.USERS.ACCESS_CONTROL_POLICY_FILE,
@@ -235,6 +241,10 @@ class Server:
                 logger.info("Init security manager")
                 security_manager = SecurityManager(user_manager)
                 app.state._security_manager = security_manager
+
+            # handle any unfinished jobs from previous runs
+            logger.info("Processing unfinished callbacks ...")
+            scheduler.process_unfinished_jobs()
 
             # run any unfinished callbacks
             logger.info("Processing unfinished callbacks ...")

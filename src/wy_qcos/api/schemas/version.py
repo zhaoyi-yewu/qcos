@@ -24,6 +24,10 @@ class GetVersionRequest(BaseModel):
     Pydantic Model for Get Version Request.
     """
 
+    details: bool = Field(
+        default=False, description="Include detailed capabilities information"
+    )
+
 
 class GetVersionResponse(BaseModel):
     """Get Version Response.
@@ -38,4 +42,7 @@ class GetVersionResponse(BaseModel):
         ..., description="supported api versions"
     )
     platform_version: str = Field(..., description="platform version")
-    capabilities: dict = Field(..., description="capabilities")
+    auth_mode: str = Field(..., description="authentication mode")
+    capabilities: dict | None = Field(
+        default=None, description="capabilities (included when details=True)"
+    )
