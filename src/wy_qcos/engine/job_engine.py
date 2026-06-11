@@ -54,6 +54,7 @@ from wy_qcos.transpiler.common.wirecut.cut_wire import (
     generate_all_variant_subcircuits_for_execute,
     reconstruct_probability_distribution_wire_cut,
 )
+from wy_qcos.db.utils import db_utils
 
 
 class AggregationInput(RunInput):
@@ -524,6 +525,7 @@ def get_external_aggregated_results(job_results, mapping_dict):
     on_failure=[Library.job_callback],
     on_crashed=[Library.job_callback],
     on_cancellation=[Library.job_callback],
+    on_completion=[db_utils.job_callback],
 )
 def job_flow(job_info):
     """Job flow.

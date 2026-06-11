@@ -22,7 +22,6 @@ from sqlalchemy import make_url, create_engine, text
 
 from wy_qcos.common.library import Library
 from wy_qcos.db.models import Base
-from wy_qcos.common.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +93,7 @@ class DatabaseDriver:
             raise TimeoutError("Connection to database timeout")
 
 
-def init_database():
+def init_database(qcos_db_url):
     """Init database."""
     db_url = Config.DATABASE.QCOS_DATABASE_CONNECTION_URL
     logger.info(f"Initializing database: {db_url}")

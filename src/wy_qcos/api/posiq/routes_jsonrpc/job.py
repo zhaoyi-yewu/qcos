@@ -23,7 +23,10 @@ from fastapi import Depends
 from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import job_api_v1
+from wy_qcos.db.repositories.job import JobRepository
+from wy_qcos.db.utils.db_utils import get_repository
 from wy_qcos.common import args_schema, errors
+from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.task_manager import scheduler
@@ -44,12 +47,14 @@ module_name = "JOB"
 def submit_job(
     body: schemas.SubmitJobRequest,
     auth_data: dict | None = Depends(auth),
+    job_repo: JobRepository = Depends(get_repository(JobRepository)),
 ) -> schemas.SubmitJobResponse:
     """Submit job.
 
     Args:
         body(schemas.SubmitJobRequest): job info
         auth_data: auth data
+        job_repo: job repository
 
     Returns:
         job info
@@ -354,9 +359,21 @@ def submit_job(
         )
 
     # generate creation_date
-    creation_date = Library.get_current_datetime()
-    body.creation_date = creation_date
+    created_at = Library.get_current_datetime()
+    body.created_at = created_at
     end_date = None
+
+    if Config.QCOS_DATABASE_CONNECTION_URL != "fake":
+        success, e, job_record = job_repo.create_job(body)
+        if not success or e:
+            jsonrpc_errors.handle_error_internal_server(
+                module_name,
+                func_name,
+                (False, "Failed to insert db: " + str(e)),
+            )
+        # update job id by db if empty
+        if not job_id:
+            body.job_id = job_record.id
 
     # submit job
     res = {}
@@ -404,7 +421,7 @@ def submit_job(
         "profiling": profiling,
         "callbacks": callbacks,
         "dry_run": dry_run,
-        "creation_date": creation_date,
+        "created_at": created_at,
         "end_date": end_date,
     }
     response_info = schemas.SubmitJobResponse.model_validate(_response_info)
@@ -941,7 +958,7 @@ def update_job(
         "profiling": job.get("profiling"),
         "callbacks": job.get("callbacks"),
         "dry_run": job.get("dry_run"),
-        "creation_date": job.get("creation_date"),
+        "created_at": job.get("created_at"),
         "end_date": job.get("end_date"),
     }
     response_info = schemas.UpdateJobResponse.model_validate(_response_info)

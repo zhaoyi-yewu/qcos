@@ -72,7 +72,7 @@ response_info = {
     "shots": 10,
     "dry_run": True,
     "progress": -1,
-    "creation_date": datetime.now(),
+    "created_at": datetime.now(),
     "end_date": None,
 }
 job_ids = [uuid4(), uuid4(), uuid4()]
@@ -318,7 +318,7 @@ class TestJob:
                 "profiling": None,
                 "callbacks": None,
                 "dry_run": True,
-                "creation_date": datetime.now(),
+                "created_at": datetime.now(),
                 "end_date": None,
             },
             None,

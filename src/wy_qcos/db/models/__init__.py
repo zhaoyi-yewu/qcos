@@ -16,10 +16,11 @@
 # ----------------------------------------------------------------------
 
 from .base import Base
-from .base import ArrayType, GUID
+from .base import ArrayType, GUID, DictList
 from .project import Project
 from .user import User
 from .user import Role
 from .user import UserRole
 from .user import LoginLog
 from .user import TokenBlacklist
+from .job import Job

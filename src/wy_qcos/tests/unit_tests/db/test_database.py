@@ -197,20 +197,17 @@ class TestInitDatabase:
 
     def test_init_database_connection_flow(self):
         """Test init_database complete connection flow."""
-        with patch("wy_qcos.db.database.Config") as mock_config:
-            mock_config.QCOS_DATABASE_CONNECTION_URL = "sqlite:///:memory:"
-            with patch(
-                "wy_qcos.db.database.DatabaseDriver"
-            ) as mock_driver_class:
-                mock_driver = MagicMock()
-                mock_engine = MagicMock()
-                mock_driver.create_engine.return_value = mock_engine
-                mock_driver_class.return_value = mock_driver
+        QCOS_DATABASE_CONNECTION_URL = "sqlite:///:memory:"
+        with patch("wy_qcos.db.database.DatabaseDriver") as mock_driver_class:
+            mock_driver = MagicMock()
+            mock_engine = MagicMock()
+            mock_driver.create_engine.return_value = mock_engine
+            mock_driver_class.return_value = mock_driver
 
-                with patch.object(mock_driver, "check_connection"):
-                    result = init_database()
-                    assert result == mock_engine
-                    mock_driver.create_engine.assert_called_once()
+            with patch.object(mock_driver, "check_connection"):
+                result = init_database(QCOS_DATABASE_CONNECTION_URL)
+                assert result == mock_engine
+                mock_driver.create_engine.assert_called_once()
 
 
 class TestDatabaseDriverMultipleInstances:
