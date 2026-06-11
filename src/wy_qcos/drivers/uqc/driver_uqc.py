@@ -120,6 +120,9 @@ class DriverUQCMatrix2(DriverBase):
             uqc_config.SERVER_HOST = self.uqc_host
             uqc_config.SERVER_PORT = self.uqc_port
             uqc_config.DEFAULT_TASKS_FILE_PATH = "/dev/null"
+            logger.error(uqc_config.SERVER_HOST)
+            logger.error(uqc_config.SERVER_PORT)
+            logger.error(self.token)
             self._uqc = uqc_client.UQC(self.token)
         except Exception as e:
             raise ValueError(f"UQC exception: {e}") from e
@@ -197,6 +200,7 @@ class DriverUQCMatrix2(DriverBase):
         # 2. Submit task
         logger.info("2. submit task")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
+        logger.error("Z3")
         task_id = self._uqc.submit_task(
             final_code, self.backend_device_name, shots
         )
