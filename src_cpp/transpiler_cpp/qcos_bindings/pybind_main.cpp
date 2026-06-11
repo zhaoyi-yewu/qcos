@@ -26,6 +26,7 @@ void bind_utils(py::module_& m);
 void bind_cpp_mcts(py::module_& m);
 void bind_parser(py::module_& m);
 void bind_decomposer(py::module_& m);
+void bind_optimizer(py::module_& m);
 
 PYBIND11_MODULE(high_performance, m) {
   m.doc() = "Binding qcos transpiler cpp functions.";
@@ -37,4 +38,5 @@ PYBIND11_MODULE(high_performance, m) {
   bind_cpp_mcts(m);
   bind_parser(m);
   bind_decomposer(m);
+  bind_optimizer(m);
 }
