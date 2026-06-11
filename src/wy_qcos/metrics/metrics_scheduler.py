@@ -20,7 +20,10 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.metrics.metrics_task import update_metrics_task_async
+from wy_qcos.metrics.metrics_task import (
+    clear_db_session,
+    update_metrics_task_async,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -85,6 +88,9 @@ class MetricsScheduler:
             self._scheduler.shutdown(wait=True)
         except Exception as e:
             logger.warning(f"Error during scheduler shutdown: {e}")
+
+        # Clean up singleton database session
+        clear_db_session()
 
         logger.info("Metrics scheduler stopped")
 
