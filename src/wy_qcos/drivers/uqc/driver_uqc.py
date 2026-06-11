@@ -200,7 +200,6 @@ class DriverUQCMatrix2(DriverBase):
         # 2. Submit task
         logger.info("2. submit task")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
-        logger.error("Z3")
         task_id = self._uqc.submit_task(
             final_code, self.backend_device_name, shots
         )
