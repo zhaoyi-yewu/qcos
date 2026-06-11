@@ -157,7 +157,12 @@ class DriverTiangongBase(DriverQuboBase):
         user_id = extra_configs.get("user_id", "")
         password_sdk_code = extra_configs.get("password_sdk_code", "")
         success, err_msg, self.token = Library.loop_with_timeout(
-            self.user_auth, 3600, 5, user_id, password_sdk_code
+            self.user_auth,
+            3600,
+            5,
+            user_id,
+            password_sdk_code,
+            max_attempts=3,
         )
         if not success:
             raise ValueError(f"Authorize failed [{job_id}]: {err_msg}")
@@ -168,7 +173,13 @@ class DriverTiangongBase(DriverQuboBase):
         logger.info("4. submit task")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
         success, err_msg, task_id = Library.loop_with_timeout(
-            self.submit_tasks, 3600, 5, job_id, data_index, qubo_matrix
+            self.submit_tasks,
+            3600,
+            5,
+            job_id,
+            data_index,
+            qubo_matrix,
+            max_attempts=3,
         )
         if not success:
             raise ValueError(f"Failed to submit task: {err_msg}")

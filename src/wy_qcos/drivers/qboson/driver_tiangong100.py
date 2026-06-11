@@ -200,7 +200,12 @@ class DriverTiangong100(DriverQuboBase):
         logger.info("3. user authentication")
         self.set_progress_by_task(self.TASK_STAGE_USER_AUTHENTICATION)
         success, err_msg, self.token = Library.loop_with_timeout(
-            self.user_auth, 3600, 5, username, password
+            self.user_auth,
+            3600,
+            5,
+            username,
+            password,
+            max_attempts=3,
         )
         if not success:
             raise ValueError(f"Authorize failed [{job_id}]: {err_msg}")
@@ -211,7 +216,11 @@ class DriverTiangong100(DriverQuboBase):
         logger.info("4. check_device_status")
         self.set_progress_by_task(self.TASK_STAGE_CHECK_DEVICE_STATUS)
         success, err_msg, _ = Library.loop_with_timeout(
-            self.check_device_status, 3600, 5, device_id
+            self.check_device_status,
+            3600,
+            5,
+            device_id,
+            max_attempts=3,
         )
         if not success:
             raise ValueError(
@@ -222,7 +231,13 @@ class DriverTiangong100(DriverQuboBase):
         logger.info("5. upload file")
         self.set_progress_by_task(self.TASK_STAGE_UPLOAD_FILE)
         success, err_msg, file_info = Library.loop_with_timeout(
-            self.upload_file, 3600, 5, job_id, data_index, qubo_matrix
+            self.upload_file,
+            3600,
+            5,
+            job_id,
+            data_index,
+            qubo_matrix,
+            max_attempts=3,
         )
         if not success:
             raise ValueError(f"Failed to upload file [{job_id}]: {err_msg}")
@@ -247,7 +262,11 @@ class DriverTiangong100(DriverQuboBase):
         }
         tasks_info = {"data": [task_info]}
         success, err_msg, _ = Library.loop_with_timeout(
-            self.submit_tasks, 3600, 5, tasks_info
+            self.submit_tasks,
+            3600,
+            5,
+            tasks_info,
+            max_attempts=3,
         )
         if not success:
             raise ValueError(f"Failed to submit task [{task_name}]: {err_msg}")

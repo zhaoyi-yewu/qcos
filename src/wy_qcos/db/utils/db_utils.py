@@ -255,7 +255,7 @@ async def db_job_callback(
 
     # Get results from parameter or state
     if results is None:
-        if state_name != Constant.PREFECT_STATE_CANCELLING:
+        if state_name not in [Constant.PREFECT_STATE_CANCELLING]:
             try:
                 result_obj = state.result()
                 # Check if result is a coroutine and await it
@@ -284,17 +284,16 @@ async def db_job_callback(
                 overall_job_status = Constant.JOB_STATUS_FAILED
 
     # Retrieve results from agg sub-jobs
-    all_results = {}
-    for result in results:
-        sub_results = result.pop("sub_results", {})
-        if sub_results:
-            for sub_job_id, sub_result in sub_results.items():
-                if not isinstance(sub_result, list):
-                    sub_result = [sub_result]
-                all_results[sub_job_id] = sub_result
-        if job_id not in all_results:
-            all_results[job_id] = []
-        all_results[job_id].append(result)
+    all_results = {job_id: []}
+    if results:
+        for result in results:
+            sub_results = result.pop("sub_results", {})
+            if sub_results:
+                for sub_job_id, sub_result in sub_results.items():
+                    if not isinstance(sub_result, list):
+                        sub_result = [sub_result]
+                    all_results[sub_job_id] = sub_result
+            all_results[job_id].append(result)
 
     job_repo = None
     # create db session for agg jobs

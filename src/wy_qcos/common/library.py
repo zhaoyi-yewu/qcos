@@ -1160,16 +1160,17 @@ class Library:
         return success, err_msgs, results
 
     @staticmethod
-    def loop_with_timeout(condition_check, timeout, interval, *args, **kwargs):
+    def loop_with_timeout(
+        condition_check, timeout, interval, *args, max_attempts=0, **kwargs
+    ):
         """Wait loop with timeout.
 
         Args:
             condition_check: function to check condition
             timeout: timeout in seconds
             interval: interval in seconds
-            args: arguments to function condition_check
-            kwargs: keyword arguments to function condition_check
             *args: arguments to function condition_check
+            max_attempts: max attempt count, 0 means unlimited
             **kwargs: keyword arguments to function condition_check
 
         Returns:
@@ -1177,11 +1178,19 @@ class Library:
         """
         err_msg = None
         start_time = time.time()
+        attempt_count = 0
         while True:
+            attempt_count += 1
+
             # check condition
             success, err_msg, result = condition_check(*args, **kwargs)
             if success:
                 return True, err_msg, result
+
+            # check max attempts
+            if max_attempts > 0 and attempt_count >= max_attempts:
+                err_msg = f"Max attempts ({max_attempts}) reached: {err_msg}"
+                return False, err_msg, None
 
             # check timeout
             elapsed = time.time() - start_time

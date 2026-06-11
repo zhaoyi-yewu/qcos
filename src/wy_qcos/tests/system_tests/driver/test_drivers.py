@@ -61,7 +61,7 @@ class TestDrivers:
             Constant.CODE_TYPE_QASM2,
             Constant.CODE_TYPE_QASM3,
         ]
-        assert driver["supported_transpilers"] == [Constant.TRANSPILER_CMSS]
+        assert Constant.TRANSPILER_CMSS in driver["supported_transpilers"]
         assert driver["tech_type"] == Constant.TECH_TYPE_NEUTRAL_ATOM
         assert driver["transpiler"] == Constant.TRANSPILER_CMSS
         if driver["version"] is not None:

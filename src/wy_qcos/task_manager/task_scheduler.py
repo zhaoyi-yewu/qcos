@@ -431,6 +431,9 @@ class TaskScheduler:
                             f"(status: {job_record.job_status}) to FAILED"
                         )
                         job_record.job_status = Constant.JOB_STATUS_FAILED
+                        flow_run_id = job_record.flow_run_id
+                        if flow_run_id:
+                            self._task_manager.cancel_flow_runs([flow_run_id])
                         unfinished_count += 1
 
                 # Commit changes if any jobs were updated
