@@ -24,10 +24,18 @@ from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlalchemy import select, delete, func
 from sqlalchemy.orm import Session
 
-from wy_qcos.db.models import User, LoginLog, TokenBlacklist, UserRole, Role
+from wy_qcos.db.models import (
+    User,
+    LoginLog,
+    TokenBlacklist,
+    UserRole,
+    Role,
+    Job,
+)
 from wy_qcos.db.repositories import BaseRepository
 from wy_qcos.api.schemas.user import CreateUserRequest, UpdateUserRequest
 from wy_qcos.common.config import Config
+from wy_qcos.common.constant import Constant
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +80,21 @@ class UserRepository(BaseRepository):
             )
             del user_data["password"]
 
+            # If project_id is None, use DEFAULT_PROJECT_ID
+            if user_data.get("project_id") is None:
+                user_data["project_id"] = uuid_lib.UUID(
+                    Constant.DEFAULT_PROJECT_ID
+                )
+
+            # Convert user_id to id
+            user_id = user_data.pop("user_id")
+            if user_id:
+                user_data["id"] = user_id
+
             # Extract roles to handle them separately
             roles = user_data.pop("roles", [])
 
+            # create user entry in db
             success, error, user = self.create(User, **user_data)
             if success:
                 logger.info(f"User created successfully: {user.user_name}")
@@ -163,10 +183,18 @@ class UserRepository(BaseRepository):
             logger.error(f"Exception while getting user by id: {e}")
             return False, e, None
 
-    def get_users(self):
-        """Get all users."""
+    def get_users(self, filters: dict | None = None):
+        """Get all users with optional filtering.
+
+        Args:
+            filters: Dictionary with filter conditions
+                    (e.g., {'user_name': 'admin', 'is_enabled': True})
+
+        Returns:
+            Tuple of (success, error, users)
+        """
         try:
-            success, error, users = self.get_all(User)
+            success, error, users = self.get_all(User, filters=filters)
             if success:
                 return True, None, users
             else:
@@ -249,13 +277,27 @@ class UserRepository(BaseRepository):
     def delete_user_by_id(self, user_id: str):
         """Delete a user by UUID string.
 
-        This method first deletes all user-role associations before
-        deleting the user to avoid foreign key constraint violations.
+        This method first deletes all associated job records, then deletes
+        all user-role associations before deleting the user to avoid foreign
+        key constraint violations.
         """
         try:
-            # First, delete all role associations for this user
+            # Accept either uuid.UUID or string
+            uuid_obj = (
+                user_id if isinstance(user_id, uuid_lib.UUID) else user_id
+            )
+
+            # First, delete all jobs for this user
+            delete_jobs_query = delete(Job).where(Job.user_id == uuid_obj)
+            jobs_result = self._db_session.execute(delete_jobs_query)
+            self._db_session.flush()
+            logger.info(
+                f"Deleted {jobs_result.rowcount} job(s) for user {user_id}"
+            )
+
+            # Then, delete all role associations for this user
             delete_roles_query = delete(UserRole).where(
-                UserRole.user_id == user_id
+                UserRole.user_id == uuid_obj
             )
             result = self._db_session.execute(delete_roles_query)
             self._db_session.flush()
@@ -265,7 +307,7 @@ class UserRepository(BaseRepository):
             )
 
             # Then delete the user itself
-            success, error = self.delete_by_uuid(User, user_id)
+            success, error = self.delete_by_uuid(User, str(uuid_obj))
             if success:
                 logger.info(f"User deleted successfully: {user_id}")
                 return True, None
@@ -280,8 +322,9 @@ class UserRepository(BaseRepository):
     def delete_user_by_username(self, user_name: str):
         """Delete a user by username.
 
-        This method first deletes all user-role associations before
-        deleting the user to avoid foreign key constraint violations.
+        This method first deletes all associated job records, then deletes
+        all user-role associations before deleting the user to avoid foreign
+        key constraint violations.
         """
         try:
             # Get the user first to get their ID
@@ -289,6 +332,14 @@ class UserRepository(BaseRepository):
             if not success or not user:
                 logger.error(f"User '{user_name}' not found")
                 return False, f"User '{user_name}' not found"
+
+            # Delete all jobs for this user
+            delete_jobs_query = delete(Job).where(Job.user_id == user.id)
+            jobs_result = self._db_session.execute(delete_jobs_query)
+            self._db_session.flush()
+            logger.info(
+                f"Deleted {jobs_result.rowcount} job(s) for user '{user_name}'"
+            )
 
             # Delete all role associations for this user
             delete_roles_query = delete(UserRole).where(
@@ -382,7 +433,19 @@ class UserRepository(BaseRepository):
         limit: int = 100,
         offset: int = 0,
     ):
-        """Get login logs with optional filters."""
+        """Get login logs with optional filters.
+
+        Args:
+            user_id: Filter by user ID (optional)
+            start_time: Filter logs after this time (optional)
+            end_time: Filter logs before this time (optional)
+            limit: Maximum number of logs to return. Use -1 to get all
+                  logs without limit
+            offset: Number of logs to skip
+
+        Returns:
+            Tuple of (success, error, logs)
+        """
         try:
             query = select(LoginLog)
 
@@ -407,7 +470,11 @@ class UserRepository(BaseRepository):
             query = query.order_by(LoginLog.login_time.desc())
 
             # Apply pagination
-            query = query.offset(offset).limit(limit)
+            query = query.offset(offset)
+
+            # Apply limit only if not -1 (unlimited)
+            if limit != -1:
+                query = query.limit(limit)
 
             result = self._db_session.execute(query)
             logs = result.scalars().all()
