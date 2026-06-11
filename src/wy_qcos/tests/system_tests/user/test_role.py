@@ -28,12 +28,12 @@ class TestRole:
     """Role management system tests."""
 
     test_roles = [
-        "_test_role_st",
-        "_test_role_perms",
+        "test_role_st",
+        "test_role_perms",
     ]
     test_users = [
-        "_test_user_st_role",
-        "_test_user_remove_role",
+        "test_user_st_role",
+        "test_user_remove_role",
     ]
 
     @classmethod
@@ -125,31 +125,28 @@ class TestRole:
         """Test creating and deleting role."""
         # Create new role
         role_data = {
-            "role_name": "_test_role_st",
-            "permissions": ["read", "write"],
+            "role_name": "test_role_st",
+            "permissions": ["/v1/auth/me"],
             "description": "Test role for system testing",
         }
 
-        try:
-            created_role = StLibrary.create_role(self.admin_client, role_data)
-            assert created_role is not None
-            assert created_role["role_name"] == "_test_role_st"
-            assert "read" in created_role.get("permissions", [])
+        created_role = StLibrary.create_role(self.admin_client, role_data)
+        assert created_role is not None
+        assert created_role["role_name"] == "test_role_st"
+        assert "/v1/auth/me" in created_role.get("permissions", [])
+        # Verify role is created
+        role_info = StLibrary.get_role(
+            self.admin_client, "test_role_st", is_name=True
+        )
+        assert role_info["role_name"] == "test_role_st"
+        role_id = role_info["id"]
 
-            # Verify role is created
-            retrieved_role = StLibrary.get_role(
-                self.admin_client, "_test_role_st", is_name=True
-            )
-            assert retrieved_role["role_name"] == "_test_role_st"
+        # Delete role
+        StLibrary.delete_role(self.admin_client, "test_role_st", is_name=True)
 
-        finally:
-            # Delete role
-            try:
-                StLibrary.delete_role(
-                    self.admin_client, "_test_role_st", is_name=True
-                )
-            except Exception:  # noqa: S110
-                pass
+        # Verify role is deleted
+        roles = StLibrary.get_roles(self.admin_client)
+        assert role_id not in roles
 
     @pytest.mark.smoke
     def test_get_all_roles_list(self):

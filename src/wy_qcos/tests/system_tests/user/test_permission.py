@@ -29,14 +29,14 @@ class TestPermission:
     """Permission management system tests."""
 
     test_roles = [
-        "_test_read_only_role",
-        "_test_role_job",
-        "_test_role_device",
-        "_test_role_insufficient_permission",
+        "test_read_only_role",
+        "test_role_job",
+        "test_role_device",
+        "test_role_insufficient_permission",
     ]
     test_users = [
-        "_test_user_permissions",
-        "_test_user_insufficient_permission",
+        "test_user_permissions",
+        "test_user_insufficient_permissions",
     ]
 
     @classmethod
@@ -126,7 +126,7 @@ class TestPermission:
         """Test permission enforcement for user operations."""
         # Create test role and user
         role_data = {
-            "role_name": "_test_read_only_role",
+            "role_name": "test_read_only_role",
             "permissions": [
                 "/v1/device/get_devices",
                 "/v1/device/get_device",
@@ -135,50 +135,28 @@ class TestPermission:
         }
 
         user_data = {
-            "user_name": "_test_user_permissions",
+            "user_name": "test_user_permissions",
             "password": self.password,
-            "roles": ["_test_read_only_role"],
+            "roles": ["test_read_only_role"],
             "is_locked": False,
         }
 
-        try:
-            # Create role
-            created_role = StLibrary.create_role(self.admin_client, role_data)
-            assert created_role is not None
-
-            # Create user
-            new_user = StLibrary.create_user(self.admin_client, user_data)
-            assert new_user["user_name"] == "_test_user_permissions"
-
-            # Verify user has the role
-            user_roles = StLibrary.get_roles(self.admin_client)
-            assert user_roles is not None
-
-        finally:
-            # Clean up test data
-            try:
-                StLibrary.delete_user(
-                    self.admin_client,
-                    "_test_user_permissions",
-                    is_name=True,
-                    force=True,
-                )
-            except Exception:  # noqa: S110
-                pass
-
-            try:
-                StLibrary.delete_role(
-                    self.admin_client, "_test_read_only_role", is_name=True
-                )
-            except Exception:  # noqa: S110
-                pass
+        # Create role
+        created_role = StLibrary.create_role(self.admin_client, role_data)
+        assert created_role is not None
+        # Create user
+        new_user, _ = StLibrary.create_user(self.admin_client, user_data)
+        assert new_user["user_name"] == "test_user_permissions"
+        # Verify user has the role
+        user_roles = StLibrary.get_roles(self.admin_client)
+        assert user_roles is not None
 
     @pytest.mark.smoke
     def test_permission_role_insufficient_permission(self):
         """Test role has insufficient permission to operate."""
         # Create test role and user
         role_data = {
-            "role_name": "_test_role_insufficient_permission",
+            "role_name": "test_role_insufficient_permission",
             "permissions": [
                 "/v1/device/get_devices",
                 "/v1/device/get_device",
@@ -187,61 +165,34 @@ class TestPermission:
         }
 
         user_data = {
-            "user_name": "_test_user_insufficient_permissions",
+            "user_name": "test_user_insufficient_permissions",
             "password": self.password,
-            "roles": ["_test_role_insufficient_permission"],
+            "roles": ["test_role_insufficient_permission"],
             "is_locked": False,
         }
 
-        try:
-            # Create role
-            created_role = StLibrary.create_role(self.admin_client, role_data)
-            assert created_role is not None
-
-            # Create user
-            new_user = StLibrary.create_user(self.admin_client, user_data)
-            assert (
-                new_user["user_name"] == "_test_user_insufficient_permissions"
-            )
-
-            # login
-            login_response = StLibrary.login(
-                self.client,
-                "_test_user_insufficient_permissions",
-                str(self.password),
-            )
-            self.client.set_token(login_response["access_token"])
-
-            # access device (success)
-            device = StLibrary.get_device(self.client, Constant.DEVICE_DUMMY)
-            assert device is not None
-            devices = StLibrary.get_devices(self.client)
-            assert devices is not None
-
-            # access drivers (failed with insufficient permissions)
-            status_code, reason, text, response = self.client.get_drivers()
-            assert status_code == HttpCode.SUCCESS_OK
-            result = json.loads(text)
-            error = result.get("error", {})
-            error_code = error.get("code", 0)
-            assert error_code == -HttpCode.FORBIDDEN_ERROR
-        finally:
-            # Clean up test data
-            try:
-                StLibrary.delete_user(
-                    self.admin_client,
-                    "_test_user_insufficient_permissions",
-                    is_name=True,
-                    force=True,
-                )
-            except Exception:  # noqa: S110
-                pass
-
-            try:
-                StLibrary.delete_role(
-                    self.admin_client,
-                    "_test_role_insufficient_permission",
-                    is_name=True,
-                )
-            except Exception:  # noqa: S110
-                pass
+        # Create role
+        created_role = StLibrary.create_role(self.admin_client, role_data)
+        assert created_role is not None
+        # Create user
+        new_user, _ = StLibrary.create_user(self.admin_client, user_data)
+        assert new_user["user_name"] == "test_user_insufficient_permissions"
+        # login
+        login_response = StLibrary.login(
+            self.client,
+            "test_user_insufficient_permissions",
+            str(self.password),
+        )
+        self.client.set_token(login_response["access_token"])
+        # access device (success)
+        device = StLibrary.get_device(self.client, Constant.DEVICE_DUMMY)
+        assert device is not None
+        devices = StLibrary.get_devices(self.client)
+        assert devices is not None
+        # access drivers (failed with insufficient permissions)
+        status_code, reason, text, response = self.client.get_drivers()
+        assert status_code == HttpCode.SUCCESS_OK
+        result = json.loads(text)
+        error = result.get("error", {})
+        error_code = error.get("code", 0)
+        assert error_code == -HttpCode.FORBIDDEN_ERROR
