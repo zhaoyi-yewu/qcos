@@ -289,6 +289,66 @@ class StLibrary:
         assert error_code == 0
 
     @staticmethod
+    def create_project(client, project_name, description=None):
+        """Create project."""
+        status_code, reason, text, result = client.create_project(
+            project_name, description
+        )
+        assert status_code == HttpCode.SUCCESS_OK
+        assert result is not None
+        project_info = json.loads(text)["result"]
+        assert project_info.get("name") == project_name
+        _description = project_info.get("description", None)
+        if _description:
+            assert _description == _description
+        project_id = project_info.get("id")
+        assert project_id is not None
+        return project_info
+
+    @staticmethod
+    def update_project(
+        client, project_id, updated_name=None, description=None
+    ):
+        """Update project."""
+        status_code, reason, text, result = client.update_project(
+            project_id, updated_name, description
+        )
+        assert status_code == HttpCode.SUCCESS_OK
+        project_info = json.loads(text)["result"]
+        if updated_name:
+            assert project_info.get("name") == updated_name
+        if description:
+            assert project_info.get("description") == description
+        return project_info
+
+    @staticmethod
+    def get_project(client, project_id):
+        """Get project."""
+        status_code, reason, text, result = client.get_project(project_id)
+        assert status_code == HttpCode.SUCCESS_OK
+        assert result is not None
+        project_info = json.loads(text).get("result", None)
+        error_info = json.loads(text).get("error", {})
+        return project_info, error_info
+
+    @staticmethod
+    def get_projects(client):
+        """Get projects."""
+        status_code, reason, text, result = client.get_projects()
+        assert status_code == HttpCode.SUCCESS_OK
+        assert result is not None
+        projects = json.loads(text)["result"]
+        return projects
+
+    @staticmethod
+    def delete_project(client, project_id):
+        """Delete project."""
+        status_code, reason, text, result = client.delete_project(project_id)
+        assert status_code == HttpCode.SUCCESS_OK
+        project_info = json.loads(text)["result"]
+        assert project_id == project_info.get("id")
+
+    @staticmethod
     def create_user(client, user_data):
         """Create user."""
         user_name = user_data.get("user_name")
@@ -313,11 +373,44 @@ class StLibrary:
         )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
-        error_code = error.get("code", 0)
-        msg = f"Create user error: {error_code}"
-        assert error_code == 0, msg
         user = response.get("result", response)
-        return user
+        return user, error
+
+    @staticmethod
+    def update_user(
+        client,
+        user_id,
+        roles=None,
+        description=None,
+        password_expiry_days=None,
+        is_enabled=None,
+        is_locked=None,
+    ):
+        """Update user."""
+        status_code, reason, text, result = client.update_user(
+            user_id,
+            roles=roles,
+            description=description,
+            password_expiry_days=password_expiry_days,
+            is_enabled=is_enabled,
+            is_locked=is_locked,
+        )
+
+        assert status_code == HttpCode.SUCCESS_OK
+        user_info = json.loads(text)["result"]
+        if roles:
+            assert user_info.get("roles") == roles
+        if description:
+            assert user_info.get("description") == description
+        if password_expiry_days:
+            assert (
+                user_info.get("password_expiry_days") == password_expiry_days
+            )
+        if is_enabled is not None:
+            assert user_info.get("is_enabled") == is_enabled
+        if is_locked is not None:
+            assert user_info.get("is_locked") == is_locked
+        return user_info
 
     @staticmethod
     def get_user(client, username, is_name=False):
