@@ -124,11 +124,11 @@ class User(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: str = Field(
-        default_factory=lambda: str(uuid.uuid4()), description="User ID (UUID)"
+    id: uuid.UUID = Field(
+        default_factory=uuid.uuid4, description="User ID (UUID)"
     )
-    project_id: str = Field(
-        default_factory=lambda: Constant.DEFAULT_PROJECT_ID,
+    project_id: uuid.UUID = Field(
+        default_factory=lambda: uuid.UUID(Constant.DEFAULT_PROJECT_ID),
         description="Project ID (UUID)",
     )
     user_name: str = Field(..., description="User name")
@@ -166,6 +166,27 @@ class User(BaseModel):
     description: str | None = Field(
         default=None, description="User description"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_uuids(cls, data):
+        """Convert UUID objects and integers to strings."""
+        if isinstance(data, dict):
+            for field in ["id", "project_id"]:
+                if field in data:
+                    if isinstance(data[field], uuid.UUID):
+                        data[field] = str(data[field])
+                    elif isinstance(data[field], int):
+                        # Convert integer ID to UUID
+                        data[field] = str(uuid.UUID(int=data[field]))
+        return data
+
+    @field_serializer("id", "project_id", when_used="json")
+    def serialize_uuids(self, value) -> str:
+        """Serialize UUID objects to strings."""
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
     @model_validator(mode="after")
     def populate_roles_from_orm(self):
@@ -229,10 +250,13 @@ class SetUserMgmtResponse(BaseModel):
 class CreateUserRequest(BaseModel):
     """Create user request."""
 
-    project_id: str | None = Field(
+    project_id: uuid.UUID | None = Field(
         default=None,
         description="Project ID (UUID) - optional, "
         "defaults to DEFAULT_PROJECT_ID",
+    )
+    user_id: uuid.UUID | None = Field(
+        default=None, description="User ID (UUID) - optional"
     )
     user_name: str = Field(
         ...,
@@ -267,29 +291,67 @@ class CreateUserRequest(BaseModel):
 class CreateUserResponse(BaseModel):
     """Create user response."""
 
-    id: str = Field(..., description="User ID (UUID)")
-    project_id: str = Field(..., description="Project ID (UUID)")
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID = Field(..., description="User ID (UUID)")
+    project_id: uuid.UUID = Field(..., description="Project ID (UUID)")
     user_name: str = Field(..., description="User name")
-    roles: list[str] | None = Field(..., description="User roles")
-    is_enabled: bool | None = Field(..., description="Whether user is enabled")
-    is_locked: bool | None = Field(..., description="Whether user is locked")
+    roles: list[str] = Field(..., description="User roles")
+    is_enabled: bool = Field(..., description="Whether user is enabled")
+    is_locked: bool = Field(..., description="Whether user is locked")
+    last_login: str | None = Field(
+        default=None, description="Last login timestamp"
+    )
+    password_expiry_days: int | None = Field(
+        default=None, description="Password expiry days"
+    )
+    password_changed_at: str = Field(
+        ..., description="Password last changed timestamp"
+    )
+    locked_until: str | None = Field(
+        default=None, description="Locked until timestamp"
+    )
     description: str | None = Field(
         default=None, description="User description"
     )
-    created_at: str | None = Field(..., description="Creation timestamp")
+    created_at: str = Field(..., description="Creation timestamp")
+    updated_at: str = Field(..., description="Update timestamp")
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_uuids(cls, data):
+        """Convert UUID objects and integers to strings."""
+        if isinstance(data, dict):
+            for field in ["id", "project_id"]:
+                if field in data:
+                    if isinstance(data[field], uuid.UUID):
+                        data[field] = str(data[field])
+                    elif isinstance(data[field], int):
+                        # Convert integer ID to UUID
+                        data[field] = str(uuid.UUID(int=data[field]))
+        return data
+
+    @field_serializer("id", "project_id", when_used="json")
+    def serialize_uuids(self, value) -> str:
+        """Serialize UUID objects to strings."""
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
 
 class GetUserRequest(BaseModel):
     """Get user request by ID."""
 
-    user_id: str = Field(..., description="User ID (UUID)")
+    user_id: uuid.UUID = Field(..., description="User ID (UUID)")
 
 
 class GetUserResponse(BaseModel):
     """Get user response."""
 
-    id: str = Field(..., description="User ID (UUID)")
-    project_id: str = Field(..., description="Project ID (UUID)")
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID = Field(..., description="User ID (UUID)")
+    project_id: uuid.UUID = Field(..., description="Project ID (UUID)")
     user_name: str = Field(..., description="User name")
     roles: list[str] = Field(..., description="User roles")
     is_enabled: bool = Field(..., description="Whether user is enabled")
@@ -312,6 +374,33 @@ class GetUserResponse(BaseModel):
     created_at: str = Field(..., description="User creation timestamp")
     updated_at: str = Field(..., description="User last updated timestamp")
 
+    @model_validator(mode="before")
+    @classmethod
+    def convert_uuids(cls, data):
+        """Convert UUID objects and integers to strings."""
+        if isinstance(data, dict):
+            for field in ["id", "project_id"]:
+                if field in data:
+                    if isinstance(data[field], uuid.UUID):
+                        pass  # Keep as UUID
+                    elif isinstance(data[field], str):
+                        # Convert string to UUID
+                        try:
+                            data[field] = uuid.UUID(data[field])
+                        except (ValueError, AttributeError):
+                            pass
+                    elif isinstance(data[field], int):
+                        # Convert integer ID to UUID
+                        data[field] = uuid.UUID(int=data[field])
+        return data
+
+    @field_serializer("id", "project_id", when_used="json")
+    def serialize_uuids(self, value) -> str:
+        """Serialize UUID objects to strings."""
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
+
 
 class GetUsersRequest(BaseModel):
     """Get users request with optional filtering."""
@@ -325,7 +414,7 @@ class GetUsersRequest(BaseModel):
 class UpdateUserRequest(BaseModel):
     """Update user request by ID."""
 
-    user_id: str = Field(..., description="User ID (UUID)")
+    user_id: uuid.UUID = Field(..., description="User ID (UUID)")
     roles: list[str] | None = Field(default=None, description="User roles")
     password_expiry_days: int | None = Field(
         default=None, description="Password expiry days"
@@ -350,22 +439,60 @@ class PasswordChangeRequest(UpdateUserRequest):
 class UpdateUserResponse(BaseModel):
     """Update user response."""
 
-    id: str = Field(..., description="User ID (UUID)")
-    project_id: str = Field(..., description="Project ID (UUID)")
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID = Field(..., description="User ID (UUID)")
+    project_id: uuid.UUID = Field(..., description="Project ID (UUID)")
     user_name: str = Field(..., description="User name")
     roles: list[str] = Field(..., description="User roles")
     is_enabled: bool = Field(..., description="Whether user is enabled")
     is_locked: bool = Field(..., description="Whether user is locked")
+    last_login: str | None = Field(
+        default=None, description="Last login timestamp"
+    )
+    password_expiry_days: int | None = Field(
+        default=None, description="Password expiry days"
+    )
+    password_changed_at: str = Field(
+        ..., description="Password last changed timestamp"
+    )
+    locked_until: str | None = Field(
+        default=None, description="Locked until timestamp"
+    )
     description: str | None = Field(
         default=None, description="User description"
     )
+    created_at: str = Field(..., description="Creation timestamp")
     updated_at: str = Field(..., description="Update timestamp")
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_uuids(cls, data):
+        """Convert UUID objects and integers."""
+        if isinstance(data, dict):
+            for field in ["id", "project_id"]:
+                if field in data:
+                    if isinstance(data[field], str):
+                        try:
+                            data[field] = uuid.UUID(data[field])
+                        except (ValueError, AttributeError):
+                            pass
+                    elif isinstance(data[field], int):
+                        data[field] = uuid.UUID(int=data[field])
+        return data
+
+    @field_serializer("id", "project_id", when_used="json")
+    def serialize_uuids(self, value) -> str:
+        """Serialize UUID objects to strings."""
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
 
 class DeleteUserRequest(BaseModel):
     """Delete user request by ID."""
 
-    user_id: str = Field(..., description="User ID (UUID)")
+    user_id: uuid.UUID = Field(..., description="User ID (UUID)")
     force: bool = Field(
         default=False,
         description="Force delete user and cascade delete related resources",
@@ -375,10 +502,35 @@ class DeleteUserRequest(BaseModel):
 class DeleteUserResponse(BaseModel):
     """Delete user response."""
 
-    id: str = Field(..., description="User ID (UUID)")
-    project_id: str = Field(..., description="Project ID (UUID)")
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID = Field(..., description="User ID (UUID)")
+    project_id: uuid.UUID = Field(..., description="Project ID (UUID)")
     user_name: str = Field(..., description="User name")
     deleted_at: str = Field(..., description="Deletion timestamp")
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_uuids(cls, data):
+        """Convert UUID objects and integers."""
+        if isinstance(data, dict):
+            for field in ["id", "project_id"]:
+                if field in data:
+                    if isinstance(data[field], str):
+                        try:
+                            data[field] = uuid.UUID(data[field])
+                        except (ValueError, AttributeError):
+                            pass
+                    elif isinstance(data[field], int):
+                        data[field] = uuid.UUID(int=data[field])
+        return data
+
+    @field_serializer("id", "project_id", when_used="json")
+    def serialize_uuids(self, value) -> str:
+        """Serialize UUID objects to strings."""
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
 
 class LockUserRequest(BaseModel):
@@ -402,7 +554,7 @@ class LockUserResponse(BaseModel):
 class ChangePasswordRequest(BaseModel):
     """Change password request by user ID."""
 
-    user_id: str = Field(..., description="User ID (UUID)")
+    user_id: uuid.UUID = Field(..., description="User ID (UUID)")
     old_password: str | None = Field(
         default=None,
         description="Old password (for non-admin changes)",
@@ -435,18 +587,18 @@ class LoginLog(BaseModel):
     login_time: datetime = Field(
         default_factory=datetime.now, description="Login time"
     )
-    success: bool = Field(..., description="Whether login was successful")
+    login_status: bool = Field(..., description="Whether login was successful")
     user_agent: str | None = Field(default=None, description="User agent")
     failure_reason: str | None = Field(
         default=None,
-        description="Reason for login failure if success is False",
+        description="Reason for login failure if login_status is False",
     )
 
 
 class GetLoginLogsRequest(BaseModel):
     """Get login logs request by user ID or user_name."""
 
-    user_id: str | None = Field(
+    user_id: uuid.UUID | None = Field(
         default=None, description="Filter by user ID (UUID)"
     )
     user_name: str | None = Field(
@@ -460,9 +612,9 @@ class GetLoginLogsRequest(BaseModel):
     )
     limit: int | None = Field(
         default=100,
-        ge=1,
-        le=1000,
-        description="Maximum number of logs to return",
+        ge=-1,
+        le=10000,
+        description="Maximum number of logs to return (use -1 for unlimited)",
     )
     offset: int | None = Field(
         default=0, ge=0, description="Number of logs to skip"
@@ -482,16 +634,39 @@ class GetLoginLogsRequest(BaseModel):
 class LoginLogResponse(BaseModel):
     """Login log response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     user_id: str | None = Field(..., description="User ID (UUID)")
     project_id: str = Field(..., description="Project ID (UUID)")
     user_name: str = Field(..., description="User name")
     login_time: str = Field(..., description="Login timestamp")
     ip_address: str = Field(..., description="IP address")
     user_agent: str | None = Field(default=None, description="User agent")
-    success: bool = Field(..., description="Whether login was successful")
+    login_status: bool = Field(..., description="Whether login was successful")
     failure_reason: str | None = Field(
         default=None, description="Failed reason if login failed"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_uuids(cls, data):
+        """Convert UUID objects and integers to strings."""
+        if isinstance(data, dict):
+            for field in ["user_id", "project_id"]:
+                if field in data and data[field] is not None:
+                    if isinstance(data[field], uuid.UUID):
+                        data[field] = str(data[field])
+                    elif isinstance(data[field], int):
+                        # Convert integer ID to UUID
+                        data[field] = str(uuid.UUID(int=data[field]))
+        return data
+
+    @field_serializer("user_id", "project_id", when_used="json")
+    def serialize_uuids(self, value) -> str | None:
+        """Serialize UUID objects to strings."""
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
 
 class Role(BaseModel):
@@ -507,6 +682,26 @@ class Role(BaseModel):
     description: str | None = Field(
         default=None, description="Role description"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_uuids(cls, data):
+        """Convert UUID objects and integers to strings."""
+        if isinstance(data, dict):
+            if "id" in data:
+                if isinstance(data["id"], uuid.UUID):
+                    data["id"] = str(data["id"])
+                elif isinstance(data["id"], int):
+                    # Convert integer ID to UUID
+                    data["id"] = str(uuid.UUID(int=data["id"]))
+        return data
+
+    @field_serializer("id", when_used="json")
+    def serialize_uuid(self, value) -> str:
+        """Serialize UUID objects to strings."""
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
 
 class CreateRoleRequest(BaseModel):
@@ -530,22 +725,46 @@ class CreateRoleRequest(BaseModel):
 class CreateRoleResponse(BaseModel):
     """Create role response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: str = Field(..., description="Role ID (UUID)")
     role_name: str = Field(..., description="Role name")
     permissions: list[str] = Field(..., description="Role permissions")
     description: str | None = Field(
         default=None, description="Role description"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_uuids(cls, data):
+        """Convert UUID objects and integers to strings."""
+        if isinstance(data, dict):
+            if "id" in data:
+                if isinstance(data["id"], uuid.UUID):
+                    data["id"] = str(data["id"])
+                elif isinstance(data["id"], int):
+                    # Convert integer ID to UUID
+                    data["id"] = str(uuid.UUID(int=data["id"]))
+        return data
+
+    @field_serializer("id", when_used="json")
+    def serialize_uuid(self, value) -> str:
+        """Serialize UUID objects to strings."""
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
 
 class GetRoleRequest(BaseModel):
     """Get role request by ID."""
 
-    role_id: str = Field(..., description="Role ID (UUID)")
+    role_id: uuid.UUID = Field(..., description="Role ID (UUID)")
 
 
 class GetRoleResponse(BaseModel):
     """Get role response."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: str = Field(..., description="Role ID (UUID)")
     role_name: str = Field(..., description="Role name")
@@ -553,6 +772,26 @@ class GetRoleResponse(BaseModel):
     description: str | None = Field(
         default=None, description="Role description"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_uuids(cls, data):
+        """Convert UUID objects and integers to strings."""
+        if isinstance(data, dict):
+            if "id" in data:
+                if isinstance(data["id"], uuid.UUID):
+                    data["id"] = str(data["id"])
+                elif isinstance(data["id"], int):
+                    # Convert integer ID to UUID
+                    data["id"] = str(uuid.UUID(int=data["id"]))
+        return data
+
+    @field_serializer("id", when_used="json")
+    def serialize_uuid(self, value) -> str:
+        """Serialize UUID objects to strings."""
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
 
 class GetRolesRequest(BaseModel):
@@ -567,7 +806,7 @@ class GetRolesRequest(BaseModel):
 class UpdateRoleRequest(BaseModel):
     """Update role request by ID."""
 
-    role_id: str = Field(..., description="Role ID (UUID)")
+    role_id: uuid.UUID = Field(..., description="Role ID (UUID)")
     permissions: list[str] | None = Field(
         default=None, description="Role permissions"
     )
@@ -579,6 +818,8 @@ class UpdateRoleRequest(BaseModel):
 class UpdateRoleResponse(BaseModel):
     """Update role response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     role_name: str = Field(..., description="Role name")
     permissions: list[str] = Field(..., description="Role permissions")
     description: str = Field(..., description="Role description")
@@ -587,7 +828,7 @@ class UpdateRoleResponse(BaseModel):
 class DeleteRoleRequest(BaseModel):
     """Delete role request by ID."""
 
-    role_id: str = Field(..., description="Role ID (UUID)")
+    role_id: uuid.UUID = Field(..., description="Role ID (UUID)")
 
 
 class DeleteRoleResponse(BaseModel):
@@ -599,7 +840,7 @@ class DeleteRoleResponse(BaseModel):
 class ClearLoginLogsRequest(BaseModel):
     """Clear login logs request."""
 
-    user_id: str | None = Field(
+    user_id: uuid.UUID | None = Field(
         default=None, description="Clear logs for specific user ID (UUID)"
     )
     user_name: str | None = Field(

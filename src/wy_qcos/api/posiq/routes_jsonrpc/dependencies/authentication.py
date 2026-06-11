@@ -18,6 +18,7 @@
 import logging
 import jwt
 from jwt.exceptions import PyJWTError
+from uuid import UUID
 
 from fastapi import Depends, Header, Request
 from fastapi.security import OAuth2PasswordBearer
@@ -185,21 +186,25 @@ async def auth(
     Raises:
         Various JSON-RPC errors based on authentication failures
     """
-    auth_data: dict[str, list[str] | str | None] | None = None
+    auth_data: dict[str, list[str] | str | bool | None] | None = None
 
     # No authentication
     if Config.DEFAULT.AUTH_MODE == Constant.AUTH_MODE_NO:
         auth_data = {
             Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_NO,
-            "user_id": Constant.ANONYMOUS_USERNAME,
+            "user_id": Constant.ANONYMOUS_USER_ID,
+            "user_name": Constant.ANONYMOUS_USERNAME,
+            "project_id": Constant.DEFAULT_PROJECT_ID,
             "roles": [Constant.ROLE_ADMIN],
+            "is_super_admin": True,
+            "is_project_admin": True,
         }
         return auth_data
 
     # Virtual instance authentication
     if Config.DEFAULT.AUTH_MODE == Constant.AUTH_MODE_VIRTUAL_INSTANCE:
-        auth_data = auth_virt(x_qcos_virtual_instance_id)
-        return auth_data
+        auth_data = auth_virt(x_qcos_virtual_instance_id, user_manager)
+        return auth_user(request, auth_data, user_manager)
 
     # JWT authentication (when user management is enabled)
     if Config.DEFAULT.AUTH_MODE == Constant.AUTH_MODE_JWT:
@@ -217,13 +222,20 @@ async def auth(
                 if hasattr(current_user, "get_role_names")
                 else current_user.roles
             )
+            is_project_admin = False
+            is_super_admin = False
+            if Constant.ROLE_ADMIN in user_roles:
+                is_super_admin = True
+                is_project_admin = True
             auth_data = {
                 Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_JWT,
-                "user_id": current_user.id,
+                "user_id": str(current_user.id),
                 "user_name": current_user.user_name,
-                "project_id": current_user.project_id,
+                "project_id": str(current_user.project_id),
                 "roles": user_roles,
                 "auth_mode": "jwt",
+                "is_super_admin": is_super_admin,
+                "is_project_admin": is_project_admin,
             }
 
         # Perform permission check
@@ -232,7 +244,7 @@ async def auth(
     return auth_data
 
 
-def auth_virt(x_qcos_virtual_instance_id):
+def auth_virt(x_qcos_virtual_instance_id, user_manager):
     """Authenticate using virtual instance ID.
 
     This function validates the virtual instance ID header and returns
@@ -240,6 +252,7 @@ def auth_virt(x_qcos_virtual_instance_id):
 
     Args:
         x_qcos_virtual_instance_id: Virtual instance ID from request header
+        user_manager: user manager
 
     Returns:
         Authentication data dictionary or None for admin users
@@ -250,6 +263,8 @@ def auth_virt(x_qcos_virtual_instance_id):
     success = True
     device_names = []
     instance_id = None
+    user_id = None
+    auth_data = {}
 
     if x_qcos_virtual_instance_id is None:
         success = False
@@ -270,14 +285,46 @@ def auth_virt(x_qcos_virtual_instance_id):
             (False, ["Unauthorized access to the instance"]),
         )
 
-    if "all" in device_names and instance_id == "all":  # admin user
-        auth_data = None
+    # query user db
+    project_id = Constant.DEFAULT_PROJECT_ID
+    user_name = Constant.ANONYMOUS_USERNAME
+    auth_data["allow_all_devices"] = False
+    if "all" in device_names:
+        auth_data["allow_all_devices"] = True
     else:
-        auth_data = {
-            Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_VIRTUAL_INSTANCE,
-            "device_names": device_names,
-            "instance_id": instance_id,
-        }
+        auth_data["device_names"] = device_names
+    if instance_id == "all":  # admin user
+        auth_data["is_super_admin"] = True
+        auth_data["is_project_admin"] = True
+        auth_data["instance_id"] = Constant.ANONYMOUS_USER_ID
+        auth_data["allow_all_devices"] = True
+        auth_data["roles"] = [Constant.ROLE_ADMIN]
+        user = user_manager.get_user_by_name(user_name)
+        user_id = str(user.id)
+    else:
+        auth_data["instance_id"] = instance_id
+        auth_data["roles"] = [Constant.ROLE_USER]
+        user_id = instance_id
+        user_name = instance_id
+
+    # create new user if user not exists (using instance_id as user_id)
+    user = user_manager.get_user_by_id(user_id)
+    if not user:
+        user = user_manager.create_user(
+            project_id,
+            user_name,
+            Constant.DEFAULT_VIRTUAL_INSTANCE_PASSWORD,
+            [Constant.ROLE_ADMIN],
+            True,
+            False,
+            0,
+            description="Virtual Instance user",
+            user_id=user_id,
+        )
+    auth_data[Constant.AUTH_MODE_KEY] = Constant.AUTH_MODE_VIRTUAL_INSTANCE
+    auth_data["user_id"] = str(user.id)
+    auth_data["user_name"] = user_name
+    auth_data["project_id"] = project_id
     return auth_data
 
 
@@ -354,3 +401,68 @@ def auth_match_user_id(user_id, auth_data, allow_admin=False):
         "auth_match_user_id",
         (False, ["User is not allowed to access the requested resource"]),
     )
+
+
+def fill_project_user_id(body, auth_data):
+    """Fill project id and user id.
+
+    Args:
+        body: body
+        auth_data: auth data
+
+    Returns:
+        body with project id and user id
+    """
+    if auth_data is None:
+        return body
+
+    user_id = auth_data.get("user_id")
+    project_id = auth_data.get("project_id")
+
+    # Convert string UUIDs to UUID objects
+    if user_id and isinstance(user_id, str):
+        try:
+            user_id = UUID(user_id)
+        except (ValueError, AttributeError):
+            logger.warning(f"Invalid user_id format: {user_id}")
+            user_id = None
+
+    if project_id and isinstance(project_id, str):
+        try:
+            project_id = UUID(project_id)
+        except (ValueError, AttributeError):
+            logger.warning(f"Invalid project_id format: {project_id}")
+            project_id = None
+
+    # Set these on body object (will be stored in DB)
+    if hasattr(body, "user_id"):
+        body.user_id = user_id
+    if hasattr(body, "project_id"):
+        body.project_id = project_id
+
+
+def validate_virtual_instance(auth_data, backend=None):
+    """Validate virtual instance.
+
+    Args:
+        auth_data: auth data
+        backend: backend
+
+    Returns:
+        success/fail, error messages
+    """
+    if not auth_data:
+        return True, None
+    if (
+        auth_data[Constant.AUTH_MODE_KEY]
+        != Constant.AUTH_MODE_VIRTUAL_INSTANCE
+    ):
+        return True, None
+    if backend:
+        if auth_data.get("allow_all_devices", False):
+            return True, None
+        device_names = auth_data.get("device_names", [])
+        if backend not in device_names:
+            err_msg = f"no such device: {backend}"
+            return False, [err_msg]
+    return True, None
