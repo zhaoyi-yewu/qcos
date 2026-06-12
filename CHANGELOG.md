@@ -13,6 +13,8 @@
 - get-jobs接口支持过滤project_id, user_id, job_id列表
 - 新增汉原脉冲驱动
 - 初步支持QEC Shor码(基于Stim仿真器)
+- 支持量子编译器性能脚本测试
+- 支持量子电路等价性判断
 
 ### 变更功能
 
