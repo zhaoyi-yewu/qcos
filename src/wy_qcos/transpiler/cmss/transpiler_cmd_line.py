@@ -593,95 +593,92 @@ class CMSSTranspilerPerf:
         if qasm_data is None:
             raise ValueError(f"read qasm data from file[{file_path}] failed!")
 
-        # performace testing
-        with Timer() as total_timer:
-            # parse the config file of qpu
-            abs_config_path = Path(config_file).resolve()
-            if not abs_config_path.exists():
-                raise ValueError(f"config file[{config_file}] not existed!")
+        # parse the config file of qpu
+        abs_config_path = Path(config_file).resolve()
+        if not abs_config_path.exists():
+            raise ValueError(f"config file[{config_file}] not existed!")
 
-            qpu_config = {}
-            extra_configs = Config.get_extra_configs()
-            Config.load_config_file(config_file, extra_config=True)
-            if tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM:
-                qpu_config = extra_configs["hanyuan1"]["transpiler"][
-                    "qpu_configs"
-                ]
-                trans_cfg_inst.set_qpu_cfg(qpu_config)
-                trans_cfg_inst.set_tech_type(tech_type)
-                trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
+        qpu_config = {}
+        extra_configs = Config.get_extra_configs()
+        Config.load_config_file(config_file, extra_config=True)
+        if tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM:
+            qpu_config = extra_configs["hanyuan1"]["transpiler"]["qpu_configs"]
+            trans_cfg_inst.set_qpu_cfg(qpu_config)
+            trans_cfg_inst.set_tech_type(tech_type)
+            trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
 
-                transpiler = TranspilerHighPerformanceCmss(
-                    optimization_level=opt_level,
-                    enable_na_move=True,
-                    na_mapping_type=self.na_mapping_type,
-                )
-
-                if len(base_gates) > 0:
-                    expected_basis_gates = []
-                    for gate in base_gates:
-                        if gate in self.gates_map:
-                            expected_basis_gates.append(self.gates_map[gate])
-                        else:
-                            raise ValueError(f"gate[{gate}] is not supported!")
-                else:
-                    expected_basis_gates = [
-                        Constant.SINGLE_QUBIT_GATE_RX,
-                        Constant.SINGLE_QUBIT_GATE_RY,
-                        Constant.TWO_QUBIT_GATE_CZ,
-                    ]
-            elif tech_type == Constant.TECH_TYPE_SUPERCONDUCTING:
-                qpu_config = extra_configs["spinq_rpc"]["transpiler"][
-                    "qpu_configs"
-                ]
-                trans_cfg_inst.set_qpu_cfg(qpu_config)
-                trans_cfg_inst.set_tech_type(tech_type)
-                trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
-
-                transpiler = TranspilerHighPerformanceCmss(
-                    optimization_level=opt_level
-                )
-                if len(base_gates) > 0:
-                    expected_basis_gates = []
-                    for gate in base_gates:
-                        if gate in self.gates_map:
-                            expected_basis_gates.append(self.gates_map[gate])
-                        else:
-                            raise ValueError(f"gate[{gate}] is not supported!")
-                else:
-                    expected_basis_gates = [
-                        Constant.SINGLE_QUBIT_GATE_RX,
-                        Constant.SINGLE_QUBIT_GATE_RY,
-                        Constant.TWO_QUBIT_GATE_CX,
-                    ]
-            else:
-                transpiler = TranspilerHighPerformanceCmss(
-                    optimization_level=opt_level
-                )
-                if len(base_gates) > 0:
-                    expected_basis_gates = []
-                    for gate in base_gates:
-                        if gate in self.gates_map:
-                            expected_basis_gates.append(self.gates_map[gate])
-                        else:
-                            raise ValueError(f"gate[{gate}] is not supported!")
-                else:
-                    expected_basis_gates = [
-                        Constant.SINGLE_QUBIT_GATE_RX,
-                        Constant.SINGLE_QUBIT_GATE_RY,
-                        Constant.TWO_QUBIT_GATE_CX,
-                    ]
-
-            # add qasm information into output log head
-            self.init_output_head(
-                output_file_path,
-                file_path,
-                opt_level,
-                tech_type,
-                config_file,
-                sc_mapping_options,
+            transpiler = TranspilerHighPerformanceCmss(
+                optimization_level=opt_level,
+                enable_na_move=True,
+                na_mapping_type=self.na_mapping_type,
             )
 
+            if len(base_gates) > 0:
+                expected_basis_gates = []
+                for gate in base_gates:
+                    if gate in self.gates_map:
+                        expected_basis_gates.append(self.gates_map[gate])
+                    else:
+                        raise ValueError(f"gate[{gate}] is not supported!")
+            else:
+                expected_basis_gates = [
+                    Constant.SINGLE_QUBIT_GATE_RX,
+                    Constant.SINGLE_QUBIT_GATE_RY,
+                    Constant.TWO_QUBIT_GATE_CZ,
+                ]
+        elif tech_type == Constant.TECH_TYPE_SUPERCONDUCTING:
+            qpu_config = extra_configs["spinq_rpc"]["transpiler"][
+                "qpu_configs"
+            ]
+            trans_cfg_inst.set_qpu_cfg(qpu_config)
+            trans_cfg_inst.set_tech_type(tech_type)
+            trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
+
+            transpiler = TranspilerHighPerformanceCmss(
+                optimization_level=opt_level
+            )
+            if len(base_gates) > 0:
+                expected_basis_gates = []
+                for gate in base_gates:
+                    if gate in self.gates_map:
+                        expected_basis_gates.append(self.gates_map[gate])
+                    else:
+                        raise ValueError(f"gate[{gate}] is not supported!")
+            else:
+                expected_basis_gates = [
+                    Constant.SINGLE_QUBIT_GATE_RX,
+                    Constant.SINGLE_QUBIT_GATE_RY,
+                    Constant.TWO_QUBIT_GATE_CX,
+                ]
+        else:
+            transpiler = TranspilerHighPerformanceCmss(
+                optimization_level=opt_level
+            )
+            if len(base_gates) > 0:
+                expected_basis_gates = []
+                for gate in base_gates:
+                    if gate in self.gates_map:
+                        expected_basis_gates.append(self.gates_map[gate])
+                    else:
+                        raise ValueError(f"gate[{gate}] is not supported!")
+            else:
+                expected_basis_gates = [
+                    Constant.SINGLE_QUBIT_GATE_RX,
+                    Constant.SINGLE_QUBIT_GATE_RY,
+                    Constant.TWO_QUBIT_GATE_CX,
+                ]
+
+        # add qasm information into output log head
+        self.init_output_head(
+            output_file_path,
+            file_path,
+            opt_level,
+            tech_type,
+            config_file,
+            sc_mapping_options,
+        )
+        # performace testing
+        with Timer() as total_timer:
             # generate basis gates list
             trans_logger.log_perf(
                 "Start performace testing of cmss compiling."
