@@ -39,9 +39,45 @@ class QuantumCodeBase(ABC):
             name: Name of the code.
         """
         self._name = name
-        self._n_physical: int = 0
-        self._n_logical: int = 0
+        self._physical_bit_num: int = 0
+        self._logical_bit_num: int = 0
         self._distance: int = 1
+
+    def get_distance(self):
+        """Get distance."""
+        return self._distance
+
+    def get_physical_bit_num(self):
+        """Get physical bit num."""
+        return self._physical_bit_num
+
+    def get_logical_bit_num(self):
+        """Get logical bit num."""
+        return self._logical_bit_num
+
+    def set_distance(self, distance: int):
+        """Set distance.
+
+        Args:
+            distance: distance
+        """
+        self._distance = distance
+
+    def set_physical_bit_num(self, physical_bit_num: int):
+        """Set physical bit num.
+
+        Args:
+            physical_bit_num: physical bit num
+        """
+        self._physical_bit_num = physical_bit_num
+
+    def set_logical_bit_num(self, logical_bit_num: int):
+        """Set logical bit num.
+
+        Args:
+            logical_bit_num: logical bit num
+        """
+        self._logical_bit_num = logical_bit_num
 
     @abstractmethod
     def encode(self, circuit):

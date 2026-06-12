@@ -592,8 +592,8 @@ class TestShorCode:
         del ShorCode.strategies["custom"]
 
     def test_valid_strategies_after_instance_creation(self):
-        """Test that strategies dict is properly populated after code creation."""
-        code = ShorCode()
+        """Test that strategies dict is properly populated."""
+        ShorCode()
         assert len(ShorCode.strategies) >= 2
         assert stim.Circuit in ShorCode.strategies
         assert list[BaseOperation] in ShorCode.strategies

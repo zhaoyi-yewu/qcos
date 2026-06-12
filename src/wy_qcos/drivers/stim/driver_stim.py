@@ -63,7 +63,7 @@ class DriverStim(DriverBase):
             "qec_code": str,
             Optional("distance"): int,
             Optional("phy_bit_num"): int,
-            Optional("logi_bit_num"): int,
+            Optional("logical_bit_num"): int,
         }
 
     def init_driver(self):
@@ -174,6 +174,9 @@ class DriverStim(DriverBase):
         qec_code_str = qec_options.get("qec_code", "")
         if qec_code_str == "":
             raise ValueError("Qec_code is mandatory for qec.")
+        distance = qec_options.get("distance", None)
+        phy_bit_num = qec_options.get("phy_bit_num", None)
+        logical_bit_num = qec_options.get("logical_bit_num", None)
 
         # pylint: disable=duplicate-code
         data_index = data["index"]
@@ -189,8 +192,15 @@ class DriverStim(DriverBase):
             raise ValueError("Unsupported quantum circuit.")
 
         circuit = self.convert_circuit(raw_circuit, num_qubits)
-        factory = QecFactory()
+        factory = QecFactory(None)
         qec_code = factory.create(qec_code_str)
+        if distance is not None:
+            qec_code.set_distance(distance)
+        if phy_bit_num is not None:
+            qec_code.set_physical_bit_num(phy_bit_num)
+        if logical_bit_num is not None:
+            qec_code.set_logical_bit_num(logical_bit_num)
+
         formatted_circuit = qec_code.validate_and_format_circuit(
             circuit, num_qubits
         )
