@@ -43,26 +43,6 @@ class QuantumCodeBase(ABC):
         self._n_logical: int = 0
         self._distance: int = 1
 
-    @property
-    def name(self) -> str:
-        """Get the name of the code."""
-        return self._name
-
-    @property
-    def n_physical(self) -> int:
-        """Get the number of physical qubits."""
-        return self._n_physical
-
-    @property
-    def n_logical(self) -> int:
-        """Get the number of logical qubits."""
-        return self._n_logical
-
-    @property
-    def distance(self) -> int:
-        """Get the code distance."""
-        return self._distance
-
     @abstractmethod
     def encode(self, circuit):
         """Encode a logical state into the physical qubit state.
@@ -98,6 +78,7 @@ class QuantumCodeBase(ABC):
         """
         raise NotImplementedError("correct() must be implemented by subclass")
 
+    @abstractmethod
     def validate_and_format_circuit(self, circuit, num_qubits: int):
         """Validate and formatcircuit data.
 
@@ -112,14 +93,14 @@ class QuantumCodeBase(ABC):
             "validate_and_format_circuit() must be implemented by subclass"
         )
 
+    @abstractmethod
     def compute_samples(self, circuit, samples: list):
-        """compute samles to get raw bits and syndrome
+        """Compute samles to get raw bits and syndrome.
 
         Args:
             circuit: quantum circuit.
             samples: samples data
         """
-
         raise NotImplementedError(
             "compute_samples() must be implemented by subclass"
         )

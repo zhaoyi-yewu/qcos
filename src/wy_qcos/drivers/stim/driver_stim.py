@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import numpy as np
 import stim
 
 from collections import Counter
@@ -56,8 +55,9 @@ class DriverStim(DriverBase):
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.default_results_type = self.DATA_TYPE_GATE_SEQUENCE
         self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
+        self.default_data_type = DriverBase.DATA_TYPE_QASM2
+        self.supported_code_types = [Constant.CODE_TYPE_QASM2]
         self.max_qubits = 10
-        self.enable_device_monitor = False
         # qec_options schema
         self.qec_options_schema = {
             "qec_code": str,
@@ -128,8 +128,10 @@ class DriverStim(DriverBase):
         circuit = stim.Circuit()
         for gate in raw_circuit:
             if (
-                gate.operation_type == OperationType.SINGLE_QUBIT_OPERATION.value
-                or gate.operation_type == OperationType.DOUBLE_QUBIT_OPERATION.value
+                gate.operation_type
+                == OperationType.SINGLE_QUBIT_OPERATION.value
+                or gate.operation_type
+                == OperationType.DOUBLE_QUBIT_OPERATION.value
             ):
                 logger.info(f"gate: {gate}, gate.name :{gate.name}")
                 circuit.append(gate.name.upper(), gate.targets)
@@ -168,10 +170,10 @@ class DriverStim(DriverBase):
             qec_options: qec_options
         """
         if qec_options is None:
-            raise ValueError("qec_options are needed for qec.")
+            raise ValueError("Qec_options are needed for qec.")
         qec_code_str = qec_options.get("qec_code", "")
         if qec_code_str == "":
-            raise ValueError("qec_code is mandatory for qec.")
+            raise ValueError("Qec_code is mandatory for qec.")
 
         # pylint: disable=duplicate-code
         data_index = data["index"]
@@ -184,13 +186,14 @@ class DriverStim(DriverBase):
         raw_circuit = data["transpile_results"]
         valid = self.validate_circuit(raw_circuit)
         if not valid:
-            raise ValueError("unsupported quantum circuit.")
+            raise ValueError("Unsupported quantum circuit.")
 
         circuit = self.convert_circuit(raw_circuit, num_qubits)
-        logger.info(f"driver: circuit {circuit}")
         factory = QecFactory()
         qec_code = factory.create(qec_code_str)
-        formatted_circuit = qec_code.validate_and_format_circuit(circuit, num_qubits)
+        formatted_circuit = qec_code.validate_and_format_circuit(
+            circuit, num_qubits
+        )
         logger.info(f"formatted_circuit: {formatted_circuit}")
         encodded_circuit = qec_code.encode(formatted_circuit)
         logger.info(f"encodded_circuit: {encodded_circuit}")
@@ -198,7 +201,7 @@ class DriverStim(DriverBase):
         sampler = encodded_circuit.compile_sampler()
         samples = sampler.sample(shots=shots)
         qec_code.compute_samples(formatted_circuit, samples)
-        
+
         err_pos = qec_code.decode(formatted_circuit)
         corrected_bits = qec_code.correct(formatted_circuit, err_pos=err_pos)
         logic_res = qec_code.logical_measure(formatted_circuit, corrected_bits)

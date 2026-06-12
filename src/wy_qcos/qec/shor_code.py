@@ -19,6 +19,8 @@ import logging
 import numpy as np
 import stim
 
+from numpy.typing import NDArray
+
 from wy_qcos.qec.quantum_code_base import QuantumCodeBase
 from wy_qcos.common.cmss.base_operation import (
     BaseOperation,
@@ -34,12 +36,6 @@ logger = logging.getLogger(__name__)
 class ShorStrategy:
     def __init__(self):
         """Initialize the Shor Strategy."""
-        # 9 bits for correcting
-        self._n_data = 9
-        # 0 bits for ancilla (use MPP instead)
-        self._n_ancilla = 0
-        # Shor can only correct 1 logical bit
-        self._n_logical = 1
 
     def get_stabilizers(self) -> dict:
         """Get the stabilizer generators of the Shor code.
@@ -53,8 +49,14 @@ class ShorStrategy:
         }
 
     def validate_and_format_circuit(self, circuit):
+        """Validate and formate raw circuit.
+
+        Args:
+            circuit: raw circuit.
+        """
         raise NotImplementedError(
-            "validate_and_format_circuit() must be implemented by subclass")
+            "validate_and_format_circuit() must be implemented by subclass"
+        )
 
     def encode(self, circuit):
         """Encode circuit.
@@ -65,19 +67,35 @@ class ShorStrategy:
         raise NotImplementedError("encode() must be implemented by subclass")
 
     def decode(self):
+        """Decode syndrome.
+
+        Returns:
+            err_pos.
+        """
         raise NotImplementedError("decode() must be implemented by subclass")
 
     def correct(self, **kwargs):
+        """Correct raw_bits.
+
+        Args:
+            kwargs: kwargs.
+
+        Returns:
+            corrected bits.
+        """
         raise NotImplementedError("correct() must be implemented by subclass")
 
-    def compute_samples(self, samples: list):
-        """compute samles to get raw bits and syndrome
+    def compute_samples(self, samples: NDArray[np.int_]):
+        """Compute samles to get raw bits and syndrome.
 
         Args:
             samples: samples data
         """
-        raise NotImplementedError("compute_samples() must be implemented by subclass")
-    
+        raise NotImplementedError(
+            "compute_samples() must be implemented by subclass"
+        )
+
+
 class ShorStimStrategy(ShorStrategy):
     """ShorStimStrategy, using Stim circuit to process qec codes."""
 
@@ -102,13 +120,15 @@ class ShorStimStrategy(ShorStrategy):
             gate_info = stim.gate_data(gate_name)
             if not gate_info.is_single_qubit_gate:
                 raise ValueError(
-                    f"Unexpected multi-qubit gate input: {gate_name}, only single-qubit gates allowed."
+                    f"Unexpected multi-qubit gate input: {gate_name},"
+                    "Only single-qubit gates allowed."
                 )
             formatted_circuit.append(gate)
         return formatted_circuit
 
     def encode(self, circuit: stim.Circuit) -> stim.Circuit:
-        """Encode 1 logical qubit into 9 physical qubits using standard Shor code.
+        """Encode 1 logical qubit into 9 physical qubits.
+
         Args:
             circuit: raw stim circuit.
 
@@ -150,7 +170,7 @@ class ShorStimStrategy(ShorStrategy):
                 encoded_circuit.append("X", data)
             elif gate_name == "H":
                 raise ValueError(
-                    "Logical H gate for Shor code requires non-transversal implementation"
+                    "Logical H gate requires non-transversal implementation"
                 )
             elif gate_name == "S":
                 encoded_circuit.append("S", [0, 3, 6])
@@ -165,7 +185,8 @@ class ShorStimStrategy(ShorStrategy):
 
         # Z stablizers: Z₀Z₁, Z₁Z₂, Z₃Z₄, Z₄Z₅, Z₆Z₇, Z₇Z₈
         z_stablizers = self.get_stabilizers().get("Z")
-        #[(0, 1), (1, 2), (3, 4), (4, 5), (6, 7), (7, 8)]
+        if z_stablizers is None:
+            raise ValueError("Z stablizers should not be None")
         for idx, (a, b) in enumerate(z_stablizers):
             anc = anc_z[idx]
             encoded_circuit.append("CX", [a, anc, b, anc])
@@ -175,7 +196,8 @@ class ShorStimStrategy(ShorStrategy):
 
         # X stablizers: X₀X₃X₆, X₁X₄X₇, X₂X₅X₈
         x_stablizers = self.get_stabilizers().get("X")
-        # x_triples = [(0, 3, 6), (1, 4, 7), (2, 5, 8)]
+        if x_stablizers is None:
+            raise ValueError("X stablizers should not be None")
         for idx, (a, b, c) in enumerate(x_stablizers):
             anc = anc_x[idx]
             encoded_circuit.append("H", [anc])
@@ -205,6 +227,7 @@ class ShorStimStrategy(ShorStrategy):
 
     def correct(self, **kwargs):
         """Correct raw_bits.
+
         Args:
             kwargs: kwargs.
 
@@ -276,7 +299,7 @@ class ShorStimStrategy(ShorStrategy):
         return err_pos
 
     def logical_measure(self, bits):
-        """Get logical value
+        """Get logical value.
 
         Args:
             bits: corrected bits
@@ -298,15 +321,15 @@ class ShorStimStrategy(ShorStrategy):
             return int(logical[0])
         return logical
 
-    def compute_samples(self, samples: list):
-        """compute samles to get raw bits and syndrome
+    def compute_samples(self, samples: NDArray[np.int_]):
+        """Compute samles to get raw bits and syndrome.
 
         Args:
             samples: samples data
         """
         samples = np.asarray(samples)
         samples = np.atleast_2d(samples)
-        z_syn = samples[:, 0:6] 
+        z_syn = samples[:, 0:6]
         x_syn = samples[:, 6:9]
         self.syndrome = np.concatenate([z_syn, x_syn], axis=1)
         self.raw_bits = samples[:, 9:18]
@@ -340,8 +363,8 @@ class ShorQuantumCircuitStrategy(ShorStrategy):
             if isinstance(op, GateOperation):
                 # Check if it's a single-qubit gate (operation_type == 1)
                 if (
-                        op.operation_type
-                        != OperationType.SINGLE_QUBIT_OPERATION.value
+                    op.operation_type
+                    != OperationType.SINGLE_QUBIT_OPERATION.value
                 ):
                     raise ValueError("Unexpected circuit input.")
                 formatted_circuit.append(op)
@@ -364,8 +387,7 @@ class ShorQuantumCircuitStrategy(ShorStrategy):
         raise NotImplementedError("correct() must be implemented by subclass")
 
     def decode(self):
-        """Decode circuit.
-        """
+        """Decode circuit."""
         raise NotImplementedError("decode() must be implemented by subclass")
 
     def logical_measure(self, bits):
@@ -383,15 +405,10 @@ class ShorCode(QuantumCodeBase):
     The Shor code encodes 1 logical qubit into 9 physical qubits
     and can correct any single-qubit error. It combines a 3-qubit
     phase flip code with a 3-qubit bit flip code.
-
-    Attributes:
-        name: Name of the code ("ShorCode").
-        n_physical: Number of physical qubits (9).
-        n_logical: Number of physical qubits (1).
-        distance: Code distance (3).
     """
 
     strategies = {}
+
     def __init__(self):
         """Initialize the Shor code."""
         super().__init__(name="ShorCode")
@@ -458,7 +475,7 @@ class ShorCode(QuantumCodeBase):
         return self._get_strategy(circuit).correct(**kwargs)
 
     def logical_measure(self, circuit, bits):
-        """Get logical value
+        """Get logical value.
 
         Args:
             circuit: quantum circuit
@@ -469,10 +486,11 @@ class ShorCode(QuantumCodeBase):
         """
         return self._get_strategy(circuit).logical_measure(bits)
 
-    def compute_samples(self, circuit, samples: list):
-        """compute samles to get raw bits and syndrome
+    def compute_samples(self, circuit, samples: NDArray[np.int_]):
+        """Compute samles to get raw bits and syndrome.
 
         Args:
+            circuit: quantum circuit
             samples: samples data
         """
         return self._get_strategy(circuit).compute_samples(samples)

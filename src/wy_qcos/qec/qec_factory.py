@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+
 from wy_qcos.qec.quantum_code_base import QuantumCodeBase
 from wy_qcos.qec.shor_code import ShorCode
 
@@ -30,7 +31,7 @@ class QecFactory:
         >>> shor_code = factory.create("shor")
     """
 
-    def __init__(self, code_dict: dict[str, type[QuantumCodeBase]] = None):
+    def __init__(self, code_dict: dict[str, type[QuantumCodeBase]] | None):
         """Initialize the QEC factory.
 
         Args:

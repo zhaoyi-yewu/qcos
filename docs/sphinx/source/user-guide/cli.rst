@@ -207,6 +207,7 @@
 
    # 夸父 超导量子计算机 真实运行
    qcos-cli submit-job --code-type qasm --shots 1024 --backend quafu -f ./samples/qasm/2.0/simple-qasm.qasm
+
 - stim 驱动 (量子纠错用)
 
 .. code-block:: shell
