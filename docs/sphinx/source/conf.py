@@ -55,7 +55,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.extlinks",
     "sphinx.ext.graphviz",
-    # "sphinx.ext.imgconverter",
+    "sphinx.ext.imgconverter",
     "sphinxcontrib.rsvgconverter",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
@@ -66,6 +66,7 @@ extensions = [
     "sphinxcontrib.mermaid",
     "sphinxcontrib.plantuml",
 ]
+
 exclude_patterns = [
     "_build",
     "_template",
@@ -256,9 +257,6 @@ latex_elements = {
         \usepackage{lastpage}  % Optional: Display total pages (e.g., 1/5)
         \usepackage{color}     % Optional: Set color for header and footer
         \usepackage{longtable,array,listings}
-        \usepackage{xeCJK}
-        \usepackage[UTF8]{ctex}
-        \usepackage{ctex}
         \usepackage{tocloft}
         \usepackage{eso-pic}
 

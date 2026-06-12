@@ -405,8 +405,10 @@ class DriverTiangongBase(DriverQuboBase):
                         "visual_data": response["data"]["visual_data"],
                     }
             else:
-                success = False
-                err_msgs.append(err_msg)
+                # any other error codes
+                raise ValueError(
+                    f"Failed to get task: {task_id}. Reason: {err_msg}"
+                )
         else:
             success = False
             err_msgs.append(reason)

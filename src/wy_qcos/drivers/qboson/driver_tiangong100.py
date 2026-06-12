@@ -534,8 +534,10 @@ class DriverTiangong100(DriverQuboBase):
                     success = False
                     err_msgs.append(f"Can't find task name: {task_name}")
             else:
-                success = False
-                err_msgs.append(err_msg)
+                # any other error codes
+                raise ValueError(
+                    f"Failed to get task: {task_name}. Reason: {err_msg}"
+                )
         else:
             success = False
             err_msgs.append(reason)

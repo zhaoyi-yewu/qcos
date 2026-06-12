@@ -1732,5 +1732,5 @@ def format_error_results(driver, err_cls, err_msg):
         "code": err.get_error_code(),
         "message": err.get_err_msgs(),
     }
-    logger.error(f"{driver}: {err}")
+    logger.error(f"{driver.name}: {err}")
     return job_results
