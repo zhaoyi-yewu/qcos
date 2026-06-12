@@ -111,3 +111,15 @@ class QuantumCodeBase(ABC):
         raise NotImplementedError(
             "validate_and_format_circuit() must be implemented by subclass"
         )
+
+    def compute_samples(self, circuit, samples: list):
+        """compute samles to get raw bits and syndrome
+
+        Args:
+            circuit: quantum circuit.
+            samples: samples data
+        """
+
+        raise NotImplementedError(
+            "compute_samples() must be implemented by subclass"
+        )
