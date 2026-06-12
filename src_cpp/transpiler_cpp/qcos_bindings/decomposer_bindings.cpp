@@ -60,18 +60,9 @@ void bind_decomposer(py::module_& m) {
            })
 
       // -------- apply_decompose_rules --------
-      .def("apply_decompose_rules",
-           [](Decomposer& self, const std::vector<BaseOperation*>& circuit_raw,
-              const Decomposer::DecompositionTable& table) {
-             // Python -> C++ clone
-             std::vector<std::shared_ptr<BaseOperation>> circuit;
-             circuit.reserve(circuit_raw.size());
-
-             for (auto* ptr : circuit_raw) {
-               circuit.push_back(ptr->clone());
-             }
-
-             auto result = self.apply_decompose_rules(circuit, table);
-             return result;
-           });
+      .def(
+          "apply_decompose_rules",
+          &Decomposer::apply_decompose_rules,
+          py::arg("circuit"),
+          py::arg("table"));
 }
