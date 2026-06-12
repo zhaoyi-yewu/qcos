@@ -72,6 +72,19 @@ ut-qcos:
     reports:
       junit: cicd/reports/wy_qcos/report.xml
 
+# cpp ut (qcos)
+cpp-ut-qcos:
+  stage: functional-tests
+  tags:
+    - sonic-runner
+  script:
+    - ./cicd/run-tests.sh -b
+    - ./cicd/run-tests.sh -t default
+  artifacts:
+    when: always
+    reports:
+      junit: cicd/reports/wy_qcos/cpp_ut_report.xml
+
 # code-coverage (qcos)
 code-coverage-qcos:
   stage: functional-tests

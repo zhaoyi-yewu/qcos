@@ -40,6 +40,8 @@ if [ -z "${QCOS_CLIENT_PYTEST_INI+x}" ] || [ -z "${QCOS_CLIENT_PYTEST_INI}" ]; t
   QCOS_CLIENT_PYTEST_INI=${QCOS_CLIENT_PKG_DIR}/tests/pytest.ini
 fi
 
+CPP_TEST_BIN="${TOP_DIR}/src_cpp/transpiler_cpp/build/tests/transpiler_test"
+
 function usage {
     echo "Usage: $0 [OPTION] ..."
     echo "Run QCOS's test suite(s)"
@@ -47,6 +49,7 @@ function usage {
     echo "  -p, --pep8                        Run PEP8 coding style check"
     echo "  -b  --build-cpp                   Run cpp code build"
     echo "  -u, --unit-test TEST_CASES        Run unit tests (QCOS)"
+    echo "  -t, --cpp-unit-test TEST_CASES    Run cpp unit tests (QCOS)"
     echo "  -c, --coverage  TEST_CASES        Run unit tests and generate code coverage report (QCOS)"
     echo "  -j, --client-unit-test TEST_CASES Run unit tests (QCOS CLIENT)"
     echo "  -e, --client-coverage TEST_CASES  Run unit tests and generate code coverage report (QCOS CLIENT)"
@@ -58,7 +61,7 @@ function usage {
     echo ""
 }
 
-opts=$(getopt -o pbu:c:j:e:s:m:h --long pep8,build-cpp,unit-test:,coverage:,client-unit-test:,client-coverage:,system-test:pytest-mark:,help -- "$@")
+opts=$(getopt -o pbu:t:c:j:e:s:m:h --long pep8,build-cpp,unit-test:,cpp-unit-test:,coverage:,client-unit-test:,client-coverage:,system-test:pytest-mark:,help -- "$@")
 if [[ $? -ne 0 ]]; then
   exit 1
 fi
@@ -72,6 +75,7 @@ LC_ALL=C
 pep8=false
 build_cpp=false
 unit_test=""
+cpp_unit_test=""
 coverage=""
 client_unit_test=""
 client_coverage=""
@@ -80,6 +84,7 @@ pytest_mark=""
 pep8_success=-1
 build_cpp_success=-1
 unit_test_success=-1
+cpp_unit_test_success=-1
 coverage_success=-1
 client_unit_test_success=-1
 client_coverage_success=-1
@@ -88,11 +93,12 @@ wrapper="sh -c"
 
 while true; do
   case "$1" in
-    -h | --help )        usage ; exit 0; shift ;;
-    -p | --pep8 )        pep8=true;      shift ;;
-    -b | --build-cpp )   build_cpp=true; shift ;;
-    -u | --unit-test )   unit_test="$2"; shift 2;;
-    -c | --coverage )    coverage="$2";  shift 2;;
+    -h | --help )             usage ; exit 0; shift ;;
+    -p | --pep8 )             pep8=true;      shift ;;
+    -b | --build-cpp )        build_cpp=true; shift ;;
+    -u | --unit-test )        unit_test="$2"; shift 2;;
+    -t | --cpp-unit-test )    cpp_unit_test="$2"; shift 2;;
+    -c | --coverage )         coverage="$2";  shift 2;;
     -j | --client-unit-test ) client_unit_test="$2"; shift 2;;
     -e | --client-coverage )  client_coverage="$2";  shift 2;;
     -s | --system-test ) system_test="$2"; shift 2;;
@@ -104,8 +110,9 @@ done
 
 # check user input options
 if [ "$pep8" = false ] && [ "$build_cpp" = false ] && [ -z "$unit_test" ] \
-  && [ -z "$coverage" ]  && [ -z "$client_unit_test" ] \
-  && [ -z "$client_coverage" ] && [ -z "$system_test" ]; then
+  && [ -z "$cpp_unit_test" ] && [ -z "$coverage" ]  \
+  && [ -z "$client_unit_test" ] && [ -z "$client_coverage" ] \
+  && [ -z "$system_test" ]; then
   echo -e "Error: Invalid arguments\n"
   usage
   exit 1
@@ -177,6 +184,40 @@ function run_unit_tests {
 
   ${wrapper} "python3 -m pytest -c ${QCOS_PYTEST_INI} ${pytest_mark} ${junit_report} ${test_case}"
   unit_test_success=$?
+  echo
+}
+
+function run_cpp_unit_tests {
+  echo "[Running cpp unit tests (transpiler)]"
+
+  if [ ! -x "${CPP_TEST_BIN}" ]; then
+    echo "Error: C++ unit test binary not found or not executable:"
+    echo "  ${CPP_TEST_BIN}"
+    cpp_unit_test_success=1
+    return
+  fi
+
+  local filter=""
+  local case="$1"
+
+  if [ -n "$case" ]; then
+    case "${case,,}" in
+      all|default|smoke|slow)
+        filter=""
+        ;;
+      *)
+        filter="--gtest_filter=$case"
+        ;;
+    esac
+  fi
+
+  echo "[gtest command]"
+  echo "${CPP_TEST_BIN} ${filter}"
+  echo
+
+  ${wrapper} "${CPP_TEST_BIN} ${filter}"
+  cpp_unit_test_success=$?
+
   echo
 }
 
@@ -284,6 +325,9 @@ function run_tests {
   if [ -n "$unit_test" ]; then
     run_unit_tests $unit_test $pytest_mark
   fi
+  if [ -n "$cpp_unit_test" ]; then
+    run_cpp_unit_tests $cpp_unit_test
+  fi
   if [ -n "$coverage" ]; then
     run_coverage $coverage $pytest_mark
   fi
@@ -303,6 +347,7 @@ function print_report {
   pep8_result="N/A"
   build_cpp_result="N/A"
   unit_test_result="N/A"
+  cpp_unit_test_result="N/A"
   coverage_result="N/A"
   client_unit_test_result="N/A"
   client_coverage_result="N/A"
@@ -324,6 +369,12 @@ function print_report {
     unit_test_result="SUCCESS"
   elif [ $unit_test_success -gt 0 ]; then
     unit_test_result="FAILURE"
+    failure=true
+  fi
+  if [ $cpp_unit_test_success -eq 0 ]; then
+    cpp_unit_test_result="SUCCESS"
+  elif [ $cpp_unit_test_success -gt 0 ]; then
+    cpp_unit_test_result="FAILURE"
     failure=true
   fi
   if [ $coverage_success -eq 0 ]; then
@@ -355,6 +406,7 @@ function print_report {
   echo "Python PEP8 coding style check    : [$pep8_result]"
   echo "Cpp code build check              : [$build_cpp_result]"
   echo "Unit tests check (QCOS)           : [$unit_test_result]"
+  echo "Cpp unit tests check (transpiler) : [$cpp_unit_test_result]"
   echo "Code coverage check (QCOS)        : [$coverage_result]"
   echo "Unit tests check (QCOS CLIENT)    : [$client_unit_test_result]"
   echo "Code coverage check  (QCOS CLIENT): [$client_coverage_result]"
