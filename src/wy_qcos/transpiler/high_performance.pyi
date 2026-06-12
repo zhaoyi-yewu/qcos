@@ -171,6 +171,7 @@ __all__: list[str] = [
     "otZ",
     "ot_iSWAP",
     "ot_iSWAPdg",
+    "optimize",
     "sabre_initial_mapping",
     "sabre_routing",
 ]
@@ -1623,6 +1624,30 @@ def create_gate(
     allow_undefined: bool = ...,
 ) -> BaseOperation:
     """根据名称创建门或操作对象."""
+
+def optimize(
+    ir: list[BaseOperation],
+    opt_level: int = 1,
+    verbose: bool = False,
+    basis_gates: set[str] | None = None,
+) -> list[BaseOperation]:
+    """对 IR 执行优化.
+
+    opt_level:
+      0 - 不做优化
+      1 - InverseCancellation + AdjacentPhaseOptPass
+      2 - Level 1 + EquivalencePass
+      3 - Level 2 + CliffordRzOptimization
+
+    Args:
+        ir (list[BaseOperation]): 待优化的操作序列
+        opt_level (int, optional): 优化级别. Defaults to 1.
+        verbose (bool, optional): 是否打印优化详情. Defaults to False.
+        basis_gates (set[str] | None, optional): basis gate 过滤集合.
+
+    Returns:
+        list[BaseOperation]: 优化后的操作序列
+    """
 
 def sabre_initial_mapping(
     gates_list: list[GateOperation], coupling_list: list[tuple[int, int]]
