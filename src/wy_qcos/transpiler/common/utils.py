@@ -15,42 +15,27 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import sys
 import time
 import logging
 
 
 class TransLogger:
-    def __init__(self, logfile=None, allowed_tags=None):
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
-        self.logger.handlers.clear()
-
-        # 默认允许所有标记，若指定则过滤
+    def __init__(self, allowed_tags=None):
+        self.logger = logging.getLogger("wy_qcos.transpiler")
         self.allowed_tags = allowed_tags or []
-
-        formatter = logging.Formatter(
+        self.formatter = logging.Formatter(
             "%(asctime)s - %(levelname)s - [%(tag)s]:"
             "%(name)s:%(funcName)s: %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
 
-        file_handler = None
-        if logfile:
-            file_handler = logging.FileHandler(logfile, encoding="utf-8")
-            file_handler.setFormatter(formatter)
-            self.logger.addHandler(file_handler)
-
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        self.logger.addHandler(console_handler)
-
-        self.logger.propagate = False
-
     def _log(self, level, msg, tag):
         """Set the log base info.
 
         Description:
-            If allowed_tags is emtpy, all tags are allowed.
+            Only tags in allowed_tags are permitted to output.
+            Empty list means no tags are allowed.
 
         Args:
             level: Log level (e.g., logging.INFO, logging.ERROR).
@@ -58,7 +43,7 @@ class TransLogger:
             tag: Custom tag for categorizing logs (e.g., "PERF",
             "ERROR", "WARNING").
         """
-        if self.allowed_tags and tag not in self.allowed_tags:
+        if tag not in self.allowed_tags:
             return
 
         self.logger.log(level, msg, extra={"tag": tag})
@@ -79,15 +64,14 @@ class TransLogger:
         """DEBUG log (DEBUG level)."""
         self._log(logging.INFO, msg, "DEBUG")
 
-    # Set allowed tags for filtering logs. If empty, all tags are allowed.
     def set_allowed_tags(self, tags):
         self.allowed_tags = tags
 
     def set_log_file(self, log_file):
         """Set log file path for output.
 
-        Description: Output content will be written to the output file.
-            If None, logs will only be output to console.
+        Description: Logs passing the tag filter will be written to
+            this file in addition to propagating to qcos handlers.
 
         Args:
             log_file: Path to the log file.
@@ -95,12 +79,7 @@ class TransLogger:
         if log_file is None:
             return
         file_handler = logging.FileHandler(log_file, encoding="utf-8")
-        formatter = logging.Formatter(
-            "%(asctime)s - %(levelname)s - [%(tag)s]:"
-            "%(name)s:%(funcName)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-        file_handler.setFormatter(formatter)
+        file_handler.setFormatter(self.formatter)
         self.logger.addHandler(file_handler)
 
 
@@ -186,4 +165,57 @@ class TranspileRuntime:
         self.opt_time2 /= run_count
 
 
-trans_logger = TransLogger(allowed_tags=["PERF", "ERROR", "DEBUG"])
+def init_cli_logging():
+    """Initialize logging for CLI mode.
+
+    Called at startup by CLI tools (qcos-transpiler.py, qiskit-transpiler.py,
+    etc.).
+    Description:
+        - root logger set to WARNING, suppressing all INFO/DEBUG logs
+        - wy_qcos.transpiler's handler only passes records tagged by
+        trans_logger
+
+    Two operating modes:
+
+    ::
+
+        Server mode (server.py):
+        ┌─────────────────────────────────────────────────────────┐
+        │  root (handlers=[])                                      │
+        │    └── wy_qcos (level=INFO, handlers=[file, console])    │
+        │          └── wy_qcos.transpiler (handlers=[], propagate=True)
+        │                └── trans_logger (tag filter → flows to wy_qcos)
+        └─────────────────────────────────────────────────────────┘
+
+        CLI mode (qcos-transpiler.py):
+        ┌─────────────────────────────────────────────────────────┐
+        │  root (level=WARNING)   ← suppresses all INFO/DEBUG    │
+        │    └── wy_qcos (level=WARNING)                          │
+        │          └── wy_qcos.transpiler (level=INFO, propagate=False)
+        │                ├── handler: StreamHandler(stdout)        │
+        │                │     └── _TagFilter (only passes tagged records)
+        │                └── trans_logger → extra={"tag":"PERF"}  │
+        │                      → output                            │
+        │  regular logger.info("xxx") (no tag) → _TagFilter blocks│
+        └─────────────────────────────────────────────────────────┘
+    """
+
+    class _TagFilter(logging.Filter):
+        def filter(self, record):
+            return hasattr(record, "tag")
+
+    logging.getLogger().setLevel(logging.WARNING)
+    trans_logger.logger.setLevel(logging.INFO)
+    _handler = logging.StreamHandler(sys.stdout)
+    _handler.addFilter(_TagFilter())
+    _handler.setFormatter(
+        logging.Formatter(
+            fmt="%(asctime)s [%(tag)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+    trans_logger.logger.addHandler(_handler)
+    trans_logger.logger.propagate = False
+
+
+trans_logger = TransLogger(allowed_tags=[])
