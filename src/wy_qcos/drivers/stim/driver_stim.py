@@ -118,6 +118,7 @@ class DriverStim(DriverBase):
 
         Args:
         raw_circuit: raw_circuit
+        num_qubits: num of qubits
 
         Returns:
             stim cricuit
@@ -149,6 +150,7 @@ class DriverStim(DriverBase):
             data: data
             data_type: data type
             shots: shots (Default value = 1)
+            qec_options: qec_options
         """
         if qec_options is None:
             raise ValueError("qec_options are needed for qec.")
@@ -173,6 +175,13 @@ class DriverStim(DriverBase):
         qec_code = factory.create(qec_code_str)
         formatted_circuit = qec_code.validate_and_format_circuit(circuit)
         qec_code.encode(formatted_circuit)
+
+        dem = formatted_circuit.detector_error_model()
+        det_sampler = formatted_circuit.compile_detector_sampler()
+        dets, obs = det_sampler.sample(shots=shots, separate_observables=True)
+        pred = qec_code.decode(formatted_circuit, dem=dem, det=dets)
+        qec_code.correct(formatted_circuit, pred=pred, obs=obs)
+
         result = None
         self.set_results(job_id, data_index, results=result)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)

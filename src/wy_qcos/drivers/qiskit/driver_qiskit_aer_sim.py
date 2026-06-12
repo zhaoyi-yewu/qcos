@@ -89,6 +89,7 @@ class DriverQiskitAerSim(DriverBase):
             data: data
             data_type: data type
             shots: shots (Default value = 1)
+            qec_options: qec options
         """
         data_index = data["index"]
         logger.info(

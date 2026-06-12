@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import pymatching
 import stim
 
 from wy_qcos.qec.quantum_code_base import QuantumCodeBase
@@ -59,12 +60,16 @@ class ShorStrategy:
         """
         raise NotImplementedError("encode() must be implemented by subclass")
 
-    def decode(self, circuit):
+    def decode(self, **kwargs):
         raise NotImplementedError("decode() must be implemented by subclass")
+
+    def correct(self, **kwargs):
+        raise NotImplementedError("correct() must be implemented by subclass")
 
 
 class ShorStimStrategy(ShorStrategy):
     """ShorStimStrategy, usint Stim circuit to process qec codes."""
+
     def __init__(self):
         """Initialize the Shor Stim Strategy."""
         super.__init__()
@@ -89,19 +94,22 @@ class ShorStimStrategy(ShorStrategy):
             formatted_circuit.append(gate)
         return formatted_circuit
 
-    def _detect_x_errors(self, data_bit: int, ancilla_bit: int, encoded_circuit: stim.Circuit):
+    def _detect_x_errors(
+        self, data_bit: int, ancilla_bit: int, encoded_circuit: stim.Circuit
+    ):
         encoded_circuit.append("CX", [data_bit, ancilla_bit])
         encoded_circuit.append("CX", [data_bit + 1, ancilla_bit])
         encoded_circuit.append("M", [ancilla_bit])
-        encoded_circuit.append("DETECTOR", [stim.target_rec(-1)])        
+        encoded_circuit.append("DETECTOR", [stim.target_rec(-1)])
 
         encoded_circuit.append("CX", [data_bit + 1, ancilla_bit + 1])
         encoded_circuit.append("CX", [data_bit + 2, ancilla_bit + 1])
         encoded_circuit.append("M", [ancilla_bit + 1])
-        encoded_circuit.append("DETECTOR", [stim.target_rec(-1)])    
+        encoded_circuit.append("DETECTOR", [stim.target_rec(-1)])
 
-
-    def _detect_z_errors(self, data_bit: int, ancilla_bit: int, encoded_circuit: stim.Circuit):
+    def _detect_z_errors(
+        self, data_bit: int, ancilla_bit: int, encoded_circuit: stim.Circuit
+    ):
         encoded_circuit.append("H", [ancilla_bit])
         for q in range(data_bit, data_bit + 6):
             encoded_circuit.append("CX", [ancilla_bit, q])
@@ -135,7 +143,6 @@ class ShorStimStrategy(ShorStrategy):
         for qbit in [0, 3, 6]:
             encoded_circuit.append("CX", [qbit, qbit + 1])
             encoded_circuit.append("CX", [qbit, qbit + 2])
-
 
         stabilizers = self.get_stabilizers()
         z_stabilizers = stabilizers.get("Z", [])
@@ -174,16 +181,31 @@ class ShorStimStrategy(ShorStrategy):
                 stim.target_rec(-6),
                 stim.target_rec(-3),
             ],
-            0
+            0,
         )
         return encoded_circuit
 
-    def decode(self, circuit):
-        raise NotImplementedError("decode() must be implemented by subclass")
+    def correct(self, **kwargs):
+        obs = kwargs.get("obs", None)
+        pred = kwargs.get("pred", None)
+        if obs is None or pred is None:
+            return None
+        corrected_result = obs ^ pred
+        raise corrected_result
+
+    def decode(self, **kwargs):
+        dem = kwargs.get("dem", None)
+        syndrome = kwargs.get("syndrome", None)
+        if dem is None or syndrome is None:
+            return None
+        matching = pymatching.Matching.from_detector_error_model(dem)
+        pred = matching.decode_batch(syndrome)
+        return pred
 
 
 class ShorQuantumCircuitStrategy(ShorStrategy):
-    """ShorQuantumCircuitStrategy, usint Quantum circuit to process qec codes."""
+    """ShorQuantumCircuitStrategy, use Quantum circuit to process qec codes."""
+
     def __init__(self):
         """Initialize the Shor Stim Strategy."""
         super.__init__()
@@ -224,11 +246,19 @@ class ShorQuantumCircuitStrategy(ShorStrategy):
         """
         raise NotImplementedError("this class need implement this func")
 
-    def decode(self, circuit):
+    def correct(self, **kwargs):
+        """Correct quantum circuit.
+
+        Args:
+            kwargs: optional args
+        """
+        raise NotImplementedError("correct() must be implemented by subclass")
+
+    def decode(self, **kwargs):
         """Decode circuit.
 
         Args:
-            circuit: quantum circuit.
+            kwargs: optional args
         """
         raise NotImplementedError("decode() must be implemented by subclass")
 
@@ -260,7 +290,6 @@ class ShorCode(QuantumCodeBase):
         self._n_logical = 1
         self._distance = 3
 
-    # 注册策略（装饰器写法）
     @classmethod
     def register(cls, circuit_type):
         def decorator(strategy_cls):
@@ -269,7 +298,6 @@ class ShorCode(QuantumCodeBase):
 
         return decorator
 
-    # 自动根据 circuit 类型找到策略
     def _get_strategy(self, circuit):
         return ShorCode.strategies[type(circuit)]
 
@@ -278,14 +306,13 @@ class ShorCode(QuantumCodeBase):
 
         Args:
             circuit: quantum circuit.
+            num_qubits: num of qubits
 
         Returns:
             Formatted quantum circuit.
         """
         if num_qubits != 1:
-            raise ValueError(
-                f"Shor does not support {num_qubits} bits qec."
-            )
+            raise ValueError(f"Shor does not support {num_qubits} bits qec.")
         return self._get_strategy(circuit).validate_and_format_circuit(circuit)
 
     def encode(self, circuit):
@@ -295,8 +322,7 @@ class ShorCode(QuantumCodeBase):
         using the concatenation of phase-flip and bit-flip codes.
 
         Args:
-            circuit: representing the quantum circuit that prepares the logical state
-                     to encode.
+            circuit: representing the quantum circuit.
 
         Returns:
             encoded quantumm circuit.
@@ -304,155 +330,26 @@ class ShorCode(QuantumCodeBase):
         # Create an encoded circuit
         return self._get_strategy(circuit).encode(circuit)
 
-    def decode(self, circuit: list[BaseOperation]) -> list[BaseOperation]:
-        """Decode the 9-qubit physical state back to logical state.
+    def decode(self, circuit, **kwargs):
+        """Decode the syndrome.
 
         Args:
-            circuit: A list of BaseOperation objects representing
-                     the 9-qubit physical state circuit.
-
-        Returns:
-            A list of BaseOperation objects representing the decoded logical
-            single-qubit state circuit.
+            circuit: quantum circuit
+            kwargs: optional args
         """
-        return self._get_strategy(circuit).decode(circuit)
+        return self._get_strategy(circuit).decode(kwargs)
 
-    def correct(
-        self, syndrome: list[int], circuit: list[BaseOperation]
-    ) -> list[BaseOperation]:
+    def correct(self, circuit, **kwargs):
         """Apply error correction based on the syndrome measurement.
 
-        The Shor code uses 8 stabilizer generators (6 Z-type for bit-flip
-        detection within each block of 3, and 2 X-type for phase-flip
-        detection between blocks).
-
         Args:
-            syndrome: The measured syndrome as a list of 8 integers (0 or 1).
-                - syndrome[0:6]: Z-stabilizer meas for bit-flip detection
-                - syndrome[6:8]: X-stabilizer meas for phase-flip detection
-            circuit: A list of BaseOperation objects representing the current
-            9-qubit physical state circuit.
+            circuit: quantum circuit
+            kwargs: optional args
 
         Returns:
-            A list of BaseOperation objects representing the corrected 9-qubit
-            physical state circuit.
+            Correctted results
         """
-        if not syndrome or len(syndrome) < 8:
-            return circuit
-
-        corrected_circuit = list(circuit)
-        corrected_circuit.append(
-            GateOperation(
-                name="_shor_corrected",
-                targets=list(range(self._n_data)),
-                arg_value=syndrome,
-            )
-        )
-        return corrected_circuit
-
-    def measure_syndrome(self, circuit: list[BaseOperation]) -> list[int]:
-        """Measure the syndrome of the 9-qubit state.
-
-        The Shor code has 8 stabilizer generators:
-        - Z0Z1, Z1Z2 (first block bit-flip detection)
-        - Z3Z4, Z4Z5 (second block bit-flip detection)
-        - Z6Z7, Z7Z8 (third block bit-flip detection)
-        - X0X3X6 (phase-flip detection between blocks 1 and 2)
-        - X1X4X7 (phase-flip detection between blocks 2 and 3)
-
-        Returns:
-            A list of 8 integers (0 or 1) representing the syndrome meas.
-        """
-        # Default syndrome: no error detected
-        syndrome = [0] * 8
-
-        for op in circuit:
-            if op.name in ("X", "Y", "Z") and op.targets:
-                # Found an error gate, compute syndrome
-                error_type = op.name
-                error_qubit = op.targets[0]
-                syndrome = self._compute_syndrome(error_type, error_qubit)
-                break
-
-        return syndrome
-
-    def _compute_syndrome(
-        self, error_type: str, qubit_index: int
-    ) -> list[int]:
-        """Compute the expected syndrome for a given error.
-
-        This is a helper method that computes what syndrome would be measured
-        if a specific error occurred on a specific qubit.
-
-        Args:
-            error_type: Type of Pauli error ('X', 'Y', or 'Z').
-            qubit_index: Index of the qubit with the error (0-8).
-
-        Returns:
-            A list of 8 integers (0 or 1) representing the syndrome.
-        """
-        syndrome = [0] * 8
-
-        # Determine which block the qubit belongs to (0, 1, or 2)
-        block = qubit_index // 3
-        # Position within the block (0, 1, or 2)
-        pos_in_block = qubit_index % 3
-
-        if error_type == "X":
-            # X errors anticommute with Z stabilizers
-            # Bit-flip syndrome within the block
-            if pos_in_block == 0:
-                # Z_i Z_{i+1} detects error on qubit i
-                syndrome[2 * block] = 1
-            elif pos_in_block == 1:
-                syndrome[2 * block] = (
-                    # Z_i Z_{i+1} detects error on qubit i+1
-                    1
-                )
-                syndrome[2 * block + 1] = (
-                    # Z_{i+1} Z_{i+2} detects error on qubit i+1
-                    1
-                )
-            elif pos_in_block == 2:
-                syndrome[2 * block + 1] = (
-                    # Z_{i+1} Z_{i+2} detects error on qubit i+2
-                    1
-                )
-
-        elif error_type == "Z":
-            # Z errors anticommute with X stabilizers
-            # Phase-flip syndrome between blocks
-            if block == 0:
-                syndrome[6] = 1  # X stabilizer between blocks 0 and 1
-            elif block == 1:
-                syndrome[6] = 1  # X stabilizer between blocks 0 and 1
-                syndrome[7] = 1  # X stabilizer between blocks 1 and 2
-            elif block == 2:
-                syndrome[7] = 1  # X stabilizer between blocks 1 and 2
-
-        elif error_type == "Y":
-            # Y = iXZ, so it triggers both X and Z syndromes
-            # Bit-flip syndrome within the block
-            if pos_in_block == 0:
-                syndrome[2 * block] = 1
-            elif pos_in_block == 1:
-                syndrome[2 * block] = 1
-                syndrome[2 * block + 1] = 1
-            elif pos_in_block == 2:
-                syndrome[2 * block + 1] = 1
-
-            # Phase-flip syndrome between blocks
-            if block == 0:
-                syndrome[6] = 1
-            elif block == 1:
-                syndrome[6] = 1
-                syndrome[7] = 1
-            elif block == 2:
-                syndrome[7] = 1
-
-        return syndrome
-
-
+        return self._get_strategy(circuit).correct(kwargs)
 
 
 ShorCode.register(stim.Circuit)(ShorStimStrategy)

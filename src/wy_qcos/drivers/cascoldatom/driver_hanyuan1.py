@@ -342,6 +342,7 @@ class DriverHanyuan1(DriverBase):
             data: data
             data_type: data type
             shots: shots (Default value = 1)
+            qec_options: qec options
         """
         logger.info(
             f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
