@@ -41,6 +41,7 @@ pydantic==2.11.5
 pydantic_core==2.33.2
 pydocket==0.16.3
 PyJWT==2.12.1
+PyMatching==2.3.1
 PyMySQL==1.1.0
 pytest==8.4.1
 pytest-asyncio==0.21.1
@@ -61,6 +62,7 @@ sqlalchemy==2.0.48
 sqlalchemy-adapter==1.9.0
 sqlalchemy-utils==0.42.1
 starlette==0.50.0
+stim==1.15.0
 tomlkit==0.13.3
 typing-inspection==0.4.1
 typing_extensions==4.15.0

@@ -170,7 +170,15 @@ class DriverWuyueBase(DriverBase):
         qasm_code = converter.to_qasm2()
         return qasm_code
 
-    def run(self, job_id, num_qubits, data, data_type, shots=1):
+    def run(
+        self,
+        job_id,
+        num_qubits,
+        data,
+        data_type,
+        shots=1,
+        qec_options=dict | None,
+    ):
         """Run job.
 
         Args:
@@ -179,6 +187,7 @@ class DriverWuyueBase(DriverBase):
             data: data
             data_type: data type
             shots: shots (Default value = 1)
+            qec_options: qec options
         """
         # pylint: disable=duplicate-code
         data_index = data["index"]
