@@ -59,7 +59,7 @@ class TestQuantumCodeBase:
         """Test that encode is abstract and must be implemented."""
         with pytest.raises(TypeError):
 
-            class MissingEncode(QuantumCodeBase):  # type: ignore
+            class MissingEncode(QuantumCodeBase):
                 def decode(self, circuit, **kwargs):
                     pass
 
@@ -80,7 +80,7 @@ class TestQuantumCodeBase:
         """Test that decode is abstract and must be implemented."""
         with pytest.raises(TypeError):
 
-            class MissingDecode(QuantumCodeBase):  # type: ignore
+            class MissingDecode(QuantumCodeBase):
                 def encode(self, circuit):
                     pass
 
@@ -101,7 +101,7 @@ class TestQuantumCodeBase:
         """Test that correct is abstract and must be implemented."""
         with pytest.raises(TypeError):
 
-            class MissingCorrect(QuantumCodeBase):  # type: ignore
+            class MissingCorrect(QuantumCodeBase):
                 def encode(self, circuit):
                     pass
 
@@ -122,7 +122,7 @@ class TestQuantumCodeBase:
         """Test that validate_and_format_circuit is abstract."""
         with pytest.raises(TypeError):
 
-            class MissingValidate(QuantumCodeBase):  # type: ignore
+            class MissingValidate(QuantumCodeBase):
                 def encode(self, circuit):
                     pass
 
@@ -141,7 +141,7 @@ class TestQuantumCodeBase:
         """Test that compute_samples is abstract."""
         with pytest.raises(TypeError):
 
-            class MissingCompute(QuantumCodeBase):  # type: ignore
+            class MissingCompute(QuantumCodeBase):
                 def encode(self, circuit):
                     pass
 

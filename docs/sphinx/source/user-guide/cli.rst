@@ -212,7 +212,7 @@
 
 .. code-block:: shell
 
-   qcos-cli submit-job --code-type qasm2 --shots 100 --backend stim --transpiler-options '{"enable_mapping": false}' --qec-options '{"qec_code": "shor", "distance": 3, "phy_bit_num": 9, "logi_bit_num": 1}' -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
+   qcos-cli submit-job --code-type qasm2 --shots 100 --backend stim --transpiler-options '{"enable_mapping": false}' --qec-options '{"qec_code": "shor", "distance": 3, "phy_bit_num": 9, "logical_bit_num": 1}' -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
 
 
 更新作业

@@ -66,8 +66,6 @@ class SubmitJobRequest(UuidMixin):
     transpiler_options: dict | None = Field(
         default=None, description="Transpiler options"
     )
-    # Qec options
-    qec_options: dict | None = Field(default=None, description="Qec options")
     # Circuit aggregation: internal multi
     circuit_aggregation: str | None = Field(
         default=None, description="Circuit aggregation: internal, multi"
@@ -170,8 +168,6 @@ class SubmitJobResponse(UuidMixin):
     transpiler_options: dict | None = Field(
         default=None, description="Transpiler options"
     )
-    # Qec options
-    qec_options: dict | None = Field(default=None, description="Qec options")
     # Circuit aggregation: internal, multi
     circuit_aggregation: str | None = Field(
         default=None, description="Circuit aggregation: internal, multi"
@@ -254,8 +250,6 @@ class GetJobStatusResponse(UuidMixin):
     transpiler_options: dict | None = Field(
         default=None, description="Transpiler options"
     )
-    # Qec options
-    qec_options: dict | None = Field(default=None, description="Qec options")
     # Circuit aggregation: internal, multi
     circuit_aggregation: str | None = Field(
         default=None, description="Circuit aggregation: internal, multi"
@@ -344,8 +338,6 @@ class GetJobResultsResponse(UuidMixin):
     transpiler_options: dict | None = Field(
         default=None, description="Transpiler options"
     )
-    # Qec options
-    qec_options: dict | None = Field(default=None, description="Qec options")
     # Circuit aggregation: internal, multi
     circuit_aggregation: str | None = Field(
         default=None, description="Circuit aggregation: internal, multi"
@@ -549,8 +541,6 @@ class UpdateJobResponse(UuidMixin):
     transpiler_options: dict | None = Field(
         default=None, description="Transpiler options"
     )
-    # Qec options
-    qec_options: dict | None = Field(default=None, description="Qec options")
     # Circuit aggregation: internal, multi
     circuit_aggregation: str | None = Field(
         default=None, description="Circuit aggregation: internal, multi"

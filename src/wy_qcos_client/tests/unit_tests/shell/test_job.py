@@ -154,6 +154,7 @@ class TestSubmitJob:
         mock_client.callbacks = '{"options": "options"}'
         mock_client.source_code_files = ["/qcos"]
         mock_client.instance_id = "instance_id"
+        mock_client.qec_options = None
 
         assert submit_job.take_action(mock_client) is None
 
