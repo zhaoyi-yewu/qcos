@@ -7,9 +7,11 @@ build:
   tools:
     python: "3.11"
   apt_packages:
+    - default-jre
     - graphviz
-    - openjdk-17-jre
     - plantuml
+    - imagemagick
+    - librsvg2-bin
 
 sphinx:
   configuration: docs/sphinx/source/conf.py

@@ -268,7 +268,6 @@ async def db_job_callback(
                     f"Update flow result into db error {job_id}: "
                     f"cannot get result from state: {str(e)}"
                 )
-                return
 
     # Determine overall job_status from individual results,
     overall_job_status = db_job_status
