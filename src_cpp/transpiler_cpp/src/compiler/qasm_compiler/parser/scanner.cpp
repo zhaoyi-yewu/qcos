@@ -26,32 +26,6 @@
 #include <string>
 
 namespace qasm {
-char Scanner::readUtf8Codepoint(std::istream* in) {
-  char c = 0;
-  in->get(c);
-  return c;
-}
-
-void Scanner::nextCh() {
-  if (!is->eof()) {
-    col++;
-    ch = readUtf8Codepoint(is);
-  } else {
-    ch = 0;
-  }
-  if (ch == '\n') {
-    col = 0;
-    line++;
-  }
-}
-
-char Scanner::peek() const {
-  if (!is->eof()) {
-    return static_cast<char>(is->peek());
-  }
-  return 0;
-}
-
 std::optional<Token> Scanner::consumeWhitespaceAndComments() {
   while (isSpace(ch)) {
     nextCh();
@@ -59,29 +33,39 @@ std::optional<Token> Scanner::consumeWhitespaceAndComments() {
   if (ch == '/' && peek() == '/') {
     Token t(line, col);
     // consume until newline
-    std::stringstream content;
+    std::string content;
+    content.reserve(64);
     while (ch != '\n' && ch != 0) {
-      content << ch;
+      content.push_back(ch);
       nextCh();
     }
     if (ch == '\n') {
       nextCh();
     }
 
-    static const auto INITIAL_LAYOUT_REGEX = std::regex("i (\\d+ )*(\\d+)");
-    static const auto OUTPUT_PERMUTATION_REGEX =
-        std::regex("o (\\d+ )*(\\d+)");
+    // Fast prefix check to avoid expensive regex on every comment line.
+    // InitialLayout / OutputPermutation comments are extremely rare
+    // (0-2 per file), but this code runs for every single-line comment.
+    bool isLayout = false;
+    bool isPerm = false;
+    if (content.size() >= 2 && content[0] == 'i' && content[1] == ' ') {
+      static const auto INITIAL_LAYOUT_REGEX = std::regex("i (\\d+ )*(\\d+)");
+      isLayout = std::regex_search(content, INITIAL_LAYOUT_REGEX);
+    } else if (content.size() >= 2 && content[0] == 'o' && content[1] == ' ') {
+      static const auto OUTPUT_PERMUTATION_REGEX =
+          std::regex("o (\\d+ )*(\\d+)");
+      isPerm = std::regex_search(content, OUTPUT_PERMUTATION_REGEX);
+    }
 
-    const auto str = content.str();
-    if (std::regex_search(str, INITIAL_LAYOUT_REGEX)) {
+    if (isLayout) {
       t.kind = Token::Kind::InitialLayout;
-    } else if (std::regex_search(str, OUTPUT_PERMUTATION_REGEX)) {
+    } else if (isPerm) {
       t.kind = Token::Kind::OutputPermutation;
     } else {
       return consumeWhitespaceAndComments();
     }
 
-    t.str = content.str();
+    t.str = std::move(content);
     t.endCol = col;
     t.endLine = line;
     return t;
@@ -107,7 +91,6 @@ std::optional<Token> Scanner::consumeWhitespaceAndComments() {
 Token Scanner::consumeName() {
   Token t(line, col);
   std::string name;
-  name.reserve(32);
 
   while (isFirstIdChar(ch) || isNum(ch)) {
     name.push_back(ch);
@@ -293,13 +276,14 @@ Token Scanner::consumeString() {
   const auto delim = ch;
   nextCh();
 
-  std::stringstream content;
+  std::string content;
+  content.reserve(64);
   while (ch != delim) {
-    content << ch;
+    content.push_back(ch);
     nextCh();
   }
 
-  t.str = content.str();
+  t.str = std::move(content);
 
   expect(delim);
 
@@ -309,73 +293,85 @@ Token Scanner::consumeString() {
   return t;
 }
 
-Scanner::Scanner(std::istream* in) : is(in) {
-  keywords["OPENQASM"] = Token::Kind::OpenQasm;
-  keywords["include"] = Token::Kind::Include;
-  keywords["defcalgrammar"] = Token::Kind::DefCalGrammar;
-  keywords["def"] = Token::Kind::Def;
-  keywords["cal"] = Token::Kind::Cal;
-  keywords["defcal"] = Token::Kind::DefCal;
-  keywords["gate"] = Token::Kind::Gate;
-  keywords["opaque"] = Token::Kind::Opaque;
-  keywords["extern"] = Token::Kind::Extern;
-  keywords["box"] = Token::Kind::Box;
-  keywords["let"] = Token::Kind::Let;
-  keywords["break"] = Token::Kind::Break;
-  keywords["continue"] = Token::Kind::Continue;
-  keywords["if"] = Token::Kind::If;
-  keywords["else"] = Token::Kind::Else;
-  keywords["end"] = Token::Kind::End;
-  keywords["return"] = Token::Kind::Return;
-  keywords["for"] = Token::Kind::For;
-  keywords["while"] = Token::Kind::While;
-  keywords["in"] = Token::Kind::In;
-  keywords["pragma"] = Token::Kind::Pragma;
-  keywords["input"] = Token::Kind::Input;
-  keywords["output"] = Token::Kind::Output;
-  keywords["const"] = Token::Kind::Const;
-  keywords["readonly"] = Token::Kind::ReadOnly;
-  keywords["mutable"] = Token::Kind::Mutable;
-  keywords["qreg"] = Token::Kind::Qreg;
-  keywords["qubit"] = Token::Kind::QBit;
-  keywords["creg"] = Token::Kind::CReg;
-  keywords["bool"] = Token::Kind::Bool;
-  keywords["bit"] = Token::Kind::Bit;
-  keywords["int"] = Token::Kind::Int;
-  keywords["uint"] = Token::Kind::Uint;
-  keywords["float"] = Token::Kind::Float;
-  keywords["angle"] = Token::Kind::Angle;
-  keywords["complex"] = Token::Kind::Complex;
-  keywords["array"] = Token::Kind::Array;
-  keywords["void"] = Token::Kind::Void;
-  keywords["duration"] = Token::Kind::Duration;
-  keywords["stretch"] = Token::Kind::Stretch;
-  keywords["gphase"] = Token::Kind::Gphase;
-  keywords["inv"] = Token::Kind::Inv;
-  keywords["pow"] = Token::Kind::Pow;
-  keywords["ctrl"] = Token::Kind::Ctrl;
-  keywords["negctrl"] = Token::Kind::NegCtrl;
-  keywords["#dim"] = Token::Kind::Dim;
-  keywords["durationof"] = Token::Kind::DurationOf;
-  keywords["delay"] = Token::Kind::Delay;
-  keywords["reset"] = Token::Kind::Reset;
-  keywords["measure"] = Token::Kind::Measure;
-  keywords["barrier"] = Token::Kind::Barrier;
-  keywords["true"] = Token::Kind::True;
-  keywords["false"] = Token::Kind::False;
-  keywords["im"] = Token::Kind::Imag;
-  keywords["dt"] = Token::Kind::TimeUnitDt;
-  keywords["ns"] = Token::Kind::TimeUnitNs;
-  keywords["us"] = Token::Kind::TimeUnitUs;
-  keywords["mys"] = Token::Kind::TimeUnitMys;
-  keywords["ms"] = Token::Kind::TimeUnitMs;
-  keywords["s"] = Token::Kind::S;
-  keywords["sin"] = Token::Kind::Sin;
-  keywords["cos"] = Token::Kind::Cos;
-  keywords["tan"] = Token::Kind::Tan;
-  keywords["exp"] = Token::Kind::Exp;
-  keywords["ln"] = Token::Kind::Ln;
-  keywords["sqrt"] = Token::Kind::Sqrt;
+Scanner::Scanner(std::istream* in) {
+  // Read entire input into buffer for fast scanning
+  std::ostringstream oss;
+  oss << in->rdbuf();
+  buffer_ = std::move(oss).str();
+  ptr_ = buffer_.data();
+  end_ = ptr_ + buffer_.size();
+
+  // Initialize keywords from a static table — single copy instead of 50+
+  // individual map insertions per Scanner construction.
+  static const std::unordered_map<std::string, Token::Kind> s_keywords = {
+      {"OPENQASM", Token::Kind::OpenQasm},
+      {"include", Token::Kind::Include},
+      {"defcalgrammar", Token::Kind::DefCalGrammar},
+      {"def", Token::Kind::Def},
+      {"cal", Token::Kind::Cal},
+      {"defcal", Token::Kind::DefCal},
+      {"gate", Token::Kind::Gate},
+      {"opaque", Token::Kind::Opaque},
+      {"extern", Token::Kind::Extern},
+      {"box", Token::Kind::Box},
+      {"let", Token::Kind::Let},
+      {"break", Token::Kind::Break},
+      {"continue", Token::Kind::Continue},
+      {"if", Token::Kind::If},
+      {"else", Token::Kind::Else},
+      {"end", Token::Kind::End},
+      {"return", Token::Kind::Return},
+      {"for", Token::Kind::For},
+      {"while", Token::Kind::While},
+      {"in", Token::Kind::In},
+      {"pragma", Token::Kind::Pragma},
+      {"input", Token::Kind::Input},
+      {"output", Token::Kind::Output},
+      {"const", Token::Kind::Const},
+      {"readonly", Token::Kind::ReadOnly},
+      {"mutable", Token::Kind::Mutable},
+      {"qreg", Token::Kind::Qreg},
+      {"qubit", Token::Kind::QBit},
+      {"creg", Token::Kind::CReg},
+      {"bool", Token::Kind::Bool},
+      {"bit", Token::Kind::Bit},
+      {"int", Token::Kind::Int},
+      {"uint", Token::Kind::Uint},
+      {"float", Token::Kind::Float},
+      {"angle", Token::Kind::Angle},
+      {"complex", Token::Kind::Complex},
+      {"array", Token::Kind::Array},
+      {"void", Token::Kind::Void},
+      {"duration", Token::Kind::Duration},
+      {"stretch", Token::Kind::Stretch},
+      {"gphase", Token::Kind::Gphase},
+      {"inv", Token::Kind::Inv},
+      {"pow", Token::Kind::Pow},
+      {"ctrl", Token::Kind::Ctrl},
+      {"negctrl", Token::Kind::NegCtrl},
+      {"#dim", Token::Kind::Dim},
+      {"durationof", Token::Kind::DurationOf},
+      {"delay", Token::Kind::Delay},
+      {"reset", Token::Kind::Reset},
+      {"measure", Token::Kind::Measure},
+      {"barrier", Token::Kind::Barrier},
+      {"true", Token::Kind::True},
+      {"false", Token::Kind::False},
+      {"im", Token::Kind::Imag},
+      {"dt", Token::Kind::TimeUnitDt},
+      {"ns", Token::Kind::TimeUnitNs},
+      {"us", Token::Kind::TimeUnitUs},
+      {"mys", Token::Kind::TimeUnitMys},
+      {"ms", Token::Kind::TimeUnitMs},
+      {"s", Token::Kind::S},
+      {"sin", Token::Kind::Sin},
+      {"cos", Token::Kind::Cos},
+      {"tan", Token::Kind::Tan},
+      {"exp", Token::Kind::Exp},
+      {"ln", Token::Kind::Ln},
+      {"sqrt", Token::Kind::Sqrt},
+  };
+  keywords = s_keywords;
 
   nextCh();
 }
