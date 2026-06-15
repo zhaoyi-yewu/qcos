@@ -16,177 +16,202 @@
  */
 #pragma once
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace Constant {
 // 单量子门常量
-inline const std::string SINGLE_QUBIT_GATE_X = "x";
-inline const std::string SINGLE_QUBIT_GATE_Y = "y";
-inline const std::string SINGLE_QUBIT_GATE_Z = "z";
-inline const std::string SINGLE_QUBIT_GATE_H = "h";
-inline const std::string SINGLE_QUBIT_GATE_S = "s";
-inline const std::string SINGLE_QUBIT_GATE_T = "t";
-inline const std::string SINGLE_QUBIT_GATE_P = "p";
-inline const std::string SINGLE_QUBIT_GATE_U = "u";
-inline const std::string SINGLE_QUBIT_GATE_U_UPPERCASE = "U";
-inline const std::string SINGLE_QUBIT_GATE_R = "r";
-inline const std::string SINGLE_QUBIT_GATE_RX = "rx";
-inline const std::string SINGLE_QUBIT_GATE_RY = "ry";
-inline const std::string SINGLE_QUBIT_GATE_RZ = "rz";
-inline const std::string SINGLE_QUBIT_GATE_SX = "sx";
-inline const std::string SINGLE_QUBIT_GATE_SXDG = "sxdg";
-inline const std::string SINGLE_QUBIT_GATE_SDG = "sdg";
-inline const std::string SINGLE_QUBIT_GATE_TDG = "tdg";
-inline const std::string SINGLE_QUBIT_GATE_U1 = "u1";
-inline const std::string SINGLE_QUBIT_GATE_U2 = "u2";
-inline const std::string SINGLE_QUBIT_GATE_U3 = "u3";
-inline const std::string SINGLE_QUBIT_GATE_RESET = "reset";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_X = "x";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_Y = "y";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_Z = "z";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_H = "h";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_S = "s";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_T = "t";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_P = "p";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_U = "u";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_U_UPPERCASE = "U";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_R = "r";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_RX = "rx";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_RY = "ry";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_RZ = "rz";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_SX = "sx";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_SXDG = "sxdg";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_SDG = "sdg";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_TDG = "tdg";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_U1 = "u1";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_U2 = "u2";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_U3 = "u3";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_RESET = "reset";
 
 // 单量子门列表
 inline const std::vector<std::string> SINGLE_QUBIT_GATE_LIST = {
-    SINGLE_QUBIT_GATE_X,           SINGLE_QUBIT_GATE_Y,
-    SINGLE_QUBIT_GATE_Z,           SINGLE_QUBIT_GATE_H,
-    SINGLE_QUBIT_GATE_S,           SINGLE_QUBIT_GATE_T,
-    SINGLE_QUBIT_GATE_P,           SINGLE_QUBIT_GATE_U,
-    SINGLE_QUBIT_GATE_U_UPPERCASE, SINGLE_QUBIT_GATE_R,
-    SINGLE_QUBIT_GATE_RX,          SINGLE_QUBIT_GATE_RY,
-    SINGLE_QUBIT_GATE_RZ,          SINGLE_QUBIT_GATE_SX,
-    SINGLE_QUBIT_GATE_SXDG,        SINGLE_QUBIT_GATE_SDG,
-    SINGLE_QUBIT_GATE_TDG,         SINGLE_QUBIT_GATE_U1,
-    SINGLE_QUBIT_GATE_U2,          SINGLE_QUBIT_GATE_U3,
+    std::string(SINGLE_QUBIT_GATE_X),
+    std::string(SINGLE_QUBIT_GATE_Y),
+    std::string(SINGLE_QUBIT_GATE_Z),
+    std::string(SINGLE_QUBIT_GATE_H),
+    std::string(SINGLE_QUBIT_GATE_S),
+    std::string(SINGLE_QUBIT_GATE_T),
+    std::string(SINGLE_QUBIT_GATE_P),
+    std::string(SINGLE_QUBIT_GATE_U),
+    std::string(SINGLE_QUBIT_GATE_U_UPPERCASE),
+    std::string(SINGLE_QUBIT_GATE_R),
+    std::string(SINGLE_QUBIT_GATE_RX),
+    std::string(SINGLE_QUBIT_GATE_RY),
+    std::string(SINGLE_QUBIT_GATE_RZ),
+    std::string(SINGLE_QUBIT_GATE_SX),
+    std::string(SINGLE_QUBIT_GATE_SXDG),
+    std::string(SINGLE_QUBIT_GATE_SDG),
+    std::string(SINGLE_QUBIT_GATE_TDG),
+    std::string(SINGLE_QUBIT_GATE_U1),
+    std::string(SINGLE_QUBIT_GATE_U2),
+    std::string(SINGLE_QUBIT_GATE_U3),
 };
 
 // 双量子门常量
-inline const std::string TWO_QUBIT_GATE_CH = "ch";
-inline const std::string TWO_QUBIT_GATE_CRX = "crx";
-inline const std::string TWO_QUBIT_GATE_CRY = "cry";
-inline const std::string TWO_QUBIT_GATE_CRZ = "crz";
-inline const std::string TWO_QUBIT_GATE_CX = "cx";
-inline const std::string TWO_QUBIT_GATE_CX_UPPERCASE = "CX";
-inline const std::string TWO_QUBIT_GATE_CY = "cy";
-inline const std::string TWO_QUBIT_GATE_CZ = "cz";
-inline const std::string TWO_QUBIT_GATE_SWAP = "swap";
-inline const std::string TWO_QUBIT_GATE_ISWAP = "iswap";
-inline const std::string TWO_QUBIT_GATE_CU1 = "cu1";
-inline const std::string TWO_QUBIT_GATE_CP = "cp";
-inline const std::string TWO_QUBIT_GATE_CS = "cs";
-inline const std::string TWO_QUBIT_GATE_CSDG = "csdg";
-inline const std::string TWO_QUBIT_GATE_CU3 = "cu3";
-inline const std::string TWO_QUBIT_GATE_ECR = "ecr";
-inline const std::string TWO_QUBIT_GATE_DCX = "dcx";
-inline const std::string TWO_QUBIT_GATE_CSX = "csx";
-inline const std::string TWO_QUBIT_GATE_CU = "cu";
-inline const std::string TWO_QUBIT_GATE_RXX = "rxx";
-inline const std::string TWO_QUBIT_GATE_RYY = "ryy";
-inline const std::string TWO_QUBIT_GATE_RZZ = "rzz";
-inline const std::string TWO_QUBIT_GATE_RZX = "rzx";
+inline constexpr std::string_view TWO_QUBIT_GATE_CH = "ch";
+inline constexpr std::string_view TWO_QUBIT_GATE_CRX = "crx";
+inline constexpr std::string_view TWO_QUBIT_GATE_CRY = "cry";
+inline constexpr std::string_view TWO_QUBIT_GATE_CRZ = "crz";
+inline constexpr std::string_view TWO_QUBIT_GATE_CX = "cx";
+inline constexpr std::string_view TWO_QUBIT_GATE_CX_UPPERCASE = "CX";
+inline constexpr std::string_view TWO_QUBIT_GATE_CY = "cy";
+inline constexpr std::string_view TWO_QUBIT_GATE_CZ = "cz";
+inline constexpr std::string_view TWO_QUBIT_GATE_SWAP = "swap";
+inline constexpr std::string_view TWO_QUBIT_GATE_ISWAP = "iswap";
+inline constexpr std::string_view TWO_QUBIT_GATE_CU1 = "cu1";
+inline constexpr std::string_view TWO_QUBIT_GATE_CP = "cp";
+inline constexpr std::string_view TWO_QUBIT_GATE_CS = "cs";
+inline constexpr std::string_view TWO_QUBIT_GATE_CSDG = "csdg";
+inline constexpr std::string_view TWO_QUBIT_GATE_CU3 = "cu3";
+inline constexpr std::string_view TWO_QUBIT_GATE_ECR = "ecr";
+inline constexpr std::string_view TWO_QUBIT_GATE_DCX = "dcx";
+inline constexpr std::string_view TWO_QUBIT_GATE_CSX = "csx";
+inline constexpr std::string_view TWO_QUBIT_GATE_CU = "cu";
+inline constexpr std::string_view TWO_QUBIT_GATE_RXX = "rxx";
+inline constexpr std::string_view TWO_QUBIT_GATE_RYY = "ryy";
+inline constexpr std::string_view TWO_QUBIT_GATE_RZZ = "rzz";
+inline constexpr std::string_view TWO_QUBIT_GATE_RZX = "rzx";
 
 // 双量子门列表
 inline const std::vector<std::string> TWO_QUBIT_GATE_LIST = {
-    TWO_QUBIT_GATE_CH,    TWO_QUBIT_GATE_CRX,  TWO_QUBIT_GATE_CRY,
-    TWO_QUBIT_GATE_CRZ,   TWO_QUBIT_GATE_CX,   TWO_QUBIT_GATE_CX_UPPERCASE,
-    TWO_QUBIT_GATE_CY,    TWO_QUBIT_GATE_CZ,   TWO_QUBIT_GATE_SWAP,
-    TWO_QUBIT_GATE_ISWAP, TWO_QUBIT_GATE_CU1,  TWO_QUBIT_GATE_CP,
-    TWO_QUBIT_GATE_CS,    TWO_QUBIT_GATE_CSDG, TWO_QUBIT_GATE_CU3,
-    TWO_QUBIT_GATE_ECR,   TWO_QUBIT_GATE_DCX,  TWO_QUBIT_GATE_CSX,
-    TWO_QUBIT_GATE_CU,    TWO_QUBIT_GATE_RXX,  TWO_QUBIT_GATE_RZZ,
+    std::string(TWO_QUBIT_GATE_CH),
+    std::string(TWO_QUBIT_GATE_CRX),
+    std::string(TWO_QUBIT_GATE_CRY),
+    std::string(TWO_QUBIT_GATE_CRZ),
+    std::string(TWO_QUBIT_GATE_CX),
+    std::string(TWO_QUBIT_GATE_CX_UPPERCASE),
+    std::string(TWO_QUBIT_GATE_CY),
+    std::string(TWO_QUBIT_GATE_CZ),
+    std::string(TWO_QUBIT_GATE_SWAP),
+    std::string(TWO_QUBIT_GATE_ISWAP),
+    std::string(TWO_QUBIT_GATE_CU1),
+    std::string(TWO_QUBIT_GATE_CP),
+    std::string(TWO_QUBIT_GATE_CS),
+    std::string(TWO_QUBIT_GATE_CSDG),
+    std::string(TWO_QUBIT_GATE_CU3),
+    std::string(TWO_QUBIT_GATE_ECR),
+    std::string(TWO_QUBIT_GATE_DCX),
+    std::string(TWO_QUBIT_GATE_CSX),
+    std::string(TWO_QUBIT_GATE_CU),
+    std::string(TWO_QUBIT_GATE_RXX),
+    std::string(TWO_QUBIT_GATE_RZZ),
 };
 
 // 三量子门常量
-inline const std::string THREE_QUBIT_GATE_CCX = "ccx";
-inline const std::string THREE_QUBIT_GATE_CSWAP = "cswap";
-inline const std::string THREE_QUBIT_GATE_RCCX = "rccx";
+inline constexpr std::string_view THREE_QUBIT_GATE_CCX = "ccx";
+inline constexpr std::string_view THREE_QUBIT_GATE_CSWAP = "cswap";
+inline constexpr std::string_view THREE_QUBIT_GATE_RCCX = "rccx";
 
 // 三量子门列表
 inline const std::vector<std::string> THREE_QUBIT_GATE_LIST = {
-    THREE_QUBIT_GATE_CCX,
-    THREE_QUBIT_GATE_CSWAP,
-    THREE_QUBIT_GATE_RCCX,
+    std::string(THREE_QUBIT_GATE_CCX),
+    std::string(THREE_QUBIT_GATE_CSWAP),
+    std::string(THREE_QUBIT_GATE_RCCX),
 };
 
 // 四量子门常量
-inline const std::string FOUR_QUBIT_GATE_RC3X = "rc3x";
-inline const std::string FOUR_QUBIT_GATE_C3X = "c3x";
-inline const std::string FOUR_QUBIT_GATE_C3SQRTX = "c3sqrtx";
+inline constexpr std::string_view FOUR_QUBIT_GATE_RC3X = "rc3x";
+inline constexpr std::string_view FOUR_QUBIT_GATE_C3X = "c3x";
+inline constexpr std::string_view FOUR_QUBIT_GATE_C3SQRTX = "c3sqrtx";
 
 // 四量子门列表
 inline const std::vector<std::string> FOUR_QUBIT_GATE_LIST = {
-    FOUR_QUBIT_GATE_RC3X,
-    FOUR_QUBIT_GATE_C3X,
-    FOUR_QUBIT_GATE_C3SQRTX,
+    std::string(FOUR_QUBIT_GATE_RC3X),
+    std::string(FOUR_QUBIT_GATE_C3X),
+    std::string(FOUR_QUBIT_GATE_C3SQRTX),
 };
 
 // 五量子门常量
-inline const std::string FIVE_QUBIT_GATE_C4X = "c4x";
+inline constexpr std::string_view FIVE_QUBIT_GATE_C4X = "c4x";
 
 // 五量子门列表
 inline const std::vector<std::string> FIVE_QUBIT_GATE_LIST = {
-    FIVE_QUBIT_GATE_C4X,
+    std::string(FIVE_QUBIT_GATE_C4X),
 };
 
 // 所有门列表
 inline const std::vector<std::string> ALL_GATE_LIST = {
     // 单量子门
-    SINGLE_QUBIT_GATE_X,
-    SINGLE_QUBIT_GATE_Y,
-    SINGLE_QUBIT_GATE_Z,
-    SINGLE_QUBIT_GATE_H,
-    SINGLE_QUBIT_GATE_S,
-    SINGLE_QUBIT_GATE_T,
-    SINGLE_QUBIT_GATE_P,
-    SINGLE_QUBIT_GATE_U,
-    SINGLE_QUBIT_GATE_U_UPPERCASE,
-    SINGLE_QUBIT_GATE_R,
-    SINGLE_QUBIT_GATE_RX,
-    SINGLE_QUBIT_GATE_RY,
-    SINGLE_QUBIT_GATE_RZ,
-    SINGLE_QUBIT_GATE_SX,
-    SINGLE_QUBIT_GATE_SXDG,
-    SINGLE_QUBIT_GATE_SDG,
-    SINGLE_QUBIT_GATE_TDG,
-    SINGLE_QUBIT_GATE_U1,
-    SINGLE_QUBIT_GATE_U2,
-    SINGLE_QUBIT_GATE_U3,
+    std::string(SINGLE_QUBIT_GATE_X),
+    std::string(SINGLE_QUBIT_GATE_Y),
+    std::string(SINGLE_QUBIT_GATE_Z),
+    std::string(SINGLE_QUBIT_GATE_H),
+    std::string(SINGLE_QUBIT_GATE_S),
+    std::string(SINGLE_QUBIT_GATE_T),
+    std::string(SINGLE_QUBIT_GATE_P),
+    std::string(SINGLE_QUBIT_GATE_U),
+    std::string(SINGLE_QUBIT_GATE_U_UPPERCASE),
+    std::string(SINGLE_QUBIT_GATE_R),
+    std::string(SINGLE_QUBIT_GATE_RX),
+    std::string(SINGLE_QUBIT_GATE_RY),
+    std::string(SINGLE_QUBIT_GATE_RZ),
+    std::string(SINGLE_QUBIT_GATE_SX),
+    std::string(SINGLE_QUBIT_GATE_SXDG),
+    std::string(SINGLE_QUBIT_GATE_SDG),
+    std::string(SINGLE_QUBIT_GATE_TDG),
+    std::string(SINGLE_QUBIT_GATE_U1),
+    std::string(SINGLE_QUBIT_GATE_U2),
+    std::string(SINGLE_QUBIT_GATE_U3),
 
     // 双量子门
-    TWO_QUBIT_GATE_CH,
-    TWO_QUBIT_GATE_CRX,
-    TWO_QUBIT_GATE_CRY,
-    TWO_QUBIT_GATE_CRZ,
-    TWO_QUBIT_GATE_CX,
-    TWO_QUBIT_GATE_CX_UPPERCASE,
-    TWO_QUBIT_GATE_CY,
-    TWO_QUBIT_GATE_CZ,
-    TWO_QUBIT_GATE_SWAP,
-    TWO_QUBIT_GATE_ISWAP,
-    TWO_QUBIT_GATE_CU1,
-    TWO_QUBIT_GATE_CP,
-    TWO_QUBIT_GATE_CS,
-    TWO_QUBIT_GATE_CSDG,
-    TWO_QUBIT_GATE_CU3,
-    TWO_QUBIT_GATE_ECR,
-    TWO_QUBIT_GATE_DCX,
-    TWO_QUBIT_GATE_CSX,
-    TWO_QUBIT_GATE_CU,
-    TWO_QUBIT_GATE_RXX,
-    TWO_QUBIT_GATE_RYY,
-    TWO_QUBIT_GATE_RZZ,
-    TWO_QUBIT_GATE_RZX,
+    std::string(TWO_QUBIT_GATE_CH),
+    std::string(TWO_QUBIT_GATE_CRX),
+    std::string(TWO_QUBIT_GATE_CRY),
+    std::string(TWO_QUBIT_GATE_CRZ),
+    std::string(TWO_QUBIT_GATE_CX),
+    std::string(TWO_QUBIT_GATE_CX_UPPERCASE),
+    std::string(TWO_QUBIT_GATE_CY),
+    std::string(TWO_QUBIT_GATE_CZ),
+    std::string(TWO_QUBIT_GATE_SWAP),
+    std::string(TWO_QUBIT_GATE_ISWAP),
+    std::string(TWO_QUBIT_GATE_CU1),
+    std::string(TWO_QUBIT_GATE_CP),
+    std::string(TWO_QUBIT_GATE_CS),
+    std::string(TWO_QUBIT_GATE_CSDG),
+    std::string(TWO_QUBIT_GATE_CU3),
+    std::string(TWO_QUBIT_GATE_ECR),
+    std::string(TWO_QUBIT_GATE_DCX),
+    std::string(TWO_QUBIT_GATE_CSX),
+    std::string(TWO_QUBIT_GATE_CU),
+    std::string(TWO_QUBIT_GATE_RXX),
+    std::string(TWO_QUBIT_GATE_RYY),
+    std::string(TWO_QUBIT_GATE_RZZ),
+    std::string(TWO_QUBIT_GATE_RZX),
 
     // 三量子门
-    THREE_QUBIT_GATE_CCX,
-    THREE_QUBIT_GATE_CSWAP,
-    THREE_QUBIT_GATE_RCCX,
+    std::string(THREE_QUBIT_GATE_CCX),
+    std::string(THREE_QUBIT_GATE_CSWAP),
+    std::string(THREE_QUBIT_GATE_RCCX),
 
     // 四量子门
-    FOUR_QUBIT_GATE_RC3X,
-    FOUR_QUBIT_GATE_C3X,
-    FOUR_QUBIT_GATE_C3SQRTX,
+    std::string(FOUR_QUBIT_GATE_RC3X),
+    std::string(FOUR_QUBIT_GATE_C3X),
+    std::string(FOUR_QUBIT_GATE_C3SQRTX),
 
     // 五量子门
-    FIVE_QUBIT_GATE_C4X,
+    std::string(FIVE_QUBIT_GATE_C4X),
 };
 
 // 特殊常量
-inline const std::string ALL_GATES = "all";
+inline constexpr std::string_view ALL_GATES = "all";
 }  // namespace Constant
