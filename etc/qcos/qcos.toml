@@ -1,7 +1,13 @@
 # for development purpose
 # QCOS configures
 [DEFAULT]
+# Global debug switch; when enabled, lowers global log level to DEBUG
 DEBUG = false
+
+[TRANSPILER]
+# Transpiler debug switch; only affects transpiler modules, enables PERF level logs when enabled
+DEBUG = false
+
 # [GLOBAL CONFIG] max jobs (all status)
 MAX_JOBS = 10000
 # [GLOBAL CONFIG] max queued+running jobs

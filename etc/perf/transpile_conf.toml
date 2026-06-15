@@ -10,10 +10,9 @@
 files = ["./samples/qasm/2.0/simple-qasm.qasm"]
 dirs = []
 
-# 允许输入的日志标签，当log_tags为空，则默认允许所有标签
-# 当前支持PERF, WARNING, ERROR, DEBUG等标签
-# log_tags = ["PERF", "WARNING", "ERROR"]
-log_tags = ["WARNING", "ERROR"]
+# 性能日志开关，true 时允许 PERF 级别日志输出
+# perf_enabled = true
+perf_enabled = false
 
 [transpile.transpiler]
 # 默认为true

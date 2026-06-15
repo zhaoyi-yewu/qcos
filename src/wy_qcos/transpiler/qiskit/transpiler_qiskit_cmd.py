@@ -16,15 +16,19 @@
 # ----------------------------------------------------------------------
 
 import sys
+import logging
 from pathlib import Path
 from datetime import datetime
 import argparse
 
 from wy_qcos.common.config import Config
+from wy_qcos.log.logger import init_logger, PerfFilter, PERF_LEVEL, log_perf
 from wy_qcos.common.constant import Constant
-from wy_qcos.transpiler.common.utils import Timer, trans_logger
+from wy_qcos.transpiler.common.utils import Timer
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.qiskit.transpiler_qiskit import TranspilerQiskit
+
+logger = logging.getLogger(__name__)
 
 
 legal_basis_gates = [
@@ -57,7 +61,7 @@ def read_qasm_from_file(file_path):
         with open(file_path, encoding="utf-8") as f:
             return f.read()
     except Exception as e:
-        trans_logger.log_error(f"read file error: {e}")
+        logger.error(f"read file error: {e}")
         return None
 
 
@@ -70,7 +74,7 @@ def check_file_args(input_file, output_file):
     if output_file != "":
         output_file_path = Path(output_file).resolve()
         if output_file_path.exists():
-            trans_logger.log_warning(
+            logger.warning(
                 f"output file has existed! file: {output_file_path}."
             )
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -102,7 +106,7 @@ def main_qiskit_transpiler(
     # load data from qasm file
     qasm_data = read_qasm_from_file(str(file_path))
     if qasm_data is None:
-        trans_logger.log_error("read file failure")
+        logger.error("read file failure")
         return success
 
     # baisis gates set
@@ -121,9 +125,7 @@ def main_qiskit_transpiler(
         for gate in basis_gates_list:
             gate = gate.strip()
             if gate not in legal_basis_gates:
-                trans_logger.log_error(
-                    f"unsupported the illegal gate[{gate}]."
-                )
+                logger.error(f"unsupported the illegal gate[{gate}].")
                 return success
 
     # config file parsing
@@ -149,22 +151,24 @@ def main_qiskit_transpiler(
     src_code_info = {"000": qasm_data}
 
     # performace testing
-    trans_logger.log_perf("start qiskit performace testing...")
+    log_perf(logger, "start qiskit performace testing...")
     with Timer() as total_timer:
         # generate abs tree
         with Timer() as parse_timer:
             parse_result = transpiler.parse(src_code_info)
-        trans_logger.log_perf(f"parsing OpenQASM: {parse_timer.elapsed:.4f}s")
+        log_perf(logger, f"parsing OpenQASM: {parse_timer.elapsed:.4f}s")
 
         # transpile the circuit by qiskit
         with Timer() as tranpile_timer:
             _ = transpiler.transpile(parse_result, basis_gates_list)
-        trans_logger.log_perf(
-            f"transpile quantum circuit: {tranpile_timer.elapsed:.4f}s\n"
+        log_perf(
+            logger,
+            f"transpile quantum circuit: {tranpile_timer.elapsed:.4f}s\n",
         )
 
-    trans_logger.log_perf(
-        f"total running time of qiskit-transpiler: {total_timer.elapsed:.4f}s"
+    log_perf(
+        logger,
+        f"total running time of qiskit-transpiler: {total_timer.elapsed:.4f}s",
     )
     success = True
     return success
@@ -228,6 +232,12 @@ def main(argv=None):
         argv = sys.argv
     else:
         sys.argv.extend(argv)
+
+    # init logger: PERF, WARNING, ERROR, CRITICAL visible
+    handlers = init_logger(logging.DEBUG, console=True, quiet=False)
+    for h in handlers:
+        h.setLevel(PERF_LEVEL)
+        h.addFilter(PerfFilter())
 
     # parse arguments
     qiskit_args = get_parse_args()

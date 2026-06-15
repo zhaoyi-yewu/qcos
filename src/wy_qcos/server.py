@@ -31,7 +31,7 @@ from wy_qcos.db import database
 from wy_qcos.db.utils import db_utils
 from wy_qcos.drivers.device_manager import DeviceManager
 from wy_qcos.drivers.driver_manager import DriverManager
-from wy_qcos.log.logger import init_logger
+from wy_qcos.log.logger import init_logger, PERF_LEVEL
 from wy_qcos.task_manager import scheduler
 from wy_qcos.transpiler.transpiler_manager import TranspilerManager
 from wy_qcos.user.project_manager import ProjectManager
@@ -130,6 +130,12 @@ class Server:
         )
         logger.setLevel(logger_level)
 
+        # TRANSPILER.DEBUG only affects transpiler loggers, not global level
+        if Config.TRANSPILER.DEBUG:
+            logging.getLogger("wy_qcos.transpiler").setLevel(PERF_LEVEL)
+            for h in self._stream_handlers:
+                h.setLevel(PERF_LEVEL)
+
     def run(self, loop):
         """Run the server."""
         self._parse_arguments(sys.argv[1:])
@@ -143,6 +149,12 @@ class Server:
             logger_level = logging.DEBUG
             # only show uvicorn access logs in debug mode
             access_log = True
+
+        # TRANSPILER.DEBUG only affects transpiler loggers, not global level
+        if Config.TRANSPILER.DEBUG:
+            logging.getLogger("wy_qcos.transpiler").setLevel(PERF_LEVEL)
+            for h in self._stream_handlers:
+                h.setLevel(PERF_LEVEL)
 
         # Let uvicorn handle signals; do not register custom signal
         # handlers here.

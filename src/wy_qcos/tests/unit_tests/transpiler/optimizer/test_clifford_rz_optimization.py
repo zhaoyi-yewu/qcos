@@ -40,7 +40,9 @@ from wy_qcos.transpiler.cmss.circuit.utils import RandomCircuitGen, is_equal
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize
 from wy_qcos.tests.unit_tests.transpiler.comm import validate_optimize_result
-from wy_qcos.transpiler.common.utils import trans_logger
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class TestCliffordRzOptimization:
@@ -800,9 +802,9 @@ class TestCliffordRzOptimization:
             res = is_equal(init_circ, opt_circ)
             if not res:
                 # print error test cases
-                trans_logger.log_debug(ir)
-                trans_logger.log_debug(opt_ir)
-                trans_logger.log_debug("========")
+                logger.debug(ir)
+                logger.debug(opt_ir)
+                logger.debug("========")
             assert res
 
     def test_random_optimize_by_depth(self):
