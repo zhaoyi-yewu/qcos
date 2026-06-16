@@ -24,11 +24,14 @@
 
 import os
 import shutil
+import subprocess
 import sys
 import types
 
 import pydantic.functional_serializers  # Note: Don't delete this import
+from sphinx.errors import ExtensionError
 from sphinx.ext import apidoc
+from sphinx.ext import imgconverter
 
 current_dir = os.path.split(os.path.realpath(__file__))[0]
 top_dir = os.path.abspath(f"{current_dir}/../../..")
@@ -49,6 +52,7 @@ version = QcosVersion.VERSION
 release = QcosVersion.VERSION
 file_name = "qcos-full-docs"
 sphinx_api_dir = f"{top_dir}/docs/sphinx/source/api"
+
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -101,6 +105,7 @@ autodoc_mock_imports = [
     "prefect",
     "prometheus_client",
     "psutil",
+    "quark",
     "pulp",
     "pwdlib",
     "qiskit",
@@ -110,6 +115,7 @@ autodoc_mock_imports = [
     # "rustworkx",  # required for autodoc
     "setproctitle",
     "stevedore",
+    "sympy",
     "uvicorn",
     "yarl",
     "zerorpc",
@@ -124,6 +130,24 @@ autodoc_mock_imports = [
     "wy_qcos.transpiler.high_performance",
     "wy_qcos_client.shell",
     "wy_qcos_client.tests",
+    # Modules that fail to import due to QASMNode | None syntax
+    # or missing sub-modules (openqasm3 compatible module)
+    "wy_qcos.api_server",
+    "wy_qcos.server",
+    "wy_qcos.api.fastapi_server",
+    "wy_qcos.transpiler.cmss.compiler.openqasm3",
+    "wy_qcos.transpiler.cmss.circuit.parameter",
+    "wy_qcos.transpiler.cmss.circuit.parameterexpression",
+    "wy_qcos.transpiler.cmss.circuit.parametervector",
+    "wy_qcos.transpiler.cmss.transpiler_cmd_line",
+    "wy_qcos.transpiler.cmss.transpiler_cmss",
+    "wy_qcos.transpiler.cmss.transpiler_cmss_for_cpp",
+    "wy_qcos.transpiler.dummy.transpiler_dummy",
+    "wy_qcos.transpiler.common.pulse_ir.pulse",
+    "wy_qcos.transpiler.common.pulse_ir.pulse_dynamics",
+    "wy_qcos.transpiler.common.pulse_ir.pulse_compiler",
+    "wy_qcos.transpiler.common.pulse_ir.scheduler",
+    "wy_qcos.transpiler.common.pulse_ir.compatible",
 ]
 suppress_warnings = [
     "autodoc",
@@ -131,6 +155,7 @@ suppress_warnings = [
     "config.misconfig",
     "ref.ref",
     "ref.python",
+    "plantuml",
 ]
 
 
@@ -150,6 +175,43 @@ def run_apidoc():
     apidoc.main(["-H", "QCOS API文档", "-f", "-o", sphinx_api_dir, f"{src_dir}"])
 
 
+def _patch_imgconverter():
+    """Patch imgconverter to handle multi-page SVG files."""
+    _original_convert = imgconverter.ImagemagickConverter.convert
+
+    def _custom_convert(self, src, dst):
+        if self.app.builder.config.image_converter == 'rsvg-convert':
+            if not self.available:
+                return False
+            # Handle multi-page SVG (e.g., file.svg[0])
+            page = None
+            src_clean = src
+            if '[' in src and src.endswith(']'):
+                idx = src.rfind('[')
+                page = src[idx + 1:-1]
+                src_clean = src[:idx]
+            args = ['rsvg-convert', '-f', 'png', '-o', dst]
+            if page is not None:
+                args.extend(['--page', page])
+            args.append(src_clean)
+            try:
+                subprocess.run(args, capture_output=True, check=True)
+                return True
+            except subprocess.CalledProcessError as exc:
+                raise ExtensionError(
+                    'rsvg-convert exited with error:\n[stderr]\n%r\n'
+                    '[stdout]\n%r' % (exc.stderr, exc.stdout)
+                ) from exc
+            except OSError as exc:
+                raise ExtensionError(
+                    'rsvg-convert command cannot be run: %s' % exc
+                ) from exc
+        else:
+            return _original_convert(self, src, dst)
+
+    imgconverter.ImagemagickConverter.convert = _custom_convert
+
+
 def setup(app):
     """Setup app."""
 
@@ -163,6 +225,8 @@ def setup(app):
         )
         extensions.append("sphinxcontrib.jquery")
         run_apidoc()
+        # Patch imgconverter after all extensions are loaded
+        _patch_imgconverter()
 
     app.connect("autodoc-skip-member", skip_modules)
     app.connect("builder-inited", check_builder)
@@ -210,11 +274,16 @@ os.environ["PUPPETEER_PRODUCT"] = "firefox"
 os.environ["PUPPETEER_EXECUTABLE_PATH"] = "/usr/bin/firefox"
 
 # plantuml configs
-plantuml = "java -Dfile.encoding=UTF-8 -Djava.awt.headless=true -jar /usr/local/lib/node_modules/plantuml/vendor/plantuml.jar -charset UTF-8"
+plantuml_jar_path = "/usr/local/lib/node_modules/plantuml/vendor/plantuml.jar"
 if on_rtd:
-    plantuml = "plantuml"
+    plantuml_jar_path = "/home/docs/.asdf/installs/nodejs/20.19.1/lib/node_modules/plantuml/vendor/plantuml.jar"
+plantuml = f"java -Dfile.encoding=UTF-8 -Djava.awt.headless=true -jar {plantuml_jar_path} -charset UTF-8"
+
 plantuml_output_format = "svg"  # default: png
 plantuml_latex_output_format = "pdf"
+
+# image converter configs
+image_converter = "rsvg-convert"
 
 # latex config
 language = "zh_CN"
@@ -223,7 +292,14 @@ latex_use_xindy = False
 latex_domain_indices = False
 latex_use_modindex = False
 latex_documents = [
-    ("index", "qcos.tex", f"{project}{subject}", f"{author}", "manual")
+    ("index", "qcos-full-docs.tex", f"{project}\\\\全量文档", f"{author}", "manual"),
+]
+if not on_rtd:
+    latex_documents += [
+    ("user-guide/index", "qcos-chapter1-user-guide.tex", f"{project}\\\\用户指南", f"{author}", "manual"),
+    ("design/index", "qcos-chapter2-design-guide.tex", f"{project}\\\\设计文档", f"{author}", "manual"),
+    ("developer-guide/index", "qcos-chapter3-developer-guide.tex", f"{project}\\\\开发指南", f"{author}", "manual"),
+    ("other-docs/index", "qcos-chapter4-other-docs.tex", f"{project}\\\\其他文档", f"{author}", "manual"),
 ]
 latex_elements = {
     "papersize": "a4paper",
@@ -231,19 +307,19 @@ latex_elements = {
     "figure_align": "H",
     "fncychap": "",
     "fontpkg": """
-        \setmainfont{FreeSerif}[
+        \\setmainfont{FreeSerif}[
         UprightFont    = *,
         ItalicFont     = *Italic,
         BoldFont       = *Bold,
         BoldItalicFont = *BoldItalic
         ]
-        \setsansfont{FreeSans}[
+        \\setsansfont{FreeSans}[
         UprightFont    = *,
         ItalicFont     = *Oblique,
         BoldFont       = *Bold,
         BoldItalicFont = *BoldOblique,
         ]
-        \setmonofont{FreeMono}[
+        \\setmonofont{FreeMono}[
         UprightFont    = *,
         ItalicFont     = *Oblique,
         BoldFont       = *Bold,

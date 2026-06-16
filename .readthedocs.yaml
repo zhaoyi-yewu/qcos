@@ -3,7 +3,8 @@
 version: 2
 
 build:
-  os: ubuntu-22.04
+  os: ubuntu-24.04
+  nodejs: "20"
   tools:
     python: "3.11"
   apt_packages:
@@ -12,6 +13,10 @@ build:
     - plantuml
     - imagemagick
     - librsvg2-bin
+    - fonts-noto-cjk
+  jobs:
+    post_install:
+      - npm install -g @mermaid-js/mermaid-cli plantuml
 
 sphinx:
   configuration: docs/sphinx/source/conf.py

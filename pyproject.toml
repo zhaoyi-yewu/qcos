@@ -112,6 +112,7 @@ dependencies = [
     "sqlalchemy-utils==0.42.1",
     "starlette==0.50.0",
     "stim==1.16.0",
+    "sympy==1.14.0",
     "tomlkit==0.13.3",
     "typing-inspection==0.4.1",
     "typing_extensions==4.15.0",
@@ -132,6 +133,21 @@ dependencies = [
     "tabulate==0.9.0",
     "tomli==2.2.1",
     "tox==4.8.0",
+]
+
+[project.optional-dependencies]
+docs = [
+    "alabaster==1.0.0",
+    "autodoc-pydantic==2.2.0",
+    "doc8==2.0.0",
+    "docxbuilder==1.2.0",
+    "linkify-it-py==2.0.3",
+    "mdformat==1.0.0",
+    "myst-parser==4.0.1",
+    "pallets-sphinx-themes==2.3.0",
+    "sphinxcontrib-mermaid==1.2.3",
+    "sphinxcontrib-plantuml==0.31",
+    "sphinxcontrib-svg2pdfconverter==2.1.0",
 ]
 
 [project.scripts]
@@ -269,5 +285,3 @@ ignore-path = [
     "docs/sphinx/source/other-docs/changelog.rst",
 ]
 
-[tool.poetry.extras]
-docs = ["Sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon"]

@@ -38,9 +38,14 @@ make html
 
 # make pdf
 make latexpdf
+
 # copy pdf
 mkdir -p ./dist/pdf
-cp -rf ./dist/latex/qcos.pdf ./dist/pdf/qcos-full-docs.pdf
+cp -rf ./dist/latex/qcos-full-docs.pdf ./dist/pdf/qcos-full-docs.pdf
+cp -rf ./dist/latex/qcos-chapter1-user-guide.pdf ./dist/pdf/qcos-chapter1-user-guide.pdf
+cp -rf ./dist/latex/qcos-chapter2-design-guide.pdf ./dist/pdf/qcos-chapter2-design-guide.pdf
+cp -rf ./dist/latex/qcos-chapter3-developer-guide.pdf ./dist/pdf/qcos-chapter3-developer-guide.pdf
+cp -rf ./dist/latex/qcos-chapter4-other-docs.pdf ./dist/pdf/qcos-chapter4-other-docs.pdf
 
 # make docx (not working yet)
 # make docx
