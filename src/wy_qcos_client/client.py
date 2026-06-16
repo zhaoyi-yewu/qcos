@@ -493,7 +493,7 @@ class Client:
         profiling=None,
         callbacks=None,
         dry_run=False,
-        qec_options=dict | None,
+        qec_options=None,
     ):
         """Submit new job.
 

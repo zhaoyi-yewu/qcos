@@ -120,9 +120,6 @@ class DriverUQCMatrix2(DriverBase):
             uqc_config.SERVER_HOST = self.uqc_host
             uqc_config.SERVER_PORT = self.uqc_port
             uqc_config.DEFAULT_TASKS_FILE_PATH = "/dev/null"
-            logger.error(uqc_config.SERVER_HOST)
-            logger.error(uqc_config.SERVER_PORT)
-            logger.error(self.token)
             self._uqc = uqc_client.UQC(self.token)
         except Exception as e:
             raise ValueError(f"UQC exception: {e}") from e
@@ -164,7 +161,15 @@ class DriverUQCMatrix2(DriverBase):
         qasm_code = converter.to_qasm3()
         return qasm_code
 
-    def run(self, job_id, num_qubits, data, data_type, shots=100):
+    def run(
+        self,
+        job_id,
+        num_qubits,
+        data,
+        data_type,
+        shots=100,
+        qec_options=None,
+    ):
         """Run job.
 
         Args:
@@ -173,6 +178,7 @@ class DriverUQCMatrix2(DriverBase):
             data: data
             data_type: data type
             shots: shots (Default value = 100)
+            qec_options: qec options
         """
         # pylint: disable=duplicate-code
         data_index = data["index"]

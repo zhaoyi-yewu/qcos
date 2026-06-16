@@ -31,6 +31,7 @@ class DriverPulseBase(DriverBase):
     def __init__(self):
         super().__init__()
         self.version = "0.0.1"
+        self.tech_type = Constant.TECH_TYPE_NONE
         self.transpiler = Constant.TRANSPILER_CMSS
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
 
