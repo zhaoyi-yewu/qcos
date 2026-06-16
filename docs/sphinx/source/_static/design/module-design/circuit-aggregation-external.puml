@@ -1,4 +1,4 @@
-@startuml circuit-aggregation-detailed
+@startuml circuit-aggregation-external
 ' 统一全局字体，确保中文正常显示
 skinparam defaultFontName "Noto Sans CJK SC"
 skinparam dpi 300
@@ -84,4 +84,3 @@ note over parent, sub
 end note
 
 @enduml
-
