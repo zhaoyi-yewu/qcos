@@ -287,7 +287,7 @@ jobs:
           cp ./env.template ./.env
           export SANDBOX_IMAGE_VERSION=dev
           ./run-sandbox.sh
-          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -c all"
+          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -b; ./cicd/run-tests.sh -c all"
           EOF
 
       - name: Upload coverage reports to Codecov
@@ -389,6 +389,7 @@ jobs:
         shell: bash
         run: |
           sudo -s <<'EOF'
+          set -eo pipefail
           ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
 
           TOP_DIR=$(pwd)
@@ -440,12 +441,16 @@ jobs:
           tar czf /tmp/cicd.tar.gz ./cicd ./src ./etc ./samples
           docker cp /tmp/cicd.tar.gz qcos:/tmp/
           docker exec qcos sh -c "mkdir -p /root/qcos-project/; cd /root/qcos-project/; tar xzf /tmp/cicd.tar.gz"
-          docker exec qcos sh -c "source /root/.bashrc; echo 'Driver list:'; qcos-cli list-devices; echo 'Job list:'; qcos-cli list-jobs; cd /root/qcos-project; ./cicd/run-tests.sh -s all"
-          EOF
+          TEST_EXIT_CODE=0
+          docker exec qcos sh -c "source /root/.bashrc; echo 'Transpiler list:'; qcos-cli list-transpilers; echo 'Driver list:'; qcos-cli list-drivers; echo 'Device list:'; qcos-cli list-devices; echo 'Job list:'; qcos-cli list-jobs; cd /root/qcos-project; ./cicd/run-tests.sh -s all" || TEST_EXIT_CODE=$?
 
           # print log files for debug purpose
+          echo -e "\n----------------------------------\nPrint log files for debug purpose:"
           ls -al /var/log/qcos || true
           awk 'FNR==1{print "\n\n--- Log File: " FILENAME " ---"} {print} END{print ""}' /var/log/qcos/qcos-api.log /var/log/qcos/postgresql.log /var/log/qcos/device*.log || true
+
+          exit ${TEST_EXIT_CODE}
+          EOF
 
   push-docker-images:
     name: Tag and Push docker images to DockerHub
@@ -619,7 +624,7 @@ jobs:
 
           # Email configuration
           subject: |
-            [QCOS CI/CD] ${{ needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure' && '❌ FAILED' || '✅ SUCCESS' }} — Run #${{ github.run_number }} on ${{ github.ref_name }} (${{ github.sha }})
+            [QCOS CI/CD] ${{ (needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure') && '❌ FAILED' || (needs.build-qcos-base-image.result == 'cancelled' || needs.build-sandbox-image.result == 'cancelled' || needs.build-qcos-image.result == 'cancelled' || needs.build-qcos-cli-image.result == 'cancelled' || needs.run-ut-qcos.result == 'cancelled' || needs.run-ut-qcos-cli.result == 'cancelled' || needs.run-st-qcos.result == 'cancelled' || needs.push-docker-images.result == 'cancelled') && '🚫 CANCELLED' || '✅ SUCCESS' }} — Run #${{ github.run_number }} on ${{ github.ref_name }} (${{ github.sha }})
 
           # Recipients (supports multiple comma-separated addresses)
           to: ${{ vars.QCOS_CICD_REPORT_EMAIL_TO }}
@@ -647,6 +652,7 @@ jobs:
                            border-bottom: 1px solid #d0d7de; }
                 .overall.success { background: #dafbe1; color: #1a7f37; }
                 .overall.failed  { background: #ffebe9; color: #cf222e; }
+                .overall.cancelled { background: #fff8c5; color: #9a6700; }
                 .section { padding: 20px 28px; }
                 .section h2 { font-size: 14px; font-weight: 600; color: #57606a;
                               text-transform: uppercase; letter-spacing: .05em;
@@ -672,8 +678,8 @@ jobs:
                   <p class="subtitle">Workflow Run #${{ github.run_number }} &nbsp;·&nbsp; ${{ github.event_name }} (${{ github.actor }})</p>
                 </div>
 
-                <div class="overall ${{ needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure' && 'failed' || 'success' }}">
-                  Overall Status: ${{ needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure' && '❌ FAILED' || '✅ SUCCESS' }}
+                <div class="overall ${{ (needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure') && 'failed' || (needs.build-qcos-base-image.result == 'cancelled' || needs.build-sandbox-image.result == 'cancelled' || needs.build-qcos-image.result == 'cancelled' || needs.build-qcos-cli-image.result == 'cancelled' || needs.run-ut-qcos.result == 'cancelled' || needs.run-ut-qcos-cli.result == 'cancelled' || needs.run-st-qcos.result == 'cancelled' || needs.push-docker-images.result == 'cancelled') && 'cancelled' || 'success' }}">
+                  Overall Status: ${{ (needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure') && '❌ FAILED' || (needs.build-qcos-base-image.result == 'cancelled' || needs.build-sandbox-image.result == 'cancelled' || needs.build-qcos-image.result == 'cancelled' || needs.build-qcos-cli-image.result == 'cancelled' || needs.run-ut-qcos.result == 'cancelled' || needs.run-ut-qcos-cli.result == 'cancelled' || needs.run-st-qcos.result == 'cancelled' || needs.push-docker-images.result == 'cancelled') && '🚫 CANCELLED' || '✅ SUCCESS' }}
                 </div>
 
                 <div class="section">
