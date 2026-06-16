@@ -1,7 +1,7 @@
 [quafu]
-alias_name = "夸父 超导驱动"
+alias_name = "北京量子院 夸父-Dongling 超导驱动"
 driver = "DriverQuafu"
-description = "夸父 超导驱动"
+description = "北京量子院 夸父-Dongling 超导驱动"
 
 # [Optional] debug
 # debug = false
