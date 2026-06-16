@@ -19,7 +19,7 @@
 .. toctree::
    :maxdepth: 2
 
-   develop-guide/index
+   developer-guide/index
 
 
 .. toctree::
