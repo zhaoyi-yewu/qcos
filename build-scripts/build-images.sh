@@ -102,7 +102,8 @@ function build_qcos_base_image {
 
   # build qcos building-system: qcos-base
   cd ${BUILD_SCRIPTS_DIR}
-  DOCKER_BUILDKIT=0 docker build -f ./base/Dockerfile --no-cache --rm --network host \
+  cp -rf ./base/Dockerfile .build-context/
+  DOCKER_BUILDKIT=0 docker build --no-cache --rm --network host \
     --build-arg CONTAINER_BASE_IMAGE=${CONTAINER_BASE_IMAGE} \
     --build-arg CONTAINER_NAME=${QCOS_BASE_CONTAINER_NAME} \
     --build-arg DEV=${DEV} \
@@ -131,7 +132,8 @@ function build_sandbox_image {
 
   # build qcos building-system: sandbox
   cd ${BUILD_SCRIPTS_DIR}
-  DOCKER_BUILDKIT=0 docker build -f ./sandbox/Dockerfile --no-cache --rm --network host \
+  cp -rf ./sandbox/Dockerfile .build-context/
+  DOCKER_BUILDKIT=0 docker build --no-cache --rm --network host \
     --build-arg CONTAINER_NAME=${SANDBOX_CONTAINER_NAME} \
     --build-arg SANDBOX_IMAGE_VERSION=${SANDBOX_IMAGE_VERSION} \
     --build-arg NPM_MIRROR=${NPM_MIRROR} \
@@ -168,7 +170,9 @@ function build_qcos {
 function build_qcos_image {
   echo -e "\nBuilding docker image: qcos"
   # build docker image: qcos
-  DOCKER_BUILDKIT=0 docker build -f ./qcos/Dockerfile --no-cache --rm --network host \
+  cd ${BUILD_SCRIPTS_DIR}
+  cp -rf ./qcos/Dockerfile .build-context/
+  DOCKER_BUILDKIT=0 docker build --no-cache --rm --network host \
     --build-arg CONTAINER_NAME=${QCOS_CONTAINER_NAME} \
     --build-arg QCOS_IMAGE_VERSION=${QCOS_IMAGE_VERSION} \
     --build-arg DEV=${DEV} \
@@ -213,7 +217,8 @@ function build_cli_image {
 
   # build docker image: qcos-cli
   cd ${BUILD_SCRIPTS_DIR}
-  DOCKER_BUILDKIT=0 docker build -f ./cli/Dockerfile --no-cache --rm --network host \
+  cp -rf ./cli/Dockerfile .build-context/
+  DOCKER_BUILDKIT=0 docker build --no-cache --rm --network host \
     --build-arg CONTAINER_BASE_IMAGE=${CONTAINER_BASE_IMAGE} \
     --build-arg CONTAINER_NAME=${QCOS_CLI_CONTAINER_NAME} \
     --build-arg QCOS_IMAGE_VERSION=${image_tag} \

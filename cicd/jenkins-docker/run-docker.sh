@@ -93,7 +93,7 @@ case $ACTION in
         ;;
     password)
         echo ">>> Getting Jenkins initial admin password..."
-        if docker exec jenkins_cicd cat /var/jenkins_home/secrets/initialAdminPassword 2>/dev/null; then
+        if docker exec jenkins-cicd cat /var/jenkins_home/secrets/initialAdminPassword 2>/dev/null; then
             echo ""
         else
             echo ">>> Password file not found (initialization may be complete)"
