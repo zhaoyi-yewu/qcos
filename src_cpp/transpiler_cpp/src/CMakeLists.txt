@@ -53,3 +53,5 @@ target_include_directories(${LIB_TRANSPILER} PUBLIC
 
 target_compile_definitions(${LIB_TRANSPILER} PUBLIC $<$<CONFIG:Debug>:LOG_DEBUG>)
 target_compile_definitions(${LIB_TRANSPILER} PUBLIC $<$<CONFIG:Release>:TEST_BENCH>)
+
+target_link_libraries(${LIB_TRANSPILER} PUBLIC Threads::Threads)

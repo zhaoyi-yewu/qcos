@@ -20,10 +20,11 @@ add_executable(${TEST_NAME} test_main.cpp
                             #test_sabre_routing.cpp
                             test_sabre_mapping.cpp
                             test_qasm_to_operations.cpp
+                            test_parallel_optimize.cpp
 )
 target_link_libraries(${TEST_NAME} ${LIB_TRANSPILER} ${LIB_GTEST} ${LIB_ANTLR4})
 
-target_compile_definitions(${TEST_NAME} PRIVATE 
+target_compile_definitions(${TEST_NAME} PRIVATE
     TEST_DATA_DIR="${PROJECT_SOURCE_DIR}/../../samples/"
     TEST_TOPOLOGY_DIR="${PROJECT_SOURCE_DIR}/../../etc/"
 )

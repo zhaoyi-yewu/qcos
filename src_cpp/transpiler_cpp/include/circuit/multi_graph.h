@@ -84,6 +84,12 @@ class MultiGraph {
   int num_nodes() const { return num_active_; }
 
   /**
+   * @brief 返回节点 id 的上界（slots_ 大小），用于遍历所有可能的 id
+   * @return int 最大可能节点 id + 1
+   */
+  int max_node_id() const { return static_cast<int>(slots_.size()); }
+
+  /**
    * @brief 通过节点 id 访问当前活跃节点对象
    * @param id 节点 id
    * @return DAGNode* 节点裸指针，节点无效或已删除时返回 nullptr

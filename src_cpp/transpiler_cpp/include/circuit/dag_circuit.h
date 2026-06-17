@@ -304,6 +304,28 @@ class DAGCircuit {
   DAGCircuit two_qubit_ops_to_dag();
 
   /**
+   * @brief 将 DAG 按拓扑层拆分为多个子 DAG
+   *
+   * 使用 BFS + Kahn 算法计算拓扑层（同层内门无依赖、可并行执行），
+   * 然后将连续若干层合并为一个子 DAG。
+   *
+   * @param num_chunks 目标拆分块数，实际块数可能略少
+   * @return std::vector<DAGCircuit> 子 DAG 列表，按拓扑序排列
+   */
+  std::vector<DAGCircuit> split_by_layers(int num_chunks);
+
+  /**
+   * @brief 返回 DAG 的拓扑层划分（每层内的门可并行执行）
+   *
+   * 算法：BFS + Kahn，同层节点间无依赖关系。
+   * 第 0 层为 InNode 哨兵，最后一层为 OutNode 哨兵，
+   * 中间层只包含 DAGOpNode。
+   *
+   * @return std::vector<std::vector<DAGOpNode*>> 按层排列的门操作列表
+   */
+  std::vector<std::vector<DAGOpNode*>> layers() const;
+
+  /**
    * @brief 返回指定节点集合的全部出边三元组
    * @param nodes_ptr 可选节点列表指针，留空时遍历全部活跃节点
    * @return std::vector<EdgeTriple> 出边三元组列表

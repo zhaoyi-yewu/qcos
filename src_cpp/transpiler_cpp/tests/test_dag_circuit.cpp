@@ -833,3 +833,103 @@ TEST(DAGCircuitTest, CollectRunsWideFiveQubitBlock) {
                                                    {"h[4]"},
                                                    {"h[0]", "cx[0,1]"}}));
 }
+
+// ======== layers() 测试 ========
+
+TEST(DAGCircuitTest, LayersSimpleCircuit) {
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}),
+      create_gate("cx", {0, 1}),
+      create_gate("h", {0}),
+  };
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  auto all_layers = dag.layers();
+
+  ASSERT_EQ(all_layers.size(), 3u);
+  EXPECT_EQ(all_layers[0].size(), 1u);
+  EXPECT_EQ(all_layers[1].size(), 1u);
+  EXPECT_EQ(all_layers[2].size(), 1u);
+}
+
+TEST(DAGCircuitTest, LayersParallelGatesSameLayer) {
+  // H(0) 和 X(1) 无依赖，应在同一层
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}),
+      create_gate("x", {1}),
+      create_gate("cx", {0, 1}),
+  };
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  auto all_layers = dag.layers();
+
+  // 层0: H(0), X(1) — 并行; 层1: CX(0,1)
+  ASSERT_EQ(all_layers.size(), 2u);
+  EXPECT_EQ(all_layers[0].size(), 2u);
+  EXPECT_EQ(all_layers[1].size(), 1u);
+}
+
+TEST(DAGCircuitTest, LayersEmptyDAG) {
+  DAGCircuit dag;
+  dag.add_qubits(2);
+  auto all_layers = dag.layers();
+  EXPECT_TRUE(all_layers.empty());
+}
+
+// ======== split_by_layers() 测试 ========
+
+TEST(DAGCircuitTest, SplitIntoChunks) {
+  // 构造 4 层电路：每层一个门
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}),
+      create_gate("cx", {0, 1}),
+      create_gate("h", {0}),
+      create_gate("cx", {0, 1}),
+  };
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  auto sub_dags = dag.split_by_layers(2);
+  // 向上取整：(4+2-1)/2 = 2 层/chunk
+  // chunk0: 层0,1 → 2 门, chunk1: 层2,3 → 2 门
+  ASSERT_EQ(sub_dags.size(), 2u);
+  EXPECT_EQ(sub_dags[0].size(), 2);
+  EXPECT_EQ(sub_dags[1].size(), 2);
+}
+
+TEST(DAGCircuitTest, SplitSingleChunk) {
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}),
+      create_gate("cx", {0, 1}),
+  };
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  auto sub_dags = dag.split_by_layers(1);
+  ASSERT_EQ(sub_dags.size(), 1u);
+  EXPECT_EQ(sub_dags[0].size(), 2);
+}
+
+TEST(DAGCircuitTest, SplitMoreChunksThanLayers) {
+  // 只有 2 层，请求 5 块 → 实际只产出 2 块
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}),
+      create_gate("cx", {0, 1}),
+  };
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  auto sub_dags = dag.split_by_layers(5);
+  ASSERT_EQ(sub_dags.size(), 2u);
+}
+
+TEST(DAGCircuitTest, SplitTotalOpsPreserved) {
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("x", {1}), create_gate("cx", {0, 1}),
+      create_gate("h", {0}), create_gate("s", {1}),
+  };
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  int original_size = dag.size();
+
+  auto sub_dags = dag.split_by_layers(2);
+  int total = 0;
+  for (auto& sub_dag : sub_dags) {
+    total += sub_dag.size();
+  }
+  EXPECT_EQ(total, original_size);
+}
