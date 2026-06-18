@@ -104,6 +104,7 @@ class DriverQuafu(DriverBase):
         driver_config_schema.update({
             "token": str,
             "chip_name": str,
+            "url": str,
             "transpiler": {
                 "qpu_configs": {
                     "qubits": int,
@@ -125,6 +126,9 @@ class DriverQuafu(DriverBase):
         extra_configs = self.get_configs()
         self.chip_name = extra_configs.get("chip_name", "")
         self.token = extra_configs.get("token", "")
+        url = extra_configs.get("url", "")
+        if url:
+            Task.URL = url
         self.tmgr = Task(self.token)
 
     def convert_code(self, num_qubits: int, src_code: str, transpile_results):
@@ -164,7 +168,9 @@ class DriverQuafu(DriverBase):
         device_running_info = {"status": "online"}
         return device_running_info
 
-    def run(self, job_id, num_qubits, data, data_type, shots=1):
+    def run(
+        self, job_id, num_qubits, data, data_type, shots=1, qec_options=None
+    ):
         """Run job.
 
         Args:
@@ -173,6 +179,7 @@ class DriverQuafu(DriverBase):
             data: data
             data_type: data type
             shots: shots (Default value = 1)
+            qec_options: qec options
         """
         # pylint: disable=duplicate-code
         data_index = data["index"]
