@@ -32,10 +32,10 @@
 | 幺正量子 UQC-Matrix2 离子阱驱动 | DriverUQCMatrix2 | 0.0.1 | 离子阱 | 5 | cmss | 幺正量子 UQC-Matrix2 离子阱驱动 |
 | 五岳-中科酷原-汉原1 中性原子驱动 | DriverWuyueHanyuan1 | 0.0.1 | 中性原子 | 100 | cmss | 五岳-中科酷原-汉原1 中性原子驱动 (云平台版) |
 | 五岳-中科酷原-汉原1 中性原子驱动 - 模拟器 | DriverWuyueHanyuan1Sim | 0.0.1 | 中性原子 | 25 | cmss | 五岳-中科酷原-汉原1 中性原子驱动 (云平台模拟器版) |
+| 北京量子院 夸父-Dongling 超导驱动 | DriverQuafu | 0.0.1 | 超导 | 84 | cmss | 北京量子院 夸父-Dongling 超导驱动 |
 | Qiskit Aer 模拟器驱动 | DriverQiskitAerSim | 0.0.1 | 通用模拟器 | 30 | qiskit | Qiskit Aer 模拟器驱动 |
 | Qiskit Qasm 模拟器驱动 | DriverQiskitQasmSim | 0.0.1 | 通用模拟器 | 30 | qiskit | Qiskit Qasm 模拟器驱动 |
 | Qutip 模拟器驱动 | DriverQutipSim | 0.0.1 | 通用模拟器 | 10 | cmss | Qutip 模拟器驱动 |
-| Quafu 超导驱动 | DriverQuafu | 0.0.1 | 超导 | 84 | cmss | Quafu 超导驱动 |
 | Stim 仿真器驱动 | DriverStim | 0.0.1 | 专用仿真器 | 10 | cmss | Stim 仿真器驱动, 专用于QEC场景 |
 
 上表也可以通过QCOS系统命令行查看：

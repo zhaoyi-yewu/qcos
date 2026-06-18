@@ -30,7 +30,11 @@ from wy_qcos.drivers.driver_base import DriverBase
 
 
 class DriverQuafu(DriverBase):
-    """夸父量子计算云平台."""
+    """北京量子院 夸父-Dongling 超导驱动.
+
+    Dongling driver
+    https://quafu-sqc.baqis.ac.cn/
+    """
 
     task_time_out = 3600
     task_status_success = "Finished"
@@ -40,8 +44,8 @@ class DriverQuafu(DriverBase):
         self.tmgr = None
         self.token = None
         self.version = "0.0.1"
-        self.alias_name = "夸父 超导驱动"
-        self.description = "夸父 超导驱动"
+        self.alias_name = "北京量子院 夸父-Dongling 超导驱动"
+        self.description = "北京量子院 夸父-Dongling 超导驱动"
         self.backend_name = [
             "Baihua",
             "Yudu",
