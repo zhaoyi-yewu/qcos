@@ -91,7 +91,7 @@ class DriverBase:
         # supported code types
         self.supported_code_types = []
         # quantum computer technology type
-        self.tech_type = None
+        self.tech_type = Constant.TECH_TYPE_NONE
         # enable circuit aggregation or not
         self.enable_circuit_aggregation = False
         # max number of qubits
@@ -420,7 +420,7 @@ class DriverBase:
         data,
         data_type=DATA_TYPE_GATE_SEQUENCE,
         shots=1,
-        qec_options=dict | None,
+        qec_options=None,
     ):
         """Run job.
 
@@ -443,7 +443,7 @@ class DriverBase:
         data,
         data_type=DATA_TYPE_GATE_SEQUENCE,
         shots=1,
-        qec_options=dict | None,
+        qec_options=None,
     ):
         """Dry-run job.
 

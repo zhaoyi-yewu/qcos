@@ -122,7 +122,7 @@ class DriverTiangongBase(DriverQuboBase):
         data,
         data_type,
         shots=1,
-        qec_options=dict | None,
+        qec_options=None,
     ):
         """Run job.
 
