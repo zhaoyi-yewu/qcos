@@ -37,6 +37,7 @@ from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.common.utils import (
     TranspileRuntime,
     trans_logger,
+    init_cli_logging,
 )
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
@@ -210,6 +211,8 @@ class CMSSTranspilerPerf:
         # set the allowed log tags for performance logger
         trans_logger.set_allowed_tags(self.log_tags)
 
+        init_cli_logging()
+
         self.enable_transpiler = extra_configs["transpile"]["transpiler"].get(
             "enable_transpiler", True
         )
@@ -359,7 +362,7 @@ class CMSSTranspilerPerf:
         for _ in range(self.run_count):
             for params in self.params_list:
                 trans_logger.log_perf(
-                    "parameters:\n"
+                    "[parameters]\n"
                     f"input_file: {params.file}\n"
                     f"opt_level: {params.opt_level}\n"
                     f"base_gates: {params.tech_gates}\n"
@@ -717,7 +720,7 @@ class CMSSTranspilerPerf:
         runtime.total_time = total_timer.elapsed
         trans_logger.log_perf(
             "total running time of cmss-transpiler:"
-            f" {total_timer.elapsed:.4f}s"
+            f" {total_timer.elapsed:.4f}s\n\n"
         )
         return runtime
 
