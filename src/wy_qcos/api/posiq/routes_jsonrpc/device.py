@@ -23,7 +23,6 @@ from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import device_api_v1
 from wy_qcos.common.constant import Constant
-from wy_qcos.common.library import Library
 from wy_qcos.task_manager import scheduler
 from .dependencies.authentication import auth, validate_virtual_instance
 
@@ -42,8 +41,6 @@ def _get_device_info(device, auth_data=None, details=False):
     Returns:
         device_info
     """
-    # replace pwd in extra_configs to ********
-    configs = Library.mask_password(device.configs)
     _device_info = {
         "name": device.name,
         "alias_name": device.alias_name,
@@ -53,21 +50,9 @@ def _get_device_info(device, auth_data=None, details=False):
         "status": device.status,
         "tech_type": device.tech_type,
         "max_qubits": device.max_qubits,
-        "configs": configs,
         "details": device.details,
         "timestamp": device.timestamp,
     }
-    if (
-        auth_data is not None
-        and auth_data[Constant.AUTH_MODE_KEY]
-        == Constant.AUTH_MODE_VIRTUAL_INSTANCE
-    ):
-        if (not auth_data.get("is_super_admin")) or (
-            not auth_data.get("is_project_admin")
-        ):
-            # only admin user can access to config info
-            # remove config info in device_info for non-admin user
-            _device_info.pop("configs")
     if not details:
         _device_info.pop("details")
 
