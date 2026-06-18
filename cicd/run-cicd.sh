@@ -54,9 +54,11 @@ echo "* Run docs-linter ..."
 print_and_run "${top_dir}/cicd/docs-linter.sh"
 
 echo "* Run UT (QCOS) ..."
+print_and_run "${top_dir}/cicd/run-tests.sh -b"
 print_and_run "${top_dir}/cicd/run-tests.sh -u default"
 
 echo "* Run coverage (QCOS) ..."
+print_and_run "${top_dir}/cicd/run-tests.sh -b"
 print_and_run "${top_dir}/cicd/run-tests.sh -c default"
 
 echo "* Run UT (QCOS CLIENT) ..."
