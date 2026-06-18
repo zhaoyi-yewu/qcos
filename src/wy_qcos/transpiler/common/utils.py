@@ -168,36 +168,35 @@ class TranspileRuntime:
 def init_cli_logging():
     """Initialize logging for CLI mode.
 
-    Called at startup by CLI tools (qcos-transpiler.py, qiskit-transpiler.py,
-    etc.).
+        Called at startup by CLI tools (qcos-transpiler.py,
+        qiskit-transpiler.py, etc.).
+
     Description:
-        - root logger set to WARNING, suppressing all INFO/DEBUG logs
-        - wy_qcos.transpiler's handler only passes records tagged by
-        trans_logger
 
-    Two operating modes:
+        root logger set to WARNING, suppressing all INFO/DEBUG logs.
+        wy_qcos.transpiler's handler only passes records tagged by
+        trans_logger.
 
-    ::
+        Two operating modes:
+            Server mode (server.py):
+            ┌────────────────────────────────────────────────────────────────┐
+            │  root (handlers=[])                                            │
+            │    └── wy_qcos (level=INFO, handlers=[file, console])          │
+            │          └── wy_qcos.transpiler (handlers=[], propagate=True)
+            │                └── trans_logger (tag filter → flows to wy_qcos)
+            └────────────────────────────────────────────────────────────────┘
 
-        Server mode (server.py):
-        ┌─────────────────────────────────────────────────────────┐
-        │  root (handlers=[])                                      │
-        │    └── wy_qcos (level=INFO, handlers=[file, console])    │
-        │          └── wy_qcos.transpiler (handlers=[], propagate=True)
-        │                └── trans_logger (tag filter → flows to wy_qcos)
-        └─────────────────────────────────────────────────────────┘
-
-        CLI mode (qcos-transpiler.py):
-        ┌─────────────────────────────────────────────────────────┐
-        │  root (level=WARNING)   ← suppresses all INFO/DEBUG    │
-        │    └── wy_qcos (level=WARNING)                          │
-        │          └── wy_qcos.transpiler (level=INFO, propagate=False)
-        │                ├── handler: StreamHandler(stdout)        │
-        │                │     └── _TagFilter (only passes tagged records)
-        │                └── trans_logger → extra={"tag":"PERF"}  │
-        │                      → output                            │
-        │  regular logger.info("xxx") (no tag) → _TagFilter blocks│
-        └─────────────────────────────────────────────────────────┘
+            CLI mode (qcos-transpiler.py):
+            ┌────────────────────────────────────────────────────────────────┐
+            │  root (level=WARNING)   ← suppresses all INFO/DEBUG            │
+            │    └── wy_qcos (level=WARNING)                                 │
+            │          └── wy_qcos.transpiler (level=INFO, propagate=False)
+            │                ├── handler: StreamHandler(stdout)              │
+            │                │     └── _TagFilter (only passes tagged records)
+            │                └── trans_logger → extra={"tag":"PERF"}         │
+            │                      → output                                  │
+            │  regular logger.info("xxx") (no tag) → _TagFilter blocks       │
+            └────────────────────────────────────────────────────────────────┘
     """
 
     class _TagFilter(logging.Filter):
