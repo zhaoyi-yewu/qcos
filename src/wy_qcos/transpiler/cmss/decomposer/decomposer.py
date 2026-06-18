@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 from wy_qcos.common.cmss.base_operation import BaseOperation
-from wy_qcos.transpiler.high_performance import GateOperation
 from wy_qcos.transpiler.cmss.decomposer.rule_applier import RuleApplier
 from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
     EquivalenceGraph,
@@ -115,7 +114,7 @@ class Decomposer:
         self,
         circuit: list[BaseOperation],
         table: dict[ParamGate, list[ParamGate]],
-    ) -> list[GateOperation]:
+    ) -> list[BaseOperation]:
         """Apply a decomposition table to a quantum circuit.
 
         This method rewrites each gate in the input circuit using a precomputed
