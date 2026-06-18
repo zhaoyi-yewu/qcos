@@ -253,7 +253,7 @@ spec:
         - name: QCOS_AUTH_MODE
           value: ${QCOS_AUTH_MODE}
         - name: QCOS_DATABASE_CONNECTION_URL
-          value: ${QCOS_DATABASE_CONNECTION_URL}
+          value: ${QCOS_DATABASE_CONNECTION_URL:-sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL}
         - name: QCOS_VIRTUAL_INSTANCE_ID
           value: ${QCOS_VIRTUAL_INSTANCE_ID}
         - name: DEVICE_LIST
