@@ -18,7 +18,6 @@
 import json
 from unittest.mock import patch
 
-from wy_qcos.common.config import Config
 from wy_qcos.common.library import Library
 from wy_qcos.drivers.ciqtek.driver_ciqtek_ion_1 import DriverCiqtekIon1
 from wy_qcos.drivers.driver_base import DriverBase
@@ -54,7 +53,8 @@ class TestDriverCiqtekIon1:
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs(self, mock_validate_schema):
         mock_validate_schema.return_value = True, None
-        success, _ = driver_ion_trap.validate_driver_configs(Config)
+        configs = {}
+        success, _ = driver_ion_trap.validate_driver_configs(configs)
         assert success is True
 
     def test_init_driver(self):

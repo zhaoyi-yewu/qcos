@@ -162,6 +162,12 @@ class DriverHanyuan1(DriverBase):
             self.decomposition_rule = copy.deepcopy(
                 configs.get("decomposition_rule", {})
             )
+            self.max_job_wait_time = configs.get(
+                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
+            )
+            self.job_query_interval = configs.get(
+                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
+            )
         return success, err_msg
 
     def close_driver(self):

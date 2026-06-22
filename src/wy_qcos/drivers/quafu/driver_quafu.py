@@ -36,7 +36,6 @@ class DriverQuafu(DriverBase):
     https://quafu-sqc.baqis.ac.cn/
     """
 
-    task_time_out = 3600
     task_status_success = "Finished"
 
     def __init__(self):
@@ -119,6 +118,14 @@ class DriverQuafu(DriverBase):
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
             success = False
+        else:
+            self.max_job_wait_time = configs.get(
+                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
+            )
+            self.job_query_interval = configs.get(
+                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
+            )
+
         return success, err_msg
 
     def fetch_configs(self):
@@ -220,8 +227,8 @@ class DriverQuafu(DriverBase):
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
         success, _, _ = Library.loop_with_timeout(
             self.check_task_status,
-            self.task_time_out,
-            5,
+            self.max_job_wait_time,
+            self.job_query_interval,
             task_id,
             expect_task_status=[self.task_status_success],
         )

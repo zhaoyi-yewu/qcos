@@ -33,5 +33,11 @@ password_sdk_code = ""
 # [Required] machine name
 machine_name = "CPQC-550"
 
+# [Optional] max job wait time, default value is 604800 seconds (7 days)
+max_job_wait_time = 604800
+
+# [Optional] job query interval, default value is 5 seconds
+job_query_interval = 5
+
 domain_url_auth = "http://127.0.0.1:18600"
 domain_url_task = "http://127.0.0.1:18600"

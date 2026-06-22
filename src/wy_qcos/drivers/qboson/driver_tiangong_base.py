@@ -99,6 +99,13 @@ class DriverTiangongBase(DriverQuboBase):
         )
         if _success:
             self.machine_name = configs.get("machine_name", "CPQC-1000")
+            self.max_job_wait_time = configs.get(
+                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
+            )
+            self.job_query_interval = configs.get(
+                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
+            )
+
         else:
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
@@ -198,8 +205,8 @@ class DriverTiangongBase(DriverQuboBase):
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
         success, err_msg, _ = Library.loop_with_timeout(
             self.check_task_status,
-            3600,
-            5,
+            self.max_job_wait_time,
+            self.job_query_interval,
             task_id,
             expect_task_status=[self.task_status_completed],
         )

@@ -33,8 +33,6 @@ class DriverCiqtekIon1(DriverBase):
     https://www.ciqtek.com/
     """
 
-    task_time_out = 3600
-
     def __init__(self):
         super().__init__()
         self.access_token = None
@@ -96,6 +94,14 @@ class DriverCiqtekIon1(DriverBase):
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
             success = False
+        else:
+            self.max_job_wait_time = configs.get(
+                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
+            )
+            self.job_query_interval = configs.get(
+                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
+            )
+
         return success, err_msg
 
     def init_driver(self):
@@ -184,8 +190,8 @@ class DriverCiqtekIon1(DriverBase):
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
         success, err_msg, _results = Library.loop_with_timeout(
             self.get_task_result,
-            self.task_time_out,
-            5,
+            self.max_job_wait_time,
+            self.job_query_interval,
             task_id,
             expect_task_status=[2],
         )

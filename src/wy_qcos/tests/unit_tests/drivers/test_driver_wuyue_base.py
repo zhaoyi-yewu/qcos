@@ -176,6 +176,8 @@ class TestDriverWuyueBase:
             "Mn6J8Z3pk/7e8CPZwoCPZW+R1H384+AfUUZYZnqk7lvMP"
             "RhAaDUGcTA+rAp9c4IVrJK2azYbI2wIDAQAB",
             "password_pri_key": "",
+            "max_job_wait_time": 10000,
+            "job_query_interval": 10,
         }
 
         success, err_msg = driver_wuyue_base.validate_driver_configs(
@@ -195,6 +197,8 @@ class TestDriverWuyueBase:
             "RhAaDUGcTA+rAp9c4IVrJK2azYbI2wIDAQAB"
         )
         assert driver_wuyue_base.password_pri_key == ""
+        assert driver_wuyue_base.max_job_wait_time == 10000
+        assert driver_wuyue_base.job_query_interval == 10
 
     def test_validate_driver_configs_missing_required_fields(self):
         """Test validate_driver_configs with missing required fields."""

@@ -127,6 +127,12 @@ class DriverWuyueBase(DriverBase):
             self.password_secret = configs.get("password_secret", None)
             self.password_pub_key = configs.get("password_pub_key", None)
             self.password_pri_key = configs.get("password_pri_key", None)
+            self.max_job_wait_time = configs.get(
+                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
+            )
+            self.job_query_interval = configs.get(
+                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
+            )
         else:
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
@@ -227,8 +233,8 @@ class DriverWuyueBase(DriverBase):
         task_id = f"{job_id}-{data_index}"
         success, err_msg, results = Library.loop_with_timeout(
             self.check_task_status,
-            3600,
-            5,
+            self.max_job_wait_time,
+            self.job_query_interval,
             task_id,
             expect_task_status=[
                 self.task_status_completed,
