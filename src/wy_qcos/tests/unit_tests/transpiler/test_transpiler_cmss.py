@@ -19,7 +19,9 @@ import types
 from unittest.mock import patch
 
 from wy_qcos.common.constant import Constant
+from wy_qcos.common.cmss.gate_operation import create_gate
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
+from wy_qcos.transpiler.cmss.mapping.empty_mapping import EmptyRoute
 from wy_qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
 from wy_qcos.tests.unit_tests.transpiler.comm import validate_gate_ir
 from wy_qcos.tests.unit_tests.transpiler.comm import validate_non_gate_ir
@@ -235,3 +237,41 @@ class TestTranspilerCmss:
             parse_result, expected_basis_gates
         )
         assert len(basis_gate_list) == 2
+
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmss."
+        "MappingFactory.get_mapper_by_type"
+    )
+    def test_empty_route_aggregation_offsets_circuits(self, mock_get_mapper):
+        mock_get_mapper.return_value = EmptyRoute()
+
+        first_ops = [
+            create_gate("x", [0]),
+            create_gate("measure", [0]),
+        ]
+        second_ops = [
+            create_gate("cx", [0, 1]),
+            create_gate("measure", [0]),
+            create_gate("measure", [1]),
+        ]
+        opt_result_dict = {
+            "job-0": (1, first_ops),
+            "job-1": (2, second_ops),
+        }
+
+        transpiler = TranspilerCmss()
+        mapping_res, mapping_dict, init_layout_dict, final_layout_dict = (
+            transpiler.mapping({}, opt_result_dict)
+        )
+
+        assert mapping_dict == {"job-0": 1, "job-1": 2}
+        assert init_layout_dict == {}
+        assert final_layout_dict == {}
+        assert [operation.targets for operation in mapping_res] == [
+            [0],
+            [0],
+            [1, 2],
+            [1],
+            [2],
+        ]
+        assert second_ops[0].targets == [0, 1]

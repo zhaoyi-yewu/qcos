@@ -35,7 +35,10 @@ from wy_qcos.transpiler.cmss.mapping.aggregate.hierachy_tree import (
     HierarchyTree,
     get_block,
 )
-from wy_qcos.transpiler.cmss.mapping.empty_mapping import EmptyRoute
+from wy_qcos.transpiler.cmss.mapping.empty_mapping import (
+    EmptyRoute,
+    aggregate_empty_route_results,
+)
 from wy_qcos.transpiler.cmss.mapping.mapping_factory import MappingFactory
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     SCRoute,
@@ -166,12 +169,11 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             trans_cfg_inst.get_tech_type(), enable_na_move, na_mapping_type
         )
         if isinstance(mapper, EmptyRoute):
-            mapping_dict = {}
             init_layout_dict = {}
             final_layout_dict = {}
-            key, value = list(opt_result_dict.items())[0]
-            mapping_dict[key] = value[0]
-            mapping_res = value[1]
+            mapping_res, mapping_dict = aggregate_empty_route_results(
+                opt_result_dict
+            )
             return (
                 mapping_res,
                 mapping_dict,
