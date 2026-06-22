@@ -17,13 +17,17 @@
 
 #pragma once
 
-#include <iostream>
+#include <sstream>
+#include <string>
+#include <unordered_map>
 
 #include "compiler/qasm_compiler/parser/token.hpp"
 
 namespace qasm {
 class Scanner {
-  std::istream* is;
+  std::string buffer_;
+  const char* ptr_ = nullptr;
+  const char* end_ = nullptr;
   std::unordered_map<std::string, Token::Kind> keywords{};
   char ch = 0;
   size_t line = 1;
@@ -45,11 +49,23 @@ class Scanner {
     return isNum(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
   }
 
-  static char readUtf8Codepoint(std::istream* in);
+  void nextCh() {
+    if (ptr_ < end_) {
+      ch = *ptr_++;
+      if (ch == '\n') {
+        col = 0;
+        line++;
+      } else {
+        col++;
+      }
+    } else {
+      ch = 0;
+    }
+  }
 
-  void nextCh();
-
-  [[nodiscard]] char peek() const;
+  [[nodiscard]] char peek() const {
+    return (ptr_ < end_) ? *ptr_ : 0;
+  }
 
   std::optional<Token> consumeWhitespaceAndComments();
 

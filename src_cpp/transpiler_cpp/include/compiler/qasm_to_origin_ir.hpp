@@ -17,7 +17,5 @@
 
 #include "circuit/base_operation.h"
 
-std::string qasmfile2str(const std::string& filename);
-
 std::pair<std::vector<std::shared_ptr<qcos::BaseOperation>>, int>
 convert_qasm_string_to_qcos_operations(std::string qasm_str);

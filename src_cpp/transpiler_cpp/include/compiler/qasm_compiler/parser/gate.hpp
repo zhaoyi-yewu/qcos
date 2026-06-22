@@ -22,6 +22,8 @@
 #include "compiler/quantum_computation.hpp"
 
 namespace qasm {
+enum class GateKind { Standard, Compound };
+
 struct GateInfo {
   size_t nControls;
   size_t nTargets;
@@ -30,17 +32,23 @@ struct GateInfo {
 };
 
 struct Gate {
+  GateKind gateKind;
+
   virtual ~Gate() = default;
 
   virtual size_t getNControls() = 0;
   virtual size_t getNTargets() = 0;
   virtual size_t getNParameters() = 0;
+
+ protected:
+  explicit Gate(GateKind kind) : gateKind(kind) {}
 };
 
 struct StandardGate : Gate {
   GateInfo info;
 
-  explicit StandardGate(const GateInfo& gateInfo) : info(gateInfo) {}
+  explicit StandardGate(const GateInfo& gateInfo)
+      : Gate(GateKind::Standard), info(gateInfo) {}
 
   size_t getNControls() override { return info.nControls; }
 
@@ -56,7 +64,8 @@ struct CompoundGate : Gate {
   explicit CompoundGate(
       std::vector<std::string> parameters, std::vector<std::string> targets,
       std::vector<std::shared_ptr<QuantumStatement>> bodyStatements)
-      : parameterNames(std::move(parameters)),
+      : Gate(GateKind::Compound),
+        parameterNames(std::move(parameters)),
         targetNames(std::move(targets)),
         body(std::move(bodyStatements)) {}
 

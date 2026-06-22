@@ -390,11 +390,12 @@ std::shared_ptr<GateCallStatement> Parser::parseGateCallStatement() {
 
   bool operandsOptional = false;
   std::string identifier;
-  if (current().kind == Token::Kind::Gphase) {
+  Token::Kind kind = current().kind;
+  if (kind == Token::Kind::Gphase) {
     scan();
     identifier = "gphase";
     operandsOptional = true;
-  } else if (current().kind == Token::Kind::S) {
+  } else if (kind == Token::Kind::S) {
     scan();
     identifier = "s";
   } else {
@@ -735,15 +736,17 @@ std::shared_ptr<Expression> Parser::comparison() {
 
 std::shared_ptr<Expression> Parser::parseExpression() {
   std::shared_ptr<Expression> x{};
-  if (current().kind == Token::Kind::Minus) {
+  Token::Kind kind = current().kind;
+
+  if (kind == Token::Kind::Minus) {
     scan();
     x = std::make_shared<UnaryExpression>(
         UnaryExpression{UnaryExpression::Op::Negate, term()});
-  } else if (current().kind == Token::Kind::ExclamationPoint) {
+  } else if (kind == Token::Kind::ExclamationPoint) {
     scan();
     x = std::make_shared<UnaryExpression>(
         UnaryExpression{UnaryExpression::Op::LogicalNot, term()});
-  } else if (current().kind == Token::Kind::Tilde) {
+  } else if (kind == Token::Kind::Tilde) {
     scan();
     x = std::make_shared<UnaryExpression>(
         UnaryExpression{UnaryExpression::Op::BitwiseNot, term()});

@@ -18,6 +18,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 
 #include "compiler/qasm_compiler/parser/gate.hpp"
 
@@ -88,7 +89,7 @@ const std::string QE1LIB =
     "  c3sqrtx a,b,c,e; \n"
     "}\n";
 
-const std::map<std::string, std::shared_ptr<Gate>> STANDARD_GATES = {
+const std::unordered_map<std::string, std::shared_ptr<Gate>> STANDARD_GATES = {
     // gates from which all other gates can be constructed.
     {"gphase",
      std::make_shared<StandardGate>(StandardGate({0, 0, 1, qc::otGPhase}))},
