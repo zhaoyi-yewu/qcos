@@ -30,7 +30,7 @@ class GateOperation : public BaseOperation {
  public:
   bool hermitian;
 
-  GateOperation(std::string name_, std::vector<int> targets_,
+  GateOperation(std::string_view name_, std::vector<int> targets_,
                 std::vector<double> arg_value_ = {},
                 OperationType op_type_ = OperationType::SINGLE_QUBIT_OPERATION,
                 bool hermitian_ = true);
@@ -491,7 +491,7 @@ class Reset : public BaseOperation {
   std::string to_string() const;
 };
 
-std::shared_ptr<BaseOperation> create_gate(const std::string& name,
+std::shared_ptr<BaseOperation> create_gate(std::string_view name,
                                            std::vector<int> targets = {},
                                            std::vector<double> arg_value = {},
                                            bool allow_undefined = false);

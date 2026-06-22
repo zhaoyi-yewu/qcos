@@ -21,6 +21,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #ifndef M_PI
@@ -56,7 +57,7 @@ class BaseOperation {
   virtual ~BaseOperation() = default;
 
   BaseOperation(
-      std::string name_, std::vector<int> targets_,
+      std::string_view name_, std::vector<int> targets_,
       std::vector<double> arg_value_ = {},
       OperationType op_type_ = OperationType::SINGLE_QUBIT_OPERATION);
   const std::vector<int>& getTargets() const { return targets; }

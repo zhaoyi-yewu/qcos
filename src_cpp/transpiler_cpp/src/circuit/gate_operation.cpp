@@ -24,10 +24,10 @@
 
 namespace qcos {
 
-GateOperation::GateOperation(std::string name_, std::vector<int> targets_,
+GateOperation::GateOperation(std::string_view name_, std::vector<int> targets_,
                              std::vector<double> arg_value_,
                              OperationType op_type_, bool hermitian_)
-    : BaseOperation(std::move(name_), std::move(targets_),
+    : BaseOperation(name_, std::move(targets_),
                     std::move(arg_value_), op_type_),
       hermitian(hermitian_) {
   validate_params();
@@ -3536,7 +3536,7 @@ std::string Reset::to_string() const {
          ", arg_value=" + arg_value_to_string() + ")";
 }
 
-std::shared_ptr<BaseOperation> create_gate(const std::string& name,
+std::shared_ptr<BaseOperation> create_gate(std::string_view name,
                                            std::vector<int> targets,
                                            std::vector<double> arg_value,
                                            bool allow_undefined) {
@@ -3649,7 +3649,7 @@ std::shared_ptr<BaseOperation> create_gate(const std::string& name,
       return std::make_shared<GateOperation>(name, std::move(targets),
                                              std::move(arg_value));
     } else {
-      throw std::runtime_error(name + " is not supported");
+      throw std::runtime_error(std::string(name) + " is not supported");
     }
   }
 }

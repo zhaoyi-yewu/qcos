@@ -19,10 +19,10 @@
 
 namespace qcos {
 
-BaseOperation::BaseOperation(std::string name_, std::vector<int> targets_,
+BaseOperation::BaseOperation(std::string_view name_, std::vector<int> targets_,
                              std::vector<double> arg_value_,
                              OperationType op_type_)
-    : name(std::move(name_)),
+    : name(name_),
       targets(std::move(targets_)),
       arg_value(std::move(arg_value_)),
       operation_type(op_type_) {}
