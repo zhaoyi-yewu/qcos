@@ -15,7 +15,7 @@
 services:
   jenkins:
     build: . 
-    container_name: jenkins_cicd
+    container_name: jenkins-cicd
     restart: always
     user: root # 
     ports:
@@ -25,5 +25,6 @@ services:
       - ./jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock 
       - /etc/localtime:/etc/localtime:ro
+      - /etc/hosts:/etc/hosts
     environment:
       - TZ=Asia/Shanghai
