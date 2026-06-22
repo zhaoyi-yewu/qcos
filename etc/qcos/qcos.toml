@@ -10,6 +10,10 @@ MAX_JOBS = 10000
 MAX_QUEUED_JOBS = 1000
 # [GLOBAL CONFIG] authentication mode: "no" (default), "jwt", "virtual_instance"
 AUTH_MODE = "no"
+# [JOB CLEAN] job clean interval in minutes (default: 60)
+JOB_CLEAN_INTERVAL = 60
+# job expiration days, jobs older than this will be auto-deleted (default: 7)
+JOB_EXPIRE_DAYS = 7
 # [GLOBAL CONFIG] default venv base dir
 # VENV_DIR = "/var/lib/qcos/venv"
 
@@ -121,11 +125,8 @@ USE_SSL = false
 # eg. CACERT_FILE = "/etc/qcos/ssl/cacert.pem"
 # CACERT_FILE =
 
-[TASK_CLEAN]
-# task clean interval in minutes (default: 60)
-TASK_CLEAN_INTERVAL = 60
-# job expiration days, jobs older than this will be auto-deleted (default: 7)
-JOB_EXPIRE_DAYS = 7
+
+
 
 [DEVICES]
 # DEVICE_LIST example:
