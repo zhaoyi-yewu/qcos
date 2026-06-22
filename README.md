@@ -8,27 +8,27 @@
 [![PyPI - Wheel](https://img.shields.io/pypi/wheel/wy-qcos?logo=python&logoColor=white)](https://pypi.org/project/wy-qcos)
 [![CICD](https://img.shields.io/github/actions/workflow/status/zhaoyi-yewu/qcos/qcos-cicd.yml?logo=githubactions&logoColor=white&labelColor=blue&label=build/cicd)](https://github.com/zhaoyi-yewu/qcos/actions/workflows/qcos-cicd.yml)
 [![Codecov](https://codecov.io/github/zhaoyi-yewu/qcos/branch/develop/graph/badge.svg)](https://codecov.io/github/zhaoyi-yewu/qcos)
-[![Documentation Status](https://img.shields.io/readthedocs/qcos/latest?logo=readthedocs)](https://qcos.readthedocs.io/zh-cn/latest/)
+[![Documentation Status](https://app.readthedocs.org/projects/qcos/badge/?version=latest&style=plastic)](https://qcos.readthedocs.io/zh-cn/latest/)
 [![License](https://img.shields.io/crates/l/efi_signer?logo=opensourceinitiative)](https://gitee.com/WUYUEQbit/qcos/blob/develop/LICENSE)
 
 WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）是一款开源的通用量子计算操作系统，旨在为不同架构的量子计算机（如：超导、中性原子、离子阱、相干伊辛机等）提供统一的软件支持，推动量子计算的生态发展。
 
-# 1. 架构总览
+## 1. 架构总览
 
-![架构图](https://gitee.com/WUYUEQbit/qcos/raw/develop/docs/sphinx/source/_static/architecture.svg)
+![架构图](https://qcos.readthedocs.io/zh-cn/latest/_images/architecture.svg)
 
-# 2. 功能特性
+## 2. 功能特性
 
-| | 功能 |
-|:-----------------------------------------------|:---------------------------------------------------|
-| <span style="white-space:nowrap;">交互方式</span> | 命令行、API、SDK、GUI（规划） |
-| <span style="white-space:nowrap;">系统服务</span> | 配置管理、日志管理、用户管理、监控告警（规划） |
-| <span style="white-space:nowrap;">设备管理</span> | 校准操作（规划）、设备配置/查询 |
-| <span style="white-space:nowrap;">作业管理</span> | 作业提交、取消、删除、状态查询、结果查询 |
-| <span style="white-space:nowrap;">系统引擎</span> | QASM解析、逻辑门分解、量子比特映射、编译优化、线路聚合、线路拆分（规划）、量子纠错QEC（规划） |
-| <span style="white-space:nowrap;">驱动插件</span> | dummy测试驱动、光量子、中性原子、超导、离子阱等 |
+| 类别 | 功能 |
+|:-----|:---------------------------------------------------|
+| 交互方式 | 命令行、API、SDK、GUI（规划） |
+| 系统服务 | 配置管理、日志管理、用户管理、监控告警 |
+| 设备管理 | 校准操作（规划）、设备配置/查询 |
+| 作业管理 | 作业提交、取消、删除、状态查询、结果查询 |
+| 系统引擎 | QASM解析、逻辑门分解、量子比特映射、编译优化、线路聚合、线路拆分、量子纠错QEC（规划） |
+| 驱动插件 | dummy测试驱动、光量子、中性原子、超导、离子阱等 |
 
-# 3. 安装使用
+## 3. 安装使用
 
 官方已适配操作系统：BCLinux 21.10U4、OpenEuler 24.03 (LTS)
 
@@ -46,11 +46,11 @@ WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）
 
 [命令行手册](https://qcos.readthedocs.io/zh-cn/latest/user-guide/cli.html)
 
-# 4. 兼容性
+## 4. 兼容性
 
 [兼容性说明](https://qcos.readthedocs.io/zh-cn/latest/user-guide/compatibility.html)
 
-# 5. 许可证
+## 5. 许可证
 
 QCOS开源代码遵循[MulanPSL-2.0](https://qcos.readthedocs.io/zh-cn/latest/other-docs/license.html)开源协议。
 samples/qasm下的代码遵循 Apache-2.0开源协议。

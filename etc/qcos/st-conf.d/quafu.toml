@@ -33,8 +33,9 @@ monitor_log_file = "/var/log/qcos/device_monitor_quafu.log"
 max_queued_jobs = -1
 
 chip_name = "Dongling"
-token = ""
+token = "1"
 url = "http://127.0.0.1:18606"
+
 [quafu.transpiler.qpu_configs]
 qubits = 84
 

@@ -31,6 +31,12 @@ logger = logging.getLogger(__name__)
 @pytest.mark.usefixtures("global_configs")
 @pytest.mark.driver
 class TestJob:
+    """Test Job."""
+
+    test_job_names = [
+        "test_quafu_submit_job",
+    ]
+
     @classmethod
     def setup_class(cls):
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
@@ -40,8 +46,13 @@ class TestJob:
         cls.quafu_process = multiprocessing.Process(target=main, daemon=True)
         cls.quafu_process.start()
 
+        # Initialize and clean up test resources
+        StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
+
     @classmethod
     def teardown_class(cls):
+        """Clean up test environment."""
+        StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
         print("Stop Quafu server")
         cls.quafu_process.terminate()
 
