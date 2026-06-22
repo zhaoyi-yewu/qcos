@@ -15,13 +15,17 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import logging
+
+from wy_qcos.log.logger import log_perf
+
 from schema import Optional
 
 from wy_qcos.transpiler.common.utils import (
     TranspileRuntime,
     Timer,
-    trans_logger,
 )
+
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.cmss.compiler.decomposer import (
     decompose_gates_to_1q2q,
@@ -49,6 +53,8 @@ from wy_qcos.transpiler.transpiler_base import TranspilerBase
 from wy_qcos.transpiler.cmss.compiler.openqasm3.parser import (
     parse as openqasm3_parse,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class TranspilerCmss(TranspilerBase):
@@ -175,18 +181,20 @@ class TranspilerCmss(TranspilerBase):
             mapping_dict[key] = value[0]
             with Timer() as mapping_pre_timer:
                 mapper.prepare_data(value[0], value[1], qpu_cfg)
-            trans_logger.log_perf(
-                f"mapping(prepare_data): {mapping_pre_timer.elapsed:.4f}s\n"
+            log_perf(
+                logger,
+                f"mapping(prepare_data): {mapping_pre_timer.elapsed:.4f}s\n",
             )
             with Timer() as mapping_exec_timer:
                 mapping_res, final_layout = mapper.execute_with_order()
 
             final_layout_dict[key] = final_layout
             init_layout_dict[key] = mapper.initial_layout
-            trans_logger.log_debug(f"after mapping: {mapping_res}")
-            trans_logger.log_perf(
+            logger.debug(f"after mapping: {mapping_res}")
+            log_perf(
+                logger,
                 "mapping(execute_with_order): "
-                f"{mapping_exec_timer.elapsed:.4f}s\n"
+                f"{mapping_exec_timer.elapsed:.4f}s\n",
             )
             return (
                 mapping_res,
@@ -202,7 +210,7 @@ class TranspilerCmss(TranspilerBase):
             for key, value in opt_result_dict.items():
                 # 不使用b+树进行block查找
                 blk = get_block(ht, value[0])
-                trans_logger.log_debug(f"xxblock: {blk}")
+                logger.debug(f"xxblock: {blk}")
                 # 使用b+树进行block查找
                 # TODO (wangjujun): use b+ tree by parameter.
                 # blk = get_block_bplus(ht, value[0])
@@ -212,7 +220,7 @@ class TranspilerCmss(TranspilerBase):
                     continue
                 mapping_dict[key] = value[0]
                 if isinstance(mapper, SCRoute):
-                    trans_logger.log_debug(f"set current_block to {blk}")
+                    logger.debug(f"set current_block to {blk}")
                     # For SC, set current_block to limit the mapping range
                     qpu_cfg["current_block"] = blk
                 else:
@@ -256,7 +264,7 @@ class TranspilerCmss(TranspilerBase):
         self.total_qubits = 0
         if isinstance(src_code_dict, dict):
             for key, value in src_code_dict.items():
-                trans_logger.log_debug(f"source_code:\n{value}")
+                logger.debug(f"source_code:\n{value}")
                 num_qubits = 0
                 parse_result = []
                 if code_type in [
@@ -318,15 +326,16 @@ class TranspilerCmss(TranspilerBase):
                     )
                     opt_result_dict[key] = (value[0], opt_result)
         run_time.opt_time1 = optimize1_timer.elapsed
-        trans_logger.log_perf(
-            f"tranpiler(optimize firstly): {optimize1_timer.elapsed:.4f}s\n"
+        log_perf(
+            logger,
+            f"tranpiler(optimize firstly): {optimize1_timer.elapsed:.4f}s\n",
         )
 
         if enable_mapping:
             qpu_cfg = trans_cfg_inst.get_qpu_cfg()
             if not qpu_cfg:
                 err_msg = "Missing qpu configs"
-                trans_logger.log_error(err_msg)
+                logger.error(err_msg)
                 raise ValueError(err_msg)
 
             # decompose gate to 1q2q gates for mapping
@@ -336,9 +345,10 @@ class TranspilerCmss(TranspilerBase):
                     decomposed_gates = decompose_gates_to_1q2q(value[1])
                     dp_result_dict[key] = (value[0], decomposed_gates)
             run_time.decompose_1q2q_time = decompose_1q2q_timer.elapsed
-            trans_logger.log_perf(
+            log_perf(
+                logger,
                 "tranpiler(decomposing firstly): "
-                f"{decompose_1q2q_timer.elapsed:.4f}s\n"
+                f"{decompose_1q2q_timer.elapsed:.4f}s\n",
             )
 
             decomposer = Decomposer()
@@ -356,9 +366,10 @@ class TranspilerCmss(TranspilerBase):
                 )
                 dg_swap_opt.gate_depth = gate_depth.copy()
             run_time.decompose_rule_time = decompose_ruler_timer.elapsed
-            trans_logger.log_perf(
+            log_perf(
+                logger,
                 "tranpiler(get decompose rules): "
-                f"{decompose_ruler_timer.elapsed:.4f}s\n"
+                f"{decompose_ruler_timer.elapsed:.4f}s\n",
             )
 
             with Timer() as mapping_timer:
@@ -366,8 +377,8 @@ class TranspilerCmss(TranspilerBase):
                     qpu_cfg, dp_result_dict
                 )
             run_time.mapping_time = mapping_timer.elapsed
-            trans_logger.log_perf(
-                f"tranpiler(mapping): {mapping_timer.elapsed:.4f}s\n"
+            log_perf(
+                logger, f"tranpiler(mapping): {mapping_timer.elapsed:.4f}s\n"
             )
 
             with Timer() as applier_timer:
@@ -375,8 +386,9 @@ class TranspilerCmss(TranspilerBase):
                     mapping_res, decompose_rules_dict
                 )
             run_time.decompose_apply_time = applier_timer.elapsed
-            trans_logger.log_perf(
-                f"tranpiler(applier_timer): {applier_timer.elapsed:.4f}s\n"
+            log_perf(
+                logger,
+                f"tranpiler(applier_timer): {applier_timer.elapsed:.4f}s\n",
             )
 
             # secondly optimize
@@ -392,10 +404,11 @@ class TranspilerCmss(TranspilerBase):
                         basis_gates=set(supp_basis_gates),
                     )
             run_time.opt_time2 = optimize2_timer.elapsed
-            trans_logger.log_debug(f"final basis_gate_list: {basis_gate_list}")
-            trans_logger.log_perf(
+            logger.debug(f"final basis_gate_list: {basis_gate_list}")
+            log_perf(
+                logger,
                 "tranpiler(optimize secondly):"
-                f" {optimize2_timer.elapsed:.4f}s\n"
+                f" {optimize2_timer.elapsed:.4f}s\n",
             )
         else:
             decomposer = Decomposer()
@@ -411,9 +424,10 @@ class TranspilerCmss(TranspilerBase):
                     supp_basis_gates,
                 )
             run_time.decompose_rule_time = decompose_ruler_timer.elapsed
-            trans_logger.log_perf(
+            log_perf(
+                logger,
                 "tranpiler(get decompose rules): "
-                f"{decompose_ruler_timer.elapsed:.4f}s\n"
+                f"{decompose_ruler_timer.elapsed:.4f}s\n",
             )
 
             decomposer_dict = {}
@@ -423,8 +437,9 @@ class TranspilerCmss(TranspilerBase):
                         value[1], decompose_rules_dict
                     )
             run_time.decompose_apply_time = applier_timer.elapsed
-            trans_logger.log_perf(
-                f"tranpiler(applier_timer): {applier_timer.elapsed:.4f}s\n"
+            log_perf(
+                logger,
+                f"tranpiler(applier_timer): {applier_timer.elapsed:.4f}s\n",
             )
 
             # secondly optimize
@@ -440,10 +455,11 @@ class TranspilerCmss(TranspilerBase):
             basis_gate_list = [
                 gate for gates in basis_gates_dict.values() for gate in gates
             ]
-            trans_logger.log_debug(f"final basis_gate_list: {basis_gate_list}")
-            trans_logger.log_perf(
+            logger.debug(f"final basis_gate_list: {basis_gate_list}")
+            log_perf(
+                logger,
                 "tranpiler(optimize secondly):"
-                f" {optimize2_timer.elapsed:.4f}s\n"
+                f" {optimize2_timer.elapsed:.4f}s\n",
             )
             mapping_dict = None
 

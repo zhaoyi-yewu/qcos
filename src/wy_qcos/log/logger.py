@@ -25,6 +25,15 @@ from logging.handlers import RotatingFileHandler
 
 from wy_qcos.common.config import Config
 
+PERF_LEVEL = 15
+logging.addLevelName(PERF_LEVEL, "PERF")
+
+
+def log_perf(logger: logging.Logger, msg, *args, **kwargs):
+    """Log a PERF level message."""
+    if logger.isEnabledFor(PERF_LEVEL):
+        logger._log(PERF_LEVEL, msg, args, **kwargs)
+
 
 class ColouredFormatter(logging.Formatter):
     """Coloured Formatter for logger module."""
@@ -33,6 +42,7 @@ class ColouredFormatter(logging.Formatter):
     WHITE = "\x1b[37m"
     RED = "\x1b[31m"
     YELLOW = "\x1b[33m"
+    GREEN = "\x1b[32m"
     GREY = "\x1b[38m"
 
     def format(self, record, colour=False):
@@ -51,6 +61,8 @@ class ColouredFormatter(logging.Formatter):
             colour = self.YELLOW
         elif level_no >= logging.INFO:
             colour = self.WHITE
+        elif level_no >= PERF_LEVEL:
+            colour = self.GREEN
         elif level_no >= logging.DEBUG:
             colour = self.GREY
         else:
@@ -108,6 +120,18 @@ class LogFilter(logging.Filter):
         ):
             return 0
         return 1
+
+
+class PerfFilter(logging.Filter):
+    """Allows PERF level and WARNING+ records through."""
+
+    def filter(self, record):
+        return (
+            1
+            if record.levelno == PERF_LEVEL
+            or record.levelno >= logging.WARNING
+            else 0
+        )
 
 
 class CompressedRotatingFileHandler(RotatingFileHandler):

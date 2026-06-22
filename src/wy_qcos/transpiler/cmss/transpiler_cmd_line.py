@@ -18,28 +18,29 @@
 import os
 import sys
 import csv
+import logging
 from pathlib import Path
 from datetime import datetime
 import argparse
 import json
 import itertools
 
+
 from wy_qcos.common.config import Config
+from wy_qcos.log.logger import init_logger, PerfFilter, PERF_LEVEL, log_perf
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.common.utils import (
     Timer,
     TranspilePerfConstant as TPC,
+    TranspileRuntime,
 )
 from wy_qcos.transpiler.cmss.transpiler_cmss_for_cpp import (
     TranspilerHighPerformanceCmss,
 )
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
-from wy_qcos.transpiler.common.utils import (
-    TranspileRuntime,
-    trans_logger,
-    init_cli_logging,
-)
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+
+logger = logging.getLogger(__name__)
 
 
 class TranspileParams:
@@ -77,7 +78,7 @@ class CMSSTranspilerPerf:
         self.file_list = ["samples/qasm/2.0/simple-qasm.qasm"]
         self.dir_list = []
         self.total_files = []
-        self.log_tags = []
+        self.perf_enabled = False
         # transpiler configs
         self.base_gates = []
         # optimization level, 0, 1, 2, 3
@@ -163,7 +164,7 @@ class CMSSTranspilerPerf:
         if output_file != "":
             output_file_path = Path(output_file).resolve()
             if output_file_path.exists():
-                trans_logger.log_warning(
+                logger.warning(
                     f"output file has existed! file: {output_file_path}."
                 )
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -183,7 +184,7 @@ class CMSSTranspilerPerf:
             with open(file_path, encoding="utf-8") as f:
                 return f.read()
         except Exception as e:
-            trans_logger.log_error(f"read file error: {e}")
+            logger.error(f"read file error: {e}")
             return None
 
     def init_transpile_params(self, extra_configs):
@@ -207,11 +208,9 @@ class CMSSTranspilerPerf:
         self.dir_list = extra_configs["transpile"].get("dirs", [])
         if self.file_list == [] and self.dir_list == []:
             raise ValueError("input files or dirs is not configured!")
-        self.log_tags = extra_configs["transpile"].get("log_tags", [])
-        # set the allowed log tags for performance logger
-        trans_logger.set_allowed_tags(self.log_tags)
-
-        init_cli_logging()
+        self.perf_enabled = extra_configs["transpile"].get(
+            "perf_enabled", False
+        )
 
         self.enable_transpiler = extra_configs["transpile"]["transpiler"].get(
             "enable_transpiler", True
@@ -284,9 +283,7 @@ class CMSSTranspilerPerf:
         for file in self.file_list:
             file_path = Path(file).resolve()
             if not file_path.exists():
-                trans_logger.log_warning(
-                    f"input file[{file_path}] is not existed!"
-                )
+                logger.warning(f"input file[{file_path}] is not existed!")
                 continue
             elif os.path.isdir(file_path):
                 raise ValueError(
@@ -299,9 +296,7 @@ class CMSSTranspilerPerf:
         for dir in self.dir_list:
             dir_path = Path(dir).resolve()
             if not dir_path.exists():
-                trans_logger.log_warning(
-                    f"input dir[{dir_path}] is not existed!"
-                )
+                logger.warning(f"input dir[{dir_path}] is not existed!")
                 continue
             elif not os.path.isdir(dir_path):
                 raise ValueError(
@@ -323,12 +318,23 @@ class CMSSTranspilerPerf:
     def main_cmss_transpiler(
         self,
         config_file: str = "",
+        handlers=None,
     ):
         abs_config_path = Path(config_file).resolve()
         extra_configs = Config.get_extra_configs()
         Config.load_config_file(str(abs_config_path), extra_config=True)
         self.init_transpile_params(extra_configs)
         self.parse_file_args()
+
+        # CLI quiet mode: control what levels appear
+        if handlers:
+            if self.perf_enabled:
+                for h in handlers:
+                    h.setLevel(PERF_LEVEL)
+                    h.addFilter(PerfFilter())
+            else:
+                for h in handlers:
+                    h.setLevel(logging.WARNING)
 
         # combinations of tech_type, mapping_config_file and sc_mapping_options
         combinations = list(
@@ -361,14 +367,15 @@ class CMSSTranspilerPerf:
         transpile_all_result = {}
         for _ in range(self.run_count):
             for params in self.params_list:
-                trans_logger.log_perf(
+                log_perf(
+                    logger,
                     "[parameters]\n"
                     f"input_file: {params.file}\n"
                     f"opt_level: {params.opt_level}\n"
                     f"base_gates: {params.tech_gates}\n"
                     f"tech_type: {params.mapping_info[0]}\n"
                     f"config_file: {params.mapping_info[1]}\n"
-                    f"sc_mapping_options: {params.sc_mapping_options}\n"
+                    f"sc_mapping_options: {params.sc_mapping_options}\n",
                 )
                 runtime = self.cmss_transpiler_perf_exec(
                     input_file=params.file,
@@ -399,9 +406,7 @@ class CMSSTranspilerPerf:
                     f"csv file[{csv_file_path}] is not a csv file!"
                 )
             if csv_file_path.exists():
-                trans_logger.log_warning(
-                    f"csv file has existed! file: {csv_file_path}."
-                )
+                logger.warning(f"csv file has existed! file: {csv_file_path}.")
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 csv_file_path = csv_file_path.with_stem(
                     f"{csv_file_path.stem}_{timestamp}"
@@ -589,7 +594,10 @@ class CMSSTranspilerPerf:
         if not file_path:
             raise ValueError(f"input file[{input_file}] is not valid!")
         if output_file_path:
-            trans_logger.set_log_file(output_file_path)
+            file_handler = logging.FileHandler(
+                str(output_file_path), encoding="utf-8"
+            )
+            logger.addHandler(file_handler)
 
         # load data from qasm file
         qasm_data = self.read_qasm_from_file(str(file_path))
@@ -683,15 +691,13 @@ class CMSSTranspilerPerf:
         # performace testing
         with Timer() as total_timer:
             # generate basis gates list
-            trans_logger.log_perf(
-                "Start performace testing of cmss compiling."
-            )
+            log_perf(logger, "Start performace testing of cmss compiling.")
             with Timer() as ast_timer:
                 src_code_info = {"000": qasm_data}
                 parse_result = transpiler.parse(src_code_info)
                 self.parse_results[input_file] = list(parse_result.values())[0]
             runtime.parse_time = ast_timer.elapsed
-            trans_logger.log_perf(f"parse openqasm: {ast_timer.elapsed:.4f}s")
+            log_perf(logger, f"parse openqasm: {ast_timer.elapsed:.4f}s")
 
             # optimize the transpiled gates
             if self.enable_transpiler:
@@ -709,8 +715,8 @@ class CMSSTranspilerPerf:
                         parse_result, expected_basis_gates
                     )
                 runtime.transpile_time = tranpile_timer.elapsed
-                trans_logger.log_perf(
-                    f"cmss tranpiler: {tranpile_timer.elapsed:.4f}s\n"
+                log_perf(
+                    logger, f"cmss tranpiler: {tranpile_timer.elapsed:.4f}s\n"
                 )
         runtime.decomposed_time = (
             runtime.decompose_rule_time
@@ -718,9 +724,10 @@ class CMSSTranspilerPerf:
             + runtime.decompose_apply_time
         )
         runtime.total_time = total_timer.elapsed
-        trans_logger.log_perf(
+        log_perf(
+            logger,
             "total running time of cmss-transpiler:"
-            f" {total_timer.elapsed:.4f}s\n\n"
+            f" {total_timer.elapsed:.4f}s\n\n",
         )
         return runtime
 
@@ -748,11 +755,16 @@ def main(argv=None):
     else:
         sys.argv.extend(argv)
 
+    # init logger at DEBUG level so PERF can pass;
+    # handler level/filters are set after loading config
+    handlers = init_logger(logging.DEBUG, console=True, quiet=False)
+
     # parse arguments
     cmss_args = get_parse_args()
     perf = CMSSTranspilerPerf()
     sys.exit(
         perf.main_cmss_transpiler(
             cmss_args["trans_config_file"],
+            handlers,
         )
     )

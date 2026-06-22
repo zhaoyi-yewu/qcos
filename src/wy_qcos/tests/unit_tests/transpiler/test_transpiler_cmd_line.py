@@ -25,7 +25,6 @@ from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 from wy_qcos.transpiler.common.utils import (
     Timer,
     TranspileRuntime,
-    trans_logger,
 )
 from wy_qcos.transpiler.cmss.transpiler_cmss_for_cpp import (
     TranspilerHighPerformanceCmss,
@@ -101,7 +100,6 @@ class TestTranspilerCmdLine:
         perf.parse_file_args()
         assert len(perf.total_files) > 0
 
-        trans_logger.set_allowed_tags(["PERF", "WARNING", "ERROR"])
         perf = CMSSTranspilerPerf()
         perf.file_list = [f"{self.samples_dir}/qasm/2.0/simple-qasm1.qasm"]
         perf.dir_list = [f"{self.samples_dir}/qasm/2.0/benchmark"]
@@ -159,7 +157,6 @@ class TestTranspilerCmdLine:
 
         mock_parse_file_args.return_value = None
         mock_get_transpile_result.return_value = None
-        trans_logger.set_allowed_tags(["PERF", "WARNING", "ERROR"])
         perf = CMSSTranspilerPerf()
         trans_config_file = (
             GLOBAL_CONFIGS["etc_dir"] + "/perf/transpile_conf.toml"
@@ -174,7 +171,7 @@ class TestTranspilerCmdLine:
     )
     def test_get_transpile_result(self, mock_cmss_transpiler_perf_exec):
         mock_cmss_transpiler_perf_exec.return_value = TranspileRuntime()
-        trans_logger.set_allowed_tags(["PERF", "WARNING", "ERROR"])
+
         perf = CMSSTranspilerPerf()
         perf.run_count = 2
         params = TranspileParams()
@@ -199,7 +196,7 @@ class TestTranspilerCmdLine:
                 "transpiled_circuit",
                 None,
             )
-            trans_logger.set_allowed_tags(["PERF", "WARNING", "ERROR"])
+
             perf = CMSSTranspilerPerf()
             input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
             opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
@@ -225,7 +222,7 @@ class TestTranspilerCmdLine:
                 "transpiled_circuit",
                 None,
             )
-            trans_logger.set_allowed_tags(["PERF", "WARNING", "ERROR"])
+
             perf = CMSSTranspilerPerf()
             input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
             opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
@@ -252,7 +249,7 @@ class TestTranspilerCmdLine:
                 None,
             )
             perf = CMSSTranspilerPerf()
-            trans_logger.set_allowed_tags(["PERF", "WARNING", "ERROR"])
+
             input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
             opt_level = Constant.DEFAULT_OPTIMIZATION_LEVEL
             basis_gates = ["rx", "ry", "cx"]

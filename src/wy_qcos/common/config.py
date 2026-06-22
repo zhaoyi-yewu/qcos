@@ -127,6 +127,16 @@ class PrefectSection(BaseModel):
     )
 
 
+class TranspilerSection(BaseModel):
+    """TRANSPILER section configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    DEBUG: bool = Field(
+        default=False, description="Enable transpiler perf logging"
+    )
+
+
 class RedisSection(BaseModel):
     """REDIS section configuration."""
 
@@ -295,6 +305,7 @@ class ConfigModel(BaseModel):
         default_factory=MetricsServerSection
     )
     PREFECT: PrefectSection = Field(default_factory=PrefectSection)
+    TRANSPILER: TranspilerSection = Field(default_factory=TranspilerSection)
     REDIS: RedisSection = Field(default_factory=RedisSection)
     DATABASE: DatabaseSection = Field(default_factory=DatabaseSection)
     USERS: UsersSection = Field(default_factory=UsersSection)
@@ -348,6 +359,7 @@ class Config:
     API_SERVER: APIServerSection = APIServerSection()
     METRICS_SERVER: MetricsServerSection = MetricsServerSection()
     PREFECT: PrefectSection = PrefectSection()
+    TRANSPILER: TranspilerSection = TranspilerSection()
     REDIS: RedisSection = RedisSection()
     DATABASE: DatabaseSection = DatabaseSection()
     USERS: UsersSection = UsersSection()
@@ -368,6 +380,7 @@ class Config:
         cls.API_SERVER = cls._model.API_SERVER
         cls.METRICS_SERVER = cls._model.METRICS_SERVER
         cls.PREFECT = cls._model.PREFECT
+        cls.TRANSPILER = cls._model.TRANSPILER
         cls.REDIS = cls._model.REDIS
         cls.DATABASE = cls._model.DATABASE
         cls.USERS = cls._model.USERS

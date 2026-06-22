@@ -23,9 +23,9 @@ from wy_qcos.transpiler.cmss.compiler.openqasm3.parser import (
 )
 from wy_qcos.transpiler.cmss.compiler.parser import compile
 from wy_qcos.transpiler.common.errors import TranspilerException
-from wy_qcos.transpiler.common.utils import (
-    trans_logger,
-)
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class TranspilerDummy(TranspilerBase):
@@ -57,7 +57,7 @@ class TranspilerDummy(TranspilerBase):
             return parse_result_dict
         if isinstance(src_code_dict, dict):
             for key, value in src_code_dict.items():
-                trans_logger.log_debug(f"source_code:\n{value}")
+                logger.debug(f"source_code:\n{value}")
                 num_qubits = 0
                 if code_type in [
                     Constant.CODE_TYPE_QASM,
