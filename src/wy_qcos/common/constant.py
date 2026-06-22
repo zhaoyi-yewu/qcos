@@ -256,6 +256,11 @@ class Constant:
     DEVICE_MONITOR_PREFIX = "device_monitor_"
     DEVICE_MANAGER_PREFIX = "device_mgr_"
 
+    # Work pool name prefixes
+    WORK_POOL_DEVICE_PREFIX = "device|"
+    WORK_POOL_MONITOR_PREFIX = "monitor|"
+    WORK_POOL_MGR_PREFIX = "mgr|"
+
     # Transpiler
     TRANSPILER_CMSS = "cmss"
     TRANSPILER_HIGH_PERFORMANCE_CMSS = "high_performance_cmss"

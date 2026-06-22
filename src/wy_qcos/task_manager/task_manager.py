@@ -151,10 +151,13 @@ class TaskFlowManager:
                 driver_name, Config.DEFAULT.VENV_DIR, add_default_env=True
             )
 
+            device_pool_name = (
+                f"{Constant.WORK_POOL_DEVICE_PREFIX}{device_name}"
+            )
             deployment_configs[device_name] = {
                 "python_bin": python_bin,
-                "pool_name": device_name,
-                "queue_name": f"{device_name}_{default_priority}",
+                "pool_name": device_pool_name,
+                "queue_name": f"{device_pool_name}_{default_priority}",
                 "path": "../engine/job_engine.py",
                 "flow_name": job_flow.__name__,
                 "command": f"{python_bin} -m prefect.engine",
@@ -164,9 +167,12 @@ class TaskFlowManager:
             device = self.device_manager.get_devices().get(device_name)
             enable_device_monitor = device.get_driver().enable_device_monitor
             if enable_device_monitor:
-                deployment_configs[f"{device_name}_monitor"] = {
+                monitor_key = (
+                    f"{Constant.WORK_POOL_MONITOR_PREFIX}{device_name}"
+                )
+                deployment_configs[monitor_key] = {
                     "python_bin": python_bin,
-                    "pool_name": f"{device_name}_monitor",
+                    "pool_name": monitor_key,
                     "queue_name": "default",
                     "path": "../engine/device_monitor_engine.py",
                     "flow_name": device_monitor_flow.__name__,
@@ -175,9 +181,10 @@ class TaskFlowManager:
                 }
             enable_device_mgr = device.get_driver().enable_device_mgr
             if enable_device_mgr:
-                deployment_configs[f"{device_name}_mgr"] = {
+                mgr_key = f"{Constant.WORK_POOL_MGR_PREFIX}{device_name}"
+                deployment_configs[mgr_key] = {
                     "python_bin": python_bin,
-                    "pool_name": f"{device_name}_mgr",
+                    "pool_name": mgr_key,
                     "queue_name": "default",
                     "path": "../engine/device_mgr_engine.py",
                     "flow_name": device_manager_flow.__name__,
@@ -199,13 +206,17 @@ class TaskFlowManager:
             device_names = self.device_manager.get_devices().keys()
 
             # create resources
-            if device_names:
+            device_pool_names = [
+                f"{Constant.WORK_POOL_DEVICE_PREFIX}{name}"
+                for name in device_names
+            ]
+            if device_pool_names:
                 self.loop.run_until_complete(
-                    self.create_pools(pool_names=device_names)
+                    self.create_pools(pool_names=device_pool_names)
                 )
 
             monitor_devices = [
-                device.get_name() + "_monitor"
+                f"{Constant.WORK_POOL_MONITOR_PREFIX}{device.get_name()}"
                 for device in self.device_manager.get_devices().values()
                 if device.get_driver().enable_device_monitor
             ]
@@ -215,18 +226,18 @@ class TaskFlowManager:
                 )
 
             manager_devices = [
-                device.get_name() + "_mgr"
+                f"{Constant.WORK_POOL_MGR_PREFIX}{device.get_name()}"
                 for device in self.device_manager.get_devices().values()
-                if device.get_driver().enable_device_monitor
+                if device.get_driver().enable_device_mgr
             ]
             if manager_devices:
                 self.loop.run_until_complete(
                     self.create_pools(pool_names=manager_devices)
                 )
 
-            if device_names:
+            if device_pool_names:
                 self.loop.run_until_complete(
-                    self.create_queues(queue_names=device_names)
+                    self.create_queues(queue_names=device_pool_names)
                 )
             # delete old monitor flow
             self.delete_task_flow_by_name("device-monitor-flow")
@@ -383,7 +394,7 @@ class TaskFlowManager:
         logger.info("Start prefect workers")
         device_names = self.device_manager.get_devices().keys()
         for device_name in device_names:
-            pool_name = device_name
+            pool_name = f"{Constant.WORK_POOL_DEVICE_PREFIX}{device_name}"
             deployment_name = device_name
             process_name = f"process-{pool_name}"
             concurrency_limit = Constant.DEFAULT_POOL_CONCURRENCY
@@ -407,33 +418,37 @@ class TaskFlowManager:
                 f"for pool: {pool_name}"
             )
             # start device monitor process
-            device = self.device_manager.get_devices().get(pool_name)
+            device = self.device_manager.get_devices().get(device_name)
             enable_device_monitor = device.get_driver().enable_device_monitor
             if enable_device_monitor:
+                monitor_pool = (
+                    f"{Constant.WORK_POOL_MONITOR_PREFIX}{device_name}"
+                )
                 device_monitor_process = multiprocessing.Process(
                     target=self.start_device_monitor_work,
-                    args=(process_name, pool_name, concurrency_limit),
+                    args=(process_name, device_name, concurrency_limit),
                     name=process_name,
                 )
                 device_monitor_process.daemon = True
                 device_monitor_process.start()
                 logger.info(
-                    f"Started Prefect Worker process: {process_name}_monitor "
-                    f"for pool: {pool_name}_monitor"
+                    f"Started Prefect Worker process: "
+                    f"{process_name}_monitor for pool: {monitor_pool}"
                 )
 
             enable_device_mgr = device.get_driver().enable_device_mgr
             if enable_device_mgr:
+                mgr_pool = f"{Constant.WORK_POOL_MGR_PREFIX}{device_name}"
                 device_mgr_process = multiprocessing.Process(
                     target=self.start_device_mgr_work,
-                    args=(process_name, pool_name, concurrency_limit),
+                    args=(process_name, device_name, concurrency_limit),
                     name=process_name,
                 )
                 device_mgr_process.daemon = True
                 device_mgr_process.start()
                 logger.info(
-                    f"Started Prefect Worker process: {process_name}_mgr "
-                    f"for pool: {pool_name}_mgr"
+                    f"Started Prefect Worker process: "
+                    f"{process_name}_mgr for pool: {mgr_pool}"
                 )
 
     def run_device_monitor(self):
@@ -442,7 +457,9 @@ class TaskFlowManager:
 
         for device in devices:
             # registry deploy
-            deployment = self.deployments.get(f"{device.get_name()}_monitor")
+            deployment = self.deployments.get(
+                f"{Constant.WORK_POOL_MONITOR_PREFIX}{device.get_name()}"
+            )
             if deployment:
                 deploy_id = deployment.get("deploy_id")
                 # create flow run by deploy
@@ -537,10 +554,11 @@ class TaskFlowManager:
         prefect_configs = TaskFlowManager.get_prefect_configs()
 
         # start process worker
+        monitor_pool_name = f"{Constant.WORK_POOL_MONITOR_PREFIX}{pool_name}"
         with prefect_settings.temporary_settings(updates=prefect_configs):
             worker = ProcessWorker(
                 name=process_name + "_monitor",
-                work_pool_name=pool_name + "_monitor",
+                work_pool_name=monitor_pool_name,
                 limit=concurrency_limit,
             )
             setproctitle.setproctitle(
@@ -560,10 +578,11 @@ class TaskFlowManager:
         # get prefect configs
         prefect_configs = TaskFlowManager.get_prefect_configs()
         # start process worker
+        mgr_pool_name = f"{Constant.WORK_POOL_MGR_PREFIX}{pool_name}"
         with prefect_settings.temporary_settings(updates=prefect_configs):
             worker = ProcessWorker(
                 name=process_name + "_mgr",
-                work_pool_name=pool_name + "_mgr",
+                work_pool_name=mgr_pool_name,
                 limit=concurrency_limit,
             )
             setproctitle.setproctitle(f"[prefect] {process_name}_device_mgr")
@@ -572,7 +591,10 @@ class TaskFlowManager:
     async def wait_workers(self):
         """Start all workers for work pool."""
         device_names = self.device_manager.get_devices().keys()
-        pool_names = device_names
+        pool_names = [
+            f"{Constant.WORK_POOL_DEVICE_PREFIX}{name}"
+            for name in device_names
+        ]
 
         # wait for all workers are online
         all_worker_status = {workpool: False for workpool in pool_names}
@@ -598,7 +620,7 @@ class TaskFlowManager:
 
         elapsed_time = 0
         monitor_devices = [
-            device.get_name() + "_monitor"
+            f"{Constant.WORK_POOL_MONITOR_PREFIX}{device.get_name()}"
             for device in self.device_manager.get_devices().values()
             if device.get_driver().enable_device_monitor
         ]

@@ -284,6 +284,24 @@ class SSLSection(BaseModel):
     )
 
 
+class TaskCleanSection(BaseModel):
+    """TASK_CLEAN section configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    TASK_CLEAN_INTERVAL: int = Field(
+        default=60,
+        ge=1,
+        description="Task clean interval in minutes",
+    )
+    JOB_EXPIRE_DAYS: int = Field(
+        default=7,
+        ge=1,
+        description="Job expiration days, jobs older than this "
+        "will be auto-deleted",
+    )
+
+
 class DevicesSection(BaseModel):
     """DEVICES section configuration."""
 
@@ -312,6 +330,7 @@ class ConfigModel(BaseModel):
     VIRT: VirtSection = Field(default_factory=VirtSection)
     LOG: LogSection = Field(default_factory=LogSection)
     SSL: SSLSection = Field(default_factory=SSLSection)
+    TASK_CLEAN: TaskCleanSection = Field(default_factory=TaskCleanSection)
     DEVICES: DevicesSection = Field(default_factory=DevicesSection)
 
 
@@ -351,6 +370,7 @@ class Config:
         "VIRT",
         "LOG",
         "SSL",
+        "TASK_CLEAN",
         "DEVICES",
     ]
 
@@ -366,6 +386,7 @@ class Config:
     VIRT: VirtSection = VirtSection()
     LOG: LogSection = LogSection()
     SSL: SSLSection = SSLSection()
+    TASK_CLEAN: TaskCleanSection = TaskCleanSection()
     DEVICES: DevicesSection = DevicesSection()
 
     @classmethod
@@ -387,6 +408,7 @@ class Config:
         cls.VIRT = cls._model.VIRT
         cls.LOG = cls._model.LOG
         cls.SSL = cls._model.SSL
+        cls.TASK_CLEAN = cls._model.TASK_CLEAN
         cls.DEVICES = cls._model.DEVICES
 
     @classmethod
