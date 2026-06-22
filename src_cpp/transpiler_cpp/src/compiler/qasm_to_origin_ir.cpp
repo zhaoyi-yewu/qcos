@@ -41,7 +41,7 @@ std::string qasmfile2str(const std::string& filename) {
   }
   return ss.str();
 }
-
+/*
 std::string convert_qasm_to_originir(std::string qasm_filepath) {
   return QuantumComputation::fromQASM(qasmfile2str(qasm_filepath))
       .toOriginIR();
@@ -64,7 +64,14 @@ convert_qasm_string_to_qcos_operations(std::string qasm_str) {
   operations = create_gates(ops);
   return {operations, qubits_num};
 }
-
+*/
+std::pair<std::vector<std::shared_ptr<qcos::BaseOperation>>, int>
+convert_qasm_string_to_qcos_operations(std::string qasm_str) {
+  auto qc = qc::QuantumComputation::fromQASM(qasm_str);
+  int qubits_num = static_cast<int>(qc.getNqubits());
+  return {qc.getOps(), qubits_num};
+}
+/*
 std::vector<std::shared_ptr<qcos::BaseOperation>> create_gates(
     const std::vector<std::unique_ptr<Operation>>& ops) {
   std::vector<std::shared_ptr<qcos::BaseOperation>> operations;
@@ -342,3 +349,4 @@ std::vector<std::shared_ptr<qcos::BaseOperation>> create_gates(
   }
   return std::move(operations);
 }
+*/
