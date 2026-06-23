@@ -56,7 +56,8 @@ class TestDriverQuafu:
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs(self, mock_validate_schema):
         mock_validate_schema.return_value = True, None
-        success, _ = driver_quafu.validate_driver_configs(Config)
+        configs = {}
+        success, _ = driver_quafu.validate_driver_configs(configs)
         assert success is True
 
     def test_init_driver(self):
