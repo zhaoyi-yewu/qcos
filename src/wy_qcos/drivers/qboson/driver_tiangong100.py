@@ -24,7 +24,8 @@ from datetime import datetime, timedelta
 
 from loguru import logger
 
-from wy_qcos.common.constant import HttpCode, HttpMethod
+
+from wy_qcos.common.constant import Constant, HttpCode, HttpMethod
 from wy_qcos.common.library import Library
 from wy_qcos.drivers.device import Device
 from wy_qcos.drivers.driver_qubo_base import DriverQuboBase
@@ -145,6 +146,13 @@ class DriverTiangong100(DriverQuboBase):
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
             success = False
+        else:
+            self.max_job_wait_time = configs.get(
+                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
+            )
+            self.job_query_interval = configs.get(
+                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
+            )
 
         return success, err_msg
 
@@ -285,8 +293,8 @@ class DriverTiangong100(DriverQuboBase):
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
         success, err_msg, _ = Library.loop_with_timeout(
             self.check_task_status,
-            3600,
-            5,
+            self.max_job_wait_time,
+            self.job_query_interval,
             task_name,
             expect_task_status=[self.task_status_completed],
         )

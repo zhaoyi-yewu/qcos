@@ -47,6 +47,12 @@ username = "spinq_visitor_002"
 # [Required] key file content
 signature = ""
 
+# [Optional] max job wait time, default value is 604800 seconds (7 days)
+max_job_wait_time = 604800
+
+# [Optional] job query interval, default value is 5 seconds
+job_query_interval = 5
+
 [spinq_triangulum.transpiler.qpu_configs]
 qubits = 3
 coupler_map.CX1_2 = ["Q1", "Q2"]

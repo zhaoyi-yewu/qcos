@@ -38,7 +38,6 @@ class DriverSpinQNmr(DriverBase):
     """
 
     max_retries = 3
-    task_time_out = 3600
     default_nmr_host = "127.0.0.1"
     default_nmr_port = 6060
 
@@ -129,6 +128,14 @@ class DriverSpinQNmr(DriverBase):
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
             success = False
+        else:
+            self.max_job_wait_time = configs.get(
+                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
+            )
+            self.job_query_interval = configs.get(
+                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
+            )
+
         return success, err_msg
 
     def convert_gate(self, gate, qubit_depth):
@@ -281,8 +288,8 @@ class DriverSpinQNmr(DriverBase):
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
         success, err_msg, _results = Library.loop_with_timeout(
             self.get_task_results,
-            self.task_time_out,
-            5,
+            self.max_job_wait_time,
+            self.job_query_interval,
             task_code,
             expect_task_status=["S"],
         )

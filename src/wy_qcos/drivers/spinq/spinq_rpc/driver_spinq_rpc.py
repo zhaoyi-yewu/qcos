@@ -85,7 +85,6 @@ class DriverSpinQRpc(DriverBase):
     """
 
     max_retries = 3
-    task_time_out = 3600
     default_rpc_host = "127.0.0.1"
     default_rpc_port = 4242
 
@@ -178,6 +177,14 @@ class DriverSpinQRpc(DriverBase):
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
             success = False
+        else:
+            self.max_job_wait_time = configs.get(
+                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
+            )
+            self.job_query_interval = configs.get(
+                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
+            )
+
         return success, err_msg
 
     def update_qubit_depth(self, qubit_depth, targets):
@@ -385,8 +392,8 @@ class DriverSpinQRpc(DriverBase):
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
         success, err_msg, _ = Library.loop_with_timeout(
             self.check_task_status,
-            self.task_time_out,
-            5,
+            self.max_job_wait_time,
+            self.job_query_interval,
             task_id,
             expect_task_status=[TaskStatus.finished.value],
         )

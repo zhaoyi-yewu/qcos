@@ -153,7 +153,11 @@ class DriverBase:
             Optional("log_rotate_max_size_mb"): int,
             Optional("log_rotate_backup_count"): int,
             Optional("log_rotate_compression"): bool,
+            Optional("max_job_wait_time"): int,
+            Optional("job_query_interval"): int,
         }
+        self.max_job_wait_time = Constant.DEFAULT_JOB_WAIT_TIME  # 7 days
+        self.job_query_interval = Constant.DEFAULT_JOB_QUERY_INTERVAL
 
     def validate_driver(self):
         """Validate driver."""

@@ -494,6 +494,9 @@ class Constant:
     API_LAST_HOUR_REQUESTS = "last_hour_requests"
     API_LAST_DAY_REQUESTS = "last_day_requests"
 
+    DEFAULT_JOB_QUERY_INTERVAL = 5
+    DEFAULT_JOB_WAIT_TIME = 604800
+
 
 class HttpHeaders:
     # headers

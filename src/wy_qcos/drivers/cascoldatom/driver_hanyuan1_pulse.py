@@ -94,6 +94,12 @@ class DriverHanyuan1Pulse(DriverPulseBase):
             self.username = configs.get("username", "username")
             self.password = configs.get("password", "password")
             self.shared_dir = configs.get("shared_dir", "shared_dir")
+            self.max_job_wait_time = configs.get(
+                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
+            )
+            self.job_query_interval = configs.get(
+                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
+            )
             try:
                 smbclient.register_session(
                     server=self.ip_address,
@@ -417,8 +423,8 @@ class DriverHanyuan1Pulse(DriverPulseBase):
         task_id = f"{job_id}-{data_index}"
         success, err_msg, raw_results = Library.loop_with_timeout(
             self.get_task_result,
-            3600,
-            10,
+            self.max_job_wait_time,
+            self.job_query_interval,
             task_id,
         )
         if not success:
