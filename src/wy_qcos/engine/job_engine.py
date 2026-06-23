@@ -1743,5 +1743,8 @@ def format_error_results(driver, err_cls, err_msg):
         "code": err.get_error_code(),
         "message": err.get_err_msgs(),
     }
-    logger.error(f"{driver.name}: {err}")
+    if driver:
+        logger.error(f"{driver.name}: {err}")
+    else:
+        logger.error(f"Unknown driver: {err}")
     return job_results
