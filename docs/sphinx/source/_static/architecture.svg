@@ -1191,10 +1191,10 @@
      y="780"
      width="110"
      height="28"
-     fill="#fff"
+     fill="#ffffffff"
      stroke="#ccc"
      id="rect60"
-     style="stroke-width:3;stroke-dasharray:9, 3;stroke-dashoffset:0;fill:url(#linearGradient128);stroke:#0066cc;stroke-opacity:1" />
+     style="stroke-width:3;stroke-dasharray:9, 3;stroke-dashoffset:0;stroke:#0066cc;stroke-opacity:1" />
   <text
      x="113.94057"
      y="794.82166"

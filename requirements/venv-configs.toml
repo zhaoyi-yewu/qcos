@@ -13,9 +13,9 @@ deps_filepaths = [
 ]
 envs = ["python3"]
 
-[pypy]
-deps_filepaths = ["./requirements-transpiler-cmss.txt"]
-envs = ["pypy3"]
+#[pypy]
+#deps_filepaths = ["./requirements-transpiler-cmss.txt"]
+#envs = ["pypy3"]
 
 [DriverQutipSim]
 module_name = "driver_qutip_sim"
