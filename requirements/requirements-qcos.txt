@@ -10,6 +10,7 @@ bcrypt==5.0.0
 click==8.1.8
 cliff==4.10.0
 cryptography==45.0.7
+docker==4.4.4
 fastapi==0.122.1
 fastapi-jsonrpc==3.4.2
 h11==0.16.0

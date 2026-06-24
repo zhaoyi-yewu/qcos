@@ -19,12 +19,7 @@ BASE_DIR=$(dirname "$0")
 BASE_DIR=$(readlink -f ${BASE_DIR})
 TOP_DIR=$(readlink -f ${BASE_DIR}/..)
 BUILD_SCRIPTS_DIR=${TOP_DIR}/build-scripts
-source ${BUILD_SCRIPTS_DIR}/setup-build-context.sh
-
 TEMP_PKG_DIR=/tmp/qcos-pkgs
-
-PYTHON_SRC_MIRROR=${PYTHON_SRC_MIRROR:-"https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz"}
-PYPY3_BIN_MIRROR=${PYPY3_BIN_MIRROR:-"https://downloads.python.org/pypy/pypy3.11-v7.3.20-linux64.tar.bz2"}
 
 function usage {
     echo "Usage: $0 [OPTION] ..."
@@ -70,6 +65,10 @@ while true; do
     * )         break ;;
   esac
 done
+
+source ${BUILD_SCRIPTS_DIR}/setup-build-context.sh
+PYTHON_SRC_MIRROR=${PYTHON_SRC_MIRROR:-"https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz"}
+PYPY3_BIN_MIRROR=${PYPY3_BIN_MIRROR:-"https://downloads.python.org/pypy/pypy3.11-v7.3.20-linux64.tar.bz2"}
 
 image_tag=${QCOS_IMAGE_VERSION}
 if [ -n "${tag}" ]; then

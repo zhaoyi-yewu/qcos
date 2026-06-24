@@ -464,6 +464,8 @@ jobs:
       - run-ut-qcos-cli
       - run-st-qcos
     runs-on: ubuntu-latest
+    outputs:
+      tags_empty: ${{ steps.check-tags.outputs.tags_empty }}
     steps:
       - name: Generate Docker Metadata
         id: meta
@@ -482,15 +484,18 @@ jobs:
             type=semver,pattern=latest
 
       - name: Check Docker Metadata Tags
+        id: check-tags
         shell: bash
         run: |
           TAGS="${{ steps.meta.outputs.tags }}"
           if [ -z "$TAGS" ]; then
             echo "::warning::No Docker tags generated from metadata. Skipping push-docker-images steps."
             echo "TAGS_EMPTY=true" >> $GITHUB_ENV
+            echo "tags_empty=true" >> $GITHUB_OUTPUT
           else
             echo "Docker tags available: $TAGS"
             echo "TAGS_EMPTY=false" >> $GITHUB_ENV
+            echo "tags_empty=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Free up disk space
@@ -706,7 +711,7 @@ jobs:
                       <tr><td>Unit Tests - QCOS</td>         <td>${{ needs.run-ut-qcos.result == 'success' && '✅ success' || needs.run-ut-qcos.result == 'failure' && '❌ failure' || needs.run-ut-qcos.result == 'skipped' && '⏭️ skipped' || needs.run-ut-qcos.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
                       <tr><td>Unit Tests - QCOS-CLI</td>     <td>${{ needs.run-ut-qcos-cli.result == 'success' && '✅ success' || needs.run-ut-qcos-cli.result == 'failure' && '❌ failure' || needs.run-ut-qcos-cli.result == 'skipped' && '⏭️ skipped' || needs.run-ut-qcos-cli.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
                       <tr><td>System Tests - QCOS</td>       <td>${{ needs.run-st-qcos.result == 'success' && '✅ success' || needs.run-st-qcos.result == 'failure' && '❌ failure' || needs.run-st-qcos.result == 'skipped' && '⏭️ skipped' || needs.run-st-qcos.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
-                      <tr><td>Tag & Push Docker Images</td>       <td>${{ needs.push-docker-images.result == 'success' && '✅ success' || needs.push-docker-images.result == 'failure' && '❌ failure' || needs.push-docker-images.result == 'skipped' && '⏭️ skipped' || needs.push-docker-images.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
+                      <tr><td>Tag & Push Docker Images</td>       <td>${{ needs.push-docker-images.outputs.tags_empty == 'true' && '⏭️ skipped' || (needs.push-docker-images.result == 'success' && '✅ success' || needs.push-docker-images.result == 'failure' && '❌ failure' || needs.push-docker-images.result == 'skipped' && '⏭️ skipped' || needs.push-docker-images.result == 'cancelled' && '🚫 cancelled' || '❓ unknown') }}</td></tr>
                     </tbody>
                   </table>
                   <a class="btn" href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Full Run Logs →</a>

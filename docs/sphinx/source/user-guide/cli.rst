@@ -17,7 +17,7 @@
 
 提交作业支持不同后端驱动、参数配置及执行模式
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -69,7 +69,7 @@
      -f SOURCE_CODE_FILES [SOURCE_CODE_FILES ...], --source-code-file SOURCE_CODE_FILES [SOURCE_CODE_FILES ...]
                            Source code file, files can be specified multiple times
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 - dummy驱动 (测试用)
@@ -220,7 +220,7 @@
 
 更新作业支持对排队中任务修改优先级
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -243,7 +243,7 @@
                            Set job priority. Values: 1-10, Default: 5. Highest priority: 1, Lowest Priority: 10
 
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -256,7 +256,7 @@
 
 查询作业的列表、状态和结果
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -314,7 +314,7 @@
    options:
      -h, --help            show this help message and exit
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -339,7 +339,7 @@
 
 作业的删除和取消
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -372,7 +372,7 @@
      -h, --help       show this help message and exit
      -y, --yes        Answer yes for all question
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -395,7 +395,7 @@
 
 异步回调设置作业结果
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -413,7 +413,7 @@
      --results RESULTS [RESULTS ...]
                            Job Results
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -432,7 +432,7 @@
 
 查询当前服务端的软件版本、API版本、支持的设备和能力清单
 
-*命令行参数*
+命令行参数
 ***************
 
 .. code-block:: shell
@@ -445,7 +445,7 @@
    options:
      -h, --help  show this help message and exit
 
-*典型场景示例*
+典型场景示例
 ***************
 
 .. code-block:: shell
@@ -458,7 +458,7 @@
 
 系统相关命令
 
-*命令行参数*
+命令行参数
 ***************
 
 .. code-block:: shell
@@ -485,7 +485,7 @@
    options:
      -h, --help            show this help message and exit
 
-*典型场景示例*
+典型场景示例
 ***************
 
 .. code-block:: shell
@@ -502,7 +502,7 @@
 
 系统监控指标相关查询命令，包括系统健康状态、API访问统计和作业统计
 
-*命令行参数*
+命令行参数
 ***************
 
 .. code-block:: shell
@@ -535,7 +535,7 @@
     options:
       -h, --help  show this help message and exit
 
-*典型场景示例*
+典型场景示例
 ***************
 
 .. code-block:: shell
@@ -554,7 +554,7 @@
 
 驱动相关的查询命令
 
-*命令行参数*
+命令行参数
 ***************
 
 .. code-block:: shell
@@ -584,7 +584,7 @@
    options:
      -h, --help            show this help message and exit
 
-*典型场景示例*
+典型场景示例
 ***************
 
 .. code-block:: shell
@@ -600,7 +600,7 @@
 
 设备相关查询和配置命令
 
-*命令行参数*
+命令行参数
 ***************
 
 .. code-block:: shell
@@ -684,7 +684,7 @@
    options:
      -h, --help            show this help message and exit
 
-*典型场景示例*
+典型场景示例
 ***************
 
 .. code-block:: shell
@@ -713,7 +713,7 @@
 
 转译器相关查询和配置命令
 
-*命令行参数*
+命令行参数
 ***************
 
 .. code-block:: shell
@@ -744,7 +744,7 @@
    options:
      -h, --help            show this help message and exit
 
-*典型场景示例*
+典型场景示例
 ***************
 
 .. code-block:: shell
@@ -774,7 +774,7 @@
 
 用户登录获取访问令牌
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -794,7 +794,7 @@
      --access-token        Only print the access token
      --refresh-token       Only print the refresh token
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -817,7 +817,7 @@
 
 用户登出清除令牌
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -830,7 +830,7 @@
    options:
      -h, --help  show this help message and exit
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -844,7 +844,7 @@
 
 刷新JWT访问令牌
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -860,7 +860,7 @@
                                Specify refresh_token directly
                                (overrides QCOS_REFRESH_TOKEN environment variable)
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -878,7 +878,7 @@
 
 显示当前已认证用户的信息
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -894,7 +894,7 @@
    options:
      -h, --help            show this help message and exit
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -913,7 +913,7 @@
 
 创建项目的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -926,7 +926,7 @@
    positional arguments:
      project_name  Project name
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -942,7 +942,7 @@
 
 查询项目列表的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -970,7 +970,7 @@
      --sort-ascending      sort the column(s) in ascending order
      --sort-descending     sort the column(s) in descending order
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -983,7 +983,7 @@
 
 查询项目详情的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -998,7 +998,7 @@
    positional arguments:
      project_id    Project ID (UUID)
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1011,7 +1011,7 @@
 
 更新项目的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1029,7 +1029,7 @@
      --name NAME   New project name
      --description DESCRIPTION New project description
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1042,7 +1042,7 @@
 
 删除项目的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1055,7 +1055,7 @@
    positional arguments:
      project_id  Project ID (UUID)
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1085,7 +1085,7 @@
 
 获取用户管理系统状态的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1101,7 +1101,7 @@
    options:
      -h, --help            show this help message and exit
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1114,7 +1114,7 @@
 
 创建用户的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1139,7 +1139,7 @@
      --disable             Disable user account upon creation
      --lock                Lock user account upon creation
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1167,7 +1167,7 @@
 
 查询用户列表的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1185,7 +1185,7 @@
      -h, --help            show this help message and exit
      --user-name USER_NAME Filter users by user name (optional)
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1201,7 +1201,7 @@
 
 查询用户详情的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1217,7 +1217,7 @@
    positional arguments:
      user_id       User ID (UUID) or user name
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1230,7 +1230,7 @@
 
 更新用户的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1263,7 +1263,7 @@
      --lock                Lock user account
      --unlock              Unlock user account
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1294,7 +1294,7 @@
 
 删除用户的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1314,7 +1314,7 @@
      -h, --help            show this help message and exit
      -f, --force           Force delete user and cascade delete related resources
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1333,7 +1333,7 @@
 
 修改用户密码的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1354,7 +1354,7 @@
    options:
      -h, --help    show this help message and exit
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1370,7 +1370,7 @@
 
 查询用户登录日志的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1394,7 +1394,7 @@
 
    注意：--user-id 和 --user-name 不能同时指定，请只选择其中一个
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1416,7 +1416,7 @@
 
 清空用户登录日志的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1434,7 +1434,7 @@
 
     注意：--user-id 和 --user-name 不能同时指定，请只选择其中一个
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1461,7 +1461,7 @@
 
 创建角色的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1481,7 +1481,7 @@
      --description DESCRIPTION
                            Role description
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1494,7 +1494,7 @@
 
 查询所有角色的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1514,7 +1514,7 @@
       -h, --help            show this help message and exit
       --role-name ROLE_NAME Filter roles by role name
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1530,7 +1530,7 @@
 
 查询角色详情的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1550,7 +1550,7 @@
    positional arguments:
      role_id       Role ID (UUID) or role name
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1566,7 +1566,7 @@
 
 更新角色的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1591,7 +1591,7 @@
      --description DESCRIPTION
                            Role description
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1610,7 +1610,7 @@
 
 删除角色的操作命令
 
-*命令行参数*
+命令行参数
 ~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -1629,7 +1629,7 @@
    options:
      -h, --help    show this help message and exit
 
-*典型场景示例*
+典型场景示例
 ~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell

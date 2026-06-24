@@ -715,6 +715,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
     - jwt:                 启用JWT认证（生产环境推荐）
     - virtual_instance:    虚拟实例认证（云资源隔离）
 
+
 **1. AUTH_MODE=no (禁用认证)**
 
 **作用**：完全禁用用户认证和权限检查
@@ -753,9 +754,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
         user_name="test",
         password="password",
         roles=["user"]
-    )  # ✅ 成功，无需认证
-
----
+    )  # 成功，无需认证
 
 **2. AUTH_MODE=jwt (JWT认证)**
 
@@ -796,7 +795,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
           user_name="testuser",
           password="password123",
           roles=["user"]
-      )  # ✅ 成功，因为default用户(admin)有权限
+      )  # 成功，因为default用户(admin)有权限
 
 3. 令牌过期后使用刷新令牌获取新令牌
 
@@ -851,7 +850,6 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
     └─ 第2层：用户级检查（若有）
        └─ auth_match_user_id(user_id) → 额外验证用户匹配
 
----
 
 **3. AUTH_MODE=virtual_instance (虚拟实例认证)**
 
