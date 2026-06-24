@@ -69,6 +69,7 @@ class CutWire:
         except ValueError as e:
             raise ValueError(f"Init data fail: {str(e)}.") from e
         self.subcircuits_dict = None
+        self.subcircuit_result_indices = None
         self.max_memory = max_memory
         self.max_depth = max_depth
 
@@ -166,13 +167,44 @@ def generate_all_variant_subcircuits_for_execute(
     origin_subcircuits = cut_wire.subcircuits
     subcircuits_dict = cut_wire.generate_all_variants_subcircuits()
     cut_wire.subcircuits_dict = subcircuits_dict
-    subcircuits = simple_subcircuit_dict(subcircuits_dict)
-    logger.info(f"Generated {len(subcircuits)} subcircuits")
+    subcircuits, result_indices = cache_subcircuits_for_execute(
+        subcircuits_dict
+    )
+    cut_wire.subcircuit_result_indices = result_indices
+    logger.info(
+        f"Generated {len(result_indices)} subcircuit variants, "
+        f"{len(subcircuits)} unique subcircuits will be executed, "
+        f"cache hits: {len(result_indices) - len(subcircuits)}"
+    )
     return (
         origin_subcircuits,
-        simple_subcircuit_dict(subcircuits_dict),
+        subcircuits,
         cut_wire,
     )
+
+
+def cache_subcircuits_for_execute(subcircuits_dict):
+    """Cache duplicate subcircuits and build their result index mapping.
+
+    Args:
+        subcircuits_dict (dict): Subcircuit variants grouped by subcircuit.
+
+    Returns:
+        tuple: Unique subcircuits for execution and the result index used by
+            each original variant.
+    """
+    unique_subcircuits = []
+    result_indices = []
+    subcircuit_cache = {}
+
+    for subcircuit_variants in subcircuits_dict.values():
+        for variant_circuit in subcircuit_variants.values():
+            if variant_circuit not in subcircuit_cache:
+                subcircuit_cache[variant_circuit] = len(unique_subcircuits)
+                unique_subcircuits.append(variant_circuit)
+            result_indices.append(subcircuit_cache[variant_circuit])
+
+    return unique_subcircuits, result_indices
 
 
 def simple_subcircuit_dict(subcircuits_dict):
@@ -209,6 +241,16 @@ def reconstruct_probability_distribution_wire_cut(
     """
     all_results_dict = {}
     subcircuits_for_execute = wirecut.subcircuits_dict
+    result_indices = getattr(wirecut, "subcircuit_result_indices", None)
+    variant_count = sum(
+        len(subcircuit_variants)
+        for subcircuit_variants in subcircuits_for_execute.values()
+    )
+    if result_indices is not None and len(result_indices) != variant_count:
+        raise ValueError(
+            "The subcircuit result index cache does not match the number "
+            "of subcircuit variants."
+        )
     cnt = 0
     for (
         subcircuit_index,
@@ -216,7 +258,10 @@ def reconstruct_probability_distribution_wire_cut(
     ) in subcircuits_for_execute.items():
         results_dict_for_one_subcircuit = {}
         for config, _ in subcircuit_variants.items():
-            result = results_for_execute[cnt]
+            result_index = (
+                result_indices[cnt] if result_indices is not None else cnt
+            )
+            result = results_for_execute[result_index]
             results_dict_for_one_subcircuit[config] = result
             cnt += 1
         all_results_dict[subcircuit_index] = results_dict_for_one_subcircuit
