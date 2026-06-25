@@ -32,22 +32,21 @@
 
         .. code-block:: json
 
-           {
-             "jsonrpc": "2.0",
-             "id": 1,
-                 "result": {
-                   "system_healthy": true,
-                   "heartbeat_timestamp": 1234567890.123,
-                   "component_status": {
-                     "fastapi": "online",
-                     "redis": "online",
-                     "prefect": "online",
-                     "worker": "online"
-                   }
-                 },
-             "error": null,
-             "id": 1
-           }
+            {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "result": {
+                "system_healthy": true,
+                "heartbeat_timestamp": 1234567890.123,
+                "component_status": {
+                  "fastapi": "online",
+                  "redis": "online",
+                  "prefect": "online",
+                  "worker": "online"
+                }
+              },
+              "error": null
+            }
 
    * - **查询 API 访问统计**
      - **get_api_stats**
@@ -124,13 +123,13 @@
    * - Field
      - Type
      - Description
-   * - **healthy**
+   * - **system_healthy**
      - bool
      - 系统整体健康状态。只有 worker、prefect、fastapi、redis 四个组件均在线时为 true
    * - **heartbeat_timestamp**
      - float
      - 最后心跳时间戳（Unix 时间戳，秒）
-   * - **components**
+   * - **component_status**
      - object
      - 各组件状态映射（键：组件名，值："online"/"offline"）
    * - **total_requests**

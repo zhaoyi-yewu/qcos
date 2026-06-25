@@ -43,7 +43,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
     """FastAPI middleware for collecting API access metrics."""
 
     # Excluded paths for which metrics are not collected
-    EXCLUDED_PATHS = {"/metrics", "/health", "/favicon.ico"}
+    EXCLUDED_PATHS = {"/metrics", "/v1/metrics", "/health", "/favicon.ico"}
 
     # Modules for which metrics are collected
     MODULES = {"device", "driver", "job", "system", "transpiler"}
