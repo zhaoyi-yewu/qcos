@@ -610,6 +610,34 @@ class DriverWuyueBase(DriverBase):
         machine_time_info = final_results.get("machine_time_info", None)
         return success, "\n".join(err_msg), format_results, machine_time_info
 
+    def update_device_info_schema(self) -> dict:
+        """Update device info schema.
+
+        Returns:
+            updated schema
+        """
+        raise NotImplementedError(
+            f"Driver: {self.__class__.__name__} "
+            f"must implement method: update_device_info_schema"
+        )
+
+    def update_device_info(self, schema: dict, raw_data: dict) -> dict:
+        """Update device info.
+
+        Args:
+            schema: dict
+            raw_data: device info raw data
+
+        Returns:
+            updated device info
+        """
+        device_info = {}
+        for item in self.hanyuan1_device_info_schema:
+            field_name = item.key
+            default_val = item.default
+            device_info[field_name] = raw_data.get(field_name, default_val)
+        return device_info
+
     def get_device_info(self):
         """Get device info.
 
@@ -646,14 +674,22 @@ class DriverWuyueBase(DriverBase):
             err_msg = response["msg"]
             logger.info(f"err_code: {err_code}, msg: {err_msg}")
             if err_code == 1:
-                data = response["data"]
-                if data is None:
+                raw_data = response["data"]
+                if raw_data is None:
                     success = False
-                    err_msgs.append("invalid data received")
+                    err_msgs.append("invalid raw_data received")
                     return success, "\n".join(err_msgs), None
-                device_info = data
+                schema = self.update_device_info_schema()
+                _success_validate, validate_err_msg = Library.validate_schema(
+                    raw_data, schema
+                )
+                if _success_validate:
+                    device_info = self.update_device_info(schema, raw_data)
+                else:
+                    success = False
+                    err_msgs.append(validate_err_msg)
             else:
-                success = True
+                success = False
                 err_msgs.append(err_msg)
         else:
             success = False
@@ -666,11 +702,12 @@ class DriverWuyueBase(DriverBase):
         Returns:
             remote device running info
         """
-        device_running_info = {}
+        device_running_info = {"status": "online"}
         success, err_msg, device_info = self.get_device_info()
         if not success:
             logger.debug(f"Failed to get device info: {err_msg}")
             device_running_info["details"] = {}
+            device_running_info["status"] = "offline"
             return device_running_info
 
         logger.info(f"Device info: {device_info}")

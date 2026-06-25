@@ -156,6 +156,11 @@ class DriverBase:
             Optional("max_job_wait_time"): int,
             Optional("job_query_interval"): int,
         }
+        self.default_device_info_schema = {
+            Optional("singleFidelity"): float,
+            Optional("doubleFidelity"): float,
+            Optional("SPAMError"): float,
+        }
         self.max_job_wait_time = Constant.DEFAULT_JOB_WAIT_TIME  # 7 days
         self.job_query_interval = Constant.DEFAULT_JOB_QUERY_INTERVAL
 

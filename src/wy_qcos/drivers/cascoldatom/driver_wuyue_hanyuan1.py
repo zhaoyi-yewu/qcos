@@ -15,6 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
+from schema import Optional
+
 from wy_qcos.common.constant import Constant
 from wy_qcos.drivers.driver_wuyue_base import DriverWuyueBase
 
@@ -44,3 +47,25 @@ class DriverWuyueHanyuan1(DriverWuyueBase):
         self.supported_code_types = [Constant.CODE_TYPE_QASM2]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.max_qubits = 100
+        self.hanyuan1_device_info_schema = {
+            Optional("horizontalRelaxationTime"): int,
+            Optional("uniformityDephasingTime"): int,
+            Optional("nonUniformityDephasingTime"): int,
+            Optional("verticalRelaxationTime"): int,
+            Optional("tweezersNum"): int,
+            Optional("vaccum"): float,
+            Optional("rydbergExcitation"): float,
+            Optional("transportFidelity"): float,
+            Optional("elementAtom"): str,
+            Optional("time"): str,
+        }
+
+    def update_device_info_schema(self) -> dict:
+        """Update device info schema.
+
+        Returns:
+            updated schema
+        """
+        device_info_schema = copy.deepcopy(self.default_device_info_schema)
+        device_info_schema.update(self.hanyuan1_device_info_schema)
+        return device_info_schema
