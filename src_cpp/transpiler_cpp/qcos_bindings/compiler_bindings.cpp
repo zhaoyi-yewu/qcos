@@ -15,8 +15,13 @@
  * ----------------------------------------------------------------------
  */
 
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/optional.h>
+#include <nanobind/stl/pair.h>
+#include <nanobind/stl/set.h>
+#include <nanobind/stl/shared_ptr.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>
 
 #include "compiler/definitions.hpp"
 #include "compiler/operations/control.hpp"
@@ -24,27 +29,27 @@
 #include "compiler/operations/operation.hpp"
 #include "compiler/qasm_to_origin_ir.hpp"
 
-namespace py = pybind11;
+namespace nb = nanobind;
 using namespace qc;
 
-void bind_parser(py::module_& m) {
-  py::enum_<Control::Type>(m, "ControlType")
+void bind_parser(nb::module_& m) {
+  nb::enum_<Control::Type>(m, "ControlType")
       .value("Pos", Control::Type::Pos)
       .value("Neg", Control::Type::Neg)
       .export_values();
 
-  py::class_<Control>(m, "Control")
+  nb::class_<Control>(m, "Control")
       // 构造函数：Control(QBit q=..., ControlType t=ControlType.Pos)
-      .def(py::init<const QBit, const Control::Type>(), py::arg("qubit") = 0,
-           py::arg("type") = true)
+      .def(nb::init<const QBit, const Control::Type>(), nb::arg("qubit") = 0,
+           nb::arg("type") = true)
       // 绑定成员变量
-      .def_readwrite("qubit", &Control::qubit)
-      .def_readwrite("type", &Control::type)
+      .def_rw("qubit", &Control::qubit)
+      .def_rw("type", &Control::type)
       // 绑定 toString() -> Python __str__
       .def("__str__", &Control::toString)
       .def("__repr__", &Control::toString);
 
-  py::enum_<qc::OpType>(m, "OpType")
+  nb::enum_<qc::OpType>(m, "OpType")
       .value("otNone", qc::OpType::otNone)
       .value("otGPhase", qc::OpType::otGPhase)
       .value("otI", qc::OpType::otI)
@@ -118,15 +123,18 @@ void bind_parser(py::module_& m) {
       .value("otW", qc::OpType::otW)
       .export_values();
 
-  py::class_<Operation>(m, "Operation")
-      .def_readonly("controls", &Operation::controls)
-      .def_readonly("targets", &Operation::targets)
-      .def_readonly("parameter", &Operation::parameter)
-      .def_readonly("type", &Operation::type)
-      .def_readonly("name", &Operation::name);
+  nb::class_<Operation>(m, "Operation")
+      .def_ro("controls", &Operation::controls)
+      .def_ro("targets", &Operation::targets)
+      .def_ro("parameter", &Operation::parameter)
+      .def_ro("type", &Operation::type)
+      .def_ro("name", &Operation::name);
 
   m.def("convert_qasm_string_to_qcos_operations",
-        &convert_qasm_string_to_qcos_operations,
+        [](const std::string& qasm_str) {
+          nb::gil_scoped_release release;
+          return convert_qasm_string_to_qcos_operations(qasm_str);
+        },
         R"(
             将QASM字符串转换为操作列表
 
@@ -142,5 +150,5 @@ void bind_parser(py::module_& m) {
                 >>> ops, num_qubits = high_performance.convert_qasm_string_to_qcos_operations(qasm)
                 >>> print(f"解析到 {len(ops)} 个操作")
         )",
-        py::arg("qasm_str"));
+        nb::arg("qasm_str"));
 }

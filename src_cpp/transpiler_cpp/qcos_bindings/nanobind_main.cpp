@@ -15,20 +15,21 @@
  * ----------------------------------------------------------------------
  */
 
-#include <pybind11/pybind11.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/shared_ptr.h>
 
-namespace py = pybind11;
+namespace nb = nanobind;
 
-void bind_enums(py::module_& m);
-void bind_circuits(py::module_& m);
-void bind_mapping(py::module_& m);
-void bind_utils(py::module_& m);
-void bind_cpp_mcts(py::module_& m);
-void bind_parser(py::module_& m);
-void bind_decomposer(py::module_& m);
-void bind_optimizer(py::module_& m);
+void bind_enums(nb::module_& m);
+void bind_circuits(nb::module_& m);
+void bind_mapping(nb::module_& m);
+void bind_utils(nb::module_& m);
+void bind_cpp_mcts(nb::module_& m);
+void bind_parser(nb::module_& m);
+void bind_decomposer(nb::module_& m);
+void bind_optimizer(nb::module_& m);
 
-PYBIND11_MODULE(high_performance, m) {
+NB_MODULE(high_performance, m) {
   m.doc() = "Binding qcos transpiler cpp functions.";
 
   bind_enums(m);

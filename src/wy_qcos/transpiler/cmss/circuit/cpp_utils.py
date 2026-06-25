@@ -68,8 +68,8 @@ def convert_ir_py2cpp(ir_py: list[GateOperation]):
         # use cpp version `create_gate` function.
         gate_cpp = create_gate_cpp(
             gate.name,
-            gate.targets,
-            gate.arg_value,
+            [int(t) for t in gate.targets],
+            [float(a) for a in gate.arg_value],
         )
         ir_cpp.append(gate_cpp)
     return ir_cpp

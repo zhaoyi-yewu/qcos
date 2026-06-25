@@ -3,6 +3,19 @@ project(transpiler LANGUAGES CXX)
 
 find_package(Threads REQUIRED)
 
+option(USE_PYQCOS "use transpiler in python" ON)
+option(USE_STUBGEN "generate pyi files" OFF)
+
+if(USE_PYQCOS)
+    find_package(Python 3.11 REQUIRED COMPONENTS Interpreter Development.Module
+                 OPTIONAL_COMPONENTS Development.SABIModule)
+    execute_process(
+        COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
+        OUTPUT_VARIABLE nanobind_DIR
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)  # 禁用编译器扩展，使用标准 C++
@@ -24,15 +37,12 @@ include_directories(${PROJECT_SOURCE_DIR}/include
                     ${PROJECT_SOURCE_DIR}/third_party
                     ${PROJECT_SOURCE_DIR}/third_party/googletest
                     ${PROJECT_SOURCE_DIR}/third_party/googletest/include
-                    ${PROJECT_SOURCE_DIR}/third_party/pybind11/include
-                    ${PROJECT_SOURCE_DIR}/third_party/antlr4/runtime/src)
+                    ${PROJECT_SOURCE_DIR}/third_party/antlr4/runtime/src
+                    ${Python_INCLUDE_DIRS})
 
 set(LIB_TRANSPILER ${PROJECT_NAME})
 set(LIB_GTEST gtest)
 set(LIB_ANTLR4 antlr4)
-
-option(USE_PYQCOS "use transpiler in python" ON)
-option(USE_STUBGEN "generate pyi files" OFF)
 
 add_subdirectory(third_party)
 add_subdirectory(src)

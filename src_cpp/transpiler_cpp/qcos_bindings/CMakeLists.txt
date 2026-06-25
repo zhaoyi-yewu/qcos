@@ -7,7 +7,7 @@ file(GLOB_RECURSE LIB_BINDING_SRC_CPP ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
 set(PROJECT_OUT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../dist")
 
-pybind11_add_module(${LIB_HIGH_PERF} ${LIB_BINDING_SRC_CPP})
+nanobind_add_module(${LIB_HIGH_PERF} ${LIB_BINDING_SRC_CPP})
 
 target_compile_features(${LIB_HIGH_PERF} PRIVATE cxx_std_17)
 
@@ -20,7 +20,7 @@ if(USE_STUBGEN)
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E env
                 PYTHONPATH=${PROJECT_OUT_PATH}
-                python3 -m pybind11_stubgen ${LIB_HIGH_PERF} -o ${PROJECT_OUT_PATH}
+                python3 -m nanobind_stubgen ${LIB_HIGH_PERF} --out ${PROJECT_OUT_PATH}
         VERBATIM
         USES_TERMINAL
     )
