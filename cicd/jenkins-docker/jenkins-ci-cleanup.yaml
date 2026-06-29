@@ -1,0 +1,27 @@
+// ==========================================================================
+// QCOS CI/CD Jenkins Cleaner
+// ==========================================================================
+
+pipeline {
+    triggers {
+        cron('''
+            0 6 * * *
+            0 20 * * *
+        ''')
+    }
+
+    stages {
+        // =============================================================
+        // Cleaner
+        // =============================================================
+        stage('Cleaner') {
+            steps {
+                sh """#!/bin/bash
+                set -eo pipefail
+
+                docker image prune -f || true
+                docker ps -a -f status=exited --format "{{.Names}}" | egrep '^[a-z]+_[a-z]+$' | xargs -r docker rm -f 2>/dev/null || true
+            }
+        }
+    }
+}

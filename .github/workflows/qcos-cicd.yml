@@ -170,7 +170,9 @@ jobs:
         shell: bash
         run: |
           sudo -s <<'EOF'
-          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          if [ ! -e /usr/bin/docker-compose ]; then
+            ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          fi
           cd ./build-scripts
           source /root/.bashrc
           source ./version
@@ -225,7 +227,9 @@ jobs:
         shell: bash
         run: |
           sudo -s <<'EOF'
-          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          if [ ! -e /usr/bin/docker-compose ]; then
+            ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          fi
           cd ./build-scripts
           source /root/.bashrc
           source ./version
@@ -282,12 +286,14 @@ jobs:
         shell: bash
         run: |
           sudo -s <<'EOF'
-          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          if [ ! -e /usr/bin/docker-compose ]; then
+            ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          fi
           cd ./build-scripts
           cp ./env.template ./.env
           export SANDBOX_IMAGE_VERSION=dev
           ./run-sandbox.sh
-          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -b; ./cicd/run-tests.sh -c all"
+          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -b; ./cicd/run-tests.sh -u all"
           EOF
 
       - name: Upload coverage reports to Codecov
@@ -333,12 +339,14 @@ jobs:
         shell: bash
         run: |
           sudo -s <<'EOF'
-          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          if [ ! -e /usr/bin/docker-compose ]; then
+            ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          fi
           cd ./build-scripts
           cp ./env.template ./.env
           export SANDBOX_IMAGE_VERSION=dev
           ./run-sandbox.sh
-          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -e all"
+          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -j all"
           EOF
 
       - name: Upload coverage reports to Codecov
@@ -390,7 +398,9 @@ jobs:
         run: |
           sudo -s <<'EOF'
           set -eo pipefail
-          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          if [ ! -e /usr/bin/docker-compose ]; then
+            ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          fi
 
           TOP_DIR=$(pwd)
           # config

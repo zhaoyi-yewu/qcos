@@ -1,17 +1,12 @@
 // ==========================================================================
-// QCOS CI/CD Jenkins Pipeline (Daily)
+// QCOS CI/CD Jenkins (Sandbox builder)
 // ==========================================================================
 
 pipeline {
-    agent {
-        docker {
-            image 'qcos-sandbox:cicd'
-            args '-v /var/run/docker.sock:/var/run/docker.sock -v /etc/localtime:/etc/localtime:ro -v /etc/hosts:/etc/hosts -e TZ=Asia/Shanghai'
-        }
-    }
+    agent any
 
     triggers {
-        cron('0 0 * * *')
+        cron('0 22 * * *')
     }
 
     parameters {
@@ -77,7 +72,16 @@ pipeline {
             steps {
                 script {
                     dockerCleanup()
-                    checkoutCode()
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "${params.GIT_BRANCH}"]],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [[$class: 'CleanBeforeCheckout']],
+                        submoduleCfg: [],
+                        userRemoteConfigs: [[credentialsId: "${params.GIT_CREDENTIALS_ID}", url: "${params.GIT_REPO_URL}"]]
+                    ])
+                    echo ">>> Build #${env.BUILD_NUMBER} on branch ${env.GIT_BRANCH}"
+                    echo ">>> Repo: ${params.GIT_REPO_URL} | Branch: ${params.GIT_BRANCH} | Creds: ${params.GIT_CREDENTIALS_ID}"
                     echo ">>> YUM_MIRROR: ${env.YUM_MIRROR ?: '(default)'}"
                 }
             }
@@ -146,7 +150,7 @@ pipeline {
                     sed -i "s@^DOCKER_COMPOSE_BIN_MIRROR=.*@DOCKER_COMPOSE_BIN_MIRROR=\${DOCKER_COMPOSE_BIN_MIRROR}@" ./.env
                 fi
                 df -h
-                ./build-images.sh -s -t dev
+                ./build-images.sh -s -t cicd
                 """
             }
         }
@@ -194,194 +198,6 @@ pipeline {
                 }
             }
         }
-
-        // =============================================================
-        // Build Stage 4: Build qcos-cli Docker image
-        // =============================================================
-        stage('Build QCOS-CLI Image') {
-            steps {
-                sh """#!/bin/bash
-                set -eo pipefail
-                cd build-scripts
-                if [ -e /usr/libexec/docker/cli-plugins/docker-compose ] && [ ! -e /usr/bin/docker-compose ] && [ ! -L /usr/bin/docker-compose ]; then
-                    ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
-                fi
-                source ./version
-                cp ./env.template ./.env
-                if [ -n "\${YUM_MIRROR}" ]; then
-                    sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=\${YUM_MIRROR}@" ./.env
-                fi
-                if [ -n "\${PIP_MIRROR}" ]; then
-                    sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=\${PIP_MIRROR}@" ./.env
-                fi
-                if [ -n "\${NPM_MIRROR}" ]; then
-                    sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=\${NPM_MIRROR}@" ./.env
-                fi
-                if [ -n "\${PYTHON_SRC_MIRROR}" ]; then
-                    sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=\${PYTHON_SRC_MIRROR}@" ./.env
-                fi
-                if [ -n "\${PYPY3_BIN_MIRROR}" ]; then
-                    sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=\${PYPY3_BIN_MIRROR}@" ./.env
-                fi
-                if [ -n "\${DOCKER_COMPOSE_BIN_MIRROR}" ]; then
-                    sed -i "s@^DOCKER_COMPOSE_BIN_MIRROR=.*@DOCKER_COMPOSE_BIN_MIRROR=\${DOCKER_COMPOSE_BIN_MIRROR}@" ./.env
-                fi
-                df -h
-                ./run-sandbox.sh
-                docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -c -t dev"
-                """
-            }
-            post {
-                always {
-                    sh "docker stop qcos-sandbox 2>/dev/null || true"
-                    sh "docker rm qcos-sandbox 2>/dev/null || true"
-                }
-            }
-        }
-
-        // =============================================================
-        // Test Stage 1: Run unit tests for qcos
-        // =============================================================
-        stage('Run UT - QCOS') {
-            steps {
-                sh """#!/bin/bash
-                set -eo pipefail
-                cd build-scripts
-                if [ -e /usr/libexec/docker/cli-plugins/docker-compose ] && [ ! -e /usr/bin/docker-compose ] && [ ! -L /usr/bin/docker-compose ]; then
-                    ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
-                fi
-                cp ./env.template ./.env
-                export SANDBOX_IMAGE_VERSION=dev
-                ./run-sandbox.sh
-                docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -b; ./cicd/run-tests.sh -u all"
-                """
-            }
-            post {
-                always {
-                    sh "docker stop qcos-sandbox 2>/dev/null || true"
-                    sh "docker rm qcos-sandbox 2>/dev/null || true"
-                }
-            }
-        }
-
-        // =============================================================
-        // Test Stage 2: Run unit tests for qcos-cli
-        // =============================================================
-        stage('Run UT - QCOS-CLI') {
-            steps {
-                sh """#!/bin/bash
-                set -eo pipefail
-                cd build-scripts
-                if [ -e /usr/libexec/docker/cli-plugins/docker-compose ] && [ ! -e /usr/bin/docker-compose ] && [ ! -L /usr/bin/docker-compose ]; then
-                    ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
-                fi
-                cp ./env.template ./.env
-                export SANDBOX_IMAGE_VERSION=dev
-                ./run-sandbox.sh
-                docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -j all"
-                """
-            }
-            post {
-                always {
-                    sh "docker stop qcos-sandbox 2>/dev/null || true"
-                    sh "docker rm qcos-sandbox 2>/dev/null || true"
-                }
-            }
-        }
-
-        // =============================================================
-        // Test Stage 3: Run system tests for qcos
-        // =============================================================
-        stage('Run System Tests - QCOS') {
-            steps {
-                sh """#!/bin/bash
-                set -eo pipefail
-                cd build-scripts
-                if [ -e /usr/libexec/docker/cli-plugins/docker-compose ] && [ ! -e /usr/bin/docker-compose ] && [ ! -L /usr/bin/docker-compose ]; then
-                    ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
-                fi
-
-                TOP_DIR=\$(cd .. && pwd)
-
-                # Configure environment
-                cp ./env.template ./.env
-                if [ -n "\${YUM_MIRROR}" ]; then
-                    sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=\${YUM_MIRROR}@" ./.env
-                fi
-                if [ -n "\${PIP_MIRROR}" ]; then
-                    sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=\${PIP_MIRROR}@" ./.env
-                fi
-                if [ -n "\${NPM_MIRROR}" ]; then
-                    sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=\${NPM_MIRROR}@" ./.env
-                fi
-                if [ -n "\${PYTHON_SRC_MIRROR}" ]; then
-                    sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=\${PYTHON_SRC_MIRROR}@" ./.env
-                fi
-                if [ -n "\${PYPY3_BIN_MIRROR}" ]; then
-                    sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=\${PYPY3_BIN_MIRROR}@" ./.env
-                fi
-                if [ -n "\${DOCKER_COMPOSE_BIN_MIRROR}" ]; then
-                    sed -i "s@^DOCKER_COMPOSE_BIN_MIRROR=.*@DOCKER_COMPOSE_BIN_MIRROR=\${DOCKER_COMPOSE_BIN_MIRROR}@" ./.env
-                fi
-                sed -i 's@^QCOS_VERSION=.*@QCOS_VERSION=dev@' ./version
-                sed -i 's@^LOCAL_CICD=.*@LOCAL_CICD=True@' ./.env
-                # Prepare config files for system tests
-                # NOTE: In Docker-in-Docker Jenkins setup, /etc/qcos/ refers to the
-                # host path. If Jenkins runs inside a container, you may need to
-                # adjust these paths or use HOST_MOUNT_PREFIX env variable.
-                mkdir -p /etc/qcos/
-                cp -rf \${TOP_DIR}/etc/qcos/st-conf.d /etc/qcos/
-                cp -rf \${TOP_DIR}/etc/qcos/qcos-st.toml /etc/qcos/
-                # Start QCOS system via docker-compose
-                ./run-docker.sh
-                # Wait for qcos-api to become ready
-                QCOS_SERVER_IP=127.0.0.1
-                QCOS_SERVER_PORT=18400
-                MAX_ATTEMPTS=30
-                SLEEP_INTERVAL=10
-                count=0
-                echo "qcos-api: http://\${QCOS_SERVER_IP}:\${QCOS_SERVER_PORT}"
-                until curl -o /dev/null -s http://\${QCOS_SERVER_IP}:\${QCOS_SERVER_PORT} || [ \$count -ge \${MAX_ATTEMPTS} ]; do
-                    echo "waiting for qcos-api ... (attempt \$((count+1))/\${MAX_ATTEMPTS})"
-                    docker logs qcos
-                    sleep \${SLEEP_INTERVAL}
-                    count=\$((count+1))
-                done
-                if [ \$count -lt \${MAX_ATTEMPTS} ]; then
-                    echo "qcos-api is ready"
-                else
-                    total_seconds=\$((MAX_ATTEMPTS * SLEEP_INTERVAL))
-                    echo "ERROR: qcos-api did not become ready after \${MAX_ATTEMPTS} attempts (total \${MAX_ATTEMPTS}*\${SLEEP_INTERVAL}=\${total_seconds} seconds)"
-                    docker logs qcos
-                    echo "Print /var/log/qcos/qcos-api.log ..."
-                    cat /var/log/qcos/qcos-api.log || true
-                    echo "Print /var/log/qcos/postgresql.log ..."
-                    cat /var/log/qcos/postgresql.log || true
-                    exit 1
-                fi
-                # Run system tests in qcos container
-                sleep 10
-                echo "Running system tests in container: qcos"
-                cd \${TOP_DIR}
-                tar czf /tmp/cicd.tar.gz ./cicd ./src ./etc ./samples
-                docker cp /tmp/cicd.tar.gz qcos:/tmp/
-                docker exec qcos sh -c "mkdir -p /root/qcos-project/; cd /root/qcos-project/; tar xzf /tmp/cicd.tar.gz"
-                TEST_EXIT_CODE=0
-                docker exec qcos sh -c "source /root/.bashrc; echo 'Transpiler list:'; qcos-cli list-transpilers; echo 'Driver list:'; qcos-cli list-drivers; echo 'Device list:'; qcos-cli list-devices; echo 'Job list:'; qcos-cli list-jobs; cd /root/qcos-project; ./cicd/run-tests.sh -s all" || TEST_EXIT_CODE=\$?
-                # Print log files for debug purpose
-                echo -e "\\n----------------------------------\\nPrint log files for debug purpose:"
-                ls -al /var/log/qcos || true
-                awk 'FNR==1{print "\\n\\n--- Log File: " FILENAME " ---"} {print} END{print ""}' /var/log/qcos/qcos-api.log /var/log/qcos/postgresql.log /var/log/qcos/device*.log || true
-                exit \${TEST_EXIT_CODE}
-                """
-            }
-            post {
-                always {
-                    sh "docker stop qcos prefect-server redis 2>/dev/null || true"
-                    sh "docker rm qcos prefect-server redis 2>/dev/null || true"
-                }
-            }
-        }
     }
 
     post {
@@ -396,21 +212,21 @@ pipeline {
                     echo "Attempting to send SUCCESS email to: ${env.CICD_REPORT_EMAIL}"
                     try {
                         emailext(
-                            subject: "[QCOS CI/CD - Daily] ✅ SUCCESS — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
+                            subject: "[QCOS CI/CD - Sandbox] ✅ SUCCESS — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
                             body: """<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"/></head>
 <body style="font-family:sans-serif;background:#f6f8fa;padding:24px;">
 <div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;border:1px solid #d0d7de;overflow:hidden;">
   <div style="padding:24px 28px;border-bottom:1px solid #d0d7de;">
-    <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Daily)</h1>
+    <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Sandbox)</h1>
     <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.GIT_BRANCH}</p>
   </div>
   <div style="padding:16px 28px;background:#dafbe1;color:#1a7f37;font-size:18px;font-weight:600;">
     Overall Status: ✅ SUCCESS
   </div>
   <div style="padding:20px 28px;">
-    <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Daily)</h2>
+    <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Sandbox)</h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
       <span style="color:#57606a;">Branch</span><span>${env.GIT_BRANCH}</span>
       <span style="color:#57606a;">Commit</span><span>${env.GIT_COMMIT ?: 'N/A'}</span>
@@ -419,7 +235,7 @@ pipeline {
     <a href="${env.BUILD_URL}" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#0969da;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">View Full Run Logs →</a>
   </div>
   <div style="padding:16px 28px;border-top:1px solid #d0d7de;font-size:12px;color:#57606a;text-align:center;">
-    This email was sent automatically by Jenkins · QCOS CI/CD Pipeline (Daily)
+    This email was sent automatically by Jenkins · QCOS CI/CD Pipeline (Sandbox)
   </div>
 </div>
 </body>
@@ -438,21 +254,21 @@ pipeline {
             script {
                 if (env.CICD_REPORT_EMAIL) {
                     emailext(
-                        subject: "[QCOS CI/CD - Daily] ❌ FAILED — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
+                        subject: "[QCOS CI/CD - Sandbox] ❌ FAILED — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
                         body: """<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"/></head>
 <body style="font-family:sans-serif;background:#f6f8fa;padding:24px;">
 <div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;border:1px solid #d0d7de;overflow:hidden;">
   <div style="padding:24px 28px;border-bottom:1px solid #d0d7de;">
-    <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Daily)</h1>
+    <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Sandbox)</h1>
     <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.GIT_BRANCH}</p>
   </div>
   <div style="padding:16px 28px;background:#ffebe9;color:#cf222e;font-size:18px;font-weight:600;">
     Overall Status: ❌ FAILED
   </div>
   <div style="padding:20px 28px;">
-    <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Daily)</h2>
+    <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Sandbox)</h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
       <span style="color:#57606a;">Branch</span><span>${env.GIT_BRANCH}</span>
       <span style="color:#57606a;">Commit</span><span>${env.GIT_COMMIT ?: 'N/A'}</span>
@@ -461,7 +277,7 @@ pipeline {
     <a href="${env.BUILD_URL}" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#0969da;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">View Full Run Logs →</a>
   </div>
   <div style="padding:16px 28px;border-top:1px solid #d0d7de;font-size:12px;color:#57606a;text-align:center;">
-    This email was sent automatically by Jenkins · QCOS CI/CD Pipeline (Daily)
+    This email was sent automatically by Jenkins · QCOS CI/CD Pipeline (Sandbox)
   </div>
 </div>
 </body>
@@ -476,21 +292,21 @@ pipeline {
             script {
                 if (env.CICD_REPORT_EMAIL) {
                     emailext(
-                        subject: "[QCOS CI/CD - Daily] ⚠️ UNSTABLE — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
+                        subject: "[QCOS CI/CD - Sandbox] ⚠️ UNSTABLE — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
                         body: """<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"/></head>
 <body style="font-family:sans-serif;background:#f6f8fa;padding:24px;">
 <div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;border:1px solid #d0d7de;overflow:hidden;">
   <div style="padding:24px 28px;border-bottom:1px solid #d0d7de;">
-    <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Daily)</h1>
+    <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Sandbox)</h1>
     <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.GIT_BRANCH}</p>
   </div>
   <div style="padding:16px 28px;background:#fff8c5;color:#9a6700;font-size:18px;font-weight:600;">
     Overall Status: ⚠️ UNSTABLE
   </div>
   <div style="padding:20px 28px;">
-    <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Daily)</h2>
+    <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Sandbox)</h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
       <span style="color:#57606a;">Branch</span><span>${env.GIT_BRANCH}</span>
       <span style="color:#57606a;">Commit</span><span>${env.GIT_COMMIT ?: 'N/A'}</span>
@@ -499,7 +315,7 @@ pipeline {
     <a href="${env.BUILD_URL}" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#0969da;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">View Full Run Logs →</a>
   </div>
   <div style="padding:16px 28px;border-top:1px solid #d0d7de;font-size:12px;color:#57606a;text-align:center;">
-    This email was sent automatically by Jenkins · QCOS CI/CD Pipeline (Daily)
+    This email was sent automatically by Jenkins · QCOS CI/CD Pipeline (Sandbox)
   </div>
 </div>
 </body>
@@ -514,21 +330,21 @@ pipeline {
             script {
                 if (env.CICD_REPORT_EMAIL) {
                     emailext(
-                        subject: "[QCOS CI/CD - Daily] 🚫 ABORTED — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
+                        subject: "[QCOS CI/CD - Sandbox] 🚫 ABORTED — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
                         body: """<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"/></head>
 <body style="font-family:sans-serif;background:#f6f8fa;padding:24px;">
 <div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;border:1px solid #d0d7de;overflow:hidden;">
   <div style="padding:24px 28px;border-bottom:1px solid #d0d7de;">
-    <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Daily)</h1>
+    <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Sandbox)</h1>
     <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.GIT_BRANCH}</p>
   </div>
   <div style="padding:16px 28px;background:#fff8c5;color:#9a6700;font-size:18px;font-weight:600;">
     Overall Status: 🚫 ABORTED
   </div>
   <div style="padding:20px 28px;">
-    <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Daily)</h2>
+    <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Sandbox)</h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
       <span style="color:#57606a;">Branch</span><span>${env.GIT_BRANCH}</span>
       <span style="color:#57606a;">Commit</span><span>${env.GIT_COMMIT ?: 'N/A'}</span>
@@ -537,7 +353,7 @@ pipeline {
     <a href="${env.BUILD_URL}" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#0969da;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">View Full Run Logs →</a>
   </div>
   <div style="padding:16px 28px;border-top:1px solid #d0d7de;font-size:12px;color:#57606a;text-align:center;">
-    This email was sent automatically by Jenkins · QCOS CI/CD Pipeline (Daily)
+    This email was sent automatically by Jenkins · QCOS CI/CD Pipeline (Sandbox)
   </div>
 </div>
 </body>
@@ -552,31 +368,12 @@ pipeline {
 }
 
 // ==========================================================================
-// Helper: Checkout source code from Git repository
-// Reusable method called at pipeline Initialize stage
-// ==========================================================================
-void checkoutCode() {
-    checkout([
-        $class: 'GitSCM',
-        branches: [[name: "${params.GIT_BRANCH}"]],
-        doGenerateSubmoduleConfigurations: false,
-        extensions: [[$class: 'CleanBeforeCheckout']],
-        submoduleCfg: [],
-        userRemoteConfigs: [[credentialsId: "${params.GIT_CREDENTIALS_ID}", url: "${params.GIT_REPO_URL}"]]
-    ])
-    echo ">>> Build #${env.BUILD_NUMBER} on branch ${env.GIT_BRANCH}"
-    echo ">>> Repo: ${params.GIT_REPO_URL} | Branch: ${params.GIT_BRANCH} | Creds: ${params.GIT_CREDENTIALS_ID}"
-}
-
-// ==========================================================================
 // Helper: Clean up Docker containers and dangling images
 // Reusable method called at pipeline start (Initialize) and end (post.always)
 // ==========================================================================
 void dockerCleanup() {
     sh """
-    docker rm -f prefect-server redis postgres qcos-sandbox qcos qcos-cli || true
     docker image prune -f || true
-    rm -rf /var/qcos/db/
     docker ps -a -f status=exited --format "{{.Names}}" | egrep '^[a-z]+_[a-z]+\$' | xargs -r docker rm -f 2>/dev/null || true
     """
 }

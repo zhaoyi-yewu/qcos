@@ -1,0 +1,386 @@
+// ==========================================================================
+// QCOS CI/CD Jenkins Pipeline (Gate)
+// ==========================================================================
+
+pipeline {
+    agent {
+        docker {
+            image 'qcos-sandbox:cicd'
+            args '-v /var/run/docker.sock:/var/run/docker.sock -v /etc/localtime:/etc/localtime:ro -v /etc/hosts:/etc/hosts -e TZ=Asia/Shanghai'
+        }
+    }
+
+    triggers {
+        gitee(
+            triggerOnPush: true,
+            triggerOnCommitComment: false,
+            triggerOnOpenPullRequest: true,
+            triggerOnPipelineEvent: false,
+            triggerOnAcceptedPullRequest: false,
+            triggerOnClosedPullRequest: false,
+            triggerOnApprovedPullRequest: false,
+            triggerOnNoteRequest: true,
+            noteRegex: "Retry build",
+            skipWorkInProgressPullRequest: true,
+            ciSkip: true,
+            skipLastCommitHasBeenBuild: true,
+            cancelPendingBuildsOnUpdate: true,
+            secretToken: "WuYueOs2026SecureToken"
+        )
+    }
+
+    parameters {
+        persistentString(name: 'GIT_REPO_URL',
+               defaultValue: 'git@gitee.com:WUYUEQbit/qcos.git',
+               description: 'Git repository URL. eg. Gitee (git@gitee.com:WUYUEQbit/qcos.git) or GitLab (ssh://git@gitlab.cmss.com:2223/OCRI/WuYueOs.git)')
+        persistentString(name: 'GIT_BRANCH',
+               defaultValue: '*/develop',
+               description: 'Git branch to build. e.g. Gitee (*/develop) or GitLab (*/dev_gitee)')
+        persistentString(name: 'GIT_CREDENTIALS_ID',
+               defaultValue: 'gitee-ssh-key',
+               description: 'Jenkins stored SSH credential ID for the Git repository. e.g. Gitee (gitee-ssh-key) or GitLab (gitlab-ssh-key)')
+        persistentString(name: 'CICD_REPORT_EMAIL',
+               defaultValue: 'zhaoyi@cmss.chinamobile.com',
+               description: 'Email address(es) for CI/CD report notification. Supports single (user@example.com) or multiple comma-separated (a@example.com,b@example.com). Leave empty to skip email notification.')
+    }
+
+    environment {
+        GIT_REPO_URL = "${params.GIT_REPO_URL?: ''}"
+        GIT_BRANCH = "${params.GIT_BRANCH?: ''}"
+        GIT_CREDENTIALS_ID = "${params.GIT_CREDENTIALS_ID?: ''}"
+        CICD_REPORT_EMAIL = "${params.CICD_REPORT_EMAIL?: ''}"
+    }
+
+    options {
+        timestamps()
+        timeout(time: 5, unit: 'HOURS')
+        buildDiscarder(logRotator(numToKeepStr: '5', artifactNumToKeepStr: '5'))
+        giteeConnection('my-gitee')
+        // Prevent concurrent builds (shared Docker daemon, container name conflicts)
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        // =============================================================
+        // Initialize: Checkout code and prepare environment
+        // =============================================================
+        stage('Initialize') {
+            steps {
+                script {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "${params.GIT_BRANCH}"]],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [[$class: 'CleanBeforeCheckout']],
+                        submoduleCfg: [],
+                        userRemoteConfigs: [[credentialsId: "${params.GIT_CREDENTIALS_ID}", url: "${params.GIT_REPO_URL}"]]
+                    ])
+                    echo ">>> Build #${env.BUILD_NUMBER} on branch ${env.GIT_BRANCH}"
+                    echo ">>> Repo: ${params.GIT_REPO_URL} | Branch: ${params.GIT_BRANCH} | Creds: ${params.GIT_CREDENTIALS_ID}"
+                }
+            }
+        }
+
+        // =============================================================
+        // Group: commit-check
+        // =============================================================
+        stage('commit-check') {
+            stages {
+                // Stage: commit-messages
+                stage('Commit Messages') {
+                    steps {
+                        sh """#!/bin/bash
+                        source /var/lib/qcos/venv/sandbox/bin/activate
+                        python3 ./cicd/check-commit-message.py
+                        """
+                    }
+                }
+
+                // Stage: check-files
+                stage('Check Files') {
+                    steps {
+                        sh """#!/bin/bash
+                        source /var/lib/qcos/venv/sandbox/bin/activate
+                        ./cicd/check-files.sh
+                        """
+                    }
+                }
+            }
+        }
+
+        // =============================================================
+        // Group: code-check
+        // =============================================================
+        stage('code-check') {
+            stages {
+                // Stage: code-linter
+                stage('Code Linter') {
+                    steps {
+                        sh """#!/bin/bash
+                        source /var/lib/qcos/venv/sandbox/bin/activate
+                        ./cicd/code-linter.sh
+                        """
+                    }
+                }
+
+                // Stage: code-style
+                stage('Code Style') {
+                    steps {
+                        sh """#!/bin/bash
+                        source /var/lib/qcos/venv/sandbox/bin/activate
+                        ./cicd/code-formatter.sh
+                        """
+                    }
+                }
+
+                // Stage: docstring-check
+                stage('Docstring Check') {
+                    steps {
+                        sh """#!/bin/bash
+                        source /var/lib/qcos/venv/sandbox/bin/activate
+                        ./cicd/docstring-check.sh
+                        """
+                    }
+                }
+            }
+        }
+
+        // =============================================================
+        // Group: docs-check
+        // =============================================================
+        stage('docs-check') {
+            stages {
+                // Stage: docs-linter
+                stage('Docs Linter') {
+                    steps {
+                        sh """#!/bin/bash
+                        source /var/lib/qcos/venv/sandbox/bin/activate
+                        ./cicd/docs-linter.sh
+                        """
+                    }
+                }
+            }
+        }
+
+        // =============================================================
+        // Group: functional-tests
+        // =============================================================
+        stage('functional-tests') {
+            stages {
+                // Stage: ut-qcos
+                stage('UT - QCOS') {
+                    steps {
+                        sh """#!/bin/bash
+                        source /var/lib/qcos/venv/sandbox/bin/activate
+                        ./cicd/run-tests.sh -b
+                        ./cicd/run-tests.sh -u default
+                        """
+                    }
+                }
+
+                // Stage: cpp-ut-qcos
+                stage('CPP UT - QCOS') {
+                    steps {
+                        sh """#!/bin/bash
+                        source /var/lib/qcos/venv/sandbox/bin/activate
+                        ./cicd/run-tests.sh -b
+                        ./cicd/run-tests.sh -t default
+                        """
+                    }
+                }
+
+                // Stage: code-coverage-qcos
+                stage('Code Coverage - QCOS') {
+                    steps {
+                        sh """#!/bin/bash
+                        source /var/lib/qcos/venv/sandbox/bin/activate
+                        ./cicd/run-tests.sh -b
+                        ./cicd/run-tests.sh -c default
+                        """
+                    }
+                }
+
+                // Stage: ut-qcos-client
+                stage('UT - QCOS Client') {
+                    steps {
+                        sh """#!/bin/bash
+                        source /var/lib/qcos/venv/sandbox/bin/activate
+                        ./cicd/run-tests.sh -j all
+                        """
+                    }
+                }
+
+                // Stage: code-coverage-qcos-client
+                stage('Code Coverage - QCOS Client') {
+                    steps {
+                        sh """#!/bin/bash
+                        source /var/lib/qcos/venv/sandbox/bin/activate
+                        ./cicd/run-tests.sh -e all
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                if (env.CICD_REPORT_EMAIL) {
+                    echo "Attempting to send SUCCESS email to: ${env.CICD_REPORT_EMAIL}"
+                    try {
+                        emailext(
+                            subject: "[QCOS CI/CD - Gate] ✅ SUCCESS — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
+                            body: """<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"/></head>
+<body style="font-family:sans-serif;background:#f6f8fa;padding:24px;">
+<div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;border:1px solid #d0d7de;overflow:hidden;">
+  <div style="padding:24px 28px;border-bottom:1px solid #d0d7de;">
+    <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Gate)</h1>
+    <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.GIT_BRANCH}</p>
+  </div>
+  <div style="padding:16px 28px;background:#dafbe1;color:#1a7f37;font-size:18px;font-weight:600;">
+    Overall Status: ✅ SUCCESS
+  </div>
+  <div style="padding:20px 28px;">
+    <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Gate)</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
+      <span style="color:#57606a;">Branch</span><span>${env.GIT_BRANCH}</span>
+      <span style="color:#57606a;">Commit</span><span>${env.GIT_COMMIT ?: 'N/A'}</span>
+      <span style="color:#57606a;">Build</span><span>#${env.BUILD_NUMBER}</span>
+    </div>
+    <a href="${env.BUILD_URL}" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#0969da;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">View Full Run Logs →</a>
+  </div>
+  <div style="padding:16px 28px;border-top:1px solid #d0d7de;font-size:12px;color:#57606a;text-align:center;">
+    This email was sent automatically by Jenkins · QCOS CI/CD Pipeline (Gate)
+  </div>
+</div>
+</body>
+</html>""",
+                            to: "${env.CICD_REPORT_EMAIL}",
+                            mimeType: 'text/html'
+                        )
+                        echo "SUCCESS email sent successfully"
+                    } catch (Exception e) {
+                        echo "SUCCESS email send failed: ${e.message}"
+                    }
+                }
+            }
+        }
+        failure {
+            script {
+                if (env.CICD_REPORT_EMAIL) {
+                    emailext(
+                        subject: "[QCOS CI/CD - Gate] ❌ FAILED — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
+                        body: """<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"/></head>
+<body style="font-family:sans-serif;background:#f6f8fa;padding:24px;">
+<div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;border:1px solid #d0d7de;overflow:hidden;">
+  <div style="padding:24px 28px;border-bottom:1px solid #d0d7de;">
+    <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Gate)</h1>
+    <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.GIT_BRANCH}</p>
+  </div>
+  <div style="padding:16px 28px;background:#ffebe9;color:#cf222e;font-size:18px;font-weight:600;">
+    Overall Status: ❌ FAILED
+  </div>
+  <div style="padding:20px 28px;">
+    <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Gate)</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
+      <span style="color:#57606a;">Branch</span><span>${env.GIT_BRANCH}</span>
+      <span style="color:#57606a;">Commit</span><span>${env.GIT_COMMIT ?: 'N/A'}</span>
+      <span style="color:#57606a;">Build</span><span>#${env.BUILD_NUMBER}</span>
+    </div>
+    <a href="${env.BUILD_URL}" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#0969da;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">View Full Run Logs →</a>
+  </div>
+  <div style="padding:16px 28px;border-top:1px solid #d0d7de;font-size:12px;color:#57606a;text-align:center;">
+    This email was sent automatically by Jenkins · QCOS CI/CD Pipeline (Gate)
+  </div>
+</div>
+</body>
+</html>""",
+                        to: "${env.CICD_REPORT_EMAIL}",
+                        mimeType: 'text/html'
+                    )
+                }
+            }
+        }
+        unstable {
+            script {
+                if (env.CICD_REPORT_EMAIL) {
+                    emailext(
+                        subject: "[QCOS CI/CD - Gate] ⚠️ UNSTABLE — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
+                        body: """<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"/></head>
+<body style="font-family:sans-serif;background:#f6f8fa;padding:24px;">
+<div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;border:1px solid #d0d7de;overflow:hidden;">
+  <div style="padding:24px 28px;border-bottom:1px solid #d0d7de;">
+    <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Gate)</h1>
+    <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.GIT_BRANCH}</p>
+  </div>
+  <div style="padding:16px 28px;background:#fff8c5;color:#9a6700;font-size:18px;font-weight:600;">
+    Overall Status: ⚠️ UNSTABLE
+  </div>
+  <div style="padding:20px 28px;">
+    <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Gate)</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
+      <span style="color:#57606a;">Branch</span><span>${env.GIT_BRANCH}</span>
+      <span style="color:#57606a;">Commit</span><span>${env.GIT_COMMIT ?: 'N/A'}</span>
+      <span style="color:#57606a;">Build</span><span>#${env.BUILD_NUMBER}</span>
+    </div>
+    <a href="${env.BUILD_URL}" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#0969da;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">View Full Run Logs →</a>
+  </div>
+  <div style="padding:16px 28px;border-top:1px solid #d0d7de;font-size:12px;color:#57606a;text-align:center;">
+    This email was sent automatically by Jenkins · QCOS CI/CD Pipeline (Gate)
+  </div>
+</div>
+</body>
+</html>""",
+                        to: "${env.CICD_REPORT_EMAIL}",
+                        mimeType: 'text/html'
+                    )
+                }
+            }
+        }
+        aborted {
+            script {
+                if (env.CICD_REPORT_EMAIL) {
+                    emailext(
+                        subject: "[QCOS CI/CD - Gate] 🚫 ABORTED — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
+                        body: """<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"/></head>
+<body style="font-family:sans-serif;background:#f6f8fa;padding:24px;">
+<div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;border:1px solid #d0d7de;overflow:hidden;">
+  <div style="padding:24px 28px;border-bottom:1px solid #d0d7de;">
+    <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Gate)</h1>
+    <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.GIT_BRANCH}</p>
+  </div>
+  <div style="padding:16px 28px;background:#fff8c5;color:#9a6700;font-size:18px;font-weight:600;">
+    Overall Status: 🚫 ABORTED
+  </div>
+  <div style="padding:20px 28px;">
+    <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Gate)</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
+      <span style="color:#57606a;">Branch</span><span>${env.GIT_BRANCH}</span>
+      <span style="color:#57606a;">Commit</span><span>${env.GIT_COMMIT ?: 'N/A'}</span>
+      <span style="color:#57606a;">Build</span><span>#${env.BUILD_NUMBER}</span>
+    </div>
+    <a href="${env.BUILD_URL}" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#0969da;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">View Full Run Logs →</a>
+  </div>
+  <div style="padding:16px 28px;border-top:1px solid #d0d7de;font-size:12px;color:#57606a;text-align:center;">
+    This email was sent automatically by Jenkins · QCOS CI/CD Pipeline (Gate)
+  </div>
+</div>
+</body>
+</html>""",
+                        to: "${env.CICD_REPORT_EMAIL}",
+                        mimeType: 'text/html'
+                    )
+                }
+            }
+        }
+    }
+}

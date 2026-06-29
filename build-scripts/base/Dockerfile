@@ -18,6 +18,7 @@ ARG DEV
 
 ARG PYTHON_SRC_MIRROR
 ARG PYPY3_BIN_MIRROR
+ARG DOCKER_COMPOSE_BIN_MIRROR
 
 LABEL stage=${CONTAINER_NAME}-builder
 LABEL build=${CONTAINER_NAME}
@@ -56,14 +57,22 @@ RUN set -e && \
     && if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi \
     && \
 # install basic rpm packages
-    yum install --nobest -y hostname openssh openssh-clients sshpass iputils iproute \
+    yum install --nobest -y glibc-langpack-en hostname openssh openssh-clients sshpass iputils iproute \
     telnet net-tools openssl util-linux vim findutils dos2unix wget rsync jq \
-    gettext make cmake gcc gcc-g++ rust cargo  postgresql \
+    gettext make cmake gcc gcc-g++ rust cargo postgresql docker \
     python3 python3-pip python3-sphinx python3-requests python3-devel \
     sqlite-devel bzip2-devel ncurses-devel gdbm-devel xz-devel \
     tk-devel tcl-devel libuuid-devel yp-tools ypbind readline-devel \
     libyaml-devel libffi-devel openssl-devel zlib-devel && \
+    echo "LANG=en_US.UTF-8" > /etc/locale.conf && \
     ln -sf /usr/bin/python3 /usr/bin/python \
+    && \
+# install extra packages: docker-compose
+    if [ -n "${DOCKER_COMPOSE_BIN_MIRROR}" ]; then \
+      echo "Installing docker-compose: ${DOCKER_COMPOSE_BIN_MIRROR}" ; \
+      wget -q ${DOCKER_COMPOSE_BIN_MIRROR} -O /usr/bin/docker-compose && \
+      chmod 755 /usr/bin/docker-compose ; \
+    fi \
     && \
 # Build customized Python if required
     if [ "${PYTHON_SRC_MIRROR,,}" = "false" ]; then \
@@ -127,6 +136,7 @@ RUN set -e && \
     fi \
     && \
 # install python basic requirements
+    cat /tmp/requirements/requirements.txt && \
     ${PIPBIN} install --no-cache-dir -r /tmp/requirements/requirements.txt \
     && \
 # Install isolated venv for drivers that requires extra packages
