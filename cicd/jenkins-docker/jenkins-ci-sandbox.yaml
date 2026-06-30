@@ -154,50 +154,6 @@ pipeline {
                 """
             }
         }
-
-        // =============================================================
-        // Build Stage 3: Build qcos Docker image
-        // =============================================================
-        stage('Build QCOS Image') {
-            steps {
-                sh """#!/bin/bash
-                set -eo pipefail
-                cd build-scripts
-                if [ -e /usr/libexec/docker/cli-plugins/docker-compose ] && [ ! -e /usr/bin/docker-compose ] && [ ! -L /usr/bin/docker-compose ]; then
-                    ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
-                fi
-                source ./version
-                cp ./env.template ./.env
-                if [ -n "\${YUM_MIRROR}" ]; then
-                    sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=\${YUM_MIRROR}@" ./.env
-                fi
-                if [ -n "\${PIP_MIRROR}" ]; then
-                    sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=\${PIP_MIRROR}@" ./.env
-                fi
-                if [ -n "\${NPM_MIRROR}" ]; then
-                    sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=\${NPM_MIRROR}@" ./.env
-                fi
-                if [ -n "\${PYTHON_SRC_MIRROR}" ]; then
-                    sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=\${PYTHON_SRC_MIRROR}@" ./.env
-                fi
-                if [ -n "\${PYPY3_BIN_MIRROR}" ]; then
-                    sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=\${PYPY3_BIN_MIRROR}@" ./.env
-                fi
-                if [ -n "\${DOCKER_COMPOSE_BIN_MIRROR}" ]; then
-                    sed -i "s@^DOCKER_COMPOSE_BIN_MIRROR=.*@DOCKER_COMPOSE_BIN_MIRROR=\${DOCKER_COMPOSE_BIN_MIRROR}@" ./.env
-                fi
-                df -h
-                ./run-sandbox.sh
-                docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -q -t dev"
-                """
-            }
-            post {
-                always {
-                    sh "docker stop qcos-sandbox 2>/dev/null || true"
-                    sh "docker rm qcos-sandbox 2>/dev/null || true"
-                }
-            }
-        }
     }
 
     post {

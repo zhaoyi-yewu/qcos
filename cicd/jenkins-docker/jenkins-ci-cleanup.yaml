@@ -3,6 +3,8 @@
 // ==========================================================================
 
 pipeline {
+    agent any
+
     triggers {
         cron('''
             0 6 * * *
@@ -20,7 +22,8 @@ pipeline {
                 set -eo pipefail
 
                 docker image prune -f || true
-                docker ps -a -f status=exited --format "{{.Names}}" | egrep '^[a-z]+_[a-z]+$' | xargs -r docker rm -f 2>/dev/null || true
+                docker ps -a -f status=exited --format "{{.Names}}" | egrep '^[a-z]+_[a-z]+\$' | xargs -r docker rm -f 2>/dev/null || true
+                """
             }
         }
     }

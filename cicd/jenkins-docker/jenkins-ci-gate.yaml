@@ -30,12 +30,6 @@ pipeline {
     }
 
     parameters {
-        persistentString(name: 'GIT_REPO_URL',
-               defaultValue: 'git@gitee.com:WUYUEQbit/qcos.git',
-               description: 'Git repository URL. eg. Gitee (git@gitee.com:WUYUEQbit/qcos.git) or GitLab (ssh://git@gitlab.cmss.com:2223/OCRI/WuYueOs.git)')
-        persistentString(name: 'GIT_BRANCH',
-               defaultValue: '*/develop',
-               description: 'Git branch to build. e.g. Gitee (*/develop) or GitLab (*/dev_gitee)')
         persistentString(name: 'GIT_CREDENTIALS_ID',
                defaultValue: 'gitee-ssh-key',
                description: 'Jenkins stored SSH credential ID for the Git repository. e.g. Gitee (gitee-ssh-key) or GitLab (gitlab-ssh-key)')
@@ -45,8 +39,6 @@ pipeline {
     }
 
     environment {
-        GIT_REPO_URL = "${params.GIT_REPO_URL?: ''}"
-        GIT_BRANCH = "${params.GIT_BRANCH?: ''}"
         GIT_CREDENTIALS_ID = "${params.GIT_CREDENTIALS_ID?: ''}"
         CICD_REPORT_EMAIL = "${params.CICD_REPORT_EMAIL?: ''}"
     }
@@ -67,16 +59,18 @@ pipeline {
         stage('Initialize') {
             steps {
                 script {
+                    def git_url = env.giteeSourceUrl ? env.giteeSourceUrl : 'git@gitee.com:WUYUEQbit/qcos.git'
+                    def git_branch = env.giteeSourceBranch ? env.giteeSourceBranch : 'develop'
                     checkout([
                         $class: 'GitSCM',
-                        branches: [[name: "${params.GIT_BRANCH}"]],
+                        branches: [[name: "${git_branch}"]],
                         doGenerateSubmoduleConfigurations: false,
                         extensions: [[$class: 'CleanBeforeCheckout']],
                         submoduleCfg: [],
-                        userRemoteConfigs: [[credentialsId: "${params.GIT_CREDENTIALS_ID}", url: "${params.GIT_REPO_URL}"]]
+                        userRemoteConfigs: [[credentialsId: "${params.GIT_CREDENTIALS_ID}", url: "${git_url}"]]
                     ])
-                    echo ">>> Build #${env.BUILD_NUMBER} on branch ${env.GIT_BRANCH}"
-                    echo ">>> Repo: ${params.GIT_REPO_URL} | Branch: ${params.GIT_BRANCH} | Creds: ${params.GIT_CREDENTIALS_ID}"
+                    echo ">>> Build #${env.BUILD_NUMBER} on branch ${git_branch}"
+                    echo ">>> Repo: ${git_url} | Branch: ${git_branch} | Creds: ${params.GIT_CREDENTIALS_ID}"
                 }
             }
         }
@@ -230,7 +224,7 @@ pipeline {
                     echo "Attempting to send SUCCESS email to: ${env.CICD_REPORT_EMAIL}"
                     try {
                         emailext(
-                            subject: "[QCOS CI/CD - Gate] ✅ SUCCESS — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
+                            subject: "[QCOS CI/CD - Gate] ✅ SUCCESS — Build #${env.BUILD_NUMBER} on ${env.giteeSourceBranch}",
                             body: """<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"/></head>
@@ -238,7 +232,7 @@ pipeline {
 <div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;border:1px solid #d0d7de;overflow:hidden;">
   <div style="padding:24px 28px;border-bottom:1px solid #d0d7de;">
     <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Gate)</h1>
-    <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.GIT_BRANCH}</p>
+    <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.giteeSourceBranch}</p>
   </div>
   <div style="padding:16px 28px;background:#dafbe1;color:#1a7f37;font-size:18px;font-weight:600;">
     Overall Status: ✅ SUCCESS
@@ -246,7 +240,7 @@ pipeline {
   <div style="padding:20px 28px;">
     <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Gate)</h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
-      <span style="color:#57606a;">Branch</span><span>${env.GIT_BRANCH}</span>
+      <span style="color:#57606a;">Branch</span><span>${env.giteeSourceBranch}</span>
       <span style="color:#57606a;">Commit</span><span>${env.GIT_COMMIT ?: 'N/A'}</span>
       <span style="color:#57606a;">Build</span><span>#${env.BUILD_NUMBER}</span>
     </div>
@@ -272,7 +266,7 @@ pipeline {
             script {
                 if (env.CICD_REPORT_EMAIL) {
                     emailext(
-                        subject: "[QCOS CI/CD - Gate] ❌ FAILED — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
+                        subject: "[QCOS CI/CD - Gate] ❌ FAILED — Build #${env.BUILD_NUMBER} on ${env.giteeSourceBranch}",
                         body: """<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"/></head>
@@ -280,7 +274,7 @@ pipeline {
 <div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;border:1px solid #d0d7de;overflow:hidden;">
   <div style="padding:24px 28px;border-bottom:1px solid #d0d7de;">
     <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Gate)</h1>
-    <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.GIT_BRANCH}</p>
+    <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.giteeSourceBranch}</p>
   </div>
   <div style="padding:16px 28px;background:#ffebe9;color:#cf222e;font-size:18px;font-weight:600;">
     Overall Status: ❌ FAILED
@@ -288,7 +282,7 @@ pipeline {
   <div style="padding:20px 28px;">
     <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Gate)</h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
-      <span style="color:#57606a;">Branch</span><span>${env.GIT_BRANCH}</span>
+      <span style="color:#57606a;">Branch</span><span>${env.giteeSourceBranch}</span>
       <span style="color:#57606a;">Commit</span><span>${env.GIT_COMMIT ?: 'N/A'}</span>
       <span style="color:#57606a;">Build</span><span>#${env.BUILD_NUMBER}</span>
     </div>
@@ -310,7 +304,7 @@ pipeline {
             script {
                 if (env.CICD_REPORT_EMAIL) {
                     emailext(
-                        subject: "[QCOS CI/CD - Gate] ⚠️ UNSTABLE — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
+                        subject: "[QCOS CI/CD - Gate] ⚠️ UNSTABLE — Build #${env.BUILD_NUMBER} on ${env.giteeSourceBranch}",
                         body: """<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"/></head>
@@ -318,7 +312,7 @@ pipeline {
 <div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;border:1px solid #d0d7de;overflow:hidden;">
   <div style="padding:24px 28px;border-bottom:1px solid #d0d7de;">
     <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Gate)</h1>
-    <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.GIT_BRANCH}</p>
+    <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.giteeSourceBranch}</p>
   </div>
   <div style="padding:16px 28px;background:#fff8c5;color:#9a6700;font-size:18px;font-weight:600;">
     Overall Status: ⚠️ UNSTABLE
@@ -326,7 +320,7 @@ pipeline {
   <div style="padding:20px 28px;">
     <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Gate)</h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
-      <span style="color:#57606a;">Branch</span><span>${env.GIT_BRANCH}</span>
+      <span style="color:#57606a;">Branch</span><span>${env.giteeSourceBranch}</span>
       <span style="color:#57606a;">Commit</span><span>${env.GIT_COMMIT ?: 'N/A'}</span>
       <span style="color:#57606a;">Build</span><span>#${env.BUILD_NUMBER}</span>
     </div>
@@ -348,7 +342,7 @@ pipeline {
             script {
                 if (env.CICD_REPORT_EMAIL) {
                     emailext(
-                        subject: "[QCOS CI/CD - Gate] 🚫 ABORTED — Build #${env.BUILD_NUMBER} on ${env.GIT_BRANCH}",
+                        subject: "[QCOS CI/CD - Gate] 🚫 ABORTED — Build #${env.BUILD_NUMBER} on ${env.giteeSourceBranch}",
                         body: """<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"/></head>
@@ -356,7 +350,7 @@ pipeline {
 <div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;border:1px solid #d0d7de;overflow:hidden;">
   <div style="padding:24px 28px;border-bottom:1px solid #d0d7de;">
     <h1 style="margin:0 0 4px;font-size:20px;">🚀 QCOS CI/CD Pipeline Report (Gate)</h1>
-    <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.GIT_BRANCH}</p>
+    <p style="color:#57606a;font-size:14px;margin:0;">Build #${env.BUILD_NUMBER} · ${env.giteeSourceBranch}</p>
   </div>
   <div style="padding:16px 28px;background:#fff8c5;color:#9a6700;font-size:18px;font-weight:600;">
     Overall Status: 🚫 ABORTED
@@ -364,7 +358,7 @@ pipeline {
   <div style="padding:20px 28px;">
     <h2 style="font-size:14px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;">Pipeline Details (Gate)</h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
-      <span style="color:#57606a;">Branch</span><span>${env.GIT_BRANCH}</span>
+      <span style="color:#57606a;">Branch</span><span>${env.giteeSourceBranch}</span>
       <span style="color:#57606a;">Commit</span><span>${env.GIT_COMMIT ?: 'N/A'}</span>
       <span style="color:#57606a;">Build</span><span>#${env.BUILD_NUMBER}</span>
     </div>

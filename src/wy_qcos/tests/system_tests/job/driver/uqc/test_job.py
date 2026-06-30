@@ -23,7 +23,7 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.tests.system_tests.common.library import StLibrary
 from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS, SAMPLES
-from wy_qcos.tests.system_tests.job.driver.uqc.uqc_api_server import main
+from .uqc_api_server import main
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +44,24 @@ class TestJob:
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
-        cls.uqc_process = multiprocessing.Process(target=main, daemon=True)
+        cls.api_host = "127.0.0.1"
+        cls.api_port = 8003
+        cls.uqc_process = multiprocessing.Process(
+            target=main,
+            daemon=True,
+            kwargs={"port": cls.api_port},
+        )
         cls.uqc_process.start()
+
+        # Wait until the mock API server is ready to accept connections
+        connected = Library.wait_network_connection(
+            cls.api_host,
+            port=cls.api_port,
+        )
+        assert connected, (
+            f"Failed to connect to uqc mock server at "
+            f"{cls.api_host}:{cls.api_port}"
+        )
 
         # Initialize and clean up test resources
         StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
