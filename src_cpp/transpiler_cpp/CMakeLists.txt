@@ -3,6 +3,24 @@ project(transpiler LANGUAGES CXX)
 
 find_package(Threads REQUIRED)
 
+list(APPEND CMAKE_PREFIX_PATH /usr/lib64/cmake /usr/local/lib64/cmake)
+
+# ---- GTest ----
+find_package(GTest CONFIG QUIET)
+if(GTest_FOUND)
+    message(STATUS "Found pre-installed GTest via CONFIG")
+    set(LIB_GTEST GTest::gtest GTest::gtest_main)
+else()
+    find_package(GTest QUIET)
+    if(GTest_FOUND AND GTEST_LIBRARIES AND GTEST_INCLUDE_DIRS)
+        message(STATUS "Found pre-installed GTest via FindModule: ${GTEST_LIBRARIES}")
+        include_directories(${GTEST_INCLUDE_DIRS})
+        set(LIB_GTEST ${GTEST_LIBRARIES})
+    else()
+        set(LIB_GTEST "")
+    endif()
+endif()
+
 option(USE_PYQCOS "use transpiler in python" ON)
 option(USE_STUBGEN "generate pyi files" OFF)
 
@@ -35,13 +53,10 @@ endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/include
                     ${PROJECT_SOURCE_DIR}/third_party
-                    ${PROJECT_SOURCE_DIR}/third_party/googletest
-                    ${PROJECT_SOURCE_DIR}/third_party/googletest/include
                     ${PROJECT_SOURCE_DIR}/third_party/antlr4/runtime/src
                     ${Python_INCLUDE_DIRS})
 
 set(LIB_TRANSPILER ${PROJECT_NAME})
-set(LIB_GTEST gtest)
 set(LIB_ANTLR4 antlr4)
 
 add_subdirectory(third_party)
