@@ -3,7 +3,31 @@ project(transpiler LANGUAGES CXX)
 
 find_package(Threads REQUIRED)
 
-list(APPEND CMAKE_PREFIX_PATH /usr/lib64/cmake /usr/local/lib64/cmake)
+# 根据平台和实际路径存在性添加 cmake 搜索路径，避免硬编码
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # RHEL/CentOS/openEuler/MOS 等 lib64 体系
+    if(EXISTS "/usr/lib64/cmake")
+        list(APPEND CMAKE_PREFIX_PATH /usr/lib64/cmake)
+    endif()
+    if(EXISTS "/usr/local/lib64/cmake")
+        list(APPEND CMAKE_PREFIX_PATH /usr/local/lib64/cmake)
+    endif()
+    # Debian/Ubuntu multiarch 体系
+    if(EXISTS "/usr/lib/x86_64-linux-gnu/cmake")
+        list(APPEND CMAKE_PREFIX_PATH /usr/lib/x86_64-linux-gnu/cmake)
+    endif()
+    if(EXISTS "/usr/local/lib/x86_64-linux-gnu/cmake")
+        list(APPEND CMAKE_PREFIX_PATH /usr/local/lib/x86_64-linux-gnu/cmake)
+    endif()
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    # macOS
+    if(EXISTS "/usr/local/lib/cmake")
+        list(APPEND CMAKE_PREFIX_PATH /usr/local/lib/cmake)
+    endif()
+    if(EXISTS "/opt/homebrew/lib/cmake")
+        list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/lib/cmake)
+    endif()
+endif()
 
 # ---- GTest ----
 find_package(GTest CONFIG QUIET)

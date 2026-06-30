@@ -1009,12 +1009,11 @@ class OpenQasmParser final : public InstVisitor {
     }
 
     // Convert qubits (QBit=unsigned int) to BaseOperation's constructor
-    std::vector<int> allBits;
-    allBits.reserve(qubits.size());
+    // Measure can only take a single target, so create one per qubit
     for (const auto& q : qubits) {
-      allBits.push_back(static_cast<int>(q));
+      qc->emplace_back(std::make_shared<qcos::Measure>(
+          std::vector<int>{static_cast<int>(q)}));
     }
-    qc->emplace_back(std::make_shared<qcos::Measure>(std::move(allBits)));
   }
 
   void visitBarrierStatement(
