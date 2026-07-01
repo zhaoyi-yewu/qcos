@@ -11,6 +11,10 @@ debug = false
 # device_log_file = /var/log/qcos/device_quafu.log
 device_log_file = "/var/log/qcos/device_quafu.log"
 
+# [Optional] enable device monitor
+# enable_device_monitor = false
+enable_device_monitor = false
+
 # [Optional] device monitor log file path
 # monitor_log_file = /var/log/qcos/device_quafu.log
 monitor_log_file = "/var/log/qcos/device_monitor_quafu.log"

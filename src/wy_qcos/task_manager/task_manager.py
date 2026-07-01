@@ -71,6 +71,23 @@ class TaskFlowManager:
         )
 
     @staticmethod
+    def _is_device_monitor_enabled(device):
+        config_enable = device.get_enable_device_monitor()
+        driver_enable = device.get_driver().enable_device_monitor
+        if config_enable is False:
+            return False
+        if config_enable is True and driver_enable is False:
+            logger.warning(
+                f"Device '{device.get_name()}': enable_device_monitor is set "
+                f"to true in config file, but driver "
+                f"'{device.get_driver().get_name()}' does not support "
+                f"device monitor (driver enable_device_monitor is false). "
+                f"Device monitor will be disabled."
+            )
+            return False
+        return driver_enable
+
+    @staticmethod
     def convert_to_qcos_state(state):
         """Convert to qcos state.
 
@@ -165,7 +182,7 @@ class TaskFlowManager:
             }
 
             device = self.device_manager.get_devices().get(device_name)
-            enable_device_monitor = device.get_driver().enable_device_monitor
+            enable_device_monitor = self._is_device_monitor_enabled(device)
             if enable_device_monitor:
                 monitor_key = (
                     f"{Constant.WORK_POOL_MONITOR_PREFIX}{device_name}"
@@ -218,7 +235,7 @@ class TaskFlowManager:
             monitor_devices = [
                 f"{Constant.WORK_POOL_MONITOR_PREFIX}{device.get_name()}"
                 for device in self.device_manager.get_devices().values()
-                if device.get_driver().enable_device_monitor
+                if self._is_device_monitor_enabled(device)
             ]
             if monitor_devices:
                 self.loop.run_until_complete(
@@ -419,7 +436,7 @@ class TaskFlowManager:
             )
             # start device monitor process
             device = self.device_manager.get_devices().get(device_name)
-            enable_device_monitor = device.get_driver().enable_device_monitor
+            enable_device_monitor = self._is_device_monitor_enabled(device)
             if enable_device_monitor:
                 monitor_pool = (
                     f"{Constant.WORK_POOL_MONITOR_PREFIX}{device_name}"
@@ -622,7 +639,7 @@ class TaskFlowManager:
         monitor_devices = [
             f"{Constant.WORK_POOL_MONITOR_PREFIX}{device.get_name()}"
             for device in self.device_manager.get_devices().values()
-            if device.get_driver().enable_device_monitor
+            if self._is_device_monitor_enabled(device)
         ]
         all_worker_status = {workpool: False for workpool in monitor_devices}
 

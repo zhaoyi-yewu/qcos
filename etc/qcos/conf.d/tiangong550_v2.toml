@@ -14,6 +14,10 @@ debug = false
 # device_log_file = /var/log/qcos/device_tiangong550_v2.log
 device_log_file = "/var/log/qcos/device_tiangong550_v2.log"
 
+# [Optional] enable device monitor
+# enable_device_monitor = false
+enable_device_monitor = false
+
 # [Optional] device monitor log file path
 # monitor_log_file = /var/log/qcos/device_montior_tiangong550_v2.log
 monitor_log_file = "/var/log/qcos/device_monitor_tiangong550_v2.log"
