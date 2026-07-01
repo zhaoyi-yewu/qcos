@@ -12,4 +12,4 @@ PASSWORD_SALT = "123456"
 
 [DEVICES]
 # override DEVICE_LIST in qcos.toml for ST tests
-DEVICE_LIST = ["dummy", "tiangong100", "tiangong550_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "uqc_matrix2", "qutip_sim", "ciqtek_ion_1", "quafu"]
+DEVICE_LIST = ["dummy", "tiangong100", "tiangong550_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "uqc_matrix2", "qutip_sim", "ciqtek_ion_1", "quafu", "stim"]
