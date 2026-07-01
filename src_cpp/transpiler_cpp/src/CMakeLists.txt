@@ -44,6 +44,7 @@ add_library(${LIB_TRANSPILER} STATIC
                             compiler/qasm_compiler/qasm_parser.cpp
                             compiler/qasm_to_origin_ir.cpp
                             compiler/quantum_computation.cpp
+                            transpile/transpile.cpp
                             )
 
 

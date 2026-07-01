@@ -37,6 +37,9 @@ from wy_qcos.transpiler.common.utils import (
 from wy_qcos.transpiler.cmss.transpiler_cmss_for_cpp import (
     TranspilerHighPerformanceCmss,
 )
+from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
+    DEFAULT_SC_MAPPING_OPTIONS,
+)
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
@@ -391,7 +394,6 @@ class CMSSTranspilerPerf:
                     transpile_all_result[params] = runtime
 
         for params, runtime in transpile_all_result.items():
-            runtime.avg_runtime(self.run_count)
             self.transpile_result[params] = runtime
 
     def output_csv_file(self):
@@ -692,37 +694,74 @@ class CMSSTranspilerPerf:
         with Timer() as total_timer:
             # generate basis gates list
             log_perf(logger, "Start performace testing of cmss compiling.")
-            with Timer() as ast_timer:
-                src_code_info = {"000": qasm_data}
-                parse_result = transpiler.parse(src_code_info)
-                self.parse_results[input_file] = list(parse_result.values())[0]
-            runtime.parse_time = ast_timer.elapsed
-            log_perf(logger, f"parse openqasm: {ast_timer.elapsed:.4f}s")
 
-            # optimize the transpiled gates
-            if self.enable_transpiler:
-                with Timer() as tranpile_timer:
-                    if len(sc_mapping_options) > 0:
-                        transpiler.transpiler_options["sc_mapping_options"] = (
-                            sc_mapping_options
-                        )
-                    transpiler.transpiler_options["enable_mapping"] = (
-                        self.enable_mapping
-                    )
-                    transpiler.transpiler_runtime = runtime
+            # 判断是否可以使用 C++ 一体化 transpile（单电路 sabre 路由路径）
+            routing_algorithm = sc_mapping_options.get(
+                "routing_algorithm",
+                DEFAULT_SC_MAPPING_OPTIONS["routing_algorithm"],
+            )
+            use_cpp_transpile = (
+                self.enable_mapping
+                and self.enable_transpiler
+                and tech_type == Constant.TECH_TYPE_SUPERCONDUCTING
+                and routing_algorithm == "sabre"
+            )
 
-                    _, _ = transpiler.transpile(
-                        parse_result, expected_basis_gates
-                    )
-                runtime.transpile_time = tranpile_timer.elapsed
-                log_perf(
-                    logger, f"cmss tranpiler: {tranpile_timer.elapsed:.4f}s\n"
+            if use_cpp_transpile:
+                # C++ 一体化 transpile：parse + transpile 合并为单次 C++ 调用
+                transpiler.transpiler_options["sc_mapping_options"] = (
+                    sc_mapping_options
                 )
-        runtime.decomposed_time = (
-            runtime.decompose_rule_time
-            + runtime.decompose_1q2q_time
-            + runtime.decompose_apply_time
-        )
+                result = transpiler.transpile_single(
+                    qasm_data, expected_basis_gates, qpu_config
+                )
+                # 从 C++ TranspileTimings 填充 Python TranspileRuntime
+                runtime = result.timings
+                for label, attr in [
+                    ("parse time", "parse_time"),
+                    ("first optimize time", "opt_time1"),
+                    ("decompose 1q2q time", "decompose_1q2q_time"),
+                    ("decompose rule time", "decompose_rule_time"),
+                    ("mapping time", "mapping_time"),
+                    ("decompose apply time", "decompose_apply_time"),
+                    ("second optimize time", "opt_time2"),
+                    ("transpile", "total_time"),
+                ]:
+                    log_perf(
+                        logger,
+                        f"cpp {label}: {getattr(runtime, attr):.4f}s\n",
+                    )
+            else:
+                # 原有 Python 流程：parse + transpile 分步执行
+                with Timer() as ast_timer:
+                    src_code_info = {"000": qasm_data}
+                    parse_result = transpiler.parse(src_code_info)
+                    self.parse_results[input_file] = list(
+                        parse_result.values()
+                    )[0]
+                runtime.parse_time = ast_timer.elapsed
+                log_perf(logger, f"parse openqasm: {ast_timer.elapsed:.4f}s")
+
+                # optimize the transpiled gates
+                if self.enable_transpiler:
+                    with Timer() as tranpile_timer:
+                        if len(sc_mapping_options) > 0:
+                            transpiler.transpiler_options[
+                                "sc_mapping_options"
+                            ] = sc_mapping_options
+                        transpiler.transpiler_options["enable_mapping"] = (
+                            self.enable_mapping
+                        )
+                        transpiler.transpiler_runtime = runtime
+
+                        _, _ = transpiler.transpile(
+                            parse_result, expected_basis_gates
+                        )
+                    runtime.transpile_time = tranpile_timer.elapsed
+                    log_perf(
+                        logger,
+                        f"cmss tranpiler: {tranpile_timer.elapsed:.4f}s\n",
+                    )
         runtime.total_time = total_timer.elapsed
         log_perf(
             logger,

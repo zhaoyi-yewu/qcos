@@ -2459,3 +2459,58 @@ def sabre_routing(
     list[BaseOperation]: The routed physical operation sequence.
     """
     ...
+
+class TranspileTimings:
+    """Timing breakdown for each transpile stage."""
+
+    decompose_1q2q_time: float
+    decompose_apply_time: float
+    decompose_rule_time: float
+    mapping_time: float
+    opt_time1: float
+    opt_time2: float
+    parse_time: float
+    total_time: float
+    transpile_time: float
+
+    def __init__(self) -> None: ...
+
+class TranspileResult:
+    """Result of the all-in-one transpile function."""
+
+    basis_gate_list: list[high_performance.BaseOperation]
+    num_qubits: int
+    timings: high_performance.TranspileTimings
+
+    def __init__(self) -> None: ...
+
+def transpile(
+    qasm_string: str,
+    supp_basis_gates: collections.abc.Sequence[str],
+    coupling_list: collections.abc.Sequence[tuple[int, int]],
+    opt_level: int = 1,
+    sabre_extension_size: int = 20,
+    sabre_weight: float = 0.5,
+    sabre_decay: float = 0.001,
+) -> high_performance.TranspileResult:
+    """All-in-one transpile function (sabre routing, single-circuit path).
+
+    Combines parse + transpile into a single C++ call, avoiding intermediate
+    Python/C++ data transfer overhead.
+
+    Args:
+    qasm_string (str): QASM circuit string.
+    supp_basis_gates (list[str]): Supported basis gate names.
+    coupling_list (list[tuple[int, int]]): Physical qubit coupling edges
+        (must be pre-normalized via normalize_topology).
+    opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+    sabre_extension_size (int, optional): SABRE lookahead set size.
+        Defaults to 20.
+    sabre_weight (float, optional): SABRE front/extend weight.
+        Defaults to 0.5.
+    sabre_decay (float, optional): SABRE swap decay. Defaults to 0.001.
+
+    Returns:
+    TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+    """
+    ...
