@@ -158,7 +158,8 @@ class TaskScheduler:
 
         pool_wait_states_flows_count = len(
             self._task_manager.get_flow_runs_with_filters(
-                states=wait_states, pool_name=backend
+                states=wait_states,
+                pool_name=f"{Constant.WORK_POOL_DEVICE_PREFIX}{backend}",
             )
         )
         device_max_queued_jobs = device.get_max_queued_jobs()
@@ -268,7 +269,7 @@ class TaskScheduler:
 
         # execute task
         try:
-            deployment_name = backend + "_mgr"
+            deployment_name = f"{Constant.WORK_POOL_MGR_PREFIX}{backend}"
             deployment = self._task_manager.get_deployment(deployment_name)
             device_mgr_info = {}
             device_mgr_info["device_name"] = job_info.device_name
@@ -537,10 +538,12 @@ class PrioritySchedulingPolicy:
             flow run id
         """
         priority = job_info["data"]["job_priority"]
-        pool_name = job_info["data"]["backend"]
+        backend = job_info["data"]["backend"]
 
         deployment_id = deployment["deploy_id"]
-        work_queue_name = f"{pool_name}_{priority}"
+        work_queue_name = (
+            f"{Constant.WORK_POOL_DEVICE_PREFIX}{backend}_{priority}"
+        )
         flow_run_id = self._task_manager.run_flow(
             deployment_id,
             {"job_info": job_info},
