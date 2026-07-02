@@ -95,7 +95,7 @@ db_migration_files = get_files(["src/wy_qcos/db/migration"],
 data_files.extend(db_migration_files)
 data_files.append(("tests", ["src/wy_qcos/tests/pytest.ini"]))
 data_files.append(("share/wy_qcos/cicd/", ["cicd/run-tests.sh"]))
-data_files.append(("share/wy_qcos/scripts/", ["build-scripts/init-db.sh"]))
+data_files.append(("share/wy_qcos/scripts/", ["build-scripts/db-manager.sh"]))
 setup(
     packages=find_packages(where="src"),
     include_package_data=True,
