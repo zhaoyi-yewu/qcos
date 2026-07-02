@@ -21,7 +21,12 @@
 // ==========================================================================
 
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'qcos-sandbox:cicd'
+            args '-v /var/run/docker.sock:/var/run/docker.sock -v /etc/localtime:/etc/localtime:ro -v /etc/hosts:/etc/hosts -e TZ=Asia/Shanghai'
+        }
+    }
 
     triggers {
         cron('H 22 * * *')
@@ -44,45 +49,45 @@ pipeline {
     }
 
     parameters {
-        string(name: 'GIT_REPO_URL',
-               defaultValue: 'ssh://git@gitlab.cmss.com:2223/OCRI/WuYueOs.git',
+        persistentString(name: 'GIT_REPO_URL',
+               defaultValue: 'git@gitee.com:WUYUEQbit/qcos.git',
                description: 'Git repository URL. eg. Gitee (git@gitee.com:WUYUEQbit/qcos.git) or GitLab (ssh://git@gitlab.cmss.com:2223/OCRI/WuYueOs.git)')
-        string(name: 'GIT_BRANCH',
-               defaultValue: '*/feature_QIS-143_test',
+        persistentString(name: 'GIT_BRANCH',
+               defaultValue: '*/develop',
                description: 'Git branch to build. e.g. Gitee (*/develop) or GitLab (*/dev_gitee)')
-        string(name: 'GIT_CREDENTIALS_ID',
-               defaultValue: 'gitlab-ssh-key',
+        persistentString(name: 'GIT_CREDENTIALS_ID',
+               defaultValue: 'gitee-ssh-key',
                description: 'Jenkins stored SSH credential ID for the Git repository. e.g. Gitee (gitee-ssh-key) or GitLab (gitlab-ssh-key)')
-        string(name: 'CICD_REPORT_EMAIL',
+        persistentString(name: 'CICD_REPORT_EMAIL',
                defaultValue: 'zhaoyi@cmss.chinamobile.com',
                description: 'Email address(es) for CI/CD report notification. Supports single (user@example.com) or multiple comma-separated (a@example.com,b@example.com). Leave empty to skip email notification.')
-        string(name: 'YUM_MIRROR',
-               defaultValue: 'http://mirrors.bclinux.org/openeuler',
-               description: 'YUM mirror URL. Leave empty to use default. e.g. GitLab (http://mirrors.bclinux.org/openeuler)')
-        string(name: 'PIP_MIRROR',
-               defaultValue: 'http://mirrors.bclinux.org/bigcloud/bc-uns/bc-uns/pip/2.7/simple',
-               description: 'PIP mirror URL. Leave empty to use default. e.g. GitLab (http://mirrors.bclinux.org/bigcloud/bc-uns/bc-uns/pip/2.7/simple)')
-        string(name: 'NPM_MIRROR',
-               defaultValue: 'http://mirrors.bclinux.org:28081/repository/qcos/',
-               description: 'NPM mirror URL. Leave empty to use default. e.g. GitLab (http://mirrors.bclinux.org:28081/repository/qcos/)')
-        string(name: 'PYTHON_SRC_MIRROR',
-               defaultValue: 'http://mirrors.bclinux.org/bigcloud/bc-uns/bc-uns/extra_pkgs/pkgs/python/python-src/3.11.6/Python-3.11.6.tgz',
-               description: 'PYTHON source mirror URL. Leave empty to use default. e.g. GitLab (http://mirrors.bclinux.org/bigcloud/bc-uns/bc-uns/extra_pkgs/pkgs/python/python-src/3.11.6/Python-3.11.6.tgz)')
-        string(name: 'PYPY3_BIN_MIRROR',
-               defaultValue: 'http://mirrors.bclinux.org/bigcloud/bc-uns/bc-uns/extra_pkgs/pkgs/python/pypy/pypy3.11-v7.3.20-linux64.tar.bz2',
-               description: 'PYPY3 bin mirror URL. Leave empty to use default. e.g. GitLab (http://mirrors.bclinux.org/bigcloud/bc-uns/bc-uns/extra_pkgs/pkgs/python/pypy/pypy3.11-v7.3.20-linux64.tar.bz2)')
+        persistentString(name: 'YUM_MIRROR',
+               defaultValue: '',
+               description: 'YUM mirror URL. Leave empty to use default. e.g. GitLab (http://qcos-mirrors.bclinux.org/openeuler)')
+        persistentString(name: 'PIP_MIRROR',
+               defaultValue: '',
+               description: 'PIP mirror URL. Leave empty to use default. e.g. GitLab (http://qcos-mirrors.bclinux.org/bigcloud/bc-uns/bc-uns/pip/2.7/simple)')
+        persistentString(name: 'NPM_MIRROR',
+               defaultValue: '',
+               description: 'NPM mirror URL. Leave empty to use default. e.g. GitLab (http://qcos-mirrors.bclinux.org:28081/repository/qcos/)')
+        persistentString(name: 'PYTHON_SRC_MIRROR',
+               defaultValue: '',
+               description: 'PYTHON source mirror URL. Leave empty to use default. e.g. GitLab (http://qcos-mirrors.bclinux.org/bigcloud/bc-uns/bc-uns/extra_pkgs/pkgs/python/python-src/3.11.6/Python-3.11.6.tgz)')
+        persistentString(name: 'PYPY3_BIN_MIRROR',
+               defaultValue: '',
+               description: 'PYPY3 bin mirror URL. Leave empty to use default. e.g. GitLab (http://qcos-mirrors.bclinux.org/bigcloud/bc-uns/bc-uns/extra_pkgs/pkgs/python/pypy/pypy3.11-v7.3.20-linux64.tar.bz2)')
     }
 
     environment {
-        GIT_REPO_URL = "${params.GIT_REPO_URL}"
-        GIT_BRANCH = "${params.GIT_BRANCH}"
-        GIT_CREDENTIALS_ID = "${params.GIT_CREDENTIALS_ID}"
-        CICD_REPORT_EMAIL = "${params.CICD_REPORT_EMAIL}"
-        YUM_MIRROR = "${params.YUM_MIRROR}"
-        PIP_MIRROR = "${params.PIP_MIRROR}"
-        NPM_MIRROR = "${params.NPM_MIRROR}"
-        PYTHON_SRC_MIRROR = "${params.PYTHON_SRC_MIRROR}"
-        PYPY3_BIN_MIRROR = "${params.PYPY3_BIN_MIRROR}"
+        GIT_REPO_URL = "${params.GIT_REPO_URL?: ''}"
+        GIT_BRANCH = "${params.GIT_BRANCH?: ''}"
+        GIT_CREDENTIALS_ID = "${params.GIT_CREDENTIALS_ID?: ''}"
+        CICD_REPORT_EMAIL = "${params.CICD_REPORT_EMAIL?: ''}"
+        YUM_MIRROR = "${params.YUM_MIRROR?: ''}"
+        PIP_MIRROR = "${params.PIP_MIRROR?: ''}"
+        NPM_MIRROR = "${params.NPM_MIRROR?: ''}"
+        PYTHON_SRC_MIRROR = "${params.PYTHON_SRC_MIRROR?: ''}"
+        PYPY3_BIN_MIRROR = "${params.PYPY3_BIN_MIRROR?: ''}"
     }
 
     options {
@@ -101,8 +106,7 @@ pipeline {
         stage('Initialize') {
             steps {
                 script {
-                    sh "docker image prune -f || true"
-                    sh 'docker rm -f $(docker ps -a --format "{{.Names}}" | egrep "^[a-z]+_[a-z]+$") || true'
+                    dockerCleanup()
                     checkout([
                         $class: 'GitSCM',
                         branches: [[name: "${params.GIT_BRANCH}"]],
@@ -129,20 +133,20 @@ pipeline {
                 cd build-scripts
                 source ./version
                 cp ./env.template ./.env
-                if [ -n "${env.YUM_MIRROR}" ]; then
-                    sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${env.YUM_MIRROR}@" ./.env
+                if [ -n "\${YUM_MIRROR}" ]; then
+                    sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=\${YUM_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.PIP_MIRROR}" ]; then
-                    sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=${env.PIP_MIRROR}@" ./.env
+                if [ -n "\${PIP_MIRROR}" ]; then
+                    sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=\${PIP_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.NPM_MIRROR}" ]; then
-                    sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=${env.NPM_MIRROR}@" ./.env
+                if [ -n "\${NPM_MIRROR}" ]; then
+                    sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=\${NPM_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.PYTHON_SRC_MIRROR}" ]; then
-                    sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=${env.PYTHON_SRC_MIRROR}@" ./.env
+                if [ -n "\${PYTHON_SRC_MIRROR}" ]; then
+                    sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=\${PYTHON_SRC_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.PYPY3_BIN_MIRROR}" ]; then
-                    sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=${env.PYPY3_BIN_MIRROR}@" ./.env
+                if [ -n "\${PYPY3_BIN_MIRROR}" ]; then
+                    sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=\${PYPY3_BIN_MIRROR}@" ./.env
                 fi
                 df -h
                 ./build-images.sh -b -t dev
@@ -161,20 +165,20 @@ pipeline {
                 cd build-scripts
                 source ./version
                 cp ./env.template ./.env
-                if [ -n "${env.YUM_MIRROR}" ]; then
-                    sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${env.YUM_MIRROR}@" ./.env
+                if [ -n "\${YUM_MIRROR}" ]; then
+                    sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=\${YUM_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.PIP_MIRROR}" ]; then
-                    sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=${env.PIP_MIRROR}@" ./.env
+                if [ -n "\${PIP_MIRROR}" ]; then
+                    sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=\${PIP_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.NPM_MIRROR}" ]; then
-                    sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=${env.NPM_MIRROR}@" ./.env
+                if [ -n "\${NPM_MIRROR}" ]; then
+                    sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=\${NPM_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.PYTHON_SRC_MIRROR}" ]; then
-                    sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=${env.PYTHON_SRC_MIRROR}@" ./.env
+                if [ -n "\${PYTHON_SRC_MIRROR}" ]; then
+                    sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=\${PYTHON_SRC_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.PYPY3_BIN_MIRROR}" ]; then
-                    sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=${env.PYPY3_BIN_MIRROR}@" ./.env
+                if [ -n "\${PYPY3_BIN_MIRROR}" ]; then
+                    sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=\${PYPY3_BIN_MIRROR}@" ./.env
                 fi
                 df -h
                 ./build-images.sh -s -t dev
@@ -191,23 +195,25 @@ pipeline {
                 sh """#!/bin/bash
                 set -eo pipefail
                 cd build-scripts
-                ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose 2>/dev/null || true
+                if [ -e /usr/libexec/docker/cli-plugins/docker-compose ] && [ ! -e /usr/bin/docker-compose ] && [ ! -L /usr/bin/docker-compose ]; then
+                    ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+                fi
                 source ./version
                 cp ./env.template ./.env
-                if [ -n "${env.YUM_MIRROR}" ]; then
-                    sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${env.YUM_MIRROR}@" ./.env
+                if [ -n "\${YUM_MIRROR}" ]; then
+                    sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=\${YUM_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.PIP_MIRROR}" ]; then
-                    sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=${env.PIP_MIRROR}@" ./.env
+                if [ -n "\${PIP_MIRROR}" ]; then
+                    sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=\${PIP_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.NPM_MIRROR}" ]; then
-                    sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=${env.NPM_MIRROR}@" ./.env
+                if [ -n "\${NPM_MIRROR}" ]; then
+                    sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=\${NPM_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.PYTHON_SRC_MIRROR}" ]; then
-                    sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=${env.PYTHON_SRC_MIRROR}@" ./.env
+                if [ -n "\${PYTHON_SRC_MIRROR}" ]; then
+                    sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=\${PYTHON_SRC_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.PYPY3_BIN_MIRROR}" ]; then
-                    sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=${env.PYPY3_BIN_MIRROR}@" ./.env
+                if [ -n "\${PYPY3_BIN_MIRROR}" ]; then
+                    sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=\${PYPY3_BIN_MIRROR}@" ./.env
                 fi
                 df -h
                 ./run-sandbox.sh
@@ -231,23 +237,25 @@ pipeline {
                 sh """#!/bin/bash
                 set -eo pipefail
                 cd build-scripts
-                ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose 2>/dev/null || true
+                if [ -e /usr/libexec/docker/cli-plugins/docker-compose ] && [ ! -e /usr/bin/docker-compose ] && [ ! -L /usr/bin/docker-compose ]; then
+                    ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+                fi
                 source ./version
                 cp ./env.template ./.env
-                if [ -n "${env.YUM_MIRROR}" ]; then
-                    sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${env.YUM_MIRROR}@" ./.env
+                if [ -n "\${YUM_MIRROR}" ]; then
+                    sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=\${YUM_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.PIP_MIRROR}" ]; then
-                    sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=${env.PIP_MIRROR}@" ./.env
+                if [ -n "\${PIP_MIRROR}" ]; then
+                    sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=\${PIP_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.NPM_MIRROR}" ]; then
-                    sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=${env.NPM_MIRROR}@" ./.env
+                if [ -n "\${NPM_MIRROR}" ]; then
+                    sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=\${NPM_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.PYTHON_SRC_MIRROR}" ]; then
-                    sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=${env.PYTHON_SRC_MIRROR}@" ./.env
+                if [ -n "\${PYTHON_SRC_MIRROR}" ]; then
+                    sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=\${PYTHON_SRC_MIRROR}@" ./.env
                 fi
-                if [ -n "${env.PYPY3_BIN_MIRROR}" ]; then
-                    sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=${env.PYPY3_BIN_MIRROR}@" ./.env
+                if [ -n "\${PYPY3_BIN_MIRROR}" ]; then
+                    sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=\${PYPY3_BIN_MIRROR}@" ./.env
                 fi
                 df -h
                 ./run-sandbox.sh
@@ -271,7 +279,9 @@ pipeline {
                 sh """#!/bin/bash
                 set -eo pipefail
                 cd build-scripts
-                ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose 2>/dev/null || true
+                if [ -e /usr/libexec/docker/cli-plugins/docker-compose ] && [ ! -e /usr/bin/docker-compose ] && [ ! -L /usr/bin/docker-compose ]; then
+                    ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+                fi
                 cp ./env.template ./.env
                 export SANDBOX_IMAGE_VERSION=dev
                 ./run-sandbox.sh
@@ -295,7 +305,9 @@ pipeline {
                 sh """#!/bin/bash
                 set -eo pipefail
                 cd build-scripts
-                ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose 2>/dev/null || true
+                if [ -e /usr/libexec/docker/cli-plugins/docker-compose ] && [ ! -e /usr/bin/docker-compose ] && [ ! -L /usr/bin/docker-compose ]; then
+                    ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+                fi
                 cp ./env.template ./.env
                 export SANDBOX_IMAGE_VERSION=dev
                 ./run-sandbox.sh
@@ -319,84 +331,80 @@ pipeline {
                 sh """#!/bin/bash
                 set -eo pipefail
                 cd build-scripts
-                ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose 2>/dev/null || true
+                if [ -e /usr/libexec/docker/cli-plugins/docker-compose ] && [ ! -e /usr/bin/docker-compose ] && [ ! -L /usr/bin/docker-compose ]; then
+                    ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+                fi
 
                 TOP_DIR=\$(cd .. && pwd)
 
-                    # Configure environment
-                    cp ./env.template ./.env
-                    if [ -n "${env.YUM_MIRROR}" ]; then
-                        sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${env.YUM_MIRROR}@" ./.env
-                    fi
-                    if [ -n "${env.PIP_MIRROR}" ]; then
-                        sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=${env.PIP_MIRROR}@" ./.env
-                    fi
-                    if [ -n "${env.NPM_MIRROR}" ]; then
-                        sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=${env.NPM_MIRROR}@" ./.env
-                    fi
-                    if [ -n "${env.PYTHON_SRC_MIRROR}" ]; then
-                        sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=${env.PYTHON_SRC_MIRROR}@" ./.env
-                    fi
-                    if [ -n "${env.PYPY3_BIN_MIRROR}" ]; then
-                        sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=${env.PYPY3_BIN_MIRROR}@" ./.env
-                    fi
-                    sed -i 's@^QCOS_VERSION=.*@QCOS_VERSION=dev@' ./version
-                    sed -i 's@^LOCAL_CICD=.*@LOCAL_CICD=True@' ./.env
-
-                    # Prepare config files for system tests
-                    # NOTE: In Docker-in-Docker Jenkins setup, /etc/qcos/ refers to the
-                    # host path. If Jenkins runs inside a container, you may need to
-                    # adjust these paths or use HOST_MOUNT_PREFIX env variable.
-                    mkdir -p /etc/qcos/
-                    cp -rf \${TOP_DIR}/etc/qcos/st-conf.d /etc/qcos/
-                    cp -rf \${TOP_DIR}/etc/qcos/qcos-st.toml /etc/qcos/
-
-                    # Start QCOS system via docker-compose
-                    ./run-docker.sh
-
-                    # Wait for qcos-api to become ready
-                    QCOS_SERVER_IP=127.0.0.1
-                    QCOS_SERVER_PORT=18400
-                    MAX_ATTEMPTS=30
-                    SLEEP_INTERVAL=10
-                    count=0
-                    echo "qcos-api: http://\${QCOS_SERVER_IP}:\${QCOS_SERVER_PORT}"
-                    until curl -o /dev/null -s http://\${QCOS_SERVER_IP}:\${QCOS_SERVER_PORT} || [ \$count -ge \${MAX_ATTEMPTS} ]; do
-                        echo "waiting for qcos-api ... (attempt \$((count+1))/\${MAX_ATTEMPTS})"
-                        docker logs qcos
-                        sleep \${SLEEP_INTERVAL}
-                        count=\$((count+1))
-                    done
-                    if [ \$count -lt \${MAX_ATTEMPTS} ]; then
-                        echo "qcos-api is ready"
-                    else
-                        total_seconds=\$((MAX_ATTEMPTS * SLEEP_INTERVAL))
-                        echo "ERROR: qcos-api did not become ready after \${MAX_ATTEMPTS} attempts (total \${MAX_ATTEMPTS}*\${SLEEP_INTERVAL}=\${total_seconds} seconds)"
-                        docker logs qcos
-                        echo "Print /var/log/qcos/qcos-api.log ..."
-                        cat /var/log/qcos/qcos-api.log || true
-                        echo "Print /var/log/qcos/postgresql.log ..."
-                        cat /var/log/qcos/postgresql.log || true
-                        exit 1
-                    fi
-
-                    # Run system tests in qcos container
-                    sleep 10
-                    echo "Running system tests in container: qcos"
-                    cd \${TOP_DIR}
-                    tar czf /tmp/cicd.tar.gz ./cicd ./src ./etc ./samples
-                    docker cp /tmp/cicd.tar.gz qcos:/tmp/
-                    docker exec qcos sh -c "mkdir -p /root/qcos-project/; cd /root/qcos-project/; tar xzf /tmp/cicd.tar.gz"
-                    TEST_EXIT_CODE=0
-                    docker exec qcos sh -c "source /root/.bashrc; echo 'Transpiler list:'; qcos-cli list-transpilers; echo 'Driver list:'; qcos-cli list-drivers; echo 'Device list:'; qcos-cli list-devices; echo 'Job list:'; qcos-cli list-jobs; cd /root/qcos-project; ./cicd/run-tests.sh -s all" || TEST_EXIT_CODE=\$?
-
-                    # Print log files for debug purpose
-                    echo -e "\\n----------------------------------\\nPrint log files for debug purpose:"
-                    ls -al /var/log/qcos || true
-                    awk 'FNR==1{print "\\n\\n--- Log File: " FILENAME " ---"} {print} END{print ""}' /var/log/qcos/qcos-api.log /var/log/qcos/postgresql.log /var/log/qcos/device*.log || true
-
-                    exit \${TEST_EXIT_CODE}
-                    """
+                # Configure environment
+                cp ./env.template ./.env
+                if [ -n "\${YUM_MIRROR}" ]; then
+                    sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=\${YUM_MIRROR}@" ./.env
+                fi
+                if [ -n "\${PIP_MIRROR}" ]; then
+                    sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=\${PIP_MIRROR}@" ./.env
+                fi
+                if [ -n "\${NPM_MIRROR}" ]; then
+                    sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=\${NPM_MIRROR}@" ./.env
+                fi
+                if [ -n "\${PYTHON_SRC_MIRROR}" ]; then
+                    sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=\${PYTHON_SRC_MIRROR}@" ./.env
+                fi
+                if [ -n "\${PYPY3_BIN_MIRROR}" ]; then
+                    sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=\${PYPY3_BIN_MIRROR}@" ./.env
+                fi
+                sed -i 's@^QCOS_VERSION=.*@QCOS_VERSION=dev@' ./version
+                sed -i 's@^LOCAL_CICD=.*@LOCAL_CICD=True@' ./.env
+                # Prepare config files for system tests
+                # NOTE: In Docker-in-Docker Jenkins setup, /etc/qcos/ refers to the
+                # host path. If Jenkins runs inside a container, you may need to
+                # adjust these paths or use HOST_MOUNT_PREFIX env variable.
+                mkdir -p /etc/qcos/
+                cp -rf \${TOP_DIR}/etc/qcos/st-conf.d /etc/qcos/
+                cp -rf \${TOP_DIR}/etc/qcos/qcos-st.toml /etc/qcos/
+                # Start QCOS system via docker-compose
+                ./run-docker.sh
+                # Wait for qcos-api to become ready
+                QCOS_SERVER_IP=127.0.0.1
+                QCOS_SERVER_PORT=18400
+                MAX_ATTEMPTS=30
+                SLEEP_INTERVAL=10
+                count=0
+                echo "qcos-api: http://\${QCOS_SERVER_IP}:\${QCOS_SERVER_PORT}"
+                until curl -o /dev/null -s http://\${QCOS_SERVER_IP}:\${QCOS_SERVER_PORT} || [ \$count -ge \${MAX_ATTEMPTS} ]; do
+                    echo "waiting for qcos-api ... (attempt \$((count+1))/\${MAX_ATTEMPTS})"
+                    docker logs qcos
+                    sleep \${SLEEP_INTERVAL}
+                    count=\$((count+1))
+                done
+                if [ \$count -lt \${MAX_ATTEMPTS} ]; then
+                    echo "qcos-api is ready"
+                else
+                    total_seconds=\$((MAX_ATTEMPTS * SLEEP_INTERVAL))
+                    echo "ERROR: qcos-api did not become ready after \${MAX_ATTEMPTS} attempts (total \${MAX_ATTEMPTS}*\${SLEEP_INTERVAL}=\${total_seconds} seconds)"
+                    docker logs qcos
+                    echo "Print /var/log/qcos/qcos-api.log ..."
+                    cat /var/log/qcos/qcos-api.log || true
+                    echo "Print /var/log/qcos/postgresql.log ..."
+                    cat /var/log/qcos/postgresql.log || true
+                    exit 1
+                fi
+                # Run system tests in qcos container
+                sleep 10
+                echo "Running system tests in container: qcos"
+                cd \${TOP_DIR}
+                tar czf /tmp/cicd.tar.gz ./cicd ./src ./etc ./samples
+                docker cp /tmp/cicd.tar.gz qcos:/tmp/
+                docker exec qcos sh -c "mkdir -p /root/qcos-project/; cd /root/qcos-project/; tar xzf /tmp/cicd.tar.gz"
+                TEST_EXIT_CODE=0
+                docker exec qcos sh -c "source /root/.bashrc; echo 'Transpiler list:'; qcos-cli list-transpilers; echo 'Driver list:'; qcos-cli list-drivers; echo 'Device list:'; qcos-cli list-devices; echo 'Job list:'; qcos-cli list-jobs; cd /root/qcos-project; ./cicd/run-tests.sh -s all" || TEST_EXIT_CODE=\$?
+                # Print log files for debug purpose
+                echo -e "\\n----------------------------------\\nPrint log files for debug purpose:"
+                ls -al /var/log/qcos || true
+                awk 'FNR==1{print "\\n\\n--- Log File: " FILENAME " ---"} {print} END{print ""}' /var/log/qcos/qcos-api.log /var/log/qcos/postgresql.log /var/log/qcos/device*.log || true
+                exit \${TEST_EXIT_CODE}
+                """
             }
             post {
                 always {
@@ -410,9 +418,7 @@ pipeline {
     post {
         always {
             script {
-                // Cleanup dangling images
-                sh "docker image prune -f || true"
-                sh 'docker rm -f $(docker ps -a --format "{{.Names}}" | egrep "^[a-z]+_[a-z]+$") || true'
+                dockerCleanup()
             }
         }
         success {
@@ -574,4 +580,17 @@ pipeline {
             }
         }
     }
+}
+
+// ==========================================================================
+// Helper: Clean up Docker containers and dangling images
+// Reusable method called at pipeline start (Initialize) and end (post.always)
+// ==========================================================================
+void dockerCleanup() {
+    sh """
+    docker rm -f prefect-server redis postgres qcos-sandbox qcos qcos-cli || true
+    docker image prune -f || true
+    rm -rf /var/qcos/db/
+    docker ps -a -f status=exited --format "{{.Names}}" | egrep '^[a-z]+_[a-z]+\$' | xargs -r docker rm -f 2>/dev/null || true
+    """
 }

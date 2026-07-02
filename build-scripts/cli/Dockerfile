@@ -45,7 +45,7 @@ RUN set -e && \
     if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then rm -rf /etc/yum.repos.d/*.repo; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi && \
     if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
 # install basic rpms
-    yum install -y hostname openssh openssh-clients sshpass iputils iproute \
+    yum install --nobest -y hostname openssh openssh-clients sshpass iputils iproute \
       telnet net-tools openssl util-linux vim findutils \
       python3 python3-pip python3-requests python3-devel postgresql && \
     if [ "${DEV,,}" = "false" ]; then \

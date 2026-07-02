@@ -1,3 +1,6 @@
+# run in sandbox docker
+image: qcos-sandbox:cicd
+
 # stages
 stages:
   # commit messages
@@ -17,6 +20,9 @@ commit-messages:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
+    - export LC_ALL=C.UTF-8
+    - export LANG=C.UTF-8
     - python3 ./cicd/check-commit-message.py
 
 # files check
@@ -25,6 +31,9 @@ check-files:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
+    - export LC_ALL=C.UTF-8
+    - export LANG=C.UTF-8
     - ./cicd/check-files.sh
 
 # code-linter
@@ -33,6 +42,9 @@ code-linter:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
+    - export LC_ALL=C.UTF-8
+    - export LANG=C.UTF-8
     - ./cicd/code-linter.sh
 
 # code-style
@@ -41,6 +53,9 @@ code-style:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
+    - export LC_ALL=C.UTF-8
+    - export LANG=C.UTF-8
     - ./cicd/code-formatter.sh
 
 # docstring-check
@@ -49,6 +64,9 @@ docstring-check:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
+    - export LC_ALL=C.UTF-8
+    - export LANG=C.UTF-8
     - ./cicd/docstring-check.sh
 
 # docs-linter
@@ -57,6 +75,9 @@ docs-linter:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
+    - export LC_ALL=C.UTF-8
+    - export LANG=C.UTF-8
     - ./cicd/docs-linter.sh
 
 # ut (qcos)
@@ -65,6 +86,9 @@ ut-qcos:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
+    - export LC_ALL=C.UTF-8
+    - export LANG=C.UTF-8
     - ./cicd/run-tests.sh -b
     - ./cicd/run-tests.sh -u default
   artifacts:
@@ -78,6 +102,9 @@ cpp-ut-qcos:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
+    - export LC_ALL=C.UTF-8
+    - export LANG=C.UTF-8
     - ./cicd/run-tests.sh -b
     - ./cicd/run-tests.sh -t default
   artifacts:
@@ -91,6 +118,9 @@ code-coverage-qcos:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
+    - export LC_ALL=C.UTF-8
+    - export LANG=C.UTF-8
     - ./cicd/run-tests.sh -b
     - ./cicd/run-tests.sh -c default
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)/'
@@ -101,6 +131,9 @@ ut-qcos-client:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
+    - export LC_ALL=C.UTF-8
+    - export LANG=C.UTF-8
     - ./cicd/run-tests.sh -j all
 
 # code-coverage (qcos_client)
@@ -109,6 +142,9 @@ code-coverage-qcos-client:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
+    - export LC_ALL=C.UTF-8
+    - export LANG=C.UTF-8
     - ./cicd/run-tests.sh -e all
 
 # system tests (qcos)
@@ -117,6 +153,9 @@ st-qcos:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
+    - export LC_ALL=C.UTF-8
+    - export LANG=C.UTF-8
     - |
       JENKINS_BASE_URL=${JENKINS_BASE_URL:-"http://127.0.0.1:18080/job"}
       JENKINS_JOB_NAME=${JENKINS_JOB_NAME:-"WuYueOS-CICD-Daily"}
@@ -204,4 +243,7 @@ st-qcos:
 #  tags:
 #    - sonic-runner
 #  script:
+#    - source /var/lib/qcos/venv/sandbox/bin/activate
+#    - export LC_ALL=C.UTF-8
+#    - export LANG=C.UTF-8
 #    - ./cicd/run-tests.sh -s all

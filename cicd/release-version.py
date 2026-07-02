@@ -15,8 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-"""
-Release version script
+"""Release version script.
 
 Prerequisite:
 yum install -y git
@@ -65,12 +64,11 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 
 class ReleaseException(Exception):
-    """Release Exception"""
+    """Release Exception."""
 
 
 def extract_unreleased_section(md_content, start_marker, end_marker):
-    """
-    Find contents between start_marker and end_marker from markdown content.
+    """Find contents between start_marker and end_marker from markdown content.
 
     Args:
         md_content (str): markdown contents
@@ -80,7 +78,6 @@ def extract_unreleased_section(md_content, start_marker, end_marker):
     Returns:
         str: contents between start_marker and end_marker
     """
-
     # find start_marker position
     start_idx = md_content.find(start_marker)
     if start_idx == -1:
@@ -98,6 +95,21 @@ def extract_unreleased_section(md_content, start_marker, end_marker):
 
     # remove the section name and strip blank characters
     return section_content.replace(start_marker, "").strip()
+
+
+def escape_single_braces(text):
+    """Escape single brace.
+
+    Args:
+        text: input text
+
+    Returns:
+        results
+    """
+    text = re.sub(r'(?<!\{)\{(?!\{)', '{{', text)
+    text = re.sub(r'(?<!\})\}(?!\})', '}}', text)
+
+    return text
 
 
 def run_command(
@@ -150,7 +162,7 @@ def run_command(
 
 
 def has_branch(branch_name):
-    """Has branch
+    """Has branch.
 
     Args:
         branch_name (str): branch name
@@ -174,7 +186,7 @@ def has_branch(branch_name):
 
 
 def has_tag(tag_name):
-    """Has tag
+    """Has tag.
 
     Args:
         tag_name (str): tag name
@@ -207,7 +219,6 @@ def get_release_notes(changelog_path, check_updated=False):
     Returns:
         release notes
     """
-
     md_text = None
     with open(changelog_path, "r", encoding="utf-8") as f:
         md_text = f.read()
@@ -220,7 +231,7 @@ def get_release_notes(changelog_path, check_updated=False):
         md_text, "## [未发布] - 开发中", "## ["
     )
     if not release_notes:
-        raise ReleaseException(f"Can't find any release notes")
+        raise ReleaseException("Can't find any release notes")
 
     # Check if release notes is updated
     ignored_keywords = [
@@ -244,7 +255,7 @@ def get_release_notes(changelog_path, check_updated=False):
                 is_updated = True
                 break
     if check_updated and not is_updated:
-        raise ReleaseException(f"Please update release notes")
+        raise ReleaseException("Please update release notes")
 
     return release_notes
 
@@ -271,7 +282,6 @@ def bump_version(
         dry_run: dry run
         top_dir: top dir
     """
-
     # set new-version
     bump_cmd_part = ""
     if bump_version_part:
@@ -295,6 +305,7 @@ def bump_version(
     # set release notes
     _release_notes = release_notes.replace("### ", "")
     _release_notes = _release_notes.replace("## ", "")
+    _release_notes = escape_single_braces(_release_notes)
     bump_tag_message = f'--tag-message "Release Notes\n\n{_release_notes}"'
 
     # run bump-my-version command
@@ -330,7 +341,6 @@ def is_git_repo_clean():
     Returns:
         bool: True if git repo is clean, False otherwise
     """
-
     cmds = ["git status --porcelain --untracked-files=no"]
     results = run_command(";".join(cmds))
     ret_code = results.returncode
@@ -347,18 +357,17 @@ def is_git_repo_clean():
 
 
 def delete_branch_tags(delete_version, dry_run=False, top_dir=None):
-    """Delete branches or tags
+    """Delete branches or tags.
 
     Args:
         delete_version: delete version
         dry_run: dry run
         top_dir: top directory
     """
-
     validate_version(delete_version)
     delete_branches = [f"release/v{delete_version}", f"v{delete_version}"]
     delete_tags = [f"v{delete_version}"]
-    print(f"* Deleting branches or tags:")
+    print("* Deleting branches or tags:")
     print(f"  branch: {', '.join(delete_branches)}")
     print(f"  tag   : {', '.join(delete_tags)}")
     cmds = [
@@ -385,7 +394,6 @@ def push_branch_tags(
         dry_run: dry run
         top_dir: top directory
     """
-
     validate_version(push_version)
     push_branches = [
         master_branch,
@@ -393,7 +401,7 @@ def push_branch_tags(
         f"v{push_version}",
     ]
     push_tags = [push_version]
-    print(f"* Push branches and tags")
+    print("* Push branches and tags")
     print(f"  branch: {', '.join(push_branches)}")
     print(f"  tag   : {', '.join(push_tags)}")
     cmds = []
@@ -405,8 +413,7 @@ def push_branch_tags(
 
 
 def main(argv=None):
-    """main"""
-
+    """Main."""
     if argv is None:
         argv = sys.argv
     else:
@@ -571,7 +578,7 @@ USAGE
             raise ReleaseException(err_msg)
 
         # get bump version using dry-run
-        print(f"* Get bump version using dry-run")
+        print("* Get bump version using dry-run")
         _bump_version_name = bump_version_name
         bump_version_str = bump_version_part
         if bump_version_name:
@@ -667,9 +674,9 @@ USAGE
 
         # run CICD tests
         if not run_tests:
-            print(f"* Skipped CICD tests")
+            print("* Skipped CICD tests")
         else:
-            print(f"* Run CICD tests")
+            print("* Run CICD tests")
             cmds = [f"{top_dir}/cicd/run-cicd.sh"]
             results = run_command(
                 ";".join(cmds), capture_output=False, cwd=top_dir

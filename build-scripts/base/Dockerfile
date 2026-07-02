@@ -56,7 +56,7 @@ RUN set -e && \
     && if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi \
     && \
 # install basic rpm packages
-    yum install -y hostname openssh openssh-clients sshpass iputils iproute \
+    yum install --nobest -y hostname openssh openssh-clients sshpass iputils iproute \
     telnet net-tools openssl util-linux vim findutils dos2unix wget rsync jq \
     gettext make cmake gcc gcc-g++ rust cargo  postgresql \
     python3 python3-pip python3-sphinx python3-requests python3-devel \

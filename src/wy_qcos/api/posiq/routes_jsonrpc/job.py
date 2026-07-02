@@ -393,6 +393,20 @@ def submit_job(
         ),
     )
 
+    # Validate: circuit_aggregation is supported
+    if not driver.enable_circuit_aggregation and circuit_aggregation in (
+        Constant.AGGREGATION_TYPE_INTERNAL,
+        Constant.AGGREGATION_TYPE_EXTERNAL,
+    ):
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                f"Driver: {driver.name} does not support circuit aggregation",
+            ),
+        )
+
     # validate: profiling
     if profiling:
         for _profiling in profiling:
