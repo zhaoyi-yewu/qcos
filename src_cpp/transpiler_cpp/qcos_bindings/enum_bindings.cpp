@@ -15,15 +15,15 @@
  * ----------------------------------------------------------------------
  */
 
-#include <pybind11/pybind11.h>
+#include <nanobind/nanobind.h>
 
 #include "circuit/base_operation.h"
 
-namespace py = pybind11;
+namespace nb = nanobind;
 using namespace qcos;
 
-void bind_enums(py::module_& m) {
-  py::enum_<OperationType>(m, "OperationType")
+void bind_enums(nb::module_& m) {
+  nb::enum_<OperationType>(m, "OperationType")
       .value("MEASURE", OperationType::MEASURE)
       .value("SINGLE_QUBIT_OPERATION", OperationType::SINGLE_QUBIT_OPERATION)
       .value("DOUBLE_QUBIT_OPERATION", OperationType::DOUBLE_QUBIT_OPERATION)

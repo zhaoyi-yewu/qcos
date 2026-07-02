@@ -15,8 +15,12 @@
  * ----------------------------------------------------------------------
  */
 
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/optional.h>
+#include <nanobind/stl/set.h>
+#include <nanobind/stl/shared_ptr.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>
 
 #include <memory>
 #include <optional>
@@ -27,42 +31,42 @@
 #include "circuit/base_operation.h"
 #include "optimizer/gate_optimizer.h"
 
-namespace py = pybind11;
+namespace nb = nanobind;
 using namespace qcos;
 
-void bind_optimizer(py::module_& m) {
+void bind_optimizer(nb::module_& m) {
   m.def(
       "optimize",
       [](const std::vector<std::shared_ptr<BaseOperation>>& ir, int opt_level,
          bool verbose, const std::optional<std::set<std::string>>& basis_gates,
          size_t num_threads) {
-        py::gil_scoped_release release;
+        nb::gil_scoped_release release;
         return optimize(ir, opt_level, verbose, basis_gates, num_threads);
       },
-      py::arg("ir"), py::arg("opt_level") = 1, py::arg("verbose") = false,
-      py::arg("basis_gates") = std::nullopt, py::arg("num_threads") = 1,
-      R"pbdoc(
-对 IR 执行优化.
+      nb::arg("ir"), nb::arg("opt_level") = 1, nb::arg("verbose") = false,
+      nb::arg("basis_gates") = std::nullopt, nb::arg("num_threads") = 1,
+      R"(
+        对 IR 执行优化.
 
-opt_level:
-  0 - 不做优化
-  1 - InverseCancellation + AdjacentPhaseOptPass
-  2 - Level 1 + EquivalencePass
-  3 - Level 2 + CliffordRzOptimization
+        opt_level:
+          0 - 不做优化
+          1 - InverseCancellation + AdjacentPhaseOptPass
+          2 - Level 1 + EquivalencePass
+          3 - Level 2 + CliffordRzOptimization
 
-num_threads:
-  1 - 串行（默认）
-  0 - 自动并行（线程数取硬件并发数）
-  >1 - 指定线程数并行
+        num_threads:
+          1 - 串行（默认）
+          0 - 自动并行（线程数取硬件并发数）
+          >1 - 指定线程数并行
 
-Args:
-    ir (list[BaseOperation]): 待优化的操作序列
-    opt_level (int, optional): 优化级别. Defaults to 1.
-    verbose (bool, optional): 是否打印优化详情. Defaults to False.
-    basis_gates (set[str] | None, optional): basis gate 过滤集合.
-    num_threads (int, optional): 并行线程数：1=串行，0=自动，>1=指定. Defaults to 1.
+        Args:
+            ir (list[BaseOperation]): 待优化的操作序列
+            opt_level (int, optional): 优化级别. Defaults to 1.
+            verbose (bool, optional): 是否打印优化详情. Defaults to False.
+            basis_gates (set[str] | None, optional): basis gate 过滤集合.
+            num_threads (int, optional): 并行线程数：1=串行，0=自动，>1=指定. Defaults to 1.
 
-Returns:
-    list[BaseOperation]: 优化后的操作序列
-)pbdoc");
+        Returns:
+            list[BaseOperation]: 优化后的操作序列
+      )");
 }

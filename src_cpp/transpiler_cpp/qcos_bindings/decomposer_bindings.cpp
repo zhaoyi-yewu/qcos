@@ -15,31 +15,35 @@
  * ----------------------------------------------------------------------
  */
 
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/pair.h>
+#include <nanobind/stl/shared_ptr.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/unordered_map.h>
+#include <nanobind/stl/vector.h>
 
 #include "circuit/base_operation.h"
 #include "decomposer/decomposer.h"
 #include "decomposer/equivalence_graph.h"
 
-namespace py = pybind11;
+namespace nb = nanobind;
 using namespace qcos;
 
-void bind_decomposer(py::module_& m) {
+void bind_decomposer(nb::module_& m) {
   // =========================
   // ParamGate
   // =========================
-  py::class_<ParamGate>(m, "ParamGate")
-      .def(py::init<>())
-      .def_readwrite("name", &ParamGate::name)
-      .def_readwrite("qubits", &ParamGate::qubits)
-      .def_readwrite("params", &ParamGate::params);
+  nb::class_<ParamGate>(m, "ParamGate")
+      .def(nb::init<>())
+      .def_rw("name", &ParamGate::name)
+      .def_rw("qubits", &ParamGate::qubits)
+      .def_rw("params", &ParamGate::params);
 
   // =========================
   // Decomposer
   // =========================
-  py::class_<Decomposer>(m, "Decomposer")
-      .def(py::init<>())
+  nb::class_<Decomposer>(m, "Decomposer")
+      .def(nb::init<>())
 
       // -------- get_decompose_rules --------
       .def("get_decompose_rules",
@@ -50,19 +54,19 @@ void bind_decomposer(py::module_& m) {
              const auto& table = result.first;
              const auto& stats = result.second;
 
-             py::dict py_table;
+             nb::dict nb_table;
 
              for (const auto& [key, value] : table) {
-               py_table[py::cast(key)] = py::cast(value);
+               nb_table[nb::cast(key)] = nb::cast(value);
              }
 
-             return py::make_tuple(py_table, stats);
+             return nb::make_tuple(nb_table, stats);
            })
 
       // -------- apply_decompose_rules --------
       .def(
           "apply_decompose_rules",
           &Decomposer::apply_decompose_rules,
-          py::arg("circuit"),
-          py::arg("table"));
+          nb::arg("circuit"),
+          nb::arg("table"));
 }

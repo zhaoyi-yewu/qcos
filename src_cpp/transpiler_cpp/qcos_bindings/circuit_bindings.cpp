@@ -15,29 +15,32 @@
  * ----------------------------------------------------------------------
  */
 
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/array.h>
+#include <nanobind/stl/complex.h>
+#include <nanobind/stl/shared_ptr.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>
 
 #include "circuit/base_operation.h"
 #include "circuit/gate_operation.h"
 
-namespace py = pybind11;
+namespace nb = nanobind;
 using namespace qcos;
 
-void bind_circuits(py::module_& m) {
-  py::class_<BaseOperation, std::shared_ptr<BaseOperation>>(m, "BaseOperation",
-                                                            py::dynamic_attr())
-      .def(py::init<std::string, std::vector<int>, std::vector<double>,
+void bind_circuits(nb::module_& m) {
+  nb::class_<BaseOperation>(m, "BaseOperation")
+      .def(nb::init<std::string, std::vector<int>, std::vector<double>,
                     OperationType>(),
-           py::arg("name"), py::arg("targets"), py::arg("arg_value"),
-           py::arg("operation_type"))
+           nb::arg("name"), nb::arg("targets"), nb::arg("arg_value"),
+           nb::arg("operation_type"))
 
-      .def_readonly("name", &BaseOperation::name)
-      .def_property("targets", &BaseOperation::getTargets,
+      .def_ro("name", &BaseOperation::name)
+      .def_prop_rw("targets", &BaseOperation::getTargets,
                     &BaseOperation::setTargets)
-      .def_property("arg_value", &BaseOperation::getArgValue,
+      .def_prop_rw("arg_value", &BaseOperation::getArgValue,
                     &BaseOperation::setArgValue)
-      .def_readonly("operation_type", &BaseOperation::operation_type)
+      .def_ro("operation_type", &BaseOperation::operation_type)
       .def("targets_to_string", &BaseOperation::targets_to_string)
       .def("arg_value_to_string", &BaseOperation::arg_value_to_string)
       .def("__repr__",
@@ -46,467 +49,466 @@ void bind_circuits(py::module_& m) {
                     ", arg_value=" + self.arg_value_to_string() + ")";
            })
       .def("__deepcopy__",
-           [](const BaseOperation& self, py::dict) {
+           [](const BaseOperation& self, nb::dict) {
              return BaseOperation(self.name, self.targets, self.arg_value,
                                   self.operation_type);
            })
       .def("to_openqasm",
-           py::overload_cast<const std::string&>(&BaseOperation::to_openqasm,
-                                                 py::const_),
-           py::arg("qubit_prefix") = "q");
+           nb::overload_cast<const std::string&>(&BaseOperation::to_openqasm,
+                                                 nb::const_),
+           nb::arg("qubit_prefix") = "q");
 
-  py::class_<GateOperation, BaseOperation, std::shared_ptr<GateOperation>>(
+  nb::class_<GateOperation, BaseOperation>(
       m, "GateOperation")
-      .def(py::init<std::string, std::vector<int>, std::vector<double>,
+      .def(nb::init<std::string, std::vector<int>, std::vector<double>,
                     OperationType, bool>(),
-           py::arg("name"), py::arg("targets"), py::arg("arg_value"),
-           py::arg("operation_type"), py::arg("hermitian") = false)
-      .def_readonly("hermitian", &GateOperation::hermitian)
+           nb::arg("name"), nb::arg("targets"), nb::arg("arg_value"),
+           nb::arg("operation_type"), nb::arg("hermitian") = false)
+      .def_ro("hermitian", &GateOperation::hermitian)
       .def("decompose_to_1q2q", &GateOperation::decompose_to_1q2q)
-      .def("__deepcopy__", [](const GateOperation& self, py::dict) {
+      .def("__deepcopy__", [](const GateOperation& self, nb::dict) {
         return GateOperation(self.name, self.targets, self.arg_value,
                              self.operation_type);
       });
 
-  py::class_<std::complex<double>>(m, "complex")
-      .def(py::init<double, double>())
-      .def_property_readonly(
-          "real", [](const std::complex<double>& c) { return c.real(); })
-      .def_property_readonly(
-          "imag", [](const std::complex<double>& c) { return c.imag(); });
-
-  py::class_<H, GateOperation, std::shared_ptr<H>>(m, "H")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<H, GateOperation>(m, "H")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &H::to_matrix)
       .def("default_decompose", &H::default_decompose)
       .def("__repr__", [](const H& self) { return self.to_string(); });
 
-  py::class_<X, GateOperation, std::shared_ptr<X>>(m, "X")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<X, GateOperation>(m, "X")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &X::to_matrix)
       .def("default_decompose", &X::default_decompose)
       .def("__repr__", [](const X& self) { return self.to_string(); });
 
-  py::class_<Y, GateOperation, std::shared_ptr<Y>>(m, "Y")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<Y, GateOperation>(m, "Y")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &Y::to_matrix)
       .def("default_decompose", &Y::default_decompose)
       .def("__repr__", [](const Y& self) { return self.to_string(); });
 
-  py::class_<Z, GateOperation, std::shared_ptr<Z>>(m, "Z")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<Z, GateOperation>(m, "Z")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &Z::to_matrix)
       .def("default_decompose", &Z::default_decompose)
       .def("__repr__", [](const Z& self) { return self.to_string(); });
 
-  py::class_<S, GateOperation, std::shared_ptr<S>>(m, "S")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<S, GateOperation>(m, "S")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &S::to_matrix)
       .def("default_decompose", &S::default_decompose)
       .def("__repr__", [](const S& self) { return self.to_string(); });
 
-  py::class_<SDG, GateOperation, std::shared_ptr<SDG>>(m, "SDG")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<SDG, GateOperation>(m, "SDG")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &SDG::to_matrix)
       .def("default_decompose", &SDG::default_decompose)
       .def("__repr__", [](const SDG& self) { return self.to_string(); });
 
-  py::class_<T, GateOperation, std::shared_ptr<T>>(m, "T")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<T, GateOperation>(m, "T")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &T::to_matrix)
       .def("default_decompose", &T::default_decompose)
       .def("__repr__", [](const T& self) { return self.to_string(); });
 
-  py::class_<TDG, GateOperation, std::shared_ptr<TDG>>(m, "TDG")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<TDG, GateOperation>(m, "TDG")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &TDG::to_matrix)
       .def("default_decompose", &TDG::default_decompose)
       .def("__repr__", [](const TDG& self) { return self.to_string(); });
 
-  py::class_<P, GateOperation, std::shared_ptr<P>>(m, "P")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<P, GateOperation>(m, "P")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &P::to_matrix)
       .def("default_decompose", &P::default_decompose)
       .def("__repr__", [](const P& self) { return self.to_string(); });
 
-  py::class_<R, GateOperation, std::shared_ptr<R>>(m, "R")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<R, GateOperation>(m, "R")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &R::to_matrix)
       .def("default_decompose", &R::default_decompose)
       .def("__repr__", [](const R& self) { return self.to_string(); });
 
-  py::class_<RX, GateOperation, std::shared_ptr<RX>>(m, "RX")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<RX, GateOperation>(m, "RX")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &RX::to_matrix)
       .def("default_decompose", &RX::default_decompose)
       .def("__repr__", [](const RX& self) { return self.to_string(); });
 
-  py::class_<RY, GateOperation, std::shared_ptr<RY>>(m, "RY")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<RY, GateOperation>(m, "RY")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &RY::to_matrix)
       .def("default_decompose", &RY::default_decompose)
       .def("__repr__", [](const RY& self) { return self.to_string(); });
 
-  py::class_<RZ, GateOperation, std::shared_ptr<RZ>>(m, "RZ")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<RZ, GateOperation>(m, "RZ")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &RZ::to_matrix)
       .def("default_decompose", &RZ::default_decompose)
       .def("__repr__", [](const RZ& self) { return self.to_string(); });
 
-  py::class_<SX, GateOperation, std::shared_ptr<SX>>(m, "SX")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<SX, GateOperation>(m, "SX")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &SX::to_matrix)
       .def("default_decompose", &SX::default_decompose)
       .def("__repr__", [](const SX& self) { return self.to_string(); });
 
-  py::class_<SXDG, GateOperation, std::shared_ptr<SXDG>>(m, "SXDG")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<SXDG, GateOperation>(m, "SXDG")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &SXDG::to_matrix)
       .def("default_decompose", &SXDG::default_decompose)
       .def("__repr__", [](const SXDG& self) { return self.to_string(); });
 
-  py::class_<CZ, GateOperation, std::shared_ptr<CZ>>(m, "CZ")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CZ, GateOperation>(m, "CZ")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CZ::to_matrix)
       .def("default_decompose", &CZ::default_decompose)
       .def("__repr__", [](const CZ& self) { return self.to_string(); });
 
-  py::class_<CX, GateOperation, std::shared_ptr<CX>>(m, "CX")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CX, GateOperation>(m, "CX")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CX::to_matrix)
       .def("default_decompose", &CX::default_decompose)
       .def("__repr__", [](const CX& self) { return self.to_string(); });
 
-  py::class_<CY, GateOperation, std::shared_ptr<CY>>(m, "CY")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CY, GateOperation>(m, "CY")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CY::to_matrix)
       .def("default_decompose", &CY::default_decompose)
       .def("__repr__", [](const CY& self) { return self.to_string(); });
 
-  py::class_<SWAP, GateOperation, std::shared_ptr<SWAP>>(m, "SWAP")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<SWAP, GateOperation>(m, "SWAP")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &SWAP::to_matrix)
       .def("default_decompose", &SWAP::default_decompose)
       .def("__repr__", [](const SWAP& self) { return self.to_string(); });
 
-  py::class_<ISWAP, GateOperation, std::shared_ptr<ISWAP>>(m, "ISWAP")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<ISWAP, GateOperation>(m, "ISWAP")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &ISWAP::to_matrix)
       .def("default_decompose", &ISWAP::default_decompose)
       .def("__repr__", [](const ISWAP& self) { return self.to_string(); });
 
-  py::class_<CH, GateOperation, std::shared_ptr<CH>>(m, "CH")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CH, GateOperation>(m, "CH")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CH::to_matrix)
       .def("default_decompose", &CH::default_decompose)
       .def("__repr__", [](const CH& self) { return self.to_string(); });
 
-  py::class_<CS, GateOperation, std::shared_ptr<CS>>(m, "CS")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CS, GateOperation>(m, "CS")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CS::to_matrix)
       .def("default_decompose", &CS::default_decompose)
       .def("__repr__", [](const CS& self) { return self.to_string(); });
 
-  py::class_<CSDG, GateOperation, std::shared_ptr<CSDG>>(m, "CSDG")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CSDG, GateOperation>(m, "CSDG")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CSDG::to_matrix)
       .def("default_decompose", &CSDG::default_decompose)
       .def("__repr__", [](const CSDG& self) { return self.to_string(); });
 
-  py::class_<CRX, GateOperation, std::shared_ptr<CRX>>(m, "CRX")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CRX, GateOperation>(m, "CRX")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CRX::to_matrix)
       .def("default_decompose", &CRX::default_decompose)
       .def("__repr__", [](const CRX& self) { return self.to_string(); });
 
-  py::class_<CRY, GateOperation, std::shared_ptr<CRY>>(m, "CRY")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CRY, GateOperation>(m, "CRY")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CRY::to_matrix)
       .def("default_decompose", &CRY::default_decompose)
       .def("__repr__", [](const CRY& self) { return self.to_string(); });
 
-  py::class_<CRZ, GateOperation, std::shared_ptr<CRZ>>(m, "CRZ")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CRZ, GateOperation>(m, "CRZ")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CRZ::to_matrix)
       .def("default_decompose", &CRZ::default_decompose)
       .def("__repr__", [](const CRZ& self) { return self.to_string(); });
 
-  py::class_<CU1, GateOperation, std::shared_ptr<CU1>>(m, "CU1")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CU1, GateOperation>(m, "CU1")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CU1::to_matrix)
       .def("default_decompose", &CU1::default_decompose)
       .def("__repr__", [](const CU1& self) { return self.to_string(); });
 
-  py::class_<CP, GateOperation, std::shared_ptr<CP>>(m, "CP")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CP, GateOperation>(m, "CP")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CP::to_matrix)
       .def("default_decompose", &CP::default_decompose)
       .def("__repr__", [](const CP& self) { return self.to_string(); });
 
-  py::class_<CU3, GateOperation, std::shared_ptr<CU3>>(m, "CU3")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CU3, GateOperation>(m, "CU3")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CU3::to_matrix)
       .def("default_decompose", &CU3::default_decompose)
       .def("__repr__", [](const CU3& self) { return self.to_string(); });
 
-  py::class_<CSX, GateOperation, std::shared_ptr<CSX>>(m, "CSX")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CSX, GateOperation>(m, "CSX")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CSX::to_matrix)
       .def("default_decompose", &CSX::default_decompose)
       .def("__repr__", [](const CSX& self) { return self.to_string(); });
 
-  py::class_<CU, GateOperation, std::shared_ptr<CU>>(m, "CU")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CU, GateOperation>(m, "CU")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CU::to_matrix)
       .def("default_decompose", &CU::default_decompose)
       .def("__repr__", [](const CU& self) { return self.to_string(); });
 
-  py::class_<ECR, GateOperation, std::shared_ptr<ECR>>(m, "ECR")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<ECR, GateOperation>(m, "ECR")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &ECR::to_matrix)
       .def("default_decompose", &ECR::default_decompose)
       .def("__repr__", [](const ECR& self) { return self.to_string(); });
 
-  py::class_<DCX, GateOperation, std::shared_ptr<DCX>>(m, "DCX")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<DCX, GateOperation>(m, "DCX")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &DCX::to_matrix)
       .def("default_decompose", &DCX::default_decompose)
       .def("__repr__", [](const DCX& self) { return self.to_string(); });
 
-  py::class_<RXX, GateOperation, std::shared_ptr<RXX>>(m, "RXX")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<RXX, GateOperation>(m, "RXX")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &RXX::to_matrix)
       .def("default_decompose", &RXX::default_decompose)
       .def("__repr__", [](const RXX& self) { return self.to_string(); });
 
-  py::class_<RYY, GateOperation, std::shared_ptr<RYY>>(m, "RYY")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<RYY, GateOperation>(m, "RYY")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &RYY::to_matrix)
       .def("default_decompose", &RYY::default_decompose)
       .def("__repr__", [](const RYY& self) { return self.to_string(); });
 
-  py::class_<RZZ, GateOperation, std::shared_ptr<RZZ>>(m, "RZZ")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<RZZ, GateOperation>(m, "RZZ")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &RZZ::to_matrix)
       .def("default_decompose", &RZZ::default_decompose)
       .def("__repr__", [](const RZZ& self) { return self.to_string(); });
 
-  py::class_<RZX, GateOperation, std::shared_ptr<RZX>>(m, "RZX")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<RZX, GateOperation>(m, "RZX")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &RZX::to_matrix)
       .def("default_decompose", &RZX::default_decompose)
       .def("__repr__", [](const RZX& self) { return self.to_string(); });
 
-  py::class_<CCX, GateOperation, std::shared_ptr<CCX>>(m, "CCX")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CCX, GateOperation>(m, "CCX")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CCX::to_matrix)
       .def("decompose_to_1q2q", &CCX::decompose_to_1q2q)
       .def("default_decompose", &CCX::default_decompose)
       .def("__repr__", [](const CCX& self) { return self.to_string(); });
 
-  py::class_<CSWAP, GateOperation, std::shared_ptr<CSWAP>>(m, "CSWAP")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<CSWAP, GateOperation>(m, "CSWAP")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &CSWAP::to_matrix)
       .def("decompose_to_1q2q", &CSWAP::decompose_to_1q2q)
       .def("default_decompose", &CSWAP::default_decompose)
       .def("__repr__", [](const CSWAP& self) { return self.to_string(); });
 
-  py::class_<RCCX, GateOperation, std::shared_ptr<RCCX>>(m, "RCCX")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<RCCX, GateOperation>(m, "RCCX")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &RCCX::to_matrix)
       .def("decompose_to_1q2q", &RCCX::decompose_to_1q2q)
       .def("default_decompose", &RCCX::default_decompose)
       .def("__repr__", [](const RCCX& self) { return self.to_string(); });
 
-  py::class_<RC3X, GateOperation, std::shared_ptr<RC3X>>(m, "RC3X")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<RC3X, GateOperation>(m, "RC3X")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &RC3X::to_matrix)
       .def("decompose_to_1q2q", &RC3X::decompose_to_1q2q)
       .def("default_decompose", &RC3X::default_decompose)
       .def("__repr__", [](const RC3X& self) { return self.to_string(); });
 
-  py::class_<C3X, GateOperation, std::shared_ptr<C3X>>(m, "C3X")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<C3X, GateOperation>(m, "C3X")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &C3X::to_matrix)
       .def("decompose_to_1q2q", &C3X::decompose_to_1q2q)
       .def("default_decompose", &C3X::default_decompose)
       .def("__repr__", [](const C3X& self) { return self.to_string(); });
 
-  py::class_<C3SQRTX, GateOperation, std::shared_ptr<C3SQRTX>>(m, "C3SQRTX")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<C3SQRTX, GateOperation>(m, "C3SQRTX")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &C3SQRTX::to_matrix)
       .def("decompose_to_1q2q", &C3SQRTX::decompose_to_1q2q)
       .def("default_decompose", &C3SQRTX::default_decompose)
       .def("__repr__", [](const C3SQRTX& self) { return self.to_string(); });
 
-  py::class_<C4X, GateOperation, std::shared_ptr<C4X>>(m, "C4X")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<C4X, GateOperation>(m, "C4X")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("to_matrix", &C4X::to_matrix)
       .def("decompose_to_1q2q", &C4X::decompose_to_1q2q)
       .def("default_decompose", &C4X::default_decompose)
       .def("__repr__", [](const C4X& self) { return self.to_string(); });
 
-  py::class_<U1, GateOperation, std::shared_ptr<U1>>(m, "U1")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<U1, GateOperation>(m, "U1")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &U1::to_matrix)
       .def("default_decompose", &U1::default_decompose)
       .def("__repr__", [](const U1& self) { return self.to_string(); });
 
-  py::class_<U2, GateOperation, std::shared_ptr<U2>>(m, "U2")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<U2, GateOperation>(m, "U2")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &U2::to_matrix)
       .def("default_decompose", &U2::default_decompose)
       .def("__repr__", [](const U2& self) { return self.to_string(); });
 
-  py::class_<U3, GateOperation, std::shared_ptr<U3>>(m, "U3")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<U3, GateOperation>(m, "U3")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &U3::to_matrix)
       .def("default_decompose", &U3::default_decompose)
       .def("__repr__", [](const U3& self) { return self.to_string(); });
 
-  py::class_<U, GateOperation, std::shared_ptr<U>>(m, "U")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
+  nb::class_<U, GateOperation>(m, "U")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
       .def("to_matrix", &U::to_matrix)
       .def("default_decompose", &U::default_decompose)
       .def("__repr__", [](const U& self) { return self.to_string(); });
 
-  py::class_<Sync, BaseOperation, std::shared_ptr<Sync>>(m, "Sync")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<Sync, BaseOperation>(m, "Sync")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("__repr__", [](const Sync& self) { return self.to_string(); });
 
-  py::class_<Measure, BaseOperation, std::shared_ptr<Measure>>(m, "Measure")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<Measure, BaseOperation>(m, "Measure")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("__repr__", [](const Measure& self) { return self.to_string(); });
 
-  py::class_<Move, BaseOperation, std::shared_ptr<Move>>(m, "Move")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<Move, BaseOperation>(m, "Move")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("__repr__", [](const Move& self) { return self.to_string(); });
 
-  py::class_<Reset, BaseOperation, std::shared_ptr<Reset>>(m, "Reset")
-      .def(py::init<std::vector<int>, std::vector<double>>(),
-           py::arg("targets"), py::arg("arg_value") = std::vector<double>())
-      .def(py::init<std::vector<int>, std::vector<double>, OperationType>(),
-           py::arg("targets"), py::arg("arg_value"), py::arg("operation_type"))
+  nb::class_<Reset, BaseOperation>(m, "Reset")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
       .def("__repr__", [](const Reset& self) { return self.to_string(); });
 
-  m.def("create_gate", &create_gate, py::arg("name"),
-        py::arg("targets") = std::vector<int>(),
-        py::arg("arg_value") = std::vector<double>(),
-        py::arg("allow_undefined") = false,
-        "Create a gate or operation instance by name.");
+  m.def(
+      "create_gate",
+      [](std::string name, std::vector<int> targets,
+         std::vector<double> arg_value, bool allow_undefined) {
+        return create_gate(name, std::move(targets), std::move(arg_value),
+                           allow_undefined);
+      },
+      nb::arg("name"), nb::arg("targets") = std::vector<int>(),
+      nb::arg("arg_value") = std::vector<double>(),
+      nb::arg("allow_undefined") = false,
+      "Create a gate or operation instance by name.");
 }
