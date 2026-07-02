@@ -137,24 +137,25 @@ class TestSubmitJob:
             "platform_version": "1.0.0",
         }
         mock_client = Mock(spec=Namespace)
-        mock_client.job_name = "name"
-        mock_client.dry_run = None
+        mock_client.job_name = "test-job"
+        mock_client.dry_run = False
         mock_client.code_type = Constant.CODE_TYPE_QASM
         mock_client.job_id = job_id
         mock_client.circuit_aggregation = Constant.AGGREGATION_TYPE_INTERNAL
         mock_client.job_type = Constant.JOB_TYPE_SAMPLING
         mock_client.job_priority = Constant.DEFAULT_JOB_PRIORITY
-        mock_client.description = None
+        mock_client.description = "test description"
         mock_client.shots = Constant.DEFAULT_SHOTS
-        mock_client.backend = Constant.DRIVER_DUMMY
+        mock_client.backend = "dummy"
         mock_client.driver_options = '{"options": "options"}'
         mock_client.transpiler = Constant.TRANSPILER_CMSS
         mock_client.transpiler_options = '{"options": "options"}'
-        mock_client.profiling = [1]
-        mock_client.callbacks = '{"options": "options"}'
-        mock_client.source_code_files = ["/qcos"]
-        mock_client.instance_id = "instance_id"
+        mock_client.profiling = [Constant.PROFILING_TYPE_CODE]
+        mock_client.callbacks = '[{"name":"cb","type":"results","method":"post","url":"http://test"}]'
+        mock_client.source_code_files = ["/qcos/test.qasm"]
         mock_client.qec_options = None
+        mock_client.flavor_id = None
+        mock_client.extra_specs = None
 
         assert submit_job.take_action(mock_client) is None
 

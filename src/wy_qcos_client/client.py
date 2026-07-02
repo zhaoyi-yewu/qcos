@@ -486,7 +486,7 @@ class Client:
         job_priority=Constant.DEFAULT_JOB_PRIORITY,
         description=None,
         shots=Constant.DEFAULT_SHOTS,
-        backend=Constant.DRIVER_DUMMY,
+        backend=None,
         driver_options=None,
         transpiler=Constant.TRANSPILER_CMSS,
         transpiler_options=None,
@@ -494,6 +494,8 @@ class Client:
         callbacks=None,
         dry_run=False,
         qec_options=None,
+        flavor_id=None,
+        extra_specs=None,
     ):
         """Submit new job.
 
@@ -516,6 +518,8 @@ class Client:
             callbacks: callbacks
             dry_run: dry run
             qec_options: qec options
+            flavor_id: flavor ID for auto scheduling
+            extra_specs: extra scheduling specifications
 
         Returns:
             submit_job result
@@ -532,7 +536,6 @@ class Client:
             "job_priority": job_priority,
             "description": description,
             "shots": shots,
-            "backend": backend,
             "driver_options": driver_options,
             "transpiler": transpiler,
             "transpiler_options": transpiler_options,
@@ -542,8 +545,87 @@ class Client:
             "qec_options": qec_options,
         }
 
+        # backend: only set if specified (None triggers auto scheduling)
+        if backend:
+            data["backend"] = backend
+        # flavor_id and extra_specs for auto scheduling
+        if flavor_id:
+            data["flavor_id"] = str(flavor_id)
+        if extra_specs:
+            data["extra_specs"] = extra_specs
+
         if job_id:
             data["job_id"] = str(job_id)
+        status_code, reason, text, result = self.call_json_rpc(
+            self.job_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    # [Flavor]
+    def create_flavor(self, name, specs, description=None, is_public=True):
+        """Create a flavor (preset scheduling policy).
+
+        Args:
+            name: flavor name
+            specs: flavor specs dict
+            description: flavor description
+            is_public: whether the flavor is public
+
+        Returns:
+            create_flavor result
+        """
+        method_name = "create_flavor"
+        data = {
+            "name": name,
+            "specs": specs,
+            "is_public": is_public,
+        }
+        if description:
+            data["description"] = description
+        status_code, reason, text, result = self.call_json_rpc(
+            self.job_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def get_flavor(self, flavor_id):
+        """Get a flavor by ID.
+
+        Args:
+            flavor_id: flavor UUID
+
+        Returns:
+            get_flavor result
+        """
+        method_name = "get_flavor"
+        data = {"flavor_id": str(flavor_id)}
+        status_code, reason, text, result = self.call_json_rpc(
+            self.job_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def get_flavors(self):
+        """Get all flavors.
+
+        Returns:
+            get_flavors result
+        """
+        method_name = "get_flavors"
+        status_code, reason, text, result = self.call_json_rpc(
+            self.job_url, method_name, body_data=None
+        )
+        return status_code, reason, text, result
+
+    def delete_flavor(self, flavor_id):
+        """Delete a flavor by ID.
+
+        Args:
+            flavor_id: flavor UUID
+
+        Returns:
+            delete_flavor result
+        """
+        method_name = "delete_flavor"
+        data = {"flavor_id": str(flavor_id)}
         status_code, reason, text, result = self.call_json_rpc(
             self.job_url, method_name, data
         )
