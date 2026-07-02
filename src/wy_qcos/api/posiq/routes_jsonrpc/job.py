@@ -27,6 +27,7 @@ from wy_qcos.api.posiq.routes_jsonrpc.routes import job_api_v1
 from wy_qcos.db.models import Job
 from wy_qcos.db.repositories.job import JobRepository
 from wy_qcos.db.utils.db_utils import get_db_filters, get_repository
+from wy_qcos.scheduler import AutoScheduler, NoValidDeviceError
 from wy_qcos.common import args_schema, errors
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
@@ -79,6 +80,8 @@ def submit_job(
     description = body.description
     shots = body.shots
     backend = body.backend
+    flavor_id = body.flavor_id
+    extra_specs = body.extra_specs
     driver_options = body.driver_options
     transpiler_name = body.transpiler
     transpiler_options = body.transpiler_options
@@ -246,6 +249,54 @@ def submit_job(
     # get device
     device_manger = scheduler.get_device_manager()
     devices = device_manger.get_devices()
+
+    # auto scheduling: if backend is not specified
+    if not backend:
+        # must provide flavor_id or extra_specs for auto scheduling
+        if not flavor_id and not extra_specs:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                (
+                    False,
+                    "backend is required, or provide flavor_id/"
+                    "extra_specs for auto scheduling",
+                ),
+            )
+
+        # get auto scheduler
+        auto_scheduler = scheduler.get_auto_scheduler()
+        if auto_scheduler is None:
+            jsonrpc_errors.handle_error_internal_server(
+                module_name,
+                func_name,
+                (False, "Auto scheduler is not initialized"),
+            )
+
+        # build request spec
+        flavor_id_str = str(flavor_id) if flavor_id else None
+        request_spec = AutoScheduler.build_request_spec(
+            job_id=str(job_id) if job_id else "",
+            code_type=code_type,
+            num_qubits=0,
+            flavor_id=flavor_id_str,
+            extra_specs=extra_specs,
+            flavor_manager=auto_scheduler._flavor_manager,
+        )
+
+        # execute auto scheduling
+        try:
+            backend = auto_scheduler.schedule(request_spec)
+            body.backend = backend
+        except NoValidDeviceError as e:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name, func_name, (False, str(e))
+            )
+        except Exception as e:
+            logger.error(f"Auto scheduling error: {e}")
+            jsonrpc_errors.handle_error_internal_server(
+                module_name, func_name, (False, f"Auto scheduling failed: {e}")
+            )
 
     # validate auth of virtual instance
     jsonrpc_errors.handle_error_bad_requests(
@@ -481,12 +532,14 @@ def submit_job(
                 )
 
         # Create job record in database without auto commit
-        success, e, job_record = job_repo.create_job(body, auto_commit=False)
-        if not success or e:
+        success, err_msg, job_record = job_repo.create_job(
+            body, auto_commit=False
+        )
+        if not success or err_msg:
             jsonrpc_errors.handle_error_internal_server(
                 module_name,
                 func_name,
-                (False, f"Failed to create job record: {str(e)}"),
+                (False, f"Failed to create job record: {str(err_msg)}"),
             )
         # Verify job_record is not None after creation
         if not job_record:
@@ -595,6 +648,8 @@ def submit_job(
         "source_code": source_code,
         "description": description,
         "backend": backend,
+        "flavor_id": flavor_id,
+        "extra_specs": extra_specs,
         "driver_options": driver_options,
         "transpiler": transpiler_name,
         "transpiler_options": transpiler_options,

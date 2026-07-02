@@ -175,6 +175,8 @@ class TestJob:
         mock_client.code_compression_level = 0
         mock_client.tags = None
         mock_client.qec_options = None
+        mock_client.flavor_id = None
+        mock_client.extra_specs = None
 
         response = submit_job(mock_client, None, job_repo=mock_job_repo)
 
@@ -215,6 +217,8 @@ class TestJob:
         mock_client.code_compression_level = 0
         mock_client.tags = None
         mock_client.qec_options = None
+        mock_client.flavor_id = None
+        mock_client.extra_specs = None
 
         with pytest.raises(BadRequestError):
             submit_job(mock_client, None)
@@ -246,6 +250,8 @@ class TestJob:
         mock_client.code_compression_level = 0
         mock_client.tags = None
         mock_client.qec_options = None
+        mock_client.flavor_id = None
+        mock_client.extra_specs = None
 
         with pytest.raises(BadRequestError):
             submit_job(mock_client, None)

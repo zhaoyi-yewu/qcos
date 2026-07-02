@@ -232,6 +232,7 @@ class Server:
             scheduler.set_transpiler_manager(transpiler_manager)
             scheduler.set_device_manager(device_manager)
             scheduler.set_db_engine(db_engine)
+            scheduler.init_auto_scheduler()
             scheduler.start_taskmanager()
 
             # init user management module
