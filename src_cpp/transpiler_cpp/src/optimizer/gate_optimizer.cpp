@@ -17,8 +17,10 @@
 
 #include "optimizer/gate_optimizer.h"
 
-#include <functional>
+#include <algorithm>
 #include <stdexcept>
+#include <thread>
+#include <unordered_map>
 #include <vector>
 
 #include "circuit/dag_circuit.h"
@@ -31,20 +33,57 @@
 
 namespace qcos {
 
-std::vector<std::shared_ptr<BaseOperation>> optimize(
+namespace {
+
+/**
+ * @brief 计算实际并行线程数
+ *
+ * 根据用户请求、电路规模和优化级别综合确定：
+ * - 0=自动（取硬件并发数），1=串行，>1=指定
+ * - 按电路规模限制：每线程至少 N 个 ops（Level 1/2: 30000, Level 3: 10000）
+ * - 按优化级别限制：Level 1/2 上限 16 线程，Level 3 上限 64 线程
+ * - 小电路自然退化为串行
+ *
+ * @param num_threads 用户请求的线程数（0=自动）
+ * @param ir_size 电路操作数
+ * @param opt_level 优化级别 (1-3)
+ * @return 实际可用线程数（1 表示应走串行路径）
+ */
+size_t compute_parallel_threads(size_t num_threads, size_t ir_size,
+                                int opt_level) {
+  size_t requested_threads = num_threads;
+  if (requested_threads == 0)
+    requested_threads = std::max(1u, std::thread::hardware_concurrency());
+
+  // Level 1/2: 每线程至少 30000 ops + 上限 16 线程
+  // Level 3:   每线程至少 10000 ops + 上限 64 线程
+  size_t max_threads_by_ops;
+  size_t level_thread_limit;
+  if (opt_level >= 3) {
+    max_threads_by_ops = ir_size / 10000;
+    level_thread_limit = 64;
+  } else {
+    max_threads_by_ops = ir_size / 30000;
+    level_thread_limit = 16;
+  }
+  if (max_threads_by_ops < 1) max_threads_by_ops = 1;
+  return std::min({requested_threads, max_threads_by_ops, level_thread_limit});
+}
+
+/**
+ * @brief 对 IR 执行优化：ir_to_dag → 优化 pass 列表 → 返回优化后的 ops
+ *
+ * @param ir 待优化的操作序列
+ * @param opt_level 优化级别 (1-3)
+ * @param verbose 是否打印优化详情
+ * @param basis_gates 可选 basis gate 过滤集合
+ * @return 优化后的操作序列
+ */
+std::vector<std::shared_ptr<BaseOperation>> optimize_ir(
     const std::vector<std::shared_ptr<BaseOperation>>& ir, int opt_level,
     bool verbose, const std::optional<std::set<std::string>>& basis_gates) {
-  if (opt_level == 0) {
-    return ir;
-  }
-  if (opt_level < 0 || opt_level > 3) {
-    throw std::runtime_error("Unsupported optimization level: " +
-                             std::to_string(opt_level));
-  }
-
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  // 构造各优化 pass
   InverseCancellation inverse_optimizer({
       InverseCancellation::InverseGateRule(H({0})),
       InverseCancellation::InverseGateRule(CX({0, 1})),
@@ -63,38 +102,142 @@ std::vector<std::shared_ptr<BaseOperation>> optimize(
   CliffordRzOptimization commutative_optimizer(verbose);
 
   using PassFn = std::function<void(DAGCircuit&)>;
-  std::vector<PassFn> _opt;
+  std::vector<PassFn> passes;
 
-  _opt.push_back(
+  passes.push_back(
       [&](DAGCircuit& dag) { inverse_optimizer.run(dag, basis_gates); });
-  _opt.push_back([&](DAGCircuit& dag) {
+  passes.push_back([&](DAGCircuit& dag) {
     adjacent_phase_optimizer.run(dag, basis_gates);
   });
   if (opt_level >= 2) {
-    _opt.push_back(
+    passes.push_back(
         [&](DAGCircuit& dag) { equivalence_optimizer.run(dag, basis_gates); });
   }
   if (opt_level >= 3) {
-    _opt.push_back(
+    passes.push_back(
         [&](DAGCircuit& dag) { commutative_optimizer.run(dag, basis_gates); });
   }
 
-  // 迭代执行 pass 列表直到不再缩减
   while (true) {
     int init_size = dag.size();
-    for (auto& pass_fn : _opt) {
+    for (auto& pass_fn : passes) {
       pass_fn(dag);
     }
-    int new_size = dag.size();
-    if (new_size >= init_size) break;
+    if (dag.size() >= init_size) break;
   }
 
-  // 将 DAG 转回 IR
   std::vector<std::shared_ptr<BaseOperation>> result;
+  result.reserve(dag.size());
   for (auto* node : dag.topological_op_nodes()) {
     result.push_back(node->op);
   }
   return result;
+}
+
+}  // namespace
+
+std::vector<int> ir_layers(
+    const std::vector<std::shared_ptr<BaseOperation>>& ir) {
+  std::unordered_map<int, int> qubit_last_layer;
+  std::vector<int> op_layer(ir.size(), 0);
+  for (size_t op_idx = 0; op_idx < ir.size(); ++op_idx) {
+    int layer = 0;
+    for (int qubit : ir[op_idx]->targets) {
+      auto iter = qubit_last_layer.find(qubit);
+      if (iter != qubit_last_layer.end()) {
+        layer = std::max(layer, iter->second);
+      }
+    }
+    ++layer;
+    op_layer[op_idx] = layer;
+    for (int qubit : ir[op_idx]->targets) {
+      qubit_last_layer[qubit] = layer;
+    }
+  }
+  return op_layer;
+}
+
+std::vector<std::vector<std::shared_ptr<BaseOperation>>> split_ir_by_layers(
+    const std::vector<std::shared_ptr<BaseOperation>>& ir,
+    const std::vector<int>& op_layers, int num_chunks) {
+  if (op_layers.empty() || num_chunks <= 1) {
+    return {ir};
+  }
+  int max_layer = *std::max_element(op_layers.begin(), op_layers.end());
+  // 向上取整：确保所有层都能被分配
+  int layers_per_chunk = (max_layer + num_chunks - 1) / num_chunks;
+
+  std::vector<std::vector<std::shared_ptr<BaseOperation>>> segments(
+      num_chunks);
+  for (size_t op_idx = 0; op_idx < ir.size(); ++op_idx) {
+    int chunk_idx = (op_layers[op_idx] - 1) / layers_per_chunk;
+    if (chunk_idx >= num_chunks) chunk_idx = num_chunks - 1;
+    segments[chunk_idx].push_back(ir[op_idx]);
+  }
+
+  // 移除空段
+  std::vector<std::vector<std::shared_ptr<BaseOperation>>> result;
+  result.reserve(num_chunks);
+  for (auto& seg : segments) {
+    if (!seg.empty()) {
+      result.push_back(std::move(seg));
+    }
+  }
+  return result;
+}
+
+std::vector<std::shared_ptr<BaseOperation>> optimize(
+    const std::vector<std::shared_ptr<BaseOperation>>& ir, int opt_level,
+    bool verbose, const std::optional<std::set<std::string>>& basis_gates,
+    size_t num_threads) {
+  if (opt_level == 0) {
+    return ir;
+  }
+  if (opt_level < 0 || opt_level > 3) {
+    throw std::runtime_error("Unsupported optimization level: " +
+                             std::to_string(opt_level));
+  }
+
+  size_t N = compute_parallel_threads(num_threads, ir.size(), opt_level);
+
+  if (N <= 1) {
+    return optimize_ir(ir, opt_level, verbose, basis_gates);
+  }
+
+  // 并行：从 IR 按层拆分 → 各线程 optimize_ir → 合并
+  auto op_layers = ir_layers(ir);
+  auto segments = split_ir_by_layers(ir, op_layers, static_cast<int>(N));
+
+  // 每个线程的优化结果，各线程写各自索引，无竞争
+  std::vector<std::vector<std::shared_ptr<BaseOperation>>> opt_segments(
+      segments.size());
+
+  std::vector<std::thread> threads;
+  threads.reserve(segments.size());
+  for (size_t seg_idx = 0; seg_idx < segments.size(); ++seg_idx) {
+    threads.emplace_back([&segments, &opt_segments, seg_idx, opt_level,
+                          verbose, &basis_gates]() {
+      opt_segments[seg_idx] =
+          optimize_ir(segments[seg_idx], opt_level, verbose, basis_gates);
+    });
+  }
+  for (auto& worker : threads) {
+    worker.join();
+  }
+
+  // 合并所有段的 ops（按拓扑序拼接）
+  size_t total_size = 0;
+  for (const auto& seg : opt_segments) {
+    total_size += seg.size();
+  }
+  std::vector<std::shared_ptr<BaseOperation>> merged_ops;
+  merged_ops.reserve(total_size);
+  for (auto& seg : opt_segments) {
+    merged_ops.insert(merged_ops.end(), std::make_move_iterator(seg.begin()),
+                      std::make_move_iterator(seg.end()));
+  }
+
+  return merged_ops;
 }
 
 }  // namespace qcos

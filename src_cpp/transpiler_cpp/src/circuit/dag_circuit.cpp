@@ -568,6 +568,82 @@ DAGCircuit DAGCircuit::two_qubit_ops_to_dag() {
   return result;
 }
 
+std::vector<std::vector<DAGOpNode*>> DAGCircuit::layers() const {
+  // BFS + Kahn 算法：计算每个节点的拓扑层
+  const auto& graph = get_multi_graph();
+  int max_id = graph.max_node_id();
+
+  // 计算入度，使用 vector 代替 unordered_map，直接按下标访问
+  std::vector<int> in_degree(max_id, 0);
+  for (int id = 0; id < max_id; ++id) {
+    if (graph[id] == nullptr) continue;
+    for (int succ_id : graph.successor_indices(id)) {
+      ++in_degree[succ_id];
+    }
+  }
+
+  // 初始 frontier：入度为 0 的节点（InNode 哨兵）
+  std::vector<int> frontier;
+  for (int id = 0; id < max_id; ++id) {
+    if (graph[id] == nullptr) continue;
+    if (in_degree[id] == 0) frontier.push_back(id);
+  }
+
+  // BFS 逐层展开，收集每层的 OpNode
+  std::vector<std::vector<DAGOpNode*>> result;
+  while (!frontier.empty()) {
+    std::vector<DAGOpNode*> layer_ops;
+    std::vector<int> next_frontier;
+
+    for (int id : frontier) {
+      auto* node = graph[id];
+      if (auto* op = dynamic_cast<const DAGOpNode*>(node)) {
+        layer_ops.push_back(const_cast<DAGOpNode*>(op));
+      }
+      for (int succ_id : graph.successor_indices(id)) {
+        --in_degree[succ_id];
+        if (in_degree[succ_id] == 0) {
+          next_frontier.push_back(succ_id);
+        }
+      }
+    }
+
+    if (!layer_ops.empty()) {
+      result.push_back(std::move(layer_ops));
+    }
+    frontier = std::move(next_frontier);
+  }
+
+  return result;
+}
+
+std::vector<DAGCircuit> DAGCircuit::split_by_layers(int num_chunks) {
+  auto all_layers = layers();
+  if (all_layers.empty()) return {};
+
+  int total_layers = static_cast<int>(all_layers.size());
+  if (num_chunks <= 1) num_chunks = 1;
+  // 向上取整
+  int layers_per_chunk = (total_layers + num_chunks - 1) / num_chunks;
+
+  std::vector<DAGCircuit> result;
+  for (int start = 0; start < total_layers; start += layers_per_chunk) {
+    int end = std::min(start + layers_per_chunk, total_layers);
+
+    // 收集这个块内所有层的 ops
+    std::vector<std::shared_ptr<BaseOperation>> chunk_ops;
+    for (int layer_idx = start; layer_idx < end; ++layer_idx) {
+      for (auto* op_node : all_layers[layer_idx]) {
+        chunk_ops.push_back(op_node->op);
+      }
+    }
+
+    result.push_back(DAGCircuit::ir_to_dag(chunk_ops));
+  }
+
+  return result;
+}
+
 std::vector<DAGCircuit::EdgeTriple> DAGCircuit::edges(
     const std::vector<DAGNode*>* nodes_ptr) {
   std::vector<DAGNode*> target_nodes =
