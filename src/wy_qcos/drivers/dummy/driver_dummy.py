@@ -132,6 +132,7 @@ class DriverDummy(DriverBase):
         data,
         data_type,
         shots=1,
+        result_type=None,
         qec_options=None,
     ):
         """Run job.
@@ -142,12 +143,14 @@ class DriverDummy(DriverBase):
             data: data
             data_type: data type
             shots: shots (Default value = 1)
+            result_type: result type
             qec_options: qec options
         """
         # pylint: disable=duplicate-code
         data_index = data["index"]
         logger.info(
-            f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
+            f"job_id: {job_id}, result_type: {result_type}, "
+            f"shots: {shots}, num_qubits: {num_qubits}, qec: {qec_options}, "
             f"data_type: {data_type}, data: {data}"
         )
 
@@ -186,6 +189,7 @@ class DriverDummy(DriverBase):
             job_id,
             data_index,
             results=result,
+            raw_results=None,
             result_type=Constant.RESULT_TYPE_SAMPLING,
         )
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
