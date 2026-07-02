@@ -6,7 +6,7 @@ pipeline {
     agent {
         docker {
             image 'qcos-sandbox:cicd'
-            args '-v /var/run/docker.sock:/var/run/docker.sock -v /etc/localtime:/etc/localtime:ro -v /etc/hosts:/etc/hosts -e TZ=Asia/Shanghai'
+            args '--network host -v /var/run/docker.sock:/var/run/docker.sock -v /etc/localtime:/etc/localtime:ro -v /etc/hosts:/etc/hosts -e TZ=Asia/Shanghai'
         }
     }
 
@@ -76,6 +76,7 @@ pipeline {
         stage('Initialize') {
             steps {
                 script {
+                    qcosCleanup()
                     dockerCleanup()
                     checkoutCode()
                     echo ">>> YUM_MIRROR: ${env.YUM_MIRROR ?: '(default)'}"
@@ -189,8 +190,7 @@ pipeline {
             }
             post {
                 always {
-                    sh "docker stop qcos-sandbox 2>/dev/null || true"
-                    sh "docker rm qcos-sandbox 2>/dev/null || true"
+                    qcosCleanup()
                 }
             }
         }
@@ -233,8 +233,7 @@ pipeline {
             }
             post {
                 always {
-                    sh "docker stop qcos-sandbox 2>/dev/null || true"
-                    sh "docker rm qcos-sandbox 2>/dev/null || true"
+                    qcosCleanup()
                 }
             }
         }
@@ -258,8 +257,7 @@ pipeline {
             }
             post {
                 always {
-                    sh "docker stop qcos-sandbox 2>/dev/null || true"
-                    sh "docker rm qcos-sandbox 2>/dev/null || true"
+                    qcosCleanup()
                 }
             }
         }
@@ -283,8 +281,7 @@ pipeline {
             }
             post {
                 always {
-                    sh "docker stop qcos-sandbox 2>/dev/null || true"
-                    sh "docker rm qcos-sandbox 2>/dev/null || true"
+                    qcosCleanup()
                 }
             }
         }
@@ -294,6 +291,10 @@ pipeline {
         // =============================================================
         stage('Run System Tests - QCOS') {
             steps {
+                script {
+                    qcosCleanup()
+                }
+
                 sh """#!/bin/bash
                 set -eo pipefail
                 cd build-scripts
@@ -340,10 +341,9 @@ pipeline {
                 MAX_ATTEMPTS=30
                 SLEEP_INTERVAL=10
                 count=0
-                echo "qcos-api: http://\${QCOS_SERVER_IP}:\${QCOS_SERVER_PORT}"
+                echo "Try to access qcos-api: http://\${QCOS_SERVER_IP}:\${QCOS_SERVER_PORT} ..."
                 until curl -o /dev/null -s http://\${QCOS_SERVER_IP}:\${QCOS_SERVER_PORT} || [ \$count -ge \${MAX_ATTEMPTS} ]; do
                     echo "waiting for qcos-api ... (attempt \$((count+1))/\${MAX_ATTEMPTS})"
-                    docker logs qcos
                     sleep \${SLEEP_INTERVAL}
                     count=\$((count+1))
                 done
@@ -377,8 +377,7 @@ pipeline {
             }
             post {
                 always {
-                    sh "docker stop qcos prefect-server redis 2>/dev/null || true"
-                    sh "docker rm qcos prefect-server redis 2>/dev/null || true"
+                    qcosCleanup()
                 }
             }
         }
@@ -387,6 +386,7 @@ pipeline {
     post {
         always {
             script {
+                qcosCleanup()
                 dockerCleanup()
             }
         }
@@ -553,7 +553,6 @@ pipeline {
 
 // ==========================================================================
 // Helper: Checkout source code from Git repository
-// Reusable method called at pipeline Initialize stage
 // ==========================================================================
 void checkoutCode() {
     checkout([
@@ -570,13 +569,21 @@ void checkoutCode() {
 
 // ==========================================================================
 // Helper: Clean up Docker containers and dangling images
-// Reusable method called at pipeline start (Initialize) and end (post.always)
 // ==========================================================================
 void dockerCleanup() {
     sh """
-    docker rm -f prefect-server redis postgres qcos-sandbox qcos qcos-cli || true
     docker image prune -f || true
-    rm -rf /var/qcos/db/
     docker ps -a -f status=exited --format "{{.Names}}" | egrep '^[a-z]+_[a-z]+\$' | xargs -r docker rm -f 2>/dev/null || true
+    """
+}
+
+// ==========================================================================
+// Helper: Clean up qcos env
+// ==========================================================================
+void qcosCleanup() {
+    sh """
+    docker rm -f prefect-server redis postgres qcos-sandbox qcos qcos-cli || true
+    rm -rf /var/qcos/db/
+    rm -rf /etc/qcos/*
     """
 }

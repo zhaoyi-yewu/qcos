@@ -72,12 +72,12 @@ class StLibrary:
         description = job_info["description"]
         shots = job_info["shots"]
         backend = job_info["backend"]
-        driver_options = job_info["driver_options"]
+        driver_options = job_info.get("driver_options", None)
         transpiler = job_info["transpiler"]
-        transpiler_options = job_info["transpiler_options"]
-        profiling = job_info["profiling"]
-        callbacks = job_info["callbacks"]
-        dry_run = job_info["dry_run"]
+        transpiler_options = job_info.get("transpiler_options", None)
+        profiling = job_info.get("profiling", None)
+        callbacks = job_info.get("callbacks", None)
+        dry_run = job_info.get("dry_run", False)
         qec_options = job_info.get("qec_options", None)
         status_code, reason, text, response = client.submit_job(
             source_code_list,

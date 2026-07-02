@@ -35,6 +35,7 @@ import random
 import re
 import requests
 import signal
+import socket
 import sys
 import tempfile
 import time
@@ -953,6 +954,98 @@ class Library:
         return True, None
 
     @staticmethod
+    def wait_network_connection(
+        host,
+        port=80,
+        protocol="tcp",
+        interval=5,
+        retries=10,
+        socket_timeout=10,
+        timeout=60,
+    ):
+        """Wait until network connection to host:port is available.
+
+        Repeatedly attempts to establish a connection to the given
+        host and port until it succeeds, the global timeout is
+        reached, or retries are exhausted.
+
+        For TCP, a full connection handshake is attempted. For UDP, a
+        probe datagram is sent and the method waits for any response
+        within the socket timeout window to confirm reachability.
+
+        Args:
+            host: target host
+            port: target port, default 80
+            protocol: connection protocol, "tcp" or "udp"
+            interval: seconds between retries, default 5
+            retries: max retry count, default 10
+            socket_timeout: socket connect/recv timeout in seconds,
+                default 10
+            timeout: global wall-clock timeout in seconds for the
+                whole wait loop, default 60
+
+        Returns:
+            True if connection established, False otherwise
+        """
+        proto = protocol.lower()
+        if proto not in ("tcp", "udp"):
+            logger.warning(
+                f"Unsupported protocol: {protocol}, fallback to tcp"
+            )
+            proto = "tcp"
+
+        sock_type = socket.SOCK_STREAM if proto == "tcp" else socket.SOCK_DGRAM
+
+        start_time = time.time()
+        for attempt in range(1, retries + 1):
+            # check global wall-clock timeout
+            elapsed = time.time() - start_time
+            if elapsed >= timeout:
+                logger.error(
+                    f"Timed out ({timeout}s) while waiting for network "
+                    f"connection to {host}:{port} ({proto})"
+                )
+                return False
+
+            sock = None
+            try:
+                sock = socket.socket(socket.AF_INET, sock_type)
+                sock.settimeout(socket_timeout)
+                sock.connect((host, port))
+
+                if proto == "tcp":
+                    sock.close()
+                else:
+                    # UDP: send a probe and wait for any response
+                    sock.sendto(b"\x00", (host, port))
+                    sock.recvfrom(1024)
+                    sock.close()
+
+                logger.info(
+                    f"Network connection to {host}:{port} "
+                    f"({proto}) established after {attempt} attempt(s)"
+                )
+                return True
+            except (socket.error, OSError) as e:
+                if sock is not None:
+                    try:
+                        sock.close()
+                    except OSError:  # noqa: S110
+                        pass
+                logger.debug(
+                    f"Attempt {attempt}/{retries} failed to "
+                    f"connect to {host}:{port} ({proto}): {e}"
+                )
+                if attempt < retries:
+                    time.sleep(interval)
+
+        logger.error(
+            f"Failed to establish network connection to "
+            f"{host}:{port} ({proto}) after {retries} retries"
+        )
+        return False
+
+    @staticmethod
     def call_http_api(
         url,
         method,
@@ -1189,13 +1282,16 @@ class Library:
 
             # check max attempts
             if max_attempts > 0 and attempt_count >= max_attempts:
-                err_msg = f"Max attempts ({max_attempts}) reached: {err_msg}"
+                err_msg = (
+                    f"Max attempts ({max_attempts}) reached. "
+                    f"Last error: {err_msg}"
+                )
                 return False, err_msg, None
 
             # check timeout
             elapsed = time.time() - start_time
             if elapsed >= timeout:
-                err_msg = f"Timed out: {err_msg}"
+                err_msg = f"Timed out. Last error: {err_msg}"
                 return False, err_msg, None
 
             # sleep

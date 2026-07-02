@@ -163,7 +163,7 @@ async def fetch_running_info_handler(request):
     return web.json_response(response_data)
 
 
-def main():
+def main(port=18602):
     init_logging()
 
     app.router.add_post("/user/spinqit/login", auth_handler)
@@ -175,7 +175,7 @@ def main():
     app.router.add_post("/calibrate", calibrate_handler)
     app.router.add_post("/set_device_options", set_device_options_handler)
     app.router.add_post("/fetch_running_info", fetch_running_info_handler)
-    web.run_app(app, host="", port=18602)
+    web.run_app(app, host="", port=port)
 
 
 if __name__ == "__main__":

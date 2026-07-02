@@ -74,7 +74,7 @@ async def get_status_handler(request):
     return web.json_response(response_data)
 
 
-def main():
+def main(port=18600):
     init_logging()
 
     app.router.add_post("/sso/access_token/", auth_handler)
@@ -82,7 +82,7 @@ def main():
     app.router.add_get(
         f"/api/system/business/task/{task_id}/", get_status_handler
     )
-    web.run_app(app, host="", port=18600)
+    web.run_app(app, host="", port=port)
 
 
 if __name__ == "__main__":

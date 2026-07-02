@@ -162,12 +162,13 @@ async def message(sid, data):
     await sio.emit("response", response_data, room=sid, namespace="/ws")
 
 
-def main():
-    bind_address = f"tcp://{uqc_listen_ip}:{uqc_listen_port}"
+def main(port=None):
+    listen_port = port if port is not None else uqc_listen_port
+    bind_address = f"tcp://{uqc_listen_ip}:{listen_port}"
     # start UQC API service
     logger.info(f"UQC API Server simulator started on {bind_address}")
     try:
-        web.run_app(app, host=uqc_listen_ip, port=uqc_listen_port)
+        web.run_app(app, host=uqc_listen_ip, port=listen_port)
     except KeyboardInterrupt:
         logger.info("\nServer is stopped")
 

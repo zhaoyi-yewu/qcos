@@ -78,6 +78,7 @@ fi
 
 QCOS_BASE_IMAGE_NAME=qcos-base
 QCOS_BASE_IMAGE_VERSION=${tag:-dev}
+SANDBOX_IMAGE_VERSION=${tag:-dev}
 OUTPUT_QCOS_BASE_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_BASE_IMAGE_NAME}-amd64-${QCOS_BASE_IMAGE_VERSION}.tar.xz
 OUTPUT_SANDBOX_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-sandbox-amd64-${image_tag}.tar.xz
 OUTPUT_QCOS_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-amd64-${image_tag}.tar.xz
@@ -129,7 +130,6 @@ function build_sandbox_image {
   echo -e "\nBuilding docker image: sandbox"
   SANDBOX_CONTAINER_NAME=qcos-sandbox
   SANDBOX_IMAGE_NAME=qcos-sandbox
-  SANDBOX_IMAGE_VERSION=dev
 
   # build qcos building-system: sandbox
   cd ${BUILD_SCRIPTS_DIR}
