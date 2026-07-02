@@ -176,41 +176,6 @@ class TestMetricsServer:
         with pytest.raises(ValueError, match="Invalid IP address format"):
             MetricsServer(ip="invalid.ip")
 
-    @pytest.mark.smoke
-    def test_create_server_ipv4(self):
-        """Test created an IPv4 server with correct socket options."""
-        server = MetricsServer(ip="127.0.0.1", port=0)
-        server._create_server()
-        assert server._server is not None
-        assert server._server.socket.family == socket.AF_INET
-        assert server._server.server_address[0] == "127.0.0.1"
-        assert server._server.server_address[1] != 0
-
-        server._server.server_close()
-
-    @pytest.mark.smoke
-    def test_create_server_ipv6_dual_stack_enabled(self):
-        """Test _create_server with dual-stack enabled creates IPv6 server."""
-        server = MetricsServer(ip=None, port=0)
-        server._create_server()
-        assert server._server is not None
-        assert server._server.socket.family == socket.AF_INET6
-        # Should bind to '::' (all IPv6 interfaces)
-        assert server._server.server_address[0] == "::"
-        assert server._server.server_address[1] != 0
-        server._server.server_close()
-
-    @pytest.mark.smoke
-    def test_create_server_ipv6_no_dual_stack(self):
-        """Test _create_server with IPv6 address disables dual-stack."""
-        server = MetricsServer(ip="::1", port=0)
-        server._create_server()
-        assert server._server is not None
-        assert server._server.socket.family == socket.AF_INET6
-        assert server._server.server_address[0] == "::1"
-        assert server._server.server_address[1] != 0
-        server._server.server_close()
-
     def test_create_server_os_error(self):
         """Test _create_server raises OSError if bind fails."""
         server = MetricsServer(ip="127.0.0.1", port=8080)

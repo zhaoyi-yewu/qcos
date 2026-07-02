@@ -152,7 +152,7 @@ function get_pytest_mark() {
   elif [ "$lower_args" = "driver" ]; then
     pytest_mark="-m 'driver ${extra_pytest_mark}'"
   elif [ "$lower_args" = "default" ]; then
-    pytest_mark="-m 'not smoke and not slow ${extra_pytest_mark}'"
+    pytest_mark="-m 'not slow ${extra_pytest_mark}'"
   elif [ "$lower_args" = "all" ]; then
     if [ -n "$arg_pytest_mark" ]; then
       pytest_mark="-m '$arg_pytest_mark'"
@@ -417,9 +417,9 @@ function print_report {
   fi
 }
 
-# active venv if default venv exists
-if [ -f "/var/lib/qcos/venv/default/bin/activate" ]; then
-  source /var/lib/qcos/venv/default/bin/activate
+# active venv if sandbox venv exists
+if [ -f "/var/lib/qcos/venv/sandbox/bin/activate" ]; then
+  source /var/lib/qcos/venv/sandbox/bin/activate
 fi
 mkdir -p ${QCOS_REPORT_DIR} ${QCOS_CLIENT_REPORT_DIR}
 run_tests

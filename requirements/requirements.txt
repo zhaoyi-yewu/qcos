@@ -2,7 +2,6 @@
 # support QCOS cli
 argcomplete==3.6.2
 cliff==4.10.0
-docker==4.4.4
 jsonrpcclient==4.0.3
 requests==2.32.5
 schema==0.7.7

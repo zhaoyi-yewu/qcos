@@ -69,6 +69,7 @@ done
 source ${BUILD_SCRIPTS_DIR}/setup-build-context.sh
 PYTHON_SRC_MIRROR=${PYTHON_SRC_MIRROR:-"https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz"}
 PYPY3_BIN_MIRROR=${PYPY3_BIN_MIRROR:-"https://downloads.python.org/pypy/pypy3.11-v7.3.20-linux64.tar.bz2"}
+DOCKER_COMPOSE_BIN_MIRROR=${DOCKER_COMPOSE_BIN_MIRROR}
 
 image_tag=${QCOS_IMAGE_VERSION}
 if [ -n "${tag}" ]; then
@@ -108,6 +109,7 @@ function build_qcos_base_image {
     --build-arg DEV=${DEV} \
     --build-arg PYTHON_SRC_MIRROR=${PYTHON_SRC_MIRROR} \
     --build-arg PYPY3_BIN_MIRROR=${PYPY3_BIN_MIRROR} \
+    --build-arg DOCKER_COMPOSE_BIN_MIRROR=${DOCKER_COMPOSE_BIN_MIRROR} \
     -t ${QCOS_BASE_IMAGE_NAME}:${QCOS_BASE_IMAGE_VERSION} .build-context
 
   # save image

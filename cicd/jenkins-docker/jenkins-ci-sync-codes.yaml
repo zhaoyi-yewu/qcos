@@ -1,0 +1,89 @@
+// ==========================================================================
+// QCOS CI/CD Jenkins (Sync Codes)
+// ==========================================================================
+
+pipeline {
+    agent any
+
+    triggers {
+        cron('10 20 * * *')
+    }
+
+    parameters {
+        persistentString(name: 'GIT_REPO_URL',
+               defaultValue: 'git@gitee.com:WUYUEQbit/qcos.git',
+               description: 'Git repository URL. eg. Gitee (git@gitee.com:WUYUEQbit/qcos.git) or GitLab (ssh://git@gitlab.cmss.com:2223/OCRI/WuYueOs.git)')
+        persistentString(name: 'GIT_BRANCH',
+               defaultValue: '*/develop',
+               description: 'Git branch to build. e.g. Gitee (*/develop) or GitLab (*/dev_gitee)')
+        persistentString(name: 'GIT_CREDENTIALS_ID',
+               defaultValue: 'gitee-ssh-key',
+               description: 'Jenkins stored SSH credential ID for the Git repository. e.g. Gitee (gitee-ssh-key) or GitLab (gitlab-ssh-key)')
+        persistentString(name: 'CICD_REPORT_EMAIL',
+               defaultValue: 'zhaoyi@cmss.chinamobile.com',
+               description: 'Email address(es) for CI/CD report notification. Supports single (user@example.com) or multiple comma-separated (a@example.com,b@example.com). Leave empty to skip email notification.')
+    }
+
+    environment {
+        GIT_REPO_URL = "${params.GIT_REPO_URL?: ''}"
+        GIT_BRANCH = "${params.GIT_BRANCH?: ''}"
+        GIT_CREDENTIALS_ID = "${params.GIT_CREDENTIALS_ID?: ''}"
+        CICD_REPORT_EMAIL = "${params.CICD_REPORT_EMAIL?: ''}"
+    }
+
+    options {
+        timestamps()
+        timeout(time: 5, unit: 'HOURS')
+        buildDiscarder(logRotator(numToKeepStr: '5', artifactNumToKeepStr: '5'))
+        giteeConnection('my-gitee')
+        // Prevent concurrent builds (shared Docker daemon, container name conflicts)
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        // =============================================================
+        // Initialize: Checkout code and prepare environment
+        // =============================================================
+        stage('Initialize') {
+            steps {
+                script {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "${params.GIT_BRANCH}"]],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [[$class: 'CleanBeforeCheckout']],
+                        submoduleCfg: [],
+                        userRemoteConfigs: [[credentialsId: "${params.GIT_CREDENTIALS_ID}", url: "${params.GIT_REPO_URL}"]]
+                    ])
+                    echo ">>> Build #${env.BUILD_NUMBER} on branch ${env.GIT_BRANCH}"
+                    echo ">>> Repo: ${params.GIT_REPO_URL} | Branch: ${params.GIT_BRANCH} | Creds: ${params.GIT_CREDENTIALS_ID}"
+                    echo ">>> YUM_MIRROR: ${env.YUM_MIRROR ?: '(default)'}"
+                }
+            }
+        }
+
+        // =============================================================
+        // Stage 1: Sync from gitee
+        // =============================================================
+        stage('Sync from gitee') {
+            steps {
+                sh """#!/bin/bash
+                set -eo pipefail
+                echo "Sync from gitee"
+                """
+            }
+        }
+
+        // =============================================================
+        // Stage 2: Sync to gitee
+        // =============================================================
+        stage('Sync to gitee') {
+            steps {
+                sh """#!/bin/bash
+                set -eo pipefail
+                echo "Sync to gitee"
+                """
+            }
+        }
+    }
+}

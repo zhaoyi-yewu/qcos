@@ -15,7 +15,12 @@
 
 set -e
 
-cwd=$(dirname "$0")
+# if CICD WORKSPACE exists
+cicd_build_scripts_dir=""
+if [ -n "${WORKSPACE}" ]; then
+    cicd_build_scripts_dir="${WORKSPACE}/build-scripts"
+fi
+cwd="${cicd_build_scripts_dir:-$(pwd)}"
 abs_cwd=$(realpath ${cwd})
 top_dir=$(realpath ${cwd}/..)
 
@@ -47,7 +52,9 @@ while IFS='=' read -r key value; do
 done < "${env_file}"
 
 # local variables
-export QCOS_LOCAL_SRC_DIR="${top_dir}"
+if [ -z "${QCOS_LOCAL_SRC_DIR}" ]; then
+  export QCOS_LOCAL_SRC_DIR="${top_dir}"
+fi
 export SANDBOX_CONTAINER_NAME=qcos-sandbox
 export SANDBOX_IMAGE_NAME=qcos-sandbox
 export SANDBOX_IMAGE_VERSION=${SANDBOX_IMAGE_VERSION:-dev}
