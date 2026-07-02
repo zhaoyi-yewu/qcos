@@ -24,6 +24,7 @@ from unittest.mock import patch, MagicMock
 
 from wy_qcos.transpiler.common.wirecut.cut_wire import (
     CutWire,
+    cache_subcircuits_for_execute,
     generate_all_variant_subcircuits_for_execute,
     simple_subcircuit_dict,
     reconstruct_probability_distribution_wire_cut,
@@ -166,6 +167,25 @@ class TestCutWire(unittest.TestCase):
         for qasm in expected:
             assert qasm in result
 
+    def test_cache_subcircuits_for_execute(self):
+        """Duplicate variants should share one execution result."""
+        subcircuits_dict = {
+            0: {
+                ("init1", "meas1"): "duplicate_qasm",
+                ("init2", "meas2"): "unique_qasm",
+            },
+            1: {
+                ("init3", "meas3"): "duplicate_qasm",
+            },
+        }
+
+        subcircuits, result_indices = cache_subcircuits_for_execute(
+            subcircuits_dict
+        )
+
+        assert subcircuits == ["duplicate_qasm", "unique_qasm"]
+        assert result_indices == [0, 1, 0]
+
     @patch("wy_qcos.transpiler.common.wirecut.cut_wire.CutWire")
     @patch(
         "wy_qcos.transpiler.common.wirecut.cut_wire.open",
@@ -243,6 +263,35 @@ class TestCutWire(unittest.TestCase):
                 _, kwargs = mock_cutwire.call_args
                 assert kwargs["max_cuts"] == 100
 
+    @patch("wy_qcos.transpiler.common.wirecut.cut_wire.CutWire")
+    def test_generate_all_variant_subcircuits_deduplicates_execution_list(
+        self, mock_cutwire
+    ):
+        """Only unique QASM variants should be returned for execution."""
+        mock_cutwire_instance = MagicMock()
+        mock_cutwire_instance.subcircuits = ["origin"]
+        subcircuit_variants = {
+            0: {
+                ("init1", "meas1"): "duplicate_qasm",
+                ("init2", "meas2"): "duplicate_qasm",
+            }
+        }
+        generate_variants = (
+            mock_cutwire_instance.generate_all_variants_subcircuits
+        )
+        generate_variants.return_value = subcircuit_variants
+        mock_cutwire.return_value = mock_cutwire_instance
+
+        _, subcircuits, cut_wire = (
+            generate_all_variant_subcircuits_for_execute(
+                max_subcircuit_width=self.max_subcircuit_width,
+                qasm=self.qasm,
+            )
+        )
+
+        assert subcircuits == ["duplicate_qasm"]
+        assert cut_wire.subcircuit_result_indices == [0, 0]
+
     @patch("wy_qcos.transpiler.common.wirecut.cut_wire.DD")
     @patch(
         "wy_qcos.transpiler.common.wirecut.cut_wire.reconstruct_prob_from_bins"
@@ -296,6 +345,46 @@ class TestCutWire(unittest.TestCase):
         mock_dd.assert_called_once()
         mock_dd_instance.dd.assert_called_once()
         mock_reconstruct_prob.assert_called_once()
+
+    @patch("wy_qcos.transpiler.common.wirecut.cut_wire.DD")
+    @patch(
+        "wy_qcos.transpiler.common.wirecut.cut_wire.reconstruct_prob_from_bins"
+    )
+    def test_reconstruct_probability_distribution_uses_cached_result(
+        self, mock_reconstruct_prob, mock_dd
+    ):
+        """Cached execution results should be assigned to every variant."""
+
+        class MockWirecut:
+            def __init__(self):
+                self.subcircuits_dict = {
+                    0: {
+                        ("init1", "meas1"): "duplicate_qasm",
+                        ("init2", "meas2"): "duplicate_qasm",
+                    }
+                }
+                self.subcircuit_result_indices = [0, 0]
+                self.prepare_data = MagicMock()
+                self.max_memory = 64
+                self.max_depth = 3
+
+        cached_result = [0.7, 0.3]
+        mock_dd_instance = MagicMock()
+        mock_dd_instance.dd_bins = []
+        mock_dd.return_value = mock_dd_instance
+        mock_reconstruct_prob.return_value = ([0.7, 0.3], [])
+
+        reconstruct_probability_distribution_wire_cut(
+            MockWirecut(),
+            [cached_result],
+            is_complete_reconstruction=True,
+        )
+
+        results_from_hardware = mock_dd.call_args.kwargs[
+            "results_from_hardware"
+        ]
+        assert results_from_hardware[0][("init1", "meas1")] is cached_result
+        assert results_from_hardware[0][("init2", "meas2")] is cached_result
 
     def test_cutwire_reconstruct_method(self):
         """Testing the CutWire refactoring method."""
