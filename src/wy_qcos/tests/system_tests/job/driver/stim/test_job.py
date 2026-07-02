@@ -37,6 +37,11 @@ class TestJob:
         "test_stim_submit_job_with_distance",
         "test_stim_submit_job_with_phy_bit_num",
         "test_stim_submit_job_with_logical_bit_num",
+        "test_stim_submit_job_unsupported_bit_num",
+        "test_stim_submit_job_unsupported_gate",
+        "test_stim_submit_job_unsupported_qec_code",
+        "test_stim_submit_job_enable_mapping",
+        "test_stim_submit_job_two_qubits_gate",
     ]
 
     @classmethod
@@ -77,7 +82,7 @@ class TestJob:
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
             "job_name": "test_stim_submit_job",
-            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "source_code_list": [SAMPLES["simple-qasm-1-bit.qasm"]],
             "code_type": Constant.CODE_TYPE_QASM2,
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
@@ -87,12 +92,14 @@ class TestJob:
             "circuit_aggregation": None,
             "driver_options": None,
             "transpiler": Constant.TRANSPILER_CMSS,
-            "transpiler_options": None,
             "profiling": None,
             "callbacks": None,
             "dry_run": False,
             "qec_options": {
                 "qec_code": "shor",
+            },
+            "transpiler_options": {
+                "enable_mapping": False,
             },
         }
         StLibrary.submit_job(self.admin_client, job_info)
@@ -116,7 +123,7 @@ class TestJob:
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
             "job_name": "test_stim_submit_job_profiling",
-            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "source_code_list": [SAMPLES["simple-qasm-1-bit.qasm"]],
             "code_type": Constant.CODE_TYPE_QASM2,
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
@@ -126,7 +133,6 @@ class TestJob:
             "circuit_aggregation": None,
             "driver_options": None,
             "transpiler": Constant.TRANSPILER_CMSS,
-            "transpiler_options": None,
             "profiling": [
                 Constant.PROFILING_TYPE_CODE,
                 Constant.PROFILING_TYPE_SCHEDULING,
@@ -138,6 +144,9 @@ class TestJob:
             "dry_run": False,
             "qec_options": {
                 "qec_code": "shor",
+            },
+            "transpiler_options": {
+                "enable_mapping": False,
             },
         }
         StLibrary.submit_job(self.admin_client, job_info)
@@ -182,7 +191,7 @@ class TestJob:
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
             "job_name": "test_stim_submit_job_with_distance",
-            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "source_code_list": [SAMPLES["simple-qasm-1-bit.qasm"]],
             "code_type": Constant.CODE_TYPE_QASM2,
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
@@ -192,13 +201,15 @@ class TestJob:
             "circuit_aggregation": None,
             "driver_options": None,
             "transpiler": Constant.TRANSPILER_CMSS,
-            "transpiler_options": None,
             "profiling": None,
             "callbacks": None,
             "dry_run": False,
             "qec_options": {
                 "qec_code": "shor",
                 "distance": 3,
+            },
+            "transpiler_options": {
+                "enable_mapping": False,
             },
         }
         StLibrary.submit_job(self.admin_client, job_info)
@@ -223,7 +234,7 @@ class TestJob:
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
             "job_name": "test_stim_submit_job_with_phy_bit_num",
-            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "source_code_list": [SAMPLES["simple-qasm-1-bit.qasm"]],
             "code_type": Constant.CODE_TYPE_QASM2,
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
@@ -233,13 +244,15 @@ class TestJob:
             "circuit_aggregation": None,
             "driver_options": None,
             "transpiler": Constant.TRANSPILER_CMSS,
-            "transpiler_options": None,
             "profiling": None,
             "callbacks": None,
             "dry_run": False,
             "qec_options": {
                 "qec_code": "shor",
                 "phy_bit_num": 9,
+            },
+            "transpiler_options": {
+                "enable_mapping": False,
             },
         }
         StLibrary.submit_job(self.admin_client, job_info)
@@ -264,7 +277,7 @@ class TestJob:
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
             "job_name": "test_stim_submit_job_with_logical_bit_num",
-            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "source_code_list": [SAMPLES["simple-qasm-1-bit.qasm"]],
             "code_type": Constant.CODE_TYPE_QASM2,
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
@@ -274,13 +287,15 @@ class TestJob:
             "circuit_aggregation": None,
             "driver_options": None,
             "transpiler": Constant.TRANSPILER_CMSS,
-            "transpiler_options": None,
             "profiling": None,
             "callbacks": None,
             "dry_run": False,
             "qec_options": {
                 "qec_code": "shor",
                 "logical_bit_num": 1,
+            },
+            "transpiler_options": {
+                "enable_mapping": False,
             },
         }
         StLibrary.submit_job(self.admin_client, job_info)
@@ -292,6 +307,249 @@ class TestJob:
             assert (
                 job_results["result"]["job_status"]
                 == Constant.JOB_STATUS_COMPLETED
+            )
+        else:
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
+        StLibrary.delete_job(self.admin_client, job_info["job_id"])
+        assert success is True
+
+    @pytest.mark.smoke
+    def test_stim_submit_job_unsupported_bit_num(self):
+        job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_stim_submit_job",
+            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM2,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_stim_submit_job",
+            "backend": "stim",
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+            "qec_options": {
+                "qec_code": "shor",
+            },
+            "transpiler_options": {
+                "enable_mapping": False,
+            },
+        }
+        StLibrary.submit_job(self.admin_client, job_info)
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+            self.admin_client, job_info, self.timeout, self.interval
+        )
+        if success:
+            assert (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_FAILED
+            )
+            assert (
+                "Shor does not support 2 bits qec"
+                in job_results["result"]["results"][0]["error"]["message"]
+            )
+        else:
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
+        StLibrary.delete_job(self.admin_client, job_info["job_id"])
+        assert success is True
+
+    @pytest.mark.smoke
+    def test_stim_submit_job_unsupported_gate(self):
+        test_qasm = """
+            OPENQASM 2.0;
+            include "qelib1.inc";
+
+            qreg q[1];
+            creg c[1];
+            rx(1) q[0];
+
+            measure q -> c;
+        """
+        job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_stim_submit_job",
+            "source_code_list": [test_qasm],
+            "code_type": Constant.CODE_TYPE_QASM2,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_stim_submit_job",
+            "backend": "stim",
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+            "qec_options": {
+                "qec_code": "shor",
+            },
+            "transpiler_options": {
+                "enable_mapping": False,
+            },
+        }
+        StLibrary.submit_job(self.admin_client, job_info)
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+            self.admin_client, job_info, self.timeout, self.interval
+        )
+        if success:
+            assert (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_FAILED
+            )
+            assert (
+                "No rule for gate rx"
+                in job_results["result"]["results"][0]["error"]["message"]
+            )
+        else:
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
+        StLibrary.delete_job(self.admin_client, job_info["job_id"])
+        assert success is True
+
+    @pytest.mark.smoke
+    def test_stim_submit_job_unsupported_qec_code(self):
+        job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_stim_submit_job",
+            "source_code_list": [SAMPLES["simple-qasm-1-bit.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM2,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_stim_submit_job",
+            "backend": "stim",
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+            "qec_options": {
+                "qec_code": "surface",
+            },
+            "transpiler_options": {
+                "enable_mapping": False,
+            },
+        }
+        StLibrary.submit_job(self.admin_client, job_info)
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+            self.admin_client, job_info, self.timeout, self.interval
+        )
+        if success:
+            assert (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_FAILED
+            )
+            assert (
+                "Unknown quantum error correction code: 'surface'."
+                in job_results["result"]["results"][0]["error"]["message"]
+            )
+        else:
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
+        StLibrary.delete_job(self.admin_client, job_info["job_id"])
+        assert success is True
+
+    @pytest.mark.smoke
+    def test_stim_submit_job_enable_mapping(self):
+        job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_stim_submit_job",
+            "source_code_list": [SAMPLES["simple-qasm-1-bit.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM2,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_stim_submit_job",
+            "backend": "stim",
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+            "qec_options": {
+                "qec_code": "surface",
+            },
+        }
+        StLibrary.submit_job(self.admin_client, job_info)
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+            self.admin_client, job_info, self.timeout, self.interval
+        )
+        if success:
+            assert (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_FAILED
+            )
+            assert (
+                "Missing qpu configs"
+                in job_results["result"]["results"][0]["error"]["message"]
+            )
+        else:
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
+        StLibrary.delete_job(self.admin_client, job_info["job_id"])
+        assert success is True
+
+    @pytest.mark.smoke
+    def test_stim_submit_job_two_qubits_gate(self):
+        test_qasm = """
+            OPENQASM 2.0;
+            include "qelib1.inc";
+
+            qreg q[2];
+            creg c[2];
+            cx q[0], q[1];
+
+            measure q[0] -> c[0];
+            measure q[1] -> c[1];
+        """
+        job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_stim_submit_job",
+            "source_code_list": [test_qasm],
+            "code_type": Constant.CODE_TYPE_QASM2,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_stim_submit_job",
+            "backend": "stim",
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+            "qec_options": {
+                "qec_code": "shor",
+            },
+            "transpiler_options": {
+                "enable_mapping": False,
+            },
+        }
+        StLibrary.submit_job(self.admin_client, job_info)
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+            self.admin_client, job_info, self.timeout, self.interval
+        )
+        if success:
+            assert (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_FAILED
+            )
+            assert (
+                "Shor does not support 2 bits qec"
+                in job_results["result"]["results"][0]["error"]["message"]
             )
         else:
             logger.warning(
