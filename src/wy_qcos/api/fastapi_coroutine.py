@@ -26,6 +26,7 @@ import fastapi_jsonrpc as jsonrpc
 from wy_qcos.metrics.metrics_server import MetricsServer
 from wy_qcos.metrics.metrics_scheduler import MetricsScheduler
 from wy_qcos.metrics.metrics_task import set_app, init_metrics
+from wy_qcos.task_manager.task_cleaner import TaskCleaner
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +115,10 @@ async def app_lifespan(app: jsonrpc.API):
     # Register metrics server
     metrics_server = MetricsServer()
     manager.add_service(metrics_server)
+
+    # Register task cleaner
+    task_cleaner = TaskCleaner(app_db_engin=app.state._db_engine)
+    manager.add_service(task_cleaner)
 
     # Start all background services
     await manager.start_all()

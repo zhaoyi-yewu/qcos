@@ -312,11 +312,12 @@ async def check_worker_health(sync_client=None) -> tuple[bool, str]:
 
         for attempt in range(2):
             try:
+                pool_name = f"{Constant.WORK_POOL_DEVICE_PREFIX}{device_name}"
                 workers = await call_sync_with_timeout(
                     sync_client.read_workers_for_work_pool,
                     timeout=WORKER_CHECK_TIMEOUT,
                     executor=worker_executor,
-                    work_pool_name=device_name,
+                    work_pool_name=pool_name,
                 )
 
                 if not workers:
