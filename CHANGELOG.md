@@ -6,11 +6,18 @@
 
 ### 新增功能
 
-- 无
+- 支持量子作业自动调度功能：用户提交作业时不指定backend，由系统自动选择后端设备
+- 新增基于OpenStack Nova Filter/Weigher模式的自动调度器，支持6个Filter和2个Weigher
+- 新增Flavor（预设调度策略）管理功能：支持通过API和CLI创建、查询、删除Flavor
+- submit_job接口新增flavor_id和extra_specs可选参数，支持自动调度
+- Job表新增flavor_id和extra_specs字段，Alembic迁移脚本已提供
+- CLI新增create-flavor、get-flavor、list-flavors、delete-flavor命令
+- submit-job命令新增--flavor-id和--extra-specs参数，--backend改为可选
 
 ### 变更功能
 
-- 无
+- submit_job接口的backend参数改为可选，为空时触发自动调度
+- 更新作业调度设计文档，补充自动调度实现细节
 
 ### 修复问题
 

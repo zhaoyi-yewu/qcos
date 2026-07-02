@@ -36,8 +36,17 @@
                    "source_code": ["源代码"],
                    // 作业描述 [可选]
                    "description": "description",
-                   // 量子后端硬件名称
+                   // 量子后端硬件名称 [可选]
+                   // 不指定时触发自动调度，需配合 flavor_id 或 extra_specs
                    "backend": "dummy",
+                   // Flavor ID，用于自动调度 [可选]
+                   // 指定预设的硬件规格策略
+                   "flavor_id": "00000000-0000-4000-8000-000000000001",
+                   // 额外调度参数 [可选]
+                   // 动态的、单次作业特有的运行策略，覆盖 flavor specs
+                   "extra_specs": {
+                     "max_qubits": 100
+                   },
                    // 转译器名称 [可选]
                    "transpiler": "cmss",
                    // 转译器配置参数 [可选]
@@ -92,6 +101,12 @@
                  // 作业描述
                  "description": "description",
                  "backend": "dummy",
+                 // Flavor ID [可选]，自动调度时返回
+                 "flavor_id": "00000000-0000-4000-8000-000000000001",
+                 // 额外调度参数 [可选]
+                 "extra_specs": {
+                   "max_qubits": 100
+                 },
                  "transpiler": "cmss",
                  // 可选, 转译器配置参数
                  "transpiler_options": {},
