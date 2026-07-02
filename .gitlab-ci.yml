@@ -68,20 +68,6 @@ docs-linter:
     - source /var/lib/qcos/venv/sandbox/bin/activate
     - ./cicd/docs-linter.sh
 
-# ut (qcos)
-ut-qcos:
-  stage: functional-tests
-  tags:
-    - sonic-runner
-  script:
-    - source /var/lib/qcos/venv/sandbox/bin/activate
-    - ./cicd/run-tests.sh -b
-    - ./cicd/run-tests.sh -u default
-  artifacts:
-    when: always
-    reports:
-      junit: cicd/reports/wy_qcos/report.xml
-
 # cpp ut (qcos)
 cpp-ut-qcos:
   stage: functional-tests
@@ -96,7 +82,7 @@ cpp-ut-qcos:
     reports:
       junit: cicd/reports/wy_qcos/cpp_ut_report.xml
 
-# code-coverage (qcos)
+# UT/Coverage (qcos)
 code-coverage-qcos:
   stage: functional-tests
   tags:
@@ -107,16 +93,7 @@ code-coverage-qcos:
     - ./cicd/run-tests.sh -c default
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)/'
 
-# ut (qcos_client)
-ut-qcos-client:
-  stage: functional-tests
-  tags:
-    - sonic-runner
-  script:
-    - source /var/lib/qcos/venv/sandbox/bin/activate
-    - ./cicd/run-tests.sh -j all
-
-# code-coverage (qcos_client)
+# UT/Coverage (qcos_client)
 code-coverage-qcos-client:
   stage: functional-tests
   tags:

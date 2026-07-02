@@ -262,6 +262,13 @@ function run_coverage {
 
   ${wrapper} "rm -rf ${QCOS_REPORT_DIR}/coverage ${QCOS_REPORT_DIR}/coverage.xml"
   ${wrapper} "coverage run --data-file=${QCOS_REPORT_DIR}/.coverage --omit='*/site-packages/*' -m pytest -c ${QCOS_PYTEST_INI} ${pytest_mark} ${test_case}"
+  local pytest_exit_code=$?
+  if [ ${pytest_exit_code} -ne 0 ]; then
+    echo "[ERROR] pytest failed with exit code ${pytest_exit_code}, skipping coverage report generation"
+    coverage_success=${pytest_exit_code}
+    echo
+    return
+  fi
   ${wrapper} "coverage xml --data-file=${QCOS_REPORT_DIR}/.coverage -o ${QCOS_REPORT_DIR}/coverage.xml"
   ${wrapper} "coverage report --data-file=${QCOS_REPORT_DIR}/.coverage --include='${QCOS_PKG_DIR}/*' --omit='${QCOS_PKG_DIR}/tests/*' -m --fail-under=$min_fail_rate"
   coverage_success=$?
@@ -289,6 +296,13 @@ function run_client_coverage {
 
   ${wrapper} "rm -rf ${QCOS_CLIENT_REPORT_DIR}/coverage ${QCOS_CLIENT_REPORT_DIR}/coverage.xml"
   ${wrapper} "coverage run --data-file=${QCOS_CLIENT_REPORT_DIR}/.coverage --omit='*/site-packages/*' -m pytest -c ${QCOS_CLIENT_PYTEST_INI} ${pytest_mark} ${test_case}"
+  local pytest_exit_code=$?
+  if [ ${pytest_exit_code} -ne 0 ]; then
+    echo "[ERROR] pytest failed with exit code ${pytest_exit_code}, skipping coverage report generation"
+    client_coverage_success=${pytest_exit_code}
+    echo
+    return
+  fi
   ${wrapper} "coverage xml --data-file=${QCOS_CLIENT_REPORT_DIR}/.coverage -o ${QCOS_CLIENT_REPORT_DIR}/coverage.xml"
   ${wrapper} "coverage report --data-file=${QCOS_CLIENT_REPORT_DIR}/.coverage --include='${QCOS_CLIENT_PKG_DIR}/*' --omit='${QCOS_CLIENT_PKG_DIR}/tests/*' -m --fail-under=$min_fail_rate"
   client_coverage_success=$?
