@@ -26,6 +26,7 @@ import hashlib
 import urllib.parse
 
 from loguru import logger
+from schema import Optional
 
 from wy_qcos.common.constant import Constant, HttpCode, HttpMethod
 from wy_qcos.common.library import Library
@@ -632,10 +633,13 @@ class DriverWuyueBase(DriverBase):
             updated device info
         """
         device_info = {}
-        for item in self.hanyuan1_device_info_schema:
-            field_name = item.key
-            default_val = item.default
-            device_info[field_name] = raw_data.get(field_name, default_val)
+        field_name = ""
+        for item in schema:
+            if isinstance(item, Optional):
+                field_name = item.schema
+            else:
+                field_name = item
+            device_info[field_name] = raw_data.get(field_name, None)
         return device_info
 
     def get_device_info(self):

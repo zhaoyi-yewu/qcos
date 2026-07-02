@@ -633,15 +633,33 @@ class TestDriverWuyueBase:
         result = driver.fetch_running_info()
         assert result["details"] == {}
 
+    @patch.object(DriverWuyueBase, "update_device_info")
+    @patch.object(DriverWuyueBase, "update_device_info_schema")
     @patch.object(DriverWuyueBase, "decrypt_by_private_key")
     @patch.object(Library, "call_http_api")
     def test_get_device_info(
         self,
         mock_call_http_api,
         mock_decrypt_by_private_key,
+        mock_update_device_info_schema,
+        mock_update_device_info,
     ):
-        """Test get_device_info method with successful."""
-        mock_response = {"code": 1, "msg": "Success", "data": "encrypted_data"}
+        """Test get_device_info method with successful response."""
+        mock_schema = {
+            "horizontalRelaxationTime": int,
+            "tweezersNum": int,
+            "singleFidelity": float,
+            "doubleFidelity": float,
+        }
+        mock_update_device_info_schema.return_value = mock_schema
+
+        mock_data = {
+            "horizontalRelaxationTime": 132,
+            "tweezersNum": 200,
+            "singleFidelity": 0.95,
+            "doubleFidelity": 0.9,
+        }
+        mock_response = {"code": 1, "msg": "Success", "data": mock_data}
 
         mock_call_http_api.return_value = (
             HttpCode.SUCCESS_OK,
@@ -651,19 +669,21 @@ class TestDriverWuyueBase:
         )
         mock_decrypt_by_private_key.return_value = mock_response
 
-        exception_raised = False
-        exception_msg = None
-        try:
-            success, err_msg, device_info = driver_wuyue_base.get_device_info()
-            assert success is True
-            assert err_msg == ""
-            assert device_info == "encrypted_data"
-        except ValueError as e:
-            exception_raised = True
-            exception_msg = str(e)
+        mock_device_info = {
+            "horizontalRelaxationTime": 132,
+            "tweezersNum": 200,
+            "singleFidelity": 0.95,
+            "doubleFidelity": 0.9,
+        }
+        mock_update_device_info.return_value = mock_device_info
 
-        assert exception_raised is False
-        assert exception_msg is None
+        success, err_msg, device_info = driver_wuyue_base.get_device_info()
+        assert success is True
+        assert err_msg == ""
+        assert device_info["horizontalRelaxationTime"] == 132
+        assert device_info["tweezersNum"] == 200
+        assert device_info["singleFidelity"] == 0.95
+        assert device_info["doubleFidelity"] == 0.9
 
     def test_construct_machine_time_info(self):
         driver = DriverWuyueBase()
