@@ -34,7 +34,7 @@ class SubmitJobRequest(UuidMixin):
     Pydantic Model for Submit Job Request.
     """
 
-    _uuid_fields = ["job_id", "project_id", "user_id"]
+    _uuid_fields = ["job_id", "project_id", "user_id", "flavor_id"]
     _uuid_convert_mode = "to_uuid"
 
     # Project ID (optional, from auth_data)
@@ -52,9 +52,24 @@ class SubmitJobRequest(UuidMixin):
     description: str | None = Field(
         default=None, description="Job description"
     )
-    # device name
-    backend: str = Field(
-        default=Constant.DRIVER_DUMMY, description="Backend device name"
+    # device name (optional, if empty triggers auto scheduling)
+    backend: str | None = Field(
+        default=None,
+        description="Backend device name. "
+        "If empty, auto scheduling is triggered (requires "
+        "flavor_id or extra_specs)",
+    )
+    # Flavor ID for auto scheduling
+    flavor_id: UUID | None = Field(
+        default=None,
+        description="Flavor ID for auto scheduling. "
+        "Specifies preset hardware specs to match against devices",
+    )
+    # Extra scheduling specs
+    extra_specs: dict | None = Field(
+        default=None,
+        description="Extra scheduling specifications. "
+        "Dynamic per-job scheduling parameters, overrides flavor specs",
     )
     # Driver options
     driver_options: dict | None = Field(
@@ -127,7 +142,7 @@ class SubmitJobResponse(UuidMixin):
     Pydantic Model for Submit Job Response.
     """
 
-    _uuid_fields = ["job_id", "project_id", "user_id"]
+    _uuid_fields = ["job_id", "project_id", "user_id", "flavor_id"]
     _uuid_convert_mode = "to_uuid"
 
     model_config = ConfigDict(from_attributes=True)
@@ -158,6 +173,14 @@ class SubmitJobResponse(UuidMixin):
     description: str | None = Field(default=None, description="Description")
     # Backend device name
     backend: str = Field(description="Backend device name")
+    # Flavor ID for auto scheduling
+    flavor_id: UUID | None = Field(
+        default=None, description="Flavor ID for auto scheduling"
+    )
+    # Extra scheduling specs
+    extra_specs: dict | None = Field(
+        default=None, description="Extra scheduling specifications"
+    )
     # Driver options
     driver_options: dict | None = Field(
         default=None, description="Driver options"

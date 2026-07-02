@@ -106,3 +106,10 @@ from .metrics import (
     GetJobStatsRequest,
     GetJobStatsResponse,
 )
+from .flavor import (
+    CreateFlavorRequest,
+    FlavorResponse,
+    GetFlavorRequest,
+    DeleteFlavorRequest,
+    DeleteFlavorResponse,
+)
