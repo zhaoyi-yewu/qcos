@@ -822,7 +822,7 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_flow_run = Mock()
         mock_flow_run.id = "flow-run-id-1"
         mock_flow_run.state_name = "Paused"
-        mock_flow_run.work_pool_name = "dummy"
+        mock_flow_run.work_pool_name = "device|dummy"
         mock_flow_run.parameters = {
             "job_info": {
                 "data": {
@@ -933,7 +933,7 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_parent_flow = Mock()
         mock_parent_flow.id = "flow-run-id-1"
         mock_parent_flow.state_name = "Paused"
-        mock_parent_flow.work_pool_name = "dummy"
+        mock_parent_flow.work_pool_name = "device|dummy"
         mock_parent_flow.parameters = {
             "job_info": {
                 "data": {
@@ -950,7 +950,7 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_sub_flow_1 = Mock()
         mock_sub_flow_1.name = "sub-job-1"
         mock_sub_flow_1.id = "sub-flow-id-1"
-        mock_sub_flow_1.work_pool_name = "dummy"
+        mock_sub_flow_1.work_pool_name = "device|dummy"
         mock_sub_flow_1.parameters = {
             "job_info": {
                 "data": {
@@ -966,7 +966,7 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_sub_flow_2 = Mock()
         mock_sub_flow_2.name = "sub-job-2"
         mock_sub_flow_2.id = "sub-flow-id-2"
-        mock_sub_flow_2.work_pool_name = "other_pool"
+        mock_sub_flow_2.work_pool_name = "device|other_pool"
         mock_sub_flow_2.parameters = {
             "job_info": {
                 "data": {
@@ -1033,7 +1033,7 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_parent_flow = Mock()
         mock_parent_flow.id = "flow-run-id-1"
         mock_parent_flow.state_name = "Paused"
-        mock_parent_flow.work_pool_name = "dummy"
+        mock_parent_flow.work_pool_name = "device|dummy"
         mock_parent_flow.parameters = {
             "job_info": {
                 "data": {
@@ -1052,7 +1052,7 @@ class TestTaskFlowManager(unittest.TestCase):
             mock_sub = Mock()
             mock_sub.name = f"sub-job-{i}"
             mock_sub.id = f"sub-flow-id-{i}"
-            mock_sub.work_pool_name = "dummy"
+            mock_sub.work_pool_name = "device|dummy"
             mock_sub.parameters = {
                 "job_info": {
                     "data": {
@@ -1197,17 +1197,15 @@ class TestTaskFlowManager(unittest.TestCase):
         assert self.task_manager._sync_client == mock_sync_client
         assert self.task_manager.loop == mock_loop
 
-        # Verify create_pools called with device names
-        mock_create_pools.assert_any_call(
-            pool_names=mock_device_manager.get_devices().keys()
-        )
+        # Verify create_pools called with device pool names
+        mock_create_pools.assert_any_call(pool_names=["device|test_device"])
         # Verify create_pools called with monitor device names
-        mock_create_pools.assert_any_call(pool_names=["test_device_monitor"])
+        mock_create_pools.assert_any_call(pool_names=["monitor|test_device"])
         # Verify create_pools called with manager device names
-        mock_create_pools.assert_any_call(pool_names=["test_device_mgr"])
+        mock_create_pools.assert_any_call(pool_names=["mgr|test_device"])
         # Verify create_queues called
         mock_create_queues.assert_called_once_with(
-            queue_names=mock_device_manager.get_devices().keys()
+            queue_names=["device|test_device"]
         )
         # Verify delete_task_flow_by_name called
         mock_delete_flow.assert_called_once_with("device-monitor-flow")
@@ -1402,12 +1400,12 @@ class TestTaskFlowManager(unittest.TestCase):
                                         ) as mock_run_monitor:
                                             self.task_manager.start()
 
-        # Verify create_pools for device names only (no monitor/mgr pools)
+        # Verify create_pools for device pool names only (no monitor/mgr pools)
         mock_create_pools.assert_called_once_with(
-            pool_names=mock_device_manager.get_devices().keys()
+            pool_names=["device|test_device"]
         )
         mock_create_queues.assert_called_once_with(
-            queue_names=mock_device_manager.get_devices().keys()
+            queue_names=["device|test_device"]
         )
         mock_gen_deploy.assert_called_once()
         mock_create_deploy.assert_called_once()
@@ -1525,15 +1523,21 @@ class TestTaskFlowManager(unittest.TestCase):
 
         # Verify create_pools calls
         mock_create_pools.assert_any_call(
-            pool_names={"device_a", "device_b", "device_c"}
+            pool_names=[
+                "device|device_a",
+                "device|device_b",
+                "device|device_c",
+            ]
         )
         mock_create_pools.assert_any_call(
-            pool_names=["device_a_monitor", "device_b_monitor"]
+            pool_names=["monitor|device_a", "monitor|device_b"]
         )
-        mock_create_pools.assert_any_call(
-            pool_names=["device_a_mgr", "device_b_mgr"]
-        )
+        mock_create_pools.assert_any_call(pool_names=["mgr|device_a"])
 
         mock_create_queues.assert_called_once_with(
-            queue_names={"device_a", "device_b", "device_c"}
+            queue_names=[
+                "device|device_a",
+                "device|device_b",
+                "device|device_c",
+            ]
         )

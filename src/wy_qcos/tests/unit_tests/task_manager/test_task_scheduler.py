@@ -668,3 +668,8 @@ class TestPrioritySchedulingPolicy:
             None,
         )
         assert result == 514
+        mock_run_flow.assert_called_once()
+        _, call_kwargs = mock_run_flow.call_args
+        assert call_kwargs["work_queue_name"] == (
+            f"{Constant.WORK_POOL_DEVICE_PREFIX}{Constant.DRIVER_DUMMY}_1"
+        )

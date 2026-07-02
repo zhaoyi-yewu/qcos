@@ -35,22 +35,21 @@ from wy_qcos.task_manager import scheduler
 logger = logging.getLogger(__name__)
 
 
-class TaskCleaner:
-    """Periodic task clean service.
+class JobCleaner:
+    """Periodic job clean service.
 
-    Scans Prefect flow runs to:
-    - Remove orphaned flows in device work pools that have no
-      corresponding job in the database.
-    - Delete expired jobs (older than configured days) from the
-      database and their associated Prefect flow runs.
+    Scans Prefect flow runs to remove orphaned flows in device work
+    pools that have no corresponding job in the database, and to delete
+    expired jobs (older than configured days) along with their associated
+    Prefect flow runs.
     """
 
-    def __init__(self, app_db_engin) -> None:
+    def __init__(self, app_db_engine) -> None:
         self._scheduler = AsyncIOScheduler(daemon=True)
         self._running = False
-        self._interval = Config.TASK_CLEAN.TASK_CLEAN_INTERVAL
-        self._expire_days = Config.TASK_CLEAN.JOB_EXPIRE_DAYS
-        self._db_engine = app_db_engin
+        self._interval = Config.DEFAULT.JOB_CLEAN_INTERVAL
+        self._expire_days = Config.DEFAULT.JOB_EXPIRE_DAYS
+        self._db_engine = app_db_engine
 
     async def start(self) -> None:
         if self._running:
@@ -58,7 +57,7 @@ class TaskCleaner:
         self._running = True
 
         logger.info(
-            f"Starting task cleaner "
+            f"Starting job cleaner "
             f"(interval: {self._interval}min, "
             f"expire: {self._expire_days}d)"
         )
@@ -70,31 +69,31 @@ class TaskCleaner:
             minutes=self._interval,
             coalesce=True,
             max_instances=1,
-            id="task_clean",
+            id="job_clean",
             replace_existing=True,
         )
-        logger.info("Task cleaner started")
+        logger.info("Job cleaner started")
 
     async def stop(self) -> None:
         if not self._running:
             return
-        logger.info("Stopping task cleaner...")
+        logger.info("Stopping job cleaner...")
         self._running = False
         try:
             self._scheduler.shutdown(wait=True)
         except Exception as e:
-            logger.warning(f"Error shutting down task cleaner: {e}")
-        logger.info("Task cleaner stopped")
+            logger.warning(f"Error shutting down job cleaner: {e}")
+        logger.info("Job cleaner stopped")
 
     async def _cleanup_job(self):
         if not self._running:
             return
-        logger.info("Starting periodic task clean")
+        logger.info("Starting periodic job clean")
         try:
             await self._clean_orphaned_device_flows()
             await self._clean_expired_job_flows()
         except Exception:
-            logger.error("Task clean failed", exc_info=True)
+            logger.error("Job clean failed", exc_info=True)
 
     def _get_sync_client(self):
         return scheduler._task_manager._sync_client
@@ -225,7 +224,7 @@ class TaskCleaner:
 
             name = flow_run.name
             # Validate UUID format (job IDs are UUIDs)
-            is_uuid, _ = await self._run_sync(self._check_uuid, name)
+            is_uuid, _ = self._check_uuid(name=name)
             if not is_uuid:
                 continue
 
