@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from wy_qcos.drivers.device import Device
 from wy_qcos.drivers.qboson.driver_tiangong_base import DriverTiangongBase
 
 
@@ -37,5 +38,5 @@ class DriverTiangong550V2(DriverTiangongBase):
             remote device running info
         """
         # TODO(jidalong) mock data currently
-        device_running_info = {"status": "online"}
+        device_running_info = {"status": Device.DEVICE_STATUS_ONLINE}
         return device_running_info

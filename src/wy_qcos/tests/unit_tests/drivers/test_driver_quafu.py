@@ -20,6 +20,7 @@
 
 from wy_qcos.common.config import Config
 from wy_qcos.common.library import Library
+from wy_qcos.drivers.device import Device
 
 org_path = Library.set_driver_venv_path("DriverQuafu", Config.DEFAULT.VENV_DIR)
 
@@ -85,7 +86,7 @@ class TestDriverQuafu:
 
     def test_fetch_running_info(self):
         info = driver_quafu.fetch_running_info()
-        assert info == {"status": "online"}
+        assert info == {"status": Device.DEVICE_STATUS_ONLINE}
 
     def test_submit_task(self):
         driver_quafu.tmgr = Mock()

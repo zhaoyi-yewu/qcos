@@ -172,7 +172,7 @@ class DriverQuafu(DriverBase):
             remote device running info
         """
         # TODO(jidalong) mock data currently
-        device_running_info = {"status": "online"}
+        device_running_info = {"status": Device.DEVICE_STATUS_ONLINE}
         return device_running_info
 
     def run(

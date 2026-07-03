@@ -20,6 +20,7 @@ from unittest.mock import patch
 import pytest
 
 from wy_qcos.common.constant import Constant
+from wy_qcos.drivers.device import Device
 from wy_qcos.drivers.driver_pulse_base import DriverPulseBase
 
 
@@ -40,4 +41,4 @@ class TestDriverPulseBase:
     def test_fetch_running_info(self):
         driver = DriverPulseBase()
         info = driver.fetch_running_info()
-        assert info == {"status": "online"}
+        assert info == {"status": Device.DEVICE_STATUS_ONLINE}
