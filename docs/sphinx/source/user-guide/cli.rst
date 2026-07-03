@@ -331,8 +331,8 @@
    # 获取作业结果
    qcos-cli get-job-results 00000000-0000-4000-8000-000000000001
 
-   # 获取作业结果，并保存为result.txt
-   qcos-cli get-job-results 00000000-0000-4000-8000-000000000001 -f yaml --output-file result.txt -y
+   # 获取作业结果，并保存为results.yaml
+   qcos-cli get-job-results 00000000-0000-4000-8000-000000000001 -f yaml --output-file results.yaml -y
 
 作业删除和取消
 *************************

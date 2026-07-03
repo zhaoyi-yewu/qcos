@@ -30,7 +30,6 @@ from unittest.mock import patch, Mock
 
 from uqc_client import UQC
 
-from wy_qcos.common.config import Config
 from wy_qcos.common.library import Library
 from wy_qcos.drivers.driver_base import DriverBase
 from wy_qcos.drivers.uqc.driver_uqc import DriverUQCMatrix2
@@ -107,7 +106,6 @@ class TestDriverUqc:
         assert driver_uqc.cancel("1") is None
 
     @pytest.mark.smoke
-    @patch.object(DriverUQCMatrix2, "normalize_task_results")
     @patch.object(DriverUQCMatrix2, "get_task_results")
     @patch.object(DriverUQCMatrix2, "check_task_status")
     @patch.object(UQC, "submit_task")
@@ -116,16 +114,15 @@ class TestDriverUqc:
         mock_submit_task,
         mock_check_task_status,
         mock_get_task_results,
-        mock_normalize_task_results,
     ):
         mock_submit_task.return_value = task_id
         mock_check_task_status.return_value = True, None, "SUCCESS"
         mock_get_task_results.return_value = (
             True,
-            [{"datasets": {"computational_basis_histogram": []}}],
+            [{"datasets": {"computational_basis_histogram": result_matrix2}}],
         )
-        mock_normalize_task_results.return_value = None
         driver_uqc._uqc = Mock()
+        driver_uqc.backend_device_name = "Matrix2"
         assert (
             driver_uqc.run(job_id, num_qubits, data, data_type, shots) is None
         )

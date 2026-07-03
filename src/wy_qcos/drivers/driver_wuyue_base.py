@@ -254,7 +254,7 @@ class DriverWuyueBase(DriverBase):
         # 5. Get task final result
         logger.info("5. get task results")
         self.set_progress_by_task(self.TASK_STAGE_GET_RESULTS)
-        success, err_msg, results, machine_time_info = self.get_task_results(
+        success, err_msg, results, machine_profiling = self.get_task_results(
             task_id
         )
         if not success:
@@ -263,8 +263,25 @@ class DriverWuyueBase(DriverBase):
             )
 
         # 7. Save results and set driver status to ONLINE
-        self.set_results(job_id, data_index, results=results)
-        self.set_machine_time_info(job_id, data_index, machine_time_info)
+        _results = results.get("lineResult", None)
+        self.set_results(
+            job_id,
+            data_index,
+            results=_results,
+            raw_results=results,
+            result_type=Constant.RESULT_TYPE_SAMPLING,
+            machine_profiling={
+                "machine_started_at": machine_profiling.get(
+                    "machine_started_at", None
+                ),
+                "machine_ended_at": machine_profiling.get(
+                    "machine_ended_at", None
+                ),
+                "machine_duration": machine_profiling.get(
+                    "machine_duration", None
+                ),
+            },
+        )
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
@@ -483,25 +500,6 @@ class DriverWuyueBase(DriverBase):
         raw_data["sign"] = self.prepare_sign(raw_data)
         return self.encrypt_by_public_key(raw_data)
 
-    def construct_machine_time_info(self, data: dict) -> dict:
-        """Construct machine time info.
-
-        Args:
-            data: response data
-
-        Returns:
-            machine_time_info
-        """
-        exec_start_time = data.get("execStartTime", None)
-        exec_end_time = data.get("execEndTime", None)
-        time_consume = data.get("timeConsume", None)
-        machine_time_info = {
-            "exec_start_time": exec_start_time,
-            "exec_end_time": exec_end_time,
-            "time_consume": time_consume,
-        }
-        return machine_time_info
-
     def get_task_realtime_result(self, task_id):
         """Get task realtime result.
 
@@ -550,21 +548,35 @@ class DriverWuyueBase(DriverBase):
                 out_data = data[0].get("outData")
                 if out_data is not None:
                     result = out_data
-                machine_time_info = self.construct_machine_time_info(data[0])
+
+                time_consume = data[0].get("timeConsume", None)
+                exec_start_time = data[0].get("execStartTime", None)
+                exec_end_time = data[0].get("execEndTime", None)
+                machine_profiling = {
+                    "machine_started_at": exec_start_time / 1000
+                    if exec_start_time
+                    else None,
+                    "machine_ended_at": exec_end_time / 1000
+                    if exec_end_time
+                    else None,
+                    "machine_duration": float(time_consume)
+                    if time_consume
+                    else None,
+                }
 
                 if task_status == self.task_status_failed:
                     success = True
                     realtime_status = {
                         "task_status": data[0]["taskStatus"],
                         "result": result,
-                        "machine_time_info": machine_time_info,
+                        "machine_profiling": machine_profiling,
                     }
                     err_msgs.append(f"Task failed: {task_status}")
                 elif task_status == self.task_status_completed:
                     realtime_status = {
                         "task_status": data[0]["taskStatus"],
                         "result": result,
-                        "machine_time_info": machine_time_info,
+                        "machine_profiling": machine_profiling,
                     }
                 else:
                     success = False
@@ -604,12 +616,12 @@ class DriverWuyueBase(DriverBase):
             )
         raw_results = final_results.get("result", None)
         format_results = {
-            "line_results": raw_results.get("lineResult", {}),
-            "optimized_circuit": raw_results.get("optimization", ""),
-            "grid_info": raw_results.get("grid", ""),
+            "lineResult": raw_results.get("lineResult", {}),
+            "optimization": raw_results.get("optimization", ""),
+            "grid": raw_results.get("grid", ""),
         }
-        machine_time_info = final_results.get("machine_time_info", None)
-        return success, "\n".join(err_msg), format_results, machine_time_info
+        machine_profiling = final_results.get("machine_profiling", None)
+        return success, "\n".join(err_msg), format_results, machine_profiling
 
     def update_device_info_schema(self) -> dict:
         """Update device info schema.

@@ -106,7 +106,12 @@ class DriverQiskitQasmSim(DriverBase):
         simulator = QasmSimulator()
         result = simulator.run(transpile_results, shots=shots).result()
 
-        self.set_results(job_id, data_index, results=result.get_counts())
+        self.set_results(
+            job_id,
+            data_index,
+            results=result.get_counts(),
+            result_type=Constant.RESULT_TYPE_SAMPLING,
+        )
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 

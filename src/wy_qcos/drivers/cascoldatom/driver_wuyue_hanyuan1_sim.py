@@ -62,5 +62,5 @@ class DriverWuyueHanyuan1Sim(DriverWuyueHanyuan1):
                 f"Failed to get task results [{task_id}]: {err_msg}"
             )
         results = final_results.get("result", None)
-        machine_time_info = final_results.get("machine_time_info", None)
-        return success, "\n".join(err_msg), results, machine_time_info
+        machine_profiling = final_results.get("machine_profiling", None)
+        return success, "\n".join(err_msg), results, machine_profiling

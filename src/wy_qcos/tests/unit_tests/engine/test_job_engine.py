@@ -216,8 +216,26 @@ class TestJobEngine:
     def test_run_code(
         self, mock_flow_parse, mock_flow_transpile, mock_flow_run_driver
     ):
-        mock_flow_parse.return_value = iter([{"parsed_src_code": "v"}, 233])
-        mock_flow_transpile.return_value = ({}, 466)
+        parse_profiling = {
+            "parse_started_at": 1.0,
+            "parse_ended_at": 2.0,
+            "parse_duration": 1.0,
+        }
+        transpile_profiling = {
+            "transpile_started_at": 1.0,
+            "transpile_ended_at": 2.0,
+            "transpile_duration": 1.0,
+        }
+        driver_run_profiling = {
+            "driver_run_started_at": 1.0,
+            "driver_run_ended_at": 2.0,
+            "driver_run_duration": 1.0,
+        }
+        mock_flow_parse.return_value = iter([
+            {"parsed_src_code": "v"},
+            parse_profiling,
+        ])
+        mock_flow_transpile.return_value = ({}, transpile_profiling)
         with pytest.raises(ValueError) as exc_info:
             _run_code(
                 0,
@@ -230,14 +248,17 @@ class TestJobEngine:
             str(exc_info.value) == "unexpected transpile_results or num_qubits"
         )
 
-        mock_flow_parse.return_value = iter([{"parsed_src_code": "v"}, 233])
+        mock_flow_parse.return_value = iter([
+            {"parsed_src_code": "v"},
+            parse_profiling,
+        ])
         mock_flow_transpile.return_value = (
             {"transpile_results": "s", "num_qubits": "6"},
-            466,
+            transpile_profiling,
         )
         mock_flow_run_driver.return_value = iter([
             {"results": "v", "metadata": "m"},
-            233,
+            driver_run_profiling,
         ])
         _run_code(
             0,
@@ -971,8 +992,10 @@ class TestJobEngine:
         self.job_info["data"]["code_type"] = Constant.CODE_TYPE_QASM
         self.job_info["data"]["driver_options"] = {}
         self.job_info["data"]["backend"] = "dummy"
-        self.job_info["data"]["job_enqueue_at"] = datetime.now().isoformat()
-        self.job_info["data"]["job_schedule_duration"] = 0
+        self.job_info["data"]["job_enqueue_at"] = 1783045405.121
+        self.job_info["data"]["job_schedule_started_at"] = 1783045402.076
+        self.job_info["data"]["job_schedule_ended_at"] = 1783045407.121
+        self.job_info["data"]["job_schedule_duration"] = 1
         self.job_info["global"] = {
             "configs": {
                 "REDIS": {
@@ -1453,7 +1476,9 @@ class TestJobEngine:
                 "code_type": Constant.CODE_TYPE_QASM,
                 "driver_options": {},
                 "backend": "dummy",
-                "job_enqueue_at": datetime.now().isoformat(),
+                "job_enqueue_at": 1783045405.121,
+                "job_schedule_started_at": 1783045402.076,
+                "job_schedule_ended_at": 1783045407.121,
                 "job_schedule_duration": 0,
                 "profiling": [
                     Constant.PROFILING_TYPE_CODE,

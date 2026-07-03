@@ -98,15 +98,15 @@ class TestDriverCiqtekIon1:
         converted_result = driver_ion_trap.convert_result(result, shots)
         assert converted_result["00"] == 25
 
-    @patch.object(DriverCiqtekIon1, "convert_result")
     @patch.object(Library, "loop_with_timeout")
     @patch.object(DriverCiqtekIon1, "submit_task")
     def test_run(
-        self, mock_submit_task, mock_loop_with_timeout, mock_convert_result
+        self,
+        mock_submit_task,
+        mock_loop_with_timeout,
     ):
-        mock_loop_with_timeout.return_value = True, None, ""
+        mock_loop_with_timeout.return_value = True, None, result
         mock_submit_task.return_value = True, None, ""
-        mock_convert_result.return_value = ""
         assert (
             driver_ion_trap.run(job_id, num_qubits, data, data_type, shots)
             is None

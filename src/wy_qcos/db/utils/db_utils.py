@@ -340,7 +340,7 @@ async def db_job_callback(
 
         # handle profiling types
         for _result in _results:
-            if _profiling_types:
+            if _profiling_types:  # expected profiling types in job submission
                 if Constant.PROFILING_TYPE_ALL in _profiling_types:
                     continue
                 for _profiling_type in Constant.PROFILING_TYPES:
@@ -349,6 +349,12 @@ async def db_job_callback(
                     if _profiling_type not in _profiling_types:
                         if _profiling_type in _result["profiling"]:
                             del _result["profiling"][_profiling_type]
+                            del _result["profiling"][
+                                f"{_profiling_type}_started_at"
+                            ]
+                            del _result["profiling"][
+                                f"{_profiling_type}_ended_at"
+                            ]
             else:
                 _result["profiling"] = {}
 

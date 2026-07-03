@@ -269,7 +269,12 @@ class DriverQutipSim(DriverBase):
                 time.sleep(1)
                 sleep_count += 1
 
-        self.set_results(job_id, data_index, results=count_probs)
+        self.set_results(
+            job_id,
+            data_index,
+            results=count_probs,
+            result_type=Constant.RESULT_TYPE_SAMPLING,
+        )
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 

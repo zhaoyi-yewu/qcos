@@ -23,7 +23,6 @@ import numpy as np
 import os
 import signal
 import time
-from datetime import datetime
 from typing import Any
 
 import redis
@@ -605,7 +604,7 @@ def job_flow(job_info):
     Returns:
         results
     """
-    worker_started_at = Library.get_current_datetime()
+    worker_started_at = time.time()
     job_data = job_info["data"]
     job_id = job_data["job_id"]
     global_configs = job_info["global"]["configs"]
@@ -613,8 +612,10 @@ def job_flow(job_info):
     backend = job_data["backend"]
     flow_run_id = flow_run.id
     callbacks = job_data.get("callbacks", None)
-    job_enqueue_at = datetime.fromisoformat(job_data["job_enqueue_at"])
-    profiling_scheduling_duration = job_data["job_schedule_duration"]
+    job_enqueue_at = job_data["job_enqueue_at"]
+    scheduling_started_at = job_data["job_schedule_started_at"]
+    scheduling_ended_at = job_data["job_schedule_ended_at"]
+    scheduling_duration = job_data["job_schedule_duration"]
     monitor_info = {
         "job_id": job_id,
         "flow_run_id": flow_run_id,
@@ -677,7 +678,7 @@ def job_flow(job_info):
         job_id,
         db_engine,
         job_status=Constant.JOB_STATUS_RUNNING,
-        started_at=worker_started_at,
+        started_at=Library.to_iso(worker_started_at),
         progress=-1,
     )
 
@@ -729,7 +730,7 @@ def job_flow(job_info):
                 sub_job_id,
                 db_engine,
                 job_status=Constant.JOB_STATUS_RUNNING,
-                started_at=worker_started_at,
+                started_at=Library.to_iso(worker_started_at),
                 progress=-1,
             )
             monitor_info["agg_sub_job_list"].append(sub_job_id)
@@ -762,17 +763,33 @@ def job_flow(job_info):
         )
         source_code_index += len(src_code_dict)
         # profiling: job
+        job_results["profiling"][
+            Constant.PROFILING_TYPE_SCHEDULING_STARTED_AT
+        ] = Library.to_iso(scheduling_started_at)
+        job_results["profiling"][
+            Constant.PROFILING_TYPE_SCHEDULING_ENDED_AT
+        ] = Library.to_iso(scheduling_ended_at)
         job_results["profiling"][Constant.PROFILING_TYPE_SCHEDULING] = round(
-            profiling_scheduling_duration, 5
+            scheduling_duration, 5
         )
-        profiling_queuing_duration = (
-            worker_started_at - job_enqueue_at
-        ).total_seconds()
+        profiling_queuing_duration = worker_started_at - job_enqueue_at
+        job_results["profiling"][
+            Constant.PROFILING_TYPE_QUEUING_STARTED_AT
+        ] = Library.to_iso(worker_started_at)
+        job_results["profiling"][Constant.PROFILING_TYPE_QUEUING_ENDED_AT] = (
+            Library.to_iso(job_enqueue_at)
+        )
         job_results["profiling"][Constant.PROFILING_TYPE_QUEUING] = round(
             profiling_queuing_duration, 5
         )
         profiling_code_end = time.time()
         profiling_code_duration = profiling_code_end - profiling_code_start
+        job_results["profiling"][Constant.PROFILING_TYPE_CODE_STARTED_AT] = (
+            Library.to_iso(profiling_code_start)
+        )
+        job_results["profiling"][Constant.PROFILING_TYPE_CODE_ENDED_AT] = (
+            Library.to_iso(profiling_code_end)
+        )
         job_results["profiling"][Constant.PROFILING_TYPE_CODE] = round(
             profiling_code_duration, 5
         )
@@ -850,11 +867,18 @@ def _run_code(
     }
 
     # [flow_parse]
-    parse_results, profiling_time = flow_parse(
+    parse_results, parse_profiling = flow_parse(
         src_code_dict, transpiler, code_type
     )
+
+    job_results["profiling"][
+        Constant.PROFILING_TYPE_DRIVER_PARSE_STARTED_AT
+    ] = Library.to_iso(parse_profiling["parse_started_at"])
+    job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_PARSE_ENDED_AT] = (
+        Library.to_iso(parse_profiling["parse_ended_at"])
+    )
     job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_PARSE] = round(
-        profiling_time, 5
+        parse_profiling["parse_duration"], 5
     )
 
     # parser: error handling
@@ -866,13 +890,19 @@ def _run_code(
         return job_results, driver, transpiler, mapping_dict
 
     # [flow_transpile]
-    transpile_task_results, profiling_time = flow_transpile(
+    transpile_task_results, transpile_profiling = flow_transpile(
         parse_results["parsed_src_code"],
         transpiler,
         driver,
     )
+    job_results["profiling"][
+        Constant.PROFILING_TYPE_DRIVER_TRANSPILE_STARTED_AT
+    ] = Library.to_iso(transpile_profiling["transpile_started_at"])
+    job_results["profiling"][
+        Constant.PROFILING_TYPE_DRIVER_TRANSPILE_ENDED_AT
+    ] = Library.to_iso(transpile_profiling["transpile_ended_at"])
     job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_TRANSPILE] = round(
-        profiling_time, 5
+        transpile_profiling["transpile_duration"], 5
     )
 
     # transpile: error handling
@@ -899,18 +929,45 @@ def _run_code(
             "transpile_results": transpile_results,
         }
 
-        run_results, profiling_time = flow_run_driver(
+        run_results, driver_run_profiling = flow_run_driver(
             job_info, num_qubits, driver, data
         )
 
+        job_results["profiling"][
+            Constant.PROFILING_TYPE_DRIVER_RUN_STARTED_AT
+        ] = Library.to_iso(driver_run_profiling["driver_run_started_at"])
+        job_results["profiling"][
+            Constant.PROFILING_TYPE_DRIVER_RUN_ENDED_AT
+        ] = Library.to_iso(driver_run_profiling["driver_run_ended_at"])
         job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_RUN] = round(
-            profiling_time, 5
+            driver_run_profiling["driver_run_duration"], 5
         )
 
-        profiling_machine = run_results.get("machine_time_info", None)
-        job_results["profiling"][Constant.PROFILING_TYPE_MACHINE] = (
-            profiling_machine
+        # profiling
+        machine_started_at = None
+        machine_ended_at = None
+        machine_duration = None
+        machine_profiling = run_results.get("machine_profiling", None)
+        if machine_profiling:
+            machine_started_at = machine_profiling.get(
+                "machine_started_at", None
+            )
+            machine_ended_at = machine_profiling.get("machine_ended_at", None)
+            machine_duration = machine_profiling.get("machine_duration", None)
+        job_results["profiling"][
+            Constant.PROFILING_TYPE_MACHINE_STARTED_AT
+        ] = Library.to_iso(machine_started_at)
+        job_results["profiling"][Constant.PROFILING_TYPE_MACHINE_ENDED_AT] = (
+            Library.to_iso(machine_ended_at)
         )
+        if machine_duration:
+            job_results["profiling"][Constant.PROFILING_TYPE_MACHINE] = round(
+                machine_duration, 5
+            )
+        else:
+            job_results["profiling"][Constant.PROFILING_TYPE_MACHINE] = (
+                machine_duration
+            )
 
         # run: error handling
         err_msg = run_results.get("error", None)
@@ -923,6 +980,8 @@ def _run_code(
         # prepare job_results
         job_results["results"] = run_results["results"]
         job_results["metadata"] = run_results["metadata"]
+        if "raw_results" in run_results:
+            job_results["metadata"]["raw_results"] = run_results["raw_results"]
 
     return job_results, driver, transpiler, mapping_dict
 
@@ -1576,7 +1635,7 @@ def flow_parse(src_code_dict, transpiler, code_type):
         results, profiling_time
     """
     # record parse start_time
-    profiling_start = time.time()
+    parse_started_at = time.time()
 
     # parser
     parse_task = parse.submit(
@@ -1586,9 +1645,14 @@ def flow_parse(src_code_dict, transpiler, code_type):
         wait_for=[init_driver, init_transpiler],
     )
     parse_task_result = parse_task.result()
-    profiling_end = time.time()
-    profiling_time = profiling_end - profiling_start
-    return parse_task_result, profiling_time
+    parse_ended_at = time.time()
+    parse_duration = parse_ended_at - parse_started_at
+    parse_profiling = {
+        "parse_started_at": parse_started_at,
+        "parse_ended_at": parse_ended_at,
+        "parse_duration": parse_duration,
+    }
+    return parse_task_result, parse_profiling
 
 
 def flow_transpile(parsed_src_code, transpiler, driver):
@@ -1603,7 +1667,7 @@ def flow_transpile(parsed_src_code, transpiler, driver):
         results, profiling_time
     """
     # record transpile start_time
-    profiling_start = time.time()
+    transpile_started_at = time.time()
 
     # transpile codes
     transpile_task = transpile.submit(
@@ -1615,9 +1679,14 @@ def flow_transpile(parsed_src_code, transpiler, driver):
     transpile_task_results = transpile_task.result()
 
     # record transpile end_time
-    profiling_end = time.time()
-    profiling_time = profiling_end - profiling_start
-    return transpile_task_results, profiling_time
+    transpile_ended_at = time.time()
+    transpile_duration = transpile_ended_at - transpile_started_at
+    transpile_profiling = {
+        "transpile_started_at": transpile_started_at,
+        "transpile_ended_at": transpile_ended_at,
+        "transpile_duration": transpile_duration,
+    }
+    return transpile_task_results, transpile_profiling
 
 
 def flow_task_monitor(monitor_info):
@@ -1643,7 +1712,7 @@ def flow_run_driver(job_info, num_qubits, driver, data):
     """
     # call run() in driver
     # record driver_run start_time
-    profiling_start = time.time()
+    driver_run_started_at = time.time()
 
     wait_for = [init_driver, transpile]
 
@@ -1654,9 +1723,14 @@ def flow_run_driver(job_info, num_qubits, driver, data):
     run_task_results = run_task.result()
 
     # record driver_run end_time
-    profiling_end = time.time()
-    profiling_time = profiling_end - profiling_start
-    return run_task_results, profiling_time
+    driver_run_ended_at = time.time()
+    driver_run_duration = driver_run_ended_at - driver_run_started_at
+    driver_run_profiling = {
+        "driver_run_started_at": driver_run_started_at,
+        "driver_run_ended_at": driver_run_ended_at,
+        "driver_run_duration": driver_run_duration,
+    }
+    return run_task_results, driver_run_profiling
 
 
 def format_run_results(driver, job_id, data_index):
@@ -1691,17 +1765,20 @@ def format_run_results(driver, job_id, data_index):
     if driver_results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
         # sync mode: get results immediately
         results = driver.get_results(job_id, data_index)
+        raw_results = driver.get_raw_results(job_id, data_index)
         job_status = Constant.JOB_STATUS_COMPLETED
         ended_at = Library.get_current_datetime().isoformat()
-        machine_time_info = driver.get_machine_time_info(job_id, data_index)
+        machine_profiling = driver.get_machine_profiling(job_id, data_index)
     elif driver_results_fetch_mode == Constant.RESULTS_FETCH_MODE_ASYNC:
         # async mode: get results in the async set-job-results call
         job_status = Constant.JOB_STATUS_RUNNING
 
     job_results["results"] = results
+    if raw_results:
+        job_results["raw_results"] = raw_results
     job_results["metadata"]["status"] = job_status
     job_results["metadata"]["ended_at"] = ended_at
-    job_results["machine_time_info"] = machine_time_info
+    job_results["machine_profiling"] = machine_profiling
     return job_results
 
 
@@ -1741,8 +1818,8 @@ def format_error_results(driver, err_cls, err_msg):
         "code": err.get_error_code(),
         "message": err.get_err_msgs(),
     }
+    driver_name = "Unknown driver"
     if driver:
-        logger.error(f"{driver.name}: {err}")
-    else:
-        logger.error(f"Unknown driver: {err}")
+        driver_name = driver.name
+    logger.error(f"{err.get_err_msgs()} [{driver_name}]")
     return job_results
