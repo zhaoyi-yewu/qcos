@@ -1,9 +1,9 @@
-[hanyuan1]
+[hanyuan1_36]
 alias_name = "中科酷原-汉原1-36"
 driver = "DriverHanyuan1-36"
 description = "中科酷原-汉原1-36比特模拟测试脚本"
 
-[hanyuan1.transpiler.qpu_configs]
+[hanyuan1_36.transpiler.qpu_configs]
 qubits = 36
 storage_area = ["P144", "P145", "P146", "P147", "P148", "P149", "P150", "P151", "P152", "P153", "P154", "P155",
                 "P164", "P165", "P166", "P167", "P168", "P169", "P170", "P171", "P172", "P173", "P174", "P175",

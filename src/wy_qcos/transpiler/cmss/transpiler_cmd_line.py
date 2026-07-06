@@ -429,6 +429,8 @@ class CMSSTranspilerPerf:
             perf_content.append(params.file.name)
             # add qubit number
             perf_content.append(params.num_qubits)
+            # gate count
+            perf_content.append(len(parse_results[params.file][1]))
             # circuit depth
             perf_content.append(params.depth)
             # tech_type
@@ -447,6 +449,8 @@ class CMSSTranspilerPerf:
             perf_content.append(runtime.opt_time2)
             perf_content.append(runtime.transpile_time)
             perf_content.append(runtime.total_time)
+            perf_content.append(runtime.transpiled_gate_count)
+            perf_content.append(runtime.transpiled_depth)
             total_content.append(perf_content)
 
         total_content = sorted(
@@ -457,6 +461,7 @@ class CMSSTranspilerPerf:
         csv_titles = [
             TPC.QASM_FILE,
             TPC.NUM_QUBITS,
+            TPC.GATE_COUNT,
             TPC.DEPTH,
             TPC.TECH_TYPE,
             TPC.OPT_LEVEL,
@@ -489,6 +494,8 @@ class CMSSTranspilerPerf:
                 TPC.OPT_TIME2,
                 TPC.TRANSPILE_TIME,
                 TPC.TOTAL_TIME,
+                TPC.TRANSPILED_GATE_COUNT,
+                TPC.TRANSPILED_DEPTH,
             ])
             for row in total_content:
                 row_content = []
@@ -513,6 +520,10 @@ class CMSSTranspilerPerf:
                 row_content.append(
                     f"{row[TPC.CONS_DICT[TPC.TOTAL_TIME]]:.4f}s"
                 )
+                row_content.append(
+                    row[TPC.CONS_DICT[TPC.TRANSPILED_GATE_COUNT]]
+                )
+                row_content.append(row[TPC.CONS_DICT[TPC.TRANSPILED_DEPTH]])
                 csv_content.append(row_content)
         else:
             # parse + transpile
@@ -526,6 +537,8 @@ class CMSSTranspilerPerf:
                 TPC.OPT_TIME2,
                 TPC.TRANSPILE_TIME,
                 TPC.TOTAL_TIME,
+                TPC.TRANSPILED_GATE_COUNT,
+                TPC.TRANSPILED_DEPTH,
             ])
             for row in total_content:
                 row_content = []
@@ -556,6 +569,10 @@ class CMSSTranspilerPerf:
                 row_content.append(
                     f"{row[TPC.CONS_DICT[TPC.TOTAL_TIME]]:.4f}s"
                 )
+                row_content.append(
+                    row[TPC.CONS_DICT[TPC.TRANSPILED_GATE_COUNT]]
+                )
+                row_content.append(row[TPC.CONS_DICT[TPC.TRANSPILED_DEPTH]])
                 csv_content.append(row_content)
 
         with open(csv_file_path, "w", encoding="utf-8-sig", newline="") as f:
@@ -610,12 +627,13 @@ class CMSSTranspilerPerf:
         abs_config_path = Path(config_file).resolve()
         if not abs_config_path.exists():
             raise ValueError(f"config file[{config_file}] not existed!")
+        chip_name = abs_config_path.stem
 
         qpu_config = {}
         extra_configs = Config.get_extra_configs()
         Config.load_config_file(config_file, extra_config=True)
         if tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM:
-            qpu_config = extra_configs["hanyuan1"]["transpiler"]["qpu_configs"]
+            qpu_config = extra_configs[chip_name]["transpiler"]["qpu_configs"]
             trans_cfg_inst.set_qpu_cfg(qpu_config)
             trans_cfg_inst.set_tech_type(tech_type)
             trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
@@ -640,9 +658,7 @@ class CMSSTranspilerPerf:
                     Constant.TWO_QUBIT_GATE_CZ,
                 ]
         elif tech_type == Constant.TECH_TYPE_SUPERCONDUCTING:
-            qpu_config = extra_configs["spinq_rpc"]["transpiler"][
-                "qpu_configs"
-            ]
+            qpu_config = extra_configs[chip_name]["transpiler"]["qpu_configs"]
             trans_cfg_inst.set_qpu_cfg(qpu_config)
             trans_cfg_inst.set_tech_type(tech_type)
             trans_cfg_inst.set_max_qubits(qpu_config["qubits"])

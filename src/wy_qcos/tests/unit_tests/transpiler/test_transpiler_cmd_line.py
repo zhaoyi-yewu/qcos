@@ -36,6 +36,8 @@ from wy_qcos.transpiler.cmss.transpiler_cmd_line import (
     get_parse_args,
 )
 
+from wy_qcos.common.cmss.gate_operation import X
+
 timer = Timer()
 
 
@@ -187,13 +189,14 @@ class TestTranspilerCmdLine:
 
     def test_cmss_transpiler_perf_exec_by_na(self):
         with patch(
-            "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerHighPerformanceCmss"
+            "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+            "TranspilerHighPerformanceCmss"
         ) as MockTranspilerHighPerformanceCmss:
             mock_transpiler = MagicMock()
             MockTranspilerHighPerformanceCmss.return_value = mock_transpiler
             mock_transpiler.parse.return_value = {"000": (1, ["x"])}
             mock_transpiler.transpile.return_value = (
-                "transpiled_circuit",
+                [X([0])],
                 None,
             )
 
@@ -213,13 +216,14 @@ class TestTranspilerCmdLine:
 
     def test_cmss_transpiler_perf_exec_by_sc(self):
         with patch(
-            "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerHighPerformanceCmss"
+            "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+            "TranspilerHighPerformanceCmss"
         ) as MockTranspilerHighPerformanceCmss:
             mock_transpiler = MagicMock()
             MockTranspilerHighPerformanceCmss.return_value = mock_transpiler
             mock_transpiler.parse.return_value = {"000": (1, ["x"])}
             mock_transpiler.transpile.return_value = (
-                "transpiled_circuit",
+                [X([0])],
                 None,
             )
 
@@ -239,13 +243,14 @@ class TestTranspilerCmdLine:
 
     def test_cmss_transpiler_perf_exec_by_non(self):
         with patch(
-            "wy_qcos.transpiler.cmss.transpiler_cmd_line.TranspilerHighPerformanceCmss"
+            "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+            "TranspilerHighPerformanceCmss"
         ) as MockTranspilerHighPerformanceCmss:
             mock_transpiler = MagicMock()
             MockTranspilerHighPerformanceCmss.return_value = mock_transpiler
             mock_transpiler.parse.return_value = {"000": (1, ["x"])}
             mock_transpiler.transpile.return_value = (
-                "transpiled_circuit",
+                [X([0])],
                 None,
             )
             perf = CMSSTranspilerPerf()
