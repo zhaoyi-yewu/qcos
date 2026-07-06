@@ -353,11 +353,17 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
         enable_na_move = self.transpiler_options.get("enable_na_move", False)
         # support cz gate for NARoute
         if enable_na_move:
-            supp_basis_gates = [
-                Constant.SINGLE_QUBIT_GATE_RX,
-                Constant.SINGLE_QUBIT_GATE_RY,
-                Constant.TWO_QUBIT_GATE_CZ,
-            ]
+            if supp_basis_gates is None or len(supp_basis_gates) == 0:
+                supp_basis_gates = [
+                    Constant.SINGLE_QUBIT_GATE_RX,
+                    Constant.SINGLE_QUBIT_GATE_RY,
+                    Constant.TWO_QUBIT_GATE_CZ,
+                ]
+            elif Constant.TWO_QUBIT_GATE_CZ not in supp_basis_gates:
+                raise TranspilerException(
+                    f"Basis gate({supp_basis_gates}) is not supported for "
+                    "neutral atom topology. "
+                )
 
         enable_mapping = self.transpiler_options.get("enable_mapping", True)
         run_time: TranspileRuntime = self.transpiler_runtime
