@@ -64,15 +64,27 @@ struct PhysicalIdRemap {
 };
 
 /**
- * @brief 芯片拓扑稠密化: 过滤低保真度边、保留最大连通分量、将稀疏物理 ID
- * 压缩为 0..N-1
+ * @brief 按保真度阈值过滤低保真度边和单比特
+ *
+ * 将 single_qubit_fidelities 中保真度 <= threshold 的条目置 0，
+ * 同步移除 coupling_list/edge_fidelities 中边保真度 <= threshold
+ * 或任一端点单比特保真度 <= threshold 的边。
+ *
+ * @param chip [in/out] 芯片标定数据，原地修改
+ * @param fidelity_threshold 保真度阈值，<=0 时不做任何过滤
+ */
+void filter_low_fidelity(ChipCalibration& chip, double fidelity_threshold);
+
+/**
+ * @brief 芯片拓扑稠密化: 将稀疏物理 ID 压缩为 0..N-1
+ *
+ * 对 chip 中当前耦合边涉及的物理位重新编号为连续 0..N-1，
+ * 并同步重建 single_qubit_fidelities。
  *
  * @param chip [in/out] 芯片标定数据, 原地修改为稠密 ID 空间
- * @param fidelity_threshold 保真度阈值, 低于此值的边被过滤(<=0 表示不过滤)
  * @return PhysicalIdRemap 映射表, 供 restore_physical_ids 后处理使用
  */
-PhysicalIdRemap densify_chip_topology(ChipCalibration& chip,
-                                      double fidelity_threshold = 0.0);
+PhysicalIdRemap densify_chip_topology(ChipCalibration& chip);
 
 /**
  * @brief 将稠密物理 ID 还原为原始物理 ID

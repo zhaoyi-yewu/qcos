@@ -198,46 +198,62 @@ std::vector<std::shared_ptr<BaseOperation>> optimize(
                              std::to_string(opt_level));
   }
 
-  size_t N = compute_parallel_threads(num_threads, ir.size(), opt_level);
+  // 提取 measure, 优化完成后追加到末尾
+  std::vector<std::shared_ptr<BaseOperation>> regular_ops;
+  std::vector<std::shared_ptr<BaseOperation>> measures;
+  regular_ops.reserve(ir.size());
+  for (const auto& op : ir) {
+    if (op->name == "measure") {
+      measures.push_back(op);
+    } else {
+      regular_ops.push_back(op);
+    }
+  }
 
+  size_t N =
+      compute_parallel_threads(num_threads, regular_ops.size(), opt_level);
+
+  std::vector<std::shared_ptr<BaseOperation>> optimized;
   if (N <= 1) {
-    return optimize_ir(ir, opt_level, verbose, basis_gates);
+    optimized = optimize_ir(regular_ops, opt_level, verbose, basis_gates);
+  } else {
+    // 并行：从 IR 按层拆分 → 各线程 optimize_ir → 合并
+    auto op_layers = ir_layers(regular_ops);
+    auto segments =
+        split_ir_by_layers(regular_ops, op_layers, static_cast<int>(N));
+
+    // 每个线程的优化结果，各线程写各自索引，无竞争
+    std::vector<std::vector<std::shared_ptr<BaseOperation>>> opt_segments(
+        segments.size());
+
+    std::vector<std::thread> threads;
+    threads.reserve(segments.size());
+    for (size_t seg_idx = 0; seg_idx < segments.size(); ++seg_idx) {
+      threads.emplace_back([&segments, &opt_segments, seg_idx, opt_level,
+                            verbose, &basis_gates]() {
+        opt_segments[seg_idx] =
+            optimize_ir(segments[seg_idx], opt_level, verbose, basis_gates);
+      });
+    }
+    for (auto& worker : threads) {
+      worker.join();
+    }
+
+    // 合并所有段的 ops（按拓扑序拼接）
+    size_t total_size = 0;
+    for (const auto& seg : opt_segments) {
+      total_size += seg.size();
+    }
+    optimized.reserve(total_size);
+    for (auto& seg : opt_segments) {
+      optimized.insert(optimized.end(), std::make_move_iterator(seg.begin()),
+                       std::make_move_iterator(seg.end()));
+    }
   }
 
-  // 并行：从 IR 按层拆分 → 各线程 optimize_ir → 合并
-  auto op_layers = ir_layers(ir);
-  auto segments = split_ir_by_layers(ir, op_layers, static_cast<int>(N));
-
-  // 每个线程的优化结果，各线程写各自索引，无竞争
-  std::vector<std::vector<std::shared_ptr<BaseOperation>>> opt_segments(
-      segments.size());
-
-  std::vector<std::thread> threads;
-  threads.reserve(segments.size());
-  for (size_t seg_idx = 0; seg_idx < segments.size(); ++seg_idx) {
-    threads.emplace_back([&segments, &opt_segments, seg_idx, opt_level,
-                          verbose, &basis_gates]() {
-      opt_segments[seg_idx] =
-          optimize_ir(segments[seg_idx], opt_level, verbose, basis_gates);
-    });
-  }
-  for (auto& worker : threads) {
-    worker.join();
-  }
-
-  // 合并所有段的 ops（按拓扑序拼接）
-  size_t total_size = 0;
-  for (const auto& seg : opt_segments) {
-    total_size += seg.size();
-  }
-  std::vector<std::shared_ptr<BaseOperation>> merged_ops;
-  merged_ops.reserve(total_size);
-  for (auto& seg : opt_segments) {
-    merged_ops.insert(merged_ops.end(), std::make_move_iterator(seg.begin()),
-                      std::make_move_iterator(seg.end()));
-  }
-
-  return merged_ops;
+  // 追加 measure 到末尾
+  optimized.insert(optimized.end(), measures.begin(), measures.end());
+  return optimized;
 }
 
 }  // namespace qcos

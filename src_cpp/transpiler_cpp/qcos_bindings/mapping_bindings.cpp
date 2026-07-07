@@ -24,6 +24,7 @@
 #include <stdexcept>
 
 #include "circuit/gate_operation.h"
+#include "mapping/chip_data.h"
 #include "mapping/greedy_routing.h"
 #include "mapping/sabre_mapping.h"
 #include "mapping/sabre_routing.h"
@@ -38,7 +39,9 @@ namespace {
  *
  * @param gates_list_raw Python 侧传入的 BaseOperation 对象列表。
  * @param coupling_list 物理耦合图边列表。
- * @param initial_l2p 初始逻辑到物理映射。
+ * @param edge_fidelities 边保真度数组。
+ * @param single_qubit_fidelities 单比特保真度数组。
+ * @param fidelity_threshold 保真度过滤阈值。
  * @param extension_size 扩展集大小。
  * @param weight 前沿层与扩展层成本权重。
  * @param decay SWAP 衰减系数。
@@ -47,7 +50,9 @@ namespace {
 nb::list bind_cpp_sabre_routing(
     const std::vector<qcos::BaseOperation*>& gates_list_raw,
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<int>& initial_l2p, int extension_size, double weight,
+    const std::vector<double>& edge_fidelities,
+    const std::vector<double>& single_qubit_fidelities,
+    double fidelity_threshold, int extension_size, double weight,
     double decay) {
   std::vector<std::shared_ptr<qcos::BaseOperation>> gates_list;
   gates_list.reserve(gates_list_raw.size());
@@ -59,8 +64,9 @@ nb::list bind_cpp_sabre_routing(
     gates_list.push_back(op->clone());
   }
 
-  auto routed_ops = qcos::sabre_routing(gates_list, coupling_list, initial_l2p,
-                                        extension_size, weight, decay);
+  auto routed_ops = qcos::sabre_routing(
+      gates_list, coupling_list, edge_fidelities, single_qubit_fidelities,
+      fidelity_threshold, extension_size, weight, decay);
 
   nb::list nb_list;
   for (auto& op : routed_ops) {
@@ -72,10 +78,39 @@ nb::list bind_cpp_sabre_routing(
 }  // namespace
 
 void bind_mapping(nb::module_& m) {
+  nb::class_<ChipCalibration>(
+      m, "ChipCalibration",
+      "Chip calibration data: coupling graph + edge fidelities + single-qubit "
+      "fidelities")
+      .def(nb::init<std::vector<std::pair<int, int>>, std::vector<double>,
+                    std::vector<double>>(),
+           nb::arg("coupling_list"), nb::arg("edge_fidelities"),
+           nb::arg("single_qubit_fidelities"))
+      .def_rw("coupling_list", &ChipCalibration::coupling_list)
+      .def_rw("edge_fidelities", &ChipCalibration::edge_fidelities)
+      .def_rw("single_qubit_fidelities",
+              &ChipCalibration::single_qubit_fidelities);
+
+  m.def("load_chip_calibration", &qcos::load_chip_calibration,
+        nb::arg("csv_path"),
+        R"(
+Load chip calibration data from a CSV file (北量院 format).
+
+Args:
+    csv_path (str): Path to the calibration CSV file.
+
+Returns:
+    ChipCalibration: Parsed calibration data.
+        )");
+
   nb::class_<SABRE>(m, "SABRE", "SABRE quantum routing algorithm")
-      .def(nb::init<const std::vector<std::pair<int, int>>&, int, double,
-                    double>(),
-           nb::arg("coupling_list"), nb::arg("extension_size") = 20,
+      .def(nb::init<const std::vector<std::pair<int, int>>&,
+                    const std::vector<double>&, const std::vector<double>&,
+                    double, int, double, double>(),
+           nb::arg("coupling_list"),
+           nb::arg("edge_fidelities") = std::vector<double>{},
+           nb::arg("single_qubit_fidelities") = std::vector<double>{},
+           nb::arg("fidelity_threshold") = 0.8, nb::arg("extension_size") = 20,
            nb::arg("weight") = 0.5, nb::arg("decay") = 0.001,
            R"(
             Construct a SABRE router.
@@ -91,17 +126,16 @@ void bind_mapping(nb::module_& m) {
             )")
 
       .def("execute",
-           static_cast<void (SABRE::*)(const std::vector<GateOperation>&,
-                                       const std::vector<int>&)>(
+           static_cast<void (SABRE::*)(
+               const std::vector<std::shared_ptr<BaseOperation>>&)>(
                &SABRE::execute),
-           nb::arg("gates_list"), nb::arg("initial_l2p") = std::vector<int>{},
+           nb::arg("gates_list"),
            R"(
             Execute SABRE routing.
 
             Args:
-                gates_list (list[GateOperation]): Logical gate sequence.
-                initial_l2p (list[int], optional): Initial logical-to-physical
-                    mapping. Defaults to empty.
+                gates_list (list[BaseOperation]): Logical operation sequence
+                    (may contain measure gates).
 
             Returns:
                 None
@@ -110,17 +144,17 @@ void bind_mapping(nb::module_& m) {
       .def("get_logic2phy", &SABRE::get_logic2phy,
            R"(
             Get the final logical-to-physical mapping after routing.
-                
+
             Returns:
                 list[int]: The index is logical qubit and value is physical qubit.
             )")
 
       .def("get_physical_gates", &SABRE::get_physical_gates,
            R"(
-            Get the sequence of mapped physical gates after routing.
-                
+            Get the sequence of mapped physical gates after routing (including measures).
+
             Returns:
-                list[GateOperation]: The physical gate sequence.
+                list[BaseOperation]: The physical gate sequence.
             )");
 
   nb::class_<GreedyRouting>(
@@ -155,24 +189,29 @@ void bind_mapping(nb::module_& m) {
         )");
 
   m.def("sabre_routing", &bind_cpp_sabre_routing, nb::arg("gates_list"),
-        nb::arg("coupling_list"), nb::arg("initial_l2p") = std::vector<int>{},
-        nb::arg("extension_size") = 20, nb::arg("weight") = 0.5,
-        nb::arg("decay") = 0.001,
+        nb::arg("coupling_list"),
+        nb::arg("edge_fidelities") = std::vector<double>{},
+        nb::arg("single_qubit_fidelities") = std::vector<double>{},
+        nb::arg("fidelity_threshold") = 0.8, nb::arg("extension_size") = 20,
+        nb::arg("weight") = 0.5, nb::arg("decay") = 0.001,
         R"(
         Execute SABRE routing.
-                    
+
         Args:
             gates_list (list[BaseOperation]): Logical operation sequence.
             coupling_list (list[tuple[int, int]]): Physical qubit coupling list.
-            initial_l2p (list[int], optional): Initial logical-to-physical mapping.
-                When empty, SABRE computes the initial mapping internally.
-                Defaults to empty.
+            edge_fidelities (list[float], optional): Edge fidelity array
+                (corresponds to coupling_list). Empty means no fidelity.
+            single_qubit_fidelities (list[float], optional): Single-qubit
+                fidelity array. Empty means not used.
+            fidelity_threshold (float, optional): Fidelity threshold for
+                filtering low-fidelity edges. <=0 means no filtering. Defaults to 0.8.
             extension_size (int, optional): Size of the lookahead set.
                 Defaults to 20.
             weight (float, optional): Weight between front layer and lookahead cost.
                 Defaults to 0.5.
             decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
-                    
+
         Returns:
             list[BaseOperation]: The routed physical operation sequence.
         )");
