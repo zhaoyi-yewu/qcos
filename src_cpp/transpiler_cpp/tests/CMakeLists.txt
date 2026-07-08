@@ -22,6 +22,7 @@ add_executable(${TEST_NAME} test_main.cpp
                             test_chip_data.cpp
                             test_qasm_to_ir.cpp
                             test_parallel_optimize.cpp
+                            test_na_mapping.cpp
                             test_qasm_converter.cpp
                             test_qpu_verifier.cpp
 )
