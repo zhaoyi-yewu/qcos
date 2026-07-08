@@ -78,7 +78,7 @@ class TestJob:
 
     @pytest.mark.smoke
     def test_wy_hanyuan1_submit_job(self):
-        """Test submitting a QASM2 job to wy-hanyuan1 backend."""
+        """Test submitting a QASM2 job to wy_hanyuan1 backend."""
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
             "job_name": "test_wy_hanyuan1_submit_job",
@@ -87,7 +87,7 @@ class TestJob:
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
             "description": "description: test_wy_hanyuan1_submit_job",
-            "backend": "wy-hanyuan1",
+            "backend": "wy_hanyuan1",
             "shots": 100,
             "circuit_aggregation": None,
             "driver_options": None,
@@ -121,7 +121,7 @@ class TestJob:
 
     @pytest.mark.smoke
     def test_wy_hanyuan1_sim_submit_job(self):
-        """Test submitting a QASM2 job to wy-hanyuan1-sim backend."""
+        """Test submitting a QASM2 job to wy_hanyuan1_sim backend."""
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
             "job_name": "test_wy_hanyuan1_sim_submit_job",
@@ -130,7 +130,7 @@ class TestJob:
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
             "description": "description: test_wy_hanyuan1_sim_submit_job",
-            "backend": "wy-hanyuan1-sim",
+            "backend": "wy_hanyuan1_sim",
             "shots": 100,
             "circuit_aggregation": None,
             "driver_options": None,

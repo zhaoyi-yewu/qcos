@@ -1,7 +1,7 @@
-[wy-hanyuan1-sim]
+[wy_hanyuan1_sim]
 alias_name = "WY-中科酷原-汉原1 Sim"
 driver = "DriverWuyueHanyuan1Sim"
-description = "WY-中科酷原-汉原1(wy-hanyuan1-sim)"
+description = "WY-中科酷原-汉原1(wy_hanyuan1_sim)"
 
 # [Optional] max qubits of device
 # device_max_qubits = 25
@@ -11,15 +11,15 @@ description = "WY-中科酷原-汉原1(wy-hanyuan1-sim)"
 debug = false
 
 # [Optional] device log file path
-# device_log_file = /var/log/qcos/device_wy-hanyuan1-sim.log
-device_log_file = "/var/log/qcos/device_wy-hanyuan1-sim.log"
+# device_log_file = /var/log/qcos/device_wy_hanyuan1_sim.log
+device_log_file = "/var/log/qcos/device_wy_hanyuan1_sim.log"
 
 # [Optional] device monitor log file path
-# monitor_log_file = /var/log/qcos/device_montior_wy-hanyuan1-sim.log
-monitor_log_file = "/var/log/qcos/device_monitor_wy-hanyuan1-sim.log"
+# monitor_log_file = /var/log/qcos/device_montior_wy_hanyuan1_sim.log
+monitor_log_file = "/var/log/qcos/device_monitor_wy_hanyuan1_sim.log"
 
 # [Optional] device manager log file path
-# mgr_log_file = /var/log/qcos/device_mgr_wy-hanyuan1-sim.log
+# mgr_log_file = /var/log/qcos/device_mgr_wy_hanyuan1_sim.log
 # [Optional] log format string
 # log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
 

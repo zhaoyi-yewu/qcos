@@ -1,29 +1,29 @@
-[wy-hanyuan1-sim]
-alias_name = "WY-中科酷原-汉原1 Sim"
-driver = "DriverWuyueHanyuan1Sim"
-description = "WY-中科酷原-汉原1(wy-hanyuan1-sim)"
+[wy_hanyuan1]
+alias_name = "WY-中科酷原-汉原1"
+driver = "DriverWuyueHanyuan1"
+description = "WY-中科酷原-汉原1(wy_hanyuan1)"
 
 # [Optional] max qubits of device
-# device_max_qubits = 25
+# device_max_qubits = 100
 
 # [Optional] debug
 # debug = false
 debug = false
 
 # [Optional] device log file path
-# device_log_file = /var/log/qcos/device_wy-hanyuan1-sim.log
-device_log_file = "/var/log/qcos/device_wy-hanyuan1-sim.log"
+# device_log_file = /var/log/qcos/device_wy_hanyuan1.log
+device_log_file = "/var/log/qcos/device_wy_hanyuan1.log"
 
 # [Optional] enable device monitor
 # enable_device_monitor = false
 enable_device_monitor = false
 
 # [Optional] device monitor log file path
-# monitor_log_file = /var/log/qcos/device_montior_wy-hanyuan1-sim.log
-monitor_log_file = "/var/log/qcos/device_monitor_wy-hanyuan1-sim.log"
+# monitor_log_file = /var/log/qcos/device_montior_wy_hanyuan1.log
+monitor_log_file = "/var/log/qcos/device_monitor_wy_hanyuan1.log"
 
 # [Optional] device manager log file path
-# mgr_log_file = /var/log/qcos/device_mgr_wy-hanyuan1-sim.log
+# mgr_log_file = /var/log/qcos/device_mgr_wy_hanyuan1.log
 # [Optional] log format string
 # log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
 
@@ -46,7 +46,7 @@ max_job_wait_time = 604800
 job_query_interval = 5
 
 ip_address = "127.0.0.1"
-port = 8282
+port = 8181
 client_id = "12345678"
 eng_code = "12345678"
 password_secret = ""
