@@ -64,7 +64,7 @@ class Job(BaseTable):
     callbacks = Column(JSON, default=list)
     is_callback_success = Column(Boolean, default=False)
     dry_run = Column(Boolean, default=False)
-    results = Column(JSON, default=dict)
+    results = Column(JSON, default=list)
     code_compression_level = Column(Integer, default=0)
     tags = Column(JSON, default=list)
     started_at = Column(DateTime)
