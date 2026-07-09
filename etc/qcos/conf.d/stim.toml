@@ -12,6 +12,10 @@ debug = false
 # [Optional] device log file path
 # device_log_file = /var/log/qcos/device_stim.log
 
+# [Optional] enable device monitor
+# enable_device_monitor = false
+enable_device_monitor = false
+
 # [Optional] device monitor log file path
 # monitor_log_file = /var/log/qcos/device_montior_stim.log
 

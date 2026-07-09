@@ -14,6 +14,10 @@ debug = false
 # device_log_file = /var/log/qcos/device_wy-hanyuan1-sim.log
 device_log_file = "/var/log/qcos/device_wy-hanyuan1-sim.log"
 
+# [Optional] enable device monitor
+# enable_device_monitor = false
+enable_device_monitor = false
+
 # [Optional] device monitor log file path
 # monitor_log_file = /var/log/qcos/device_montior_wy-hanyuan1-sim.log
 monitor_log_file = "/var/log/qcos/device_monitor_wy-hanyuan1-sim.log"

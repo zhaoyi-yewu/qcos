@@ -74,6 +74,8 @@ class Device:
         self.device_options_info = {}
         # device max queued jobs
         self.max_queued_jobs = -1
+        # enable device monitor from config file
+        self._enable_device_monitor = False
 
     def init_device(self):
         """Init device.
@@ -271,3 +273,19 @@ class Device:
             max_queued_jobs
         """
         return self.max_queued_jobs
+
+    def set_enable_device_monitor(self, enable):
+        """Set enable device monitor from config file.
+
+        Args:
+            enable: enable or disable (None means not set)
+        """
+        self._enable_device_monitor = enable
+
+    def get_enable_device_monitor(self):
+        """Get enable device monitor from config file.
+
+        Returns:
+            True, False or None (not set)
+        """
+        return self._enable_device_monitor
