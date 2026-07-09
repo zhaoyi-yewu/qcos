@@ -95,16 +95,16 @@ std::vector<std::string> collect_gate_names(
  * @param supp_basis_gates 支持的基础门名列表
  * @param coupling_list 物理耦合图边列表（已规范化为 int 对）
  * @param opt_level 优化级别 (0-3)，默认 1
- * @param sabre_extension_size SABRE 扩展集大小，默认 20
- * @param sabre_weight SABRE 前沿层/扩展层权重，默认 0.5
- * @param sabre_decay SABRE SWAP 衰减系数，默认 0.001
+ * @param edge_fidelities 边保真度，与 coupling_list 对应，空表示不使用，默认空
+ * @param single_qubit_fidelities 单比特保真度，按物理位 ID
+ * 索引，空表示不使用，默认空
  * @return TranspileResult 包含最终门列表、量子比特数和各阶段计时
  */
 TranspileResult transpile(
     const std::string& qasm_string,
     const std::vector<std::string>& supp_basis_gates,
     const std::vector<std::pair<int, int>>& coupling_list, int opt_level = 1,
-    int sabre_extension_size = 20, double sabre_weight = 0.5,
-    double sabre_decay = 0.001);
+    const std::vector<double>& edge_fidelities = {},
+    const std::vector<double>& single_qubit_fidelities = {});
 
 }  // namespace qcos
