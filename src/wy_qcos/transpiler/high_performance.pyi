@@ -2560,6 +2560,30 @@ def transpile(
     """
     ...
 
+def transpile_na(
+    qasm_string: str,
+    supp_basis_gates: collections.abc.Sequence[str],
+    qpu_cfg: dict,
+    opt_level: int = 1,
+) -> high_performance.TranspileResult:
+    """All-in-one transpile function (neutral-atom NA mappin).
+
+    Same pipeline as ``transpile`` (sabre) but the routing stage uses NARoute,
+    inserting MOVE operations between the storage and operate areas so that
+    two-qubit gates act on adjacent sites.
+
+    Args:
+    qasm_string (str): QASM circuit string.
+    supp_basis_gates (list[str]): Supported basis gate names.
+    qpu_cfg (dict): Neutral-atom QPU configuration with keys
+        ``storage_area``, ``operate_area``, ``coupler_map`` and
+        ``readout_error``.
+    opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+
+    Returns:
+    TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+    """
+
 class ChipCalibration:
     """Chip calibration data."""
 

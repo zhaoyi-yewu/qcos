@@ -28,6 +28,7 @@ from wy_qcos.transpiler.common.utils import (
     Timer,
     TranspileRuntime,
 )
+from wy_qcos.transpiler.high_performance import TranspileTimings
 from wy_qcos.transpiler.cmss.transpiler_cmss_for_cpp import (
     TranspilerHighPerformanceCmss,
 )
@@ -201,6 +202,9 @@ class TestTranspilerCmdLine:
                 [X([0])],
                 None,
             )
+            mock_result = MagicMock()
+            mock_result.timings = TranspileTimings()
+            mock_transpiler.transpile_single.return_value = mock_result
 
             perf = CMSSTranspilerPerf()
             input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"

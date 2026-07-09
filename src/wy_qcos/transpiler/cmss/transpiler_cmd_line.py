@@ -727,31 +727,39 @@ class CMSSTranspilerPerf:
             # generate basis gates list
             log_perf(logger, "Start performace testing of cmss compiling.")
 
-            # whether the C++ all-in-one transpile path can be used
-            # (single-circuit sabre routing path). It requires
-            # enable_transpile_single to be true plus the existing conditions.
+            # Decide whether the C++ all-in-one transpile (single-circuit path)
+            #  can be used.
+            # - superconducting + sabre -> SABRE routing
+            # - neutral_atom + enable_na_move + default -> NA mapping (NARoute)
             routing_algorithm = sc_mapping_options.get(
                 "routing_algorithm",
                 DEFAULT_SC_MAPPING_OPTIONS["routing_algorithm"],
+            )
+            is_na = (
+                tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM
+                and self.na_mapping_type == "default"
+            )
+            is_sc_sabre = (
+                tech_type == Constant.TECH_TYPE_SUPERCONDUCTING
+                and routing_algorithm == "sabre"
             )
             use_cpp_transpile = (
                 self.enable_transpile_single
                 and self.enable_mapping
                 and self.enable_transpiler
-                and tech_type == Constant.TECH_TYPE_SUPERCONDUCTING
-                and routing_algorithm == "sabre"
+                and (is_na or is_sc_sabre)
             )
 
             if use_cpp_transpile:
-                # C++ all-in-one transpile: parse + transpile in a single
-                # C++ call
+                # C++ all-in-one transpile: merge parse + transpile into
+                # a single C++ call
                 transpiler.transpiler_options["sc_mapping_options"] = (
                     sc_mapping_options
                 )
                 result = transpiler.transpile_single(
                     qasm_data, expected_basis_gates, qpu_config
                 )
-                # fill Python TranspileRuntime from C++ TranspileTimings
+                # populate Python TranspileRuntime from C++ TranspileTimings
                 runtime = result.timings
                 for label, attr in [
                     ("parse time", "parse_time"),
@@ -768,7 +776,7 @@ class CMSSTranspilerPerf:
                         f"cpp {label}: {getattr(runtime, attr):.4f}s\n",
                     )
             else:
-                # original Python path: parse + transpile step by step
+                # original Python flow: run parse + transpile step by step
                 with Timer() as ast_timer:
                     src_code_info = {"000": qasm_data}
                     parse_result = transpiler.parse(src_code_info)

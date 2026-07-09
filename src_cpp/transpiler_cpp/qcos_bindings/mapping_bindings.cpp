@@ -78,7 +78,7 @@ nb::list bind_cpp_sabre_routing(
 }
 
 /**
- * @brief 从 Python dict 解析 NAQpuConfig
+ * @brief Parse NAQpuConfig from a Python dict.
  */
 qcos::NAQpuConfig parse_na_qpu_config(const nb::dict& qpu_cfg) {
   qcos::NAQpuConfig cfg;
@@ -109,12 +109,12 @@ qcos::NAQpuConfig parse_na_qpu_config(const nb::dict& qpu_cfg) {
 }
 
 /**
- * @brief NA mapping 的 Python 入口
+ * @brief Python entry point for NA mapping.
  *
- * @param gates_list_raw Python 侧 BaseOperation 列表
- * @param qpu_cfg QPU 配置字典（含 storage_area/operate_area/coupler_map/readout_error）
- * @param qbit_num 逻辑比特数
- * @param optimize 是否启用 overlap 优化（对应 execute_with_opt）
+ * @param gates_list_raw Python-side BaseOperation list.
+ * @param qpu_cfg QPU config dict (storage_area/operate_area/coupler_map/readout_error).
+ * @param qbit_num Number of logical qubits.
+ * @param optimize Whether to enable overlap optimization (execute_with_opt).
  * @return nb::tuple (mapped_ops, final_layout)
  */
 nb::tuple bind_na_routing(

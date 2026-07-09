@@ -31,100 +31,104 @@ namespace qcos {
 
 /**
  * @struct NAQpuConfig
- * @brief 中性原子 QPU 拓扑配置
+ * @brief Neutral-atom QPU topology configuration.
  *
- * 对应 Python 侧 qpu_config 中与 NA mapping 相关的字段。位置以字符串
- * 形式表示（如 "S27"、"P100"），与 Python 实现保持一致。
+ * Mirrors the NA-mapping related fields of the Python-side qpu_config.
+ * Positions are represented as strings (e.g. "S27", "P100"), matching the
+ * Python implementation.
  */
 struct NAQpuConfig {
-  /// 存储区位置列表
+  /// Storage-area position list.
   std::vector<std::string> storage_area;
-  /// 操作区位置列表
+  /// Operate-area position list.
   std::vector<std::string> operate_area;
-  /// 耦合器映射：门名 -> (端点A, 端点B)
+  /// Coupler map: gate name -> (endpoint A, endpoint B).
   std::vector<std::pair<std::string, std::pair<std::string, std::string>>>
       coupler_map;
-  /// 读出错误率：位置 -> 错误值
+  /// Readout error rate: position -> error value.
   std::unordered_map<std::string, double> readout_error;
 };
 
 /**
  * @struct NAGraph
- * @brief 中性原子操作区耦合图
+ * @brief Neutral-atom operate-area coupling graph.
  *
- * 仅包含两端均在 operate_area 中的边，提供邻接查询与全源最短路径距离
- * 查询（对应 Python 实现中 networkx 的 shortest_path_length）。
+ * Contains only edges whose both endpoints lie in the operate_area. Provides
+ * adjacency queries and all-source shortest-path distance queries (mirrors
+ * networkx's shortest_path_length in the Python implementation).
  */
 struct NAGraph {
-  /// 邻接表：位置 -> 相邻位置集合
+  /// Adjacency list: position -> set of adjacent positions.
   std::unordered_map<std::string, std::unordered_set<std::string>> adj;
-  /// 位置 -> (位置 -> 最短路径距离) 的全源距离表
+  /// All-source distance table: position -> (position -> shortest-path distance).
   std::unordered_map<std::string, std::unordered_map<std::string, int>>
       shortest_length;
 
-  /// 添加一条无向边
+  /// Add an undirected edge.
   void add_edge(const std::string& a, const std::string& b);
 
-  /// 返回某位置的全部邻居
+  /// Return all neighbors of a position.
   const std::unordered_set<std::string>& neighbors(
       const std::string& p) const;
 
-  /// 判断两个位置是否直接相邻
+  /// Check whether two positions are directly adjacent.
   bool is_adjacent(const std::string& a, const std::string& b) const;
 
-  /// 计算全源最短路径距离（BFS），填充 shortest_length
+  /// Compute all-source shortest-path distances (BFS), filling shortest_length.
   void build_shortest_length();
 };
 
 /**
  * @struct NADagNode
- * @brief NA routing 依赖图节点
+ * @brief Dependency-graph node for NA routing.
  *
- * 对应 Python 实现中 rustworkx DAG 节点。单比特门节点会把可合并的连续单
- * 比特门聚合到 gate 列表中；两比特门节点仅持有一个门。
+ * Mirrors a rustworkx DAG node in the Python implementation. A single-qubit
+ * node aggregates mergeable consecutive single-qubit gates into its gate list;
+ * a two-qubit node holds exactly one gate.
  */
 struct NADagNode {
-  /// 节点包含的门列表（单比特门可能为多个，两比特门仅一个）
+  /// Gates held by the node (multiple for single-qubit nodes, one for multi).
   std::vector<std::shared_ptr<BaseOperation>> gate;
-  /// 节点涉及的逻辑比特
+  /// Logical qubits touched by the node.
   std::vector<int> qubits;
-  /// 节点类型：single 或 multi
+  /// Node type: "single" or "multi".
   std::string type;
-  /// 对应原始门序列中的索引
+  /// Index into the original gate sequence.
   int original_idx = -1;
-  /// 后继节点索引列表
+  /// Successor node indices.
   std::vector<int> successors;
-  /// 未执行的前驱数量
+  /// Number of unexecuted predecessors.
   int in_degree = 0;
 };
 
 /**
  * @class NASingleRoute
- * @brief 中性原子单比特路由（仅支持单比特门）
+ * @brief Neutral-atom single-qubit routing (single-qubit gates only).
  *
- * 对应 Python 侧 NASingleRoute，将逻辑量子比特按读出错误率从小到大
- * 映射到存储区，并按量子比特分组输出门序列。
+ * Mirrors the Python-side NASingleRoute. Maps logical qubits to the storage
+ * area by ascending readout error and emits the gate sequence grouped by qubit.
  */
 class NASingleRoute {
  public:
   NASingleRoute() = default;
 
   /**
-   * @brief 配置 qpu_config、gates、qbit_num，并构建逻辑比特到存储区映射
+   * @brief Configure qpu_config/gates/qbit_num and build the logical-to-storage
+   *        mapping.
    */
   void prepare_data(int qbit_num,
                     const std::vector<std::shared_ptr<BaseOperation>>& gates,
                     const NAQpuConfig& qpu_config);
 
   /**
-   * @brief 遍历比特门，将逻辑量子比特映射到物理量子比特
-   * @return (映射后的门列表, final_layout)，final_layout 始终为空
+   * @brief Iterate over gates and map logical qubits to physical qubits.
+   * @return (mapped gate list, final_layout); final_layout is always empty.
    */
   std::pair<std::vector<std::shared_ptr<BaseOperation>>,
             std::unordered_map<int, int>>
   execute_with_order();
 
-  /// 逻辑比特 -> 存储区位置
+  /// Logical qubit -> storage-area position.
   std::unordered_map<int, std::string> logical_to_storage;
 
  protected:
@@ -136,115 +140,119 @@ class NASingleRoute {
 
 /**
  * @class NARoute
- * @brief 中性原子路由（支持单/两比特门与 MOVE 操作）
+ * @brief Neutral-atom routing (single/two-qubit gates + MOVE operations).
  *
- * 对应 Python 侧 NARoute，在操作区与存储区之间移动原子，使两比特门的两
- * 个比特处于相邻位置后执行。支持按拓扑序执行（execute_with_order）与
- * overlap 优化执行（execute_with_opt）。
+ * Mirrors the Python-side NARoute. Moves atoms between the operate area and
+ * the storage area so that the two qubits of a two-qubit gate end up on
+ * adjacent sites before execution. Supports in-order execution
+ * (execute_with_order) and overlap-optimized execution (execute_with_opt).
  */
 class NARoute {
  public:
   NARoute() = default;
 
   /**
-   * @brief 配置 qpu_config、gates、qbit_num，并构建耦合图
+   * @brief Configure qpu_config/gates/qbit_num and build the coupling graph.
    */
   void prepare_data(int qbit_num,
                     const std::vector<std::shared_ptr<BaseOperation>>& gates,
                     const NAQpuConfig& qpu_config);
 
   /**
-   * @brief 按顺序执行门，不进行优化
-   * @return (映射后的门列表, final_layout)，final_layout 始终为空
+   * @brief Execute gates in order, without optimization.
+   * @return (mapped gate list, final_layout); final_layout is always empty.
    */
   std::pair<std::vector<std::shared_ptr<BaseOperation>>,
             std::unordered_map<int, int>>
   execute_with_order();
 
   /**
-   * @brief 按拓扑序执行门，进行简单的 overlap 优化
-   * @return 映射后的门列表
+   * @brief Execute gates in topological order with simple overlap optimization.
+   * @return The mapped gate list.
    */
   std::vector<std::shared_ptr<BaseOperation>> execute_with_opt();
 
   /**
-   * @brief 构建 DAG，返回 (DAG 节点列表, 测量操作列表, 原始索引->DAG索引映射)
+   * @brief Build the DAG. Returns (DAG node list, measure ops, original-idx ->
+   *        DAG-idx mapping).
    */
   std::tuple<std::vector<NADagNode>,
              std::vector<std::shared_ptr<BaseOperation>>,
              std::unordered_map<int, int>>
   get_rx_dag();
 
-  /// 比特初始映射及映射表构建
+  /// Build the initial qubit mapping and mapping tables.
   void get_init_mapping();
 
-  /// 获取当前可执行的节点（入度为 0）
+  /// Return the currently executable nodes (in-degree == 0).
   std::vector<int> get_front_layer() const;
 
-  /// 在操作区中寻找可放置比特的位置，若不存在则返回空
+  /// Find a free position in the operate area for a qubit; empty if none.
   std::string find_pos(int dis) const;
 
-  /// 将比特移回存储区，并更新映射表
+  /// Move a qubit back to the storage area and update the mapping tables.
   void back(const std::string& o);
 
-  /// 将比特移到操作区，并更新映射表
+  /// Move a qubit into the operate area and update the mapping tables.
   void put(int q, const std::string& o);
 
-  /// 将比特从操作区某一位置移到另一位置，并更新映射表
+  /// Move a qubit between two operate-area positions and update the tables.
   void mov(const std::string& o1, const std::string& o2);
 
-  /// 将操作区中不属于当前可执行门的比特移回存储区
+  /// Move operate-area qubits that do not belong to the executable gates back
+  /// to the storage area.
   void pre_back(const std::vector<NADagNode>& nodes);
 
-  /// 获取操作区某一位置的相邻空位置，若不存在则返回空
+  /// Return an empty neighbor of an operate-area position; empty if none.
   std::string get_empty_neighbor(const std::string& p) const;
 
-  /// 获取操作区某一位置的相邻非上锁位置，若不存在则返回空
+  /// Return an unlocked neighbor of an operate-area position; empty if none.
   std::string get_unlocked_neighbor(const std::string& p) const;
 
-  /// 将比特1和比特2移到相邻位置（两者均已在操作区）
+  /// Move qubit 1 and qubit 2 onto adjacent sites (both already in operate area).
   bool mov_to_neighbors(const std::string& p1, const std::string& p2);
 
-  /// 将 q 放到 p1 的相邻位置（q 在存储区）
+  /// Place q onto a neighbor of p1 (q is in the storage area).
   bool put_to_neighbors1(const std::string& p1, int q);
 
-  /// 将比特 q1、q2 放到相邻位置（两者均在存储区）
+  /// Place q1 and q2 onto adjacent sites (both in the storage area).
   bool put_to_neighbors2(int q1, int q2);
 
-  /// 执行两比特门
+  /// Execute two-qubit gates.
   void execute_multi_nodes(const std::vector<NADagNode>& nodes);
 
-  /// 两比特门执行前，将比特先放置在操作区合适的位置
+  /// Place qubits onto suitable operate-area sites before executing two-qubit
+  /// gates. Returns the nodes that could not be placed.
   std::vector<NADagNode> mov_multi_nodes(const std::vector<NADagNode>& nodes);
 
-  /// 执行单比特门
+  /// Execute a single-qubit gate.
   void execute_single_node(const NADagNode& node);
 
-  /// 判断两个单比特节点的门列表是否满足 nd2 为 nd1 的后缀
+  /// Check whether the gate list of nd2 is a suffix of nd1's gate list.
   bool overlap(int nd1, int nd2) const;
 
-  /// 将 overlap 中的 put 操作放入对应的位置
+  /// Insert a put operation from the overlap step at the proper position.
   std::vector<std::shared_ptr<BaseOperation>> add_put(
       std::vector<std::shared_ptr<BaseOperation>> res,
       std::shared_ptr<BaseOperation> opt);
 
-  /// 调整 put 操作的位置，调用 add_put，放入合适的位置
+  /// Adjust the position of put operations; calls add_put to place them.
   void adjust_pos(const std::vector<int>& pos,
                   const std::vector<int>& posq);
 
-  /// 执行单比特门，通过 overlap 进行优化
+  /// Execute a single-qubit gate with overlap optimization.
   void execute_single_node_opt();
 
-  /// 从当前可执行节点中找可执行的节点
+  /// Pick an executable node from the current front layer.
   std::pair<int, std::vector<int>> get_max_common();
 
-  /// 逻辑比特 -> 存储区位置
+  /// Logical qubit -> storage-area position.
   std::unordered_map<int, std::string> logical_to_storage;
-  /// 逻辑比特 -> 操作区位置（无映射时为空字符串）
+  /// Logical qubit -> operate-area position (empty string when unmapped).
   std::unordered_map<int, std::string> logical_to_op;
-  /// 操作区位置 -> 逻辑比特（无映射时为 -1）
+  /// Operate-area position -> logical qubit (-1 when unmapped).
   std::unordered_map<std::string, int> op_to_logical;
-  /// 初始映射（始终为空，与 Python 实现保持一致）
+  /// Initial mapping (always empty, matching the Python implementation).
   std::unordered_map<int, int> initial_layout;
 
  private:
@@ -258,42 +266,43 @@ class NARoute {
   std::vector<std::shared_ptr<BaseOperation>> measure_;
   std::unordered_map<int, int> node_indices_;
   std::unordered_set<std::string> op_occupied_;
-  /// 两端均空闲的边集合，以 "min\0max" 形式存储（保证有序与去重）
+  /// Set of edges with both endpoints free, stored as "min\0max" for ordering
+  /// and deduplication.
   std::unordered_set<std::string> free_edges_;
   std::unordered_set<std::string> locked_;
   std::vector<std::shared_ptr<BaseOperation>> res_;
   std::vector<int> front_layer_;
-  /// 上一个执行的节点索引（对应 Python self.pre_node，原为节点 dict，
-  /// 这里统一用索引并在需要时通过 dag_ 查询节点数据）
+  /// Index of the last executed node (mirrors Python self.pre_node, which was a
+  /// node dict; here we use the index and look up node data via dag_).
   int pre_node_idx_ = -1;
   bool has_pre_node_ = false;
 
-  /// Move 门 -> (源位置, 目标位置)，承载位置字符串
-  /// （C++ BaseOperation.arg_value 为 double，无法直接存储位置字符串）
+  /// Move gate -> (from-position, to-position), carrying position strings
+  /// (C++ BaseOperation.arg_value is double and cannot hold strings directly).
   std::unordered_map<BaseOperation*, std::pair<std::string, std::string>>
       move_positions_;
 
-  /// 将 (a, b) 规整为 (min, max) 的有序对
+  /// Normalize (a, b) into the ordered pair (min, max).
   static std::pair<std::string, std::string> sorted_edge(const std::string& a,
                                                          const std::string& b);
 
-  /// 将有序对编码为 free_edges_ 的 key
+  /// Encode an ordered pair as a free_edges_ key.
   static std::string edge_key(const std::string& a, const std::string& b);
 
-  /// 从 key 解析出有序对
+  /// Parse a free_edges_ key back into an ordered pair.
   static std::pair<std::string, std::string> parse_edge_key(
       const std::string& key);
 
-  /// 创建一个 Move 操作并登记其位置对
+  /// Create a Move operation and register its position pair.
   std::shared_ptr<BaseOperation> make_move(int q, const std::string& from,
                                            const std::string& to);
 
-  /// 依据 logical_to_storage 重新计算并设置各门 targets / arg_value
-  /// （对应 Python 末尾的逻辑->物理转换）
+  /// Recompute and set each gate's targets / arg_value from logical_to_storage
+  /// (mirrors the final logical->physical conversion in the Python impl).
   void finalize_gates(bool deep_copy_layout);
 
-  /// 从 dag_opt_ 中移除指定节点：清空其门、并将后继节点入度减 1
-  /// （对应 rustworkx 的 remove_node）
+  /// Remove a node from dag_opt_: clears its gates and decrements the in-degree
+  /// of its successors (mirrors rustworkx's remove_node).
   void remove_dag_opt_node(int idx);
 };
 
