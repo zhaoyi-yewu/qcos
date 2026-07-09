@@ -123,8 +123,9 @@ class DriverBase:
             # results from run(): fetches the results from quantum computer
             # format: {JOB_ID: {"results": RESULTS}}
             "results": {},
-            # format: {JOB_ID: {"machine_time_info": MACHINE_TIME_INFO}}
-            "machine_time_info": {},
+            "raw_results": {},
+            # format: {JOB_ID: {"machine_profiling": MACHINE_PROFILING}}
+            "machine_profiling": {},
         }
 
         # measurement results fetch mode
@@ -472,7 +473,12 @@ class DriverBase:
         )
 
         result = self.get_fake_results(num_qubits, shots, data)
-        self.set_results(job_id, data_index, results=result)
+        self.set_results(
+            job_id,
+            data_index,
+            results=result,
+            result_type=Constant.RESULT_TYPE_SAMPLING,
+        )
 
     def cancel(self, job_id):
         """Cancel running job in driver.
@@ -486,7 +492,15 @@ class DriverBase:
             f"Driver: {self.__class__.__name__} must implement method: cancel"
         )
 
-    def set_results(self, job_id, data_index, results):
+    def set_results(
+        self,
+        job_id,
+        data_index,
+        results,
+        raw_results=None,
+        result_type=Constant.RESULT_TYPE_TEXT,
+        machine_profiling={},
+    ):
         """Set job results.
 
         Sample: results = {"00": 9, "11": 1}.
@@ -494,11 +508,46 @@ class DriverBase:
         Args:
             job_id: job ID
             data_index: code index
-            results: results
+            results: results dict, keys are binary strings
+                     (e.g. "00", "11"), values are integer counts.
+            raw_results: raw results dict (vendor raw results)
+            result_type: sampling, estimation, qubo, text etc
+            machine_profiling: machine profiling
+        Raises:
+            ValueError: if results is not a dict.
         """
+        # validate results schema
+        success, err_msgs = Library.validate_results(result_type, results)
+        if not success:
+            raise ValueError(err_msgs)
+
+        # set job results
         if job_id not in self.job_runtime_data["results"]:
             self.job_runtime_data["results"][job_id] = {}
         self.job_runtime_data["results"][job_id][data_index] = results
+
+        # set job raw results
+        if job_id not in self.job_runtime_data["raw_results"]:
+            self.job_runtime_data["raw_results"][job_id] = {}
+        self.job_runtime_data["raw_results"][job_id][data_index] = raw_results
+
+        # check machine profiling, delete invalid profiling fields
+        machine_started_at = machine_profiling.get("machine_started_at", None)
+        machine_ended_at = machine_profiling.get("machine_ended_at", None)
+        machine_duration = machine_profiling.get("machine_duration", None)
+        if machine_started_at and not isinstance(machine_started_at, float):
+            del machine_profiling["machine_started_at"]
+        if machine_ended_at and not isinstance(machine_ended_at, float):
+            del machine_profiling["machine_ended_at"]
+        if machine_duration and not isinstance(machine_duration, float):
+            del machine_profiling["machine_duration"]
+
+        # set machine profiling
+        if job_id not in self.job_runtime_data["machine_profiling"]:
+            self.job_runtime_data["machine_profiling"][job_id] = {}
+        self.job_runtime_data["machine_profiling"][job_id][data_index] = (
+            machine_profiling
+        )
 
     def get_results(self, job_id=None, data_index=None):
         """Get results.
@@ -523,45 +572,53 @@ class DriverBase:
             )
         return self.job_runtime_data["results"]
 
-    def set_machine_time_info(self, job_id, data_index, machine_time_info):
-        """Set machine time info.
-
-        Args:
-            job_id: job ID
-            data_index: code index
-            machine_time_info: machine_time_info
-        """
-        logger.info(f"set machine_time_info: {machine_time_info}")
-        if job_id not in self.job_runtime_data["machine_time_info"]:
-            self.job_runtime_data["machine_time_info"][job_id] = {}
-        self.job_runtime_data["machine_time_info"][job_id][data_index] = (
-            machine_time_info
-        )
-
-    def get_machine_time_info(self, job_id=None, data_index=None):
-        """Get machine_time_info.
+    def get_raw_results(self, job_id=None, data_index=None):
+        """Get results.
 
         Args:
             job_id: job ID (Default value = None)
             data_index: code index (Default value = None)
 
         Returns:
-            machine_time_info
+            raw results
         """
         if job_id is not None:
             if data_index is not None:
                 return Library.get_nested_dict_value(
-                    self.job_runtime_data["machine_time_info"],
+                    self.job_runtime_data["raw_results"],
                     job_id,
                     data_index,
                     default=None,
                 )
             return Library.get_nested_dict_value(
-                self.job_runtime_data["machine_time_info"],
+                self.job_runtime_data["raw_results"], job_id, default=None
+            )
+        return self.job_runtime_data["raw_results"]
+
+    def get_machine_profiling(self, job_id=None, data_index=None):
+        """Get machine profiling.
+
+        Args:
+            job_id: job ID (Default value = None)
+            data_index: code index (Default value = None)
+
+        Returns:
+            machine profiling
+        """
+        if job_id is not None:
+            if data_index is not None:
+                return Library.get_nested_dict_value(
+                    self.job_runtime_data["machine_profiling"],
+                    job_id,
+                    data_index,
+                    default=None,
+                )
+            return Library.get_nested_dict_value(
+                self.job_runtime_data["machine_profiling"],
                 job_id,
                 default=None,
             )
-        return self.job_runtime_data["machine_time_info"]
+        return self.job_runtime_data["machine_profiling"]
 
     def get_default_data_type(self):
         """Get default data type.

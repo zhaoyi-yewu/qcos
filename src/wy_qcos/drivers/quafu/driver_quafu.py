@@ -245,7 +245,12 @@ class DriverQuafu(DriverBase):
         # 5. Normalize results
         logger.info("5. normalize results")
         results = self.convert_results(_results)
-        self.set_results(job_id, data_index, results=results)
+        self.set_results(
+            job_id,
+            data_index,
+            results=results,
+            result_type=Constant.RESULT_TYPE_SAMPLING,
+        )
 
         # 6. Save results and set driver status to ONLINE
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)

@@ -251,7 +251,12 @@ class DriverUQCMatrix2(DriverBase):
                 num_qubits,
                 shots,
             )
-        self.set_results(job_id, data_index, results=results)
+        self.set_results(
+            job_id,
+            data_index,
+            results=results,
+            result_type=Constant.RESULT_TYPE_SAMPLING,
+        )
 
         # 6. Save results and set driver status to ONLINE
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)

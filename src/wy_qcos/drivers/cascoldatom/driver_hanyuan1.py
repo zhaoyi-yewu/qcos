@@ -368,7 +368,12 @@ class DriverHanyuan1(DriverBase):
             data_index=data_index,
         )
 
-        self.set_results(job_id, data_index, results=results)
+        self.set_results(
+            job_id,
+            data_index,
+            results=results,
+            result_type=Constant.RESULT_TYPE_SAMPLING,
+        )
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 

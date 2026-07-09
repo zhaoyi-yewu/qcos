@@ -512,7 +512,7 @@
    - 当code_type为qasm、qasm2、qasm3时，source_code格式为: ["代码字符串"]，schema为: [str]
 
      当code_type为qubo时，source_code格式为: [[[整型/浮点, ...],[整型/浮点, ...]]]，schema为: [[[int/float]]]
-   - "results"：["result": XXX]中的XXX值由驱动driver设置，格式由驱动定义，上层不做格式约束
+   - "results"：["result": XXX]中的XXX值由RESULT_TYPE约束
    - code_compression_level：代码压缩等级（0-9），0不压缩，9最高压缩。推荐值5-7，可平衡压缩率和解压缩时间
    - tags：作业标签列表，用于分类、分组和过滤作业
    - 数据库过滤支持：``get_jobs`` 接口支持多条件过滤，支持的字段：
@@ -622,12 +622,43 @@
                      "metadata": {
                        "results_fetch_mode": "sync",
                        "status": "COMPLETED",
-                       "ended_at": "2025-08-18T16:36:08.446082"
+                       "ended_at": "2025-08-18T16:36:08.446082",
+                       // 原始结果 [可选], 厂商返回的原始数据
+                       "raw_results": {
+                         "optimization": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\n\nmeasure q -> c;\n\n",
+                         "grid": "(0,0)\r\n(0,2)\r\n\r\n(0,0),(0,2)\r\n",
+                         "lineResult": "{\"00\":95,\"11\":9}"
+                       }
                      },
                      "profiling": {
-                       "driver:parse": 0.036981821060180667,
-                       "driver:transpile": 0.018097877502441407,
-                       "driver:run": 0.018996477127075197
+                       // 作业中单代码执行耗时及起止时间
+                       "code": 0.07406,
+                       "code_started_at": "2025-08-18T16:36:08.400000",
+                       "code_ended_at": "2025-08-18T16:36:08.446082",
+                       // 作业排队耗时及起止时间
+                       "queuing": 6.752435,
+                       "queuing_started_at": "2025-08-18T16:36:01.647565",
+                       "queuing_ended_at": "2025-08-18T16:36:08.400000",
+                       // 调度器耗时及起止时间
+                       "scheduling": 0.00123,
+                       "scheduling_started_at": "2025-08-18T16:36:01.646335",
+                       "scheduling_ended_at": "2025-08-18T16:36:01.647565",
+                       // 代码解析耗时及起止时间
+                       "driver:parse": 0.03698,
+                       "driver:parse_started_at": "2025-08-18T16:36:08.401000",
+                       "driver:parse_ended_at": "2025-08-18T16:36:08.437980",
+                       // 转译器耗时及起止时间
+                       "driver:transpile": 0.01809,
+                       "driver:transpile_started_at": "2025-08-18T16:36:08.437980",
+                       "driver:transpile_ended_at": "2025-08-18T16:36:08.456070",
+                       // 后端运行耗时及起止时间
+                       "driver:run": 0.01899,
+                       "driver:run_started_at": "2025-08-18T16:36:08.456070",
+                       "driver:run_ended_at": "2025-08-18T16:36:08.446082",
+                       // 量子计算机运行耗时及起止时间 [可选],
+                       "machine": 0.01500,
+                       "machine_started_at": "2025-08-18T16:36:08.458000",
+                       "machine_ended_at": "2025-08-18T16:36:08.473000"
                      }
                    },
                    {
@@ -640,12 +671,36 @@
                      "metadata": {
                        "results_fetch_mode": "sync",
                        "status": "COMPLETED",
-                       "ended_at": "2025-08-18T16:36:08.530882"
+                       "ended_at": "2025-08-18T16:36:08.530882",
+                       // 原始结果 [可选], 厂商返回的原始数据
+                       "raw_results": {
+                         "optimization": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\nqreg q[2];\ncreg c[2];\nx q[0];\nx q[1];\n\nmeasure q -> c;\n\n",
+                         "grid": "(0,0)\r\n(0,2)\r\n\r\n(0,0),(0,2)\r\n",
+                         "lineResult": "{\"00\":95,\"11\":9}"
+                       }
                      },
                      "profiling": {
-                       "driver:parse": 0.03369569778442383,
-                       "driver:transpile": 0.016620397567749025,
-                       "driver:run": 0.017986774444580079
+                       "code": 0.06829,
+                       "code_started_at": "2025-08-18T16:36:08.485000",
+                       "code_ended_at": "2025-08-18T16:36:08.530882",
+                       "queuing": 6.837435,
+                       "queuing_started_at": "2025-08-18T16:36:01.647565",
+                       "queuing_ended_at": "2025-08-18T16:36:08.485000",
+                       "scheduling": 0.00123,
+                       "scheduling_started_at": "2025-08-18T16:36:01.646335",
+                       "scheduling_ended_at": "2025-08-18T16:36:01.647565",
+                       "driver:parse": 0.03369,
+                       "driver:parse_started_at": "2025-08-18T16:36:08.486000",
+                       "driver:parse_ended_at": "2025-08-18T16:36:08.519690",
+                       "driver:transpile": 0.01662,
+                       "driver:transpile_started_at": "2025-08-18T16:36:08.519690",
+                       "driver:transpile_ended_at": "2025-08-18T16:36:08.536310",
+                       "driver:run": 0.01798,
+                       "driver:run_started_at": "2025-08-18T16:36:08.536310",
+                       "driver:run_ended_at": "2025-08-18T16:36:08.530882",
+                       "machine": 0.01400,
+                       "machine_started_at": "2025-08-18T16:36:08.538000",
+                       "machine_ended_at": "2025-08-18T16:36:08.552000"
                      }
                    }
                  ],
@@ -847,7 +902,7 @@
 测量结果格式
 ~~~~~~~~~~~~
 
-对于量子电路（qasm格式）：
+对于量子电路（qasm格式），results 字段格式：
 
 .. code-block:: json
 
@@ -856,7 +911,7 @@
      "11": 9    // 测得|11⟩状态的次数
    }
 
-对于QUBO问题（qubo格式）：
+对于QUBO问题（qubo格式），results 字段格式：
 
 .. code-block:: json
 

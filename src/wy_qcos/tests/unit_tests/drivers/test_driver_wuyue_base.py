@@ -378,9 +378,9 @@ class TestDriverWuyueBase:
                         "grid": "grid_info",
                         "optimization": "optimization",
                     },
-                    "execEndTime": 12345,
-                    "execStartTime": 12333,
-                    "timeConsume": "2.00",
+                    "execEndTime": 1783045407121,
+                    "execStartTime": 1783045402076,
+                    "timeConsume": "5045004.00",
                 }
             ],
         }
@@ -392,20 +392,20 @@ class TestDriverWuyueBase:
         )
 
         mock_decrypt_by_private_key.return_value = mock_response
-        success, err_msg, results, machine_time_info = (
+        success, err_msg, results, machine_profiling = (
             driver_wuyue_base.get_task_results("test_task_id")
         )
         assert success is True
         assert err_msg == ""
         assert len(results) == 3
-        assert results["line_results"]["00"] == 10
-        assert results["line_results"]["01"] == 11
-        assert results["line_results"]["10"] == 9
-        assert results["grid_info"] == "grid_info"
-        assert results["optimized_circuit"] == "optimization"
-        assert machine_time_info["time_consume"] == "2.00"
-        assert machine_time_info["exec_end_time"] == 12345
-        assert machine_time_info["exec_start_time"] == 12333
+        assert results["lineResult"]["00"] == 10
+        assert results["lineResult"]["01"] == 11
+        assert results["lineResult"]["10"] == 9
+        assert results["grid"] == "grid_info"
+        assert results["optimization"] == "optimization"
+        assert machine_profiling["machine_duration"] == 5045004.00
+        assert machine_profiling["machine_started_at"] == 1783045402.076
+        assert machine_profiling["machine_ended_at"] == 1783045407.121
 
     @patch.object(Library, "call_http_api")
     def test_get_task_results_http_error(self, mock_call_http_api):
@@ -578,8 +578,21 @@ class TestDriverWuyueBase:
             return_value=(
                 True,
                 None,
-                {"result": "test_result"},
-                {"exec_end_time": 12345},
+                {
+                    "lineResult": {
+                        "0000": 25,
+                        "0001": 25,
+                        "0010": 25,
+                        "0011": 25,
+                    },
+                    "optimization": "OPTIMIZED_CIRCUIT",
+                    "grid": "GRID_INFO",
+                },
+                {
+                    "machine_started_at": 1700000.0,
+                    "machine_ended_at": 1700001.0,
+                    "machine_duration": 10.0,
+                },
             )
         )
         mock_decrypt_by_private_key.return_value = mock_response
@@ -684,15 +697,3 @@ class TestDriverWuyueBase:
         assert device_info["tweezersNum"] == 200
         assert device_info["singleFidelity"] == 0.95
         assert device_info["doubleFidelity"] == 0.9
-
-    def test_construct_machine_time_info(self):
-        driver = DriverWuyueBase()
-        data = {
-            "execStartTime": 12345,
-            "execEndTime": None,
-            "timeConsume": "2.00",
-        }
-        machine_time_info = driver.construct_machine_time_info(data)
-        assert machine_time_info["exec_start_time"] == 12345
-        assert machine_time_info["exec_end_time"] is None
-        assert machine_time_info["time_consume"] == "2.00"

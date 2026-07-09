@@ -219,7 +219,12 @@ class DriverStim(DriverBase):
         logger.info(f"logic_res: {logic_res}")
 
         result = self.format_result(logic_res)
-        self.set_results(job_id, data_index, results=result)
+        self.set_results(
+            job_id,
+            data_index,
+            results=result,
+            result_type=Constant.RESULT_TYPE_SAMPLING,
+        )
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 

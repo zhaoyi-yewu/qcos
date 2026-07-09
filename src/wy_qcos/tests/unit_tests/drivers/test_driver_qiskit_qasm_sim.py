@@ -29,7 +29,6 @@ org_path = Library.set_driver_venv_path(
 import pytest
 from unittest.mock import patch, Mock
 
-from qiskit_aer.backends.aerbackend import AerBackend
 
 from wy_qcos.drivers.qiskit.driver_qiskit_qasm_sim import DriverQiskitQasmSim
 
@@ -58,12 +57,21 @@ class TestDriverQiskitQasmSim:
         assert driver_qasm_sim.close_driver() is None
 
     @pytest.mark.smoke
-    @patch.object(AerBackend, "run")
-    def test_run(self, mock_run):
-        mock_result_value = {"00": 45, "11": 55}
+    @patch("wy_qcos.drivers.qiskit.driver_qiskit_qasm_sim.QasmSimulator")
+    def test_run(self, mock_qasm_sim):
+        mock_counts = {"00": 45, "11": 55}
         mock_result_obj = Mock()
-        mock_result_obj.mock_run.return_value = mock_result_value
+        mock_result_obj.get_counts.return_value = mock_counts
+        mock_job_obj = Mock()
+        mock_job_obj.result.return_value = mock_result_obj
+        mock_simulator = Mock()
+        mock_simulator.run.return_value = mock_job_obj
+        mock_qasm_sim.return_value = mock_simulator
+
         assert driver_qasm_sim.run(job_id, num_qubits, data, data_type) is None
+
+        results = driver_qasm_sim.get_results(job_id, data["index"])
+        assert results == mock_counts
 
     def test_cancel(self):
         assert driver_qasm_sim.cancel(job_id) is None

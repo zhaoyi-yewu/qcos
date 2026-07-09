@@ -22,7 +22,7 @@ import multiprocessing
 import os
 import setproctitle
 import threading
-from time import sleep
+import time
 from pathlib import Path
 from typing import Any
 
@@ -629,7 +629,7 @@ class TaskFlowManager:
             if all_worker_status.values():
                 self.worker_status = True
                 break
-            sleep(Constant.DEFAULT_JOB_INTERVAL)
+            time.sleep(Constant.DEFAULT_JOB_INTERVAL)
             elapsed_time += Constant.DEFAULT_JOB_INTERVAL
             # timeout
             if elapsed_time > Constant.DEFAULT_JOB_TIMEOUT:
@@ -656,7 +656,7 @@ class TaskFlowManager:
 
             if all(all_worker_status.values()):
                 break
-            sleep(Constant.DEFAULT_JOB_INTERVAL)
+            time.sleep(Constant.DEFAULT_JOB_INTERVAL)
             elapsed_time += Constant.DEFAULT_JOB_INTERVAL
             # timeout
             if elapsed_time > Constant.DEFAULT_JOB_TIMEOUT:
@@ -790,9 +790,7 @@ class TaskFlowManager:
                 prefect_tags.extend(tags)
             else:
                 prefect_tags = tags
-        args["job_info"]["data"]["job_enqueue_at"] = (
-            Library.get_current_datetime()
-        )
+        args["job_info"]["data"]["job_enqueue_at"] = time.time()
         flow_run = await self._client.create_flow_run_from_deployment(
             name=job_id,
             deployment_id=deployment_id,
@@ -1184,7 +1182,7 @@ class TaskFlowManager:
                     is_flow_run_paused = True
                     break
                 flow_run = self.get_flow_run(flow_run.id)
-                sleep(1)
+                time.sleep(1)
 
             # 3. resume flow run and send sub job info(aggregation_parm)
             if is_flow_run_paused:

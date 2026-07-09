@@ -30,6 +30,7 @@ num_qubits = 5
 data = {"index": 0, "source_code": None, "transpile_results": []}
 data_type = DriverHanyuan1.DATA_TYPE_GATE_SEQUENCE
 shots = 1024
+results = {"00": 100, "11": shots - 100}
 
 
 @pytest.mark.driver
@@ -213,7 +214,7 @@ class TestDriverHanyuan1:
     @patch.object(DriverHanyuan1, "_execute_task_workflow")
     def test_run(self, mock_workflow):
         driver = DriverHanyuan1()
-        mock_workflow.return_value = {"result": "test"}
+        mock_workflow.return_value = results
         driver.run(job_id, num_qubits, data, data_type, shots)
         mock_workflow.assert_called_once()
 

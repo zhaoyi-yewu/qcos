@@ -292,6 +292,20 @@ class Constant:
     JOB_TYPE_ESTIMATION = "estimation"
     JOB_TYPES = [JOB_TYPE_SAMPLING, JOB_TYPE_ESTIMATION]
 
+    # Result types
+    RESULT_TYPE_SAMPLING = "sampling"
+    RESULT_TYPE_ESTIMATION = "estimation"
+    RESULT_TYPE_QUBO = "qubo"
+    RESULT_TYPE_TEXT = "text"
+    RESULT_TYPE_DICT = "dict"
+    RESULT_TYPES = [
+        RESULT_TYPE_SAMPLING,
+        RESULT_TYPE_ESTIMATION,
+        RESULT_TYPE_QUBO,
+        RESULT_TYPE_TEXT,
+        RESULT_TYPE_DICT,
+    ]
+
     # Results fetch mode
     RESULTS_FETCH_MODE_SYNC = "sync"
     RESULTS_FETCH_MODE_ASYNC = "async"
@@ -302,12 +316,27 @@ class Constant:
     # Profiling types
     PROFILING_TYPE_ALL = "all"
     PROFILING_TYPE_CODE = "code"
+    PROFILING_TYPE_CODE_STARTED_AT = "code_started_at"
+    PROFILING_TYPE_CODE_ENDED_AT = "code_ended_at"
     PROFILING_TYPE_QUEUING = "queuing"
+    PROFILING_TYPE_QUEUING_STARTED_AT = "queuing_started_at"
+    PROFILING_TYPE_QUEUING_ENDED_AT = "queuing_ended_at"
     PROFILING_TYPE_SCHEDULING = "scheduling"
+    PROFILING_TYPE_SCHEDULING_STARTED_AT = "scheduling_started_at"
+    PROFILING_TYPE_SCHEDULING_ENDED_AT = "scheduling_ended_at"
     PROFILING_TYPE_DRIVER_PARSE = "driver:parse"
+    PROFILING_TYPE_DRIVER_PARSE_STARTED_AT = "driver:parse_started_at"
+    PROFILING_TYPE_DRIVER_PARSE_ENDED_AT = "driver:parse_ended_at"
     PROFILING_TYPE_DRIVER_TRANSPILE = "driver:transpile"
+    PROFILING_TYPE_DRIVER_TRANSPILE_STARTED_AT = "driver:transpile_started_at"
+    PROFILING_TYPE_DRIVER_TRANSPILE_ENDED_AT = "driver:transpile_ended_at"
     PROFILING_TYPE_DRIVER_RUN = "driver:run"
+    PROFILING_TYPE_DRIVER_RUN_STARTED_AT = "driver:run_started_at"
+    PROFILING_TYPE_DRIVER_RUN_ENDED_AT = "driver:run_ended_at"
     PROFILING_TYPE_MACHINE = "machine"
+    PROFILING_TYPE_MACHINE_STARTED_AT = "machine_started_at"
+    PROFILING_TYPE_MACHINE_ENDED_AT = "machine_ended_at"
+
     PROFILING_TYPES = [
         PROFILING_TYPE_ALL,
         PROFILING_TYPE_CODE,

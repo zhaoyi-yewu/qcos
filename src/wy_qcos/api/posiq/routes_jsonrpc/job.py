@@ -507,10 +507,15 @@ def submit_job(
         body.job_id = job_record.id
 
     # auto schedule
-    job_scheduling_at = time.time()
+    job_scheduling_started_at = time.time()
     # TODO(zhaoyi): auto schedule
-    job_schedule_duration = time.time() - job_scheduling_at
-    extra_job_data_info = {"job_schedule_duration": job_schedule_duration}
+    job_scheduling_ended_at = time.time()
+    job_schedule_duration = job_scheduling_ended_at - job_scheduling_started_at
+    extra_job_data_info = {
+        "job_schedule_started_at": job_scheduling_started_at,
+        "job_schedule_ended_at": job_scheduling_ended_at,
+        "job_schedule_duration": job_schedule_duration,
+    }
 
     # submit job
     res = {}
@@ -1112,6 +1117,7 @@ def set_job_results(
             db_new_result.update(new_result)
             db_new_result["metadata"]["status"] = Constant.JOB_STATUS_COMPLETED
         db_new_results.append(db_new_result)
+
     job_status = (
         Constant.JOB_STATUS_FAILED
         if is_failed

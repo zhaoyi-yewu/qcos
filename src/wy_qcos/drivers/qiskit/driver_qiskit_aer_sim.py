@@ -102,9 +102,15 @@ class DriverQiskitAerSim(DriverBase):
 
         transpile_results = data["transpile_results"]
         simulator = AerSimulator()
-        result = simulator.run(transpile_results, shots=shots).result()
+        results_obj = simulator.run(transpile_results, shots=shots).result()
+        results = results_obj.get_counts()
 
-        self.set_results(job_id, data_index, results=result.get_counts())
+        self.set_results(
+            job_id,
+            data_index,
+            results=results,
+            result_type=Constant.RESULT_TYPE_SAMPLING,
+        )
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 

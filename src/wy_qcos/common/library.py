@@ -722,6 +722,21 @@ class Library:
         return datetime.now()
 
     @staticmethod
+    def to_iso(timestamp):
+        """Convert timestamp to ISO format.
+
+        Args:
+            timestamp: timestamp
+
+        Returns:
+            datetime object in ISO format
+        """
+        if timestamp is None:
+            return None
+        dt_obj = datetime.fromtimestamp(timestamp)
+        return dt_obj.isoformat()
+
+    @staticmethod
     def create_uuid(prefix=[]):
         random_bytes = bytearray(random.getrandbits(8) for _ in range(16))
         random_bytes[6] = (random_bytes[6] & 0x0F) | 0x40
@@ -950,6 +965,71 @@ class Library:
                     f"The matrix with index {i} has {matrix_shape[0]} "
                     f"qubits, exceeding the maximum limit of "
                     f"{Constant.MAX_QUBO_QUBITS}"
+                )
+        return True, None
+
+    @staticmethod
+    def is_valid_bitstring_dict(input_dict):
+        """Check is valid bitstring dict.
+
+        Args:
+            input_dict: input dict
+
+        Returns:
+            True or False
+        """
+        # check input is dict
+        if input_dict is None:
+            return False
+        if not isinstance(input_dict, dict):
+            return False
+        binary_re = re.compile(r"^[01]+$")
+        for key in input_dict:
+            # check key is binary string
+            if not isinstance(key, str) or not binary_re.match(key):
+                return False
+            # check value is int
+            if not isinstance(input_dict[key], int):
+                return False
+        return True
+
+    @staticmethod
+    def validate_results(result_type, results):
+        """Validate results.
+
+        Args:
+            result_type: result type
+            results: results
+
+        Returns:
+            success, err_msg
+        """
+        if not result_type or result_type not in Constant.RESULT_TYPES:
+            return False, f"Invalid result_type: {result_type}"
+
+        if result_type == Constant.RESULT_TYPE_SAMPLING:
+            if not Library.is_valid_bitstring_dict(results):
+                return False, (
+                    f"Invalid result: {results}, "
+                    "value type: 'bitstring dict' is expected"
+                )
+        elif result_type == Constant.RESULT_TYPE_ESTIMATION:
+            if not isinstance(results, float):
+                return False, (
+                    f"Invalid result: {results}, "
+                    "value type: 'float' is expected"
+                )
+        elif result_type == Constant.RESULT_TYPE_TEXT:
+            if not isinstance(results, str):
+                return False, (
+                    f"Invalid result: {results}, "
+                    "value type: 'string' is expected"
+                )
+        elif result_type == Constant.RESULT_TYPE_DICT:
+            if not isinstance(results, dict):
+                return False, (
+                    f"Invalid result: {results}, "
+                    "value type: 'dict' is expected"
                 )
         return True, None
 

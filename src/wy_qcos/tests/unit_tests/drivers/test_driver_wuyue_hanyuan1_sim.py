@@ -160,9 +160,9 @@ class TestDriverWuyuehanyuanSim:
                 {
                     "taskStatus": driver_wy_hanyuan1_sim.task_status_completed,
                     "outData": test_result,
-                    "execEndTime": 12345,
-                    "execStartTime": 12333,
-                    "timeConsume": "2.00",
+                    "execEndTime": 1783045407121,
+                    "execStartTime": 1783045402076,
+                    "timeConsume": "5045004.00",
                 }
             ],
         }
@@ -183,6 +183,6 @@ class TestDriverWuyuehanyuanSim:
         assert results["00"] == 10
         assert results["01"] == 11
         assert results["10"] == 9
-        assert machine_time_info["time_consume"] == "2.00"
-        assert machine_time_info["exec_end_time"] == 12345
-        assert machine_time_info["exec_start_time"] == 12333
+        assert machine_time_info["machine_duration"] == 5045004.00
+        assert machine_time_info["machine_started_at"] == 1783045402.076
+        assert machine_time_info["machine_ended_at"] == 1783045407.121
