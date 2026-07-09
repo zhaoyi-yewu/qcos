@@ -61,8 +61,14 @@ class QasmConverter:
     def _convert_op_to_qasm2(self, op: BaseOperation) -> str:
         """Convert a single operation into QASM2 format."""
         name = op.name.lower()
-        if name in ("measure", "reset"):
+        if name == "reset":
             return self._handle_special_qasm2(op)
+        elif name == "measure":
+            if isinstance(op, BaseOperation):
+                return self._handle_special_qasm2(op)
+            else:
+                # C++ Measure using to_openqasm
+                return op.to_openqasm("q")
         else:
             return op.to_openqasm("q")
 

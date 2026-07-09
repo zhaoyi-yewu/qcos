@@ -70,7 +70,7 @@ class BaseOperation {
   }
   std::string targets_to_string() const;
   std::string arg_value_to_string() const;
-  std::string to_openqasm(const std::string& qubit_prefix = "q") const;
+  virtual std::string to_openqasm(const std::string& qubit_prefix = "q") const;
 
   virtual std::shared_ptr<BaseOperation> clone() const {
     return std::make_shared<BaseOperation>(*this);

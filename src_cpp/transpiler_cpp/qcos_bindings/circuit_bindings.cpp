@@ -39,9 +39,9 @@ void bind_circuits(nb::module_& m) {
 
       .def_ro("name", &BaseOperation::name)
       .def_prop_rw("targets", &BaseOperation::getTargets,
-                    &BaseOperation::setTargets)
+                   &BaseOperation::setTargets)
       .def_prop_rw("arg_value", &BaseOperation::getArgValue,
-                    &BaseOperation::setArgValue)
+                   &BaseOperation::setArgValue)
       .def_ro("operation_type", &BaseOperation::operation_type)
       .def("targets_to_string", &BaseOperation::targets_to_string)
       .def("arg_value_to_string", &BaseOperation::arg_value_to_string)
@@ -60,8 +60,7 @@ void bind_circuits(nb::module_& m) {
                                                  nb::const_),
            nb::arg("qubit_prefix") = "q");
 
-  nb::class_<GateOperation, BaseOperation>(
-      m, "GateOperation")
+  nb::class_<GateOperation, BaseOperation>(m, "GateOperation")
       .def(nb::init<std::string, std::vector<int>, std::vector<double>,
                     OperationType, bool>(),
            nb::arg("name"), nb::arg("targets"), nb::arg("arg_value"),
@@ -482,10 +481,12 @@ void bind_circuits(nb::module_& m) {
       .def("__repr__", [](const Sync& self) { return self.to_string(); });
 
   nb::class_<Measure, BaseOperation>(m, "Measure")
-      .def(nb::init<std::vector<int>, std::vector<double>>(),
-           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
-      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
-           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
+      .def(nb::init<std::vector<int>, std::vector<int>, OperationType>(),
+           nb::arg("targets"), nb::arg("cbits") = std::vector<int>{},
+           nb::arg("operation_type") = OperationType::MEASURE)
+      .def_prop_rw(
+          "cbits", [](const Measure& self) { return self.cbits; },
+          [](Measure& self, const std::vector<int>& cb) { self.cbits = cb; })
       .def("__repr__", [](const Measure& self) { return self.to_string(); });
 
   nb::class_<Move, BaseOperation>(m, "Move")

@@ -27,8 +27,8 @@ namespace qcos {
 GateOperation::GateOperation(std::string_view name_, std::vector<int> targets_,
                              std::vector<double> arg_value_,
                              OperationType op_type_, bool hermitian_)
-    : BaseOperation(name_, std::move(targets_),
-                    std::move(arg_value_), op_type_),
+    : BaseOperation(name_, std::move(targets_), std::move(arg_value_),
+                    op_type_),
       hermitian(hermitian_) {
   validate_params();
 }
@@ -2134,7 +2134,7 @@ std::vector<std::shared_ptr<BaseOperation>> CCX ::default_decompose() {
   return gates;
 }
 
-std::vector<std::shared_ptr<BaseOperation>> CCX ::decompose_to_1q2q() {
+std::vector<std::shared_ptr<BaseOperation>> CCX::decompose_to_1q2q() const {
   std::vector<std::shared_ptr<BaseOperation>> gates;
 
   if (targets.size() < 3) {
@@ -2247,7 +2247,7 @@ std::vector<std::shared_ptr<BaseOperation>> CSWAP ::default_decompose() {
   return gates;
 }
 
-std::vector<std::shared_ptr<BaseOperation>> CSWAP ::decompose_to_1q2q() {
+std::vector<std::shared_ptr<BaseOperation>> CSWAP::decompose_to_1q2q() const {
   std::vector<std::shared_ptr<BaseOperation>> gates;
 
   if (targets.size() < 3) {
@@ -2389,7 +2389,7 @@ std::vector<std::shared_ptr<BaseOperation>> RCCX ::default_decompose() {
   return gates;
 }
 
-std::vector<std::shared_ptr<BaseOperation>> RCCX ::decompose_to_1q2q() {
+std::vector<std::shared_ptr<BaseOperation>> RCCX::decompose_to_1q2q() const {
   std::vector<std::shared_ptr<BaseOperation>> gates;
 
   if (targets.size() < 3) {
@@ -2582,7 +2582,7 @@ std::vector<std::shared_ptr<BaseOperation>> RC3X ::default_decompose() {
   return gates;
 }
 
-std::vector<std::shared_ptr<BaseOperation>> RC3X ::decompose_to_1q2q() {
+std::vector<std::shared_ptr<BaseOperation>> RC3X::decompose_to_1q2q() const {
   std::vector<std::shared_ptr<BaseOperation>> gates;
 
   if (targets.size() < 4) {
@@ -2814,7 +2814,7 @@ std::vector<std::shared_ptr<BaseOperation>> C3X ::default_decompose() {
   return gates;
 }
 
-std::vector<std::shared_ptr<BaseOperation>> C3X ::decompose_to_1q2q() {
+std::vector<std::shared_ptr<BaseOperation>> C3X::decompose_to_1q2q() const {
   std::vector<std::shared_ptr<BaseOperation>> gates;
 
   if (targets.size() < 4) {
@@ -3047,7 +3047,8 @@ std::vector<std::shared_ptr<BaseOperation>> C3SQRTX ::default_decompose() {
   return gates;
 }
 
-std::vector<std::shared_ptr<BaseOperation>> C3SQRTX ::decompose_to_1q2q() {
+std::vector<std::shared_ptr<BaseOperation>> C3SQRTX::decompose_to_1q2q()
+    const {
   std::vector<std::shared_ptr<BaseOperation>> gates;
 
   if (targets.size() < 4) {
@@ -3209,7 +3210,7 @@ std::vector<std::shared_ptr<BaseOperation>> C4X ::default_decompose() {
   return gates;
 }
 
-std::vector<std::shared_ptr<BaseOperation>> C4X ::decompose_to_1q2q() {
+std::vector<std::shared_ptr<BaseOperation>> C4X::decompose_to_1q2q() const {
   std::vector<std::shared_ptr<BaseOperation>> gates;
 
   if (targets.size() < 5) {
@@ -3506,10 +3507,21 @@ std::string Sync::to_string() const {
          ", arg_value=" + arg_value_to_string() + ")";
 }
 
-Measure::Measure(std::vector<int> targets, std::vector<double> arg_value,
+Measure::Measure(std::vector<int> targets, std::vector<int> cbits,
                  OperationType operation_type)
-    : BaseOperation("measure", std::move(targets), std::move(arg_value),
-                    operation_type) {}
+    : BaseOperation("measure", std::move(targets), {}, operation_type),
+      cbits(std::move(cbits)) {
+  if (this->targets.size() != 1) {
+    throw std::invalid_argument("Measure targets must have exactly 1 qubit");
+  }
+  if (this->cbits.empty()) this->cbits = this->targets;
+}
+
+std::string Measure::to_openqasm(const std::string& qubit_prefix) const {
+  int cb = cbits.empty() ? targets[0] : cbits[0];
+  return "measure " + qubit_prefix + "[" + std::to_string(targets[0]) +
+         "] -> c[" + std::to_string(cb) + "];";
+}
 
 std::string Measure::to_string() const {
   return "Measure(targets=" + targets_to_string() +
@@ -3639,7 +3651,7 @@ std::shared_ptr<BaseOperation> create_gate(std::string_view name,
   } else if (name == "sync") {
     return std::make_shared<Sync>(std::move(targets), std::move(arg_value));
   } else if (name == "measure") {
-    return std::make_shared<Measure>(std::move(targets), std::move(arg_value));
+    return std::make_shared<Measure>(std::move(targets));
   } else if (name == "move") {
     return std::make_shared<Move>(std::move(targets), std::move(arg_value));
   } else if (name == "reset") {
