@@ -80,11 +80,12 @@ class QuantumCodeBase(ABC):
         self._logical_bit_num = logical_bit_num
 
     @abstractmethod
-    def encode(self, circuit):
+    def encode(self, circuit, **kwargs):
         """Encode a logical state into the physical qubit state.
 
         Args:
             circuit: representing the quantum circuit
+            kwargs: optional keyword arguments (e.g., error_inject, noise_prob)
 
         Returns:
             encoded quantum circuit.

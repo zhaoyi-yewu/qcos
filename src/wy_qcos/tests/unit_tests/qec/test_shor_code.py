@@ -213,6 +213,100 @@ class TestShorStimStrategy:
             strategy.encode(circuit)
         assert "unsupported" in str(exc_info.value).lower()
 
+    def test_encode_with_x_error_inject(self):
+        """Test encode with x_error injection type."""
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        encoded = strategy.encode(
+            circuit,
+            error_inject={"error_type": "x_error", "noise_prob": 0.05},
+        )
+        assert isinstance(encoded, stim.Circuit)
+        encoded_str = str(encoded)
+        assert "X_ERROR" in encoded_str
+
+    def test_encode_with_y_error_inject(self):
+        """Test encode with y_error injection type."""
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        encoded = strategy.encode(
+            circuit,
+            error_inject={"error_type": "y_error", "noise_prob": 0.02},
+        )
+        assert isinstance(encoded, stim.Circuit)
+        encoded_str = str(encoded)
+        assert "Y_ERROR" in encoded_str
+
+    def test_encode_with_z_error_inject(self):
+        """Test encode with z_error injection type."""
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        encoded = strategy.encode(
+            circuit,
+            error_inject={"error_type": "z_error", "noise_prob": 0.03},
+        )
+        assert isinstance(encoded, stim.Circuit)
+        encoded_str = str(encoded)
+        assert "Z_ERROR" in encoded_str
+
+    def test_encode_with_depolarize_error_inject(self):
+        """Test encode with depolarize error_inject type."""
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        encoded = strategy.encode(
+            circuit,
+            error_inject={"error_type": "depolarize", "noise_prob": 0.01},
+        )
+        assert isinstance(encoded, stim.Circuit)
+        encoded_str = str(encoded)
+        # depolarize should inject DEPOLARIZE1
+        assert "DEPOLARIZE1" in encoded_str
+
+    def test_encode_with_unsupported_error_inject_raises_error(self):
+        """Test that unsupported error_inject type raises ValueError."""
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        with pytest.raises(ValueError) as exc_info:
+            strategy.encode(
+                circuit,
+                error_inject={
+                    "error_type": "unsupported_error",
+                    "noise_prob": 0.01,
+                },
+            )
+        assert "unsupported" in str(exc_info.value).lower()
+
+    def test_encode_with_custom_noise_prob(self):
+        """Test encode with custom noise_prob."""
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        encoded = strategy.encode(
+            circuit,
+            error_inject={"error_type": "x_error", "noise_prob": 0.5},
+        )
+        assert isinstance(encoded, stim.Circuit)
+        encoded_str = str(encoded)
+        assert "X_ERROR" in encoded_str
+        assert "0.5" in encoded_str
+
+    def test_encode_without_error_inject(self):
+        """Test encode without error_inject."""
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        encoded = strategy.encode(circuit)
+        assert isinstance(encoded, stim.Circuit)
+        encoded_str = str(encoded)
+        # Default behavior: x_error with 0.01 probability
+        assert "X_ERROR" in encoded_str
+        assert "0.01" in encoded_str
+
     def test_correct_without_err_pos_returns_none(self):
         """Test correct with no err_pos returns None."""
         strategy = ShorStimStrategy()
