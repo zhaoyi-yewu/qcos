@@ -78,17 +78,17 @@ void bind_mapping(nb::module_& m) {
            nb::arg("coupling_list"), nb::arg("extension_size") = 20,
            nb::arg("weight") = 0.5, nb::arg("decay") = 0.001,
            R"(
-Construct a SABRE router.
+            Construct a SABRE router.
 
-Args:
-    coupling_list (list[tuple[int, int]]): Physical qubit connectivity
-        graph.
-    extension_size (int, optional): Size of the lookahead set.
-        Defaults to 20.
-    weight (float, optional): Weight between front layer and lookahead
-        cost. Defaults to 0.5.
-    decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
-)")
+            Args:
+                coupling_list (list[tuple[int, int]]): Physical qubit connectivity
+                    graph.
+                extension_size (int, optional): Size of the lookahead set.
+                    Defaults to 20.
+                weight (float, optional): Weight between front layer and lookahead
+                    cost. Defaults to 0.5.
+                decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
+            )")
 
       .def("execute",
            static_cast<void (SABRE::*)(const std::vector<GateOperation>&,
@@ -96,32 +96,32 @@ Args:
                &SABRE::execute),
            nb::arg("gates_list"), nb::arg("initial_l2p") = std::vector<int>{},
            R"(
-Execute SABRE routing.
+            Execute SABRE routing.
 
-Args:
-    gates_list (list[GateOperation]): Logical gate sequence.
-    initial_l2p (list[int], optional): Initial logical-to-physical
-        mapping. Defaults to empty.
+            Args:
+                gates_list (list[GateOperation]): Logical gate sequence.
+                initial_l2p (list[int], optional): Initial logical-to-physical
+                    mapping. Defaults to empty.
 
-Returns:
-    None
-)")
+            Returns:
+                None
+            )")
 
       .def("get_logic2phy", &SABRE::get_logic2phy,
            R"(
-Get the final logical-to-physical mapping after routing.
-
-Returns:
-    list[int]: The index is logical qubit and value is physical qubit.
-)")
+            Get the final logical-to-physical mapping after routing.
+                
+            Returns:
+                list[int]: The index is logical qubit and value is physical qubit.
+            )")
 
       .def("get_physical_gates", &SABRE::get_physical_gates,
            R"(
-Get the sequence of mapped physical gates after routing.
-
-Returns:
-    list[GateOperation]: The physical gate sequence.
-)");
+            Get the sequence of mapped physical gates after routing.
+                
+            Returns:
+                list[GateOperation]: The physical gate sequence.
+            )");
 
   nb::class_<GreedyRouting>(
       m, "GreedyRouting",
@@ -144,36 +144,36 @@ Returns:
             &qcos::sabre_initial_mapping),
         nb::arg("gates_list"), nb::arg("coupling_list"),
         R"(
-Get the initial mapping using the SABRE algorithm.
-
-Args:
-    gates_list (list[GateOperation]): Logical gate sequence.
-    coupling_list (list[tuple[int, int]]): Physical qubit coupling list.
-
-Returns:
-    list[int]: The initial logical-to-physical mapping.
-)");
+        Get the initial mapping using the SABRE algorithm.
+                    
+        Args:
+            gates_list (list[GateOperation]): Logical gate sequence.
+            coupling_list (list[tuple[int, int]]): Physical qubit coupling list.
+                    
+        Returns:
+            list[int]: The initial logical-to-physical mapping.
+        )");
 
   m.def("sabre_routing", &bind_cpp_sabre_routing, nb::arg("gates_list"),
         nb::arg("coupling_list"), nb::arg("initial_l2p") = std::vector<int>{},
         nb::arg("extension_size") = 20, nb::arg("weight") = 0.5,
         nb::arg("decay") = 0.001,
         R"(
-Execute SABRE routing.
-
-Args:
-    gates_list (list[BaseOperation]): Logical operation sequence.
-    coupling_list (list[tuple[int, int]]): Physical qubit coupling list.
-    initial_l2p (list[int], optional): Initial logical-to-physical mapping.
-        When empty, SABRE computes the initial mapping internally.
-        Defaults to empty.
-    extension_size (int, optional): Size of the lookahead set.
-        Defaults to 20.
-    weight (float, optional): Weight between front layer and lookahead cost.
-        Defaults to 0.5.
-    decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
-
-Returns:
-    list[BaseOperation]: The routed physical operation sequence.
-)");
+        Execute SABRE routing.
+                    
+        Args:
+            gates_list (list[BaseOperation]): Logical operation sequence.
+            coupling_list (list[tuple[int, int]]): Physical qubit coupling list.
+            initial_l2p (list[int], optional): Initial logical-to-physical mapping.
+                When empty, SABRE computes the initial mapping internally.
+                Defaults to empty.
+            extension_size (int, optional): Size of the lookahead set.
+                Defaults to 20.
+            weight (float, optional): Weight between front layer and lookahead cost.
+                Defaults to 0.5.
+            decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
+                    
+        Returns:
+            list[BaseOperation]: The routed physical operation sequence.
+        )");
 }

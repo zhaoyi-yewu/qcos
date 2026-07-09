@@ -28,6 +28,7 @@ void bind_cpp_mcts(nb::module_& m);
 void bind_parser(nb::module_& m);
 void bind_decomposer(nb::module_& m);
 void bind_optimizer(nb::module_& m);
+void bind_transpile(nb::module_& m);
 
 NB_MODULE(high_performance, m) {
   m.doc() = "Binding qcos transpiler cpp functions.";
@@ -40,4 +41,5 @@ NB_MODULE(high_performance, m) {
   bind_parser(m);
   bind_decomposer(m);
   bind_optimizer(m);
+  bind_transpile(m);
 }
