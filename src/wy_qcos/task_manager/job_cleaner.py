@@ -184,21 +184,11 @@ class JobCleaner:
         logger.info("Scanning for orphaned device flows...")
         sync_client = self._get_sync_client()
 
-        # Get all flow runs - use pagination to avoid default limit=200
-        try:
-            all_flow_runs = await self._run_sync(
-                sync_client.read_flow_runs_paginated,
-                limit=None,
-                sort="CREATED_DESC",
-            )
-        except AttributeError:
-            # Fallback if read_flow_runs_paginated doesn't exist
-            logger.warning("read_flow_runs_paginated doesn't exist")
-            all_flow_runs = await self._run_sync(
-                sync_client.read_flow_runs,
-                limit=None,
-                sort="CREATED_DESC",
-            )
+        # Get all flow runs
+        all_flow_runs = await self._run_sync(
+            sync_client.read_flow_runs,
+            limit=None,
+        )
 
         # Get all job IDs from database
         job_ids = await self._run_sync(self._get_all_job_ids)
@@ -207,7 +197,6 @@ class JobCleaner:
             logger.warning("Aborting orphan cleanup due to DB failure")
             return
 
-        prefect_loop = self._get_loop()
         orphaned = []
 
         for flow_run in all_flow_runs:
@@ -239,7 +228,6 @@ class JobCleaner:
             f"Found {len(orphaned)} orphaned device flow(s), cleaning up..."
         )
 
-        artifact_futures = []
         for flow_run in orphaned:
             try:
                 # Step 1: Request cancellation
@@ -266,14 +254,19 @@ class JobCleaner:
 
                 await self._run_sync(_delete)
 
-                # Step 4: Collect artifact deletion futures to await later
-                if prefect_loop and not prefect_loop.is_closed():
-                    artifact_futures.append(
-                        asyncio.run_coroutine_threadsafe(
-                            self._delete_artifacts_async(flow_run.id),
-                            prefect_loop,
-                        )
+                # Step 4: Delete artifacts
+                try:
+                    await self._run_sync(
+                        self._delete_artifacts_sync,
+                        sync_client,
+                        flow_run.id,
                     )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to delete artifacts for {flow_run.name}: "
+                        f"{type(e).__name__}: {e}"
+                    )
+
                 logger.info(
                     f"Cleaned orphaned flow: {flow_run.name} "
                     f"(pool: {flow_run.work_pool_name})"
@@ -282,14 +275,6 @@ class JobCleaner:
                 logger.error(
                     f"Failed to cleanup orphaned flow {flow_run.name}: {e}"
                 )
-
-        # Await all artifact deletion futures to completion
-        if artifact_futures:
-            for future in artifact_futures:
-                try:
-                    future.result(timeout=30)
-                except Exception as e:
-                    logger.error(f"Failed to delete artifacts: {e}")
 
     async def _clean_expired_job_flows(self):
         """Clean expired job.
@@ -354,7 +339,6 @@ class JobCleaner:
                 "will only delete DB records"
             )
 
-        prefect_loop = self._get_loop()
         with create_db_session(db_engine) as session:
             repo = JobRepository(session)
             for job_info in expired_jobs:
@@ -370,11 +354,18 @@ class JobCleaner:
 
                         await self._run_sync(_delete_flow)
 
-                        if prefect_loop and not prefect_loop.is_closed():
-                            asyncio.run_coroutine_threadsafe(
-                                self._delete_artifacts_async(fid),
-                                prefect_loop,
+                        try:
+                            await self._run_sync(
+                                self._delete_artifacts_sync,
+                                sync_client,
+                                fid,
                             )
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to delete artifacts for {job_id}: "
+                                f"{type(e).__name__}: {e}"
+                            )
+
                         logger.info(
                             f"Deleted Prefect flow for expired "
                             f"job: {job_id} "
@@ -400,25 +391,20 @@ class JobCleaner:
                 except Exception as e:
                     logger.error(f"Error deleting expired job {job_id}: {e}")
 
-    async def _delete_artifacts_async(self, flow_run_id):
+    @staticmethod
+    def _delete_artifacts_sync(sync_client, flow_run_id):
         from prefect.client.schemas.filters import (
             ArtifactFilter,
             ArtifactFilterFlowRunId,
         )
 
-        async_client = scheduler._task_manager._client
-        try:
-            artifacts = await async_client.read_artifacts(
-                artifact_filter=ArtifactFilter(
-                    flow_run_id=ArtifactFilterFlowRunId(any_=[flow_run_id])
-                )
+        artifacts = sync_client.read_artifacts(
+            artifact_filter=ArtifactFilter(
+                flow_run_id=ArtifactFilterFlowRunId(any_=[flow_run_id])
             )
-            for artifact in artifacts:
-                await async_client.delete_artifact(artifact.id)
-        except Exception as e:
-            logger.error(
-                f"Failed to delete artifacts for flow_run {flow_run_id}: {e}"
-            )
+        )
+        for artifact in artifacts:
+            sync_client.delete_artifact(artifact.id)
 
     @staticmethod
     def _check_uuid(name):

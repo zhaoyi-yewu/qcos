@@ -60,7 +60,7 @@ _sentinel = object()
 def _setup_orphan_cleaner(flows, job_ids=_sentinel):
     cleaner = _make_cleaner()
     sync_client = MagicMock()
-    sync_client.read_flow_runs_paginated = Mock(return_value=flows)
+    sync_client.read_flow_runs = Mock(return_value=flows)
     cleaner._get_sync_client = Mock(return_value=sync_client)
     cleaner._run_sync = Mock(side_effect=_mock_run_sync)
     cleaner._get_all_job_ids = Mock(
@@ -390,14 +390,6 @@ class TestCleanOrphanedDeviceFlows:
         sync_client.delete_flow_run.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_fallback_to_read_flow_runs(self):
-        cleaner, sync_client = _setup_orphan_cleaner([])
-        sync_client.read_flow_runs_paginated = Mock(side_effect=AttributeError)
-        sync_client.read_flow_runs = Mock(return_value=[])
-        await cleaner._clean_orphaned_device_flows()
-        sync_client.read_flow_runs.assert_called_once()
-
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "pool_name",
         [
@@ -470,49 +462,26 @@ class TestCleanOrphanedDeviceFlows:
         await cleaner._clean_orphaned_device_flows()
 
     @pytest.mark.asyncio
-    async def test_artifact_futures_with_active_loop(self):
+    async def test_deletes_artifacts_via_sync_client(self):
         flow = _make_flow_run(
             str(uuid4()), DEV_PREFIX + "d", state_name="COMPLETED"
         )
         cleaner, sync_client = _setup_orphan_cleaner([flow])
-        mock_future = MagicMock()
-        mock_future.result.return_value = None
-        with patch(f"{MODULE}.asyncio.run_coroutine_threadsafe") as mock_rct:
-            mock_rct.return_value = mock_future
-            mock_loop = MagicMock()
-            mock_loop.is_closed.return_value = False
-            cleaner._get_loop = Mock(return_value=mock_loop)
-            await cleaner._clean_orphaned_device_flows()
-        mock_rct.assert_called_once()
-        mock_future.result.assert_called_with(timeout=30)
+        sync_client.read_artifacts.return_value = [MagicMock(id=uuid4())]
+        await cleaner._clean_orphaned_device_flows()
+        sync_client.delete_flow_run.assert_called_once_with(flow.id)
+        sync_client.read_artifacts.assert_called_once()
+        sync_client.delete_artifact.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_artifact_future_exception(self):
+    async def test_artifact_delete_exception_does_not_block_cleanup(self):
         flow = _make_flow_run(
             str(uuid4()), DEV_PREFIX + "d", state_name="COMPLETED"
         )
         cleaner, sync_client = _setup_orphan_cleaner([flow])
-        mock_future = MagicMock()
-        mock_future.result.side_effect = RuntimeError("artifact fail")
-        with patch(f"{MODULE}.asyncio.run_coroutine_threadsafe") as mock_rct:
-            mock_rct.return_value = mock_future
-            mock_loop = MagicMock()
-            mock_loop.is_closed.return_value = False
-            cleaner._get_loop = Mock(return_value=mock_loop)
-            await cleaner._clean_orphaned_device_flows()
-
-    @pytest.mark.asyncio
-    async def test_closed_loop_skips_artifact_future(self):
-        flow = _make_flow_run(
-            str(uuid4()), DEV_PREFIX + "d", state_name="COMPLETED"
-        )
-        cleaner, sync_client = _setup_orphan_cleaner([flow])
-        mock_loop = MagicMock()
-        mock_loop.is_closed.return_value = True
-        cleaner._get_loop = Mock(return_value=mock_loop)
-        with patch(f"{MODULE}.asyncio.run_coroutine_threadsafe") as mock_rct:
-            await cleaner._clean_orphaned_device_flows()
-        mock_rct.assert_not_called()
+        sync_client.read_artifacts.side_effect = RuntimeError("fail")
+        await cleaner._clean_orphaned_device_flows()
+        sync_client.delete_flow_run.assert_called_once_with(flow.id)
 
 
 # ---- _clean_expired_job_flows ----
@@ -671,42 +640,31 @@ class TestCleanExpiredJobFlows:
     @patch(f"{MODULE}.JobRepository")
     @patch(f"{MODULE}.create_db_session")
     @pytest.mark.asyncio
-    async def test_expired_with_artifact_future(self, mock_ctx, mock_repo_cls):
+    async def test_expired_deletes_artifacts(self, mock_ctx, mock_repo_cls):
         job = _make_expired_job(flow_run_id=uuid4())
-        mock_loop = MagicMock()
-        mock_loop.is_closed.return_value = False
         cleaner, _ = _setup_expired_cleaner([job], mock_ctx, mock_repo_cls)
         sync_client = MagicMock()
         cleaner._get_sync_client = Mock(return_value=sync_client)
-        cleaner._get_loop = Mock(return_value=mock_loop)
-        with patch(f"{MODULE}.asyncio.run_coroutine_threadsafe"):
-            await cleaner._clean_expired_job_flows()
+        await cleaner._clean_expired_job_flows()
         sync_client.delete_flow_run.assert_called_once()
+        sync_client.read_artifacts.assert_called_once()
 
 
-# ---- _delete_artifacts_async ----
+# ---- _delete_artifacts_sync ----
 
 
-class TestDeleteArtifactsAsync:
-    @pytest.mark.asyncio
+class TestDeleteArtifactsSync:
     @pytest.mark.parametrize("artifacts_count", [0, 2])
-    async def test_delete_artifacts(self, artifacts_count):
-        cleaner = _make_cleaner()
+    def test_delete_artifacts(self, artifacts_count):
         arts = [MagicMock(id=uuid4()) for _ in range(artifacts_count)]
-        async_client = AsyncMock()
-        async_client.read_artifacts = AsyncMock(return_value=arts)
-        with patch(f"{MODULE}.scheduler") as mock_sched:
-            mock_sched._task_manager._client = async_client
-            await cleaner._delete_artifacts_async(uuid4())
-        assert async_client.delete_artifact.await_count == artifacts_count
+        sync_client = MagicMock()
+        sync_client.read_artifacts = Mock(return_value=arts)
+        JobCleaner._delete_artifacts_sync(sync_client, uuid4())
+        assert sync_client.read_artifacts.call_count == 1
+        assert sync_client.delete_artifact.call_count == artifacts_count
 
-    @pytest.mark.asyncio
-    async def test_handles_exception(self):
-        cleaner = _make_cleaner()
-        async_client = AsyncMock()
-        async_client.read_artifacts = AsyncMock(
-            side_effect=RuntimeError("fail")
-        )
-        with patch(f"{MODULE}.scheduler") as mock_sched:
-            mock_sched._task_manager._client = async_client
-            await cleaner._delete_artifacts_async(uuid4())
+    def test_propagates_exception(self):
+        sync_client = MagicMock()
+        sync_client.read_artifacts = Mock(side_effect=RuntimeError("fail"))
+        with pytest.raises(RuntimeError, match="fail"):
+            JobCleaner._delete_artifacts_sync(sync_client, uuid4())
