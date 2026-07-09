@@ -26,6 +26,8 @@ import pytest
 from wy_qcos.common.cmss.base_operation import OperationType
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
+from wy_qcos.drivers.device import Device
+
 
 if "smbclient" not in sys.modules:
     fake_smb = types.ModuleType("smbclient")
@@ -430,4 +432,4 @@ class TestDriverHanyuan1Pulse:
     def test_fetch_running_info(self):
         driver = DriverHanyuan1Pulse()
         info = driver.fetch_running_info()
-        assert info == {"status": "online"}
+        assert info == {"status": Device.DEVICE_STATUS_ONLINE}

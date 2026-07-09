@@ -75,7 +75,7 @@ class TestDevice:
     ):
         mock_get_driver.return_value = DriverDummy()
         device = Device("dummy", DriverDummy())
-        device.status = "online"
+        device.status = Device.DEVICE_STATUS_ONLINE
         device.details = {
             "single_qubit_prop": {
                 "qubit1": {
@@ -101,7 +101,7 @@ class TestDevice:
         mock_client.details = True
 
         response_info = get_device(mock_client, None)
-        assert response_info.status == "online"
+        assert response_info.status == Device.DEVICE_STATUS_ONLINE
         assert response_info.details["double_qubit_prop"] is None
         assert response_info.details["topo_configs"] is None
         assert response_info.details["single_qubit_prop"] is not None

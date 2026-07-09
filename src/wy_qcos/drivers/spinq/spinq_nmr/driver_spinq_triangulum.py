@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 from wy_qcos.common.constant import Constant
+from wy_qcos.drivers.device import Device
 from wy_qcos.drivers.spinq.spinq_nmr.driver_spinq_nmr import DriverSpinQNmr
 
 
@@ -42,5 +43,5 @@ class DriverSpinQTriangulum(DriverSpinQNmr):
             remote device running info
         """
         # TODO(jidalong) mock data currently
-        device_running_info = {"status": "online"}
+        device_running_info = {"status": Device.DEVICE_STATUS_ONLINE}
         return device_running_info

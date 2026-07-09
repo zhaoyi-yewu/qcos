@@ -906,12 +906,10 @@ def _run_code(
         job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_RUN] = round(
             profiling_time, 5
         )
-        profiling_queuing_duration = None
-        machine_time_info = run_results.get("machine_time_info", None)
-        if machine_time_info:
-            profiling_queuing_duration = round(machine_time_info, 5)
+
+        profiling_machine = run_results.get("machine_time_info", None)
         job_results["profiling"][Constant.PROFILING_TYPE_MACHINE] = (
-            profiling_queuing_duration
+            profiling_machine
         )
 
         # run: error handling

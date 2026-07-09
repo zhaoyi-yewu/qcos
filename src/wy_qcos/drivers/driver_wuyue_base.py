@@ -706,12 +706,11 @@ class DriverWuyueBase(DriverBase):
         Returns:
             remote device running info
         """
-        device_running_info = {"status": "online"}
+        device_running_info = {"status": Device.DEVICE_STATUS_ONLINE}
         success, err_msg, device_info = self.get_device_info()
         if not success:
             logger.debug(f"Failed to get device info: {err_msg}")
             device_running_info["details"] = {}
-            device_running_info["status"] = "offline"
             return device_running_info
 
         logger.info(f"Device info: {device_info}")

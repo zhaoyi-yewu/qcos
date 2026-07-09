@@ -20,6 +20,7 @@ from loguru import logger
 
 from wy_qcos.common.constant import Constant, HttpMethod, HttpCode
 from wy_qcos.common.library import Library
+from wy_qcos.drivers.device import Device
 from wy_qcos.drivers.spinq.spinq_nmr.driver_spinq_nmr import DriverSpinQNmr
 
 
@@ -47,7 +48,7 @@ class DriverSpinQGemini(DriverSpinQNmr):
         Returns:
             remote device running info
         """
-        device_running_info = {"status": "online"}
+        device_running_info = {"status": Device.DEVICE_STATUS_ONLINE}
         if self._nmr_conn_str is None:
             self.fetch_configs()
         url = f"{self._nmr_conn_str}/fetch_running_info"
