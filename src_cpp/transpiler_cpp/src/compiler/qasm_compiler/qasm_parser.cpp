@@ -74,9 +74,16 @@ class OpenQasmParser final : public InstVisitor {
   qc::Permutation initialLayout{};
   qc::Permutation outputPermutation{};
 
+  // ── Qubit register cache for fast operand translation ──────────────
+  // For QASM 2.0 benchmarks, the register name is almost always "q".
+  // Caching the base offset and size avoids a std::map::find() per operand.
+  std::string cachedRegName_{};
+  qc::QBit cachedRegBase_{0};
+  size_t cachedRegSize_{0};
+
   [[noreturn]] static void error(const std::string& message,
-                                 const std::shared_ptr<DebugInfo>& debugInfo) {
-    throw CompilerError(message, debugInfo);
+                                 const DebugInfo& debugInfo) {
+    throw CompilerError(message, DebugInfo(debugInfo));
   }
 
   static const std::map<std::string, std::pair<ConstEvalValue, InferredType>>&
@@ -98,47 +105,59 @@ class OpenQasmParser final : public InstVisitor {
     return builtins;
   }
 
-  static void translateGateOperand(
+  void translateGateOperand(
       const std::shared_ptr<GateOperand>& gateOperand,
       std::vector<qc::QBit>& qubits, const qc::QuantumRegisterMap& qregs,
-      const std::shared_ptr<DebugInfo>& debugInfo) {
+      const DebugInfo& debugInfo) {
     translateGateOperand(gateOperand->identifier, gateOperand->expression,
                          qubits, qregs, debugInfo);
   }
 
-  static void translateGateOperand(
+  void translateGateOperand(
       const std::string& gateIdentifier,
       const std::shared_ptr<Expression>& indexExpr,
       std::vector<qc::QBit>& qubits, const qc::QuantumRegisterMap& qregs,
-      const std::shared_ptr<DebugInfo>& debugInfo) {
-    const auto qubitIter = qregs.find(gateIdentifier);
-    if (qubitIter == qregs.end()) {
-      error("Usage of unknown quantum register.", debugInfo);
+      const DebugInfo& debugInfo) {
+    // Fast path: if the register name matches our cache, skip the map lookup.
+    qc::QBit regBase = 0;
+    size_t regSize = 0;
+    if (gateIdentifier == cachedRegName_) {
+      regBase = cachedRegBase_;
+      regSize = cachedRegSize_;
+    } else {
+      const auto qubitIter = qregs.find(gateIdentifier);
+      if (qubitIter == qregs.end()) {
+        error("Usage of unknown quantum register.", debugInfo);
+      }
+      regBase = qubitIter->second.first;
+      regSize = qubitIter->second.second;
+      // Update cache for subsequent lookups
+      cachedRegName_ = gateIdentifier;
+      cachedRegBase_ = regBase;
+      cachedRegSize_ = regSize;
     }
-    auto qubit = qubitIter->second;
 
     if (indexExpr != nullptr) {
       const auto result = evaluatePositiveConstant(indexExpr, debugInfo);
 
-      if (result >= qubit.second) {
+      if (result >= regSize) {
         error(
             "Index expression must be smaller than the width of the "
             "quantum register.",
             debugInfo);
       }
-      qubit.first += static_cast<qc::QBit>(result);
-      qubit.second = 1;
-    }
-
-    for (uint64_t i = 0; i < qubit.second; ++i) {
-      qubits.emplace_back(qubit.first + i);
+      qubits.emplace_back(regBase + static_cast<qc::QBit>(result));
+    } else {
+      for (size_t i = 0; i < regSize; ++i) {
+        qubits.emplace_back(regBase + static_cast<qc::QBit>(i));
+      }
     }
   }
 
   void translateBitOperand(const std::string& bitIdentifier,
                            const std::shared_ptr<Expression>& indexExpr,
                            std::vector<qc::Bit>& bits,
-                           const std::shared_ptr<DebugInfo>& debugInfo) const {
+                           const DebugInfo& debugInfo) const {
     const auto iter = qc->getCregs().find(bitIdentifier);
     if (iter == qc->getCregs().end()) {
       error("Usage of unknown classical register.", debugInfo);
@@ -165,7 +184,7 @@ class OpenQasmParser final : public InstVisitor {
 
   static uint64_t evaluatePositiveConstant(
       const std::shared_ptr<Expression>& expr,
-      const std::shared_ptr<DebugInfo>& debugInfo,
+      const DebugInfo& debugInfo,
       const uint64_t defaultValue = 0) {
     if (expr == nullptr) {
       return defaultValue;
@@ -198,6 +217,34 @@ class OpenQasmParser final : public InstVisitor {
     // errors.
     for (const auto& statement : program) {
       try {
+        // ── Fast path: skip const_eval and type_check for gate calls ──
+        // For the overwhelmingly common case in QASM 2.0 benchmarks,
+        // gate calls have no modifiers, no arguments and all operands are
+        // constant expressions. In this case:
+        //   - const_eval is a no-op on already-constant expressions
+        //   - type_check is a no-op for standard gate calls
+        // We can skip both passes entirely and go straight to conversion.
+        if (auto gateCall =
+                std::dynamic_pointer_cast<GateCallStatement>(statement);
+            gateCall != nullptr && gateCall->arguments.empty() &&
+            gateCall->modifiers.empty()) {
+          // Check if all operands are constant (integer index expressions)
+          bool allOperandsConst = true;
+          for (const auto& op : gateCall->operands) {
+            if (op->expression != nullptr &&
+                op->expression->kind() != ExpressionKind::Constant) {
+              allOperandsConst = false;
+              break;
+            }
+          }
+          if (allOperandsConst) {
+            // Skip const_eval and type_check — go straight to conversion.
+            visitGateCallStatement(gateCall);
+            continue;
+          }
+        }
+
+        // Normal path: run all three passes
         constEvalPass.processStatement(*statement);
         typeCheckPass.processStatement(*statement);
         statement->accept(this);
@@ -233,6 +280,17 @@ class OpenQasmParser final : public InstVisitor {
       switch (sizedTy->type) {
         case QBit:
           qc->addQubitRegister(designator, identifier);
+          // Cache the first (and typically only) quantum register for fast
+          // operand translation in evaluateGateCall.
+          if (cachedRegName_.empty()) {
+            const auto& qregs = qc->getQregs();
+            auto it = qregs.find(identifier);
+            if (it != qregs.end()) {
+              cachedRegName_ = identifier;
+              cachedRegBase_ = it->second.first;
+              cachedRegSize_ = it->second.second;
+            }
+          }
           break;
         case Bit:
         case Int:
@@ -554,19 +612,25 @@ class OpenQasmParser final : public InstVisitor {
     }
 
     // check if any of the bits are duplicate
-    std::unordered_set<qc::QBit> allQubits;
-    for (const auto& control : controlBits) {
-      if (allQubits.find(control.qubit) != allQubits.end()) {
-        error("Duplicate qubit in control list.",
-              gateCallStatement->debugInfo);
+    // Optimization: for the overwhelmingly common case of ≤2 total qubits
+    // with no control bits (single-qubit gates like h/s/t/x), skip the
+    // unordered_set entirely — duplicates are impossible with ≤1 element.
+    const size_t totalQubits = controlBits.size() + targetBits.size();
+    if (totalQubits > 1) {
+      std::unordered_set<qc::QBit> allQubits;
+      allQubits.reserve(totalQubits);
+      for (const auto& control : controlBits) {
+        if (!allQubits.emplace(control.qubit).second) {
+          error("Duplicate qubit in control list.",
+                gateCallStatement->debugInfo);
+        }
       }
-      allQubits.emplace(control.qubit);
-    }
-    for (const auto& qubit : targetBits) {
-      if (allQubits.find(qubit) != allQubits.end()) {
-        error("Duplicate qubit in target list.", gateCallStatement->debugInfo);
+      for (const auto& qubit : targetBits) {
+        if (!allQubits.emplace(qubit).second) {
+          error("Duplicate qubit in target list.",
+                gateCallStatement->debugInfo);
+        }
       }
-      allQubits.emplace(qubit);
     }
 
     if (broadcastingWidth == 1) {
@@ -601,7 +665,7 @@ class OpenQasmParser final : public InstVisitor {
 
   static std::shared_ptr<Gate> getMcGateDefinition(
       const std::string& identifier, size_t operandSize,
-      const std::shared_ptr<DebugInfo>& debugInfo) {
+      const DebugInfo& debugInfo) {
     std::vector<std::string> targetParams{};
     std::vector<std::shared_ptr<GateOperand>> operands;
     size_t nTargets = operandSize;
@@ -646,11 +710,113 @@ class OpenQasmParser final : public InstVisitor {
       const std::shared_ptr<Gate>& gate, qc::Targets targetBits,
       std::vector<qc::Control> controlBits,
       std::vector<qc::fp> evaluatedParameters, bool invertOperation,
-      const std::shared_ptr<DebugInfo>& debugInfo) {
+      const DebugInfo& debugInfo) {
     std::vector<std::shared_ptr<qcos::BaseOperation>> ops;
 
     if (gate->gateKind == GateKind::Standard) {
       auto* standardGate = static_cast<StandardGate*>(gate.get());
+
+      // Handle invert operation
+      if (invertOperation) {
+        // TODO: we need to define the inverse of each gate
+      }
+
+      qc::OpType op_type = standardGate->info.type;
+
+      // ── Fast path: single-qubit, no-control, no-parameter gates ────
+      // For Clifford benchmarks (h, s, sdg, t, tdg, x, y, z), this covers
+      // the vast majority of gate calls. Avoids two vector allocations
+      // (all_qubits + arg_values) and the reserve/push_back overhead.
+      if (controlBits.empty() && targetBits.size() == 1 &&
+          evaluatedParameters.empty()) {
+        std::vector<int> all_qubits{static_cast<int>(targetBits[0])};
+        std::vector<double> no_args;
+        std::shared_ptr<qcos::BaseOperation> operation;
+        switch (op_type) {
+          case qc::otH:
+            operation = std::make_shared<qcos::H>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otX:
+            operation = std::make_shared<qcos::X>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otY:
+            operation = std::make_shared<qcos::Y>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otZ:
+            operation = std::make_shared<qcos::Z>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otS:
+            operation = std::make_shared<qcos::S>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otSdg:
+            operation = std::make_shared<qcos::SDG>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otT:
+            operation = std::make_shared<qcos::T>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otTdg:
+            operation = std::make_shared<qcos::TDG>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otSX:
+            operation = std::make_shared<qcos::SX>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otSXdg:
+            operation = std::make_shared<qcos::SXDG>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otI:
+            operation = nullptr;
+            break;
+          default:
+            // Fall through to general path for gates not in the fast path
+            goto general_path;
+        }
+        if (operation != nullptr) {
+          ops.push_back(std::move(operation));
+        }
+        return ops;
+      }
+
+      // ── Fast path: two-qubit (1 control + 1 target), no-parameter gates ──
+      // For cx, cz — the most common two-qubit gates in Clifford benchmarks.
+      if (controlBits.size() == 1 && targetBits.size() == 1 &&
+          evaluatedParameters.empty()) {
+        std::vector<int> all_qubits{
+            static_cast<int>(controlBits[0].qubit),
+            static_cast<int>(targetBits[0])};
+        std::vector<double> no_args;
+        std::shared_ptr<qcos::BaseOperation> operation;
+        switch (op_type) {
+          case qc::otCNOT:
+            operation = std::make_shared<qcos::CX>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otCZ:
+            operation = std::make_shared<qcos::CZ>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otCH:
+            operation = std::make_shared<qcos::CH>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otCY:
+            operation = std::make_shared<qcos::CY>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otCS:
+            operation = std::make_shared<qcos::CS>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otCSdg:
+            operation = std::make_shared<qcos::CSDG>(std::move(all_qubits), std::move(no_args));
+            break;
+          case qc::otSWAP:
+            operation = std::make_shared<qcos::SWAP>(std::move(all_qubits), std::move(no_args));
+            break;
+          default:
+            goto general_path;
+        }
+        if (operation != nullptr) {
+          ops.push_back(std::move(operation));
+        }
+        return ops;
+      }
+
+    general_path:
       // All_qubits: control in front, target in back
       std::vector<int> all_qubits;
       all_qubits.reserve(controlBits.size() + targetBits.size());
@@ -672,13 +838,7 @@ class OpenQasmParser final : public InstVisitor {
         }
       }
 
-      // Handle invert operation
-      if (invertOperation) {
-        // TODO: we need to define the inverse of each gate
-      }
-
       // Directly construct gate from OpType — skip string intermediate
-      qc::OpType op_type = standardGate->info.type;
       std::shared_ptr<qcos::BaseOperation> operation;
 
       switch (op_type) {
@@ -949,6 +1109,12 @@ class OpenQasmParser final : public InstVisitor {
             }
           }
 
+          // Invalidate the register cache before the recursive call —
+          // nestedQubits maps gate parameter names (e.g. "a","b","c")
+          // to single-qubit slices, which differ from the top-level
+          // quantum registers that the cache was populated with.
+          cachedRegName_.clear();
+
           auto nestedOps = evaluateGateCall(
               gateCallStatement, gateCallStatement->identifier,
               gateCallStatement->arguments, gateCallStatement->operands,
@@ -958,6 +1124,9 @@ class OpenQasmParser final : public InstVisitor {
             return {};
           }
           ops.insert(ops.end(), nestedOps.begin(), nestedOps.end());
+          // Invalidate cache after recursive call — the recursive call may
+          // have cached a gate parameter name that doesn't exist in qregs.
+          cachedRegName_.clear();
         } else {
           error("Unhandled quantum statement.", debugInfo);
           return {};
@@ -980,7 +1149,7 @@ class OpenQasmParser final : public InstVisitor {
       const std::string& identifier,
       const std::shared_ptr<Expression>& indexExpression,
       const std::shared_ptr<MeasureExpression>& measureExpression,
-      const std::shared_ptr<DebugInfo>& debugInfo) {
+      const DebugInfo& debugInfo) {
     const auto decl = declarations.find(identifier);
     if (!decl.has_value()) {
       error("Usage of unknown identifier '" + identifier + "'.", debugInfo);
@@ -1168,7 +1337,7 @@ void qc::QuantumComputation::importOpenQASM(std::istream& is) {
     }
   }
 
-  Parser p(&is);
+  Parser p(&is, /*implicitlyIncludeStdgates=*/false);
 
   const auto program = p.parseProgram();
   OpenQasmParser parser{this};

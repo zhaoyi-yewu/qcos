@@ -32,13 +32,13 @@ std::optional<Token> Scanner::consumeWhitespaceAndComments() {
   }
   if (ch == '/' && peek() == '/') {
     Token t(line, col);
-    // consume until newline
-    std::string content;
-    content.reserve(64);
+    // Zero-copy: record start position and advance through comment content,
+    // then create a string_view into the buffer_.
+    const char* contentStart = ptr_ - 1;
     while (ch != '\n' && ch != 0) {
-      content.push_back(ch);
       nextCh();
     }
+    size_t contentLen = static_cast<size_t>(ptr_ - 1 - contentStart);
     if (ch == '\n') {
       nextCh();
     }
@@ -48,10 +48,14 @@ std::optional<Token> Scanner::consumeWhitespaceAndComments() {
     // (0-2 per file), but this code runs for every single-line comment.
     bool isLayout = false;
     bool isPerm = false;
-    if (content.size() >= 2 && content[0] == 'i' && content[1] == ' ') {
+    if (contentLen >= 2 && contentStart[0] == 'i' && contentStart[1] == ' ') {
+      // regex_search requires a std::string for the subject, but this path
+      // is extremely rare so the allocation is acceptable.
+      std::string content(contentStart, contentLen);
       static const auto INITIAL_LAYOUT_REGEX = std::regex("i (\\d+ )*(\\d+)");
       isLayout = std::regex_search(content, INITIAL_LAYOUT_REGEX);
-    } else if (content.size() >= 2 && content[0] == 'o' && content[1] == ' ') {
+    } else if (contentLen >= 2 && contentStart[0] == 'o' && contentStart[1] == ' ') {
+      std::string content(contentStart, contentLen);
       static const auto OUTPUT_PERMUTATION_REGEX =
           std::regex("o (\\d+ )*(\\d+)");
       isPerm = std::regex_search(content, OUTPUT_PERMUTATION_REGEX);
@@ -65,7 +69,7 @@ std::optional<Token> Scanner::consumeWhitespaceAndComments() {
       return consumeWhitespaceAndComments();
     }
 
-    t.str = std::move(content);
+    t.str = std::string_view(contentStart, contentLen);
     t.endCol = col;
     t.endLine = line;
     return t;
@@ -90,17 +94,17 @@ std::optional<Token> Scanner::consumeWhitespaceAndComments() {
 
 Token Scanner::consumeName() {
   Token t(line, col);
-  std::string name;
 
+  // Zero-copy: record start position and advance through identifier chars,
+  // then create a string_view into the buffer_ — no std::string allocation.
+  const char* start = ptr_ - 1;  // ptr_ already advanced past first char by nextCh()
   while (isFirstIdChar(ch) || isNum(ch)) {
-    name.push_back(ch);
     nextCh();
   }
+  t.str = std::string_view(start, static_cast<size_t>(ptr_ - start - 1));
 
-  t.str = std::move(name);
-
-  auto it = keywords.find(t.str);
-  t.kind = (it != keywords.end()) ? it->second : Token::Kind::Identifier;
+  auto it = keywords->find(t.str);
+  t.kind = (it != keywords->end()) ? it->second : Token::Kind::Identifier;
 
   t.endCol = col;
   t.endLine = line;
@@ -276,14 +280,14 @@ Token Scanner::consumeString() {
   const auto delim = ch;
   nextCh();
 
-  std::string content;
-  content.reserve(64);
+  // Zero-copy: record start position and advance through string content,
+  // then create a string_view into the buffer_ — no std::string allocation.
+  const char* start = ptr_ - 1;
   while (ch != delim) {
-    content.push_back(ch);
     nextCh();
   }
 
-  t.str = std::move(content);
+  t.str = std::string_view(start, static_cast<size_t>(ptr_ - start - 1));
 
   expect(delim);
 
@@ -301,9 +305,9 @@ Scanner::Scanner(std::istream* in) {
   ptr_ = buffer_.data();
   end_ = ptr_ + buffer_.size();
 
-  // Initialize keywords from a static table — single copy instead of 50+
-  // individual map insertions per Scanner construction.
-  static const std::unordered_map<std::string, Token::Kind> s_keywords = {
+  // Share a static keyword table — zero-copy across all Scanner instances.
+  // string_view keys reference string literals which live for the program duration.
+  static const std::unordered_map<std::string_view, Token::Kind> s_keywords = {
       {"OPENQASM", Token::Kind::OpenQasm},
       {"include", Token::Kind::Include},
       {"defcalgrammar", Token::Kind::DefCalGrammar},
@@ -371,7 +375,7 @@ Scanner::Scanner(std::istream* in) {
       {"ln", Token::Kind::Ln},
       {"sqrt", Token::Kind::Sqrt},
   };
-  keywords = s_keywords;
+  keywords = &s_keywords;
 
   nextCh();
 }

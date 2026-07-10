@@ -38,14 +38,14 @@ struct DebugInfo {
   size_t line;
   size_t column;
   std::string filename;
-  std::shared_ptr<DebugInfo> parent;
+  DebugInfo* parent;  // raw pointer — lifetime owned by the parse session pool
 
   DebugInfo(const size_t l, const size_t c, std::string file,
-            std::shared_ptr<DebugInfo> parentDebugInfo = nullptr)
+            DebugInfo* parentDebugInfo = nullptr)
       : line(l),
         column(c),
         filename(std::move(std::move(file))),
-        parent(std::move(parentDebugInfo)) {}
+        parent(parentDebugInfo) {}
 
   [[nodiscard]] std::string toString() const {
     return filename + ":" + std::to_string(line) + ":" +
@@ -53,11 +53,19 @@ struct DebugInfo {
   }
 };
 
+// ExpressionKind is forward-declared in inst_visitor.hpp (included above).
+// It is used for O(1) dispatch — replaces dynamic_pointer_cast chain.
+
 // Expressions
 class Expression {
  public:
   virtual ~Expression() = default;
 
+  // Returns the ExpressionKind ordinal — used by ExpressionVisitor::visit()
+  // for O(1) dispatch without requiring a full type definition at the call site.
+  virtual int kindOrdinal() const = 0;
+
+  virtual ExpressionKind kind() const = 0;
   virtual std::string getName() = 0;
 };
 
@@ -86,6 +94,8 @@ class Constant : public Expression {
   explicit Constant(bool value)
       : val(value), isSigned(false), isFp(false), isBoolean(true) {}
 
+  int kindOrdinal() const override { return static_cast<int>(ExpressionKind::Constant); }
+  ExpressionKind kind() const override { return ExpressionKind::Constant; }
   [[nodiscard]] bool isInt() const { return !isFp; }
   [[nodiscard]] bool isSInt() const { return !isFp && isSigned; }
   [[nodiscard]] bool isUInt() const { return !isFp && !isSigned; }
@@ -144,6 +154,8 @@ class BinaryExpression
                    std::shared_ptr<Expression> r)
       : op(opcode), lhs(std::move(l)), rhs(std::move(r)) {}
 
+  int kindOrdinal() const override { return static_cast<int>(ExpressionKind::Binary); }
+  ExpressionKind kind() const override { return ExpressionKind::Binary; }
   std::string getName() override { return "BinaryExpr"; }
 };
 
@@ -171,6 +183,8 @@ class UnaryExpression : public Expression,
   UnaryExpression(const Op opcode, std::shared_ptr<Expression> expr)
       : operand(std::move(expr)), op(opcode) {}
 
+  int kindOrdinal() const override { return static_cast<int>(ExpressionKind::Unary); }
+  ExpressionKind kind() const override { return ExpressionKind::Unary; }
   std::string getName() override { return "UnaryExpr"; }
 };
 
@@ -182,6 +196,8 @@ class IdentifierExpression
 
   explicit IdentifierExpression(std::string id) : identifier(std::move(id)) {}
 
+  int kindOrdinal() const override { return static_cast<int>(ExpressionKind::Identifier); }
+  ExpressionKind kind() const override { return ExpressionKind::Identifier; }
   std::string getName() override {
     return std::string{"IdentifierExpr ("} + identifier + ")";
   }
@@ -198,6 +214,8 @@ class IdentifierList : public Expression,
 
   explicit IdentifierList() = default;
 
+  int kindOrdinal() const override { return static_cast<int>(ExpressionKind::IdentifierList); }
+  ExpressionKind kind() const override { return ExpressionKind::IdentifierList; }
   std::string getName() override { return "IdentifierList"; }
 };
 
@@ -220,15 +238,48 @@ class MeasureExpression
   explicit MeasureExpression(std::shared_ptr<GateOperand> gateOperand)
       : gate(std::move(gateOperand)) {}
 
+  int kindOrdinal() const override { return static_cast<int>(ExpressionKind::Measure); }
+  ExpressionKind kind() const override { return ExpressionKind::Measure; }
   std::string getName() override { return "MeasureExpression"; }
 };
+
+// ── Deferred definition of ExpressionVisitor::visit() ───────────────
+// Must be placed here, after all Expression subclasses are fully defined,
+// because calling kindOrdinal() requires a complete Expression type.
+template <typename T>
+T ExpressionVisitor<T>::visit(const std::shared_ptr<Expression>& expression) {
+  if (expression == nullptr) {
+    throw std::runtime_error("Expression is null");
+  }
+  switch (expression->kindOrdinal()) {
+    case static_cast<int>(ExpressionKind::Binary):
+      return visitBinaryExpression(
+          std::static_pointer_cast<BinaryExpression>(expression));
+    case static_cast<int>(ExpressionKind::Unary):
+      return visitUnaryExpression(
+          std::static_pointer_cast<UnaryExpression>(expression));
+    case static_cast<int>(ExpressionKind::Constant):
+      return visitConstantExpression(
+          std::static_pointer_cast<Constant>(expression));
+    case static_cast<int>(ExpressionKind::Identifier):
+      return visitIdentifierExpression(
+          std::static_pointer_cast<IdentifierExpression>(expression));
+    case static_cast<int>(ExpressionKind::IdentifierList):
+      return visitIdentifierList(
+          std::static_pointer_cast<IdentifierList>(expression));
+    case static_cast<int>(ExpressionKind::Measure):
+      return visitMeasureExpression(
+          std::static_pointer_cast<MeasureExpression>(expression));
+  }
+  throw std::runtime_error("Unhandled expression type.");
+}
 
 // Statements
 
 class Statement {
  public:
-  std::shared_ptr<DebugInfo> debugInfo;
-  explicit Statement(std::shared_ptr<DebugInfo> debug)
+  DebugInfo debugInfo;  // inline — no heap allocation, no refcount
+  explicit Statement(DebugInfo debug)
       : debugInfo(std::move(debug)) {}
   virtual ~Statement() = default;
 
@@ -237,7 +288,7 @@ class Statement {
 
 class QuantumStatement : public Statement {
  protected:
-  explicit QuantumStatement(std::shared_ptr<DebugInfo> debug)
+  explicit QuantumStatement(DebugInfo debug)
       : Statement(std::move(debug)) {}
 };
 
@@ -251,7 +302,7 @@ class GateDeclaration : public Statement,
   bool isOpaque;
 
   explicit GateDeclaration(
-      std::shared_ptr<DebugInfo> debug, std::string id,
+      DebugInfo debug, std::string id,
       std::shared_ptr<IdentifierList> params,
       std::shared_ptr<IdentifierList> qbits,
       std::vector<std::shared_ptr<QuantumStatement>> stmts,
@@ -278,7 +329,7 @@ class VersionDeclaration
  public:
   double version;
 
-  explicit VersionDeclaration(std::shared_ptr<DebugInfo> debug,
+  explicit VersionDeclaration(DebugInfo debug,
                               const double versionNum)
       : Statement(std::move(debug)), version(versionNum) {}
 
@@ -292,7 +343,7 @@ class InitialLayout : public Statement,
  public:
   qc::Permutation permutation;
 
-  explicit InitialLayout(std::shared_ptr<DebugInfo> debug,
+  explicit InitialLayout(DebugInfo debug,
                          qc::Permutation perm)
       : Statement(std::move(debug)), permutation(std::move(perm)) {}
 
@@ -308,7 +359,7 @@ class OutputPermutation
  public:
   qc::Permutation permutation;
 
-  explicit OutputPermutation(std::shared_ptr<DebugInfo> debug,
+  explicit OutputPermutation(DebugInfo debug,
                              qc::Permutation perm)
       : Statement(std::move(debug)), permutation(std::move(perm)) {}
 
@@ -327,7 +378,7 @@ class DeclarationStatement
   std::string identifier;
   std::shared_ptr<DeclarationExpression> expression;
 
-  DeclarationStatement(std::shared_ptr<DebugInfo> debug,
+  DeclarationStatement(DebugInfo debug,
                        const bool declIsConst, std::shared_ptr<TypeExpr> ty,
                        std::string id,
                        std::shared_ptr<DeclarationExpression> expr)
@@ -385,7 +436,7 @@ class GateCallStatement
   std::vector<std::shared_ptr<Expression>> arguments;
   std::vector<std::shared_ptr<GateOperand>> operands;
 
-  GateCallStatement(std::shared_ptr<DebugInfo> debug, std::string id,
+  GateCallStatement(DebugInfo debug, std::string id,
                     std::vector<std::shared_ptr<GateModifier>> modifierList,
                     std::vector<std::shared_ptr<Expression>> argumentList,
                     std::vector<std::shared_ptr<GateOperand>> operandList)
@@ -423,7 +474,7 @@ class AssignmentStatement
   std::shared_ptr<Expression> indexExpression;
   std::shared_ptr<DeclarationExpression> expression;
 
-  AssignmentStatement(std::shared_ptr<DebugInfo> debug, const Type ty,
+  AssignmentStatement(DebugInfo debug, const Type ty,
                       std::shared_ptr<IdentifierExpression> id,
                       std::shared_ptr<Expression> indexExpr,
                       std::shared_ptr<DeclarationExpression> expr)
@@ -444,7 +495,7 @@ class BarrierStatement
  public:
   std::vector<std::shared_ptr<GateOperand>> gates;
 
-  explicit BarrierStatement(std::shared_ptr<DebugInfo> debug,
+  explicit BarrierStatement(DebugInfo debug,
                             std::vector<std::shared_ptr<GateOperand>> gateList)
       : QuantumStatement(std::move(debug)), gates(std::move(gateList)) {}
 
@@ -458,7 +509,7 @@ class ResetStatement : public QuantumStatement,
  public:
   std::shared_ptr<GateOperand> gate;
 
-  explicit ResetStatement(std::shared_ptr<DebugInfo> debug,
+  explicit ResetStatement(DebugInfo debug,
                           std::shared_ptr<GateOperand> g)
       : QuantumStatement(std::move(debug)), gate(std::move(g)) {}
 
@@ -477,7 +528,7 @@ class IfStatement : public Statement,
   IfStatement(const std::shared_ptr<Expression>& cond,
               const std::vector<std::shared_ptr<Statement>>& thenStmts,
               const std::vector<std::shared_ptr<Statement>>& elseStmts,
-              std::shared_ptr<DebugInfo> debug)
+              DebugInfo debug)
       : Statement(std::move(debug)),
         condition(cond),
         thenStatements(thenStmts),

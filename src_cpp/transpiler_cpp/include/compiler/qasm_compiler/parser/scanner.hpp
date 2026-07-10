@@ -28,7 +28,7 @@ class Scanner {
   std::string buffer_;
   const char* ptr_ = nullptr;
   const char* end_ = nullptr;
-  std::unordered_map<std::string, Token::Kind> keywords{};
+  const std::unordered_map<std::string_view, Token::Kind>* keywords{};
   char ch = 0;
   size_t line = 1;
   size_t col = 0;
@@ -102,5 +102,24 @@ class Scanner {
   ~Scanner() = default;
 
   Token next();
+
+  // Position save/restore for fast-path lookahead (Phase 5)
+  struct Checkpoint {
+    const char* ptr;
+    char ch;
+    size_t line;
+    size_t col;
+  };
+
+  [[nodiscard]] Checkpoint saveCheckpoint() const {
+    return Checkpoint{ptr_, ch, line, col};
+  }
+
+  void restoreCheckpoint(const Checkpoint& cp) {
+    ptr_ = cp.ptr;
+    ch = cp.ch;
+    line = cp.line;
+    col = cp.col;
+  }
 };
 }  // namespace qasm

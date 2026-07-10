@@ -64,7 +64,7 @@ class TypeCheckPass : public CompilerPass,
   ConstEvalPass* constEvalPass;
 
   InferredType error(const std::string& msg,
-                     const std::shared_ptr<DebugInfo>& debugInfo = nullptr) {
+                     const DebugInfo* debugInfo = nullptr) {
     std::cerr << "Type check error: " << msg << '\n';
     if (debugInfo) {
       std::cerr << "  " << debugInfo->toString() << '\n';
@@ -87,10 +87,10 @@ class TypeCheckPass : public CompilerPass,
       statement.accept(this);
 
       if (hasError) {
-        throw CompilerError("Type check failed.", statement.debugInfo);
+        throw CompilerError("Type check failed.", DebugInfo(statement.debugInfo));
       }
     } catch (const TypeCheckError& e) {
-      throw CompilerError(e.toString(), statement.debugInfo);
+      throw CompilerError(e.toString(), DebugInfo(statement.debugInfo));
     }
   }
 
