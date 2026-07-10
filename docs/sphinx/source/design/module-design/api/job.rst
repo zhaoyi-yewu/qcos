@@ -243,8 +243,39 @@
                  "ended_at": "2025-07-15T14:53:43.355531",
                  "results": [
                    {
-                     "metadata": {},
-                     "profiling": {},
+                     "metadata": {
+                        "results_fetch_mode": "sync",
+                        "status": "COMPLETED",
+                        "ended_at": "2026-07-10T10:49:05.180749",
+                        "raw_results": {
+                            "lineResult": "{\"00\":2,\"11\":4,\"01\":2,\"10\":2}",
+                            "optimization": "OPENQASM 2.0;\r\ninclude \"qelib1.inc\";\r\nqreg q[2];\r\ncreg c[2];\r\nrx(pi) q[0];\r\nrx(pi) q[1];\r\nmeasure q[0] -> c[0];\r\nmeasure q[1] -> c[1];",
+                            "grid": "(0,0)\r\n(0,2)\r\n\r\n(0,0),(0,2)\r\n"
+                        },
+                        "profiling": {
+                            "driver:parse_started_at": "2026-07-10T10:48:54.197203",
+                            "driver:parse_ended_at": "2026-07-10T10:48:54.217336",
+                            "driver:parse": 0.02013,
+                            "driver:transpile_started_at": "2026-07-10T10:48:54.217357",
+                            "driver:transpile_ended_at": "2026-07-10T10:48:54.227491",
+                            "driver:transpile": 0.01013,
+                            "driver:run_started_at": "2026-07-10T10:48:54.227515",
+                            "driver:run_ended_at": "2026-07-10T10:49:05.184660",
+                            "driver:run": 10.95714,
+                            "machine_started_at": "2026-07-10T10:48:56.280000",
+                            "machine_ended_at": "2026-07-10T10:49:01.378000",
+                            "machine": 5097477.0,
+                            "scheduling_started_at": "2026-07-10T10:48:50.920598",
+                            "scheduling_ended_at": "2026-07-10T10:48:50.920599",
+                            "scheduling": 0.0,
+                            "queuing_started_at": "2026-07-10T10:48:53.795691",
+                            "queuing_ended_at": "2026-07-10T10:48:50.970860",
+                            "queuing": 2.82483,
+                            "code_started_at": "2026-07-10T10:48:53.870069",
+                            "code_ended_at": "2026-07-10T10:49:05.184724",
+                            "code": 11.31465
+                        }
+                     }
                      "results": {"00": 50,"01":50},
                      "num_qubits":2
                    }
