@@ -108,7 +108,7 @@
    qcos-cli submit-job --code-type qasm --shots 10 --backend dummy  --job-priority 5 -f ./samples/qasm/2.0/simple-qasm.qasm
 
    # 开启电路切割
-   qcos-cli submit-job --code-type qasm --shots 10 --backend dummy --transpiler-options '{"enable_na_move": true}' --driver-options '{"enable_wirecut":true}' -f ./samples/qasm/2.0/wirecut/12_30.qasm
+   qcos-cli submit-job --code-type qasm --shots 10 --backend quafu --driver-options '{"enable_wirecut":true, "wirecut_qubit_width": 10}' -f ./samples/qasm/2.0/wirecut/12_30.qasm
 
 - qutip驱动 (测试用)
 
