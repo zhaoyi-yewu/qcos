@@ -263,7 +263,10 @@ class DriverWuyueBase(DriverBase):
             )
 
         # 7. Save results and set driver status to ONLINE
-        _results = results.get("lineResult", None)
+        line_result = results.get("lineResult", None)
+        _results = {}
+        if line_result is not None:
+            _results = json.loads(line_result)
         self.set_results(
             job_id,
             data_index,
