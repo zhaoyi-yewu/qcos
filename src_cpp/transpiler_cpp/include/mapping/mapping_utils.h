@@ -18,6 +18,7 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "circuit/base_operation.h"
@@ -74,6 +75,17 @@ struct PhysicalIdRemap {
  * @param fidelity_threshold 保真度阈值，<=0 时不做任何过滤
  */
 void filter_low_fidelity(ChipCalibration& chip, double fidelity_threshold);
+
+/**
+ * @brief 选择耦合图的最大连通分量
+ *
+ * 通过 BFS 找出所有连通分量，只保留节点数最多的那个分量。
+ *
+ * @param coupling_list [in/out] 耦合边列表，原地过滤为最大连通分量
+ * @param edge_fidelities [in/out] 边保真度列表，与 coupling_list 同步过滤
+ */
+void select_largest_component(std::vector<std::pair<int, int>>& coupling_list,
+                              std::vector<double>& edge_fidelities);
 
 /**
  * @brief 芯片拓扑稠密化: 将稀疏物理 ID 压缩为 0..N-1

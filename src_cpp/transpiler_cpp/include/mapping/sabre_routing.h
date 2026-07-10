@@ -29,11 +29,6 @@ namespace qcos {
 // forward declaration
 class SABRE;
 
-bool validate_routing(const SABRE& sabre,
-                      const std::vector<GateOperation>& logical_gates,
-                      const std::vector<GateOperation>& physical_gates,
-                      std::vector<int>& initial_l2p);
-
 std::vector<int> sabre_initial_mapping(
     const std::vector<GateOperation>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list);
@@ -145,11 +140,6 @@ class SABRE {
    * physical qubit
    */
   inline std::vector<int> get_logic2phy() const { return logic2phy_; }
-
-  friend bool validate_routing(
-      const SABRE& sabre, const std::vector<GateOperation>& logical_gates,
-      const std::vector<GateOperation>& physical_gates,
-      std::vector<int>& initial_l2p);
 
   friend std::vector<int> sabre_initial_mapping(
       const std::vector<GateOperation>& gates_list,
