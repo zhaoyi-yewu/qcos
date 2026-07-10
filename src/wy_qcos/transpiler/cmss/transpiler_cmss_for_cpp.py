@@ -16,17 +16,13 @@
 # ----------------------------------------------------------------------
 
 import logging
-
-from wy_qcos.log.logger import log_perf
-
 from schema import Optional
 
-from wy_qcos.common.cmss.base_operation import BaseOperation
+from wy_qcos.log.logger import log_perf
 from wy_qcos.transpiler.common.utils import (
     TranspileRuntime,
     Timer,
 )
-
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.cmss.compiler.decomposer import (
     decompose_gates_to_1q2q,
@@ -44,7 +40,6 @@ from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     SCRoute,
     SC_MAPPING_OPTIONS_SCHEMA,
 )
-
 from wy_qcos.transpiler.cmss.mapping.utils import dg_swap_opt
 from wy_qcos.transpiler.common.errors import TranspilerException
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
@@ -55,7 +50,6 @@ from wy_qcos.transpiler.cmss.compiler.openqasm3.parser import (
 from wy_qcos.transpiler.high_performance import (
     qasm_to_ir,
     Decomposer,
-    BaseOperation as CppBaseOperation,
     sabre_routing as cpp_sabre_routing,
     optimize,
     transpile as cpp_transpile,
@@ -64,9 +58,8 @@ from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     DEFAULT_SC_MAPPING_OPTIONS,
 )
 from wy_qcos.transpiler.cmss.mapping.utils.sabre_utils import (
-    normalize_topology,
+    extract_topology_data,
 )
-from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing import SABRE
 
 logger = logging.getLogger(__name__)
 
@@ -197,7 +190,15 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                 DEFAULT_SC_MAPPING_OPTIONS["routing_algorithm"],
             )
             if routing_algorithm == "sabre":
-                mapping_res = sabre_routing(value[1], qpu_cfg)
+                coupling_list, edge_fidelities, single_qubit_fidelities = (
+                    extract_topology_data(qpu_cfg)
+                )
+                mapping_res = cpp_sabre_routing(
+                    value[1],
+                    coupling_list,
+                    edge_fidelities=edge_fidelities,
+                    single_qubit_fidelities=single_qubit_fidelities,
+                )
             else:
                 with Timer() as mapping_pre_timer:
                     mapper.prepare_data(value[0], value[1], qpu_cfg)
@@ -283,12 +284,11 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
         Returns:
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.
         """
-        coupling_list = normalize_topology(qpu_cfg)
+        coupling_list, edge_fidelities, single_qubit_fidelities = (
+            extract_topology_data(qpu_cfg)
+        )
         opt_level = self.transpiler_options.get(
             "optimization_level", Constant.DEFAULT_OPTIMIZATION_LEVEL
-        )
-        sc_mapping_options = self.transpiler_options.get(
-            "sc_mapping_options", {}
         )
 
         return cpp_transpile(
@@ -296,11 +296,8 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             supp_basis_gates,
             coupling_list,
             opt_level=opt_level,
-            sabre_extension_size=sc_mapping_options.get(
-                "sabre_extension_size", 20
-            ),
-            sabre_weight=sc_mapping_options.get("sabre_weight", 0.5),
-            sabre_decay=sc_mapping_options.get("sabre_decay", 0.001),
+            edge_fidelities=edge_fidelities,
+            single_qubit_fidelities=single_qubit_fidelities,
         )
 
     def parse(self, src_code_dict, code_type: str = Constant.CODE_TYPE_QASM):
@@ -511,44 +508,3 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             mapping_dict = None
 
         return basis_gate_list, mapping_dict
-
-
-def sabre_routing(
-    ir: list,
-    topology,
-    initial_l2p: list[int] | None = None,
-    extension_size: int = 20,
-    weight: float = 0.5,
-    decay: float = 0.001,
-):
-    """Route a single circuit with SABRE."""
-    if not isinstance(ir, list):
-        raise TypeError(
-            "Ir must be a single-circuit list of BaseOperation instances"
-        )
-
-    coupling_list = normalize_topology(topology)
-
-    if len(ir) == 0:
-        return ir
-
-    first_op = ir[0]
-    if isinstance(first_op, BaseOperation):
-        sabre = SABRE(
-            coupling_list=coupling_list,
-            extension_size=extension_size,
-            weight=weight,
-            decay=decay,
-        )
-        sabre.execute(ir, initial_l2p)
-        return sabre.phy_exe_gates
-
-    if CppBaseOperation is not None and isinstance(first_op, CppBaseOperation):
-        initial_l2p = [] if initial_l2p is None else initial_l2p
-        return cpp_sabre_routing(
-            ir, coupling_list, initial_l2p, extension_size, weight, decay
-        )
-
-    raise TypeError(
-        "Ir must be a single-circuit list of BaseOperation instances"
-    )

@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from collections.abc import Iterable
 from collections.abc import Sequence
 from typing import TypeAlias
 
@@ -32,6 +31,13 @@ def _normalize_qubit_index(value: object) -> int:
 
     Returns:
         int: The normalized integer qubit index.
+
+    Examples::
+
+        _normalize_qubit_index("Q0")  -> 0
+        _normalize_qubit_index("P15") -> 15
+        _normalize_qubit_index(3)     -> 3
+        _normalize_qubit_index("42")  -> 42
     """
     if isinstance(value, bool):
         raise ValueError("Boolean values are not valid qubit identifiers")
@@ -61,6 +67,12 @@ def _normalize_edge(edge: Sequence[object]) -> tuple[int, int]:
 
     Returns:
         tuple[int, int]: The normalized edge.
+
+    Examples::
+
+        _normalize_edge(["Q0", "Q1"]) -> (0, 1)
+        _normalize_edge(("P3", "P4")) -> (3, 4)
+        _normalize_edge([2, 5])       -> (2, 5)
     """
     if len(edge) != 2:
         raise ValueError(f"Invalid topology edge: {edge!r}")
@@ -82,47 +94,188 @@ def _extract_coupler_map_edges(
 
     Returns:
         list[tuple[int, int]]: Valid normalized topology edges.
+
+    Example:
+        Input coupler_map::
+
+            {
+                "CZ0_1": ["Q0", "Q1"],
+                "CZ1_0": ["Q1", "Q0"],
+                "CZ2_3": ["Q2", "Q3"],
+            }
+
+        Output::
+
+            [(0, 1), (1, 0), (2, 3)]
     """
     topology_edges = []
 
-    for value in coupler_map.values():
+    for key, value in coupler_map.items():
         if not isinstance(value, (list, tuple)) or len(value) != 2:
-            continue
-
-        try:
-            topology_edges.append(_normalize_edge(value))
-        except ValueError:
-            continue
+            raise TypeError(
+                f"coupler_map[{key!r}] must be a 2-element list/tuple, "
+                f"got {value!r}"
+            )
+        topology_edges.append(_normalize_edge(value))
 
     return topology_edges
 
 
-def normalize_topology(topology: Topology) -> list[tuple[int, int]]:
-    """Normalize supported topology inputs into integer edge pairs.
+def _extract_qubit_errors(
+    readout_error: dict,
+) -> dict[int, float]:
+    """Extract per-qubit error values from readout_error mapping.
 
     Args:
-        topology (Topology): Topology edges, a networkx graph, or a qpu_cfg-
-            style topology config.
+        readout_error: Mapping from qubit name to error value.
 
     Returns:
-        list[tuple[int, int]]: Normalized physical coupling edges.
+        Mapping from normalized qubit ID to error value.
+
+    Example:
+        Input readout_error::
+
+            {"Q0": 0.001, "Q1": 0.002, "Q5": 0.003}
+
+        Output::
+
+            {0: 0.001, 1: 0.002, 5: 0.003}
     """
-    if isinstance(topology, nx.Graph):
-        return [_normalize_edge(edge) for edge in topology.edges]
-
-    if isinstance(topology, dict):
-        if "coupler_map" not in topology:
-            raise ValueError(
-                "Cannot extract topology from qpu_cfg: missing coupler_map."
+    qubit_errors: dict[int, float] = {}
+    for qubit_name, error_value in readout_error.items():
+        if not isinstance(error_value, (int, float)):
+            raise TypeError(
+                f"readout_error[{qubit_name!r}] must be numeric, "
+                f"got {type(error_value).__name__}"
             )
-        coupler_map = topology["coupler_map"]
-        if not isinstance(coupler_map, dict):
-            raise TypeError("Coupler_map must be a dict.")
-        return _extract_coupler_map_edges(coupler_map)
+        qubit_id = _normalize_qubit_index(qubit_name)
+        qubit_errors[qubit_id] = float(error_value)
+    return qubit_errors
 
-    if not isinstance(topology, Iterable):
-        raise TypeError(
-            "Topology must be an iterable of edges or a topology config."
+
+def _extract_edge_errors(
+    coupler_map: dict,
+    coupler_error: dict,
+) -> dict[tuple[int, int], float]:
+    """Extract per-edge error values by joining coupler_map and coupler_error.
+
+    Args:
+        coupler_map: Mapping from coupler name to qubit pair.
+        coupler_error: Mapping from coupler name to error value.
+
+    Returns:
+        Mapping from normalized edge tuple to error value.
+
+    Example:
+        Input coupler_map::
+
+            {"CZ0_1": ["Q0", "Q1"], "CZ1_0": ["Q1", "Q0"]}
+
+        Input coupler_error::
+
+            {"CZ0_1": 0.01, "CZ1_0": 0.02}
+
+        Output::
+
+            {(0, 1): 0.01, (1, 0): 0.02}
+    """
+    edge_errors: dict[tuple[int, int], float] = {}
+    for coupler_key, qubit_pair in coupler_map.items():
+        error_value = coupler_error.get(coupler_key)
+        if error_value is None:
+            continue
+        if not isinstance(error_value, (int, float)):
+            raise TypeError(
+                f"coupler_error[{coupler_key!r}] must be numeric, "
+                f"got {type(error_value).__name__}"
+            )
+        edge = _normalize_edge(qubit_pair)
+        edge_errors[edge] = float(error_value)
+    return edge_errors
+
+
+def extract_topology_data(
+    qpu_cfg: dict,
+) -> tuple[list[tuple[int, int]], list[float], list[float]]:
+    """Extract coupling list and fidelity arrays from qpu_cfg.
+
+    Args:
+        qpu_cfg: QPU configuration dict with coupler_map, optional
+            coupler_error and readout_error.
+
+    Returns:
+        A 3-tuple of:
+        - coupling_list: list of (src, dst) edge pairs.
+        - edge_fidelities: list aligned with coupling_list (empty if
+            unavailable).
+        - single_qubit_fidelities: list indexed by physical qubit ID
+            (empty if unavailable).
+
+    Note:
+        Input errors are converted to fidelities: fidelity = 1 - error.
+
+    Example:
+        Input qpu_cfg::
+
+            {
+                "coupler_map": {"CZ0_1": ["Q0", "Q1"], "CZ1_0": ["Q1", "Q0"]},
+                "coupler_error": {"CZ0_1": 0.01, "CZ1_0": 0.02},
+                "readout_error": {"Q0": 0.001, "Q1": 0.002},
+            }
+
+        Output::
+
+            coupling_list = [(0, 1), (1, 0)]
+            edge_fidelities = [0.99, 0.98]
+            single_qubit_fidelities = [0.999, 0.998]
+    """
+    if "coupler_map" not in qpu_cfg:
+        raise ValueError("qpu_cfg missing coupler_map")
+
+    coupler_map = qpu_cfg["coupler_map"]
+    if not isinstance(coupler_map, dict):
+        raise TypeError("coupler_map must be a dict")
+
+    coupling_list = _extract_coupler_map_edges(coupler_map)
+
+    coupler_error = qpu_cfg.get("coupler_error", {})
+    readout_error = qpu_cfg.get("readout_error", {})
+
+    edge_error_dict = (
+        _extract_edge_errors(coupler_map, coupler_error)
+        if isinstance(coupler_error, dict)
+        else {}
+    )
+    qubit_error_dict = (
+        _extract_qubit_errors(readout_error)
+        if isinstance(readout_error, dict)
+        else {}
+    )
+
+    if not edge_error_dict and not qubit_error_dict:
+        return coupling_list, [], []
+
+    if edge_error_dict:
+        edge_fidelities = []
+        for edge in coupling_list:
+            if edge not in edge_error_dict:
+                raise ValueError(
+                    f"Edge {edge} in coupling_list but not in coupler_error"
+                )
+            edge_fidelities.append(1.0 - edge_error_dict[edge])
+    else:
+        edge_fidelities = []
+
+    if qubit_error_dict:
+        all_qubit_ids = {q for edge in coupling_list for q in edge} | set(
+            qubit_error_dict.keys()
         )
+        max_qubit_id = max(all_qubit_ids)
+        single_qubit_fidelities = [
+            1.0 - qubit_error_dict.get(qubit_id, 0.0)
+            for qubit_id in range(max_qubit_id + 1)
+        ]
+    else:
+        single_qubit_fidelities = []
 
-    return [_normalize_edge(edge) for edge in topology]
+    return coupling_list, edge_fidelities, single_qubit_fidelities
