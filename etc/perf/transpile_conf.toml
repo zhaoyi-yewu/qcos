@@ -14,6 +14,10 @@ dirs = []
 # perf_enabled = true
 perf_enabled = false
 
+# 是否启用 C++ 一体化 transpile（单电路 sabre 路由路径），默认 true
+# 注意：当开启时，无法使用csv文件格式输出
+# enable_transpile_single = true
+
 [transpile.transpiler]
 # 默认为true
 # enable_transpiler = true
@@ -30,11 +34,12 @@ opt_level = [0, 1]
 # 拓扑类型, superconducting/neutral_atom
 # superconducting: 超导量子计算机拓扑类型
 tech_type = ["superconducting"]
-# 拓扑类型配置文件, 当is_exec不为false时， 必须配置，绝对路径或项目的相对路径
-config_file = ["./etc/qcos/conf.d/spinq_rpc.toml"]
 # neutral_atom: 中性原子量子计算机拓扑类型
 # tech_type = ["neutral_atom"]
-# 拓扑类型配置文件, 当is_exec不为false时， 必须配置，绝对路径或项目的相对路径
+# 拓扑类型配置文件, 当enable_mapping不为false时， 必须配置，绝对路径或项目的相对路径
+# superconducting: 超导量子计算机拓扑类型
+config_file = ["./etc/qcos/conf.d/spinq_rpc.toml"]
+# neutral_atom: 中性原子量子计算机拓扑类型
 # config_file = ["./etc/qcos/conf.d/hanyuan1.toml"]
 
 # 拓扑类型选择中性原子（neutral_atom）时，支持配置选择mapping算法

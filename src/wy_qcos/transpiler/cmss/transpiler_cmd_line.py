@@ -40,6 +40,7 @@ from wy_qcos.transpiler.cmss.transpiler_cmss_for_cpp import (
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     DEFAULT_SC_MAPPING_OPTIONS,
 )
+from wy_qcos.transpiler.common.errors import TranspilerException
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
@@ -82,6 +83,9 @@ class CMSSTranspilerPerf:
         self.dir_list = []
         self.total_files = []
         self.perf_enabled = False
+        # whether to enable the C++ all-in-one transpile (single-circuit
+        # sabre routing path); defaults to True
+        self.enable_transpile_single = True
         # transpiler configs
         self.base_gates = []
         # optimization level, 0, 1, 2, 3
@@ -214,6 +218,9 @@ class CMSSTranspilerPerf:
         self.perf_enabled = extra_configs["transpile"].get(
             "perf_enabled", False
         )
+        self.enable_transpile_single = extra_configs["transpile"].get(
+            "enable_transpile_single", True
+        )
 
         self.enable_transpiler = extra_configs["transpile"]["transpiler"].get(
             "enable_transpiler", True
@@ -328,6 +335,15 @@ class CMSSTranspilerPerf:
         Config.load_config_file(str(abs_config_path), extra_config=True)
         self.init_transpile_params(extra_configs)
         self.parse_file_args()
+
+        # csv output is not supported when the C++ all-in-one transpile path
+        # is enabled, because that path does not produce per-gate statistics
+        # required by the csv report.
+        if self.csv_file and self.enable_transpile_single:
+            raise TranspilerException(
+                "csv output is not supported when "
+                "enable_transpile_single is true"
+            )
 
         # CLI quiet mode: control what levels appear
         if handlers:
@@ -711,27 +727,31 @@ class CMSSTranspilerPerf:
             # generate basis gates list
             log_perf(logger, "Start performace testing of cmss compiling.")
 
-            # 判断是否可以使用 C++ 一体化 transpile（单电路 sabre 路由路径）
+            # whether the C++ all-in-one transpile path can be used
+            # (single-circuit sabre routing path). It requires
+            # enable_transpile_single to be true plus the existing conditions.
             routing_algorithm = sc_mapping_options.get(
                 "routing_algorithm",
                 DEFAULT_SC_MAPPING_OPTIONS["routing_algorithm"],
             )
             use_cpp_transpile = (
-                self.enable_mapping
+                self.enable_transpile_single
+                and self.enable_mapping
                 and self.enable_transpiler
                 and tech_type == Constant.TECH_TYPE_SUPERCONDUCTING
                 and routing_algorithm == "sabre"
             )
 
             if use_cpp_transpile:
-                # C++ 一体化 transpile：parse + transpile 合并为单次 C++ 调用
+                # C++ all-in-one transpile: parse + transpile in a single
+                # C++ call
                 transpiler.transpiler_options["sc_mapping_options"] = (
                     sc_mapping_options
                 )
                 result = transpiler.transpile_single(
                     qasm_data, expected_basis_gates, qpu_config
                 )
-                # 从 C++ TranspileTimings 填充 Python TranspileRuntime
+                # fill Python TranspileRuntime from C++ TranspileTimings
                 runtime = result.timings
                 for label, attr in [
                     ("parse time", "parse_time"),
@@ -748,7 +768,7 @@ class CMSSTranspilerPerf:
                         f"cpp {label}: {getattr(runtime, attr):.4f}s\n",
                     )
             else:
-                # 原有 Python 流程：parse + transpile 分步执行
+                # original Python path: parse + transpile step by step
                 with Timer() as ast_timer:
                     src_code_info = {"000": qasm_data}
                     parse_result = transpiler.parse(src_code_info)
@@ -770,7 +790,7 @@ class CMSSTranspilerPerf:
                         )
                         transpiler.transpiler_runtime = runtime
 
-                        _, _ = transpiler.transpile(
+                        basis_gate_list, _ = transpiler.transpile(
                             parse_result, expected_basis_gates
                         )
                     runtime.transpile_time = tranpile_timer.elapsed
@@ -784,6 +804,21 @@ class CMSSTranspilerPerf:
             "total running time of cmss-transpiler:"
             f" {total_timer.elapsed:.4f}s\n\n",
         )
+
+        # gate count and depth of the transpiled circuit, derived from the
+        # final basis gate list. Computed outside the timing blocks so it
+        # does not pollute the transpile/total time statistics.
+        if not use_cpp_transpile and self.enable_transpiler:
+            runtime.transpiled_gate_count = len(basis_gate_list)
+            # num_qubits after mapping may exceed the input circuit; use the
+            # qpu max qubits when available, otherwise fall back to the
+            # parsed circuit size.
+            transpiled_num_qubits = trans_cfg_inst.get_max_qubits()
+            if transpiled_num_qubits <= 0:
+                transpiled_num_qubits = self.parse_results[input_file][0]
+            transpiled_qc = QuantumCircuit(num_qubits=transpiled_num_qubits)
+            transpiled_qc.append_operations(basis_gate_list)
+            runtime.transpiled_depth = transpiled_qc.depth()
         return runtime
 
 
