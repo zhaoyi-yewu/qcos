@@ -53,7 +53,7 @@ from wy_qcos.transpiler.cmss.compiler.openqasm3.parser import (
     parse as openqasm3_parse,
 )
 from wy_qcos.transpiler.high_performance import (
-    convert_qasm_string_to_qcos_operations,
+    qasm_to_ir,
     Decomposer,
     BaseOperation as CppBaseOperation,
     sabre_routing as cpp_sabre_routing,
@@ -325,9 +325,7 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                     Constant.CODE_TYPE_QASM,
                     Constant.CODE_TYPE_QASM2,
                 ]:
-                    parse_result, num_qubits = (
-                        convert_qasm_string_to_qcos_operations(value)
-                    )
+                    parse_result, num_qubits = qasm_to_ir(value)
                 else:
                     circuit = openqasm3_parse(value)
                     num_qubits = circuit.num_qubits

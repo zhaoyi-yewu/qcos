@@ -34,7 +34,7 @@ import pytest
 from pathlib import Path
 
 from wy_qcos.transpiler.high_performance import (
-    convert_qasm_string_to_qcos_operations,
+    qasm_to_ir,
     Decomposer,
 )
 from wy_qcos.transpiler.cmss.circuit.cpp_utils import (
@@ -144,7 +144,7 @@ class TestDecomposer:
             A list of gate operations extracted from the intermediate
             representation of the circuit.
         """
-        parse_result, _ = convert_qasm_string_to_qcos_operations(qasm_source)
+        parse_result, _ = qasm_to_ir(qasm_source)
         parse_result = convert_ir_cpp2py(parse_result)
         return parse_result
 

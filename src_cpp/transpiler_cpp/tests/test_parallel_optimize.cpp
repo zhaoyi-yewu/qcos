@@ -26,7 +26,7 @@
 
 #include "circuit/dag_circuit.h"
 #include "circuit/gate_operation.h"
-#include "compiler/qasm_to_origin_ir.hpp"
+#include "compiler/qasm_to_ir.hpp"
 #include "optimizer/gate_optimizer.h"
 
 using namespace qcos;
@@ -225,7 +225,7 @@ TEST(OptimizeParallelTest, SmallQasmCorrectness) {
       "s q[0];\n"
       "sdg q[0];\n";
 
-  auto [ir, num_qubits] = convert_qasm_string_to_qcos_operations(qasm_str);
+  auto [ir, num_qubits] = qasm_to_ir(qasm_str);
   ASSERT_GT(ir.size(), 0u);
 
   auto serial = optimize(ir, 1, false);
@@ -247,7 +247,7 @@ TEST(OptimizeParallelTest, ParallelPerformanceBwtN21) {
 
   std::ostringstream oss;
   oss << ifs.rdbuf();
-  auto [ir, num_qubits] = convert_qasm_string_to_qcos_operations(oss.str());
+  auto [ir, num_qubits] = qasm_to_ir(oss.str());
   ASSERT_GT(ir.size(), 0u);
 
   for (int opt_level = 1; opt_level <= 3; ++opt_level) {

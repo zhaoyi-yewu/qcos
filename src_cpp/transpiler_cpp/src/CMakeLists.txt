@@ -11,6 +11,7 @@ add_library(${LIB_TRANSPILER} STATIC
                             circuit/multi_graph.cpp
                             circuit/gate_operation.cpp
                             circuit/quantum_circuit.cpp
+                            circuit/qasm_converter.cpp
                             optimizer/adjacent_optimization.cpp
                             optimizer/inverse_cancellation.cpp
                             optimizer/subcircuit_rewrite.cpp
@@ -42,7 +43,7 @@ add_library(${LIB_TRANSPILER} STATIC
                             compiler/qasm_compiler/parser/types.cpp
                             compiler/qasm_compiler/qasm_lexer.cpp
                             compiler/qasm_compiler/qasm_parser.cpp
-                            compiler/qasm_to_origin_ir.cpp
+                            compiler/qasm_to_ir.cpp
                             compiler/quantum_computation.cpp
                             transpile/transpile.cpp
                             )

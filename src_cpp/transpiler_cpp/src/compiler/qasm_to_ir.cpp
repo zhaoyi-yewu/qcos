@@ -15,15 +15,15 @@
  * ----------------------------------------------------------------------
  */
 
-#include "compiler/qasm_to_origin_ir.hpp"
+#include "compiler/qasm_to_ir.hpp"
 
 #include "circuit/gate_operation.h"
 #include "compiler/quantum_computation.hpp"
 
 using namespace qcos;
 
-std::pair<std::vector<std::shared_ptr<qcos::BaseOperation>>, int>
-convert_qasm_string_to_qcos_operations(std::string qasm_str) {
+std::pair<std::vector<std::shared_ptr<qcos::BaseOperation>>, int> qasm_to_ir(
+    std::string qasm_str) {
   auto qc = qc::QuantumComputation::fromQASM(qasm_str);
   int qubits_num = static_cast<int>(qc.getNqubits());
   return {std::move(qc.getOps()), qubits_num};
