@@ -182,12 +182,12 @@ class Hanyuan1DataHandler(BaseHTTPRequestHandler):
                 {
                     "taskStatus": 5,  # task_status_completed
                     "outData": {
-                        "lineResult": {
+                        "lineResult": """{
                             "0000": 25,
                             "0001": 25,
                             "0010": 25,
-                            "0011": 25,
-                        },
+                            "0011": 25
+                        }""",
                         "optimization": "OPTIMIZED_CIRCUIT",
                         "grid": "GRID_INFO",
                     },
