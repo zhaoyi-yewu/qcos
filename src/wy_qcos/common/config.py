@@ -49,11 +49,11 @@ class DefaultSection(BaseModel):
         ge=1,
         description="Job clean interval in minutes",
     )
-    JOB_EXPIRE_DAYS: int = Field(
+    JOB_EXPIRE_DAYS: int | float = Field(
         default=7,
-        ge=1,
-        description="Job expiration days, jobs older than this "
-        "will be auto-deleted",
+        ge=0.01,
+        description="Job expiration days (supports int and float), "
+        "jobs older than this will be auto-deleted, minimum: 0.01",
     )
     VENV_DIR: str = Field(
         default="/var/lib/qcos/venv",
