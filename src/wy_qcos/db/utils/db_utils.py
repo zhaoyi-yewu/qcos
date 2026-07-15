@@ -148,8 +148,18 @@ def get_db_filters(
     if job_ids:
         db_filters["id"] = job_ids
 
+    # filter flavor ids
+    flavor_ids = db_filters.pop("flavor_ids", None)
+    if flavor_ids:
+        db_filters["id"] = flavor_ids
+
+    # filter device group ids
+    group_ids = db_filters.pop("group_ids", None)
+    if group_ids:
+        db_filters["id"] = group_ids
+
     if is_super_admin and allow_super_admin:
-        if "project_id" not in db_filters:
+        if "project_id" in db_filters:
             del db_filters["project_id"]
         if "user_id" in db_filters:
             del db_filters["user_id"]
