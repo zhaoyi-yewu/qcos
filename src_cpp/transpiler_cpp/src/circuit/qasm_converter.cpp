@@ -17,6 +17,8 @@
 
 #include "circuit/qasm_converter.h"
 
+#include "circuit/gate_operation.h"
+
 #include <algorithm>
 #include <cctype>
 #include <fstream>
@@ -25,87 +27,105 @@
 
 namespace qcos {
 
-QasmConverter::QasmConverter(const QuantumCircuit& circuit)
-    : operations_(circuit.get_operations()),
-      qubit_num_(circuit.num_qubits()) {
-  if (qubit_num_ == 0) {
-    int max_idx = -1;
-    for (const auto& op : operations_) {
-      if (!op->targets.empty()) {
-        int local_max = *std::max_element(op->targets.begin(),
-                                          op->targets.end());
-        max_idx = std::max(max_idx, local_max);
-      }
-    }
-    if (max_idx >= 0) {
-      qubit_num_ = max_idx + 1;
-    }
-  }
+namespace detail {
+
+std::string to_lower(std::string_view s) {
+  std::string result(s);
+  std::transform(result.begin(), result.end(), result.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  return result;
 }
 
-std::string QasmConverter::to_qasm2() const {
+std::string convert_op_to_qasm2(const BaseOperation& op) {
+  std::string name_lower = to_lower(op.name);
+  if (name_lower == "measure") {
+    const auto& t = op.targets;
+    const auto* measure = dynamic_cast<const Measure*>(&op);
+    const auto& c = measure ? measure->cbits : t;
+    return "measure q[" + std::to_string(t[0]) + "] -> c[" +
+           std::to_string(c[0]) + "];";
+  }
+  if (name_lower == "reset") {
+    return "reset q[" + std::to_string(op.targets[0]) + "];";
+  }
+  return op.to_openqasm("q");
+}
+
+std::string convert_op_to_qasm3(const BaseOperation& op) {
+  std::string name_lower = to_lower(op.name);
+  if (name_lower == "measure") {
+    const auto& t = op.targets;
+    const auto* measure = dynamic_cast<const Measure*>(&op);
+    const auto& c = measure ? measure->cbits : t;
+    return "measure q[" + std::to_string(t[0]) + "] -> c[" +
+           std::to_string(c[0]) + "];";
+  }
+  if (name_lower == "reset") {
+    return "reset q[" + std::to_string(op.targets[0]) + "];";
+  }
+  return op.to_openqasm("q");
+}
+
+}  // namespace detail
+
+std::string to_qasm2(
+    const std::vector<std::shared_ptr<BaseOperation>>& operations) {
+  std::ostringstream body;
+  int max_idx = -1;
+  for (const auto& op : operations) {
+    if (!op->targets.empty()) {
+      int local_max =
+          *std::max_element(op->targets.begin(), op->targets.end());
+      max_idx = std::max(max_idx, local_max);
+    }
+    body << detail::convert_op_to_qasm2(*op) << "\n";
+  }
+  int qubit_num = max_idx >= 0 ? max_idx + 1 : 0;
+
   std::ostringstream oss;
   oss << "OPENQASM 2.0;\n";
   oss << "include \"qelib1.inc\";\n";
-  oss << "qreg q[" << qubit_num_ << "];\n";
-  oss << "creg c[" << qubit_num_ << "];\n";
+  oss << "qreg q[" << qubit_num << "];\n";
+  oss << "creg c[" << qubit_num << "];\n";
   oss << "\n";
-
-  for (const auto& op : operations_) {
-    oss << convert_op_to_qasm2(*op) << "\n";
-  }
+  oss << body.str();
 
   return oss.str();
 }
 
-std::string QasmConverter::convert_op_to_qasm2(const BaseOperation& op) const {
-  std::string name_lower = to_lower(op.name);
-  if (name_lower == "measure" || name_lower == "reset") {
-    const auto& t = op.targets;
-    if (name_lower == "measure") {
-      return "measure q[" + std::to_string(t[0]) + "] -> c[" +
-             std::to_string(t[0]) + "];";
-    } else {
-      return "reset q[" + std::to_string(t[0]) + "];";
+std::string to_qasm3(
+    const std::vector<std::shared_ptr<BaseOperation>>& operations) {
+  std::ostringstream body;
+  int max_idx = -1;
+  for (const auto& op : operations) {
+    if (!op->targets.empty()) {
+      int local_max =
+          *std::max_element(op->targets.begin(), op->targets.end());
+      max_idx = std::max(max_idx, local_max);
     }
+    body << detail::convert_op_to_qasm3(*op) << "\n";
   }
-  return op.to_openqasm("q");
-}
+  int qubit_num = max_idx >= 0 ? max_idx + 1 : 0;
 
-std::string QasmConverter::to_qasm3() const {
   std::ostringstream oss;
   oss << "OPENQASM 3.0;\n";
   oss << "include \"stdgates.inc\";\n";
-  oss << "qubit[" << qubit_num_ << "] q;\n";
-  oss << "bit[" << qubit_num_ << "] c;\n";
+  oss << "qubit[" << qubit_num << "] q;\n";
+  oss << "bit[" << qubit_num << "] c;\n";
   oss << "\n";
-
-  for (const auto& op : operations_) {
-    oss << convert_op_to_qasm3(*op) << "\n";
-  }
+  oss << body.str();
 
   return oss.str();
 }
 
-std::string QasmConverter::convert_op_to_qasm3(const BaseOperation& op) const {
-  std::string name_lower = to_lower(op.name);
-  const auto& t = op.targets;
-  if (name_lower == "measure") {
-    return "measure q[" + std::to_string(t[0]) + "] -> c[" +
-           std::to_string(t[0]) + "];";
-  } else if (name_lower == "reset") {
-    return "reset q[" + std::to_string(t[0]) + "];";
-  }
-  return op.to_openqasm("q");
-}
-
-void QasmConverter::save(const std::string& path,
-                         const std::string& version) const {
+void save_qasm(const std::string& path,
+               const std::vector<std::shared_ptr<BaseOperation>>& operations,
+               const std::string& version) {
   std::string text;
   if (version.size() >= 1 && version[0] == '2') {
-    text = to_qasm2();
+    text = to_qasm2(operations);
   } else if (version.size() >= 1 && version[0] == '3') {
-    text = to_qasm3();
+    text = to_qasm3(operations);
   } else {
     throw std::invalid_argument("Unknown QASM version: " + version);
   }
@@ -115,13 +135,6 @@ void QasmConverter::save(const std::string& path,
     throw std::runtime_error("Failed to open file: " + path);
   }
   ofs << text;
-}
-
-std::string QasmConverter::to_lower(std::string_view s) {
-  std::string result(s);
-  std::transform(result.begin(), result.end(), result.begin(),
-                 [](unsigned char c) { return std::tolower(c); });
-  return result;
 }
 
 }  // namespace qcos
