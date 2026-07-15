@@ -18,6 +18,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -59,8 +60,8 @@ std::shared_ptr<BaseOperation> restore_base_operation(
  * 不可用量子位在 orig_to_dense 中记为 -1。
  */
 struct PhysicalIdRemap {
-  std::vector<int> orig_to_dense;  ///< 原始 ID → 稠密 ID, 不可用量子位填 -1
-  std::vector<int> dense_to_orig;  ///< 稠密 ID → 原始 ID
+  std::vector<int> orig_to_dense;  ///< 原始 ID -> 稠密 ID, 不可用量子位填 -1
+  std::vector<int> dense_to_orig;  ///< 稠密 ID -> 原始 ID
   int dense_count = 0;             ///< 稠密化后的物理位总数
 };
 
@@ -77,9 +78,32 @@ struct PhysicalIdRemap {
 void filter_low_fidelity(ChipCalibration& chip, double fidelity_threshold);
 
 /**
- * @brief 选择耦合图的最大连通分量
+ * @brief 找出耦合图中所有连通分量
  *
- * 通过 BFS 找出所有连通分量，只保留节点数最多的那个分量。
+ * 对 coupling_list 中的节点做 BFS，为每个节点分配一个分量代表 ID。
+ * 两个节点在同一连通分量中当且仅当它们对应的代表 ID 相同。
+ *
+ * @param coupling_list 耦合边列表
+ * @return qubit_id -> 分量代表 ID 的映射表
+ */
+std::unordered_map<int, int> find_connected_components(
+    const std::vector<std::pair<int, int>>& coupling_list);
+
+/**
+ * @brief 选择耦合图的最大连通分量（仅过滤边列表）
+ *
+ * 通过 find_connected_components 找出所有连通分量，
+ * 只保留节点数最多的那个分量中的边。
+ *
+ * @param coupling_list [in/out] 耦合边列表，原地过滤为最大连通分量
+ */
+void select_largest_component(std::vector<std::pair<int, int>>& coupling_list);
+
+/**
+ * @brief 选择耦合图的最大连通分量（同步过滤边保真度）
+ *
+ * 通过 find_connected_components
+ * 找出所有连通分量，只保留节点数最多的那个分量。
  *
  * @param coupling_list [in/out] 耦合边列表，原地过滤为最大连通分量
  * @param edge_fidelities [in/out] 边保真度列表，与 coupling_list 同步过滤
@@ -103,7 +127,7 @@ PhysicalIdRemap densify_chip_topology(ChipCalibration& chip);
  *
  * @param remap densify_chip_topology 返回的映射表
  * @param physical_gates [in/out] 物理门序列
- * @param logic2phy [in/out] 逻辑→物理映射
+ * @param logic2phy [in/out] 逻辑->物理映射
  */
 void restore_physical_ids(const PhysicalIdRemap& remap,
                           std::vector<GateOperation>& physical_gates,

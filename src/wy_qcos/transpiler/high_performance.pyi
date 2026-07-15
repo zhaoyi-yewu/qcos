@@ -2584,3 +2584,31 @@ def load_chip_calibration(csv_path: str) -> high_performance.ChipCalibration:
     ChipCalibration: Parsed calibration data.
     """
     ...
+
+class VerifyParams:
+    """Verification parameters."""
+
+    bits: int
+    basis_gates: list[str]
+    coupling_list: list[tuple[int, int]]
+    edge_fidelities: list[float]
+    single_qubit_fidelities: list[float]
+    target_bits: list[int]
+
+    def __init__(self) -> None: ...
+
+class VerifyResult:
+    """Verification result with pass/fail status and failure message."""
+
+    passed: bool
+    message: str
+
+    def __init__(self) -> None: ...
+
+class QuafuVerifier:
+    """Quafu (夸父) superconducting chip verifier."""
+
+    def __init__(self, params: high_performance.VerifyParams) -> None: ...
+    def verify(
+        self, qasm_string: str, verbose: bool = False
+    ) -> high_performance.VerifyResult: ...

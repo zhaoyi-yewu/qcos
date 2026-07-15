@@ -47,6 +47,7 @@ add_library(${LIB_TRANSPILER} STATIC
                             compiler/qasm_to_ir.cpp
                             compiler/quantum_computation.cpp
                             transpile/transpile.cpp
+                            verify/quafu_verifier.cpp
                             )
 
 

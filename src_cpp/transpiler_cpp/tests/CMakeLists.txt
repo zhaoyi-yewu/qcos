@@ -23,6 +23,7 @@ add_executable(${TEST_NAME} test_main.cpp
                             test_qasm_to_ir.cpp
                             test_parallel_optimize.cpp
                             test_qasm_converter.cpp
+                            test_qpu_verifier.cpp
 )
 target_link_libraries(${TEST_NAME} ${LIB_TRANSPILER} ${LIB_GTEST} ${LIB_ANTLR4})
 
