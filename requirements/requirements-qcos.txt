@@ -67,7 +67,8 @@ sympy==1.14.0
 tomlkit==0.13.3
 typing-inspection==0.4.1
 typing_extensions==4.15.0
-uvicorn==0.34.2
+uvicorn[standard]==0.34.2
+uvloop==0.21.0
 wheel==0.45.1
 # driver: hanyuan1 only
 zerorpc==0.6.3
