@@ -44,7 +44,7 @@ class SubmitJobRequest(UuidMixin):
     # Code types: qasm, qasm2, qasm3, qubo
     code_type: str = Field(
         default=Constant.CODE_TYPE_QASM,
-        description="Code types: qasm, qasm2, qasm3, qubo",
+        description=f"Code types: {', '.join(Constant.CODE_TYPES)}",
     )
     # Source code list
     source_code: list = Field(default=[], description="Source code list")
@@ -59,7 +59,16 @@ class SubmitJobRequest(UuidMixin):
         "If empty, auto scheduling is triggered (requires "
         "flavor_id or extra_specs)",
     )
-    # Flavor ID for auto scheduling
+    # Flavor name for auto scheduling (input). Looked up by the
+    # API layer and resolved to flavor_id before storing in DB.
+    flavor_name: str | None = Field(
+        default=None,
+        exclude=True,
+        description="Flavor name for auto scheduling. "
+        "Specifies preset hardware specs to match against devices. "
+        "Resolved to flavor_id before persisting to DB",
+    )
+    # Flavor ID for auto scheduling (resolved from flavor_name)
     flavor_id: UUID | None = Field(
         default=None,
         description="Flavor ID for auto scheduling. "
