@@ -52,6 +52,7 @@ from pathlib import Path
 from schema import Schema
 from urllib.parse import urlparse
 
+from . import args_schema
 from .constant import HttpCode, HttpHeaders, HttpMethod, Constant
 
 logger = logging.getLogger(__name__)
@@ -929,6 +930,20 @@ class Library:
             success = False
             err_msg = str(e)
         return success, [err_msg]
+
+    @staticmethod
+    def validate_name(name):
+        """Validate name.
+
+        Args:
+            name: name
+
+        Returns:
+            success of failed (bool), error message list
+        """
+        return Library.validate_schema(
+            name, args_schema.NAME_SCHEMA, allow_none=True
+        )
 
     @staticmethod
     def validate_qubo_matrices(qubo_matrices):

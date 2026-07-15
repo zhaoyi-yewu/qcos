@@ -269,7 +269,7 @@ class Constant:
     TRANSPILER_CMSS_QUBO = "cmss_qubo"
     TRANSPILERS = set()  # autofilled during plugin registration
 
-    # Quantum computer tech type
+    # Quantum computer tech types
     TECH_TYPE_NONE = "none"
     TECH_TYPE_NEUTRAL_ATOM = "neutral_atom"
     TECH_TYPE_ION_TRAP = "ion_trap"
@@ -278,7 +278,6 @@ class Constant:
     TECH_TYPE_NMR = "nmr"
     TECH_TYPE_GENERIC_SIMULATOR = "generic_simulator"
     TECH_TYPE_INFO = {
-        TECH_TYPE_NONE: {"alias_name": "无"},
         TECH_TYPE_NEUTRAL_ATOM: {"alias_name": "中性原子"},
         TECH_TYPE_ION_TRAP: {"alias_name": "离子阱"},
         TECH_TYPE_SUPERCONDUCTING: {"alias_name": "超导"},
@@ -286,6 +285,7 @@ class Constant:
         TECH_TYPE_NMR: {"alias_name": "核磁共振"},
         TECH_TYPE_GENERIC_SIMULATOR: {"alias_name": "通用量子模拟器"},
     }
+    TECH_TYPES = list(TECH_TYPE_INFO.keys())
 
     # Job types
     JOB_TYPE_SAMPLING = "sampling"
