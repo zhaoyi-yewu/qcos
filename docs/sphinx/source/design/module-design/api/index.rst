@@ -11,14 +11,16 @@
    :maxdepth: 2
 
    http-header
-   job
    version
-   system
-   driver
-   transpiler
-   device
    auth
    project
    user
+   driver
+   device
+   device-group
+   transpiler
+   flavor
+   job
+   system
    metrics
    error

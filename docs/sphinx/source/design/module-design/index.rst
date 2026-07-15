@@ -11,6 +11,8 @@
    device-monitor-engine
    device-mgr-engine
    driver
+   device-group
+   flavor
    transpiler
    instruction-set
    aggregation-cutting

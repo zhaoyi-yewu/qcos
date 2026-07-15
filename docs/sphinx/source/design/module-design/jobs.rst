@@ -40,7 +40,7 @@
 
 自动调度功能依赖于设备动态信息来做调度决策。目前设备动态信息会由每个设备独立的prefect长任务进行定时收集，信息回存在redis数据库中供其它组件读取和使用。
 
-自动调度借鉴 OpenStack Nova 的 **Filter Scheduler** 模式，采用两阶段调度：先过滤（Filter），后排序（Weigher）。
+自动调度使用 **Filter Scheduler** 模式，采用两阶段调度：先过滤（Filter），后排序（Weigher）。
 
 调度流程
 ^^^^^^^^^^^^^^^^^^^^
@@ -110,6 +110,7 @@ flavor_id 对应的预设调度策略规格示例：
            "min_qubits": 16,
            "max_qubits": null,
            "tech_type": "superconducting",
+           "gate_fidelity_1q_min": 0.994,
            "gate_fidelity_2q_min": 0.995
        }
    }

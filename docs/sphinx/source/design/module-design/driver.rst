@@ -1,7 +1,7 @@
 驱动管理和厂商驱动
 ==================
 
-驱动管理器会在软件初始化时，搜索源代码的qcos/drivers目录，找到所有继承自DriverBase的厂商驱动类，并进行初始化。
+驱动管理器会在软件初始化时，搜索源代码的qcos/driver目录，找到所有继承自DriverBase的厂商驱动类，并进行初始化。
 
 驱动管理器初始化
 -------------------------
@@ -37,7 +37,7 @@
        def load_drivers(self):
            """Scan and load drivers."""
            logger.info("Loading drivers ...")
-           base_module_name = "qcos.drivers"
+           base_module_name = "qcos.driver"
            ...
 
        def init_drivers(self):

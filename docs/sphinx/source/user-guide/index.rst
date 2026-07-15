@@ -8,4 +8,4 @@
 
    deploy-guide/index.rst
    compatibility
-   cli
+   cli/index
