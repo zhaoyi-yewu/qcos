@@ -45,10 +45,10 @@ from wy_qcos_client.client import Client
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
-from wy_qcos.drivers.device import Device
-from wy_qcos.drivers.device_manager import DeviceManager
-from wy_qcos.drivers.driver_manager import DriverManager
-from wy_qcos.drivers.dummy.driver_dummy import DriverDummy
+from wy_qcos.device.device import Device
+from wy_qcos.device.device_manager import DeviceManager
+from wy_qcos.driver.driver_manager import DriverManager
+from wy_qcos.driver.dummy.driver_dummy import DriverDummy
 from wy_qcos.task_manager import TaskScheduler
 from wy_qcos.tests.unit_tests.task_manager.constant_for_test import (
     ConstantForTest,
@@ -175,6 +175,7 @@ class TestJob:
         mock_client.code_compression_level = 0
         mock_client.tags = None
         mock_client.qec_options = None
+        mock_client.flavor_name = None
         mock_client.flavor_id = None
         mock_client.extra_specs = None
 
@@ -217,6 +218,7 @@ class TestJob:
         mock_client.code_compression_level = 0
         mock_client.tags = None
         mock_client.qec_options = None
+        mock_client.flavor_name = None
         mock_client.flavor_id = None
         mock_client.extra_specs = None
 
@@ -250,6 +252,7 @@ class TestJob:
         mock_client.code_compression_level = 0
         mock_client.tags = None
         mock_client.qec_options = None
+        mock_client.flavor_name = None
         mock_client.flavor_id = None
         mock_client.extra_specs = None
 

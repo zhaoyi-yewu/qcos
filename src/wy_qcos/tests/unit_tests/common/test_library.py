@@ -903,6 +903,48 @@ class TestLibrary:
         success, error = Library.validate_schema(data, schema, allow_none=True)
         assert success is True
 
+    def test_validate_name_valid(self):
+        """Test validate_name with valid names."""
+        success, _ = Library.validate_name("my-device")
+        assert success is True
+        success, _ = Library.validate_name("device_001")
+        assert success is True
+        success, _ = Library.validate_name("a")
+        assert success is True
+        success, _ = Library.validate_name("a" * 64)
+        assert success is True
+        success, _ = Library.validate_name("ALL_CAPS-123")
+        assert success is True
+
+    def test_validate_name_none(self):
+        """Test validate_name with None (allow_none=True)."""
+        success, _ = Library.validate_name(None)
+        assert success is True
+
+    def test_validate_name_empty(self):
+        """Test validate_name with empty string."""
+        success, _ = Library.validate_name("")
+        assert success is False
+
+    def test_validate_name_too_long(self):
+        """Test validate_name with name longer than 64 chars."""
+        success, _ = Library.validate_name("a" * 65)
+        assert success is False
+
+    def test_validate_name_invalid_chars(self):
+        """Test validate_name with invalid characters."""
+        success, _ = Library.validate_name("device name")
+        assert success is False
+        success, _ = Library.validate_name("device@name")
+        assert success is False
+        # dots are allowed by NAME_SCHEMA
+        success, _ = Library.validate_name("device.name")
+        assert success is True
+        success, _ = Library.validate_name("device/name")
+        assert success is False
+        success, _ = Library.validate_name("中文设备名")
+        assert success is False
+
     def test_validate_qubo_matrices_basic(self):
         """Test validate_qubo_matrices basic functionality."""
         normal_qubo1 = [[[1, 2, 3], [4, 5, 6], [7, 8, 9]]]
