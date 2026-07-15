@@ -19,13 +19,11 @@ import uuid
 from typing import ClassVar
 
 from sqlalchemy import (
-    Column,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
     Boolean,
+    Column,
+    ForeignKey,
     JSON,
+    String,
 )
 from sqlalchemy.sql.schema import Table
 
@@ -33,10 +31,10 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.db.models.base import BaseTable, GUID
 
 
-class Flavor(BaseTable):
-    """Flavor table - preset scheduling policy specs."""
+class DeviceGroup(BaseTable):
+    """DeviceGroup table - logical grouping of devices."""
 
-    __tablename__ = "flavors"
+    __tablename__ = "device_groups"
     __table__: ClassVar[Table]
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
@@ -48,9 +46,5 @@ class Flavor(BaseTable):
     )
     name = Column(String(128), nullable=False, unique=True)
     description = Column(String(256))
+    device_names = Column(JSON, nullable=True, default=None)
     is_public = Column(Boolean, default=True)
-    min_qubits = Column(Integer, nullable=True)
-    max_qubits = Column(Integer, nullable=True)
-    gate_fidelity_1q_min = Column(Float, nullable=True)
-    gate_fidelity_2q_min = Column(Float, nullable=True)
-    extra_properties = Column(JSON, nullable=True, default=None)

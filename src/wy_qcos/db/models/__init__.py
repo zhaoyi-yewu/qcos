@@ -25,3 +25,5 @@ from .user import LoginLog
 from .user import TokenBlacklist
 from .job import Job
 from .flavor import Flavor
+from .device_group import DeviceGroup
+from .flavor_device_group import FlavorDeviceGroup
