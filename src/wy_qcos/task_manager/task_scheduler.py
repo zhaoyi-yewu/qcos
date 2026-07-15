@@ -41,6 +41,7 @@ class TaskScheduler:
         self._db_engine = None
         self._auto_scheduler = None
         self._flavor_manager = None
+        self._device_group_manager = None
 
     def start_taskmanager(self):
         """Start TaskManager."""
@@ -104,18 +105,46 @@ class TaskScheduler:
         """
         self._db_engine = db_engine
 
-    def init_auto_scheduler(self):
-        """Initialize auto scheduler and flavor manager.
+    def init_flavor_manager(self):
+        """Initialize flavor manager (independent component).
 
-        Must be called after set_device_manager and set_db_engine.
+        Must be called after set_db_engine. FlavorManager is a
+        standalone component (parallel to UserManager), not part
+        of the scheduler.
         """
-        from wy_qcos.scheduler import AutoScheduler, FlavorManager
+        from wy_qcos.flavor.flavor_manager import FlavorManager
 
         self._flavor_manager = FlavorManager(self._db_engine)
+        logger.info("Flavor manager initialized")
+
+    def init_device_group_manager(self):
+        """Initialize device group manager (independent component).
+
+        Must be called after set_db_engine. DeviceGroupManager is
+        a standalone component, not part of the scheduler.
+        """
+        from wy_qcos.device.device_group_manager import (
+            DeviceGroupManager,
+        )
+
+        self._device_group_manager = DeviceGroupManager(self._db_engine)
+        logger.info("Device group manager initialized")
+
+    def init_auto_scheduler(self):
+        """Initialize auto scheduler.
+
+        Must be called after init_device_group_manager,
+        init_flavor_manager, set_device_manager
+        and set_db_engine. Reuses the standalone flavor_manager
+        and device_group_manager instances.
+        """
+        from wy_qcos.scheduler import AutoScheduler
+
         self._auto_scheduler = AutoScheduler(
             device_manager=self._device_manager,
             task_manager=self._task_manager,
             flavor_manager=self._flavor_manager,
+            device_group_manager=self._device_group_manager,
         )
         logger.info("Auto scheduler initialized")
 
@@ -134,6 +163,14 @@ class TaskScheduler:
             flavor manager instance
         """
         return self._flavor_manager
+
+    def get_device_group_manager(self):
+        """Get device group manager.
+
+        Returns:
+            device group manager instance
+        """
+        return self._device_group_manager
 
     def get_device_manager(self):
         """Get device manager.
