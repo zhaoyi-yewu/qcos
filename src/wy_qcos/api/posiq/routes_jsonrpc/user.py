@@ -27,6 +27,7 @@ from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import user_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.config import Config
+from wy_qcos.common.library import Library
 from .dependencies.authentication import auth, auth_match_user_id
 
 
@@ -186,6 +187,15 @@ def create_user(
 
     user_name = body.user_name
     password = body.password
+
+    # validate user_name
+    success, err_msg = Library.validate_name(user_name)
+    if not success:
+        jsonrpc_errors.handle_error_bad_requests(
+            "USER",
+            "create_user",
+            (False, err_msg),
+        )
     roles = body.roles
     description = body.description
 
@@ -494,6 +504,15 @@ def create_role(
 
     role_name = body.role_name
     permissions = body.permissions
+
+    # validate role_name
+    success, err_msg = Library.validate_name(role_name)
+    if not success:
+        jsonrpc_errors.handle_error_bad_requests(
+            "USER",
+            "create_role",
+            (False, err_msg),
+        )
     description = body.description
 
     # Get user manager from request state

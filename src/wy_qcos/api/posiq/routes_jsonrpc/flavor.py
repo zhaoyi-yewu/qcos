@@ -16,17 +16,37 @@
 # ----------------------------------------------------------------------
 
 import logging
+import uuid
+from typing import Any
+
+from fastapi import Depends, Request
 
 from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
+from wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication import (
+    auth,
+)
+from wy_qcos.api.posiq.routes_jsonrpc.project import get_project_manager
 from wy_qcos.api.posiq.routes_jsonrpc.routes import job_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
-from wy_qcos.scheduler.errors import FlavorNotFoundError
+from wy_qcos.db.utils.db_utils import get_db_filters
 from wy_qcos.task_manager import scheduler
 
 logger = logging.getLogger(__name__)
 module_name = "FLAVOR"
+
+
+def _is_super_admin(auth_data: dict | None) -> bool:
+    """Check if the caller is a super admin."""
+    if not auth_data:
+        return False
+    return auth_data.get("is_super_admin", False)
+
+
+def _current_project_id(auth_data: dict | None):
+    """Get caller's project id from auth data."""
+    return auth_data.get("project_id") if auth_data else None
 
 
 @job_api_v1.method(
@@ -36,11 +56,15 @@ module_name = "FLAVOR"
 )
 def create_flavor(
     body: schemas.CreateFlavorRequest,
+    request: Request,
+    auth_data: dict | None = Depends(auth),
 ) -> schemas.FlavorResponse:
     """Create a flavor (preset scheduling policy).
 
     Args:
         body: create flavor request
+        request: request object
+        auth_data: authentication data
 
     Returns:
         flavor response
@@ -48,35 +72,85 @@ def create_flavor(
     func_name = "create_flavor"
     logger.info(f"Call {func_name}: {body.name}")
 
-    auto_scheduler = scheduler.get_auto_scheduler()
-    if auto_scheduler is None:
+    flavor_manager = scheduler.get_flavor_manager()
+    if flavor_manager is None:
         jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, "Auto scheduler not initialized")
+            module_name, func_name, (False, "Flavor manager not initialized")
         )
 
-    flavor_manager = auto_scheduler._flavor_manager
+    # Default project_id to current user's project_id if not provided
+    if body.project_id is None and auth_data:
+        project_id = auth_data.get("project_id")
+        if project_id:
+            body.project_id = project_id
+
+    # Validate project_id exists in projects table
+    project_manager = get_project_manager(request)
+    project_id_str = str(body.project_id)
+    project = project_manager.get_project_by_id(project_id_str)
+    if project is None:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                f"Failed to create flavor: "
+                f"project: {project_id_str} not exists",
+            ),
+        )
 
     # validate name
     if not body.name:
         jsonrpc_errors.handle_error_bad_requests(
             module_name, func_name, (False, "flavor name is required")
         )
+    success, err_msg = Library.validate_name(body.name)
+    if not success:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name, func_name, (False, err_msg)
+        )
 
     # check duplicate name
-    existing = flavor_manager.get_flavors()
-    for f in existing:
-        if f.name == body.name:
+    filters = {"flavor_name": body.name}
+    flavors = flavor_manager.get_flavors(filters=filters)
+    for flavor in flavors:
+        if flavor.name == body.name:
             jsonrpc_errors.handle_error_bad_requests(
                 module_name,
                 func_name,
                 (False, f"Flavor name already exists: {body.name}"),
             )
 
-    flavor_data = {
+    # validate extra_properties via flavor_manager
+    extra_properties = body.extra_properties
+    ok, err = flavor_manager.validate_extra_properties(extra_properties)
+    if not ok:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name, func_name, (False, err)
+        )
+
+    # validate device_groups (required, at least one)
+    device_group_ids = [str(dg) for dg in body.device_groups]
+    device_group_manager = scheduler.get_device_group_manager()
+    ok, err = flavor_manager.validate_device_groups(
+        device_group_ids, device_group_manager
+    )
+    if not ok:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name, func_name, (False, err)
+        )
+
+    flavor_data: dict[str, Any] = {
         "name": body.name,
         "description": body.description,
         "is_public": body.is_public,
-        "specs": body.specs,
+        "project_id": str(body.project_id),
+        "min_qubits": body.min_qubits,
+        "max_qubits": body.max_qubits,
+        "gate_fidelity_1q_min": body.gate_fidelity_1q_min,
+        "gate_fidelity_2q_min": body.gate_fidelity_2q_min,
+        "extra_properties": extra_properties,
+        "device_groups": device_group_ids,
         "created_at": Library.get_current_datetime(),
         "updated_at": Library.get_current_datetime(),
     }
@@ -89,7 +163,153 @@ def create_flavor(
             (False, f"Failed to create flavor: {error}"),
         )
 
+    # Build response with device_groups from mapping table
     response = schemas.FlavorResponse.model_validate(flavor)
+    response.device_groups = [
+        uuid.UUID(dg_id)
+        for dg_id in flavor_manager.get_flavor_device_groups(str(flavor.id))
+    ]
+    return response
+
+
+@job_api_v1.method(
+    tags=["flavor"],
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.BadRequestError],
+)
+def update_flavor(
+    body: schemas.UpdateFlavorRequest,
+    request: Request,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.FlavorResponse:
+    """Update a flavor by ID.
+
+    Args:
+        body: update flavor request
+        request: request object
+        auth_data: authentication data
+
+    Returns:
+        flavor response
+    """
+    func_name = "update_flavor"
+    logger.info(f"Call {func_name}: {body.flavor_id}")
+
+    flavor_manager = scheduler.get_flavor_manager()
+    if flavor_manager is None:
+        jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, "Flavor manager not initialized")
+        )
+
+    # Apply project/user permission scoping
+    db_filters = get_db_filters(
+        auth_data, allow_super_admin=True, allow_project_admin=True
+    )
+
+    # build update data from non-None fields
+    flavor_data: dict[str, Any] = {}
+    if body.name is not None:
+        success, err_msg = Library.validate_name(body.name)
+        if not success:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                (False, err_msg),
+            )
+        # check duplicate name
+        filters = {"flavor_name": body.name}
+        flavors = flavor_manager.get_flavors(filters=filters)
+        for flavor in flavors:
+            if flavor.name == body.name and flavor.id != body.flavor_id:
+                jsonrpc_errors.handle_error_bad_requests(
+                    module_name,
+                    func_name,
+                    f"Flavor name already exists: {body.name}",
+                )
+        flavor_data["name"] = body.name
+    if body.description is not None:
+        flavor_data["description"] = body.description
+    if body.is_public is not None:
+        flavor_data["is_public"] = body.is_public
+    if body.project_id is not None:
+        # Validate project_id exists in projects table
+        project_manager = get_project_manager(request)
+        project_id_str = str(body.project_id)
+        project = project_manager.get_project_by_id(project_id_str)
+        if project is None:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                (
+                    False,
+                    f"Failed to update flavor: "
+                    f"project: {project_id_str} not exists",
+                ),
+            )
+        flavor_data["project_id"] = project_id_str
+
+    if body.min_qubits is not None:
+        flavor_data["min_qubits"] = body.min_qubits
+    if body.max_qubits is not None:
+        flavor_data["max_qubits"] = body.max_qubits
+    if body.gate_fidelity_1q_min is not None:
+        flavor_data["gate_fidelity_1q_min"] = body.gate_fidelity_1q_min
+    if body.gate_fidelity_2q_min is not None:
+        flavor_data["gate_fidelity_2q_min"] = body.gate_fidelity_2q_min
+
+    # merge extra_properties: get existing, update with new values
+    if body.extra_properties is not None:
+        # validate extra_properties via flavor_manager
+        ok, err = flavor_manager.validate_extra_properties(
+            body.extra_properties
+        )
+        if not ok:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name, func_name, (False, err)
+            )
+        existing_flavor = flavor_manager.get_flavor(str(body.flavor_id))
+        if existing_flavor is None:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                (False, f"Flavor not found: {body.flavor_id}"),
+            )
+        merged_extra = dict(existing_flavor.extra_properties or {})
+        merged_extra.update(body.extra_properties)
+        flavor_data["extra_properties"] = merged_extra
+
+    # device_groups is optional on update; if provided, validate
+    # and replace existing mappings; if None, keep existing
+    if body.device_groups is not None:
+        device_group_ids = [str(dg) for dg in body.device_groups]
+        device_group_manager = scheduler.get_device_group_manager()
+        ok, err = flavor_manager.validate_device_groups(
+            device_group_ids, device_group_manager
+        )
+        if not ok:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name, func_name, (False, err)
+            )
+        flavor_data["device_groups"] = device_group_ids
+
+    flavor_data["updated_at"] = Library.get_current_datetime()
+
+    success, error, flavor = flavor_manager.update_flavor(
+        str(body.flavor_id), flavor_data, db_filters=db_filters
+    )
+    if not success or flavor is None:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (False, f"Failed to update flavor: {error}"),
+        )
+
+    # Build response with device_groups from mapping table
+    response = schemas.FlavorResponse.model_validate(flavor)
+    response.device_groups = [
+        uuid.UUID(dg_id)
+        for dg_id in flavor_manager.get_flavor_device_groups(str(flavor.id))
+    ]
     return response
 
 
@@ -100,11 +320,13 @@ def create_flavor(
 )
 def get_flavor(
     body: schemas.GetFlavorRequest,
+    auth_data: dict | None = Depends(auth),
 ) -> schemas.FlavorResponse:
     """Get a flavor by ID.
 
     Args:
         body: get flavor request
+        auth_data: authentication data
 
     Returns:
         flavor response
@@ -112,18 +334,33 @@ def get_flavor(
     func_name = "get_flavor"
     logger.info(f"Call {func_name}: {body.flavor_id}")
 
-    auto_scheduler = scheduler.get_auto_scheduler()
-    if auto_scheduler is None:
+    flavor_manager = scheduler.get_flavor_manager()
+    if flavor_manager is None:
         jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, "Auto scheduler not initialized")
+            module_name, func_name, (False, "Flavor manager not initialized")
+        )
+    # Visibility scoping: public flavors are visible to all users,
+    # private flavors only to the owning project.
+    # Super admins see all flavors.
+    if _is_super_admin(auth_data):
+        flavor = flavor_manager.get_flavor(str(body.flavor_id))
+    else:
+        flavor = flavor_manager.get_visible_flavor(
+            str(body.flavor_id),
+            project_id=_current_project_id(auth_data),
+        )
+    if flavor is None:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (False, f"Flavor not found: {body.flavor_id}"),
         )
 
-    flavor_manager = auto_scheduler._flavor_manager
-    flavor = flavor_manager.get_flavor(str(body.flavor_id))
-    if flavor is None:
-        raise FlavorNotFoundError(f"Flavor not found: {body.flavor_id}")
-
     response = schemas.FlavorResponse.model_validate(flavor)
+    response.device_groups = [
+        uuid.UUID(dg_id)
+        for dg_id in flavor_manager.get_flavor_device_groups(str(flavor.id))
+    ]
     return response
 
 
@@ -132,23 +369,45 @@ def get_flavor(
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.BadRequestError],
 )
-def get_flavors() -> list[schemas.FlavorResponse]:
-    """Get all flavors.
+def get_flavors(
+    body: schemas.GetFlavorsRequest | None = None,
+    auth_data: dict | None = Depends(auth),
+) -> list[schemas.FlavorResponse]:
+    """Get all flavors with optional filtering.
+
+    Args:
+        body: get flavors request with optional filter dict
+        auth_data: authentication data
 
     Returns:
         list of flavor responses
+
+    Filter example:
+        {"flavor_name": "g1.all"} - filter by flavor_name
     """
     func_name = "get_flavors"
-    logger.info(f"Call {func_name}")
+    logger.info(f"Call {func_name}: {body}")
 
-    auto_scheduler = scheduler.get_auto_scheduler()
-    if auto_scheduler is None:
+    flavor_manager = scheduler.get_flavor_manager()
+    if flavor_manager is None:
         jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, "Auto scheduler not initialized")
+            module_name, func_name, (False, "Flavor manager not initialized")
         )
-
-    flavor_manager = auto_scheduler._flavor_manager
-    flavors = flavor_manager.get_flavors()
+    # Visibility scoping: public flavors are visible to all users,
+    # private flavors only to the owning project.
+    # Super admins see all flavors.
+    filter_conditions = None
+    if body:
+        filter_conditions = body.filters
+    if _is_super_admin(auth_data):
+        flavors = flavor_manager.get_flavor_responses(
+            filters=filter_conditions
+        )
+    else:
+        flavors = flavor_manager.get_flavor_responses(
+            filters=filter_conditions,
+            project_id=_current_project_id(auth_data),
+        )
     return [schemas.FlavorResponse.model_validate(f) for f in flavors]
 
 
@@ -157,33 +416,46 @@ def get_flavors() -> list[schemas.FlavorResponse]:
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.BadRequestError],
 )
-def delete_flavor(
-    body: schemas.DeleteFlavorRequest,
-) -> schemas.DeleteFlavorResponse:
-    """Delete a flavor by ID.
+def delete_flavors(
+    body: schemas.DeleteFlavorsRequest,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.DeleteFlavorsResponse:
+    """Delete multiple flavors by IDs (batch).
+
+    Iterates over each flavor_id, deletes it independently, and
+    collects per-flavor results. Does not abort on individual
+    failures.
 
     Args:
-        body: delete flavor request
+        body: delete flavors request (flavor_ids list)
+        auth_data: authentication data
 
     Returns:
-        delete flavor response
+        delete flavors response with per-flavor results
     """
-    func_name = "delete_flavor"
-    logger.info(f"Call {func_name}: {body.flavor_id}")
+    func_name = "delete_flavors"
+    logger.info(f"Call {func_name}: {body.flavor_ids}")
 
-    auto_scheduler = scheduler.get_auto_scheduler()
-    if auto_scheduler is None:
+    flavor_manager = scheduler.get_flavor_manager()
+    if flavor_manager is None:
         jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, "Auto scheduler not initialized")
+            module_name, func_name, (False, "Flavor manager not initialized")
         )
+    db_filters = get_db_filters(
+        auth_data, allow_super_admin=True, allow_project_admin=True
+    )
 
-    flavor_manager = auto_scheduler._flavor_manager
-    success, error = flavor_manager.delete_flavor(str(body.flavor_id))
-    if not success:
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            (False, f"Failed to delete flavor: {error}"),
+    results_data = flavor_manager.delete_flavors(
+        [str(fid) for fid in body.flavor_ids], db_filters=db_filters
+    )
+
+    results = []
+    for flavor_id, success, error in results_data:
+        results.append(
+            schemas.DeleteFlavorResponseItem(
+                flavor_id=flavor_id,
+                success=success,
+                error=error if not success else None,
+            )
         )
-
-    return schemas.DeleteFlavorResponse(flavor_id=body.flavor_id)
+    return schemas.DeleteFlavorsResponse(results=results)

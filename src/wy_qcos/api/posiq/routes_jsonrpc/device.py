@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import logging
+import time
 
 from fastapi import Depends
 
@@ -41,6 +42,11 @@ def _get_device_info(device, auth_data=None, details=False):
     Returns:
         device_info
     """
+    last_updated_at = None
+    if device.last_updated_at:
+        last_updated_at = time.strftime(
+            "%Y-%m-%d %H:%M:%S", time.localtime(last_updated_at)
+        )
     _device_info = {
         "name": device.name,
         "alias_name": device.alias_name,
@@ -51,7 +57,7 @@ def _get_device_info(device, auth_data=None, details=False):
         "tech_type": device.tech_type,
         "max_qubits": device.max_qubits,
         "details": device.details,
-        "timestamp": device.timestamp,
+        "last_updated_at": last_updated_at,
     }
     if not details:
         _device_info.pop("details")
@@ -115,6 +121,12 @@ def get_device(
     device_name = body.name
     device_manager = scheduler.get_device_manager()
     device = device_manager.get_device(device_name)
+    if device is None:
+        jsonrpc_errors.handle_error_not_found(
+            module_name,
+            func_name,
+            (False, f"Device: '{device_name}' is not found"),
+        )
     success, _ = validate_virtual_instance(auth_data, backend=device_name)
     if not success:
         jsonrpc_errors.handle_error_not_found(
