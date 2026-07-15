@@ -55,10 +55,10 @@ def get_config_value(file_path, key):
                 if not line or line.startswith(("#", ";")):
                     continue
                 if "=" in line:
-                    key, value = line.split("=", 1)
-                    key = key.strip()
+                    _key, value = line.split("=", 1)
+                    _key = _key.strip()
                     value = value.strip()
-                    if key == key:
+                    if key == _key:
                         return value
         return None
     except FileNotFoundError:
