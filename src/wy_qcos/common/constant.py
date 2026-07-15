@@ -189,6 +189,7 @@ class Constant:
     TWO_QUBIT_GATE_RYY = "ryy"
     TWO_QUBIT_GATE_RZZ = "rzz"
     TWO_QUBIT_GATE_RZX = "rzx"
+    TWO_QUBIT_GATE_ASHN = "ashn"
     TWO_QUBIT_GATE_LIST = [
         TWO_QUBIT_GATE_CH,
         TWO_QUBIT_GATE_CRX,

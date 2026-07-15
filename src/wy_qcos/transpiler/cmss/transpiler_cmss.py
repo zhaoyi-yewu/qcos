@@ -17,10 +17,12 @@
 
 import logging
 
+from wy_qcos.common.cmss.base_operation import OperationType
 from wy_qcos.log.logger import log_perf
 
 from schema import Optional
 
+from wy_qcos.transpiler.cmss.decomposer.kak_decomposer import KAKDecomposer
 from wy_qcos.transpiler.common.utils import (
     TranspileRuntime,
     Timer,
@@ -425,6 +427,24 @@ class TranspilerCmss(TranspilerBase):
             gate_name_list = list({
                 op.name for _, ops in opt_result_dict.values() for op in ops
             })
+            if "ashn" in supp_basis_gates:
+                basis_gate_list = []
+                kak_decomposer = KAKDecomposer()
+                for key, value in opt_result_dict.items():
+                    for gate in value[1]:
+                        if (
+                            gate.operation_type
+                            == OperationType.DOUBLE_QUBIT_OPERATION.value
+                        ):
+                            kak_decomposer.set_matrix(gate.to_matrix())
+                            kak_decomposer.run()
+                            result = kak_decomposer.get_decompose_result(
+                                gate.targets
+                            )
+                            basis_gate_list.extend(result)
+                        else:
+                            basis_gate_list.append(gate)
+                return basis_gate_list, None
 
             with Timer() as decompose_ruler_timer:
                 decompose_rules_dict, _ = decomposer.get_decompose_rules(
