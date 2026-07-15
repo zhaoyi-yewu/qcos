@@ -98,7 +98,7 @@ function check_docker_image {
 }
 
 function build_qcos_base_image {
-  echo -e "\nBuilding docker image: qcos-base"
+  echo -e "\nBuilding docker image: ${QCOS_BASE_IMAGE_NAME}:${QCOS_BASE_IMAGE_VERSION}"
   QCOS_BASE_CONTAINER_NAME=qcos-base
 
   # build qcos building-system: qcos-base
@@ -127,14 +127,17 @@ function run_sandbox {
 }
 
 function build_sandbox_image {
-  echo -e "\nBuilding docker image: sandbox"
   SANDBOX_CONTAINER_NAME=qcos-sandbox
   SANDBOX_IMAGE_NAME=qcos-sandbox
 
+  echo -e "\nBuilding docker image: ${SANDBOX_IMAGE_NAME}:${SANDBOX_IMAGE_VERSION}"
+
   # build qcos building-system: sandbox
   cd ${BUILD_SCRIPTS_DIR}
+
   cp -rf ./sandbox/Dockerfile .build-context/
   DOCKER_BUILDKIT=0 docker build --no-cache --rm --network host \
+    --build-arg BASE_TAG=${QCOS_BASE_IMAGE_VERSION} \
     --build-arg CONTAINER_NAME=${SANDBOX_CONTAINER_NAME} \
     --build-arg SANDBOX_IMAGE_VERSION=${SANDBOX_IMAGE_VERSION} \
     --build-arg NPM_MIRROR=${NPM_MIRROR} \
@@ -169,7 +172,7 @@ function build_qcos {
 }
 
 function build_qcos_image {
-  echo -e "\nBuilding docker image: qcos"
+  echo -e "\nBuilding docker image: ${QCOS_IMAGE_NAME}:${image_tag}"
   # build docker image: qcos
   cd ${BUILD_SCRIPTS_DIR}
   cp -rf ./qcos/Dockerfile .build-context/
@@ -212,9 +215,10 @@ function build_cli {
 }
 
 function build_cli_image {
-  echo -e "\nBuilding docker image: qcos-cli"
   QCOS_CLI_CONTAINER_NAME=${QCOS_CONTAINER_NAME}-cli
   QCOS_CLI_IMAGE_NAME=${QCOS_IMAGE_NAME}-cli
+
+  echo -e "\nBuilding docker image: ${QCOS_CLI_IMAGE_NAME}:${image_tag}"
 
   # build docker image: qcos-cli
   cd ${BUILD_SCRIPTS_DIR}
