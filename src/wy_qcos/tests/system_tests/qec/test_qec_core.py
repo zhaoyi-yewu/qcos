@@ -353,7 +353,7 @@ class TestQecEdgeCases:
     """Test QEC edge cases and error handling."""
 
     def test_empty_qec_options_in_driver(self):
-        from wy_qcos.drivers.stim.driver_stim import DriverStim
+        from wy_qcos.driver.stim.driver_stim import DriverStim
 
         driver = DriverStim()
         with pytest.raises(ValueError, match="Qec_options are needed"):
@@ -368,7 +368,7 @@ class TestQecEdgeCases:
             )
 
     def test_qec_options_schema(self):
-        from wy_qcos.drivers.stim.driver_stim import DriverStim
+        from wy_qcos.driver.stim.driver_stim import DriverStim
 
         driver = DriverStim()
         schema = driver.get_qec_options_schema()

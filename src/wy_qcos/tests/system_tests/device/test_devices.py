@@ -17,7 +17,7 @@
 
 import pytest
 
-from wy_qcos.drivers.device import Device
+from wy_qcos.device.device import Device
 from wy_qcos.tests.system_tests.common.library import StLibrary
 from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 
