@@ -92,6 +92,24 @@ class Constant:
     ENV_VAR_REFRESH_TOKEN = _s("QCOS_REFRESH_TOKEN")
     ENV_VAR_VIRTUAL_INSTANCE_ID = "QCOS_VIRTUAL_INSTANCE_ID"
 
+    # Quantum computer tech type
+    TECH_TYPE_NONE = "none"
+    TECH_TYPE_NEUTRAL_ATOM = "neutral_atom"
+    TECH_TYPE_ION_TRAP = "ion_trap"
+    TECH_TYPE_SUPERCONDUCTING = "superconducting"
+    TECH_TYPE_PHOTON = "photon"
+    TECH_TYPE_NMR = "nmr"
+    TECH_TYPE_GENERIC_SIMULATOR = "generic_simulator"
+    TECH_TYPE_INFO = {
+        TECH_TYPE_NEUTRAL_ATOM: {"alias_name": "中性原子"},
+        TECH_TYPE_ION_TRAP: {"alias_name": "离子阱"},
+        TECH_TYPE_SUPERCONDUCTING: {"alias_name": "超导"},
+        TECH_TYPE_PHOTON: {"alias_name": "光量子"},
+        TECH_TYPE_NMR: {"alias_name": "核磁共振"},
+        TECH_TYPE_GENERIC_SIMULATOR: {"alias_name": "通用量子模拟器"},
+    }
+    TECH_TYPES = list(TECH_TYPE_INFO.keys())
+
     # Job status
     JOB_STATUS_UNKNOWN = "UNKNOWN"
     JOB_STATUS_QUEUED = "QUEUED"

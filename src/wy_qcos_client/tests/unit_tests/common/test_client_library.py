@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -103,4 +103,43 @@ class TestClientLibrary:
         assert success is True
 
         success, _ = library.validate_schema("9", None)
+        assert success is False
+
+    def test_validate_name_valid(self):
+        """Test validate_name with valid names."""
+        success, _ = library.validate_name("my-device")
+        assert success is True
+        success, _ = library.validate_name("device_001")
+        assert success is True
+        success, _ = library.validate_name("a")
+        assert success is True
+        success, _ = library.validate_name("a" * 64)
+        assert success is True
+        success, _ = library.validate_name("ALL_CAPS-123")
+        assert success is True
+
+    def test_validate_name_none(self):
+        """Test validate_name with None (allow_none=True)."""
+        success, _ = library.validate_name(None)
+        assert success is True
+
+    def test_validate_name_empty(self):
+        """Test validate_name with empty string."""
+        success, _ = library.validate_name("")
+        assert success is False
+
+    def test_validate_name_too_long(self):
+        """Test validate_name with name longer than 64 chars."""
+        success, _ = library.validate_name("a" * 65)
+        assert success is False
+
+    def test_validate_name_invalid_chars(self):
+        """Test validate_name with invalid characters."""
+        success, _ = library.validate_name("device name")
+        assert success is False
+        success, _ = library.validate_name("device@name")
+        assert success is False
+        success, _ = library.validate_name("device.name")
+        assert success is False
+        success, _ = library.validate_name("中文设备名")
         assert success is False

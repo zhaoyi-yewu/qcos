@@ -17,6 +17,7 @@
 
 import argparse
 import json
+import logging
 import os
 import sys
 
@@ -39,6 +40,8 @@ from .common.qcos_version import QcosVersion
 VERSION = QcosVersion.VERSION
 DESCRIPTION = "QCOS command line interface"
 
+logger = logging.getLogger(__name__)
+
 
 class QcosShell(App):
     """QCOS shell."""
@@ -54,6 +57,7 @@ class QcosShell(App):
     CMD_GROUP_TRANSPILER = "Transpiler"
     CMD_GROUP_JOB = "Job"
     CMD_GROUP_FLAVOR = "Flavor"
+    CMD_GROUP_DEVICE_GROUP = "DeviceGroup"
     CMD_GROUP_METRICS = "Metrics"
     CMD_GROUPS = [
         CMD_GROUP_DEFAULT,
@@ -64,6 +68,7 @@ class QcosShell(App):
         CMD_GROUP_PROJECT,
         CMD_GROUP_DRIVER,
         CMD_GROUP_DEVICE,
+        CMD_GROUP_DEVICE_GROUP,
         CMD_GROUP_TRANSPILER,
         CMD_GROUP_JOB,
         CMD_GROUP_FLAVOR,
@@ -422,11 +427,12 @@ class CommandHelper:
         return results
 
     @staticmethod
-    def get_table_data(values):
+    def get_table_data(values, keep_value_none=False):
         """Get data for showing table in cli.
 
         Args:
             values: values
+            keep_value_none: keep value: None
 
         Returns:
             table data
@@ -435,7 +441,7 @@ class CommandHelper:
         headers = []
         _values = []
         for k, v in values.items():
-            if v is None:  # remove None values
+            if not keep_value_none and v is None:  # remove None values
                 continue
             headers.append(k.upper())
             keys.append(k)
@@ -444,6 +450,99 @@ class CommandHelper:
             _values.append(v)
         results = (tuple(headers), tuple(_values))
         return results
+
+    @staticmethod
+    def check_device_existence(client, device_names, resource):
+        """Check if devices exist, warn for non-existent ones.
+
+        Args:
+            client: QCOS client instance
+            device_names: list of device names to check
+            resource: resource name
+        """
+        if not device_names:
+            return
+
+        status_code, reason, text, result = client.get_devices()
+        devices_results = CommandHelper.check_results(
+            resource, "get_devices", status_code, reason, text
+        )
+        existing_names = devices_results.keys()
+        for dn in device_names:
+            if dn == "_all":
+                continue
+            if dn not in existing_names:
+                logger.warning(
+                    f"Warning: Device '{dn}' does not exist, "
+                    f"adding to group anyway"
+                )
+
+    @staticmethod
+    def resolve_device_group_names(client, device_group_ids):
+        """Resolve device group IDs to names.
+
+        Fetches all device groups once and builds an id->name map,
+        then resolves each ID to its name (falls back to the ID
+        itself if not found).
+
+        Args:
+            client: QCOS client instance
+            device_group_ids: list of device group IDs
+
+        Returns:
+            list of device group names (falls back to ID if not found)
+        """
+        if not device_group_ids:
+            return device_group_ids
+        resource = QcosShell.CMD_GROUP_DEVICE_GROUP
+        status_code, reason, text, result = client.get_device_groups()
+        json_results = CommandHelper.check_results(
+            resource, "get_device_groups", status_code, reason, text
+        )
+        name_map = {}
+        if json_results:
+            for group in json_results:
+                group_id = str(group.get("id", ""))
+                group_name = group.get("name", "")
+                name_map[group_id] = group_name
+        return [
+            name_map.get(str(dg_id), str(dg_id)) for dg_id in device_group_ids
+        ]
+
+    @staticmethod
+    def resolve_device_group_ids(client, device_group_identifiers):
+        """Resolve device group identifiers (UUID or name) to IDs.
+
+        Accepts a list where each item may be a UUID or a device
+        group name. Each name is resolved individually via the
+        server filter API (no full list fetch).
+
+        Args:
+            client: QCOS client instance
+            device_group_identifiers: list of device group UUIDs
+                or names
+
+        Returns:
+            list of device group IDs (UUID strings)
+
+        Raises:
+            errors.InvalidArguments: if a name cannot be resolved
+        """
+        if not device_group_identifiers:
+            return device_group_identifiers
+        resolved = []
+        for identifier in device_group_identifiers:
+            try:
+                resolved.append(
+                    Client.resolve_device_group_id(client, identifier)
+                )
+            except Exception as e:
+                raise errors.InvalidArguments(
+                    f"Invalid device group identifier: "
+                    f"'{identifier}'. Must be a valid UUID or "
+                    f"existing device group name."
+                ) from e
+        return resolved
 
 
 # Version commands
@@ -1107,15 +1206,15 @@ class SubmitJob(Command):
             dest="backend",
             default=default_backend,
             help="Set backend device name. If not specified, "
-            "auto scheduling is triggered (requires --flavor-id "
+            "auto scheduling is triggered (requires --flavor-name "
             "or --extra-specs)",
         )
         parser.add_argument(
-            "--flavor-id",
-            dest="flavor_id",
+            "--flavor-name",
+            dest="flavor_name",
             type=str,
             default=None,
-            help="Flavor ID for auto scheduling",
+            help="Flavor name for auto scheduling",
         )
         parser.add_argument(
             "--extra-specs",
@@ -1197,7 +1296,7 @@ class SubmitJob(Command):
         description = parsed_args.description
         shots = parsed_args.shots
         backend = parsed_args.backend
-        flavor_id = parsed_args.flavor_id
+        flavor_name = parsed_args.flavor_name
         extra_specs = parsed_args.extra_specs
         driver_options = parsed_args.driver_options
         transpiler = parsed_args.transpiler
@@ -1207,9 +1306,9 @@ class SubmitJob(Command):
         qec_options = parsed_args.qec_options
 
         # Validate auto scheduling params
-        if not backend and not flavor_id and not extra_specs:
+        if not backend and not flavor_name and not extra_specs:
             raise errors.InvalidArguments(
-                "Either --backend or --flavor-id/--extra-specs "
+                "Either --backend or --flavor-name/--extra-specs "
                 "must be specified"
             )
 
@@ -1266,9 +1365,7 @@ class SubmitJob(Command):
         # Validate argument: job_name
         if job_name:
             CommandHelper.handle_invalid_arguments(
-                ClientLibrary.validate_schema(
-                    job_name, args_schema.NAME_SCHEMA, allow_none=True
-                )
+                ClientLibrary.validate_name(job_name)
             )
 
         # Validate argument: job_id
@@ -1402,7 +1499,7 @@ class SubmitJob(Command):
             callbacks=callbacks_json,
             dry_run=dry_run,
             qec_options=qec_options,
-            flavor_id=flavor_id,
+            flavor_name=flavor_name,
             extra_specs=extra_specs_json,
         )
         results = CommandHelper.check_results(
@@ -1982,9 +2079,7 @@ class UpdateJob(Command):
         # Validate argument: job_name
         if job_name:
             CommandHelper.handle_invalid_arguments(
-                ClientLibrary.validate_schema(
-                    job_name, args_schema.NAME_SCHEMA, allow_none=True
-                )
+                ClientLibrary.validate_name(job_name)
             )
 
         # Validate argument: description
@@ -2150,9 +2245,10 @@ class CreateUser(Command):
         )
         parser.add_argument(
             "--role-name",
-            action="append",
+            nargs="+",
             dest="role_names",
-            help="Role name (can be specified multiple times)",
+            default=None,
+            help="Role names (can be specified multiple times)",
         )
         parser.add_argument("--description", type=str, help="Description")
         parser.add_argument(
@@ -2231,8 +2327,9 @@ class UpdateUser(Command):
         )
         parser.add_argument(
             "--role-name",
-            action="append",
+            nargs="+",
             dest="role_names",
+            default=None,
             help="Role names (can be specified multiple times, default: user)",
         )
         parser.add_argument("--description", type=str, help="Description")
@@ -3309,11 +3406,12 @@ class CreateFlavor(Command):
         parser = super().get_parser(prog_name)
         parser.add_argument("name", type=str, help="Flavor name")
         parser.add_argument(
-            "--specs",
-            dest="specs",
+            "--project-id",
+            dest="project_id",
             type=str,
-            required=True,
-            help="Flavor specs (JSON string)",
+            default=None,
+            help="Project ID (UUID, optional, "
+            "defaults to current user's project)",
         )
         parser.add_argument(
             "--description", type=str, help="Flavor description"
@@ -3325,25 +3423,104 @@ class CreateFlavor(Command):
             default=True,
             help="Create as private flavor",
         )
+        parser.add_argument(
+            "--min-qubits",
+            dest="min_qubits",
+            type=int,
+            default=None,
+            help="Minimum qubits",
+        )
+        parser.add_argument(
+            "--max-qubits",
+            dest="max_qubits",
+            type=int,
+            default=None,
+            help="Maximum qubits",
+        )
+        parser.add_argument(
+            "--gate-fidelity-1q-min",
+            dest="gate_fidelity_1q_min",
+            type=float,
+            default=None,
+            help="Min 1q gate fidelity",
+        )
+        parser.add_argument(
+            "--gate-fidelity-2q-min",
+            dest="gate_fidelity_2q_min",
+            type=float,
+            default=None,
+            help="Min 2q gate fidelity",
+        )
+        parser.add_argument(
+            "--property",
+            dest="property",
+            nargs="+",
+            type=str,
+            default=None,
+            help="Property in namespace:key=value format "
+            "(can be specified multiple times, "
+            "e.g. --property qc:test=1)",
+        )
+        parser.add_argument(
+            "--device-groups",
+            dest="device_groups",
+            nargs="+",
+            required=True,
+            type=str,
+            help="Device group names or UUIDs (at least one required)",
+        )
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
         name = parsed_args.name
-        specs_str = parsed_args.specs
+        project_id = parsed_args.project_id
         description = parsed_args.description
         is_public = parsed_args.is_public
+        min_qubits = parsed_args.min_qubits
+        max_qubits = parsed_args.max_qubits
+        gate_fidelity_1q_min = parsed_args.gate_fidelity_1q_min
+        gate_fidelity_2q_min = parsed_args.gate_fidelity_2q_min
+        property_list = parsed_args.property
+        device_groups = parsed_args.device_groups
 
-        try:
-            specs = json.loads(specs_str)
-        except json.decoder.JSONDecodeError as exc:
-            raise errors.InvalidArguments("Invalid argument: specs") from exc
+        # Resolve device group names to IDs
+        device_groups = CommandHelper.resolve_device_group_ids(
+            self.app.client, device_groups
+        )
+
+        # build extra_properties dict from --property
+        # (namespace:key=value)
+        extra_properties = {}
+        if property_list:
+            for item in property_list:
+                if "=" not in item:
+                    raise errors.InvalidArguments(
+                        f"Invalid property format: '{item}'. "
+                        "Must be 'namespace:key=value'. "
+                        "(e.g. 'qc:devices=\"dummy,qutip_sim\"')"
+                    )
+                k, v = item.split("=", 1)
+                k = k.strip()
+                if ":" not in k:
+                    raise errors.InvalidArguments(
+                        f"Invalid property key: '{k}'. "
+                        "Key must be in 'namespace:name' "
+                        "format (e.g. 'qc:test=1')"
+                    )
+                extra_properties[k] = v.strip()
 
         status_code, reason, text, result = self.app.client.create_flavor(
             name=name,
-            specs=specs,
+            project_id=project_id,
             description=description,
             is_public=is_public,
+            min_qubits=min_qubits,
+            max_qubits=max_qubits,
+            gate_fidelity_1q_min=gate_fidelity_1q_min,
+            gate_fidelity_2q_min=gate_fidelity_2q_min,
+            extra_properties=extra_properties if extra_properties else None,
+            device_groups=device_groups,
         )
         results = CommandHelper.check_results(
             resource, "create_flavor", status_code, reason, text
@@ -3351,19 +3528,178 @@ class CreateFlavor(Command):
         print(f"Flavor created: {results.get('id', None)}")
 
 
-class GetFlavor(ShowOne):
-    """Get flavor info."""
+class UpdateFlavor(Command):
+    """Update flavor (preset scheduling policy).
+
+    Can accept either a UUID or a flavor name as flavor_id parameter.
+    If a valid UUID is provided, it will be used directly.
+    Otherwise, the system will look up the flavor by name.
+    """
 
     group = QcosShell.CMD_GROUP_FLAVOR
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("flavor_id", type=str, help="Flavor ID")
+        parser.add_argument(
+            "flavor_id", type=str, help="Flavor ID (UUID) or flavor name"
+        )
+        parser.add_argument("--name", type=str, help="Flavor name")
+        parser.add_argument(
+            "--description", type=str, help="Flavor description"
+        )
+        parser.add_argument(
+            "--public",
+            dest="is_public",
+            action="store_true",
+            default=None,
+            help="Set as public flavor",
+        )
+        parser.add_argument(
+            "--private",
+            dest="is_public",
+            action="store_false",
+            default=None,
+            help="Set as private flavor",
+        )
+        parser.add_argument(
+            "--project-id",
+            dest="project_id",
+            type=str,
+            default=None,
+            help="Project ID (UUID)",
+        )
+        parser.add_argument(
+            "--min-qubits",
+            dest="min_qubits",
+            type=int,
+            default=None,
+            help="Minimum qubits",
+        )
+        parser.add_argument(
+            "--max-qubits",
+            dest="max_qubits",
+            type=int,
+            default=None,
+            help="Maximum qubits",
+        )
+        parser.add_argument(
+            "--gate-fidelity-1q-min",
+            dest="gate_fidelity_1q_min",
+            type=float,
+            default=None,
+            help="Min 1q gate fidelity",
+        )
+        parser.add_argument(
+            "--gate-fidelity-2q-min",
+            dest="gate_fidelity_2q_min",
+            type=float,
+            default=None,
+            help="Min 2q gate fidelity",
+        )
+        parser.add_argument(
+            "--property",
+            dest="property",
+            nargs="+",
+            type=str,
+            default=None,
+            help="Property in namespace:key=value format "
+            "(can be specified multiple times, will be merged, "
+            "e.g. --property qc:test=1)",
+        )
+        parser.add_argument(
+            "--device-groups",
+            dest="device_groups",
+            nargs="+",
+            type=str,
+            default=None,
+            help="Device group names or UUIDs (optional. "
+            "Replaces existing device group mappings if provided)",
+        )
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
-        flavor_id = parsed_args.flavor_id
+        flavor_id = Client.resolve_flavor_id(
+            self.app.client, parsed_args.flavor_id
+        )
+        name = parsed_args.name
+        description = parsed_args.description
+        is_public = parsed_args.is_public
+        project_id = parsed_args.project_id
+        min_qubits = parsed_args.min_qubits
+        max_qubits = parsed_args.max_qubits
+        gate_fidelity_1q_min = parsed_args.gate_fidelity_1q_min
+        gate_fidelity_2q_min = parsed_args.gate_fidelity_2q_min
+        property_list = parsed_args.property
+        device_groups = parsed_args.device_groups
+
+        # Resolve device group names to IDs
+        device_groups = CommandHelper.resolve_device_group_ids(
+            self.app.client, device_groups
+        )
+
+        # build extra_properties dict from --property (namespace:key=value)
+        extra_properties = {}
+        if property_list:
+            for item in property_list:
+                if "=" not in item:
+                    raise errors.InvalidArguments(
+                        f"Invalid property format: '{item}'. "
+                        "Must be 'namespace:key=value'"
+                    )
+                k, v = item.split("=", 1)
+                k = k.strip()
+                if ":" not in k:
+                    raise errors.InvalidArguments(
+                        f"Invalid property key: '{k}'. "
+                        "Key must be in 'namespace:name' format "
+                        "(e.g. 'qc:test=1')"
+                    )
+                extra_properties[k] = v.strip()
+
+        status_code, reason, text, result = self.app.client.update_flavor(
+            flavor_id=flavor_id,
+            name=name,
+            description=description,
+            is_public=is_public,
+            project_id=project_id,
+            min_qubits=min_qubits,
+            max_qubits=max_qubits,
+            gate_fidelity_1q_min=gate_fidelity_1q_min,
+            gate_fidelity_2q_min=gate_fidelity_2q_min,
+            extra_properties=extra_properties if extra_properties else None,
+            device_groups=device_groups,
+        )
+        results = CommandHelper.check_results(
+            resource, "update_flavor", status_code, reason, text
+        )
+        print(f"Flavor updated: {results.get('id', None)}")
+
+
+class GetFlavor(ShowOne):
+    """Get flavor by ID or name.
+
+    Can accept either a UUID or a flavor name as flavor_id parameter.
+    If a valid UUID is provided, it will be used directly.
+    Otherwise, the system will look up the flavor by name.
+    """
+
+    group = QcosShell.CMD_GROUP_FLAVOR
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "flavor_id",
+            type=str,
+            help="Flavor ID (UUID) or flavor name",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        flavor_id = Client.resolve_flavor_id(
+            self.app.client, parsed_args.flavor_id
+        )
 
         status_code, reason, text, result = self.app.client.get_flavor(
             flavor_id
@@ -3371,7 +3707,16 @@ class GetFlavor(ShowOne):
         json_results = CommandHelper.check_results(
             resource, "get_flavor", status_code, reason, text
         )
-        table_values = CommandHelper.get_table_data(json_results)
+        # Resolve device group IDs to names for display
+        if json_results.get("device_groups"):
+            json_results["device_groups"] = (
+                CommandHelper.resolve_device_group_names(
+                    self.app.client, json_results["device_groups"]
+                )
+            )
+        table_values = CommandHelper.get_table_data(
+            json_results, keep_value_none=True
+        )
         return table_values
 
 
@@ -3382,16 +3727,62 @@ class GetFlavors(Lister):
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--flavor-ids",
+            dest="flavor_ids",
+            nargs="*",
+            type=str,
+            default=[],
+            help="Filter by flavor IDs (space-separated UUIDs)",
+        )
+        parser.add_argument(
+            "--flavor-name",
+            dest="flavor_names",
+            nargs="+",
+            type=str,
+            default=None,
+            help="Filter by flavor name(s) (exact match, "
+            "space-separated for multiple)",
+        )
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
-        header_list = ["id", "name", "description", "is_public", "specs"]
+        header_list = [
+            "id",
+            "project_id",
+            "name",
+            "description",
+            "is_public",
+            "min_qubits",
+            "max_qubits",
+            "gate_fidelity_1q_min",
+            "gate_fidelity_2q_min",
+            "device_groups",
+            "extra_properties",
+        ]
 
-        status_code, reason, text, result = self.app.client.get_flavors()
+        filters = {}
+        if parsed_args.flavor_ids:
+            filters["flavor_ids"] = parsed_args.flavor_ids
+        if parsed_args.flavor_names:
+            filters["flavor_names"] = parsed_args.flavor_names
+        status_code, reason, text, result = self.app.client.get_flavors(
+            filters=filters if filters else None
+        )
         json_results = CommandHelper.check_results(
             resource, "get_flavors", status_code, reason, text
         )
+        # Resolve device group IDs to names for display
+        if json_results:
+            for flavor in json_results:
+                if flavor.get("device_groups"):
+                    flavor["device_groups"] = (
+                        CommandHelper.resolve_device_group_names(
+                            self.app.client,
+                            flavor["device_groups"],
+                        )
+                    )
         table_values = CommandHelper.get_table_list_data(
             json_results, header_list
         )
@@ -3400,14 +3791,27 @@ class GetFlavors(Lister):
         return table_values
 
 
-class DeleteFlavor(Command):
-    """Delete flavor."""
+class DeleteFlavors(Command):
+    """Delete flavors by IDs or names (batch).
+
+    Accepts a comma-separated list of flavor IDs (UUIDs) or names,
+    or the keyword 'all' to delete all flavors. For name inputs,
+    each is resolved to an ID via the server before deletion.
+    """
 
     group = QcosShell.CMD_GROUP_FLAVOR
 
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
-        parser.add_argument("flavor_id", type=str, help="Flavor ID")
+        parser.add_argument(
+            "flavor_ids",
+            type=str,
+            help=(
+                "Flavor IDs or names to delete. "
+                "Use comma-separated values for multiple, "
+                "or 'all' to delete all flavors"
+            ),
+        )
         parser.add_argument(
             "-y",
             "--yes",
@@ -3420,24 +3824,437 @@ class DeleteFlavor(Command):
 
     def take_action(self, parsed_args):
         resource = self.group
-        flavor_id = parsed_args.flavor_id
+        flavor_ids_input = parsed_args.flavor_ids
         assume_yes = parsed_args.assume_yes
 
-        if not assume_yes:
+        flavor_id_list = []
+        if flavor_ids_input.lower() == "all":
+            # get all flavor ids
+            status_code, reason, text, result = self.app.client.get_flavors()
+            json_results = CommandHelper.check_results(
+                resource, "get_flavors", status_code, reason, text
+            )
+            if json_results:
+                for flavor_info in json_results:
+                    flavor_id_list.append(flavor_info["id"])
+            if not assume_yes:
+                confirm = input("Are you sure to delete all flavors? (y/n) ")
+                if confirm.lower().strip() not in ("y", "yes"):
+                    print("User cancelled operation, abort!")
+                    return
+        else:
+            # parse flavor ids/names
+            id_str_list = flavor_ids_input.split(",")
+            for item in id_str_list:
+                item = item.strip()
+                if not item:
+                    continue
+                flavor_id = Client.resolve_flavor_id(self.app.client, item)
+                flavor_id_list.append(flavor_id)
+
+        if not flavor_id_list:
+            print("No flavors to delete")
+            return
+
+        if not assume_yes and flavor_ids_input.lower() != "all":
             confirm = input(
-                f"Are you sure to delete flavor {flavor_id}? (y/n) "
+                f"Are you sure to delete {len(flavor_id_list)} "
+                f"flavor(s)? (y/n) "
             )
             if confirm.lower().strip() not in ("y", "yes"):
                 print("User cancelled operation, abort!")
                 return
 
-        status_code, reason, text, result = self.app.client.delete_flavor(
-            flavor_id
+        status_code, reason, text, result = self.app.client.delete_flavors(
+            flavor_id_list
         )
-        CommandHelper.check_results(
-            resource, "delete_flavor", status_code, reason, text
+        json_results = CommandHelper.check_results(
+            resource, "delete_flavors", status_code, reason, text
         )
-        print(f"Flavor {flavor_id} deleted successfully")
+
+        # print results
+        success_count = 0
+        fail_count = 0
+        if json_results and isinstance(json_results, dict):
+            results = json_results.get("results", [])
+        elif json_results and isinstance(json_results, list):
+            results = json_results
+        else:
+            results = []
+        for r in results:
+            fid = r.get("flavor_id", "unknown")
+            if r.get("success"):
+                success_count += 1
+                print(f"Flavor {fid} deleted successfully")
+            else:
+                fail_count += 1
+                print(
+                    f"Flavor {fid} delete failed: "
+                    f"{r.get('error', 'unknown error')}"
+                )
+        print(f"Total: {success_count} succeeded, {fail_count} failed")
+
+
+# Device Group commands
+class CreateDeviceGroup(Command):
+    """Create device group for device classification."""
+
+    group = QcosShell.CMD_GROUP_DEVICE_GROUP
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument("name", type=str, help="Device group name")
+        parser.add_argument(
+            "--project-id",
+            dest="project_id",
+            type=str,
+            default=None,
+            help="Project ID (UUID, optional)",
+        )
+        parser.add_argument(
+            "--description", type=str, help="Device group description"
+        )
+        parser.add_argument(
+            "--private",
+            dest="is_public",
+            action="store_false",
+            default=True,
+            help="Create as private device group",
+        )
+        parser.add_argument(
+            "--device",
+            dest="device_names",
+            nargs="+",
+            type=str,
+            default=None,
+            help="Device names in this group "
+            "(can be specified multiple times)",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        name = parsed_args.name
+        project_id = parsed_args.project_id
+        description = parsed_args.description
+        is_public = parsed_args.is_public
+        device_names = parsed_args.device_names
+        # validate device names (at least one required)
+        if not device_names:
+            raise errors.InvalidArguments("At least one --device is required")
+        for dn in device_names:
+            # skip validation for special value _all
+            if dn == "_all":
+                continue
+            CommandHelper.handle_invalid_arguments(
+                ClientLibrary.validate_name(dn)
+            )
+
+        # check device existence (warn if not found)
+        CommandHelper.check_device_existence(
+            self.app.client, device_names, resource
+        )
+
+        status_code, reason, text, result = (
+            self.app.client.create_device_group(
+                name=name,
+                project_id=project_id,
+                description=description,
+                device_names=device_names,
+                is_public=is_public,
+            )
+        )
+        results = CommandHelper.check_results(
+            resource, "create_device_group", status_code, reason, text
+        )
+        print(f"Device group created: {results.get('id', None)}")
+
+
+class UpdateDeviceGroup(Command):
+    """Update device group by ID or name."""
+
+    group = QcosShell.CMD_GROUP_DEVICE_GROUP
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "group_id", type=str, help="Device group ID (UUID)"
+        )
+        parser.add_argument("--name", type=str, help="Device group name")
+        parser.add_argument(
+            "--description", type=str, help="Device group description"
+        )
+        parser.add_argument(
+            "--public",
+            dest="is_public",
+            action="store_true",
+            default=None,
+            help="Set as public group",
+        )
+        parser.add_argument(
+            "--private",
+            dest="is_public",
+            action="store_false",
+            default=None,
+            help="Set as private group",
+        )
+        parser.add_argument(
+            "--project-id",
+            dest="project_id",
+            type=str,
+            default=None,
+            help="Project ID (UUID)",
+        )
+        parser.add_argument(
+            "--device",
+            dest="device_names",
+            nargs="+",
+            type=str,
+            default=None,
+            help="Device names in this group "
+            "(replaces existing list, "
+            "can be specified multiple times)",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        group_id = Client.resolve_device_group_id(
+            self.app.client, parsed_args.group_id
+        )
+        name = parsed_args.name
+        description = parsed_args.description
+        is_public = parsed_args.is_public
+        project_id = parsed_args.project_id
+        device_names = parsed_args.device_names
+
+        # validate device names (skip _all)
+        if device_names:
+            for dn in device_names:
+                if dn == "_all":
+                    continue
+                CommandHelper.handle_invalid_arguments(
+                    ClientLibrary.validate_name(dn)
+                )
+
+        # check device existence (warn if not found)
+        CommandHelper.check_device_existence(
+            self.app.client, device_names, resource
+        )
+
+        status_code, reason, text, result = (
+            self.app.client.update_device_group(
+                group_id=group_id,
+                name=name,
+                description=description,
+                device_names=device_names,
+                is_public=is_public,
+                project_id=project_id,
+            )
+        )
+        results = CommandHelper.check_results(
+            resource, "update_device_group", status_code, reason, text
+        )
+        print(f"Device group updated: {results.get('id', None)}")
+
+
+class GetDeviceGroup(ShowOne):
+    """Get device group by ID."""
+
+    group = QcosShell.CMD_GROUP_DEVICE_GROUP
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "group_id",
+            type=str,
+            help="Device group ID (UUID) or group name",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        group_id = Client.resolve_device_group_id(
+            self.app.client, parsed_args.group_id
+        )
+
+        status_code, reason, text, result = self.app.client.get_device_group(
+            group_id
+        )
+        json_results = CommandHelper.check_results(
+            resource, "get_device_group", status_code, reason, text
+        )
+        table_values = CommandHelper.get_table_data(
+            json_results, keep_value_none=True
+        )
+        return table_values
+
+
+class GetDeviceGroups(Lister):
+    """Get device group list."""
+
+    group = QcosShell.CMD_GROUP_DEVICE_GROUP
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--group-ids",
+            dest="group_ids",
+            nargs="*",
+            type=str,
+            default=[],
+            help="Filter by device group IDs (space-separated UUIDs)",
+        )
+        parser.add_argument(
+            "--group-name",
+            dest="group_names",
+            nargs="+",
+            type=str,
+            default=None,
+            help="Filter by device group name(s) (exact match, "
+            "space-separated for multiple)",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        header_list = [
+            "id",
+            "project_id",
+            "name",
+            "description",
+            "device_names",
+            "is_public",
+        ]
+
+        filters = {}
+        if parsed_args.group_ids:
+            filters["group_ids"] = parsed_args.group_ids
+        if parsed_args.group_names:
+            filters["group_names"] = parsed_args.group_names
+        status_code, reason, text, result = self.app.client.get_device_groups(
+            filters=filters if filters else None
+        )
+        json_results = CommandHelper.check_results(
+            resource, "get_device_groups", status_code, reason, text
+        )
+        table_values = CommandHelper.get_table_list_data(
+            json_results, header_list
+        )
+        if not json_results:
+            print("No device groups found")
+        return table_values
+
+
+class DeleteDeviceGroups(Command):
+    """Delete device groups by IDs or names (batch).
+
+    Accepts a comma-separated list of device group IDs (UUIDs) or
+    names, or the keyword 'all' to delete all device groups. For
+    name inputs, each is resolved to an ID via the server before
+    deletion.
+    """
+
+    group = QcosShell.CMD_GROUP_DEVICE_GROUP
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "group_ids",
+            type=str,
+            help=(
+                "Device group IDs or names to delete. "
+                "Use comma-separated values for multiple, "
+                "or 'all' to delete all device groups"
+            ),
+        )
+        parser.add_argument(
+            "-y",
+            "--yes",
+            default=False,
+            dest="assume_yes",
+            action="store_true",
+            help="Answer yes for all questions",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        group_ids_input = parsed_args.group_ids
+        assume_yes = parsed_args.assume_yes
+
+        group_id_list = []
+        if group_ids_input.lower() == "all":
+            # get all device group ids
+            status_code, reason, text, result = (
+                self.app.client.get_device_groups()
+            )
+            json_results = CommandHelper.check_results(
+                resource, "get_device_groups", status_code, reason, text
+            )
+            if json_results:
+                for group_info in json_results:
+                    group_id_list.append(group_info["id"])
+            if not assume_yes:
+                confirm = input(
+                    "Are you sure to delete all device groups? (y/n) "
+                )
+                if confirm.lower().strip() not in ("y", "yes"):
+                    print("User cancelled operation, abort!")
+                    return
+        else:
+            # parse group ids/names
+            id_str_list = group_ids_input.split(",")
+            for item in id_str_list:
+                item = item.strip()
+                if not item:
+                    continue
+                group_id = Client.resolve_device_group_id(
+                    self.app.client, item
+                )
+                group_id_list.append(group_id)
+
+        if not group_id_list:
+            print("No device groups to delete")
+            return
+
+        if not assume_yes and group_ids_input.lower() != "all":
+            confirm = input(
+                f"Are you sure to delete {len(group_id_list)} "
+                f"device group(s)? (y/n) "
+            )
+            if confirm.lower().strip() not in ("y", "yes"):
+                print("User cancelled operation, abort!")
+                return
+
+        status_code, reason, text, result = (
+            self.app.client.delete_device_groups(group_id_list)
+        )
+        json_results = CommandHelper.check_results(
+            resource, "delete_device_groups", status_code, reason, text
+        )
+
+        # print results
+        success_count = 0
+        fail_count = 0
+        if json_results and isinstance(json_results, dict):
+            results = json_results.get("results", [])
+        elif json_results and isinstance(json_results, list):
+            results = json_results
+        else:
+            results = []
+        for r in results:
+            gid = r.get("group_id", "unknown")
+            if r.get("success"):
+                success_count += 1
+                print(f"Device group {gid} deleted successfully")
+            else:
+                fail_count += 1
+                print(
+                    f"Device group {gid} delete failed: "
+                    f"{r.get('error', 'unknown error')}"
+                )
+        print(f"Total: {success_count} succeeded, {fail_count} failed")
 
 
 # Register commands
@@ -3463,9 +4280,10 @@ command_manager.add_command("set-job-results", SetJobResults)
 command_manager.add_command("update-job", UpdateJob)
 # flavor command
 command_manager.add_command("create-flavor", CreateFlavor)
+command_manager.add_command("update-flavor", UpdateFlavor)
 command_manager.add_command("get-flavor", GetFlavor)
 command_manager.add_command("list-flavors", GetFlavors)
-command_manager.add_command("delete-flavor", DeleteFlavor)
+command_manager.add_command("delete-flavors", DeleteFlavors)
 # driver command
 command_manager.add_command("get-driver", GetDriver)
 command_manager.add_command("list-drivers", GetDrivers)
@@ -3476,6 +4294,12 @@ command_manager.add_command("get-calibrate-results", GetCalibrateResults)
 command_manager.add_command("set-device-options", SetDeviceOptions)
 command_manager.add_command("get-device-options", GetDeviceOptions)
 command_manager.add_command("list-devices", GetDevices)
+# device group command
+command_manager.add_command("create-device-group", CreateDeviceGroup)
+command_manager.add_command("update-device-group", UpdateDeviceGroup)
+command_manager.add_command("get-device-group", GetDeviceGroup)
+command_manager.add_command("list-device-groups", GetDeviceGroups)
+command_manager.add_command("delete-device-groups", DeleteDeviceGroups)
 # transpiler command
 command_manager.add_command("get-transpiler", GetTranspiler)
 command_manager.add_command("list-transpilers", GetTranspilers)
