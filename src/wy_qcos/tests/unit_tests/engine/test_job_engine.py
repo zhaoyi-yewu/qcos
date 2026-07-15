@@ -22,8 +22,8 @@ from datetime import datetime
 from unittest.mock import MagicMock, Mock, patch
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.drivers.driver_base import DriverBase
-from wy_qcos.drivers.dummy.driver_dummy import DriverDummy
+from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.dummy.driver_dummy import DriverDummy
 from wy_qcos.engine.job_engine import (
     _run_code,
     counts_to_probs,
@@ -82,7 +82,7 @@ class TestJobEngine:
         cls.job_info = {
             "data": cls.job_data,
             "driver": {
-                "module_name": "wy_qcos.drivers.dummy.driver_dummy",
+                "module_name": "wy_qcos.driver.dummy.driver_dummy",
                 "class_name": "DriverDummy",
             },
             "driver_options": None,
@@ -1486,7 +1486,7 @@ class TestJobEngine:
                 ],
             },
             "driver": {
-                "module_name": "wy_qcos.drivers.dummy.driver_dummy",
+                "module_name": "wy_qcos.driver.dummy.driver_dummy",
                 "class_name": "DriverDummy",
             },
             "transpiler": {

@@ -26,8 +26,8 @@ from unittest.mock import patch, Mock, AsyncMock
 
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant, HttpCode
-from wy_qcos.drivers.device_manager import DeviceManager
-from wy_qcos.drivers.driver_manager import DriverManager
+from wy_qcos.device.device_manager import DeviceManager
+from wy_qcos.driver.driver_manager import DriverManager
 from wy_qcos.task_manager.task_manager import TaskFlowManager
 from wy_qcos.tests.unit_tests.task_manager.constant_for_test import (
     ConstantForTest,
