@@ -17,6 +17,5 @@
 
 from .auto_scheduler import AutoScheduler
 from .device_state import DeviceState
-from .errors import NoValidDeviceError, FlavorNotFoundError
-from .flavor_manager import FlavorManager
+from .errors import NoValidDeviceError
 from .request_spec import RequestSpec

@@ -15,7 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from wy_qcos.drivers.device import Device
+from wy_qcos.device.device import Device
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.request_spec import RequestSpec
 from .base import BaseFilter
