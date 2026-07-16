@@ -184,6 +184,61 @@ class TestConfig:
                 mock_resolve.return_value = Path("/test/deps.txt")
                 config.load_driver_env_file("/driver_env.toml")
 
+    def test_job_expire_days_default_value(self):
+        """Test JOB_EXPIRE_DAYS default value is 7."""
+        assert Config.DEFAULT.JOB_EXPIRE_DAYS == 7
+
+    def test_job_expire_days_accepts_int(self):
+        """Test JOB_EXPIRE_DAYS accepts integer values."""
+        original_value = Config.DEFAULT.JOB_EXPIRE_DAYS
+        try:
+            Config.DEFAULT.JOB_EXPIRE_DAYS = 5
+            assert Config.DEFAULT.JOB_EXPIRE_DAYS == 5
+        finally:
+            Config.DEFAULT.JOB_EXPIRE_DAYS = original_value
+
+    def test_job_expire_days_accepts_float(self):
+        """Test JOB_EXPIRE_DAYS accepts float values."""
+        original_value = Config.DEFAULT.JOB_EXPIRE_DAYS
+        try:
+            Config.DEFAULT.JOB_EXPIRE_DAYS = 0.5
+            assert Config.DEFAULT.JOB_EXPIRE_DAYS == 0.5
+        finally:
+            Config.DEFAULT.JOB_EXPIRE_DAYS = original_value
+
+    def test_job_expire_days_accepts_minimum_value(self):
+        """Test JOB_EXPIRE_DAYS accepts minimum value 0.01."""
+        original_value = Config.DEFAULT.JOB_EXPIRE_DAYS
+        try:
+            Config.DEFAULT.JOB_EXPIRE_DAYS = 0.01
+            assert Config.DEFAULT.JOB_EXPIRE_DAYS == 0.01
+        finally:
+            Config.DEFAULT.JOB_EXPIRE_DAYS = original_value
+
+    def test_job_expire_days_rejects_below_minimum(self):
+        """Test JOB_EXPIRE_DAYS rejects values below 0.01."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            ConfigModel = type(Config.get_config())
+            ConfigModel(DEFAULT={"JOB_EXPIRE_DAYS": 0.001})
+
+    def test_job_expire_days_rejects_zero(self):
+        """Test JOB_EXPIRE_DAYS rejects zero."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            ConfigModel = type(Config.get_config())
+            ConfigModel(DEFAULT={"JOB_EXPIRE_DAYS": 0})
+
+    def test_job_expire_days_rejects_negative(self):
+        """Test JOB_EXPIRE_DAYS rejects negative values."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            ConfigModel = type(Config.get_config())
+            ConfigModel(DEFAULT={"JOB_EXPIRE_DAYS": -1})
+
     def test_validate_device_list_duplicates(self):
         """Test that duplicate devices are removed."""
         original_devices = Config.DEVICES.DEVICE_LIST
