@@ -51,6 +51,9 @@ from wy_qcos.transpiler.common.wirecut.cut_wire import (
     generate_all_variant_subcircuits_for_execute,
     reconstruct_probability_distribution_wire_cut,
 )
+from wy_qcos.transpiler.common.wirecut.result_cache import (
+    SubcircuitResultCache,
+)
 from wy_qcos.db.utils import db_utils
 from wy_qcos.db.database import init_database
 
@@ -1529,8 +1532,23 @@ def run_circuit_cutting_code(
             None,
         )
     # Step 2: Execute all subcircuits
+    result_cache = SubcircuitResultCache.from_job_info(job_info)
     sub_results = []
+    mapping_dict = None
+    job_results = {
+        "results": None,
+        "num_qubits": num_qubits,
+        "metadata": {"status": Constant.JOB_STATUS_COMPLETED},
+        "profiling": {},
+        "sub_results": None,
+    }
     for i in range(len(subcircuits)):
+        cached_result = result_cache.get(subcircuits[i], job_info)
+        if cached_result is not None:
+            logger.info(f"Subcircuit result cache hit: index={i}")
+            sub_results.append(counts_to_probs(cached_result))
+            continue
+
         src_sub_code_dict = {}
         sub_source_code_index = f"{str(source_code_index)}-{str(i)}"
         src_sub_code_dict[job_id + sub_source_code_index] = subcircuits[i]
@@ -1547,6 +1565,7 @@ def run_circuit_cutting_code(
             job_results["metadata"]["status"] == "COMPLETED"
             and job_results["results"] is not None
         ):
+            result_cache.set(subcircuits[i], job_info, job_results["results"])
             sub_result = counts_to_probs(job_results["results"])
             sub_results.append(sub_result)
     # Step 3: Reconstruct probability distribution

@@ -836,6 +836,116 @@ class TestJobEngine:
         assert mock_run_code.call_count == 2
         mock_reconstruct.assert_called_once()
 
+    @patch("wy_qcos.engine.job_engine.SubcircuitResultCache.from_job_info")
+    @patch(
+        "wy_qcos.engine.job_engine."
+        "generate_all_variant_subcircuits_for_execute"
+    )
+    @patch("wy_qcos.engine.job_engine._run_code")
+    @patch(
+        "wy_qcos.engine.job_engine."
+        "reconstruct_probability_distribution_wire_cut"
+    )
+    def test_run_circuit_cutting_code_uses_cached_subcircuit_result(
+        self,
+        mock_reconstruct,
+        mock_run_code,
+        mock_generate_subs,
+        mock_from_job_info,
+    ):
+        mock_driver = Mock()
+        mock_driver.get_max_qubits.return_value = 2
+        mock_driver.get_wirecut_qubit_width.return_value = 2
+        mock_transpiler = Mock()
+        mock_generate_subs.return_value = (
+            {},
+            ["cached-subcircuit", "new-subcircuit"],
+            Mock(),
+        )
+        result_cache = mock_from_job_info.return_value
+        result_cache.get.side_effect = [{"00": 3, "11": 1}, None]
+        executed_result = {"00": 1, "11": 3}
+        mock_run_code.return_value = (
+            {
+                "results": executed_result,
+                "metadata": {"status": "COMPLETED"},
+            },
+            mock_driver,
+            mock_transpiler,
+            {},
+        )
+        mock_reconstruct.return_value = (np.array([0.5, 0.0, 0.0, 0.5]), {})
+        job_id = "00000000-0000-4000-8000-000000000001"
+        job_info = {
+            "data": {"job_id": job_id},
+            "driver": {},
+            "transpiler": {},
+            "device": "test_device",
+        }
+
+        run_circuit_cutting_code(
+            0,
+            {f"{job_id}-0": "source"},
+            2,
+            job_info,
+            mock_driver,
+            mock_transpiler,
+        )
+
+        mock_run_code.assert_called_once()
+        result_cache.set.assert_called_once_with(
+            "new-subcircuit", job_info, executed_result
+        )
+        reconstructed_results = mock_reconstruct.call_args.args[1]
+        np.testing.assert_array_equal(
+            reconstructed_results[0], np.array([0.75, 0.0, 0.0, 0.25])
+        )
+        np.testing.assert_array_equal(
+            reconstructed_results[1], np.array([0.25, 0.0, 0.0, 0.75])
+        )
+
+    @patch("wy_qcos.engine.job_engine.SubcircuitResultCache.from_job_info")
+    @patch(
+        "wy_qcos.engine.job_engine."
+        "generate_all_variant_subcircuits_for_execute"
+    )
+    @patch("wy_qcos.engine.job_engine._run_code")
+    @patch(
+        "wy_qcos.engine.job_engine."
+        "reconstruct_probability_distribution_wire_cut"
+    )
+    def test_run_circuit_cutting_code_all_results_cached(
+        self,
+        mock_reconstruct,
+        mock_run_code,
+        mock_generate_subs,
+        mock_from_job_info,
+    ):
+        mock_driver = Mock()
+        mock_driver.get_max_qubits.return_value = 2
+        mock_driver.get_wirecut_qubit_width.return_value = 2
+        mock_generate_subs.return_value = ({}, ["subcircuit"], Mock())
+        mock_from_job_info.return_value.get.return_value = {
+            "00": 1,
+            "11": 1,
+        }
+        mock_reconstruct.return_value = (np.array([0.5, 0.0, 0.0, 0.5]), {})
+        job_id = "00000000-0000-4000-8000-000000000001"
+
+        result, _, _, mapping = run_circuit_cutting_code(
+            0,
+            {f"{job_id}-0": "source"},
+            2,
+            {"data": {"job_id": job_id}},
+            mock_driver,
+            Mock(),
+        )
+
+        mock_run_code.assert_not_called()
+        assert result["metadata"]["status"] == Constant.JOB_STATUS_COMPLETED
+        assert result["results"] == {"00": 0.5, "11": 0.5}
+        assert mapping is None
+
     @patch(
         "wy_qcos.engine.job_engine."
         "generate_all_variant_subcircuits_for_execute"
