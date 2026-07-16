@@ -25,17 +25,6 @@
 namespace qcos {
 
 /**
- * @brief 选择耦合图的最大连通分量
- *
- * 通过 BFS 找出所有连通分量，只保留节点数最多的那个分量。
- *
- * @param coupling_list [in/out] 耦合边列表，原地过滤为最大连通分量
- * @param edge_fidelities [in/out] 边保真度列表，与 coupling_list 同步过滤
- */
-void select_largest_component(std::vector<std::pair<int, int>>& coupling_list,
-                              std::vector<double>& edge_fidelities);
-
-/**
  * @brief Compute an initial logical->physical mapping using SABRE heuristic.
  * @param gates_list logical gate sequence
  * @param coupling_list physical coupling list
