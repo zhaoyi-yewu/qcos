@@ -22,6 +22,8 @@ from unittest.mock import patch, MagicMock, mock_open
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
+from wy_qcos.transpiler.common.errors import TranspilerException
+from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.common.utils import (
     Timer,
     TranspileRuntime,
@@ -296,3 +298,291 @@ class TestTranspilerCmdLine:
         if file_path.exists():
             file_path.unlink()
         assert file_path is not None
+
+    def test_enable_transpile_single_default(self):
+        perf = CMSSTranspilerPerf()
+        assert perf.enable_transpile_single is True
+
+    @pytest.mark.parametrize(
+        "conf_value,expected",
+        [
+            (True, True),
+            (False, False),
+        ],
+    )
+    def test_init_transpile_params_enable_transpile_single(
+        self, conf_value, expected
+    ):
+        perf = CMSSTranspilerPerf()
+        extra_configs = {
+            "transpile": {
+                "files": [f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"],
+                "enable_transpile_single": conf_value,
+                "transpiler": {"base_gates": ["rx, ry, cx"]},
+                "optimize": {"opt_level": [1]},
+                "mapping": {
+                    "tech_type": ["superconducting"],
+                    "config_file": [
+                        f"{self.etc_dir}/qcos/conf.d/spinq_rpc.toml"
+                    ],
+                },
+            }
+        }
+        perf.init_transpile_params(extra_configs)
+        assert perf.enable_transpile_single is expected
+
+    def test_init_transpile_params_enable_transpile_single_default(self):
+        perf = CMSSTranspilerPerf()
+        extra_configs = {
+            "transpile": {
+                "files": [f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"],
+                "transpiler": {"base_gates": ["rx, ry, cx"]},
+                "optimize": {"opt_level": [1]},
+                "mapping": {
+                    "tech_type": ["superconducting"],
+                    "config_file": [
+                        f"{self.etc_dir}/qcos/conf.d/spinq_rpc.toml"
+                    ],
+                },
+            }
+        }
+        perf.init_transpile_params(extra_configs)
+        assert perf.enable_transpile_single is True
+
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf.get_transpile_result"
+    )
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf.parse_file_args"
+    )
+    def test_main_cmss_transpiler_csv_with_single_raises(
+        self, mock_parse_file_args, mock_get_transpile_result
+    ):
+        mock_parse_file_args.return_value = None
+        mock_get_transpile_result.return_value = None
+        perf = CMSSTranspilerPerf()
+        conf_path = Path(GLOBAL_CONFIGS["temp_dir"]) / "csv_single_conf.toml"
+        conf_path.write_text(
+            "[transpile]\n"
+            'csv_file = "cmss_perf.csv"\n'
+            "enable_transpile_single = true\n"
+            'files = ["./samples/qasm/2.0/simple-qasm.qasm"]\n'
+            "[transpile.transpiler]\n"
+            'base_gates = ["rx, ry, cx"]\n'
+            "[transpile.optimize]\n"
+            "opt_level = [1]\n"
+            "[transpile.mapping]\n"
+            'tech_type = ["superconducting"]\n'
+            'config_file = ["./etc/qcos/conf.d/spinq_rpc.toml"]\n',
+            encoding="utf-8",
+        )
+        with pytest.raises(TranspilerException) as e:
+            perf.main_cmss_transpiler(str(conf_path))
+        assert "enable_transpile_single is true" in str(e.value)
+        mock_get_transpile_result.assert_not_called()
+
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf.get_transpile_result"
+    )
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf.parse_file_args"
+    )
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf.output_csv_file"
+    )
+    def test_main_cmss_transpiler_csv_without_single_ok(
+        self,
+        mock_output_csv_file,
+        mock_parse_file_args,
+        mock_get_transpile_result,
+    ):
+        mock_parse_file_args.return_value = None
+        mock_get_transpile_result.return_value = None
+        mock_output_csv_file.return_value = None
+        perf = CMSSTranspilerPerf()
+        conf_path = Path(GLOBAL_CONFIGS["temp_dir"]) / "csv_nosingle_conf.toml"
+        conf_path.write_text(
+            "[transpile]\n"
+            'csv_file = "cmss_perf.csv"\n'
+            "enable_transpile_single = false\n"
+            'files = ["./samples/qasm/2.0/simple-qasm.qasm"]\n'
+            "[transpile.transpiler]\n"
+            'base_gates = ["rx, ry, cx"]\n'
+            "[transpile.optimize]\n"
+            "opt_level = [1]\n"
+            "[transpile.mapping]\n"
+            'tech_type = ["superconducting"]\n'
+            'config_file = ["./etc/qcos/conf.d/spinq_rpc.toml"]\n',
+            encoding="utf-8",
+        )
+        perf.main_cmss_transpiler(str(conf_path))
+        assert perf.enable_transpile_single is False
+        assert perf.csv_file == "cmss_perf.csv"
+        mock_get_transpile_result.assert_called_once()
+        mock_output_csv_file.assert_called_once()
+
+    def _build_mock_transpiler_for_single(self):
+        mock_transpiler = MagicMock()
+        mock_transpiler.transpiler_options = {}
+        mock_result = MagicMock()
+        mock_result.timings = TranspileRuntime()
+        mock_transpiler.transpile_single.return_value = mock_result
+        return mock_transpiler
+
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "TranspilerHighPerformanceCmss"
+    )
+    def test_cmss_transpiler_perf_exec_uses_cpp_single(self, MockTranspiler):
+        mock_transpiler = self._build_mock_transpiler_for_single()
+        MockTranspiler.return_value = mock_transpiler
+
+        perf = CMSSTranspilerPerf()
+        perf.enable_transpile_single = True
+        input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        perf.cmss_transpiler_perf_exec(
+            input_file=input_file,
+            opt_level=Constant.DEFAULT_OPTIMIZATION_LEVEL,
+            base_gates=["rx", "ry", "cx"],
+            tech_type=Constant.TECH_TYPE_SUPERCONDUCTING,
+            config_file=(
+                GLOBAL_CONFIGS["etc_dir"] + "/qcos/conf.d/spinq_rpc.toml"
+            ),
+            sc_mapping_options={"routing_algorithm": "sabre"},
+        )
+        assert mock_transpiler.transpile_single.called
+        assert not mock_transpiler.transpile.called
+
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "TranspilerHighPerformanceCmss"
+    )
+    def test_cmss_transpiler_perf_exec_single_disabled_skips_cpp(
+        self, MockTranspiler
+    ):
+        mock_transpiler = MagicMock()
+        mock_transpiler.transpiler_options = {}
+        mock_transpiler.parse.return_value = {"000": (1, ["x"])}
+        mock_transpiler.transpile.return_value = ([X([0])], None)
+        MockTranspiler.return_value = mock_transpiler
+
+        perf = CMSSTranspilerPerf()
+        perf.enable_transpile_single = False
+        input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        runtime = perf.cmss_transpiler_perf_exec(
+            input_file=input_file,
+            opt_level=Constant.DEFAULT_OPTIMIZATION_LEVEL,
+            base_gates=["rx", "ry", "cx"],
+            tech_type=Constant.TECH_TYPE_SUPERCONDUCTING,
+            config_file=(
+                GLOBAL_CONFIGS["etc_dir"] + "/qcos/conf.d/spinq_rpc.toml"
+            ),
+            sc_mapping_options={"routing_algorithm": "sabre"},
+        )
+        assert not mock_transpiler.transpile_single.called
+        assert mock_transpiler.transpile.called
+        assert runtime.transpiled_gate_count == 1
+        assert runtime.transpiled_depth > 0
+
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "TranspilerHighPerformanceCmss"
+    )
+    def test_cmss_transpiler_perf_exec_non_sabre_skips_cpp(
+        self, MockTranspiler
+    ):
+        mock_transpiler = MagicMock()
+        mock_transpiler.transpiler_options = {}
+        mock_transpiler.parse.return_value = {"000": (1, ["x"])}
+        mock_transpiler.transpile.return_value = ([X([0])], None)
+        MockTranspiler.return_value = mock_transpiler
+
+        perf = CMSSTranspilerPerf()
+        perf.enable_transpile_single = True
+        input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        runtime = perf.cmss_transpiler_perf_exec(
+            input_file=input_file,
+            opt_level=Constant.DEFAULT_OPTIMIZATION_LEVEL,
+            base_gates=["rx", "ry", "cx"],
+            tech_type=Constant.TECH_TYPE_SUPERCONDUCTING,
+            config_file=(
+                GLOBAL_CONFIGS["etc_dir"] + "/qcos/conf.d/spinq_rpc.toml"
+            ),
+            sc_mapping_options={"routing_algorithm": "sc"},
+        )
+        assert not mock_transpiler.transpile_single.called
+        assert mock_transpiler.transpile.called
+        assert runtime.transpiled_gate_count == 1
+
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "TranspilerHighPerformanceCmss"
+    )
+    def test_cmss_transpiler_perf_exec_transpiled_stats_with_max_qubits(
+        self, MockTranspiler
+    ):
+        mock_transpiler = MagicMock()
+        mock_transpiler.transpiler_options = {}
+        mock_transpiler.parse.return_value = {"000": (1, ["x"])}
+        mock_transpiler.transpile.return_value = ([X([0])], None)
+        MockTranspiler.return_value = mock_transpiler
+
+        orig_max_qubits = trans_cfg_inst.get_max_qubits()
+        trans_cfg_inst.set_max_qubits(5)
+        try:
+            perf = CMSSTranspilerPerf()
+            perf.enable_transpile_single = False
+            input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+            runtime = perf.cmss_transpiler_perf_exec(
+                input_file=input_file,
+                opt_level=Constant.DEFAULT_OPTIMIZATION_LEVEL,
+                base_gates=["rx", "ry", "cx"],
+                tech_type=Constant.TECH_TYPE_SUPERCONDUCTING,
+                config_file=(
+                    GLOBAL_CONFIGS["etc_dir"] + "/qcos/conf.d/spinq_rpc.toml"
+                ),
+                sc_mapping_options={"routing_algorithm": "sc"},
+            )
+            assert runtime.transpiled_gate_count == 1
+            assert runtime.transpiled_depth > 0
+        finally:
+            trans_cfg_inst.set_max_qubits(orig_max_qubits)
+
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "TranspilerHighPerformanceCmss"
+    )
+    def test_cmss_transpiler_perf_exec_transpiled_stats_fallback_qubits(
+        self, MockTranspiler
+    ):
+        mock_transpiler = MagicMock()
+        mock_transpiler.transpiler_options = {}
+        mock_transpiler.parse.return_value = {"000": (3, ["x"])}
+        mock_transpiler.transpile.return_value = ([X([0])], None)
+        MockTranspiler.return_value = mock_transpiler
+
+        orig_max_qubits = trans_cfg_inst.get_max_qubits()
+        trans_cfg_inst.set_max_qubits(0)
+        try:
+            perf = CMSSTranspilerPerf()
+            perf.enable_transpile_single = False
+            input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+            runtime = perf.cmss_transpiler_perf_exec(
+                input_file=input_file,
+                opt_level=Constant.DEFAULT_OPTIMIZATION_LEVEL,
+                base_gates=["rx", "ry", "cx"],
+                tech_type=Constant.TECH_TYPE_SUPERCONDUCTING,
+                config_file=(
+                    GLOBAL_CONFIGS["etc_dir"] + "/qcos/conf.d/spinq_rpc.toml"
+                ),
+                sc_mapping_options={"routing_algorithm": "sc"},
+            )
+            assert runtime.transpiled_gate_count == 1
+            assert runtime.transpiled_depth > 0
+        finally:
+            trans_cfg_inst.set_max_qubits(orig_max_qubits)
