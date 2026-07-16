@@ -1002,6 +1002,56 @@ class TestUpdateDeviceGroupRoute:
             result = update_device_group(body, MagicMock(), auth_data=None)
             assert result is not None
 
+    def test_update_clear_description(self):
+        """Explicitly passing description=None clears the field."""
+        gid = str(uuid.uuid4())
+        updated = make_group(group_id=gid, description=None)
+        mock_sched = MagicMock()
+        mgr = MagicMock()
+        mgr.get_device_groups.return_value = []
+        mgr.update_device_group.return_value = (True, None, updated)
+        mock_sched.get_device_group_manager.return_value = mgr
+        body = self._make_request(gid, description=None)
+        with (
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
+                return_value={},
+            ),
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                mock_sched,
+            ),
+        ):
+            result = update_device_group(body, MagicMock(), auth_data=None)
+            assert result is not None
+            call_data = mgr.update_device_group.call_args[0][1]
+            assert call_data["description"] is None
+
+    def test_update_clear_device_names(self):
+        """Explicitly passing device_names=None clears the field."""
+        gid = str(uuid.uuid4())
+        updated = make_group(group_id=gid, device_names=None)
+        mock_sched = MagicMock()
+        mgr = MagicMock()
+        mgr.get_device_groups.return_value = []
+        mgr.update_device_group.return_value = (True, None, updated)
+        mock_sched.get_device_group_manager.return_value = mgr
+        body = self._make_request(gid, device_names=None)
+        with (
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
+                return_value={},
+            ),
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                mock_sched,
+            ),
+        ):
+            result = update_device_group(body, MagicMock(), auth_data=None)
+            assert result is not None
+            call_data = mgr.update_device_group.call_args[0][1]
+            assert call_data["device_names"] is None
+
 
 # ------------------------------------------------------------------ #
 # API route: get_device_group / get_device_groups
