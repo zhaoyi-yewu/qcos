@@ -207,6 +207,27 @@ class TestDeviceGroup:
         assert group["description"] == "Updated description"
         assert group["device_names"] == ["dummy", "qutip_sim"]
 
+    def test_update_device_group_clear_fields(self):
+        """Test that passing None clears nullable fields."""
+        gid = self._ensure_group_exists()
+
+        # first set a description
+        self.admin_client.update_device_group(
+            group_id=gid, description="to be cleared"
+        )
+
+        # clear description by passing None
+        status_code, reason, text, result = (
+            self.admin_client.update_device_group(
+                group_id=gid, description=None
+            )
+        )
+        success, err_msg = StLibrary.is_response_success(status_code, text)
+        assert success, f"Failed to clear description: {err_msg}"
+        resp = json.loads(text)
+        group = resp["result"]
+        assert group["description"] is None
+
     def test_update_device_group_name(self):
         """Test updating a device group's name."""
         gid = self._ensure_group_exists()

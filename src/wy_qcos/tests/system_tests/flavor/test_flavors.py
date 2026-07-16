@@ -263,6 +263,30 @@ class TestFlavor:
         # extra_properties should contain merged value
         assert flavor["extra_properties"] == {"qc:devices": "qutip_sim"}
 
+    def test_update_flavor_clear_fields(self):
+        """Test that passing None clears nullable fields."""
+        flavor_id = self._ensure_flavor_exists()
+
+        # first set a description and max_qubits
+        self.admin_client.update_flavor(
+            flavor_id=flavor_id,
+            description="to be cleared",
+            max_qubits=64,
+        )
+
+        # clear description and max_qubits by passing None
+        status_code, reason, text, result = self.admin_client.update_flavor(
+            flavor_id=flavor_id,
+            description=None,
+            max_qubits=None,
+        )
+        success, err_msg = StLibrary.is_response_success(status_code, text)
+        assert success, f"Failed to clear fields: {err_msg}"
+        resp = json.loads(text)
+        flavor = resp["result"]
+        assert flavor["description"] is None
+        assert flavor["max_qubits"] is None
+
     def test_delete_flavors(self):
         """Test deleting a flavor (batch)."""
         flavor_id = self._ensure_flavor_exists()
@@ -335,3 +359,56 @@ class TestFlavor:
         assert any(f["id"] == flavor_id for f in flavors)
 
         self.admin_client.delete_flavors([flavor_id])
+
+    def test_create_flavor_invalid_qubits(self):
+        """Test creating a flavor with min_qubits > max_qubits fails."""
+        status_code, reason, text, result = self.admin_client.create_flavor(
+            name="st-test-flavor-invalid-qubits",
+            description="invalid qubits range",
+            is_public=True,
+            min_qubits=32,
+            max_qubits=1,
+            gate_fidelity_1q_min=0.99,
+            gate_fidelity_2q_min=0.99,
+            extra_properties={"qc:devices": "dummy"},
+            device_groups=[DEFAULT_DEVICE_GROUP_QC_ALL_ID],
+        )
+        success, err_msg = StLibrary.is_response_success(status_code, text)
+        assert not success, (
+            f"Expected failure for invalid qubits range, "
+            f"but got success: {err_msg}"
+        )
+
+    def test_create_flavor_invalid_fidelity(self):
+        """Test creating a flavor with gate_fidelity > 1 fails."""
+        status_code, reason, text, result = self.admin_client.create_flavor(
+            name="st-test-flavor-invalid-fidelity",
+            description="invalid fidelity",
+            is_public=True,
+            min_qubits=1,
+            max_qubits=32,
+            gate_fidelity_1q_min=1.5,
+            gate_fidelity_2q_min=0.99,
+            extra_properties={"qc:devices": "dummy"},
+            device_groups=[DEFAULT_DEVICE_GROUP_QC_ALL_ID],
+        )
+        success, err_msg = StLibrary.is_response_success(status_code, text)
+        assert not success, (
+            f"Expected failure for invalid fidelity, "
+            f"but got success: {err_msg}"
+        )
+
+    def test_update_flavor_invalid_qubits(self):
+        """Test updating a flavor with min_qubits > max_qubits fails."""
+        flavor_id = self._ensure_flavor_exists()
+
+        status_code, reason, text, result = self.admin_client.update_flavor(
+            flavor_id=flavor_id,
+            min_qubits=32,
+            max_qubits=1,
+        )
+        success, err_msg = StLibrary.is_response_success(status_code, text)
+        assert not success, (
+            f"Expected failure for invalid qubits range, "
+            f"but got success: {err_msg}"
+        )
