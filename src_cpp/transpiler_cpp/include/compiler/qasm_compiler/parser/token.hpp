@@ -18,6 +18,7 @@
 #pragma once
 
 #include <iostream>
+#include <string_view>
 #include <utility>
 
 #include "compiler/quantum_computation.hpp"
@@ -192,14 +193,14 @@ struct Token {
   int64_t val{};
   bool isSigned{false};
   qc::fp valReal{};
-  std::string str;
+  std::string_view str;  // zero-copy: references Scanner's buffer_
 
   Token(const size_t l, const size_t c)
       : line(l), col(c), endLine(l), endCol(c) {}
   Token(const Kind k, const size_t l, const size_t c)
       : kind(k), line(l), col(c), endLine(l), endCol(c) {}
-  Token(const Kind k, const size_t l, const size_t c, std::string s)
-      : kind(k), line(l), col(c), endLine(l), endCol(c), str(std::move(s)) {}
+  Token(const Kind k, const size_t l, const size_t c, std::string_view s)
+      : kind(k), line(l), col(c), endLine(l), endCol(c), str(s) {}
 
   static std::string kindToString(const Kind kind) {
     // Print a token kind string representation.

@@ -23,16 +23,16 @@ namespace qasm {
 class CompilerError final : public std::exception {
  public:
   std::string message{};
-  std::shared_ptr<DebugInfo> debugInfo{};
+  DebugInfo debugInfo;  // inline — no heap allocation
 
-  CompilerError(std::string msg, std::shared_ptr<DebugInfo> debug)
+  CompilerError(std::string msg, DebugInfo debug)
       : message(std::move(msg)), debugInfo(std::move(debug)) {}
 
   [[nodiscard]] std::string toString() const {
     std::stringstream ss{};
-    ss << debugInfo->toString();
+    ss << debugInfo.toString();
 
-    auto parentDebugInfo = debugInfo->parent;
+    auto* parentDebugInfo = debugInfo.parent;
     while (parentDebugInfo != nullptr) {
       ss << "\n  (included from " << parentDebugInfo->toString() << ")";
       parentDebugInfo = parentDebugInfo->parent;

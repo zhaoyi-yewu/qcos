@@ -140,11 +140,17 @@ TranspileResult transpile(
   // 汇总计时
   t.total_time =
       std::chrono::duration<double>(clock::now() - total_start).count();
-  t.decomposed_time = t.decompose_rule_time + t.decompose_1q2q_time +
-                      t.decompose_apply_time;
-  t.transpile_time = t.opt_time1 + t.decomposed_time + t.mapping_time +
-                     t.opt_time2;
+  t.decomposed_time =
+      t.decompose_rule_time + t.decompose_1q2q_time + t.decompose_apply_time;
+  t.transpile_time =
+      t.opt_time1 + t.decomposed_time + t.mapping_time + t.opt_time2;
 
+  // 所有计算步骤完成，集中清空中间变量
+  decomposed_circuit = {};
+  routed_ops = {};
+  decomposed_ops = {};
+  optimized_ops = {};
+  ops = {};
   return result;
 }
 

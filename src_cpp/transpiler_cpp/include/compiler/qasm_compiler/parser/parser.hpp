@@ -73,12 +73,18 @@ class Parser {
   };
 
   std::stack<ScannerState> scanner{};
-  std::shared_ptr<DebugInfo> includeDebugInfo{nullptr};
+  DebugInfo* includeDebugInfo{nullptr};  // raw pointer into debugInfoPool_
+
+  // Pool allocator for DebugInfo — avoids per-statement make_shared overhead.
+  // All DebugInfo objects share the parse session lifetime and are freed together.
+  std::vector<std::unique_ptr<DebugInfo>> debugInfoPool_;
 
   [[noreturn]] void error(const Token& token, const std::string& msg) {
     std::cerr << "Error at line " << token.line << ", column " << token.col
               << ": " << msg << '\n';
-    throw CompilerError(msg, makeDebugInfo(token));
+    throw CompilerError(msg, DebugInfo(token.line, token.col,
+                                       scanner.top().filename.value_or("<input>"),
+                                       includeDebugInfo));
   }
 
   [[nodiscard]] Token last() const {
@@ -186,18 +192,43 @@ class Parser {
 
   void scan();
 
-  std::shared_ptr<DebugInfo> makeDebugInfo(Token const& begin,
-                                           Token const& /*end*/) {
+  // Allocate a DebugInfo without heap-allocating a string for well-known
+  // filenames. QASM 2.0 files go through the implicit stdgates.inc/qelib1.inc
+  // include, so the filename is always one of three strings — cache them.
+  DebugInfo makeDebugInfo(Token const& begin,
+                         Token const& /*end*/) {
     // Parameter `end` is currently not used.
-    return std::make_shared<DebugInfo>(
-        begin.line, begin.col, scanner.top().filename.value_or("<input>"),
-        includeDebugInfo);
+    static const std::string s_stdgates{"stdgates.inc"};
+    static const std::string s_qelib1{"qelib1.inc"};
+    static const std::string s_input{"<input>"};
+    const auto& fn = scanner.top().filename.has_value()
+        ? (scanner.top().filename.value() == "stdgates.inc") ? s_stdgates
+        : (scanner.top().filename.value() == "qelib1.inc")   ? s_qelib1
+        : scanner.top().filename.value()
+        : s_input;
+    return DebugInfo(begin.line, begin.col, fn, includeDebugInfo);
   }
 
-  std::shared_ptr<DebugInfo> makeDebugInfo(Token const& token) {
-    return std::make_shared<DebugInfo>(
-        token.line, token.col, scanner.top().filename.value_or("<input>"),
-        includeDebugInfo);
+  DebugInfo makeDebugInfo(Token const& token) {
+    static const std::string s_stdgates{"stdgates.inc"};
+    static const std::string s_qelib1{"qelib1.inc"};
+    static const std::string s_input{"<input>"};
+    const auto& fn = scanner.top().filename.has_value()
+        ? (scanner.top().filename.value() == "stdgates.inc") ? s_stdgates
+        : (scanner.top().filename.value() == "qelib1.inc")   ? s_qelib1
+        : scanner.top().filename.value()
+        : s_input;
+    return DebugInfo(token.line, token.col, fn, includeDebugInfo);
+  }
+
+  // Allocate a long-lived DebugInfo into the pool (for includeDebugInfo chain).
+  // Returns a raw pointer that is valid for the entire parse session.
+  DebugInfo* allocDebugInfo(size_t line, size_t col, std::string filename,
+                            DebugInfo* parent = nullptr) {
+    debugInfoPool_.push_back(std::make_unique<DebugInfo>(line, col,
+                                                         std::move(filename),
+                                                         parent));
+    return debugInfoPool_.back().get();
   }
 
   [[nodiscard]] bool isAtEnd() const {
