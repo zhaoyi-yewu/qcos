@@ -34,16 +34,15 @@ def is_valid_url(url, schemes):
     """
     try:
         result = urlparse(url)
-        return all([result.scheme in schemes, result.netloc])
     except ValueError:
         return False
-    return True
+    return all([result.scheme in schemes, result.netloc])
 
 
 NAME_SCHEMA = And(
     Use(str),
     lambda s: 1 <= len(s) <= 64,
-    Regex(r"^[a-zA-Z0-9_\-]+$"),
+    Regex(r"^[a-zA-Z0-9_\-\.]+$"),
     error="Name can only consist of the following parts: "
     "letters, numbers, dashes, underscores. "
     "The length of name must between [1-64].",
