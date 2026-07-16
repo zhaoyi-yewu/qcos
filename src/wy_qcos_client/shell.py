@@ -53,6 +53,7 @@ class QcosShell(App):
     CMD_GROUP_DEVICE = "Device"
     CMD_GROUP_TRANSPILER = "Transpiler"
     CMD_GROUP_JOB = "Job"
+    CMD_GROUP_FLAVOR = "Flavor"
     CMD_GROUP_METRICS = "Metrics"
     CMD_GROUPS = [
         CMD_GROUP_DEFAULT,
@@ -65,6 +66,7 @@ class QcosShell(App):
         CMD_GROUP_DEVICE,
         CMD_GROUP_TRANSPILER,
         CMD_GROUP_JOB,
+        CMD_GROUP_FLAVOR,
         CMD_GROUP_METRICS,
     ]
 
@@ -1099,12 +1101,28 @@ class SubmitJob(Command):
             default=Constant.DEFAULT_SHOTS,
             help="Shots",
         )
-        default_backend = Constant.DEVICE_DUMMY
+        default_backend = None
         parser.add_argument(
             "--backend",
             dest="backend",
             default=default_backend,
-            help=f"Set backend device name. eg: {default_backend}",
+            help="Set backend device name. If not specified, "
+            "auto scheduling is triggered (requires --flavor-id "
+            "or --extra-specs)",
+        )
+        parser.add_argument(
+            "--flavor-id",
+            dest="flavor_id",
+            type=str,
+            default=None,
+            help="Flavor ID for auto scheduling",
+        )
+        parser.add_argument(
+            "--extra-specs",
+            dest="extra_specs",
+            type=str,
+            default=None,
+            help="Extra scheduling specifications (JSON string)",
         )
         parser.add_argument(
             "--driver-options",
@@ -1179,12 +1197,31 @@ class SubmitJob(Command):
         description = parsed_args.description
         shots = parsed_args.shots
         backend = parsed_args.backend
+        flavor_id = parsed_args.flavor_id
+        extra_specs = parsed_args.extra_specs
         driver_options = parsed_args.driver_options
         transpiler = parsed_args.transpiler
         transpiler_options = parsed_args.transpiler_options
         profiling = parsed_args.profiling
         callbacks = parsed_args.callbacks
         qec_options = parsed_args.qec_options
+
+        # Validate auto scheduling params
+        if not backend and not flavor_id and not extra_specs:
+            raise errors.InvalidArguments(
+                "Either --backend or --flavor-id/--extra-specs "
+                "must be specified"
+            )
+
+        # Parse extra_specs JSON
+        extra_specs_json = None
+        if extra_specs:
+            try:
+                extra_specs_json = json.loads(extra_specs)
+            except json.decoder.JSONDecodeError as exc:
+                raise errors.InvalidArguments(
+                    "Invalid argument: extra_specs"
+                ) from exc
 
         # request capabilities
         status_code, reason, text, result = self.app.client.version(
@@ -1365,6 +1402,8 @@ class SubmitJob(Command):
             callbacks=callbacks_json,
             dry_run=dry_run,
             qec_options=qec_options,
+            flavor_id=flavor_id,
+            extra_specs=extra_specs_json,
         )
         results = CommandHelper.check_results(
             resource, "submit_job", status_code, reason, text
@@ -3260,6 +3299,147 @@ class GetJobStats(Lister):
         return table_values
 
 
+# Flavor commands
+class CreateFlavor(Command):
+    """Create flavor (preset scheduling policy)."""
+
+    group = QcosShell.CMD_GROUP_FLAVOR
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument("name", type=str, help="Flavor name")
+        parser.add_argument(
+            "--specs",
+            dest="specs",
+            type=str,
+            required=True,
+            help="Flavor specs (JSON string)",
+        )
+        parser.add_argument(
+            "--description", type=str, help="Flavor description"
+        )
+        parser.add_argument(
+            "--private",
+            dest="is_public",
+            action="store_false",
+            default=True,
+            help="Create as private flavor",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        name = parsed_args.name
+        specs_str = parsed_args.specs
+        description = parsed_args.description
+        is_public = parsed_args.is_public
+
+        try:
+            specs = json.loads(specs_str)
+        except json.decoder.JSONDecodeError as exc:
+            raise errors.InvalidArguments("Invalid argument: specs") from exc
+
+        status_code, reason, text, result = self.app.client.create_flavor(
+            name=name,
+            specs=specs,
+            description=description,
+            is_public=is_public,
+        )
+        results = CommandHelper.check_results(
+            resource, "create_flavor", status_code, reason, text
+        )
+        print(f"Flavor created: {results.get('id', None)}")
+
+
+class GetFlavor(ShowOne):
+    """Get flavor info."""
+
+    group = QcosShell.CMD_GROUP_FLAVOR
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument("flavor_id", type=str, help="Flavor ID")
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        flavor_id = parsed_args.flavor_id
+
+        status_code, reason, text, result = self.app.client.get_flavor(
+            flavor_id
+        )
+        json_results = CommandHelper.check_results(
+            resource, "get_flavor", status_code, reason, text
+        )
+        table_values = CommandHelper.get_table_data(json_results)
+        return table_values
+
+
+class GetFlavors(Lister):
+    """Get flavor list."""
+
+    group = QcosShell.CMD_GROUP_FLAVOR
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        header_list = ["id", "name", "description", "is_public", "specs"]
+
+        status_code, reason, text, result = self.app.client.get_flavors()
+        json_results = CommandHelper.check_results(
+            resource, "get_flavors", status_code, reason, text
+        )
+        table_values = CommandHelper.get_table_list_data(
+            json_results, header_list
+        )
+        if not json_results:
+            print("No flavors found")
+        return table_values
+
+
+class DeleteFlavor(Command):
+    """Delete flavor."""
+
+    group = QcosShell.CMD_GROUP_FLAVOR
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument("flavor_id", type=str, help="Flavor ID")
+        parser.add_argument(
+            "-y",
+            "--yes",
+            default=False,
+            dest="assume_yes",
+            action="store_true",
+            help="Answer yes for all questions",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+        flavor_id = parsed_args.flavor_id
+        assume_yes = parsed_args.assume_yes
+
+        if not assume_yes:
+            confirm = input(
+                f"Are you sure to delete flavor {flavor_id}? (y/n) "
+            )
+            if confirm.lower().strip() not in ("y", "yes"):
+                print("User cancelled operation, abort!")
+                return
+
+        status_code, reason, text, result = self.app.client.delete_flavor(
+            flavor_id
+        )
+        CommandHelper.check_results(
+            resource, "delete_flavor", status_code, reason, text
+        )
+        print(f"Flavor {flavor_id} deleted successfully")
+
+
 # Register commands
 command_manager = CommandManager("qcos")
 # version command
@@ -3281,6 +3461,11 @@ command_manager.add_command("cancel-jobs", CancelJobs)
 command_manager.add_command("delete-jobs", DeleteJobs)
 command_manager.add_command("set-job-results", SetJobResults)
 command_manager.add_command("update-job", UpdateJob)
+# flavor command
+command_manager.add_command("create-flavor", CreateFlavor)
+command_manager.add_command("get-flavor", GetFlavor)
+command_manager.add_command("list-flavors", GetFlavors)
+command_manager.add_command("delete-flavor", DeleteFlavor)
 # driver command
 command_manager.add_command("get-driver", GetDriver)
 command_manager.add_command("list-drivers", GetDrivers)
