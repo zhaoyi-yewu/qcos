@@ -28,10 +28,14 @@ opt_level = [0, 1]
 # 默认为true
 # enable_mapping = true
 # 拓扑类型, superconducting/neutral_atom
-# 当is_exec不为false时, 拓扑信息必须配置
+# superconducting: 超导量子计算机拓扑类型
 tech_type = ["superconducting"]
 # 拓扑类型配置文件, 当is_exec不为false时， 必须配置，绝对路径或项目的相对路径
 config_file = ["./etc/qcos/conf.d/spinq_rpc.toml"]
+# neutral_atom: 中性原子量子计算机拓扑类型
+# tech_type = ["neutral_atom"]
+# 拓扑类型配置文件, 当is_exec不为false时， 必须配置，绝对路径或项目的相对路径
+# config_file = ["./etc/qcos/conf.d/hanyuan1.toml"]
 
 # 拓扑类型选择中性原子（neutral_atom）时，支持配置选择mapping算法
 # 支持的算法："default"、"ZAP"、"ZAC"

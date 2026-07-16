@@ -1,4 +1,4 @@
-[spinq_rpc]
+[spinq_rpc_156]
 alias_name = "量旋科技 超导驱动 (RPC版本)"
 driver = "DriverSpinQRpc"
 description = "量旋科技 超导驱动 (RPC版本)"
@@ -8,7 +8,7 @@ rpc_port = 4242
 username = "user"
 password = ""
 
-[spinq_rpc.transpiler.qpu_configs]
+[spinq_rpc_156.transpiler.qpu_configs]
 # TODO(wangjujun): to be defined
 
 qubits = 156
