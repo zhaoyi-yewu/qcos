@@ -100,9 +100,7 @@ def device_monitor_flow(device_monitor_info):
             logger.error(f"Fail to fetch running info. exception: {e}")
             time.sleep(Constant.DEFAULT_DEVICE_MONITOR_INTERVAL)
             continue
-        device_info["timestamp"] = time.strftime(
-            "%Y-%m-%d %H:%M:%S", time.localtime()
-        )
+        device_info["last_updated_at"] = time.time()
         device_info_json = json.dumps(device_info)
 
         # publish device info by redis
