@@ -8,7 +8,8 @@
 #         http://license.coscl.org.cn/MulanPSL2
 # ----------------------------------------------------------------------
 
-FROM qcos-base:dev AS sandbox-builder
+ARG BASE_TAG=${BASE_TAG}
+FROM qcos-base:${BASE_TAG} AS sandbox-builder
 
 ARG BUILD_CONTEXT=/tmp/build-context
 ARG CONTAINER_NAME
