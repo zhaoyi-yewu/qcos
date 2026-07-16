@@ -163,7 +163,7 @@ class TestClientFlavor:
         assert data["extra_properties"] == {"qc:devices": "new"}
 
     @patch.object(Client, "call_json_rpc")
-    def test_update_flavor_none_omitted(self, mock_call):
+    def test_update_flavor_none_clears(self, mock_call):
         mock_call.return_value = self.return_values
         client.update_flavor(
             flavor_id=FLAVOR_ID,
@@ -176,9 +176,28 @@ class TestClientFlavor:
             gate_fidelity_1q_min=None,
             gate_fidelity_2q_min=None,
             extra_properties=None,
+            device_groups=None,
+        )
+        data = mock_call.call_args[0][2]
+        # explicit None clears nullable fields
+        assert data["name"] is None
+        assert data["description"] is None
+        assert data["min_qubits"] is None
+        assert data["max_qubits"] is None
+        assert data["gate_fidelity_1q_min"] is None
+        assert data["gate_fidelity_2q_min"] is None
+        assert data["extra_properties"] is None
+        assert data["device_groups"] is None
+
+    @patch.object(Client, "call_json_rpc")
+    def test_update_flavor_omit_skips(self, mock_call):
+        mock_call.return_value = self.return_values
+        client.update_flavor(
+            flavor_id=FLAVOR_ID,
             device_groups=DEVICE_GROUPS,
         )
         data = mock_call.call_args[0][2]
+        # omitted fields are not sent
         assert data == {
             "flavor_id": FLAVOR_ID,
             "device_groups": DEVICE_GROUPS,
