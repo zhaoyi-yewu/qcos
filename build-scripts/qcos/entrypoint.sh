@@ -169,15 +169,15 @@ fi
 if [ "${db_migration}" = true ]; then
   echo "Starting database migration..."
 
-  # Get the init-db script
-  INIT_DB_SCRIPT="/root/qcos-project/build-scripts/init-db.sh"
+  # Get the db-manager script
+  INIT_DB_SCRIPT="/root/qcos-project/build-scripts/db-manager.sh"
   DB_MIGRATION_DIR="/root/qcos-project/src/wy_qcos/db/migration"
   if [ "${DEV,,}" = "false" ]; then
-    INIT_DB_SCRIPT="${venv_dir}/share/wy_qcos/scripts/init-db.sh"
+    INIT_DB_SCRIPT="${venv_dir}/share/wy_qcos/scripts/db-manager.sh"
     DB_MIGRATION_DIR="${venv_dir}/share/wy_qcos/src/wy_qcos/db/migration"
   fi
 
-  # Verify init-db.sh exists
+  # Verify db-manager.sh exists
   if [ -f "${INIT_DB_SCRIPT}" ]; then
     # Execute database migration and capture output
     echo "Executing: ${INIT_DB_SCRIPT} --db-user postgres --db-qcos-password ****** -D ${DB_MIGRATION_DIR} -i -u"
