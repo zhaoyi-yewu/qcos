@@ -1,0 +1,130 @@
+[hanyuan1]
+alias_name = "中科酷原-汉原1-100"
+driver = "DriverHanyuan1-100"
+description = "中科酷原-汉原100比特模拟测试脚本"
+
+[hanyuan1.transpiler.qpu_configs]
+qubits = 100
+storage_area = ["P100", "P101", "P102", "P103", "P104", "P105", "P106", "P107", "P108", "P109", 
+                "P110", "P111", "P112", "P113", "P114", "P115", "P116", "P117", "P118", "P119",
+                "P120", "P121", "P122", "P123", "P124", "P125", "P126", "P127", "P128", "P129",
+                "P130", "P131", "P132", "P133", "P134", "P135", "P136", "P137", "P138", "P139",
+                "P140", "P141", "P142", "P143", "P144", "P145", "P146", "P147", "P148", "P149", 
+                "P150", "P151", "P152", "P153", "P154", "P155", "P156", "P157", "P158", "P159",
+                "P160", "P161", "P162", "P163", "P164", "P165", "P166", "P167", "P168", "P169", 
+                "P170", "P171", "P172", "P173", "P174", "P175", "P176", "P177", "P178", "P179",
+                "P180", "P181", "P182", "P183", "P184", "P185", "P186", "P187", "P188", "P189", 
+                "P190", "P191", "P192", "P193", "P194", "P195", "P196", "P197", "P198", "P199",]
+
+operate_area = ["P80", "P81", "P86", "P87", "P92", "P93", "P98", "P99"]
+
+coupler_map.R_G0 = ["P80", "P81"]
+coupler_map.R_G1 = ["P86", "P87"]
+coupler_map.R_G2 = ["P92", "P93"]
+coupler_map.R_G3 = ["P98", "P99"]
+
+readout_error.P100 = 3.0
+readout_error.P101 = 1.0
+readout_error.P102 = 5.0
+readout_error.P103 = 2.0
+readout_error.P104 = 4.0
+readout_error.P105 = 1.0
+readout_error.P106 = 3.0
+readout_error.P107 = 5.0
+readout_error.P108 = 2.0
+readout_error.P109 = 4.0
+readout_error.P110 = 5.0
+readout_error.P111 = 1.0
+readout_error.P112 = 2.0
+readout_error.P113 = 4.0
+readout_error.P114 = 3.0
+readout_error.P115 = 5.0
+readout_error.P116 = 2.0
+readout_error.P117 = 1.0
+readout_error.P118 = 4.0
+readout_error.P119 = 3.0
+readout_error.P120 = 2.0
+readout_error.P121 = 5.0
+readout_error.P122 = 1.0
+readout_error.P123 = 3.0
+readout_error.P124 = 4.0
+readout_error.P125 = 2.0
+readout_error.P126 = 5.0
+readout_error.P127 = 3.0
+readout_error.P128 = 1.0
+readout_error.P129 = 4.0
+readout_error.P130 = 5.0
+readout_error.P131 = 2.0
+readout_error.P132 = 3.0
+readout_error.P133 = 1.0
+readout_error.P134 = 4.0
+readout_error.P135 = 2.0
+readout_error.P136 = 5.0
+readout_error.P137 = 1.0
+readout_error.P138 = 3.0
+readout_error.P139 = 4.0
+readout_error.P140 = 2.0
+readout_error.P141 = 5.0
+readout_error.P142 = 4.0
+readout_error.P143 = 1.0
+readout_error.P144 = 3.0
+readout_error.P145 = 2.0
+readout_error.P146 = 5.0
+readout_error.P147 = 1.0
+readout_error.P148 = 4.0
+readout_error.P149 = 3.0
+readout_error.P150 = 2.0
+readout_error.P151 = 5.0
+readout_error.P152 = 1.0
+readout_error.P153 = 4.0
+readout_error.P154 = 3.0
+readout_error.P155 = 2.0
+readout_error.P156 = 5.0
+readout_error.P157 = 1.0
+readout_error.P158 = 3.0
+readout_error.P159 = 4.0
+readout_error.P160 = 5.0
+readout_error.P161 = 2.0
+readout_error.P162 = 1.0
+readout_error.P163 = 4.0
+readout_error.P164 = 3.0
+readout_error.P165 = 5.0
+readout_error.P166 = 2.0
+readout_error.P167 = 4.0
+readout_error.P168 = 1.0
+readout_error.P169 = 3.0
+readout_error.P170 = 2.0
+readout_error.P171 = 5.0
+readout_error.P172 = 4.0
+readout_error.P173 = 1.0
+readout_error.P174 = 3.0
+readout_error.P175 = 2.0
+readout_error.P176 = 5.0
+readout_error.P177 = 1.0
+readout_error.P178 = 4.0
+readout_error.P179 = 3.0
+readout_error.P180 = 5.0
+readout_error.P181 = 2.0
+readout_error.P182 = 1.0
+readout_error.P183 = 4.0
+readout_error.P184 = 3.0
+readout_error.P185 = 2.0
+readout_error.P186 = 5.0
+readout_error.P187 = 1.0
+readout_error.P188 = 4.0
+readout_error.P189 = 3.0
+readout_error.P190 = 2.0
+readout_error.P191 = 5.0
+readout_error.P192 = 1.0
+readout_error.P193 = 3.0
+readout_error.P194 = 4.0
+readout_error.P195 = 2.0
+readout_error.P196 = 5.0
+readout_error.P197 = 1.0
+readout_error.P198 = 4.0
+readout_error.P199 = 3.0
+
+coupler_error.R_G0 = 3.0
+coupler_error.R_G1 = 3.0
+coupler_error.R_G2 = 3.0
+coupler_error.R_G3 = 3.0
