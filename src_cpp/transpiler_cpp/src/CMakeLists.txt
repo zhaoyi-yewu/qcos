@@ -24,7 +24,8 @@ add_library(${LIB_TRANSPILER} STATIC
                             decomposer/decomposer.cpp
                             mapping/greedy_routing.cpp
                             mapping/sabre_routing.cpp
-                            mapping/sabre_utils.cpp
+                            mapping/mapping_utils.cpp
+                            mapping/chip_data.cpp
                             mapping/mcts_routing.cpp
                             mapping/sabre_mapping.cpp
                             utils/load_files.cpp
