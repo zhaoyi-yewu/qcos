@@ -37,7 +37,7 @@ DEFAULT_DEVICE_GROUP_QC_QUBO = "qc.qubo"
 
 DEFAULT_DEVICE_GROUPS = [
     {
-        "id": "00000000-0000-0000-0000-000000000001",
+        "id": "00000000-0000-4000-8000-000000000001",
         "name": DEFAULT_DEVICE_GROUP_QC_ALL,
         "project_id": Constant.ADMIN_PROJECT_ID,
         "description": "all quantum computers (real and simulators)",
@@ -45,7 +45,7 @@ DEFAULT_DEVICE_GROUPS = [
         "device_names": ["_all"],
     },
     {
-        "id": "00000000-0000-0000-0000-000000000002",
+        "id": "00000000-0000-4000-8000-000000000002",
         "name": DEFAULT_DEVICE_GROUP_QC_REAL,
         "project_id": Constant.ADMIN_PROJECT_ID,
         "description": "all quantum computers (real)",
@@ -53,7 +53,7 @@ DEFAULT_DEVICE_GROUPS = [
         "device_names": None,
     },
     {
-        "id": "00000000-0000-0000-0000-100000000001",
+        "id": "00000000-0000-4000-8000-100000000001",
         "name": DEFAULT_DEVICE_GROUP_QC_SIM,
         "project_id": Constant.ADMIN_PROJECT_ID,
         "description": "all quantum computers (simulators)",
@@ -61,7 +61,7 @@ DEFAULT_DEVICE_GROUPS = [
         "device_names": ["qutip_sim"],
     },
     {
-        "id": "00000000-0000-0000-0000-200000000001",
+        "id": "00000000-0000-4000-8000-200000000001",
         "name": DEFAULT_DEVICE_GROUP_QC_QUBO,
         "project_id": Constant.ADMIN_PROJECT_ID,
         "description": "all QUBO solvers",

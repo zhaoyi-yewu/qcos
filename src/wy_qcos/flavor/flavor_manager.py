@@ -35,10 +35,10 @@ logger = logging.getLogger(__name__)
 
 
 # Default preset device group IDs (matching DEFAULT_DEVICE_GROUPS).
-DEFAULT_DEVICE_GROUP_QC_ALL_ID = "00000000-0000-0000-0000-000000000001"
-DEFAULT_DEVICE_GROUP_QC_REAL_ID = "00000000-0000-0000-0000-000000000002"
-DEFAULT_DEVICE_GROUP_QC_SIM_ID = "00000000-0000-0000-0000-100000000001"
-DEFAULT_DEVICE_GROUP_QC_QUBO_ID = "00000000-0000-0000-0000-200000000001"
+DEFAULT_DEVICE_GROUP_QC_ALL_ID = "00000000-0000-4000-8000-000000000001"
+DEFAULT_DEVICE_GROUP_QC_REAL_ID = "00000000-0000-4000-8000-000000000002"
+DEFAULT_DEVICE_GROUP_QC_SIM_ID = "00000000-0000-4000-8000-100000000001"
+DEFAULT_DEVICE_GROUP_QC_QUBO_ID = "00000000-0000-4000-8000-200000000001"
 
 # Default preset flavor names.
 DEFAULT_FLAVOR_G1_ALL = "g1.all"
@@ -49,7 +49,7 @@ DEFAULT_FLAVOR_Q1_ALL = "q1.all"
 
 DEFAULT_FLAVORS = [
     {
-        "id": "00000000-0000-0000-0000-000000000001",
+        "id": "00000000-0000-4000-8000-000000000001",
         "name": DEFAULT_FLAVOR_G1_ALL,
         "project_id": Constant.ADMIN_PROJECT_ID,
         "description": "all quantum computers (real and simulators)",
@@ -58,7 +58,7 @@ DEFAULT_FLAVORS = [
         "device_groups": [DEFAULT_DEVICE_GROUP_QC_ALL_ID],
     },
     {
-        "id": "00000000-0000-0000-0000-000000000002",
+        "id": "00000000-0000-4000-8000-000000000002",
         "name": DEFAULT_FLAVOR_R1_ALL,
         "project_id": Constant.ADMIN_PROJECT_ID,
         "description": "all quantum computers (real)",
@@ -69,7 +69,7 @@ DEFAULT_FLAVORS = [
         "device_groups": [DEFAULT_DEVICE_GROUP_QC_REAL_ID],
     },
     {
-        "id": "00000000-0000-0000-0000-000000000003",
+        "id": "00000000-0000-4000-8000-000000000003",
         "name": DEFAULT_FLAVOR_RH1_ALL,
         "project_id": Constant.ADMIN_PROJECT_ID,
         "description": "all quantum computers (real) with high fidelity>=0.99",
@@ -80,7 +80,7 @@ DEFAULT_FLAVORS = [
         "device_groups": [DEFAULT_DEVICE_GROUP_QC_REAL_ID],
     },
     {
-        "id": "00000000-0000-0000-0000-100000000001",
+        "id": "00000000-0000-4000-8000-100000000001",
         "name": DEFAULT_FLAVOR_S1_ALL,
         "project_id": Constant.ADMIN_PROJECT_ID,
         "description": "all quantum computers (simulators)",
@@ -89,7 +89,7 @@ DEFAULT_FLAVORS = [
         "device_groups": [DEFAULT_DEVICE_GROUP_QC_SIM_ID],
     },
     {
-        "id": "00000000-0000-0000-0000-200000000001",
+        "id": "00000000-0000-4000-8000-200000000001",
         "name": DEFAULT_FLAVOR_Q1_ALL,
         "project_id": Constant.ADMIN_PROJECT_ID,
         "description": "all QUBO solvers",
