@@ -34,7 +34,8 @@ class GateOperation : public BaseOperation {
                 std::vector<double> arg_value_ = {},
                 OperationType op_type_ = OperationType::SINGLE_QUBIT_OPERATION,
                 bool hermitian_ = true);
-  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q() const;
+  virtual std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q()
+      const;
 
  private:
   void validate_params() const;
@@ -364,7 +365,7 @@ class CCX : public GateOperation {
   CCX(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::TRIPLE_QUBIT_OPERATION);
   std::vector<std::shared_ptr<BaseOperation>> default_decompose();
-  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q();
+  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q() const;
   std::array<std::complex<double>, 64> to_matrix() const;
   std::string to_string() const;
 };
@@ -374,7 +375,7 @@ class CSWAP : public GateOperation {
   CSWAP(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
         OperationType gate_type = OperationType::TRIPLE_QUBIT_OPERATION);
   std::vector<std::shared_ptr<BaseOperation>> default_decompose();
-  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q();
+  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q() const;
   std::array<std::complex<double>, 64> to_matrix() const;
   std::string to_string() const;
 };
@@ -384,7 +385,7 @@ class RCCX : public GateOperation {
   RCCX(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
        OperationType gate_type = OperationType::TRIPLE_QUBIT_OPERATION);
   std::vector<std::shared_ptr<BaseOperation>> default_decompose();
-  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q();
+  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q() const;
   std::array<std::complex<double>, 64> to_matrix() const;
   std::string to_string() const;
 };
@@ -395,7 +396,7 @@ class RC3X : public GateOperation {
   RC3X(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
        OperationType gate_type = OperationType::FOUR_QUBIT_OPERATION);
   std::vector<std::shared_ptr<BaseOperation>> default_decompose();
-  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q();
+  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q() const;
   std::array<std::complex<double>, 256> to_matrix() const;
   std::string to_string() const;
 };
@@ -405,7 +406,7 @@ class C3X : public GateOperation {
   C3X(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::FOUR_QUBIT_OPERATION);
   std::vector<std::shared_ptr<BaseOperation>> default_decompose();
-  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q();
+  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q() const;
   std::array<std::complex<double>, 256> to_matrix() const;
   std::string to_string() const;
 };
@@ -414,7 +415,7 @@ class C3SQRTX : public GateOperation {
   C3SQRTX(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
           OperationType gate_type = OperationType::FOUR_QUBIT_OPERATION);
   std::vector<std::shared_ptr<BaseOperation>> default_decompose();
-  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q();
+  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q() const;
   std::array<std::complex<double>, 256> to_matrix() const;
   std::string to_string() const;
 };
@@ -425,7 +426,7 @@ class C4X : public GateOperation {
   C4X(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
       OperationType gate_type = OperationType::FIVE_QUBIT_OPERATION);
   std::vector<std::shared_ptr<BaseOperation>> default_decompose();
-  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q();
+  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q() const;
   std::array<std::complex<double>, 1024> to_matrix() const;
   std::string to_string() const;
 };
@@ -472,8 +473,10 @@ class Sync : public BaseOperation {
 
 class Measure : public BaseOperation {
  public:
-  Measure(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
-          OperationType operation_type = qcos::OperationType::MEASURE);
+  std::vector<int> cbits;
+  Measure(std::vector<int> targets_, std::vector<int> cbits_ = {},
+          OperationType operation_type = OperationType::MEASURE);
+  std::string to_openqasm(const std::string& qubit_prefix) const override;
   std::string to_string() const;
 };
 

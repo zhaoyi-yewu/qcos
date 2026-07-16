@@ -1027,8 +1027,7 @@ class OpenQasmParser final : public InstVisitor {
                                                    std::move(arg_values));
           break;
         case qc::otMeasure:
-          operation = std::make_shared<qcos::Measure>(std::move(all_qubits),
-                                                      std::move(arg_values));
+          operation = std::make_shared<qcos::Measure>(std::move(all_qubits));
           break;
         case qc::otReset:
           operation = std::make_shared<qcos::Reset>(std::move(all_qubits),
