@@ -30,7 +30,7 @@ from cliff.lister import Lister
 from cliff.show import ShowOne
 from io import StringIO
 
-from .client import Client
+from .client import Client, _UNSET
 from .common import args_schema, errors
 from .common.client_library import ClientLibrary
 from .common.constant import Constant, HttpCode
@@ -3534,6 +3534,9 @@ class UpdateFlavor(Command):
     Can accept either a UUID or a flavor name as flavor_id parameter.
     If a valid UUID is provided, it will be used directly.
     Otherwise, the system will look up the flavor by name.
+
+    For nullable fields, use --<key> to update the value, or
+    --<key>-unset to clear it. The two are mutually exclusive.
     """
 
     group = QcosShell.CMD_GROUP_FLAVOR
@@ -3544,9 +3547,6 @@ class UpdateFlavor(Command):
             "flavor_id", type=str, help="Flavor ID (UUID) or flavor name"
         )
         parser.add_argument("--name", type=str, help="Flavor name")
-        parser.add_argument(
-            "--description", type=str, help="Flavor description"
-        )
         parser.add_argument(
             "--public",
             dest="is_public",
@@ -3568,35 +3568,89 @@ class UpdateFlavor(Command):
             default=None,
             help="Project ID (UUID)",
         )
-        parser.add_argument(
+        # description: --description vs --description-unset
+        mx = parser.add_mutually_exclusive_group()
+        mx.add_argument(
+            "--description",
+            dest="description",
+            type=str,
+            default=None,
+            help="Flavor description",
+        )
+        mx.add_argument(
+            "--unset-description",
+            dest="unset_description",
+            action="store_true",
+            default=False,
+            help="Unset description field",
+        )
+        # min_qubits: --min-qubits vs --unset-min-qubits
+        mx = parser.add_mutually_exclusive_group()
+        mx.add_argument(
             "--min-qubits",
             dest="min_qubits",
             type=int,
             default=None,
             help="Minimum qubits",
         )
-        parser.add_argument(
+        mx.add_argument(
+            "--unset-min-qubits",
+            dest="unset_min_qubits",
+            action="store_true",
+            default=False,
+            help="Unset min_qubits field",
+        )
+        # max_qubits: --max-qubits vs --unset-max-qubits
+        mx = parser.add_mutually_exclusive_group()
+        mx.add_argument(
             "--max-qubits",
             dest="max_qubits",
             type=int,
             default=None,
             help="Maximum qubits",
         )
-        parser.add_argument(
+        mx.add_argument(
+            "--unset-max-qubits",
+            dest="unset_max_qubits",
+            action="store_true",
+            default=False,
+            help="Unset max_qubits field",
+        )
+        # gate_fidelity_1q_min
+        mx = parser.add_mutually_exclusive_group()
+        mx.add_argument(
             "--gate-fidelity-1q-min",
             dest="gate_fidelity_1q_min",
             type=float,
             default=None,
             help="Min 1q gate fidelity",
         )
-        parser.add_argument(
+        mx.add_argument(
+            "--unset-gate-fidelity-1q-min",
+            dest="unset_gate_fidelity_1q_min",
+            action="store_true",
+            default=False,
+            help="Unset gate_fidelity_1q_min field",
+        )
+        # gate_fidelity_2q_min
+        mx = parser.add_mutually_exclusive_group()
+        mx.add_argument(
             "--gate-fidelity-2q-min",
             dest="gate_fidelity_2q_min",
             type=float,
             default=None,
             help="Min 2q gate fidelity",
         )
-        parser.add_argument(
+        mx.add_argument(
+            "--unset-gate-fidelity-2q-min",
+            dest="unset_gate_fidelity_2q_min",
+            action="store_true",
+            default=False,
+            help="Unset gate_fidelity_2q_min field",
+        )
+        # extra_properties: --property vs --unset-extra-properties
+        mx = parser.add_mutually_exclusive_group()
+        mx.add_argument(
             "--property",
             dest="property",
             nargs="+",
@@ -3606,14 +3660,30 @@ class UpdateFlavor(Command):
             "(can be specified multiple times, will be merged, "
             "e.g. --property qc:test=1)",
         )
-        parser.add_argument(
+        mx.add_argument(
+            "--unset-extra-properties",
+            dest="unset_extra_properties",
+            action="store_true",
+            default=False,
+            help="Unset all extra_properties",
+        )
+        # device_groups: --device-groups vs --unset-device-groups
+        mx = parser.add_mutually_exclusive_group()
+        mx.add_argument(
             "--device-groups",
             dest="device_groups",
             nargs="+",
             type=str,
             default=None,
-            help="Device group names or UUIDs (optional. "
-            "Replaces existing device group mappings if provided)",
+            help="Device group names or UUIDs "
+            "(replaces existing device group mappings)",
+        )
+        mx.add_argument(
+            "--unset-device-groups",
+            dest="unset_device_groups",
+            action="store_true",
+            default=False,
+            help="Unset all device group mappings",
         )
         return parser
 
@@ -3622,26 +3692,57 @@ class UpdateFlavor(Command):
         flavor_id = Client.resolve_flavor_id(
             self.app.client, parsed_args.flavor_id
         )
-        name = parsed_args.name
-        description = parsed_args.description
-        is_public = parsed_args.is_public
         project_id = parsed_args.project_id
-        min_qubits = parsed_args.min_qubits
-        max_qubits = parsed_args.max_qubits
-        gate_fidelity_1q_min = parsed_args.gate_fidelity_1q_min
-        gate_fidelity_2q_min = parsed_args.gate_fidelity_2q_min
-        property_list = parsed_args.property
-        device_groups = parsed_args.device_groups
 
-        # Resolve device group names to IDs
-        device_groups = CommandHelper.resolve_device_group_ids(
-            self.app.client, device_groups
-        )
+        # name and is_public are non-nullable: only update when
+        # explicitly provided, otherwise omit (_UNSET).
+        name = parsed_args.name if parsed_args.name is not None else _UNSET
+        is_public = _UNSET
+        if parsed_args.is_public is not None:
+            is_public = parsed_args.is_public
 
-        # build extra_properties dict from --property (namespace:key=value)
-        extra_properties = {}
-        if property_list:
-            for item in property_list:
+        # description: update, unset, or omit
+        description = _UNSET
+        if parsed_args.unset_description:
+            description = None
+        elif parsed_args.description is not None:
+            description = parsed_args.description
+
+        # min_qubits: update, unset, or omit
+        min_qubits = _UNSET
+        if parsed_args.unset_min_qubits:
+            min_qubits = None
+        elif parsed_args.min_qubits is not None:
+            min_qubits = parsed_args.min_qubits
+
+        # max_qubits: update, unset, or omit
+        max_qubits = _UNSET
+        if parsed_args.unset_max_qubits:
+            max_qubits = None
+        elif parsed_args.max_qubits is not None:
+            max_qubits = parsed_args.max_qubits
+
+        # gate_fidelity_1q_min: update, unset, or omit
+        gate_fidelity_1q_min = _UNSET
+        if parsed_args.unset_gate_fidelity_1q_min:
+            gate_fidelity_1q_min = None
+        elif parsed_args.gate_fidelity_1q_min is not None:
+            gate_fidelity_1q_min = parsed_args.gate_fidelity_1q_min
+
+        # gate_fidelity_2q_min: update, unset, or omit
+        gate_fidelity_2q_min = _UNSET
+        if parsed_args.unset_gate_fidelity_2q_min:
+            gate_fidelity_2q_min = None
+        elif parsed_args.gate_fidelity_2q_min is not None:
+            gate_fidelity_2q_min = parsed_args.gate_fidelity_2q_min
+
+        # extra_properties: merge, unset, or omit
+        extra_properties = _UNSET
+        if parsed_args.unset_extra_properties:
+            extra_properties = None
+        elif parsed_args.property:
+            extra_properties = {}
+            for item in parsed_args.property:
                 if "=" not in item:
                     raise errors.InvalidArguments(
                         f"Invalid property format: '{item}'. "
@@ -3657,6 +3758,15 @@ class UpdateFlavor(Command):
                     )
                 extra_properties[k] = v.strip()
 
+        # device_groups: update, unset, or omit
+        device_groups = _UNSET
+        if parsed_args.unset_device_groups:
+            device_groups = None
+        elif parsed_args.device_groups is not None:
+            device_groups = CommandHelper.resolve_device_group_ids(
+                self.app.client, parsed_args.device_groups
+            )
+
         status_code, reason, text, result = self.app.client.update_flavor(
             flavor_id=flavor_id,
             name=name,
@@ -3667,7 +3777,7 @@ class UpdateFlavor(Command):
             max_qubits=max_qubits,
             gate_fidelity_1q_min=gate_fidelity_1q_min,
             gate_fidelity_2q_min=gate_fidelity_2q_min,
-            extra_properties=extra_properties if extra_properties else None,
+            extra_properties=extra_properties,
             device_groups=device_groups,
         )
         results = CommandHelper.check_results(
@@ -3749,8 +3859,8 @@ class GetFlavors(Lister):
     def take_action(self, parsed_args):
         resource = self.group
         header_list = [
-            "id",
             "project_id",
+            "id",
             "name",
             "description",
             "is_public",
@@ -3764,6 +3874,10 @@ class GetFlavors(Lister):
 
         filters = {}
         if parsed_args.flavor_ids:
+            for flavor_id in parsed_args.flavor_ids:
+                CommandHelper.handle_invalid_arguments(
+                    ClientLibrary.validate_values_uuid(flavor_id, "flavor_ids")
+                )
             filters["flavor_ids"] = parsed_args.flavor_ids
         if parsed_args.flavor_names:
             filters["flavor_names"] = parsed_args.flavor_names
@@ -3971,7 +4085,11 @@ class CreateDeviceGroup(Command):
 
 
 class UpdateDeviceGroup(Command):
-    """Update device group by ID or name."""
+    """Update device group by ID or name.
+
+    For nullable fields, use --<key> to update the value, or
+    --<key>-unset to clear it. The two are mutually exclusive.
+    """
 
     group = QcosShell.CMD_GROUP_DEVICE_GROUP
 
@@ -3981,9 +4099,6 @@ class UpdateDeviceGroup(Command):
             "group_id", type=str, help="Device group ID (UUID)"
         )
         parser.add_argument("--name", type=str, help="Device group name")
-        parser.add_argument(
-            "--description", type=str, help="Device group description"
-        )
         parser.add_argument(
             "--public",
             dest="is_public",
@@ -4005,7 +4120,25 @@ class UpdateDeviceGroup(Command):
             default=None,
             help="Project ID (UUID)",
         )
-        parser.add_argument(
+        # description: --description vs --unset-description
+        mx = parser.add_mutually_exclusive_group()
+        mx.add_argument(
+            "--description",
+            dest="description",
+            type=str,
+            default=None,
+            help="Device group description",
+        )
+        mx.add_argument(
+            "--unset-description",
+            dest="unset_description",
+            action="store_true",
+            default=False,
+            help="Unset description field",
+        )
+        # device_names: --device vs --unset-device
+        mx = parser.add_mutually_exclusive_group()
+        mx.add_argument(
             "--device",
             dest="device_names",
             nargs="+",
@@ -4015,6 +4148,13 @@ class UpdateDeviceGroup(Command):
             "(replaces existing list, "
             "can be specified multiple times)",
         )
+        mx.add_argument(
+            "--unset-device",
+            dest="unset_device_names",
+            action="store_true",
+            default=False,
+            help="Unset device names list",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -4022,25 +4162,39 @@ class UpdateDeviceGroup(Command):
         group_id = Client.resolve_device_group_id(
             self.app.client, parsed_args.group_id
         )
-        name = parsed_args.name
-        description = parsed_args.description
-        is_public = parsed_args.is_public
         project_id = parsed_args.project_id
-        device_names = parsed_args.device_names
 
-        # validate device names (skip _all)
-        if device_names:
+        # name and is_public are non-nullable: only update when
+        # explicitly provided, otherwise omit (_UNSET).
+        name = parsed_args.name if parsed_args.name is not None else _UNSET
+        is_public = _UNSET
+        if parsed_args.is_public is not None:
+            is_public = parsed_args.is_public
+
+        # description: update, unset, or omit
+        description = _UNSET
+        if parsed_args.unset_description:
+            description = None
+        elif parsed_args.description is not None:
+            description = parsed_args.description
+
+        # device_names: update, unset, or omit
+        device_names = _UNSET
+        if parsed_args.unset_device_names:
+            device_names = None
+        elif parsed_args.device_names is not None:
+            device_names = parsed_args.device_names
+            # validate device names (skip _all)
             for dn in device_names:
                 if dn == "_all":
                     continue
                 CommandHelper.handle_invalid_arguments(
                     ClientLibrary.validate_name(dn)
                 )
-
-        # check device existence (warn if not found)
-        CommandHelper.check_device_existence(
-            self.app.client, device_names, resource
-        )
+            # check device existence (warn if not found)
+            CommandHelper.check_device_existence(
+                self.app.client, device_names, resource
+            )
 
         status_code, reason, text, result = (
             self.app.client.update_device_group(
@@ -4119,8 +4273,8 @@ class GetDeviceGroups(Lister):
     def take_action(self, parsed_args):
         resource = self.group
         header_list = [
-            "id",
             "project_id",
+            "id",
             "name",
             "description",
             "device_names",
@@ -4129,6 +4283,10 @@ class GetDeviceGroups(Lister):
 
         filters = {}
         if parsed_args.group_ids:
+            for group_id in parsed_args.group_ids:
+                CommandHelper.handle_invalid_arguments(
+                    ClientLibrary.validate_values_uuid(group_id, "group_ids")
+                )
             filters["group_ids"] = parsed_args.group_ids
         if parsed_args.group_names:
             filters["group_names"] = parsed_args.group_names
