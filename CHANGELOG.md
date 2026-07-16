@@ -6,18 +6,18 @@
 
 ### 新增功能
 
+- 新增Flavor（预设资源调度策略）管理功能：支持通过API和CLI创建、查询、删除Flavor
+- 新增Device Group（设备分组）功能：支持设备逻辑分组管理，包含增删改查API和CLI命令
+- 新增DeviceGroupFilter调度过滤器，根据device group成员列表过滤候选设备
 - 支持量子作业自动调度功能：用户提交作业时不指定backend，由系统自动选择后端设备
-- 新增基于OpenStack Nova Filter/Weigher模式的自动调度器，支持6个Filter和2个Weigher
-- 新增Flavor（预设调度策略）管理功能：支持通过API和CLI创建、查询、删除Flavor
-- submit_job接口新增flavor_id和extra_specs可选参数，支持自动调度
-- Job表新增flavor_id和extra_specs字段，Alembic迁移脚本已提供
-- CLI新增create-flavor、get-flavor、list-flavors、delete-flavor命令
+- 新增自动调度器，支持6个Filter和2个Weigher
+- Job表新增flavor_id和extra_specs字段
 - submit-job命令新增--flavor-id和--extra-specs参数，--backend改为可选
 
 ### 变更功能
 
 - submit_job接口的backend参数改为可选，为空时触发自动调度
-- 更新作业调度设计文档，补充自动调度实现细节
+- CLI中所有可追加参数（--property、--device、--role-name）从action="append"改为nargs="+"形式
 
 ### 修复问题
 
