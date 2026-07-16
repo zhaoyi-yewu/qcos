@@ -39,6 +39,8 @@ class TaskScheduler:
         self._driver_manager = None
         self._device_manager = None
         self._db_engine = None
+        self._auto_scheduler = None
+        self._flavor_manager = None
 
     def start_taskmanager(self):
         """Start TaskManager."""
@@ -101,6 +103,37 @@ class TaskScheduler:
             db_engine: database engine
         """
         self._db_engine = db_engine
+
+    def init_auto_scheduler(self):
+        """Initialize auto scheduler and flavor manager.
+
+        Must be called after set_device_manager and set_db_engine.
+        """
+        from wy_qcos.scheduler import AutoScheduler, FlavorManager
+
+        self._flavor_manager = FlavorManager(self._db_engine)
+        self._auto_scheduler = AutoScheduler(
+            device_manager=self._device_manager,
+            task_manager=self._task_manager,
+            flavor_manager=self._flavor_manager,
+        )
+        logger.info("Auto scheduler initialized")
+
+    def get_auto_scheduler(self):
+        """Get auto scheduler.
+
+        Returns:
+            auto scheduler instance
+        """
+        return self._auto_scheduler
+
+    def get_flavor_manager(self):
+        """Get flavor manager.
+
+        Returns:
+            flavor manager instance
+        """
+        return self._flavor_manager
 
     def get_device_manager(self):
         """Get device manager.
