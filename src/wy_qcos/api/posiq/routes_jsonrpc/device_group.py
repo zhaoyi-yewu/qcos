@@ -229,9 +229,14 @@ def update_device_group(
         auth_data, allow_super_admin=True, allow_project_admin=True
     )
 
-    # build update data from non-None fields
+    # Determine which fields were explicitly provided (set) in the
+    # request. model_fields_set distinguishes "omitted" (not set,
+    # do not touch) from "explicitly None" (clear the field).
+    set_fields = body.model_fields_set
+
+    # build update data from explicitly-provided fields only
     group_data: dict[str, Any] = {}
-    if body.name is not None:
+    if "name" in set_fields and body.name is not None:
         success, err_msg = Library.validate_name(body.name)
         if not success:
             jsonrpc_errors.handle_error_bad_requests(
@@ -256,11 +261,11 @@ def update_device_group(
                     ),
                 )
         group_data["name"] = body.name
-    if body.description is not None:
+    if "description" in set_fields:
         group_data["description"] = body.description
-    if body.is_public is not None:
+    if "is_public" in set_fields and body.is_public is not None:
         group_data["is_public"] = body.is_public
-    if body.device_names is not None:
+    if "device_names" in set_fields and body.device_names is not None:
         _seen = set()
         device_names = []
         for x in body.device_names:
@@ -271,7 +276,10 @@ def update_device_group(
             device_names = ["_all"]
         _validate_device_names(device_names)
         group_data["device_names"] = device_names
-    if body.project_id is not None:
+    if "device_names" in set_fields and body.device_names is None:
+        # clear device_names
+        group_data["device_names"] = None
+    if "project_id" in set_fields and body.project_id is not None:
         # Validate project_id exists in projects table
         project_manager = get_project_manager(request)
         project_id_str = str(body.project_id)

@@ -44,6 +44,42 @@ def _is_super_admin(auth_data: dict | None) -> bool:
     return auth_data.get("is_super_admin", False)
 
 
+def _validate_gate_fidelity(value, param_name: str):
+    """Validate gate fidelity is in [0, 1] range.
+
+    Args:
+        value: fidelity value (None skips validation)
+        param_name: parameter name for error message
+
+    Returns:
+        error message string or None if valid
+    """
+    if value is None:
+        return None
+    if value < 0 or value > 1:
+        return f"{param_name} must be between 0 and 1 (inclusive), got {value}"
+    return None
+
+
+def _validate_qubits_range(min_qubits, max_qubits):
+    """Validate min_qubits <= max_qubits (None excluded).
+
+    Args:
+        min_qubits: minimum qubits value
+        max_qubits: maximum qubits value
+
+    Returns:
+        error message string or None if valid
+    """
+    if min_qubits is not None and max_qubits is not None:
+        if min_qubits > max_qubits:
+            return (
+                f"min_qubits ({min_qubits}) must be less than "
+                f"or equal to max_qubits ({max_qubits})"
+            )
+    return None
+
+
 def _current_project_id(auth_data: dict | None):
     """Get caller's project id from auth data."""
     return auth_data.get("project_id") if auth_data else None
@@ -140,6 +176,27 @@ def create_flavor(
             module_name, func_name, (False, err)
         )
 
+    # Validate qubits range and gate fidelity
+    err = _validate_qubits_range(body.min_qubits, body.max_qubits)
+    if err:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name, func_name, (False, err)
+        )
+    err = _validate_gate_fidelity(
+        body.gate_fidelity_1q_min, "gate_fidelity_1q_min"
+    )
+    if err:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name, func_name, (False, err)
+        )
+    err = _validate_gate_fidelity(
+        body.gate_fidelity_2q_min, "gate_fidelity_2q_min"
+    )
+    if err:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name, func_name, (False, err)
+        )
+
     flavor_data: dict[str, Any] = {
         "name": body.name,
         "description": body.description,
@@ -206,9 +263,14 @@ def update_flavor(
         auth_data, allow_super_admin=True, allow_project_admin=True
     )
 
-    # build update data from non-None fields
+    # Determine which fields were explicitly provided (set) in the
+    # request. model_fields_set distinguishes "omitted" (not set,
+    # do not touch) from "explicitly None" (clear the field).
+    set_fields = body.model_fields_set
+
+    # build update data from explicitly-provided fields only
     flavor_data: dict[str, Any] = {}
-    if body.name is not None:
+    if "name" in set_fields and body.name is not None:
         success, err_msg = Library.validate_name(body.name)
         if not success:
             jsonrpc_errors.handle_error_bad_requests(
@@ -227,11 +289,11 @@ def update_flavor(
                     f"Flavor name already exists: {body.name}",
                 )
         flavor_data["name"] = body.name
-    if body.description is not None:
+    if "description" in set_fields:
         flavor_data["description"] = body.description
-    if body.is_public is not None:
+    if "is_public" in set_fields and body.is_public is not None:
         flavor_data["is_public"] = body.is_public
-    if body.project_id is not None:
+    if "project_id" in set_fields and body.project_id is not None:
         # Validate project_id exists in projects table
         project_manager = get_project_manager(request)
         project_id_str = str(body.project_id)
@@ -248,49 +310,102 @@ def update_flavor(
             )
         flavor_data["project_id"] = project_id_str
 
-    if body.min_qubits is not None:
+    if "min_qubits" in set_fields:
         flavor_data["min_qubits"] = body.min_qubits
-    if body.max_qubits is not None:
+    if "max_qubits" in set_fields:
         flavor_data["max_qubits"] = body.max_qubits
-    if body.gate_fidelity_1q_min is not None:
+    if "gate_fidelity_1q_min" in set_fields:
         flavor_data["gate_fidelity_1q_min"] = body.gate_fidelity_1q_min
-    if body.gate_fidelity_2q_min is not None:
+    if "gate_fidelity_2q_min" in set_fields:
         flavor_data["gate_fidelity_2q_min"] = body.gate_fidelity_2q_min
 
-    # merge extra_properties: get existing, update with new values
-    if body.extra_properties is not None:
-        # validate extra_properties via flavor_manager
-        ok, err = flavor_manager.validate_extra_properties(
-            body.extra_properties
+    # Validate qubits range and gate fidelity
+    # (use new value if provided, else existing value)
+    existing_flavor = flavor_manager.get_flavor(str(body.flavor_id))
+    if existing_flavor is not None:
+        effective_min_qubits = (
+            body.min_qubits
+            if "min_qubits" in set_fields
+            else existing_flavor.min_qubits
         )
-        if not ok:
+        effective_max_qubits = (
+            body.max_qubits
+            if "max_qubits" in set_fields
+            else existing_flavor.max_qubits
+        )
+        err = _validate_qubits_range(
+            effective_min_qubits, effective_max_qubits
+        )
+        if err:
             jsonrpc_errors.handle_error_bad_requests(
                 module_name, func_name, (False, err)
             )
-        existing_flavor = flavor_manager.get_flavor(str(body.flavor_id))
-        if existing_flavor is None:
+    # validate gate fidelity only if a value is provided
+    if (
+        "gate_fidelity_1q_min" in set_fields
+        and body.gate_fidelity_1q_min is not None
+    ):
+        err = _validate_gate_fidelity(
+            body.gate_fidelity_1q_min, "gate_fidelity_1q_min"
+        )
+        if err:
             jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (False, f"Flavor not found: {body.flavor_id}"),
+                module_name, func_name, (False, err)
             )
-        merged_extra = dict(existing_flavor.extra_properties or {})
-        merged_extra.update(body.extra_properties)
-        flavor_data["extra_properties"] = merged_extra
+    if (
+        "gate_fidelity_2q_min" in set_fields
+        and body.gate_fidelity_2q_min is not None
+    ):
+        err = _validate_gate_fidelity(
+            body.gate_fidelity_2q_min, "gate_fidelity_2q_min"
+        )
+        if err:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name, func_name, (False, err)
+            )
 
-    # device_groups is optional on update; if provided, validate
-    # and replace existing mappings; if None, keep existing
-    if body.device_groups is not None:
-        device_group_ids = [str(dg) for dg in body.device_groups]
-        device_group_manager = scheduler.get_device_group_manager()
-        ok, err = flavor_manager.validate_device_groups(
-            device_group_ids, device_group_manager
-        )
-        if not ok:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name, func_name, (False, err)
+    # extra_properties: merge if a dict is provided, clear if
+    # None is provided, keep existing if omitted
+    if "extra_properties" in set_fields:
+        if body.extra_properties is None:
+            # clear all extra_properties
+            flavor_data["extra_properties"] = None
+        else:
+            # validate extra_properties via flavor_manager
+            ok, err = flavor_manager.validate_extra_properties(
+                body.extra_properties
             )
-        flavor_data["device_groups"] = device_group_ids
+            if not ok:
+                jsonrpc_errors.handle_error_bad_requests(
+                    module_name, func_name, (False, err)
+                )
+            if existing_flavor is None:
+                jsonrpc_errors.handle_error_bad_requests(
+                    module_name,
+                    func_name,
+                    (False, f"Flavor not found: {body.flavor_id}"),
+                )
+            merged_extra = dict(existing_flavor.extra_properties or {})
+            merged_extra.update(body.extra_properties)
+            flavor_data["extra_properties"] = merged_extra
+
+    # device_groups: replace if a list is provided, clear if
+    # None is provided, keep existing if omitted
+    if "device_groups" in set_fields:
+        if body.device_groups is None:
+            # clear all device group mappings
+            flavor_data["device_groups"] = []
+        else:
+            device_group_ids = [str(dg) for dg in body.device_groups]
+            device_group_manager = scheduler.get_device_group_manager()
+            ok, err = flavor_manager.validate_device_groups(
+                device_group_ids, device_group_manager
+            )
+            if not ok:
+                jsonrpc_errors.handle_error_bad_requests(
+                    module_name, func_name, (False, err)
+                )
+            flavor_data["device_groups"] = device_group_ids
 
     flavor_data["updated_at"] = Library.get_current_datetime()
 
