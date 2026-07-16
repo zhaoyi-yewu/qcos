@@ -244,6 +244,23 @@ Flavor可以定义量子比特数范围、技术类型、门保真度等调度�
                "id": 1
              }
 
+更新字段语义说明
+-----------------
+
+update_flavor 接口支持以下字段更新语义：
+
+- **不更新字段**：请求中不传该字段，保持原值不变
+
+- **取消设置字段（unset）**：将字段值显式设为 ``null``，取消设置该字段。
+  适用于 ``description``、``min_qubits``、``max_qubits``、
+  ``gate_fidelity_1q_min``、``gate_fidelity_2q_min``、
+  ``extra_properties``、``device_groups``
+
+- ``device_groups`` 设为 ``null`` 时取消设置所有设备分组映射
+
+- ``extra_properties`` 设为 ``null`` 时取消设置所有额外属性；设为非空
+  dict 时与已有属性合并
+
 extra_properties 支持的字段
 -------------------------------
 
