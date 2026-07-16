@@ -76,7 +76,8 @@ TranspileResult transpile(
     const std::string& qasm_string,
     const std::vector<std::string>& supp_basis_gates,
     const std::vector<std::pair<int, int>>& coupling_list, int opt_level,
-    int sabre_extension_size, double sabre_weight, double sabre_decay) {
+    const std::vector<double>& edge_fidelities,
+    const std::vector<double>& single_qubit_fidelities) {
   using clock = std::chrono::high_resolution_clock;
 
   TranspileResult result;
@@ -117,9 +118,8 @@ TranspileResult transpile(
 
   // Step 5: SABRE routing — 逻辑比特到物理比特的映射与路由
   auto map_start = clock::now();
-  auto routed_ops =
-      sabre_routing(decomposed_ops, coupling_list, {}, sabre_extension_size,
-                    sabre_weight, sabre_decay);
+  auto routed_ops = sabre_routing(decomposed_ops, coupling_list,
+                                  edge_fidelities, single_qubit_fidelities);
   t.mapping_time =
       std::chrono::duration<double>(clock::now() - map_start).count();
 

@@ -1756,6 +1756,9 @@ class SABRE:
     def __init__(
         self,
         coupling_list: collections.abc.Sequence[tuple[int, int]],
+        edge_fidelities: collections.abc.Sequence[float] = [],
+        single_qubit_fidelities: collections.abc.Sequence[float] = [],
+        fidelity_threshold: float = 0.8,
         extension_size: int = 20,
         weight: float = 0.5,
         decay: float = 0.001,
@@ -1764,26 +1767,29 @@ class SABRE:
 
         Args:
         coupling_list (list[tuple[int, int]]): Physical qubit connectivity
-        graph.
+            graph.
+        edge_fidelities (list[float], optional): Edge fidelity values
+            corresponding to coupling_list. Empty means not used.
+        single_qubit_fidelities (list[float], optional): Single-qubit
+            fidelity array indexed by physical qubit ID. Empty means not used.
+        fidelity_threshold (float, optional): Fidelity threshold for filtering
+            low-fidelity edges. <=0 means no filtering. Defaults to 0.8.
         extension_size (int, optional): Size of the lookahead set.
-        Defaults to 20.
+            Defaults to 20.
         weight (float, optional): Weight between front layer and lookahead
-        cost. Defaults to 0.5.
+            cost. Defaults to 0.5.
         decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
         """
         ...
 
     def execute(
         self,
-        gates_list: collections.abc.Sequence[high_performance.GateOperation],
-        initial_l2p: collections.abc.Sequence[int] = [],
+        gates_list: collections.abc.Sequence[high_performance.BaseOperation],
     ) -> None:
         """Execute SABRE routing.
 
         Args:
-        gates_list (list[GateOperation]): Logical gate sequence.
-        initial_l2p (list[int], optional): Initial logical-to-physical
-        mapping. Defaults to empty.
+        gates_list (list[BaseOperation]): Logical gate sequence.
 
         Returns:
         None
@@ -1798,11 +1804,11 @@ class SABRE:
         """
         ...
 
-    def get_physical_gates(self) -> list[high_performance.GateOperation]:
+    def get_physical_gates(self) -> list[high_performance.BaseOperation]:
         """Get the sequence of mapped physical gates after routing.
 
         Returns:
-        list[GateOperation]: The physical gate sequence.
+        list[BaseOperation]: The physical gate sequence.
         """
         ...
 
@@ -2472,19 +2478,24 @@ def sabre_initial_mapping(
 def sabre_routing(
     gates_list: collections.abc.Sequence[high_performance.BaseOperation],
     coupling_list: collections.abc.Sequence[tuple[int, int]],
-    initial_l2p: collections.abc.Sequence[int] = [],
+    edge_fidelities: collections.abc.Sequence[float] = [],
+    single_qubit_fidelities: collections.abc.Sequence[float] = [],
+    fidelity_threshold: float = 0.8,
     extension_size: int = 20,
     weight: float = 0.5,
     decay: float = 0.001,
-) -> list:
+) -> list[high_performance.BaseOperation]:
     """Execute SABRE routing.
 
     Args:
     gates_list (list[BaseOperation]): Logical operation sequence.
     coupling_list (list[tuple[int, int]]): Physical qubit coupling list.
-    initial_l2p (list[int], optional): Initial logical-to-physical mapping.
-    When empty, SABRE computes the initial mapping internally.
-    Defaults to empty.
+    edge_fidelities (list[float], optional): Edge fidelity values
+        corresponding to coupling_list. Empty means not used.
+    single_qubit_fidelities (list[float], optional): Single-qubit fidelity
+        array indexed by physical qubit ID. Empty means not used.
+    fidelity_threshold (float, optional): Fidelity threshold for filtering
+        low-fidelity edges. <=0 means no filtering. Defaults to 0.8.
     extension_size (int, optional): Size of the lookahead set.
     Defaults to 20.
     weight (float, optional): Weight between front layer and lookahead cost.
@@ -2525,9 +2536,8 @@ def transpile(
     supp_basis_gates: collections.abc.Sequence[str],
     coupling_list: collections.abc.Sequence[tuple[int, int]],
     opt_level: int = 1,
-    sabre_extension_size: int = 20,
-    sabre_weight: float = 0.5,
-    sabre_decay: float = 0.001,
+    edge_fidelities: collections.abc.Sequence[float] = [],
+    single_qubit_fidelities: collections.abc.Sequence[float] = [],
 ) -> high_performance.TranspileResult:
     """All-in-one transpile function (sabre routing, single-circuit path).
 
@@ -2540,13 +2550,37 @@ def transpile(
     coupling_list (list[tuple[int, int]]): Physical qubit coupling edges
         (must be pre-normalized via normalize_topology).
     opt_level (int, optional): Optimization level (0-3). Defaults to 1.
-    sabre_extension_size (int, optional): SABRE lookahead set size.
-        Defaults to 20.
-    sabre_weight (float, optional): SABRE front/extend weight.
-        Defaults to 0.5.
-    sabre_decay (float, optional): SABRE swap decay. Defaults to 0.001.
+    edge_fidelities (list[float], optional): Edge fidelity values
+        corresponding to coupling_list. Empty means not used.
+    single_qubit_fidelities (list[float], optional): Single-qubit fidelity
+        array indexed by physical qubit ID. Empty means not used.
 
     Returns:
     TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+    """
+    ...
+
+class ChipCalibration:
+    """Chip calibration data."""
+
+    coupling_list: list[tuple[int, int]]
+    edge_fidelities: list[float]
+    single_qubit_fidelities: list[float]
+
+    def __init__(
+        self,
+        coupling_list: collections.abc.Sequence[tuple[int, int]],
+        edge_fidelities: collections.abc.Sequence[float],
+        single_qubit_fidelities: collections.abc.Sequence[float],
+    ) -> None: ...
+
+def load_chip_calibration(csv_path: str) -> high_performance.ChipCalibration:
+    """Load chip calibration data from a CSV file (北量院).
+
+    Args:
+    csv_path (str): Path to the calibration CSV file.
+
+    Returns:
+    ChipCalibration: Parsed calibration data.
     """
     ...

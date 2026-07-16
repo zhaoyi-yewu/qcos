@@ -56,34 +56,33 @@ void bind_transpile(nb::module_& m) {
       [](const std::string& qasm_string,
          const std::vector<std::string>& supp_basis_gates,
          const std::vector<std::pair<int, int>>& coupling_list, int opt_level,
-         int sabre_extension_size, double sabre_weight, double sabre_decay) {
+         const std::vector<double>& edge_fidelities,
+         const std::vector<double>& single_qubit_fidelities) {
         nb::gil_scoped_release release;
         return transpile(qasm_string, supp_basis_gates, coupling_list,
-                         opt_level, sabre_extension_size, sabre_weight,
-                         sabre_decay);
+                         opt_level, edge_fidelities, single_qubit_fidelities);
       },
       nb::arg("qasm_string"), nb::arg("supp_basis_gates"),
       nb::arg("coupling_list"), nb::arg("opt_level") = 1,
-      nb::arg("sabre_extension_size") = 20, nb::arg("sabre_weight") = 0.5,
-      nb::arg("sabre_decay") = 0.001,
+      nb::arg("edge_fidelities") = std::vector<double>{},
+      nb::arg("single_qubit_fidelities") = std::vector<double>{},
       R"(
         All-in-one transpile function (sabre routing, single-circuit path).
-        
+
         Combines parse + transpile into a single C++ call, avoiding intermediate
         Python/C++ data transfer overhead.
-        
+
         Args:
             qasm_string (str): QASM circuit string.
             supp_basis_gates (list[str]): Supported basis gate names.
             coupling_list (list[tuple[int, int]]): Physical qubit coupling edges
                 (must be pre-normalized via normalize_topology).
             opt_level (int, optional): Optimization level (0-3). Defaults to 1.
-            sabre_extension_size (int, optional): SABRE lookahead set size.
-                Defaults to 20.
-            sabre_weight (float, optional): SABRE front/extend weight.
-                Defaults to 0.5.
-            sabre_decay (float, optional): SABRE swap decay. Defaults to 0.001.
-        
+            edge_fidelities (list[float], optional): Edge fidelity values
+                corresponding to coupling_list. Empty means not used.
+            single_qubit_fidelities (list[float], optional): Single-qubit
+                fidelity array indexed by physical qubit ID. Empty means not used.
+
         Returns:
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.
               )");
