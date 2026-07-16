@@ -250,7 +250,7 @@ jobs:
           retention-days: 1
 
   run-ut-qcos:
-    name: Run Unit Tests (qcos)
+    name: Run Unit/Coverage Tests (qcos)
     needs:
       - build-qcos-image
     runs-on: ubuntu-latest
@@ -293,7 +293,7 @@ jobs:
           cp ./env.template ./.env
           export SANDBOX_IMAGE_VERSION=dev
           ./run-sandbox.sh
-          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -b; ./cicd/run-tests.sh -u all"
+          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -b; ./cicd/run-tests.sh -c all"
           EOF
 
       - name: Upload coverage reports to Codecov
@@ -303,7 +303,7 @@ jobs:
           files: cicd/reports/wy_qcos/coverage.xml
 
   run-ut-qcos-cli:
-    name: Run Unit Tests (qcos-cli)
+    name: Run Unit/Coverage Tests (qcos-cli)
     needs:
       - build-qcos-cli-image
     runs-on: ubuntu-latest
@@ -335,7 +335,7 @@ jobs:
       - name: Load qcos-sandbox Docker Image
         run: docker load -i ./build-scripts/images/qcos-sandbox-amd64-dev.tar.xz
 
-      - name: Run Unit Tests (qcos-cli)
+      - name: Run Unit/Coverage Tests (qcos-cli)
         shell: bash
         run: |
           sudo -s <<'EOF'
@@ -346,7 +346,7 @@ jobs:
           cp ./env.template ./.env
           export SANDBOX_IMAGE_VERSION=dev
           ./run-sandbox.sh
-          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -j all"
+          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -e all"
           EOF
 
       - name: Upload coverage reports to Codecov
@@ -482,10 +482,10 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-base
-            ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-sandbox
-            ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos
-            ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-cli
+            ${{ vars.QCOS_DOCKERHUB_USERNAME }}/qcos-base
+            ${{ vars.QCOS_DOCKERHUB_USERNAME }}/qcos-sandbox
+            ${{ vars.QCOS_DOCKERHUB_USERNAME }}/qcos
+            ${{ vars.QCOS_DOCKERHUB_USERNAME }}/qcos-cli
           tags: |
             type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
             type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
@@ -531,7 +531,7 @@ jobs:
         if: env.TAGS_EMPTY == 'false'
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}
+          username: ${{ vars.QCOS_DOCKERHUB_USERNAME }}
           password: ${{ secrets.QCOS_DOCKERHUB_TOKEN }}
 
       - name: Download and Load Docker Images
@@ -632,9 +632,9 @@ jobs:
         uses: dawidd6/action-send-mail@v3
         with:
           # SMTP server configuration
-          server_address: ${{ secrets.QCOS_SMTP_SERVER_ADDRESS }}
-          server_port: ${{ secrets.QCOS_SMTP_SERVER_PORT }}
-          username: ${{ secrets.QCOS_SMTP_USERNAME }}
+          server_address: ${{ vars.QCOS_SMTP_SERVER_ADDRESS }}
+          server_port: ${{ vars.QCOS_SMTP_SERVER_PORT }}
+          username: ${{ vars.QCOS_SMTP_USERNAME }}
           password: ${{ secrets.QCOS_SMTP_PASSWORD }}
 
           # Email configuration

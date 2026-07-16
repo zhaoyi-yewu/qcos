@@ -161,17 +161,6 @@ pipeline {
         // =============================================================
         stage('functional-tests') {
             stages {
-                // Stage: ut-qcos
-                stage('UT - QCOS') {
-                    steps {
-                        sh """#!/bin/bash
-                        source /var/lib/qcos/venv/sandbox/bin/activate
-                        ./cicd/run-tests.sh -b
-                        ./cicd/run-tests.sh -u default
-                        """
-                    }
-                }
-
                 // Stage: cpp-ut-qcos
                 stage('CPP UT - QCOS') {
                     steps {
@@ -184,7 +173,7 @@ pipeline {
                 }
 
                 // Stage: code-coverage-qcos
-                stage('Code Coverage - QCOS') {
+                stage('UT/Coverage - QCOS') {
                     steps {
                         sh """#!/bin/bash
                         source /var/lib/qcos/venv/sandbox/bin/activate
@@ -194,18 +183,8 @@ pipeline {
                     }
                 }
 
-                // Stage: ut-qcos-client
-                stage('UT - QCOS Client') {
-                    steps {
-                        sh """#!/bin/bash
-                        source /var/lib/qcos/venv/sandbox/bin/activate
-                        ./cicd/run-tests.sh -j all
-                        """
-                    }
-                }
-
                 // Stage: code-coverage-qcos-client
-                stage('Code Coverage - QCOS Client') {
+                stage('UT/Coverage - QCOS Client') {
                     steps {
                         sh """#!/bin/bash
                         source /var/lib/qcos/venv/sandbox/bin/activate

@@ -116,7 +116,7 @@ pipeline {
                     sed -i "s@^DOCKER_COMPOSE_BIN_MIRROR=.*@DOCKER_COMPOSE_BIN_MIRROR=\${DOCKER_COMPOSE_BIN_MIRROR}@" ./.env
                 fi
                 df -h
-                ./build-images.sh -b -t dev
+                ./build-images.sh -b -t cicd
                 """
             }
         }

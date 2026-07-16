@@ -239,9 +239,9 @@ pipeline {
         }
 
         // =============================================================
-        // Test Stage 1: Run unit tests for qcos
+        // Test Stage 1: Run cpp unit tests for qcos
         // =============================================================
-        stage('Run UT - QCOS') {
+        stage('Run CPP UT/Coverage - QCOS') {
             steps {
                 sh """#!/bin/bash
                 set -eo pipefail
@@ -252,7 +252,7 @@ pipeline {
                 cp ./env.template ./.env
                 export SANDBOX_IMAGE_VERSION=dev
                 ./run-sandbox.sh
-                docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -b; ./cicd/run-tests.sh -u all"
+                docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -b; ./cicd/run-tests.sh -t all"
                 """
             }
             post {
@@ -263,7 +263,31 @@ pipeline {
         }
 
         // =============================================================
-        // Test Stage 2: Run unit tests for qcos-cli
+        // Test Stage 2: Run unit/coverage tests for qcos
+        // =============================================================
+        stage('Run UT/Coverage - QCOS') {
+            steps {
+                sh """#!/bin/bash
+                set -eo pipefail
+                cd build-scripts
+                if [ -e /usr/libexec/docker/cli-plugins/docker-compose ] && [ ! -e /usr/bin/docker-compose ] && [ ! -L /usr/bin/docker-compose ]; then
+                    ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+                fi
+                cp ./env.template ./.env
+                export SANDBOX_IMAGE_VERSION=dev
+                ./run-sandbox.sh
+                docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -b; ./cicd/run-tests.sh -c all"
+                """
+            }
+            post {
+                always {
+                    qcosCleanup()
+                }
+            }
+        }
+
+        // =============================================================
+        // Test Stage 3: Run unit/coverage tests for qcos-cli
         // =============================================================
         stage('Run UT - QCOS-CLI') {
             steps {
@@ -276,7 +300,7 @@ pipeline {
                 cp ./env.template ./.env
                 export SANDBOX_IMAGE_VERSION=dev
                 ./run-sandbox.sh
-                docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -j all"
+                docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -e all"
                 """
             }
             post {
@@ -287,7 +311,7 @@ pipeline {
         }
 
         // =============================================================
-        // Test Stage 3: Run system tests for qcos
+        // Test Stage 4: Run system tests for qcos
         // =============================================================
         stage('Run System Tests - QCOS') {
             steps {
