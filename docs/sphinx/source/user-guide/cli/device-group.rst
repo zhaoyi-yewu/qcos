@@ -55,9 +55,11 @@
 .. code-block:: shell
 
    # 更新设备分组
-   usage: qcos-cli update-device-group [-h] [--name NAME] [--description DESCRIPTION] [--public | --private]
-                                       [--project-id PROJECT_ID] [--device DEVICE [DEVICE ...]]
-                                       group_id
+   usage: qcos-cli update-device-group [-h] [--name NAME] [--public | --private]
+                                      [--project-id PROJECT_ID]
+                                      [--description DESCRIPTION | --unset-description]
+                                      [--device DEVICE [DEVICE ...] | --unset-device]
+                                      group_id
 
    Update device group by ID or name.
 
@@ -67,14 +69,19 @@
    options:
      -h, --help            show this help message and exit
      --name NAME           Device group name
-     --description DESCRIPTION
-                           Device group description
      --public              Set as public group
      --private             Set as private group
      --project-id PROJECT_ID
                            Project ID (UUID)
+     --description DESCRIPTION
+                           Device group description
+     --unset-description   Unset description field
      --device DEVICE [DEVICE ...]
                            Device names in this group (replaces existing list, space-separated)
+     --unset-device        Unset device names list
+
+   对于可空字段，``--{key}`` 用于更新字段值，``--unset-{key}`` 用于清空字段，
+   两者互斥不能同时使用。未指定的字段保持原值不变。
 
 典型场景示例
 ~~~~~~~~~~~~~~~
@@ -83,6 +90,10 @@
 
    # 更新设备分组（可使用UUID或分组名称）
    qcos-cli update-device-group my-group1 --description "new simulator" --device dummy qutip_sim
+
+   # 清空可空字段
+   qcos-cli update-device-group my-group1 --unset-description
+   qcos-cli update-device-group my-group1 --unset-device
 
 设备分组详情查询
 *****************
