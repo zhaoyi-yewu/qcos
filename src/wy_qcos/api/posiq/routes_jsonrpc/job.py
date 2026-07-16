@@ -80,7 +80,8 @@ def submit_job(
     description = body.description
     shots = body.shots
     backend = body.backend
-    flavor_id = body.flavor_id
+    flavor_name = body.flavor_name
+    flavor_id = None
     extra_specs = body.extra_specs
     driver_options = body.driver_options
     transpiler_name = body.transpiler
@@ -172,9 +173,7 @@ def submit_job(
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
         func_name,
-        Library.validate_schema(
-            job_name, args_schema.NAME_SCHEMA, allow_none=True
-        ),
+        Library.validate_name(job_name),
     )
 
     # validate: job_type
@@ -250,6 +249,25 @@ def submit_job(
     device_manger = scheduler.get_device_manager()
     devices = device_manger.get_devices()
 
+    # resolve flavor_name to flavor_id for DB persistence
+    if flavor_name:
+        flavor_manager = scheduler.get_flavor_manager()
+        if flavor_manager is None:
+            jsonrpc_errors.handle_error_internal_server(
+                module_name,
+                func_name,
+                (False, "Flavor manager is not initialized"),
+            )
+        flavor_obj = flavor_manager.get_flavor_by_name(flavor_name)
+        if flavor_obj is None:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                (False, f"Flavor not found by name: {flavor_name}"),
+            )
+        flavor_id = flavor_obj.id
+        body.flavor_id = flavor_id
+
     # auto scheduling: if backend is not specified
     if not backend:
         # must provide flavor_id or extra_specs for auto scheduling
@@ -281,7 +299,7 @@ def submit_job(
             num_qubits=0,
             flavor_id=flavor_id_str,
             extra_specs=extra_specs,
-            flavor_manager=auto_scheduler._flavor_manager,
+            flavor_manager=scheduler.get_flavor_manager(),
         )
 
         # execute auto scheduling
