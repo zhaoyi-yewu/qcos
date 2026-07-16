@@ -30,6 +30,10 @@ from .common.constant import Constant, HttpCode, HttpHeaders, HttpMethod
 
 logger = logging.getLogger(__name__)
 
+# Sentinel default for update methods to distinguish "field omitted"
+# (do not send) from "field explicitly None" (clear the field).
+_UNSET = object()
+
 
 class SSL:
     """SSL configs."""
@@ -623,59 +627,71 @@ class Client:
     def update_flavor(
         self,
         flavor_id,
-        name=None,
-        description=None,
-        is_public=None,
-        project_id=None,
-        min_qubits=None,
-        max_qubits=None,
-        gate_fidelity_1q_min=None,
-        gate_fidelity_2q_min=None,
-        extra_properties=None,
-        device_groups=None,
+        name=_UNSET,
+        description=_UNSET,
+        is_public=_UNSET,
+        project_id=_UNSET,
+        min_qubits=_UNSET,
+        max_qubits=_UNSET,
+        gate_fidelity_1q_min=_UNSET,
+        gate_fidelity_2q_min=_UNSET,
+        extra_properties=_UNSET,
+        device_groups=_UNSET,
     ):
         """Update a flavor by ID.
 
+        Fields default to _UNSET (omitted from the request). Pass
+        None explicitly to clear a nullable field; pass a value to
+        update it.
+
         Args:
             flavor_id: flavor UUID
-            name: flavor name
-            description: flavor description
-            is_public: whether the flavor is public
-            project_id: project UUID
-            min_qubits: minimum qubits
-            max_qubits: maximum qubits
+            name: flavor name (None clears, _UNSET skips)
+            description: flavor description (None clears, _UNSET skips)
+            is_public: whether the flavor is public (_UNSET skips)
+            project_id: project UUID (_UNSET skips)
+            min_qubits: minimum qubits (None clears, _UNSET skips)
+            max_qubits: maximum qubits (None clears, _UNSET skips)
             gate_fidelity_1q_min: min 1q gate fidelity
+                (None clears, _UNSET skips)
             gate_fidelity_2q_min: min 2q gate fidelity
+                (None clears, _UNSET skips)
             extra_properties: extra properties dict to merge
-                (from --property)
+                (from --property, _UNSET skips)
             device_groups: list of device group UUIDs
-                (required, replaces existing mappings)
+                (None clears mappings, _UNSET keeps existing)
 
         Returns:
             update_flavor result
         """
         method_name = "update_flavor"
         data = {"flavor_id": str(flavor_id)}
-        if name is not None:
+        if name is not _UNSET:
             data["name"] = name
-        if description is not None:
+        if description is not _UNSET:
             data["description"] = description
-        if is_public is not None:
+        if is_public is not _UNSET:
             data["is_public"] = is_public
-        if project_id is not None:
-            data["project_id"] = str(project_id)
-        if min_qubits is not None:
+        if project_id is not _UNSET:
+            data["project_id"] = (
+                str(project_id) if project_id is not None else None
+            )
+        if min_qubits is not _UNSET:
             data["min_qubits"] = min_qubits
-        if max_qubits is not None:
+        if max_qubits is not _UNSET:
             data["max_qubits"] = max_qubits
-        if gate_fidelity_1q_min is not None:
+        if gate_fidelity_1q_min is not _UNSET:
             data["gate_fidelity_1q_min"] = gate_fidelity_1q_min
-        if gate_fidelity_2q_min is not None:
+        if gate_fidelity_2q_min is not _UNSET:
             data["gate_fidelity_2q_min"] = gate_fidelity_2q_min
-        if extra_properties is not None:
+        if extra_properties is not _UNSET:
             data["extra_properties"] = extra_properties
-        if device_groups is not None:
-            data["device_groups"] = [str(dg) for dg in device_groups]
+        if device_groups is not _UNSET:
+            data["device_groups"] = (
+                None
+                if device_groups is None
+                else [str(dg) for dg in device_groups]
+            )
         status_code, reason, text, result = self.call_json_rpc(
             self.job_url, method_name, data
         )
@@ -772,37 +788,45 @@ class Client:
     def update_device_group(
         self,
         group_id,
-        name=None,
-        description=None,
-        device_names=None,
-        is_public=None,
-        project_id=None,
+        name=_UNSET,
+        description=_UNSET,
+        device_names=_UNSET,
+        is_public=_UNSET,
+        project_id=_UNSET,
     ):
         """Update a device group by ID.
 
+        Fields default to _UNSET (omitted from the request). Pass
+        None explicitly to clear a nullable field; pass a value to
+        update it.
+
         Args:
             group_id: device group UUID
-            name: device group name
+            name: device group name (None clears, _UNSET skips)
             description: device group description
+                (None clears, _UNSET skips)
             device_names: list of device names in this group
-            is_public: whether the group is public
-            project_id: project UUID
+                (None clears, _UNSET skips)
+            is_public: whether the group is public (_UNSET skips)
+            project_id: project UUID (_UNSET skips)
 
         Returns:
             update_device_group result
         """
         method_name = "update_device_group"
         data = {"group_id": str(group_id)}
-        if name is not None:
+        if name is not _UNSET:
             data["name"] = name
-        if description is not None:
+        if description is not _UNSET:
             data["description"] = description
-        if device_names is not None:
+        if device_names is not _UNSET:
             data["device_names"] = device_names
-        if is_public is not None:
+        if is_public is not _UNSET:
             data["is_public"] = is_public
-        if project_id is not None:
-            data["project_id"] = str(project_id)
+        if project_id is not _UNSET:
+            data["project_id"] = (
+                str(project_id) if project_id is not None else None
+            )
         status_code, reason, text, result = self.call_json_rpc(
             self.job_url, method_name, data
         )
