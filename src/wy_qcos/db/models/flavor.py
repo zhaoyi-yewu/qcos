@@ -15,13 +15,28 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from .base import Base
-from .base import ArrayType, GUID
-from .project import Project
-from .user import User
-from .user import Role
-from .user import UserRole
-from .user import LoginLog
-from .user import TokenBlacklist
-from .job import Job
-from .flavor import Flavor
+import uuid
+from typing import ClassVar
+
+from sqlalchemy.sql.schema import Table
+from sqlalchemy import (
+    Column,
+    String,
+    Boolean,
+    JSON,
+)
+
+from wy_qcos.db.models.base import BaseTable, GUID
+
+
+class Flavor(BaseTable):
+    """Flavor table - preset scheduling policy spec."""
+
+    __tablename__ = "flavor"
+    __table__: ClassVar[Table]
+
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    name = Column(String(128), nullable=False, unique=True)
+    description = Column(String(256))
+    is_public = Column(Boolean, default=True)
+    specs = Column(JSON, default=dict)

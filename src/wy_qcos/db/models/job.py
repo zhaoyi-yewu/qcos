@@ -67,6 +67,9 @@ class Job(BaseTable):
     results = Column(JSON, default=list)
     code_compression_level = Column(Integer, default=0)
     tags = Column(JSON, default=list)
+    # Auto scheduling fields
+    flavor_id = Column(GUID, ForeignKey("flavor.id"), nullable=True)
+    extra_specs = Column(JSON, default=dict)
     started_at = Column(DateTime)
     updated_at = Column(DateTime)
     ended_at = Column(DateTime)
