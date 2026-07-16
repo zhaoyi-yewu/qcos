@@ -76,13 +76,17 @@ class BaseFilterHandler:
     Inspired by OpenStack Nova FilterHandler.
     """
 
-    def __init__(self, filter_classes: list[type[BaseFilter]]):
+    def __init__(self, filter_classes: list):
         """Init filter handler.
 
         Args:
-            filter_classes: list of filter classes to instantiate
+            filter_classes: list of filter classes or instances.
+                Classes are instantiated; instances are used directly.
         """
-        self._filters = [cls() for cls in filter_classes]
+        self._filters = [
+            cls if isinstance(cls, BaseFilter) else cls()
+            for cls in filter_classes
+        ]
 
     def get_filtered_objects(
         self, list_obj: list[DeviceState], spec: RequestSpec

@@ -20,13 +20,22 @@ import logging
 from prefect.client.schemas.objects import StateType
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.drivers.device_manager import DeviceManager
+from wy_qcos.device.device_manager import DeviceManager
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.errors import NoValidDeviceError
-from wy_qcos.scheduler.flavor_manager import FlavorManager
-from wy_qcos.scheduler.filters import BaseFilterHandler, DEFAULT_FILTERS
+from wy_qcos.flavor.flavor_manager import FlavorManager
+from wy_qcos.scheduler.filters import (
+    BaseFilterHandler,
+    DEFAULT_FILTERS,
+)
+from wy_qcos.scheduler.filters.device_group import (
+    DeviceGroupFilter,
+)
 from wy_qcos.scheduler.request_spec import RequestSpec
-from wy_qcos.scheduler.weighers import BaseWeightHandler, DEFAULT_WEIGHERS
+from wy_qcos.scheduler.weighers import (
+    BaseWeightHandler,
+    DEFAULT_WEIGHERS,
+)
 from wy_qcos.task_manager.task_manager import TaskFlowManager
 
 logger = logging.getLogger(__name__)
@@ -48,6 +57,7 @@ class AutoScheduler:
         device_manager: DeviceManager,
         task_manager: TaskFlowManager,
         flavor_manager: FlavorManager,
+        device_group_manager=None,
         filter_handler: BaseFilterHandler | None = None,
         weight_handler: BaseWeightHandler | None = None,
     ):
@@ -57,15 +67,23 @@ class AutoScheduler:
             device_manager: device manager
             task_manager: task flow manager
             flavor_manager: flavor manager
-            filter_handler: filter handler (default uses DEFAULT_FILTERS)
-            weight_handler: weight handler (default uses DEFAULT_WEIGHERS)
+            device_group_manager: device group manager
+            filter_handler: filter handler (default uses
+                DEFAULT_FILTERS with DeviceGroupFilter injected)
+            weight_handler: weight handler (default uses
+                DEFAULT_WEIGHERS)
         """
         self._device_manager = device_manager
         self._task_manager = task_manager
         self._flavor_manager = flavor_manager
+        self._device_group_manager = device_group_manager
 
         if filter_handler is None:
-            filter_handler = BaseFilterHandler(DEFAULT_FILTERS)
+            # Build filter list with DeviceGroupFilter configured
+            # with the device_group_manager
+            dg_filter = DeviceGroupFilter(device_group_manager)
+            filter_classes = DEFAULT_FILTERS + [dg_filter]
+            filter_handler = BaseFilterHandler(filter_classes)
         self._filter_handler = filter_handler
 
         if weight_handler is None:

@@ -24,11 +24,3 @@ class NoValidDeviceError(errors.BaseException):
     module_name = "Scheduler"
     error_code = -200
     err_type = "NoValidDeviceError"
-
-
-class FlavorNotFoundError(errors.BaseException):
-    """Flavor not found error."""
-
-    module_name = "Scheduler"
-    error_code = -201
-    err_type = "FlavorNotFoundError"
