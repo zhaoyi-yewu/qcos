@@ -23,7 +23,7 @@
 #include <string>
 #include <vector>
 
-#include "compiler/qasm_to_origin_ir.hpp"
+#include "compiler/qasm_to_ir.hpp"
 #include "gtest/gtest.h"
 
 using namespace std;
@@ -498,7 +498,7 @@ measure q -> c;
 
   static bool test_qasm2operations(const std::string& qasm_str) {
     std::vector<std::shared_ptr<qcos::BaseOperation>> operations =
-        convert_qasm_string_to_qcos_operations(qasm_str).first;
+        qasm_to_ir(qasm_str).first;
     return true;
   }
 
@@ -513,7 +513,8 @@ measure q -> c;
     file.close();
     std::string qasm_str = buffer.str();
     std::vector<std::shared_ptr<qcos::BaseOperation>> operations =
-        convert_qasm_string_to_qcos_operations(qasm_str).first;
+        qasm_to_ir(qasm_str).first;
+    std::cout << "operation num: " << operations.size() << std::endl;
     return true;
   }
 };

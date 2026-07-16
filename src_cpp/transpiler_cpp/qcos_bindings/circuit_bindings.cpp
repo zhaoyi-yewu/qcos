@@ -24,6 +24,8 @@
 
 #include "circuit/base_operation.h"
 #include "circuit/gate_operation.h"
+#include "circuit/qasm_converter.h"
+#include "circuit/quantum_circuit.h"
 
 namespace nb = nanobind;
 using namespace qcos;
@@ -511,4 +513,55 @@ void bind_circuits(nb::module_& m) {
       nb::arg("arg_value") = std::vector<double>(),
       nb::arg("allow_undefined") = false,
       "Create a gate or operation instance by name.");
+
+  nb::class_<QuantumCircuit>(m, "QuantumCircuit")
+      .def(nb::init<int, int, double>(), nb::arg("num_qubits") = 0,
+           nb::arg("num_clbits") = 0, nb::arg("global_phase") = 0.0)
+      .def_static("from_ir", &QuantumCircuit::from_ir,
+                  nb::arg("ir"), nb::arg("num_qubits") = 0)
+      .def("append",
+           [](QuantumCircuit& self, std::shared_ptr<BaseOperation> op) {
+             self.append(std::move(op));
+           },
+           nb::arg("operation"))
+      .def("append_operations", &QuantumCircuit::append_operations,
+           nb::arg("operations"))
+      .def("get_operations", &QuantumCircuit::get_operations)
+      .def("num_qubits", &QuantumCircuit::num_qubits)
+      .def("num_clbits", &QuantumCircuit::num_clbits)
+      .def("global_phase", &QuantumCircuit::global_phase)
+      .def("set_global_phase", &QuantumCircuit::set_global_phase,
+           nb::arg("phase"))
+      .def("set_num_qubits", &QuantumCircuit::set_num_qubits,
+           nb::arg("num_qubits"))
+      .def("set_num_clbits", &QuantumCircuit::set_num_clbits,
+           nb::arg("num_clbits"))
+      .def("depth", &QuantumCircuit::depth)
+      .def("width", &QuantumCircuit::width)
+      .def("size", &QuantumCircuit::size)
+      .def("__repr__",
+           [](const QuantumCircuit& self) {
+             return "QuantumCircuit(num_qubits=" +
+                    std::to_string(self.num_qubits()) +
+                    ", num_clbits=" + std::to_string(self.num_clbits()) +
+                    ", size=" + std::to_string(self.size()) + ")";
+           })
+      .def("__deepcopy__",
+           [](const QuantumCircuit& self, nb::dict) {
+             auto copy = std::make_unique<QuantumCircuit>(
+                 self.num_qubits(), self.num_clbits(), self.global_phase());
+             copy->append_operations(self.get_operations());
+             return copy;
+           });
+
+  nb::class_<QasmConverter>(m, "QasmConverter")
+      .def(nb::init<const QuantumCircuit&>(), nb::arg("circuit"))
+      .def("to_qasm2", &QasmConverter::to_qasm2)
+      .def("to_qasm3", &QasmConverter::to_qasm3)
+      .def("save", &QasmConverter::save, nb::arg("path"),
+           nb::arg("version") = "2.0")
+      .def("__repr__",
+           [](const QasmConverter& self) {
+             return "QasmConverter()";
+           });
 }

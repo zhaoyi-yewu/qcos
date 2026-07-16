@@ -19,7 +19,7 @@ import pytest
 import numpy as np
 
 from wy_qcos.transpiler.high_performance import (
-    convert_qasm_string_to_qcos_operations,
+    qasm_to_ir,
     Decomposer,
 )
 
@@ -854,7 +854,7 @@ class TestDecomposer:
         barrier q;
         measure q[1] -> c[1];
         """
-        gates_list, q_num = convert_qasm_string_to_qcos_operations(data)
+        gates_list, q_num = qasm_to_ir(data)
         gates_list = convert_ir_cpp2py(gates_list)
         assert q_num == 6
         assert len(gates_list) == 21
@@ -950,7 +950,7 @@ class TestDecomposer:
         )
         qasm_data = read_qasm_from_file(file_path)
 
-        gates_list, _ = convert_qasm_string_to_qcos_operations(qasm_data)
+        gates_list, _ = qasm_to_ir(qasm_data)
         gates_list = convert_ir_cpp2py(gates_list)
 
         # Spinq quantum instructions set
@@ -987,7 +987,7 @@ class TestDecomposer:
         file_path = f"{samples_dir}/qasm/2.0/simple-qasm.qasm"
         qasm_data = read_qasm_from_file(file_path)
 
-        gates_list, _ = convert_qasm_string_to_qcos_operations(qasm_data)
+        gates_list, _ = qasm_to_ir(qasm_data)
         gates_list = convert_ir_cpp2py(gates_list)
 
         # Spinq quantum instructions set
@@ -1010,7 +1010,7 @@ class TestDecomposer:
         ccx q[0], q[1], q[4];
         measure q[1] -> c[1];
         """
-        gates_list, _ = convert_qasm_string_to_qcos_operations(data)
+        gates_list, _ = qasm_to_ir(data)
         gates_list = convert_ir_cpp2py(gates_list)
 
         target = ["rx", "ry", "rz", "cx", "sync", "measure"]

@@ -27,7 +27,7 @@
 #include "compiler/operations/control.hpp"
 #include "compiler/operations/op_type.hpp"
 #include "compiler/operations/operation.hpp"
-#include "compiler/qasm_to_origin_ir.hpp"
+#include "compiler/qasm_to_ir.hpp"
 
 namespace nb = nanobind;
 using namespace qc;
@@ -130,12 +130,13 @@ void bind_parser(nb::module_& m) {
       .def_ro("type", &Operation::type)
       .def_ro("name", &Operation::name);
 
-  m.def("convert_qasm_string_to_qcos_operations",
-        [](const std::string& qasm_str) {
-          nb::gil_scoped_release release;
-          return convert_qasm_string_to_qcos_operations(qasm_str);
-        },
-        R"(
+  m.def(
+      "qasm_to_ir",
+      [](const std::string& qasm_str) {
+        nb::gil_scoped_release release;
+        return qasm_to_ir(qasm_str);
+      },
+      R"(
             将QASM字符串转换为操作列表
 
             Args:
@@ -147,8 +148,8 @@ void bind_parser(nb::module_& m) {
             Example:
                 >>> import high_performance
                 >>> qasm = "OPENQASM 2.0; qreg q[2]; h q[0]; cx q[0], q[1];"
-                >>> ops, num_qubits = high_performance.convert_qasm_string_to_qcos_operations(qasm)
+                >>> ops, num_qubits = high_performance.qasm_to_ir(qasm)
                 >>> print(f"解析到 {len(ops)} 个操作")
         )",
-        nb::arg("qasm_str"));
+      nb::arg("qasm_str"));
 }

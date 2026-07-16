@@ -27,7 +27,7 @@
 #include <vector>
 
 #include "circuit/gate_operation.h"
-#include "compiler/qasm_to_origin_ir.hpp"
+#include "compiler/qasm_to_ir.hpp"
 #include "decomposer/decomposer.h"
 
 namespace qcos {
@@ -112,7 +112,7 @@ TEST_F(QasmDecomposerTest, ParseAndDecomposeBenchmarkCircuit) {
 
   auto parse_start = std::chrono::high_resolution_clock::now();
 
-  auto parse_result = convert_qasm_string_to_qcos_operations(qasm_str);
+  auto parse_result = qasm_to_ir(qasm_str);
 
   auto parse_end = std::chrono::high_resolution_clock::now();
 

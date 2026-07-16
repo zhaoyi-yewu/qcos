@@ -83,7 +83,7 @@ std::vector<std::string> collect_gate_names(
  * Python/C++ 之间的中间数据传递开销。
  *
  * 内部流程：
- *   1. QASM 解析 → convert_qasm_string_to_qcos_operations
+ *   1. QASM 解析 → qasm_to_ir
  *   2. 优化 #1（opt_level 上限为 1）→ optimize
  *   3. 分解为 1q/2q 门 → decompose_gates_to_1q2q
  *   4. 生成分解规则 → Decomposer::get_decompose_rules
@@ -103,8 +103,8 @@ std::vector<std::string> collect_gate_names(
 TranspileResult transpile(
     const std::string& qasm_string,
     const std::vector<std::string>& supp_basis_gates,
-    const std::vector<std::pair<int, int>>& coupling_list,
-    int opt_level = 1, int sabre_extension_size = 20,
-    double sabre_weight = 0.5, double sabre_decay = 0.001);
+    const std::vector<std::pair<int, int>>& coupling_list, int opt_level = 1,
+    int sabre_extension_size = 20, double sabre_weight = 0.5,
+    double sabre_decay = 0.001);
 
 }  // namespace qcos

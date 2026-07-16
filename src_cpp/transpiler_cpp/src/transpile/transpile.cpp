@@ -26,7 +26,7 @@
 #include <vector>
 
 #include "circuit/gate_operation.h"
-#include "compiler/qasm_to_origin_ir.hpp"
+#include "compiler/qasm_to_ir.hpp"
 #include "decomposer/decomposer.h"
 #include "mapping/sabre_routing.h"
 #include "optimizer/gate_optimizer.h"
@@ -86,7 +86,7 @@ TranspileResult transpile(
 
   // Step 1: Parse — QASM 字符串解析为操作列表
   auto parse_start = clock::now();
-  auto [ops, num_qubits] = convert_qasm_string_to_qcos_operations(qasm_string);
+  auto [ops, num_qubits] = qasm_to_ir(qasm_string);
   result.num_qubits = num_qubits;
   t.parse_time =
       std::chrono::duration<double>(clock::now() - parse_start).count();
