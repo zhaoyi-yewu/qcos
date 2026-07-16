@@ -70,13 +70,16 @@
 .. code-block:: shell
 
    # 更新资源规格
-   usage: qcos-cli update-flavor [-h] [--name NAME] [--description DESCRIPTION] [--public | --private]
-                                  [--project-id PROJECT_ID] [--min-qubits MIN_QUBITS] [--max-qubits MAX_QUBITS]
-                                  [--gate-fidelity-1q-min GATE_FIDELITY_1Q_MIN]
-                                  [--gate-fidelity-2q-min GATE_FIDELITY_2Q_MIN]
-                                  [--property [PROPERTY ...]]
-                                  --device-groups DEVICE_GROUPS [DEVICE_GROUPS ...]
-                                  flavor_id
+   usage: qcos-cli update-flavor [-h] [--name NAME] [--public | --private]
+                                 [--project-id PROJECT_ID]
+                                 [--description DESCRIPTION | --unset-description]
+                                 [--min-qubits MIN_QUBITS | --unset-min-qubits]
+                                 [--max-qubits MAX_QUBITS | --unset-max-qubits]
+                                 [--gate-fidelity-1q-min GATE_FIDELITY_1Q_MIN | --unset-gate-fidelity-1q-min]
+                                 [--gate-fidelity-2q-min GATE_FIDELITY_2Q_MIN | --unset-gate-fidelity-2q-min]
+                                 [--property [PROPERTY ...] | --unset-extra-properties]
+                                 [--device-groups DEVICE_GROUPS [DEVICE_GROUPS ...] | --unset-device-groups]
+                                 flavor_id
 
    Update flavor (preset scheduling policy).
 
@@ -85,9 +88,40 @@
 
    options:
      -h, --help            show this help message and exit
+     --name NAME           Flavor name
+     --public              Set as public flavor
+     --private             Set as private flavor
+     --project-id PROJECT_ID
+                           Project ID (UUID)
+     --description DESCRIPTION
+                           Flavor description
+     --unset-description   Unset description field
+     --min-qubits MIN_QUBITS
+                           Minimum qubits
+     --unset-min-qubits    Unset min_qubits field
+     --max-qubits MAX_QUBITS
+                           Maximum qubits
+     --unset-max-qubits    Unset max_qubits field
+     --gate-fidelity-1q-min GATE_FIDELITY_1Q_MIN
+                           Min 1q gate fidelity
+     --unset-gate-fidelity-1q-min
+                           Unset gate_fidelity_1q_min field
+     --gate-fidelity-2q-min GATE_FIDELITY_2Q_MIN
+                           Min 2q gate fidelity
+     --unset-gate-fidelity-2q-min
+                           Unset gate_fidelity_2q_min field
+     --property [PROPERTY ...]
+                           Property in namespace:key=value format
+     --unset-extra-properties
+                           Unset all extra_properties
      --device-groups DEVICE_GROUPS [DEVICE_GROUPS ...]
-                            Device group names or UUIDs (required. Replaces
-                            existing device group mappings)
+                           Device group names or UUIDs (replaces existing
+                           device group mappings)
+     --unset-device-groups
+                           Unset all device group mappings
+
+   对于可空字段，``--{key}`` 用于更新字段值，``--unset-{key}`` 用于清空字段，
+   两者互斥不能同时使用。未指定的字段保持原值不变。
 
 典型场景示例
 ~~~~~~~~~~~~~~~
@@ -96,6 +130,11 @@
 
    # 更新资源规格
    qcos-cli update-flavor my-flavor --description "updated descriptions" --max-qubits 64 --device-groups <device-group-uuid>
+
+   # 清空可空字段
+   qcos-cli update-flavor my-flavor --unset-description --unset-max-qubits
+   qcos-cli update-flavor my-flavor --unset-device-groups
+   qcos-cli update-flavor my-flavor --unset-extra-properties
 
 资源规格详情查询
 *****************
