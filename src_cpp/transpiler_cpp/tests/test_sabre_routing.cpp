@@ -162,10 +162,16 @@ void routing_and_validate_qasmfiles(const std::string& folder_path,
     // 加载逻辑电路
     auto logical_gates = load_qasm_to_gate_list(qasm_path);
 
+    // 转换为 BaseOperation
+    std::vector<std::shared_ptr<BaseOperation>> base_gates;
+    for (const auto& g : logical_gates) {
+      base_gates.push_back(std::make_shared<BaseOperation>(
+          g.name, g.targets, g.arg_value, g.operation_type));
+    }
+
     auto t0 = std::chrono::high_resolution_clock::now();
     // 执行路由
-    std::vector<int> initial_l2p;
-    sabre.execute(logical_gates, initial_l2p);
+    sabre.execute(base_gates);
     auto t1 = std::chrono::high_resolution_clock::now();
     double route_seconds = std::chrono::duration<double>(t1 - t0).count();
 
@@ -179,6 +185,7 @@ void routing_and_validate_qasmfiles(const std::string& folder_path,
       std::cout << "Validation FAILED\n";
     }
     std::cout << "Routing time: " << route_seconds << " ms\n";
+    std::cout << "Physical gates: " << physical_gates.size() << "\n";
   }
 }
 
@@ -189,18 +196,20 @@ void routing_and_validate_qasmfiles(const std::string& folder_path,
  */
 TEST(SabreCoreTest, LinearTopologySwap) {
   std::vector<std::pair<int, int>> coupling_list = {{0, 1}, {1, 2}};
-  std::vector<GateOperation> logical_circuit = {GateOperation(
-      "cx", {0, 2}, {}, OperationType::DOUBLE_QUBIT_OPERATION, false)};
-  std::vector<int> initial_l2p = {0, 1, 2};
+  std::vector<std::shared_ptr<BaseOperation>> logical_circuit = {
+      std::make_shared<BaseOperation>("cx", std::vector<int>{0, 2},
+                                      std::vector<double>{},
+                                      OperationType::DOUBLE_QUBIT_OPERATION)};
 
-  SABRE sabre(coupling_list, 20, 0.5, 0.001);
-  sabre.execute(logical_circuit, initial_l2p);
+  SABRE sabre(coupling_list);
+  sabre.execute(logical_circuit);
   const auto& physical_gates = sabre.get_physical_gates();
 
-  EXPECT_GE(physical_gates.size(), 2);
-  bool has_swap =
-      std::any_of(physical_gates.begin(), physical_gates.end(),
-                  [](const GateOperation& g) { return g.name == "swap"; });
+  EXPECT_GE(physical_gates.size(), 2u);
+  bool has_swap = std::any_of(physical_gates.begin(), physical_gates.end(),
+                              [](const std::shared_ptr<BaseOperation>& g) {
+                                return g->name == "swap";
+                              });
   EXPECT_TRUE(has_swap)
       << "SABRE should insert a swap for non-adjacent qubits (0, 2)";
 }
@@ -233,11 +242,19 @@ TEST(SabreCoreTest, LoadAndRoute) {
   SABRE sabre(coupling_list);
   std::cout << "开始对 " << logical_circuit.size() << " 个门进行路由映射..."
             << std::endl;
+
+  // 转换为 BaseOperation
+  std::vector<std::shared_ptr<BaseOperation>> base_gates;
+  for (const auto& g : logical_circuit) {
+    base_gates.push_back(std::make_shared<BaseOperation>(
+        g.name, g.targets, g.arg_value, g.operation_type));
+  }
+
   auto start = std::chrono::high_resolution_clock::now();
   // routing
-  sabre.execute(logical_circuit);
+  sabre.execute(base_gates);
   auto end = std::chrono::high_resolution_clock::now();
-  auto physical_circuit = sabre.get_physical_gates();
+  const auto& physical_circuit = sabre.get_physical_gates();
   std::chrono::duration<double> sec = end - start;
   std::chrono::duration<double, std::milli> ms = end - start;
 
@@ -245,8 +262,8 @@ TEST(SabreCoreTest, LoadAndRoute) {
   size_t physical_double_gates = 0;
   size_t swap_count = 0;
   for (const auto& gate : physical_circuit) {
-    if (gate.name == "swap") swap_count++;
-    if (gate.operation_type == OperationType::DOUBLE_QUBIT_OPERATION)
+    if (gate->name == "swap") swap_count++;
+    if (gate->operation_type == OperationType::DOUBLE_QUBIT_OPERATION)
       physical_double_gates++;
   }
 

@@ -22,6 +22,7 @@
 
 #include "circuit/base_operation.h"
 #include "circuit/gate_operation.h"
+#include "mapping/mapping_utils.h"
 
 namespace qcos {
 
@@ -39,32 +40,28 @@ std::vector<int> sabre_initial_mapping(
 
 /**
  * @brief 使用SABRE算法对逻辑门序列执行routing。
+ *
+ * 内部将 measure 门从门序列中分离: measure 不参与路由, 路由后追加到
+ * 返回结果末尾(已转为物理 ID)。初始映射由内部调用 sabre_initial_mapping 完成。
+ *
  * @param gates_list 待映射的逻辑门序列。
  * @param coupling_list 物理耦合图边列表。
- * @param initial_l2p 初始逻辑到物理映射，可为空。
- *        当该参数为空时，函数内部会先调用 sabre_initial_mapping
- *        生成初始映射，再继续执行 routing。
+ * @param edge_fidelities 边保真度数组(与 coupling_list 对应),
+ * 空则不使用保真度。
+ * @param single_qubit_fidelities 单比特保真度数组, 空则不使用。
+ * @param fidelity_threshold 保真度阈值, 低于此值的边被过滤(<=0 不过滤), 默认
+ * 0.8。
  * @param extension_size 扩展集大小，用于 lookahead 成本计算，默认 20。
  * @param weight 前沿层与扩展层成本权重，默认 0.5。
  * @param decay SWAP 衰减系数，默认 0.001。
- * @return std::vector<GateOperation> routing 后的物理门序列。
- */
-std::vector<GateOperation> sabre_routing(
-    const std::vector<GateOperation>& gates_list,
-    const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<int>& initial_l2p = {}, int extension_size = 20,
-    double weight = 0.5, double decay = 0.001);
-
-/**
- * @brief SABRE routing 的 BaseOperation 版本接口。
- *
- * 内部实现会将 BaseOperation 转换为 GateOperation，执行 routing 后再
- * 转换回 BaseOperation。
+ * @return std::vector<std::shared_ptr<BaseOperation>> routing 后的物理门序列。
  */
 std::vector<std::shared_ptr<BaseOperation>> sabre_routing(
     const std::vector<std::shared_ptr<BaseOperation>>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<int>& initial_l2p = {}, int extension_size = 20,
+    const std::vector<double>& edge_fidelities = {},
+    const std::vector<double>& single_qubit_fidelities = {},
+    double fidelity_threshold = 0.8, int extension_size = 20,
     double weight = 0.5, double decay = 0.001);
 
 /**
@@ -103,20 +100,28 @@ class SABRE {
   /**
    * @brief SABRE算法构造函数
    * @param coupling_list 量子芯片物理耦合关系，每个元素为一对物理量子比特编号
+   * @param edge_fidelities 边保真度数组(与coupling_list对应)，空则不使用保真度
+   * @param single_qubit_fidelities 单比特保真度数组，空则不使用
+   * @param fidelity_threshold 保真度阈值，低于此值的边被过滤(<=0不过滤)
    * @param extension_size 扩展集大小，用于lookahead成本计算，默认20
    * @param weight 前沿层与扩展层成本权重，默认0.5
    * @param decay 物理比特衰减系数，默认0.001
    */
   SABRE(const std::vector<std::pair<int, int>>& coupling_list,
-        int extension_size = 20, double weight = 0.5, double decay = 0.001);
+        const std::vector<double>& edge_fidelities = {},
+        const std::vector<double>& single_qubit_fidelities = {},
+        double fidelity_threshold = 0.8, int extension_size = 20,
+        double weight = 0.5, double decay = 0.001);
 
   /**
-   * @brief 执行SABRE算法，将逻辑量子门映射到物理量子门
-   * @param gates_list 待映射的逻辑门序列
-   * @param initial_l2p 初始逻辑到物理映射(可为空)
+   * @brief 执行SABRE算法
+   *
+   * 内部处理: measure 分离 → 保真度过滤/ID稠密化 → 路由 → measure 追加。
+   * 结果通过 get_physical_gates() 获取。
+   *
+   * @param gates_list 待映射的逻辑门序列(可含 measure)
    */
-  void execute(const std::vector<GateOperation>& gates_list,
-               const std::vector<int>& initial_l2p = {});
+  void execute(const std::vector<std::shared_ptr<BaseOperation>>& gates_list);
 
   /**
    * @brief 将逻辑量子门转换为物理量子门
@@ -126,10 +131,11 @@ class SABRE {
   GateOperation phy_gate(const GateOperation& logic_gate);
 
   /**
-   * @brief 获取已经routing完成的物理门序列
-   * @return std::vector<GateOperation> 物理门操作列表
+   * @brief 获取已经routing完成的物理门序列(含measure)
+   * @return std::vector<std::shared_ptr<BaseOperation>> 物理门操作列表
    */
-  inline std::vector<GateOperation> get_physical_gates() const {
+  inline const std::vector<std::shared_ptr<BaseOperation>>&
+  get_physical_gates() const {
     return phy_exe_gates_;
   }
 
@@ -150,20 +156,29 @@ class SABRE {
       const std::vector<std::pair<int, int>>& coupling_list);
 
  private:
-  int phy_qubit_num_;                               ///< 物理量子比特总数
-  int extension_size_;                              ///< 扩展深度
-  double weight_;                                   ///< 扩展层权重
-  double decay_;                                    ///< SWAP衰减因子
+  int max_phy_qubit_id_;      ///< 最大物理比特 ID (数组按 ID 索引, 大小为
+                              ///< max_phy_qubit_id_+1)
+  int active_phy_qubit_num_;  ///< 活跃物理比特数 (耦合图中出现的去重位数)
+  int logic_qubit_num_ = 0;   ///< 电路使用的逻辑位数 (含被 measure 引用的位)
   std::vector<std::pair<int, int>> coupling_list_;  ///< 物理耦合边列表
-  std::vector<std::vector<int>> adj_list_;          ///< 物理耦合图邻接表
-  std::vector<std::vector<bool>> adj_matrix_;       ///< 邻接矩阵(O(1)查询)
-  std::vector<std::vector<int>> dist_;              ///< 最短路径距离矩阵
-  std::vector<int> cur_l2p_;                        ///< 当前逻辑到物理映射
-  std::vector<int> cur_p2l_;                        ///< 当前物理到逻辑映射
-  std::vector<Node*> front_layer_;                  ///< 前沿层节点列表
-  std::vector<GateOperation> phy_exe_gates_;        ///< 映射后的物理门序列
-  std::vector<int> logic2phy_;                      ///< 最终逻辑到物理映射
-  std::vector<int> phy2logic_;                      ///< 最终物理到逻辑映射
+  std::vector<double>
+      edge_fidelities_;  ///< 边保真度数组(与coupling_list_对应)
+  std::vector<double> single_qubit_fidelities_;  ///< 单比特保真度数组
+  double fidelity_threshold_;                    ///< 保真度过滤阈值
+  int extension_size_;                           ///< 扩展深度
+  double weight_;                                ///< 扩展层权重
+  double decay_;                                 ///< SWAP衰减因子
+  std::vector<std::vector<int>> adj_list_;       ///< 物理耦合图邻接表
+  std::vector<std::vector<bool>> adj_matrix_;    ///< 邻接矩阵(O(1)查询)
+  std::vector<std::vector<int>> dist_;           ///< 最短路径距离矩阵
+  std::vector<int> cur_l2p_;                     ///< 当前逻辑到物理映射
+  std::vector<int> cur_p2l_;                     ///< 当前物理到逻辑映射
+  std::vector<Node*> front_layer_;               ///< 前沿层节点列表
+  std::vector<std::shared_ptr<BaseOperation>>
+      phy_exe_gates_;            ///< 映射后的物理门序列(含measure)
+  std::vector<int> logic2phy_;   ///< 最终逻辑到物理映射
+  bool did_preprocess_ = false;  ///< 是否做了 ID 稠密化预处理
+  PhysicalIdRemap remap_;        ///< 稠密化→原始 ID 映射
 
   // 预分配的热路径缓冲区
   std::vector<std::pair<int, int>> candidate_swaps_;
@@ -240,8 +255,16 @@ class SABRE {
   int get_qubit_num_from_ir(
       const std::vector<GateOperation>& gates_list) const;
 
-  void execute_routing(const std::vector<GateOperation>& gates_list,
-                       const std::vector<int>& initial_l2p);
+  /**
+   * @brief 为 cur_l2p_ 中未分配的逻辑位分配物理位
+   *
+   * 优先分配已分配位的邻居，其次分配耦合图中任意未使用位。
+   */
+  void extend_l2p_with_unused_qubits(int old_size);
+
+  std::vector<GateOperation> execute_routing(
+      const std::vector<GateOperation>& gates_list,
+      const std::vector<int>& initial_l2p);
 };
 
 }  // namespace qcos

@@ -73,41 +73,60 @@ std::shared_ptr<BaseOperation> restore_base_operation(
   }
 }
 
-PhysicalIdRemap densify_chip_topology(ChipCalibration& chip,
-                                      double fidelity_threshold) {
-  auto& coupling_list = chip.coupling_list;
-  auto& edge_fidelities = chip.edge_fidelities;
-  auto& single_qubit_fidelities = chip.single_qubit_fidelities;
+void filter_low_fidelity(ChipCalibration& chip, double fidelity_threshold) {
+  if (fidelity_threshold <= 0.0) return;
 
-  // 步骤 1: 按 fidelity_threshold 移除低保真度边
-  if (!edge_fidelities.empty() && fidelity_threshold > 0.0) {
+  // 步骤 1: 低于阈值的单比特保真度置 0
+  for (size_t i = 0; i < chip.single_qubit_fidelities.size(); ++i) {
+    if (chip.single_qubit_fidelities[i] <= fidelity_threshold) {
+      chip.single_qubit_fidelities[i] = 0.0;
+    }
+  }
+
+  // 步骤 2: 移除边保真度或任一端点单比特保真度低于阈值的边
+  if (!chip.edge_fidelities.empty()) {
     size_t write_idx = 0;
-    for (size_t read_idx = 0; read_idx < coupling_list.size(); ++read_idx) {
-      double fidelity = (read_idx < edge_fidelities.size())
-                            ? edge_fidelities[read_idx]
+    for (size_t read_idx = 0; read_idx < chip.coupling_list.size();
+         ++read_idx) {
+      double edge_fid = (read_idx < chip.edge_fidelities.size())
+                            ? chip.edge_fidelities[read_idx]
                             : 0.0;
-      if (fidelity > fidelity_threshold) {
-        coupling_list[write_idx] = coupling_list[read_idx];
-        edge_fidelities[write_idx] = edge_fidelities[read_idx];
+      auto [u, v] = chip.coupling_list[read_idx];
+      double u_fid =
+          (u < static_cast<int>(chip.single_qubit_fidelities.size()))
+              ? chip.single_qubit_fidelities[u]
+              : 0.0;
+      double v_fid =
+          (v < static_cast<int>(chip.single_qubit_fidelities.size()))
+              ? chip.single_qubit_fidelities[v]
+              : 0.0;
+      if (edge_fid > fidelity_threshold && u_fid > fidelity_threshold &&
+          v_fid > fidelity_threshold) {
+        chip.coupling_list[write_idx] = chip.coupling_list[read_idx];
+        chip.edge_fidelities[write_idx] = chip.edge_fidelities[read_idx];
         ++write_idx;
       }
     }
-    coupling_list.resize(write_idx);
-    edge_fidelities.resize(write_idx);
+    chip.coupling_list.resize(write_idx);
+    chip.edge_fidelities.resize(write_idx);
   }
+}
 
-  // 步骤 2: 收集可用量子位
+PhysicalIdRemap densify_chip_topology(ChipCalibration& chip) {
+  auto& coupling_list = chip.coupling_list;
+  auto& single_qubit_fidelities = chip.single_qubit_fidelities;
+
+  // 步骤 1: 收集耦合边中出现的量子位
   std::set<int> coupled_qubits;
   for (const auto& [source, target] : coupling_list) {
     coupled_qubits.insert(source);
     coupled_qubits.insert(target);
   }
+  // 步骤 2: 加入保真度 > 0 的单比特（已由 filter_low_fidelity 过滤）
   std::set<int> available_qubits = coupled_qubits;
-  if (fidelity_threshold > 0.0) {
-    for (size_t idx = 0; idx < single_qubit_fidelities.size(); ++idx) {
-      if (single_qubit_fidelities[idx] > fidelity_threshold) {
-        available_qubits.insert(static_cast<int>(idx));
-      }
+  for (size_t idx = 0; idx < single_qubit_fidelities.size(); ++idx) {
+    if (single_qubit_fidelities[idx] > 0.0) {
+      available_qubits.insert(static_cast<int>(idx));
     }
   }
 
@@ -117,7 +136,7 @@ PhysicalIdRemap densify_chip_topology(ChipCalibration& chip,
     return remap;
   }
 
-  // 步骤 3: 建立双向映射表
+  // 步骤 2: 建立双向映射表
   int max_orig_id = *available_qubits.rbegin();
   remap.orig_to_dense.assign(max_orig_id + 1, -1);
   remap.dense_to_orig.reserve(available_qubits.size());
@@ -128,13 +147,13 @@ PhysicalIdRemap densify_chip_topology(ChipCalibration& chip,
   }
   remap.dense_count = static_cast<int>(remap.dense_to_orig.size());
 
-  // 步骤 4: 耦合边端点转稠密 ID
+  // 步骤 3: 耦合边端点转稠密 ID
   for (auto& [source, target] : coupling_list) {
     source = remap.orig_to_dense[source];
     target = remap.orig_to_dense[target];
   }
 
-  // 步骤 5: 重建单比特保真度数组
+  // 步骤 4: 重建单比特保真度数组
   std::vector<double> dense_qubit_fidelity(remap.dense_count, 0.0);
   for (int dense_id = 0; dense_id < remap.dense_count; ++dense_id) {
     int orig_id = remap.dense_to_orig[dense_id];

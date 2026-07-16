@@ -19,72 +19,136 @@
 
 #include <algorithm>
 #include <queue>
+#include <set>
 #include <stdexcept>
+#include <unordered_set>
 #include <vector>
 
+#include "mapping/chip_data.h"
+#include "mapping/mapping_utils.h"
 #include "mapping/sabre_mapping.h"
-#include "mapping/sabre_utils.h"
 
 namespace qcos {
-
-std::vector<GateOperation> sabre_routing(
-    const std::vector<GateOperation>& gates_list,
-    const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<int>& initial_l2p, int extension_size, double weight,
-    double decay) {
-  SABRE sabre(coupling_list, extension_size, weight, decay);
-  sabre.execute(gates_list, initial_l2p);
-  return sabre.get_physical_gates();
-}
 
 std::vector<std::shared_ptr<BaseOperation>> sabre_routing(
     const std::vector<std::shared_ptr<BaseOperation>>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<int>& initial_l2p, int extension_size, double weight,
+    const std::vector<double>& edge_fidelities,
+    const std::vector<double>& single_qubit_fidelities,
+    double fidelity_threshold, int extension_size, double weight,
     double decay) {
-  std::vector<GateOperation> gate_ops;
-  gate_ops.reserve(gates_list.size());
-  // convert BaseOperation to GateOperation
+  SABRE sabre(coupling_list, edge_fidelities, single_qubit_fidelities,
+              fidelity_threshold, extension_size, weight, decay);
+  sabre.execute(gates_list);
+  return sabre.get_physical_gates();
+}
+
+SABRE::SABRE(const std::vector<std::pair<int, int>>& coupling_list,
+             const std::vector<double>& edge_fidelities,
+             const std::vector<double>& single_qubit_fidelities,
+             double fidelity_threshold, int extension_size, double weight,
+             double decay)
+    : coupling_list_(coupling_list),
+      edge_fidelities_(edge_fidelities),
+      single_qubit_fidelities_(single_qubit_fidelities),
+      fidelity_threshold_(fidelity_threshold),
+      extension_size_(extension_size),
+      weight_(weight),
+      decay_(decay) {
+  // 若提供了保真度数据且阈值 > 0, 则过滤
+  if (!edge_fidelities_.empty() && fidelity_threshold_ > 0.0) {
+    ChipCalibration chip(coupling_list_, edge_fidelities_,
+                         single_qubit_fidelities_);
+    filter_low_fidelity(chip, fidelity_threshold_);
+    coupling_list_ = chip.coupling_list;
+    edge_fidelities_ = chip.edge_fidelities;
+    single_qubit_fidelities_ = chip.single_qubit_fidelities;
+  }
+
+  // 始终选择最大连通分量
+  select_largest_component(coupling_list_, edge_fidelities_);
+
+  build_coupling_graph(coupling_list_);
+  init_distance_matrix();
+}
+
+void SABRE::execute(
+    const std::vector<std::shared_ptr<BaseOperation>>& gates_list) {
+  // 1. 分离 measure 门和普通门
+  std::vector<std::shared_ptr<BaseOperation>> regular_gates;
+  std::vector<std::shared_ptr<Measure>> measure_ops;
+
   for (const auto& op : gates_list) {
     if (op == nullptr) {
       throw std::invalid_argument(
           "SABRE routing does not accept null BaseOperation pointers");
     }
+    if (op->name == "measure") {
+      auto measure = std::dynamic_pointer_cast<Measure>(op);
+      if (!measure) measure = std::make_shared<Measure>(op->targets);
+      measure_ops.push_back(measure);
+    } else {
+      regular_gates.push_back(op);
+    }
+  }
+
+  // 2. 转换为 GateOperation
+  std::vector<GateOperation> gate_ops;
+  gate_ops.reserve(regular_gates.size());
+  for (const auto& op : regular_gates) {
     gate_ops.push_back(to_gate_operation(*op));
   }
 
-  // execute SABRE routing on GateOperations
-  std::vector<GateOperation> routed_gate_ops = sabre_routing(
-      gate_ops, coupling_list, initial_l2p, extension_size, weight, decay);
-
-  // convert routed GateOperation back to BaseOperation
-  std::vector<std::shared_ptr<BaseOperation>> routed_ops;
-  routed_ops.reserve(routed_gate_ops.size());
-  for (const auto& op : routed_gate_ops) {
-    routed_ops.push_back(restore_base_operation(op));
+  // 无 Measure 时为所有逻辑位补充 Measure
+  // TODO: 补充Measure门的操作应该在 parse 中处理
+  if (measure_ops.empty()) {
+    int logical_qubit_num = get_qubit_num_from_ir(gate_ops);
+    for (int i = 0; i < logical_qubit_num; ++i) {
+      measure_ops.push_back(std::make_shared<Measure>(std::vector<int>{i}));
+    }
   }
 
-  return routed_ops;
-}
+  // 计算完整的逻辑位数: gate_ops + measure_ops 中引用的最大逻辑位 ID + 1
+  // (优化器可能消除某些位上的全部门, 但 measure 仍引用)
+  logic_qubit_num_ = get_qubit_num_from_ir(gate_ops);
+  for (const auto& measure_op : measure_ops) {
+    int qubit_count = measure_op->targets[0] + 1;
+    if (qubit_count > logic_qubit_num_) logic_qubit_num_ = qubit_count;
+  }
 
-SABRE::SABRE(const std::vector<std::pair<int, int>>& coupling_list,
-             int extension_size, double weight, double decay)
-    : extension_size_(extension_size),
-      weight_(weight),
-      decay_(decay),
-      coupling_list_(coupling_list) {
-  // Build physical coupling graph
-  build_coupling_graph(coupling_list);
-  // Initialize shortest-path distance matrix
-  init_distance_matrix();
+  // 3. 计算初始映射并执行路由
+  std::vector<int> initial_l2p =
+      sabre_initial_mapping(gate_ops, coupling_list_);
+  std::vector<GateOperation> routed_gate_ops =
+      execute_routing(gate_ops, initial_l2p);
+
+  const std::vector<int>& logic2phy = get_logic2phy();
+
+  // 4. 转换为 BaseOperation
+  phy_exe_gates_.clear();
+  phy_exe_gates_.reserve(routed_gate_ops.size() + measure_ops.size());
+  for (const auto& g : routed_gate_ops) {
+    phy_exe_gates_.push_back(restore_base_operation(g));
+  }
+
+  // 5. 将 measure 门的逻辑位替换为物理位，保留原有 cbits
+  for (const auto& measure_op : measure_ops) {
+    int logic_q = measure_op->targets[0];
+    int physical_q = (logic_q < static_cast<int>(logic2phy.size()))
+                         ? logic2phy[logic_q]
+                         : logic_q;
+    phy_exe_gates_.push_back(std::make_shared<Measure>(
+        std::vector<int>{physical_q}, measure_op->cbits));
+  }
 }
 
 void SABRE::init_distance_matrix() {
   const int INF = 1000000;
-  // Allocate and initialize distance matrix
-  dist_.assign(phy_qubit_num_, std::vector<int>(phy_qubit_num_, INF));
+  // dist_ 按 ID 索引, 大小为 max_phy_qubit_id_+1
+  int array_size = max_phy_qubit_id_ + 1;
+  dist_.assign(array_size, std::vector<int>(array_size, INF));
 
-  for (int start_node = 0; start_node < phy_qubit_num_; ++start_node) {
+  for (int start_node = 0; start_node < array_size; ++start_node) {
     if (adj_list_[start_node].empty()) continue;
     dist_[start_node][start_node] = 0;
     std::queue<int> q;
@@ -108,13 +172,21 @@ void SABRE::init_distance_matrix() {
 void SABRE::build_coupling_graph(
     const std::vector<std::pair<int, int>>& coupling_list) {
   int max_q = 0;
+  std::unordered_set<int> unique_qubits;
   for (const auto& edge : coupling_list) {
     max_q = std::max({max_q, edge.first, edge.second});
+    unique_qubits.insert(edge.first);
+    unique_qubits.insert(edge.second);
   }
-  phy_qubit_num_ = max_q + 1;
+  // max_phy_qubit_id_: 用于按 ID 索引数组
+  // (dist_/adj_list_/adj_matrix_/cur_l2p_/cur_p2l_)
+  max_phy_qubit_id_ = max_q;
+  // active_phy_qubit_num_: 活跃位数 (耦合图中出现的去重位数)
+  active_phy_qubit_num_ = static_cast<int>(unique_qubits.size());
 
-  adj_list_.assign(phy_qubit_num_, {});
-  adj_matrix_.assign(phy_qubit_num_, std::vector<bool>(phy_qubit_num_, false));
+  int array_size = max_phy_qubit_id_ + 1;
+  adj_list_.assign(array_size, {});
+  adj_matrix_.assign(array_size, std::vector<bool>(array_size, false));
 
   for (const auto& edge : coupling_list) {
     int u = edge.first, v = edge.second;
@@ -138,58 +210,100 @@ int SABRE::get_qubit_num_from_ir(
   return max_logic_id + 1;
 }
 
-void SABRE::execute(const std::vector<GateOperation>& gates_list,
-                    const std::vector<int>& initial_l2p) {
-  if (initial_l2p.empty()) {
-    execute_routing(gates_list,
-                    sabre_initial_mapping(gates_list, coupling_list_));
-    return;
+void SABRE::extend_l2p_with_unused_qubits(int old_size) {
+  int array_size = max_phy_qubit_id_ + 1;
+  std::vector<bool> used_phy(array_size, false);
+  for (int i = 0; i < old_size; ++i) {
+    if (cur_l2p_[i] >= 0 && cur_l2p_[i] < array_size)
+      used_phy[cur_l2p_[i]] = true;
   }
 
-  execute_routing(gates_list, initial_l2p);
+  // 收集已分配位的未使用邻居
+  std::vector<int> neighbors;
+  for (int i = 0; i < old_size; ++i) {
+    for (int neighbor : adj_list_[cur_l2p_[i]]) {
+      if (!used_phy[neighbor]) neighbors.push_back(neighbor);
+    }
+  }
+  std::sort(neighbors.begin(), neighbors.end());
+  neighbors.erase(std::unique(neighbors.begin(), neighbors.end()),
+                  neighbors.end());
+
+  int assigned = old_size;
+  for (int phy : neighbors) {
+    if (assigned >= logic_qubit_num_) break;
+    if (!used_phy[phy]) {
+      cur_l2p_[assigned++] = phy;
+      used_phy[phy] = true;
+    }
+  }
+
+  // 邻居不够, 从耦合图中找其余未使用位
+  for (int phy = 0; phy < array_size && assigned < logic_qubit_num_; ++phy) {
+    if (!used_phy[phy] && !adj_list_[phy].empty()) {
+      cur_l2p_[assigned++] = phy;
+      used_phy[phy] = true;
+    }
+  }
+
+  if (assigned < logic_qubit_num_) {
+    throw std::runtime_error("Not enough physical qubits: need " +
+                             std::to_string(logic_qubit_num_) +
+                             " but chip has " + std::to_string(array_size));
+  }
 }
 
-void SABRE::execute_routing(const std::vector<GateOperation>& gates_list,
-                            const std::vector<int>& initial_l2p) {
-  int logic_qubit_num = get_qubit_num_from_ir(gates_list);
+std::vector<GateOperation> SABRE::execute_routing(
+    const std::vector<GateOperation>& gates_list,
+    const std::vector<int>& initial_l2p) {
+  if (logic_qubit_num_ <= 0) {
+    logic_qubit_num_ = get_qubit_num_from_ir(gates_list);
+  }
 
   // Node arena: all nodes owned here, stable pointers via reserve
   std::vector<Node> node_pool;
   node_pool.reserve(gates_list.size());
 
   // initialize logical to physical mapping
+  // cur_l2p_: 大小 = logic_qubit_num_, 只包含有效逻辑位映射
+  // cur_p2l_: 大小 = max_phy_qubit_id_+1, 按物理 ID 索引
+  int array_size = max_phy_qubit_id_ + 1;
   if (initial_l2p.empty()) {
-    cur_l2p_.resize(phy_qubit_num_);
-    for (int i = 0; i < phy_qubit_num_; ++i) cur_l2p_[i] = i;
-  } else {
-    std::vector<bool> used_qubits(phy_qubit_num_, false);
-    for (int q : initial_l2p) {
-      if (q >= 0 && q < phy_qubit_num_) used_qubits[q] = true;
+    // 优先分配在耦合图中有边的物理位，避免分配到孤立位导致路由卡死
+    std::vector<int> graph_qubits;
+    for (int i = 0; i < array_size; ++i) {
+      if (!adj_list_[i].empty()) graph_qubits.push_back(i);
     }
+    cur_l2p_.resize(logic_qubit_num_);
+    for (int i = 0; i < logic_qubit_num_; ++i) {
+      cur_l2p_[i] =
+          (i < static_cast<int>(graph_qubits.size())) ? graph_qubits[i] : i;
+    }
+  } else {
     cur_l2p_ = initial_l2p;
-    // add remaining unmapped qubits at the end
-    for (int q = 0; q < phy_qubit_num_; ++q) {
-      if (!used_qubits[q]) {
-        cur_l2p_.push_back(q);
-      }
+    int old_size = static_cast<int>(cur_l2p_.size());
+    cur_l2p_.resize(logic_qubit_num_);
+    if (old_size < logic_qubit_num_) {
+      extend_l2p_with_unused_qubits(old_size);
     }
   }
 
-  // physical to logical mapping
-  cur_p2l_.assign(phy_qubit_num_, 0);
-  for (int logical = 0; logical < (int)cur_l2p_.size(); ++logical) {
+  // physical to logical mapping (-1 = physical qubit holds no logical qubit)
+  cur_p2l_.assign(array_size, -1);
+  for (int logical = 0; logical < logic_qubit_num_; ++logical) {
     cur_p2l_[cur_l2p_[logical]] = logical;
   }
 
   // list storing the latest node acting on each logical qubit
-  std::vector<Node*> pre_nodes(logic_qubit_num, nullptr);
+  std::vector<Node*> pre_nodes(logic_qubit_num_, nullptr);
   front_layer_.clear();
-  phy_exe_gates_.clear();
-  phy_exe_gates_.reserve(gates_list.size() * 2);
+  std::vector<GateOperation> result;
+  result.clear();
+  result.reserve(gates_list.size() * 2);
 
   // Pre-allocate qubit-gate maps
-  front_qubit_gate_map_.assign(logic_qubit_num, {});
-  extend_qubit_gate_map_.assign(logic_qubit_num, {});
+  front_qubit_gate_map_.assign(logic_qubit_num_, {});
+  extend_qubit_gate_map_.assign(logic_qubit_num_, {});
 
   // Pre-allocate temp_indegree buffer
   temp_indegree_.assign(gates_list.size(), -1);
@@ -211,7 +325,7 @@ void SABRE::execute_routing(const std::vector<GateOperation>& gates_list,
         pre_node->attach.push_back(node);
       } else {
         // can execute in physical
-        phy_exe_gates_.push_back(phy_gate(node->gate));
+        result.push_back(phy_gate(node->gate));
       }
     } else if (node->bits.size() == 2) {
       for (int bit : node->bits) {
@@ -236,7 +350,7 @@ void SABRE::execute_routing(const std::vector<GateOperation>& gates_list,
   }
 
   // The main process of the SABRE algorithm
-  std::vector<double> decay_list(phy_qubit_num_, 1.0);
+  std::vector<double> decay_list(max_phy_qubit_id_ + 1, 1.0);
   int decay_cycle = 5;
   int decay_time = 0;
 
@@ -252,12 +366,12 @@ void SABRE::execute_routing(const std::vector<GateOperation>& gates_list,
       // can execute in physical
       if (can_execute(node)) {
         exe_gate_list.push_back(node);
-        phy_exe_gates_.push_back(phy_gate(node->gate));
+        result.push_back(phy_gate(node->gate));
         // the single qubit gate attached to the node
         for (auto* gate_node : node->attach) {
           if (gate_node == nullptr)
             throw std::invalid_argument("The attached gate is not a Node");
-          phy_exe_gates_.push_back(phy_gate(gate_node->gate));
+          result.push_back(phy_gate(gate_node->gate));
         }
       }
     }
@@ -285,6 +399,12 @@ void SABRE::execute_routing(const std::vector<GateOperation>& gates_list,
     } else {
       // no gate can be executed, find the best swap
       obtain_swaps(candidate_swaps_);
+      if (candidate_swaps_.empty()) {
+        throw std::runtime_error(
+            "SABRE routing stuck: no candidate SWAPs available. "
+            "The coupling graph may be disconnected after edge filtering. "
+            "Try lowering distance_fidelity_threshold.");
+      }
       std::pair<int, int> best_swap = {-1, -1};
       double best_score = 0;
 
@@ -298,8 +418,8 @@ void SABRE::execute_routing(const std::vector<GateOperation>& gates_list,
             delta_heuristic_cost(cur_l2p_, swap, actual_extend_size);
 
         double H_score = base_cost + delta;
-        H_score = H_score * std::max(decay_list[cur_p2l_[swap.first]],
-                                     decay_list[cur_p2l_[swap.second]]);
+        H_score = H_score *
+                  std::max(decay_list[swap.first], decay_list[swap.second]);
 
         if (best_swap.first == -1 || H_score < best_score) {
           best_score = H_score;
@@ -310,22 +430,22 @@ void SABRE::execute_routing(const std::vector<GateOperation>& gates_list,
       // update the current mapping (inline, no temp vector copy)
       int lq0 = cur_p2l_[best_swap.first];
       int lq1 = cur_p2l_[best_swap.second];
-      cur_l2p_[lq0] = best_swap.second;
-      cur_l2p_[lq1] = best_swap.first;
+      if (lq0 >= 0) cur_l2p_[lq0] = best_swap.second;
+      if (lq1 >= 0) cur_l2p_[lq1] = best_swap.first;
       std::swap(cur_p2l_[best_swap.first], cur_p2l_[best_swap.second]);
 
       // insert a swap gate
-      phy_exe_gates_.push_back(
+      result.push_back(
           GateOperation("swap", {best_swap.first, best_swap.second}, {},
                         OperationType::DOUBLE_QUBIT_OPERATION, false));
-      decay_list[cur_p2l_[best_swap.first]] += decay_;
-      decay_list[cur_p2l_[best_swap.second]] += decay_;
+      decay_list[best_swap.first] += decay_;
+      decay_list[best_swap.second] += decay_;
     }
   }
 
   // final mapping
-  phy2logic_ = cur_p2l_;
   logic2phy_ = cur_l2p_;
+  return result;
 }
 
 void SABRE::obtain_swaps(std::vector<std::pair<int, int>>& candidates) {
@@ -432,7 +552,7 @@ double SABRE::delta_heuristic_cost(const std::vector<int>& old_l2p,
       [&](const std::vector<std::vector<Node*>>& qubit_gate_map) {
         double delta = 0.0;
         // Process nodes involving logic_q0
-        if (logic_q0 < (int)qubit_gate_map.size()) {
+        if (logic_q0 >= 0 && logic_q0 < (int)qubit_gate_map.size()) {
           for (const auto* node : qubit_gate_map[logic_q0]) {
             int q0 = node->bits[0], q1 = node->bits[1];
             delta += dist_[new_phy(q0)][new_phy(q1)] -
@@ -440,7 +560,7 @@ double SABRE::delta_heuristic_cost(const std::vector<int>& old_l2p,
           }
         }
         // Process nodes involving logic_q1, skip already counted
-        if (logic_q1 < (int)qubit_gate_map.size()) {
+        if (logic_q1 >= 0 && logic_q1 < (int)qubit_gate_map.size()) {
           for (const auto* node : qubit_gate_map[logic_q1]) {
             if (node->bits[0] == logic_q0 || node->bits[1] == logic_q0)
               continue;
