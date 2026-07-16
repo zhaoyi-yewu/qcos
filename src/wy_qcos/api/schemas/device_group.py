@@ -43,8 +43,8 @@ class CreateDeviceGroupRequest(BaseModel):
 class UpdateDeviceGroupRequest(BaseModel):
     """Update Device Group Request."""
 
-    group_id: UUID = Field(description="Device group ID")
     project_id: UUID | None = Field(default=None, description="Project ID")
+    group_id: UUID = Field(description="Device group ID")
     name: str | None = Field(default=None, description="Device group name")
     description: str | None = Field(default=None, description="Description")
     device_names: list[str] | None = Field(
@@ -87,8 +87,8 @@ class DeviceGroupResponse(UuidMixin):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID = Field(description="Device group ID")
     project_id: UUID = Field(description="Project ID")
+    id: UUID = Field(description="Device group ID")
     name: str = Field(description="Device group name")
     description: str | None = Field(default=None, description="Description")
     device_names: list[str] | None = Field(
