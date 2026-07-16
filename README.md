@@ -56,9 +56,9 @@ WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）
 QCOS开源代码遵循[MulanPSL-2.0](https://qcos.readthedocs.io/zh-cn/latest/other-docs/license.html)开源协议。
 samples/qasm下的代码遵循 Apache-2.0开源协议。
 
-# 6. 参考资料
+## 6. 引用来源
 
-## 6.1 QCOS中benchmark的公共测试集来源
+### 6.1 QCOS中benchmark的公共测试集来源
 
 - [benchpress](https://github.com/Qiskit/benchpress)
 - [MQT QMAP](https://github.com/munich-quantum-toolkit/qmap)
