@@ -48,6 +48,36 @@ class ShorStrategy:
             "X": [(0, 3, 6), (1, 4, 7), (2, 5, 8)],
         }
 
+    @staticmethod
+    def _validate_error_inject(error_inject: dict):
+        """Validate error_inject configuration.
+
+        Args:
+            error_inject: error injection configuration dict.
+
+        Raises:
+            ValueError: If error_inject configuration is invalid.
+        """
+        VALID_ERROR_TYPES = {"x_error", "y_error", "z_error", "depolarize"}
+
+        if not isinstance(error_inject, dict):
+            raise ValueError(
+                f"error_inject type error, got {type(error_inject).__name__}"
+            )
+
+        error_type = error_inject.get("error_type", None)
+        if error_type is not None and error_type not in VALID_ERROR_TYPES:
+            raise ValueError(
+                f"Invalid error_type '{error_type}', "
+                f"must be one of: {', '.join(sorted(VALID_ERROR_TYPES))}"
+            )
+
+        noise_prob = error_inject.get("noise_prob", None)
+        if noise_prob is not None and not isinstance(noise_prob, (int, float)):
+            raise ValueError(
+                f"noise_prob type error,  {type(noise_prob).__name__}"
+            )
+
     def validate_and_format_circuit(self, circuit):
         """Validate and formate raw circuit.
 
@@ -58,11 +88,12 @@ class ShorStrategy:
             "validate_and_format_circuit() must be implemented by subclass"
         )
 
-    def encode(self, circuit):
+    def encode(self, circuit, **kwargs):
         """Encode circuit.
 
         Args:
             circuit: quantum circuit.
+            kwargs: optional keyword arguments (error_inject, noise_prob, etc.)
         """
         raise NotImplementedError("encode() must be implemented by subclass")
 
@@ -126,15 +157,22 @@ class ShorStimStrategy(ShorStrategy):
             formatted_circuit.append(gate)
         return formatted_circuit
 
-    def encode(self, circuit: stim.Circuit) -> stim.Circuit:
+    def encode(self, circuit: stim.Circuit, **kwargs) -> stim.Circuit:
         """Encode 1 logical qubit into 9 physical qubits.
 
         Args:
             circuit: raw stim circuit.
+            kwargs: optional keyword arguments:
 
         Returns:
             encoded stim circuit.
         """
+        error_inject = kwargs.get("error_inject", None)
+        if error_inject is None:
+            error_inject = {"error_type": "x_error", "noise_prob": 0.01}
+        else:
+            self._validate_error_inject(error_inject)
+
         encoded_circuit = stim.Circuit()
 
         # init
@@ -178,9 +216,15 @@ class ShorStimStrategy(ShorStrategy):
                 raise ValueError(f"Unsupported logical gate: {gate_name}")
         encoded_circuit.append("TICK")
 
-        # apply random noise
-        noise_prob = 0.01
-        encoded_circuit.append("X_ERROR", data, noise_prob)
+        # apply noise based on error_inject dict config
+        if error_inject is not None:
+            error_type = error_inject.get("error_type", "x_error")
+            noise_prob = error_inject.get("noise_prob", 0.01)
+            if error_type == "depolarize":
+                stim_gate_name = "DEPOLARIZE1"
+            else:
+                stim_gate_name = error_type.upper()
+            encoded_circuit.append(stim_gate_name, data, noise_prob)
         encoded_circuit.append("TICK")
 
         # Z stablizers: Z₀Z₁, Z₁Z₂, Z₃Z₄, Z₄Z₅, Z₆Z₇, Z₇Z₈
@@ -370,11 +414,12 @@ class ShorQuantumCircuitStrategy(ShorStrategy):
                 formatted_circuit.append(op)
         return formatted_circuit
 
-    def encode(self, circuit):
+    def encode(self, circuit, **kwargs):
         """Encode circuit.
 
         Args:
             circuit: quantum circuit.
+            kwargs: optional keyword arguments (error_inject, noise_prob, etc.)
         """
         raise NotImplementedError("this class need implement this func")
 
@@ -438,7 +483,7 @@ class ShorCode(QuantumCodeBase):
             raise ValueError(f"Shor does not support {num_qubits} bits qec.")
         return self._get_strategy(circuit).validate_and_format_circuit(circuit)
 
-    def encode(self, circuit):
+    def encode(self, circuit, **kwargs):
         """Encode a logical state into 9 physical qubits.
 
         The Shor code encodes a single qubit state into 9 physical qubits
@@ -446,12 +491,13 @@ class ShorCode(QuantumCodeBase):
 
         Args:
             circuit: representing the quantum circuit.
+            kwargs: optional keyword arguments (error_inject, noise_prob, etc.)
 
         Returns:
             encoded quantumm circuit.
         """
         # Create an encoded circuit
-        return self._get_strategy(circuit).encode(circuit)
+        return self._get_strategy(circuit).encode(circuit, **kwargs)
 
     def decode(self, circuit):
         """Decode the syndrome.

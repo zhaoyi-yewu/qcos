@@ -65,6 +65,10 @@ class DriverStim(DriverBase):
             Optional("distance"): int,
             Optional("phy_bit_num"): int,
             Optional("logical_bit_num"): int,
+            Optional("error_inject"): {
+                "error_type": str,
+                "noise_prob": float,
+            },
         }
 
     def init_driver(self):
@@ -206,7 +210,11 @@ class DriverStim(DriverBase):
             circuit, num_qubits
         )
         logger.info(f"formatted_circuit: {formatted_circuit}")
-        encodded_circuit = qec_code.encode(formatted_circuit)
+        error_inject = qec_options.get("error_inject", None)
+        encodded_circuit = qec_code.encode(
+            formatted_circuit,
+            error_inject=error_inject,
+        )
         logger.info(f"encodded_circuit: {encodded_circuit}")
 
         sampler = encodded_circuit.compile_sampler()

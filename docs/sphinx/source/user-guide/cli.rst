@@ -214,6 +214,12 @@
 
    qcos-cli submit-job --code-type qasm2 --shots 100 --backend stim --transpiler-options '{"enable_mapping": false}' --qec-options '{"qec_code": "shor", "distance": 3, "phy_bit_num": 9, "logical_bit_num": 1}' -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
 
+   # 指定错误注入类型和噪声概率
+   qcos-cli submit-job --code-type qasm2 --shots 100 --backend stim --transpiler-options '{"enable_mapping": false}' --qec-options '{"qec_code": "shor", "error_inject": {"error_type": "x_error", "noise_prob": 0.05}}' -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
+   qcos-cli submit-job --code-type qasm2 --shots 100 --backend stim --transpiler-options '{"enable_mapping": false}' --qec-options '{"qec_code": "shor", "error_inject": {"error_type": "y_error", "noise_prob": 0.02}}' -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
+   qcos-cli submit-job --code-type qasm2 --shots 100 --backend stim --transpiler-options '{"enable_mapping": false}' --qec-options '{"qec_code": "shor", "error_inject": {"error_type": "z_error", "noise_prob": 0.03}}' -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
+   qcos-cli submit-job --code-type qasm2 --shots 100 --backend stim --transpiler-options '{"enable_mapping": false}' --qec-options '{"qec_code": "shor", "error_inject": {"error_type": "random", "noise_prob": 0.01}}' -f ./samples/qasm/2.0/simple-qasm-1-bit.qasm
+
 
 更新作业
 ***************
