@@ -147,9 +147,9 @@ DEVICE_LIST列出的设备名一致。 文件中section必须对应相关设备�
    # 启动postgresql服务
    systemctl start postgresql 或者 pg_ctl -D /var/lib/pgsql/data start
 
-   # 运行init-db.sh脚本初始化、迁移和升级数据库表结构
+   # 运行db-manager.sh脚本初始化、迁移和升级数据库表结构
    cd build-scripts
-   ./init-db.sh
+   ./db-manager.sh -i -u
 
    # 启动QCOS API服务（指定配置文件和配置目录）
    qcos-api --config-file /etc/qcos/qcos.toml --config-dir /etc/qcos/conf.d/

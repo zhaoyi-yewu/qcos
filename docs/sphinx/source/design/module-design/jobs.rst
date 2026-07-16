@@ -34,30 +34,55 @@
 ********************
 提交任务时，需要用户指定后端的backend名称，即设备名称，此时任务会直接提交到设备所关联的deployment/workpool环境中运行。
 
-自动调度 (规划)
+自动调度
 ********************
 自动调度是指，用户提交任务时，不指定backend名称，由操作系统自动选择后端设备，并提交任务到该设备所关联的deployment/workpool环境中运行。
 
-自动调度功能可能依赖于设备动态信息，来做调度决策。目前设备动态信息会由每个设备独立的prefect长任务进行定时收集，信息回存在redis数据库中供其它组件读取和使用。
+自动调度功能依赖于设备动态信息来做调度决策。目前设备动态信息会由每个设备独立的prefect长任务进行定时收集，信息回存在redis数据库中供其它组件读取和使用。
 
-自动调度可以通过下列参数进行综合判断选择后端设备，包括：
+自动调度借鉴 OpenStack Nova 的 **Filter Scheduler** 模式，采用两阶段调度：先过滤（Filter），后排序（Weigher）。
 
-**必须符合的条件：**
+调度流程
+^^^^^^^^^^^^^^^^^^^^
+1. 构建 ``RequestSpec`` 对象，聚合作业信息、flavor规格和extra_specs
+2. 构建 ``DeviceState`` 列表，包含每个设备的静态信息和动态负载信息
+3. 依次执行所有启用的 Filter，过滤不符合条件的设备
+4. 如果没有设备通过过滤，则直接报错：没有符合条件的设备
+5. 如果仅一个设备通过过滤，直接选择该设备
+6. 如果多个设备通过过滤，依次执行所有启用的 Weigher，计算权重并排序
+7. 选择权重最高的设备作为调度结果
 
-- 匹配设备支持的输入的代码类型CODE_TYPE：QASM、QASM2、QASM3、QUBO等
-- 设备的在线状态，必须为在线
-- 输入的量子比特数满足后端设备要求 【可选】
+Filter过滤器
+^^^^^^^^^^^^^^^^^^^^
+Filter 分为必须过滤器和可选过滤器，可选过滤器仅在相关参数指定时启用。
 
-**按权重排序的条件：**
+**必须过滤器：**
 
-- 设备繁忙度、排队情况 【可选】
-- 历史任务(每QBIT)的平均执行时间 【可选】
+- ``CodeTypeFilter`` - 匹配设备支持的代码类型CODE_TYPE：QASM、QASM2、QASM3、QUBO等
+- ``DeviceStatusFilter`` - 设备的在线状态，必须为在线或繁忙
+- ``QueueLimitFilter`` - 设备队列是否已满
 
-自动调度时，使用调度过滤器，先过滤必须符合的条件，如果没有设备符合则直接报错：没有符合条件的设备。如果返回了多个设备，则按照权重排序条件，依次进行过滤，
+**可选过滤器（由 flavor_specs / extra_specs 触发）：**
 
-自动调度会在submit_job中增加2个可选参数: flavor_id和extra_specs。 flavor_id是用户选择的预设的调度策略，extra_specs是用户自定义的调度参数。
+- ``QubitCountFilter`` - 输入的量子比特数满足后端设备要求
+- ``TechTypeFilter`` - 设备技术类型匹配（来自 flavor.specs.tech_type）
+- ``GateFidelityFilter`` - 双比特门保真度满足阈值（来自 flavor.specs.gate_fidelity_2q_min）
 
-用了flavor_id后，额外的调度参数依然建议保留在一个独立的extra_specs字段中。因为 Flavor 定义的是“静态的、硬件的物理规格”，而有些调度参数是“动态的、单次作业特有的运行策略”。两者解耦，设计最清晰。
+Weigher权重器
+^^^^^^^^^^^^^^^^^^^^
+Weigher 通过加权求和对设备进行排序，权重越高越优先选择。
+
+- ``DeviceLoadWeigher`` - 设备繁忙度、排队情况，设备越空闲权重越高
+- ``AvgExecTimeWeigher`` - 历史任务(每QBIT)的平均执行时间，执行时间越短权重越高
+
+flavor_id与extra_specs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+自动调度会在submit_job中增加2个可选参数: flavor_id和extra_specs。
+
+- ``flavor_id`` 是用户选择的预设的调度策略，定义静态的、硬件的物理规格
+- ``extra_specs`` 是用户自定义的调度参数，定义动态的、单次作业特有的运行策略
+
+两者解耦，设计最清晰。extra_specs 中的同名字段会覆盖 flavor.specs 中的值。
 
 最终的用户提交json示例：
 
@@ -65,10 +90,10 @@
 
    {
      "job_name": "my-job",
-     "source_code": ["..."], // 代码类型和内容
-     "flavor_id": "00000000-0000-4000-8000-000000000001", // 决定去什么规格的机器
-     "extra_specs": {                           // 额外调度参数
-        "max_qubits": 100,
+     "source_code": ["..."],
+     "flavor_id": "00000000-0000-4000-8000-000000000001",
+     "extra_specs": {
+        "max_qubits": 100
      }
    }
 
@@ -90,3 +115,35 @@ flavor_id 对应的预设调度策略规格示例：
    }
 
 针对特殊硬件或者动态调度需求，用户可以通过额外的extra_specs来定义一些特定的调度参数，这些参数会被传递到调度器中进行处理。
+
+Flavor管理
+^^^^^^^^^^^^^^^^^^^^
+Flavor 通过 API 接口进行管理：
+
+- ``create_flavor`` - 创建 Flavor
+- ``get_flavor`` - 获取单个 Flavor
+- ``get_flavors`` - 获取 Flavor 列表
+- ``delete_flavor`` - 删除 Flavor
+
+配置
+^^^^^^^^^^^^^^^^^^^^
+在 ``qcos.toml`` 中可通过 ``[scheduler]`` 配置段自定义启用的 Filter 和 Weigher 列表：
+
+.. code-block:: toml
+
+   [scheduler]
+   enable_auto_schedule = true
+
+   enabled_filters = [
+       "CodeTypeFilter",
+       "DeviceStatusFilter",
+       "QubitCountFilter",
+       "TechTypeFilter",
+       "GateFidelityFilter",
+       "QueueLimitFilter",
+   ]
+
+   enabled_weighers = [
+       "DeviceLoadWeigher",
+       "AvgExecTimeWeigher",
+   ]

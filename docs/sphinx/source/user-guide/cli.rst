@@ -110,6 +110,32 @@
    # 开启电路切割
    qcos-cli submit-job --code-type qasm --shots 10 --backend quafu --driver-options '{"enable_wirecut":true, "wirecut_qubit_width": 10}' -f ./samples/qasm/2.0/wirecut/12_30.qasm
 
+- 自动调度 (不指定backend，由系统自动选择设备)
+
+.. code-block:: shell
+
+   # 使用 extra_specs 自动调度
+   qcos-cli submit-job --code-type qasm --shots 10 --extra-specs '{"max_qubits": 100}' -f ./samples/qasm/2.0/simple-qasm.qasm
+
+   # 使用 flavor_id 自动调度
+   qcos-cli submit-job --code-type qasm --shots 10 --flavor-id 00000000-0000-4000-8000-000000000001 -f ./samples/qasm/2.0/simple-qasm.qasm
+
+- Flavor管理 (预设调度策略)
+
+.. code-block:: shell
+
+   # 创建 Flavor
+   qcos-cli create-flavor q-flavor-sc --specs '{"min_qubits": 16, "tech_type": "superconducting", "gate_fidelity_2q_min": 0.995}'
+
+   # 查看 Flavor 列表
+   qcos-cli list-flavors
+
+   # 查看单个 Flavor
+   qcos-cli get-flavor 00000000-0000-4000-8000-000000000001
+
+   # 删除 Flavor
+   qcos-cli delete-flavor 00000000-0000-4000-8000-000000000001 -y
+
 - qutip驱动 (测试用)
 
 .. code-block:: shell

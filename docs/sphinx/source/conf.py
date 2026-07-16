@@ -155,7 +155,6 @@ suppress_warnings = [
     "config.misconfig",
     "ref.ref",
     "ref.python",
-    "plantuml",
 ]
 
 
@@ -274,10 +273,12 @@ os.environ["PUPPETEER_PRODUCT"] = "firefox"
 os.environ["PUPPETEER_EXECUTABLE_PATH"] = "/usr/bin/firefox"
 
 # plantuml configs
-plantuml_jar_path = "/usr/local/lib/node_modules/plantuml/vendor/plantuml.jar"
 if on_rtd:
-    plantuml_jar_path = "/home/docs/.asdf/installs/nodejs/20.19.1/lib/node_modules/plantuml/vendor/plantuml.jar"
-plantuml = f"java -Dfile.encoding=UTF-8 -Djava.awt.headless=true -jar {plantuml_jar_path} -charset UTF-8"
+    # Use system plantuml command installed via apt_packages
+    plantuml = "plantuml"
+else:
+    plantuml_jar_path = "/usr/local/lib/node_modules/plantuml/vendor/plantuml.jar"
+    plantuml = f"java -Dfile.encoding=UTF-8 -Djava.awt.headless=true -jar {plantuml_jar_path} -charset UTF-8"
 
 plantuml_output_format = "svg"  # default: png
 plantuml_latex_output_format = "pdf"

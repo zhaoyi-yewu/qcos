@@ -353,14 +353,14 @@ UserManager
    cd /path/to/wuyue-os
 
    # 初始化数据库（创建qcos用户和qcos数据库）
-   ./build-scripts/init-db.sh -i
+   ./build-scripts/db-manager.sh -i
 
    # 升级数据库到最新版本（运行所有迁移脚本）
-   ./build-scripts/init-db.sh -u
+   ./build-scripts/db-manager.sh -u
 
-**init-db.sh 脚本说明**
+**db-manager.sh 脚本说明**
 
-``init-db.sh`` 脚本负责数据库初始化和版本管理，位于 ``build-scripts/`` 目录：
+``db-manager.sh`` 脚本负责数据库初始化和版本管理，位于 ``build-scripts/`` 目录：
 
 **功能**：
 
@@ -388,20 +388,20 @@ UserManager
 .. code-block:: bash
 
    # 初始化数据库（仅首次部署需要）
-   ./build-scripts/init-db.sh -i
+   ./build-scripts/db-manager.sh -i
 
    # 升级数据库到最新版本
-   ./build-scripts/init-db.sh -u head
+   ./build-scripts/db-manager.sh -u head
 
    # 降级数据库到基础版本
-   ./build-scripts/init-db.sh -d base
+   ./build-scripts/db-manager.sh -d base
 
    # 查看迁移历史
-   ./build-scripts/init-db.sh -l
+   ./build-scripts/db-manager.sh -l
 
 **2. 配置环境变量**
 
-在运行 ``init-db.sh`` 前，确保 ``build-scripts/.env`` 文件已正确配置：
+在运行 ``db-manager.sh`` 前，确保 ``build-scripts/.env`` 文件已正确配置：
 
 .. code-block:: bash
 
@@ -457,10 +457,10 @@ Q: 如何重置数据库？
       .. code-block:: bash
 
          # 降级到基础版本（清除所有表）
-         ./build-scripts/init-db.sh -d base
+         ./build-scripts/db-manager.sh -d base
 
          # 再次升级到最新版本
-         ./build-scripts/init-db.sh -u
+         ./build-scripts/db-manager.sh -u
 
 Q: 如何修改默认密码？
    A: 在系统启动后，使用管理员账户登录，然后修改密码或在 ``.env`` 中修改 ``PASS`` 变量后重新初始化
@@ -471,8 +471,8 @@ Q: 如何修改默认密码？
 
    ✓ PostgreSQL已安装并运行（默认localhost:5432）
    ✓ build-scripts/.env已正确配置
-   ✓ 运行init-db.sh -i初始化数据库
-   ✓ 运行init-db.sh -u升级数据库到最新版本
+   ✓ 运行db-manager.sh -i初始化数据库
+   ✓ 运行db-manager.sh -u升级数据库到最新版本
    ✓ 验证所有数据库表已创建
    ✓ 启动QCOS服务
    ✓ 使用admin/123456登录验证系统
