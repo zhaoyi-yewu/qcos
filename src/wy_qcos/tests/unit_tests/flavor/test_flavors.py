@@ -872,6 +872,117 @@ class TestCreateFlavorRoute:
             result = create_flavor(body, mock_request, auth_data=auth_data)
             assert result.name == "new-flavor"
 
+    def test_create_flavor_invalid_qubits_range(self):
+        """min_qubits > max_qubits should raise an error."""
+        mock_sched = MagicMock()
+        mgr = MagicMock()
+        mgr.get_flavors.return_value = []
+        mgr.validate_extra_properties.return_value = (True, None)
+        mgr.validate_device_groups.return_value = (True, None)
+        mock_sched.get_flavor_manager.return_value = mgr
+        body = self._make_request(min_qubits=10, max_qubits=5)
+        mock_request = MagicMock()
+        mock_project_mgr = MagicMock()
+        mock_project_mgr.get_project_by_id.return_value = MagicMock()
+        with (
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.get_project_manager",
+                return_value=mock_project_mgr,
+            ),
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.scheduler",
+                mock_sched,
+            ),
+        ):
+            with pytest.raises(Exception):
+                create_flavor(body, mock_request, auth_data=None)
+
+    def test_create_flavor_invalid_fidelity_1q(self):
+        """gate_fidelity_1q_min > 1 should raise an error."""
+        mock_sched = MagicMock()
+        mgr = MagicMock()
+        mgr.get_flavors.return_value = []
+        mgr.validate_extra_properties.return_value = (True, None)
+        mgr.validate_device_groups.return_value = (True, None)
+        mock_sched.get_flavor_manager.return_value = mgr
+        body = self._make_request(gate_fidelity_1q_min=1.5)
+        mock_request = MagicMock()
+        mock_project_mgr = MagicMock()
+        mock_project_mgr.get_project_by_id.return_value = MagicMock()
+        with (
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.get_project_manager",
+                return_value=mock_project_mgr,
+            ),
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.scheduler",
+                mock_sched,
+            ),
+        ):
+            with pytest.raises(Exception):
+                create_flavor(body, mock_request, auth_data=None)
+
+    def test_create_flavor_invalid_fidelity_2q(self):
+        """gate_fidelity_2q_min < 0 should raise an error."""
+        mock_sched = MagicMock()
+        mgr = MagicMock()
+        mgr.get_flavors.return_value = []
+        mgr.validate_extra_properties.return_value = (True, None)
+        mgr.validate_device_groups.return_value = (True, None)
+        mock_sched.get_flavor_manager.return_value = mgr
+        body = self._make_request(gate_fidelity_2q_min=-0.1)
+        mock_request = MagicMock()
+        mock_project_mgr = MagicMock()
+        mock_project_mgr.get_project_by_id.return_value = MagicMock()
+        with (
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.get_project_manager",
+                return_value=mock_project_mgr,
+            ),
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.scheduler",
+                mock_sched,
+            ),
+        ):
+            with pytest.raises(Exception):
+                create_flavor(body, mock_request, auth_data=None)
+
+    def test_create_flavor_valid_fidelity_boundary(self):
+        """gate_fidelity values of 0 and 1 (boundaries) should pass."""
+        flavor = make_flavor(name="new-flavor")
+        mock_sched = MagicMock()
+        mgr = MagicMock()
+        mgr.get_flavors.return_value = []
+        mgr.validate_extra_properties.return_value = (True, None)
+        mgr.validate_device_groups.return_value = (True, None)
+        mgr.create_flavor.return_value = (True, None, flavor)
+        mock_sched.get_flavor_manager.return_value = mgr
+        mock_request = MagicMock()
+        mock_project_mgr = MagicMock()
+        mock_project_mgr.get_project_by_id.return_value = MagicMock()
+        with (
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.get_project_manager",
+                return_value=mock_project_mgr,
+            ),
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.scheduler",
+                mock_sched,
+            ),
+        ):
+            # boundary: 0
+            body = self._make_request(
+                gate_fidelity_1q_min=0.0, gate_fidelity_2q_min=0.0
+            )
+            result = create_flavor(body, mock_request, auth_data=None)
+            assert result.name == "new-flavor"
+            # boundary: 1
+            body = self._make_request(
+                gate_fidelity_1q_min=1.0, gate_fidelity_2q_min=1.0
+            )
+            result = create_flavor(body, mock_request, auth_data=None)
+            assert result.name == "new-flavor"
+
 
 # ------------------------------------------------------------------ #
 # API route: update_flavor
@@ -880,18 +991,18 @@ class TestUpdateFlavorRoute:
     """Tests for update_flavor API route."""
 
     def _make_request(self, flavor_id, **kwargs):
-        defaults = {
-            "device_groups": ["00000000-0000-4000-8000-000000000003"],
-        }
-        defaults.update(kwargs)
-        return schemas.UpdateFlavorRequest(flavor_id=flavor_id, **defaults)
+        # Only pass explicitly-provided kwargs so that model_fields_set
+        # reflects what the caller intends to update/clear.
+        return schemas.UpdateFlavorRequest(flavor_id=flavor_id, **kwargs)
 
     def test_update_flavor_success(self):
         flavor_id = str(uuid.uuid4())
+        existing = make_flavor(flavor_id=flavor_id)
         updated = make_flavor(flavor_id=flavor_id, name="updated")
         mock_sched = MagicMock()
         mgr = MagicMock()
         mgr.get_flavors.return_value = []
+        mgr.get_flavor.return_value = existing
         mgr.validate_device_groups.return_value = (True, None)
         mgr.update_flavor.return_value = (True, None, updated)
         mock_sched.get_flavor_manager.return_value = mgr
@@ -1034,6 +1145,64 @@ class TestUpdateFlavorRoute:
             with pytest.raises(Exception):
                 update_flavor(body, MagicMock(), auth_data=None)
 
+    def test_update_flavor_clear_extra_properties(self):
+        """Explicitly passing extra_properties=None clears the field."""
+        flavor_id = str(uuid.uuid4())
+        existing = make_flavor(
+            flavor_id=flavor_id, extra_properties={"qc:devices": "old"}
+        )
+        updated = make_flavor(flavor_id=flavor_id, extra_properties=None)
+        mock_sched = MagicMock()
+        mgr = MagicMock()
+        mgr.get_flavors.return_value = []
+        mgr.get_flavor.return_value = existing
+        mgr.update_flavor.return_value = (True, None, updated)
+        mock_sched.get_flavor_manager.return_value = mgr
+        body = self._make_request(flavor_id, extra_properties=None)
+        with (
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.get_db_filters",
+                return_value={},
+            ),
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.scheduler",
+                mock_sched,
+            ),
+        ):
+            result = update_flavor(body, MagicMock(), auth_data=None)
+            assert result is not None
+            # update_flavor should be called with extra_properties=None
+            call_data = mgr.update_flavor.call_args[0][1]
+            assert call_data["extra_properties"] is None
+
+    def test_update_flavor_clear_device_groups(self):
+        """Explicitly passing device_groups=None clears mappings."""
+        flavor_id = str(uuid.uuid4())
+        existing = make_flavor(flavor_id=flavor_id)
+        updated = make_flavor(flavor_id=flavor_id)
+        mock_sched = MagicMock()
+        mgr = MagicMock()
+        mgr.get_flavors.return_value = []
+        mgr.get_flavor.return_value = existing
+        mgr.update_flavor.return_value = (True, None, updated)
+        mock_sched.get_flavor_manager.return_value = mgr
+        body = self._make_request(flavor_id, device_groups=None)
+        with (
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.get_db_filters",
+                return_value={},
+            ),
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.scheduler",
+                mock_sched,
+            ),
+        ):
+            result = update_flavor(body, MagicMock(), auth_data=None)
+            assert result is not None
+            # update_flavor should be called with device_groups=[]
+            call_data = mgr.update_flavor.call_args[0][1]
+            assert call_data["device_groups"] == []
+
     def test_update_flavor_merge_extra_properties(self):
         flavor_id = str(uuid.uuid4())
         existing = make_flavor(
@@ -1091,6 +1260,88 @@ class TestUpdateFlavorRoute:
         ):
             with pytest.raises(Exception):
                 update_flavor(body, MagicMock(), auth_data=None)
+
+    def test_update_flavor_invalid_qubits_range(self):
+        """Updating min_qubits > max_qubits should raise an error."""
+        flavor_id = str(uuid.uuid4())
+        existing = make_flavor(flavor_id=flavor_id)
+        mock_sched = MagicMock()
+        mgr = MagicMock()
+        mgr.get_flavors.return_value = []
+        mgr.get_flavor.return_value = existing
+        mock_sched.get_flavor_manager.return_value = mgr
+        body = self._make_request(flavor_id, min_qubits=10, max_qubits=5)
+        with (
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.get_db_filters",
+                return_value={},
+            ),
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.scheduler",
+                mock_sched,
+            ),
+        ):
+            with pytest.raises(Exception):
+                update_flavor(body, MagicMock(), auth_data=None)
+
+    def test_update_flavor_invalid_fidelity_1q(self):
+        """Updating gate_fidelity_1q_min > 1 should raise an error."""
+        flavor_id = str(uuid.uuid4())
+        mock_sched = MagicMock()
+        mgr = MagicMock()
+        mgr.get_flavors.return_value = []
+        mock_sched.get_flavor_manager.return_value = mgr
+        body = self._make_request(flavor_id, gate_fidelity_1q_min=1.5)
+        with (
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.get_db_filters",
+                return_value={},
+            ),
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.scheduler",
+                mock_sched,
+            ),
+        ):
+            with pytest.raises(Exception):
+                update_flavor(body, MagicMock(), auth_data=None)
+
+    def test_update_flavor_valid_fidelity_boundary(self):
+        """Updating gate_fidelity to boundary values 0 and 1 should pass."""
+        flavor_id = str(uuid.uuid4())
+        updated = make_flavor(flavor_id=flavor_id, name="updated")
+        existing = make_flavor(flavor_id=flavor_id)
+        mock_sched = MagicMock()
+        mgr = MagicMock()
+        mgr.get_flavors.return_value = []
+        mgr.get_flavor.return_value = existing
+        mgr.update_flavor.return_value = (True, None, updated)
+        mock_sched.get_flavor_manager.return_value = mgr
+        with (
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.get_db_filters",
+                return_value={},
+            ),
+            patch(
+                "wy_qcos.api.posiq.routes_jsonrpc.flavor.scheduler",
+                mock_sched,
+            ),
+        ):
+            # boundary: 0
+            body = self._make_request(
+                flavor_id,
+                gate_fidelity_1q_min=0.0,
+                gate_fidelity_2q_min=0.0,
+            )
+            result = update_flavor(body, MagicMock(), auth_data=None)
+            assert result is not None
+            # boundary: 1
+            body = self._make_request(
+                flavor_id,
+                gate_fidelity_1q_min=1.0,
+                gate_fidelity_2q_min=1.0,
+            )
+            result = update_flavor(body, MagicMock(), auth_data=None)
+            assert result is not None
 
 
 # ------------------------------------------------------------------ #
