@@ -9,7 +9,7 @@
 # You may obtain a copy of Mulan PSL v2 at:
 #         http://license.coscl.org.cn/MulanPSL2
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
-#     WITHOUT WARRANTIES OF ANY KIND,
+#     WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
@@ -20,37 +20,41 @@ from typing import ClassVar
 
 from sqlalchemy import (
     Column,
-    Float,
     ForeignKey,
-    Integer,
-    String,
-    Boolean,
-    JSON,
+    UniqueConstraint,
 )
 from sqlalchemy.sql.schema import Table
 
-from wy_qcos.common.constant import Constant
-from wy_qcos.db.models.base import BaseTable, GUID
+from wy_qcos.db.models.base import Base, GUID
 
 
-class Flavor(BaseTable):
-    """Flavor table - preset scheduling policy specs."""
+class FlavorDeviceGroup(Base):
+    """FlavorDeviceGroup mapping table.
 
-    __tablename__ = "flavors"
+    Many-to-many relationship between flavors and device_groups.
+    Each record links one flavor to one device group.
+    No created_at/updated_at fields (pure mapping table).
+    """
+
+    __tablename__ = "flavor_device_group_mappings"
     __table__: ClassVar[Table]
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    project_id = Column(
+    flavor_id = Column(
         GUID,
-        ForeignKey("projects.id"),
+        ForeignKey("flavors.id"),
         nullable=False,
-        default=uuid.UUID(Constant.ADMIN_PROJECT_ID),
     )
-    name = Column(String(128), nullable=False, unique=True)
-    description = Column(String(256))
-    is_public = Column(Boolean, default=True)
-    min_qubits = Column(Integer, nullable=True)
-    max_qubits = Column(Integer, nullable=True)
-    gate_fidelity_1q_min = Column(Float, nullable=True)
-    gate_fidelity_2q_min = Column(Float, nullable=True)
-    extra_properties = Column(JSON, nullable=True, default=None)
+    device_group_id = Column(
+        GUID,
+        ForeignKey("device_groups.id"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "flavor_id",
+            "device_group_id",
+            name="uq_flavor_device_group",
+        ),
+    )

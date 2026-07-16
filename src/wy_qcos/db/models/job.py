@@ -41,9 +41,11 @@ class Job(BaseTable):
     __tablename__ = "job"
     __table__: ClassVar[Table]
 
+    # id fields
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
     project_id = Column(GUID, ForeignKey("projects.id"), nullable=False)
     user_id = Column(GUID, ForeignKey("users.id"), nullable=True)
+    # job fields
     flow_run_id = Column(GUID, nullable=True)
     job_name = Column(String(128))
     job_type = Column(String(32))
@@ -68,8 +70,9 @@ class Job(BaseTable):
     code_compression_level = Column(Integer, default=0)
     tags = Column(JSON, default=list)
     # Auto scheduling fields
-    flavor_id = Column(GUID, ForeignKey("flavor.id"), nullable=True)
+    flavor_id = Column(GUID, ForeignKey("flavors.id"), nullable=True)
     extra_specs = Column(JSON, default=dict)
+    # date fields
     started_at = Column(DateTime)
     updated_at = Column(DateTime)
     ended_at = Column(DateTime)
