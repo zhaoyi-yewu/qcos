@@ -110,6 +110,19 @@ from .flavor import (
     CreateFlavorRequest,
     FlavorResponse,
     GetFlavorRequest,
-    DeleteFlavorRequest,
-    DeleteFlavorResponse,
+    GetFlavorsRequest,
+    UpdateFlavorRequest,
+    DeleteFlavorsRequest,
+    DeleteFlavorResponseItem,
+    DeleteFlavorsResponse,
+)
+from .device_group import (
+    CreateDeviceGroupRequest,
+    UpdateDeviceGroupRequest,
+    GetDeviceGroupRequest,
+    GetDeviceGroupsRequest,
+    DeleteDeviceGroupsRequest,
+    DeleteDeviceGroupResponseItem,
+    DeleteDeviceGroupsResponse,
+    DeviceGroupResponse,
 )

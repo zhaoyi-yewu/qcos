@@ -57,8 +57,6 @@ class GetDeviceResponse(BaseModel):
     enable: bool = Field(description="Device enable status")
     # device status
     status: str = Field(description="Device status")
-    # device status timestamp
-    timestamp: str = Field(description="Device status timestamp")
     # tech type
     tech_type: str = Field(description="Technology type")
     # max qubits
@@ -69,6 +67,10 @@ class GetDeviceResponse(BaseModel):
     )
     # details info
     details: dict | None = Field(default=None, description="Details info")
+    # device status last updated at
+    last_updated_at: str | None = Field(
+        default=None, description="Device status last updated at"
+    )
 
 
 class CalibrateDeviceRequest(BaseModel):
