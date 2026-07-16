@@ -161,6 +161,7 @@ class DriverBase:
             Optional("singleFidelity"): float,
             Optional("doubleFidelity"): float,
             Optional("SPAMError"): float,
+            Optional("status"): str,
         }
         self.max_job_wait_time = Constant.DEFAULT_JOB_WAIT_TIME  # 7 days
         self.job_query_interval = Constant.DEFAULT_JOB_QUERY_INTERVAL
