@@ -377,11 +377,19 @@ class DriverHanyuan1Pulse(DriverPulseBase):
         result = {}
         for item in raw_results:
             key = item["Type"]
-            val = item["Percent"] * shots
+            val = int(item["Percent"] * shots)
             result[key] = val
         return result
 
-    def run(self, job_id, num_qubits, data, data_type, shots=1):
+    def run(
+        self,
+        job_id,
+        num_qubits,
+        data,
+        data_type,
+        shots=1,
+        qec_options=None,
+    ):
         """Run job.
 
         Args:
@@ -390,6 +398,7 @@ class DriverHanyuan1Pulse(DriverPulseBase):
             data: data
             data_type: data type
             shots: shots (Default value = 1)
+            qec_options: qec options
         """
         # pylint: disable=duplicate-code
         data_index = data["index"]
