@@ -23,8 +23,8 @@ import pytest
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
-from wy_qcos.drivers.device_manager import DeviceManager
-from wy_qcos.drivers.driver_manager import DriverManager
+from wy_qcos.device.device_manager import DeviceManager
+from wy_qcos.driver.driver_manager import DriverManager
 from wy_qcos.task_manager.task_manager import TaskFlowManager
 from wy_qcos.task_manager.task_scheduler import PrioritySchedulingPolicy
 from wy_qcos.task_manager.task_scheduler import TaskScheduler
