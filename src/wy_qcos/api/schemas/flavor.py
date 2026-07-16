@@ -60,8 +60,8 @@ class FlavorResponse(UuidMixin):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID = Field(description="Flavor ID")
     project_id: UUID = Field(description="Project ID")
+    id: UUID = Field(description="Flavor ID")
     name: str = Field(description="Flavor name")
     description: str | None = Field(default=None, description="Description")
     is_public: bool = Field(default=True, description="Is public flavor")
@@ -106,8 +106,8 @@ class GetFlavorsRequest(BaseModel):
 class UpdateFlavorRequest(BaseModel):
     """Update Flavor Request."""
 
-    flavor_id: UUID = Field(description="Flavor ID")
     project_id: UUID | None = Field(default=None, description="Project ID")
+    flavor_id: UUID = Field(description="Flavor ID")
     name: str | None = Field(default=None, description="Flavor name")
     description: str | None = Field(default=None, description="Description")
     is_public: bool | None = Field(
