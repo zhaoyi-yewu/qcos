@@ -729,6 +729,10 @@ class DriverWuyueBase(DriverBase):
             return device_running_info
 
         logger.info(f"Device info: {device_info}")
+        device_status = device_info.get("status", None)
+        if device_status is not None:
+            device_running_info["status"] = device_status
+            device_info.pop("status", None)
         device_running_info["details"] = device_info
 
         return device_running_info

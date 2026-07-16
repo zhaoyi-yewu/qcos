@@ -223,6 +223,7 @@ class Hanyuan1DataHandler(BaseHTTPRequestHandler):
                 "transportFidelity": 0.98,
                 "elementAtom": "Rb",
                 "time": "2024-01-01 00:00:00",
+                "status": "online",
             },
         }
         logger.info("Query param response: success")
