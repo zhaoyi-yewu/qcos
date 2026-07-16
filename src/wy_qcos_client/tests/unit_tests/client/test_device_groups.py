@@ -121,7 +121,7 @@ class TestClientDeviceGroup:
         assert data["project_id"] == PROJECT_ID
 
     @patch.object(Client, "call_json_rpc")
-    def test_update_device_group_none_omitted(self, mock_call):
+    def test_update_device_group_none_clears(self, mock_call):
         mock_call.return_value = self.return_values
         client.update_device_group(
             group_id=GROUP_ID,
@@ -132,7 +132,18 @@ class TestClientDeviceGroup:
             project_id=None,
         )
         data = mock_call.call_args[0][2]
-        assert data == {"group_id": GROUP_ID}
+        # explicit None clears nullable fields
+        assert data["name"] is None
+        assert data["description"] is None
+        assert data["device_names"] is None
+
+    @patch.object(Client, "call_json_rpc")
+    def test_update_device_group_omit_skips(self, mock_call):
+        mock_call.return_value = self.return_values
+        client.update_device_group(group_id=GROUP_ID, name="new")
+        data = mock_call.call_args[0][2]
+        # omitted fields are not sent
+        assert data == {"group_id": GROUP_ID, "name": "new"}
 
     @patch.object(Client, "call_json_rpc")
     def test_update_device_group_returns_values(self, mock_call):

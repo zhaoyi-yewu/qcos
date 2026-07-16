@@ -20,7 +20,7 @@ from unittest.mock import Mock, patch
 
 from cliff.commandmanager import CommandManager
 
-from wy_qcos_client.client import Client
+from wy_qcos_client.client import Client, _UNSET
 from wy_qcos_client.common.qcos_version import QcosVersion
 from wy_qcos_client.shell import (
     QcosShell,
@@ -76,6 +76,9 @@ def make_parsed_args(**kwargs):
         "description": None,
         "is_public": True,
         "device_names": None,
+        # --unset-{key} flags for UpdateDeviceGroup
+        "unset_description": False,
+        "unset_device_names": False,
         "assume_yes": False,
     }
     defaults.update(kwargs)
@@ -92,10 +95,9 @@ class TestCreateDeviceGroup:
         parser = cmd.get_parser("create-device-group")
         assert parser is not None
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "create_device_group")
-    def test_take_action_basic(self, mock_create, mock_check, _):
+    def test_take_action_basic(self, mock_create, mock_check):
         mock_create.return_value = (
             200,
             "OK",
@@ -111,10 +113,9 @@ class TestCreateDeviceGroup:
         assert call_kwargs["name"] == "test-group"
         assert call_kwargs["device_names"] == ["dev1"]
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "create_device_group")
-    def test_take_action_all_params(self, mock_create, mock_check, _):
+    def test_take_action_all_params(self, mock_create, mock_check):
         mock_create.return_value = (
             200,
             "OK",
@@ -144,10 +145,9 @@ class TestUpdateDeviceGroup:
         parser = cmd.get_parser("update-device-group")
         assert parser is not None
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "update_device_group")
-    def test_take_action_basic(self, mock_update, mock_check, _):
+    def test_take_action_basic(self, mock_update, mock_check):
         mock_update.return_value = (
             200,
             "OK",
@@ -163,10 +163,9 @@ class TestUpdateDeviceGroup:
         assert call_kwargs["group_id"] == GROUP_ID
         assert call_kwargs["name"] == "updated"
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "update_device_group")
-    def test_take_action_with_devices(self, mock_update, mock_check, _):
+    def test_take_action_with_devices(self, mock_update, mock_check):
         mock_update.return_value = (
             200,
             "OK",
@@ -181,6 +180,47 @@ class TestUpdateDeviceGroup:
         cmd.take_action(args)
         call_kwargs = mock_update.call_args.kwargs
         assert call_kwargs["device_names"] == ["dev1", "dev2"]
+
+    @patch.object(CommandHelper, "check_results")
+    @patch.object(Client, "update_device_group")
+    def test_take_action_unset_clears_fields(self, mock_update, mock_check):
+        mock_update.return_value = (
+            200,
+            "OK",
+            json.dumps(group_response),
+            group_response["result"],
+        )
+        mock_check.return_value = group_response["result"]
+        cmd = make_shell_cmd(UpdateDeviceGroup)
+        args = make_parsed_args(
+            group_id=GROUP_ID,
+            unset_description=True,
+            unset_device_names=True,
+        )
+        cmd.take_action(args)
+        call_kwargs = mock_update.call_args.kwargs
+        # --unset-{key} passes None (unset) for those fields
+        assert call_kwargs["description"] is None
+        assert call_kwargs["device_names"] is None
+
+    @patch.object(CommandHelper, "check_results")
+    @patch.object(Client, "update_device_group")
+    def test_take_action_omit_passes_sentinel(self, mock_update, mock_check):
+        mock_update.return_value = (
+            200,
+            "OK",
+            json.dumps(group_response),
+            group_response["result"],
+        )
+        mock_check.return_value = group_response["result"]
+        cmd = make_shell_cmd(UpdateDeviceGroup)
+        # only name provided; description/device_names omitted
+        args = make_parsed_args(group_id=GROUP_ID, name="updated")
+        cmd.take_action(args)
+        call_kwargs = mock_update.call_args.kwargs
+        # omitted fields receive the _UNSET sentinel
+        assert call_kwargs["description"] is _UNSET
+        assert call_kwargs["device_names"] is _UNSET
 
 
 class TestGetDeviceGroup:
@@ -220,11 +260,10 @@ class TestGetDeviceGroups:
         parser = cmd.get_parser("list-device-groups")
         assert parser is not None
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "get_table_list_data")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "get_device_groups")
-    def test_take_action(self, mock_get, mock_check, mock_table, mock_print):
+    def test_take_action(self, mock_get, mock_check, mock_table):
         groups_list = [
             group_response["result"],
             {
@@ -246,7 +285,8 @@ class TestGetDeviceGroups:
             [["id1", "name1"], ["id2", "name2"]],
         )
         cmd = make_shell_cmd(GetDeviceGroups)
-        result = cmd.take_action(Mock())
+        args = make_parsed_args(group_ids=[], group_names=None)
+        result = cmd.take_action(args)
         assert result is not None
 
     @patch("builtins.print")
@@ -266,15 +306,15 @@ class TestGetDeviceGroups:
         mock_check.return_value = []
         mock_table.return_value = ([], [])
         cmd = make_shell_cmd(GetDeviceGroups)
-        cmd.take_action(Mock())
+        args = make_parsed_args(group_ids=[], group_names=None)
+        cmd.take_action(args)
         mock_print.assert_called_with("No device groups found")
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "get_table_list_data")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "get_device_groups")
     def test_take_action_with_group_ids_filter(
-        self, mock_get, mock_check, mock_table, mock_print
+        self, mock_get, mock_check, mock_table
     ):
         """GetDeviceGroups should pass group_ids filter to client."""
         groups_list = [group_response["result"]]
@@ -296,12 +336,11 @@ class TestGetDeviceGroups:
             GROUP_ID_2,
         ]
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "get_table_list_data")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "get_device_groups")
     def test_take_action_with_group_name_filter(
-        self, mock_get, mock_check, mock_table, mock_print
+        self, mock_get, mock_check, mock_table
     ):
         """GetDeviceGroups should pass group_name filter to client."""
         groups_list = [group_response["result"]]
@@ -320,13 +359,10 @@ class TestGetDeviceGroups:
         call_kwargs = mock_get.call_args.kwargs
         assert call_kwargs["filters"]["group_names"] == ["test-group"]
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "get_table_list_data")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "get_device_groups")
-    def test_take_action_no_filter(
-        self, mock_get, mock_check, mock_table, mock_print
-    ):
+    def test_take_action_no_filter(self, mock_get, mock_check, mock_table):
         """GetDeviceGroups with no filter should call client with None."""
         groups_list = [group_response["result"]]
         resp = {"jsonrpc": "2.0", "result": groups_list, "id": 0}
@@ -353,12 +389,11 @@ class TestDeleteDeviceGroups:
         parser = cmd.get_parser("delete-device-groups")
         assert parser is not None
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "resolve_device_group_id")
     @patch.object(Client, "delete_device_groups")
     def test_take_action_single_assume_yes(
-        self, mock_delete, mock_resolve, mock_check, _
+        self, mock_delete, mock_resolve, mock_check
     ):
         mock_resolve.return_value = GROUP_ID
         delete_resp = {
@@ -378,12 +413,11 @@ class TestDeleteDeviceGroups:
         cmd.take_action(args)
         mock_delete.assert_called_once_with([GROUP_ID])
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "resolve_device_group_id")
     @patch.object(Client, "delete_device_groups")
     def test_take_action_multiple_assume_yes(
-        self, mock_delete, mock_resolve, mock_check, _
+        self, mock_delete, mock_resolve, mock_check
     ):
         mock_resolve.side_effect = [GROUP_ID, GROUP_ID_2]
         delete_resp = {
@@ -450,11 +484,10 @@ class TestDeleteDeviceGroups:
         assert result is None
         mock_delete.assert_not_called()
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "get_device_groups")
     @patch.object(Client, "delete_device_groups")
-    def test_take_action_all(self, mock_delete, mock_get, mock_check, _):
+    def test_take_action_all(self, mock_delete, mock_get, mock_check):
         """delete-device-groups all should fetch all IDs then delete."""
         groups_list = [
             {"id": GROUP_ID, "name": "g1"},

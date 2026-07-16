@@ -21,7 +21,7 @@ from unittest.mock import Mock, patch
 import pytest
 from cliff.commandmanager import CommandManager
 
-from wy_qcos_client.client import Client
+from wy_qcos_client.client import Client, _UNSET
 from wy_qcos_client.common.errors import GenericException, InvalidArguments
 from wy_qcos_client.common.qcos_version import QcosVersion
 from wy_qcos_client.shell import (
@@ -90,7 +90,15 @@ def make_parsed_args(**kwargs):
         "gate_fidelity_1q_min": None,
         "gate_fidelity_2q_min": None,
         "property": None,
-        "device_groups": ["00000000-0000-4000-8000-000000000003"],
+        "device_groups": None,
+        # --unset-{key} flags for UpdateFlavor
+        "unset_description": False,
+        "unset_min_qubits": False,
+        "unset_max_qubits": False,
+        "unset_gate_fidelity_1q_min": False,
+        "unset_gate_fidelity_2q_min": False,
+        "unset_extra_properties": False,
+        "unset_device_groups": False,
         "assume_yes": False,
     }
     defaults.update(kwargs)
@@ -107,10 +115,9 @@ class TestCreateFlavor:
         parser = cmd.get_parser("create-flavor")
         assert parser is not None
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "create_flavor")
-    def test_take_action_basic(self, mock_create, mock_check, mock_print):
+    def test_take_action_basic(self, mock_create, mock_check):
         mock_create.return_value = (
             200,
             "OK",
@@ -126,10 +133,9 @@ class TestCreateFlavor:
         assert call_kwargs["name"] == "test-flavor"
         assert call_kwargs["extra_properties"] is None
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "create_flavor")
-    def test_take_action_all_params(self, mock_create, mock_check, _):
+    def test_take_action_all_params(self, mock_create, mock_check):
         mock_create.return_value = (
             200,
             "OK",
@@ -176,10 +182,9 @@ class TestCreateFlavor:
             cmd.take_action(args)
         mock_create.assert_not_called()
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "create_flavor")
-    def test_take_action_private_flag(self, mock_create, mock_check, _):
+    def test_take_action_private_flag(self, mock_create, mock_check):
         mock_create.return_value = (
             200,
             "OK",
@@ -201,11 +206,10 @@ class TestUpdateFlavor:
         parser = cmd.get_parser("update-flavor")
         assert parser is not None
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "update_flavor")
     @patch.object(Client, "resolve_flavor_id")
-    def test_take_action_basic(self, mock_resolve, mock_update, mock_check, _):
+    def test_take_action_basic(self, mock_resolve, mock_update, mock_check):
         mock_resolve.return_value = FLAVOR_ID
         mock_update.return_value = (
             200,
@@ -222,12 +226,11 @@ class TestUpdateFlavor:
         call_kwargs = mock_update.call_args.kwargs
         assert call_kwargs["flavor_id"] == FLAVOR_ID
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "update_flavor")
     @patch.object(Client, "resolve_flavor_id")
     def test_take_action_with_properties(
-        self, mock_resolve, mock_update, mock_check, _
+        self, mock_resolve, mock_update, mock_check
     ):
         mock_resolve.return_value = FLAVOR_ID
         mock_update.return_value = (
@@ -284,6 +287,70 @@ class TestUpdateFlavor:
         with pytest.raises(GenericException):
             cmd.take_action(args)
 
+    @patch.object(CommandHelper, "check_results")
+    @patch.object(Client, "update_flavor")
+    @patch.object(Client, "resolve_flavor_id")
+    def test_take_action_unset_clears_fields(
+        self, mock_resolve, mock_update, mock_check
+    ):
+        mock_resolve.return_value = FLAVOR_ID
+        mock_update.return_value = (
+            200,
+            "OK",
+            json.dumps(flavor_response),
+            flavor_response["result"],
+        )
+        mock_check.return_value = flavor_response["result"]
+        cmd = make_shell_cmd(UpdateFlavor)
+        args = make_parsed_args(
+            flavor_id=FLAVOR_ID,
+            unset_description=True,
+            unset_min_qubits=True,
+            unset_max_qubits=True,
+            unset_gate_fidelity_1q_min=True,
+            unset_gate_fidelity_2q_min=True,
+            unset_extra_properties=True,
+            unset_device_groups=True,
+        )
+        cmd.take_action(args)
+        call_kwargs = mock_update.call_args.kwargs
+        # --unset-{key} passes None (unset) for those fields
+        assert call_kwargs["description"] is None
+        assert call_kwargs["min_qubits"] is None
+        assert call_kwargs["max_qubits"] is None
+        assert call_kwargs["gate_fidelity_1q_min"] is None
+        assert call_kwargs["gate_fidelity_2q_min"] is None
+        assert call_kwargs["extra_properties"] is None
+        assert call_kwargs["device_groups"] is None
+
+    @patch.object(CommandHelper, "check_results")
+    @patch.object(Client, "update_flavor")
+    @patch.object(Client, "resolve_flavor_id")
+    def test_take_action_omit_passes_sentinel(
+        self, mock_resolve, mock_update, mock_check
+    ):
+        mock_resolve.return_value = FLAVOR_ID
+        mock_update.return_value = (
+            200,
+            "OK",
+            json.dumps(flavor_response),
+            flavor_response["result"],
+        )
+        mock_check.return_value = flavor_response["result"]
+        cmd = make_shell_cmd(UpdateFlavor)
+        # only name provided; other fields omitted
+        args = make_parsed_args(flavor_id=FLAVOR_ID, name="updated")
+        cmd.take_action(args)
+        call_kwargs = mock_update.call_args.kwargs
+        # omitted fields receive the _UNSET sentinel
+        assert call_kwargs["description"] is _UNSET
+        assert call_kwargs["min_qubits"] is _UNSET
+        assert call_kwargs["max_qubits"] is _UNSET
+        assert call_kwargs["gate_fidelity_1q_min"] is _UNSET
+        assert call_kwargs["gate_fidelity_2q_min"] is _UNSET
+        assert call_kwargs["extra_properties"] is _UNSET
+        assert call_kwargs["device_groups"] is _UNSET
+
 
 class TestGetFlavor:
     """Test cases for GetFlavor command."""
@@ -333,11 +400,10 @@ class TestGetFlavors:
         parser = cmd.get_parser("list-flavors")
         assert parser is not None
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "get_table_list_data")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "get_flavors")
-    def test_take_action(self, mock_get, mock_check, mock_table, mock_print):
+    def test_take_action(self, mock_get, mock_check, mock_table):
         flavors_list = [
             flavor_response["result"],
             {
@@ -359,7 +425,8 @@ class TestGetFlavors:
             [["id1", "name1"], ["id2", "name2"]],
         )
         cmd = make_shell_cmd(GetFlavors)
-        result = cmd.take_action(Mock())
+        args = make_parsed_args(flavor_ids=[], flavor_names=None)
+        result = cmd.take_action(args)
         assert result is not None
 
     @patch("builtins.print")
@@ -379,15 +446,15 @@ class TestGetFlavors:
         mock_check.return_value = []
         mock_table.return_value = ([], [])
         cmd = make_shell_cmd(GetFlavors)
-        cmd.take_action(Mock())
+        args = make_parsed_args(flavor_ids=[], flavor_names=None)
+        cmd.take_action(args)
         mock_print.assert_called_with("No flavors found")
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "get_table_list_data")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "get_flavors")
     def test_take_action_with_flavor_ids_filter(
-        self, mock_get, mock_check, mock_table, mock_print
+        self, mock_get, mock_check, mock_table
     ):
         """GetFlavors should pass flavor_ids filter to client."""
         flavors_list = [flavor_response["result"]]
@@ -409,12 +476,11 @@ class TestGetFlavors:
             FLAVOR_ID_2,
         ]
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "get_table_list_data")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "get_flavors")
     def test_take_action_with_flavor_name_filter(
-        self, mock_get, mock_check, mock_table, mock_print
+        self, mock_get, mock_check, mock_table
     ):
         """GetFlavors should pass flavor_names filter to client."""
         flavors_list = [flavor_response["result"]]
@@ -433,13 +499,10 @@ class TestGetFlavors:
         call_kwargs = mock_get.call_args.kwargs
         assert call_kwargs["filters"]["flavor_names"] == ["test-flavor"]
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "get_table_list_data")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "get_flavors")
-    def test_take_action_no_filter(
-        self, mock_get, mock_check, mock_table, mock_print
-    ):
+    def test_take_action_no_filter(self, mock_get, mock_check, mock_table):
         """GetFlavors with no filter should call client with None."""
         flavors_list = [flavor_response["result"]]
         resp = {"jsonrpc": "2.0", "result": flavors_list, "id": 0}
@@ -466,12 +529,11 @@ class TestDeleteFlavors:
         parser = cmd.get_parser("delete-flavors")
         assert parser is not None
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "resolve_flavor_id")
     @patch.object(Client, "delete_flavors")
     def test_take_action_single_assume_yes(
-        self, mock_delete, mock_resolve, mock_check, _
+        self, mock_delete, mock_resolve, mock_check
     ):
         mock_resolve.return_value = FLAVOR_ID
         delete_resp = {
@@ -491,12 +553,11 @@ class TestDeleteFlavors:
         cmd.take_action(args)
         mock_delete.assert_called_once_with([FLAVOR_ID])
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "resolve_flavor_id")
     @patch.object(Client, "delete_flavors")
     def test_take_action_multiple_assume_yes(
-        self, mock_delete, mock_resolve, mock_check, _
+        self, mock_delete, mock_resolve, mock_check
     ):
         mock_resolve.side_effect = [FLAVOR_ID, FLAVOR_ID_2]
         delete_resp = {
@@ -563,11 +624,10 @@ class TestDeleteFlavors:
         assert result is None
         mock_delete.assert_not_called()
 
-    @patch("builtins.print")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "get_flavors")
     @patch.object(Client, "delete_flavors")
-    def test_take_action_all(self, mock_delete, mock_get, mock_check, _):
+    def test_take_action_all(self, mock_delete, mock_get, mock_check):
         """delete-flavors all should fetch all IDs then delete."""
         flavors_list = [
             {"id": FLAVOR_ID, "name": "f1"},
