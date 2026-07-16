@@ -158,19 +158,20 @@ class StLibrary:
         return job_result
 
     @staticmethod
-    def get_job_status(client, job_id):
+    def get_job_status(client, job_id, expect_job_status=None):
         _status_code, _reason, _text, _response = client.get_job_status(job_id)
         job_result = json.loads(_text)
         job_status = job_result["result"]["job_status"]
-        expect_task_status = [
-            Constant.JOB_STATUS_COMPLETED,
-            Constant.JOB_STATUS_FAILED,
-            Constant.JOB_STATUS_CANCELLED,
-        ]
-        if job_status in expect_task_status:
+        if not expect_job_status:
+            expect_job_status = [
+                Constant.JOB_STATUS_COMPLETED,
+                Constant.JOB_STATUS_FAILED,
+                Constant.JOB_STATUS_CANCELLED,
+            ]
+        if job_status in expect_job_status:
             return True, None, None
         err_msg = (
-            f"Job status not in {expect_task_status}, "
+            f"Job status not in {expect_job_status}, "
             f"and current status: {job_status}"
         )
         return False, err_msg, None
