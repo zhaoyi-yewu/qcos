@@ -289,7 +289,7 @@ pipeline {
         // =============================================================
         // Test Stage 3: Run unit/coverage tests for qcos-cli
         // =============================================================
-        stage('Run UT - QCOS-CLI') {
+        stage('Run UT/Coverage - QCOS-CLI') {
             steps {
                 sh """#!/bin/bash
                 set -eo pipefail
