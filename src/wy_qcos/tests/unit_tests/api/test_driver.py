@@ -25,9 +25,9 @@ from wy_qcos.api.posiq.routes_jsonrpc.driver import (
 )
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.qcos_version import QcosVersion
-from wy_qcos.drivers.driver_base import DriverBase
-from wy_qcos.drivers.driver_manager import DriverManager
-from wy_qcos.drivers.dummy.driver_dummy import DriverDummy
+from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.driver_manager import DriverManager
+from wy_qcos.driver.dummy.driver_dummy import DriverDummy
 from wy_qcos.task_manager import TaskScheduler
 from wy_qcos.transpiler.transpiler_base import TranspilerBase
 from wy_qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss

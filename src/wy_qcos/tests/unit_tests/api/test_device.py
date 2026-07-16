@@ -38,10 +38,10 @@ from wy_qcos.api.schemas import (
 )
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
-from wy_qcos.drivers.device import Device
-from wy_qcos.drivers.device_manager import DeviceManager
-from wy_qcos.drivers.driver_manager import DriverManager
-from wy_qcos.drivers.dummy.driver_dummy import DriverDummy
+from wy_qcos.device.device import Device
+from wy_qcos.device.device_manager import DeviceManager
+from wy_qcos.driver.driver_manager import DriverManager
+from wy_qcos.driver.dummy.driver_dummy import DriverDummy
 from wy_qcos.task_manager import TaskScheduler
 
 
