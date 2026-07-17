@@ -78,7 +78,8 @@ TranspileResult transpile(
     const std::vector<std::string>& supp_basis_gates,
     const std::vector<std::pair<int, int>>& coupling_list, int opt_level,
     const std::vector<double>& edge_fidelities,
-    const std::vector<double>& single_qubit_fidelities) {
+    const std::vector<double>& single_qubit_fidelities, size_t num_threads,
+    bool fast_mode) {
   using clock = std::chrono::high_resolution_clock;
 
   TranspileResult result;
@@ -97,8 +98,8 @@ TranspileResult transpile(
   auto opt1_start = clock::now();
   std::set<std::string> basis_set(supp_basis_gates.begin(),
                                   supp_basis_gates.end());
-  auto optimized_ops =
-      optimize(ops, std::min(1, opt_level), false, basis_set, 0);
+  auto optimized_ops = optimize(ops, std::min(1, opt_level), false, basis_set,
+                                num_threads, fast_mode);
   t.opt_time1 =
       std::chrono::duration<double>(clock::now() - opt1_start).count();
 
@@ -133,8 +134,8 @@ TranspileResult transpile(
 
   // Step 7: Optimize #2 — 路由后全量优化（完整 opt_level + basis_gates 过滤）
   auto opt2_start = clock::now();
-  result.basis_gate_list =
-      optimize(decomposed_circuit, opt_level, false, basis_set, 0);
+  result.basis_gate_list = optimize(decomposed_circuit, opt_level, false,
+                                    basis_set, num_threads, fast_mode);
   t.opt_time2 =
       std::chrono::duration<double>(clock::now() - opt2_start).count();
 

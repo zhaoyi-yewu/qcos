@@ -79,6 +79,11 @@ int AdjacentPhaseOptPass::run(
     dag.parameterize_all_rz();
   }
 
+  // 没有可优化的相位门时直接返回，避免全量拓扑遍历
+  if (phase_gates.empty()) {
+    return reduced;
+  }
+
   for (DAGOpNode* node : dag.topological_op_nodes()) {
     if (!node || phase_gates.count(node->name()) == 0) {
       continue;
@@ -102,14 +107,18 @@ int AdjacentPhaseOptPass::run(
     }
   }
 
-  const std::unordered_map<std::string, int> final_op_counts = dag.count_ops();
-  // 将离散相位门重写回s, t, z等
-  if (final_op_counts.find("rz") != final_op_counts.end() &&
-      // 判断rz_phase_gates是否是basis_gates的子集
-      (!basis_gates ||
-       std::includes(basis_gates->begin(), basis_gates->end(),
-                     rz_phase_gates.begin(), rz_phase_gates.end()))) {
-    dag.deparameterize_all_rz();
+  // 将离散相位门重写回s, t, z等。仅在曾 parameterize 过的情况下才需要
+  // deparameterize，避免无谓的全量 count_ops 与遍历。
+  if (has_discrete_rz_phase_gates) {
+    const std::unordered_map<std::string, int> final_op_counts =
+        dag.count_ops();
+    if (final_op_counts.find("rz") != final_op_counts.end() &&
+        // 判断rz_phase_gates是否是basis_gates的子集
+        (!basis_gates ||
+         std::includes(basis_gates->begin(), basis_gates->end(),
+                       rz_phase_gates.begin(), rz_phase_gates.end()))) {
+      dag.deparameterize_all_rz();
+    }
   }
 
   return reduced;

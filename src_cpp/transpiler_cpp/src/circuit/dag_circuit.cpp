@@ -492,7 +492,8 @@ void DAGCircuit::replace_block_with_dag(
 }
 
 std::set<std::vector<DAGNode*>> DAGCircuit::collect_runs(
-    const std::vector<std::string>& namelist) {
+    const std::vector<std::string>& namelist,
+    const std::vector<int>* topo_order) {
   const std::unordered_set<std::string> name_set(namelist.begin(),
                                                  namelist.end());
   auto filter_fn = [&name_set](const DAGNode* current) {
@@ -501,7 +502,7 @@ std::set<std::vector<DAGNode*>> DAGCircuit::collect_runs(
   };
 
   std::set<std::vector<DAGNode*>> result;
-  for (auto& run : multi_graph_.collect_runs(filter_fn)) {
+  for (auto& run : multi_graph_.collect_runs(filter_fn, topo_order)) {
     // 用set去重，避免同一串连续门因不同遍历入口重复返回。
     result.insert(std::move(run));
   }

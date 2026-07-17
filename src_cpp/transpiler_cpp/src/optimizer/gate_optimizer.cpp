@@ -81,7 +81,8 @@ size_t compute_parallel_threads(size_t num_threads, size_t ir_size,
  */
 std::vector<std::shared_ptr<BaseOperation>> optimize_ir(
     const std::vector<std::shared_ptr<BaseOperation>>& ir, int opt_level,
-    bool verbose, const std::optional<std::set<std::string>>& basis_gates) {
+    bool verbose, const std::optional<std::set<std::string>>& basis_gates,
+    bool fast_mode) {
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
   InverseCancellation inverse_optimizer({
@@ -123,7 +124,8 @@ std::vector<std::shared_ptr<BaseOperation>> optimize_ir(
     for (auto& pass_fn : passes) {
       pass_fn(dag);
     }
-    if (dag.size() >= init_size) break;
+    // fast_mode：只执行一轮 pass
+    if (fast_mode || dag.size() >= init_size) break;
   }
 
   std::vector<std::shared_ptr<BaseOperation>> result;
@@ -189,7 +191,7 @@ std::vector<std::vector<std::shared_ptr<BaseOperation>>> split_ir_by_layers(
 std::vector<std::shared_ptr<BaseOperation>> optimize(
     const std::vector<std::shared_ptr<BaseOperation>>& ir, int opt_level,
     bool verbose, const std::optional<std::set<std::string>>& basis_gates,
-    size_t num_threads) {
+    size_t num_threads, bool fast_mode) {
   if (opt_level == 0) {
     return ir;
   }
@@ -215,7 +217,8 @@ std::vector<std::shared_ptr<BaseOperation>> optimize(
 
   std::vector<std::shared_ptr<BaseOperation>> optimized;
   if (N <= 1) {
-    optimized = optimize_ir(regular_ops, opt_level, verbose, basis_gates);
+    optimized =
+        optimize_ir(regular_ops, opt_level, verbose, basis_gates, fast_mode);
   } else {
     // 并行：从 IR 按层拆分 → 各线程 optimize_ir → 合并
     auto op_layers = ir_layers(regular_ops);
@@ -230,9 +233,9 @@ std::vector<std::shared_ptr<BaseOperation>> optimize(
     threads.reserve(segments.size());
     for (size_t seg_idx = 0; seg_idx < segments.size(); ++seg_idx) {
       threads.emplace_back([&segments, &opt_segments, seg_idx, opt_level,
-                            verbose, &basis_gates]() {
-        opt_segments[seg_idx] =
-            optimize_ir(segments[seg_idx], opt_level, verbose, basis_gates);
+                            verbose, &basis_gates, fast_mode]() {
+        opt_segments[seg_idx] = optimize_ir(segments[seg_idx], opt_level,
+                                            verbose, basis_gates, fast_mode);
       });
     }
     for (auto& worker : threads) {

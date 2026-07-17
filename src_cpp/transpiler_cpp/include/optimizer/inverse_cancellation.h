@@ -95,21 +95,23 @@ class InverseCancellation {
    * @brief 对所有自反门运行成对消去逻辑
    * @param dag 待优化的量子线路 DAG
    * @param basis_gates 可选 basis gate 过滤集合
+   * @param topo_order 预计算的拓扑序节点 id 列表，避免重复计算
    * @return int 被删除的门数量
    */
   int run_on_self_inverse(
-      DAGCircuit& dag,
-      const std::optional<std::set<std::string>>& basis_gates) const;
+      DAGCircuit& dag, const std::optional<std::set<std::string>>& basis_gates,
+      const std::vector<int>& topo_order) const;
 
   /**
    * @brief 对所有显式逆门对运行消去逻辑
    * @param dag 待优化的量子线路 DAG
    * @param basis_gates 可选 basis gate 过滤集合
+   * @param topo_order 预计算的拓扑序节点 id 列表，避免重复计算
    * @return int 被删除的门数量
    */
   int run_on_inverse_pairs(
-      DAGCircuit& dag,
-      const std::optional<std::set<std::string>>& basis_gates) const;
+      DAGCircuit& dag, const std::optional<std::set<std::string>>& basis_gates,
+      const std::vector<int>& topo_order) const;
 
   std::vector<InverseGateRule> inverse_gate_pairs_;
   std::set<std::string> self_inverse_gate_names_;
