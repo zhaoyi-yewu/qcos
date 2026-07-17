@@ -25,6 +25,7 @@ add_executable(${TEST_NAME} test_main.cpp
                             test_na_mapping.cpp
                             test_qasm_converter.cpp
                             test_qpu_verifier.cpp
+                            test_unitary_synthesis.cpp
 )
 target_link_libraries(${TEST_NAME} ${LIB_TRANSPILER} ${LIB_GTEST} ${LIB_ANTLR4})
 

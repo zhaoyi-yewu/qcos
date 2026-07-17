@@ -30,6 +30,7 @@
 #include "optimizer/clifford_rz_optimization.h"
 #include "optimizer/inverse_cancellation.h"
 #include "optimizer/subcircuit_rewrite.h"
+#include "optimizer/unitary_synthesis.h"
 
 namespace qcos {
 
@@ -101,10 +102,15 @@ std::vector<std::shared_ptr<BaseOperation>> optimize_ir(
   AdjacentPhaseOptPass adjacent_phase_optimizer;
   EquivalencePass equivalence_optimizer;
   CliffordRzOptimization commutative_optimizer(verbose);
+  UnitarySynthesis unitary_synth(basis_gates);
 
   using PassFn = std::function<void(DAGCircuit&)>;
   std::vector<PassFn> passes;
 
+  if (opt_level >= 2) {
+    passes.push_back(
+        [&](DAGCircuit& dag) { unitary_synth.run(dag, basis_gates); });
+  }
   passes.push_back(
       [&](DAGCircuit& dag) { inverse_optimizer.run(dag, basis_gates); });
   passes.push_back([&](DAGCircuit& dag) {
