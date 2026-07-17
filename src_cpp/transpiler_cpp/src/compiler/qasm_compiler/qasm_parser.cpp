@@ -54,7 +54,16 @@ class OpenQasmParser final : public InstVisitor {
   std::optional<std::unordered_map<std::string, std::shared_ptr<Gate>>>
       gatesCopy{};
 
-  // Get mutable gates map — creates a copy on first call (copy-on-write)
+  /**
+   * @brief Get mutable gate definition map (copy-on-write).
+   *
+   * By default gatesRef points to the read-only STANDARD_GATES.
+   * On the first custom gate declaration, a mutable copy of STANDARD_GATES
+   * is created and all subsequent modifications are applied to it.
+   * This avoids unnecessary copies when no custom gates are declared.
+   *
+   * @return Reference to the mutable gate definition map.
+   */
   std::unordered_map<std::string, std::shared_ptr<Gate>>& getMutableGates() {
     if (!gatesCopy) {
       gatesCopy = STANDARD_GATES;
@@ -63,7 +72,14 @@ class OpenQasmParser final : public InstVisitor {
     return *gatesCopy;
   }
 
-  // Read-only access to gates — no copy needed
+  /**
+   * @brief Get read-only gate definition map.
+   *
+   * Returns the map currently pointed to by gatesRef without copying.
+   * Used for read-only scenarios such as gate lookup.
+   *
+   * @return Const reference to the gate definition map.
+   */
   const std::unordered_map<std::string, std::shared_ptr<Gate>>& getGates()
       const {
     return *gatesRef;
@@ -81,11 +97,32 @@ class OpenQasmParser final : public InstVisitor {
   qc::QBit cachedRegBase_{0};
   size_t cachedRegSize_{0};
 
+  /**
+   * @brief Throw a compilation error.
+   *
+   * Unified error handler that constructs a CompilerError and throws it.
+   * Marked [[noreturn]] to indicate this function never returns normally.
+   *
+   * @param message   Error description.
+   * @param debugInfo Source location and other debug information.
+   */
   [[noreturn]] static void error(const std::string& message,
                                  const DebugInfo& debugInfo) {
     throw CompilerError(message, DebugInfo(debugInfo));
   }
 
+  /**
+   * @brief Initialize built-in constants (pi, tau, euler, etc.).
+   *
+   * Uses a static local variable (singleton pattern) so the table is
+   * constructed only once on the first call and reused thereafter.
+   * Built-in constants include:
+   *   - pi / π   : pi (qcPI)
+   *   - tau / τ   : 2*pi (TAU)
+   *   - euler     : Euler's number e (E)
+   *
+   * @return Const reference to the name -> (value, type) map of built-in constants.
+   */
   static const std::map<std::string, std::pair<ConstEvalValue, InferredType>>&
   initializeBuiltins() {
     // Cache builtins statically — constructed once, reused across all parsers
@@ -105,20 +142,48 @@ class OpenQasmParser final : public InstVisitor {
     return builtins;
   }
 
-  void translateGateOperand(
-      const std::shared_ptr<GateOperand>& gateOperand,
-      std::vector<qc::QBit>& qubits, const qc::QuantumRegisterMap& qregs,
-      const DebugInfo& debugInfo) {
+  /**
+   * @brief Translate a gate operand (qubit) to physical qubit indices (overload 1).
+   *
+   * Extracts the register identifier and index expression from a GateOperand,
+   * then delegates to overload 2 for the actual translation.
+   *
+   * @param gateOperand Gate operand containing register name and optional index.
+   * @param qubits      Output vector of qubit indices.
+   * @param qregs       Quantum register map.
+   * @param debugInfo   Debug information for error reporting.
+   */
+  void translateGateOperand(const std::shared_ptr<GateOperand>& gateOperand,
+                            std::vector<qc::QBit>& qubits,
+                            const qc::QuantumRegisterMap& qregs,
+                            const DebugInfo& debugInfo) {
     translateGateOperand(gateOperand->identifier, gateOperand->expression,
                          qubits, qregs, debugInfo);
   }
 
-  void translateGateOperand(
-      const std::string& gateIdentifier,
-      const std::shared_ptr<Expression>& indexExpr,
-      std::vector<qc::QBit>& qubits, const qc::QuantumRegisterMap& qregs,
-      const DebugInfo& debugInfo) {
-    // Fast path: if the register name matches our cache, skip the map lookup.
+  /**
+   * @brief Translate a gate operand (qubit) to physical qubit indices (overload 2).
+   *
+   * Looks up the register base address and size in the quantum register map
+   * by name, using a cache to speed up access to frequently used registers
+   * (typically the register named "q").
+   * If an index expression is provided, computes the index and adds the base
+   * address to obtain the physical qubit; otherwise adds all qubits in the
+   * entire register.
+   *
+   * @param gateIdentifier Quantum register identifier (e.g. "q").
+   * @param indexExpr      Optional index expression (e.g. the 0 in "q[0]");
+   *                       nullptr means the entire register.
+   * @param qubits         Output vector of qubit indices.
+   * @param qregs          Quantum register map (name -> (base, size)).
+   * @param debugInfo      Debug information for error reporting.
+   */
+  void translateGateOperand(const std::string& gateIdentifier,
+                            const std::shared_ptr<Expression>& indexExpr,
+                            std::vector<qc::QBit>& qubits,
+                            const qc::QuantumRegisterMap& qregs,
+                            const DebugInfo& debugInfo) {
+    // Fast path: skip map lookup if the register name matches the cache.
     qc::QBit regBase = 0;
     size_t regSize = 0;
     if (gateIdentifier == cachedRegName_) {
@@ -131,7 +196,7 @@ class OpenQasmParser final : public InstVisitor {
       }
       regBase = qubitIter->second.first;
       regSize = qubitIter->second.second;
-      // Update cache for subsequent lookups
+      // Update cache for subsequent lookups.
       cachedRegName_ = gateIdentifier;
       cachedRegBase_ = regBase;
       cachedRegSize_ = regSize;
@@ -154,6 +219,19 @@ class OpenQasmParser final : public InstVisitor {
     }
   }
 
+  /**
+   * @brief Translate a classical bit operand to physical bit indices.
+   *
+   * Looks up the register information for the given identifier in the
+   * classical register map. If an index expression is provided, only the
+   * corresponding bit is selected; otherwise all bits in the register are
+   * selected.
+   *
+   * @param bitIdentifier Classical register identifier.
+   * @param indexExpr     Optional index expression; nullptr means the entire register.
+   * @param bits          Output vector of classical bit indices.
+   * @param debugInfo     Debug information for error reporting.
+   */
   void translateBitOperand(const std::string& bitIdentifier,
                            const std::shared_ptr<Expression>& indexExpr,
                            std::vector<qc::Bit>& bits,
@@ -182,9 +260,21 @@ class OpenQasmParser final : public InstVisitor {
     }
   }
 
+  /**
+   * @brief Evaluate an expression as a positive integer constant.
+   *
+   * Used in contexts where a compile-time constant is required, such as
+   * gate operand indices. If the expression is null, returns the default
+   * value; otherwise attempts to cast it to a Constant and extract the
+   * unsigned integer value.
+   *
+   * @param expr         Expression to evaluate; nullptr returns defaultValue.
+   * @param debugInfo    Debug information for error reporting.
+   * @param defaultValue Value returned when expr is nullptr (default: 0).
+   * @return The evaluated result as an unsigned 64-bit integer.
+   */
   static uint64_t evaluatePositiveConstant(
-      const std::shared_ptr<Expression>& expr,
-      const DebugInfo& debugInfo,
+      const std::shared_ptr<Expression>& expr, const DebugInfo& debugInfo,
       const uint64_t defaultValue = 0) {
     if (expr == nullptr) {
       return defaultValue;
@@ -199,6 +289,14 @@ class OpenQasmParser final : public InstVisitor {
   }
 
  public:
+  /**
+   * @brief Constructor.
+   *
+   * Initializes the constant evaluation pass and type checking pass, and
+   * registers built-in constants (pi, tau, euler) into both systems.
+   *
+   * @param quantumComputation Pointer to the QuantumComputation object to populate.
+   */
   explicit OpenQasmParser(qc::QuantumComputation* quantumComputation)
       : typeCheckPass(&constEvalPass), qc(quantumComputation) {
     for (const auto& [identifier, builtin] : initializeBuiltins()) {
@@ -207,54 +305,74 @@ class OpenQasmParser final : public InstVisitor {
     }
   }
 
+  /**
+   * @brief Destructor (defaulted).
+   */
   ~OpenQasmParser() override = default;
 
-  void visitProgram(const std::vector<std::shared_ptr<Statement>>& program) {
-    // TODO: in the future, don't exit early, but collect all errors
-    // To do this, we need to insert make sure that erroneous declarations
-    // actually insert a dummy entry; also, we need to synchronize to the next
-    // semicolon, to make sure we don't do some weird stuff and report false
-    // errors.
-    for (const auto& statement : program) {
-      try {
-        // ── Fast path: skip const_eval and type_check for gate calls ──
-        // For the overwhelmingly common case in QASM 2.0 benchmarks,
-        // gate calls have no modifiers, no arguments and all operands are
-        // constant expressions. In this case:
-        //   - const_eval is a no-op on already-constant expressions
-        //   - type_check is a no-op for standard gate calls
-        // We can skip both passes entirely and go straight to conversion.
-        if (auto gateCall =
-                std::dynamic_pointer_cast<GateCallStatement>(statement);
-            gateCall != nullptr && gateCall->arguments.empty() &&
-            gateCall->modifiers.empty()) {
-          // Check if all operands are constant (integer index expressions)
-          bool allOperandsConst = true;
-          for (const auto& op : gateCall->operands) {
-            if (op->expression != nullptr &&
-                op->expression->kind() != ExpressionKind::Constant) {
-              allOperandsConst = false;
-              break;
-            }
-          }
-          if (allOperandsConst) {
-            // Skip const_eval and type_check — go straight to conversion.
-            visitGateCallStatement(gateCall);
-            continue;
+  /**
+   * @brief Process a single statement.
+   *
+   * Runs the following pipeline on each statement:
+   * constant evaluation -> type checking -> AST visit (translation to quantum ops).
+   * For gate call statements with no parameters, no modifiers, and all-constant
+   * operands, the constant evaluation and type checking passes are skipped as
+   * an optimization (this covers the vast majority of calls in Clifford
+   * benchmarks).
+   *
+   * @param statement The statement to process.
+   */
+  void processStatement(std::shared_ptr<Statement> statement) {
+    try {
+      if (auto gateCall =
+              std::dynamic_pointer_cast<GateCallStatement>(statement);
+          gateCall != nullptr && gateCall->arguments.empty() &&
+          gateCall->modifiers.empty()) {
+        bool allOperandsConst = true;
+        for (const auto& op : gateCall->operands) {
+          if (op->expression != nullptr &&
+              op->expression->kind() != ExpressionKind::Constant) {
+            allOperandsConst = false;
+            break;
           }
         }
-
-        // Normal path: run all three passes
-        constEvalPass.processStatement(*statement);
-        typeCheckPass.processStatement(*statement);
-        statement->accept(this);
-      } catch (CompilerError& e) {
-        std::cerr << e.toString() << '\n';
-        throw;
+        if (allOperandsConst) {
+          visitGateCallStatement(gateCall);
+          return;
+        }
       }
+
+      constEvalPass.processStatement(*statement);
+      typeCheckPass.processStatement(*statement);
+      statement->accept(this);
+    } catch (CompilerError& e) {
+      std::cerr << e.toString() << '\n';
+      throw;
     }
   }
 
+  /**
+   * @brief Process an entire program (list of statements).
+   *
+   * Iterates over all statements in the program and processes each one.
+   *
+   * @param program The list of statements.
+   */
+  void visitProgram(const std::vector<std::shared_ptr<Statement>>& program) {
+    for (const auto& statement : program) {
+      processStatement(statement);
+    }
+  }
+
+  /**
+   * @brief Visit a version declaration statement.
+   *
+   * Detects the OpenQASM version number. If the version is less than 3,
+   * QASM 2.0 compatibility mode is enabled, which affects gate identifier
+   * resolution (e.g. "cx" is mapped to "x" with implicit controls).
+   *
+   * @param versionDeclaration The version declaration statement.
+   */
   void visitVersionDeclaration(
       const std::shared_ptr<VersionDeclaration> versionDeclaration) override {
     if (versionDeclaration->version < 3) {
@@ -262,6 +380,21 @@ class OpenQasmParser final : public InstVisitor {
     }
   }
 
+  /**
+   * @brief Visit a variable declaration statement.
+   *
+   * Handles qubit register (qubit), classical bit register (bit), integer
+   * type declarations, etc.
+   * - QBit: added to the quantum register table of the QuantumComputation
+   *   object; the first register is cached to speed up subsequent translations.
+   * - Bit/Int/Uint: added to the classical register table.
+   * - Float: declared only, not added to the register table.
+   * - Angle: currently unsupported.
+   * If the declaration includes a measure expression initializer, it is
+   * delegated to visitMeasureAssignment.
+   *
+   * @param declarationStatement The variable declaration statement.
+   */
   void visitDeclarationStatement(const std::shared_ptr<DeclarationStatement>
                                      declarationStatement) override {
     const auto identifier = declarationStatement->identifier;
@@ -332,6 +465,15 @@ class OpenQasmParser final : public InstVisitor {
           declarationStatement->debugInfo);
   }
 
+  /**
+   * @brief Visit an assignment statement.
+   *
+   * Currently only assignments containing measure expressions (e.g.
+   * c = measure q) are supported; other classical computation assignments
+   * are not yet implemented.
+   *
+   * @param assignmentStatement The assignment statement.
+   */
   void visitAssignmentStatement(const std::shared_ptr<AssignmentStatement>
                                     assignmentStatement) override {
     const auto identifier = assignmentStatement->identifier->identifier;
@@ -353,6 +495,15 @@ class OpenQasmParser final : public InstVisitor {
           assignmentStatement->debugInfo);
   }
 
+  /**
+   * @brief Visit an initial layout declaration.
+   *
+   * Parses the initial mapping from logical qubits to physical qubits
+   * (initial layout). Raises an error if multiple initial layout
+   * declarations are encountered.
+   *
+   * @param layout The initial layout declaration.
+   */
   void visitInitialLayout(
       const std::shared_ptr<InitialLayout> layout) override {
     if (!initialLayout.empty()) {
@@ -362,6 +513,15 @@ class OpenQasmParser final : public InstVisitor {
     initialLayout = layout->permutation;
   }
 
+  /**
+   * @brief Visit an output permutation declaration.
+   *
+   * Parses the qubit permutation mapping at circuit output (output
+   * permutation). Raises an error if multiple output permutation
+   * declarations are encountered.
+   *
+   * @param permutation The output permutation declaration.
+   */
   void visitOutputPermutation(
       const std::shared_ptr<OutputPermutation> permutation) override {
     if (!outputPermutation.empty()) {
@@ -371,6 +531,21 @@ class OpenQasmParser final : public InstVisitor {
     outputPermutation = permutation->permutation;
   }
 
+  /**
+   * @brief Visit a gate declaration statement.
+   *
+   * Processes custom gate definitions (gate ... { ... }) and registers
+   * them in the gate definition map.
+   * - Opaque gates: only standard library opaque declarations are allowed;
+   *   others raise an error.
+   * - QASM 2.0 compat mode: applies compatibility parsing to the gate
+   *   identifier.
+   * - Standard gate redeclaration: silently ignored.
+   * - Custom gate redeclaration: raises an error.
+   * Also checks for duplicate parameter and qubit identifiers.
+   *
+   * @param gateStatement The gate declaration statement.
+   */
   void visitGateStatement(
       const std::shared_ptr<GateDeclaration> gateStatement) override {
     auto identifier = gateStatement->identifier;
@@ -429,6 +604,17 @@ class OpenQasmParser final : public InstVisitor {
     getMutableGates().emplace(identifier, compoundGate);
   }
 
+  /**
+   * @brief Visit a gate call statement.
+   *
+   * Parses a gate call (e.g. h q[0]; cx q[0], q[1];), translates operands
+   * to physical qubit indices, then delegates to evaluateGateCall to
+   * evaluate and produce quantum operations.
+   * Optimization: uses emplace_back for a single operation and batch append
+   * for multiple operations.
+   *
+   * @param gateCallStatement The gate call statement.
+   */
   void visitGateCallStatement(
       const std::shared_ptr<GateCallStatement> gateCallStatement) override {
     const auto& qregs = qc->getQregs();
@@ -448,11 +634,34 @@ class OpenQasmParser final : public InstVisitor {
     }
   }
 
+  /**
+   * @brief Evaluate a gate call and produce the corresponding list of quantum operations.
+   *
+   * This is the core function for gate call translation. The processing
+   * pipeline is:
+   * 1. Look up the gate in the definition map, supporting multi-controlled
+   *    gates (mcx/mcphase, etc.) and QASM 2.0 compat mode.
+   * 2. Validate that the number of parameters, controls, and targets match.
+   * 3. Process gate modifiers (ctrl/negctrl/inv) and compute implicit controls.
+   * 4. Evaluate all parameters to compile-time constants.
+   * 5. Translate operands to physical qubit indices.
+   * 6. Check for duplicate qubits.
+   * 7. Handle register broadcasting: when operands are entire registers,
+   *    expand into multiple operations.
+   * 8. Delegate to applyQuantumOperation to generate the final quantum ops.
+   *
+   * @param gateCallStatement The gate call statement (used for error reporting).
+   * @param identifier        Gate identifier.
+   * @param parameters        List of gate parameter expressions.
+   * @param allOperands       All operands (controls + targets).
+   * @param qregs             Quantum register map.
+   * @return The generated list of quantum operations.
+   */
   std::vector<std::shared_ptr<qcos::BaseOperation>> evaluateGateCall(
       const std::shared_ptr<GateCallStatement>& gateCallStatement,
       const std::string& identifier,
       const std::vector<std::shared_ptr<Expression>>& parameters,
-      std::vector<std::shared_ptr<GateOperand>> targets,
+      const std::vector<std::shared_ptr<GateOperand>>& allOperands,
       const qc::QuantumRegisterMap& qregs) {
     std::vector<std::shared_ptr<qcos::BaseOperation>> ops;
     auto iter = getGates().find(identifier);
@@ -463,10 +672,8 @@ class OpenQasmParser final : public InstVisitor {
       if (identifier == "mcx" || identifier == "mcx_gray" ||
           identifier == "mcx_vchain" || identifier == "mcx_recursive" ||
           identifier == "mcphase") {
-        // we create a temp gate definition for these gates
-        gate =
-            getMcGateDefinition(identifier, gateCallStatement->operands.size(),
-                                gateCallStatement->debugInfo);
+        gate = getMcGateDefinition(identifier, allOperands.size(),
+                                   gateCallStatement->debugInfo);
       } else if (openQASM2CompatMode) {
         auto [updatedIdentifier, nControls] =
             parseGateIdentifierCompatMode(identifier);
@@ -493,20 +700,20 @@ class OpenQasmParser final : public InstVisitor {
             gateCallStatement->debugInfo);
     }
 
-    // here we count the number of controls
-    std::vector<std::pair<std::shared_ptr<GateOperand>, bool>> controls{};
-    // since standard gates may define a number of control targets, we first
-    // need to handle those
+    const size_t totalOperands = allOperands.size();
     size_t nControls{gate->getNControls() + implicitControls};
-    if (targets.size() < nControls) {
+    if (totalOperands < nControls) {
       error("Gate '" + identifier + "' takes " + std::to_string(nControls) +
-                " controls, but only " + std::to_string(targets.size()) +
+                " controls, but only " + std::to_string(totalOperands) +
                 " qubits were supplied.",
             gateCallStatement->debugInfo);
     }
 
+    std::vector<std::pair<const std::shared_ptr<GateOperand>*, bool>>
+        controls{};
+    controls.reserve(nControls);
     for (size_t i = 0; i < nControls; ++i) {
-      controls.emplace_back(targets[i], true);
+      controls.emplace_back(&allOperands[i], true);
     }
 
     bool invertOperation = false;
@@ -517,41 +724,40 @@ class OpenQasmParser final : public InstVisitor {
         size_t const n = evaluatePositiveConstant(ctrlModifier->expression,
                                                   gateCallStatement->debugInfo,
                                                   /*defaultValue=*/1);
-        if (targets.size() < n + nControls) {
+        if (totalOperands < n + nControls) {
           error("Gate '" + identifier + "' takes " +
                     std::to_string(n + nControls) + " controls, but only " +
-                    std::to_string(targets.size()) + " were supplied.",
+                    std::to_string(totalOperands) + " were supplied.",
                 gateCallStatement->debugInfo);
         }
 
         for (size_t i = 0; i < n; ++i) {
-          controls.emplace_back(targets[nControls + i],
+          controls.emplace_back(&allOperands[nControls + i],
                                 ctrlModifier->ctrlType);
         }
         nControls += n;
       } else if (auto invModifier =
                      std::dynamic_pointer_cast<InvGateModifier>(modifier);
                  invModifier != nullptr) {
-        // if we have an even number of inv modifiers, they cancel each other
-        // out
         invertOperation = !invertOperation;
       } else {
         error("Only ctrl/negctrl/inv modifiers are supported.",
               gateCallStatement->debugInfo);
       }
     }
-    targets.erase(targets.begin(),
-                  targets.begin() + static_cast<int64_t>(nControls));
 
-    if (gate->getNTargets() != targets.size()) {
+    const size_t targetStart = nControls;
+    const size_t nTargets = totalOperands - targetStart;
+
+    if (gate->getNTargets() != nTargets) {
       error("Gate '" + identifier + "' takes " +
                 std::to_string(gate->getNTargets()) + " targets, but " +
-                std::to_string(targets.size()) + " were supplied.",
+                std::to_string(nTargets) + " were supplied.",
             gateCallStatement->debugInfo);
     }
 
-    // now evaluate all arguments; we only support const arguments.
     std::vector<qc::fp> evaluatedParameters{};
+    evaluatedParameters.reserve(parameters.size());
     for (const auto& param : parameters) {
       auto result = constEvalPass.visit(param);
       if (!result.has_value()) {
@@ -567,11 +773,12 @@ class OpenQasmParser final : public InstVisitor {
 
     size_t broadcastingWidth{1};
     qc::Targets targetBits{};
+    targetBits.reserve(nTargets);
     std::vector<size_t> targetBroadcastingIndices{};
-    size_t i{0};
-    for (const auto& target : targets) {
+    for (size_t i = 0; i < nTargets; ++i) {
       qc::Targets t{};
-      translateGateOperand(target, t, qregs, gateCallStatement->debugInfo);
+      translateGateOperand(allOperands[targetStart + i], t, qregs,
+                           gateCallStatement->debugInfo);
 
       targetBits.emplace_back(t[0]);
 
@@ -581,19 +788,18 @@ class OpenQasmParser final : public InstVisitor {
                 gateCallStatement->debugInfo);
         }
         broadcastingWidth = t.size();
-
         targetBroadcastingIndices.emplace_back(i);
       }
-
-      i++;
     }
 
     std::vector<qc::Control> controlBits{};
+    controlBits.reserve(controls.size());
     std::vector<size_t> controlBroadcastingIndices{};
-    i = 0;
-    for (const auto& [control, type] : controls) {
+    for (size_t i = 0; i < controls.size(); ++i) {
+      const auto& [controlPtr, type] = controls[i];
       qc::Targets c{};
-      translateGateOperand(control, c, qregs, gateCallStatement->debugInfo);
+      translateGateOperand(*controlPtr, c, qregs,
+                           gateCallStatement->debugInfo);
 
       controlBits.emplace_back(
           c[0], type ? qc::Control::Type::Pos : qc::Control::Type::Neg);
@@ -604,19 +810,24 @@ class OpenQasmParser final : public InstVisitor {
                 gateCallStatement->debugInfo);
         }
         broadcastingWidth = c.size();
-
         controlBroadcastingIndices.emplace_back(i);
       }
-
-      i++;
     }
 
-    // check if any of the bits are duplicate
-    // Optimization: for the overwhelmingly common case of ≤2 total qubits
-    // with no control bits (single-qubit gates like h/s/t/x), skip the
-    // unordered_set entirely — duplicates are impossible with ≤1 element.
     const size_t totalQubits = controlBits.size() + targetBits.size();
-    if (totalQubits > 1) {
+    if (totalQubits == 2) {
+      if (!controlBits.empty() && controlBits[0].qubit == targetBits[0]) {
+        error("Duplicate qubit in gate operands.",
+              gateCallStatement->debugInfo);
+      } else if (controlBits.empty() && targetBits.size() == 2 &&
+                 targetBits[0] == targetBits[1]) {
+        error("Duplicate qubit in target list.", gateCallStatement->debugInfo);
+      } else if (controlBits.size() == 2 &&
+                 controlBits[0].qubit == controlBits[1].qubit) {
+        error("Duplicate qubit in control list.",
+              gateCallStatement->debugInfo);
+      }
+    } else if (totalQubits > 2) {
       std::unordered_set<qc::QBit> allQubits;
       allQubits.reserve(totalQubits);
       for (const auto& control : controlBits) {
@@ -634,15 +845,12 @@ class OpenQasmParser final : public InstVisitor {
     }
 
     if (broadcastingWidth == 1) {
-      // Directly return the result — skip intermediate ops vector.
       return applyQuantumOperation(gate, targetBits, controlBits,
                                    evaluatedParameters, invertOperation,
                                    gateCallStatement->debugInfo);
     }
 
-    // if we are broadcasting, we need to create a compound operation
     for (size_t j = 0; j < broadcastingWidth; ++j) {
-      // first we apply the operation
       auto nestedOp = applyQuantumOperation(
           gate, targetBits, controlBits, evaluatedParameters, invertOperation,
           gateCallStatement->debugInfo);
@@ -652,7 +860,6 @@ class OpenQasmParser final : public InstVisitor {
       ops.insert(ops.end(), std::make_move_iterator(nestedOp.begin()),
                  std::make_move_iterator(nestedOp.end()));
 
-      // after applying the operation, we update the broadcast bits
       for (auto index : targetBroadcastingIndices) {
         targetBits[index] = qc::QBit{targetBits[index] + 1};
       }
@@ -663,6 +870,22 @@ class OpenQasmParser final : public InstVisitor {
     return ops;
   }
 
+  /**
+   * @brief Construct a gate definition for multi-controlled gates (mcx/mcphase, etc.).
+   *
+   * Dynamically generates a CompoundGate definition for multi-controlled
+   * gates such as "mcx", "mcx_gray", "mcx_vchain", "mcx_recursive", and
+   * "mcphase". The internal implementation is a base gate call with a
+   * ctrl(n-1) modifier:
+   *   - mcx family -> ctrl(n-1) @ x
+   *   - mcphase    -> ctrl(n-1) @ p(parameter)
+   * Note: mcx_vchain and mcx_recursive require additional ancilla qubits.
+   *
+   * @param identifier  Multi-controlled gate identifier (e.g. "mcx", "mcphase").
+   * @param operandSize Total number of operands (controls + targets + ancillae).
+   * @param debugInfo   Debug information.
+   * @return Shared pointer to the constructed CompoundGate.
+   */
   static std::shared_ptr<Gate> getMcGateDefinition(
       const std::string& identifier, size_t operandSize,
       const DebugInfo& debugInfo) {
@@ -706,10 +929,38 @@ class OpenQasmParser final : public InstVisitor {
     return std::make_shared<CompoundGate>(g);
   }
 
+  /**
+   * @brief Apply a gate definition to produce a list of target quantum operations.
+   *
+   * Handles standard gates and compound gates separately:
+   *
+   * **Standard gates (StandardGate):**
+   * - Provides two fast paths to reduce vector allocation overhead:
+   *   - Single-qubit, no-control, no-parameter gates (e.g. h, x, s, t —
+   *     common Clifford gates).
+   *   - Two-qubit (1 control + 1 target), no-parameter gates (e.g. cx, cz).
+   * - All other cases fall through to the general path, which creates the
+   *   corresponding operation object based on OpType.
+   *
+   * **Compound gates (CompoundGate):**
+   * - Maps the compound gate's parameters and qubits into an inner scope.
+   * - Recursively evaluates each statement in the compound gate body
+   *   (barrier / reset / gate calls).
+   * - Clears the register cache before recursion because nested mappings
+   *   use gate parameter names rather than top-level register names.
+   *
+   * @param gate                The gate definition.
+   * @param targetBits          List of target qubits.
+   * @param controlBits         List of control qubits (with pos/neg control type).
+   * @param evaluatedParameters Pre-evaluated parameter list.
+   * @param invertOperation     Whether to invert the operation (triggered by inv modifier).
+   * @param debugInfo           Debug information.
+   * @return The generated list of quantum operations.
+   */
   std::vector<std::shared_ptr<qcos::BaseOperation>> applyQuantumOperation(
-      const std::shared_ptr<Gate>& gate, qc::Targets targetBits,
-      std::vector<qc::Control> controlBits,
-      std::vector<qc::fp> evaluatedParameters, bool invertOperation,
+      const std::shared_ptr<Gate>& gate, const qc::Targets& targetBits,
+      const std::vector<qc::Control>& controlBits,
+      const std::vector<qc::fp>& evaluatedParameters, bool invertOperation,
       const DebugInfo& debugInfo) {
     std::vector<std::shared_ptr<qcos::BaseOperation>> ops;
 
@@ -734,34 +985,44 @@ class OpenQasmParser final : public InstVisitor {
         std::shared_ptr<qcos::BaseOperation> operation;
         switch (op_type) {
           case qc::otH:
-            operation = std::make_shared<qcos::H>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::H>(std::move(all_qubits),
+                                                  std::move(no_args));
             break;
           case qc::otX:
-            operation = std::make_shared<qcos::X>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::X>(std::move(all_qubits),
+                                                  std::move(no_args));
             break;
           case qc::otY:
-            operation = std::make_shared<qcos::Y>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::Y>(std::move(all_qubits),
+                                                  std::move(no_args));
             break;
           case qc::otZ:
-            operation = std::make_shared<qcos::Z>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::Z>(std::move(all_qubits),
+                                                  std::move(no_args));
             break;
           case qc::otS:
-            operation = std::make_shared<qcos::S>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::S>(std::move(all_qubits),
+                                                  std::move(no_args));
             break;
           case qc::otSdg:
-            operation = std::make_shared<qcos::SDG>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::SDG>(std::move(all_qubits),
+                                                    std::move(no_args));
             break;
           case qc::otT:
-            operation = std::make_shared<qcos::T>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::T>(std::move(all_qubits),
+                                                  std::move(no_args));
             break;
           case qc::otTdg:
-            operation = std::make_shared<qcos::TDG>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::TDG>(std::move(all_qubits),
+                                                    std::move(no_args));
             break;
           case qc::otSX:
-            operation = std::make_shared<qcos::SX>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::SX>(std::move(all_qubits),
+                                                   std::move(no_args));
             break;
           case qc::otSXdg:
-            operation = std::make_shared<qcos::SXDG>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::SXDG>(std::move(all_qubits),
+                                                     std::move(no_args));
             break;
           case qc::otI:
             operation = nullptr;
@@ -780,32 +1041,38 @@ class OpenQasmParser final : public InstVisitor {
       // For cx, cz — the most common two-qubit gates in Clifford benchmarks.
       if (controlBits.size() == 1 && targetBits.size() == 1 &&
           evaluatedParameters.empty()) {
-        std::vector<int> all_qubits{
-            static_cast<int>(controlBits[0].qubit),
-            static_cast<int>(targetBits[0])};
+        std::vector<int> all_qubits{static_cast<int>(controlBits[0].qubit),
+                                    static_cast<int>(targetBits[0])};
         std::vector<double> no_args;
         std::shared_ptr<qcos::BaseOperation> operation;
         switch (op_type) {
           case qc::otCNOT:
-            operation = std::make_shared<qcos::CX>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::CX>(std::move(all_qubits),
+                                                   std::move(no_args));
             break;
           case qc::otCZ:
-            operation = std::make_shared<qcos::CZ>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::CZ>(std::move(all_qubits),
+                                                   std::move(no_args));
             break;
           case qc::otCH:
-            operation = std::make_shared<qcos::CH>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::CH>(std::move(all_qubits),
+                                                   std::move(no_args));
             break;
           case qc::otCY:
-            operation = std::make_shared<qcos::CY>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::CY>(std::move(all_qubits),
+                                                   std::move(no_args));
             break;
           case qc::otCS:
-            operation = std::make_shared<qcos::CS>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::CS>(std::move(all_qubits),
+                                                   std::move(no_args));
             break;
           case qc::otCSdg:
-            operation = std::make_shared<qcos::CSDG>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::CSDG>(std::move(all_qubits),
+                                                     std::move(no_args));
             break;
           case qc::otSWAP:
-            operation = std::make_shared<qcos::SWAP>(std::move(all_qubits), std::move(no_args));
+            operation = std::make_shared<qcos::SWAP>(std::move(all_qubits),
+                                                     std::move(no_args));
             break;
           default:
             goto general_path;
@@ -1122,9 +1389,8 @@ class OpenQasmParser final : public InstVisitor {
             error("Failed to evaluate gate call in compound gate.", debugInfo);
             return {};
           }
-          ops.insert(ops.end(), nestedOps.begin(), nestedOps.end());
-          // Invalidate cache after recursive call — the recursive call may
-          // have cached a gate parameter name that doesn't exist in qregs.
+          ops.insert(ops.end(), std::make_move_iterator(nestedOps.begin()),
+                     std::make_move_iterator(nestedOps.end()));
           cachedRegName_.clear();
         } else {
           error("Unhandled quantum statement.", debugInfo);
@@ -1144,6 +1410,22 @@ class OpenQasmParser final : public InstVisitor {
     return {};
   }
 
+  /**
+   * @brief Handle a measure assignment statement.
+   *
+   * Assigns the measurement result of qubits to a classical register.
+   * Pipeline:
+   * 1. Validate that the assignment target is a classical bit register.
+   * 2. Translate the qubit operands of the measure operation.
+   * 3. Translate the classical bit operands.
+   * 4. Validate that the quantum and classical register widths match.
+   * 5. Create a Measure operation for each qubit.
+   *
+   * @param identifier        Assignment target identifier (classical register name).
+   * @param indexExpression   Optional index expression.
+   * @param measureExpression The measure expression.
+   * @param debugInfo         Debug information.
+   */
   void visitMeasureAssignment(
       const std::string& identifier,
       const std::shared_ptr<Expression>& indexExpression,
@@ -1184,6 +1466,15 @@ class OpenQasmParser final : public InstVisitor {
     }
   }
 
+  /**
+   * @brief Visit a barrier statement.
+   *
+   * Translates the barrier statement into a synchronization operation (Sync),
+   * which acts as a barrier in the quantum circuit and prevents the compiler
+   * from reordering operations across it.
+   *
+   * @param barrierStatement The barrier statement.
+   */
   void visitBarrierStatement(
       const std::shared_ptr<BarrierStatement> barrierStatement) override {
     std::vector<qc::QBit> qubits{};
@@ -1199,6 +1490,14 @@ class OpenQasmParser final : public InstVisitor {
     qc->emplace_back(std::make_shared<qcos::Sync>(std::move(allBits)));
   }
 
+  /**
+   * @brief Visit a reset statement.
+   *
+   * Translates the reset statement into a Reset operation that resets the
+   * specified qubits to the |0> state.
+   *
+   * @param resetStatement The reset statement.
+   */
   void visitResetStatement(
       std::shared_ptr<ResetStatement> resetStatement) override {
     std::vector<qc::QBit> qubits{};
@@ -1212,8 +1511,21 @@ class OpenQasmParser final : public InstVisitor {
     qc->emplace_back(std::make_shared<qcos::Reset>(std::move(allBits)));
   }
 
+  /**
+   * @brief Visit an if statement.
+   *
+   * If statements are not currently supported; an error is raised immediately.
+   * Reference code for a future implementation (classically controlled
+   * operations) is preserved in the comments below.
+   *
+   * @param ifStatement The if statement.
+   */
   void visitIfStatement(std::shared_ptr<IfStatement> ifStatement) override {
     // TODO: for now we don't support if statements
+    error(
+        "If statements are not supported in the current QASM to IR "
+        "conversion.",
+        ifStatement->debugInfo);
     /*
     const auto condition =
         std::dynamic_pointer_cast<BinaryExpression>(ifStatement->condition);
@@ -1290,6 +1602,23 @@ class OpenQasmParser final : public InstVisitor {
   }
   */
 
+  /**
+   * @brief Parse a gate identifier in QASM 2.0 compatibility mode.
+   *
+   * In QASM 2.0, controlled gates are expressed by prepending "c" to the
+   * gate name (e.g. "cx" = ctrl @ x, "ccx" = ctrl(2) @ x). This function
+   * strips leading "c" characters, counts the implicit controls, and
+   * returns the base gate name together with the implicit control count.
+   *
+   * Examples:
+   *   "cx"   -> ("x", 1)
+   *   "ccx"  -> ("x", 2)
+   *   "cz"   -> ("z", 1)
+   *   "h"    -> ("h", 0)   // no "c" prefix, returned as-is
+   *
+   * @param identifier The original gate identifier.
+   * @return A pair of (base gate identifier, implicit control count).
+   */
   std::pair<std::string, size_t> parseGateIdentifierCompatMode(
       const std::string& identifier) {
     // we need to copy as we modify the string and need to return the original
@@ -1311,10 +1640,22 @@ class OpenQasmParser final : public InstVisitor {
   }
 };
 
+/**
+ * @brief Import an OpenQASM program from an input stream.
+ *
+ * Parses the OpenQASM program from the given input stream and translates
+ * it into a sequence of quantum operations.
+ * Pipeline:
+ * 1. Estimate the number of operations from the stream size and pre-allocate
+ *    memory (approximately one operation per 20 bytes).
+ * 2. Create a QASM parser (without implicitly including standard gate definitions).
+ * 3. Create an OpenQasmParser and process each parsed statement.
+ *
+ * @param is Input stream containing the OpenQASM program.
+ */
 void qc::QuantumComputation::importOpenQASM(std::istream& is) {
   using namespace qasm;
 
-  // Estimate operation count from input size for pre-allocation
   auto startPos = is.tellg();
   if (startPos != static_cast<std::streampos>(-1)) {
     is.seekg(0, std::ios::end);
@@ -1325,8 +1666,6 @@ void qc::QuantumComputation::importOpenQASM(std::istream& is) {
       ops.reserve(estimatedOps);
     }
   } else {
-    // Fallback: tellg() returns -1 for some stream types (e.g. stringstream),
-    // causing reserve to be skipped entirely. Use in_avail() as heuristic.
     std::streambuf* buf = is.rdbuf();
     if (buf) {
       auto avail = buf->in_avail();
@@ -1337,8 +1676,32 @@ void qc::QuantumComputation::importOpenQASM(std::istream& is) {
   }
 
   Parser p(&is, /*implicitlyIncludeStdgates=*/false);
-
-  const auto program = p.parseProgram();
   OpenQasmParser parser{this};
-  parser.visitProgram(program);
+
+  p.parseProgram([&parser](std::shared_ptr<Statement> stmt) {
+    parser.processStatement(std::move(stmt));
+  });
+}
+
+/**
+ * @brief Import an OpenQASM program from a string.
+ *
+ * Parses the OpenQASM program given as a string and translates it into a
+ * sequence of quantum operations. Functionally identical to the stream
+ * overload, but reads directly from a string — useful when the program is
+ * already in memory.
+ *
+ * @param qasm The OpenQASM program string.
+ */
+void qc::QuantumComputation::importOpenQASM(const std::string& qasm) {
+  using namespace qasm;
+
+  ops.reserve(qasm.size() / 20);
+
+  Parser p(qasm, /*implicitlyIncludeStdgates=*/false);
+  OpenQasmParser parser{this};
+
+  p.parseProgram([&parser](std::shared_ptr<Statement> stmt) {
+    parser.processStatement(std::move(stmt));
+  });
 }

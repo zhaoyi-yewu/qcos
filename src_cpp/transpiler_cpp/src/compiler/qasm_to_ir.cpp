@@ -23,8 +23,9 @@
 using namespace qcos;
 
 std::pair<std::vector<std::shared_ptr<qcos::BaseOperation>>, int> qasm_to_ir(
-    std::string qasm_str) {
-  auto qc = qc::QuantumComputation::fromQASM(qasm_str);
+    const std::string& qasm_str) {
+  qc::QuantumComputation qc{};
+  qc.importOpenQASM(qasm_str);
   int qubits_num = static_cast<int>(qc.getNqubits());
   return {std::move(qc.getOps()), qubits_num};
 }

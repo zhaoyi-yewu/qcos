@@ -18,4 +18,4 @@
 #include "circuit/base_operation.h"
 
 std::pair<std::vector<std::shared_ptr<qcos::BaseOperation>>, int> qasm_to_ir(
-    std::string qasm_str);
+    const std::string& qasm_str);

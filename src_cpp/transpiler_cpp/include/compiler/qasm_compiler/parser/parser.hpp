@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <functional>
 #include <iostream>
 #include <sstream>
 #include <stack>
@@ -33,6 +34,7 @@ class Parser {
   struct ScannerState {
    private:
     std::unique_ptr<std::istream> is;
+    std::string qasmBuffer_;
 
    public:
     Token last{0, 0};
@@ -70,21 +72,34 @@ class Parser {
           isImplicitInclude(implicitInclude) {
       scan();
     }
+
+    explicit ScannerState(
+        const std::string& qasm,
+        std::optional<std::string> debugFilename = std::nullopt,
+        const bool implicitInclude = false)
+        : qasmBuffer_(qasm),
+          scanner(std::make_unique<Scanner>(qasmBuffer_)),
+          filename(std::move(debugFilename)),
+          isImplicitInclude(implicitInclude) {
+      scan();
+    }
   };
 
   std::stack<ScannerState> scanner{};
   DebugInfo* includeDebugInfo{nullptr};  // raw pointer into debugInfoPool_
 
   // Pool allocator for DebugInfo — avoids per-statement make_shared overhead.
-  // All DebugInfo objects share the parse session lifetime and are freed together.
+  // All DebugInfo objects share the parse session lifetime and are freed
+  // together.
   std::vector<std::unique_ptr<DebugInfo>> debugInfoPool_;
 
   [[noreturn]] void error(const Token& token, const std::string& msg) {
     std::cerr << "Error at line " << token.line << ", column " << token.col
               << ": " << msg << '\n';
-    throw CompilerError(msg, DebugInfo(token.line, token.col,
-                                       scanner.top().filename.value_or("<input>"),
-                                       includeDebugInfo));
+    throw CompilerError(msg,
+                        DebugInfo(token.line, token.col,
+                                  scanner.top().filename.value_or("<input>"),
+                                  includeDebugInfo));
   }
 
   [[nodiscard]] Token last() const {
@@ -136,11 +151,25 @@ class Parser {
     }
   }
 
+  explicit Parser(const std::string& qasm,
+                  bool implicitlyIncludeStdgates = true) {
+    scanner.emplace(qasm);
+    scan();
+    if (implicitlyIncludeStdgates) {
+      scanner.emplace(std::make_unique<std::istringstream>(STDGATES),
+                      "stdgates.inc", true);
+      scan();
+    }
+  }
+
   virtual ~Parser() = default;
 
   std::shared_ptr<VersionDeclaration> parseVersionDeclaration();
 
-  std::vector<std::shared_ptr<Statement>> parseProgram();
+  using StatementCallback = std::function<void(std::shared_ptr<Statement>)>;
+
+  std::vector<std::shared_ptr<Statement>> parseProgram(
+      StatementCallback callback = nullptr);
 
   std::shared_ptr<Statement> parseStatement();
 
@@ -195,17 +224,18 @@ class Parser {
   // Allocate a DebugInfo without heap-allocating a string for well-known
   // filenames. QASM 2.0 files go through the implicit stdgates.inc/qelib1.inc
   // include, so the filename is always one of three strings — cache them.
-  DebugInfo makeDebugInfo(Token const& begin,
-                         Token const& /*end*/) {
+  DebugInfo makeDebugInfo(Token const& begin, Token const& /*end*/) {
     // Parameter `end` is currently not used.
     static const std::string s_stdgates{"stdgates.inc"};
     static const std::string s_qelib1{"qelib1.inc"};
     static const std::string s_input{"<input>"};
     const auto& fn = scanner.top().filename.has_value()
-        ? (scanner.top().filename.value() == "stdgates.inc") ? s_stdgates
-        : (scanner.top().filename.value() == "qelib1.inc")   ? s_qelib1
-        : scanner.top().filename.value()
-        : s_input;
+                         ? (scanner.top().filename.value() == "stdgates.inc")
+                               ? s_stdgates
+                           : (scanner.top().filename.value() == "qelib1.inc")
+                               ? s_qelib1
+                               : scanner.top().filename.value()
+                         : s_input;
     return DebugInfo(begin.line, begin.col, fn, includeDebugInfo);
   }
 
@@ -214,20 +244,21 @@ class Parser {
     static const std::string s_qelib1{"qelib1.inc"};
     static const std::string s_input{"<input>"};
     const auto& fn = scanner.top().filename.has_value()
-        ? (scanner.top().filename.value() == "stdgates.inc") ? s_stdgates
-        : (scanner.top().filename.value() == "qelib1.inc")   ? s_qelib1
-        : scanner.top().filename.value()
-        : s_input;
+                         ? (scanner.top().filename.value() == "stdgates.inc")
+                               ? s_stdgates
+                           : (scanner.top().filename.value() == "qelib1.inc")
+                               ? s_qelib1
+                               : scanner.top().filename.value()
+                         : s_input;
     return DebugInfo(token.line, token.col, fn, includeDebugInfo);
   }
 
-  // Allocate a long-lived DebugInfo into the pool (for includeDebugInfo chain).
-  // Returns a raw pointer that is valid for the entire parse session.
+  // Allocate a long-lived DebugInfo into the pool (for includeDebugInfo
+  // chain). Returns a raw pointer that is valid for the entire parse session.
   DebugInfo* allocDebugInfo(size_t line, size_t col, std::string filename,
                             DebugInfo* parent = nullptr) {
-    debugInfoPool_.push_back(std::make_unique<DebugInfo>(line, col,
-                                                         std::move(filename),
-                                                         parent));
+    debugInfoPool_.push_back(
+        std::make_unique<DebugInfo>(line, col, std::move(filename), parent));
     return debugInfoPool_.back().get();
   }
 
