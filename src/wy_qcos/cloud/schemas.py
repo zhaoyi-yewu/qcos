@@ -49,6 +49,9 @@ QASM_TYPE_ALL = [QASM_TYPE_QASM2, QASM_TYPE_QASM3]
 # validation and compilation; other vendor/institution compilers
 # (e.g. quarkcircuit) only perform circuit validation.
 COMPILER_CMSS = "cmss"
+# Vendor compiler name (北量院 Quafu). It only performs circuit validation
+# via QuafuVerifier.
+COMPILER_QUARKCIRCUIT = "quarkcircuit"
 
 
 class ExtendTargetBits(BaseModel):
@@ -79,10 +82,9 @@ class TopologyDoubleParam(BaseModel):
 class Topology(BaseModel):
     """Real-machine topology structure.
 
-    topology is sent as a JSON string in the request, but the spec defines
-    its inner structure (bits / basisGates / singleParam / doubleParam).
-    This model is used to parse and validate that structure after the
-    string is decoded.
+    topology is sent as a JSON object in the request, whose inner
+    structure (bits / basisGates / singleParam / doubleParam) is defined
+    by the fields below. Pydantic parses and validates it directly.
     """
 
     # number of available qubits on the real machine
@@ -142,11 +144,10 @@ class CompileRequest(BaseModel):
     extend: ExtendTargetBits | None = Field(
         None, description="optional parameters submitted with the task"
     )
-    # real-machine topology structure (JSON string, see Topology)
-    topology: str = Field(
+    # real-machine topology structure (parsed object, see Topology)
+    topology: Topology = Field(
         ...,
-        max_length=10240,
-        description="real-machine topology structure (JSON string)",
+        description="real-machine topology structure (JSON object)",
     )
 
 

@@ -1,0 +1,120 @@
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF
+# ANY KIND, EITHER EXPRESS OR IMPLIED.
+# ----------------------------------------------------------------------
+
+# Base image for the qcos-compiler cloud service.
+#
+# Holds the slow-moving layers that rarely change between releases:
+#   1. OS + build/runtime rpms (gcc/cmake/etc. needed to compile CPython
+#      and the C++ transpiler extension)
+#   2. pinned CPython interpreter installed via pyenv
+#   3. service virtualenv with all Python dependencies pre-installed
+#
+# Only the Python dependency files (requirements/*.txt) are copied here,
+# so a code change does NOT invalidate this layer — it is rebuilt solely
+# when requirements change. The business image (./Dockerfile) FROMs this
+# image and adds source + C++ extension + package install on top.
+#
+# Domestic mirrors are used by default (pip: Tsinghua, pyenv: Gitee,
+# CPython source: Huawei Cloud); each is overridable via ARG/env so an
+# offline or accelerated build can point them elsewhere.
+#
+# Build:
+#   docker build -f build-scripts/compiler/Dockerfile.base \
+#       -t qcos-compiler-base:1.5.0 .
+
+ARG CONTAINER_BASE_IMAGE=openeuler/openeuler:24.03-lts
+FROM ${CONTAINER_BASE_IMAGE}
+
+ARG WORK_DIR=/root
+ARG PYTHON_VERSION=3.12.13
+
+# pip mirror (Tsinghua TUNA) — overridable, set empty to use PyPI.
+ARG PIP_MIRROR=https://pypi.tuna.tsinghua.edu.cn/simple
+# pyenv git source (Gitee mirror) — overridable.
+ARG PYENV_GIT_URL=https://gitee.com/mirrors/pyenv.git
+# CPython source tarball (Huawei Cloud mirror) — overridable. Must be
+# the .tar.xz variant: pyenv's python-build downloads Python-3.12.13.tar.xz
+# when the host has xz support (openeuler does), so the cached file must
+# match that exact name or pyenv ignores the cache and hits python.org.
+ARG PYTHON_SRC_URL=https://mirrors.huaweicloud.com/python/3.12.13/Python-3.12.13.tar.xz
+
+LABEL stage=qcos-compiler-base-builder
+LABEL build=qcos-compiler-base
+LABEL maintainer="Zhou Yunxiao <zhouyunxiao_yewu@cmss.chinamobile.com>"
+
+ENV TZ=Asia/Shanghai
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+
+# pyenv home and the virtualenv shared with the business image.
+ENV PYENV_ROOT=/opt/pyenv
+ENV VENV_PATH=/opt/qcos-compiler-venv
+ENV PATH=${PYENV_ROOT}/bin:${VENV_PATH}/bin:${PATH}
+
+WORKDIR ${WORK_DIR}
+
+# ---- layer 1: OS packages -------------------------------------------------
+# build/runtime rpms required to compile CPython with pyenv and to build
+# the C++ transpiler extension later (in the business image).
+RUN set -e && \
+    mkdir -p /etc/qcos/ /var/log/qcos/ /var/run/qcos/ && \
+    yum install --nobest -y \
+      git wget curl ca-certificates \
+      iproute net-tools \
+      make cmake gcc gcc-c++ \
+      gtest-devel \
+      openssl-devel libffi-devel bzip2-devel xz-devel \
+      zlib-devel readline-devel sqlite-devel ncurses-devel \
+      gdbm-devel tk-devel libuuid-devel \
+      glibc-langpack-en && \
+    echo "LANG=C.UTF-8" > /etc/locale.conf && \
+    yum clean all && \
+    rm -rf /var/cache/yum
+
+# ---- layer 2: pinned CPython via pyenv ------------------------------------
+RUN set -e && \
+    git clone --depth 1 ${PYENV_GIT_URL} ${PYENV_ROOT} && \
+    # pre-seed the pyenv download cache with the CPython tarball from a
+    # domestic mirror so python-build never reaches python.org — this
+    # both accelerates the build and works behind a restricted network.
+    # The cached filename MUST match what python-build expects for this
+    # version (Python-3.12.13.tar.xz on xz-capable hosts) and its sha256
+    # must match the official tarball, else the cache is ignored.
+    TMP_SRC=$(mktemp -d) && \
+    curl -fsSL ${PYTHON_SRC_URL} -o ${TMP_SRC}/Python-${PYTHON_VERSION}.tar.xz && \
+    mkdir -p ${PYENV_ROOT}/cache && \
+    mv ${TMP_SRC}/Python-${PYTHON_VERSION}.tar.xz ${PYENV_ROOT}/cache/ && \
+    rm -rf ${TMP_SRC} && \
+    ${PYENV_ROOT}/bin/pyenv install ${PYTHON_VERSION} && \
+    ${PYENV_ROOT}/bin/pyenv global ${PYTHON_VERSION} && \
+    ${PYENV_ROOT}/versions/${PYTHON_VERSION}/bin/python --version
+
+# ---- layer 3: service virtualenv + Python dependencies --------------------
+# Copy ONLY the requirements files first so this layer caches across code
+# changes and only rebuilds when dependencies change.
+COPY requirements/requirements-transpiler-cmss.txt /tmp/requirements/requirements-transpiler-cmss.txt
+COPY requirements/requirements-qcos.txt /tmp/requirements/requirements-qcos.txt
+
+RUN set -e && \
+    PYENV_PYTHON=${PYENV_ROOT}/versions/${PYTHON_VERSION}/bin/python && \
+    # --copies: copy the interpreter binary into the venv instead of
+    # symlinking it, so the venv is self-contained and portable to the
+    # lean runtime image (which has no pyenv interpreter).
+    ${PYENV_PYTHON} -m venv --copies ${VENV_PATH} && \
+    ${VENV_PATH}/bin/python --version && \
+    if [ -n "${PIP_MIRROR}" ]; then \
+        ${VENV_PATH}/bin/pip config set global.index-url "${PIP_MIRROR}"; \
+    fi && \
+    ${VENV_PATH}/bin/pip install --no-cache-dir --upgrade pip && \
+    ${VENV_PATH}/bin/pip install --no-cache-dir -r \
+        /tmp/requirements/requirements-transpiler-cmss.txt && \
+    ${VENV_PATH}/bin/pip install --no-cache-dir -r \
+        /tmp/requirements/requirements-qcos.txt || true && \
+    rm -rf /root/.cache/pip

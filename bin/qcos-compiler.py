@@ -28,6 +28,9 @@ from wy_qcos.cloud.app import app
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8080
 
+# Log format with a leading timestamp so every log line carries the
+# current service time; mirrors the default Config.LOG.LOG_FORMAT.
+LOG_FORMAT = "%(asctime)s %(levelname)s %(filename)s:%(lineno)s %(message)s"
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
@@ -55,7 +58,9 @@ def parse_args(argv=None):
 
 def main(argv=None):
     args = parse_args(argv)
-    logging.basicConfig(level=args.log_level.upper())
+    logging.basicConfig(
+        level=args.log_level.upper(), format=LOG_FORMAT,
+    )
     uvicorn.run(app, host=args.host, port=args.port, log_level=args.log_level)
 
 
