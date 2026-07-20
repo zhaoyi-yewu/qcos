@@ -18,6 +18,13 @@ perf_enabled = false
 # 注意：当开启时，无法使用csv文件格式输出
 # enable_transpile_single = true
 
+# 是否将 transpile 后的 basis_gate_list 写出为 qasm 文件，默认 false
+# enable_output_qasm = false
+# qasm 输出目录，绝对路径或项目的相对路径；留空时写到输入文件所在目录
+# qasm_output_dir = ""
+# qasm 版本，可选 "2.0" 或 "3.0"，默认 "2.0"
+# qasm_version = "2.0"
+
 [transpile.transpiler]
 # 默认为true
 # enable_transpiler = true
