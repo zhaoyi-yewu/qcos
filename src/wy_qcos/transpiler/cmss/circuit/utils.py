@@ -143,6 +143,7 @@ class RandomCircuitGen:
 
             gates_3q = [
                 (Constant.THREE_QUBIT_GATE_CCX, 3, 0),
+                (Constant.THREE_QUBIT_GATE_CCZ, 3, 0),
                 (Constant.THREE_QUBIT_GATE_CSWAP, 3, 0),
                 (Constant.THREE_QUBIT_GATE_RCCX, 3, 0),
             ]

@@ -385,6 +385,16 @@ void bind_circuits(nb::module_& m) {
       .def("default_decompose", &CCX::default_decompose)
       .def("__repr__", [](const CCX& self) { return self.to_string(); });
 
+  nb::class_<CCZ, GateOperation>(m, "CCZ")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def(nb::init<std::vector<int>, std::vector<double>, OperationType>(),
+           nb::arg("targets"), nb::arg("arg_value"), nb::arg("operation_type"))
+      .def("to_matrix", &CCZ::to_matrix)
+      .def("decompose_to_1q2q", &CCZ::decompose_to_1q2q)
+      .def("default_decompose", &CCZ::default_decompose)
+      .def("__repr__", [](const CCZ& self) { return self.to_string(); });
+
   nb::class_<CSWAP, GateOperation>(m, "CSWAP")
       .def(nb::init<std::vector<int>, std::vector<double>>(),
            nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())

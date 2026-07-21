@@ -410,6 +410,7 @@ const inline static std::unordered_map<std::string, qc::OpType>
         {"C3X", OpType::otC3X},
         {"c4x", OpType::otC4X},
         {"C4X", OpType::otC4X},
+        {"ccz", OpType::otCCZ},
         {"CCZ", OpType::otCCZ},
         {"r", OpType::otR},
         {"R", OpType::otR},

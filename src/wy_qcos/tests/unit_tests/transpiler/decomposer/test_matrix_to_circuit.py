@@ -587,11 +587,11 @@ class TestMatrixToCircuit:
         result = decomposer._add_single_control(gate, control=0)
         assert len(result) > 0
 
-    def test_add_single_control_cz_gate_raises(self) -> None:
-        """_add_single_control with CZ raises ValueError (ccz unsupported)."""
+    def test_add_single_control_cz_gate(self) -> None:
+        """_add_single_control with CZ should produce CCZ decomposition."""
         gate = CZ([1, 2])
-        with pytest.raises(ValueError, match="ccz is not support"):
-            decomposer._add_single_control(gate, control=0)
+        result = decomposer._add_single_control(gate, control=0)
+        assert len(result) > 0
 
     def test_add_single_control_swap_gate(self) -> None:
         """_add_single_control with SWAP should produce CSWAP decomposition."""

@@ -121,7 +121,8 @@ class OpenQasmParser final : public InstVisitor {
    *   - tau / τ   : 2*pi (TAU)
    *   - euler     : Euler's number e (E)
    *
-   * @return Const reference to the name -> (value, type) map of built-in constants.
+   * @return Const reference to the name -> (value, type) map of built-in
+   * constants.
    */
   static const std::map<std::string, std::pair<ConstEvalValue, InferredType>>&
   initializeBuiltins() {
@@ -143,12 +144,14 @@ class OpenQasmParser final : public InstVisitor {
   }
 
   /**
-   * @brief Translate a gate operand (qubit) to physical qubit indices (overload 1).
+   * @brief Translate a gate operand (qubit) to physical qubit indices
+   * (overload 1).
    *
    * Extracts the register identifier and index expression from a GateOperand,
    * then delegates to overload 2 for the actual translation.
    *
-   * @param gateOperand Gate operand containing register name and optional index.
+   * @param gateOperand Gate operand containing register name and optional
+   * index.
    * @param qubits      Output vector of qubit indices.
    * @param qregs       Quantum register map.
    * @param debugInfo   Debug information for error reporting.
@@ -162,7 +165,8 @@ class OpenQasmParser final : public InstVisitor {
   }
 
   /**
-   * @brief Translate a gate operand (qubit) to physical qubit indices (overload 2).
+   * @brief Translate a gate operand (qubit) to physical qubit indices
+   * (overload 2).
    *
    * Looks up the register base address and size in the quantum register map
    * by name, using a cache to speed up access to frequently used registers
@@ -228,7 +232,8 @@ class OpenQasmParser final : public InstVisitor {
    * selected.
    *
    * @param bitIdentifier Classical register identifier.
-   * @param indexExpr     Optional index expression; nullptr means the entire register.
+   * @param indexExpr     Optional index expression; nullptr means the entire
+   * register.
    * @param bits          Output vector of classical bit indices.
    * @param debugInfo     Debug information for error reporting.
    */
@@ -295,7 +300,8 @@ class OpenQasmParser final : public InstVisitor {
    * Initializes the constant evaluation pass and type checking pass, and
    * registers built-in constants (pi, tau, euler) into both systems.
    *
-   * @param quantumComputation Pointer to the QuantumComputation object to populate.
+   * @param quantumComputation Pointer to the QuantumComputation object to
+   * populate.
    */
   explicit OpenQasmParser(qc::QuantumComputation* quantumComputation)
       : typeCheckPass(&constEvalPass), qc(quantumComputation) {
@@ -314,11 +320,11 @@ class OpenQasmParser final : public InstVisitor {
    * @brief Process a single statement.
    *
    * Runs the following pipeline on each statement:
-   * constant evaluation -> type checking -> AST visit (translation to quantum ops).
-   * For gate call statements with no parameters, no modifiers, and all-constant
-   * operands, the constant evaluation and type checking passes are skipped as
-   * an optimization (this covers the vast majority of calls in Clifford
-   * benchmarks).
+   * constant evaluation -> type checking -> AST visit (translation to quantum
+   * ops). For gate call statements with no parameters, no modifiers, and
+   * all-constant operands, the constant evaluation and type checking passes
+   * are skipped as an optimization (this covers the vast majority of calls in
+   * Clifford benchmarks).
    *
    * @param statement The statement to process.
    */
@@ -386,7 +392,8 @@ class OpenQasmParser final : public InstVisitor {
    * Handles qubit register (qubit), classical bit register (bit), integer
    * type declarations, etc.
    * - QBit: added to the quantum register table of the QuantumComputation
-   *   object; the first register is cached to speed up subsequent translations.
+   *   object; the first register is cached to speed up subsequent
+   * translations.
    * - Bit/Int/Uint: added to the classical register table.
    * - Float: declared only, not added to the register table.
    * - Angle: currently unsupported.
@@ -635,14 +642,16 @@ class OpenQasmParser final : public InstVisitor {
   }
 
   /**
-   * @brief Evaluate a gate call and produce the corresponding list of quantum operations.
+   * @brief Evaluate a gate call and produce the corresponding list of quantum
+   * operations.
    *
    * This is the core function for gate call translation. The processing
    * pipeline is:
    * 1. Look up the gate in the definition map, supporting multi-controlled
    *    gates (mcx/mcphase, etc.) and QASM 2.0 compat mode.
    * 2. Validate that the number of parameters, controls, and targets match.
-   * 3. Process gate modifiers (ctrl/negctrl/inv) and compute implicit controls.
+   * 3. Process gate modifiers (ctrl/negctrl/inv) and compute implicit
+   * controls.
    * 4. Evaluate all parameters to compile-time constants.
    * 5. Translate operands to physical qubit indices.
    * 6. Check for duplicate qubits.
@@ -650,7 +659,8 @@ class OpenQasmParser final : public InstVisitor {
    *    expand into multiple operations.
    * 8. Delegate to applyQuantumOperation to generate the final quantum ops.
    *
-   * @param gateCallStatement The gate call statement (used for error reporting).
+   * @param gateCallStatement The gate call statement (used for error
+   * reporting).
    * @param identifier        Gate identifier.
    * @param parameters        List of gate parameter expressions.
    * @param allOperands       All operands (controls + targets).
@@ -871,7 +881,8 @@ class OpenQasmParser final : public InstVisitor {
   }
 
   /**
-   * @brief Construct a gate definition for multi-controlled gates (mcx/mcphase, etc.).
+   * @brief Construct a gate definition for multi-controlled gates
+   * (mcx/mcphase, etc.).
    *
    * Dynamically generates a CompoundGate definition for multi-controlled
    * gates such as "mcx", "mcx_gray", "mcx_vchain", "mcx_recursive", and
@@ -881,8 +892,10 @@ class OpenQasmParser final : public InstVisitor {
    *   - mcphase    -> ctrl(n-1) @ p(parameter)
    * Note: mcx_vchain and mcx_recursive require additional ancilla qubits.
    *
-   * @param identifier  Multi-controlled gate identifier (e.g. "mcx", "mcphase").
-   * @param operandSize Total number of operands (controls + targets + ancillae).
+   * @param identifier  Multi-controlled gate identifier (e.g. "mcx",
+   * "mcphase").
+   * @param operandSize Total number of operands (controls + targets +
+   * ancillae).
    * @param debugInfo   Debug information.
    * @return Shared pointer to the constructed CompoundGate.
    */
@@ -930,7 +943,8 @@ class OpenQasmParser final : public InstVisitor {
   }
 
   /**
-   * @brief Apply a gate definition to produce a list of target quantum operations.
+   * @brief Apply a gate definition to produce a list of target quantum
+   * operations.
    *
    * Handles standard gates and compound gates separately:
    *
@@ -951,9 +965,11 @@ class OpenQasmParser final : public InstVisitor {
    *
    * @param gate                The gate definition.
    * @param targetBits          List of target qubits.
-   * @param controlBits         List of control qubits (with pos/neg control type).
+   * @param controlBits         List of control qubits (with pos/neg control
+   * type).
    * @param evaluatedParameters Pre-evaluated parameter list.
-   * @param invertOperation     Whether to invert the operation (triggered by inv modifier).
+   * @param invertOperation     Whether to invert the operation (triggered by
+   * inv modifier).
    * @param debugInfo           Debug information.
    * @return The generated list of quantum operations.
    */
@@ -1265,6 +1281,10 @@ class OpenQasmParser final : public InstVisitor {
           operation = std::make_shared<qcos::CCX>(std::move(all_qubits),
                                                   std::move(arg_values));
           break;
+        case qc::otCCZ:
+          operation = std::make_shared<qcos::CCZ>(std::move(all_qubits),
+                                                  std::move(arg_values));
+          break;
         case qc::otCSWAP:
           operation = std::make_shared<qcos::CSWAP>(std::move(all_qubits),
                                                     std::move(arg_values));
@@ -1421,7 +1441,8 @@ class OpenQasmParser final : public InstVisitor {
    * 4. Validate that the quantum and classical register widths match.
    * 5. Create a Measure operation for each qubit.
    *
-   * @param identifier        Assignment target identifier (classical register name).
+   * @param identifier        Assignment target identifier (classical register
+   * name).
    * @param indexExpression   Optional index expression.
    * @param measureExpression The measure expression.
    * @param debugInfo         Debug information.
@@ -1648,7 +1669,8 @@ class OpenQasmParser final : public InstVisitor {
  * Pipeline:
  * 1. Estimate the number of operations from the stream size and pre-allocate
  *    memory (approximately one operation per 20 bytes).
- * 2. Create a QASM parser (without implicitly including standard gate definitions).
+ * 2. Create a QASM parser (without implicitly including standard gate
+ * definitions).
  * 3. Create an OpenQasmParser and process each parsed statement.
  *
  * @param is Input stream containing the OpenQASM program.
