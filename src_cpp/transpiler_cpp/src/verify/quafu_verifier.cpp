@@ -89,7 +89,8 @@ bool QuafuVerifier::check_qasm_syntax(const std::string& qasm_string) const {
       }
     }
     parsed_num_qubits_ = static_cast<int>(used_qubits.size());
-  } catch (...) {
+  } catch (const std::exception& exc) {
+    std::cerr << "QASM parse error: " << exc.what() << std::endl;
     result_.add_failure("QASM syntax error: failed to parse circuit");
     return false;
   }
