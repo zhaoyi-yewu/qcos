@@ -31,7 +31,8 @@ class SABRE;
 
 std::vector<int> sabre_initial_mapping(
     const std::vector<GateOperation>& gates_list,
-    const std::vector<std::pair<int, int>>& coupling_list);
+    const std::vector<std::pair<int, int>>& coupling_list,
+    const std::vector<int>& initial_layout);
 
 /**
  * @brief 使用SABRE算法对逻辑门序列执行routing。
@@ -111,7 +112,7 @@ class SABRE {
   /**
    * @brief 执行SABRE算法
    *
-   * 内部处理: measure 分离 → 保真度过滤/ID稠密化 → 路由 → measure 追加。
+   * 内部处理: measure 分离 -> 保真度过滤/ID稠密化 -> 路由 -> measure 追加。
    * 结果通过 get_physical_gates() 获取。
    *
    * @param gates_list 待映射的逻辑门序列(可含 measure)
@@ -143,7 +144,8 @@ class SABRE {
 
   friend std::vector<int> sabre_initial_mapping(
       const std::vector<GateOperation>& gates_list,
-      const std::vector<std::pair<int, int>>& coupling_list);
+      const std::vector<std::pair<int, int>>& coupling_list,
+      const std::vector<int>& initial_layout);
 
  private:
   int max_phy_qubit_id_;      ///< 最大物理比特 ID (数组按 ID 索引, 大小为

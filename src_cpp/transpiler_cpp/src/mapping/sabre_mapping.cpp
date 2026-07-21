@@ -22,7 +22,7 @@
 
 namespace qcos {
 
-constexpr int k_initial_mapping_prefix_layers = 25;
+constexpr int kInitialMappingPrefixLayers = 25;
 
 std::vector<qcos::GateOperation> extract_two_qubit_layer_prefix(
     const std::vector<qcos::GateOperation>& gates_list, int prefix_layers) {
@@ -59,23 +59,21 @@ std::vector<qcos::GateOperation> extract_two_qubit_layer_prefix(
 
 std::vector<int> sabre_initial_mapping(
     const std::vector<GateOperation>& gates_list,
-    const std::vector<std::pair<int, int>>& coupling_list) {
+    const std::vector<std::pair<int, int>>& coupling_list,
+    const std::vector<int>& initial_layout) {
   SABRE sabre(coupling_list);
-  auto prefix_gates = extract_two_qubit_layer_prefix(
-      gates_list, k_initial_mapping_prefix_layers);
+  auto prefix_gates =
+      extract_two_qubit_layer_prefix(gates_list, kInitialMappingPrefixLayers);
 
-  // reverse gates
   std::vector<GateOperation> reverse_gates = prefix_gates;
   std::reverse(reverse_gates.begin(), reverse_gates.end());
 
-  // get initial mapping for reverse ir
-  sabre.execute_routing(prefix_gates, {});
+  // 以 initial_layout 作为正向路由起点（空则从零开始），1 次迭代
+  sabre.execute_routing(prefix_gates, initial_layout);
   std::vector<int> reverse_mapping = sabre.get_logic2phy();
 
-  // get the initial mapping for original ir using reverse mapping
   sabre.execute_routing(reverse_gates, reverse_mapping);
-  std::vector<int> mapping = sabre.get_logic2phy();
-  return mapping;
+  return sabre.get_logic2phy();
 }
 
 }  // namespace qcos

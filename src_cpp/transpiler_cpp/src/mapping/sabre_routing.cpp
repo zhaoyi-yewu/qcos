@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "mapping/chip_data.h"
+#include "mapping/dense_layout.h"
 #include "mapping/mapping_utils.h"
 #include "mapping/sabre_mapping.h"
 
@@ -117,8 +118,10 @@ void SABRE::execute(
   }
 
   // 3. 计算初始映射并执行路由
-  std::vector<int> initial_l2p =
-      sabre_initial_mapping(gate_ops, coupling_list_);
+  // DenseLayout 选区域 + SABRE 精化排列
+  std::vector<int> initial_l2p = dense_layout_mapping(
+      gate_ops, coupling_list_, edge_fidelities_, logic_qubit_num_);
+
   std::vector<GateOperation> routed_gate_ops =
       execute_routing(gate_ops, initial_l2p);
 

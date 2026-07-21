@@ -17,27 +17,36 @@
 
 #pragma once
 
+#include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include "circuit/gate_operation.h"
-#include "mapping/sabre_routing.h"
 
 namespace qcos {
 
 /**
- * @brief 使用 SABRE forward-backward routing 计算初始逻辑到物理映射。
+ * @brief 使用 DenseLayout 算法计算初始逻辑到物理映射。
  *
- * 从 initial_layout 出发，通过正向路由得到末尾排列，
- * 再反转门序列反向路由，得到更优的初始映射。
+ * 分两步完成初始映射：
+ * 1. DenseLayout选区域:
+ * 在物理耦合图中找到与逻辑比特数相同、内部连接最密集的连通子图
+ * 2. SABRE 精化排列：以选出的子图为起点，通过 SABRE forward-backward routing
+ * 优化排列
+ *
+ * 当 edge_fidelities 为空时，选区域阶段退化为纯密度优先策略；
+ * 否则在密度优先的基础上，同时考虑边的保真度：
+ * 子图的评分 = (内部边数, -错误得分)，优先选内部边多且错误率低的子图。
  *
  * @param gates_list 逻辑门序列
- * @param coupling_list 物理耦合边列表
- * @param initial_layout 起始映射（如 DenseLayout 选区域结果），空则从零开始
+ * @param coupling_list 物理耦合边列表（有向）
+ * @param edge_fidelities 与 coupling_list 对应的边保真度
+ * @param num_logical 电路声明的逻辑比特总数
  * @return std::vector<int> 逻辑到物理映射
  */
-std::vector<int> sabre_initial_mapping(
+std::vector<int> dense_layout_mapping(
     const std::vector<GateOperation>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<int>& initial_layout = {});
+    const std::vector<double>& edge_fidelities, int num_logical);
 
 }  // namespace qcos

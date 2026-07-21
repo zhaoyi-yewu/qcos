@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "mapping/mapping_utils.h"
-#include "mapping/sabre_routing.h"
+#include "mapping/sabre_mapping.h"
 
 using namespace qcos;
 

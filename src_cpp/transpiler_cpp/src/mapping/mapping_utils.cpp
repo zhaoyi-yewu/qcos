@@ -194,19 +194,22 @@ void select_largest_component(std::vector<std::pair<int, int>>& coupling_list,
   std::unordered_set<int> largest_component_set(largest_component.begin(),
                                                 largest_component.end());
   size_t write_idx = 0;
+  bool has_fidelities = !edge_fidelities.empty();
   for (size_t read_idx = 0; read_idx < coupling_list.size(); ++read_idx) {
     // 边的两个端点都在最大分量中才保留
     if (largest_component_set.count(coupling_list[read_idx].first) &&
         largest_component_set.count(coupling_list[read_idx].second)) {
       coupling_list[write_idx] = coupling_list[read_idx];
-      if (read_idx < edge_fidelities.size()) {
+      if (has_fidelities && read_idx < edge_fidelities.size()) {
         edge_fidelities[write_idx] = edge_fidelities[read_idx];
       }
       ++write_idx;
     }
   }
   coupling_list.resize(write_idx);
-  edge_fidelities.resize(write_idx);
+  if (has_fidelities) {
+    edge_fidelities.resize(write_idx);
+  }
 }
 
 void select_largest_component(
