@@ -384,6 +384,7 @@ class CMSSTranspilerPerf:
 
     def get_transpile_result(self):
         transpile_all_result = {}
+        failed_params = []
         for _ in range(self.run_count):
             for params in self.params_list:
                 log_perf(
@@ -396,14 +397,20 @@ class CMSSTranspilerPerf:
                     f"config_file: {params.mapping_info[1]}\n"
                     f"sc_mapping_options: {params.sc_mapping_options}\n",
                 )
-                runtime = self.cmss_transpiler_perf_exec(
-                    input_file=params.file,
-                    opt_level=params.opt_level,
-                    base_gates=params.tech_gates,
-                    tech_type=params.mapping_info[0],
-                    config_file=params.mapping_info[1],
-                    sc_mapping_options=params.sc_mapping_options,
-                )
+                try:
+                    runtime = self.cmss_transpiler_perf_exec(
+                        input_file=params.file,
+                        opt_level=params.opt_level,
+                        base_gates=params.tech_gates,
+                        tech_type=params.mapping_info[0],
+                        config_file=params.mapping_info[1],
+                        sc_mapping_options=params.sc_mapping_options,
+                    )
+                except TranspilerException as e:
+                    logger.error(f"Transpile failed for {params.file}: {e}")
+                    if params not in failed_params:
+                        failed_params.append(params)
+                    continue
                 if params in transpile_all_result:
                     transpile_all_result[params].add_runtime(runtime)
                 else:
@@ -411,6 +418,16 @@ class CMSSTranspilerPerf:
 
         for params, runtime in transpile_all_result.items():
             self.transpile_result[params] = runtime
+
+        if failed_params:
+            logger.warning(
+                f"{len(failed_params)} parameter combination(s) failed:"
+            )
+            for params in failed_params:
+                logger.warning(
+                    f"  - {params.file} (opt_level={params.opt_level}, "
+                    f"tech_type={params.mapping_info[0]})"
+                )
 
     def output_csv_file(self):
         csv_file_path = None
