@@ -95,6 +95,13 @@ from .system import (
     PongResponse,
     SystemInfoRequest,
     SystemInfoResponse,
+    ShowMemRequest,
+    ShowMemResponse,
+    DebugGcRequest,
+    DebugGcResponse,
+    DebugTracemallocRequest,
+    TracemallocStatItem,
+    DebugTracemallocResponse,
 )
 from .metrics import (
     GetMetricsRequest,
