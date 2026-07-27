@@ -29,8 +29,14 @@ ENV CONTAINER_NAME=${CONTAINER_NAME}
 ENV PS1="(\${CONTAINER_NAME})[$(pwd)]$ "
 ENV QCOS_SANDBOX=true
 
+WORKDIR ${WORK_DIR}
+COPY ./ ${BUILD_CONTEXT}
+
 # Install extra rpm packages for sandbox: LaTeX/fonts/Java/Graphics etc.
 RUN set -e && \
+# config yum and pip repos
+    if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then mkdir -p /tmp/yum.repos.d/; mv /etc/yum.repos.d/*.repo /tmp/yum.repos.d/; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi && \
+    if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
     yum install --nobest -y rpm-build firefox java npm graphviz \
     texlive-gnu-freefont latexmk texlive texlive-xetex texlive-xecjk \
     texlive-ctex texlive-fncychap texlive-wrapfig texlive-capt-of \
@@ -49,4 +55,7 @@ RUN set -e && \
 # Write build date/commit-id/version into build-info file
     echo -e "\nSANDBOX build info\nversion: ${SANDBOX_IMAGE_VERSION}\n" >> /root/build-info.txt && \
 # cleanup
-    yum clean all
+    if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then rm -rf /etc/yum.repos.d/*.repo; mv /tmp/yum.repos.d/*.repo /etc/yum.repos.d/; fi && \
+    if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then rm -rf /root/.pip; fi && \
+    yum clean all && \
+    rm -rf ${BUILD_CONTEXT}

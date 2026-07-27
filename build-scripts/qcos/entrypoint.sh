@@ -65,12 +65,12 @@ qcos_template_st_config_file_path=${qcos_template_base_dir}/qcos-st.toml
 qcos_template_st_config_dir=${qcos_template_base_dir}/st-conf.d
 
 mkdir -p /var/log/qcos
-chmod 777 /var/log/qcos
 mkdir -p /etc/qcos/
 mkdir -p /etc/qcos/roles
 mkdir -p /etc/qcos/ssl
 mkdir -p ${qcos_extra_config_file_dir}
 mkdir -p ${qcos_st_config_dir}
+mkdir -p /var/run/qcos
 
 # load venv
 venv_dir="/var/lib/qcos/venv/default"
@@ -203,10 +203,14 @@ if [ "${local_cicd,,}" = true ]; then
   qcos_config_file_args="--config-file ${qcos_config_file_path} --config-file ${qcos_st_config_file_path} --config-dir ${qcos_st_config_dir}"
 fi
 
-# Apply sysctl kernel tuning for qcos-api
-sysctl -w net.ipv4.tcp_tw_reuse=1
-sysctl -w net.ipv4.tcp_timestamps=1
-sysctl -w net.ipv4.tcp_fin_timeout=30
+# Apply sysctl kernel tuning for qcos-api (requires root)
+if [ "$(id -u)" -eq 0 ]; then
+  sysctl -w net.ipv4.tcp_tw_reuse=1
+  sysctl -w net.ipv4.tcp_timestamps=1
+  sysctl -w net.ipv4.tcp_fin_timeout=30
+else
+  echo "Skip sysctl tuning: not running as root"
+fi
 
 # run qcos-api with max attempts
 MAX_ATTEMPTS=3
