@@ -29,7 +29,7 @@
                "params": {
                  "body": {
                    "username": "string",
-                   "password": "string"
+                   "password": "P@ssword1"
                  }
                }
              }

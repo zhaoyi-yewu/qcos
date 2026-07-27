@@ -107,7 +107,7 @@
 1. **管理员用户 (Admin User)**
 
    - 用户名：``admin``
-   - 密码：``123456`` （默认，应在生产环境修改）
+   - 密码：``P@ssword1`` （默认，应在生产环境修改）
    - 角色：``admin``
    - 项目：``default`` （项目ID: 00000000-0000-4000-8000-000000000000）
    - 描述：``Administrator with full permissions``
@@ -115,7 +115,7 @@
 2. **匿名用户 (Anonymous User)** (仅在 auth_mode=no 时使用)
 
    - 用户名：``anonymous``
-   - 密码：``123456``
+   - 密码：``P@ssword1``
    - 角色：``admin``
    - 项目：``default``
    - 描述：``Anonymous user with full permissions (auth_mode=no)``
@@ -438,8 +438,8 @@ UserManager
 
 5. **创建默认用户**
 
-   - 用户 ``admin`` / 密码 ``123456`` / 角色 ``admin``
-   - 用户 ``anonymous`` / 密码 ``123456`` / 角色 ``admin`` (仅在 AUTH_MODE=no 时使用)
+   - 用户 ``admin`` / 密码 ``P@ssword1`` / 角色 ``admin``
+   - 用户 ``anonymous`` / 密码 ``P@ssword1`` / 角色 ``admin`` (仅在 AUTH_MODE=no 时使用)
 
 **常见问题**
 
@@ -475,14 +475,14 @@ Q: 如何修改默认密码？
    ✓ 运行db-manager.sh -u升级数据库到最新版本
    ✓ 验证所有数据库表已创建
    ✓ 启动QCOS服务
-   ✓ 使用admin/123456登录验证系统
+   ✓ 使用admin/P@ssword1登录验证系统
 
 **部署完成后**：
 
 1. 系统自动创建的默认用户：
 
    - 用户名: ``admin``
-   - 密码: ``123456`` (⚠️ 生产环境必须修改)
+   - 密码: ``P@ssword1`` (⚠️ 生产环境必须修改)
    - 角色: ``admin`` (拥有所有权限)
 
 2. 立即采取的安全措施：
@@ -526,7 +526,7 @@ QCOS系统采用多租户架构，支持项目隔离。用户关联到特定的�
    # 创建用户
    status_code, reason, text, result = client.create_user(
        user_name="testuser",
-       password="password123",
+       password="P@ssword1",
        roles=["user"],
        description="Test user"
    )
@@ -752,7 +752,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
     # 即使传入错误的token也会被忽略
     result = client.create_user(
         user_name="test",
-        password="password",
+        password="P@ssword1",
         roles=["user"]
     )  # 成功，无需认证
 
@@ -778,7 +778,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
       # Step 1: 获取令牌
       response = client.login(
           username="admin",
-          password="123456"
+          password="P@ssword1"
       )
       access_token = response["access_token"]
       refresh_token = response["refresh_token"]
@@ -793,7 +793,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
       # Step 3: 访问受保护的API
       result = client.create_user(
           user_name="testuser",
-          password="password123",
+          password="P@ssword1",
           roles=["user"]
       )  # 成功，因为default用户(admin)有权限
 
@@ -818,7 +818,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
 **默认用户**：
 
 - 用户名: ``admin``
-- 密码: ``123456`` (在部署时建议修改为强密码)
+- 密码: ``P@ssword1`` (在部署时建议修改为强密码)
 - 角色: ``admin``
 
 **配置示例**：
@@ -873,14 +873,14 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
 
 .. code-block:: shell
 
-    ./bin/encrypt-virtual-instance-id.py -e -s 123456 -dn dummy qutip_sim -i 00000000-0000-4000-8000-000000000123
+    ./bin/encrypt-virtual-instance-id.py -e -s P@ssword1 -dn dummy qutip_sim -i 00000000-0000-4000-8000-000000000123
     [Input]
     device_name: dummy, qutip_sim
-    instance_id: 00000000-0000-4000-8000-000000000123, salt: 123456
+    instance_id: 00000000-0000-4000-8000-000000000123, salt: P@ssword1
 
     [Output]
-    virtual_instance_id: ZHVtbXkrcXV0aXBfc2ltfDAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDEyM3w5NzQ5
-    export QCOS_VIRTUAL_INSTANCE_ID=ZHVtbXkrcXV0aXBfc2ltfDAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDEyM3w5NzQ5
+    virtual_instance_id: ZHVtbXkrcXV0aXBfc2ltfDAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDEyM3xlODRl
+    export QCOS_VIRTUAL_INSTANCE_ID=ZHVtbXkrcXV0aXBfc2ltfDAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDEyM3xlODRl
 
 **虚拟实例ID格式**：
 
@@ -1017,7 +1017,7 @@ QCOS系统通过 ``AUTH_MODE`` 配置参数支持多种认证模式，适应不�
     QCOS_DATABASE_CONNECTION_URL=postgresql+pg8000://prefect:${password}@127.0.0.1:5432/qcos
     ACCESS_CONTROL_MODEL_FILE=/etc/qcos/roles/casbin_model.conf
     ACCESS_CONTROL_POLICY_FILE=/etc/qcos/roles/policy.conf
-    ADMIN_PASSWORD=your-admin-password      # 默认管理员密码（可选），推荐强密码
+    ADMIN_PASSWORD=P@ssword1      # 默认管理员密码（可选），推荐强密码
 
 安全建议
 --------

@@ -15,7 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-# Don't import any other libraries
+# Don't import any other libraries (os is required for security: reading
+# the fernet secret key from the environment instead of hardcoding it)
+import os
+
 from wy_qcos.common.qcos_version import QcosVersion
 
 _s = lambda x: x
@@ -61,7 +64,9 @@ class Constant:
     DB_DIALECT_POSTGRESQL = "postgresql"
 
     # Security
-    DEFAULT_FERNET_KEY = "qevBn4Ol_3bJ7t0IW7TmPCCZurqfw_QRa810U43o_m0="
+    DEFAULT_FERNET_KEY = os.environ.get(
+        "FERNET_SECRET_KEY", "APzd4m3XeveFilLjkT5vMzCjKzEhphvOkVzGFF_ERFM="
+    )
     ENCRYPTION_PREFIX = "++"
 
     # Flow limit
@@ -403,7 +408,7 @@ class Constant:
     DEFAULT_PROJECT_ID = "00000000-0000-4000-8000-000000000000"
     DEFAULT_PROJECT_NAME = "default project"
     ADMIN_USERNAME = "admin"
-    DEFAULT_ADMIN_PASSWORD = _s("123456")
+    DEFAULT_ADMIN_PASSWORD = _s("P@ssword1")
     DEFAULT_VIRTUAL_INSTANCE_PASSWORD = _s("111111")
     ANONYMOUS_USER_ID = "00000000-0000-4000-8000-000000000000"
     ANONYMOUS_USERNAME = "anonymous"
@@ -518,6 +523,7 @@ class Constant:
     JOB_METRICS_FIELD_QUEUED = JOB_STATUS_QUEUED.lower()
     JOB_METRICS_FIELD_CANCELLING = JOB_STATUS_CANCELLING.lower()
     JOB_METRICS_FIELD_CANCELLED = JOB_STATUS_CANCELLED.lower()
+    JOB_METRICS_FIELD_DELETING = JOB_STATUS_DELETING.lower()
     JOB_METRICS_FIELD_DELETED = JOB_STATUS_DELETED.lower()
     JOB_METRICS_FIELD_UNKNOWN = JOB_STATUS_UNKNOWN.lower()
 

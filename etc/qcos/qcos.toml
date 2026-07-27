@@ -4,16 +4,18 @@
 # Global debug switch; when enabled, lowers global log level to DEBUG
 DEBUG = false
 
-# [GLOBAL CONFIG] max jobs (all status)
-MAX_JOBS = 10000
-# [GLOBAL CONFIG] max queued+running jobs
-MAX_QUEUED_JOBS = 1000
+# [GLOBAL CONFIG] max jobs (all status), -1: unlimited
+MAX_JOBS = -1
+# [GLOBAL CONFIG] max queued+running jobs, -1: unlimited
+MAX_QUEUED_JOBS = -1
 # [GLOBAL CONFIG] authentication mode: "no" (default), "jwt", "virtual_instance"
 AUTH_MODE = "no"
 # [JOB CLEAN] job clean interval in minutes (default: 60)
 JOB_CLEAN_INTERVAL = 60
-# job expiration days, jobs older than this will be auto-deleted (default: 7)
-JOB_EXPIRE_DAYS = 7
+# job expiration days, jobs older than this will be auto-deleted, -1: never expire
+JOB_EXPIRE_DAYS = -1
+# completed flow-run expiration days, flow-runs older than this will be auto-deleted, -1: never expire
+FLOW_EXPIRE_DAYS = 1
 # [GLOBAL CONFIG] default venv base dir
 # VENV_DIR = "/var/lib/qcos/venv"
 
@@ -33,8 +35,8 @@ API_SERVER_LISTEN_IP = ""
 API_SERVER_LISTEN_PORT = 18400
 
 [USERS]
-# max jobs (per user, all status)
-MAX_JOBS = 100
+# max jobs (per user, all status), -1: unlimited
+MAX_JOBS = -1
 # password expiry days, 0: never expired
 PASSWORD_EXPIRY_DAYS = 90
 # max login attempts before lockout
@@ -47,8 +49,8 @@ LOCKOUT_DURATION_MINUTES = 30
 ACCESS_CONTROL_MODEL_FILE = "/etc/qcos/roles/casbin_model.conf"
 # access control policy file
 ACCESS_CONTROL_POLICY_FILE = "/etc/qcos/roles/policy.conf"
-# admin user password (hashed with PASSWORD_SALT)
-ADMIN_PASSWORD = "++gAAAAABpt8fIFNquoHfkm0jqDAtQWKit9f1y7Ns479NBgzSGCUvwhlJcrUaL0CU0qkXX9OQpDFXNzCUU1dR37-HqqTFIevAWqQ=="
+# default admin user password (hashed with PASSWORD_SALT)
+DEFAULT_ADMIN_PASSWORD = "P@ssword1"
 # jwt secret key for authentication
 JWT_AUTH_SECRET_KEY = "47pW_6k8A4iU1Z8-r8G2j4_xN9M5V3L7Q9p2X1Y4Z0A"
 # jwt auth algorithm
