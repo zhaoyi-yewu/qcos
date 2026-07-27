@@ -15,6 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import ast
+import operator
+
 import numpy as np
 import re
 from typing import Any
@@ -27,6 +30,89 @@ from wy_qcos.transpiler.cmss.compiler.linked_list import (
     LinkedList,
     LinkedNode,
 )
+
+# Allowed binary operators for safe expression evaluation
+_SAFE_BINOPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+}
+
+# Allowed unary operators for safe expression evaluation
+_SAFE_UNARYOPS = {
+    ast.UAdd: operator.pos,
+    ast.USub: operator.neg,
+}
+
+# Allowed modules whose attributes may be accessed in safe expressions
+_SAFE_MODULES = {"np": np, "numpy": np}
+
+
+def _safe_eval(expr, locals_dict):
+    """Safely evaluate a math expression without using eval().
+
+    Only arithmetic operations, constants, variable names, calls to
+    whitelisted module functions (e.g. np.sin) and attribute access on
+    whitelisted modules are permitted.
+
+    Args:
+        expr: expression string
+        locals_dict: mapping of variable names to values
+
+    Returns:
+        evaluated result
+    """
+    tree = ast.parse(expr, mode="eval")
+
+    def _eval(node):
+        if isinstance(node, ast.Expression):
+            return _eval(node.body)
+        if isinstance(node, ast.Constant):
+            return node.value
+        if isinstance(node, ast.Num):  # pragma: no cover  # py<3.8 compat
+            return node.n
+        if isinstance(node, ast.Name):
+            if node.id in locals_dict:
+                return locals_dict[node.id]
+            if node.id in _SAFE_MODULES:
+                return _SAFE_MODULES[node.id]
+            raise NameError(f"name '{node.id}' is not allowed")
+        if isinstance(node, ast.BinOp):
+            op_type = type(node.op)
+            if op_type not in _SAFE_BINOPS:
+                raise ValueError(
+                    f"operator {op_type.__name__} not allowed"
+                )
+            return _SAFE_BINOPS[op_type](
+                _eval(node.left), _eval(node.right)
+            )
+        if isinstance(node, ast.UnaryOp):
+            op_type = type(node.op)
+            if op_type not in _SAFE_UNARYOPS:
+                raise ValueError(
+                    f"operator {op_type.__name__} not allowed"
+                )
+            return _SAFE_UNARYOPS[op_type](_eval(node.operand))
+        if isinstance(node, ast.Attribute):
+            value = _eval(node.value)
+            if value not in _SAFE_MODULES.values():
+                raise ValueError("attribute access not allowed")
+            return getattr(value, node.attr)
+        if isinstance(node, ast.Call):
+            func = _eval(node.func)
+            if not callable(func):
+                raise ValueError("call target is not callable")
+            args = [_eval(a) for a in node.args]
+            return func(*args)
+        raise ValueError(
+            f"node type {type(node).__name__} not allowed"
+        )
+
+    return _eval(tree)
 
 
 class Visitor:
@@ -1318,8 +1404,9 @@ class Visitor:
                 # 场景 np.sin , np.cos, np.tan
                 # np.exp, np.log, np.sqrt
                 n = self.get_call_param_value(arg.children[0], func_dict, pos)
-                # pylint: disable=eval-used
-                value = eval(arg.leaf.format(n), func_dict)  # noqa: S307
+                value = _safe_eval(
+                    arg.leaf.format(n), func_dict or {}
+                )
             else:
                 value = None
         return value
