@@ -13,6 +13,9 @@
 - 新增自动调度器，支持6个Filter和2个Weigher
 - Job表新增flavor_id和extra_specs字段
 - submit-job命令新增--flavor-id和--extra-specs参数，--backend改为可选
+- 新增show-mem命令：查询API服务端进程内存占用（RSS/VMS/线程数/GC对象数/CPU使用率）
+- 新增gc命令：手动触发Python垃圾回收，支持指定回收代数（0/1/2）
+- 新增trace-mem命令：通过tracemalloc追踪内存分配，返回当前/峰值内存及Top内存分配统计
 
 ### 变更功能
 
