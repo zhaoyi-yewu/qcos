@@ -55,15 +55,16 @@ done < "${env_file}"
 if [ -z "${QCOS_LOCAL_SRC_DIR}" ]; then
   export QCOS_LOCAL_SRC_DIR="${top_dir}"
 fi
-export SANDBOX_CONTAINER_NAME=qcos-sandbox
-export SANDBOX_IMAGE_NAME=qcos-sandbox
-export SANDBOX_IMAGE_VERSION=${SANDBOX_IMAGE_VERSION:-dev}
 
 export QCOS_IMAGE_NAME="${QCOS_IMAGE_NAME}"
 export QCOS_IMAGE_VERSION="${QCOS_IMAGE_VERSION}"
 export QCOS_CONTAINER_NAME="${QCOS_CONTAINER_NAME}"
+export SANDBOX_CONTAINER_NAME=qcos-sandbox
+export SANDBOX_IMAGE_NAME=qcos-sandbox
+export SANDBOX_IMAGE_VERSION=${SANDBOX_IMAGE_VERSION:-dev}
 if [ "${DEV,,}" = "true" ]; then
   export QCOS_IMAGE_NAME="${QCOS_IMAGE_NAME}-dev"
-  export QCOS_IMAGE_VERSION="${QCOS_IMAGE_VERSION}"
+  export QCOS_IMAGE_VERSION="dev"
   export QCOS_CONTAINER_NAME="${QCOS_CONTAINER_NAME}-dev"
+  export SANDBOX_IMAGE_VERSION="dev"
 fi
