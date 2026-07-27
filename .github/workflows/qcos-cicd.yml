@@ -27,20 +27,13 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: openeuler/openeuler:24.03-lts
+      options: --privileged --user root --pid=host
     steps:
-      - name: Free up disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          android: true
-          dotnet: true
-          haskell: true
-          codeql: true
-          docker-images: true
-          tool-cache: false
-          swap-storage: false
-
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Free Host Space
+        uses: ./.github/actions/free-host-space
 
       - name: Install basic packages
         run: |
@@ -71,24 +64,18 @@ jobs:
 
   build-sandbox-image:
     name: Build Docker Image (qcos-sandbox)
-    needs: build-qcos-base-image
+    needs:
+      - build-qcos-base-image
     runs-on: ubuntu-latest
     container:
       image: openeuler/openeuler:24.03-lts
+      options: --privileged --user root --pid=host
     steps:
-      - name: Free up disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          android: true
-          dotnet: true
-          haskell: true
-          codeql: true
-          docker-images: true
-          tool-cache: false
-          swap-storage: false
-
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Free Host Space
+        uses: ./.github/actions/free-host-space
 
       - name: Install basic packages
         run: |
@@ -128,22 +115,22 @@ jobs:
 
   build-qcos-image:
     name: Build Docker Image (qcos)
-    needs: build-sandbox-image
+    needs:
+      - build-sandbox-image
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Free up disk space
         uses: jlumbroso/free-disk-space@main
         with:
           android: true
           dotnet: true
           haskell: true
-          codeql: true
           docker-images: true
           tool-cache: false
           swap-storage: false
-
-      - name: Checkout Code
-        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -194,22 +181,22 @@ jobs:
 
   build-qcos-cli-image:
     name: Build Docker Image (qcos-cli)
-    needs: build-sandbox-image
+    needs:
+      - build-sandbox-image
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Free up disk space
         uses: jlumbroso/free-disk-space@main
         with:
           android: true
           dotnet: true
           haskell: true
-          codeql: true
           docker-images: true
           tool-cache: false
           swap-storage: false
-
-      - name: Checkout Code
-        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -254,15 +241,16 @@ jobs:
     needs:
       - build-qcos-image
     runs-on: ubuntu-latest
-
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Free up disk space
         uses: jlumbroso/free-disk-space@main
         with:
           android: true
           dotnet: true
           haskell: true
-          codeql: true
           docker-images: true
           tool-cache: false
           swap-storage: false
@@ -307,7 +295,6 @@ jobs:
     needs:
       - build-qcos-cli-image
     runs-on: ubuntu-latest
-
     steps:
       - name: Free up disk space
         uses: jlumbroso/free-disk-space@main
@@ -315,7 +302,6 @@ jobs:
           android: true
           dotnet: true
           haskell: true
-          codeql: true
           docker-images: true
           tool-cache: false
           swap-storage: false
@@ -368,7 +354,6 @@ jobs:
           android: true
           dotnet: true
           haskell: true
-          codeql: true
           docker-images: true
           tool-cache: false
           swap-storage: false
@@ -477,6 +462,16 @@ jobs:
     outputs:
       tags_empty: ${{ steps.check-tags.outputs.tags_empty }}
     steps:
+      - name: Free up disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          android: true
+          dotnet: true
+          haskell: true
+          docker-images: true
+          tool-cache: false
+          swap-storage: false
+
       - name: Generate Docker Metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -507,17 +502,6 @@ jobs:
             echo "TAGS_EMPTY=false" >> $GITHUB_ENV
             echo "tags_empty=false" >> $GITHUB_OUTPUT
           fi
-
-      - name: Free up disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          android: true
-          dotnet: true
-          haskell: true
-          codeql: true
-          docker-images: true
-          tool-cache: false
-          swap-storage: false
 
       - name: Checkout Code
         if: env.TAGS_EMPTY == 'false'

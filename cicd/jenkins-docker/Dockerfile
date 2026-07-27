@@ -26,3 +26,7 @@ RUN apt-get install -y docker.io docker-compose \
 
 # 3.Switch to root user to install dependencies
 USER root
+
+# 4. Create non-root user and switch back for runtime
+RUN groupadd -r qcos && useradd -r -g qcos qcos
+USER qcos

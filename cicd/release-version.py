@@ -57,6 +57,7 @@ pip3 install bump-my-version semver
 import pathlib
 import re
 import semver
+import shlex
 import subprocess
 import sys
 
@@ -114,7 +115,7 @@ def escape_single_braces(text):
 
 def run_command(
     command,
-    shell=True,
+    shell=False,
     check=True,
     capture_output=True,
     text=True,
@@ -126,8 +127,9 @@ def run_command(
     """Run command.
 
     Args:
-        command: command
-        shell: If true, the command will be executed through the shell
+        command: command, a list of args or a shell string (split via shlex)
+        shell: If true, the command will be executed through the shell.
+            Defaults to False; string commands are split with shlex.split.
         check: check exit code
         capture_output: capture output
         text: print text
@@ -139,6 +141,8 @@ def run_command(
     Returns:
         command results
     """
+    if isinstance(command, str) and not shell:
+        command = shlex.split(command)
     if dry_run:
         print(f"[Dry-run] Command:\n  {command}")
         return
@@ -173,8 +177,11 @@ def has_branch(branch_name):
     success = False
     try:
         results = subprocess.run(
-            f"git show-ref --verify --quiet refs/heads/{branch_name}",
-            shell=True,
+            [
+                "git", "show-ref", "--verify", "--quiet",
+                f"refs/heads/{branch_name}",
+            ],
+            shell=False,
             check=True,
         )
         if results.returncode == 0:
@@ -197,8 +204,11 @@ def has_tag(tag_name):
     success = False
     try:
         results = subprocess.run(
-            f"git show-ref --verify --quiet refs/tags/{tag_name}",
-            shell=True,
+            [
+                "git", "show-ref", "--verify", "--quiet",
+                f"refs/tags/{tag_name}",
+            ],
+            shell=False,
             check=True,
         )
         if results.returncode == 0:
@@ -314,7 +324,7 @@ def bump_version(
         f"{bump_tag_message}"
     ]
     print(f"bump version cmd:\n{';'.join(cmds)}")
-    results = run_command(";".join(cmds), cwd=top_dir)
+    results = run_command(shlex.split(cmds[0]), cwd=top_dir)
     return results
 
 
@@ -342,7 +352,7 @@ def is_git_repo_clean():
         bool: True if git repo is clean, False otherwise
     """
     cmds = ["git status --porcelain --untracked-files=no"]
-    results = run_command(";".join(cmds))
+    results = run_command(shlex.split(cmds[0]))
     ret_code = results.returncode
     if ret_code != 0:
         err_msg = (
@@ -371,8 +381,8 @@ def delete_branch_tags(delete_version, dry_run=False, top_dir=None):
     print(f"  branch: {', '.join(delete_branches)}")
     print(f"  tag   : {', '.join(delete_tags)}")
     cmds = [
-        f"git branch -D {' '.join(delete_branches)}",
-        f"git tag -d {' '.join(delete_tags)}",
+        ["git", "branch", "-D", *delete_branches],
+        ["git", "tag", "-d", *delete_tags],
     ]
     for cmd in cmds:
         run_command(cmd, dry_run=dry_run, cwd=top_dir, ignore_errors=True)
@@ -407,7 +417,7 @@ def push_branch_tags(
     cmds = []
     branch_tags = push_branches + push_tags
     for branch_tag in branch_tags:
-        cmds.append(f"git push {git_remote} {branch_tag}")
+        cmds.append(["git", "push", git_remote, branch_tag])
     for cmd in cmds:
         run_command(cmd, dry_run=dry_run, cwd=top_dir, ignore_errors=True)
 
@@ -544,8 +554,8 @@ USAGE
 
         # checkout develop branch
         print(f"* Checkout develop branch: {develop_branch}")
-        cmds = [f"git checkout {develop_branch}"]
-        results = run_command(";".join(cmds), cwd=top_dir)
+        cmds = ["git", "checkout", develop_branch]
+        results = run_command(cmds, cwd=top_dir)
         ret_code = results.returncode
         if ret_code != 0:
             err_msg = (
@@ -635,8 +645,8 @@ USAGE
 
         # create new release branch
         print(f"* Create new release branch: {release_branch}")
-        cmds = [f"git checkout -b {release_branch}"]
-        results = run_command(";".join(cmds), cwd=top_dir)
+        cmds = ["git", "checkout", "-b", release_branch]
+        results = run_command(cmds, cwd=top_dir)
         ret_code = results.returncode
         if ret_code != 0:
             err_msg = (
@@ -679,7 +689,7 @@ USAGE
             print("* Run CICD tests")
             cmds = [f"{top_dir}/cicd/run-cicd.sh"]
             results = run_command(
-                ";".join(cmds), capture_output=False, cwd=top_dir
+                cmds, capture_output=False, cwd=top_dir
             )
             ret_code = results.returncode
             if ret_code != 0:
@@ -699,25 +709,29 @@ USAGE
         # merge bump-version commits back to master and develop branch
         merge_cmds = [
             # merge back to develop branch
-            f"git checkout {develop_branch}",
-            f"git pull {git_remote} {develop_branch}",
-            f"git merge --no-ff {release_branch}",
+            ["git", "checkout", develop_branch],
+            ["git", "pull", git_remote, develop_branch],
+            ["git", "merge", "--no-ff", release_branch],
             # merge to master branch
-            f"git checkout {master_branch}",
-            f"git pull {git_remote} {master_branch}",
-            f"git merge --no-ff {release_branch}",
+            ["git", "checkout", master_branch],
+            ["git", "pull", git_remote, master_branch],
+            ["git", "merge", "--no-ff", release_branch],
         ]
 
         print("  Running merge commands:")
-        print(f"  {';'.join(merge_cmds)}")
-        results = run_command(";".join(merge_cmds), cwd=top_dir)
-        ret_code = results.returncode
+        print(f"  {';'.join(' '.join(c) for c in merge_cmds)}")
+        last_result = None
+        for cmd in merge_cmds:
+            last_result = run_command(cmd, cwd=top_dir)
+        ret_code = last_result.returncode
         if ret_code != 0:
-            err_msg = f"Failed to merge commits. Reason: {results.stderr}"
+            err_msg = (
+                f"Failed to merge commits. Reason: {last_result.stderr}"
+            )
             raise ReleaseException(err_msg)
 
-        cmds = [f"git checkout {develop_branch}"]
-        results = run_command(";".join(cmds), cwd=top_dir)
+        cmds = ["git", "checkout", develop_branch]
+        results = run_command(cmds, cwd=top_dir)
         ret_code = results.returncode
         if ret_code != 0:
             err_msg = (

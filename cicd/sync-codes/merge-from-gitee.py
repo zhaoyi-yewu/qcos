@@ -33,6 +33,7 @@ OR
 """
 
 import re
+import shlex
 import subprocess
 import sys
 
@@ -56,7 +57,7 @@ def run_command(command, check=True, capture_output=True, text=True):
     """Run command
 
     Args:
-        command: command
+        command: command, a list of args or a shell string (split via shlex)
         check: check exit code
         capture_output: capture output
         text: print text
@@ -64,10 +65,12 @@ def run_command(command, check=True, capture_output=True, text=True):
     Returns:
         command results
     """
+    if isinstance(command, str):
+        command = shlex.split(command)
     try:
         results = subprocess.run(
             command,
-            shell=True,
+            shell=False,
             check=check,
             capture_output=capture_output,
             text=text,
@@ -82,29 +85,37 @@ def run_command(command, check=True, capture_output=True, text=True):
 def pull_branches():
     """Pull branches"""
     fetch_from_gitee_cmds = [
-        f"git checkout {gitee_local_branch}",
-        f"git pull --rebase {gitee_remote} "
-        f"{gitee_remote_branch}:{gitee_local_branch}",
+        ["git", "checkout", gitee_local_branch],
+        [
+            "git", "pull", "--rebase", gitee_remote,
+            f"{gitee_remote_branch}:{gitee_local_branch}",
+        ],
     ]
     print(
         f"Fetch codes from {gitee_remote}, "
         f"branch: {gitee_remote_branch}:{gitee_local_branch} ..."
     )
-    results = run_command(";".join(fetch_from_gitee_cmds))
-    ret_code = results.returncode
+    last_result = None
+    for cmd in fetch_from_gitee_cmds:
+        last_result = run_command(cmd)
+    ret_code = last_result.returncode
     if ret_code != 0:
-        raise MergeException(results.stderr)
+        raise MergeException(last_result.stderr)
 
     fetch_from_cmss_cmds = [
-        f"git checkout {cmss_local_branch}",
-        f"git pull --rebase {cmss_remote} "
-        f"{cmss_local_branch}:{cmss_local_branch}",
+        ["git", "checkout", cmss_local_branch],
+        [
+            "git", "pull", "--rebase", cmss_remote,
+            f"{cmss_local_branch}:{cmss_local_branch}",
+        ],
     ]
     print(f"Fetch codes from {cmss_remote}, branch: {cmss_local_branch} ...")
-    results = run_command(";".join(fetch_from_cmss_cmds))
-    ret_code = results.returncode
+    last_result = None
+    for cmd in fetch_from_cmss_cmds:
+        last_result = run_command(cmd)
+    ret_code = last_result.returncode
     if ret_code != 0:
-        raise MergeException(results.stderr)
+        raise MergeException(last_result.stderr)
 
 
 def merge_branches(commit_id):
@@ -115,13 +126,16 @@ def merge_branches(commit_id):
     """
     # Merge codes
     print("Merge branch")
-    run_command(f"git checkout {cmss_local_branch}")
+    run_command(["git", "checkout", cmss_local_branch])
 
     # run git cherry-pick
     # get git logs
     commits = []
     if ".." in commit_id:
-        cmd = f"git log --oneline --no-merges --format='%h' {commit_id}"
+        cmd = [
+            "git", "log", "--oneline", "--no-merges",
+            "--format=%h", commit_id,
+        ]
         results = run_command(cmd)
         commits = results.stdout.splitlines()[::-1]
     else:
@@ -129,10 +143,14 @@ def merge_branches(commit_id):
     commits_count = len(commits)
     if commits_count == 0:
         raise MergeException("no commits found to merge")
-    run_command(f"git cherry-pick -m 1 {' '.join(commits)}")
+    run_command(
+        ["git", "cherry-pick", "-m", "1", *commits]
+    )
 
     # get latest commit id
-    results = run_command(f"git log -{commits_count} --format='%H'")
+    results = run_command(
+        ["git", "log", f"-{commits_count}", "--format=%H"]
+    )
     merged_commit_id_list = results.stdout.split()
     print(f"merged commit ids: {merged_commit_id_list}")
     if len(merged_commit_id_list) == 0:
@@ -189,10 +207,14 @@ def merge_branches(commit_id):
         commit.message = new_message.encode('utf-8')
     """
     # run git-filter-repo
-    cmd = (
-        f'git-filter-repo --force --commit-callback "{callback_script}" '
-        f"--refs refs/heads/{cmss_local_branch}"
-    )
+    cmd = [
+        "git-filter-repo",
+        "--force",
+        "--commit-callback",
+        callback_script,
+        "--refs",
+        f"refs/heads/{cmss_local_branch}",
+    ]
     results = run_command(cmd)
     ret_code = results.returncode
     if ret_code != 0:

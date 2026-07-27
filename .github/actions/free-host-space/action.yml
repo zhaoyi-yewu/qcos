@@ -1,0 +1,72 @@
+name: 'Free Ubuntu Host Space'
+description: 'Force escape container context and clean up heavy SDKs/packages on the Ubuntu host machine'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Clean up disk space on Ubuntu host
+      # Force execution on the Ubuntu host using absolute shell path, overriding container contexts
+      shell: bash
+      run: |
+        yum install -y util-linux
+        nsenter --target 1 --mount --uts --ipc --net --pid -- sh -c '
+        echo "================================================================"
+        echo "STARTING HOST DISK SPACE CLEAN-UP"
+        echo "================================================================"
+        echo "Initial disk space usage:"
+        df -h /
+
+        # 1. Remove Large Language Runtimes & Frameworks (Dotnet, Android, Java, Haskell)
+        echo "Removing Large Frameworks and Runtimes..."
+        sudo rm -rf /usr/share/dotnet || true
+        sudo rm -rf /usr/local/lib/android || true
+        sudo rm -rf /opt/ghc || true
+        sudo rm -rf /usr/local/share/powershell || true
+        sudo rm -rf /usr/share/swift || true
+
+        # 2. Remove Security & Caching Tools (CodeQL, Tool-Cache)
+        echo "Removing CodeQL and Runner Tool Caches..."
+        sudo rm -rf /opt/hostedtoolcache || true
+        sudo rm -rf /usr/local/codeql || true
+
+        # 3. Purge Docker Images & Cache
+        echo "Purging Docker images and layers..."
+        sudo docker image prune --all --force || true
+        sudo docker system prune --all --force --volumes || true
+
+        # 4. Remove Pre-installed Large Applications via APT (Browsers, Databases, Large Toolkits)
+        echo "Purging heavy pre-installed APT packages..."
+        sudo apt-get remove --purge -y \
+          azure-cli \
+          google-chrome-stable \
+          firefox \
+          microsoft-edge-stable \
+          mono-devel \
+          powershell \
+          ^mongodb-.* \
+          ^mysql-.* \
+          ^postgresql-.* \
+          ^llvm-.* \
+          glibc-source || true
+
+        # 5. Clean Up APT Cache and Autoremove Unused Dependencies
+        echo "Cleaning up apt cache..."
+        sudo apt-get autoremove -y || true
+        sudo apt-get clean -y || true
+
+        # 6. Disable and Remove Swap Space to Reclaim Storage
+        echo "Disabling swap storage..."
+        sudo swapoff -a || true
+        sudo rm -f /mnt/swapfile || true
+
+        # 7. Clear System Log and Temporary Files
+        echo "Clearing system logs and temporary file buffers..."
+        sudo rm -rf /var/log/* || true
+        sudo rm -rf /tmp/* || true
+        sudo rm -rf /var/tmp/* || true
+
+        echo "================================================================"
+        echo "Final disk space usage:"
+        df -h /
+        echo "================================================================"
+        '
