@@ -15,8 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from collections import OrderedDict
-from pathlib import Path
 from unittest.mock import patch, Mock
 import pytest
 
@@ -159,34 +157,10 @@ class TestConfig:
 
         Config._EXTRA_CONFIGS = {}
         config.load_config_file("/config.toml", extra_config=False)
-        # Should add to extra configs since CUSTOM_SECTION
-        # not in VALID_SECTIONS
-
-    @patch.object(Library, "read_toml_file")
-    def test_load_driver_env_file_copy_from_handling(self, mock_read_toml):
-        """Test driver env file with copy_from handling."""
-        mock_configs = OrderedDict([
-            (
-                "base_driver",
-                {"deps_filepaths": ["deps.txt"], "envs": ["ENV1", "ENV2"]},
-            ),
-            ("derived_driver", {"copy_from": "base_driver"}),
-        ])
-        mock_read_toml.return_value = (True, None, mock_configs)
-
-        with patch("pathlib.Path.parent") as mock_parent:
-            mock_parent_obj = Mock()
-            mock_parent_obj.__truediv__ = Mock(
-                return_value=Path("/test/deps.txt")
-            )
-            mock_parent.__truediv__ = Mock(return_value=mock_parent_obj)
-            with patch("pathlib.Path.resolve") as mock_resolve:
-                mock_resolve.return_value = Path("/test/deps.txt")
-                config.load_driver_env_file("/driver_env.toml")
 
     def test_job_expire_days_default_value(self):
-        """Test JOB_EXPIRE_DAYS default value is 7."""
-        assert Config.DEFAULT.JOB_EXPIRE_DAYS == 7
+        """Test JOB_EXPIRE_DAYS default value is -1 (disabled)."""
+        assert Config.DEFAULT.JOB_EXPIRE_DAYS == -1
 
     def test_job_expire_days_accepts_int(self):
         """Test JOB_EXPIRE_DAYS accepts integer values."""
@@ -206,38 +180,31 @@ class TestConfig:
         finally:
             Config.DEFAULT.JOB_EXPIRE_DAYS = original_value
 
-    def test_job_expire_days_accepts_minimum_value(self):
-        """Test JOB_EXPIRE_DAYS accepts minimum value 0.01."""
+    def test_job_expire_days_accepts_minus_one(self):
+        """Test JOB_EXPIRE_DAYS accepts -1 (disabled)."""
         original_value = Config.DEFAULT.JOB_EXPIRE_DAYS
         try:
-            Config.DEFAULT.JOB_EXPIRE_DAYS = 0.01
-            assert Config.DEFAULT.JOB_EXPIRE_DAYS == 0.01
+            Config.DEFAULT.JOB_EXPIRE_DAYS = -1
+            assert Config.DEFAULT.JOB_EXPIRE_DAYS == -1
+        finally:
+            Config.DEFAULT.JOB_EXPIRE_DAYS = original_value
+
+    def test_job_expire_days_accepts_zero(self):
+        """Test JOB_EXPIRE_DAYS accepts zero."""
+        original_value = Config.DEFAULT.JOB_EXPIRE_DAYS
+        try:
+            Config.DEFAULT.JOB_EXPIRE_DAYS = 0
+            assert Config.DEFAULT.JOB_EXPIRE_DAYS == 0
         finally:
             Config.DEFAULT.JOB_EXPIRE_DAYS = original_value
 
     def test_job_expire_days_rejects_below_minimum(self):
-        """Test JOB_EXPIRE_DAYS rejects values below 0.01."""
+        """Test JOB_EXPIRE_DAYS rejects values below -1."""
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
             ConfigModel = type(Config.get_config())
-            ConfigModel(DEFAULT={"JOB_EXPIRE_DAYS": 0.001})
-
-    def test_job_expire_days_rejects_zero(self):
-        """Test JOB_EXPIRE_DAYS rejects zero."""
-        from pydantic import ValidationError
-
-        with pytest.raises(ValidationError):
-            ConfigModel = type(Config.get_config())
-            ConfigModel(DEFAULT={"JOB_EXPIRE_DAYS": 0})
-
-    def test_job_expire_days_rejects_negative(self):
-        """Test JOB_EXPIRE_DAYS rejects negative values."""
-        from pydantic import ValidationError
-
-        with pytest.raises(ValidationError):
-            ConfigModel = type(Config.get_config())
-            ConfigModel(DEFAULT={"JOB_EXPIRE_DAYS": -1})
+            ConfigModel(DEFAULT={"JOB_EXPIRE_DAYS": -2})
 
     def test_validate_device_list_duplicates(self):
         """Test that duplicate devices are removed."""
@@ -310,7 +277,7 @@ class TestConfig:
 
     def test_show_info_sensitive_fields_masked(self):
         """Test that show_info masks sensitive fields like passwords."""
-        Config.USERS.ADMIN_PASSWORD = _s("test_password_123")
+        Config.USERS.DEFAULT_ADMIN_PASSWORD = _s("test_password_123")
         Config.USERS.JWT_AUTH_SECRET_KEY = _s("test_secret_456")
         Config.VIRT.PASSWORD_SALT = _s("test_salt_789")
 

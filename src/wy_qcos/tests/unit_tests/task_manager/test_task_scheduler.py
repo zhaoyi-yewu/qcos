@@ -142,17 +142,25 @@ class TestTaskScheduler:
     ):
         scheduler = TaskScheduler()
         scheduler._task_manager = Mock()
-        scheduler._task_manager.get_flow_runs_with_filters.side_effect = [
-            [],
-            [object()] * Config.DEFAULT.MAX_QUEUED_JOBS,
-        ]
-        scheduler._device_manager = Mock()
-        mock_convert_to_prefect_states.return_value = ["RUNNING"]
+        # Use a positive limit to test the exceeded scenario
+        # (default MAX_QUEUED_JOBS=-1 means unlimited)
+        test_limit = 5
+        original = Config.DEFAULT.MAX_QUEUED_JOBS
+        Config.DEFAULT.MAX_QUEUED_JOBS = test_limit
+        try:
+            scheduler._task_manager.get_flow_runs_with_filters.side_effect = [
+                [],
+                [object()] * test_limit,
+            ]
+            scheduler._device_manager = Mock()
+            mock_convert_to_prefect_states.return_value = ["RUNNING"]
 
-        result, error = scheduler.submit(Mock(backend="dummy"), None)
+            result, error = scheduler.submit(Mock(backend="dummy"), None)
 
-        assert result is None
-        assert "max queued job limit" in error
+            assert result is None
+            assert "max queued job limit" in error
+        finally:
+            Config.DEFAULT.MAX_QUEUED_JOBS = original
 
     def test_submit_device_disabled(self):
         scheduler = TaskScheduler()
@@ -363,16 +371,26 @@ class TestTaskScheduler:
     def test_submit_manage_job_queued_limit_exceeded(self):
         scheduler = TaskScheduler()
         scheduler._task_manager = Mock()
-        scheduler._task_manager.get_flow_runs_with_filters.side_effect = [
-            [],
-            [object()] * Config.DEFAULT.MAX_QUEUED_JOBS,
-        ]
-        scheduler._task_manager.convert_to_prefect_states.return_value = []
+        # Use a positive limit to test the exceeded scenario
+        # (default MAX_QUEUED_JOBS=-1 means unlimited)
+        test_limit = 5
+        original = Config.DEFAULT.MAX_QUEUED_JOBS
+        Config.DEFAULT.MAX_QUEUED_JOBS = test_limit
+        try:
+            scheduler._task_manager.get_flow_runs_with_filters.side_effect = [
+                [],
+                [object()] * test_limit,
+            ]
+            scheduler._task_manager.convert_to_prefect_states.return_value = []
 
-        result, error = scheduler.submit_manage_job(Mock(device_name="dummy"))
+            result, error = scheduler.submit_manage_job(
+                Mock(device_name="dummy")
+            )
 
-        assert result is None
-        assert "running+queued job count exceeds" in error
+            assert result is None
+            assert "running+queued job count exceeds" in error
+        finally:
+            Config.DEFAULT.MAX_QUEUED_JOBS = original
 
     def test_submit_manage_job_device_disabled(self):
         scheduler = TaskScheduler()

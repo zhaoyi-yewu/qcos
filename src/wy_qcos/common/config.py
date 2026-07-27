@@ -35,10 +35,16 @@ class DefaultSection(BaseModel):
 
     DEBUG: bool = Field(default=False, description="Debug mode flag")
     MAX_JOBS: int = Field(
-        default=10000, ge=1, description="Maximum number of jobs (all status)"
+        default=-1,
+        ge=-1,
+        description="Maximum number of jobs (all status). "
+        "Set to -1 for unlimited.",
     )
     MAX_QUEUED_JOBS: int = Field(
-        default=1000, ge=1, description="Maximum number of queued+running jobs"
+        default=-1,
+        ge=-1,
+        description="Maximum number of queued+running jobs. "
+        "Set to -1 for unlimited.",
     )
     AUTH_MODE: Literal["no", "jwt", "virtual_instance"] = Field(
         default=Constant.AUTH_MODE_NO,
@@ -50,10 +56,19 @@ class DefaultSection(BaseModel):
         description="Job clean interval in minutes",
     )
     JOB_EXPIRE_DAYS: int | float = Field(
-        default=7,
-        ge=0.01,
+        default=-1,
+        ge=-1,
         description="Job expiration days (supports int and float), "
-        "jobs older than this will be auto-deleted, minimum: 0.01",
+        "jobs older than this will be auto-deleted. "
+        "Set to -1 to disable expiration (never auto-delete).",
+    )
+    FLOW_EXPIRE_DAYS: int | float = Field(
+        default=-1,
+        ge=-1,
+        description="Completed Prefect flow-run expiration days "
+        "(supports int and float). Completed flow-runs of the "
+        "'job-flow' older than this will be auto-deleted. "
+        "Set to -1 to disable (never auto-delete).",
     )
     VENV_DIR: str = Field(
         default="/var/lib/qcos/venv",
@@ -192,7 +207,10 @@ class UsersSection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     MAX_JOBS: int = Field(
-        default=100, ge=1, description="Maximum jobs per user/virtual instance"
+        default=-1,
+        ge=-1,
+        description="Maximum jobs per user/virtual instance. "
+        "Set to -1 for unlimited.",
     )
     PASSWORD_EXPIRY_DAYS: int = Field(
         default=90, ge=0, description="Password expiry days (0 = never expire)"
@@ -218,9 +236,9 @@ class UsersSection(BaseModel):
         default="/etc/qcos/roles/policy.conf",
         description="Casbin access control policy file path",
     )
-    ADMIN_PASSWORD: str | None = Field(
+    DEFAULT_ADMIN_PASSWORD: str | None = Field(
         default=None,
-        description="Admin password (encrypted)",
+        description="Default admin password (encrypted)",
         json_schema_extra={"sensitive": True},
     )
     JWT_AUTH_SECRET_KEY: str = Field(
@@ -512,7 +530,7 @@ class Config:
         Args:
             config_file: Path to driver env config file
         """
-        driver_deps_file_path = Path(config_file).parent
+        Path(config_file).parent
         _configs = {}
         configs = {}
         success, err_msg, _configs = Library.read_toml_file(config_file)
@@ -546,20 +564,8 @@ class Config:
         for driver_class, driver_info in configs.items():
             if "copy_from" in driver_info:
                 continue
-            if "deps_filepaths" not in driver_info:
-                raise Exception(
-                    f"[{driver_class}] 'deps_filepaths' must be specified"
-                )
             if "envs" not in driver_info:
                 raise Exception(f"[{driver_class}] 'envs' must be specified")
-            deps_filepaths = driver_info["deps_filepaths"]
-            deps_filepaths_list = []
-            for deps_filepath in deps_filepaths:
-                deps_abs_filepath = (
-                    driver_deps_file_path / deps_filepath
-                ).resolve()
-                deps_filepaths_list.append(str(deps_abs_filepath))
-            driver_info["deps_filepaths"] = deps_filepaths_list
         cls._DRIVER_ENV_CONFIGS = configs
 
     @classmethod
