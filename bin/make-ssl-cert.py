@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -24,6 +24,7 @@ yum install -y openssl
 
 import copy
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -167,47 +168,72 @@ def make_ssl_cert(ip_list, dns_list, key_files, cert_days=CERT_DAYS):
 
     cmds = []
     # create index, serial
-    cmds.append("touch {SSL_DATABASE} {SSL_SERIAL}".format(**ssl_info))
-    cmds.append("echo 01 > {SSL_SERIAL}".format(**ssl_info))
+    cmds.append(shlex.split(
+        "touch {SSL_DATABASE} {SSL_SERIAL}".format(**ssl_info)))
+
+    # write serial number to serial file (before openssl commands)
+    with open(ssl_info["SSL_SERIAL"], "w", encoding="utf-8") as f:
+        f.write("01")
 
     # create server private-key
-    cmds.append(
-        "openssl genrsa -out {SSL_PRIVATE_KEY} {key_size}".format(**ssl_info))
+    cmds.append(shlex.split(
+        "openssl genrsa -out {SSL_PRIVATE_KEY} {key_size}".format(
+            **ssl_info)))
 
     # create server CSR
-    cmds.append(
+    cmds.append(shlex.split(
         "openssl req -new -config {openssl_conf_temp_file} "
         "-key {SSL_PRIVATE_KEY} -out {SSL_CSR}".format(
-            **ssl_info))
+            **ssl_info)))
 
     # create CA cert private-key
-    cmds.append(
-        "openssl genrsa -out {CAKEY_PEM} {key_size}".format(**ssl_info))
+    cmds.append(shlex.split(
+        "openssl genrsa -out {CAKEY_PEM} {key_size}".format(**ssl_info)))
 
     # create CA cert CSR
-    cmds.append(
-        "openssl req -new -x509 -config {openssl_conf_temp_file} -days {days} "
-        "-key {CAKEY_PEM} -out {CACERT_PEM}".format(**ssl_info))
+    cmds.append(shlex.split(
+        "openssl req -new -x509 -config {openssl_conf_temp_file} "
+        "-days {days} -key {CAKEY_PEM} -out {CACERT_PEM}".format(
+            **ssl_info)))
 
     # create CRT
-    cmds.append(
+    cmds.append(shlex.split(
         "openssl ca -in {SSL_CSR} -config {openssl_conf_temp_file} "
-        "-days {days} -out {SSL_CRT} -batch".format(**ssl_info))
+        "-days {days} -out {SSL_CRT} -batch".format(**ssl_info)))
 
-    # combine PEM
-    cmds.append(
-        "cat {SSL_CRT} {SSL_PRIVATE_KEY} > {COMBINED_PEM}".format(**ssl_info))
+    # combine PEM (cat crt key > combined.pem)
+    combine_cmd = shlex.split(
+        "cat {SSL_CRT} {SSL_PRIVATE_KEY}".format(**ssl_info))
 
-    # modify permissions for key files
-    cmds.append(
+    # modify permissions for key files (must run after combine PEM)
+    chmod_cmd = shlex.split(
         "chmod 400 {CAKEY_PEM} {CACERT_PEM} {SSL_CRT} {SSL_PRIVATE_KEY} "
         "{COMBINED_PEM}".format(**ssl_info))
 
     print("commands: ")
-    print("\n".join(cmds))
+    print("\n".join(" ".join(c) for c in cmds))
+    print(" ".join(combine_cmd))
+    print(" ".join(chmod_cmd))
     print("")
-    ret = subprocess.call(";".join(cmds), shell=True)
-    return ret
+
+    # run each command sequentially with shell=False
+    for cmd in cmds:
+        ret = subprocess.call(cmd, shell=False)
+        if ret != 0:
+            return ret
+
+    # combine PEM via file redirection (cat crt key > combined.pem)
+    with open(ssl_info["COMBINED_PEM"], "wb") as out_f:
+        ret = subprocess.call(combine_cmd, stdout=out_f, shell=False)
+        if ret != 0:
+            return ret
+
+    # modify permissions (after combine PEM is created)
+    ret = subprocess.call(chmod_cmd, shell=False)
+    if ret != 0:
+        return ret
+
+    return 0
 
 
 def main(argv=None):
