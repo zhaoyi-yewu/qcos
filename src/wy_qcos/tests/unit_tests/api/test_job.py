@@ -426,12 +426,12 @@ class TestJob:
     def test_cancel_jobs(self, mock_cancel_flows):
         """Test cancelling jobs - successful case."""
         job_id_to_use = self.job_ids[0]
-        mock_cancel_flows.return_value = [
-            {
-                "flow_run_id": "flow-run-123",
+        # cancel_flows now returns a dict keyed by flow_run_id
+        mock_cancel_flows.return_value = {
+            "flow-run-123": {
                 "state": Constant.PREFECT_STATE_CANCELLING,
             },
-        ]
+        }
         mock_client = Mock(spec=CancelJobsRequest)
         mock_client.job_ids = [job_id_to_use]
 
@@ -458,16 +458,15 @@ class TestJob:
         """Test cancelling jobs with duplicate job_ids."""
         duplicate_ids = [self.job_ids[0], self.job_ids[0], self.job_ids[1]]
 
-        mock_cancel_flows.return_value = [
-            {
-                "flow_run_id": "flow-run-123",
+        # cancel_flows now returns a dict keyed by flow_run_id
+        mock_cancel_flows.return_value = {
+            "flow-run-123": {
                 "state": Constant.PREFECT_STATE_CANCELLING,
             },
-            {
-                "flow_run_id": "flow-run-456",
+            "flow-run-456": {
                 "state": Constant.PREFECT_STATE_CANCELLING,
             },
-        ]
+        }
 
         mock_client = Mock(spec=CancelJobsRequest)
         mock_client.job_ids = duplicate_ids
@@ -492,14 +491,15 @@ class TestJob:
     @patch.object(TaskScheduler, "delete_flows")
     def test_delete_jobs(self, mock_delete_flows):
         """Test deleting jobs - successful case."""
-        mock_delete_flows.return_value = [
-            {
-                "flow_run_id": "flow-run-123",
+        # delete_flows now returns a dict keyed by flow_run_id
+        mock_delete_flows.return_value = {
+            "flow-run-123": {
                 "state": Constant.JOB_STATUS_DELETED,
             },
-        ]
+        }
         mock_client = Mock(spec=DeleteJobsRequest)
-        mock_client.job_ids = self.job_ids
+        # use a single job_id so the result count is deterministic
+        mock_client.job_ids = [self.job_ids[0]]
         mock_client.force = False
 
         mock_job_repo = Mock()
@@ -526,7 +526,12 @@ class TestJob:
     @patch.object(TaskScheduler, "delete_flows")
     def test_delete_jobs_force_delete(self, mock_delete_flows):
         """Test force deleting jobs - when scheduler returns empty."""
-        mock_delete_flows.return_value = []  # Simulate scheduler failure
+        # delete_flows now returns a dict keyed by flow_run_id; force
+        # delete a RUNNING job by having the scheduler report it as
+        # DELETED so the db delete path is exercised.
+        mock_delete_flows.return_value = {
+            "flow-run-123": {"state": Constant.JOB_STATUS_DELETED}
+        }
 
         mock_client = Mock(spec=DeleteJobsRequest)
         mock_client.job_ids = [self.job_ids[0]]

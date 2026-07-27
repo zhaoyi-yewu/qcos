@@ -30,6 +30,11 @@ MODULE = "wy_qcos.task_manager.job_cleaner"
 DEV_PREFIX = Constant.WORK_POOL_DEVICE_PREFIX
 
 
+# Default job-flow id used by _make_cleaner and _make_flow_run_for_expire
+# so that flow-runs produced by the helper match the job-flow filter.
+_DEFAULT_JOB_FLOW_ID = "00000000-0000-4000-8000-000000000001"
+
+
 def _make_cleaner(db_engine=None):
     cleaner = JobCleaner.__new__(JobCleaner)
     cleaner._db_engine = db_engine
@@ -37,6 +42,11 @@ def _make_cleaner(db_engine=None):
     cleaner._interval = 60
     cleaner._expire_days = 7
     cleaner._flow_expire_days = 7
+    # _clean_prefect_flows reads task_manager.flows to resolve the
+    # job-flow id; provide a mock with the default job-flow entry.
+    cleaner._task_manager = Mock(
+        flows={"job-flow": {"flow_id": _DEFAULT_JOB_FLOW_ID}}
+    )
     return cleaner
 
 
@@ -497,15 +507,29 @@ def _make_flow_run_for_expire(
     flow_name="job-flow",
     state_type=StateType.COMPLETED,
     start_time=None,
+    end_time=None,
+    flow_id=None,
 ):
-    """Build a mock flow-run for _clean_prefect_flows tests."""
+    """Build a mock flow-run for _clean_prefect_flows tests.
+
+    _clean_prefect_flows filters by flow_id and uses end_time to decide
+    expiration, so both are populated here. ``start_time`` is kept for
+    backward compatibility with existing test call-sites.
+    """
     mock = MagicMock()
     mock.name = name
     mock.id = uuid4()
     mock.flow_name = flow_name
+    # flow_id must match the job-flow id configured in _make_cleaner so
+    # the flow-run is not skipped by the job-flow filter.
+    mock.flow_id = flow_id or _DEFAULT_JOB_FLOW_ID
     mock.state = MagicMock()
     mock.state.type = state_type
-    mock.start_time = start_time or datetime.now(timezone.utc)
+    ts = start_time or datetime.now(timezone.utc)
+    mock.start_time = ts
+    # _clean_prefect_flows checks end_time (not start_time) for expiration;
+    # default end_time to start_time when not explicitly provided.
+    mock.end_time = end_time if end_time is not None else ts
     return mock
 
 
@@ -576,10 +600,13 @@ class TestCleanPrefectFlows:
         sync_client = MagicMock()
         cleaner._get_sync_client = Mock(return_value=sync_client)
         old_time = datetime.now(timezone.utc) - timedelta(days=10)
+        # use a flow_id that differs from the job-flow id configured in
+        # _make_cleaner so the flow-run is skipped by the job-flow filter
         flow = _make_flow_run_for_expire(
             "other-flow",
             flow_name="other-flow",
             start_time=old_time,
+            flow_id="00000000-0000-4000-8000-000000000999",
         )
         cleaner._run_sync = self._make_run_sync_that_calls_fn([flow])
         await cleaner._clean_prefect_flows()
