@@ -6,7 +6,7 @@
 
 [![PyPI - Version](https://img.shields.io/pypi/v/wy-qcos?logo=pypi&logoColor=white)](https://pypi.org/project/wy-qcos)
 [![PyPI - Wheel](https://img.shields.io/pypi/wheel/wy-qcos?logo=python&logoColor=white)](https://pypi.org/project/wy-qcos)
-[![JENKINS CICD](http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/badge/icon?subject=jenkins-cicd)](http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/)
+[![JENKINS CICD](http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/badge/icon?subject=jenkins/cicd)](http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/)
 [![GITHUB CICD](https://img.shields.io/github/actions/workflow/status/zhaoyi-yewu/qcos/qcos-cicd.yml?logo=githubactions&logoColor=white&labelColor=blue&label=github/cicd)](https://github.com/zhaoyi-yewu/qcos/actions/workflows/qcos-cicd.yml)
 [![Codecov](https://codecov.io/github/zhaoyi-yewu/qcos/branch/develop/graph/badge.svg)](https://codecov.io/github/zhaoyi-yewu/qcos)
 [![Documentation Status](https://app.readthedocs.org/projects/qcos/badge/?version=latest&style=plastic)](https://qcos.readthedocs.io/zh-cn/latest/)

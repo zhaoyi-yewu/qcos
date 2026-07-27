@@ -190,7 +190,7 @@ src/wy_qcos/tests/system_tests/<module_name>/
 
 **CLI 用户指南：**
 
-- 更新 [`docs/sphinx/source/user-guide/cli.rst`](docs/sphinx/source/user-guide/cli.rst)，补充新增 CLI 命令的使用说明
+- 更新 [`docs/sphinx/source/user-guide/cli/*.rst`](docs/sphinx/source/user-guide/cli/*.rst)，补充新增 CLI 命令的使用说明
 - 包含命令语法、参数说明、使用示例
 
 **CHANGELOG：**
