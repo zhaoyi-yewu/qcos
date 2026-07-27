@@ -53,6 +53,7 @@ class MockJobMetricsData:
     queued = 3
     cancelling = 1
     cancelled = 1
+    deleting = 0
     deleted = 0
     unknown = 0
 
@@ -262,6 +263,7 @@ class TestGetJobStats:
         assert response.queued == 3
         assert response.cancelling == 1
         assert response.cancelled == 1
+        assert response.deleting == 0
         assert response.deleted == 0
         assert response.unknown == 0
 
@@ -275,6 +277,7 @@ class TestGetJobStats:
         mock_job_data.queued = 0
         mock_job_data.cancelling = 0
         mock_job_data.cancelled = 0
+        mock_job_data.deleting = 0
         mock_job_data.deleted = 0
         mock_job_data.unknown = 0
 
@@ -301,6 +304,7 @@ class TestGetJobStats:
         mock_job_data.queued = 0
         mock_job_data.cancelling = 0
         mock_job_data.cancelled = 0
+        mock_job_data.deleting = 0
         mock_job_data.deleted = 0
         mock_job_data.unknown = 0
 

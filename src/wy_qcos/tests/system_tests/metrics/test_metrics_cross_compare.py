@@ -95,6 +95,7 @@ class TestMetricsCrossCompare:
             "queued": Constant.JOB_METRICS_FIELD_QUEUED,
             "cancelling": Constant.JOB_METRICS_FIELD_CANCELLING,
             "cancelled": Constant.JOB_METRICS_FIELD_CANCELLED,
+            "deleting": Constant.JOB_METRICS_FIELD_DELETING,
             "deleted": Constant.JOB_METRICS_FIELD_DELETED,
             "unknown": Constant.JOB_METRICS_FIELD_UNKNOWN,
         }
