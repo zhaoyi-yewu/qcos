@@ -64,6 +64,7 @@ class TaskFlowManager:
         self.driver_manager = None
         self.device_manager = None
         self.deployments = {}
+        self.flows = {}
         self.redis_instance = redis.Redis(
             host=Config.REDIS.REDIS_SERVER_IP,
             port=Config.REDIS.REDIS_SERVER_PORT,
@@ -263,6 +264,15 @@ class TaskFlowManager:
             self.deployments = self.loop.run_until_complete(
                 self.create_deployments(deployment_configs)
             )
+            # get flows
+            for _, deployment_info in self.deployments.items():
+                flow_id = deployment_info["flow_id"]
+                flow_name = deployment_info["flow_name"]
+                self.flows[flow_name] = {
+                    "flow_id": flow_id,
+                }
+
+            # start workers
             self.kill_workers()
             self.start_workers()
             self.loop.run_until_complete(self.wait_workers())
@@ -385,8 +395,15 @@ class TaskFlowManager:
                 ignore_warnings=True,
                 print_next_steps=False,
             )
+            # get default flow id
+            flow_name = flow.name
+            flow_filter = FlowFilter(name=FlowFilterName(any_=[flow_name]))
+            flows = self._sync_client.read_flows(flow_filter=flow_filter)
+            flow_id = flows[0].id if flows else None
             deployments[deployment_name] = {
                 "deploy_id": str(deploy_id),
+                "flow_id": str(flow_id),
+                "flow_name": flow_name,
                 "env": env,
             }
         return deployments

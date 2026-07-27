@@ -117,7 +117,10 @@ async def app_lifespan(app: jsonrpc.API):
     manager.add_service(metrics_server)
 
     # Register job cleaner
-    job_cleaner = JobCleaner(app_db_engine=app.state._db_engine)
+    job_cleaner = JobCleaner(
+        app_db_engine=app.state._db_engine,
+        task_manager=app.state._task_manager,
+    )
     manager.add_service(job_cleaner)
 
     # Start all background services

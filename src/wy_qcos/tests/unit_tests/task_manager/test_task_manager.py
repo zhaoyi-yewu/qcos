@@ -193,8 +193,8 @@ class TestTaskFlowManager(unittest.TestCase):
         ):
             mock_loop = Mock()
             mock_loop.is_running.return_value = False
-            mock_loop.run_until_complete.side_effect = (
-                lambda coro: asyncio.run(coro)
+            mock_loop.run_until_complete.side_effect = lambda coro: (
+                asyncio.run(coro)
             )
             self.task_manager.loop = mock_loop
 
@@ -385,8 +385,8 @@ class TestTaskFlowManager(unittest.TestCase):
         ):
             mock_loop = Mock()
             mock_loop.is_running.return_value = False
-            mock_loop.run_until_complete.side_effect = (
-                lambda coro: asyncio.run(coro)
+            mock_loop.run_until_complete.side_effect = lambda coro: (
+                asyncio.run(coro)
             )
             self.task_manager.loop = mock_loop
 
