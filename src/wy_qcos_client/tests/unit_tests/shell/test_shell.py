@@ -82,6 +82,11 @@ class TestQcosShell:
     def test_build_option_parser(self):
         parser = shell.build_option_parser(DESCRIPTION, VERSION)
         assert parser.description == DESCRIPTION
+        # verify --timeout option exists with default None
+        actions = {a.dest: a for a in parser._actions}
+        assert "timeout" in actions
+        assert actions["timeout"].default is None
+        assert actions["timeout"].type is int
 
     @patch.object(App, "initialize_app")
     def test_initialize_app(self, mock_initialize_app):
@@ -90,6 +95,7 @@ class TestQcosShell:
         shell.options = mock_options
         mock_options.api_host = "127.0.0.1"
         mock_options.use_ssl = False
+        mock_options.timeout = None
         assert shell.initialize_app([]) is None
 
 
@@ -172,3 +178,62 @@ def test_set_debug_option():
 def test_get_content_by_type():
     success, _, _ = get_content_by_type("qasm", "")
     assert success is False
+
+
+class TestTimeoutPrecedence:
+    """Test timeout resolution precedence in initialize_app."""
+
+    def _setup_options(self, cli_timeout=None):
+        """Build a mock options namespace for initialize_app."""
+        mock_options = Mock()
+        mock_options.api_host = "127.0.0.1"
+        mock_options.api_port = 8000
+        mock_options.use_ssl = False
+        mock_options.ssl_certfile = None
+        mock_options.ssl_keyfile = None
+        mock_options.ssl_cafile = None
+        mock_options.timeout = cli_timeout
+        return mock_options
+
+    @patch.object(App, "initialize_app")
+    @patch("wy_qcos_client.shell.Client")
+    def test_cli_timeout_overrides_env(
+        self, mock_client_cls, mock_initialize_app
+    ):
+        """Command line --timeout takes precedence over env var."""
+        mock_initialize_app.return_value = None
+        shell.options = self._setup_options(cli_timeout=120)
+        with patch.dict("os.environ", {"QCOS_CLIENT_TIMEOUT": "30"}):
+            shell.initialize_app([])
+        mock_client_cls.assert_called_once()
+        kwargs = mock_client_cls.call_args.kwargs
+        assert kwargs["timeout"] == 120
+        assert kwargs["timeout_from_cli"] is True
+
+    @patch.object(App, "initialize_app")
+    @patch("wy_qcos_client.shell.Client")
+    def test_env_timeout_when_no_cli(
+        self, mock_client_cls, mock_initialize_app
+    ):
+        """Env var used when command line timeout not specified."""
+        mock_initialize_app.return_value = None
+        shell.options = self._setup_options(cli_timeout=None)
+        with patch.dict("os.environ", {"QCOS_CLIENT_TIMEOUT": "45"}):
+            shell.initialize_app([])
+        kwargs = mock_client_cls.call_args.kwargs
+        assert kwargs["timeout"] == 45
+        assert kwargs["timeout_from_cli"] is False
+
+    @patch.object(App, "initialize_app")
+    @patch("wy_qcos_client.shell.Client")
+    def test_default_timeout_when_no_cli_no_env(
+        self, mock_client_cls, mock_initialize_app
+    ):
+        """Default 60s used when neither cli nor env specified."""
+        mock_initialize_app.return_value = None
+        shell.options = self._setup_options(cli_timeout=None)
+        with patch.dict("os.environ", {}, clear=True):
+            shell.initialize_app([])
+        kwargs = mock_client_cls.call_args.kwargs
+        assert kwargs["timeout"] == 60
+        assert kwargs["timeout_from_cli"] is False
