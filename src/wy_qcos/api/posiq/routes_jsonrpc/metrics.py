@@ -157,6 +157,7 @@ def get_job_stats(
             Constant.JOB_METRICS_FIELD_QUEUED: job_metrics_data.queued,
             Constant.JOB_METRICS_FIELD_CANCELLING: job_metrics_data.cancelling,
             Constant.JOB_METRICS_FIELD_CANCELLED: job_metrics_data.cancelled,
+            Constant.JOB_METRICS_FIELD_DELETING: job_metrics_data.deleting,
             Constant.JOB_METRICS_FIELD_DELETED: job_metrics_data.deleted,
             Constant.JOB_METRICS_FIELD_UNKNOWN: job_metrics_data.unknown,
         }

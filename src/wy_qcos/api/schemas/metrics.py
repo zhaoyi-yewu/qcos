@@ -90,5 +90,6 @@ class GetJobStatsResponse(BaseModel):
     queued: int = Field(..., description="Number of queued jobs")
     cancelling: int = Field(..., description="Number of cancelling jobs")
     cancelled: int = Field(..., description="Number of cancelled jobs")
+    deleting: int = Field(..., description="Number of deleting jobs")
     deleted: int = Field(..., description="Number of deleted jobs")
     unknown: int = Field(..., description="Number of unknown jobs")
