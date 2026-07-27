@@ -57,6 +57,72 @@ from .constant import HttpCode, HttpHeaders, HttpMethod, Constant
 
 logger = logging.getLogger(__name__)
 
+# Allowed module name prefixes for dynamic imports (security whitelist).
+# Matching uses dot-boundary semantics: "wy_qcos." matches "wy_qcos.foo"
+# but NOT "wy_qcos_evil".
+_ALLOWED_MODULE_PREFIXES = ("wy_qcos",)
+
+# Regex restricting module name format to letters, digits, underscores and
+# dots, starting with a letter or underscore (security validation).
+_ALLOWED_MODULE_NAME_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_.]*")
+
+# Regex restricting class name format to valid Python identifiers,
+# rejecting dunder/magic attributes (security validation).
+_ALLOWED_CLASS_NAME_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*")
+
+
+def _is_allowed_module(module_name):
+    """Check whether a module name is in the allowed import whitelist.
+
+    Performs two layers of validation:
+      1. format check via regex (only letters, digits, underscores, dots)
+      2. prefix check against the allowed import whitelist using
+         dot-boundary matching to prevent prefix-confusion attacks
+         (e.g. "wy_qcos_evil" must not match prefix "wy_qcos")
+
+    Args:
+        module_name: fully qualified module name
+
+    Returns:
+        True if the module name passes both format and whitelist checks
+    """
+    if not module_name:
+        return False
+    if not _ALLOWED_MODULE_NAME_RE.fullmatch(module_name):
+        return False
+    # dot-boundary prefix match: the module name must either equal an
+    # allowed prefix exactly or start with "<prefix>."
+    for prefix in _ALLOWED_MODULE_PREFIXES:
+        if module_name == prefix or module_name.startswith(prefix + "."):
+            return True
+    return False
+
+
+def _is_allowed_class_name(class_name):
+    """Check whether a class name is safe for dynamic getattr.
+
+    Performs validation:
+      1. non-empty string
+      2. format check via regex (valid Python identifier)
+      3. reject dunder/magic attributes (names starting with "__")
+         to prevent access to dangerous attributes like __builtins__,
+         __import__, __subclasses__, etc.
+
+    Args:
+        class_name: attribute name to validate
+
+    Returns:
+        True if the class name is safe for dynamic attribute access
+    """
+    if not class_name:
+        return False
+    if not _ALLOWED_CLASS_NAME_RE.fullmatch(class_name):
+        return False
+    # reject dunder attributes to prevent magic attribute abuse
+    if class_name.startswith("__"):
+        return False
+    return True
+
 
 class Library:
     """Library."""
@@ -604,6 +670,13 @@ class Library:
                         sys.path.insert(0, site_packages_dir)
 
             try:
+                # security: only allow importing modules under
+                # whitelisted prefixes to prevent arbitrary code import
+                if not _is_allowed_module(module_name):
+                    raise ValueError(
+                        f"Module '{module_name}' is not in the "
+                        f"allowed import whitelist"
+                    )
                 module = importlib.import_module(module_name)
                 for _, obj in inspect.getmembers(module):
                     if inspect.isclass(obj):
