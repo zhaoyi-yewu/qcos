@@ -18,6 +18,10 @@ services:
     container_name: postgres
     image: ${REGISTRY}${POSTGRES_IMAGE_NAME}:${POSTGRES_IMAGE_VERSION}
     restart: always
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
     network_mode: "host"
     environment:
       TZ: Asia/Shanghai
