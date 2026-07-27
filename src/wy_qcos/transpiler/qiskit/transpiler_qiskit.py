@@ -164,16 +164,13 @@ class TranspilerQiskit(TranspilerBase):
             # initialize qpu info
             qpu_config = trans_cfg_inst.get_qpu_cfg()
             # coupling map info
-            coupling_map_info = [
-                [] for _ in range(len(qpu_config["coupler_map"]))
-            ]
+            coupling_map_info = []
             coupling_input: dict = qpu_config["coupler_map"]
             for key, value in coupling_input.items():
-                pos = int(key[1:])
-                coupling_map_info[pos] = [
+                coupling_map_info.append([
                     int(value[0][1:]),
                     int(value[1][1:]),
-                ]
+                ])
 
             coupling_map = CouplingMap(coupling_map_info)
 
@@ -183,7 +180,10 @@ class TranspilerQiskit(TranspilerBase):
 
             for gate in supp_basis_gates:
                 # single qubit gate info
-                if gate == Constant.SINGLE_QUBIT_GATE_RX:
+                if (
+                    gate == Constant.SINGLE_QUBIT_GATE_RX
+                    and "rx_error" in qpu_config
+                ):
                     rx_err_info = [
                         0.0 for _ in range(trans_cfg_inst.get_max_qubits())
                     ]
@@ -202,7 +202,10 @@ class TranspilerQiskit(TranspilerBase):
                     theta = Parameter("θ")
                     rx_param = RXGate(theta)
                     target.add_instruction(rx_param, rxgate_error)
-                elif gate == Constant.SINGLE_QUBIT_GATE_RY:
+                elif (
+                    gate == Constant.SINGLE_QUBIT_GATE_RY
+                    and "ry_error" in qpu_config
+                ):
                     ry_err_info = [
                         0.0 for _ in range(trans_cfg_inst.get_max_qubits())
                     ]
