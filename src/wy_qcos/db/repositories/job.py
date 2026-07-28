@@ -15,8 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from datetime import datetime
 from uuid import UUID
 import logging
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -144,6 +146,49 @@ class JobRepository(BaseRepository):
             Count of matching jobs, returns 0 on error
         """
         return self.count_with_filters(Job, filters=filters)
+
+    def count_recent(
+        self,
+        since: datetime,
+        time_field: str = "created_at",
+        job_status: str | None = None,
+    ) -> int:
+        """Count jobs whose time_field is at or after the given timestamp.
+
+        Args:
+            since: datetime threshold (inclusive). Jobs whose
+                time_field >= since are counted.
+            time_field: name of the Job datetime column to filter on,
+                either 'created_at' (default) or 'ended_at'.
+            job_status: optional job_status value to filter by (e.g.
+                Constant.JOB_STATUS_COMPLETED). When None, all statuses
+                are counted.
+
+        Returns:
+            Count of recently created/ended jobs, returns 0 on error
+        """
+        if time_field not in ("created_at", "ended_at"):
+            logger.error(
+                f"Unsupported time_field '{time_field}', expected "
+                f"'created_at' or 'ended_at'"
+            )
+            return 0
+        try:
+            column = getattr(Job, time_field)
+            query = (
+                select(func.count()).select_from(Job).where(column >= since)
+            )
+            if job_status is not None:
+                query = query.where(Job.job_status == job_status)
+            result = self._db_session.execute(query)
+            count = result.scalar()
+            return count if count is not None else 0
+        except Exception as e:
+            logger.error(
+                f"Error counting recent {time_field} "
+                f"{job_status or 'all'} jobs since {since}: {e}"
+            )
+            return 0
 
     def update_job_results(
         self, job_id: UUID, job_update: schemas.SetJobResultsRequest

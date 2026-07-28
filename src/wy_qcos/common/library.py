@@ -20,6 +20,7 @@ import asyncio
 import base64
 import copy
 import csv
+import ctypes
 import fnmatch
 import hashlib
 import importlib
@@ -69,6 +70,12 @@ _ALLOWED_MODULE_NAME_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_.]*")
 # Regex restricting class name format to valid Python identifiers,
 # rejecting dunder/magic attributes (security validation).
 _ALLOWED_CLASS_NAME_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*")
+
+# Cached libc handle for malloc_trim (Linux/glibc only). Loaded lazily
+# on first load_libc() call; None on non-Linux platforms or when
+# malloc_trim is not exported by libc.
+_libc_handle = None
+_libc_loaded = False
 
 
 def _is_allowed_module(module_name):
@@ -201,11 +208,35 @@ class Library:
             if not allow_kill_self:
                 if os.getpid() == pid:
                     need_to_kill = False
-            # Attempt to terminate the process by sending SIGTERM signal
+            # Attempt to terminate the process by sending SIGTERM signal.
+            # Poll for up to 10 seconds for the process to exit; if it is
+            # still alive, escalate to SIGKILL to ensure the port is
+            # released before the new process starts.
             if pid and need_to_kill:
                 os.kill(pid, signal.SIGTERM)
-                # Wait for process to exit
-                time.sleep(1)
+                # Wait for process to exit with escalating timeout
+                max_wait = 10
+                waited = 0
+                while waited < max_wait:
+                    try:
+                        # os.kill with signal 0 checks process existence
+                        os.kill(pid, 0)
+                        time.sleep(0.5)
+                        waited += 0.5
+                    except ProcessLookupError:
+                        # Process has exited
+                        break
+                if waited >= max_wait:
+                    # Process did not exit gracefully; force kill
+                    try:
+                        os.kill(pid, signal.SIGKILL)
+                        time.sleep(0.5)
+                    except ProcessLookupError:
+                        pass
+                    print(
+                        f"Process {pid} did not exit after SIGTERM "
+                        f"within {max_wait}s, sent SIGKILL"
+                    )
         except ValueError as e:
             print(f"Failed to process PID file: {e}")
         except ProcessLookupError:
@@ -380,6 +411,58 @@ class Library:
     @staticmethod
     def get_top_dir():
         return str(Path(__file__).resolve().parent.parent.parent.parent)
+
+    @staticmethod
+    def load_libc():
+        """Load libc (Linux/glibc only) and cache the handle.
+
+        Returns the libc CDLL handle when libc.so.6 is available and
+        exports malloc_trim; returns None on non-Linux platforms or
+        when malloc_trim is not present. The result is cached so
+        repeated calls do not reload the library.
+
+        Returns:
+            ctypes.CDLL handle or None
+        """
+        global _libc_handle, _libc_loaded
+        if _libc_loaded:
+            return _libc_handle
+        _libc_loaded = True
+        try:
+            _libc_handle = ctypes.CDLL("libc.so.6", use_errno=True)
+            if not hasattr(_libc_handle, "malloc_trim"):
+                logger.debug(
+                    "libc does not export malloc_trim; "
+                    "skipping malloc_trim calls"
+                )
+                _libc_handle = None
+        except OSError:
+            logger.debug(
+                "libc.so.6 not available (non-Linux platform); "
+                "skipping malloc_trim calls"
+            )
+            _libc_handle = None
+        return _libc_handle
+
+    @staticmethod
+    def malloc_trim(pad=0):
+        """Call glibc malloc_trim to release free heap memory to the OS.
+
+        malloc_trim(pad) asks glibc to return free memory at the top of
+        the heap back to the OS, keeping at least ``pad`` bytes. This
+        is a no-op on non-glibc platforms.
+
+        Args:
+            pad: number of bytes to retain at the top of the heap
+
+        Returns:
+            1 on success, 0 on failure, or None when malloc_trim is
+            not available
+        """
+        libc = Library.load_libc()
+        if libc is None:
+            return None
+        return libc.malloc_trim(pad)
 
     @staticmethod
     def mkdir(dir_name, mode=None):

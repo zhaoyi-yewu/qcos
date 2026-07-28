@@ -119,7 +119,7 @@ def _setup_expired_cleaner(
 class TestInit:
     def test_init_sets_defaults(self):
         with patch(f"{MODULE}.Config") as mock_cfg:
-            mock_cfg.DEFAULT.JOB_CLEAN_INTERVAL = 30
+            mock_cfg.DEFAULT.JOB_SCAN_INTERVAL = 30
             mock_cfg.DEFAULT.JOB_EXPIRE_DAYS = 3
             mock_cfg.DEFAULT.FLOW_EXPIRE_DAYS = 5
             cleaner = JobCleaner(MagicMock())

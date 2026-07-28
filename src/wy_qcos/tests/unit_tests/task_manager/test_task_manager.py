@@ -648,6 +648,49 @@ class TestTaskFlowManager(unittest.TestCase):
         assert result == ["flow"]
         mock_client.read_flow_runs.assert_called_once()
 
+    def test_read_all_flow_runs_single_page(self):
+        """Fewer than page_size returns after a single request."""
+        sync_client = Mock()
+        sync_client.read_flow_runs.return_value = ["a", "b", "c"]
+        result = TaskFlowManager.read_all_flow_runs(sync_client, page_size=200)
+        assert result == ["a", "b", "c"]
+        sync_client.read_flow_runs.assert_called_once()
+
+    def test_read_all_flow_runs_multi_page(self):
+        """Full pages continue; last partial page terminates the loop."""
+        sync_client = Mock()
+        page1 = [f"item-{i}" for i in range(200)]
+        page2 = [f"item-{i}" for i in range(50)]
+        sync_client.read_flow_runs.side_effect = [page1, page2]
+        result = TaskFlowManager.read_all_flow_runs(sync_client, page_size=200)
+        assert len(result) == 250
+        assert sync_client.read_flow_runs.call_count == 2
+        calls = sync_client.read_flow_runs.call_args_list
+        assert calls[0].kwargs["offset"] == 0
+        assert calls[1].kwargs["offset"] == 200
+
+    def test_read_all_flow_runs_exact_multiple(self):
+        """Exact multiple of page_size triggers one extra empty request."""
+        sync_client = Mock()
+        page1 = [f"a-{i}" for i in range(200)]
+        page2 = [f"b-{i}" for i in range(200)]
+        sync_client.read_flow_runs.side_effect = [page1, page2, []]
+        result = TaskFlowManager.read_all_flow_runs(sync_client, page_size=200)
+        assert len(result) == 400
+        assert sync_client.read_flow_runs.call_count == 3
+
+    def test_read_all_flow_runs_with_filter(self):
+        """flow_run_filter is forwarded to every page request."""
+        sync_client = Mock()
+        sync_client.read_flow_runs.return_value = []
+        flow_run_filter = Mock()
+        TaskFlowManager.read_all_flow_runs(
+            sync_client, flow_run_filter=flow_run_filter, page_size=200
+        )
+        sync_client.read_flow_runs.assert_called_once_with(
+            flow_run_filter=flow_run_filter, limit=200, offset=0
+        )
+
     # --- Aggregation-related test cases ---
 
     def test_run_flow_by_client_with_internal_aggregation(self):

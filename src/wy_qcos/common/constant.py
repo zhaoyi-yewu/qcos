@@ -45,7 +45,7 @@ class Constant:
     # Metrics server defaults
     DEFAULT_METRICS_SERVER_LISTEN_IP = ""
     DEFAULT_METRICS_SERVER_LISTEN_PORT = 19400
-    DEFAULT_UPDATE_METRICS_INTERVAL_SECONDS = 15
+    DEFAULT_UPDATE_METRICS_INTERVAL_SECONDS = 30
 
     # QCOS client-side server default IP and port
     DEFAULT_QCOS_SERVER_IP = "127.0.0.1"
@@ -529,6 +529,8 @@ class Constant:
     JOB_METRICS_FIELD_DELETING = JOB_STATUS_DELETING.lower()
     JOB_METRICS_FIELD_DELETED = JOB_STATUS_DELETED.lower()
     JOB_METRICS_FIELD_UNKNOWN = JOB_STATUS_UNKNOWN.lower()
+    JOB_METRICS_FIELD_SUBMITTED_JOB_RATE_MIN = "submitted_job_rate_min"
+    JOB_METRICS_FIELD_COMPLETED_JOB_RATE_MIN = "completed_job_rate_min"
 
     # API metrics
     API_METRICS_REQUESTS_TOTAL = "api_requests_total"

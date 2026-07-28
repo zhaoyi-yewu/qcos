@@ -26,6 +26,7 @@ import fastapi_jsonrpc as jsonrpc
 from wy_qcos.metrics.metrics_server import MetricsServer
 from wy_qcos.metrics.metrics_scheduler import MetricsScheduler
 from wy_qcos.metrics.metrics_task import set_app, init_metrics
+from wy_qcos.task_manager.gc_cleaner import GcCleaner
 from wy_qcos.task_manager.job_cleaner import JobCleaner
 
 logger = logging.getLogger(__name__)
@@ -122,6 +123,10 @@ async def app_lifespan(app: jsonrpc.API):
         task_manager=app.state._task_manager,
     )
     manager.add_service(job_cleaner)
+
+    # Register periodic GC cleaner (gc.collect + malloc_trim)
+    gc_cleaner = GcCleaner()
+    manager.add_service(gc_cleaner)
 
     # Start all background services
     await manager.start_all()

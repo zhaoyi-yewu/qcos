@@ -20,6 +20,7 @@ import logging
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 from functools import partial
 
 import redis.asyncio as async_redis
@@ -266,6 +267,20 @@ async def update_job_metrics():
             Job, "job_status", Constant.JOB_STATUS_UNKNOWN
         )
 
+        # Count jobs created in the last minute to compute submission
+        # rate (jobs per minute). Uses a sliding 1-minute window over
+        # created_at so no persistent snapshot is needed.
+        recent_cutoff = datetime.now() - timedelta(minutes=1)
+        submitted_job_count = repo.count_recent(recent_cutoff)
+        # Count jobs ended in the last minute to compute completion rate.
+        # Uses ended_at so the rate reflects actual job completions rather
+        # than creations.
+        completed_job_count = repo.count_recent(
+            recent_cutoff,
+            time_field="ended_at",
+            job_status=Constant.JOB_STATUS_COMPLETED,
+        )
+
         data = metrics_collector.job_metrics.JobMetricsData(
             total=total,
             completed=completed,
@@ -277,6 +292,8 @@ async def update_job_metrics():
             deleting=deleting,
             deleted=deleted,
             unknown=unknown,
+            submitted_job_rate_min=float(submitted_job_count),
+            completed_job_rate_min=float(completed_job_count),
         )
 
         metrics_collector.update_job_metrics(data=data)

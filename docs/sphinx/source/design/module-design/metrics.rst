@@ -1,4 +1,4 @@
-系统监控
+﻿系统监控
 ==========
 
 本章节主要介绍QCOS系统监控指标管理与采集模块（Metrics）设计。模块提供两类指标输出通道：基于POSIQ协议的JSON-RPC 2.0查询接口和Prometheus格式的HTTP指标暴露端点。
@@ -137,7 +137,9 @@ metrics_task（更新任务）
 
 ``metrics_task.py`` 包含具体的指标采集与更新逻辑，包含以下函数：
 
-* ``update_job_metrics()`` — 通过 ``JobRepository`` 查询数据库，按状态统计各状态作业数量并更新 JobMetrics
+* ``update_job_metrics()`` — 通过 ``JobRepository`` 查询数据库，按状态统计各状态作业数量并更新 JobMetrics；
+  同时统计最近 1 分钟内新增的作业数量（基于 ``created_at``），计算作业提交速率 ``submitted_job_rate_min``
+  （job/分钟）和已完成作业速率 ``completed_job_rate_min``（completed job/分钟，按 ``created_at`` 且状态为 completed 过滤）并写入 ``JobMetricsData``
 * ``check_worker_health()`` — 遍历所有设备，并发检查每个设备的 work pool 中是否有在线 worker（超时 5s，最多重试 1 次，重试延迟 2s）
 * ``check_prefect_health()`` — 通过调用 ``sync_client.hello()`` 检查 Prefect API 可用性（超时 3s）
 * ``check_fastapi_health()`` — 由于 FastAPI 与指标监控在同一进程，默认返回健康

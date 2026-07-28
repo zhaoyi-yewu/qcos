@@ -53,6 +53,8 @@ class JobMetrics:
             "deleting",
             "deleted",
             "unknown",
+            "submitted_job_rate_min",
+            "completed_job_rate_min",
         )
 
         def __init__(
@@ -67,6 +69,8 @@ class JobMetrics:
             deleting: int = 0,
             deleted: int = 0,
             unknown: int = 0,
+            submitted_job_rate_min: float = 0.0,
+            completed_job_rate_min: float = 0.0,
         ):
             self.total = total
             self.completed = completed
@@ -78,6 +82,8 @@ class JobMetrics:
             self.deleting = deleting
             self.deleted = deleted
             self.unknown = unknown
+            self.submitted_job_rate_min = submitted_job_rate_min
+            self.completed_job_rate_min = completed_job_rate_min
 
         def __repr__(self):
             return (
@@ -89,7 +95,9 @@ class JobMetrics:
                 f"cancelled={self.cancelled}, "
                 f"deleting={self.deleting}, "
                 f"deleted={self.deleted}, "
-                f"unknown={self.unknown})"
+                f"unknown={self.unknown}, "
+                f"submitted_job_rate_min={self.submitted_job_rate_min}, "
+                f"completed_job_rate_min={self.completed_job_rate_min})"
             )
 
     def __init__(self) -> None:

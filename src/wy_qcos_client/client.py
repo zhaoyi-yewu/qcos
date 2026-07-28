@@ -539,12 +539,17 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def debug_tracemalloc(self, *, action="snapshot", nframe=25):
+    def debug_tracemalloc(
+        self, *, action="snapshot", nframe=25, sort_count=False
+    ):
         """Debug memory allocations via tracemalloc.
 
         Args:
             action: action to perform (snapshot, stop, clear)
             nframe: number of top memory allocations to show
+            sort_count: sort top allocations by count (descending)
+                instead of by size. Sorting is performed server-side
+                before applying the nframe limit.
 
         Returns:
             tracemalloc statistics
@@ -552,7 +557,7 @@ class Client:
         method_name = "debug_tracemalloc"
 
         # construct data and call json rpc
-        data = {"action": action, "nframe": nframe}
+        data = {"action": action, "nframe": nframe, "sort_count": sort_count}
         status_code, reason, text, result = self.call_json_rpc(
             self.system_url, method_name, data
         )

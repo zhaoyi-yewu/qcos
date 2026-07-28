@@ -17,6 +17,7 @@
 
 import asyncio
 import logging
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -30,6 +31,7 @@ from wy_qcos.db.models import Job
 from wy_qcos.db.repositories.job import JobRepository
 from wy_qcos.db.utils.db_utils import create_db_session
 from wy_qcos.task_manager import scheduler
+from wy_qcos.task_manager.task_manager import TaskFlowManager
 
 
 logger = logging.getLogger(__name__)
@@ -47,7 +49,7 @@ class JobCleaner:
     def __init__(self, app_db_engine, task_manager=None) -> None:
         self._scheduler = AsyncIOScheduler(daemon=True)
         self._running = False
-        self._interval = Config.DEFAULT.JOB_CLEAN_INTERVAL
+        self._interval = Config.DEFAULT.JOB_SCAN_INTERVAL
         self._expire_days = Config.DEFAULT.JOB_EXPIRE_DAYS
         self._flow_expire_days = Config.DEFAULT.FLOW_EXPIRE_DAYS
         self._db_engine = app_db_engine
@@ -117,8 +119,6 @@ class JobCleaner:
         Returns:
         True if flow reached a terminal state within timeout, False otherwise.
         """
-        import time
-
         end_time = time.time() + timeout_seconds
         # Use short sleep intervals for polling
         while time.time() < end_time:
@@ -188,11 +188,13 @@ class JobCleaner:
         logger.info("Scanning for orphaned device flows...")
         sync_client = self._get_sync_client()
 
-        # Get all flow runs
+        # Get all flow runs via pagination (read_flow_runs is bounded by
+        # PREFECT_API_DEFAULT_LIMIT, so loop over pages to fetch all).
         all_flow_runs = await self._run_sync(
-            sync_client.read_flow_runs,
-            limit=None,
+            TaskFlowManager.read_all_flow_runs,
+            sync_client,
         )
+        logger.info(f"Fetched {len(all_flow_runs)} flow runs in total")
 
         # Get all job IDs from database
         job_ids = await self._run_sync(self._get_all_job_ids)
@@ -294,16 +296,18 @@ class JobCleaner:
             )
             return
 
+        flow_expire_minutes = self._flow_expire_days * 24 * 60
         logger.info(
             f"Scanning for completed job-flow runs "
-            f"(>{self._flow_expire_days} days)..."
+            f"(>{self._flow_expire_days} days / "
+            f"{flow_expire_minutes} minutes)..."
         )
 
         sync_client = self._get_sync_client()
 
         # Compute cutoff timestamp
         flow_expire_cutoff = datetime.now(timezone.utc) - timedelta(
-            days=self._flow_expire_days
+            seconds=flow_expire_minutes * 60
         )
 
         expect_job_flow_id = None
@@ -315,7 +319,7 @@ class JobCleaner:
             return
         try:
             all_job_flow_runs = await self._run_sync(
-                sync_client.read_flow_runs, limit=None
+                TaskFlowManager.read_all_flow_runs, sync_client
             )
         except Exception as e:
             logger.error(f"Failed to fetch flow runs: {e}")

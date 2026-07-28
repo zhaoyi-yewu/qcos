@@ -50,10 +50,10 @@ class DefaultSection(BaseModel):
         default=Constant.AUTH_MODE_NO,
         description="Authentication mode: 'no', 'jwt', or 'virtual_instance'",
     )
-    JOB_CLEAN_INTERVAL: int = Field(
+    JOB_SCAN_INTERVAL: int = Field(
         default=60,
         ge=1,
-        description="Job clean interval in minutes",
+        description="Job scan interval in minutes",
     )
     JOB_EXPIRE_DAYS: int | float = Field(
         default=-1,
@@ -69,6 +69,14 @@ class DefaultSection(BaseModel):
         "(supports int and float). Completed flow-runs of the "
         "'job-flow' older than this will be auto-deleted. "
         "Set to -1 to disable (never auto-delete).",
+    )
+    GC_INTERVAL: int | float = Field(
+        default=1,
+        ge=-1,
+        description="Garbage collection interval in days. Periodically "
+        "runs gc.collect() on all 3 generations and malloc_trim(0) "
+        "to release freed memory back to the OS. "
+        "Set to -1 to disable periodic GC. Default: 1 (daily).",
     )
     VENV_DIR: str = Field(
         default="/var/lib/qcos/venv",
