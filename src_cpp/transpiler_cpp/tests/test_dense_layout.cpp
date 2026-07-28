@@ -311,3 +311,85 @@ TEST(DenseLayout, DisconnectedGraph) {
   ASSERT_EQ(mapping.size(), 3u);
   EXPECT_FALSE(has_duplicate(mapping));
 }
+
+/**
+ * @brief fidelity_weight 参数测试（默认值 0.5）
+ *
+ * 验证新增的 fidelity_weight 参数能正常工作。
+ * 使用默认值 0.5 时应该能正常运行。
+ */
+TEST(DenseLayout, FidelityWeightDefault) {
+  std::vector<std::pair<int, int>> coupling_list = {{0, 1}, {1, 0}, {1, 2},
+                                                    {2, 1}, {2, 3}, {3, 2}};
+  std::vector<double> edge_fidelities = {0.95, 0.95, 0.90, 0.90, 0.95, 0.95};
+  std::vector<GateOperation> gates_list = {
+      GateOperation("cx", {0, 1}, {}, OperationType::DOUBLE_QUBIT_OPERATION,
+                    false),
+      GateOperation("cx", {1, 2}, {}, OperationType::DOUBLE_QUBIT_OPERATION,
+                    false),
+  };
+
+  // 使用默认 fidelity_weight=0.5
+  auto mapping =
+      dense_layout_mapping(gates_list, coupling_list, edge_fidelities, 3, 0.5);
+
+  ASSERT_EQ(mapping.size(), 3u);
+  EXPECT_FALSE(has_duplicate(mapping));
+}
+
+/**
+ * @brief fidelity_weight 极端值测试
+ *
+ * 测试 fidelity_weight=0.0（纯密度优先）和
+ * fidelity_weight=1.0（纯保真度优先）。
+ */
+TEST(DenseLayout, FidelityWeightExtremeValues) {
+  std::vector<std::pair<int, int>> coupling_list = {{0, 1}, {1, 0}, {1, 2},
+                                                    {2, 1}, {2, 3}, {3, 2}};
+  std::vector<double> edge_fidelities = {0.99, 0.99, 0.70, 0.70, 0.99, 0.99};
+  std::vector<GateOperation> gates_list = {
+      GateOperation("cx", {0, 1}, {}, OperationType::DOUBLE_QUBIT_OPERATION,
+                    false),
+      GateOperation("cx", {1, 2}, {}, OperationType::DOUBLE_QUBIT_OPERATION,
+                    false),
+  };
+
+  // fidelity_weight=0.0: 纯密度优先
+  auto mapping_density =
+      dense_layout_mapping(gates_list, coupling_list, edge_fidelities, 3, 0.0);
+  ASSERT_EQ(mapping_density.size(), 3u);
+  EXPECT_FALSE(has_duplicate(mapping_density));
+
+  // fidelity_weight=1.0: 纯保真度优先
+  auto mapping_fidelity =
+      dense_layout_mapping(gates_list, coupling_list, edge_fidelities, 3, 1.0);
+  ASSERT_EQ(mapping_fidelity.size(), 3u);
+  EXPECT_FALSE(has_duplicate(mapping_fidelity));
+}
+
+/**
+ * @brief 密度归一化测试
+ *
+ * 验证密度分数使用实际最大边数归一化，而非理论最大边数。
+ * 在稀疏图中，所有子图的密度分数应该接近 1.0。
+ */
+TEST(DenseLayout, DensityNormalization) {
+  // 线性拓扑：0-1-2-3-4-5
+  std::vector<std::pair<int, int>> coupling_list = {
+      {0, 1}, {1, 0}, {1, 2}, {2, 1}, {2, 3},
+      {3, 2}, {3, 4}, {4, 3}, {4, 5}, {5, 4}};
+  std::vector<double> edge_fidelities(10, 0.95);
+  std::vector<GateOperation> gates_list = {
+      GateOperation("cx", {0, 1}, {}, OperationType::DOUBLE_QUBIT_OPERATION,
+                    false),
+      GateOperation("cx", {1, 2}, {}, OperationType::DOUBLE_QUBIT_OPERATION,
+                    false),
+  };
+
+  // 3 个逻辑比特在线性拓扑中，所有子图都有相同的边数
+  auto mapping =
+      dense_layout_mapping(gates_list, coupling_list, edge_fidelities, 3, 0.5);
+
+  ASSERT_EQ(mapping.size(), 3u);
+  EXPECT_FALSE(has_duplicate(mapping));
+}

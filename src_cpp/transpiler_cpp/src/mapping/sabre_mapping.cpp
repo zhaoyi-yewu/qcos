@@ -70,10 +70,10 @@ std::vector<int> sabre_initial_mapping(
 
   // 以 initial_layout 作为正向路由起点（空则从零开始），1 次迭代
   sabre.execute_routing(prefix_gates, initial_layout);
-  std::vector<int> reverse_mapping = sabre.get_logic2phy();
+  std::vector<int> reverse_mapping = sabre.get_final_mapping();
 
   sabre.execute_routing(reverse_gates, reverse_mapping);
-  return sabre.get_logic2phy();
+  return sabre.get_final_mapping();
 }
 
 }  // namespace qcos

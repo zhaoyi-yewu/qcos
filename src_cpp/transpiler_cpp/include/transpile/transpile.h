@@ -103,6 +103,11 @@ std::vector<std::string> collect_gate_names(
  * 1=串行，>1=指定。默认 0，透传给内部 optimize() 调用。
  * @param fast_mode 优化快速模式：true 只跑一轮 pass，透传给内部 optimize()
  * 调用。
+ * @param fidelity_threshold 保真度阈值，<0 自适应计算 (mean - std, clamp [0.3,
+ * 0.9])，
+ * >=0 使用传入值，默认 -1
+ * @param fidelity_weight DenseLayout 保真度权重，取值 [0, 1]，默认
+ * 0.5（密度与保真度相同权重）
  * @return TranspileResult 包含最终门列表、量子比特数和各阶段计时
  */
 TranspileResult transpile(
@@ -111,10 +116,12 @@ TranspileResult transpile(
     const std::vector<std::pair<int, int>>& coupling_list, int opt_level = 1,
     const std::vector<double>& edge_fidelities = {},
     const std::vector<double>& single_qubit_fidelities = {},
-    size_t num_threads = 0, bool fast_mode = true);
+    size_t num_threads = 0, bool fast_mode = true,
+    double fidelity_threshold = -1.0, double fidelity_weight = 0.5);
 
 /**
- * @brief All-in-one transpile function (neutral-atom NA mapping, single circuit).
+ * @brief All-in-one transpile function (neutral-atom NA mapping, single
+ * circuit).
  *
  * Same pipeline as transpile(sabre); only the routing stage is replaced by
  * NARoute, which inserts MOVE operations between the operate area and the
@@ -138,7 +145,6 @@ TranspileResult transpile(
  */
 TranspileResult transpile_na(const std::string& qasm_string,
                              const std::vector<std::string>& supp_basis_gates,
-                             const NAQpuConfig& qpu_config,
-                             int opt_level = 1);
+                             const NAQpuConfig& qpu_config, int opt_level = 1);
 
 }  // namespace qcos
