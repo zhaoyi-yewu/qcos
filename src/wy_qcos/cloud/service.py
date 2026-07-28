@@ -132,11 +132,8 @@ _VERIFIER_MSG_TRANSLATIONS: list[tuple[re.Pattern[str], str]] = [
         "拓扑校验错误：线路需要{}个量子比特，超出最大连通分量{}",
     ),
     (
-        re.compile(
-            r"^Topology error: target_bits are not in the same connected "
-            r"component$"
-        ),
-        "拓扑校验错误：自定义比特位不在同一连通分量中",
+        re.compile(r"^Topology error: target_bits are not connected$"),
+        "拓扑校验错误：自定义比特位不连通",
     ),
     # --- gate count / depth errors ---
     (

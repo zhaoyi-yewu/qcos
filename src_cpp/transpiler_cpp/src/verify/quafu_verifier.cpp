@@ -22,6 +22,7 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "compiler/qasm_to_ir.hpp"
 #include "mapping/mapping_utils.h"
@@ -154,22 +155,32 @@ bool QuafuVerifier::check_topology() const {
     }
     return true;
   } else {
-    // 用户指定了 target_bits：判断是否都在同一个连通分量上
-    // 孤立比特（不在任何耦合边中）以自身 ID 作为分量代表
-    auto component_map = find_connected_components(coupling_list_);
-    for (int target_bit : target_bits_) {
-      if (component_map.find(target_bit) == component_map.end()) {
-        component_map[target_bit] = target_bit;
+    // 用户指定了 target_bits：要求这些比特本身构成一个连通分量
+    // 只保留两端都在 target_bits 集合中的耦合边，检查诱导子图是否连通
+    std::unordered_set<int> target_set(target_bits_.begin(),
+                                       target_bits_.end());
+    std::vector<std::pair<int, int>> induced_edges;
+    for (const auto& [qubit_a, qubit_b] : coupling_list_) {
+      if (target_set.count(qubit_a) && target_set.count(qubit_b)) {
+        induced_edges.emplace_back(qubit_a, qubit_b);
       }
     }
-    int expected_component_id = component_map[target_bits_[0]];
-    for (size_t i = 1; i < target_bits_.size(); ++i) {
-      if (component_map[target_bits_[i]] != expected_component_id) {
-        result_.add_failure(
-            "Topology error: target_bits are not in the same connected "
-            "component");
+    // 诱导子图连通当且仅当：所有 target_bit 都出现在诱导边中（无孤立节点）
+    // 且它们属于同一个连通分量。
+    auto component_map = find_connected_components(induced_edges);
+    std::unordered_set<int> roots;
+    for (int target_bit : target_bits_) {
+      auto it = component_map.find(target_bit);
+      if (it == component_map.end()) {
+        // 该 target_bit 不在任何耦合边中，是孤立节点
+        result_.add_failure("Topology error: target_bits are not connected");
         return false;
       }
+      roots.insert(it->second);
+    }
+    if (roots.size() != 1) {
+      result_.add_failure("Topology error: target_bits are not connected");
+      return false;
     }
     return true;
   }
