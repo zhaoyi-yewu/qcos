@@ -171,3 +171,27 @@ class GetDeviceOptionsResponse(BaseModel):
     details: dict | None = Field(
         default=None, description="Get Device Options Response details"
     )
+
+
+class SetDeviceMaintainModeRequest(BaseModel):
+    """Set Device Maintain Mode Request.
+
+    Pydantic Model for Set Device Maintain Mode Request.
+    """
+
+    # device name
+    device_name: str = Field(description="Device name")
+    # maintain mode: on/off
+    mode: str = Field(description="Maintain mode: on or off")
+
+
+class SetDeviceMaintainModeResponse(BaseModel):
+    """Set Device Maintain Mode Response.
+
+    Pydantic Model for Set Device Maintain Mode Response.
+    """
+
+    # device name
+    name: str = Field(description="Device name")
+    # device status after operation
+    status: str = Field(description="Device status after operation")

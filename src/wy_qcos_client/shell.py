@@ -1003,6 +1003,63 @@ class GetDeviceOptions(ShowOne):
             print("json_results is None or json_results['details'] is None")
 
 
+class SetDeviceMaintainMode(Command):
+    """Set device maintain mode (on/off).
+
+    Examples:
+        qcos set-device-maintain-mode on --backend hanyuan1
+        qcos set-device-maintain-mode off --backend hanyuan1
+    """
+
+    group = QcosShell.CMD_GROUP_DEVICE
+
+    def get_parser(self, prog_name):
+        """Get parser for this command.
+
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "mode",
+            type=str,
+            choices=["on", "off"],
+            help="Maintain mode: on (set to maintain) or off (set to online)",
+        )
+        parser.add_argument(
+            "--backend",
+            dest="backend",
+            type=str,
+            required=True,
+            help="Device name (backend)",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        """Take action for command line arguments.
+
+        Args:
+            parsed_args: command line arguments
+        """
+        resource = self.group
+        mode = parsed_args.mode
+        backend = parsed_args.backend
+
+        status_code, reason, text, result = (
+            self.app.client.set_device_maintain_mode(backend, mode)
+        )
+        json_results = CommandHelper.check_results(
+            resource, "set_device_maintain_mode", status_code, reason, text
+        )
+        print(
+            f"Device {json_results['name']} status "
+            f"set to: {json_results['status']}"
+        )
+
+
 # Transpiler commands
 class GetTranspilers(Lister):
     """Get transpiler list."""
@@ -4645,6 +4702,7 @@ command_manager.add_command("calibrate-device", CalibrateDevice)
 command_manager.add_command("get-calibrate-results", GetCalibrateResults)
 command_manager.add_command("set-device-options", SetDeviceOptions)
 command_manager.add_command("get-device-options", GetDeviceOptions)
+command_manager.add_command("set-device-maintain-mode", SetDeviceMaintainMode)
 command_manager.add_command("list-devices", GetDevices)
 # device group command
 command_manager.add_command("create-device-group", CreateDeviceGroup)

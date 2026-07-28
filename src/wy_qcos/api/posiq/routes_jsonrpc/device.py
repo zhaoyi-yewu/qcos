@@ -258,3 +258,58 @@ def get_device_options(
         _response_info
     )
     return response_info
+
+
+@device_api_v1.method(
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.NotFoundError],
+)
+def set_device_maintain_mode(
+    body: schemas.SetDeviceMaintainModeRequest,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.SetDeviceMaintainModeResponse:
+    """Set device maintain mode.
+
+    Args:
+        body: SetDeviceMaintainModeRequest body
+        auth_data: auth data
+
+    Returns:
+        Set device maintain mode response
+    """
+    func_name = "set_device_maintain_mode"
+    logger.info(f"Call {func_name}: {body}")
+
+    device_name = body.device_name
+    mode = body.mode
+
+    device_manager = scheduler.get_device_manager()
+    device = device_manager.get_device(device_name)
+    if device is None:
+        jsonrpc_errors.handle_error_not_found(
+            module_name,
+            func_name,
+            (False, f"Device: '{device_name}' is not found"),
+        )
+
+    if mode == "on":
+        device.set_manual_maintain_mode(True)
+        device.set_status(device.DEVICE_STATUS_MAINTAIN)
+    elif mode == "off":
+        device.set_manual_maintain_mode(False)
+        device.set_status(device.DEVICE_STATUS_ONLINE)
+    else:
+        jsonrpc_errors.handle_error_not_found(
+            module_name,
+            func_name,
+            (False, f"Invalid mode: '{mode}'. Must be 'on' or 'off'"),
+        )
+
+    _response_info = {
+        "name": device.name,
+        "status": device.status,
+    }
+    response_info = schemas.SetDeviceMaintainModeResponse.model_validate(
+        _response_info
+    )
+    return response_info

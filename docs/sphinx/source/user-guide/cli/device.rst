@@ -180,3 +180,38 @@
 
    # 获取设备 dummy 的选项
    qcos-cli get-device-options dummy
+
+设置设备维护模式
+********************
+
+将设备设为维护模式或恢复在线模式。设备处于维护模式时，设备监控进程不会覆盖其维护状态。
+
+需要 admin 角色权限。
+
+命令行参数
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 设置设备维护模式
+   usage: qcos-cli set-device-maintain-mode [-h] [--backend BACKEND] {on,off}
+
+   Set device maintain mode (on/off).
+
+   positional arguments:
+     {on,off}              Maintain mode: on (set to maintain) or off (set to online)
+
+   options:
+     -h, --help            show this help message and exit
+     --backend BACKEND     Device name (backend) (required)
+
+典型场景示例
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 将设备 hanyuan1 设为维护模式
+   qcos set-device-maintain-mode on --backend hanyuan1
+
+   # 将设备 hanyuan1 恢复在线模式
+   qcos set-device-maintain-mode off --backend hanyuan1

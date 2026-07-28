@@ -418,6 +418,27 @@ class Client:
         )
         return status_code, reason, text, result
 
+    def set_device_maintain_mode(self, device_name, mode):
+        """Set device maintain mode.
+
+        Args:
+            device_name: device name
+            mode: maintain mode: "on" or "off"
+
+        Returns:
+            status_code, reason, text, result
+        """
+        method_name = "set_device_maintain_mode"
+
+        # construct data and call json rpc
+        data = {"device_name": device_name, "mode": mode}
+
+        # construct data and call json rpc
+        status_code, reason, text, result = self.call_json_rpc(
+            self.device_url, method_name, data
+        )
+        return status_code, reason, text, result
+
     # [Transpiler]
     def get_transpilers(self):
         """Get transpiler list.
