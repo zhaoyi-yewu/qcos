@@ -155,28 +155,19 @@ bool QuafuVerifier::check_topology() const {
     return true;
   } else {
     // 用户指定了 target_bits：判断是否都在同一个连通分量上
+    // 孤立比特（不在任何耦合边中）以自身 ID 作为分量代表
     auto component_map = find_connected_components(coupling_list_);
-    auto first_target_entry = component_map.find(target_bits_[0]);
-    if (first_target_entry == component_map.end()) {
-      result_.add_failure("Topology error: target_bit " +
-                          std::to_string(target_bits_[0]) +
-                          " not found in coupling graph");
-      return false;
-    }
-    int expected_component_id = first_target_entry->second;
-    for (size_t i = 1; i < target_bits_.size(); ++i) {
-      auto entry = component_map.find(target_bits_[i]);
-      if (entry == component_map.end()) {
-        result_.add_failure("Topology error: target_bit " +
-                            std::to_string(target_bits_[i]) +
-                            " not found in coupling graph");
-        return false;
+    for (int target_bit : target_bits_) {
+      if (component_map.find(target_bit) == component_map.end()) {
+        component_map[target_bit] = target_bit;
       }
-      if (entry->second != expected_component_id) {
-        result_.add_failure("Topology error: target_bits " +
-                            std::to_string(target_bits_[0]) + " and " +
-                            std::to_string(target_bits_[i]) +
-                            " are in different connected components");
+    }
+    int expected_component_id = component_map[target_bits_[0]];
+    for (size_t i = 1; i < target_bits_.size(); ++i) {
+      if (component_map[target_bits_[i]] != expected_component_id) {
+        result_.add_failure(
+            "Topology error: target_bits are not in the same connected "
+            "component");
         return false;
       }
     }

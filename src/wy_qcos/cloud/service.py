@@ -133,16 +133,10 @@ _VERIFIER_MSG_TRANSLATIONS: list[tuple[re.Pattern[str], str]] = [
     ),
     (
         re.compile(
-            r"^Topology error: target_bit (-?\d+) not found in coupling graph$"
+            r"^Topology error: target_bits are not in the same connected "
+            r"component$"
         ),
-        "拓扑校验错误：自定义比特位{}在拓扑中不存在",
-    ),
-    (
-        re.compile(
-            r"^Topology error: target_bits (-?\d+) and (-?\d+) are in "
-            r"different connected components$"
-        ),
-        "拓扑校验错误：目标比特{}和{}位于不同的连通分量中",
+        "拓扑校验错误：自定义比特位不在同一连通分量中",
     ),
     # --- gate count / depth errors ---
     (
