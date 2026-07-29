@@ -151,6 +151,11 @@ docs = [
     "sphinxcontrib-svg2pdfconverter==2.1.0",
 ]
 
+# requirements of driver uqc
+driver-logical-qubit = [
+    "lqcloud==0.4.2",
+]
+
 [project.scripts]
 # Command line interface entrypoint scripts
 qcos-api = "wy_qcos.api_server:main"
