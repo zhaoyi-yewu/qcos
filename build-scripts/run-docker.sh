@@ -109,6 +109,10 @@ if [ "${DB_BACKEND,,}" = "postgres" ]; then
   echo "PostgreSQL setup completed successfully"
 fi
 
+if [ "${DB_BACKEND,,}" = "sqlite" ]; then
+  rm -rf /var/qcos/db/prefect.db-shm /var/qcos/db/prefect.db-wal
+fi
+
 # start qcos
 echo "Creating QCOS dockers ..."
 if [ "${DEV,,}" = "false" ]; then
