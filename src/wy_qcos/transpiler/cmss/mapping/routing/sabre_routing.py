@@ -118,7 +118,24 @@ class SABRE:
             initial_l2p (list[int], optional): initial logical to physical
                 mapping. Defaults to None.
         """
-        logic_qubit_num = self.get_qubit_num_from_ir(gates_list)
+        # Separate measure gates from regular gates.
+        # Measure gates do not participate in routing; they are appended
+        # to the end with updated physical targets after routing completes.
+        regular_gates = []
+        measure_ops = []
+        for gate in gates_list:
+            if gate.name == "measure":
+                measure_ops.append(gate)
+            else:
+                regular_gates.append(gate)
+
+        logic_qubit_num = self.get_qubit_num_from_ir(regular_gates)
+        # Measure may reference qubits eliminated by the optimizer,
+        # so extend the logical qubit count accordingly.
+        for measure_op in measure_ops:
+            for target in measure_op.targets:
+                logic_qubit_num = max(logic_qubit_num, target + 1)
+
         phy_qubit_num = self.phy_qubit_num
 
         # initialize logical to physical mapping
@@ -141,7 +158,7 @@ class SABRE:
         phy_exe_gates = []
         # list storing the latest node acting on each logical qubit
         pre_nodes: list[Node | None] = [None for _ in range(logic_qubit_num)]
-        for gate in gates_list:
+        for gate in regular_gates:
             if gate.name == "sync":
                 continue
             node = Node(gate)
@@ -250,6 +267,18 @@ class SABRE:
         # final mapping
         self.phy2logic = self.cur_p2l
         self.logic2phy = self.cur_l2p
+        # Replace logical targets in measure gates with physical targets
+        # and append them to the end of the result.
+        for measure_op in measure_ops:
+            physical_measure = copy.deepcopy(measure_op)
+            physical_targets = []
+            for logic_q in measure_op.targets:
+                if logic_q < len(self.logic2phy):
+                    physical_targets.append(self.logic2phy[logic_q])
+                else:
+                    physical_targets.append(logic_q)
+            physical_measure.targets = physical_targets
+            phy_exe_gates.append(physical_measure)
         self.phy_exe_gates = phy_exe_gates
 
     def get_qubit_num_from_ir(self, gates_list: list[GateOperation]) -> int:

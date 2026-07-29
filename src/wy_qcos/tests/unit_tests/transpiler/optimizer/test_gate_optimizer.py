@@ -27,6 +27,8 @@ from wy_qcos.tests.unit_tests.transpiler.comm import (
     validate_gate_ir,
     validate_non_gate_ir,
 )
+from wy_qcos.common.cmss.gate_operation import H, CX, X, S, T, SDG
+from wy_qcos.common.cmss.measure import Measure
 
 
 class TestGateOptimizer:
@@ -133,3 +135,138 @@ class TestGateOptimizer:
         validate_gate_ir(opt_gates[0], "ccx", [0, 1, 4], 3, True)
         validate_non_gate_ir(opt_gates[1], "sync", [0, 1, 2, 3, 4, 5], -1)
         validate_non_gate_ir(opt_gates[2], "sync", [0, 1, 2, 3, 4, 5], -1)
+
+
+def _measure_indices(gates: list) -> list:
+    """Return indices of measure gates in the list."""
+    return [i for i, op in enumerate(gates) if op.name == "measure"]
+
+
+def _has_measure_before_last_gate(gates: list) -> bool:
+    """Check if any measure gate appears before the last non-measure gate."""
+    measure_idx = _measure_indices(gates)
+    if not measure_idx:
+        return False
+    first_measure = measure_idx[0]
+    return any(
+        op.name not in ("measure", "sync", "barrier")
+        for op in gates[first_measure:]
+    )
+
+
+class TestOptimizeMeasurePlacement:
+    """Verify optimize() does not move measure gates before other gates."""
+
+    @pytest.mark.smoke
+    def test_measure_at_end_opt1(self):
+        """opt_level=1 should keep measure gates at the end."""
+        gates = [
+            H([0]),
+            H([1]),
+            CX([0, 1]),
+            H([0]),
+            H([1]),
+            Measure([0]),
+            Measure([1]),
+        ]
+        result = optimize(gates, opt_level=1)
+        assert not _has_measure_before_last_gate(result)
+        assert _measure_indices(result) == [len(result) - 2, len(result) - 1]
+
+    def test_measure_at_end_opt2(self):
+        """opt_level=2 should keep measure gates at the end."""
+        gates = [
+            H([0]),
+            H([1]),
+            CX([0, 1]),
+            H([0]),
+            H([1]),
+            X([0]),
+            X([0]),
+            Measure([0]),
+            Measure([1]),
+        ]
+        result = optimize(gates, opt_level=2)
+        assert not _has_measure_before_last_gate(result)
+
+    def test_measure_at_end_opt3(self):
+        """opt_level=3 should keep measure gates at the end."""
+        gates = [
+            H([0]),
+            H([1]),
+            CX([0, 1]),
+            H([0]),
+            H([1]),
+            S([0]),
+            T([1]),
+            SDG([0]),
+            Measure([0]),
+            Measure([1]),
+        ]
+        result = optimize(gates, opt_level=3)
+        assert not _has_measure_before_last_gate(result)
+
+    def test_measure_not_removed(self):
+        """Measure gates should not be removed by optimization."""
+        gates = [
+            H([0]),
+            H([1]),
+            CX([0, 1]),
+            H([0]),
+            H([1]),
+            Measure([0]),
+            Measure([1]),
+        ]
+        result = optimize(gates, opt_level=1)
+        assert len(_measure_indices(result)) == 2
+
+    def test_measure_at_end_interleaved_qubits(self):
+        """Check interleaved qubits do not cause measure to move ahead.
+
+        Measure on q0 and q1 with gates on different qubits after measure
+        in the original order should not cause measure to move ahead.
+        """
+        gates = [
+            H([0]),
+            H([1]),
+            CX([0, 1]),
+            H([0]),
+            H([1]),
+            X([0]),
+            X([1]),
+            H([0]),
+            H([1]),
+            Measure([0]),
+            Measure([1]),
+        ]
+        result = optimize(gates, opt_level=1)
+        assert not _has_measure_before_last_gate(result)
+
+    def test_opt_level_0_unchanged(self):
+        """opt_level=0 should return input unchanged."""
+        gates = [
+            H([0]),
+            CX([0, 1]),
+            Measure([0]),
+            Measure([1]),
+        ]
+        result = optimize(gates, opt_level=0)
+        assert result is gates
+        assert _measure_indices(result) == [2, 3]
+
+    def test_measure_targets_preserved(self):
+        """Measure gate targets should be preserved after optimization."""
+        gates = [
+            H([0]),
+            H([1]),
+            CX([0, 1]),
+            H([0]),
+            H([1]),
+            Measure([0]),
+            Measure([1]),
+        ]
+        result = optimize(gates, opt_level=1)
+        measure_gates = [op for op in result if op.name == "measure"]
+        assert len(measure_gates) == 2
+        assert measure_gates[0].targets == [0]
+        assert measure_gates[1].targets == [1]

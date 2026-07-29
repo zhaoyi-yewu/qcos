@@ -277,7 +277,17 @@ def optimize(
     elif opt_level > 3 or opt_level < 0:
         raise ValueError(f"Optimization level {opt_level} is not supported.")
 
-    dag = DAGCircuit.ir_to_dag(ir)
+    # Extract measure gates, optimize the remaining gates, then append
+    # measure gates to the end of the optimized result.
+    regular_ops = []
+    measures = []
+    for op in ir:
+        if op.name == "measure":
+            measures.append(op)
+        else:
+            regular_ops.append(op)
+
+    dag = DAGCircuit.ir_to_dag(regular_ops)
 
     inverse_optimizer = InverseCancellation([
         H(),
@@ -328,4 +338,6 @@ def optimize(
     ir = []
     for node in dag.topological_op_nodes():
         ir.append(node.op)
+    # Append measure gates to the end of the result.
+    ir.extend(measures)
     return ir

@@ -208,9 +208,11 @@ class TestTranspilerCmss:
             parse_result, expected_basis_gates
         )
         assert len(basis_gate_list) % 2 == 0
-        for idx in range(0, len(basis_gate_list), 2):
+        # After optimization, measure gates are collected to the end.
+        half = len(basis_gate_list) // 2
+        for idx in range(half):
             assert basis_gate_list[idx].name == "rx"
-            assert basis_gate_list[idx + 1].name == "measure"
+            assert basis_gate_list[half + idx].name == "measure"
 
         src_code_info2 = {
             "000": qasm_data,
