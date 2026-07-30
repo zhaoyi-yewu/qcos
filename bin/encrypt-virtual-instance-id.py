@@ -135,15 +135,13 @@ USAGE
                     virtual_instance_id,
                     salt=salt, encode=True)
             if success:
-                print("Decryption is successful")
+                print("Decryption is successful\n")
                 print("[Input]")
                 print(f"virtual_instance_id: {virtual_instance_id}")
-                print(f"salt: {salt}")
-                print("")
+                print(f"salt: {salt}\n")
                 print("[Output]")
                 print(f"device_names: {', '.join(device_names)}")
-                print(f"instance_id: {instance_id}")
-                print("")
+                print(f"instance_id: {instance_id}\n")
             else:
                 print(f"{err_msg}", file=sys.stderr)
 
