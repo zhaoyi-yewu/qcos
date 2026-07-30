@@ -26,6 +26,7 @@
 
 #include "circuit/gate_operation.h"
 #include "mapping/chip_data.h"
+#include "mapping/dense_layout.h"
 #include "mapping/greedy_routing.h"
 #include "mapping/na_mapping.h"
 #include "mapping/sabre_mapping.h"
@@ -250,19 +251,18 @@ Returns:
       .def_ro("logic2phy", &GreedyRouting::logic2phy)
       .def_ro("phy2logic", &GreedyRouting::phy2logic);
 
-  m.def("sabre_initial_mapping",
-        static_cast<std::vector<int> (*)(
-            const std::vector<qcos::GateOperation>&,
-            const std::vector<std::pair<int, int>>&)>(
-            &qcos::sabre_initial_mapping),
+  m.def("sabre_initial_mapping", &qcos::sabre_initial_mapping,
         nb::arg("gates_list"), nb::arg("coupling_list"),
+        nb::arg("initial_layout") = std::vector<int>{},
         R"(
         Get the initial mapping using the SABRE algorithm.
-                    
+
         Args:
             gates_list (list[GateOperation]): Logical gate sequence.
             coupling_list (list[tuple[int, int]]): Physical qubit coupling list.
-                    
+            initial_layout (list[int], optional): Starting layout for SABRE.
+                Defaults to empty.
+
         Returns:
             list[int]: The initial logical-to-physical mapping.
         )");
@@ -293,6 +293,27 @@ Returns:
 
         Returns:
             list[BaseOperation]: The routed physical operation sequence.
+        )");
+
+  m.def("dense_layout_mapping", &qcos::dense_layout_mapping,
+        nb::arg("gates_list"), nb::arg("coupling_list"),
+        nb::arg("edge_fidelities"), nb::arg("num_logical"),
+        R"(
+        Compute initial layout using DenseLayout + SABRE refinement.
+
+        Two-step process:
+        1. DenseLayout: find the densest connected subgraph in the coupling map
+        2. SABRE refinement: use forward-backward routing to optimize qubit arrangement
+
+        Args:
+            gates_list (list[GateOperation]): Logical gate sequence.
+            coupling_list (list[tuple[int, int]]): Physical coupling list (directed).
+            edge_fidelities (list[float]): Edge fidelities corresponding to coupling_list.
+                Pass empty list to disable fidelity-aware scoring.
+            num_logical (int): Number of logical qubits declared in the circuit.
+
+        Returns:
+            list[int]: The initial logical-to-physical mapping.
         )");
 
   m.def("na_routing", &bind_na_routing, nb::arg("gates_list"),

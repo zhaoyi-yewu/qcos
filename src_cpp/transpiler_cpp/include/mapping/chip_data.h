@@ -31,11 +31,14 @@ namespace qcos {
  * 构造时校验 coupling_list 和 edge_fidelities 等长, 把运行时不变量提到构造期。
  */
 struct ChipCalibration {
-  std::vector<std::pair<int, int>> coupling_list;  ///< 有向耦合边列表
-  std::vector<double>
-      edge_fidelities;  ///< 与 coupling_list 对应的 CZ 门保真度
-  std::vector<double>
-      single_qubit_fidelities;  ///< 单比特门保真度, 按物理位 ID 直接索引
+  /// 有向耦合边列表
+  std::vector<std::pair<int, int>> coupling_list;
+
+  /// 与 coupling_list 对应的 CZ 门保真度
+  std::vector<double> edge_fidelities;
+
+  /// 单比特门保真度, 按物理位 ID 直接索引
+  std::vector<double> single_qubit_fidelities;
 
   ChipCalibration() = default;
 

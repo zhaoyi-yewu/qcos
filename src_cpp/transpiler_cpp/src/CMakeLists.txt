@@ -29,6 +29,7 @@ add_library(${LIB_TRANSPILER} STATIC
                             mapping/chip_data.cpp
                             mapping/mcts_routing.cpp
                             mapping/sabre_mapping.cpp
+                            mapping/dense_layout.cpp
                             mapping/na_mapping.cpp
                             utils/load_files.cpp
                             compiler/operations/classic_controlled_operation.cpp
