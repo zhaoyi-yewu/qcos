@@ -37,6 +37,7 @@ class DriverQuafu(DriverBase):
     """
 
     task_status_success = "Finished"
+    shots_per_repeat = 1024
 
     def __init__(self):
         super().__init__()
@@ -188,6 +189,10 @@ class DriverQuafu(DriverBase):
             shots: shots (Default value = 1)
             qec_options: qec options
         """
+        # QuarkStudio accepts a repeat count and converts each repeat to 1024
+        # shots.  A "shots" key inside the task dictionary is ignored.
+        repeat = self.shots_to_repeat(shots)
+
         # pylint: disable=duplicate-code
         data_index = data["index"]
         logger.info(
@@ -212,7 +217,6 @@ class DriverQuafu(DriverBase):
             "chip": self.chip_name,  # chip name
             "name": job_id,  # task name
             "circuit": final_code,  # circuit written in OpenQASM2.0
-            "shots": shots,  # an integer multiple of 1024
             "options": {
                 "compiler": "quarkcircuit",  # defaults to 'quarkcircuit'
                 "correct": False,  # readout error correction
@@ -220,7 +224,7 @@ class DriverQuafu(DriverBase):
                 "target_qubits": [],  # [0, 1]
             },
         }
-        task_id = self.submit_task(task)
+        task_id = self.submit_task(task, repeat=repeat)
 
         # 3. Wait for task_status success
         logger.info("3. wait for task_status is success")
@@ -256,16 +260,31 @@ class DriverQuafu(DriverBase):
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
         self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
-    def submit_task(self, task_info):
+    @classmethod
+    def shots_to_repeat(cls, shots):
+        """Convert a Quafu shot count to a QuarkStudio repeat count."""
+        if isinstance(shots, bool) or not isinstance(shots, int):
+            raise ValueError("Quafu shots must be an integer")
+
+        repeat, remainder = divmod(shots, cls.shots_per_repeat)
+        if repeat < 1 or remainder:
+            raise ValueError(
+                "Quafu shots must be a positive multiple of "
+                f"{cls.shots_per_repeat}"
+            )
+        return repeat
+
+    def submit_task(self, task_info, repeat=1):
         """Submit task.
 
         Args:
             task_info: task info
+            repeat: number of 1024-shot execution batches
 
         Returns:
             success, error message, task_id
         """
-        tid = self.tmgr.run(task_info)
+        tid = self.tmgr.run(task_info, repeat=repeat)
         return tid
 
     def check_task_status(self, task_id, expect_task_status):
