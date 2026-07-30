@@ -110,6 +110,7 @@ class TestMetricsAPI:
             "queued",
             "cancelling",
             "cancelled",
+            "deleting",
             "deleted",
             "unknown",
         ]
