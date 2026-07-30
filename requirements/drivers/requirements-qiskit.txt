@@ -1,4 +1,0 @@
-# Vendor drivers dependencies
-# qiskit driver only
-qiskit==2.1.1
-qiskit_aer==0.17.1
