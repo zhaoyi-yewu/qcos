@@ -130,11 +130,19 @@ class TestTaskFlowManager(unittest.TestCase):
 
         # Mock flow object from job_flow.from_source
         mock_flow = Mock()
+        # create_deployments reads flow.name to build a FlowFilterName;
+        # it must be a string to pass pydantic validation.
+        mock_flow.name = "job-flow"
         mock_deployment = Mock()
         mock_flow.deploy = AsyncMock(return_value=mock_deployment)
 
         # Mock job_flow.from_source
         mock_job_flow.from_source = AsyncMock(return_value=mock_flow)
+        # create_deployments reads flow id via _sync_client.read_flows
+        mock_sync_client = Mock()
+        mock_read_flow = Mock(id="flow-id-1")
+        mock_sync_client.read_flows.return_value = [mock_read_flow]
+        self.task_manager._sync_client = mock_sync_client
         # run async method
         self.task_manager.deployments = asyncio.run(
             self.task_manager.create_deployments(deployment_configs)
@@ -610,11 +618,14 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_client.read_flow_run.side_effect = [running_flow, done_flow]
         self.task_manager._sync_client = mock_client
 
-        result = self.task_manager.delete_flow_runs(["run", "done"])
+        result = self.task_manager.delete_flow_runs(["flow1", "flow2"])
 
-        assert result == [
-            {"flow_run_id": "done", "state": Constant.JOB_STATUS_DELETED}
-        ]
+        # delete_flow_runs returns a dict keyed by flow_run_id; running
+        # flow-runs are skipped (no entry), completed ones are deleted.
+        assert result == {
+            "flow1": {"state": Constant.JOB_STATUS_RUNNING},
+            "flow2": {"state": Constant.JOB_STATUS_DELETED},
+        }
 
     def test_delete_task_flow_by_name_not_found(self):
         mock_client = Mock()
@@ -1109,6 +1120,11 @@ class TestTaskFlowManager(unittest.TestCase):
         # Configure mock event loop
         mock_loop = Mock()
         mock_loop.is_running.return_value = False
+        # start() runs coroutines via loop.run_until_complete; execute
+        # them so mocked AsyncMock return values are propagated.
+        mock_loop.run_until_complete.side_effect = lambda coro: asyncio.run(
+            coro
+        )
         mock_new_event_loop.return_value = mock_loop
 
         # Configure mock clients
@@ -1158,7 +1174,11 @@ class TestTaskFlowManager(unittest.TestCase):
                             "create_deployments",
                             new=AsyncMock(
                                 return_value={
-                                    "test_device": {"deploy_id": "123"}
+                                    "test_device": {
+                                        "deploy_id": "123",
+                                        "flow_id": "flow-1",
+                                        "flow_name": "job-flow",
+                                    }
                                 }
                             ),
                         ) as mock_create_deploy:
@@ -1248,6 +1268,11 @@ class TestTaskFlowManager(unittest.TestCase):
         # Configure mock event loop
         mock_loop = Mock()
         mock_loop.is_running.return_value = False
+        # start() runs coroutines via loop.run_until_complete; execute
+        # them so mocked AsyncMock return values are propagated.
+        mock_loop.run_until_complete.side_effect = lambda coro: asyncio.run(
+            coro
+        )
         mock_new_event_loop.return_value = mock_loop
 
         # Configure mock clients
@@ -1332,6 +1357,11 @@ class TestTaskFlowManager(unittest.TestCase):
         """Test start() with devices that have monitor and mgr disabled."""
         # Configure mock event loop
         mock_loop = Mock()
+        # start() runs coroutines via loop.run_until_complete; execute
+        # them so mocked AsyncMock return values are propagated.
+        mock_loop.run_until_complete.side_effect = lambda coro: asyncio.run(
+            coro
+        )
         mock_new_event_loop.return_value = mock_loop
 
         # Configure mock clients
@@ -1375,7 +1405,13 @@ class TestTaskFlowManager(unittest.TestCase):
                         self.task_manager,
                         "create_deployments",
                         new=AsyncMock(
-                            return_value={"test_device": {"deploy_id": "123"}}
+                            return_value={
+                                "test_device": {
+                                    "deploy_id": "123",
+                                    "flow_id": "flow-1",
+                                    "flow_name": "job-flow",
+                                }
+                            }
                         ),
                     ) as mock_create_deploy:
                         with patch.object(
@@ -1432,6 +1468,11 @@ class TestTaskFlowManager(unittest.TestCase):
     ):
         """Test start() with multiple devices."""
         mock_loop = Mock()
+        # start() runs coroutines via loop.run_until_complete; execute
+        # them so mocked AsyncMock return values are propagated.
+        mock_loop.run_until_complete.side_effect = lambda coro: asyncio.run(
+            coro
+        )
         mock_new_event_loop.return_value = mock_loop
 
         mock_sync_client = Mock()
@@ -1495,9 +1536,21 @@ class TestTaskFlowManager(unittest.TestCase):
                         "create_deployments",
                         new=AsyncMock(
                             return_value={
-                                "device_a": {"deploy_id": "1"},
-                                "device_b": {"deploy_id": "2"},
-                                "device_c": {"deploy_id": "3"},
+                                "device_a": {
+                                    "deploy_id": "1",
+                                    "flow_id": "flow-a",
+                                    "flow_name": "job-flow",
+                                },
+                                "device_b": {
+                                    "deploy_id": "2",
+                                    "flow_id": "flow-b",
+                                    "flow_name": "job-flow",
+                                },
+                                "device_c": {
+                                    "deploy_id": "3",
+                                    "flow_id": "flow-c",
+                                    "flow_name": "job-flow",
+                                },
                             }
                         ),
                     ):

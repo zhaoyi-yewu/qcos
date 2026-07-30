@@ -961,6 +961,7 @@ def cancel_jobs(
     job_ids = list(dict.fromkeys(job_ids))
     flow_run_id_dict = {}
     flow_run_id_list = []
+    job_id_flow_run_id = {}
 
     # Get job run ids
     for job_id in job_ids:
@@ -974,17 +975,31 @@ def cancel_jobs(
         if success and job_record:
             flow_run_id_dict[job_record.flow_run_id] = job_id
             flow_run_id_list.append(job_record.flow_run_id)
+            job_id_flow_run_id[job_id] = job_record.flow_run_id
+            if job_record.job_status == Constant.JOB_STATUS_RUNNING:
+                job_record.job_status = Constant.JOB_STATUS_CANCELLING
+                try:
+                    job_repo.commit()
+                    job_repo.refresh(job_record)
+                except Exception as e:
+                    job_repo.rollback()
+                    logger.warning(
+                        f"Failed to update job {job_id} status to CANCELLING: "
+                        f"{e}"
+                    )
 
     # cancel jobs
     cancelled_flow_run_list = scheduler.cancel_flows(flow_run_id_list)
 
     # construct response using flow_run_id_dict to map back to job_ids
-    response_info = [
-        schemas.CancelJobsResponse(
-            job_id=flow_run_id_dict.get(flow_run_info.get("flow_run_id"))
-        )
-        for flow_run_info in cancelled_flow_run_list
-    ]
+    response_info = []
+    for job_id in job_ids:
+        flow_run_id = job_id_flow_run_id[job_id]
+        if flow_run_id in cancelled_flow_run_list:
+            response = schemas.CancelJobsResponse(job_id=job_id)
+            response_info.append(response)
+        else:
+            logger.warning(f"Failed to cancel job {job_id}")
     return response_info
 
 
@@ -1016,6 +1031,8 @@ def delete_jobs(
     job_ids = list(dict.fromkeys(job_ids))
     flow_run_id_dict = {}
     flow_run_id_list = []
+    job_id_flow_run_id = {}
+    delete_results = {}
 
     # Update job status to DELETING in database
     for job_id in job_ids:
@@ -1029,22 +1046,25 @@ def delete_jobs(
         if success and job_record:
             flow_run_id_dict[job_record.flow_run_id] = job_id
             flow_run_id_list.append(job_record.flow_run_id)
-            job_record.job_status = Constant.JOB_STATUS_DELETING
-            try:
-                job_repo.commit()
-                job_repo.refresh(job_record)
-            except Exception as e:
-                job_repo.rollback()
-                logger.warning(
-                    f"Failed to update job {job_id} status to DELETING: {e}"
-                )
+            job_id_flow_run_id[job_id] = job_record.flow_run_id
+            if job_record.job_status != Constant.JOB_STATUS_RUNNING:
+                job_record.job_status = Constant.JOB_STATUS_DELETING
+                try:
+                    job_repo.commit()
+                    job_repo.refresh(job_record)
+                except Exception as e:
+                    job_repo.rollback()
+                    logger.warning(
+                        f"Failed to update job {job_id} status to DELETING: "
+                        f"{e}"
+                    )
 
     # delete jobs from scheduler
     try:
         if force:
             # Force delete: directly delete without waiting for scheduler
             logger.info(f"Force deleting {len(flow_run_id_list)} jobs")
-        deleted_flow_run_list = scheduler.delete_flows(flow_run_id_list)
+        delete_results = scheduler.delete_flows(flow_run_id_list)
     except Exception as e:
         # If scheduler delete fails, rollback database changes
         if not force:
@@ -1055,55 +1075,54 @@ def delete_jobs(
             )
         else:
             logger.warning(f"Force delete failed (non-critical): {str(e)}")
-            deleted_flow_run_list = []
-
-    # Handle scheduler returned error
-    if not deleted_flow_run_list and not force:
-        jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, "No jobs are deleted, jobs may in RUNNING state"),
-        )
-
-    # If force delete and no jobs returned from scheduler, construct response
-    # from remaining flow_run_ids and delete from database anyway
-    if force and not deleted_flow_run_list:
-        deleted_flow_run_list = [
-            {"flow_run_id": fid, "state": Constant.JOB_STATUS_DELETED}
-            for fid in flow_run_id_list
-        ]
-        logger.info(
-            f"Force delete: scheduler returned empty, "
-            f"deleting {len(deleted_flow_run_list)} jobs from database anyway"
-        )
 
     # Delete jobs from database
-    for flow_run_info in deleted_flow_run_list:
-        flow_run_id = flow_run_info["flow_run_id"]
-        job_id = flow_run_id_dict[flow_run_id]
-        if job_id is not None:
-            try:
-                success, error = job_repo.delete_by_uuid(Job, str(job_id))
-                if not success or error:
-                    logger.warning(
-                        f"Failed to delete job {job_id} from database: {error}"
+    deleted_entries = []
+    for job_id in job_ids:
+        flow_run_id = job_id_flow_run_id.get(job_id, None)
+        if flow_run_id is not None:
+            delete_result = delete_results.get(flow_run_id, None)
+            if not delete_result:
+                continue
+            delete = False
+            if delete_result["state"] == Constant.JOB_STATUS_DELETED:
+                delete = True
+            if (
+                job_record.job_status == Constant.JOB_STATUS_RUNNING
+                or delete_result["state"] == Constant.JOB_STATUS_RUNNING
+            ):
+                pass
+            if delete:
+                try:
+                    success, error = job_repo.delete_by_uuid(Job, str(job_id))
+                    if not success or error:
+                        logger.warning(
+                            f"Failed to delete job {job_id} from database: "
+                            f"{error}"
+                        )
+                    else:
+                        logger.info(
+                            f"Successfully deleted job {job_id} from database"
+                        )
+                    deleted_entries.append((job_id, delete_result))
+                except Exception as e:
+                    logger.error(
+                        f"Error deleting job {job_id} from database: {str(e)}"
                     )
-                else:
-                    logger.info(
-                        f"Successfully deleted job {job_id} from database"
-                    )
-            except Exception as e:
-                logger.error(
-                    f"Error deleting job {job_id} from database: {str(e)}"
+            else:
+                logger.warning(
+                    f"Failed to delete job {job_id}. "
+                    f"Job is in RUNNING state. "
+                    f"Please cancel it first."
                 )
 
-    # construct response using flow_run_id_dict to map back to job_ids
+    # construct response
     response_info = [
         schemas.DeleteJobsResponse(
-            job_id=flow_run_id_dict.get(flow_run_info.get("flow_run_id")),
-            job_status=flow_run_info.get("state"),
+            job_id=job_id,
+            job_status=delete_result["state"],
         )
-        for flow_run_info in deleted_flow_run_list
+        for job_id, delete_result in deleted_entries
     ]
     return response_info
 

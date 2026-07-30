@@ -1018,33 +1018,39 @@ class TaskFlowManager:
             flow_run_ids: flow run uuid list
 
         Returns:
-            success_list.
+            delete_results.
         """
-        success_list = []
+        delete_results = {}
         for flow_run_id in flow_run_ids:
             try:
                 flow_run = self._sync_client.read_flow_run(flow_run_id)
             except ObjectNotFound:
-                logger.error(
+                logger.debug(
                     f"Prefect execute flow error: "
                     f"can't find flow_run_id: {flow_run_id}"
                 )
+                delete_results[flow_run_id] = {
+                    "state": Constant.JOB_STATUS_DELETED,
+                }
                 continue
             except Exception as e:
                 logger.error(f"Prefect execute flow error: {str(e)}")
                 continue
             state = flow_run.state
-            if state.name.upper() != Constant.PREFECT_STATE_RUNNING:
+            if state.name.upper() == Constant.PREFECT_STATE_RUNNING:
+                delete_results[flow_run_id] = {
+                    "state": Constant.JOB_STATUS_RUNNING,
+                }
+            else:
                 try:
                     # delete flow
                     self._sync_client.delete_flow_run(flow_run_id)
-                    success_list.append({
-                        "flow_run_id": flow_run_id,
-                        "state": Constant.JOB_STATUS_DELETED,
-                    })
                 except Exception as e:
                     logger.error(f"Prefect delete_flow_run error: {str(e)}")
-        return success_list
+                delete_results[flow_run_id] = {
+                    "state": Constant.JOB_STATUS_DELETED,
+                }
+        return delete_results
 
     def cancel_flow_runs(self, flow_run_ids, tags=None):
         """Cancel flow runs.
@@ -1054,9 +1060,9 @@ class TaskFlowManager:
             tags: prefect flow tags
 
         Returns:
-            success list.
+            canceled_results.
         """
-        success_list = []
+        canceled_results = {}
         for flow_run_id in flow_run_ids:
             try:
                 flow_run = self._sync_client.read_flow_run(flow_run_id)
@@ -1077,14 +1083,13 @@ class TaskFlowManager:
                     self._sync_client.set_flow_run_state(
                         flow_run_id, state=cancelling_state, force=True
                     )
-                    success_list.append({
-                        "flow_run_id": flow_run_id,
+                    canceled_results[flow_run_id] = {
                         "state": Constant.JOB_STATUS_CANCELLED,
-                    })
+                    }
                 except Exception as e:
                     logger.error(f"Prefect delete_flow_run error: {str(e)}")
 
-        return success_list
+        return canceled_results
 
     def delete_task_flow_by_name(self, flow_name):
         """Delete flow .

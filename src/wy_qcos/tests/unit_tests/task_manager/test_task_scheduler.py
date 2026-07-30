@@ -506,8 +506,17 @@ class TestTaskScheduler:
     def test_process_unfinished_jobs(self, mock_create_db_session):
         scheduler = TaskScheduler()
         scheduler._db_engine = Mock()
+        # avoid real task_manager side-effects when cancelling flow runs
+        scheduler._task_manager = Mock()
 
-        job_running = Mock(id="job-1", job_status=1)
+        # process_unfinished_jobs only resets jobs in intermediate states
+        # (UNKNOWN/CANCELLING) to FAILED; use CANCELLING so the job is
+        # updated and committed.
+        job_running = Mock(
+            id="job-1",
+            job_status=Constant.JOB_STATUS_CANCELLING,
+            flow_run_id=None,
+        )
         job_done = Mock(id="job-2", job_status=Constant.JOB_STATUS_COMPLETED)
         db_session = Mock()
         mock_create_db_session.return_value = nullcontext(db_session)
@@ -538,7 +547,16 @@ class TestTaskScheduler:
     ):
         scheduler = TaskScheduler()
         scheduler._db_engine = Mock()
-        job_running = Mock(id="job-1", job_status=1)
+        # avoid real task_manager side-effects when cancelling flow runs
+        scheduler._task_manager = Mock()
+        # process_unfinished_jobs only commits jobs in intermediate states
+        # (UNKNOWN/CANCELLING); use CANCELLING so the commit path (and
+        # thus the rollback on failure) is exercised.
+        job_running = Mock(
+            id="job-1",
+            job_status=Constant.JOB_STATUS_CANCELLING,
+            flow_run_id=None,
+        )
         db_session = Mock()
         db_session.commit.side_effect = RuntimeError("commit failed")
         mock_create_db_session.return_value = nullcontext(db_session)

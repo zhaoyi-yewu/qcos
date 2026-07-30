@@ -472,10 +472,8 @@ class TaskScheduler:
     def process_unfinished_jobs(self):
         """Process unfinished jobs in database.
 
-        Checks all jobs in database. If job_status is not one of the
-        final states (COMPLETED, CANCELLED, DELETED, FAILED), sets it to
-        FAILED. This handles jobs that may have been interrupted or left
-        in intermediate states during system restart.
+        Checks all jobs in database. This handles jobs that may have been
+        interrupted or left in intermediate states during system restart.
         """
         if self._db_engine is None:
             logger.warning(
@@ -493,18 +491,16 @@ class TaskScheduler:
                         logger.warning(f"Failed to fetch jobs: {error}")
                     return
 
-                # Define expected final job states
-                final_states = {
-                    Constant.JOB_STATUS_COMPLETED,
-                    Constant.JOB_STATUS_CANCELLED,
-                    Constant.JOB_STATUS_DELETED,
-                    Constant.JOB_STATUS_FAILED,
+                # Define intermediate job states that will be set to FAILED
+                set_to_failed_states = {
+                    Constant.JOB_STATUS_UNKNOWN,
+                    Constant.JOB_STATUS_CANCELLING,
                 }
 
                 # Process unfinished jobs
                 unfinished_count = 0
                 for job_record in job_records:
-                    if job_record.job_status not in final_states:
+                    if job_record.job_status in set_to_failed_states:
                         logger.info(
                             f"Setting unfinished job {job_record.id} "
                             f"(status: {job_record.job_status}) to FAILED"
