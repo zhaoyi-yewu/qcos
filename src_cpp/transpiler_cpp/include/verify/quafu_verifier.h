@@ -56,7 +56,7 @@ class QuafuVerifier : public QPUVerifier {
   std::vector<std::pair<int, int>> coupling_list_;
   std::vector<double> edge_fidelities_;
   std::vector<double> single_qubit_fidelities_;
-  std::vector<int> target_bits_;
+  mutable std::vector<int> target_bits_;
 
   mutable std::vector<std::shared_ptr<BaseOperation>> parsed_operations_;
   mutable int parsed_num_qubits_ = 0;
