@@ -79,8 +79,8 @@ make -j${NPROC}
 mkdir -p "$TARGET_DIR"
 echo "Copying dist to $TARGET_DIR"
 if [[ -d "${DIST_DIR}/${BUILD_TYPE}" ]]; then
-    cp -r "${DIST_DIR}/${BUILD_TYPE}/." "$TARGET_DIR/"
+    mv ${DIST_DIR}/${BUILD_TYPE}/* $TARGET_DIR/
 else
-    cp -r "${DIST_DIR}/." "$TARGET_DIR/"
+    mv ${DIST_DIR}/* $TARGET_DIR/
 fi
 echo "Copy done"
