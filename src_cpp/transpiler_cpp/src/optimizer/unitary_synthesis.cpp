@@ -211,7 +211,16 @@ CMatrix gate_to_matrix(const std::shared_ptr<BaseOperation>& op) {
   // Five-qubit gates (32x32)
   if (auto* g = dynamic_cast<const C4X*>(op.get())) return to_mat(g->to_matrix(), 32);
 
-  throw std::runtime_error("Unsupported gate for matrix conversion: " + op->name);
+  // Fallback: recreate via create_gate to get a properly-typed subclass.
+  // This handles cases where gates were created as plain GateOperation
+  // (e.g., by the Decomposer with allow_undefined=true).
+  try {
+    auto typed_op = create_gate(op->name, op->targets, op->arg_value);
+    return gate_to_matrix(typed_op);
+  } catch (...) {
+    throw std::runtime_error("Unsupported gate for matrix conversion: " +
+                             op->name);
+  }
 }
 
 // Compute the block's unitary matrix with given qubit mapping
@@ -228,11 +237,30 @@ CMatrix compute_block_unitary(
     CMatrix gate_mat = gate_to_matrix(node->op);
     size_t gate_qubits = node->qargs.size();
 
-    // Map block qubits to positions
-    std::vector<size_t> positions(gate_qubits);
-    for (size_t i = 0; i < gate_qubits; ++i) {
-      positions[i] = qubit_mapping.at(node->qargs[i]);
+    // Map block qubits to positions.
+    // Use op->targets as fallback when node->qargs has been invalidated
+    // (e.g. after a DAG modification by replace_block_with_dag).
+    const auto& effective_qargs =
+        (gate_qubits > 0 && !node->qargs.empty()) ? node->qargs
+                                                   : node->op->targets;
+    std::vector<size_t> positions(effective_qargs.size());
+    for (size_t i = 0; i < effective_qargs.size(); ++i) {
+      auto it = qubit_mapping.find(effective_qargs[i]);
+      if (it == qubit_mapping.end()) {
+        // Fallback: try op->targets if qargs lookup failed
+        if (i < node->op->targets.size()) {
+          it = qubit_mapping.find(node->op->targets[i]);
+        }
+        if (it == qubit_mapping.end()) {
+          throw std::runtime_error(
+              "compute_block_unitary: qubit " +
+              std::to_string(effective_qargs[i]) +
+              " not found in qubit_mapping for gate " + node->name());
+        }
+      }
+      positions[i] = it->second;
     }
+    gate_qubits = effective_qargs.size();
 
     // Build the full-dimension gate matrix via tensor product embedding
     CMatrix full_mat = identity(dim);
@@ -1167,73 +1195,178 @@ int UnitarySynthesis::run(
     const std::optional<std::set<std::string>>& basis_gates) {
   const auto& bg = basis_gates.has_value() ? basis_gates : basis_gates_;
 
-  // Collect gates that should be included in blocks (all gate ops)
-  std::set<std::string> collect_gates;
-  for (const auto& g : Constant::ALL_GATE_LIST) {
-    collect_gates.insert(g);
-  }
-
-  auto blocks = collect_all_matching_blocks(dag, collect_gates, 2);
-
   int total_replaced = 0;
 
-  for (const auto& block : blocks) {
-    // Determine qubits involved
-    std::vector<int> qubits;
-    std::unordered_map<int, int> qubit_mapping;
-    for (DAGOpNode* node : block) {
-      for (int q : node->qargs) {
-        if (qubit_mapping.find(q) == qubit_mapping.end()) {
-          qubit_mapping[q] = static_cast<int>(qubits.size());
-          qubits.push_back(q);
-        }
-      }
-    }
+  // Phase 1: Optimize 1Q gate runs.
+  // Use only single-qubit gates as collect_gates so that 2Q gates act as
+  // separators. This prevents the entire circuit from becoming one giant
+  // block that exceeds max_block_size.
+  std::set<std::string> collect_1q;
+  for (const auto& g : Constant::SINGLE_QUBIT_GATE_LIST) {
+    collect_1q.insert(g);
+  }
 
-    if (qubits.size() > max_block_size_) continue;
+  while (true) {
+    auto blocks = collect_all_matching_blocks(dag, collect_1q, 2);
+    if (blocks.empty()) break;
 
-    // Compute the block's unitary
-    CMatrix unitary = matrix_utils::compute_block_unitary(block, qubit_mapping);
+    bool any_replaced = false;
 
-    // Synthesize replacement gates
-    OpList replacement;
-    if (qubits.size() == 1) {
-      replacement = synthesize_1q(unitary, qubits[0]);
-    } else if (qubits.size() == 2) {
-      replacement = synthesize_2q(unitary, qubits[0], qubits[1]);
-    }
-
-    // Only replace if we got fewer gates OR any original gate is not in basis
-    bool has_non_basis_gate = false;
-    if (bg.has_value()) {
+    for (const auto& block : blocks) {
+      std::vector<int> qubits;
+      std::unordered_map<int, int> qubit_mapping;
       for (DAGOpNode* node : block) {
-        if (bg->count(node->name()) == 0) {
-          has_non_basis_gate = true;
-          break;
+        for (int q : node->qargs) {
+          if (qubit_mapping.find(q) == qubit_mapping.end()) {
+            qubit_mapping[q] = static_cast<int>(qubits.size());
+            qubits.push_back(q);
+          }
         }
+      }
+
+      // 1Q runs should only involve 1 qubit, but guard anyway
+      if (qubits.size() > max_block_size_) continue;
+
+      CMatrix unitary = matrix_utils::compute_block_unitary(block, qubit_mapping);
+
+      OpList replacement;
+      if (qubits.size() == 1) {
+        replacement = synthesize_1q(unitary, qubits[0]);
+      } else if (qubits.size() == 2) {
+        replacement = synthesize_2q(unitary, qubits[0], qubits[1]);
+      }
+
+      bool has_non_basis_gate = false;
+      if (bg.has_value()) {
+        for (DAGOpNode* node : block) {
+          if (bg->count(node->name()) == 0) {
+            has_non_basis_gate = true;
+            break;
+          }
+        }
+      }
+
+      bool should_replace = false;
+      if (has_non_basis_gate) {
+        should_replace = true;
+      } else if (!replacement.empty() && replacement.size() < block.size()) {
+        should_replace = true;
+      } else if (replacement.empty() && block.size() > 0) {
+        should_replace = (block.size() > 1);
+      }
+
+      if (should_replace) {
+        DAGCircuit replacement_dag;
+        replacement_dag.add_qubits(static_cast<int>(qubits.size()));
+        for (const auto& op : replacement) {
+          auto local_op = op->clone();
+          std::vector<int> local_targets;
+          for (int t : op->targets) {
+            local_targets.push_back(qubit_mapping[t]);
+          }
+          local_op->setTargets(local_targets);
+          replacement_dag.apply_operation_back(local_op);
+        }
+
+        std::unordered_map<int, int> local_to_global;
+        for (const auto& [global_q, local_idx] : qubit_mapping) {
+          local_to_global[local_idx] = global_q;
+        }
+
+        dag.replace_block_with_dag(block, replacement_dag, local_to_global);
+        total_replaced += static_cast<int>(block.size()) -
+                          static_cast<int>(replacement.size());
+        any_replaced = true;
+        break;  // re-collect after DAG modification
       }
     }
 
-    if (!replacement.empty() &&
-        (replacement.size() < block.size() || has_non_basis_gate)) {
-      // Build replacement DAG and swap
-      DAGCircuit replacement_dag;
-      replacement_dag.add_qubits(static_cast<int>(qubits.size()));
-      for (const auto& op : replacement) {
-        // Remap qubits to local indices
-        auto local_op = op->clone();
-        std::vector<int> local_targets;
-        for (int t : op->targets) {
-          local_targets.push_back(qubit_mapping[t]);
+    if (!any_replaced) break;
+  }
+
+  // Phase 2: Optimize 2Q blocks.
+  // Use all gates as collect_gates. Since 1Q runs have been consolidated
+  // in Phase 1, blocks tend to be smaller (centered around 2Q gates).
+  std::set<std::string> collect_all;
+  for (const auto& g : Constant::ALL_GATE_LIST) {
+    collect_all.insert(g);
+  }
+
+  while (true) {
+    auto blocks = collect_all_matching_blocks(dag, collect_all, 2);
+    if (blocks.empty()) break;
+
+    bool any_replaced = false;
+
+    for (const auto& block : blocks) {
+      std::vector<int> qubits;
+      std::unordered_map<int, int> qubit_mapping;
+      for (DAGOpNode* node : block) {
+        for (int q : node->qargs) {
+          if (qubit_mapping.find(q) == qubit_mapping.end()) {
+            qubit_mapping[q] = static_cast<int>(qubits.size());
+            qubits.push_back(q);
+          }
         }
-        local_op->setTargets(local_targets);
-        replacement_dag.apply_operation_back(local_op);
       }
 
-      dag.replace_block_with_dag(block, replacement_dag, qubit_mapping);
-      total_replaced += static_cast<int>(block.size()) -
-                        static_cast<int>(replacement.size());
+      if (qubits.size() > max_block_size_) continue;
+
+      CMatrix unitary = matrix_utils::compute_block_unitary(block, qubit_mapping);
+
+      OpList replacement;
+      if (qubits.size() == 1) {
+        replacement = synthesize_1q(unitary, qubits[0]);
+      } else if (qubits.size() == 2) {
+        replacement = synthesize_2q(unitary, qubits[0], qubits[1]);
+      }
+
+      bool has_non_basis_gate = false;
+      if (bg.has_value()) {
+        for (DAGOpNode* node : block) {
+          if (bg->count(node->name()) == 0) {
+            has_non_basis_gate = true;
+            break;
+          }
+        }
+      }
+
+      bool should_replace = false;
+      if (has_non_basis_gate) {
+        should_replace = true;
+      } else if (!replacement.empty() && replacement.size() < block.size()) {
+        should_replace = true;
+      } else if (replacement.empty() && block.size() > 1) {
+        should_replace = true;
+      }
+
+      if (should_replace) {
+        DAGCircuit replacement_dag;
+        replacement_dag.add_qubits(static_cast<int>(qubits.size()));
+        for (const auto& op : replacement) {
+          auto local_op = op->clone();
+          std::vector<int> local_targets;
+          for (int t : op->targets) {
+            local_targets.push_back(qubit_mapping[t]);
+          }
+          local_op->setTargets(local_targets);
+          replacement_dag.apply_operation_back(local_op);
+        }
+
+        std::unordered_map<int, int> local_to_global;
+        for (const auto& [global_q, local_idx] : qubit_mapping) {
+          local_to_global[local_idx] = global_q;
+        }
+
+        dag.replace_block_with_dag(block, replacement_dag, local_to_global);
+        total_replaced += static_cast<int>(block.size()) -
+                          static_cast<int>(replacement.size());
+        any_replaced = true;
+        break;  // re-collect after DAG modification
+      }
     }
+
+    if (!any_replaced) break;
   }
 
   return total_replaced;
@@ -1261,57 +1394,80 @@ int ConsolidateBlocks::run(
     collect_gates.insert(g);
   }
 
-  auto blocks = collect_all_matching_blocks(dag, collect_gates, min_block_size_);
-
   int total_replaced = 0;
 
-  for (const auto& block : blocks) {
-    std::vector<int> qubits;
-    std::unordered_map<int, int> qubit_mapping;
-    for (DAGOpNode* node : block) {
-      for (int q : node->qargs) {
-        if (qubit_mapping.find(q) == qubit_mapping.end()) {
-          qubit_mapping[q] = static_cast<int>(qubits.size());
-          qubits.push_back(q);
-        }
-      }
-    }
+  // Re-collect blocks after each replacement to avoid dangling pointers.
+  while (true) {
+    auto blocks = collect_all_matching_blocks(dag, collect_gates, min_block_size_);
+    if (blocks.empty()) break;
 
-    if (qubits.size() > 2) continue;
+    bool any_replaced = false;
 
-    CMatrix unitary = matrix_utils::compute_block_unitary(block, qubit_mapping);
-
-    UnitarySynthesis synthesizer(bg, approximation_degree_);
-    auto replacement = synthesizer.synthesize_block(unitary, qubits);
-
-    bool consolidate_has_non_basis = false;
-    if (bg.has_value()) {
+    for (const auto& block : blocks) {
+      std::vector<int> qubits;
+      std::unordered_map<int, int> qubit_mapping;
       for (DAGOpNode* node : block) {
-        if (bg->count(node->name()) == 0) {
-          consolidate_has_non_basis = true;
-          break;
+        for (int q : node->qargs) {
+          if (qubit_mapping.find(q) == qubit_mapping.end()) {
+            qubit_mapping[q] = static_cast<int>(qubits.size());
+            qubits.push_back(q);
+          }
         }
+      }
+
+      if (qubits.size() > 2) continue;
+
+      CMatrix unitary = matrix_utils::compute_block_unitary(block, qubit_mapping);
+
+      UnitarySynthesis synthesizer(bg, approximation_degree_);
+      auto replacement = synthesizer.synthesize_block(unitary, qubits);
+
+      bool consolidate_has_non_basis = false;
+      if (bg.has_value()) {
+        for (DAGOpNode* node : block) {
+          if (bg->count(node->name()) == 0) {
+            consolidate_has_non_basis = true;
+            break;
+          }
+        }
+      }
+
+      bool consolidate_should_replace = false;
+      if (consolidate_has_non_basis) {
+        consolidate_should_replace = true;
+      } else if (!replacement.empty() && replacement.size() < block.size()) {
+        consolidate_should_replace = true;
+      }
+
+      if (consolidate_should_replace) {
+        DAGCircuit replacement_dag;
+        replacement_dag.add_qubits(static_cast<int>(qubits.size()));
+        for (const auto& op : replacement) {
+          auto local_op = op->clone();
+          std::vector<int> local_targets;
+          for (int t : op->targets) {
+            local_targets.push_back(qubit_mapping[t]);
+          }
+          local_op->setTargets(local_targets);
+          replacement_dag.apply_operation_back(local_op);
+        }
+
+        // replace_block_with_dag expects local→global mapping
+        std::unordered_map<int, int> local_to_global;
+        for (const auto& [global_q, local_idx] : qubit_mapping) {
+          local_to_global[local_idx] = global_q;
+        }
+
+        dag.replace_block_with_dag(block, replacement_dag, local_to_global);
+        total_replaced += static_cast<int>(block.size()) -
+                          static_cast<int>(replacement.size());
+        any_replaced = true;
+        // Break and re-collect: DAG modified, remaining pointers invalid.
+        break;
       }
     }
 
-    if (!replacement.empty() &&
-        (replacement.size() < block.size() || consolidate_has_non_basis)) {
-      DAGCircuit replacement_dag;
-      replacement_dag.add_qubits(static_cast<int>(qubits.size()));
-      for (const auto& op : replacement) {
-        auto local_op = op->clone();
-        std::vector<int> local_targets;
-        for (int t : op->targets) {
-          local_targets.push_back(qubit_mapping[t]);
-        }
-        local_op->setTargets(local_targets);
-        replacement_dag.apply_operation_back(local_op);
-      }
-
-      dag.replace_block_with_dag(block, replacement_dag, qubit_mapping);
-      total_replaced += static_cast<int>(block.size()) -
-                        static_cast<int>(replacement.size());
-    }
+    if (!any_replaced) break;
   }
 
   return total_replaced;

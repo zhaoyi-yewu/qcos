@@ -19,13 +19,16 @@
 
 #include <cmath>
 #include <complex>
+#include <fstream>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <string>
 #include <vector>
 
 #include "circuit/dag_circuit.h"
 #include "circuit/gate_operation.h"
+#include "compiler/qasm_to_ir.hpp"
 #include "optimizer/gate_optimizer.h"
 #include "optimizer/unitary_synthesis.h"
 
@@ -1580,4 +1583,408 @@ TEST(DecomposeUnitaryErrorTest, NonUnitary4x4) {
 TEST(DecomposeUnitaryErrorTest, ZeroMatrix) {
   CMatrix zero(2, std::vector<C>(2, C(0)));
   EXPECT_THROW(decompose_unitary(zero, {"rz"}), std::invalid_argument);
+}
+
+// ========================================================================
+// Dangling pointer fix verification tests
+//
+// These tests verify that UnitarySynthesis::run() and ConsolidateBlocks::run()
+// correctly handle multiple blocks without crashing due to invalidated DAG
+// node pointers after replace_block_with_dag().
+//
+// Root cause (before fix):
+//   collect_all_matching_blocks() returns all blocks at once.
+//   After replace_block_with_dag() modifies the DAG for the first block,
+//   subsequent blocks' DAGOpNode* pointers become dangling.
+//   Accessing node->qargs on these dangling pointers caused at() to throw.
+//
+// Fix: while-loop that re-collects blocks after each replacement.
+// ========================================================================
+
+// Multiple independent 1Q blocks on different qubits.
+// Before the fix: replacing block on q0 invalidates node pointers for q1, q2.
+TEST(DanglingPointerFix, MultipleIndependent1QBlocks) {
+  std::vector<std::shared_ptr<BaseOperation>> ir;
+  // Block 1: H S T on qubit 0 (3 gates → should consolidate)
+  ir.push_back(create_gate("h", {0}));
+  ir.push_back(create_gate("s", {0}));
+  ir.push_back(create_gate("t", {0}));
+  // Block 2: X Y Z on qubit 1 (3 gates → should consolidate)
+  ir.push_back(create_gate("x", {1}));
+  ir.push_back(create_gate("y", {1}));
+  ir.push_back(create_gate("z", {1}));
+  // Block 3: H T S on qubit 2 (3 gates → should consolidate)
+  ir.push_back(create_gate("h", {2}));
+  ir.push_back(create_gate("t", {2}));
+  ir.push_back(create_gate("s", {2}));
+
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  EXPECT_EQ(dag.size(), 9);
+
+  // This would crash before the fix when processing block 2 or 3
+  std::set<std::string> basis = {"rz", "ry", "cx"};
+  UnitarySynthesis synth(basis);
+  int reduced = synth.run(dag, basis);
+
+  // All 3 blocks should have been processed without exception
+  EXPECT_GE(reduced, 0);
+
+  // Verify all remaining gates are in basis
+  auto counts = dag.count_ops();
+  for (const auto& [name, count] : counts) {
+    EXPECT_TRUE(basis.count(name) > 0) << "Gate " << name << " not in basis";
+  }
+}
+
+// Multiple independent 2Q blocks on different qubit pairs.
+// Before the fix: replacing first CX block invalidates second CX block's pointers.
+TEST(DanglingPointerFix, MultipleIndependent2QBlocks) {
+  std::vector<std::shared_ptr<BaseOperation>> ir;
+  // Block 1: H(0) + CX(0,1) — Bell state on qubits 0,1
+  ir.push_back(create_gate("h", {0}));
+  ir.push_back(create_gate("cx", {0, 1}));
+  // Block 2: H(2) + CX(2,3) — Bell state on qubits 2,3
+  ir.push_back(create_gate("h", {2}));
+  ir.push_back(create_gate("cx", {2, 3}));
+  // Block 3: H(4) + CX(4,5) — Bell state on qubits 4,5
+  ir.push_back(create_gate("h", {4}));
+  ir.push_back(create_gate("cx", {4, 5}));
+
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  EXPECT_EQ(dag.size(), 6);
+
+  std::set<std::string> basis = {"cx", "rz", "ry", "u3"};
+  UnitarySynthesis synth(basis);
+  // Must not throw or crash (reduced can be negative for 2Q blocks)
+  synth.run(dag, basis);
+}
+
+// Mixed 1Q and 2Q blocks interleaved on different qubits.
+TEST(DanglingPointerFix, Mixed1QAnd2QBlocks) {
+  std::vector<std::shared_ptr<BaseOperation>> ir;
+  // 1Q block on q0
+  ir.push_back(create_gate("h", {0}));
+  ir.push_back(create_gate("s", {0}));
+  // 2Q block on q1,q2
+  ir.push_back(create_gate("cx", {1, 2}));
+  ir.push_back(create_gate("h", {1}));
+  // 1Q block on q3
+  ir.push_back(create_gate("t", {3}));
+  ir.push_back(create_gate("h", {3}));
+  // 2Q block on q4,q5
+  ir.push_back(create_gate("cz", {4, 5}));
+  ir.push_back(create_gate("s", {4}));
+  // 1Q block on q6
+  ir.push_back(create_gate("x", {6}));
+  ir.push_back(create_gate("y", {6}));
+
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  EXPECT_EQ(dag.size(), 10);
+
+  std::set<std::string> basis = {"cx", "cz", "rz", "ry"};
+  UnitarySynthesis synth(basis);
+  // Must not throw — reduced can be negative for 2Q blocks
+  synth.run(dag, basis);
+
+  auto counts = dag.count_ops();
+  for (const auto& [name, count] : counts) {
+    EXPECT_TRUE(basis.count(name) > 0) << "Gate " << name << " not in basis";
+  }
+}
+
+// ConsolidateBlocks with multiple blocks — same dangling pointer scenario.
+TEST(DanglingPointerFix, ConsolidateMultipleBlocks) {
+  std::vector<std::shared_ptr<BaseOperation>> ir;
+  // Block 1 on q0
+  ir.push_back(create_gate("h", {0}));
+  ir.push_back(create_gate("s", {0}));
+  ir.push_back(create_gate("t", {0}));
+  // Block 2 on q1
+  ir.push_back(create_gate("x", {1}));
+  ir.push_back(create_gate("y", {1}));
+  ir.push_back(create_gate("z", {1}));
+  // Block 3 on q2,q3
+  ir.push_back(create_gate("cx", {2, 3}));
+  ir.push_back(create_gate("h", {2}));
+
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  EXPECT_EQ(dag.size(), 8);
+
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  ConsolidateBlocks consolidator(basis);
+  // Must not throw
+  consolidator.run(dag, basis);
+
+  auto counts = dag.count_ops();
+  for (const auto& [name, count] : counts) {
+    EXPECT_TRUE(basis.count(name) > 0) << "Gate " << name << " not in basis";
+  }
+}
+
+// Many blocks on many qubits — stress test.
+TEST(DanglingPointerFix, StressManyBlocks) {
+  std::vector<std::shared_ptr<BaseOperation>> ir;
+  const int num_qubits = 10;
+  // Each qubit gets a 2-gate block
+  for (int q = 0; q < num_qubits; ++q) {
+    ir.push_back(create_gate("h", {q}));
+    ir.push_back(create_gate("s", {q}));
+  }
+
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  EXPECT_EQ(dag.size(), num_qubits * 2);
+
+  std::set<std::string> basis = {"rz", "ry", "cx"};
+  UnitarySynthesis synth(basis);
+  synth.run(dag, basis);
+
+  auto counts = dag.count_ops();
+  for (const auto& [name, count] : counts) {
+    EXPECT_TRUE(basis.count(name) > 0) << "Gate " << name << " not in basis";
+  }
+}
+
+// Blocks where some are skipped (e.g., too many qubits) and some are replaced.
+// Ensures we don't crash when skipping past blocks that would be invalidated.
+TEST(DanglingPointerFix, SkippedAndReplacedBlocksInterleaved) {
+  std::vector<std::shared_ptr<BaseOperation>> ir;
+  // Block on q0 (1Q, should be replaced)
+  ir.push_back(create_gate("h", {0}));
+  ir.push_back(create_gate("s", {0}));
+  // Block on q1 (1Q, should be replaced)
+  ir.push_back(create_gate("t", {1}));
+  ir.push_back(create_gate("h", {1}));
+  // Block on q2 (1Q, should be replaced)
+  ir.push_back(create_gate("x", {2}));
+  ir.push_back(create_gate("y", {2}));
+
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+
+  // Use max_block_size=1: all 1Q blocks are within limit, should process all
+  std::set<std::string> basis = {"rz", "ry"};
+  UnitarySynthesis synth(basis, 1.0, 1);
+  synth.run(dag, basis);
+}
+
+// Verify the DAG remains valid after multi-block synthesis (structural integrity).
+TEST(DanglingPointerFix, DAGRemainsValidAfterMultiBlockSynthesis) {
+  std::vector<std::shared_ptr<BaseOperation>> ir;
+  ir.push_back(create_gate("h", {0}));
+  ir.push_back(create_gate("s", {0}));
+  ir.push_back(create_gate("h", {1}));
+  ir.push_back(create_gate("t", {1}));
+  ir.push_back(create_gate("h", {2}));
+  ir.push_back(create_gate("x", {2}));
+
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  int orig_size = dag.size();
+
+  std::set<std::string> basis = {"rz", "ry"};
+  UnitarySynthesis synth(basis);
+  synth.run(dag, basis);
+
+  // DAG should still be traversable without crash
+  auto ops = dag.topological_op_nodes();
+  EXPECT_GT(ops.size(), 0u);
+
+  // Each op node should have valid qargs
+  for (auto* node : ops) {
+    EXPECT_FALSE(node->qargs.empty());
+    for (int q : node->qargs) {
+      EXPECT_GE(q, 0);
+      EXPECT_LT(q, 3);  // qubits 0, 1, 2
+    }
+  }
+}
+
+// ========================================================================
+// QASM benchmark circuit optimization tests
+//
+// Load real QASM circuits (bb84_n8, hs4_n4, qpe_n9, qrng_n4, simon_n6)
+// and run optimize() at levels 1-3 with various basis gate sets.
+// Verifies no crashes and valid output.
+// ========================================================================
+
+namespace {
+
+// Helper: load QASM file and return IR
+std::vector<std::shared_ptr<BaseOperation>> load_qasm_circuit(
+    const std::string& filename) {
+  std::string path = std::string(TEST_DATA_DIR) +
+                     "qasm/benchpress/qasmbench-small/" + filename + "/" +
+                     filename + ".qasm";
+  std::ifstream ifs(path);
+  if (!ifs) return {};
+  std::ostringstream oss;
+  oss << ifs.rdbuf();
+  auto [ir, num_qubits] = qasm_to_ir(oss.str());
+  return ir;
+}
+
+}  // namespace
+
+TEST(QASMCircuitOptTest, bb84_n8_Level1) {
+  auto ir = load_qasm_circuit("bb84_n8");
+  if (ir.empty()) GTEST_SKIP() << "bb84_n8.qasm not found";
+  auto result = optimize(ir, 1);
+  EXPECT_GT(result.size(), 0u);
+}
+
+TEST(QASMCircuitOptTest, bb84_n8_Level2) {
+  auto ir = load_qasm_circuit("bb84_n8");
+  if (ir.empty()) GTEST_SKIP() << "bb84_n8.qasm not found";
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  auto result = optimize(ir, 2, false, basis);
+  EXPECT_GT(result.size(), 0u);
+}
+
+TEST(QASMCircuitOptTest, bb84_n8_Level3) {
+  auto ir = load_qasm_circuit("bb84_n8");
+  if (ir.empty()) GTEST_SKIP() << "bb84_n8.qasm not found";
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  auto result = optimize(ir, 3, false, basis);
+  EXPECT_GT(result.size(), 0u);
+}
+
+TEST(QASMCircuitOptTest, hs4_n4_Level1) {
+  auto ir = load_qasm_circuit("hs4_n4");
+  if (ir.empty()) GTEST_SKIP() << "hs4_n4.qasm not found";
+  auto result = optimize(ir, 1);
+  EXPECT_GT(result.size(), 0u);
+}
+
+TEST(QASMCircuitOptTest, hs4_n4_Level2) {
+  auto ir = load_qasm_circuit("hs4_n4");
+  if (ir.empty()) GTEST_SKIP() << "hs4_n4.qasm not found";
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  auto result = optimize(ir, 2, false, basis);
+  EXPECT_GT(result.size(), 0u);
+}
+
+TEST(QASMCircuitOptTest, hs4_n4_Level3) {
+  auto ir = load_qasm_circuit("hs4_n4");
+  if (ir.empty()) GTEST_SKIP() << "hs4_n4.qasm not found";
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  auto result = optimize(ir, 3, false, basis);
+  EXPECT_GT(result.size(), 0u);
+}
+
+TEST(QASMCircuitOptTest, qpe_n9_Level1) {
+  auto ir = load_qasm_circuit("qpe_n9");
+  if (ir.empty()) GTEST_SKIP() << "qpe_n9.qasm not found";
+  auto result = optimize(ir, 1);
+  EXPECT_GT(result.size(), 0u);
+}
+
+TEST(QASMCircuitOptTest, qpe_n9_Level2) {
+  auto ir = load_qasm_circuit("qpe_n9");
+  if (ir.empty()) GTEST_SKIP() << "qpe_n9.qasm not found";
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  auto result = optimize(ir, 2, false, basis);
+  EXPECT_GT(result.size(), 0u);
+}
+
+TEST(QASMCircuitOptTest, qpe_n9_Level3) {
+  auto ir = load_qasm_circuit("qpe_n9");
+  if (ir.empty()) GTEST_SKIP() << "qpe_n9.qasm not found";
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  auto result = optimize(ir, 3, false, basis);
+  EXPECT_GT(result.size(), 0u);
+}
+
+TEST(QASMCircuitOptTest, qrng_n4_Level1) {
+  auto ir = load_qasm_circuit("qrng_n4");
+  if (ir.empty()) GTEST_SKIP() << "qrng_n4.qasm not found";
+  auto result = optimize(ir, 1);
+  EXPECT_GT(result.size(), 0u);
+}
+
+TEST(QASMCircuitOptTest, qrng_n4_Level2) {
+  auto ir = load_qasm_circuit("qrng_n4");
+  if (ir.empty()) GTEST_SKIP() << "qrng_n4.qasm not found";
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  auto result = optimize(ir, 2, false, basis);
+  EXPECT_GT(result.size(), 0u);
+}
+
+TEST(QASMCircuitOptTest, qrng_n4_Level3) {
+  auto ir = load_qasm_circuit("qrng_n4");
+  if (ir.empty()) GTEST_SKIP() << "qrng_n4.qasm not found";
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  auto result = optimize(ir, 3, false, basis);
+  EXPECT_GT(result.size(), 0u);
+}
+
+TEST(QASMCircuitOptTest, simon_n6_Level1) {
+  auto ir = load_qasm_circuit("simon_n6");
+  if (ir.empty()) GTEST_SKIP() << "simon_n6.qasm not found";
+  auto result = optimize(ir, 1);
+  EXPECT_GT(result.size(), 0u);
+}
+
+TEST(QASMCircuitOptTest, simon_n6_Level2) {
+  auto ir = load_qasm_circuit("simon_n6");
+  if (ir.empty()) GTEST_SKIP() << "simon_n6.qasm not found";
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  auto result = optimize(ir, 2, false, basis);
+  EXPECT_GT(result.size(), 0u);
+}
+
+TEST(QASMCircuitOptTest, simon_n6_Level3) {
+  auto ir = load_qasm_circuit("simon_n6");
+  if (ir.empty()) GTEST_SKIP() << "simon_n6.qasm not found";
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  auto result = optimize(ir, 3, false, basis);
+  EXPECT_GT(result.size(), 0u);
+}
+
+// Test with IBM-style basis (u3 + cx)
+TEST(QASMCircuitOptTest, AllCircuits_IBM_Basis) {
+  std::vector<std::string> circuits = {
+      "bb84_n8", "hs4_n4", "qpe_n9", "qrng_n4", "simon_n6"};
+  std::set<std::string> ibm_basis = {"cx", "u3"};
+
+  for (const auto& name : circuits) {
+    auto ir = load_qasm_circuit(name);
+    if (ir.empty()) {
+      std::cout << "[SKIP] " << name << " not found" << std::endl;
+      continue;
+    }
+    auto result = optimize(ir, 2, false, ibm_basis);
+    EXPECT_GT(result.size(), 0u) << "Circuit " << name << " produced empty result";
+  }
+}
+
+// Test with Google-style basis (rz + rx + cx)
+TEST(QASMCircuitOptTest, AllCircuits_Google_Basis) {
+  std::vector<std::string> circuits = {
+      "bb84_n8", "hs4_n4", "qpe_n9", "qrng_n4", "simon_n6"};
+  std::set<std::string> google_basis = {"cx", "rz", "rx"};
+
+  for (const auto& name : circuits) {
+    auto ir = load_qasm_circuit(name);
+    if (ir.empty()) {
+      std::cout << "[SKIP] " << name << " not found" << std::endl;
+      continue;
+    }
+    auto result = optimize(ir, 2, false, google_basis);
+    EXPECT_GT(result.size(), 0u) << "Circuit " << name << " produced empty result";
+  }
+}
+
+// Test with IonQ-style basis (rz + ry + cz)
+TEST(QASMCircuitOptTest, AllCircuits_IonQ_Basis) {
+  std::vector<std::string> circuits = {
+      "bb84_n8", "hs4_n4", "qpe_n9", "qrng_n4", "simon_n6"};
+  std::set<std::string> ionq_basis = {"cz", "rz", "ry"};
+
+  for (const auto& name : circuits) {
+    auto ir = load_qasm_circuit(name);
+    if (ir.empty()) {
+      std::cout << "[SKIP] " << name << " not found" << std::endl;
+      continue;
+    }
+    auto result = optimize(ir, 2, false, ionq_basis);
+    EXPECT_GT(result.size(), 0u) << "Circuit " << name << " produced empty result";
+  }
 }
