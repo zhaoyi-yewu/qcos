@@ -56,6 +56,7 @@ git branch --set-upstream-to=gitee/develop gitee-develop
 
 import hashlib
 import re
+import shlex
 import subprocess
 import sys
 from collections import OrderedDict
@@ -80,7 +81,7 @@ def run_command(command, check=True, capture_output=True, text=True):
     """Run command.
 
     Args:
-        command: command
+        command: command, a list of args or a shell string (split via shlex)
         check: check exit code
         capture_output: capture output
         text: print text
@@ -88,10 +89,12 @@ def run_command(command, check=True, capture_output=True, text=True):
     Returns:
         command results
     """
+    if isinstance(command, str):
+        command = shlex.split(command)
     try:
         results = subprocess.run(
             command,
-            shell=True,
+            shell=False,
             check=check,
             capture_output=capture_output,
             text=text,
@@ -105,41 +108,61 @@ def run_command(command, check=True, capture_output=True, text=True):
 
 def pull_branches():
     """Pull branches."""
-    run_command(f"git branch -D {cmss_local_merge_branch} || true")
+    run_command(
+        ["git", "branch", "-D", cmss_local_merge_branch], check=False
+    )
 
-    delete_branch_cmds = [
-        f"git checkout -b {cmss_local_merge_branch} {gitee_local_branch}"
-        f" || git checkout {cmss_local_merge_branch}"
-    ]
     print(f"Recreate branch: {cmss_local_merge_branch}")
-    results = run_command(";".join(delete_branch_cmds))
+    results = run_command(
+        [
+            "git", "checkout", "-b", cmss_local_merge_branch,
+            gitee_local_branch,
+        ],
+        check=False,
+    )
+    if results.returncode != 0:
+        results = run_command(
+            ["git", "checkout", cmss_local_merge_branch]
+        )
     ret_code = results.returncode
     if ret_code != 0:
         raise MergeException(results.stderr)
 
     fetch_from_gitee_cmds = [
-        "git reset --hard",
-        "git cherry-pick --abort || true",
-        f"git checkout {gitee_local_branch}",
-        f"git pull --rebase {gitee_remote} "
-        f"{gitee_remote_branch}:{gitee_local_branch}",
+        ["git", "reset", "--hard"],
+        ["git", "cherry-pick", "--abort"],
+        ["git", "checkout", gitee_local_branch],
+        [
+            "git", "pull", "--rebase", gitee_remote,
+            f"{gitee_remote_branch}:{gitee_local_branch}",
+        ],
     ]
     print(f"Fetch from {gitee_remote}, branch: {gitee_remote_branch} ...")
-    results = run_command(";".join(fetch_from_gitee_cmds))
-    ret_code = results.returncode
+    last_result = None
+    for idx, cmd in enumerate(fetch_from_gitee_cmds):
+        # cherry-pick --abort may fail; ignore its errors
+        if idx == 1:
+            last_result = run_command(cmd, check=False)
+        else:
+            last_result = run_command(cmd)
+    ret_code = last_result.returncode
     if ret_code != 0:
-        raise MergeException(results.stderr)
+        raise MergeException(last_result.stderr)
 
     fetch_from_cmss_cmds = [
-        f"git checkout {cmss_local_branch}",
-        f"git pull --rebase {cmss_remote} "
-        f"{cmss_local_branch}:{cmss_local_branch}",
+        ["git", "checkout", cmss_local_branch],
+        [
+            "git", "pull", "--rebase", cmss_remote,
+            f"{cmss_local_branch}:{cmss_local_branch}",
+        ],
     ]
     print(f"Fetch codes from {cmss_remote}, branch: {cmss_local_branch} ...")
-    results = run_command(";".join(fetch_from_cmss_cmds))
-    ret_code = results.returncode
+    last_result = None
+    for cmd in fetch_from_cmss_cmds:
+        last_result = run_command(cmd)
+    ret_code = last_result.returncode
     if ret_code != 0:
-        raise MergeException(results.stderr)
+        raise MergeException(last_result.stderr)
 
 
 def get_commits_dict(branch_name, since_str=None, repo_path="."):
@@ -353,39 +376,50 @@ def create_single_commit_branch(
         base_branch = f"commit-{num - 1}"
 
     # 1. Delete existing branch with the same name
-    run_command(f"git branch -D {branch_name} || true")
+    run_command(["git", "branch", "-D", branch_name], check=False)
     # 2. Create a new branch based on the base branch
-    run_command(f"git checkout {base_branch}")
-    run_command(f"git checkout -b {branch_name}")
+    run_command(["git", "checkout", base_branch])
+    run_command(["git", "checkout", "-b", branch_name])
     # 3. Clear the current branch
-    run_command("git reset --hard")
+    run_command(["git", "reset", "--hard"])
     # 4. Cherry-pick single commit
-    run_command(f"git cherry-pick -m 1 {commit_hash}")
+    run_command(["git", "cherry-pick", "-m", "1", commit_hash])
 
     # 5. Submit desensitized information
-    author_email = run_command("git log -1 --format=%ae").stdout.strip()
-    author_name = run_command("git log -1 --format=%an").stdout.strip()
-    message = run_command("git log -1 --format=%B").stdout.strip()
+    author_email = run_command(
+        ["git", "log", "-1", "--format=%ae"]
+    ).stdout.strip()
+    author_name = run_command(
+        ["git", "log", "-1", "--format=%an"]
+    ).stdout.strip()
+    message = run_command(
+        ["git", "log", "-1", "--format=%B"]
+    ).stdout.strip()
 
     new_email, new_name = sanitize_author(author_email, author_name)
     new_message = sanitize_message(message)
 
     # 6. Rewrite commit message
-    amend_cmd = (
-        f'git -c user.name="{new_name}" '
-        f'-c user.email="{new_email}" '
-        f"commit --amend --no-edit "
-        f'--author="{new_name} <{new_email}>"'
-    )
+    amend_cmd = [
+        "git",
+        "-c", f"user.name={new_name}",
+        "-c", f"user.email={new_email}",
+        "commit", "--amend", "--no-edit",
+        f"--author={new_name} <{new_email}>",
+    ]
     run_command(amend_cmd)
 
     if new_message != message:
         msg_file = "/tmp/git_commit_msg.txt"
         with open(msg_file, "w", encoding="utf-8") as f:
             f.write(new_message)
-        run_command(f'git commit --amend --no-edit -F "{msg_file}"')
+        run_command(
+            ["git", "commit", "--amend", "--no-edit", "-F", msg_file]
+        )
 
-    new_commit_hash = run_command("git log -1 --format=%H").stdout.strip()
+    new_commit_hash = run_command(
+        ["git", "log", "-1", "--format=%H"]
+    ).stdout.strip()
     print(
         f"Created branch [{branch_name}] for commit"
         f" [{commit_hash}] -> new commit [{new_commit_hash}]"
@@ -399,7 +433,9 @@ def push_single_branch(branch_name):
     Args:
         branch_name: branch name
     """
-    push_cmd = f"git push {gitee_remote} {branch_name}:{branch_name}"
+    push_cmd = [
+        "git", "push", gitee_remote, f"{branch_name}:{branch_name}",
+    ]
     results = run_command(push_cmd)
     if results.returncode == 0:
         print(f"Pushed branch [{branch_name}] to Gitee success!")
@@ -423,7 +459,10 @@ def split_and_push_single_commits(start_since=None, commit_id=None):
     target_commits = []
     if commit_id:
         if ".." in commit_id:
-            cmd = f"git log --oneline --no-merges --format='%h' {commit_id}"
+            cmd = [
+                "git", "log", "--oneline", "--no-merges",
+                "--format=%h", commit_id,
+            ]
             results = run_command(cmd)
             target_commits = results.stdout.splitlines()[::-1]
         else:
@@ -462,11 +501,8 @@ def merge_branches(commit_id):
     print(f"Merge commits to branch: {cmss_local_merge_branch}")
 
     # checkout local merge branch
-    cmds = [
-        "git cherry-pick --abort || true",
-        f"git checkout {cmss_local_merge_branch}",
-    ]
-    results = run_command(";".join(cmds))
+    run_command(["git", "cherry-pick", "--abort"], check=False)
+    results = run_command(["git", "checkout", cmss_local_merge_branch])
     ret_code = results.returncode
     if ret_code != 0:
         raise MergeException(results.stderr)
@@ -474,7 +510,10 @@ def merge_branches(commit_id):
     # Analyze the list of commits to be merged
     commits = []
     if ".." in commit_id:
-        cmd = f"git log --oneline --no-merges --format='%h' {commit_id}"
+        cmd = [
+            "git", "log", "--oneline", "--no-merges",
+            "--format=%h", commit_id,
+        ]
         results = run_command(cmd)
         commits = results.stdout.splitlines()[::-1]
     else:
@@ -487,38 +526,43 @@ def merge_branches(commit_id):
     merged_commit_ids = []
     for i, commit in enumerate(commits, 1):
         print(f"Processing commit [{i}/{commits_count}]: {commit}")
-        run_command(f"git cherry-pick -m 1 {commit}")
+        run_command(["git", "cherry-pick", "-m", "1", commit])
 
         # Read the author and message information of the current HEAD
         author_email = run_command(
-            "git log -1 --format=%ae"
+            ["git", "log", "-1", "--format=%ae"]
         ).stdout.strip()
         author_name = run_command(
-            "git log -1 --format=%an"
+            ["git", "log", "-1", "--format=%an"]
         ).stdout.strip()
         message = run_command(
-            "git log -1 --format=%B"
+            ["git", "log", "-1", "--format=%B"]
         ).stdout.strip()
 
         new_email, new_name = sanitize_author(author_email, author_name)
         new_message = sanitize_message(message)
 
         # amend current commit
-        amend_cmd = (
-            f'git -c user.name="{new_name}" '
-            f'-c user.email="{new_email}" '
-            f"commit --amend --no-edit "
-            f'--author="{new_name} <{new_email}>"'
-        )
+        amend_cmd = [
+            "git",
+            "-c", f"user.name={new_name}",
+            "-c", f"user.email={new_email}",
+            "commit", "--amend", "--no-edit",
+            f"--author={new_name} <{new_email}>",
+        ]
         run_command(amend_cmd)
 
         if new_message != message:
             msg_file = "/tmp/git_commit_msg.txt"
             with open(msg_file, "w", encoding="utf-8") as f:
                 f.write(new_message)
-            run_command(f'git commit --amend --no-edit -F "{msg_file}"')
+            run_command(
+                ["git", "commit", "--amend", "--no-edit", "-F", msg_file]
+            )
 
-        merged_commit = run_command("git log -1 --format=%H").stdout.strip()
+        merged_commit = run_command(
+            ["git", "log", "-1", "--format=%H"]
+        ).stdout.strip()
         merged_commit_ids.append(merged_commit)
 
     print(f"Successfully merged commits: {merged_commit_ids}")
@@ -528,10 +572,10 @@ def merge_branches(commit_id):
 def push_to_gitee():
     """Push merged branch to gitee."""
     print(f"Push to {gitee_remote}/{gitee_remote_branch} ...")
-    push_cmd = (
-        f"git push {gitee_remote} "
-        f"{cmss_local_merge_branch}:{gitee_remote_branch}"
-    )
+    push_cmd = [
+        "git", "push", gitee_remote,
+        f"{cmss_local_merge_branch}:{gitee_remote_branch}",
+    ]
     results = run_command(push_cmd)
     if results.returncode == 0:
         print("Push to gitee success!")
