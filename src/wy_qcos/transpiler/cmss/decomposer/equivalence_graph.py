@@ -876,15 +876,10 @@ class ParamGate:
 
 
 class EquivalenceRule:
-    """Represents an equivalence rule for decomposing quantum gates.
+    """Represents an equivalence rule for decomposing gates.
 
     The rule is specified in a DSL string, for example:
         "cx() q0,q1 -> u(pi/2,0,pi) q1 | cp(pi) q0,q1 | u(pi/2,0,pi) q1"
-
-    Attributes:
-        target (ParamGate): The target gate to be decomposed.
-        sources (list[ParamGate]): list of gates that represent
-            the decomposition.
     """
 
     def __init__(self, dsl: str):
@@ -961,12 +956,7 @@ class RuleEdge:
 
 
 class EquivalenceGraph:
-    """Graph of equivalence rules for quantum gate decomposition.
-
-    Attributes:
-        rules (list[EquivalenceRule]): list of all equivalence rules
-            in the graph.
-    """
+    """Graph of equivalence rules for quantum gate decomposition."""
 
     def __init__(self) -> None:
         """Initializes an empty EquivalenceGraph."""
