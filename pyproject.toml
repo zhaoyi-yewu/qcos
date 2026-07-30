@@ -50,194 +50,105 @@ classifiers = [
 # If you don't have any dependencies, leave this section empty
 # Format for dependency strings: https://peps.python.org/pep-0508/
 dependencies = [
-    # requirements of qcos
-    "aiohttp==3.14.1",
-    "aiomysql==0.3.2",
-    "alembic==1.18.5",
+    # requirements
+    "aiohttp==3.12.13",
+    "aiomysql==0.2.0",
+    "alembic==1.16.3",
     "annotated-types==0.7.0",
-    "anyio==4.14.2",
-    "apscheduler==3.11.3",
-    "argcomplete==3.7.0",
+    "anyio==4.9.0",
+    "apscheduler==3.11.2",
+    "argcomplete==3.6.2",
     "bcrypt==5.0.0",
-    "click==8.4.2",
-    "cliff==4.15.0",
-    "cryptography==49.0.0",
-    "fastapi==0.139.2",
-    "fastapi-jsonrpc==3.5.0",
+    "click==8.1.8",
+    "cliff==4.10.0",
+    "cryptography==45.0.7",
+    "fastapi==0.122.1",
+    "fastapi-jsonrpc==3.4.2",
     "h11==0.16.0",
     "httpcore==1.0.9",
     "httpx==0.28.1",
-    "idna==3.18",
+    "idna==3.10",
     "jsonrpcclient==4.0.3",
     "loguru==0.7.3",
-    "matplotlib==3.11.0",
-    "mqt.qcec==3.7.0",
-    "networkx==3.6.1",
+    "matplotlib==3.10.8",
+    "mqt.qcec==3.3.0",
+    "networkx==3.3",
     "numexpr==2.14.1",
-    "numpy==2.4.6",
+    "numpy==1.26.4",
     "openpulse==1.0.1",
     "openqasm3==1.0.1",
-    "opentelemetry-api==1.44.0",
+    "opentelemetry-api==1.39.1",
     "oqpy==0.3.10",
+    "pallets-sphinx-themes==2.3.0",
     "pg8000==1.31.5",
     "ply==3.11",
-    "poetry==2.4.1",
+    "poetry==2.1.3",
     "prefect==3.6.9; sys_platform == 'linux'",
-    "prometheus-client==0.25.0",
-    "psutil==7.2.2",
-    "pulp==3.3.2",
+    "prometheus-client==0.21.1",
+    "psutil==7.1.3",
+    "pulp==3.2.2",
     "pwdlib==0.3.0",
-    "nanobind==2.13.0",
-    "nanobind-stubgen==0.1.5",
     "pycasbin==2.8.0",
-    "pydantic==2.13.4",
-    "pydantic_core==2.46.4",
-    "pydocket==0.23.0",
-    "PyJWT==2.13.0",
-    "PyMySQL==1.2.0",
-    "pytest==9.1.1",
-    "pytest-asyncio==1.4.0",
-    "pytest-cov==7.1.0",
+    "pydantic==2.11.5",
+    "pydantic_core==2.33.2",
+    "pydocket==0.16.3",
+    "PyJWT==2.12.1",
+    "pytest==8.4.1",
+    "pytest-cov==6.2.1",
     "python-box==7.4.1",
     "python-jose==3.5.0",
-    "python-socketio==5.16.3",
+    "python-socketio==5.12.1",
     "PyYAML==6.0.3",
-    "redis==8.0.1",
-    "requests==2.34.2",
-    "rustworkx==0.18.0",
-    "schema==0.7.8",
-    "scipy==1.17.1",
+    "redis==7.1.0",
+    "requests==2.32.5",
+    "rustworkx==0.17.1",
+    "schema==0.7.7",
+    "scipy==1.17.0",
     "setproctitle==1.3.7",
-    "smbprotocol==1.17.0",
+    "smbprotocol==1.16.1",
     "sniffio==1.3.1",
-    "sqlalchemy==2.0.51",
+    "sqlalchemy==2.0.48",
     "sqlalchemy-adapter==1.9.0",
     "sqlalchemy-utils==0.42.1",
-    "starlette==1.3.1",
+    "starlette==0.50.0",
     "stim==1.16.0",
     "sympy==1.14.0",
-    "tomlkit==0.15.1",
-    "typing-inspection==0.4.2",
-    "typing_extensions==4.16.0",
-    "uvicorn[standard]==0.51.0",
-    "uv==0.9.13",
-    "uvloop==0.22.1",
-    "wheel==0.47.0",
-    # driver: hanyuan1 only
-    "zerorpc==0.6.3",
+    "tomlkit==0.13.3",
+    "typing-inspection==0.4.1",
+    "typing_extensions==4.15.0",
+    "uvicorn[standard]==0.34.2",
+    "uvloop==0.21.0",
+    "wheel==0.45.1",
+    "zerorpc==0.6.3",  # driver: hanyuan1 only
+
+    # requirements-test
+    "bandit>=1.8.6",
+    "flake8>=7.3.0",
+    "mypy==1.8.0",
+    "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
+    "ruff==0.12.3",
+    "sphinx==8.1.3",
+    "sphinx-rtd-theme==3.0.2",
+    "sphinxcontrib-napoleon==0.7",
+    "tabulate==0.9.0",
+    "tomli==2.2.1",
+    "tox==4.8.0",
 ]
 
 [project.optional-dependencies]
-# requirements of cli and base
-base = [
-    "argcomplete==3.7.0",
-    "cliff==4.15.0",
-    "jsonrpcclient==4.0.3",
-    "poetry==2.4.1",
-    "requests==2.34.2",
-    "schema==0.7.8",
-    "uv==0.9.13",
-    # other requirements
-    "PyYAML==6.0.3",
-    "tomlkit==0.15.1",
-]
-
-# requirements of tests
-test = [
-    "bandit==1.9.4",
-    "flake8==7.3.0",
-    "mypy==1.8.0",
-    "pytest==9.1.1",
-    "pytest-asyncio==1.4.0",
-    "pytest-cov==7.1.0",
-    "ruff==0.12.3",
-    "tomli==2.4.1",
-    "tox==4.8.0",
-    "tabulate==0.10.0",
-]
-
-# requirements of docs
 docs = [
     "alabaster==1.0.0",
     "autodoc-pydantic==2.2.0",
     "doc8==2.0.0",
-    "docutils==0.21.2",
     "docxbuilder==1.2.0",
-    "linkify-it-py==2.1.0",
+    "linkify-it-py==2.0.3",
     "mdformat==1.0.0",
-    "myst-parser==5.1.0",
-    "pallets-sphinx-themes==2.5.0",
-    "pydantic==2.13.4",
-    "sphinx==8.1.3",
-    "sphinx_rtd_theme==3.1.0",
-    "sphinxcontrib-jquery==4.1",
-    "sphinxcontrib-mermaid==2.0.3",
+    "myst-parser==4.0.1",
+    "pallets-sphinx-themes==2.3.0",
+    "sphinxcontrib-mermaid==1.2.3",
     "sphinxcontrib-plantuml==0.31",
     "sphinxcontrib-svg2pdfconverter==2.1.0",
-    # auto api docs
-    "fastapi==0.139.2",
-    "fastapi-jsonrpc==3.5.0",
-]
-
-# requirements of sandbox
-sandbox = [
-    "bump-my-version==1.4.1",
-    "poetry==2.4.1",
-    "poetry-plugin-export==1.10.0",
-    "semver==3.0.4",
-    "twine==6.2.0",
-    "uv==0.9.13",
-]
-
-# requirements of transpiler-cmss
-transpiler-cmss = [
-    "loguru==0.7.3",
-    "matplotlib==3.11.0",
-    "mqt.qcec==3.7.0",
-    "networkx==3.6.1",
-    "numexpr==2.14.1",
-    "numpy==2.4.6",
-    "ply==3.11",
-    "pulp==3.3.2",
-    "rustworkx==0.18.0",
-    "schema==0.7.8",
-]
-
-# requirements of driver qiskit aer
-driver-qiskit = [
-    "qiskit==2.5.0",
-    "qiskit_aer==0.17.2",
-]
-
-# requirements of driver quafu
-driver-quafu = [
-    "certifi==2026.6.17",
-    "chardet==5.2.0",
-    "idna==3.18",
-    "quarkstudio==7.1.8",
-    "requests==2.34.2",
-    "urllib3==2.7.0",
-]
-
-# requirements of driver qutip
-driver-qutip = [
-    "qutip==5.3.0",
-    "qutip-qip==0.4.2",
-]
-
-# requirements of driver spinq-rpc
-driver-spinq-rpc = [
-    "future==1.0.0",
-    "gevent==26.5.0",
-    "greenlet==3.5.3",
-    "pyzmq==27.1.0",
-    "zerorpc==0.6.3",
-]
-
-# requirements of driver uqc
-driver-uqc = [
-    "openqasm3==1.0.1",
-    "uqc_client==0.1.0",
 ]
 
 [project.scripts]

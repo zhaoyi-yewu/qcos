@@ -17,8 +17,8 @@
 
      # BCLinux/CentOS/OpenEuler环境下示例:
      # 需保证Python3>=3.11版本
-     yum install -y python3 python3-pip python3-sphinx python3-requests python3-alembic gcc python3-devel
-     pip3 install tomlkit poetry
+     yum install -y python3 python3-pip python3-sphinx python3-requests python3-alembic
+     pip3 install tomlkit
 
 - 安装Python依赖包：
 
@@ -28,8 +28,8 @@
      cd ./requirements
      ./install-venvs.py
 
-     注意: 如果要从pyproject.toml中导出requirements-[模块].txt, 可以执行下列命令，导出的文件位于当前的./requirements目录下
-     ./install-venvs.py --export-requirements
+     或者直接在当前环境下安装。注意：各驱动所依赖的软件包需另外安装，并自行解决潜在的软件包冲突问题
+     pip3 install -r ./requirements/requirements.txt -r ./requirements/requirements-qcos.txt -r ./requirements/requirements-test.txt -r ./requirements/requirements-docs.txt
 
 .. include:: edit-env.rst
 

@@ -1,0 +1,4 @@
+# Vendor drivers dependencies
+# UQC driver only
+openqasm3==1.0.1
+uqc_client==0.1.0
