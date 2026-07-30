@@ -15,6 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import ast
+import operator
+
 import numpy as np
 from math import sqrt, cos, sin, log2
 from cmath import exp
@@ -28,6 +31,82 @@ from wy_qcos.common.cmss.measure import Measure
 from wy_qcos.common.cmss.move import Move
 from wy_qcos.common.cmss.sync import Sync
 from wy_qcos.common.cmss.reset import Reset
+
+# Allowed binary operators for safe expression evaluation
+_SAFE_BINOPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+}
+
+# Allowed unary operators for safe expression evaluation
+_SAFE_UNARYOPS = {
+    ast.UAdd: operator.pos,
+    ast.USub: operator.neg,
+}
+
+# Allowed modules whose attributes may be accessed in safe expressions
+_SAFE_MODULES = {"np": np, "numpy": np}
+
+
+def _safe_eval(expr, locals_dict):
+    """Safely evaluate a math expression without using eval().
+
+    Only arithmetic operations, constants, variable names, calls to
+    whitelisted module functions (e.g. np.sin) and attribute access on
+    whitelisted modules are permitted.
+
+    Args:
+        expr: expression string
+        locals_dict: mapping of variable names to values
+
+    Returns:
+        evaluated result
+    """
+    tree = ast.parse(expr, mode="eval")
+
+    def _eval(node):
+        if isinstance(node, ast.Expression):
+            return _eval(node.body)
+        if isinstance(node, ast.Constant):
+            return node.value
+        if isinstance(node, ast.Num):  # pragma: no cover  # py<3.8 compat
+            return node.n
+        if isinstance(node, ast.Name):
+            if node.id in locals_dict:
+                return locals_dict[node.id]
+            if node.id in _SAFE_MODULES:
+                return _SAFE_MODULES[node.id]
+            raise NameError(f"name '{node.id}' is not allowed")
+        if isinstance(node, ast.BinOp):
+            op_type = type(node.op)
+            if op_type not in _SAFE_BINOPS:
+                raise ValueError(f"operator {op_type.__name__} not allowed")
+            return _SAFE_BINOPS[op_type](_eval(node.left), _eval(node.right))
+        if isinstance(node, ast.UnaryOp):
+            op_type = type(node.op)
+            if op_type not in _SAFE_UNARYOPS:
+                raise ValueError(f"operator {op_type.__name__} not allowed")
+            return _SAFE_UNARYOPS[op_type](_eval(node.operand))
+        if isinstance(node, ast.Attribute):
+            value = _eval(node.value)
+            # only allow attribute access on whitelisted modules
+            if value not in _SAFE_MODULES.values():
+                raise ValueError("attribute access not allowed")
+            return getattr(value, node.attr)
+        if isinstance(node, ast.Call):
+            func = _eval(node.func)
+            if not callable(func):
+                raise ValueError("call target is not callable")
+            args = [_eval(a) for a in node.args]
+            return func(*args)
+        raise ValueError(f"node type {type(node).__name__} not allowed")
+
+    return _eval(tree)
 
 
 class GateOperation(BaseOperation):
@@ -120,8 +199,7 @@ class GateOperation(BaseOperation):
             gates = []
             for name, qids, arg_value in decomposed_gates:
                 qubits = [self.targets[qid] for qid in qids]
-                # pylint: disable=eval-used
-                args = [eval(arg, params) for arg in arg_value]  # noqa: S307
+                args = [_safe_eval(arg, params) for arg in arg_value]
                 gates.append(create_gate(name, qubits, args))
             return gates
 
