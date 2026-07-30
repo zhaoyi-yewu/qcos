@@ -24,6 +24,7 @@ class CompilerError final : public std::exception {
  public:
   std::string message{};
   DebugInfo debugInfo;  // inline — no heap allocation
+  mutable std::string formatted_{};
 
   CompilerError(std::string msg, DebugInfo debug)
       : message(std::move(msg)), debugInfo(std::move(debug)) {}
@@ -41,6 +42,17 @@ class CompilerError final : public std::exception {
     ss << ":\n" << message;
 
     return ss.str();
+  }
+
+  const char* what() const noexcept override {
+    if (formatted_.empty()) {
+      try {
+        formatted_ = toString();
+      } catch (...) {
+        return message.c_str();
+      }
+    }
+    return formatted_.c_str();
   }
 };
 }  // namespace qasm

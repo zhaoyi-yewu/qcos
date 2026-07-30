@@ -312,26 +312,34 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                     f"Basis gate({supp_basis_gates}) is not supported for "
                     "neutral atom topology. "
                 )
-            return cpp_transpile_na(
-                qasm_string,
-                supp_basis_gates,
-                qpu_cfg,
-                opt_level=opt_level,
-            )
+            try:
+                return cpp_transpile_na(
+                    qasm_string,
+                    supp_basis_gates,
+                    qpu_cfg,
+                    opt_level=opt_level,
+                )
+            except RuntimeError as e:
+                raise TranspilerException(
+                    f"C++ transpile_na failed: {e}"
+                ) from e
         elif tech_type == Constant.TECH_TYPE_SUPERCONDUCTING:
             # Other (including superconducting SABRE) paths
             coupling_list, edge_fidelities, single_qubit_fidelities = (
                 extract_topology_data(qpu_cfg)
             )
 
-            return cpp_transpile(
-                qasm_string,
-                supp_basis_gates,
-                coupling_list,
-                opt_level=opt_level,
-                edge_fidelities=edge_fidelities,
-                single_qubit_fidelities=single_qubit_fidelities,
-            )
+            try:
+                return cpp_transpile(
+                    qasm_string,
+                    supp_basis_gates,
+                    coupling_list,
+                    opt_level=opt_level,
+                    edge_fidelities=edge_fidelities,
+                    single_qubit_fidelities=single_qubit_fidelities,
+                )
+            except RuntimeError as e:
+                raise TranspilerException(f"C++ transpile failed: {e}") from e
         else:
             raise TranspilerException(
                 f"Unsupported tech_type({tech_type}) "
@@ -360,7 +368,12 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                     Constant.CODE_TYPE_QASM,
                     Constant.CODE_TYPE_QASM2,
                 ]:
-                    parse_result, num_qubits = qasm_to_ir(value)
+                    try:
+                        parse_result, num_qubits = qasm_to_ir(value)
+                    except RuntimeError as e:
+                        raise TranspilerException(
+                            f"QASM parse failed: {e}"
+                        ) from e
                 else:
                     circuit = openqasm3_parse(value)
                     num_qubits = circuit.num_qubits
