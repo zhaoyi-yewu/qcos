@@ -119,6 +119,27 @@ class QcosShell(App):
                     "use_ssl is enabled"
                 )
 
+        # Resolve client timeout with precedence:
+        #   1. command line --timeout (user specified)
+        #   2. env var QCOS_CLIENT_TIMEOUT
+        #   3. default 60 seconds
+        cli_timeout = self.options.timeout
+        if cli_timeout is not None:
+            timeout = cli_timeout
+            timeout_from_cli = True
+        else:
+            env_timeout = os.environ.get("QCOS_CLIENT_TIMEOUT")
+            if env_timeout:
+                try:
+                    timeout = int(env_timeout)
+                except (TypeError, ValueError):
+                    raise errors.InvalidArguments(
+                        f"Invalid QCOS_CLIENT_TIMEOUT: {env_timeout}"
+                    )
+            else:
+                timeout = 60
+            timeout_from_cli = False
+
         self.client = Client(
             api_server_ip=api_server_ip,
             api_server_port=api_server_port,
@@ -126,6 +147,8 @@ class QcosShell(App):
             ssl_certfile=ssl_certfile,
             ssl_keyfile=ssl_keyfile,
             ssl_cafile=ssl_cafile,
+            timeout=timeout,
+            timeout_from_cli=timeout_from_cli,
         )
         # override cliff help.HelpAction
         help.HelpAction = HelpAction
@@ -246,6 +269,18 @@ class QcosShell(App):
             type=str,
             default=default_ssl_cafile,
             help=f"Specify SSL cafile. Default: {default_ssl_cafile}",
+        )
+
+        # Client timeout (seconds). default=None means user did not
+        # specify it on the command line; in that case the env var
+        # QCOS_CLIENT_TIMEOUT is consulted, falling back to 60s.
+        parser.add_argument(
+            "--timeout",
+            dest="timeout",
+            type=int,
+            default=None,
+            help="Request timeout in seconds. Overrides "
+            "QCOS_CLIENT_TIMEOUT env var. Default: 60",
         )
 
         # Help
@@ -1120,6 +1155,162 @@ class SystemInfo(ShowOne):
         )
         print("System Info: ")
         table_values = CommandHelper.get_table_data(json_results)
+        return table_values
+
+
+class ShowMem(ShowOne):
+    """Show memory usage of the API server process."""
+
+    group = QcosShell.CMD_GROUP_SYSTEM
+
+    def get_parser(self, prog_name):
+        """Get parser for this command.
+
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
+        """
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        """Take action for command line arguments.
+
+        Args:
+            parsed_args: command line arguments
+        """
+        resource = self.group
+
+        status_code, reason, text, result = self.app.client.show_mem()
+        json_results = CommandHelper.check_results(
+            resource, "show_mem", status_code, reason, text
+        )
+        print("Memory Usage: ")
+        table_values = CommandHelper.get_table_data(json_results)
+        return table_values
+
+
+class DoGc(Command):
+    """Manually trigger garbage collection."""
+
+    group = QcosShell.CMD_GROUP_SYSTEM
+
+    def get_parser(self, prog_name):
+        """Get parser for this command.
+
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--generations",
+            dest="generations",
+            type=int,
+            default=2,
+            choices=[0, 1, 2],
+            help="GC generations to collect (0, 1, 2). Default: 2",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        """Take action for command line arguments.
+
+        Args:
+            parsed_args: command line arguments
+        """
+        resource = self.group
+        generations = parsed_args.generations
+
+        status_code, reason, text, result = self.app.client.debug_gc(
+            generations=generations
+        )
+        json_results = CommandHelper.check_results(
+            resource, "debug_gc", status_code, reason, text
+        )
+        print("GC Result: ")
+        print(
+            f"Collected: {json_results['collected']}, "
+            f"Uncollectable: {json_results['uncollectable']}"
+        )
+        print(
+            f"Objects before: {json_results['count_before']}, "
+            f"after: {json_results['count_after']}"
+        )
+
+
+class TraceMem(Lister):
+    """Trace memory allocations via tracemalloc.
+
+    Actions:
+        snapshot: start tracing (if not active) and take a snapshot
+        stop: stop tracemalloc tracing and release all traces
+        clear: clear traces but keep tracing
+    """
+
+    group = QcosShell.CMD_GROUP_SYSTEM
+
+    def get_parser(self, prog_name):
+        """Get parser for this command.
+
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--action",
+            dest="action",
+            type=str,
+            default="snapshot",
+            choices=["snapshot", "stop", "clear"],
+            help="Action: snapshot (default), stop, or clear",
+        )
+        parser.add_argument(
+            "--nframe",
+            dest="nframe",
+            type=int,
+            default=25,
+            help="Number of top memory allocations to show "
+            "(only for snapshot). Default: 25",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        """Take action for command line arguments.
+
+        Args:
+            parsed_args: command line arguments
+        """
+        resource = self.group
+        action = parsed_args.action
+        nframe = parsed_args.nframe
+
+        status_code, reason, text, result = self.app.client.debug_tracemalloc(
+            action=action, nframe=nframe
+        )
+        json_results = CommandHelper.check_results(
+            resource, "debug_tracemalloc", status_code, reason, text
+        )
+        print("Tracemalloc: ")
+        print(
+            f"Tracing: {json_results['tracing']}, "
+            f"Blocks: {json_results['traced_blocks']}"
+        )
+        print(
+            f"Current: {json_results['current']} bytes, "
+            f"Peak: {json_results['peak']} bytes"
+        )
+        header_list = ["location", "size", "count"]
+        table_values = CommandHelper.get_table_list_data(
+            json_results["top_stats"], header_list
+        )
         return table_values
 
 
@@ -4427,6 +4618,9 @@ command_manager.add_command("whoami", Whoami)
 # system command
 command_manager.add_command("ping", Ping)
 command_manager.add_command("system-info", SystemInfo)
+command_manager.add_command("trace-mem", TraceMem)
+command_manager.add_command("show-mem", ShowMem)
+command_manager.add_command("gc", DoGc)
 # job command
 command_manager.add_command("submit-job", SubmitJob)
 command_manager.add_command("get-job-status", GetJobStatus)

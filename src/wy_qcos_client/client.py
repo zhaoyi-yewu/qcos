@@ -48,7 +48,10 @@ class Client:
     """QCOS client api."""
 
     verbose = False
-    timeout = 30
+    timeout = 60
+    # When True, the timeout was set via command line --timeout and the
+    # QCOS_CLIENT_TIMEOUT env var must be ignored in call_json_rpc.
+    timeout_from_cli = False
 
     def __init__(
         self,
@@ -58,10 +61,12 @@ class Client:
         ssl_certfile=None,
         ssl_keyfile=None,
         ssl_cafile=None,
-        timeout=30,
+        timeout=60,
+        timeout_from_cli=False,
     ):
         # Config
         Client.timeout = timeout
+        Client.timeout_from_cli = timeout_from_cli
 
         # SSL configs
         SSL.use_ssl = use_ssl
@@ -154,18 +159,22 @@ class Client:
         headers = HttpHeaders.DEFAULT_JSON_HEADERS
 
         # config client timeout
+        # Precedence: command line --timeout > QCOS_CLIENT_TIMEOUT env var
+        # > Client.timeout default. When the timeout was explicitly set
+        # via the command line, the env var is ignored entirely.
         timeout = Client.timeout
-        try:
-            qcos_client_timeout = os.environ.get("QCOS_CLIENT_TIMEOUT")
-            if qcos_client_timeout:
-                timeout = int(qcos_client_timeout)
-        except Exception:
-            return (
-                -1,
-                f"Invalid QCOS_CLIENT_TIMEOUT: {qcos_client_timeout}",
-                text,
-                result,
-            )
+        if not Client.timeout_from_cli:
+            try:
+                qcos_client_timeout = os.environ.get("QCOS_CLIENT_TIMEOUT")
+                if qcos_client_timeout:
+                    timeout = int(qcos_client_timeout)
+            except Exception:
+                return (
+                    -1,
+                    f"Invalid QCOS_CLIENT_TIMEOUT: {qcos_client_timeout}",
+                    text,
+                    result,
+                )
 
         # Add JWT token to headers if available
         access_token = os.environ.get(Constant.ENV_VAR_ACCESS_TOKEN, None)
@@ -474,6 +483,57 @@ class Client:
         # construct data and call json rpc
         status_code, reason, text, result = self.call_json_rpc(
             self.system_url, method_name, body_data=None
+        )
+        return status_code, reason, text, result
+
+    def show_mem(self):
+        """Show memory usage of the API server process.
+
+        Returns:
+            memory usage info
+        """
+        method_name = "show_mem"
+
+        # construct data and call json rpc
+        status_code, reason, text, result = self.call_json_rpc(
+            self.system_url, method_name, body_data=None
+        )
+        return status_code, reason, text, result
+
+    def debug_gc(self, *, generations=2):
+        """Manually trigger garbage collection.
+
+        Args:
+            generations: gc generations to collect (0, 1, 2)
+
+        Returns:
+            gc collection result
+        """
+        method_name = "debug_gc"
+
+        # construct data and call json rpc
+        data = {"generations": generations}
+        status_code, reason, text, result = self.call_json_rpc(
+            self.system_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def debug_tracemalloc(self, *, action="snapshot", nframe=25):
+        """Debug memory allocations via tracemalloc.
+
+        Args:
+            action: action to perform (snapshot, stop, clear)
+            nframe: number of top memory allocations to show
+
+        Returns:
+            tracemalloc statistics
+        """
+        method_name = "debug_tracemalloc"
+
+        # construct data and call json rpc
+        data = {"action": action, "nframe": nframe}
+        status_code, reason, text, result = self.call_json_rpc(
+            self.system_url, method_name, data
         )
         return status_code, reason, text, result
 
