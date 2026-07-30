@@ -279,6 +279,42 @@
                "error": {}
              }
 
+   * - **设置设备维护模式**
+     - **set_device_maintain_mode**
+
+       URI: /v1/device/set_device_maintain_mode
+
+       需要 admin 角色权限
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "method": "set_device_maintain_mode",
+               "params": {
+                 "body": {
+                   "device_name": "dummy",
+                   "mode": "on"
+                 }
+               }
+             }
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "result": {
+                 "name": "dummy",
+                 "status": "maintain"
+               },
+               "error": null,
+               "id": 1
+             }
+
 设备参数详解
 ~~~~~~~~~~~~
 

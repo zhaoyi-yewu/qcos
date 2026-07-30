@@ -75,6 +75,9 @@ class Device:
         self._enable_device_monitor = False
         # timestamp
         self.last_updated_at = None
+        # flag to indicate maintain mode was set manually via API/CLI.
+        # When True, set_device_running_info will NOT overwrite the status.
+        self._manual_maintain_mode = False
 
     def init_device(self):
         """Init device.
@@ -135,6 +138,28 @@ class Device:
     def get_status(self):
         """Get device status."""
         return self.status
+
+    def set_manual_maintain_mode(self, enabled):
+        """Set manual maintain mode flag.
+
+        When enabled, the device status will NOT be overwritten by
+        monitor updates (set_device_running_info). This is used by
+        the set-device-maintain-mode API/CLI to keep the device
+        in maintain mode regardless of periodic monitor reports.
+
+        Args:
+            enabled: True to enable manual maintain mode protection,
+                     False to disable it.
+        """
+        self._manual_maintain_mode = enabled
+
+    def get_manual_maintain_mode(self):
+        """Get manual maintain mode flag.
+
+        Returns:
+            True if manual maintain mode is active, False otherwise.
+        """
+        return self._manual_maintain_mode
 
     def set_alias_name(self, alias_name):
         """Set device alias name.
@@ -208,9 +233,11 @@ class Device:
         """
         device_status = device_running_info.get("status")
         last_updated_at = device_running_info.get("last_updated_at")
-        if device_status:
-            self.set_status(device_status)
-            self.last_updated_at = last_updated_at
+
+        if not self._manual_maintain_mode:
+            if device_status:
+                self.set_status(device_status)
+                self.last_updated_at = last_updated_at
 
         details = device_running_info.get("details")
         if details:

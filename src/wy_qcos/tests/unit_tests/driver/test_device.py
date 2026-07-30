@@ -86,3 +86,80 @@ class TestDevice:
         device.set_max_queued_jobs(10)
         res = device.get_max_queued_jobs()
         assert res == 10
+
+    def test_manual_maintain_mode_default_false(self):
+        assert device.get_manual_maintain_mode() is False
+
+    def test_set_manual_maintain_mode_true(self):
+        device.set_manual_maintain_mode(True)
+        assert device.get_manual_maintain_mode() is True
+        # Clean up
+        device.set_manual_maintain_mode(False)
+
+    def test_set_manual_maintain_mode_false(self):
+        device.set_manual_maintain_mode(True)
+        device.set_manual_maintain_mode(False)
+        assert device.get_manual_maintain_mode() is False
+
+    def test_set_status_does_not_affect_manual_maintain_mode(self):
+        device.set_manual_maintain_mode(True)
+        device.set_status(device.DEVICE_STATUS_ONLINE)
+        assert device.get_manual_maintain_mode() is True
+        device.set_status(device.DEVICE_STATUS_MAINTAIN)
+        assert device.get_manual_maintain_mode() is True
+        # Clean up
+        device.set_manual_maintain_mode(False)
+
+    def test_set_device_running_info_skipped_when_manual_maintain(self):
+        # Setup: set device to maintain with manual maintain mode on
+        device.set_status(device.DEVICE_STATUS_MAINTAIN)
+        device.set_manual_maintain_mode(True)
+
+        # Simulate monitor reporting online status
+        device.set_device_running_info({"status": "online"})
+
+        # Status should still be maintain (not overwritten)
+        assert device.get_status() == device.DEVICE_STATUS_MAINTAIN
+        # Clean up
+        device.set_manual_maintain_mode(False)
+
+    def test_set_device_running_info_applied_when_no_manual_maintain(self):
+        device.set_status(device.DEVICE_STATUS_ONLINE)
+        device.set_manual_maintain_mode(False)
+
+        # Simulate monitor reporting busy status
+        device.set_device_running_info({"status": "busy"})
+
+        # Status should be updated to busy
+        assert device.get_status() == device.DEVICE_STATUS_BUSY
+        # Clean up
+        device.set_status(device.DEVICE_STATUS_ONLINE)
+
+    def test_set_device_running_info_maintain_from_monitor(self):
+        device.set_status(device.DEVICE_STATUS_ONLINE)
+        device.set_manual_maintain_mode(False)
+
+        # Monitor reports maintain
+        device.set_device_running_info({"status": "maintain"})
+        assert device.get_status() == device.DEVICE_STATUS_MAINTAIN
+
+        # Monitor then reports online again - should be applied
+        device.set_device_running_info({"status": "online"})
+        assert device.get_status() == device.DEVICE_STATUS_ONLINE
+
+    def test_set_device_running_info_details_still_updated(self):
+        device.set_status(device.DEVICE_STATUS_MAINTAIN)
+        device.set_manual_maintain_mode(True)
+
+        device.set_device_running_info({
+            "status": "online",
+            "details": {"calibrate_info": {"step": 0.5}},
+        })
+
+        # Status should remain maintain
+        assert device.get_status() == device.DEVICE_STATUS_MAINTAIN
+        # But details should still be updated
+        assert device.calibrate_info is not None
+        assert device.calibrate_info["step"] == 0.5
+        # Clean up
+        device.set_manual_maintain_mode(False)

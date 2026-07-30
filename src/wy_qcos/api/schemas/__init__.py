@@ -67,6 +67,8 @@ from .device import (
     GetCalibrateResultResponse,
     GetDeviceOptionsRequest,
     GetDeviceOptionsResponse,
+    SetDeviceMaintainModeRequest,
+    SetDeviceMaintainModeResponse,
 )
 from .transpiler import (
     GetTranspilersRequest,
