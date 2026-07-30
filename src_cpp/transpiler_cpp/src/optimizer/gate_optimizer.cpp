@@ -42,7 +42,7 @@ namespace {
  * 根据用户请求、电路规模和优化级别综合确定：
  * - 0=自动（取硬件并发数），1=串行，>1=指定
  * - 按电路规模限制：每线程至少 N 个 ops（Level 1/2: 30000, Level 3: 10000）
- * - 按优化级别限制：Level 1/2 上限 16 线程，Level 3 上限 64 线程
+ * - 上限统一取系统硬件线程数
  * - 小电路自然退化为串行
  *
  * @param num_threads 用户请求的线程数（0=自动）
@@ -56,19 +56,19 @@ size_t compute_parallel_threads(size_t num_threads, size_t ir_size,
   if (requested_threads == 0)
     requested_threads = std::max(1u, std::thread::hardware_concurrency());
 
-  // Level 1/2: 每线程至少 30000 ops + 上限 16 线程
-  // Level 3:   每线程至少 10000 ops + 上限 64 线程
+  // Level 1/2: 每线程至少 30000 ops
+  // Level 3:   每线程至少 10000 ops
+  // 上限统一取系统线程数
   size_t max_threads_by_ops;
-  size_t level_thread_limit;
+  size_t thread_limit =
+      std::max(1u, std::thread::hardware_concurrency());
   if (opt_level >= 3) {
     max_threads_by_ops = ir_size / 10000;
-    level_thread_limit = 64;
   } else {
     max_threads_by_ops = ir_size / 30000;
-    level_thread_limit = 16;
   }
   if (max_threads_by_ops < 1) max_threads_by_ops = 1;
-  return std::min({requested_threads, max_threads_by_ops, level_thread_limit});
+  return std::min({requested_threads, max_threads_by_ops, thread_limit});
 }
 
 /**
@@ -107,10 +107,6 @@ std::vector<std::shared_ptr<BaseOperation>> optimize_ir(
   using PassFn = std::function<void(DAGCircuit&)>;
   std::vector<PassFn> passes;
 
-  if (opt_level >= 2) {
-    passes.push_back(
-        [&](DAGCircuit& dag) { unitary_synth.run(dag, basis_gates); });
-  }
   passes.push_back(
       [&](DAGCircuit& dag) { inverse_optimizer.run(dag, basis_gates); });
   passes.push_back([&](DAGCircuit& dag) {
@@ -119,11 +115,23 @@ std::vector<std::shared_ptr<BaseOperation>> optimize_ir(
   if (opt_level >= 2) {
     passes.push_back(
         [&](DAGCircuit& dag) { equivalence_optimizer.run(dag, basis_gates); });
+    passes.push_back(
+        [&](DAGCircuit& dag) { unitary_synth.run(dag, basis_gates); });
   }
   if (opt_level >= 3) {
     passes.push_back(
         [&](DAGCircuit& dag) { commutative_optimizer.run(dag, basis_gates); });
   }
+
+  // 若基础门集为u,rz，那么只执行 UnitarySynthesis
+  if (basis_gates.has_value() &&
+      (basis_gates.value() == std::set<std::string>{"u", "cz"} ||
+       basis_gates.value() == std::set<std::string>{"u3", "cz"})) {
+    passes.clear();
+    passes.push_back(
+        [&](DAGCircuit& dag) { unitary_synth.run(dag, basis_gates); });
+  }
+
 
   while (true) {
     int init_size = dag.size();
