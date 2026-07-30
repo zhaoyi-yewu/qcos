@@ -510,9 +510,12 @@ def submit_job(
     # Begin transaction and create job record in database
     job_record = None
     try:
-        # check max job count is reached
+        # check max job count is reached (-1 means unlimited)
         all_jobs_count = job_repo.get_jobs_count()
-        if all_jobs_count >= Config.DEFAULT.MAX_JOBS:
+        if (
+            Config.DEFAULT.MAX_JOBS != -1
+            and all_jobs_count >= Config.DEFAULT.MAX_JOBS
+        ):
             jsonrpc_errors.handle_error_internal_server(
                 module_name,
                 func_name,
@@ -523,12 +526,16 @@ def submit_job(
                 ),
             )
 
-        # check max job count is reached per user/virtual instance
+        # check max job count per user/virtual instance
+        # (-1 means unlimited)
         filters = {
             "user_id": body.user_id,
         }
         user_jobs_count = job_repo.get_jobs_count(filters=filters)
-        if user_jobs_count >= Config.USERS.MAX_JOBS:
+        if (
+            Config.USERS.MAX_JOBS != -1
+            and user_jobs_count >= Config.USERS.MAX_JOBS
+        ):
             jsonrpc_errors.handle_error_internal_server(
                 module_name,
                 func_name,

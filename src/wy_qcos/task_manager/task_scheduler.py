@@ -208,7 +208,11 @@ class TaskScheduler:
             states=wait_states
         )
         wait_states_flow_count = len(wait_states_flows)
-        if wait_states_flow_count >= Config.DEFAULT.MAX_QUEUED_JOBS:
+        # -1 means unlimited
+        if (
+            Config.DEFAULT.MAX_QUEUED_JOBS != -1
+            and wait_states_flow_count >= Config.DEFAULT.MAX_QUEUED_JOBS
+        ):
             return None, (
                 f"Current queued job count exceeds "
                 f"max queued job limit: {Config.DEFAULT.MAX_QUEUED_JOBS}"
@@ -315,7 +319,11 @@ class TaskScheduler:
             states=wait_states
         )
         wait_states_flow_count = len(wait_states_flows)
-        if wait_states_flow_count >= Config.DEFAULT.MAX_QUEUED_JOBS:
+        # -1 means unlimited
+        if (
+            Config.DEFAULT.MAX_QUEUED_JOBS != -1
+            and wait_states_flow_count >= Config.DEFAULT.MAX_QUEUED_JOBS
+        ):
             return None, (
                 f"Current running+queued job count exceeds "
                 f"max queued job limit: {Config.DEFAULT.MAX_QUEUED_JOBS}"
