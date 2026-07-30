@@ -95,3 +95,53 @@ class TestClient:
         assert reason == "OK"
         assert text == "text"
         assert result == "result"
+
+
+class TestTimeoutPrecedence:
+    """Test timeout resolution in call_json_rpc."""
+
+    def setup_method(self):
+        """Reset class-level timeout flags before each test."""
+        Client.timeout = 60
+        Client.timeout_from_cli = False
+
+    @patch("wy_qcos_client.client.ClientLibrary.call_http_api")
+    @patch.object(Client, "print_api_response")
+    def test_cli_timeout_ignores_env(self, mock_print, mock_call_http_api):
+        """When timeout_from_cli=True, env var is ignored."""
+        mock_call_http_api.return_value = [-1, "reason", "text", "result"]
+        mock_print.return_value = [-1, "reason", "text", "result"]
+        Client.timeout = 120
+        Client.timeout_from_cli = True
+        with patch.dict("os.environ", {"QCOS_CLIENT_TIMEOUT": "30"}):
+            client.call_json_rpc("http://127.0.0.1", "get", {})
+        kwargs = mock_call_http_api.call_args.kwargs
+        assert kwargs["timeout"] == 120
+
+    @patch("wy_qcos_client.client.ClientLibrary.call_http_api")
+    @patch.object(Client, "print_api_response")
+    def test_env_timeout_when_not_from_cli(
+        self, mock_print, mock_call_http_api
+    ):
+        """When timeout_from_cli=False, env var overrides default."""
+        mock_call_http_api.return_value = [-1, "reason", "text", "result"]
+        mock_print.return_value = [-1, "reason", "text", "result"]
+        Client.timeout = 60
+        Client.timeout_from_cli = False
+        with patch.dict("os.environ", {"QCOS_CLIENT_TIMEOUT": "45"}):
+            client.call_json_rpc("http://127.0.0.1", "get", {})
+        kwargs = mock_call_http_api.call_args.kwargs
+        assert kwargs["timeout"] == 45
+
+    @patch("wy_qcos_client.client.ClientLibrary.call_http_api")
+    @patch.object(Client, "print_api_response")
+    def test_default_timeout_no_env(self, mock_print, mock_call_http_api):
+        """When no cli and no env, default timeout is used."""
+        mock_call_http_api.return_value = [-1, "reason", "text", "result"]
+        mock_print.return_value = [-1, "reason", "text", "result"]
+        Client.timeout = 60
+        Client.timeout_from_cli = False
+        with patch.dict("os.environ", {}, clear=True):
+            client.call_json_rpc("http://127.0.0.1", "get", {})
+        kwargs = mock_call_http_api.call_args.kwargs
+        assert kwargs["timeout"] == 60

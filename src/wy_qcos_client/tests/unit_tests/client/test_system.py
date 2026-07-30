@@ -38,3 +38,78 @@ class TestClient:
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.system_info()
         assert result == "result"
+
+    @patch.object(Client, "call_json_rpc")
+    def test_show_mem(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.show_mem()
+        assert result == "result"
+        mock_call_json_rpc.assert_called_once_with(
+            client.system_url, "show_mem", body_data=None
+        )
+
+    @patch.object(Client, "call_json_rpc")
+    def test_debug_gc_default(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.debug_gc()
+        assert result == "result"
+        mock_call_json_rpc.assert_called_once_with(
+            client.system_url, "debug_gc", {"generations": 2}
+        )
+
+    @patch.object(Client, "call_json_rpc")
+    def test_debug_gc_custom_generations(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.debug_gc(generations=0)
+        assert result == "result"
+        mock_call_json_rpc.assert_called_once_with(
+            client.system_url, "debug_gc", {"generations": 0}
+        )
+
+    @patch.object(Client, "call_json_rpc")
+    def test_debug_tracemalloc_default(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.debug_tracemalloc()
+        assert result == "result"
+        mock_call_json_rpc.assert_called_once_with(
+            client.system_url,
+            "debug_tracemalloc",
+            {"action": "snapshot", "nframe": 25},
+        )
+
+    @patch.object(Client, "call_json_rpc")
+    def test_debug_tracemalloc_custom_nframe(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.debug_tracemalloc(nframe=10)
+        assert result == "result"
+        mock_call_json_rpc.assert_called_once_with(
+            client.system_url,
+            "debug_tracemalloc",
+            {"action": "snapshot", "nframe": 10},
+        )
+
+    @patch.object(Client, "call_json_rpc")
+    def test_debug_tracemalloc_stop(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.debug_tracemalloc(
+            action="stop"
+        )
+        assert result == "result"
+        mock_call_json_rpc.assert_called_once_with(
+            client.system_url,
+            "debug_tracemalloc",
+            {"action": "stop", "nframe": 25},
+        )
+
+    @patch.object(Client, "call_json_rpc")
+    def test_debug_tracemalloc_clear(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.debug_tracemalloc(
+            action="clear"
+        )
+        assert result == "result"
+        mock_call_json_rpc.assert_called_once_with(
+            client.system_url,
+            "debug_tracemalloc",
+            {"action": "clear", "nframe": 25},
+        )
