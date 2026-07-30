@@ -518,13 +518,14 @@ void bind_circuits(nb::module_& m) {
   nb::class_<QuantumCircuit>(m, "QuantumCircuit")
       .def(nb::init<int, int, double>(), nb::arg("num_qubits") = 0,
            nb::arg("num_clbits") = 0, nb::arg("global_phase") = 0.0)
-      .def_static("from_ir", &QuantumCircuit::from_ir,
-                  nb::arg("ir"), nb::arg("num_qubits") = 0)
-      .def("append",
-           [](QuantumCircuit& self, std::shared_ptr<BaseOperation> op) {
-             self.append(std::move(op));
-           },
-           nb::arg("operation"))
+      .def_static("from_ir", &QuantumCircuit::from_ir, nb::arg("ir"),
+                  nb::arg("num_qubits") = 0)
+      .def(
+          "append",
+          [](QuantumCircuit& self, std::shared_ptr<BaseOperation> op) {
+            self.append(std::move(op));
+          },
+          nb::arg("operation"))
       .def("append_operations", &QuantumCircuit::append_operations,
            nb::arg("operations"))
       .def("get_operations", &QuantumCircuit::get_operations)
@@ -547,22 +548,30 @@ void bind_circuits(nb::module_& m) {
                     ", num_clbits=" + std::to_string(self.num_clbits()) +
                     ", size=" + std::to_string(self.size()) + ")";
            })
-      .def("__deepcopy__",
-           [](const QuantumCircuit& self, nb::dict) {
-             auto copy = std::make_unique<QuantumCircuit>(
-                 self.num_qubits(), self.num_clbits(), self.global_phase());
-             copy->append_operations(self.get_operations());
-             return copy;
-           });
+      .def("__deepcopy__", [](const QuantumCircuit& self, nb::dict) {
+        auto copy = std::make_unique<QuantumCircuit>(
+            self.num_qubits(), self.num_clbits(), self.global_phase());
+        copy->append_operations(self.get_operations());
+        return copy;
+      });
 
-  nb::class_<QasmConverter>(m, "QasmConverter")
-      .def(nb::init<const QuantumCircuit&>(), nb::arg("circuit"))
-      .def("to_qasm2", &QasmConverter::to_qasm2)
-      .def("to_qasm3", &QasmConverter::to_qasm3)
-      .def("save", &QasmConverter::save, nb::arg("path"),
-           nb::arg("version") = "2.0")
-      .def("__repr__",
-           [](const QasmConverter& self) {
-             return "QasmConverter()";
-           });
+  m.def(
+       "to_qasm2",
+       [](const QuantumCircuit& circuit) {
+         return qcos::to_qasm2(circuit.get_operations());
+       },
+       nb::arg("circuit"))
+      .def(
+          "to_qasm3",
+          [](const QuantumCircuit& circuit) {
+            return qcos::to_qasm3(circuit.get_operations());
+          },
+          nb::arg("circuit"))
+      .def(
+          "save_qasm",
+          [](const std::string& path, const QuantumCircuit& circuit,
+             const std::string& version) {
+            qcos::save_qasm(path, circuit.get_operations(), version);
+          },
+          nb::arg("path"), nb::arg("circuit"), nb::arg("version") = "2.0");
 }
