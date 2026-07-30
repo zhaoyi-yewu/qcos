@@ -23,7 +23,7 @@ from pathlib import Path
 
 from wy_qcos.common.constant import Constant, HttpCode
 from wy_qcos_client.client import Client
-from wy_qcos.common.library import Library, _s
+from wy_qcos.common.library import Library
 from wy_qcos.common.config import Config
 from wy_qcos.tests.system_tests.common.library import StLibrary
 
@@ -78,7 +78,7 @@ def global_configs(request):
     GLOBAL_CONFIGS["interval"] = 5
     GLOBAL_CONFIGS["password_salt"] = Config.VIRT.PASSWORD_SALT
     GLOBAL_CONFIGS["max_login_attempts"] = Config.USERS.MAX_LOGIN_ATTEMPTS
-    _admin_password = config.get("USERS", {}).get("ADMIN_PASSWORD", "")
+    _admin_password = config.get("USERS", {}).get("DEFAULT_ADMIN_PASSWORD", "")
     if Constant.ENCRYPTION_PREFIX in _admin_password:
         success, err_msg, decrypted_value = Library.decrypt_text(
             _admin_password,
@@ -87,7 +87,7 @@ def global_configs(request):
         )
         _admin_password = decrypted_value
     admin_user = "admin"
-    admin_password = _admin_password or _s("123456")
+    admin_password = _admin_password or Constant.DEFAULT_ADMIN_PASSWORD
     GLOBAL_CONFIGS["admin_user"] = admin_user
     GLOBAL_CONFIGS["admin_password"] = admin_password
 

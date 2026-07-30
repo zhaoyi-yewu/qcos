@@ -92,8 +92,8 @@
                "method": "create_user",
                "params": {
                  "body": {
-                   "user_name": "string",
-                   "password": "string",
+                   "user_name": "exampleUser",
+                   "password": "P@ssword1",
                    "roles": ["user"],
                    "description": "string (optional)",
                    "password_expiry_days": 90,
@@ -535,8 +535,8 @@
                "params": {
                  "body": {
                    "user_id": "uuid",
-                   "old_password": "string",
-                   "new_password": "string"
+                   "old_password": "P@ssword1",
+                   "new_password": "P@ssword2"
                  }
                }
              }
