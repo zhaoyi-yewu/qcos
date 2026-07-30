@@ -17,6 +17,7 @@
 
 #include "mapping/mapping_utils.h"
 
+#include <algorithm>
 #include <queue>
 #include <set>
 #include <stdexcept>
@@ -112,6 +113,45 @@ void filter_low_fidelity(ChipCalibration& chip, double fidelity_threshold) {
   }
 }
 
+std::unordered_map<int, int> find_connected_components(
+    const std::vector<std::pair<int, int>>& coupling_list) {
+  // 建立无向邻接表
+  std::unordered_map<int, std::vector<int>> adjacency;
+  for (const auto& [src, tgt] : coupling_list) {
+    adjacency[src].push_back(tgt);
+    adjacency[tgt].push_back(src);
+  }
+
+  // BFS 遍历，以每个分量的最小节点 ID 作为分量代表
+  std::unordered_map<int, int> component_map;
+  for (const auto& [node, _] : adjacency) {
+    if (component_map.count(node)) continue;
+
+    std::vector<int> component;
+    std::queue<int> bfs_queue;
+    bfs_queue.push(node);
+    component_map[node] = node;
+    while (!bfs_queue.empty()) {
+      int current = bfs_queue.front();
+      bfs_queue.pop();
+      component.push_back(current);
+      for (int neighbor : adjacency[current]) {
+        if (!component_map.count(neighbor)) {
+          component_map[neighbor] = neighbor;
+          bfs_queue.push(neighbor);
+        }
+      }
+    }
+
+    int component_root = *std::min_element(component.begin(), component.end());
+    for (int qubit_id : component) {
+      component_map[qubit_id] = component_root;
+    }
+  }
+
+  return component_map;
+}
+
 void select_largest_component(std::vector<std::pair<int, int>>& coupling_list,
                               std::vector<double>& edge_fidelities) {
   if (coupling_list.empty()) return;
@@ -167,6 +207,12 @@ void select_largest_component(std::vector<std::pair<int, int>>& coupling_list,
   }
   coupling_list.resize(write_idx);
   edge_fidelities.resize(write_idx);
+}
+
+void select_largest_component(
+    std::vector<std::pair<int, int>>& coupling_list) {
+  std::vector<double> dummy_fidelities;
+  select_largest_component(coupling_list, dummy_fidelities);
 }
 
 PhysicalIdRemap densify_chip_topology(ChipCalibration& chip) {
@@ -233,7 +279,7 @@ PhysicalIdRemap densify_chip_topology(ChipCalibration& chip) {
 void restore_physical_ids(const PhysicalIdRemap& remap,
                           std::vector<GateOperation>& physical_gates,
                           std::vector<int>& logic2phy) {
-  // 门目标: dense_id → orig_id
+  // 门目标: dense_id -> orig_id
   for (auto& gate : physical_gates) {
     for (int& target : gate.targets) {
       if (target >= 0 &&
@@ -243,7 +289,7 @@ void restore_physical_ids(const PhysicalIdRemap& remap,
     }
   }
 
-  // 逻辑→物理: dense_id → orig_id
+  // 逻辑->物理: dense_id -> orig_id
   for (int& phy : logic2phy) {
     if (phy >= 0 && phy < static_cast<int>(remap.dense_to_orig.size())) {
       phy = remap.dense_to_orig[phy];
