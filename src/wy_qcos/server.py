@@ -257,6 +257,7 @@ class Server:
             scheduler.init_flavor_manager()
             scheduler.init_auto_scheduler()
             scheduler.start_taskmanager()
+            app.state._task_manager = scheduler.get_task_manager()
 
             # handle any unfinished jobs from previous runs
             logger.info("Processing unfinished callbacks ...")

@@ -36,6 +36,7 @@ def _make_cleaner(db_engine=None):
     cleaner._running = False
     cleaner._interval = 60
     cleaner._expire_days = 7
+    cleaner._flow_expire_days = 7
     return cleaner
 
 
@@ -110,9 +111,11 @@ class TestInit:
         with patch(f"{MODULE}.Config") as mock_cfg:
             mock_cfg.DEFAULT.JOB_CLEAN_INTERVAL = 30
             mock_cfg.DEFAULT.JOB_EXPIRE_DAYS = 3
+            mock_cfg.DEFAULT.FLOW_EXPIRE_DAYS = 5
             cleaner = JobCleaner(MagicMock())
         assert cleaner._interval == 30
         assert cleaner._expire_days == 3
+        assert cleaner._flow_expire_days == 5
         assert cleaner._running is False
 
 
@@ -171,18 +174,22 @@ class TestCleanupJob:
     async def test_skips_when_not_running(self):
         cleaner = _make_cleaner()
         cleaner._clean_orphaned_device_flows = AsyncMock()
+        cleaner._clean_prefect_flows = AsyncMock()
         cleaner._clean_expired_job_flows = AsyncMock()
         await cleaner._cleanup_job()
         cleaner._clean_orphaned_device_flows.assert_not_called()
+        cleaner._clean_prefect_flows.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_calls_both_clean_methods(self):
+    async def test_calls_all_clean_methods(self):
         cleaner = _make_cleaner()
         cleaner._running = True
         cleaner._clean_orphaned_device_flows = AsyncMock()
+        cleaner._clean_prefect_flows = AsyncMock()
         cleaner._clean_expired_job_flows = AsyncMock()
         await cleaner._cleanup_job()
         cleaner._clean_orphaned_device_flows.assert_awaited_once()
+        cleaner._clean_prefect_flows.assert_awaited_once()
         cleaner._clean_expired_job_flows.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -192,6 +199,7 @@ class TestCleanupJob:
         cleaner._clean_orphaned_device_flows = AsyncMock(
             side_effect=RuntimeError("boom")
         )
+        cleaner._clean_prefect_flows = AsyncMock()
         cleaner._clean_expired_job_flows = AsyncMock()
         await cleaner._cleanup_job()
 
@@ -484,10 +492,175 @@ class TestCleanOrphanedDeviceFlows:
         sync_client.delete_flow_run.assert_called_once_with(flow.id)
 
 
+def _make_flow_run_for_expire(
+    name,
+    flow_name="job-flow",
+    state_type=StateType.COMPLETED,
+    start_time=None,
+):
+    """Build a mock flow-run for _clean_prefect_flows tests."""
+    mock = MagicMock()
+    mock.name = name
+    mock.id = uuid4()
+    mock.flow_name = flow_name
+    mock.state = MagicMock()
+    mock.state.type = state_type
+    mock.start_time = start_time or datetime.now(timezone.utc)
+    return mock
+
+
+# ---- _clean_prefect_flows ----
+
+
+class TestCleanPrefectFlows:
+    @pytest.mark.asyncio
+    async def test_skips_when_flow_expire_disabled(self):
+        """When FLOW_EXPIRE_DAYS=-1, cleanup is skipped entirely."""
+        cleaner = _make_cleaner(db_engine=MagicMock())
+        cleaner._flow_expire_days = -1
+        cleaner._get_sync_client = Mock()
+        await cleaner._clean_prefect_flows()
+        cleaner._get_sync_client.assert_not_called()
+
+    @staticmethod
+    def _make_run_sync_that_calls_fn(flow_runs):
+        """Create _run_sync mock that returns flow_runs on first call."""
+        call_count = [0]
+
+        async def _run_sync(fn, *args, **kwargs):
+            if call_count[0] == 0:
+                call_count[0] += 1
+                return flow_runs
+            call_count[0] += 1
+            return fn(*args, **kwargs)
+
+        return _run_sync
+
+    @pytest.mark.asyncio
+    async def test_no_expired_flows(self):
+        """No expired flow-runs found."""
+        cleaner = _make_cleaner(db_engine=MagicMock())
+        cleaner._flow_expire_days = 7
+        sync_client = MagicMock()
+        cleaner._get_sync_client = Mock(return_value=sync_client)
+        flow = _make_flow_run_for_expire(
+            "recent-flow",
+            start_time=datetime.now(timezone.utc),
+        )
+        cleaner._run_sync = self._make_run_sync_that_calls_fn([flow])
+        await cleaner._clean_prefect_flows()
+        sync_client.delete_flow_run.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_deletes_expired_completed_flow(self):
+        """Expired completed flow-run is deleted."""
+        cleaner = _make_cleaner(db_engine=MagicMock())
+        cleaner._flow_expire_days = 7
+        sync_client = MagicMock()
+        cleaner._get_sync_client = Mock(return_value=sync_client)
+        old_time = datetime.now(timezone.utc) - timedelta(days=10)
+        flow = _make_flow_run_for_expire(
+            "old-flow",
+            state_type=StateType.COMPLETED,
+            start_time=old_time,
+        )
+        cleaner._run_sync = self._make_run_sync_that_calls_fn([flow])
+        await cleaner._clean_prefect_flows()
+        sync_client.delete_flow_run.assert_called_once_with(flow.id)
+
+    @pytest.mark.asyncio
+    async def test_skips_non_job_flow(self):
+        """Flow-runs not belonging to job-flow are skipped."""
+        cleaner = _make_cleaner(db_engine=MagicMock())
+        cleaner._flow_expire_days = 7
+        sync_client = MagicMock()
+        cleaner._get_sync_client = Mock(return_value=sync_client)
+        old_time = datetime.now(timezone.utc) - timedelta(days=10)
+        flow = _make_flow_run_for_expire(
+            "other-flow",
+            flow_name="other-flow",
+            start_time=old_time,
+        )
+        cleaner._run_sync = self._make_run_sync_that_calls_fn([flow])
+        await cleaner._clean_prefect_flows()
+        sync_client.delete_flow_run.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_skips_running_flow(self):
+        """Non-completed flow-runs are skipped."""
+        cleaner = _make_cleaner(db_engine=MagicMock())
+        cleaner._flow_expire_days = 7
+        sync_client = MagicMock()
+        cleaner._get_sync_client = Mock(return_value=sync_client)
+        old_time = datetime.now(timezone.utc) - timedelta(days=10)
+        flow = _make_flow_run_for_expire(
+            "running-flow",
+            state_type=StateType.RUNNING,
+            start_time=old_time,
+        )
+        cleaner._run_sync = self._make_run_sync_that_calls_fn([flow])
+        await cleaner._clean_prefect_flows()
+        sync_client.delete_flow_run.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_skips_flow_without_start_time(self):
+        """Flow-runs without start_time are skipped."""
+        cleaner = _make_cleaner(db_engine=MagicMock())
+        cleaner._flow_expire_days = 7
+        sync_client = MagicMock()
+        cleaner._get_sync_client = Mock(return_value=sync_client)
+        flow = _make_flow_run_for_expire(
+            "no-start-flow",
+            start_time=None,
+        )
+        cleaner._run_sync = self._make_run_sync_that_calls_fn([flow])
+        await cleaner._clean_prefect_flows()
+        sync_client.delete_flow_run.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_delete_exception_does_not_block(self):
+        """Exception deleting one flow-run does not block others."""
+        cleaner = _make_cleaner(db_engine=MagicMock())
+        cleaner._flow_expire_days = 7
+        sync_client = MagicMock()
+        cleaner._get_sync_client = Mock(return_value=sync_client)
+        old_time = datetime.now(timezone.utc) - timedelta(days=10)
+        flow1 = _make_flow_run_for_expire("flow1", start_time=old_time)
+        flow2 = _make_flow_run_for_expire("flow2", start_time=old_time)
+        sync_client.delete_flow_run.side_effect = RuntimeError("fail")
+        cleaner._run_sync = self._make_run_sync_that_calls_fn([flow1, flow2])
+        await cleaner._clean_prefect_flows()
+        assert sync_client.delete_flow_run.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_read_flow_runs_exception_returns(self):
+        """Exception fetching flow runs returns gracefully."""
+        cleaner = _make_cleaner(db_engine=MagicMock())
+        cleaner._flow_expire_days = 7
+        sync_client = MagicMock()
+        cleaner._get_sync_client = Mock(return_value=sync_client)
+
+        async def _failing_run_sync(fn, *args, **kwargs):
+            raise RuntimeError("fail")
+
+        cleaner._run_sync = _failing_run_sync
+        await cleaner._clean_prefect_flows()
+        sync_client.delete_flow_run.assert_not_called()
+
+
 # ---- _clean_expired_job_flows ----
 
 
 class TestCleanExpiredJobFlows:
+    @pytest.mark.asyncio
+    async def test_skips_when_expire_disabled(self):
+        """When JOB_EXPIRE_DAYS=-1, cleanup is skipped entirely."""
+        cleaner = _make_cleaner(db_engine=MagicMock())
+        cleaner._expire_days = -1
+        cleaner._get_sync_client = Mock()
+        await cleaner._clean_expired_job_flows()
+        cleaner._get_sync_client.assert_not_called()
+
     @pytest.mark.asyncio
     async def test_skips_when_no_db_engine(self):
         cleaner = _make_cleaner(db_engine=None)

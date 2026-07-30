@@ -1,7 +1,0 @@
-# Vendor drivers dependencies
-# SpinQ rpc-driver only
-future==1.0.0
-gevent==25.9.1
-greenlet==3.3.0
-pyzmq==27.1.0
-zerorpc==0.6.3
