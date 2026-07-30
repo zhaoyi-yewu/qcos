@@ -76,6 +76,10 @@ class QuantumComputation {
   void importOpenQASM(std::istream& is);
   std::string importOpenQASMToIR(std::istream& is);
 
+ public:
+  void importOpenQASM(const std::string& qasm);
+
+ protected:
   // void importReal(std::istream& is);
   int readRealHeader(std::istream& is);
   void readRealGateDescriptions(std::istream& is, int line);
@@ -301,10 +305,8 @@ class QuantumComputation {
    * @return The constructed QuantumComputation
    */
   [[nodiscard]] static QuantumComputation fromQASM(const std::string& qasm) {
-    std::stringstream ss{};
-    ss << qasm;
     QuantumComputation qc{};
-    qc.importOpenQASM(ss);
+    qc.importOpenQASM(qasm);
     return qc;
   }
 

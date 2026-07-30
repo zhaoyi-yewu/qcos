@@ -33,7 +33,6 @@ void Parser::scan() {
       includeDebugInfo = includeDebugInfo->parent;
     }
   }
-
 }
 
 std::shared_ptr<VersionDeclaration> Parser::parseVersionDeclaration() {
@@ -44,26 +43,33 @@ std::shared_ptr<VersionDeclaration> Parser::parseVersionDeclaration() {
                                               versionToken.valReal);
 }
 
-std::vector<std::shared_ptr<Statement>> Parser::parseProgram() {
+std::vector<std::shared_ptr<Statement>> Parser::parseProgram(
+    StatementCallback callback) {
   std::vector<std::shared_ptr<Statement>> statements{};
+
+  if (!callback) {
+    statements.reserve(1024);
+  }
 
   bool versionDeclarationAllowed = true;
 
   while (!isAtEnd()) {
     if (!scanner.top().isImplicitInclude) {
-      // We allow a version declaration at the beginning of the file.
       Token::Kind kind = current().kind;
       if (kind == Token::Kind::OpenQasm) {
         if (!versionDeclarationAllowed) {
           error(current(),
                 "Version declaration must be at the beginning of the file.");
         }
-        statements.emplace_back(parseVersionDeclaration());
+        auto stmt = parseVersionDeclaration();
+        if (callback) {
+          callback(std::move(stmt));
+        } else {
+          statements.emplace_back(std::move(stmt));
+        }
         versionDeclarationAllowed = false;
         continue;
       }
-      // Once we encounter a non-comment token, we don't allow a version
-      // declaration anymore.
       if (versionDeclarationAllowed) {
         if (kind != Token::Kind::InitialLayout &&
             kind != Token::Kind::OutputPermutation) {
@@ -72,7 +78,12 @@ std::vector<std::shared_ptr<Statement>> Parser::parseProgram() {
       }
     }
 
-    statements.push_back(parseStatement());
+    auto stmt = parseStatement();
+    if (callback) {
+      callback(std::move(stmt));
+    } else {
+      statements.push_back(std::move(stmt));
+    }
   }
   return statements;
 }
@@ -104,8 +115,8 @@ std::shared_ptr<Statement> Parser::parseStatement() {
     case Token::Kind::InitialLayout: {
       const auto tBegin = current();
       scan();
-      return std::make_shared<InitialLayout>(
-          InitialLayout{makeDebugInfo(tBegin), parsePermutation(std::string(tBegin.str))});
+      return std::make_shared<InitialLayout>(InitialLayout{
+          makeDebugInfo(tBegin), parsePermutation(std::string(tBegin.str))});
     }
 
     case Token::Kind::OutputPermutation: {
@@ -124,9 +135,9 @@ std::shared_ptr<Statement> Parser::parseStatement() {
     case Token::Kind::Identifier: {
       // ─ Fast path for QASM 2.0 simple gate calls ──────────────────────
       // Matches patterns like:
-      //   gateName q[idx];               (single-qubit gate: h, s, sdg, t, tdg, x, y, z)
-      //   gateName q[idx],q[jdx];        (two-qubit gate: cx, cz)
-      //   gateName q[idx],q[jdx],q[kdx]; (three-qubit gate: ccx)
+      //   gateName q[idx];               (single-qubit gate: h, s, sdg, t,
+      //   tdg, x, y, z) gateName q[idx],q[jdx];        (two-qubit gate: cx,
+      //   cz) gateName q[idx],q[jdx],q[kdx]; (three-qubit gate: ccx)
       //
       // This avoids the full recursive-descent expression parsing chain
       // (parseExpression→comparison→term→factor→exponentiation) for the
@@ -136,7 +147,8 @@ std::shared_ptr<Statement> Parser::parseStatement() {
       // same fast-path entry: if the peek token is not one of the
       // assignment-operator kinds, fall through to parseGateCallStatement.
 
-      // First check if this is an assignment (identifier followed by = or += etc.)
+      // First check if this is an assignment (identifier followed by = or +=
+      // etc.)
       switch (peek().kind) {
         case Token::Kind::LBracket:
         case Token::Kind::Equals:
@@ -190,7 +202,8 @@ std::shared_ptr<Statement> Parser::parseStatement() {
             fastMatch = false;
             break;
           }
-          auto idx = std::make_shared<Constant>(current().val, current().isSigned);
+          auto idx =
+              std::make_shared<Constant>(current().val, current().isSigned);
           scan();  // consume integer
 
           if (current().kind != Token::Kind::RBracket) {
@@ -221,12 +234,12 @@ std::shared_ptr<Statement> Parser::parseStatement() {
           auto const tEnd = current();
           scan();  // consume semicolon
 
-          return std::make_shared<GateCallStatement>(GateCallStatement{
-              makeDebugInfo(gateName, tEnd),
-              std::string(gateName.str),
-              {},   // no modifiers
-              {},   // no arguments
-              std::move(operands)});
+          return std::make_shared<GateCallStatement>(
+              GateCallStatement{makeDebugInfo(gateName, tEnd),
+                                std::string(gateName.str),
+                                {},  // no modifiers
+                                {},  // no arguments
+                                std::move(operands)});
         }
       }
 
@@ -264,7 +277,8 @@ std::shared_ptr<Statement> Parser::parseStatement() {
       return parseBarrierStatement();
 
     default:
-      error(current(), "Expected statement, got '" + current().toString() + "'.");
+      error(current(),
+            "Expected statement, got '" + current().toString() + "'.");
   }
 }
 
@@ -302,9 +316,10 @@ void Parser::parseInclude() {
   auto const tEnd = expect(Token::Kind::Semicolon);
 
   // we need to make sure to report errors across includes
-  includeDebugInfo = allocDebugInfo(tBegin.line, tBegin.col,
-                                    std::string(scanner.top().filename.value_or("<input>")),
-                                    includeDebugInfo);
+  includeDebugInfo =
+      allocDebugInfo(tBegin.line, tBegin.col,
+                     std::string(scanner.top().filename.value_or("<input>")),
+                     includeDebugInfo);
 
   // Here we add a new scanner to our stack and then continue with that one
 
@@ -726,8 +741,8 @@ std::shared_ptr<GateDeclaration> Parser::parseGateDefinition() {
   auto const tEnd = expect(Token::Kind::RBrace);
 
   return std::make_shared<GateDeclaration>(
-      GateDeclaration(makeDebugInfo(tBegin, tEnd), std::string(identifier.str), parameters,
-                      qubits, statements));
+      GateDeclaration(makeDebugInfo(tBegin, tEnd), std::string(identifier.str),
+                      parameters, qubits, statements));
 }
 
 std::shared_ptr<GateDeclaration> Parser::parseOpaqueGateDefinition() {
@@ -748,8 +763,8 @@ std::shared_ptr<GateDeclaration> Parser::parseOpaqueGateDefinition() {
   auto const tEnd = expect(Token::Kind::Semicolon);
 
   return std::make_shared<GateDeclaration>(
-      GateDeclaration(makeDebugInfo(tBegin, tEnd), std::string(identifier.str), parameters,
-                      qubits, {}, true));
+      GateDeclaration(makeDebugInfo(tBegin, tEnd), std::string(identifier.str),
+                      parameters, qubits, {}, true));
 }
 
 std::shared_ptr<DeclarationExpression> Parser::parseDeclarationExpression() {
@@ -956,8 +971,9 @@ std::shared_ptr<IdentifierList> Parser::parseIdentifierList() {
 
   while (current().kind == Token::Kind::Comma) {
     scan();
-    identifierList.emplace_back(std::make_shared<IdentifierExpression>(
-        IdentifierExpression{std::string(expect(Token::Kind::Identifier).str)}));
+    identifierList.emplace_back(
+        std::make_shared<IdentifierExpression>(IdentifierExpression{
+            std::string(expect(Token::Kind::Identifier).str)}));
   }
 
   return std::make_shared<IdentifierList>(IdentifierList{identifierList});
