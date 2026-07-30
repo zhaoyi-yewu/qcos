@@ -1339,6 +1339,30 @@ class RYY(GateOperation):
             hermitian=False,
         )
 
+    def default_decompose(self):
+        gates = []
+        gates += RX([self.targets[0]], [np.pi / 2]).decompose()
+        gates += RX([self.targets[1]], [np.pi / 2]).decompose()
+        gates.append(RZZ(self.targets, self.arg_value))
+        gates += RX([self.targets[0]], [-np.pi / 2]).decompose()
+        gates += RX([self.targets[1]], [-np.pi / 2]).decompose()
+        return gates
+
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the RYY gate."""
+        theta2 = float(self.arg_value[0]) / 2
+        ryy_cos = cos(theta2)
+        ryy_isin = 1j * sin(theta2)
+        return np.array(
+            [
+                [ryy_cos, 0, 0, ryy_isin],
+                [0, ryy_cos, -ryy_isin, 0],
+                [0, -ryy_isin, ryy_cos, 0],
+                [ryy_isin, 0, 0, ryy_cos],
+            ],
+            dtype=dtype,
+        )
+
 
 class RZZ(GateOperation):
     """RZZ门（双量子比特 Z-Z 旋转门）.
@@ -2270,6 +2294,8 @@ def create_gate(
         return CU(targets, arg_value)
     elif name == Constant.TWO_QUBIT_GATE_RXX:
         return RXX(targets, arg_value)
+    elif name == Constant.TWO_QUBIT_GATE_RYY:
+        return RYY(targets, arg_value)
     elif name == Constant.TWO_QUBIT_GATE_RZZ:
         return RZZ(targets, arg_value)
     elif name == Constant.THREE_QUBIT_GATE_CCX:
