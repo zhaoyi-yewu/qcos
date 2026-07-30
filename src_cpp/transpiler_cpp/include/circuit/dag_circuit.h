@@ -263,11 +263,15 @@ class DAGCircuit {
 
   /**
    * @brief 收集所有由给定门名组成的连续运行段
+   *
    * @param namelist 允许出现在运行段中的门名列表
+   * @param topo_order 预计算的拓扑序节点 id 列表指针，为 nullptr
+   * 时内部自动计算
    * @return std::set<std::vector<DAGNode*>> 运行段集合
    */
   std::set<std::vector<DAGNode*>> collect_runs(
-      const std::vector<std::string>& namelist);
+      const std::vector<std::string>& namelist,
+      const std::vector<int>* topo_order = nullptr);
 
   /**
    * @brief 统计各类门操作数量

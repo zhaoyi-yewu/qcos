@@ -93,15 +93,18 @@ void bind_transpile(nb::module_& m) {
          const std::vector<std::string>& supp_basis_gates,
          const std::vector<std::pair<int, int>>& coupling_list, int opt_level,
          const std::vector<double>& edge_fidelities,
-         const std::vector<double>& single_qubit_fidelities) {
+         const std::vector<double>& single_qubit_fidelities,
+         size_t num_threads, bool fast_mode) {
         nb::gil_scoped_release release;
         return transpile(qasm_string, supp_basis_gates, coupling_list,
-                         opt_level, edge_fidelities, single_qubit_fidelities);
+                         opt_level, edge_fidelities, single_qubit_fidelities,
+                         num_threads, fast_mode);
       },
       nb::arg("qasm_string"), nb::arg("supp_basis_gates"),
       nb::arg("coupling_list"), nb::arg("opt_level") = 1,
       nb::arg("edge_fidelities") = std::vector<double>{},
       nb::arg("single_qubit_fidelities") = std::vector<double>{},
+      nb::arg("num_threads") = 0, nb::arg("fast_mode") = false,
       R"(
         All-in-one transpile function (sabre routing, single-circuit path).
 
@@ -118,6 +121,10 @@ void bind_transpile(nb::module_& m) {
                 corresponding to coupling_list. Empty means not used.
             single_qubit_fidelities (list[float], optional): Single-qubit
                 fidelity array indexed by physical qubit ID. Empty means not used.
+            num_threads (int, optional): Optimization thread count. 0 = auto
+                (hardware_concurrency), 1 = serial, >1 = explicit. Defaults to 0.
+            fast_mode (bool, optional): Optimization fast mode. True = run pass
+                list only once. Defaults to False.
 
         Returns:
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.

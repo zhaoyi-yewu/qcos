@@ -70,13 +70,15 @@ InverseCancellation::InverseCancellation(
 int InverseCancellation::run(
     DAGCircuit& dag, const std::optional<std::set<std::string>>& basis_gates) {
   int reduced = 0;
+  // 入口算一次拓扑序，供所有规则复用，避免每次 collect_runs 重复排序
+  const auto topo_order = dag.get_multi_graph().topo_order();
   if (!self_inverse_gate_names_.empty()) {
     // 处理自反门的成对消除逻辑
-    reduced += run_on_self_inverse(dag, basis_gates);
+    reduced += run_on_self_inverse(dag, basis_gates, topo_order);
   }
   if (!inverse_gate_pairs_.empty()) {
     // 处理互逆门的成对消除逻辑
-    reduced += run_on_inverse_pairs(dag, basis_gates);
+    reduced += run_on_inverse_pairs(dag, basis_gates, topo_order);
   }
   return reduced;
 }
@@ -104,8 +106,8 @@ bool InverseCancellation::is_inverse(
 }
 
 int InverseCancellation::run_on_self_inverse(
-    DAGCircuit& dag,
-    const std::optional<std::set<std::string>>& basis_gates) const {
+    DAGCircuit& dag, const std::optional<std::set<std::string>>& basis_gates,
+    const std::vector<int>& topo_order) const {
   const auto op_counts = dag.count_ops();
   int reduced = 0;
 
@@ -118,7 +120,7 @@ int InverseCancellation::run_on_self_inverse(
     }
 
     // 收集所有同名门的连续串
-    auto gate_runs = dag.collect_runs({gate_name});
+    auto gate_runs = dag.collect_runs({gate_name}, &topo_order);
     for (const auto& gate_cancel_run : gate_runs) {
       // partition 用于将连续串切分成若干段，每段内门的 qargs 都相同
       std::vector<std::vector<DAGNode*>> partitions;
@@ -166,8 +168,8 @@ int InverseCancellation::run_on_self_inverse(
 }
 
 int InverseCancellation::run_on_inverse_pairs(
-    DAGCircuit& dag,
-    const std::optional<std::set<std::string>>& basis_gates) const {
+    DAGCircuit& dag, const std::optional<std::set<std::string>>& basis_gates,
+    const std::vector<int>& topo_order) const {
   const auto op_counts = dag.count_ops();
   int reduced = 0;
 
@@ -181,7 +183,8 @@ int InverseCancellation::run_on_inverse_pairs(
       continue;
     }
 
-    auto gate_cancel_runs = dag.collect_runs({gate_0_name, gate_1_name});
+    auto gate_cancel_runs =
+        dag.collect_runs({gate_0_name, gate_1_name}, &topo_order);
     for (const auto& dag_nodes : gate_cancel_runs) {
       size_t index = 0;
       while (index + 1 < dag_nodes.size()) {

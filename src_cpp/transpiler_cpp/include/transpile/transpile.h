@@ -99,6 +99,10 @@ std::vector<std::string> collect_gate_names(
  * @param edge_fidelities 边保真度，与 coupling_list 对应，空表示不使用，默认空
  * @param single_qubit_fidelities 单比特保真度，按物理位 ID
  * 索引，空表示不使用，默认空
+ * @param num_threads 优化阶段线程数：0=自动并行(取 hardware_concurrency)，
+ * 1=串行，>1=指定。默认 0，透传给内部 optimize() 调用。
+ * @param fast_mode 优化快速模式：true 只跑一轮 pass，透传给内部 optimize()
+ * 调用。
  * @return TranspileResult 包含最终门列表、量子比特数和各阶段计时
  */
 TranspileResult transpile(
@@ -106,7 +110,8 @@ TranspileResult transpile(
     const std::vector<std::string>& supp_basis_gates,
     const std::vector<std::pair<int, int>>& coupling_list, int opt_level = 1,
     const std::vector<double>& edge_fidelities = {},
-    const std::vector<double>& single_qubit_fidelities = {});
+    const std::vector<double>& single_qubit_fidelities = {},
+    size_t num_threads = 0, bool fast_mode = true);
 
 /**
  * @brief All-in-one transpile function (neutral-atom NA mapping, single circuit).
