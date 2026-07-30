@@ -19,6 +19,7 @@
 #include <nanobind/stl/pair.h>
 #include <nanobind/stl/shared_ptr.h>
 #include <nanobind/stl/string.h>
+#include <nanobind/stl/unordered_map.h>
 #include <nanobind/stl/vector.h>
 
 #include <stdexcept>
@@ -26,6 +27,7 @@
 #include "circuit/gate_operation.h"
 #include "mapping/chip_data.h"
 #include "mapping/greedy_routing.h"
+#include "mapping/na_mapping.h"
 #include "mapping/sabre_mapping.h"
 #include "mapping/sabre_routing.h"
 
@@ -73,6 +75,83 @@ nb::list bind_cpp_sabre_routing(
     nb_list.append(std::move(op));
   }
   return nb_list;
+}
+
+/**
+ * @brief 从 Python dict 解析 NAQpuConfig
+ */
+qcos::NAQpuConfig parse_na_qpu_config(const nb::dict& qpu_cfg) {
+  qcos::NAQpuConfig cfg;
+  nb::list storage_area = nb::cast<nb::list>(qpu_cfg["storage_area"]);
+  for (auto pos : storage_area) {
+    cfg.storage_area.push_back(nb::cast<std::string>(pos));
+  }
+  nb::list operate_area = nb::cast<nb::list>(qpu_cfg["operate_area"]);
+  for (auto pos : operate_area) {
+    cfg.operate_area.push_back(nb::cast<std::string>(pos));
+  }
+  nb::dict coupler_map = nb::cast<nb::dict>(qpu_cfg["coupler_map"]);
+  for (auto item : coupler_map) {
+    auto endpoints = nb::cast<std::vector<std::string>>(item.second);
+    if (endpoints.size() != 2) {
+      throw std::invalid_argument("coupler_map entry must have 2 endpoints");
+    }
+    cfg.coupler_map.emplace_back(std::string(""),
+                                 std::make_pair(endpoints[0], endpoints[1]));
+  }
+  nb::dict readout_error = nb::cast<nb::dict>(qpu_cfg["readout_error"]);
+  for (auto item : readout_error) {
+    auto pos = nb::cast<std::string>(item.first);
+    auto err = nb::cast<double>(item.second);
+    cfg.readout_error[pos] = err;
+  }
+  return cfg;
+}
+
+/**
+ * @brief NA mapping 的 Python 入口
+ *
+ * @param gates_list_raw Python 侧 BaseOperation 列表
+ * @param qpu_cfg QPU 配置字典（含 storage_area/operate_area/coupler_map/readout_error）
+ * @param qbit_num 逻辑比特数
+ * @param optimize 是否启用 overlap 优化（对应 execute_with_opt）
+ * @return nb::tuple (mapped_ops, final_layout)
+ */
+nb::tuple bind_na_routing(
+    const std::vector<qcos::BaseOperation*>& gates_list_raw,
+    const nb::dict& qpu_cfg, int qbit_num, bool optimize) {
+  std::vector<std::shared_ptr<qcos::BaseOperation>> gates_list;
+  gates_list.reserve(gates_list_raw.size());
+  for (auto* op : gates_list_raw) {
+    if (op == nullptr) {
+      throw std::invalid_argument("na_routing received a null BaseOperation");
+    }
+    gates_list.push_back(op->clone());
+  }
+
+  auto cfg = parse_na_qpu_config(qpu_cfg);
+
+  nb::module_ gate_module =
+      nb::module_::import_("wy_qcos.common.cmss.gate_operation");
+  nb::object create_gate = gate_module.attr("create_gate");
+
+  nb::list mapped_ir;
+  if (optimize) {
+    qcos::NARoute router;
+    router.prepare_data(qbit_num, gates_list, cfg);
+    auto res = router.execute_with_opt();
+    for (auto& op : res) {
+      mapped_ir.append(create_gate(op->name, op->targets, op->arg_value));
+    }
+  } else {
+    qcos::NARoute router;
+    router.prepare_data(qbit_num, gates_list, cfg);
+    auto [res, layout] = router.execute_with_order();
+    for (auto& op : res) {
+      mapped_ir.append(create_gate(op->name, op->targets, op->arg_value));
+    }
+  }
+  return nb::make_tuple(mapped_ir, nb::dict());
 }
 
 }  // namespace
@@ -214,5 +293,29 @@ Returns:
 
         Returns:
             list[BaseOperation]: The routed physical operation sequence.
+        )");
+
+  m.def("na_routing", &bind_na_routing, nb::arg("gates_list"),
+        nb::arg("qpu_cfg"), nb::arg("qbit_num"), nb::arg("optimize") = false,
+        R"(
+        Execute neutral atom routing with MOVE operations.
+
+        Maps logical gates onto a neutral-atom architecture that has separate
+        storage and operate areas, inserting MOVE operations to shuttle atoms
+        between the two so that two-qubit gates act on adjacent sites.
+
+        Args:
+            gates_list (list[BaseOperation]): Logical operation sequence.
+                Each operation's targets are logical qubit indices.
+            qpu_cfg (dict): QPU configuration with keys ``storage_area``,
+                ``operate_area``, ``coupler_map`` and ``readout_error``.
+            qbit_num (int): Number of logical qubits.
+            optimize (bool, optional): Whether to enable the overlap
+                optimization (``execute_with_opt``). Defaults to False.
+
+        Returns:
+            tuple[list[BaseOperation], dict]: The mapped operation sequence
+            (with MOVE operations and physical qubit targets) and an empty
+            final layout dict.
         )");
 }
