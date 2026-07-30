@@ -50,6 +50,7 @@ class JobMetrics:
             "queued",
             "cancelling",
             "cancelled",
+            "deleting",
             "deleted",
             "unknown",
         )
@@ -63,6 +64,7 @@ class JobMetrics:
             queued: int = 0,
             cancelling: int = 0,
             cancelled: int = 0,
+            deleting: int = 0,
             deleted: int = 0,
             unknown: int = 0,
         ):
@@ -73,6 +75,7 @@ class JobMetrics:
             self.queued = queued
             self.cancelling = cancelling
             self.cancelled = cancelled
+            self.deleting = deleting
             self.deleted = deleted
             self.unknown = unknown
 
@@ -84,6 +87,7 @@ class JobMetrics:
                 f"running={self.running}, "
                 f"queued={self.queued}, "
                 f"cancelled={self.cancelled}, "
+                f"deleting={self.deleting}, "
                 f"deleted={self.deleted}, "
                 f"unknown={self.unknown})"
             )
@@ -126,6 +130,9 @@ class JobMetrics:
             self.job_gauge.labels(
                 status=Constant.JOB_METRICS_FIELD_CANCELLED
             ).set(data.cancelled)
+            self.job_gauge.labels(
+                status=Constant.JOB_METRICS_FIELD_DELETING
+            ).set(data.deleting)
             self.job_gauge.labels(
                 status=Constant.JOB_METRICS_FIELD_DELETED
             ).set(data.deleted)

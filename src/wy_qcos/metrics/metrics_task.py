@@ -256,6 +256,9 @@ async def update_job_metrics():
         cancelled = repo.count_by_attr(
             Job, "job_status", Constant.JOB_STATUS_CANCELLED
         )
+        deleting = repo.count_by_attr(
+            Job, "job_status", Constant.JOB_STATUS_DELETING
+        )
         deleted = repo.count_by_attr(
             Job, "job_status", Constant.JOB_STATUS_DELETED
         )
@@ -271,6 +274,7 @@ async def update_job_metrics():
             queued=queued,
             cancelling=cancelling,
             cancelled=cancelled,
+            deleting=deleting,
             deleted=deleted,
             unknown=unknown,
         )
