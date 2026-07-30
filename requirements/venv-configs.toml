@@ -38,6 +38,12 @@ deps_filepaths = ["./drivers/requirements-quafu.txt"]
 envs = ["python3"]
 no_deps = true
 
+[DriverLogicalQubit]
+module_name = "driver_logical_qubit"
+deps_pyproject_file = "../pyproject.toml"
+deps_sections = ["driver-logical-qubit"]
+envs = ["python3"]
+
 [qiskit]
 deps_filepaths = ["./drivers/requirements-qiskit.txt"]
 envs = ["python3"]
