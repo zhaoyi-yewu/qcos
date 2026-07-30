@@ -222,6 +222,29 @@ TEST(QuafuVerifier,
   EXPECT_FALSE(verifier.verify(qasm).passed);
 }
 
+TEST(QuafuVerifier, CheckTopology_TargetBitsWithIsolatedQubit_ReturnsFalse) {
+  // target_bits 包含孤立比特（不在任何耦合边中）和连通比特
+  // 孤立比特 7 不在 coupling_list 中
+  VerifyParams params;
+  params.bits = 8;
+  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}};
+  params.edge_fidelities = {0.99, 0.99, 0.98, 0.98};
+  params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.999,
+                                    0.0,   0.0,   0.0,   0.999};
+  // 7 是孤立比特，0 在连通分量 {0,1,2} 中
+  params.target_bits = {0, 7};
+
+  QuafuVerifier verifier(params);
+
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[2];\n"
+      "cz q[0],q[1];\n";
+  EXPECT_FALSE(verifier.verify(qasm).passed);
+  EXPECT_FALSE(verifier.verify(qasm).message.empty());
+}
+
 TEST(QuafuVerifier, CheckTopology_TargetBitsOutOfRange_ReturnsFalse) {
   // target_bits 越界（>=bits=8），无论有无多比特门都返回 false
   VerifyParams params;
