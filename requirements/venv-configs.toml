@@ -1,53 +1,45 @@
 # Driver running environments
 
 [default]
-deps_pyproject_file = "../pyproject.toml"
-deps_sections = ["main"]
+deps_filepaths = ["./requirements-qcos.txt"]
 envs = ["python3"]
 
 [sandbox]
-deps_pyproject_file = "../pyproject.toml"
-deps_sections = [
-    "main",
-    "sandbox",
-    "test",
-    "docs",
+deps_filepaths = [
+    "./requirements-qcos.txt",
+    "./requirements-sandbox.txt",
+    "./requirements-test.txt",
+    "./requirements-docs.txt",
 ]
 envs = ["python3"]
 
 #[pypy]
-#deps_pyproject_file = "../pyproject.toml"
-#deps_sections = ["transpiler-cmss"]
+#deps_filepaths = ["./requirements-transpiler-cmss.txt"]
 #envs = ["pypy3"]
 
 [DriverQutipSim]
 module_name = "driver_qutip_sim"
-deps_pyproject_file = "../pyproject.toml"
-deps_sections = ["driver-qutip"]
+deps_filepaths = ["./drivers/requirements-qutip.txt"]
 envs = ["python3"]
 
 [DriverSpinQRpc]
 module_name = "driver_spinq_rpc"
-deps_pyproject_file = "../pyproject.toml"
-deps_sections = ["driver-spinq-rpc"]
+deps_filepaths = ["./drivers/requirements-spinq-rpc.txt"]
 envs = ["python3"]
 
 [DriverUQCMatrix2]
 module_name = "driver_uqc"
-deps_pyproject_file = "../pyproject.toml"
-deps_sections = ["driver-uqc"]
+deps_filepaths = ["./drivers/requirements-uqc.txt"]
 envs = ["python3"]
 
 [DriverQuafu]
 module_name = "driver_quafu"
-deps_pyproject_file = "../pyproject.toml"
-deps_sections = ["driver-quafu"]
+deps_filepaths = ["./drivers/requirements-quafu.txt"]
 envs = ["python3"]
 no_deps = true
 
 [qiskit]
-deps_pyproject_file = "../pyproject.toml"
-deps_sections = ["driver-qiskit"]
+deps_filepaths = ["./drivers/requirements-qiskit.txt"]
 envs = ["python3"]
 
 [DriverQiskitQasmSim]

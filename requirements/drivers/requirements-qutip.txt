@@ -1,0 +1,4 @@
+# Vendor drivers dependencies
+# QUTIP driver only
+qutip==5.2.2
+qutip-qip==0.4.1

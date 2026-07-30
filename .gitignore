@@ -56,6 +56,3 @@ build-scripts/images/
 build-scripts/output/
 build-scripts/cli/output/
 
-# others
-requirements/requirements/
-

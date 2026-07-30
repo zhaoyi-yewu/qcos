@@ -93,12 +93,11 @@ echo ${git_commit_id} > ${top_dir}/latest-commit-id.txt
 exclude_pattern=".venv-driver"
 files=("build-scripts/.env" \
        "latest-commit-id.txt" "src" "etc" \
-       "LICENSE" \
-       "pyproject.toml" \
-       "requirements/" \
+       "requirements" \
+       "build-scripts/cli/requirements.txt" \
        "build-scripts/qcos/entrypoint.sh" \
-       "build-scripts/cli/" \
-       "bin/qcos-api.py" "bin/qcos-cli.py" "bin/qcos-transpiler.py" \
+       "build-scripts/cli/entrypoint.sh" "bin/qcos-api.py" "bin/qcos-cli.py" \
+       "bin/qcos-transpiler.py" \
        "samples/")
 for file_path in "${files[@]}"; do
   src=${top_dir}/${file_path}
