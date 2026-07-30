@@ -154,7 +154,7 @@ class TestSubmitJob:
         mock_client.callbacks = '[{"name":"cb","type":"results","method":"post","url":"http://test"}]'
         mock_client.source_code_files = ["/qcos/test.qasm"]
         mock_client.qec_options = None
-        mock_client.flavor_name = None
+        mock_client.flavor = None
         mock_client.extra_specs = None
 
         assert submit_job.take_action(mock_client) is None

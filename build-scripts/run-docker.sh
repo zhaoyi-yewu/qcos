@@ -28,6 +28,7 @@ mkdir -p /etc/qcos/prefect
 mkdir -p /var/qcos/db
 mkdir -p /var/qcos/db/postgresql
 mkdir -p /etc/qcos/postgres
+mkdir -p /var/prefect/
 mkdir -p /etc/prometheus
 cp -r ${QCOS_LOCAL_SRC_DIR}/etc/prometheus /etc/prometheus
 mkdir -p /etc/grafana/
@@ -115,20 +116,34 @@ fi
 
 # start qcos
 echo "Creating QCOS dockers ..."
+
+# start docker
 if [ "${DEV,,}" = "false" ]; then
   # start qcos
-  docker-compose -f docker-compose.yaml down
-  docker-compose -f docker-compose.yaml up -d
+  docker_compose_file="./docker-compose.yaml"
+  new_docker_compose_file="./.docker-compose.yaml"
+  create_temp_docker_compose_file "${docker_compose_file}" "${new_docker_compose_file}"
+
+  docker-compose -f ${new_docker_compose_file} down
+  docker-compose -f ${new_docker_compose_file} up -d
   echo "Run QCOS bash: docker exec -it qcos bash"
 else
   # start qcos-dev
-  docker-compose -f docker-compose-dev.yaml down
-  docker-compose -f docker-compose-dev.yaml up -d
+  docker_compose_file="./docker-compose-dev.yaml"
+  new_docker_compose_file="./.docker-compose-dev.yaml"
+  create_temp_docker_compose_file "${docker_compose_file}" "${new_docker_compose_file}"
+
+  docker-compose -f ${new_docker_compose_file} down
+  docker-compose -f ${new_docker_compose_file} up -d
   echo "Run QCOS bash: docker exec -it qcos-dev bash"
 fi
 
 # start metrics
-docker-compose -f docker-compose-metrics.yaml down
+docker_compose_file="./docker-compose-metrics.yaml"
+new_docker_compose_file="./.docker-compose-metrics.yaml"
+create_temp_docker_compose_file "${docker_compose_file}" "${new_docker_compose_file}"
+
+docker-compose -f ${new_docker_compose_file} down
 if [ "${ENABLE_METRICS,,}" = "true" ]; then
-  docker-compose -f docker-compose-metrics.yaml up -d
+  docker-compose -f ${new_docker_compose_file} up -d
 fi

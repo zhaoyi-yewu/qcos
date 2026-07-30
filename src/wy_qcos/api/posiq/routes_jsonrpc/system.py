@@ -127,20 +127,20 @@ def show_mem(
 @system_api_v1.method(
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
 )
-def debug_gc(
-    body: schemas.DebugGcRequest | None = None,
+def gc_mem(
+    body: schemas.GcMemRequest | None = None,
     auth_data: dict | None = Depends(auth),
-) -> schemas.DebugGcResponse:
+) -> schemas.GcMemResponse:
     """Manually trigger garbage collection.
 
     Args:
-        body(schemas.DebugGcRequest): Debug GC Request
+        body(schemas.GcMemRequest): GC Memory Request
         auth_data: auth data
 
     Returns:
         gc collection result response
     """
-    func_name = "debug_gc"
+    func_name = "gc_mem"
     logger.info(f"Call {func_name}: {body}")
 
     generations = 2
@@ -170,18 +170,18 @@ def debug_gc(
         "count_after": count_after,
         "malloc_trim_ret": malloc_trim_ret,
     }
-    response_info = schemas.DebugGcResponse.model_validate(_response_info)
+    response_info = schemas.GcMemResponse.model_validate(_response_info)
     return response_info
 
 
 @system_api_v1.method(
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
 )
-def debug_tracemalloc(
-    body: schemas.DebugTracemallocRequest | None = None,
+def trace_mem(
+    body: schemas.TraceMemRequest | None = None,
     auth_data: dict | None = Depends(auth),
-) -> schemas.DebugTracemallocResponse:
-    """Debug memory allocations via tracemalloc.
+) -> schemas.TraceMemResponse:
+    """Trace memory allocations via tracemalloc.
 
     Actions:
         - snapshot: start tracing (if not active) and take a snapshot
@@ -190,13 +190,13 @@ def debug_tracemalloc(
         - clear: clear traces but keep tracing
 
     Args:
-        body(schemas.DebugTracemallocRequest): Debug Tracemalloc Request
+        body(schemas.TraceMemRequest): Trace Mem Request
         auth_data: auth data
 
     Returns:
         tracemalloc statistics response
     """
-    func_name = "debug_tracemalloc"
+    func_name = "trace_mem"
     logger.info(f"Call {func_name}: {body}")
 
     action = "snapshot"
@@ -271,7 +271,5 @@ def debug_tracemalloc(
             "top_stats": stat_items,
         }
 
-    response_info = schemas.DebugTracemallocResponse.model_validate(
-        _response_info
-    )
+    response_info = schemas.TraceMemResponse.model_validate(_response_info)
     return response_info

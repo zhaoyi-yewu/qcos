@@ -65,6 +65,11 @@ class GetDeviceResponse(BaseModel):
     configs: dict | None = Field(
         default=None, description="Device configurations"
     )
+    # job count by job status (e.g. QUEUED, RUNNING, COMPLETED)
+    job_count: dict = Field(
+        default_factory=dict,
+        description="Job count grouped by job status",
+    )
     # details info
     details: dict | None = Field(default=None, description="Details info")
     # device status last updated at

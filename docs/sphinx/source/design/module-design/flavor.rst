@@ -115,10 +115,17 @@ Flavor的extra_properties字段支持以下键值（键名需为 ``namespace:nam
 
 Flavor与自动调度器（AutoScheduler）集成，调度流程如下：
 
-1. 用户提交作业时指定 ``flavor_name`` 或 ``flavor_id``
+1. 用户提交作业时指定 ``flavor_id`` （CLI 端 ``--flavor`` 可传入 flavor ID 或
+   flavor 名称，名称会在提交前解析为 ``flavor_id``；API 层仅接受 ``flavor_id``）
 2. AutoScheduler通过FlavorManager获取Flavor的specs（ ``get_flavor_specs`` ）
 3. 将specs合并到RequestSpec的 ``flavor_specs`` 中
 4. 调度Filter链根据specs过滤设备
+
+.. note::
+
+   提交作业时 ``backend`` 与 ``flavor_id`` 互斥，二者必须指定其一；
+   ``extra_specs`` 仅可与 ``flavor_id`` 搭配使用，指定 ``backend`` 时
+   不允许传入 ``extra_specs``。
 
 ``get_flavor_specs`` 在构建specs时，会将映射表中的第一个设备分组UUID
 作为 ``qc:device_groups`` 注入到specs中，供 ``DeviceGroupFilter`` 使用：

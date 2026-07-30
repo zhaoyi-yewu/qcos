@@ -27,8 +27,7 @@ class RequestSpec:
     """
 
     # --- from job request ---
-    job_id: str
-    code_type: str = ""
+    code_type: str | None = None
     num_qubits: int = 0
 
     # --- from flavor ---

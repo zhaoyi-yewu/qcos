@@ -175,7 +175,6 @@ class TestJob:
         mock_client.code_compression_level = 0
         mock_client.tags = None
         mock_client.qec_options = None
-        mock_client.flavor_name = None
         mock_client.flavor_id = None
         mock_client.extra_specs = None
 
@@ -218,7 +217,6 @@ class TestJob:
         mock_client.code_compression_level = 0
         mock_client.tags = None
         mock_client.qec_options = None
-        mock_client.flavor_name = None
         mock_client.flavor_id = None
         mock_client.extra_specs = None
 
@@ -252,7 +250,6 @@ class TestJob:
         mock_client.code_compression_level = 0
         mock_client.tags = None
         mock_client.qec_options = None
-        mock_client.flavor_name = None
         mock_client.flavor_id = None
         mock_client.extra_specs = None
 

@@ -72,12 +72,13 @@ RUN set -e && \
     yum clean all && \
     rm -rf ${BUILD_CONTEXT}
 
-RUN useradd -r -g root qcos && \
+RUN useradd -u 1000 -g root -m qcos && \
+    echo "qcos ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/qcos && \
     # create runtime dirs and grant ownership to qcos user
     mkdir -p /var/log/qcos /etc/qcos /etc/qcos/roles /etc/qcos/ssl \
              /etc/qcos/conf.d /etc/qcos/st-conf.d /var/run/qcos \
              /var/lib/qcos /var/qcos/db /var/qcos/storage && \
     chown -R qcos:root /var/log/qcos /etc/qcos /var/run/qcos \
                        /var/lib/qcos /var/qcos
-USER root
+USER qcos
 ENTRYPOINT ["/entrypoint.sh"]

@@ -17,13 +17,13 @@
 
 import logging
 
-from prefect.client.schemas.objects import StateType
-
 from wy_qcos.common.constant import Constant
+from wy_qcos.db.repositories.job import JobRepository
+from wy_qcos.db.utils.db_utils import create_db_session
 from wy_qcos.device.device_manager import DeviceManager
+from wy_qcos.flavor.flavor_manager import FlavorManager
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.errors import NoValidDeviceError
-from wy_qcos.flavor.flavor_manager import FlavorManager
 from wy_qcos.scheduler.filters import (
     BaseFilterHandler,
     DEFAULT_FILTERS,
@@ -58,6 +58,7 @@ class AutoScheduler:
         task_manager: TaskFlowManager,
         flavor_manager: FlavorManager,
         device_group_manager=None,
+        db_engine=None,
         filter_handler: BaseFilterHandler | None = None,
         weight_handler: BaseWeightHandler | None = None,
     ):
@@ -68,6 +69,9 @@ class AutoScheduler:
             task_manager: task flow manager
             flavor_manager: flavor manager
             device_group_manager: device group manager
+            db_engine: SQLAlchemy database engine used to query
+                job load info from the qcos database. When None,
+                load counts fall back to 0.
             filter_handler: filter handler (default uses
                 DEFAULT_FILTERS with DeviceGroupFilter injected)
             weight_handler: weight handler (default uses
@@ -77,6 +81,7 @@ class AutoScheduler:
         self._task_manager = task_manager
         self._flavor_manager = flavor_manager
         self._device_group_manager = device_group_manager
+        self._db_engine = db_engine
 
         if filter_handler is None:
             # Build filter list with DeviceGroupFilter configured
@@ -167,53 +172,73 @@ class AutoScheduler:
         return device_states
 
     def _get_queued_count(self, device_name: str) -> int:
-        """Get queued job count for a device.
+        """Get queued job count for a device from qcos database.
+
+        Queries the job table for jobs whose backend matches the
+        given device and whose job_status is QUEUED.
 
         Args:
             device_name: device name
 
         Returns:
-            number of queued (scheduled + pending) jobs
+            number of queued jobs, returns 0 on error or when the
+            database engine is not configured
         """
-        try:
-            wait_states = self._task_manager.convert_to_prefect_states(
-                Constant.PREFECT_WAIT_STATES
-            )
-            pool_name = f"{Constant.WORK_POOL_DEVICE_PREFIX}{device_name}"
-            flows = self._task_manager.get_flow_runs_with_filters(
-                states=wait_states, pool_name=pool_name
-            )
-            return len(flows)
-        except Exception as e:
-            logger.warning(
-                f"Failed to get queued count for {device_name}: {e}"
-            )
-            return 0
+        return self._count_jobs_by_status(
+            device_name, Constant.JOB_STATUS_QUEUED
+        )
 
     def _get_running_count(self, device_name: str) -> int:
-        """Get running job count for a device.
+        """Get running job count for a device from qcos database.
+
+        Queries the job table for jobs whose backend matches the
+        given device and whose job_status is RUNNING.
 
         Args:
             device_name: device name
 
         Returns:
-            number of running jobs
+            number of running jobs, returns 0 on error or when the
+            database engine is not configured
         """
-        try:
-            pool_name = f"{Constant.WORK_POOL_DEVICE_PREFIX}{device_name}"
-            flows = self._task_manager.get_flow_runs_with_filters(
-                states=[StateType.RUNNING], pool_name=pool_name
+        return self._count_jobs_by_status(
+            device_name, Constant.JOB_STATUS_RUNNING
+        )
+
+    def _count_jobs_by_status(self, device_name: str, job_status: str) -> int:
+        """Count jobs for a device filtered by job status.
+
+        Args:
+            device_name: device name (matches job.backend column)
+            job_status: job status value to filter by
+
+        Returns:
+            count of matching jobs, returns 0 on error or when the
+            database engine is not configured
+        """
+        if self._db_engine is None:
+            logger.debug(
+                f"db_engine not configured, skip counting "
+                f"{job_status} jobs for {device_name}"
             )
-            return len(flows)
+            return 0
+        try:
+            with create_db_session(self._db_engine) as db_session:
+                job_repo = JobRepository(db_session)
+                return job_repo.get_jobs_count(
+                    filters={
+                        "backend": device_name,
+                        "job_status": job_status,
+                    }
+                )
         except Exception as e:
             logger.warning(
-                f"Failed to get running count for {device_name}: {e}"
+                f"Failed to get {job_status} count for {device_name}: {e}"
             )
             return 0
 
     @staticmethod
     def build_request_spec(
-        job_id: str,
         code_type: str = "",
         num_qubits: int = 0,
         flavor_id: str | None = None,
@@ -223,7 +248,6 @@ class AutoScheduler:
         """Build RequestSpec from job request parameters.
 
         Args:
-            job_id: job ID
             code_type: code type (qasm, qasm2, qasm3, qubo)
             num_qubits: number of qubits in source code
             flavor_id: flavor UUID string
@@ -238,8 +262,7 @@ class AutoScheduler:
             flavor_specs = flavor_manager.get_flavor_specs(flavor_id)
 
         return RequestSpec(
-            job_id=job_id,
-            code_type=code_type.lower() if code_type else "",
+            code_type=code_type if code_type else None,
             num_qubits=num_qubits,
             flavor_id=flavor_id,
             flavor_specs=flavor_specs,

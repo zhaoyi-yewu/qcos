@@ -226,6 +226,11 @@ class JobCleaner:
             if name not in job_ids:
                 orphaned.append(flow_run)
 
+        # Release the full flow-run list early so the large list of
+        # Pydantic FlowRun objects can be garbage-collected before the
+        # (potentially slow) orphan deletion loop below.
+        del all_flow_runs
+
         if not orphaned:
             logger.info("No orphaned device flows found")
             return
@@ -353,6 +358,11 @@ class JobCleaner:
                 end_time = end_time.replace(tzinfo=timezone.utc)
             if end_time < flow_expire_cutoff:
                 expired_flow_runs.append(flow_run)
+
+        # Release the full flow-run list early so the large list of
+        # Pydantic FlowRun objects can be garbage-collected before the
+        # (potentially slow) expired-flow deletion loop below.
+        del all_job_flow_runs
 
         if not expired_flow_runs:
             logger.info("No expired completed flow-runs found")

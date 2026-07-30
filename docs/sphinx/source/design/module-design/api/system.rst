@@ -110,9 +110,9 @@
              }
 
    * - **手动垃圾回收**
-     - **debug_gc**
+     - **gc_mem**
 
-       URI: /v1/system/debug_gc
+       URI: /v1/system/gc_mem
      - .. container:: table-code-small-font
 
           .. code-block:: json
@@ -120,7 +120,7 @@
              {
                "jsonrpc": "2.0",
                "id": 1,
-               "method": "debug_gc",
+               "method": "gc_mem",
                "params": {
                  "body": {
                    "generations": 2
@@ -145,9 +145,9 @@
              }
 
    * - **内存分配追踪**
-     - **debug_tracemalloc**
+     - **trace_mem**
 
-       URI: /v1/system/debug_tracemalloc
+       URI: /v1/system/trace_mem
      - .. container:: table-code-small-font
 
           .. code-block:: json
@@ -155,7 +155,7 @@
              {
                "jsonrpc": "2.0",
                "id": 1,
-               "method": "debug_tracemalloc",
+               "method": "trace_mem",
                "params": {
                  "body": {
                    "action": "snapshot",
@@ -224,7 +224,7 @@
      - float
      - CPU 使用率（%）
 
-**手动垃圾回收（debug_gc）**
+**手动垃圾回收（gc_mem）**
 
 手动触发 Python 垃圾回收并执行 malloc_trim，用于调试内存问题，需要管理员权限：
 
@@ -254,7 +254,7 @@
 
 请求参数 ``generations`` 可选（0/1/2），默认 2（全量回收）。
 
-**内存分配追踪（debug_tracemalloc）**
+**内存分配追踪（trace_mem）**
 
 通过 tracemalloc 追踪 Python 内存分配，返回当前/峰值内存及 Top 内存分配统计，需要管理员权限：
 

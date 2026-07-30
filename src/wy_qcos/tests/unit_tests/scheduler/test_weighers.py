@@ -18,7 +18,7 @@
 """Unit tests for scheduler weighers and auto scheduler."""
 
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.request_spec import RequestSpec
@@ -68,7 +68,6 @@ def make_spec(
 ):
     """Create a RequestSpec for testing."""
     return RequestSpec(
-        job_id="test-job",
         code_type=code_type,
         num_qubits=num_qubits,
         flavor_id=None,
@@ -245,32 +244,50 @@ class TestAutoScheduler:
         device_manager = MagicMock()
         device_manager.get_devices.return_value = devices
 
-        # Mock task_manager to return different queue counts per device
+        # Job load counts are read from the qcos database. The
+        # DeviceLoadWeigher only cares about queued_job_count, so the
+        # running count is mocked as 0 for all devices.
         device_queue_map = {
             "busy_device": 10,
             "idle_device": 0,
         }
 
-        def mock_get_flow_runs(states=None, pool_name=None, **kwargs):
-            # Return a fake list whose length reflects the queue count
-            if pool_name and "busy_device" in pool_name:
-                return list(range(device_queue_map["busy_device"]))
-            if pool_name and "idle_device" in pool_name:
-                return list(range(device_queue_map["idle_device"]))
-            return []
+        def mock_get_jobs_count(filters=None):
+            backend = (filters or {}).get("backend", "")
+            job_status = (filters or {}).get("job_status", "")
+            if job_status == "QUEUED":
+                return device_queue_map.get(backend, 0)
+            return 0
+
+        fake_repo = MagicMock()
+        fake_repo.get_jobs_count.side_effect = mock_get_jobs_count
+        fake_session = MagicMock()
+        fake_session.__enter__ = MagicMock(return_value=fake_session)
+        fake_session.__exit__ = MagicMock(return_value=False)
 
         task_manager = MagicMock()
-        task_manager.convert_to_prefect_states.return_value = []
-        task_manager.get_flow_runs_with_filters.side_effect = (
-            mock_get_flow_runs
-        )
-
         flavor_manager = MagicMock()
 
-        scheduler = AutoScheduler(device_manager, task_manager, flavor_manager)
-        spec = make_spec(code_type="qasm")
+        with (
+            patch(
+                "wy_qcos.scheduler.auto_scheduler.create_db_session",
+                return_value=fake_session,
+            ),
+            patch(
+                "wy_qcos.scheduler.auto_scheduler.JobRepository",
+                return_value=fake_repo,
+            ),
+        ):
+            scheduler = AutoScheduler(
+                device_manager,
+                task_manager,
+                flavor_manager,
+                db_engine=MagicMock(),
+            )
+            spec = make_spec(code_type="qasm")
 
-        result = scheduler.schedule(spec)
+            result = scheduler.schedule(spec)
+
         assert result == "idle_device"
 
     def test_schedule_no_device_passes_filters(self):
@@ -309,7 +326,6 @@ class TestAutoScheduler:
         }
 
         spec = AutoScheduler.build_request_spec(
-            job_id="test-job",
             code_type="qasm",
             num_qubits=5,
             flavor_id="test-flavor-id",
@@ -317,7 +333,6 @@ class TestAutoScheduler:
             flavor_manager=flavor_manager,
         )
 
-        assert spec.job_id == "test-job"
         assert spec.code_type == "qasm"
         assert spec.num_qubits == 5
         assert spec.flavor_id == "test-flavor-id"

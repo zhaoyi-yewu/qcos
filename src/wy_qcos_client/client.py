@@ -521,7 +521,7 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def debug_gc(self, *, generations=2):
+    def gc_mem(self, *, generations=2):
         """Manually trigger garbage collection.
 
         Args:
@@ -530,7 +530,7 @@ class Client:
         Returns:
             gc collection result
         """
-        method_name = "debug_gc"
+        method_name = "gc_mem"
 
         # construct data and call json rpc
         data = {"generations": generations}
@@ -539,10 +539,8 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def debug_tracemalloc(
-        self, *, action="snapshot", nframe=25, sort_count=False
-    ):
-        """Debug memory allocations via tracemalloc.
+    def trace_mem(self, *, action="snapshot", nframe=25, sort_count=False):
+        """Trace memory allocations via tracemalloc.
 
         Args:
             action: action to perform (snapshot, stop, clear)
@@ -554,7 +552,7 @@ class Client:
         Returns:
             tracemalloc statistics
         """
-        method_name = "debug_tracemalloc"
+        method_name = "trace_mem"
 
         # construct data and call json rpc
         data = {"action": action, "nframe": nframe, "sort_count": sort_count}
@@ -584,7 +582,7 @@ class Client:
         callbacks=None,
         dry_run=False,
         qec_options=None,
-        flavor_name=None,
+        flavor_id=None,
         extra_specs=None,
     ):
         """Submit new job.
@@ -608,7 +606,7 @@ class Client:
             callbacks: callbacks
             dry_run: dry run
             qec_options: qec options
-            flavor_name: flavor name for auto scheduling
+            flavor_id: flavor UUID for auto scheduling
             extra_specs: extra scheduling specifications
 
         Returns:
@@ -638,9 +636,9 @@ class Client:
         # backend: only set if specified (None triggers auto scheduling)
         if backend:
             data["backend"] = backend
-        # flavor_name and extra_specs for auto scheduling
-        if flavor_name:
-            data["flavor_name"] = flavor_name
+        # flavor_id and extra_specs for auto scheduling
+        if flavor_id:
+            data["flavor_id"] = str(flavor_id)
         if extra_specs:
             data["extra_specs"] = extra_specs
 

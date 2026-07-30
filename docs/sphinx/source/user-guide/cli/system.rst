@@ -88,7 +88,7 @@
 .. code-block:: shell
 
    # 手动垃圾回收
-   usage: qcos-cli gc [-h] [--generations {0,1,2}]
+   usage: qcos-cli gc-mem [-h] [--generations {0,1,2}]
 
    Manually trigger garbage collection.
 
@@ -101,10 +101,10 @@
 .. code-block:: shell
 
    # 全量垃圾回收（默认）
-   qcos-cli gc
+   qcos-cli gc-mem
 
    # 仅回收第0代对象
-   qcos-cli gc --generations 0
+   qcos-cli gc-mem --generations 0
 
 内存分配追踪
 ***************

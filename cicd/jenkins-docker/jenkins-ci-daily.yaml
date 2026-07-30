@@ -184,8 +184,10 @@ pipeline {
                     sed -i "s@^DOCKER_COMPOSE_BIN_MIRROR=.*@DOCKER_COMPOSE_BIN_MIRROR=\${DOCKER_COMPOSE_BIN_MIRROR}@" ./.env
                 fi
                 df -h
-                ./run-sandbox.sh
-                docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -q -t dev"
+                cp ./docker-compose-sandbox.yaml ./docker-compose-sandbox-temp.yaml
+                sed -i 's/^qcos-sandbox:/qcos-sandbox-temp:/' ./docker-compose-sandbox-temp.yaml
+                ./run-sandbox.sh -n qcos-sandbox-temp -f ./docker-compose-sandbox-temp.yaml
+                docker exec qcos-sandbox-temp sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -q -t dev"
                 """
             }
             post {
@@ -227,8 +229,10 @@ pipeline {
                     sed -i "s@^DOCKER_COMPOSE_BIN_MIRROR=.*@DOCKER_COMPOSE_BIN_MIRROR=\${DOCKER_COMPOSE_BIN_MIRROR}@" ./.env
                 fi
                 df -h
-                ./run-sandbox.sh
-                docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -c -t dev"
+                cp ./docker-compose-sandbox.yaml ./docker-compose-sandbox-temp.yaml
+                sed -i 's/^qcos-sandbox:/qcos-sandbox-temp:/' ./docker-compose-sandbox-temp.yaml
+                ./run-sandbox.sh -n qcos-sandbox-temp -f ./docker-compose-sandbox-temp.yaml
+                docker exec qcos-sandbox-temp sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -c -t dev"
                 """
             }
             post {
@@ -251,8 +255,10 @@ pipeline {
                 fi
                 cp ./env.template ./.env
                 export SANDBOX_IMAGE_VERSION=dev
-                ./run-sandbox.sh
-                docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -b; ./cicd/run-tests.sh -t all"
+                cp ./docker-compose-sandbox.yaml ./docker-compose-sandbox-temp.yaml
+                sed -i 's/^qcos-sandbox:/qcos-sandbox-temp:/' ./docker-compose-sandbox-temp.yaml
+                ./run-sandbox.sh -n qcos-sandbox-temp -f ./docker-compose-sandbox-temp.yaml
+                docker exec qcos-sandbox-temp sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -b; ./cicd/run-tests.sh -t all"
                 """
             }
             post {
@@ -275,8 +281,10 @@ pipeline {
                 fi
                 cp ./env.template ./.env
                 export SANDBOX_IMAGE_VERSION=dev
-                ./run-sandbox.sh
-                docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -b; ./cicd/run-tests.sh -c all"
+                cp ./docker-compose-sandbox.yaml ./docker-compose-sandbox-temp.yaml
+                sed -i 's/^qcos-sandbox:/qcos-sandbox-temp:/' ./docker-compose-sandbox-temp.yaml
+                ./run-sandbox.sh -n qcos-sandbox-temp -f ./docker-compose-sandbox-temp.yaml
+                docker exec qcos-sandbox-temp sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -b; ./cicd/run-tests.sh -c all"
                 """
             }
             post {
@@ -299,8 +307,10 @@ pipeline {
                 fi
                 cp ./env.template ./.env
                 export SANDBOX_IMAGE_VERSION=dev
-                ./run-sandbox.sh
-                docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -e all"
+                cp ./docker-compose-sandbox.yaml ./docker-compose-sandbox-temp.yaml
+                sed -i 's/^qcos-sandbox:/qcos-sandbox-temp:/' ./docker-compose-sandbox-temp.yaml
+                ./run-sandbox.sh -n qcos-sandbox-temp -f ./docker-compose-sandbox-temp.yaml
+                docker exec qcos-sandbox-temp sh -c "source /root/.bashrc; cd /root/qcos-project; ./cicd/run-tests.sh -e all"
                 """
             }
             post {
@@ -606,7 +616,7 @@ void dockerCleanup() {
 // ==========================================================================
 void qcosCleanup() {
     sh """
-    docker rm -f prefect-server redis postgres qcos-sandbox qcos qcos-cli || true
+    docker rm -f prefect-server redis postgres qcos-sandbox-temp qcos qcos-cli || true
     rm -rf /var/qcos/db/
     rm -rf /etc/qcos/*
     """

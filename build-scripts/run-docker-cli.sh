@@ -27,11 +27,19 @@ echo "Creating QCOS cli dockers ..."
 cd ${build_scripts_dir}
 
 if [ "${DEV,,}" = "false" ]; then
-  docker-compose -f docker-compose-cli.yaml down
-  docker-compose -f docker-compose-cli.yaml up -d
+  docker_compose_file="./docker-compose-cli.yaml"
+  new_docker_compose_file="./.docker-compose-cli.yaml"
+  create_temp_docker_compose_file "${docker_compose_file}" "${new_docker_compose_file}"
+
+  docker-compose -f ${new_docker_compose_file} down
+  docker-compose -f ${new_docker_compose_file} up -d
   echo "Run QCOS cli bash: docker exec -it qcos-cli bash"
 else
-  docker-compose -f docker-compose-dev-cli.yaml down
-  docker-compose -f docker-compose-dev-cli.yaml up -d
+  docker_compose_file="./docker-compose-dev-cli.yaml"
+  new_docker_compose_file="./.docker-compose-dev-cli.yaml"
+  create_temp_docker_compose_file "${docker_compose_file}" "${new_docker_compose_file}"
+
+  docker-compose -f ${new_docker_compose_file} down
+  docker-compose -f ${new_docker_compose_file} up -d
   echo "Run QCOS cli bash: docker exec -it qcos-dev-cli bash"
 fi

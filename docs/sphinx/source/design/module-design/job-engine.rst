@@ -5,6 +5,21 @@
 
 用户调用作业提交API后，量子作业会被Prefect组件调度，随后作业引擎会被Prefect组件以进程形式运行。
 
+作业后端解析
+--------------------------
+
+作业提交时，``backend`` 与 ``flavor_id`` 互斥，二者必须指定其一：
+
+- 指定 ``backend`` 时，直接使用该设备作为执行后端，此时不允许传入 ``extra_specs``。
+- 未指定 ``backend`` 时触发自动调度（AutoScheduler）：必须提供 ``flavor_id``
+  （可选搭配 ``extra_specs``）。AutoScheduler 通过 FlavorManager 获取 Flavor 的
+  specs 并合并 ``extra_specs``，经 Filter 链过滤设备后解析出 ``backend``。
+
+.. note::
+
+   API 层仅接受 ``flavor_id``（UUID）；CLI 端 ``--flavor`` 可传入 flavor ID 或
+   flavor 名称，名称在提交前解析为 ``flavor_id``。
+
 作业引擎启动后，会加载用户作业提交API中的参数，然后根据作业中指定的设备后端(backend)所关联的驱动会被实例化，随后引擎层会调用驱动实例中的方法来和厂商量子真机进行交互，并获取测量结果。
 
 作业引擎调用驱动和转译器

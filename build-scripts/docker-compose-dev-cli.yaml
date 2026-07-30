@@ -17,11 +17,11 @@ services:
   qcos-dev-cli:
     container_name: qcos-dev-cli
     image: ${REGISTRY}${QCOS_REGISTRY}${QCOS_IMAGE_NAME}-cli:dev
+    read_only: true
     security_opt:
       - no-new-privileges:true
     tmpfs:
       - /tmp
-      - /var/tmp
     network_mode: "host"
     restart: always
     stdin_open: True

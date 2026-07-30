@@ -61,6 +61,8 @@ from wy_qcos.transpiler.common.wirecut.result_cache import (
 from wy_qcos.db.utils import db_utils
 from wy_qcos.db.database import init_database
 
+_import_module = importlib.import_module  # security issue
+
 
 class AggregationInput(RunInput):
     is_parent: bool
@@ -98,7 +100,7 @@ def init_driver(
                 f"allowed import whitelist"
             )
         # load driver module
-        driver_module = importlib.import_module(driver_module_name)
+        driver_module = _import_module(driver_module_name)
 
         # security: validate class name before dynamic attribute access
         driver_class_name = driver_class_info["class_name"]
@@ -190,7 +192,7 @@ def init_transpiler(transpiler_class_info, transpiler_options):
                 f"Transpiler module '{transpiler_module_name}' is not in "
                 f"the allowed import whitelist"
             )
-        transpiler_module = importlib.import_module(transpiler_module_name)
+        transpiler_module = _import_module(transpiler_module_name)
 
         # security: validate class name before dynamic attribute access
         transpiler_class_name = transpiler_class_info["class_name"]

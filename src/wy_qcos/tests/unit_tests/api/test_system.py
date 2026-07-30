@@ -18,8 +18,8 @@
 from unittest.mock import Mock, patch
 
 from wy_qcos.api.posiq.routes_jsonrpc.system import (
-    debug_gc,
-    debug_tracemalloc,
+    gc_mem,
+    trace_mem,
     ping,
     show_mem,
     system_info,
@@ -81,7 +81,7 @@ class TestSystem:
         assert response_info.num_objects == 50
         assert response_info.cpu_percent == 5.5
 
-    def test_debug_gc_default_generations(self):
+    def test_gc_mem_default_generations(self):
         # gc.collect returns number of collected objects (int) in 3.8+
         with (
             patch(
@@ -100,14 +100,14 @@ class TestSystem:
                 list(range(100)),
                 list(range(70)),
             ]
-            response_info = debug_gc(None)
+            response_info = gc_mem(None)
         assert mock_collect.call_args.args[0] == 2
         assert response_info.collected == 30
         assert response_info.uncollectable == 2
         assert response_info.count_before == 100
         assert response_info.count_after == 70
 
-    def test_debug_gc_custom_generations(self):
+    def test_gc_mem_custom_generations(self):
         # test with explicit generations parameter
         with (
             patch(
@@ -128,15 +128,15 @@ class TestSystem:
             ]
             mock_request = Mock()
             mock_request.generations = 0
-            response_info = debug_gc(mock_request)
+            response_info = gc_mem(mock_request)
         assert mock_collect.call_args.args[0] == 0
         assert response_info.collected == 10
         assert response_info.uncollectable == 0
         assert response_info.count_before == 100
         assert response_info.count_after == 90
 
-    def test_debug_tracemalloc_default(self):
-        # mock tracemalloc to test debug_tracemalloc snapshot action
+    def test_trace_mem_default(self):
+        # mock tracemalloc to test trace_mem snapshot action
         mock_snapshot = Mock()
         mock_stat = Mock()
         mock_frame = Mock()
@@ -165,7 +165,7 @@ class TestSystem:
                 return_value=mock_snapshot,
             ),
         ):
-            response_info = debug_tracemalloc(None)
+            response_info = trace_mem(None)
         assert response_info.tracing is False
         assert response_info.traced_blocks == 5
         assert response_info.current == 2048
@@ -175,7 +175,7 @@ class TestSystem:
         assert response_info.top_stats[0].size == 1024
         assert response_info.top_stats[0].count == 5
 
-    def test_debug_tracemalloc_custom_nframe(self):
+    def test_trace_mem_custom_nframe(self):
         # test with custom nframe parameter
         mock_snapshot = Mock()
         mock_snapshot.statistics.return_value = []
@@ -202,14 +202,14 @@ class TestSystem:
                 return_value=mock_snapshot,
             ),
         ):
-            response_info = debug_tracemalloc(mock_request)
+            response_info = trace_mem(mock_request)
         assert response_info.tracing is True
         assert response_info.traced_blocks == 0
         assert response_info.current == 1024
         assert response_info.peak == 2048
         assert response_info.top_stats == []
 
-    def test_debug_tracemalloc_stop(self):
+    def test_trace_mem_stop(self):
         # test stop action: stops tracing and releases traces
         mock_request = Mock()
         mock_request.action = "stop"
@@ -225,7 +225,7 @@ class TestSystem:
                 "wy_qcos.api.posiq.routes_jsonrpc.system.tracemalloc.stop"
             ) as mock_stop,
         ):
-            response_info = debug_tracemalloc(mock_request)
+            response_info = trace_mem(mock_request)
         mock_stop.assert_called_once()
         assert response_info.tracing is False
         assert response_info.traced_blocks == 0
@@ -233,7 +233,7 @@ class TestSystem:
         assert response_info.peak == 4096
         assert response_info.top_stats == []
 
-    def test_debug_tracemalloc_clear(self):
+    def test_trace_mem_clear(self):
         # test clear action: clears traces but keeps tracing
         mock_request = Mock()
         mock_request.action = "clear"
@@ -255,7 +255,7 @@ class TestSystem:
                 return_value=(0, 2048),
             ),
         ):
-            response_info = debug_tracemalloc(mock_request)
+            response_info = trace_mem(mock_request)
         mock_clear.assert_called_once()
         assert response_info.tracing is True
         assert response_info.traced_blocks == 0

@@ -1253,7 +1253,7 @@ class ShowMem(ShowOne):
         return table_values
 
 
-class DoGc(Command):
+class GcMem(Command):
     """Manually trigger garbage collection."""
 
     group = QcosShell.CMD_GROUP_SYSTEM
@@ -1287,11 +1287,11 @@ class DoGc(Command):
         resource = self.group
         generations = parsed_args.generations
 
-        status_code, reason, text, result = self.app.client.debug_gc(
+        status_code, reason, text, result = self.app.client.gc_mem(
             generations=generations
         )
         json_results = CommandHelper.check_results(
-            resource, "debug_gc", status_code, reason, text
+            resource, "gc_mem", status_code, reason, text
         )
         print("GC Result: ")
         print(
@@ -1366,11 +1366,11 @@ class TraceMem(Lister):
         # server-side before the nframe limit is applied, so that the
         # top entries by count are returned instead of the top entries
         # by size truncated to nframe.
-        status_code, reason, text, result = self.app.client.debug_tracemalloc(
+        status_code, reason, text, result = self.app.client.trace_mem(
             action=action, nframe=nframe, sort_count=sort_count
         )
         json_results = CommandHelper.check_results(
-            resource, "debug_tracemalloc", status_code, reason, text
+            resource, "trace_mem", status_code, reason, text
         )
         # print timestamp (YYYY-MM-DD HH:MM:SS.xxx) before the report
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
@@ -1476,23 +1476,28 @@ class SubmitJob(Command):
             "--backend",
             dest="backend",
             default=default_backend,
-            help="Set backend device name. If not specified, "
-            "auto scheduling is triggered (requires --flavor-name "
-            "or --extra-specs)",
+            help="Set backend device name. Mutually exclusive with "
+            "--flavor; if not specified, auto scheduling is "
+            "triggered (requires --flavor)",
         )
         parser.add_argument(
-            "--flavor-name",
-            dest="flavor_name",
+            "--flavor",
+            dest="flavor",
             type=str,
             default=None,
-            help="Flavor name for auto scheduling",
+            help="Flavor ID (UUID) or flavor name for auto "
+            "scheduling. Mutually exclusive with --backend. "
+            "A flavor name is resolved to flavor_id before "
+            "submitting the job",
         )
         parser.add_argument(
             "--extra-specs",
             dest="extra_specs",
             type=str,
             default=None,
-            help="Extra scheduling specifications (JSON string)",
+            help="Extra scheduling specifications (JSON string). "
+            "Only allowed together with --flavor, not with "
+            "--backend",
         )
         parser.add_argument(
             "--driver-options",
@@ -1567,7 +1572,7 @@ class SubmitJob(Command):
         description = parsed_args.description
         shots = parsed_args.shots
         backend = parsed_args.backend
-        flavor_name = parsed_args.flavor_name
+        flavor = parsed_args.flavor
         extra_specs = parsed_args.extra_specs
         driver_options = parsed_args.driver_options
         transpiler = parsed_args.transpiler
@@ -1576,11 +1581,22 @@ class SubmitJob(Command):
         callbacks = parsed_args.callbacks
         qec_options = parsed_args.qec_options
 
-        # Validate auto scheduling params
-        if not backend and not flavor_name and not extra_specs:
+        # Validate scheduling params: backend and flavor are
+        # mutually exclusive; either one must be specified.
+        # extra_specs is only allowed together with flavor.
+        if backend and flavor:
             raise errors.InvalidArguments(
-                "Either --backend or --flavor-name/--extra-specs "
-                "must be specified"
+                "--backend and --flavor are mutually exclusive, "
+                "please specify only one of them"
+            )
+        if backend and extra_specs:
+            raise errors.InvalidArguments(
+                "--extra-specs is only allowed together with "
+                "--flavor, not with --backend"
+            )
+        if not backend and not flavor:
+            raise errors.InvalidArguments(
+                "Either --backend or --flavor must be specified"
             )
 
         # Parse extra_specs JSON
@@ -1751,6 +1767,12 @@ class SubmitJob(Command):
                 )
             )
 
+        # Resolve flavor identifier (UUID or name) to flavor_id.
+        # flavor_id is the only form accepted by the submit_job API.
+        flavor_id = None
+        if flavor:
+            flavor_id = Client.resolve_flavor_id(self.app.client, flavor)
+
         # call api
         status_code, reason, text, result = self.app.client.submit_job(
             source_code_list,
@@ -1770,7 +1792,7 @@ class SubmitJob(Command):
             callbacks=callbacks_json,
             dry_run=dry_run,
             qec_options=qec_options,
-            flavor_name=flavor_name,
+            flavor_id=flavor_id,
             extra_specs=extra_specs_json,
         )
         results = CommandHelper.check_results(
@@ -4700,7 +4722,7 @@ command_manager.add_command("ping", Ping)
 command_manager.add_command("system-info", SystemInfo)
 command_manager.add_command("trace-mem", TraceMem)
 command_manager.add_command("show-mem", ShowMem)
-command_manager.add_command("gc", DoGc)
+command_manager.add_command("gc-mem", GcMem)
 # job command
 command_manager.add_command("submit-job", SubmitJob)
 command_manager.add_command("get-job-status", GetJobStatus)

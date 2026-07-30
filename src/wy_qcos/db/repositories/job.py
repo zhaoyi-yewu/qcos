@@ -147,6 +147,36 @@ class JobRepository(BaseRepository):
         """
         return self.count_with_filters(Job, filters=filters)
 
+    def count_by_status(self, backend: str) -> dict:
+        """Count jobs grouped by job_status for a backend (single query).
+
+        Uses a single GROUP BY query instead of N separate COUNT
+        queries, so the job table is scanned only once.
+
+        Args:
+            backend: device name (matches job.backend column)
+
+        Returns:
+            dict mapping each job_status value present in the
+            database to its count for the given backend. Statuses
+            with zero jobs are omitted from the result; callers
+            should fill missing keys with 0 as needed.
+        """
+        try:
+            query = (
+                select(Job.job_status, func.count())
+                .select_from(Job)
+                .where(Job.backend == backend)
+                .group_by(Job.job_status)
+            )
+            result = self._db_session.execute(query)
+            return {row[0]: row[1] for row in result}
+        except Exception as e:
+            logger.error(
+                f"Error counting jobs by status for backend {backend}: {e}"
+            )
+            return {}
+
     def count_recent(
         self,
         since: datetime,

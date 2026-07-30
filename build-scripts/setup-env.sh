@@ -15,6 +15,9 @@
 
 set -e
 
+BASE_DIR=$(dirname "$0")
+source ${BASE_DIR}/setup-env-functions.sh
+
 # if CICD WORKSPACE exists
 cicd_build_scripts_dir=""
 if [ -n "${WORKSPACE}" ]; then
