@@ -8,7 +8,8 @@
 #         http://license.coscl.org.cn/MulanPSL2
 # ----------------------------------------------------------------------
 
-FROM qcos-base:dev AS qcos-builder
+ARG BASE_TAG=${BASE_TAG}
+FROM qcos-base:${BASE_TAG} AS qcos-builder
 
 ARG BUILD_CONTEXT=/tmp/build-context
 ARG CONTAINER_NAME
@@ -27,6 +28,7 @@ ENV LANGUAGE=en_US:en
 ENV CONTAINER_NAME=${CONTAINER_NAME}
 ENV PS1="(\${CONTAINER_NAME})[$(pwd)]$ "
 
+WORKDIR ${WORK_DIR}
 COPY ./ ${BUILD_CONTEXT}
 
 # Copy command line entrypoints
@@ -36,9 +38,8 @@ RUN set -e && \
     cp -rf ${BUILD_CONTEXT}/bin/qcos-transpiler.py /usr/bin/qcos-transpiler &&  \
     chmod +x /usr/bin/qcos-cli /usr/bin/qcos-api /usr/bin/qcos-transpiler &&  \
     # config yum and pip repos
-    if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then rm -rf /etc/yum.repos.d/*.repo; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi \
-    && if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi \
-    && \
+    if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then mkdir -p /tmp/yum.repos.d/; mv /etc/yum.repos.d/*.repo /tmp/yum.repos.d/; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi && \
+    if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
 # Copy docker entrypoint
     /bin/cp ${BUILD_CONTEXT}/build-scripts/qcos/entrypoint.sh / && chmod +x /entrypoint.sh && \
 # Install qcos/qcos-cli packages
@@ -66,8 +67,17 @@ RUN set -e && \
     commit_id=$(cat "${BUILD_CONTEXT}/latest-commit-id.txt" 2>/dev/null || echo "") && \
     echo -e "QCOS build info\nversion: ${QCOS_IMAGE_VERSION}\ncommit id: ${commit_id}\nbuild time: ${build_date}\n" > /root/build-info.txt && \
 # cleanup
+    if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then rm -rf /etc/yum.repos.d/*.repo; mv /tmp/yum.repos.d/*.repo /etc/yum.repos.d/; fi && \
+    if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then rm -rf /root/.pip; fi && \
     yum clean all && \
     rm -rf ${BUILD_CONTEXT}
 
-WORKDIR ${WORK_DIR}
+RUN useradd -r -g root qcos && \
+    # create runtime dirs and grant ownership to qcos user
+    mkdir -p /var/log/qcos /etc/qcos /etc/qcos/roles /etc/qcos/ssl \
+             /etc/qcos/conf.d /etc/qcos/st-conf.d /var/run/qcos \
+             /var/lib/qcos /var/qcos/db /var/qcos/storage && \
+    chown -R qcos:root /var/log/qcos /etc/qcos /var/run/qcos \
+                       /var/lib/qcos /var/qcos
+USER root
 ENTRYPOINT ["/entrypoint.sh"]

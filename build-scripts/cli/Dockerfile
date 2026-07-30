@@ -30,6 +30,8 @@ ENV LANGUAGE=en_US:en
 ENV CONTAINER_NAME=${CONTAINER_NAME}
 ENV PS1="(\${CONTAINER_NAME})[$(pwd)]$ "
 
+ENV PIPBIN=/usr/bin/pip3
+
 COPY ./ ${BUILD_CONTEXT}
 WORKDIR /root
 
@@ -41,13 +43,25 @@ RUN set -e && \
 # config system
     /bin/cp ${BUILD_CONTEXT}/build-scripts/cli/entrypoint.sh / && \
     chmod +x /entrypoint.sh && \
+    echo "LANG=C.UTF-8" > /etc/locale.conf && \
 # copy yum repos and create dirs
-    if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then rm -rf /etc/yum.repos.d/*.repo; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi && \
+    if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then mkdir -p /tmp/yum.repos.d/; mv /etc/yum.repos.d/*.repo /tmp/yum.repos.d/; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi && \
     if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
 # install basic rpms
     yum install --nobest -y hostname openssh openssh-clients sshpass iputils iproute \
       telnet net-tools openssl util-linux vim findutils \
-      python3 python3-pip python3-requests python3-devel postgresql && \
+      python3 python3-pip python3-requests python3-devel && \
+# install python basic requirements
+    ${PIPBIN} install --no-cache-dir tomlkit==0.15.1 && \
+    if [ "${PIPBIN}" != "/usr/bin/pip3" ]; then \
+      pip3 install --no-cache-dir tomlkit==0.15.1 ; \
+    fi \
+    && \
+# install python requirements
+    cd ${BUILD_CONTEXT}/build-scripts/cli/ && \
+    ${BUILD_CONTEXT}/requirements/export-requirements.py ./pyproject.toml ./requirements.txt && \
+    pip3 install --no-cache-dir -r ./requirements.txt && \
+# install qcos wheel package
     if [ "${DEV,,}" = "false" ]; then \
       # install qcos wheel package in production mode
       pip3 install ${BUILD_CONTEXT}/pkg/wy_qcos_client-*.whl;  \
@@ -58,8 +72,6 @@ RUN set -e && \
     fi && \
 # create symbolic link for python3
     ln -sf /usr/bin/python3 /usr/bin/python && \
-# install python3 deps
-    if [ "${DEV,,}" != "false" ]; then pip3 install --no-cache-dir --upgrade -r ${BUILD_CONTEXT}/build-scripts/cli/requirements.txt; fi && \
 # generate ssh keys
     rm -rf /root/.ssh/id_rsa && \
     ssh-keygen -t rsa -f /root/.ssh/id_rsa -q -N "" && \
@@ -68,8 +80,12 @@ RUN set -e && \
     commit_id=$(cat "${BUILD_CONTEXT}/latest-commit-id.txt" 2>/dev/null || echo "") && \
     echo -e "QCOS-cli build info\nversion: ${QCOS_IMAGE_VERSION}\ncommit id: ${commit_id}\nbuild time: ${build_date}\n" > /root/build-info.txt && \
 # cleanup build-context
+    if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then rm -rf /etc/yum.repos.d/*.repo; mv /tmp/yum.repos.d/*.repo /etc/yum.repos.d/; fi && \
+    if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then rm -rf /root/.pip; fi && \
     yum clean all && \
     rm -rf ${BUILD_CONTEXT}
 
+RUN useradd -r -g root qcos
+USER root
 WORKDIR /root
 ENTRYPOINT ["/entrypoint.sh"]
