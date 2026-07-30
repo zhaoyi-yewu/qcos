@@ -21,6 +21,9 @@ services:
     restart: always
     stdin_open: True
     tty: True
+    tmpfs:
+      - /tmp
+      - /var/tmp
     working_dir: /root
     environment:
       TZ: Asia/Shanghai

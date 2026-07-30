@@ -17,11 +17,13 @@ services:
   qcos-sandbox:
     container_name: qcos-sandbox
     image: ${QCOS_REGISTRY}${SANDBOX_IMAGE_NAME}:${SANDBOX_IMAGE_VERSION}
-    privileged: true
     network_mode: "host"
     restart: always
     stdin_open: True
     tty: True
+    tmpfs:
+      - /tmp
+      - /var/tmp
     working_dir: /root/qcos-project
     environment:
       DEBUG: ${DEBUG}

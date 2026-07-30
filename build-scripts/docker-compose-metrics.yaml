@@ -19,6 +19,10 @@ services:
     container_name: prometheus
     restart: unless-stopped
     network_mode: "host"
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
     volumes:
       - /etc/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - /etc/prometheus/rules:/etc/prometheus/rules
@@ -38,6 +42,10 @@ services:
     container_name: alertmanager
     restart: unless-stopped
     network_mode: "host"
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
     volumes:
       - /etc/alertmanager/:/etc/alertmanager/
       - /etc/alertmanager-data:/alertmanager-data
@@ -58,6 +66,10 @@ services:
     container_name: grafana
     restart: unless-stopped
     network_mode: "host"
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
     volumes:
       - grafana-data:/var/lib/grafana
       - /etc/grafana/provisioning:/etc/grafana/provisioning
