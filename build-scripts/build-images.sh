@@ -49,7 +49,6 @@ qcos=false
 cli=false
 all=false
 save=true
-build_wheel_in_sandbox=${BUILD_WHEEL_IN_SANDBOX:-false}
 
 while true; do
   case "$1" in
@@ -70,21 +69,27 @@ source ${BUILD_SCRIPTS_DIR}/setup-build-context.sh
 PYTHON_SRC_MIRROR=${PYTHON_SRC_MIRROR:-"https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz"}
 PYPY3_BIN_MIRROR=${PYPY3_BIN_MIRROR:-"https://downloads.python.org/pypy/pypy3.11-v7.3.20-linux64.tar.bz2"}
 DOCKER_COMPOSE_BIN_MIRROR=${DOCKER_COMPOSE_BIN_MIRROR}
+build_wheel_in_sandbox=${BUILD_WHEEL_IN_SANDBOX:-false}
 
 image_tag=${QCOS_IMAGE_VERSION}
+if [ "${DEV,,}" = true ]; then
+  image_tag="dev"
+else
+  image_tag=${QCOS_IMAGE_VERSION}
+fi
 if [ -n "${tag}" ]; then
   image_tag=${tag}
 fi
 
 QCOS_BASE_IMAGE_NAME=qcos-base
-QCOS_BASE_IMAGE_VERSION=${tag:-dev}
-SANDBOX_IMAGE_VERSION=${tag:-dev}
-OUTPUT_QCOS_BASE_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_BASE_IMAGE_NAME}-amd64-${QCOS_BASE_IMAGE_VERSION}.tar.xz
+QCOS_BASE_IMAGE_VERSION=${image_tag:-dev}
+SANDBOX_IMAGE_VERSION=${image_tag:-dev}
+OUTPUT_QCOS_BASE_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_BASE_IMAGE_NAME}-amd64-${image_tag}.tar.xz
 OUTPUT_SANDBOX_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-sandbox-amd64-${image_tag}.tar.xz
 OUTPUT_QCOS_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-amd64-${image_tag}.tar.xz
 OUTPUT_QCOS_CLI_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-cli-amd64-${image_tag}.tar.xz
 
-if [ "${all}" = false -a "${base}" = false -a "${sandbox}" = false -a "${qcos}" = false -a "${cli}" = false ]; then
+if [ "${all,,}" = false -a "${base,,}" = false -a "${sandbox,,}" = false -a "${qcos,,}" = false -a "${cli,,}" = false ]; then
   qcos=true
 fi
 
@@ -114,15 +119,16 @@ function build_qcos_base_image {
     -t ${QCOS_BASE_IMAGE_NAME}:${QCOS_BASE_IMAGE_VERSION} .build-context
 
   # save image
-  if [ "${save}" = true ];then
+  if [ "${save,,}" = true ];then
     echo -e "\nExporting docker image: ${OUTPUT_QCOS_BASE_IMAGE_PATH}"
     docker save ${QCOS_BASE_IMAGE_NAME}:${QCOS_BASE_IMAGE_VERSION} | xz -c --fast -T 0 > ${OUTPUT_QCOS_BASE_IMAGE_PATH}
   fi
 }
 
 function run_sandbox {
-  echo -e "\nRun sandbox"
+  echo -e "\nRun sandbox: ${QCOS_REGISTRY}${SANDBOX_IMAGE_NAME}:${SANDBOX_IMAGE_VERSION}"
   # run sandbox
+  docker-compose -f docker-compose-sandbox.yaml down
   docker-compose -f docker-compose-sandbox.yaml up -d
 }
 
@@ -134,7 +140,6 @@ function build_sandbox_image {
 
   # build qcos building-system: sandbox
   cd ${BUILD_SCRIPTS_DIR}
-
   cp -rf ./sandbox/Dockerfile .build-context/
   DOCKER_BUILDKIT=0 docker build --no-cache --rm --network host \
     --build-arg BASE_TAG=${QCOS_BASE_IMAGE_VERSION} \
@@ -144,7 +149,7 @@ function build_sandbox_image {
     -t ${SANDBOX_IMAGE_NAME}:${SANDBOX_IMAGE_VERSION} .build-context
 
   # save image
-  if [ "${save}" = true ];then
+  if [ "${save,,}" = true ];then
     echo -e "\nExporting docker image: ${OUTPUT_SANDBOX_IMAGE_PATH}"
     docker save ${SANDBOX_IMAGE_NAME}:${SANDBOX_IMAGE_VERSION} | xz -c --fast -T 0 > ${OUTPUT_SANDBOX_IMAGE_PATH}
   fi
@@ -157,12 +162,12 @@ function build_qcos {
   QCOS_WHEEL_PATH=${WHEEL_PKG_DIST_DIR}/wy_qcos-${QCOS_VERSION}-py3-none-any.whl
 
   # build qcos-cli wheel package
-  if [ "${build_wheel_in_sandbox}" = false ];then
+  if [ "${build_wheel_in_sandbox,,}" = false ];then
     cd ${BUILD_SCRIPTS_DIR}
     ./build-wheel.sh
   else
     docker exec ${SANDBOX_CONTAINER_NAME} sh -c "
-    cd ${BUILD_SCRIPTS_DIR} &&
+    cd /root/qcos-project/build-scripts &&
     ./build-wheel.sh
     "
   fi
@@ -177,13 +182,14 @@ function build_qcos_image {
   cd ${BUILD_SCRIPTS_DIR}
   cp -rf ./qcos/Dockerfile .build-context/
   DOCKER_BUILDKIT=0 docker build --no-cache --rm --network host \
+    --build-arg BASE_TAG=${QCOS_BASE_IMAGE_VERSION} \
     --build-arg CONTAINER_NAME=${QCOS_CONTAINER_NAME} \
-    --build-arg QCOS_IMAGE_VERSION=${QCOS_IMAGE_VERSION} \
+    --build-arg QCOS_IMAGE_VERSION=${image_tag} \
     --build-arg DEV=${DEV} \
     -t ${QCOS_IMAGE_NAME}:${image_tag} .build-context
 
   # save image
-  if [ "${save}" = true ];then
+  if [ "${save,,}" = true ];then
     echo -e "\nExporting docker image: ${OUTPUT_QCOS_IMAGE_PATH}"
     docker save ${QCOS_IMAGE_NAME}:${image_tag} | xz -c --fast -T 0 > ${OUTPUT_QCOS_IMAGE_PATH}
   fi
@@ -196,7 +202,7 @@ function build_cli {
   QCOS_CLI_WHEEL_PATH=${WHEEL_PKG_DIST_DIR}/wy_qcos_client-${QCOS_CLI_VERSION}-py3-none-any.whl
 
   # build qcos-cli wheel package
-  if [ "${build_wheel_in_sandbox}" = false ];then
+  if [ "${build_wheel_in_sandbox,,}" = false ];then
     export QCOS_CLI_VERSION=${QCOS_CLI_VERSION}
     export QCOS_CLI_DIST=${QCOS_CLI_DIST}
     cd ${BUILD_SCRIPTS_DIR}/cli
@@ -205,7 +211,7 @@ function build_cli {
     docker exec ${SANDBOX_CONTAINER_NAME} sh -c "
     export QCOS_CLI_VERSION=${QCOS_CLI_VERSION} &&
     export QCOS_CLI_DIST=${QCOS_CLI_DIST} &&
-    cd ${BUILD_SCRIPTS_DIR}/cli &&
+    cd /root/qcos-project/build-scripts/cli &&
     ./build-wheel.sh
     "
   fi
@@ -231,7 +237,7 @@ function build_cli_image {
     -t ${QCOS_CLI_IMAGE_NAME}:${image_tag} .build-context
 
   # save image
-  if [ "${save}" = true ];then
+  if [ "${save,,}" = true ];then
     echo -e "\nExporting docker image: ${OUTPUT_QCOS_CLI_IMAGE_PATH}"
     docker save ${QCOS_CLI_IMAGE_NAME}:${image_tag} | xz -c --fast -T 0 > ${OUTPUT_QCOS_CLI_IMAGE_PATH}
   fi
@@ -242,29 +248,29 @@ function build_image {
   mkdir -p ${TEMP_PKG_DIR}
 
   QCOS_BASE_IMAGE="${QCOS_BASE_IMAGE_NAME}:${QCOS_BASE_IMAGE_VERSION}"
-  if [[ "${base}" != true && ( "${qcos}" = true || "${sandbox}" = true ) ]]; then
+  if [[ "${base,,}" != true && ( "${qcos,,}" = true || "${sandbox,,}" = true ) ]]; then
     if ! check_docker_image "${QCOS_BASE_IMAGE}"; then
       echo "Can't find container image: ${QCOS_BASE_IMAGE}, put it in building list"
       base=true
     fi
   fi
 
-  if [ "${all}" = true ];then
+  if [ "${all,,}" = true ];then
     cli=true
     qcos=true
   fi
 
-  if [ "${base}" = true ];then
+  if [ "${base,,}" = true ];then
     build_qcos_base_image
   fi
 
-  if [ "${sandbox}" = true ];then
+  if [ "${sandbox,,}" = true ];then
     build_sandbox_image
   fi
 
-  if [ "${qcos}" = true ];then
+  if [ "${qcos,,}" = true ];then
     if [ "${DEV,,}" = false ]; then
-      if [ "${build_wheel_in_sandbox}" = true ];then
+      if [ "${build_wheel_in_sandbox,,}" = true ];then
         run_sandbox
       fi
       build_cli
@@ -275,9 +281,9 @@ function build_image {
     build_qcos_image
   fi
 
-  if [ "${cli}" = true ];then
+  if [ "${cli,,}" = true ];then
     if [ "${DEV,,}" = false ]; then
-      if [ "${build_wheel_in_sandbox}" = true ];then
+      if [ "${build_wheel_in_sandbox,,}" = true ];then
         run_sandbox
       fi
       build_cli
@@ -288,29 +294,29 @@ function build_image {
 
   # print info of exported images
   echo
-  if [ "${base}" = true ];then
-    if [ "${save}" = true ];then
+  if [ "${base,,}" = true ];then
+    if [ "${save,,}" = true ];then
       echo -e "\nExported qcos-base docker image: ${OUTPUT_QCOS_BASE_IMAGE_PATH}"
     else
       echo -e "\nExported qcos-base docker image: skipped"
     fi
   fi
-  if [ "${sandbox}" = true ];then
-    if [ "${save}" = true ];then
+  if [ "${sandbox,,}" = true ];then
+    if [ "${save,,}" = true ];then
       echo -e "\nExported qcos-sandbox docker image: ${OUTPUT_SANDBOX_IMAGE_PATH}"
     else
       echo -e "\nExported qcos-sandbox docker image: skipped"
     fi
   fi
-  if [ "${cli}" = true ];then
-    if [ "${save}" = true ];then
+  if [ "${cli,,}" = true ];then
+    if [ "${save,,}" = true ];then
       echo -e "\nExported qcos-cli docker image: ${OUTPUT_QCOS_CLI_IMAGE_PATH}"
     else
       echo -e "\nExported qcos-cli docker image: skipped"
     fi
   fi
-  if [ "${qcos}" = true ];then
-    if [ "${save}" = true ];then
+  if [ "${qcos,,}" = true ];then
+    if [ "${save,,}" = true ];then
       echo -e "\nExported qcos docker image: ${OUTPUT_QCOS_IMAGE_PATH}"
     else
       echo -e "\nExported qcos docker image: skipped"
