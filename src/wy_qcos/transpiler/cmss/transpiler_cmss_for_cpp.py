@@ -53,6 +53,7 @@ from wy_qcos.transpiler.high_performance import (
     sabre_routing as cpp_sabre_routing,
     optimize,
     transpile as cpp_transpile,
+    transpile_na as cpp_transpile_na,
 )
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     DEFAULT_SC_MAPPING_OPTIONS,
@@ -271,7 +272,12 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             )
 
     def transpile_single(self, qasm_string, supp_basis_gates, qpu_cfg):
-        """All-in-one transpile using C++ implementation (sabre routing path).
+        """All-in-one transpile using C++ implementation (single-circuit path).
+
+        Selects the routing path by tech_type:
+        - neutral_atom with enable_na_move -> NA mapping
+          (NARoute, inserting MOVE between storage/operate areas);
+        - otherwise (including superconducting) -> SABRE routing.
 
         Combines parse + transpile into a single C++ call, avoiding
         intermediate Python/C++ data transfer overhead.
@@ -279,26 +285,58 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
         Args:
             qasm_string (str): QASM circuit string.
             supp_basis_gates (list[str]): Supported basis gate names.
-            qpu_cfg (dict): QPU configuration dict (must contain coupler_map).
+            qpu_cfg (dict): QPU configuration dict (must contain coupler_map;
+                the NA path additionally needs storage_area/operate_area/
+                readout_error).
 
         Returns:
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.
         """
-        coupling_list, edge_fidelities, single_qubit_fidelities = (
-            extract_topology_data(qpu_cfg)
-        )
+        tech_type = trans_cfg_inst.get_tech_type()
+        enable_na_move = self.transpiler_options.get("enable_na_move", False)
         opt_level = self.transpiler_options.get(
             "optimization_level", Constant.DEFAULT_OPTIMIZATION_LEVEL
         )
 
-        return cpp_transpile(
-            qasm_string,
-            supp_basis_gates,
-            coupling_list,
-            opt_level=opt_level,
-            edge_fidelities=edge_fidelities,
-            single_qubit_fidelities=single_qubit_fidelities,
-        )
+        # neutral_atom + enable_na_move -> NA mapping path
+        if tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM and enable_na_move:
+            # NA topology only supports cz as the two-qubit gate
+            if supp_basis_gates is None or len(supp_basis_gates) == 0:
+                supp_basis_gates = [
+                    Constant.SINGLE_QUBIT_GATE_RX,
+                    Constant.SINGLE_QUBIT_GATE_RY,
+                    Constant.TWO_QUBIT_GATE_CZ,
+                ]
+            elif Constant.TWO_QUBIT_GATE_CZ not in supp_basis_gates:
+                raise TranspilerException(
+                    f"Basis gate({supp_basis_gates}) is not supported for "
+                    "neutral atom topology. "
+                )
+            return cpp_transpile_na(
+                qasm_string,
+                supp_basis_gates,
+                qpu_cfg,
+                opt_level=opt_level,
+            )
+        elif tech_type == Constant.TECH_TYPE_SUPERCONDUCTING:
+            # Other (including superconducting SABRE) paths
+            coupling_list, edge_fidelities, single_qubit_fidelities = (
+                extract_topology_data(qpu_cfg)
+            )
+
+            return cpp_transpile(
+                qasm_string,
+                supp_basis_gates,
+                coupling_list,
+                opt_level=opt_level,
+                edge_fidelities=edge_fidelities,
+                single_qubit_fidelities=single_qubit_fidelities,
+            )
+        else:
+            raise TranspilerException(
+                f"Unsupported tech_type({tech_type}) "
+                "for high-performance transpiler."
+            )
 
     def parse(self, src_code_dict, code_type: str = Constant.CODE_TYPE_QASM):
         """Parse src_code_dict.

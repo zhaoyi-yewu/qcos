@@ -28,8 +28,8 @@ using namespace qcos;
 namespace {
 
 NAQpuConfig make_test_qpu_config() {
-  // 与 Python 侧 test_transpiler_na_mapping.py 配置保持一致：
-  // 8 个操作区位置（4 条边）+ 36 个存储区位置
+  // Matches the config in test_transpiler_na_mapping.py:
+  // 8 operate-area positions (4 edges) + 36 storage-area positions.
   NAQpuConfig cfg;
   cfg.storage_area = {"P144", "P145", "P146", "P147", "P148", "P149",
                       "P150", "P151", "P152", "P153", "P154", "P155",
@@ -58,7 +58,7 @@ NAQpuConfig make_test_qpu_config() {
 }
 
 std::vector<std::shared_ptr<BaseOperation>> make_simple_gates() {
-  // 对应 Python simple_data 经 optimize_gate(opt_level=1) 后的结果：
+  // Matches Python simple_data after optimize_gate(opt_level=1):
   // h; h; x; rx(1) -> x; rx(1)
   return {
       std::make_shared<X>(std::vector<int>{0}),
@@ -84,8 +84,8 @@ TEST(NaMappingTest, PrepareDataBuildsGraph) {
   auto cfg = make_test_qpu_config();
   NARoute na;
   na.prepare_data(5, make_simple_gates(), cfg);
-  // prepare_data 不构建 logical_to_storage（与 Python 实现一致，
-  // 该映射在 get_init_mapping 中构建）
+  // prepare_data does not build logical_to_storage (matching the Python impl;
+  // the mapping is built in get_init_mapping).
   EXPECT_TRUE(na.logical_to_storage.empty());
 }
 

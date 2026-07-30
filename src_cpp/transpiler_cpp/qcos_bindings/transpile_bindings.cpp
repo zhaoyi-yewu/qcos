@@ -21,10 +21,46 @@
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
 
+#include <stdexcept>
+
+#include "mapping/na_mapping.h"
 #include "transpile/transpile.h"
 
 namespace nb = nanobind;
 using namespace qcos;
+
+namespace {
+
+/// Parse NAQpuConfig from a Python dict.
+NAQpuConfig parse_na_qpu_config(const nb::dict& qpu_cfg) {
+  NAQpuConfig cfg;
+  nb::list storage_area = nb::cast<nb::list>(qpu_cfg["storage_area"]);
+  for (auto pos : storage_area) {
+    cfg.storage_area.push_back(nb::cast<std::string>(pos));
+  }
+  nb::list operate_area = nb::cast<nb::list>(qpu_cfg["operate_area"]);
+  for (auto pos : operate_area) {
+    cfg.operate_area.push_back(nb::cast<std::string>(pos));
+  }
+  nb::dict coupler_map = nb::cast<nb::dict>(qpu_cfg["coupler_map"]);
+  for (auto item : coupler_map) {
+    auto endpoints = nb::cast<std::vector<std::string>>(item.second);
+    if (endpoints.size() != 2) {
+      throw std::invalid_argument("coupler_map entry must have 2 endpoints");
+    }
+    cfg.coupler_map.emplace_back(std::string(""),
+                                 std::make_pair(endpoints[0], endpoints[1]));
+  }
+  nb::dict readout_error = nb::cast<nb::dict>(qpu_cfg["readout_error"]);
+  for (auto item : readout_error) {
+    auto pos = nb::cast<std::string>(item.first);
+    auto err = nb::cast<double>(item.second);
+    cfg.readout_error[pos] = err;
+  }
+  return cfg;
+}
+
+}  // namespace
 
 void bind_transpile(nb::module_& m) {
   // 绑定 TranspileTimings — 各阶段耗时记录
@@ -86,4 +122,35 @@ void bind_transpile(nb::module_& m) {
         Returns:
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.
               )");
+
+  // Bind transpile_na — neutral-atom NA mapping, single-circuit path.
+  m.def(
+      "transpile_na",
+      [](const std::string& qasm_string,
+         const std::vector<std::string>& supp_basis_gates,
+         const nb::dict& qpu_cfg, int opt_level) {
+        auto cfg = parse_na_qpu_config(qpu_cfg);
+        nb::gil_scoped_release release;
+        return transpile_na(qasm_string, supp_basis_gates, cfg, opt_level);
+      },
+      nb::arg("qasm_string"), nb::arg("supp_basis_gates"),
+      nb::arg("qpu_cfg"), nb::arg("opt_level") = 1,
+      R"(
+        All-in-one transpile function (neutral-atom NA mapping, single-circuit path).
+
+        Same pipeline as ``transpile`` (sabre) but the routing stage uses
+        NARoute, inserting MOVE operations between the storage and operate
+        areas so that two-qubit gates act on adjacent sites.
+
+        Args:
+            qasm_string (str): QASM circuit string.
+            supp_basis_gates (list[str]): Supported basis gate names.
+            qpu_cfg (dict): Neutral-atom QPU configuration with keys
+                ``storage_area``, ``operate_area``, ``coupler_map`` and
+                ``readout_error``.
+            opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+
+        Returns:
+            TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+      )");
 }
