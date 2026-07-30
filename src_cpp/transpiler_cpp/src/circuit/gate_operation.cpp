@@ -1664,33 +1664,15 @@ std::vector<std::shared_ptr<BaseOperation>> ECR ::default_decompose() {
 }
 
 std::array<std::complex<double>, 16> ECR ::to_matrix() const {
-  // ECR 门矩阵 (Echoed Cross Resonance)
-  const double inv_sqrt2 = 1.0 / std::sqrt(2.0);
+  // ECR = 1/√2 * (IX - XY)
+  using C = std::complex<double>;
+  const double s = 1.0 / std::sqrt(2.0);
 
-  std::array<std::complex<double>, 16> ecr_matrix = {
-      // |00⟩, |01⟩, |10⟩, |11⟩
-      std::complex<double>(0.0, 0.0),
-      inv_sqrt2 * std::complex<double>(0.0, 1.0),  // 0, +i/√2
-      inv_sqrt2,
-      std::complex<double>(0.0, 0.0),
-
-      inv_sqrt2 * std::complex<double>(0.0, 1.0),
-      std::complex<double>(0.0, 0.0),  // +i/√2, 0
-      std::complex<double>(0.0, 0.0),
-      inv_sqrt2,
-
-      inv_sqrt2,
-      std::complex<double>(0.0, 0.0),
-      std::complex<double>(0.0, 0.0),
-      inv_sqrt2 * std::complex<double>(0.0, -1.0),  // 0, -i/√2
-
-      std::complex<double>(0.0, 0.0),
-      inv_sqrt2,
-      inv_sqrt2 * std::complex<double>(0.0, -1.0),
-      std::complex<double>(0.0, 0.0)  // -i/√2, 0
-  };
-
-  return ecr_matrix;
+  return {
+      C(0), C(0), C(s), C(0, s),
+      C(0), C(0), C(0, s), C(s),
+      C(s), C(0, -s), C(0), C(0),
+      C(0, -s), C(s), C(0), C(0)};
 }
 
 std::string ECR ::to_string() const {
@@ -2034,7 +2016,7 @@ std::array<std::complex<double>, 16> RZX ::to_matrix() const {
       std::complex<double>(0.0, 0.0),
       std::complex<double>(cos_theta2, 0.0),
       std::complex<double>(0.0, 0.0),
-      i_sin_theta2,
+      i_sin_theta2_pos,
 
       i_sin_theta2,
       std::complex<double>(0.0, 0.0),

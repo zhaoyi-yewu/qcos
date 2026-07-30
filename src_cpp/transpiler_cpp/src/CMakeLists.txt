@@ -19,6 +19,7 @@ add_library(${LIB_TRANSPILER} STATIC
                             optimizer/clifford_rz_optimization.cpp
                             optimizer/collect_block.cpp
                             optimizer/gate_optimizer.cpp
+                            optimizer/unitary_synthesis.cpp
                             decomposer/equivalence_graph.cpp
                             decomposer/rule_applier.cpp
                             decomposer/decomposer.cpp
