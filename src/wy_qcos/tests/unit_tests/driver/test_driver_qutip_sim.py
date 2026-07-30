@@ -37,7 +37,6 @@ driver_qutip_sim = DriverQutipSim()
 job_id = "00000000-0000-4000-8000-000000000001"
 num_qubits = 2
 shots = 10
-measure_result = {"00": 0.0, "01": 0.0, "10": 0.0, "11": 1.0}
 final_result = {"11": 10}
 transpile_result = [
     RX(targets=[0], arg_value=[3.141592653589793]),
@@ -55,10 +54,6 @@ class TestDriverQutipSim:
     def teardown_class(cls):
         sys.path = org_path
 
-    def test_convert_result(self):
-        result = driver_qutip_sim.convert_result(measure_result, shots)
-        assert result == final_result
-
     def test_init_driver(self):
         assert driver_qutip_sim.init_driver() is None
 
@@ -75,7 +70,7 @@ class TestDriverQutipSim:
 
     def test_convert_gates(self):
         circuit = driver_qutip_sim.convert_gates(transpile_result, num_qubits)
-        assert len(circuit.gates) == 2
+        assert len(circuit.gates) == 4
 
     def test_run(self):
         assert (

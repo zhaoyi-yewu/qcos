@@ -16,11 +16,10 @@
 # ----------------------------------------------------------------------
 
 import time
-
+import numpy as np
 from loguru import logger
-from itertools import product
 
-from qutip import basis, tensor
+from qutip import basis, tensor, sigmax, sigmay, sigmaz, Qobj
 from qutip_qip.circuit import CircuitSimulator, QubitCircuit
 from schema import Optional
 
@@ -28,6 +27,27 @@ from wy_qcos.device.device import Device
 from wy_qcos.common.constant import Constant
 from wy_qcos.driver.driver_base import DriverBase
 from wy_qcos.common.cmss.base_operation import OperationType
+
+Z = sigmaz()
+Y = sigmay()
+X = sigmax()
+
+
+def ashn(arg_value):
+    """Ashn gate.
+
+    Args:
+        arg_value: arg_value for the gate.
+
+    Returns:
+        the ashn gate Qobj
+    """
+    a = arg_value[0]
+    b = arg_value[1]
+    c = arg_value[2]
+    H = a * tensor(X, X) + b * tensor(Y, Y) + c * tensor(Z, Z)
+    U = (1j * H).expm()
+    return Qobj(U, dims=[[2, 2], [2, 2]])
 
 
 class DriverQutipSim(DriverBase):
@@ -44,7 +64,7 @@ class DriverQutipSim(DriverBase):
             Constant.SINGLE_QUBIT_GATE_RX,
             Constant.SINGLE_QUBIT_GATE_RY,
             Constant.SINGLE_QUBIT_GATE_RZ,
-            Constant.TWO_QUBIT_GATE_CX,
+            Constant.TWO_QUBIT_GATE_ASHN,
         ]
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_aggregation = True
@@ -54,61 +74,35 @@ class DriverQutipSim(DriverBase):
             Optional("max_qubits"): int,
         }
 
-    def get_measurement_prob(self, result, num_qubit):
-        """Get measurement probability.
-
-        Args:
-            result: result
-            num_qubit: qubit number
-
-        Returns:
-            measure results
-        """
-        measurement_results = {}
-        states = list(product([0, 1], repeat=num_qubit))
-        state_labels = ["".join(map(str, s)) for s in states]
-        probs = result.get_probabilities()
-        for state, prob in zip(state_labels, probs):
-            measurement_results[state] = prob
-        return measurement_results
-
     def convert_result(self, results, shots):
         """Convert result.
 
         Args:
-            results: task results
-            shots: shots
+            results: [(state, probability), ...]
+            shots: shots number
 
         Returns:
-            converted task results
+            final results
         """
-        counts = [(key, shots * results[key]) for key in results]
-        normalized_results = []
-        remainders = []
-        total_base = 0
+        counts_dict = {}
 
-        for name, val in counts:
-            base = int(val)  # 向下取整
-            rem = val - base
-            normalized_results.append({"name": name, "count": base})
-            remainders.append((name, rem))
-            total_base += base
+        for state, prob in results:
+            vec = state.full().flatten()
+            n_qubits = int(np.log2(len(vec)))
+            nonzero_idx = np.where(np.abs(vec) > 1e-10)[0]
 
-        remaining = shots - total_base
-        remainders.sort(key=lambda x: x[1], reverse=True)
+            for idx in nonzero_idx:
+                bitstring = format(idx, f"0{n_qubits}b")
+                count = np.abs(vec[idx]) ** 2 * prob * shots
+                counts_dict[bitstring] = counts_dict.get(bitstring, 0) + count
 
-        for i in range(remaining):
-            target_name = remainders[i][0]
-            for item in normalized_results:
-                if item["name"] == target_name:
-                    item["count"] += 1
-                    break
-        converted_results = {}
-        for result in normalized_results:
-            if result["count"] == 0:
-                continue
-            converted_results[result["name"]] = result["count"]
-        return converted_results
+            counts_dict = {s: int(round(c)) for s, c in counts_dict.items()}
+            if sum(counts_dict.values()) != shots:
+                diff = shots - sum(counts_dict.values())
+                max_state = max(counts_dict, key=counts_dict.get)
+                counts_dict[max_state] += diff
+
+        return counts_dict
 
     def init_driver(self):
         """Init driver."""
@@ -159,7 +153,7 @@ class DriverQutipSim(DriverBase):
         Returns:
             qc
         """
-        qc = QubitCircuit(N=num_qubits)
+        qc = QubitCircuit(N=num_qubits, num_cbits=num_qubits)
         for operation in transpile_results:
             gate_name = operation.name.upper()
             if (
@@ -167,18 +161,10 @@ class DriverQutipSim(DriverBase):
                 == OperationType.DOUBLE_QUBIT_OPERATION.value
             ):
                 if operation.arg_value:
-                    if operation.name == "cp":
-                        gate_name = "CPHASE"
-                    qc.add_gate(
-                        gate_name,
-                        targets=operation.targets[-1],
-                        controls=operation.targets[:-1],
-                        arg_value=operation.arg_value[0],
-                    )
-                elif operation.name == "swap":
                     qc.add_gate(
                         gate_name,
                         targets=operation.targets,
+                        arg_value=operation.arg_value[0],
                     )
                 else:
                     qc.add_gate(
@@ -198,10 +184,6 @@ class DriverQutipSim(DriverBase):
                             arg_value=operation.arg_value,
                         )
                     else:
-                        if operation.name == "p":
-                            gate_name = "PHASEGATE"
-                        elif operation.name == "sx":
-                            gate_name = "SQRTNOT"
                         qc.add_gate(
                             gate_name,
                             targets=operation.targets[-1],
@@ -209,15 +191,8 @@ class DriverQutipSim(DriverBase):
                         )
                 else:
                     qc.add_gate(gate_name, targets=operation.targets[-1])
-            elif (
-                operation.operation_type
-                == OperationType.TRIPLE_QUBIT_OPERATION.value
-            ):
-                qc.add_gate(
-                    "TOFFOLI",
-                    targets=operation.targets[-1],
-                    controls=operation.targets[:-1],
-                )
+        for i in range(num_qubits):
+            qc.add_measurement(f"M{i}", targets=[i], classical_store=i)
         return qc
 
     def run(
@@ -250,15 +225,16 @@ class DriverQutipSim(DriverBase):
 
         transpile_results = data["transpile_results"]
         qc = self.convert_gates(transpile_results, num_qubits)
+        qc.user_gates["ASHN"] = ashn
         initial_state = basis(2, 0)
         for i in range(num_qubits - 1):
             initial_state = tensor(initial_state, basis(2, 0))
 
         sim = CircuitSimulator(qc, mode="state_vector_simulator")
         result = sim.run_statistics(state=initial_state)
-
-        state_probs = self.get_measurement_prob(result, num_qubits)
-        count_probs = self.convert_result(state_probs, shots)
+        states = result.get_final_states()
+        probabilities = result.get_probabilities()
+        count_probs = self.convert_result(zip(states, probabilities), shots)
 
         sleep = self.driver_options.get("sleep", None)
         if sleep:

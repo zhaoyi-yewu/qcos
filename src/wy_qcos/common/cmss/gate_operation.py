@@ -1429,6 +1429,68 @@ class RZX(GateOperation):
         )
 
 
+class ASHN(GateOperation):
+    """ASHN门（双量子比特 Z-X 旋转门）.
+
+    ASHN 门是一种双量子比特门，
+    可以通过调整参数实现所有的双量子比特门。
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_ASHN,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the ASHN gate."""
+        a = self.arg_value[0]
+        b = self.arg_value[1]
+        c = self.arg_value[2]
+        Hamilton = (
+            a
+            * np.array(
+                [
+                    [0, 0, 0, 1],
+                    [0, 0, 1, 0],
+                    [0, 1, 0, 0],
+                    [1, 0, 0, 0],
+                ],
+                dtype=dtype,
+            )
+            + b
+            * np.array(
+                [
+                    [0, 0, 0, -1],
+                    [0, 0, 1, 0],
+                    [0, 1, 0, 0],
+                    [-1, 0, 0, 0],
+                ],
+                dtype=dtype,
+            )
+            + c
+            * np.array(
+                [
+                    [1, 0, 0, 0],
+                    [0, -1, 0, 0],
+                    [0, 0, -1, 0],
+                    [0, 0, 0, 1],
+                ],
+                dtype=dtype,
+            )
+        )
+        unitary = (1j * Hamilton).expm()
+        return unitary
+
+
 class CCX(GateOperation):
     """Toffoli门，如果两个控制量子比特都处于`|1⟩`状态，则对目标量子比特应用X门（Pauli-X门）."""
 
