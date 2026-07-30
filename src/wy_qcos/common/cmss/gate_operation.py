@@ -1553,6 +1553,48 @@ class CCX(GateOperation):
         )
 
 
+class CCZ(GateOperation):
+    """CCZ门（双控制Z门 / Doubly-Controlled-Z Gate）.
+
+    当两个控制量子比特都处于`|1⟩`状态时，对目标量子比特应用Z门（Pauli-Z门），
+    即对|111⟩态施加一个-1的相位因子，其余基态保持不变。
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.TRIPLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.THREE_QUBIT_GATE_CCZ, targets, arg_value, gate_type
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates += H([self.targets[2]]).decompose()
+        gates += CCX(self.targets).decompose()
+        gates += H([self.targets[2]]).decompose()
+        return gates
+
+    def decompose_to_1q2q(self):
+        gates = []
+        gates.append(H([self.targets[2]]))
+        gates += CCX(self.targets).decompose_to_1q2q()
+        gates.append(H([self.targets[2]]))
+        return gates
+
+    def __array__(self, dtype=None):
+        z_array = [[1, 0], [0, -1]]
+        return GateOperation.with_controlled_gate_array(
+            base_array=z_array,
+            ctrl_state=int("11", 2),
+            num_ctrl_qubits=2,
+            cached_states=(3,),
+            dtype=dtype,
+        )
+
+
 class CSWAP(GateOperation):
     """CSWAP 门（也称 Fredkin 门）是一种 三比特受控交换门，.
 
@@ -2362,6 +2404,8 @@ def create_gate(
         return RZZ(targets, arg_value)
     elif name == Constant.THREE_QUBIT_GATE_CCX:
         return CCX(targets, arg_value)
+    elif name == Constant.THREE_QUBIT_GATE_CCZ:
+        return CCZ(targets, arg_value)
     elif name == Constant.THREE_QUBIT_GATE_CSWAP:
         return CSWAP(targets, arg_value)
     elif name == Constant.THREE_QUBIT_GATE_RCCX:

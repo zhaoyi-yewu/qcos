@@ -217,10 +217,12 @@ class Constant:
     ]
     # three-qubit gates
     THREE_QUBIT_GATE_CCX = "ccx"
+    THREE_QUBIT_GATE_CCZ = "ccz"
     THREE_QUBIT_GATE_CSWAP = "cswap"
     THREE_QUBIT_GATE_RCCX = "rccx"
     THREE_QUBIT_GATE_LIST = [
         THREE_QUBIT_GATE_CCX,
+        THREE_QUBIT_GATE_CCZ,
         THREE_QUBIT_GATE_CSWAP,
         THREE_QUBIT_GATE_RCCX,
     ]

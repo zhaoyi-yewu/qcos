@@ -2216,6 +2216,109 @@ std::string CCX ::to_string() const {
   return "CCX(targets=" + targets_to_string() +
          ", arg_value=" + arg_value_to_string() + ")";
 }
+
+CCZ::CCZ(std::vector<int> targets_, std::vector<double> arg_value_,
+         OperationType gate_type)
+    : GateOperation(Constant::THREE_QUBIT_GATE_CCZ, std::move(targets_),
+                    std::move(arg_value_), gate_type) {}
+
+std::vector<std::shared_ptr<BaseOperation>> CCZ::default_decompose() {
+  std::vector<std::shared_ptr<BaseOperation>> gates;
+
+  if (targets.size() < 3) {
+    return {std::make_shared<CCZ>(targets, arg_value)};
+  }
+
+  int c1 = targets[0];
+  int c2 = targets[1];
+  int t = targets[2];
+
+  auto h_gates = std::make_shared<H>(std::vector<int>{t})->default_decompose();
+  gates.insert(gates.end(), h_gates.begin(), h_gates.end());
+
+  auto ccx_gates =
+      std::make_shared<CCX>(std::vector<int>{c1, c2, t})->default_decompose();
+  gates.insert(gates.end(), ccx_gates.begin(), ccx_gates.end());
+
+  auto h_gates2 =
+      std::make_shared<H>(std::vector<int>{t})->default_decompose();
+  gates.insert(gates.end(), h_gates2.begin(), h_gates2.end());
+
+  return gates;
+}
+
+std::vector<std::shared_ptr<BaseOperation>> CCZ::decompose_to_1q2q() const {
+  std::vector<std::shared_ptr<BaseOperation>> gates;
+
+  if (targets.size() < 3) {
+    return {std::make_shared<CCZ>(targets, arg_value)};
+  }
+
+  int c1 = targets[0];
+  int c2 = targets[1];
+  int t = targets[2];
+
+  gates.push_back(std::make_shared<H>(std::vector<int>{t}));
+
+  auto ccx_gates =
+      std::make_shared<CCX>(std::vector<int>{c1, c2, t})->decompose_to_1q2q();
+  gates.insert(gates.end(), ccx_gates.begin(), ccx_gates.end());
+
+  gates.push_back(std::make_shared<H>(std::vector<int>{t}));
+
+  return gates;
+}
+
+std::array<std::complex<double>, 64> CCZ::to_matrix() const {
+  std::array<std::complex<double>, 64> ccz_matrix = {
+      std::complex<double>(1.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+
+      std::complex<double>(0.0, 0.0), std::complex<double>(1.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(1.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(1.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(1.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(1.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(1.0, 0.0), std::complex<double>(0.0, 0.0),
+
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(-1.0, 0.0)};
+
+  return ccz_matrix;
+}
+
+std::string CCZ::to_string() const {
+  return "CCZ(targets=" + targets_to_string() +
+         ", arg_value=" + arg_value_to_string() + ")";
+}
+
 CSWAP ::CSWAP(std::vector<int> targets_, std::vector<double> arg_value_,
               OperationType gate_type)
     : GateOperation(Constant::THREE_QUBIT_GATE_CSWAP, std::move(targets_),
@@ -3636,6 +3739,8 @@ std::shared_ptr<BaseOperation> create_gate(std::string_view name,
     return std::make_shared<RZX>(std::move(targets), std::move(arg_value));
   } else if (name == Constant::THREE_QUBIT_GATE_CCX) {
     return std::make_shared<CCX>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::THREE_QUBIT_GATE_CCZ) {
+    return std::make_shared<CCZ>(std::move(targets), std::move(arg_value));
   } else if (name == Constant::THREE_QUBIT_GATE_CSWAP) {
     return std::make_shared<CSWAP>(std::move(targets), std::move(arg_value));
   } else if (name == Constant::THREE_QUBIT_GATE_RCCX) {

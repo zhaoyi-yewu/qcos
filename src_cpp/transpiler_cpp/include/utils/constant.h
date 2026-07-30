@@ -119,12 +119,14 @@ inline const std::vector<std::string> TWO_QUBIT_GATE_LIST = {
 
 // 三量子门常量
 inline constexpr std::string_view THREE_QUBIT_GATE_CCX = "ccx";
+inline constexpr std::string_view THREE_QUBIT_GATE_CCZ = "ccz";
 inline constexpr std::string_view THREE_QUBIT_GATE_CSWAP = "cswap";
 inline constexpr std::string_view THREE_QUBIT_GATE_RCCX = "rccx";
 
 // 三量子门列表
 inline const std::vector<std::string> THREE_QUBIT_GATE_LIST = {
     std::string(THREE_QUBIT_GATE_CCX),
+    std::string(THREE_QUBIT_GATE_CCZ),
     std::string(THREE_QUBIT_GATE_CSWAP),
     std::string(THREE_QUBIT_GATE_RCCX),
 };
@@ -200,6 +202,7 @@ inline const std::vector<std::string> ALL_GATE_LIST = {
 
     // 三量子门
     std::string(THREE_QUBIT_GATE_CCX),
+    std::string(THREE_QUBIT_GATE_CCZ),
     std::string(THREE_QUBIT_GATE_CSWAP),
     std::string(THREE_QUBIT_GATE_RCCX),
 

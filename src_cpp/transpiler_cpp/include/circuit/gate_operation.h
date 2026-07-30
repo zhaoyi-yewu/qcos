@@ -370,6 +370,16 @@ class CCX : public GateOperation {
   std::string to_string() const;
 };
 
+class CCZ : public GateOperation {
+ public:
+  CCZ(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
+      OperationType gate_type = OperationType::TRIPLE_QUBIT_OPERATION);
+  std::vector<std::shared_ptr<BaseOperation>> default_decompose();
+  std::vector<std::shared_ptr<BaseOperation>> decompose_to_1q2q() const;
+  std::array<std::complex<double>, 64> to_matrix() const;
+  std::string to_string() const;
+};
+
 class CSWAP : public GateOperation {
  public:
   CSWAP(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {},
