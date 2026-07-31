@@ -42,7 +42,9 @@
      --description DESCRIPTION
                            Set job description
      --shots SHOTS
-                           Shots
+                           Shots. QCOS only requires a positive integer and
+                           does not impose a maximum; the backend may apply
+                           its own constraints.
      --backend BACKEND
                            Set backend device name. eg: dummy. Mutually
                            exclusive with --flavor; if not specified, auto
@@ -112,6 +114,27 @@
 
    # 开启电路切割
    qcos-cli submit-job --code-type qasm --shots 10 --backend quafu --driver-options '{"enable_wirecut":true, "wirecut_qubit_width": 10}' -f ./samples/qasm/2.0/wirecut/12_30.qasm
+
+   # 自动用项目内理想模拟器生成预期概率，并计算概率保真度
+   qcos-cli submit-job --code-type qasm --shots 1024 --backend quafu --driver-options '{"compute_fidelity":true}' -f ./samples/qasm/2.0/simple-qasm.qasm
+
+   # 3-bit Grover 示例，无需手工填写 101 的理论概率
+   qcos-cli submit-job --code-type qasm --shots 10240 --backend quafu --driver-options '{"compute_fidelity":true}' -f ./samples/qasm/2.0/wirecut/grover_3_search_3_qubit.qasm
+
+将 ``compute_fidelity`` 设为 ``true`` 后，Job Engine 会使用项目内的
+Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码计算
+理想分布，不会调用任务指定的 backend，用户也不需要提供任何概率值。
+默认最多模拟 10 个量子比特。系统会分别归一化实际结果和模拟分布，
+并计算平方 Bhattacharyya 系数：
+
+.. math::
+
+   F(P,Q) = \left(\sum_x \sqrt{P(x)Q(x)}\right)^2
+
+完成的采样结果会在 ``metadata.benchmark`` 中包含 ``ideal_probabilities``、
+``ideal_source`` 和 ``metrics.squared_bhattacharyya``。如果理想模拟失败，
+远端采样结果仍会保留，原因写入
+``metadata.benchmark.errors.ideal_simulation``。
 
 - 自动调度 (不指定backend，由系统自动选择设备)
 
@@ -477,4 +500,3 @@
 
    # 设置多作业结果（针对多源代码作业, 第2个结果带错误）
    qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}' '{"code": -104, "message": "error test"}'
-

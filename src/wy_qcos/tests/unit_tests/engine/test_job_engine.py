@@ -26,6 +26,7 @@ from wy_qcos.driver.driver_base import DriverBase
 from wy_qcos.driver.dummy.driver_dummy import DriverDummy
 from wy_qcos.engine.job_engine import (
     _run_code,
+    attach_fidelity_benchmark,
     counts_to_probs,
     create_src_code_info,
     driver_cancel,
@@ -722,6 +723,116 @@ class TestJobEngine:
         assert mapping == {}
         mock_run_code.assert_called_once()
 
+    def test_attach_fidelity_benchmark_reports_invalid_distribution(self):
+        results = {
+            "results": {"0": 10},
+            "metadata": {"status": Constant.JOB_STATUS_COMPLETED},
+        }
+
+        returned = attach_fidelity_benchmark(results, {"00": 1.0})
+
+        assert returned is results
+        assert (
+            "different bit widths"
+            in results["metadata"]["benchmark"]["errors"]["fidelity"]
+        )
+
+    @patch("wy_qcos.engine.job_engine.simulate_qasm_probabilities")
+    @patch("wy_qcos.engine.job_engine._run_code")
+    def test_run_circuit_code_computes_fidelity_benchmark(
+        self, mock_run_code, mock_simulate
+    ):
+        mock_driver = Mock()
+        mock_driver.get_max_qubits.return_value = 2
+        mock_driver.get_enable_wirecut.return_value = False
+        mock_driver.get_wirecut_qubit_width.return_value = 2
+        mock_driver.get_name.return_value = "TestDevice"
+        mock_transpiler = Mock()
+        job_id = "00000000-0000-4000-8000-000000000001"
+        source_code = "OPENQASM 2.0; qreg q[2];"
+        mock_transpiler.parse.return_value = {f"{job_id}-0": (2, None)}
+        ideal_probabilities = {"00": 0.5, "11": 0.5}
+        mock_simulate.return_value = ideal_probabilities
+        mock_run_code.return_value = (
+            {
+                "results": {"00": 50, "11": 50},
+                "metadata": {"status": Constant.JOB_STATUS_COMPLETED},
+            },
+            mock_driver,
+            mock_transpiler,
+            {},
+        )
+        job_info = {
+            "data": {
+                "job_id": job_id,
+                "code_type": Constant.CODE_TYPE_QASM,
+                "driver_options": {"compute_fidelity": True},
+            }
+        }
+
+        results, _, _, _ = run_circuit_code(
+            0,
+            {f"{job_id}-0": source_code},
+            job_info,
+            mock_driver,
+            mock_transpiler,
+        )
+
+        mock_simulate.assert_called_once_with(source_code)
+        benchmark = results["metadata"]["benchmark"]
+        assert benchmark["ideal_probabilities"] == (ideal_probabilities)
+        assert benchmark["ideal_source"] == "qiskit_aer_sim"
+        assert benchmark["metrics"]["squared_bhattacharyya"] == pytest.approx(
+            1.0
+        )
+
+    @patch("wy_qcos.engine.job_engine.simulate_qasm_probabilities")
+    @patch("wy_qcos.engine.job_engine._run_code")
+    def test_run_circuit_code_keeps_results_when_ideal_simulation_fails(
+        self, mock_run_code, mock_simulate
+    ):
+        mock_driver = Mock()
+        mock_driver.get_max_qubits.return_value = 2
+        mock_driver.get_enable_wirecut.return_value = False
+        mock_driver.get_wirecut_qubit_width.return_value = 2
+        mock_driver.get_name.return_value = "TestDevice"
+        mock_transpiler = Mock()
+        job_id = "00000000-0000-4000-8000-000000000001"
+        source_code = "OPENQASM 2.0; qreg q[2];"
+        mock_transpiler.parse.return_value = {f"{job_id}-0": (2, None)}
+        mock_simulate.side_effect = ValueError("simulation unavailable")
+        hardware_results = {"00": 40, "11": 60}
+        mock_run_code.return_value = (
+            {
+                "results": hardware_results,
+                "metadata": {"status": Constant.JOB_STATUS_COMPLETED},
+            },
+            mock_driver,
+            mock_transpiler,
+            {},
+        )
+        job_info = {
+            "data": {
+                "job_id": job_id,
+                "code_type": Constant.CODE_TYPE_QASM,
+                "driver_options": {"compute_fidelity": True},
+            }
+        }
+
+        results, _, _, _ = run_circuit_code(
+            0,
+            {f"{job_id}-0": source_code},
+            job_info,
+            mock_driver,
+            mock_transpiler,
+        )
+
+        assert results["results"] == hardware_results
+        assert (
+            "simulation unavailable"
+            in results["metadata"]["benchmark"]["errors"]["ideal_simulation"]
+        )
+
     @patch("wy_qcos.engine.job_engine.format_error_results")
     def test_run_circuit_code_exceeds_limit_no_wirecut(
         self, mock_format_error
@@ -788,8 +899,13 @@ class TestJobEngine:
         mock_driver.get_name.return_value = "TestDevice"
         mock_transpiler = Mock()
         mock_cut_wire = Mock()
+        mock_cut_wire.num_cuts = 1
+        mock_cut_wire.subcircuits_dict = {
+            0: {f"variant-{i}": f"qasm-{i}" for i in range(3)},
+            1: {f"variant-{i}": f"qasm-{i}" for i in range(3, 8)},
+        }
         mock_generate_subs.return_value = (
-            {},
+            ["original-subcircuit1", "original-subcircuit2"],
             ["subcircuit1", "subcircuit2"],
             mock_cut_wire,
         )
@@ -819,14 +935,21 @@ class TestJobEngine:
         reconstructed_probs = np.array([0.45, 0.0, 0.0, 0.55])
         mock_reconstruct.return_value = (reconstructed_probs, {})
         num_qubits = 2
-        results, driver, transpiler, _ = run_circuit_cutting_code(
-            source_code_index,
-            src_code_dict,
-            num_qubits,
-            job_info,
-            mock_driver,
-            mock_transpiler,
-        )
+        with (
+            patch(
+                "wy_qcos.engine.job_engine.time.perf_counter",
+                side_effect=[10, 10.25, 20, 30, 31.5, 40, 42.25, 50],
+            ),
+            patch("wy_qcos.engine.job_engine.logger") as mock_logger,
+        ):
+            results, driver, transpiler, _ = run_circuit_cutting_code(
+                source_code_index,
+                src_code_dict,
+                num_qubits,
+                job_info,
+                mock_driver,
+                mock_transpiler,
+            )
         assert results["num_qubits"] == 2
         assert "results" in results
         assert results["metadata"]["status"] == "COMPLETED"
@@ -835,6 +958,35 @@ class TestJobEngine:
         mock_generate_subs.assert_called_once()
         assert mock_run_code.call_count == 2
         mock_reconstruct.assert_called_once()
+        log_messages = [
+            call.args[0] for call in mock_logger.info.call_args_list
+        ]
+        assert any(
+            "Wirecut subcircuits generated" in message
+            and "original_count=2" in message
+            and "variant_count=8" in message
+            and "executable_count=2" in message
+            and "duration_seconds=0.250000" in message
+            for message in log_messages
+        )
+        assert any(
+            "Wirecut subcircuit result received" in message
+            and "subcircuit=1/2" in message
+            and "duration_seconds=1.500000" in message
+            for message in log_messages
+        )
+        assert any(
+            "Wirecut subcircuit result received" in message
+            and "subcircuit=2/2" in message
+            and "duration_seconds=2.250000" in message
+            for message in log_messages
+        )
+        assert any(
+            "Wirecut subcircuit execution completed" in message
+            and "executed_count=2" in message
+            and "cache_hit_count=0" in message
+            for message in log_messages
+        )
 
     @patch("wy_qcos.engine.job_engine.SubcircuitResultCache.from_job_info")
     @patch(

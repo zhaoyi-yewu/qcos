@@ -1788,7 +1788,7 @@ class SubmitJob(Command):
         # Validate argument: shots
         CommandHelper.handle_invalid_arguments(
             ClientLibrary.validate_values_range(
-                shots, "shots", Constant.MIN_SHOTS, Constant.MAX_SHOTS
+                shots, "shots", Constant.MIN_SHOTS
             )
         )
 

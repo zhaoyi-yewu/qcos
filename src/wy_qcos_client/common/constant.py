@@ -133,7 +133,6 @@ class Constant:
     # Shots
     DEFAULT_SHOTS = 1
     MIN_SHOTS = 1
-    MAX_SHOTS = 10240
 
     # Drivers
     DRIVER_DUMMY = "dummy"

@@ -42,7 +42,21 @@ class TestTranspilerDummy:
         result = transpiler.parse(source, Constant.CODE_TYPE_QASM)
 
         assert result == {"code1": (2, "OPENQASM 2.0; qreg q[2];")}
-        assert transpiler.total_qubits == 1
+        assert transpiler.total_qubits == 2
+
+    @patch("wy_qcos.transpiler.dummy.transpiler_dummy.compile")
+    def test_parse_resets_total_qubits_between_calls(self, mock_compile):
+        transpiler = TranspilerDummy()
+        source = {"code1": "OPENQASM 2.0; qreg q[8];"}
+        mock_compile.return_value = (8, None)
+
+        first_result = transpiler.parse(source, Constant.CODE_TYPE_QASM)
+        first_total = transpiler.total_qubits
+        second_result = transpiler.parse(source, Constant.CODE_TYPE_QASM)
+
+        assert first_result == second_result
+        assert first_total == 8
+        assert transpiler.total_qubits == 8
 
     @patch("wy_qcos.transpiler.dummy.transpiler_dummy.openqasm3_parse")
     def test_parse_openqasm3_dict(self, mock_openqasm3_parse):
@@ -53,7 +67,7 @@ class TestTranspilerDummy:
         result = transpiler.parse(source, Constant.CODE_TYPE_QASM3)
 
         assert result == {"code2": (3, "qubit[3] q;")}
-        assert transpiler.total_qubits == 2
+        assert transpiler.total_qubits == 3
 
     def test_parse_unsupported_input_raises(self):
         with pytest.raises(TranspilerException):

@@ -39,6 +39,14 @@ from wy_qcos.common.library import (
     _is_allowed_class_name,
 )
 from wy_qcos.engine.common import init_logger
+from wy_qcos.engine.result_metrics import (
+    PROBABILITY_FIDELITY_METHOD,
+    squared_bhattacharyya_coefficient,
+)
+from wy_qcos.engine.ideal_simulator import (
+    IDEAL_SIMULATOR_NAME,
+    simulate_qasm_probabilities,
+)
 from wy_qcos.engine.qubo import (
     subqubo,
     check_matrix,
@@ -1511,6 +1519,31 @@ def run_circuit_code(
                     transpiler,
                 )
             )
+    compute_fidelity = (job_info["data"].get("driver_options") or {}).get(
+        "compute_fidelity", False
+    )
+    if compute_fidelity:
+        metadata = job_results.get("metadata")
+        if (
+            isinstance(metadata, dict)
+            and metadata.get("status") == Constant.JOB_STATUS_COMPLETED
+        ):
+            benchmark = metadata.setdefault("benchmark", {})
+            benchmark["ideal_source"] = IDEAL_SIMULATOR_NAME
+            try:
+                ideal_probabilities = simulate_qasm_probabilities(src_code)
+                benchmark["ideal_probabilities"] = ideal_probabilities
+                attach_fidelity_benchmark(
+                    job_results,
+                    ideal_probabilities,
+                )
+            except Exception as error:
+                benchmark.setdefault("errors", {})["ideal_simulation"] = str(
+                    error
+                )
+                logger.warning(
+                    f"Automatic ideal probability calculation skipped: {error}"
+                )
     return job_results, driver, transpiler, mapping_dict
 
 
@@ -1565,8 +1598,9 @@ def run_circuit_cutting_code(
         is_complete_reconstruction = False
         max_memory = Constant.DD_MAX_MEMORY
     # Step 1: Generate all subcircuits
+    generation_started_at = time.perf_counter()
     try:
-        _, subcircuits, cut_wire = (
+        original_subcircuits, subcircuits, cut_wire = (
             generate_all_variant_subcircuits_for_execute(
                 max_subcircuit_width=wirecut_qubit_width,
                 qasm=src_code,
@@ -1584,6 +1618,23 @@ def run_circuit_cutting_code(
             transpiler,
             None,
         )
+    generation_duration = time.perf_counter() - generation_started_at
+    subcircuits_dict = getattr(cut_wire, "subcircuits_dict", None)
+    variant_count = (
+        sum(len(variants) for variants in subcircuits_dict.values())
+        if isinstance(subcircuits_dict, dict)
+        else len(subcircuits)
+    )
+    logger.info(
+        f"Wirecut subcircuits generated: job_id={job_id}, "
+        f"source_code_index={source_code_index}, "
+        f"original_count={len(original_subcircuits)}, "
+        f"variant_count={variant_count}, "
+        f"executable_count={len(subcircuits)}, "
+        f"num_cuts={getattr(cut_wire, 'num_cuts', 'unknown')}, "
+        f"max_width={wirecut_qubit_width}, "
+        f"duration_seconds={generation_duration:.6f}"
+    )
     # Step 2: Execute all subcircuits
     result_cache = SubcircuitResultCache.from_job_info(job_info)
     sub_results = []
@@ -1595,16 +1646,32 @@ def run_circuit_cutting_code(
         "profiling": {},
         "sub_results": None,
     }
-    for i in range(len(subcircuits)):
+    total_subcircuits = len(subcircuits)
+    executed_count = 0
+    cache_hit_count = 0
+    execution_batch_started_at = time.perf_counter()
+    for i in range(total_subcircuits):
         cached_result = result_cache.get(subcircuits[i], job_info)
         if cached_result is not None:
-            logger.info(f"Subcircuit result cache hit: index={i}")
+            cache_hit_count += 1
+            logger.info(
+                f"Wirecut subcircuit execution skipped: job_id={job_id}, "
+                f"source_code_index={source_code_index}, "
+                f"subcircuit={i + 1}/{total_subcircuits}, index={i}, "
+                f"reason=result_cache_hit"
+            )
             sub_results.append(counts_to_probs(cached_result))
             continue
 
         src_sub_code_dict = {}
         sub_source_code_index = f"{str(source_code_index)}-{str(i)}"
         src_sub_code_dict[job_id + sub_source_code_index] = subcircuits[i]
+        logger.info(
+            f"Wirecut subcircuit execution started: job_id={job_id}, "
+            f"source_code_index={source_code_index}, "
+            f"subcircuit={i + 1}/{total_subcircuits}, index={i}"
+        )
+        execution_started_at = time.perf_counter()
         job_results, driver, transpiler, mapping_dict = _run_code(
             sub_source_code_index,
             src_sub_code_dict,
@@ -1612,15 +1679,49 @@ def run_circuit_cutting_code(
             driver,
             transpiler,
         )
+        execution_duration = time.perf_counter() - execution_started_at
+        execution_status = job_results["metadata"]["status"]
         if job_results["metadata"]["status"] != "COMPLETED":
+            logger.warning(
+                f"Wirecut subcircuit execution failed: job_id={job_id}, "
+                f"source_code_index={source_code_index}, "
+                f"subcircuit={i + 1}/{total_subcircuits}, index={i}, "
+                f"status={execution_status}, "
+                f"duration_seconds={execution_duration:.6f}"
+            )
             return job_results, driver, transpiler, mapping_dict
         if (
             job_results["metadata"]["status"] == "COMPLETED"
             and job_results["results"] is not None
         ):
+            executed_count += 1
             result_cache.set(subcircuits[i], job_info, job_results["results"])
             sub_result = counts_to_probs(job_results["results"])
             sub_results.append(sub_result)
+            logger.info(
+                f"Wirecut subcircuit result received: job_id={job_id}, "
+                f"source_code_index={source_code_index}, "
+                f"subcircuit={i + 1}/{total_subcircuits}, index={i}, "
+                f"status={execution_status}, "
+                f"duration_seconds={execution_duration:.6f}"
+            )
+        else:
+            logger.warning(
+                f"Wirecut subcircuit result missing: job_id={job_id}, "
+                f"source_code_index={source_code_index}, "
+                f"subcircuit={i + 1}/{total_subcircuits}, index={i}, "
+                f"status={execution_status}, "
+                f"duration_seconds={execution_duration:.6f}"
+            )
+    execution_batch_duration = time.perf_counter() - execution_batch_started_at
+    logger.info(
+        f"Wirecut subcircuit execution completed: job_id={job_id}, "
+        f"source_code_index={source_code_index}, "
+        f"total_count={total_subcircuits}, "
+        f"executed_count={executed_count}, "
+        f"cache_hit_count={cache_hit_count}, "
+        f"duration_seconds={execution_batch_duration:.6f}"
+    )
     # Step 3: Reconstruct probability distribution
     try:
         prob, _ = reconstruct_probability_distribution_wire_cut(
@@ -1644,6 +1745,45 @@ def run_circuit_cutting_code(
     job_results["num_qubits"] = num_qubits
     job_results["results"] = probs_to_dict(prob)
     return job_results, driver, transpiler, mapping_dict
+
+
+def attach_fidelity_benchmark(job_results, ideal_probabilities):
+    """Attach probability fidelity benchmark to completed sampling results.
+
+    Fidelity is optional and is calculated only when an ideal
+    distribution is supplied. Invalid distributions do not discard an
+    otherwise successful hardware result; the validation error is exposed in
+    benchmark metadata instead.
+    """
+    if ideal_probabilities is None or not isinstance(job_results, dict):
+        return job_results
+
+    metadata = job_results.get("metadata")
+    observed_results = job_results.get("results")
+    if (
+        not isinstance(metadata, dict)
+        or metadata.get("status") != Constant.JOB_STATUS_COMPLETED
+        or not isinstance(observed_results, dict)
+    ):
+        return job_results
+
+    benchmark = metadata.setdefault("benchmark", {})
+    try:
+        fidelity = squared_bhattacharyya_coefficient(
+            observed_results, ideal_probabilities
+        )
+    except ValueError as error:
+        benchmark.setdefault("errors", {})["fidelity"] = str(error)
+        logger.warning(f"Probability fidelity calculation skipped: {error}")
+        return job_results
+
+    benchmark.setdefault("metrics", {})[PROBABILITY_FIDELITY_METHOD] = fidelity
+    errors = benchmark.get("errors")
+    if isinstance(errors, dict):
+        errors.pop("fidelity", None)
+        if not errors:
+            benchmark.pop("errors")
+    return job_results
 
 
 def counts_to_probs(count_dict):
