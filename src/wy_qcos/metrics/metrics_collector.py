@@ -147,9 +147,9 @@ class JobMetrics:
             self.job_gauge.labels(
                 status=Constant.JOB_METRICS_FIELD_UNKNOWN
             ).set(data.unknown)
-            self.job_gauge.labels(
-                status=Constant.JOB_METRICS_FIELD_TOTAL
-            ).set(data.total)
+            self.job_gauge.labels(status=Constant.JOB_METRICS_FIELD_TOTAL).set(
+                data.total
+            )
 
         logger.debug(f"Job metrics updated: {data}")
 
