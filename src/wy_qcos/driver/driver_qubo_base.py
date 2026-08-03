@@ -34,14 +34,14 @@ class DriverQuboBase(DriverBase):
         self.tech_type = Constant.TECH_TYPE_PHOTON
         self.default_data_type = DriverBase.DATA_TYPE_QUBO
         self.supported_code_types = [Constant.CODE_TYPE_QUBO]
-        self.driver_options = {
+        self.driver_options.update({
             "enable_subqubo": False,
             "enable_prec_reduce": False,
-        }
-        self.driver_options_schema = {
+        })
+        self.driver_options_schema.update({
             Optional("enable_subqubo"): bool,
             Optional("enable_prec_reduce"): bool,
-        }
+        })
         self.transpiler = Constant.TRANSPILER_CMSS_QUBO
         self.supported_transpilers = [Constant.TRANSPILER_CMSS_QUBO]
 

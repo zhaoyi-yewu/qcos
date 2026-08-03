@@ -137,11 +137,15 @@ class DriverBase:
             "max_qubits": 10,
             "enable_wirecut": False,
             "wirecut_qubit_width": 0,
+            "max_job_wait_time": Constant.DEFAULT_JOB_WAIT_TIME,
+            "job_query_interval": Constant.DEFAULT_JOB_QUERY_INTERVAL,
         }
         # driver_options schema
         self.driver_options_schema = {
             Optional("enable_wirecut"): bool,
             Optional("wirecut_qubit_width"): int,
+            Optional("max_job_wait_time"): int,
+            Optional("job_query_interval"): int,
         }
         # default driver_config schema
         self.default_driver_config_schema = {
@@ -223,6 +227,17 @@ class DriverBase:
             driver_options: new driver options
         """
         self.driver_options.update(driver_options)
+
+    def update_driver_params_from_options(self):
+        """Update driver params from driver options.
+
+        Sync instance attributes from driver_options dict, so that
+        user-provided values in driver_options take effect.
+        """
+        if "max_job_wait_time" in self.driver_options:
+            self.max_job_wait_time = self.driver_options["max_job_wait_time"]
+        if "job_query_interval" in self.driver_options:
+            self.job_query_interval = self.driver_options["job_query_interval"]
 
     def get_driver_info(self):
         """Show driver info."""
