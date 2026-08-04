@@ -55,15 +55,67 @@ class TestShorStrategy:
             (6, 7),
             (7, 8),
         ]
-        assert stabilizers["X"] == [(0, 3, 6), (1, 4, 7), (2, 5, 8)]
+        assert stabilizers["X"] == [(0, 1, 2, 3, 4, 5), (3, 4, 5, 6, 7, 8)]
 
     def test_get_stabilizers_length(self):
         """Test stabilizer lengths."""
         strategy = ShorStrategy()
         stabilizers = strategy.get_stabilizers()
-        # 6 Z stabilizers and 3 X stabilizers
+        # 6 Z stabilizers and 2 X stabilizers
         assert len(stabilizers["Z"]) == 6
-        assert len(stabilizers["X"]) == 3
+        assert len(stabilizers["X"]) == 2
+
+    def test_validate_error_inject_valid_dict(self):
+        """Test _validate_error_inject with valid dict."""
+        strategy = ShorStrategy()
+        # Should not raise
+        strategy._validate_error_inject({
+            "error_type": "x_error",
+            "noise_prob": 0.01,
+        })
+        strategy._validate_error_inject({
+            "error_type": "y_error",
+            "noise_prob": 0.02,
+        })
+        strategy._validate_error_inject({
+            "error_type": "z_error",
+            "noise_prob": 0.03,
+        })
+        strategy._validate_error_inject({
+            "error_type": "depolarize",
+            "noise_prob": 0.04,
+        })
+
+    def test_validate_error_inject_non_dict_raises_error(self):
+        """Test _validate_error_inject with non-dict raises ValueError."""
+        strategy = ShorStrategy()
+        with pytest.raises(ValueError) as exc_info:
+            strategy._validate_error_inject("invalid")
+        assert "type error" in str(exc_info.value)
+
+    def test_validate_error_inject_invalid_error_type_raises_error(self):
+        strategy = ShorStrategy()
+        with pytest.raises(ValueError) as exc_info:
+            strategy._validate_error_inject({
+                "error_type": "invalid_type",
+                "noise_prob": 0.01,
+            })
+        assert "Invalid error_type" in str(exc_info.value)
+
+    def test_validate_error_inject_invalid_noise_prob_raises_error(self):
+        strategy = ShorStrategy()
+        with pytest.raises(ValueError) as exc_info:
+            strategy._validate_error_inject({
+                "error_type": "x_error",
+                "noise_prob": "invalid",
+            })
+        assert "noise_prob type error" in str(exc_info.value)
+
+    def test_validate_error_inject_empty_dict(self):
+        """Test _validate_error_inject with empty dict (no error)."""
+        strategy = ShorStrategy()
+        # Empty dict should not raise since all fields are optional
+        strategy._validate_error_inject({})
 
     def test_validate_and_format_circuit_raises_not_implemented(self):
         """Test validate_and_format_circuit raises NotImplementedError."""
@@ -307,11 +359,19 @@ class TestShorStimStrategy:
         assert "X_ERROR" in encoded_str
         assert "0.01" in encoded_str
 
-    def test_correct_without_err_pos_returns_none(self):
-        """Test correct with no err_pos returns None."""
+    def test_correct_without_compute_samples_raises_error(self):
+        """Test correct without calling compute_samples raises RuntimeError."""
         strategy = ShorStimStrategy()
+        with pytest.raises(RuntimeError) as exc_info:
+            strategy.correct()
+        assert "compute_samples" in str(exc_info.value)
+
+    def test_correct_without_err_pos_returns_raw_bits(self):
+        """Test correct with no err_pos returns raw_bits."""
+        strategy = ShorStimStrategy()
+        strategy.raw_bits = [1, 0, 0, 0, 0, 0, 0, 0, 0]
         result = strategy.correct()
-        assert result is None
+        assert np.array_equal(result, [1, 0, 0, 0, 0, 0, 0, 0, 0])
 
     def test_correct_with_1d_raw_bits(self):
         """Test correct with 1D raw_bits."""
@@ -351,7 +411,7 @@ class TestShorStimStrategy:
     def test_decode_with_1d_syndrome(self):
         """Test decode with 1D syndrome (no errors)."""
         strategy = ShorStimStrategy()
-        strategy.syndrome = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+        strategy.syndrome = [0, 0, 0, 0, 0, 0, 0, 0]
         result = strategy.decode()
         expected = [0, 0, 0, 0, 0, 0, 0, 0, 0]
         assert np.array_equal(result, expected)
@@ -360,7 +420,7 @@ class TestShorStimStrategy:
         """Test decode with error in block 0."""
         strategy = ShorStimStrategy()
         # Z stabilizers: s0=1, s1=0 indicates error on qubit 0 in block 0
-        strategy.syndrome = [1, 0, 0, 0, 0, 0, 0, 0, 0]
+        strategy.syndrome = [1, 0, 0, 0, 0, 0, 0, 0]
         result = strategy.decode()
         assert result[0] == 1
 
@@ -368,7 +428,7 @@ class TestShorStimStrategy:
         """Test decode with error at position 1 in block 0."""
         strategy = ShorStimStrategy()
         # Z stabilizers: s0=1, s1=1 indicates error on qubit 1 in block 0
-        strategy.syndrome = [1, 1, 0, 0, 0, 0, 0, 0, 0]
+        strategy.syndrome = [1, 1, 0, 0, 0, 0, 0, 0]
         result = strategy.decode()
         assert result[1] == 1
 
@@ -376,7 +436,7 @@ class TestShorStimStrategy:
         """Test decode with error at position 2 in block 0."""
         strategy = ShorStimStrategy()
         # Z stabilizers: s0=0, s1=1 indicates error on qubit 2 in block 0
-        strategy.syndrome = [0, 1, 0, 0, 0, 0, 0, 0, 0]
+        strategy.syndrome = [0, 1, 0, 0, 0, 0, 0, 0]
         result = strategy.decode()
         assert result[2] == 1
 
@@ -384,8 +444,8 @@ class TestShorStimStrategy:
         """Test decode with 2D syndrome."""
         strategy = ShorStimStrategy()
         strategy.syndrome = [
-            [1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 1, 0, 0, 0, 0, 0, 0, 0],
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0, 0],
         ]
         result = strategy.decode()
         assert result.shape == (2, 9)
@@ -420,8 +480,8 @@ class TestShorStimStrategy:
         samples = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         strategy.compute_samples(samples)
         # After np.atleast_2d, 1D samples become shape (1, 18)
-        # syndrome is concatenated z_syn + x_syn with shape (1, 9)
-        assert strategy.syndrome.shape == (1, 9)
+        # syndrome is concatenated z_syn + x_syn with shape (1, 8)
+        assert strategy.syndrome.shape == (1, 8)
         assert strategy.raw_bits.shape == (1, 9)
 
     def test_compute_samples_with_2d_samples(self):
@@ -432,9 +492,9 @@ class TestShorStimStrategy:
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         ]
         strategy.compute_samples(samples)
-        # syndrome should have shape (2, 9)
+        # syndrome should have shape (2, 8)
         assert isinstance(strategy.syndrome, np.ndarray)
-        assert strategy.syndrome.shape == (2, 9)
+        assert strategy.syndrome.shape == (2, 8)
         assert strategy.raw_bits.shape == (2, 9)
 
     def test_full_encode_decode_correct_cycle(self):
@@ -443,12 +503,14 @@ class TestShorStimStrategy:
         # Simulate samples from encoding with a bit-flip on qubit 0
         # z_syn for block 0 (error on qubit 0): s0=1, s1=0
         # other syndromes all 0
-        samples = [[1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]]
+        # 8 syndrome bits (6 Z + 2 X) + 9 raw bits = 17 total
+        samples = [[1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]]
         strategy.compute_samples(samples)
         err_pos = strategy.decode()
         assert err_pos[0, 0] == 1  # qubit 0 has error
         corrected = strategy.correct(err_pos=err_pos)
-        assert corrected[0, 0] == 0  # qubit 0 corrected to 0
+        # correct returns 1D array when raw_bits has shape (1, 9)
+        assert corrected[0] == 0  # qubit 0 corrected to 0
 
 
 # ===========================================================================
@@ -623,7 +685,7 @@ class TestShorCode:
         """Test decode method."""
         code = ShorCode()
         strategy = ShorCode.strategies[stim.Circuit]
-        strategy.syndrome = [1, 0, 0, 0, 0, 0, 0, 0, 0]
+        strategy.syndrome = [1, 0, 0, 0, 0, 0, 0, 0]
         result = code.decode(stim.Circuit())
         assert result[0] == 1
 
@@ -636,11 +698,14 @@ class TestShorCode:
         result = code.correct(stim.Circuit(), err_pos=err_pos)
         assert np.array_equal(result, [0, 0, 0, 0, 0, 0, 0, 0, 0])
 
-    def test_correct_without_err_pos(self):
-        """Test correct without err_pos."""
+    def test_correct_without_err_pos_raises_error(self):
+        """Test correct without err_pos raises RuntimeError."""
         code = ShorCode()
-        result = code.correct(stim.Circuit())
-        assert result is None
+        strategy = ShorCode.strategies[stim.Circuit]
+        strategy.raw_bits = []
+        with pytest.raises(RuntimeError) as exc_info:
+            code.correct(stim.Circuit())
+        assert "compute_samples" in str(exc_info.value)
 
     def test_logical_measure(self):
         """Test logical_measure method."""
@@ -655,7 +720,7 @@ class TestShorCode:
         samples = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         code.compute_samples(stim.Circuit(), samples)
         strategy = ShorCode.strategies[stim.Circuit]
-        assert strategy.syndrome.shape == (1, 9)
+        assert strategy.syndrome.shape == (1, 8)
 
     def test_get_strategy_with_stim(self):
         """Test _get_strategy with stim circuit."""

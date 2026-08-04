@@ -169,8 +169,8 @@ Shor码基本参数
      - 6个
      - 检测比特翻转错误：Z₀Z₁, Z₁Z₂, Z₃Z₄, Z₄Z₅, Z₆Z₇, Z₇Z₈
    * - **X稳定子**
-     - 3个
-     - 检测相位翻转错误：X₀X₃X₆, X₁X₄X₇, X₂X₅X₈
+     - 2个
+     - 检测相位翻转错误：X₀X₁X₂X₃X₄X₅, X₃X₄X₅X₆X₇X₈
 
 Stim策略编码流程
 ****************
@@ -179,13 +179,13 @@ Stim策略编码流程
 
 .. code-block:: text
 
-   初始化: R 全部9个数据比特 + 6个Z伴随比特 + 3个X伴随比特
+   初始化: R 全部9个数据比特 + 6个Z伴随比特 + 2个X伴随比特
    -> 相位翻转编码: H[0] -> CX[0,3] CX[0,6]
    -> 比特翻转编码: 三个分组内分别执行CX
    -> 应用逻辑门: X / Z / Y / S（H门不支持横向实现）
    -> 噪声注入: 根据 error_inject 配置注入 X_ERROR / Y_ERROR / Z_ERROR / DEPOLARIZE1
    -> Z稳定子测量: 6个伴随比特测量 Z₀Z₁, Z₁Z₂, ...
-   -> X稳定子测量: 3个伴随比特测量 X₀X₃X₆, ...
+   -> X稳定子测量: 2个伴随比特测量 X₀X₁X₂X₃X₄X₅, X₃X₄X₅X₆X₇X₈
    -> 反向比特翻转 / 反向相位翻转 / 反向H
    -> M 测量9个数据比特
 
@@ -197,6 +197,12 @@ Stim策略编码流程
 .. code-block:: python
 
    VALID_ERROR_TYPES = {"x_error", "y_error", "z_error", "depolarize"}
+
+``ShorStrategy._validate_error_inject`` 方法用于校验 ``error_inject`` 配置，校验规则如下：
+
+- ``error_inject`` 必须为 ``dict`` 类型，否则抛出 ``ValueError``。
+- ``error_type`` 必须为 ``VALID_ERROR_TYPES`` 中的一种，否则抛出 ``ValueError``。
+- ``noise_prob`` 必须为 ``int`` 或 ``float`` 类型，否则抛出 ``ValueError``。
 
 .. list-table:: 支持的操作
    :widths: 20 30 50
