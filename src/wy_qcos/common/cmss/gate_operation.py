@@ -662,7 +662,7 @@ class SXDG(GateOperation):
         return GateOperation.with_gate_array(sdg_array, dtype)
 
 
-class I(GateOperation):
+class I(GateOperation):  # noqa: E742
     """恒等门（Identity gate）.
 
     对量子比特不做任何操作，对应 2×2 单位矩阵。

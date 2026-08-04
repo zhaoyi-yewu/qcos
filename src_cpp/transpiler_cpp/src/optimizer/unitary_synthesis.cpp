@@ -439,7 +439,7 @@ single_qubit_unitary_to_basis(
   }
 
   if (has_rx && has_ry) {
-    // U = Ry(π/2) Rz(φ) Ry(θ-π) Rz(λ) Ry(-π/2) ... approximate
+    // U = Ry(π/2) Rz(φ) Ry(θ) Rx(λ) Ry(-π/2) ... approximate
     // Actually use: Ry(π/2) Rx(φ) Ry(θ) Rx(λ) Ry(-π/2) via Rx≈Ry rotation
     // Fallback: just use Rz as Rx with π/2 Ry rotations
     if (std::abs(lambda) > eps)
@@ -448,6 +448,19 @@ single_qubit_unitary_to_basis(
       result.push_back(std::make_shared<RY>(targets, std::vector<double>{theta}));
     if (std::abs(phi) > eps)
       result.push_back(std::make_shared<RX>(targets, std::vector<double>{phi}));
+    return result;
+  }
+
+  if (has_rz && has_gate("sx")) {
+    // U3(θ, φ, λ) ≡ Rz(λ) Sx Rz(θ+π) Sx Rz(φ+3π)
+    if (std::abs(lambda) > eps)
+      result.push_back(std::make_shared<RZ>(targets, std::vector<double>{lambda}));
+    result.push_back(std::make_shared<SX>(targets));
+    if (std::abs(theta + M_PI) > eps)
+      result.push_back(std::make_shared<RZ>(targets, std::vector<double>{theta + M_PI}));
+    result.push_back(std::make_shared<SX>(targets));
+    if (std::abs(phi + 3 * M_PI) > eps)
+      result.push_back(std::make_shared<RZ>(targets, std::vector<double>{phi + 3 * M_PI}));
     return result;
   }
 
