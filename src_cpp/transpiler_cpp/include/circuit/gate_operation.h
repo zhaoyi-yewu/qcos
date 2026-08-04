@@ -160,6 +160,14 @@ class SXDG : public GateOperation {
   std::string to_string() const;
 };
 
+class I : public GateOperation {
+ public:
+  I(std::vector<int> targets_ = {}, std::vector<double> arg_value_ = {});
+  std::vector<std::shared_ptr<BaseOperation>> default_decompose();
+  std::array<std::complex<double>, 4> to_matrix() const;
+  std::string to_string() const;
+};
+
 // 两量子比特门声明
 class CZ : public GateOperation {
  public:

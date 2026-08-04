@@ -662,6 +662,32 @@ class SXDG(GateOperation):
         return GateOperation.with_gate_array(sdg_array, dtype)
 
 
+class I(GateOperation):
+    """恒等门（Identity gate）.
+
+    对量子比特不做任何操作，对应 2×2 单位矩阵。
+    在 QASM 中用 ``id q[0];`` 表示。
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+    ) -> None:
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_I,
+            targets,
+            arg_value,
+        )
+
+    def default_decompose(self):
+        return []
+
+    def __array__(self, dtype=None):
+        id_array = [[1.0, 0.0], [0.0, 1.0]]
+        return GateOperation.with_gate_array(id_array, dtype)
+
+
 class CZ(GateOperation):
     """受控Z门或Controlled-Z门.
 
@@ -2430,6 +2456,8 @@ def create_gate(
         return SX(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_SXDG:
         return SXDG(targets, arg_value)
+    elif name == Constant.SINGLE_QUBIT_GATE_I:
+        return I(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_S:
         return S(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_T:

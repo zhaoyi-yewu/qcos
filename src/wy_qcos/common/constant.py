@@ -142,6 +142,7 @@ class Constant:
     SINGLE_QUBIT_GATE_RZ = "rz"
     SINGLE_QUBIT_GATE_SX = "sx"
     SINGLE_QUBIT_GATE_SXDG = "sxdg"
+    SINGLE_QUBIT_GATE_I = "id"
     SINGLE_QUBIT_GATE_SDG = "sdg"
     SINGLE_QUBIT_GATE_TDG = "tdg"
     SINGLE_QUBIT_GATE_U1 = "u1"
@@ -164,6 +165,7 @@ class Constant:
         SINGLE_QUBIT_GATE_RZ,
         SINGLE_QUBIT_GATE_SX,
         SINGLE_QUBIT_GATE_SXDG,
+        SINGLE_QUBIT_GATE_I,
         SINGLE_QUBIT_GATE_SDG,
         SINGLE_QUBIT_GATE_TDG,
         SINGLE_QUBIT_GATE_U1,
