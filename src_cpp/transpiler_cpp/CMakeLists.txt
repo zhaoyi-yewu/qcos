@@ -48,6 +48,22 @@ endif()
 option(USE_PYQCOS "use transpiler in python" ON)
 option(USE_STUBGEN "generate pyi files" OFF)
 
+# ---- Boost (header-only: Boost.Graph for VF2 layout) ----
+find_package(Boost QUIET)
+if(Boost_FOUND)
+    include_directories(${Boost_INCLUDE_DIRS})
+    message(STATUS "Found Boost via find_package: ${Boost_INCLUDE_DIRS}")
+else()
+    find_path(BOOST_INCLUDE_DIR boost/graph/vf2_sub_graph_iso.hpp
+        PATHS /usr/local/include /usr/include /opt/homebrew/include)
+    if(NOT BOOST_INCLUDE_DIR)
+        message(FATAL_ERROR
+            "Boost headers not found.")
+    endif()
+    include_directories(${BOOST_INCLUDE_DIR})
+    message(STATUS "Found Boost headers at: ${BOOST_INCLUDE_DIR}")
+endif()
+
 if(USE_PYQCOS)
     find_package(Python 3.11 REQUIRED COMPONENTS Interpreter Development.Module
                  OPTIONAL_COMPONENTS Development.SABIModule)
