@@ -20,10 +20,10 @@ from qiskit_aer import AerSimulator
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.device.device import Device
-from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.driver_gate_base import DriverGateBase
 
 
-class DriverQiskitAerSim(DriverBase):
+class DriverQiskitAerSim(DriverGateBase):
     """Qiskit Aer 模拟器驱动."""
 
     def __init__(self):

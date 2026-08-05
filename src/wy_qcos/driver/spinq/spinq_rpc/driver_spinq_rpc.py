@@ -29,6 +29,7 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.device.device import Device
 from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.driver_gate_base import DriverGateBase
 from wy_qcos.common.cmss.base_operation import OperationType
 from wy_qcos.common.cmss.gate_operation import GateOperation
 from wy_qcos.common.cmss.measure import Measure
@@ -78,7 +79,7 @@ def rpc_retry(max_retries=3, retry_interval=1):
     return decorator
 
 
-class DriverSpinQRpc(DriverBase):
+class DriverSpinQRpc(DriverGateBase):
     """量旋科技 大熊座-S25 超导驱动 (RPC版本).
 
     SpinQ SQC-S25 Superconducting driver (RPC)

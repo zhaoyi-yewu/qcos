@@ -24,9 +24,10 @@ from wy_qcos.common.constant import Constant, HttpCode, HttpMethod
 from wy_qcos.common.library import Library
 from wy_qcos.device.device import Device
 from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.driver_gate_base import DriverGateBase
 
 
-class DriverCiqtekIon1(DriverBase):
+class DriverCiqtekIon1(DriverGateBase):
     """国仪量子 离子阱驱动.
 
     Ion 1 driver

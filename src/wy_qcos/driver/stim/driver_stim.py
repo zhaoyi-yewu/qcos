@@ -28,10 +28,11 @@ from wy_qcos.common.cmss.base_operation import (
 from wy_qcos.common.constant import Constant
 from wy_qcos.device.device import Device
 from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.driver_gate_base import DriverGateBase
 from wy_qcos.qec.qec_factory import QecFactory
 
 
-class DriverStim(DriverBase):
+class DriverStim(DriverGateBase):
     """Stim QEC 专用驱动."""
 
     def __init__(self):
