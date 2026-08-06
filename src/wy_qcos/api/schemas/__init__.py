@@ -104,6 +104,11 @@ from .system import (
     TraceMemRequest,
     TraceMemStatItem,
     TraceMemResponse,
+    ListWorkersRequest,
+    WorkerInfo,
+    ListWorkersResponse,
+    RestartWorkerRequest,
+    RestartWorkerResponse,
 )
 from .metrics import (
     GetMetricsRequest,
