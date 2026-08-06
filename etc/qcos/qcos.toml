@@ -1,4 +1,3 @@
-# for development purpose
 # QCOS configures
 [DEFAULT]
 # Global debug switch; when enabled, lowers global log level to DEBUG
@@ -35,6 +34,29 @@ API_WORKERS = 8
 API_SERVER_LISTEN_IP = ""
 # API server listen port
 API_SERVER_LISTEN_PORT = 18400
+
+[SCHEDULER]
+# enable auto scheduling (select device automatically when backend
+# is not specified in submit_job)
+ENABLE_AUTO_SCHEDULE = true
+# enabled filter class names; empty list uses all DEFAULT_FILTERS
+# available filters: CodeTypeFilter, DeviceStatusFilter,
+#   QubitCountFilter, TechTypeFilter, GateFidelityFilter,
+#   QueueLimitFilter, DeviceGroupFilter
+ENABLED_FILTERS = [
+    "CodeTypeFilter",
+    "DeviceStatusFilter",
+    "TechTypeFilter",
+    "QubitCountFilter",
+    "QueueLimitFilter",
+    "GateFidelityFilter",
+]
+# enabled weigher class names; empty list uses all DEFAULT_WEIGHERS
+# available weighers: DeviceLoadWeigher, AvgExecTimeWeigher
+ENABLED_WEIGHERS = [
+    "DeviceLoadWeigher",
+    "AvgExecTimeWeigher",
+]
 
 [USERS]
 # max jobs (per user, all status), -1: unlimited

@@ -138,16 +138,23 @@ class TaskScheduler:
         and set_db_engine. Reuses the standalone flavor_manager
         and device_group_manager instances. The db_engine is passed
         so the scheduler can query job load info directly from the
-        qcos database.
+        qcos database. The enabled filters and weighers are read
+        from the [SCHEDULER] config section.
         """
-        from wy_qcos.scheduler import AutoScheduler
+        # delayed import to avoid circular import between
+        # wy_qcos.scheduler and wy_qcos.task_manager
+        from wy_qcos.scheduler.auto_scheduler import AutoScheduler
 
+        scheduler_config = Config.SCHEDULER
         self._auto_scheduler = AutoScheduler(
             device_manager=self._device_manager,
             task_manager=self._task_manager,
             flavor_manager=self._flavor_manager,
             device_group_manager=self._device_group_manager,
             db_engine=self._db_engine,
+            enabled_filters=scheduler_config.ENABLED_FILTERS,
+            enabled_weighers=scheduler_config.ENABLED_WEIGHERS,
+            transpiler_manager=self._transpiler_manager,
         )
         logger.info("Auto scheduler initialized")
 

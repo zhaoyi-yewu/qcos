@@ -331,6 +331,37 @@ class DevicesSection(BaseModel):
     )
 
 
+class SchedulerSection(BaseModel):
+    """SCHEDULER section configuration.
+
+    Controls the auto scheduler behavior, including which filters and
+    weighers are enabled. Filter/weigher names must match the class names
+    registered in FILTER_REGISTRY / WEIGHER_REGISTRY.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # enable auto scheduling (select device automatically when
+    # backend is not specified in submit_job)
+    ENABLE_AUTO_SCHEDULE: bool = Field(
+        default=True,
+        description="Enable auto scheduling when backend is not specified",
+    )
+    # comma-separated list of enabled filter class names; if empty,
+    # all filters in DEFAULT_FILTERS are used (plus DeviceGroupFilter
+    # when a device_group_manager is available)
+    ENABLED_FILTERS: list[str] = Field(
+        default_factory=list,
+        description="List of enabled filter class names",
+    )
+    # comma-separated list of enabled weigher class names; if empty,
+    # all weighers in DEFAULT_WEIGHERS are used
+    ENABLED_WEIGHERS: list[str] = Field(
+        default_factory=list,
+        description="List of enabled weigher class names",
+    )
+
+
 class ConfigModel(BaseModel):
     """Complete QCOS configuration model."""
 
@@ -350,6 +381,7 @@ class ConfigModel(BaseModel):
     LOG: LogSection = Field(default_factory=LogSection)
     SSL: SSLSection = Field(default_factory=SSLSection)
     DEVICES: DevicesSection = Field(default_factory=DevicesSection)
+    SCHEDULER: SchedulerSection = Field(default_factory=SchedulerSection)
 
 
 # ==================== Config Manager ====================
@@ -389,6 +421,7 @@ class Config:
         "LOG",
         "SSL",
         "DEVICES",
+        "SCHEDULER",
     ]
 
     # Expose sections as class attributes for type hints and access
@@ -404,6 +437,7 @@ class Config:
     LOG: LogSection = LogSection()
     SSL: SSLSection = SSLSection()
     DEVICES: DevicesSection = DevicesSection()
+    SCHEDULER: SchedulerSection = SchedulerSection()
 
     @classmethod
     def initialize(cls):
@@ -421,6 +455,7 @@ class Config:
         cls.REDIS = cls._model.REDIS
         cls.DATABASE = cls._model.DATABASE
         cls.USERS = cls._model.USERS
+        cls.SCHEDULER = cls._model.SCHEDULER
         cls.VIRT = cls._model.VIRT
         cls.LOG = cls._model.LOG
         cls.SSL = cls._model.SSL
