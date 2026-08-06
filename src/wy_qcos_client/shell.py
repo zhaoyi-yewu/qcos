@@ -505,7 +505,7 @@ class CommandHelper:
         )
         existing_names = devices_results.keys()
         for dn in device_names:
-            if dn == "_all":
+            if dn == Constant.DEVICE_GROUP_DN_ALL:
                 continue
             if dn not in existing_names:
                 logger.warning(
@@ -683,6 +683,8 @@ class GetDrivers(Lister):
         )
         if not json_results:
             print("No drivers found")
+        else:
+            self.extra_messages = f"Total drivers: {len(json_results)}\n"
         return table_values
 
 
@@ -766,6 +768,8 @@ class GetDevices(Lister):
         )
         if not json_results:
             print("No devices found")
+        else:
+            self.extra_messages = f"Total devices: {len(json_results)}\n"
         return table_values
 
 
@@ -1103,6 +1107,8 @@ class GetTranspilers(Lister):
         )
         if not json_results:
             print("No transpilers found")
+        else:
+            self.extra_messages = f"Total transpilers: {len(json_results)}\n"
         return table_values
 
 
@@ -1392,6 +1398,96 @@ class TraceMem(Lister):
             top_stats, header_list
         )
         return table_values
+
+
+class ListWorkers(Lister):
+    """List all prefect workers with name and status."""
+
+    group = QcosShell.CMD_GROUP_SYSTEM
+
+    def get_parser(self, prog_name):
+        """Get parser for this command.
+
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
+        """
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        """Take action for command line arguments.
+
+        Args:
+            parsed_args: command line arguments
+        """
+        resource = self.group
+
+        status_code, reason, text, result = self.app.client.list_workers()
+        json_results = CommandHelper.check_results(
+            resource, "list_workers", status_code, reason, text
+        )
+
+        workers = json_results.get("workers", [])
+        header_list = [
+            "worker_name",
+            "work_pool",
+            "worker_status",
+            "pid",
+        ]
+        table_values = CommandHelper.get_table_list_data(workers, header_list)
+        if not workers:
+            print("No workers found")
+        else:
+            self.extra_messages = f"Total workers: {len(workers)}\n"
+        return table_values
+
+
+class RestartWorker(Command):
+    """Restart a single prefect worker by worker name."""
+
+    group = QcosShell.CMD_GROUP_SYSTEM
+
+    def get_parser(self, prog_name):
+        """Get parser for this command.
+
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "worker_name",
+            type=str,
+            help="Name of the prefect worker to restart",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        """Take action for command line arguments.
+
+        Args:
+            parsed_args: command line arguments
+        """
+        resource = self.group
+        worker_name = parsed_args.worker_name
+
+        status_code, reason, text, result = self.app.client.restart_worker(
+            worker_name=worker_name
+        )
+        json_results = CommandHelper.check_results(
+            resource, "restart_worker", status_code, reason, text
+        )
+        print("Restart Worker: ")
+        print(
+            f"worker_name: {json_results['worker_name']}, "
+            f"success: {json_results['success']}, "
+            f"message: {json_results['message']}"
+        )
 
 
 # Job commands
@@ -2049,6 +2145,7 @@ class GetJobs(Lister):
             "job_status",
             "progress",
             "backend",
+            "flavor_id",
             "job_type",
             "shots",
             "created_at",
@@ -2846,6 +2943,8 @@ class GetUsers(Lister):
         )
         if not json_results:
             self.app.stdout.write("No users found\n")
+        else:
+            self.extra_messages = f"Total users: {len(json_results)}\n"
         return table_values
 
 
@@ -3071,6 +3170,8 @@ class GetRoles(Lister):
         )
         if not json_results:
             self.app.stdout.write("No roles found\n")
+        else:
+            self.extra_messages = f"Total roles: {len(json_results)}\n"
         return table_values
 
 
@@ -3171,6 +3272,8 @@ class GetLoginLogs(Lister):
         )
         if not json_results:
             self.app.stdout.write("No login logs found\n")
+        else:
+            self.extra_messages = f"Total login logs: {len(json_results)}\n"
         return table_values
 
 
@@ -3425,6 +3528,8 @@ class GetProjects(Lister):
         )
         if not json_results:
             self.app.stdout.write("No projects found\n")
+        else:
+            self.extra_messages = f"Total projects: {len(json_results)}\n"
         return table_values
 
 
@@ -4195,6 +4300,8 @@ class GetFlavors(Lister):
         )
         if not json_results:
             print("No flavors found")
+        else:
+            self.extra_messages = f"Total flavors: {len(json_results)}\n"
         return table_values
 
 
@@ -4351,7 +4458,7 @@ class CreateDeviceGroup(Command):
             raise errors.InvalidArguments("At least one --device is required")
         for dn in device_names:
             # skip validation for special value _all
-            if dn == "_all":
+            if dn == Constant.DEVICE_GROUP_DN_ALL:
                 continue
             CommandHelper.handle_invalid_arguments(
                 ClientLibrary.validate_name(dn)
@@ -4479,7 +4586,7 @@ class UpdateDeviceGroup(Command):
             device_names = parsed_args.device_names
             # validate device names (skip _all)
             for dn in device_names:
-                if dn == "_all":
+                if dn == Constant.DEVICE_GROUP_DN_ALL:
                     continue
                 CommandHelper.handle_invalid_arguments(
                     ClientLibrary.validate_name(dn)
@@ -4594,6 +4701,8 @@ class GetDeviceGroups(Lister):
         )
         if not json_results:
             print("No device groups found")
+        else:
+            self.extra_messages = f"Total device groups: {len(json_results)}\n"
         return table_values
 
 
@@ -4723,6 +4832,8 @@ command_manager.add_command("system-info", SystemInfo)
 command_manager.add_command("trace-mem", TraceMem)
 command_manager.add_command("show-mem", ShowMem)
 command_manager.add_command("gc-mem", GcMem)
+command_manager.add_command("list-workers", ListWorkers)
+command_manager.add_command("restart-worker", RestartWorker)
 # job command
 command_manager.add_command("submit-job", SubmitJob)
 command_manager.add_command("get-job-status", GetJobStatus)

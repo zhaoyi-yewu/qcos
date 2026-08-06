@@ -91,6 +91,8 @@ class Client:
         self.project_url = f"{endpoint_url}/project"
         self.system_url = f"{endpoint_url}/system"
         self.metrics_url = f"{endpoint_url}/metrics"
+        self.flavor_url = f"{endpoint_url}/flavor"
+        self.device_group_url = f"{endpoint_url}/device_group"
 
         # JWT token storage
         self.access_token = None
@@ -561,6 +563,39 @@ class Client:
         )
         return status_code, reason, text, result
 
+    def list_workers(self):
+        """List all prefect workers with name and status.
+
+        Returns:
+            list of workers
+        """
+        method_name = "list_workers"
+
+        # construct data and call json rpc
+        status_code, reason, text, result = self.call_json_rpc(
+            self.system_url, method_name, body_data=None
+        )
+        return status_code, reason, text, result
+
+    def restart_worker(self, *, worker_name):
+        """Restart a single prefect worker by worker name.
+
+        Args:
+            worker_name: worker name to restart
+
+        Returns:
+            restart worker result
+        """
+        method_name = "restart_worker"
+
+        # construct data and call json rpc
+        data = {"worker_name": worker_name}
+        status_code, reason, text, result = self.call_json_rpc(
+            self.system_url, method_name, data
+        )
+        return status_code, reason, text, result
+        return status_code, reason, text, result
+
     # [Job]
     def submit_job(
         self,
@@ -704,7 +739,7 @@ class Client:
         if gate_fidelity_2q_min is not None:
             data["gate_fidelity_2q_min"] = gate_fidelity_2q_min
         status_code, reason, text, result = self.call_json_rpc(
-            self.job_url, method_name, data
+            self.flavor_url, method_name, data
         )
         return status_code, reason, text, result
 
@@ -777,7 +812,7 @@ class Client:
                 else [str(dg) for dg in device_groups]
             )
         status_code, reason, text, result = self.call_json_rpc(
-            self.job_url, method_name, data
+            self.flavor_url, method_name, data
         )
         return status_code, reason, text, result
 
@@ -793,7 +828,7 @@ class Client:
         method_name = "get_flavor"
         data = {"flavor_id": str(flavor_id)}
         status_code, reason, text, result = self.call_json_rpc(
-            self.job_url, method_name, data
+            self.flavor_url, method_name, data
         )
         return status_code, reason, text, result
 
@@ -812,7 +847,7 @@ class Client:
         if filters:
             data["filters"] = filters
         status_code, reason, text, result = self.call_json_rpc(
-            self.job_url, method_name, data
+            self.flavor_url, method_name, data
         )
         return status_code, reason, text, result
 
@@ -828,7 +863,7 @@ class Client:
         method_name = "delete_flavors"
         data = {"flavor_ids": [str(fid) for fid in flavor_ids]}
         status_code, reason, text, result = self.call_json_rpc(
-            self.job_url, method_name, data
+            self.flavor_url, method_name, data
         )
         return status_code, reason, text, result
 
@@ -865,7 +900,7 @@ class Client:
         if device_names is not None:
             data["device_names"] = device_names
         status_code, reason, text, result = self.call_json_rpc(
-            self.job_url, method_name, data
+            self.device_group_url, method_name, data
         )
         return status_code, reason, text, result
 
@@ -912,7 +947,7 @@ class Client:
                 str(project_id) if project_id is not None else None
             )
         status_code, reason, text, result = self.call_json_rpc(
-            self.job_url, method_name, data
+            self.device_group_url, method_name, data
         )
         return status_code, reason, text, result
 
@@ -928,7 +963,7 @@ class Client:
         method_name = "get_device_group"
         data = {"group_id": str(group_id)}
         status_code, reason, text, result = self.call_json_rpc(
-            self.job_url, method_name, data
+            self.device_group_url, method_name, data
         )
         return status_code, reason, text, result
 
@@ -947,7 +982,7 @@ class Client:
         if filters:
             data["filters"] = filters
         status_code, reason, text, result = self.call_json_rpc(
-            self.job_url, method_name, data
+            self.device_group_url, method_name, data
         )
         return status_code, reason, text, result
 
@@ -963,7 +998,7 @@ class Client:
         method_name = "delete_device_groups"
         data = {"group_ids": [str(gid) for gid in group_ids]}
         status_code, reason, text, result = self.call_json_rpc(
-            self.job_url, method_name, data
+            self.device_group_url, method_name, data
         )
         return status_code, reason, text, result
 
