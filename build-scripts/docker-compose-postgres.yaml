@@ -33,3 +33,4 @@ services:
       - /var/run/postgresql:/var/run/postgresql
       - /var/log/qcos:/var/log/qcos
       - /var/qcos/db/postgresql:/var/lib/postgresql
+      - /var/qcos/backup/database:/var/qcos/backup/database

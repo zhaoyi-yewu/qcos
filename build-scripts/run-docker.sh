@@ -27,6 +27,7 @@ mkdir -p /etc/qcos/
 mkdir -p /etc/qcos/prefect
 mkdir -p /var/qcos/db
 mkdir -p /var/qcos/db/postgresql
+mkdir -p /var/qcos/backup/database
 mkdir -p /etc/qcos/postgres
 mkdir -p /var/prefect/
 mkdir -p /etc/prometheus
