@@ -50,17 +50,29 @@ class DeviceState:
     avg_exec_time_per_qubit: float = 0.0
 
     @classmethod
-    def from_device(cls, device: Device) -> "DeviceState":
+    def from_device(
+        cls, device: Device, transpiler: Any = None
+    ) -> "DeviceState":
         """Build a DeviceState from a Device instance.
 
         Args:
             device: Device instance
+            transpiler: optional TranspilerBase instance. When provided,
+                its supported code types take precedence over the
+                driver's; falls back to the driver when the
+                transpiler returns None or an empty list.
 
         Returns:
             DeviceState instance with static fields populated.
             Dynamic fields default to zero and must be set later.
         """
         driver = device.get_driver()
+        # Prefer transpiler-declared code types; fall back to driver
+        supported_code_types = None
+        if transpiler is not None:
+            supported_code_types = transpiler.get_supported_code_types()
+        if supported_code_types is None or len(supported_code_types) == 0:
+            supported_code_types = driver.get_supported_code_types()
         return cls(
             device=device,
             name=device.get_name(),
@@ -69,7 +81,7 @@ class DeviceState:
             max_qubits=driver.get_max_qubits(),
             available_num_qubits=getattr(driver, "available_num_qubits", -1),
             tech_type=device.tech_type,
-            supported_code_types=driver.get_supported_code_types() or [],
+            supported_code_types=supported_code_types or [],
             supported_basis_gates=driver.get_supported_basis_gates(),
             details=device.details or {},
             max_queued_jobs=device.get_max_queued_jobs(),
@@ -88,6 +100,25 @@ class DeviceState:
         """
         self.queued_job_count = queued_job_count
         self.running_job_count = running_job_count
+
+    def get_avg_1q_fidelity(self) -> float:
+        """Get average 1-qubit gate fidelity from device details.
+
+        Returns:
+            Average fidelity, 0.0 if not available.
+        """
+        single_qubit_prop = self.details.get("single_qubit_prop", {})
+        if not single_qubit_prop or not isinstance(single_qubit_prop, dict):
+            return 0.0
+        fidelities = []
+        for prop in single_qubit_prop.values():
+            if isinstance(prop, dict):
+                fidelity = prop.get("single_qubit_gate_fidelity")
+                if fidelity is not None:
+                    fidelities.append(float(fidelity))
+        if not fidelities:
+            return 0.0
+        return sum(fidelities) / len(fidelities)
 
     def get_avg_2q_fidelity(self) -> float:
         """Get average 2-qubit gate fidelity from device details.

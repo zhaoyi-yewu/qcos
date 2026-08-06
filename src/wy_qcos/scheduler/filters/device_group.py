@@ -17,14 +17,13 @@
 
 import logging
 
+from wy_qcos.common.constant import Constant
+from wy_qcos.common.flavor_constant import FlavorConstant
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.filters.base import BaseFilter
 from wy_qcos.scheduler.request_spec import RequestSpec
 
 logger = logging.getLogger(__name__)
-
-# extra_properties key for device group reference
-DEVICE_GROUP_SPEC_KEY = "qc:device_groups"
 
 
 class DeviceGroupFilter(BaseFilter):
@@ -66,7 +65,9 @@ class DeviceGroupFilter(BaseFilter):
         Returns:
             True if the filter should be applied.
         """
-        group_ref = spec.flavor_specs.get(DEVICE_GROUP_SPEC_KEY)
+        group_ref = spec.flavor_specs.get(
+            FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS
+        )
         return group_ref is not None
 
     def _filter_one(self, obj: DeviceState, spec: RequestSpec) -> bool:
@@ -80,8 +81,10 @@ class DeviceGroupFilter(BaseFilter):
             True if the device is in the referenced group,
             False otherwise. Returns True if filter is disabled.
         """
-        group_ref = spec.flavor_specs.get(DEVICE_GROUP_SPEC_KEY)
-        if not group_ref:
+        device_groups = spec.flavor_specs.get(
+            FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS
+        )
+        if not device_groups:
             return True
 
         if self._device_group_manager is None:
@@ -90,11 +93,22 @@ class DeviceGroupFilter(BaseFilter):
             )
             return True
 
-        device_names = self._device_group_manager.get_device_names_by_group(
-            group_ref
-        )
-        if not device_names:
-            logger.warning(f"No devices found for group: {group_ref}")
+        device_set = set()
+        for device_group in device_groups:
+            device_names = (
+                self._device_group_manager.get_device_names_by_group(
+                    device_group
+                )
+            )
+            device_set.update(device_names)
+
+        if not device_set:
+            logger.warning(
+                f"No devices found for groups: {', '.join(device_groups)}"
+            )
             return False
 
-        return obj.name in device_names
+        if Constant.DEVICE_GROUP_DN_ALL in device_set:
+            return True
+
+        return obj.name in device_set
