@@ -104,15 +104,24 @@ class BaseFilterHandler:
         for filter_instance in self._filters:
             if not filter_instance.is_enabled(spec):
                 continue
-            logger.debug(
-                f"Running filter: {filter_instance.__class__.__name__}, "
-                f"devices before: {[d.name for d in filtered]}"
+            filter_name = filter_instance.__class__.__name__
+            before_count = len(filtered)
+            logger.info(
+                f"Running filter: {filter_name}, "
+                f"devices before: {before_count}"
             )
             filtered = filter_instance.filter_all(filtered, spec)
+            after_count = len(filtered)
+            if after_count < before_count:
+                removed = before_count - after_count
+                logger.info(
+                    f"Filter {filter_name} removed {removed} "
+                    f"device(s), {after_count} remaining"
+                )
             if not filtered:
-                logger.debug(
-                    f"Filter {filter_instance.__class__.__name__} "
-                    f"returned no devices"
+                logger.info(
+                    f"Filter {filter_name} returned no devices, "
+                    f"scheduling will fail"
                 )
                 break
         return filtered
