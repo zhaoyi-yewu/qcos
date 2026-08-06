@@ -25,7 +25,9 @@ from wy_qcos_client.shell import (
     QcosShell,
     CommandHelper,
     GcMem,
+    ListWorkers,
     Ping,
+    RestartWorker,
     ShowMem,
     SystemInfo,
     TraceMem,
@@ -43,6 +45,8 @@ system_info = SystemInfo(shell, None)
 show_mem = ShowMem(shell, None)
 do_gc = GcMem(shell, None)
 trace_mem = TraceMem(shell, None)
+list_workers = ListWorkers(shell, None)
+restart_worker = RestartWorker(shell, None)
 
 
 class TestPing:
@@ -204,4 +208,60 @@ class TestTraceMem:
         assert result is not None
         mock_trace_mem.assert_called_once_with(
             action="stop", nframe=25, sort_count=False
+        )
+
+
+class TestListWorkers:
+    def test_get_parser(self):
+        parser = list_workers.get_parser("")
+        assert parser is not None
+
+    @patch.object(CommandHelper, "get_table_list_data")
+    @patch.object(CommandHelper, "check_results")
+    @patch.object(Client, "list_workers")
+    def test_take_action(self, mock_list, mock_check, mock_table):
+        mock_list.return_value = iter([None, None, None, None])
+        mock_check.return_value = {
+            "workers": [
+                {
+                    "worker_name": "process-device|dummy",
+                    "work_pool": "device|dummy",
+                    "worker_status": "ONLINE",
+                    "pid": 123,
+                }
+            ]
+        }
+        mock_table.return_value = (
+            ["worker_name", "work_pool", "worker_status", "pid"],
+            [["process-device|dummy", "device|dummy", "ONLINE", 123]],
+        )
+
+        mock_client = Mock(spec=Namespace)
+        result = list_workers.take_action(mock_client)
+        assert result is not None
+        mock_list.assert_called_once()
+
+
+class TestRestartWorker:
+    def test_get_parser(self):
+        parser = restart_worker.get_parser("")
+        assert parser is not None
+
+    @patch("builtins.print")
+    @patch.object(CommandHelper, "check_results")
+    @patch.object(Client, "restart_worker")
+    def test_take_action(self, mock_restart, mock_check, mock_print):
+        mock_restart.return_value = iter([None, None, None, None])
+        mock_check.return_value = {
+            "success": True,
+            "message": "restarted successfully",
+            "worker_name": "process-device|dummy",
+        }
+
+        mock_client = Mock(spec=Namespace)
+        mock_client.worker_name = "process-device|dummy"
+        # take_action returns None for a Command
+        assert restart_worker.take_action(mock_client) is None
+        mock_restart.assert_called_once_with(
+            worker_name="process-device|dummy"
         )

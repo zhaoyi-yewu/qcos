@@ -36,10 +36,8 @@ from wy_qcos.device.errors import DeviceGroupNotFoundError
 from wy_qcos.device.device_group_manager import (
     DeviceGroupManager,
 )
-from wy_qcos.scheduler.filters.device_group import (
-    DEVICE_GROUP_SPEC_KEY,
-    DeviceGroupFilter,
-)
+from wy_qcos.common.flavor_constant import FlavorConstant
+from wy_qcos.scheduler.filters.device_group import DeviceGroupFilter
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.request_spec import RequestSpec
 
@@ -611,7 +609,8 @@ class TestDeviceGroupFilter:
 
     def test_is_enabled_with_group_ref(self):
         f = DeviceGroupFilter()
-        spec = make_spec(flavor_specs={DEVICE_GROUP_SPEC_KEY: "my-group"})
+        key = FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS
+        spec = make_spec(flavor_specs={key: "my-group"})
         assert f.is_enabled(spec) is True
 
     def test_filter_one_disabled(self):
@@ -624,7 +623,9 @@ class TestDeviceGroupFilter:
     def test_filter_one_no_manager(self):
         """When manager is None but filter enabled, pass."""
         f = DeviceGroupFilter(device_group_manager=None)
-        spec = make_spec(flavor_specs={DEVICE_GROUP_SPEC_KEY: "g"})
+        spec = make_spec(
+            flavor_specs={FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS: "g"}
+        )
         ds = make_device_state("dummy")
         assert f._filter_one(ds, spec) is True
 
@@ -635,7 +636,9 @@ class TestDeviceGroupFilter:
             "qutip",
         ]
         f = DeviceGroupFilter(device_group_manager=mock_mgr)
-        spec = make_spec(flavor_specs={DEVICE_GROUP_SPEC_KEY: "my-group"})
+        spec = make_spec(
+            flavor_specs={FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS: "my-group"}
+        )
         ds = make_device_state("dummy")
         assert f._filter_one(ds, spec) is True
 
@@ -645,7 +648,9 @@ class TestDeviceGroupFilter:
             "other",
         ]
         f = DeviceGroupFilter(device_group_manager=mock_mgr)
-        spec = make_spec(flavor_specs={DEVICE_GROUP_SPEC_KEY: "my-group"})
+        spec = make_spec(
+            flavor_specs={FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS: "my-group"}
+        )
         ds = make_device_state("dummy")
         assert f._filter_one(ds, spec) is False
 
@@ -653,7 +658,9 @@ class TestDeviceGroupFilter:
         mock_mgr = MagicMock()
         mock_mgr.get_device_names_by_group.return_value = []
         f = DeviceGroupFilter(device_group_manager=mock_mgr)
-        spec = make_spec(flavor_specs={DEVICE_GROUP_SPEC_KEY: "empty"})
+        spec = make_spec(
+            flavor_specs={FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS: "empty"}
+        )
         ds = make_device_state("dummy")
         assert f._filter_one(ds, spec) is False
 

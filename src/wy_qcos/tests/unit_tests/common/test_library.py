@@ -1922,3 +1922,54 @@ class TestLibrary:
             "device|uuid|wrong", salt="salt"
         )
         assert success is False
+
+    def test_count_qubits_in_qasm_qreg_v2(self):
+        """Test count_qubits_in_qasm with OpenQASM 2.0 qreg."""
+        qasm = 'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[5];\ncreg c[5];'
+        assert Library.count_qubits_in_qasm(qasm) == 5
+
+    def test_count_qubits_in_qasm_qubit_array_v3(self):
+        """Test count_qubits_in_qasm with OpenQASM 3.0 array form."""
+        qasm = 'OPENQASM 3.0;\ninclude "stdgates.inc";\nqubit[8] q;\nbit[8] c;'
+        assert Library.count_qubits_in_qasm(qasm) == 8
+
+    def test_count_qubits_in_qasm_single_v3(self):
+        """Test count_qubits_in_qasm with OpenQASM 3.0 single qubit."""
+        qasm = "OPENQASM 3.0;\nqubit q;"
+        assert Library.count_qubits_in_qasm(qasm) == 1
+
+    def test_count_qubits_in_qasm_multiple_registers(self):
+        """Test count_qubits_in_qasm with multiple registers."""
+        qasm = "qreg q0[3];\nqubit[10] q1;\nqubit q2;"
+        assert Library.count_qubits_in_qasm(qasm) == 14
+
+    def test_count_qubits_in_qasm_empty(self):
+        """Test count_qubits_in_qasm with empty string."""
+        assert Library.count_qubits_in_qasm("") == 0
+
+    def test_count_qubits_in_qasm_no_declaration(self):
+        """Test count_qubits_in_qasm with no qubit declaration."""
+        assert Library.count_qubits_in_qasm("h q[0];\ncx q[0],q[1];") == 0
+
+    def test_get_max_qubits_from_source_code_basic(self):
+        """Test get_max_qubits_from_source_code returns max count."""
+        source_code = ["qreg q[2];", "qubit[5] q;"]
+        assert (
+            Library.get_max_qubits_from_source_code(source_code, "qasm") == 5
+        )
+
+    def test_get_max_qubits_from_source_code_empty(self):
+        """Test get_max_qubits_from_source_code with empty list."""
+        assert Library.get_max_qubits_from_source_code([], "qasm") == 0
+
+    def test_get_max_qubits_from_source_code_non_qasm_type(self):
+        """Test get_max_qubits_from_source_code with non-QASM code type."""
+        source_code = ["[[1, 0], [0, 1]]"]
+        assert (
+            Library.get_max_qubits_from_source_code(source_code, "qubo") == 0
+        )
+
+    def test_get_max_qubits_from_source_code_no_code_type(self):
+        """Test get_max_qubits_from_source_code without code_type."""
+        source_code = ["qreg q[3];", "qubit[7] q;"]
+        assert Library.get_max_qubits_from_source_code(source_code) == 7

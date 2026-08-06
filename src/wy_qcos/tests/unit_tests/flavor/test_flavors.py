@@ -31,6 +31,7 @@ from wy_qcos.api.posiq.routes_jsonrpc.flavor import (
     update_flavor,
 )
 from wy_qcos.common.constant import Constant
+from wy_qcos.common.flavor_constant import FlavorConstant
 from wy_qcos.db.models import Flavor
 from wy_qcos.flavor.errors import FlavorNotFoundError
 from wy_qcos.flavor.flavor_manager import (
@@ -244,10 +245,10 @@ class TestFlavorManagerGet:
         )
         with patch.object(mgr, "get_flavor", return_value=flavor):
             specs = mgr.get_flavor_specs(flavor.id)
-        assert specs["min_qubits"] == 2
-        assert specs["max_qubits"] == 10
-        assert specs["gate_fidelity_1q_min"] == 0.99
-        assert specs["gate_fidelity_2q_min"] == 0.995
+        assert specs[FlavorConstant.FS_KEY_MIN_QUBITS] == 2
+        assert specs[FlavorConstant.FS_KEY_MAX_QUBITS] == 10
+        assert specs[FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN] == 0.99
+        assert specs[FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN] == 0.995
         assert specs["qc:devices"] == "dummy"
 
     def test_get_flavor_specs_partial(self):
@@ -261,7 +262,7 @@ class TestFlavorManagerGet:
         )
         with patch.object(mgr, "get_flavor", return_value=flavor):
             specs = mgr.get_flavor_specs(flavor.id)
-        assert specs == {"min_qubits": 4}
+        assert specs == {FlavorConstant.FS_KEY_MIN_QUBITS: 4}
 
 
 # ------------------------------------------------------------------ #
