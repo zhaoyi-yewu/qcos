@@ -130,6 +130,7 @@ autodoc_mock_imports = [
     "wy_qcos.driver.qutip",
     "wy_qcos.driver.spinq",
     "wy_qcos.driver.uqc",
+    "wy_qcos.driver.logical_qubit",
     "wy_qcos.server",
     "wy_qcos.tests",
     "wy_qcos.transpiler.cmss.compiler.openqasm3",

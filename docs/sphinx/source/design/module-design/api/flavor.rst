@@ -283,7 +283,7 @@ Flavor的extra_properties字段支持以下键值，用于调度时过滤设备�
      - 排除的设备名称列表（逗号分隔）
      - ``"dummy"``
 
-   * - ``qc:device_availability``
+   * - ``qc:device_availability`` 【暂不支持】
      - 设备可用性要求
      - ``0.99``
 

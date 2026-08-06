@@ -157,3 +157,60 @@
 
    # 5. 停止追踪并释放所有追踪记录（调试完成后关闭，消除性能开销）
    qcos-cli trace-mem --action stop
+
+Prefect Worker 管理
+*******************
+
+查询所有 Prefect Worker 的名称与状态，或动态重启指定的 Worker。需要管理员权限。
+
+列出所有 Worker
+~~~~~~~~~~~~~~~~~
+
+命令行参数
+
+.. code-block:: shell
+
+   # 列出所有 Prefect Worker
+   usage: qcos-cli list-workers [-h] [-f {json,shell,table,value,yaml}] [-c COLUMN]
+                                [--noindent] [--prefix PREFIX] [--max-width <integer>]
+                                [--fit-width] [--print-empty]
+
+   List all prefect workers with name and status.
+
+典型场景示例
+
+.. code-block:: shell
+
+   # 列出所有 Prefect Worker 及其状态
+   qcos-cli list-workers
+
+重启指定 Worker
+~~~~~~~~~~~~~~~~~
+
+根据 Worker 名称动态重启对应的 Prefect Worker 进程。Worker 名称可通过 ``list-workers`` 命令获取。
+
+命令行参数
+
+.. code-block:: shell
+
+   # 重启指定 Prefect Worker
+   usage: qcos-cli restart-worker [-h] worker_name
+
+   Restart a single prefect worker by worker name.
+
+   positional arguments:
+     worker_name    Name of the prefect worker to restart
+
+典型场景示例
+
+.. code-block:: shell
+
+   # 重启名为 process-device|dummy 的 Worker
+   qcos-cli restart-worker "process-device|dummy"
+
+.. note::
+
+   Worker 名称遵循 ``process-{pool_name}`` 格式，其中 pool_name 为工作池名称
+   （如 ``device|dummy``）。设备监控 Worker 与设备管理 Worker 分别带有
+   ``_monitor`` 与 ``_mgr`` 后缀。重启操作会先终止目标进程再重新拉起，
+   期间该 Worker 处理的作业会受影响，请谨慎操作。
