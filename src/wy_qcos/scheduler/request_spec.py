@@ -17,6 +17,8 @@
 
 from dataclasses import dataclass, field
 
+from wy_qcos.common.flavor_constant import FlavorConstant
+
 
 @dataclass
 class RequestSpec:
@@ -40,17 +42,15 @@ class RequestSpec:
     @property
     def min_qubits(self) -> int | None:
         """Minimum qubits required (from flavor or extra_specs)."""
-        val = self.extra_specs.get(
-            "min_qubits", self.flavor_specs.get("min_qubits")
-        )
+        spec_key = FlavorConstant.FS_KEY_MIN_QUBITS
+        val = self.extra_specs.get(spec_key, self.flavor_specs.get(spec_key))
         return val
 
     @property
     def max_qubits(self) -> int | None:
         """Maximum qubits allowed (extra_specs overrides flavor)."""
-        val = self.extra_specs.get(
-            "max_qubits", self.flavor_specs.get("max_qubits")
-        )
+        spec_key = FlavorConstant.FS_KEY_MAX_QUBITS
+        val = self.extra_specs.get(spec_key, self.flavor_specs.get(spec_key))
         return val
 
     @property
@@ -59,9 +59,16 @@ class RequestSpec:
         return self.flavor_specs.get("tech_type")
 
     @property
+    def gate_fidelity_1q_min(self) -> float | None:
+        """Minimum 1-qubit gate fidelity from flavor specs."""
+        spec_key = FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN
+        return self.flavor_specs.get(spec_key)
+
+    @property
     def gate_fidelity_2q_min(self) -> float | None:
         """Minimum 2-qubit gate fidelity from flavor specs."""
-        return self.flavor_specs.get("gate_fidelity_2q_min")
+        spec_key = FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN
+        return self.flavor_specs.get(spec_key)
 
     @property
     def has_scheduling_constraints(self) -> bool:
