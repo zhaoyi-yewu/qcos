@@ -106,6 +106,19 @@ _VERIFIER_MSG_TRANSLATIONS: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"^QASM syntax error: failed to parse circuit$"),
         "QASM语法错误：线路解析失败",
     ),
+    (
+        re.compile(
+            r"^QASM syntax error: qubit (-?\d+) is measured more than once$"
+        ),
+        "QASM语法错误：比特{}被多次测量",
+    ),
+    (
+        re.compile(
+            r"^QASM syntax error: Measure gates must be at the end of "
+            r"the circuit$"
+        ),
+        "QASM语法错误：Measure门需置于线路末尾",
+    ),
     # --- topology errors ---
     (
         re.compile(r"^Topology error: circuit has no qubits$"),
