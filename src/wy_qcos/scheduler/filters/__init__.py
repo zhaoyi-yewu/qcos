@@ -31,10 +31,10 @@ from .queue_limit import QueueLimitFilter
 DEFAULT_FILTERS = [
     CodeTypeFilter,
     DeviceStatusFilter,
-    QubitCountFilter,
     TechTypeFilter,
-    GateFidelityFilter,
+    QubitCountFilter,
     QueueLimitFilter,
+    GateFidelityFilter,
 ]
 
 # Filter registry for auto-discovery
