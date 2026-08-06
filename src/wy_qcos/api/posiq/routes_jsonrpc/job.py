@@ -44,6 +44,7 @@ module_name = "JOB"
 
 
 @job_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[
         jsonrpc_errors.BadRequestError,
@@ -288,6 +289,20 @@ def submit_job(
     # auto scheduling: if backend is not specified
     job_scheduling_started_at = time.time()
     if not backend:
+        # check whether auto scheduling is enabled via the
+        # [SCHEDULER].ENABLE_AUTO_SCHEDULE config flag; when disabled,
+        # clients must specify an explicit backend
+        if not Config.SCHEDULER.ENABLE_AUTO_SCHEDULE:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                (
+                    False,
+                    "Auto scheduling is disabled, please specify "
+                    "an explicit backend",
+                ),
+            )
+
         # get auto scheduler
         auto_scheduler = scheduler.get_auto_scheduler()
         if auto_scheduler is None:
@@ -297,11 +312,16 @@ def submit_job(
                 (False, "Auto scheduler is not initialized"),
             )
 
-        # build request spec
+        # build request spec: parse the maximum qubit count from
+        # the source_code list so the QubitCountFilter can select a
+        # device whose max_qubits is large enough
         flavor_id_str = str(flavor_id) if flavor_id else None
+        num_qubits = Library.get_max_qubits_from_source_code(
+            source_code, code_type
+        )
         request_spec = AutoScheduler.build_request_spec(
             code_type=code_type,
-            num_qubits=0,
+            num_qubits=num_qubits,
             flavor_id=flavor_id_str,
             extra_specs=extra_specs,
             flavor_manager=scheduler.get_flavor_manager(),
@@ -698,6 +718,7 @@ def submit_job(
 
 
 @job_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError],
 )
@@ -742,6 +763,7 @@ def get_job_status(
 
 
 @job_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError],
 )
@@ -788,6 +810,7 @@ def get_job_results(
 
 
 @job_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.InternalServerError],
 )
@@ -837,7 +860,9 @@ def get_jobs(
 
 
 @job_api_v1.method(
-    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
+    errors=[],
 )
 def update_job(
     body: schemas.UpdateJobRequest,
@@ -938,7 +963,9 @@ def update_job(
 
 
 @job_api_v1.method(
-    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
+    errors=[],
 )
 def cancel_jobs(
     body: schemas.CancelJobsRequest,
@@ -1007,7 +1034,9 @@ def cancel_jobs(
 
 
 @job_api_v1.method(
-    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
+    errors=[],
 )
 def delete_jobs(
     body: schemas.DeleteJobsRequest,
@@ -1131,6 +1160,7 @@ def delete_jobs(
 
 
 @job_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError],
 )

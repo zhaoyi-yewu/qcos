@@ -1103,6 +1103,76 @@ class Library:
         )
 
     @staticmethod
+    def count_qubits_in_qasm(qasm_content: str) -> int:
+        """Count the number of qubits declared in QASM content.
+
+        Supports both OpenQASM 2.0 and 3.0 declarations:
+        - qreg <name>[<size>];        (OpenQASM 2.0)
+        - qubit[<size>] <name>;       (OpenQASM 3.0 array form)
+        - qubit <name>;               (OpenQASM 3.0 single qubit)
+
+        Args:
+            qasm_content: QASM source code string
+
+        Returns:
+            total number of declared qubits; 0 when no declaration
+            is found or the input is empty.
+        """
+        if not qasm_content:
+            return 0
+        total_qubits = 0
+        # qreg <name>[<size>];  (OpenQASM 2.0)
+        qreg_matches = re.findall(r"qreg\s+\w+\[(\d+)\]", qasm_content)
+        total_qubits += sum(int(n) for n in qreg_matches)
+        # qubit[<size>] <name>;  (OpenQASM 3.0 array form)
+        qubit_arr_matches = re.findall(r"qubit\[(\d+)\]\s+\w+", qasm_content)
+        total_qubits += sum(int(n) for n in qubit_arr_matches)
+        # qubit <name>;  (OpenQASM 3.0 single qubit, avoid matching
+        # the array form qubit[<size>] already counted above)
+        single_matches = re.findall(
+            r"(?<![\w\[])\bqubit\s+\w+\s*;", qasm_content
+        )
+        # subtract single-qubit declarations that are actually part
+        # of qubit[<size>] form (contains '[' between qubit and name)
+        single_count = 0
+        for match in single_matches:
+            if "[" not in match:
+                single_count += 1
+        total_qubits += single_count
+        return total_qubits
+
+    @staticmethod
+    def get_max_qubits_from_source_code(
+        source_code: list, code_type: str = ""
+    ) -> int:
+        """Get the maximum qubit count across all source code items.
+
+        Only QASM code types (qasm/qasm2/qasm3) are parsed; for other
+        code types (e.g. qubo) or empty input, 0 is returned.
+
+        Args:
+            source_code: list of source code strings
+            code_type: code type string (qasm, qasm2, qasm3, qubo)
+
+        Returns:
+            maximum qubit count among all source code items
+        """
+        if not source_code:
+            return 0
+        # only QASM code types declare qubits via qreg/qubit statements
+        qasm_types = set(Constant.CODE_TYPES_ALL_QASM)
+        if code_type and code_type not in qasm_types:
+            return 0
+        max_qubits = 0
+        for item in source_code:
+            if not isinstance(item, str):
+                continue
+            count = Library.count_qubits_in_qasm(item)
+            if count > max_qubits:
+                max_qubits = count
+        return max_qubits
+
+    @staticmethod
     def validate_qubo_matrices(qubo_matrices):
         """Validate qubo matrices.
 

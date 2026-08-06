@@ -270,6 +270,10 @@ class GetJobStatusResponse(UuidMixin):
     description: str | None = Field(default=None, description="Description")
     # Backend device name
     backend: str = Field(description="Backend device name")
+    # Flavor ID for auto scheduling
+    flavor_id: UUID | None = Field(
+        default=None, description="Flavor ID for auto scheduling"
+    )
     # Driver options
     driver_options: dict | None = Field(
         default=None, description="Driver options"
@@ -361,6 +365,10 @@ class GetJobResultsResponse(UuidMixin):
     # Driver options
     driver_options: dict | None = Field(
         default=None, description="Driver options"
+    )
+    # Flavor ID for auto scheduling
+    flavor_id: UUID | None = Field(
+        default=None, description="Flavor ID for auto scheduling"
     )
     # Transpiler
     transpiler: str | None = Field(default=None, description="Transpiler")
@@ -561,6 +569,10 @@ class UpdateJobResponse(UuidMixin):
     description: str | None = Field(default=None, description="Description")
     # Backend device name
     backend: str = Field(description="Backend device name")
+    # Flavor ID for auto scheduling
+    flavor_id: UUID | None = Field(
+        default=None, description="Flavor ID for auto scheduling"
+    )
     # Driver options
     driver_options: dict | None = Field(
         default=None, description="Driver options"
