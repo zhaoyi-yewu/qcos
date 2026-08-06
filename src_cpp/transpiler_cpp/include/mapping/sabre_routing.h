@@ -18,6 +18,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "circuit/base_operation.h"
@@ -38,7 +39,9 @@ std::vector<int> sabre_initial_mapping(
  * @brief 使用SABRE算法对逻辑门序列执行routing。
  *
  * 内部将 measure 门从门序列中分离: measure 不参与路由, 路由后追加到
- * 返回结果末尾(已转为物理 ID)。初始映射由内部调用 dense_layout_mapping 完成。
+ * 返回结果末尾(已转为物理 ID)。初始映射由 layout_method 决定:
+ * "vf2_layout" 先尝试 VF2 完美嵌入, 失败回退 DenseLayout;
+ * "dense_layout" 直接使用 DenseLayout。
  *
  * 保真度阈值 fidelity_threshold:
  *   < 0 (默认 -1): 自适应计算 (mean - std, clamp [0.3, 0.9])
@@ -49,11 +52,12 @@ std::vector<int> sabre_initial_mapping(
  * @param edge_fidelities 边保真度数组(与 coupling_list 对应),
  * 空则不使用保真度。
  * @param single_qubit_fidelities 单比特保真度数组, 空则不使用。
+ * @param layout_method 初始映射方法: "vf2_layout"(默认) 或 "dense_layout"。
  * @param fidelity_threshold 保真度阈值, <0 自适应计算, 默认 -1。
+ * @param fidelity_weight DenseLayout 保真度权重，取值 [0, 1]，默认 0.5。
  * @param extension_size 扩展集大小，用于 lookahead 成本计算，默认 20。
  * @param weight 前沿层与扩展层成本权重，默认 0.5。
  * @param decay SWAP 衰减系数，默认 0.001。
- * @param fidelity_weight DenseLayout 保真度权重，取值 [0, 1]，默认 0.5。
  * @return std::vector<std::shared_ptr<BaseOperation>> routing 后的物理门序列。
  */
 std::vector<std::shared_ptr<BaseOperation>> sabre_routing(
@@ -61,8 +65,9 @@ std::vector<std::shared_ptr<BaseOperation>> sabre_routing(
     const std::vector<std::pair<int, int>>& coupling_list,
     const std::vector<double>& edge_fidelities = {},
     const std::vector<double>& single_qubit_fidelities = {},
-    double fidelity_threshold = -1.0, int extension_size = 20,
-    double weight = 0.5, double decay = 0.001, double fidelity_weight = 0.5);
+    const std::string& layout_method = "vf2_layout",
+    double fidelity_threshold = -1.0, double fidelity_weight = 0.5,
+    int extension_size = 20, double weight = 0.5, double decay = 0.001);
 
 /**
  * @brief SABRE算法中的节点结构
@@ -102,20 +107,21 @@ class SABRE {
    * @param coupling_list 量子芯片物理耦合关系，每个元素为一对物理量子比特编号
    * @param edge_fidelities 边保真度数组(与coupling_list对应)，空则不使用保真度
    * @param single_qubit_fidelities 单比特保真度数组，空则不使用
+   * @param layout_method 初始映射方法: "vf2_layout"(默认) 或 "dense_layout"
    * @param fidelity_threshold 保真度阈值, <0 自适应计算 (mean - std, clamp
    * [0.3, 0.9]),
    *                           >=0 使用传入值, 默认 -1
+   * @param fidelity_weight DenseLayout保真度权重，取值[0, 1]，默认0.5
    * @param extension_size 扩展集大小，用于lookahead成本计算，默认20
    * @param weight 前沿层与扩展层成本权重，默认0.5
    * @param decay 物理比特衰减系数，默认0.001
-   * @param fidelity_weight DenseLayout保真度权重，取值[0, 1]，默认0.5
    */
   SABRE(const std::vector<std::pair<int, int>>& coupling_list,
         const std::vector<double>& edge_fidelities = {},
         const std::vector<double>& single_qubit_fidelities = {},
-        double fidelity_threshold = -1.0, int extension_size = 20,
-        double weight = 0.5, double decay = 0.001,
-        double fidelity_weight = 0.5);
+        const std::string& layout_method = "vf2_layout",
+        double fidelity_threshold = -1.0, double fidelity_weight = 0.5,
+        int extension_size = 20, double weight = 0.5, double decay = 0.001);
 
   /**
    * @brief 执行SABRE算法
@@ -176,6 +182,7 @@ class SABRE {
   double weight_;                                ///< 扩展层权重
   double decay_;                                 ///< SWAP衰减因子
   double fidelity_weight_;                       ///< DenseLayout保真度权重
+  std::string layout_method_;                    ///< 初始映射方法
   std::vector<std::vector<int>> adj_list_;       ///< 物理耦合图邻接表
   std::vector<std::vector<bool>> adj_matrix_;    ///< 邻接矩阵(O(1)查询)
   std::vector<std::vector<int>> dist_;           ///< 最短路径距离矩阵

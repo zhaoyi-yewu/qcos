@@ -86,11 +86,11 @@ std::vector<std::shared_ptr<BaseOperation>> sabre_routing(
     const std::vector<std::pair<int, int>>& coupling_list,
     const std::vector<double>& edge_fidelities,
     const std::vector<double>& single_qubit_fidelities,
-    double fidelity_threshold, int extension_size, double weight, double decay,
-    double fidelity_weight) {
+    const std::string& layout_method, double fidelity_threshold,
+    double fidelity_weight, int extension_size, double weight, double decay) {
   SABRE sabre(coupling_list, edge_fidelities, single_qubit_fidelities,
-              fidelity_threshold, extension_size, weight, decay,
-              fidelity_weight);
+              layout_method, fidelity_threshold, fidelity_weight,
+              extension_size, weight, decay);
   sabre.execute(gates_list);
   return sabre.get_physical_gates();
 }
@@ -98,8 +98,9 @@ std::vector<std::shared_ptr<BaseOperation>> sabre_routing(
 SABRE::SABRE(const std::vector<std::pair<int, int>>& coupling_list,
              const std::vector<double>& edge_fidelities,
              const std::vector<double>& single_qubit_fidelities,
-             double fidelity_threshold, int extension_size, double weight,
-             double decay, double fidelity_weight)
+             const std::string& layout_method, double fidelity_threshold,
+             double fidelity_weight, int extension_size, double weight,
+             double decay)
     : coupling_list_(coupling_list),
       edge_fidelities_(edge_fidelities),
       single_qubit_fidelities_(single_qubit_fidelities),
@@ -110,7 +111,8 @@ SABRE::SABRE(const std::vector<std::pair<int, int>>& coupling_list,
       extension_size_(extension_size),
       weight_(weight),
       decay_(decay),
-      fidelity_weight_(fidelity_weight) {
+      fidelity_weight_(fidelity_weight),
+      layout_method_(layout_method) {
   // 若提供了保真度数据且阈值 > 0, 则过滤
   if (!edge_fidelities_.empty() && fidelity_threshold_ > 0.0) {
     ChipCalibration chip(coupling_list_, edge_fidelities_,
@@ -173,9 +175,11 @@ void SABRE::execute(
   }
 
   // 3. 计算初始映射并执行路由
-  // 先尝试 VF2 完美嵌入 (零 SWAP)，失败则回退 DenseLayout + SABRE 精化
-  std::vector<int> initial_l2p = vf2_layout_mapping(
-      gate_ops, coupling_list_, edge_fidelities_, logic_qubit_num_);
+  std::vector<int> initial_l2p;
+  if (layout_method_ == "vf2_layout") {
+    initial_l2p = vf2_layout_mapping(gate_ops, coupling_list_,
+                                     edge_fidelities_, logic_qubit_num_);
+  }
   if (initial_l2p.empty()) {
     initial_l2p = dense_layout_mapping(gate_ops, coupling_list_,
                                        edge_fidelities_, logic_qubit_num_);

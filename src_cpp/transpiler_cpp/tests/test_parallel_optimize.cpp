@@ -239,9 +239,9 @@ TEST(OptimizeParallelTest, SmallQasmCorrectness) {
 
 TEST(OptimizeParallelTest, ParallelPerformanceBwtN21) {
   // qasm/benchpress/qasmbench-medium/bwt_n21/bwt_n21_transpiled.qasm
-  std::string qasm_path = std::string(TEST_DATA_DIR) +
-                          "qasm/benchpress/qasmbench-large/multiplier_n75/"
-                          "multiplier_n75_transpiled.qasm";
+  std::string qasm_path =
+      std::string(TEST_DATA_DIR) +
+      "qasm/benchpress/qasmbench-large/adder_n28/adder_n28_transpiled.qasm";
   std::ifstream ifs(qasm_path);
   if (!ifs) GTEST_SKIP() << "QASM file not found: " << qasm_path;
 

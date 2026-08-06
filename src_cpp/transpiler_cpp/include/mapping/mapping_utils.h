@@ -133,4 +133,19 @@ void restore_physical_ids(const PhysicalIdRemap& remap,
                           std::vector<GateOperation>& physical_gates,
                           std::vector<int>& logic2phy);
 
+/**
+ * @brief 校验映射函数的公共输入参数
+ *
+ * 检查 coupling_list 非空、edge_fidelities 与 coupling_list 长度一致、
+ * 逻辑比特数不超过可用物理比特数（去重计数，排除不连通的孤立比特）。
+ *
+ * @param coupling_list 物理耦合边列表
+ * @param edge_fidelities 边保真度数组，空则跳过长度校验
+ * @param num_logical 逻辑比特数
+ * @throw std::invalid_argument 当参数不合法时
+ */
+void validate_mapping_inputs(
+    const std::vector<std::pair<int, int>>& coupling_list,
+    const std::vector<double>& edge_fidelities, int num_logical);
+
 }  // namespace qcos

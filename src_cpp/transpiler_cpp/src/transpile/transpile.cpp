@@ -76,11 +76,11 @@ std::vector<std::string> collect_gate_names(
 
 TranspileResult transpile(
     const std::string& qasm_string,
-    const std::vector<std::string>& supp_basis_gates,
-    const std::vector<std::pair<int, int>>& coupling_list, int opt_level,
+    const std::vector<std::string>& supp_basis_gates, int opt_level,
+    const std::vector<std::pair<int, int>>& coupling_list,
     const std::vector<double>& edge_fidelities,
-    const std::vector<double>& single_qubit_fidelities, size_t num_threads,
-    bool fast_mode,
+    const std::vector<double>& single_qubit_fidelities,
+    const std::string& layout_method, size_t num_threads, bool fast_mode,
     double fidelity_threshold, double fidelity_weight) {
   using clock = std::chrono::high_resolution_clock;
 
@@ -122,9 +122,16 @@ TranspileResult transpile(
 
   // Step 5: SABRE routing — 逻辑比特到物理比特的映射与路由
   auto map_start = clock::now();
-  auto routed_ops = sabre_routing(
-      decomposed_ops, coupling_list, edge_fidelities, single_qubit_fidelities,
-      fidelity_threshold, 20, 0.5, 0.001, fidelity_weight);
+  std::vector<std::shared_ptr<BaseOperation>> routed_ops;
+  // 若不传coupling_list，则不进行路由
+  if (coupling_list.empty()) {
+    routed_ops = decomposed_ops;
+  } else {
+    routed_ops =
+        sabre_routing(decomposed_ops, coupling_list, edge_fidelities,
+                      single_qubit_fidelities, layout_method,
+                      fidelity_threshold, fidelity_weight, 20, 0.5, 0.001);
+  }
   t.mapping_time =
       std::chrono::duration<double>(clock::now() - map_start).count();
 

@@ -88,17 +88,18 @@ std::vector<std::string> collect_gate_names(
  *   2. 优化 #1（opt_level 上限为 1）→ optimize
  *   3. 分解为 1q/2q 门 → decompose_gates_to_1q2q
  *   4. 生成分解规则 → Decomposer::get_decompose_rules
- *   5. SABRE 路由 → sabre_routing
+ *   5. SABRE 路由 → sabre_routing (coupling_list 为空时跳过)
  *   6. 应用分解规则 → Decomposer::apply_decompose_rules
  *   7. 优化 #2（完整 opt_level + basis_gates）→ optimize
  *
  * @param qasm_string QASM 电路字符串
  * @param supp_basis_gates 支持的基础门名列表
- * @param coupling_list 物理耦合图边列表（已规范化为 int 对）
  * @param opt_level 优化级别 (0-3)，默认 1
+ * @param coupling_list 物理耦合图边列表，空表示不进行路由
  * @param edge_fidelities 边保真度，与 coupling_list 对应，空表示不使用，默认空
  * @param single_qubit_fidelities 单比特保真度，按物理位 ID
  * 索引，空表示不使用，默认空
+ * @param layout_method 初始映射方法: "vf2_layout"(默认) 或 "dense_layout"
  * @param num_threads 优化阶段线程数：0=自动并行(取 hardware_concurrency)，
  * 1=串行，>1=指定。默认 0，透传给内部 optimize() 调用。
  * @param fast_mode 优化快速模式：true 只跑一轮 pass，透传给内部 optimize()
@@ -112,12 +113,13 @@ std::vector<std::string> collect_gate_names(
  */
 TranspileResult transpile(
     const std::string& qasm_string,
-    const std::vector<std::string>& supp_basis_gates,
-    const std::vector<std::pair<int, int>>& coupling_list, int opt_level = 1,
+    const std::vector<std::string>& supp_basis_gates, int opt_level = 1,
+    const std::vector<std::pair<int, int>>& coupling_list = {},
     const std::vector<double>& edge_fidelities = {},
     const std::vector<double>& single_qubit_fidelities = {},
-    size_t num_threads = 0, bool fast_mode = true,
-    double fidelity_threshold = -1.0, double fidelity_weight = 0.5);
+    const std::string& layout_method = "vf2_layout", size_t num_threads = 0,
+    bool fast_mode = true, double fidelity_threshold = -1.0,
+    double fidelity_weight = 0.5);
 
 /**
  * @brief All-in-one transpile function (neutral-atom NA mapping, single

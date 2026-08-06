@@ -242,23 +242,23 @@ TEST(Vf2Layout, RingCircuitOnRingTopology) {
 }
 
 /**
- * @brief 空耦合图返回空
+ * @brief 空耦合图报错
  */
 TEST(Vf2Layout, EmptyCouplingList) {
   std::vector<std::pair<int, int>> coupling_list;
   std::vector<GateOperation> gates = {cx(0, 1)};
 
-  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, 2);
-  EXPECT_TRUE(mapping.empty());
+  EXPECT_THROW(vf2_layout_mapping(gates, coupling_list, {}, 2),
+               std::invalid_argument);
 }
 
 /**
- * @brief 逻辑比特数 > 物理比特数返回空
+ * @brief 逻辑比特数 > 物理比特数报错
  */
 TEST(Vf2Layout, LogicalExceedsPhysical) {
   std::vector<std::pair<int, int>> coupling_list = {{0, 1}};
   std::vector<GateOperation> gates = {cx(0, 1), cx(1, 2)};
 
-  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, 3);
-  EXPECT_TRUE(mapping.empty());
+  EXPECT_THROW(vf2_layout_mapping(gates, coupling_list, {}, 3),
+               std::invalid_argument);
 }
