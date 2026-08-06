@@ -27,7 +27,7 @@ from wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication import (
     auth,
 )
 from wy_qcos.api.posiq.routes_jsonrpc.project import get_project_manager
-from wy_qcos.api.posiq.routes_jsonrpc.routes import job_api_v1
+from wy_qcos.api.posiq.routes_jsonrpc.routes import flavor_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.db.utils.db_utils import get_db_filters
@@ -85,10 +85,14 @@ def _current_project_id(auth_data: dict | None):
     return auth_data.get("project_id") if auth_data else None
 
 
-@job_api_v1.method(
-    tags=["flavor"],
+@flavor_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
-    errors=[jsonrpc_errors.BadRequestError],
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.ConflictError,
+        jsonrpc_errors.InternalServerError,
+    ],
 )
 def create_flavor(
     body: schemas.CreateFlavorRequest,
@@ -229,10 +233,14 @@ def create_flavor(
     return response
 
 
-@job_api_v1.method(
-    tags=["flavor"],
+@flavor_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
-    errors=[jsonrpc_errors.BadRequestError],
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.ConflictError,
+        jsonrpc_errors.InternalServerError,
+    ],
 )
 def update_flavor(
     body: schemas.UpdateFlavorRequest,
@@ -428,10 +436,14 @@ def update_flavor(
     return response
 
 
-@job_api_v1.method(
-    tags=["flavor"],
+@flavor_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
-    errors=[jsonrpc_errors.BadRequestError],
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.NotFoundError,
+        jsonrpc_errors.InternalServerError,
+    ],
 )
 def get_flavor(
     body: schemas.GetFlavorRequest,
@@ -479,10 +491,13 @@ def get_flavor(
     return response
 
 
-@job_api_v1.method(
-    tags=["flavor"],
+@flavor_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
-    errors=[jsonrpc_errors.BadRequestError],
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.InternalServerError,
+    ],
 )
 def get_flavors(
     body: schemas.GetFlavorsRequest | None = None,
@@ -526,10 +541,13 @@ def get_flavors(
     return [schemas.FlavorResponse.model_validate(f) for f in flavors]
 
 
-@job_api_v1.method(
-    tags=["flavor"],
+@flavor_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
-    errors=[jsonrpc_errors.BadRequestError],
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.InternalServerError,
+    ],
 )
 def delete_flavors(
     body: schemas.DeleteFlavorsRequest,
