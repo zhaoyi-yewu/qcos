@@ -887,7 +887,7 @@ class CMSSTranspilerPerf:
                         )
                         transpiler.transpiler_runtime = runtime
 
-                        basis_gate_list, _ = transpiler.transpile(
+                        basis_gate_list, _, _ = transpiler.transpile(
                             parse_result, expected_basis_gates
                         )
                     runtime.transpile_time = tranpile_timer.elapsed

@@ -529,7 +529,7 @@ class QiskitTranspilerPerf:
                 )
 
             with Timer() as transpile_timer:
-                transpiled_circuit = transpiler.transpile(
+                transpiled_circuit, _, _ = transpiler.transpile(
                     parse_result, basis_gates
                 )
             runtime.transpile_time = transpile_timer.elapsed

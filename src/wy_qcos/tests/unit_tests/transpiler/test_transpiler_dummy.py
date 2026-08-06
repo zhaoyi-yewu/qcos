@@ -64,4 +64,5 @@ class TestTranspilerDummy:
         assert transpiler_dummy.transpile(parse_result, [None]) == (
             parse_result,
             None,
+            None,
         )
