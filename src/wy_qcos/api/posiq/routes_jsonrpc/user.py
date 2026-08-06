@@ -85,7 +85,9 @@ def _mask_hidden_fields(obj: Any) -> Any:
 
 
 @user_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[],
 )
 def get_user_mgmt(
     body: schemas.GetUserMgmtRequest | None = None,
@@ -116,6 +118,7 @@ def get_user_mgmt(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.BadRequestError],
 )
@@ -164,6 +167,7 @@ def set_user_mgmt(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.ConflictError, jsonrpc_errors.BadRequestError],
 )
@@ -242,6 +246,7 @@ def create_user(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -300,7 +305,9 @@ def get_user(
 
 
 @user_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[],
 )
 def get_users(
     request: Request,
@@ -347,6 +354,7 @@ def get_users(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.BadRequestError],
 )
@@ -410,6 +418,7 @@ def update_user(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[
         jsonrpc_errors.BadRequestError,
@@ -477,6 +486,7 @@ def delete_user(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[
         jsonrpc_errors.BadRequestError,
@@ -547,6 +557,7 @@ def create_role(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -602,7 +613,9 @@ def get_role(
 
 
 @user_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[],
 )
 def get_roles(
     request: Request,
@@ -649,6 +662,7 @@ def get_roles(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[
         jsonrpc_errors.BadRequestError,
@@ -712,6 +726,7 @@ def update_role(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[
         jsonrpc_errors.BadRequestError,
@@ -769,9 +784,8 @@ def delete_role(
 
 
 @user_api_v1.method(
-    openapi_extra={
-        "allowed_roles": Constant.ALL_ROLES,
-    },
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[
         jsonrpc_errors.BadRequestError,
         jsonrpc_errors.NotFoundError,
@@ -844,6 +858,7 @@ def change_password(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.BadRequestError],
 )
@@ -936,6 +951,7 @@ def get_login_logs(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.BadRequestError],
 )

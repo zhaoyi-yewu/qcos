@@ -33,6 +33,7 @@ module_name = "METRICS"
 
 
 @metrics_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
 )
 def get_system_health(
@@ -84,6 +85,7 @@ def get_system_health(
 
 
 @metrics_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
 )
 def get_api_stats(
@@ -128,6 +130,7 @@ def get_api_stats(
 
 
 @metrics_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
 )
 def get_job_stats(

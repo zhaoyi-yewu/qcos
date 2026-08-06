@@ -64,7 +64,9 @@ def _get_driver_info(driver, transpiler):
 
 
 @driver_api_v1.method(
-    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
+    errors=[],
 )
 def get_drivers(
     body: schemas.GetDriversRequest | None = None,
@@ -96,6 +98,7 @@ def get_drivers(
 
 
 @driver_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.NotFoundError],
 )

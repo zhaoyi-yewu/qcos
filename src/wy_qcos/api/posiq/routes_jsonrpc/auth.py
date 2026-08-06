@@ -39,7 +39,9 @@ module_name = "AUTH"
 
 
 @auth_api_v1.method(
-    openapi_extra={"no_auth": True}, errors=[jsonrpc_errors.UnauthorizedError]
+    tags=[module_name.lower()],
+    openapi_extra={"no_auth": True},
+    errors=[jsonrpc_errors.UnauthorizedError],
 )
 async def login(
     request: Request,
@@ -363,7 +365,9 @@ async def login(
 
 
 @auth_api_v1.method(
-    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
+    errors=[],
 )
 def logout(
     request: Request,
@@ -449,6 +453,7 @@ def logout(
 
 
 @auth_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"no_auth": True},
     errors=[jsonrpc_errors.UnauthorizedError],
 )
@@ -597,6 +602,7 @@ async def refresh_token(
 
 
 @auth_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.UnauthorizedError],
 )
