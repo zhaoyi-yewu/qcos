@@ -70,12 +70,12 @@ class GetDeviceResponse(BaseModel):
         default_factory=dict,
         description="Job count grouped by job status",
     )
-    # details info
-    details: dict | None = Field(default=None, description="Details info")
     # device status last updated at
     last_updated_at: str | None = Field(
         default=None, description="Device status last updated at"
     )
+    # details info
+    details: dict | None = Field(default=None, description="Details info")
 
 
 class CalibrateDeviceRequest(BaseModel):
