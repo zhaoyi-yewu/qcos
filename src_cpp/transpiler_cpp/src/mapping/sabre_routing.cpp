@@ -312,6 +312,65 @@ void SABRE::extend_l2p_with_unused_qubits(int old_size) {
   }
 }
 
+void SABRE::dijkstra_fallback(std::vector<GateOperation>& result) {
+  constexpr int kInf = 1000000;
+
+  // 第一步：在 front layer 中选物理距离最短的 2q 门
+  Node* stuck_node = nullptr;
+  int min_dist = kInf;
+  for (auto* node : front_layer_) {
+    if (node->bits.size() != 2) continue;
+    int phy0 = cur_l2p_[node->bits[0]];
+    int phy1 = cur_l2p_[node->bits[1]];
+    int distance = dist_[phy0][phy1];
+    if (distance < min_dist) {
+      min_dist = distance;
+      stuck_node = node;
+    }
+  }
+  if (stuck_node == nullptr || min_dist >= kInf) {
+    throw std::runtime_error(
+        "SABRE routing stuck: front layer gates unreachable. "
+        "The coupling graph may be disconnected after edge filtering.");
+  }
+
+  // 第二步：利用 BFS 距离矩阵重建最短路径（从终点反向回溯到起点）
+  // 每步找一个到起点距离恰好少 1 的邻居，保证走的是最短路径
+  int src_phy = cur_l2p_[stuck_node->bits[0]];  // 起点物理比特
+  int dst_phy = cur_l2p_[stuck_node->bits[1]];  // 终点物理比特
+  std::vector<int> path;
+  int curr = dst_phy;
+  while (dist_[src_phy][curr] > 0) {
+    path.push_back(curr);
+    for (int neighbor : adj_list_[curr]) {
+      if (dist_[src_phy][neighbor] == dist_[src_phy][curr] - 1) {
+        curr = neighbor;
+        break;
+      }
+    }
+  }
+  std::reverse(path.begin(), path.end());
+  // path = [n1, n2, ..., n_{D-1}, dst_phy]，即最短路径去掉起点 src_phy
+
+  // 第三步：沿路径插入 SWAP（D-1 个，跳过最后一条边，只需相邻不需交换位置）
+  // 每个 SWAP 使门比特的物理距离严格递减，D-1 步后必然相邻
+  int prev_phy = src_phy;
+  for (size_t i = 0; i + 1 < path.size(); i++) {
+    int swap_from = prev_phy;
+    int swap_to = path[i];
+    result.push_back(GateOperation("swap", {swap_from, swap_to}, {},
+                                   OperationType::DOUBLE_QUBIT_OPERATION,
+                                   false));
+    // 更新逻辑和物理映射（cur_l2p_ / cur_p2l_）
+    int lq0 = cur_p2l_[swap_from];
+    int lq1 = cur_p2l_[swap_to];
+    if (lq0 >= 0) cur_l2p_[lq0] = swap_to;
+    if (lq1 >= 0) cur_l2p_[lq1] = swap_from;
+    std::swap(cur_p2l_[swap_from], cur_p2l_[swap_to]);
+    prev_phy = swap_to;
+  }
+}
+
 std::vector<GateOperation> SABRE::execute_routing(
     const std::vector<GateOperation>& gates_list,
     const std::vector<int>& initial_l2p) {
@@ -346,6 +405,7 @@ std::vector<GateOperation> SABRE::execute_routing(
       extend_l2p_with_unused_qubits(old_size);
     }
   }
+  initial_l2p_ = cur_l2p_;
 
   // physical to logical mapping (-1 = physical qubit holds no logical qubit)
   cur_p2l_.assign(array_size, -1);
@@ -412,6 +472,16 @@ std::vector<GateOperation> SABRE::execute_routing(
   std::vector<double> decay_list(max_phy_qubit_id_ + 1, 1.0);
   int decay_cycle = 5;
   int decay_time = 0;
+  // Safety limit: prevent infinite loops
+  int max_iter = static_cast<int>(gates_list.size()) * 100 + 10000;
+  int iter_count = 0;
+  // LightSABRE: stuck detection + backtrack + Dijkstra fallback
+  int swaps_since_progress = 0;
+  int stuck_threshold = std::max(logic_qubit_num_ * 2, 20);
+  std::vector<int> checkpoint_l2p = cur_l2p_;
+  std::vector<int> checkpoint_p2l = cur_p2l_;
+  size_t checkpoint_result_size = result.size();
+  const int kInf = 1000000;
 
   while (!front_layer_.empty()) {
     decay_time += 1;
@@ -455,6 +525,11 @@ std::vector<GateOperation> SABRE::execute_routing(
         }
       }
       std::fill(decay_list.begin(), decay_list.end(), 1.0);
+      // save checkpoint after successful gate execution
+      checkpoint_l2p = cur_l2p_;
+      checkpoint_p2l = cur_p2l_;
+      checkpoint_result_size = result.size();
+      swaps_since_progress = 0;
     } else {
       // no gate can be executed, find the best swap
       obtain_swaps(candidate_swaps_);
@@ -464,6 +539,28 @@ std::vector<GateOperation> SABRE::execute_routing(
             "The coupling graph may be disconnected after edge filtering. "
             "Try lowering fidelity_threshold.");
       }
+      // Iteration limit: prevent infinite loops from heuristic oscillation
+      if (++iter_count > max_iter) {
+        throw std::runtime_error(
+            "SABRE routing stuck: exceeded max iterations (" +
+            std::to_string(max_iter) +
+            "). The circuit may be too complex for the current heuristic "
+            "or the coupling graph may be problematic.");
+      }
+
+      // detect stuck and fall back to Dijkstra
+      swaps_since_progress++;
+      if (swaps_since_progress > stuck_threshold) {
+        // Backtrack: restore state to last successful gate execution
+        cur_l2p_ = checkpoint_l2p;
+        cur_p2l_ = checkpoint_p2l;
+        result.erase(result.begin() + checkpoint_result_size, result.end());
+        swaps_since_progress = 0;
+        // Dijkstra shortest path guarantees convergence
+        dijkstra_fallback(result);
+        continue;
+      }
+
       std::pair<int, int> best_swap = {-1, -1};
       double best_score = 0;
 
