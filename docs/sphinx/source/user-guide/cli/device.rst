@@ -220,7 +220,7 @@ DELETED）统计该设备上各状态的作业数量，数据来源于 qcos 数�
 .. code-block:: shell
 
    # 将设备 hanyuan1 设为维护模式
-   qcos set-device-maintain-mode on --backend hanyuan1
+   qcos-cli set-device-maintain-mode on --backend hanyuan1
 
    # 将设备 hanyuan1 恢复在线模式
-   qcos set-device-maintain-mode off --backend hanyuan1
+   qcos-cli set-device-maintain-mode off --backend hanyuan1
