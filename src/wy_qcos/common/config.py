@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 from collections import OrderedDict
-from pathlib import Path
 from typing import Any, Literal
 from pydantic import BaseModel, Field, ValidationError, ConfigDict
 
@@ -573,7 +572,6 @@ class Config:
         Args:
             config_file: Path to driver env config file
         """
-        Path(config_file).parent
         _configs = {}
         configs = {}
         success, err_msg, _configs = Library.read_toml_file(config_file)

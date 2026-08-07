@@ -48,7 +48,7 @@ passowrd = ""
 enable_device_monitor = false
 
 # [Optional] device monitor log file path
-# monitor_log_file = /var/log/qcos/device_monitor_hanyuan1_pulse.log
+monitor_log_file = "/var/log/qcos/device_monitor_hanyuan1_pulse.log"
 
 # [Optional] monitor polling interval (secs)
 polling_interval = 60
