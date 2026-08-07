@@ -226,14 +226,29 @@ class TestListWorkers:
                 {
                     "worker_name": "process-device|dummy",
                     "work_pool": "device|dummy",
+                    "device_name": "dummy",
                     "worker_status": "ONLINE",
                     "pid": 123,
                 }
             ]
         }
         mock_table.return_value = (
-            ["worker_name", "work_pool", "worker_status", "pid"],
-            [["process-device|dummy", "device|dummy", "ONLINE", 123]],
+            [
+                "worker_name",
+                "work_pool",
+                "device_name",
+                "worker_status",
+                "pid",
+            ],
+            [
+                [
+                    "process-device|dummy",
+                    "device|dummy",
+                    "dummy",
+                    "ONLINE",
+                    123,
+                ]
+            ],
         )
 
         mock_client = Mock(spec=Namespace)

@@ -1434,6 +1434,7 @@ class ListWorkers(Lister):
         header_list = [
             "worker_name",
             "work_pool",
+            "device_name",
             "worker_status",
             "pid",
         ]
